@@ -4,12 +4,13 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { seedCreditsForTest } from "./billing.test-support";
 import { insertUsage } from "./ledger";
+import { madeBy } from "../workspaces/actor.test-support";
 
 async function setup() {
   const t = convexTest(schema);
   const { userId, jobId } = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", {clerkId: "clerk_pages", email: "pages@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
-    const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history", name: "c", createdAt: 0, updatedAt: 0 });
+    const jobId = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), sourceType: "history", name: "c", createdAt: 0, updatedAt: 0 });
     return { userId, jobId };
   });
   return { t, userId, jobId, me: t.withIdentity({ subject: "clerk_pages" }) };

@@ -34,7 +34,7 @@ import { applyCommand, findSearch } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
 import { MAX_AUTHORS } from "../lib/listCaps";
-import { actorOnRecord, isInWorkspace, personalWorkspaceOf, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../workspaces/actor";
+import { actorIn, isInWorkspace, personalWorkspaceOf, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../workspaces/actor";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */
 async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
@@ -105,7 +105,6 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
   // Stamped with what Screen All runs on (read back at run by screenPaperAction).
   const serverPick = await resolveTaskPick(ctx, user._id, "screenAll");
   const jobId = await ctx.db.insert("screeningJobs", {
-    userId: user._id,
     workspaceId,
     createdBy: user._id,
     ...state,
@@ -183,7 +182,7 @@ export const fillScreeningJob = internalMutation({
     const reading = await ctx.db.get("screeningJobs", jobId);
     if (!reading?.reading || reading.status !== "processing") return null;
     // The person may have been suspended while the papers were read.
-    await requireActiveUser(ctx, reading.userId);
+    await requireActiveUser(ctx, reading.createdBy);
     const place = reading.readPlace ?? { read: 0, papers: 0 };
     // A paper an earlier step took already (OpenAlex can list one on two pages) is screened, and paid for, once.
     const held = await Promise.all(given.map((paper) => ctx.db.query("screeningResults").withIndex("by_job_openalexId", (q) => q.eq("jobId", jobId).eq("openalexId", paper.openalexId)).first()));
@@ -197,11 +196,11 @@ export const fillScreeningJob = internalMutation({
     const free = reading.reused ?? 0;
     const done = progress ? progress.completed + progress.skipped + progress.failed : 0;
     const unpaid = Math.max(0, place.papers - free - Math.max(0, done - free));
-    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.userId, await workspaceOf(ctx, reading), unpaid + papers.length - reused.size, reading)).affordable;
+    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.createdBy, reading.workspaceId, unpaid + papers.length - reused.size, reading)).affordable;
     const now = Date.now();
     const taken = { read: place.read + read, papers: place.papers + (affordable ? papers.length : 0) };
     const over = ended || !affordable;
-    const made = affordable && papers.length && reading.newCollection ? { targetCollectionId: await newCollection(ctx, { userId: reading.userId, workspaceId: await workspaceOf(ctx, reading) }, reading.newCollection), newCollection: undefined } : {};
+    const made = affordable && papers.length && reading.newCollection ? { targetCollectionId: await newCollection(ctx, { userId: reading.createdBy, workspaceId: reading.workspaceId }, reading.newCollection), newCollection: undefined } : {};
     await ctx.db.patch("screeningJobs", jobId, {
       readPlace: taken,
       resume,
@@ -256,7 +255,6 @@ type PaperInput = Infer<typeof screeningPaperInputValidator>;
  */
 async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: PaperInput[], createdAt: number, answered?: Set<string>) {
   const batch = papers.slice(0, CREATE_BATCH);
-  const pool = { userId: job.userId, workspaceId: await workspaceOf(ctx, job) };
   const screening = (await ctx.db.get("screenings", job.screeningId))!;
   const ids = batch.map((paper) => paper.openalexId);
   // Given which papers are answered already, as their step found them; a later batch looks for itself.
@@ -281,12 +279,12 @@ async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers
         : job.capped
           ? // The job reached the most it may spend while its papers were still being made: the rest are never read.
             { status: "skipped" as const, completedAt: createdAt, doneAt: ctx.db.vars.commitTs }
-          : { status: "processing" as const, waitingWorkspace: pool.workspaceId, waitingSince: createdAt }),
+          : { status: "processing" as const, waitingWorkspace: job.workspaceId, waitingSince: createdAt }),
     });
   }
   if (reused.size) await ctx.db.patch("screeningJobs", job._id, { reused: (job.reused ?? 0) + reused.size });
   if (reused.size || job.capped) await bookkeepLater(ctx);
-  await startWaitingPapers(ctx, pool);
+  await startWaitingPapers(ctx, job.workspaceId);
   if (papers.length > CREATE_BATCH) {
     await ctx.scheduler.runAfter(0, internal.screening.mutations.createScreeningResults, { jobId: job._id, papers: papers.slice(CREATE_BATCH), createdAt });
   }
@@ -320,11 +318,11 @@ export const cancelScreeningJob = mutation({
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get("screeningJobs", args.jobId);
-    const actor = job && (await actorOnRecord(ctx, user, job));
+    const actor = job && (await actorIn(ctx, user, job.workspaceId));
     if (!job || !actor) {
       throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
     }
-    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
+    requireMakerOrAdmin(actor, job.createdBy);
 
     // Terminal states are idempotent no-ops
     if (isTerminalScreeningJobStatus(job.status)) {

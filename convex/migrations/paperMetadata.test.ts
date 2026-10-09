@@ -12,7 +12,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
     const owner = await person("owner"), foreign = await person("foreign");
     const job = async (userId: typeof owner) => {
       const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 0, createdAt: 1 });
-      return ctx.db.insert("screeningJobs", { userId, screeningId, status: "completed", totalPapers: 4, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
+      return ctx.db.insert("screeningJobs", { ...(await madeBy(ctx, userId)), screeningId, status: "completed", totalPapers: 4, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
     };
     const ownedJob = await job(owner), foreignJob = await job(foreign);
     const result = (jobId: typeof ownedJob, id: string, authors: string[]) => ctx.db.insert("screeningResults", { jobId, openalexId: id, title: id, authors, venue: "Retained journal", citedByCount: 0, status: "completed", createdAt: 1 });

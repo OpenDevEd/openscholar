@@ -122,18 +122,16 @@ describe("startJob — pre-flight credit check", () => {
     ).rejects.toThrow(/INSUFFICIENT_CREDITS|credits/i);
 
     // Verify no job row was inserted (all-or-nothing tx semantics).
-    const jobs = await t.run((ctx) =>
-      ctx.db
-        .query("extractionJobs")
-        .withIndex("by_user", (q) => q.eq("userId", userId))
-        .collect(),
-    );
+    const jobs = await t.run(async (ctx) => {
+      const workspaceId = await personalWorkspaceOf(ctx, userId);
+      return ctx.db.query("extractionJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).collect();
+    });
     expect(jobs).toHaveLength(0);
   });
 
   it("passes preflight and schedules queue setup when the balance covers the most the job costs", async () => {
     const t = convexTest(schema);
-    await seedUserFlagsAndCredits(t, { paid: 100_000 });
+    const { userId } = await seedUserFlagsAndCredits(t, { paid: 100_000 });
     const auth = t.withIdentity(IDENTITY);
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
@@ -149,7 +147,7 @@ describe("startJob — pre-flight credit check", () => {
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.status).toBe("pending");
     // In the workspace it was started in, as its starter's (#650).
-    expect(job).toMatchObject({ workspaceId: await t.run((ctx) => personalWorkspaceOf(ctx, job!.userId)), createdBy: job!.userId });
+    expect(job).toMatchObject({ workspaceId: await t.run((ctx) => personalWorkspaceOf(ctx, userId)), createdBy: userId });
     await expectQueueSetupScheduled(t);
   });
 

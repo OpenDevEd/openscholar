@@ -34,11 +34,6 @@ export async function actorFor(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, wo
   return actor;
 }
 
-/** `user` acting on a record opened by its ID, in the record's workspace; null when they can't act there. */
-export async function actorOnRecord(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, row: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }): Promise<Actor | null> {
-  return await actorIn(ctx, user, await workspaceOf(ctx, row));
-}
-
 /** `actorFor`, or null where it would refuse: for a record opened by its ID, which anyone who can act in its workspace may open. */
 export async function actorIn(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, workspaceId: Id<"workspaces">): Promise<Actor | null> {
   const workspace = await ctx.db.get("workspaces", workspaceId);

@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { rowFromBucketItem, type BucketItemInput } from "./jobSources";
 import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
 
 /** An abstract long enough for a paper to be read from it. */
 const ABSTRACT = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`word${i}`, [i]]));
@@ -37,7 +38,7 @@ async function jobOf(searchFilters: BucketItemInput["searchFilters"]) {
   const jobId = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { clerkId: "ada", email: "ada@test", state: "active", createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: false, updatedAt: 1 });
-    const id = await ctx.db.insert("extractionJobs", { userId, name: "Search", status: "pending", runEpoch: 0, createdAt: 1, updatedAt: 1 });
+    const id = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Search", status: "pending", runEpoch: 0, createdAt: 1, updatedAt: 1 });
     // Written as it was saved: a search in the old shape can't be written now, only read.
     await ctx.db.insert("extractionJobSources", rowFromBucketItem(id, 0, { source: "history", bucketKey: "search", sourceRefId: "search-1", title: "tutor", authors: [], searchFilters }));
     return id;

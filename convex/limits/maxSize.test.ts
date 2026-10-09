@@ -22,6 +22,7 @@ import { createJob, insertJob } from "../screening/createJob.test-support";
 import { searchTextOf } from "../screening/mutations";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningInputs } from "../extraction/sources/screening.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
 
 /** seedLibrary's papers: rating (i % 5) + 1, published 1990 + (i % 35), saved at 1_700_000_000_000 + i, all in its collection. */
 const seededLibrary = (items: number) => Array.from({ length: items }, (_, i) => ({ rating: (i % 5) + 1, year: 1990 + (i % 35), savedAt: 1_700_000_000_000 + i }));
@@ -448,7 +449,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     const { jobId, screeningId } = await t.run(async (ctx) => {
       const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 1, createdAt: 1 });
       const jobId = await ctx.db.insert("screeningJobs", {
-        userId, status: "completed", totalPapers: 120, questions, screeningId,
+        ...(await madeBy(ctx, userId)), status: "completed", totalPapers: 120, questions, screeningId,
         scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
         createdAt: 1, updatedAt: 1,
       });

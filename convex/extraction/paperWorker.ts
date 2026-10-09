@@ -323,7 +323,7 @@ type PaperReservation = { chargeId: string; reserved: number; description: strin
 
 /** The workspace a job is in, which pays for its papers (#650); one its backfill hasn't reached is its starter's own, until slice 8. */
 const payingWorkspace = async (ctx: ActionCtx, job: Doc<"extractionJobs">): Promise<Id<"workspaces">> =>
-  job.workspaceId ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: job.userId }));
+  job.workspaceId;
 
 /**
  * Holds the paper's worst-case cost before any work starts. When the balance
@@ -369,7 +369,7 @@ async function reservePaperCredits(
       : "The credits this extraction was allowed are no longer held for it. Resume it to carry on.";
   } else if (
     await reserveCredits(ctx, {
-      userId: job.userId,
+      userId: job.createdBy,
       workspaceId: await payingWorkspace(ctx, job),
       chargeId: reservation.chargeId,
       credits: reserved,
@@ -399,7 +399,7 @@ async function settlePaperCredits(
   usage: Usage,
 ): Promise<void> {
   await settleUnder(ctx, {
-    userId: job.userId,
+    userId: job.createdBy,
     workspaceId: await payingWorkspace(ctx, job),
     chargeId: reservation.chargeId,
     credits,

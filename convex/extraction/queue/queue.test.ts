@@ -5,6 +5,7 @@ import type { Id } from "../../_generated/dataModel";
 import schema from "../../schema";
 import { personalWorkspaceOf } from "../../workspaces/actor";
 import { setupExtractionPaperWorkpool } from "./workpool.test-support";
+import { madeBy } from "../../workspaces/actor.test-support";
 
 async function seedQueueJob(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
@@ -18,7 +19,7 @@ async function seedQueueJob(t: ReturnType<typeof convexTest>) {
       updatedAt: now,
     });
     const jobId = await ctx.db.insert("extractionJobs", {
-      userId,
+      ...(await madeBy(ctx, userId)),
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,
@@ -83,7 +84,7 @@ async function seedEligibleQueueJob(
       updatedAt: now,
     });
     const jobId = await ctx.db.insert("extractionJobs", {
-      userId,
+      ...(await madeBy(ctx, userId)),
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,
@@ -122,7 +123,7 @@ async function seedRetryQueueJob(t: ReturnType<typeof convexTest>) {
       updatedAt: now,
     });
     const jobId = await ctx.db.insert("extractionJobs", {
-      userId,
+      ...(await madeBy(ctx, userId)),
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,
@@ -484,9 +485,9 @@ describe("extraction paper queue", () => {
   it("leases a person's second job only what their first leaves, under their plan's concurrency", async () => {
     const t = convexTest(schema);
     const first = await seedEligibleQueueJob(t, 4);
-    const userId = await t.run(async (ctx) => (await ctx.db.get(first.jobId))!.userId);
+    const userId = await t.run(async (ctx) => (await ctx.db.get(first.jobId))!.createdBy);
     const second = await t.run(async (ctx) => {
-      const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 2, name: "Second", createdAt: 2, updatedAt: 2 });
+      const jobId = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 2, name: "Second", createdAt: 2, updatedAt: 2 });
       const paperIds = [
         await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:second:0", title: "Second 0", status: "pending" as const, processable: true }),
         await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:second:1", title: "Second 1", status: "pending" as const, processable: true }),
@@ -512,12 +513,12 @@ describe("extraction paper queue", () => {
     const t = convexTest(schema);
     setupExtractionPaperWorkpool(t);
     const first = await seedEligibleQueueJob(t, 3);
-    const userId = await t.run(async (ctx) => (await ctx.db.get(first.jobId))!.userId);
+    const userId = await t.run(async (ctx) => (await ctx.db.get(first.jobId))!.createdBy);
     const more = await t.run(async (ctx) => {
       await ctx.db.insert("billingAccounts", { userId, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { concurrency: 3 } });
       const jobs: Array<{ jobId: Id<"extractionJobs">; paperIds: Array<Id<"extractionPapers">> }> = [];
       for (let j = 0; j < 12; j++) {
-        const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 2, name: `Job ${j}`, createdAt: 2 + j, updatedAt: 2 + j });
+        const jobId = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 2, name: `Job ${j}`, createdAt: 2 + j, updatedAt: 2 + j });
         const paperIds = [0, 1].map(() => undefined) as unknown as Array<Id<"extractionPapers">>;
         for (let i = 0; i < 2; i++) paperIds[i] = await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:${j}:${i}`, title: `Job ${j} paper ${i}`, status: "pending" as const, processable: true });
         jobs.push({ jobId, paperIds });
@@ -529,8 +530,9 @@ describe("extraction paper queue", () => {
     }
     const dispatch = (jobId: Id<"extractionJobs">) =>
       t.mutation(internal.extraction.queue.mutations.dispatchPaperQueueWindow, { jobId, expectedEpoch: 0, paperConcurrency: 40, leaseOwner: "test", leaseMs: 60_000, questionConcurrency: 1, pdfEnabled: false });
+    const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
     const held = () => t.run(async (ctx) => {
-      const rows = await ctx.db.query("extractionPaperQueue").withIndex("by_user_and_status", (q) => q.eq("userId", userId).eq("status", "leased")).collect();
+      const rows = await ctx.db.query("extractionPaperQueue").withIndex("by_workspace_and_status", (q) => q.eq("workspaceId", workspaceId).eq("status", "leased")).collect();
       return rows;
     });
 
@@ -552,10 +554,10 @@ describe("extraction paper queue", () => {
     const t = convexTest(schema);
     setupExtractionPaperWorkpool(t);
     const older = await seedEligibleQueueJob(t, 2);
-    const userId = await t.run(async (ctx) => (await ctx.db.get(older.jobId))!.userId);
+    const userId = await t.run(async (ctx) => (await ctx.db.get(older.jobId))!.createdBy);
     const newer = await t.run(async (ctx) => {
       await ctx.db.insert("billingAccounts", { userId, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { concurrency: 2 } });
-      const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 4, name: "Newer", createdAt: 9, updatedAt: 9 });
+      const jobId = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), sourceType: "history" as const, status: "extracting" as const, runEpoch: 0, totalPapers: 4, name: "Newer", createdAt: 9, updatedAt: 9 });
       const paperIds: Array<Id<"extractionPapers">> = [];
       for (let i = 0; i < 4; i++) paperIds.push(await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:newer:${i}`, title: `Newer ${i}`, status: "pending" as const, processable: true }));
       return { jobId, paperIds };

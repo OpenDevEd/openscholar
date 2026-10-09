@@ -166,7 +166,7 @@ export const getPaperExtractionContext = internalQuery({
     }
 
     const [user, questions, results, evidenceUnits] = await Promise.all([
-      ctx.db.get("users", job.userId),
+      ctx.db.get("users", job.createdBy),
       ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", args.jobId))

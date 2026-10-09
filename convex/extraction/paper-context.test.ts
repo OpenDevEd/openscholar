@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { madeBy } from "../workspaces/actor.test-support";
 
 async function seedPaperContextFixture(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
@@ -21,7 +22,7 @@ async function seedPaperContextFixture(t: ReturnType<typeof convexTest>) {
       updatedAt: now,
     });
     const jobId = await ctx.db.insert("extractionJobs", {
-      userId,
+      ...(await madeBy(ctx, userId)),
       sourceType: "history" as const,
       status: "extracting" as const,
       runEpoch: 0,
@@ -127,7 +128,7 @@ describe("paper extraction context", () => {
     const otherPaperId = await t.run(async (ctx) => {
       const now = Date.now();
       const otherJobId = await ctx.db.insert("extractionJobs", {
-        userId: ids.userId,
+        ...(await madeBy(ctx, ids.userId)),
         sourceType: "history" as const,
         status: "extracting" as const,
         totalPapers: 1,

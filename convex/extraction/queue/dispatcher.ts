@@ -142,7 +142,7 @@ export const refill = internalMutation({
     for (const run of runs.values()) {
       const job = await ctx.db.get(run.jobId);
       if (!job || (job.runEpoch ?? 0) !== run.epoch) continue;
-      const workspaceId = await workspaceOf(ctx, job);
+      const workspaceId = job.workspaceId;
       pools.set(workspaceId, [...(pools.get(workspaceId) ?? []), run]);
     }
     for (const [workspaceId, released] of pools) {
