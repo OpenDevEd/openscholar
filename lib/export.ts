@@ -1,4 +1,4 @@
-import type { Doc } from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import type { ExportFormat, ExportSource } from "@/convex/exportValidators";
 import type { ConvexReactClient } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -134,11 +134,11 @@ const PART_START_MS = 30_000;
  * once the last part is done, and fails when a part fails or doesn't start, which the hidden
  * frame can't show.
  */
-export async function downloadExport(convex: ConvexReactClient, source: ExportSource, format: ExportFormat) {
+export async function downloadExport(convex: ConvexReactClient, workspaceId: Id<"workspaces">, source: ExportSource, format: ExportFormat) {
   const bytes = crypto.getRandomValues(new Uint8Array(32));
   const token = btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   const digest = await digestOpaqueToken(token);
-  await convex.mutation(api.exports.start, { digest, format, source });
+  await convex.mutation(api.exports.start, { workspaceId, digest, format, source });
   // A hidden frame takes each download, so the page doesn't navigate or ask to leave.
   const open = (part: number) => {
     const frame = document.createElement("iframe");

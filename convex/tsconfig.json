@@ -32,6 +32,7 @@
   "include": ["./**/*"],
   "exclude": [
     "./_generated",
-    "./**/*.test.ts"
+    "./**/*.test.ts",
+    "./**/*.test-support.ts"
   ]
 }

@@ -16,7 +16,7 @@ import { requireAuth } from "../lib/auth";
 import { createError, readConvexErrorData } from "../lib/errors";
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { readActiveOrganizationMembership, requireEvidenceLibraryAccess } from "./access";
+import { libraryOwner, readActiveOrganizationMembership, requireEvidenceLibraryAccess } from "./access";
 import { authenticateLibraryServiceCredential } from "./credentials";
 
 // Items a page carries. Each costs one read of its library item.
@@ -135,10 +135,13 @@ async function refusal(
   if (!connection) return { refused: "not_configured" };
   const collection = await ctx.db.get("collections", collectionId);
   if (!collection) return { refused: "collection_not_found" };
-  const owner = await ctx.db.get("users", collection.userId);
+  // The collection's maker is still one of the library's: a member of its organization, or the person whose own workspace it's in.
+  const [maker, owner] = await Promise.all([ctx.db.get("users", collection.userId), libraryOwner(ctx, library)]);
   const member =
-    owner?.state !== "deleted" && owner
-      ? await readActiveOrganizationMembership(ctx, library.organizationId, owner.clerkId)
+    maker && maker.state !== "deleted" && owner
+      ? owner.organization
+        ? await readActiveOrganizationMembership(ctx, owner.organization._id, maker.clerkId)
+        : owner.workspace.kind === "personal" && owner.workspace.userId === maker._id
       : null;
   return member ? { collection } : { refused: "owner_left" };
 }

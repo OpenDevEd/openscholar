@@ -15,6 +15,8 @@ import { getFlag, requireFeature } from "../featureFlags/guard";
 import { checkRateLimit } from "../lib/rateLimit";
 import { startHeld } from "../billing/charge";
 import { filtersOf } from "../paperSets/search";
+import { findSearch } from "../research/records";
+import { isInWorkspace, personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { screeningRevision } from "../screening/accounting";
 import { papersIn } from "../screening/estimate";
 import { paperSetValidator } from "../screening/validators";
@@ -65,7 +67,7 @@ function checkRange(set: PaperSet, first: number, last: number) {
  * it (see `start`), so that a yes is never followed by a refusal: its switches, its questions,
  * and its papers. Only what OpenAlex says of a search, and a balance that changed since, are left.
  */
-async function checkExtraction(ctx: QueryCtx, userId: Id<"users">, { set, first, last, questions, usePdfs }: { set: PaperSet; first: number; last: number; questions: Array<{ question: string }>; usePdfs?: boolean }) {
+async function checkExtraction(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, { set, first, last, questions, usePdfs }: { set: PaperSet; first: number; last: number; questions: Array<{ question: string }>; usePdfs?: boolean }) {
   await requireFeature(ctx, "extraction.enabled", userId);
   await requireFeature(ctx, "extraction.start", userId);
   // Read, not spent: the start spends it (./mutations/jobs.ts).
@@ -74,52 +76,54 @@ async function checkExtraction(ctx: QueryCtx, userId: Id<"users">, { set, first,
   await checkPdfs(ctx, usePdfs);
   checkQuestions(questions);
   if (set.kind === "screening") {
-    await screeningPicked(ctx, userId, set.jobId);
-    return void (await checkRequestPapers(ctx, userId, (await papersIn(ctx, userId, set)) ?? 0, "extraction"));
+    await screeningPicked(ctx, workspaceId, set.jobId);
+    return void (await checkRequestPapers(ctx, workspaceId, (await papersIn(ctx, { userId, workspaceId }, set)) ?? 0, "extraction"));
   }
   checkRange(set, first, last);
   if (set.kind === "search") {
-    await searchFilters(ctx, userId, set.searchId);
-    return void (await checkRequestPapers(ctx, userId, last - first + 1, "extraction"));
+    await searchFilters(ctx, workspaceId, set.searchId);
+    return void (await checkRequestPapers(ctx, workspaceId, last - first + 1, "extraction"));
   }
-  if (set.kind === "collection" && (await ctx.db.get("collections", set.collectionId))?.userId !== userId) throw createError("NOT_FOUND", "Collection not found");
-  const held = await papersIn(ctx, userId, set);
+  if (set.kind === "collection" && (await ctx.db.get("collections", set.collectionId))?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
+  const held = await papersIn(ctx, { userId, workspaceId }, set);
   if (held !== null && first > held) throw invalid("There are no papers in that range");
-  await checkRequestPapers(ctx, userId, Math.min(last, held ?? last) - first + 1, "extraction");
+  await checkRequestPapers(ctx, workspaceId, Math.min(last, held ?? last) - first + 1, "extraction");
 }
 
 /** How many papers a request is for. A screening is all its included papers; a search is read from its first paper. */
-async function papersOf(ctx: QueryCtx, userId: Id<"users">, { set, first, last }: { set: PaperSet; first: number; last: number }) {
-  const held = await papersIn(ctx, userId, set);
+async function papersOf(ctx: QueryCtx, reader: InWorkspace, { set, first, last }: { set: PaperSet; first: number; last: number }) {
+  const held = await papersIn(ctx, reader, set);
   if (set.kind === "screening") return held ?? 0;
   return Math.max(0, Math.min(last, held ?? last) - first + 1);
 }
 
 /** The most an extraction of these papers holds: every paper at its most, on the models the job sends its questions to (../ai/serverModel.ts `extractionStamp`). */
-async function extractionHold(ctx: QueryCtx, userId: Id<"users">, { questions, usePdfs, ...range }: { set: PaperSet; first: number; last: number; questions: Array<{ type: string; question: string }>; usePdfs?: boolean }) {
-  await checkExtraction(ctx, userId, { ...range, questions, usePdfs });
+async function extractionHold(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, { questions, usePdfs, ...range }: { set: PaperSet; first: number; last: number; questions: Array<{ type: string; question: string }>; usePdfs?: boolean }) {
+  await checkExtraction(ctx, { userId, workspaceId }, { ...range, questions, usePdfs });
   const pricing = await extractionPricing(ctx, await extractionStamp(ctx, userId));
-  return (await papersOf(ctx, userId, range)) * extractionPaperCredits(pricing, questions, usePdfs === true);
+  return (await papersOf(ctx, { userId, workspaceId }, range)) * extractionPaperCredits(pricing, questions, usePdfs === true);
 }
 
 /** The same figure, for the start to check what was approved against (see `start`). */
 export const figure = internalQuery({
-  args: { userId: v.id("users"), ...extractArgs },
+  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), ...extractArgs },
   returns: v.number(),
-  handler: (ctx, { userId, ...args }) => extractionHold(ctx, userId, args),
+  handler: async (ctx, { userId, workspaceId, ...args }) => extractionHold(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, args),
 });
 
 /** A saved search as an extraction's source: its query, for the source's name, and the request its results page makes. */
 export const searchSource = internalQuery({
-  args: { userId: v.id("users"), searchId: v.string() },
+  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), searchId: v.string() },
   returns: searchFiltersValidator,
-  handler: (ctx, { userId, searchId }) => searchFilters(ctx, userId, searchId),
+  handler: async (ctx, { userId, workspaceId, searchId }) => searchFilters(ctx, workspaceId ?? (await personalWorkspaceOf(ctx, userId)), searchId),
 });
 
-async function searchFilters(ctx: QueryCtx, userId: Id<"users">, searchId: string) {
-  const row = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", searchId)).unique();
+async function searchFilters(ctx: QueryCtx, workspaceId: Id<"workspaces">, searchId: string) {
+  const row = await findSearch(ctx, workspaceId, searchId);
   if (!row) throw createError("NOT_FOUND", "Search not found");
-  const { params, filters } = await filtersOf(ctx, userId, currentSearch(row.data));
+  const { params, filters } = await filtersOf(ctx, workspaceId, currentSearch(row.data));
   if (!filters) throw invalid("This search's query isn't one OpenAlex can read. Check its brackets and quotes.");
   // Which papers a person rated is theirs, not OpenAlex's: the job reads the search from OpenAlex, and would read the papers the filter leaves out.
   if (isRatingFilterActive([params.rmin, params.rmax], params.rated)) throw invalid("This search keeps papers by the person's ratings, which an extraction can't read from the search. Put its papers in a collection first, then extract from the collection.");
@@ -128,16 +132,17 @@ async function searchFilters(ctx: QueryCtx, userId: Id<"users">, searchId: strin
 
 /** A screening as an extraction's source: its included papers as they are now, how many, and what it's called. */
 export const screeningSource = internalQuery({
-  args: { userId: v.id("users"), jobId: v.id("screeningJobs") },
+  // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which reads its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), jobId: v.id("screeningJobs") },
   returns: v.object({ revision: v.string(), count: v.number(), label: v.string() }),
-  handler: (ctx, { userId, jobId }) => screeningPicked(ctx, userId, jobId),
+  handler: async (ctx, { userId, workspaceId, jobId }) => screeningPicked(ctx, workspaceId ?? (await personalWorkspaceOf(ctx, userId)), jobId),
 });
 
-async function screeningPicked(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"screeningJobs">) {
+async function screeningPicked(ctx: QueryCtx, workspaceId: Id<"workspaces">, jobId: Id<"screeningJobs">) {
   const job = await ctx.db.get("screeningJobs", jobId);
-  if (!job || job.userId !== userId) throw createError("NOT_FOUND", "Screening not found");
+  if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("NOT_FOUND", "Screening not found");
   const revision = await screeningRevision(ctx, job);
-  return { revision, count: await checkScreeningSelection(ctx, userId, jobId, revision), label: job.label ?? "Screening" };
+  return { revision, count: await checkScreeningSelection(ctx, workspaceId, jobId, revision), label: job.label ?? "Screening" };
 }
 
 
@@ -147,14 +152,14 @@ async function screeningPicked(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"sc
  * screening as its included papers at their revision, and a collection's or the library's
  * papers one by one, each as the library holds it.
  */
-async function sourcesOf(ctx: ActionCtx, userId: Id<"users">, { set, first, last }: { set: PaperSet; first: number; last: number }): Promise<Source[]> {
+async function sourcesOf(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, { set, first, last }: { set: PaperSet; first: number; last: number }): Promise<Source[]> {
   if (set.kind === "screening") {
-    const picked: { revision: string; count: number; label: string } = await ctx.runQuery(internal.extraction.start.screeningSource, { userId, jobId: set.jobId });
+    const picked: { revision: string; count: number; label: string } = await ctx.runQuery(internal.extraction.start.screeningSource, { userId, workspaceId, jobId: set.jobId });
     return [{ bucketKey: `screening:${set.jobId}`, source: "screening", sourceRefId: set.jobId, title: picked.label, authors: [], screeningSelection: { jobId: set.jobId, revision: picked.revision, count: picked.count } }];
   }
   checkRange(set, first, last);
   if (set.kind === "search") {
-    const filters: Infer<typeof searchFiltersValidator> = await ctx.runQuery(internal.extraction.start.searchSource, { userId, searchId: set.searchId });
+    const filters: Infer<typeof searchFiltersValidator> = await ctx.runQuery(internal.extraction.start.searchSource, { userId, workspaceId, searchId: set.searchId });
     return [{ bucketKey: `history:${set.searchId}`, source: "history", sourceRefId: set.searchId, title: filters.query, authors: [], searchFilters: { ...filters, limit: last } }];
   }
   // One source for the whole range: the job reads its papers a page at a time when it's set up.
@@ -164,11 +169,12 @@ async function sourcesOf(ctx: ActionCtx, userId: Id<"users">, { set, first, last
 
 /** Starts the job from the sources the action read, as the page's start does, with the hold it's charged under when it has one. */
 export const begin = internalMutation({
-  args: { userId: v.id("users"), name: v.string(), bucketItems: v.array(bucketItemInputValidator), questions: v.array(questionInputValidator), usePdfs: v.boolean(), spend: v.optional(v.object({ hold: v.string(), cap: v.number() })), chatStep: v.optional(v.id("assistantSteps")) },
+  // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which starts the job in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), name: v.string(), bucketItems: v.array(bucketItemInputValidator), questions: v.array(questionInputValidator), usePdfs: v.boolean(), spend: v.optional(v.object({ hold: v.string(), cap: v.number() })), chatStep: v.optional(v.id("assistantSteps")) },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  handler: async (ctx, { userId, spend, chatStep, ...args }) => {
+  handler: async (ctx, { userId, workspaceId, spend, chatStep, ...args }) => {
     await checkPdfs(ctx, args.usePdfs);
-    return await startJobFor(ctx, userId, args, spend, chatStep);
+    return await startJobFor(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, args, spend, chatStep);
   },
 });
 
@@ -194,16 +200,16 @@ export const settleHold = internalMutation({
  * Reads the set's sources and starts the job. With the figure the person approved, it is
  * held first (billing/charge.ts `startHeld`).
  */
-async function start(ctx: ActionCtx, userId: Id<"users">, { name, questions, usePdfs, ...range }: { name: string; set: PaperSet; first: number; last: number; questions: Array<Infer<typeof askedValidator>>; usePdfs?: boolean }, call?: ChangeCall): Promise<{ jobId: Id<"extractionJobs"> }> {
+async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, { name, questions, usePdfs, ...range }: { name: string; set: PaperSet; first: number; last: number; questions: Array<Infer<typeof askedValidator>>; usePdfs?: boolean }, call?: ChangeCall): Promise<{ jobId: Id<"extractionJobs"> }> {
   const cap = call?.credits;
   checkQuestions(questions);
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
-  const job = { userId, name, bucketItems: await sourcesOf(ctx, userId, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true, ...(call?.from ? { chatStep: call.from } : {}) };
+  const job = { userId, workspaceId, name, bucketItems: await sourcesOf(ctx, { userId, workspaceId }, range), questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true, ...(call?.from ? { chatStep: call.from } : {}) };
   if (cap === undefined) return await ctx.runMutation(internal.extraction.start.begin, job);
   // What was approved is what the job holds now, or more: the papers or the model may have changed since the person was asked, and a job that holds more than they said yes to is asked about again.
-  const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
+  const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, workspaceId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
   if (now > cap) throw invalid(`This extraction now holds up to ${Math.ceil(now).toLocaleString("en")} credits, more than the ${cap.toLocaleString("en")} approved: its papers or the model it runs on changed since. Call it again, and the person is asked with the new figure.`);
-  return await startHeld(ctx, { userId, credits: cap, kind: "extraction" }, (hold) => ctx.runMutation(internal.extraction.start.begin, { ...job, spend: { hold, cap } }));
+  return await startHeld(ctx, { userId, workspaceId, credits: cap, kind: "extraction" }, (hold) => ctx.runMutation(internal.extraction.start.begin, { ...job, spend: { hold, cap } }));
 }
 
 export const extractAction = defineUserAction({
@@ -218,7 +224,7 @@ export const extractAction = defineUserAction({
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
-  estimate: extractionHold,
+  estimate: (ctx, actor, args) => extractionHold(ctx, actor, args),
   // The papers and the questions put to them.
   shown: ({ name, set, first, last, questions, usePdfs }) => ({
     name,
@@ -227,7 +233,7 @@ export const extractAction = defineUserAction({
     ...(usePdfs ? { usePdfs } : {}),
   }),
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  run: (ctx, userId, args, _author, call): Promise<{ jobId: Id<"extractionJobs"> }> => start(ctx, userId, args, call),
+  run: (ctx, { userId, workspaceId }, args, call): Promise<{ jobId: Id<"extractionJobs"> }> => start(ctx, { userId, workspaceId }, args, call),
 });
 export const extract = userAction(extractAction);
 export const extractForAssistant = assistantAction(extractAction);

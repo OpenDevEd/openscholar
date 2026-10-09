@@ -34,7 +34,7 @@ import { requireAuth } from "../../lib/auth";
 import { getFlag, requireFeature } from "../../featureFlags/guard";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
-import { assertJobOwnership } from "../access";
+import { assertJobAccess } from "../access";
 import {
   assertValidJobTransition,
   assertValidPaperTransition,
@@ -48,6 +48,7 @@ import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { retryCredits } from "../queries/costs";
 import { approvalLeft } from "../../billing/spend";
 import { availableCredits as readAvailableCredits } from "../../billing/accounts";
+import { workspaceOf } from "../../workspaces/actor";
 import { isResultRetryableFailure } from "../../../lib/extraction/retry-summary";
 import { readResultCounts } from "../resultCounts";
 import { recomputePaperListProjection } from "../listProjection";
@@ -150,7 +151,7 @@ export const retryFailedQuestions = mutation({
     await requireFeature(ctx, "extraction.enabled");
     const user = await requireAuth(ctx);
 
-    const job = await assertJobOwnership(ctx, user._id, jobId);
+    const { job } = await assertJobAccess(ctx, user, jobId);
 
     await requireFeature(ctx, "extraction.start", user._id);
     await rateLimit(ctx, {
@@ -177,7 +178,8 @@ export const retryFailedQuestions = mutation({
     }
 
     const credits = await retryCredits(ctx, job, retryableCount);
-    const totalAvailable = await readAvailableCredits(ctx, user._id);
+    // Its workspace pays for it (#650).
+    const totalAvailable = await readAvailableCredits(ctx, await workspaceOf(ctx, job));
     if (totalAvailable < credits) {
       throw createError(
         "INSUFFICIENT_CREDITS",

@@ -7,7 +7,7 @@
 import { v } from "convex/values";
 import { httpAction, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
-import { refreshAccount } from "./accounts";
+import { refreshAccount, workspaceOfCustomer } from "./accounts";
 
 /** Svix signs each delivery; older timestamps are rejected as replays. */
 const TOLERANCE_SECONDS = 5 * 60;
@@ -96,14 +96,14 @@ export const autumnWebhook = httpAction(async (ctx, request) => {
     console.warn(`[autumn webhook] ${event.type ?? "event"} ${id} names no customer`);
     return new Response(null, { status: 204 });
   }
-  const userId = await ctx.runQuery(internal.billing.autumnWebhook.userForCustomer, { customerId });
-  if (!userId) {
-    console.warn(`[autumn webhook] no OpenScholar user for Autumn customer ${customerId}`);
+  const workspaceId = await ctx.runQuery(internal.billing.autumnWebhook.workspaceForCustomer, { customerId });
+  if (!workspaceId) {
+    console.warn(`[autumn webhook] no OpenScholar workspace for Autumn customer ${customerId}`);
     return new Response(null, { status: 204 });
   }
   // Refreshed before answering, so a failure here makes Svix retry.
   try {
-    await refreshAccount(ctx, userId);
+    await refreshAccount(ctx, workspaceId);
   } catch (error) {
     console.error(`[autumn webhook] refresh for ${customerId} failed on ${id}`, error);
     return new Response("Refresh failed", { status: 500 });
@@ -112,11 +112,9 @@ export const autumnWebhook = httpAction(async (ctx, request) => {
 });
 
 /** The OpenScholar user an Autumn customer id belongs to; they're the same id. */
-export const userForCustomer = internalQuery({
+/** The workspace an Autumn customer is: a person's own, or an organization's (#650). */
+export const workspaceForCustomer = internalQuery({
   args: { customerId: v.string() },
-  returns: v.union(v.id("users"), v.null()),
-  handler: async (ctx, { customerId }) => {
-    const userId = ctx.db.normalizeId("users", customerId);
-    return userId && (await ctx.db.get("users", userId)) ? userId : null;
-  },
+  returns: v.union(v.id("workspaces"), v.null()),
+  handler: (ctx, { customerId }) => workspaceOfCustomer(ctx, customerId),
 });

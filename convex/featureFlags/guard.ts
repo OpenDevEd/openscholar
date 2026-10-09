@@ -31,7 +31,9 @@ export async function requireFeature(
     if (!userId) {
       throw createError("UNAUTHENTICATED", "Authentication required for this feature");
     }
-    if (!(await hasPlanFeature(ctx, userId, flag.planFeature))) {
+    // The person's own workspace's plan, until features come from the acting workspace's plan (#652).
+    const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
+    if (!own || !(await hasPlanFeature(ctx, own._id, flag.planFeature))) {
       throw createError(
         "FEATURE_PLAN_REQUIRED",
         `${flag.description || flagKey} isn't included in your plan. Upgrade to continue.`,

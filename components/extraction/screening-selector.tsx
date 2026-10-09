@@ -9,10 +9,12 @@ import { bucketAdded } from "@/lib/toast/bucket";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { useFormatter } from "next-intl";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 export function ScreeningSelector({ paperLimit }: { paperLimit: number }) {
+  const workspaceId = useWorkspace();
   const format = useFormatter();
-  const list = useCursorPage(api.screening.queries.listJobs, {}, 20);
+  const list = useCursorPage(api.screening.queries.listJobs, inWorkspace(workspaceId, {}), 20);
   const items = useBucketStore(s => s.items);
   const addMany = useBucketStore(s => s.addMany);
   const removeMany = useBucketStore(s => s.removeMany);

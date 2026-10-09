@@ -9,6 +9,7 @@
  */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import { effortValidator } from "../aiModelConfig/validators";
 import { refreshAccount } from "../billing/accounts";
 import { CALL_TOKENS, estimateCredits, type Pricing } from "../../lib/pricing";
@@ -40,13 +41,15 @@ export const reply = internalAction({
     agentThreadId: v.string(),
     promptMessageId: v.string(),
     senderId: v.id("users"),
+    // The workspace it acts in (./access.ts `replyWorkspace`). One scheduled before replies named theirs (#650) acts in the sender's own, until slice 8.
+    workspaceId: v.optional(v.id("workspaces")),
     modelId: v.union(v.id("models"), v.null()),
     effort: v.optional(effortValidator),
     // Where the reply stands after its requests before this one.
     used: v.optional(usedValidator),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, modelId, effort, used = { credits: 0, rounds: 0, calls: 0 } }) => {
+  handler: async (ctx, { threadId, attemptId, agentThreadId, promptMessageId, senderId, workspaceId: given, modelId, effort, used = { credits: 0, rounds: 0, calls: 0 } }) => {
     const lock = { threadId, attemptId };
     const state = () => ctx.runQuery(internal.assistant.replies.lockState, lock);
     // Ends a reply stopped before the model is called: no credits are held, and the chat shows a stopped reply.
@@ -65,11 +68,15 @@ export const reply = internalAction({
     // A reply whose chat was deleted, or whose lock is another reply's, never starts.
     if (atStart === "gone") return null;
     if (atStart === "stop") return stopHere();
+    const workspaceId: Id<"workspaces"> = given ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: senderId }));
+    // Each request acts as its sender in the workspace the reply runs in: one who has left it, or whose account
+    // is no longer active, gets no request at all, so nothing of the conversation goes to the model for them.
+    if (!(await ctx.runQuery(internal.workspaces.actor.activeActor, { userId: senderId, workspaceId }).then(() => true, () => false))) return stopHere();
     // How much history the reply's request read, which decides whether a compaction follows it.
     let history = { messages: 0, bytes: 0 };
     // Whether the request sends a paper's PDF by its address.
     let linked = false;
-    const turn = { agentThreadId, senderId, modelId, effort };
+    const turn = { agentThreadId, senderId, workspaceId, modelId, effort };
     const shouldStop = async () => (await state()) !== "writing";
     let read = await compactedOf(ctx, threadId);
     // A compaction that was due and didn't finish is written now, before the request reads the conversation:
@@ -92,11 +99,11 @@ export const reply = internalAction({
     // What this request holds, on the model it runs on: the most a request costs, or what the person
     // has when that's less, down to the least a reply starts on. It settles to what it cost, and the
     // next request holds again, so what a reply may cost in all is the person's credits and nothing else.
-    let balance = (await ctx.runQuery(internal.billing.accounts.forUser, { userId: senderId }))?.balance;
+    let balance = (await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId }))?.balance;
     const cap = async (pricing: Pricing) => {
       const most = estimateCredits(pricing, CALL_TOKENS.chatRequest);
       // The account's copy of the balance can be behind a top-up. When it says the request can't hold the most, it's read again from Autumn.
-      if (balance !== undefined && balance < most) balance = (await refreshAccount(ctx, senderId).catch(() => null))?.balance ?? balance;
+      if (balance !== undefined && balance < most) balance = (await refreshAccount(ctx, workspaceId).catch(() => null))?.balance ?? balance;
       // A reply that is under way holds whatever the person has left: its first request settled to what
       // it cost, and the least a reply starts on, asked for again, could stop one the balance still covers.
       const least = used.rounds === 0 ? estimateCredits(pricing, CALL_TOKENS.chatMessage) : 1;
@@ -111,7 +118,7 @@ export const reply = internalAction({
     const answer = used.told !== undefined;
     const stopped = () => why;
     // Each action it runs is kept as a step of the exchange it's answering.
-    const { tools, approval, resume, planned, made, changes, digest, held } = toolsFor(ctx, { userId: senderId, threadId, order: read.answering ?? 0, attemptId, stopped, halted: shouldStop, made: used.calls, changed: used.changes });
+    const { tools, approval, resume, planned, made, changes, digest, held } = toolsFor(ctx, { userId: senderId, workspaceId, threadId, order: read.answering ?? 0, attemptId, stopped, halted: shouldStop, made: used.calls, changed: used.changes });
     // A reply that waited for an answer carries on here: what the person allowed runs first,
     // and each result is written where the model's call left off. A Stop ends it between two.
     const allowed = await ctx.runQuery(internal.assistant.steps.allowed, { threadId });
@@ -137,8 +144,9 @@ export const reply = internalAction({
       // Each request holds and settles its own credits, and so does each try of one made again.
       attemptId: `${attemptId}:${used.rounds}${used.retries ? `:${used.retries}` : ""}`,
       replyId: attemptId,
+      workspaceId,
       credits: cap,
-      lesser: async () => (await refreshAccount(ctx, senderId).catch(() => null))?.balance,
+      lesser: async () => (await refreshAccount(ctx, workspaceId).catch(() => null))?.balance,
       tools,
       approval,
       answer,
@@ -228,14 +236,15 @@ export const compact = internalAction({
     resume: v.optional(v.object({ ...turnArgs, promptMessageId: v.string(), used: usedValidator })),
   },
   returns: v.null(),
-  handler: async (ctx, { threadId, attemptId, through, resume, ...turn }) => {
+  handler: async (ctx, { threadId, attemptId, through, resume, workspaceId: given, ...turn }) => {
     const lock = { threadId, attemptId };
+    const workspaceId: Id<"workspaces"> = given ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: turn.senderId }));
     let written: { summary: string; credits: number } | undefined;
     const shouldStop = async () => (await ctx.runQuery(internal.assistant.replies.lockState, lock)) !== "writing";
     try {
       if (!(await shouldStop())) {
         // A reply can be summarized more than once as it goes, and one that couldn't be written is tried again after its next request: each try is a charge of its own.
-        written = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, through, midReply: resume !== undefined, chargeId: `chat:${attemptId}:through:${through}:${resume?.used.rounds ?? "end"}:summary`, shouldStop });
+        written = await summarize(ctx, { ...(await compactedOf(ctx, threadId)), ...turn, workspaceId, through, midReply: resume !== undefined, chargeId: `chat:${attemptId}:through:${through}:${resume?.used.rounds ?? "end"}:summary`, shouldStop });
       }
     } catch (error) {
       console.error("[assistant] compaction failed", { threadId, error: errorToLogString(error) });

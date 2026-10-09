@@ -41,6 +41,7 @@
     "users/mutations:ensureUser": "Creates the account row when a session first signs in.",
     "users/mutations:syncProfileFromSession": "Copies the Clerk session's name and email onto the account row.",
     "wallet/queries:isOriginAllowed": "The connect page's check that an external app's origin is allowed.",
+    "workspaces/queries:personal": "The workspace a browser's calls name until pages carry it in their address (#651). The assistant acts in its chat's workspace.",
     "zotero/actions:startOAuth": "Starts Zotero's OAuth redirect, which only the person's browser can complete."
   },
   "pending": {
@@ -212,5 +213,14 @@
     "zotero/runtimeReadActions:readPublication": "#329",
     "zotero/runtimeReadActions:requestSourceRun": "#329",
     "zotero/runtimeReadActions:resolveLibraryCollections": "#329"
-  }
+  },
+  "inWorkspace": [
+    "research/records",
+    "research/searches",
+    "library/queries",
+    "library/collections",
+    "library/mutations",
+    "library/papers",
+    "extraction/sources/library"
+  ]
 }

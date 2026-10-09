@@ -10,13 +10,24 @@
 import { v, type GenericValidator, type Infer, type ObjectType, type PropertyValidators } from "convex/values";
 import { action, internalAction, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./functions";
 import { internal } from "../_generated/api";
-import type { Doc, Id } from "../_generated/dataModel";
+import type { Id } from "../_generated/dataModel";
 import { getCurrentUser, requireActiveUser, requireAuth } from "./auth";
 import { createError } from "./errors";
 import { DONE, endStep } from "../assistant/steps";
+import { actorFor, type Actor } from "../workspaces/actor";
 
 /** Who made a change: the person themselves, or the assistant acting for them. */
 export type Author = "user" | "assistant";
+/**
+ * Who an action runs as (#650): the person, the workspace they act in and their role there,
+ * and whether the assistant acts for them. Every wrapper resolves it once, with `actorFor`.
+ */
+export type Acting = Actor & { author: Author };
+
+/** `userId` acting in `workspaceId` as `author`, for a call that names its person: refuses an account no longer active, or a workspace they aren't in. */
+export async function actingAs(ctx: QueryCtx, userId: Id<"users">, workspaceId: Id<"workspaces">, author: Author): Promise<Acting> {
+  return { ...(await actorFor(ctx, await requireActiveUser(ctx, userId), workspaceId)), author };
+}
 
 type Common<Args extends PropertyValidators, Returns extends GenericValidator> = {
   /** The public function's path, such as "research/records:change". The tool is named after it. */
@@ -29,7 +40,7 @@ type Common<Args extends PropertyValidators, Returns extends GenericValidator> =
 
 export type UserQuery<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> & {
   kind: "query";
-  run: (ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>) => Promise<Infer<Returns>>;
+  run: (ctx: QueryCtx, actor: Acting, args: ObjectType<Args>) => Promise<Infer<Returns>>;
 };
 
 /** Decision 12: three separate labels. Credits and outside effects ask first; undoable writes offer undo. */
@@ -57,7 +68,7 @@ export const reversal = <Path extends string, Args extends PropertyValidators>(p
  * would show outside the account, such as a change to a collection a library follows
  * (decision 12). The assistant reads it before it runs the call.
  */
-type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>): Promise<boolean> };
+type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, actor: Acting, args: ObjectType<Args>): Promise<boolean> };
 
 /**
  * The most one call of an action that spends credits holds (#328): an upper estimate, read
@@ -65,7 +76,7 @@ type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, us
  * in the chat. An action that spends credits and gives none can't be asked about, so the
  * assistant doesn't run it. Asked in a chat, it's told which, for an estimate that depends on the chat's model.
  */
-type Estimates<Args extends PropertyValidators> = { estimate?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>, chat?: { threadId: Id<"assistantThreads"> }): Promise<number> };
+type Estimates<Args extends PropertyValidators> = { estimate?(ctx: QueryCtx, actor: Acting, args: ObjectType<Args>, chat?: { threadId: Id<"assistantThreads"> }): Promise<number> };
 
 /**
  * What an action that calls an outside service refuses that can be read before the person is
@@ -73,7 +84,7 @@ type Estimates<Args extends PropertyValidators> = { estimate?(ctx: QueryCtx, use
  * before it's asked about (convex/assistant/bulk.ts `tryChanges`), but an action can't be.
  * The assistant tells the model instead of asking, so a yes is never followed by a refusal.
  */
-type Checks<Args extends PropertyValidators> = { check?(ctx: QueryCtx, userId: Id<"users">, args: ObjectType<Args>): Promise<void> };
+type Checks<Args extends PropertyValidators> = { check?(ctx: QueryCtx, actor: Acting, args: ObjectType<Args>): Promise<void> };
 
 /**
  * What of a call's arguments the person is shown when they're asked about it, for an action
@@ -89,7 +100,7 @@ export type UserMutation<Args extends PropertyValidators, Returns extends Generi
   Estimates<Args> &
   Shows<Args> & {
     kind: "mutation";
-    run: (ctx: MutationCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author) => Promise<Infer<Returns>>;
+    run: (ctx: MutationCtx, actor: Acting, args: ObjectType<Args>) => Promise<Infer<Returns>>;
   };
 
 /**
@@ -117,7 +128,7 @@ export type UserActionEntry<Args extends PropertyValidators, Returns extends Gen
     kind: "action";
     /** It writes, after reading from outside: its write ends the step and rechecks approval (see ChangeCall). One without this only reads. */
     changes?: true;
-    run: (ctx: ActionCtx, userId: Id<"users">, args: ObjectType<Args>, author: Author, call?: ChangeCall) => Promise<Infer<Returns>>;
+    run: (ctx: ActionCtx, actor: Acting, args: ObjectType<Args>, call?: ChangeCall) => Promise<Infer<Returns>>;
   };
 
 /** What the registry list and the assistant's tools read from an entry. */
@@ -146,43 +157,94 @@ function tagged<Fn extends object>(fn: Fn, path: string): Fn {
 
 const accountArg = { accountId: v.string() };
 const userArg = { userId: v.id("users") };
+/** The workspace a call acts in (#650): every user action names it, and it's checked before the action runs. */
+const workspaceArg = { workspaceId: v.id("workspaces") };
 /**
  * What only the assistant's side passes a change: `stepId`, the step of the reply this call
  * is, which the change ends in its own transaction; `fromStep`, that step on an action that
  * doesn't end it; and `approved`, set when the person themselves asked for it, as when they
  * press Undo.
  */
-const changeArgs = { ...userArg, stepId: v.optional(v.id("assistantSteps")), fromStep: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()), approvedCredits: v.optional(v.number()) };
+const changeArgs = { ...userArg, ...workspaceArg, stepId: v.optional(v.id("assistantSteps")), fromStep: v.optional(v.id("assistantSteps")), approved: v.optional(v.boolean()), approvedCredits: v.optional(v.number()) };
 /** What the assistant is told when a call asks the person first. */
 export const ASKS_FIRST = "This needs the person's say first, and it can't be asked for here. Tell them what you would have done, so they can do it themselves.";
 
-/** The acting user and the action's own arguments, from an internal call. */
-function asUser<Args extends PropertyValidators>(args: ObjectType<Args & typeof userArg>) {
-  const { userId, ...rest } = args as unknown as ObjectType<typeof userArg> & Record<string, unknown>;
-  return { userId, rest: rest as ObjectType<Args> };
+/** The workspace a call names, and the action's own arguments. */
+function inWorkspace<Args extends PropertyValidators>(args: ObjectType<Args & typeof workspaceArg>) {
+  const { workspaceId, ...rest } = args as unknown as ObjectType<typeof workspaceArg> & Record<string, unknown>;
+  return { workspaceId, rest: rest as ObjectType<Args> };
 }
 
 /** The session's user, refusing when the session has changed account since the page loaded for `accountId`. */
 async function accountUser(ctx: QueryCtx | MutationCtx, accountId: string) {
   const user = await requireAuth(ctx);
   if (user.clerkId !== accountId) throw new Error("Account changed. Retry after signing in.");
-  return user._id;
+  return user;
 }
 
-function split<Args extends PropertyValidators>(args: ObjectType<Args & typeof accountArg>) {
-  const { accountId, ...rest } = args as unknown as ObjectType<typeof accountArg> & Record<string, unknown>;
-  return { accountId, rest: rest as ObjectType<Args> };
+/**
+ * A public mutation that changes a workspace's records but isn't a user action, so the assistant
+ * has no tool for it, such as importing this browser's records at sign-in. It takes the page's
+ * account and workspace and checks both, as `accountMutation` does, before `handler` runs.
+ * `check:user-actions` reads its mark: a module whose records are in workspaces may have no other
+ * kind of public function.
+ */
+export function accountWorkspaceMutation<Args extends PropertyValidators, Returns extends GenericValidator>(fn: { args: Args; returns: Returns; handler: (ctx: MutationCtx, actor: Actor, args: ObjectType<Args>) => Promise<Infer<Returns>> }) {
+  const built = mutation<Args & typeof accountArg & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+    args: { ...fn.args, ...accountArg, ...workspaceArg },
+    returns: fn.returns,
+    handler: async (ctx, args) => {
+      const { accountId, workspaceId, ...rest } = args as unknown as ObjectType<typeof accountArg & typeof workspaceArg> & Record<string, unknown>;
+      return fn.handler(ctx, await actorFor(ctx, await accountUser(ctx, accountId), workspaceId), rest as ObjectType<Args>);
+    },
+  });
+  return Object.assign(built, { checksWorkspace: true }) as typeof built;
+}
+
+/**
+ * A public query that reads a workspace's records but isn't a user action yet, so the assistant
+ * has no tool for it, such as the library page's own reads. It takes the workspace and checks it
+ * for the signed-in person before `handler` runs, and carries the mark `check:user-actions` reads.
+ */
+export function workspaceQuery<Args extends PropertyValidators, Returns extends GenericValidator>(fn: { args: Args; returns: Returns; handler: (ctx: QueryCtx, actor: Actor, args: ObjectType<Args>) => Promise<Infer<Returns>>; signedOut?: Infer<Returns> }) {
+  const built = query<Args & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+    args: { ...fn.args, ...workspaceArg },
+    returns: fn.returns,
+    handler: async (ctx, args) => {
+      const { workspaceId, rest } = inWorkspace<Args>(args);
+      // A page that also shows signed out gets `signedOut` then, as `userQuery` gives it.
+      const user = "signedOut" in fn ? await getCurrentUser(ctx) : await requireAuth(ctx);
+      if (!user) return fn.signedOut as Infer<Returns>;
+      return fn.handler(ctx, await actorFor(ctx, user, workspaceId), rest);
+    },
+  });
+  return Object.assign(built, { checksWorkspace: true }) as typeof built;
+}
+
+/** `workspaceQuery`'s mutation: a page's own change to a workspace's records that isn't a user action yet. */
+export function workspaceMutation<Args extends PropertyValidators, Returns extends GenericValidator>(fn: { args: Args; returns: Returns; handler: (ctx: MutationCtx, actor: Actor, args: ObjectType<Args>) => Promise<Infer<Returns>> }) {
+  const built = mutation<Args & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+    args: { ...fn.args, ...workspaceArg },
+    returns: fn.returns,
+    handler: async (ctx, args) => {
+      const { workspaceId, rest } = inWorkspace<Args>(args);
+      return fn.handler(ctx, await actorFor(ctx, await requireAuth(ctx), workspaceId), rest);
+    },
+  });
+  return Object.assign(built, { checksWorkspace: true }) as typeof built;
 }
 
 /** The public query the UI calls, for the signed-in user. */
 export function userQuery<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserQuery<Args, Returns>, options?: { signedOut: Infer<Returns> }) {
   return tagged(
-    query<Args, Returns, Promise<Infer<Returns>>>({
-      args: entry.args,
+    query<Args & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...workspaceArg },
       returns: entry.returns,
       handler: async (ctx, args) => {
+        const { workspaceId, rest } = inWorkspace<Args>(args);
         const user = options ? await getCurrentUser(ctx) : await requireAuth(ctx);
-        return user ? entry.run(ctx, user._id, args as ObjectType<Args>) : options!.signedOut;
+        if (!user) return options!.signedOut;
+        return entry.run(ctx, { ...(await actorFor(ctx, user, workspaceId)), author: "user" }, rest);
       },
     }),
     entry.path,
@@ -195,12 +257,13 @@ export function userQuery<Args extends PropertyValidators, Returns extends Gener
  */
 export function accountQuery<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserQuery<Args, Returns>) {
   return tagged(
-    query<Args & typeof accountArg, Returns, Promise<Infer<Returns>>>({
-      args: { ...entry.args, ...accountArg },
+    query<Args & typeof accountArg & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...accountArg, ...workspaceArg },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { accountId, rest } = split<Args>(args);
-        return entry.run(ctx, await accountUser(ctx, accountId), rest);
+        const { accountId, workspaceId, ...rest } = args as unknown as ObjectType<typeof accountArg & typeof workspaceArg> & Record<string, unknown>;
+        const actor = await actorFor(ctx, await accountUser(ctx, accountId), workspaceId);
+        return entry.run(ctx, { ...actor, author: "user" }, rest as ObjectType<Args>);
       },
     }),
     entry.path,
@@ -210,13 +273,13 @@ export function accountQuery<Args extends PropertyValidators, Returns extends Ge
 /** The same query for the assistant, run as the user who sent the message. */
 export function assistantQuery<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserQuery<Args, Returns>) {
   return tagged(
-    internalQuery<Args & typeof userArg, Returns, Promise<Infer<Returns>>>({
-      args: { ...entry.args, ...userArg },
+    internalQuery<Args & typeof userArg & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...userArg, ...workspaceArg },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { userId, rest } = asUser<Args>(args);
+        const { userId, workspaceId, ...rest } = args as unknown as ObjectType<typeof userArg & typeof workspaceArg> & Record<string, unknown>;
         // The sender may have been suspended or deleted since the turn began.
-        return entry.run(ctx, (await requireActiveUser(ctx, userId))._id, rest);
+        return entry.run(ctx, await actingAs(ctx, userId, workspaceId, "assistant"), rest as ObjectType<Args>);
       },
     }),
     entry.path,
@@ -226,10 +289,13 @@ export function assistantQuery<Args extends PropertyValidators, Returns extends 
 /** The public mutation the UI calls, for the signed-in user. */
 export function userMutation<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserMutation<Args, Returns>) {
   return tagged(
-    mutation<Args, Returns, Promise<Infer<Returns>>>({
-      args: entry.args,
+    mutation<Args & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...workspaceArg },
       returns: entry.returns,
-      handler: async (ctx, args) => entry.run(ctx, (await requireAuth(ctx))._id, args as ObjectType<Args>, "user"),
+      handler: async (ctx, args) => {
+        const { workspaceId, rest } = inWorkspace<Args>(args);
+        return entry.run(ctx, { ...(await actorFor(ctx, await requireAuth(ctx), workspaceId)), author: "user" }, rest);
+      },
     }),
     entry.path,
   );
@@ -238,12 +304,13 @@ export function userMutation<Args extends PropertyValidators, Returns extends Ge
 /** The public mutation for pages that load for one account; see `accountQuery`. */
 export function accountMutation<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserMutation<Args, Returns>) {
   return tagged(
-    mutation<Args & typeof accountArg, Returns, Promise<Infer<Returns>>>({
-      args: { ...entry.args, ...accountArg },
+    mutation<Args & typeof accountArg & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...accountArg, ...workspaceArg },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { accountId, rest } = split<Args>(args);
-        return entry.run(ctx, await accountUser(ctx, accountId), rest, "user");
+        const { accountId, workspaceId, ...rest } = args as unknown as ObjectType<typeof accountArg & typeof workspaceArg> & Record<string, unknown>;
+        const actor = await actorFor(ctx, await accountUser(ctx, accountId), workspaceId);
+        return entry.run(ctx, { ...actor, author: "user" }, rest as ObjectType<Args>);
       },
     }),
     entry.path,
@@ -257,13 +324,13 @@ export function assistantMutation<Args extends PropertyValidators, Returns exten
       args: { ...entry.args, ...changeArgs },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { userId, stepId, approved, approvedCredits: _held, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
+        const { userId, workspaceId, stepId, approved, approvedCredits: _held, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
         const rest = own as ObjectType<Args>;
         // The sender may have been suspended or deleted since the turn began.
-        const actingAs = (await requireActiveUser(ctx, userId))._id;
+        const actor = await actingAs(ctx, userId, workspaceId, "assistant");
         // Read here, in the change's own transaction: what was true before the call may not be now.
-        if (!approved && entry.asksFirst && (await entry.asksFirst(ctx, actingAs, rest))) throw createError("FORBIDDEN", ASKS_FIRST);
-        const result = await entry.run(ctx, actingAs, rest, "assistant");
+        if (!approved && entry.asksFirst && (await entry.asksFirst(ctx, actor, rest))) throw createError("FORBIDDEN", ASKS_FIRST);
+        const result = await entry.run(ctx, actor, rest);
         // The step, and through it the model, is told a change that returns nothing was made.
         if (stepId) await endStep(ctx, stepId, result ?? DONE);
         return result;
@@ -276,13 +343,14 @@ export function assistantMutation<Args extends PropertyValidators, Returns exten
 /** The public action the UI calls, for the signed-in user. */
 export function userAction<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserActionEntry<Args, Returns>) {
   return tagged(
-    action<Args, Returns, Promise<Infer<Returns>>>({
-      args: entry.args,
+    action<Args & typeof workspaceArg, Returns, Promise<Infer<Returns>>>({
+      args: { ...entry.args, ...workspaceArg },
       returns: entry.returns,
       handler: async (ctx, args) => {
+        const { workspaceId, rest } = inWorkspace<Args>(args);
         // Typed here: the generated API's types depend on every module built with this, so inference would loop.
-        const user: Doc<"users"> = await ctx.runQuery(internal.users.internal.getCurrentUser, {});
-        return entry.run(ctx, user._id, args as ObjectType<Args>, "user");
+        const actor: Actor = await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId });
+        return entry.run(ctx, { ...actor, author: "user" }, rest);
       },
     }),
     entry.path,
@@ -296,11 +364,11 @@ export function assistantAction<Args extends PropertyValidators, Returns extends
       args: { ...entry.args, ...changeArgs },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { userId, stepId, fromStep, approved, approvedCredits, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
+        const { userId, workspaceId, stepId, fromStep, approved, approvedCredits, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
         // The sender may have been suspended or deleted since the turn began.
-        const user: Doc<"users"> = await ctx.runQuery(internal.users.internal.getActiveUser, { userId });
+        const actor: Actor = await ctx.runQuery(internal.workspaces.actor.activeActor, { userId, workspaceId });
         const from = stepId ?? fromStep;
-        return entry.run(ctx, user._id, own as ObjectType<Args>, "assistant", { ...(stepId ? { stepId } : {}), ...(from ? { from } : {}), approved: approved === true, ...(approvedCredits === undefined ? {} : { credits: approvedCredits }) });
+        return entry.run(ctx, { ...actor, author: "assistant" }, own as ObjectType<Args>, { ...(stepId ? { stepId } : {}), ...(from ? { from } : {}), approved: approved === true, ...(approvedCredits === undefined ? {} : { credits: approvedCredits }) });
       },
     }),
     entry.path,

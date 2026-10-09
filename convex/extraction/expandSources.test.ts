@@ -44,18 +44,22 @@ describe("a job's library and collection sources", () => {
     expect(expanded.paper.storageId).toBeUndefined();
   });
 
-  it("reads only the person's own papers", async () => {
+  it("reads only the papers in the person's own workspace", async () => {
     const t = convexTest(schema);
-    const { ada, grace, adaPaper, gracePaper } = await t.run(async (ctx) => {
+    const { ada, grace, adaPaper, gracePaper, labPaper } = await t.run(async (ctx) => {
       const person = (clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@test`, state: "active", createdAt: 1, updatedAt: 1 });
       const ada = await person("ada");
       const grace = await person("grace");
       const paper = (userId: typeof ada, title: string) =>
         ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/${title}`, title, searchableText: title, savedAt: 1, updatedAt: 1 });
-      return { ada, grace, adaPaper: await paper(ada, "W1"), gracePaper: await paper(grace, "W2") };
+      // One Ada saved in an organization's workspace is that workspace's, not hers.
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      const lab = await ctx.db.insert("workspaces", { kind: "organization", organizationId });
+      const labPaper = await ctx.db.insert("libraryItems", { userId: ada, workspaceId: lab, createdBy: ada, openalexId: "https://openalex.org/W3", title: "W3", searchableText: "W3", savedAt: 1, updatedAt: 1 });
+      return { ada, grace, adaPaper: await paper(ada, "W1"), gracePaper: await paper(grace, "W2"), labPaper };
     });
 
-    const rows = await t.query(internal.extraction.queries.internal.ownedLibraryItems, { userId: ada, ids: [adaPaper, gracePaper, "not-an-id"] });
+    const rows = await t.query(internal.extraction.queries.internal.ownedLibraryItems, { userId: ada, ids: [adaPaper, gracePaper, labPaper, "not-an-id"] });
 
     expect(rows.map((row) => row._id)).toEqual([adaPaper]);
     expect(grace).toBeDefined();

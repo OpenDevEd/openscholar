@@ -18,6 +18,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { upsertLibraryItem } from "../library/mutations";
+import { workspaceOf } from "../workspaces/personal";
 import { addCollectionMembership, removeCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
 import { account, FAILED, standing, withDeltas, type Delta, type Move } from "./accounting";
@@ -115,7 +116,7 @@ async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, result
 export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
   const libraryItemId = await upsertLibraryItem(
     ctx,
-    job.userId,
+    { userId: job.userId, workspaceId: await workspaceOf(ctx, job) },
     {
       openalexId: result.openalexId,
       title: result.title,
@@ -155,7 +156,8 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   }
   if (!job.prune || job.set?.kind !== "collection" || !(becameIncluded || left)) return moved;
   const collectionId = job.set.collectionId;
-  const item = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", job.userId).eq("openalexId", result.openalexId)).first();
+  const workspaceId = await workspaceOf(ctx, job);
+  const item = await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", result.openalexId)).first();
   if (!item) return moved;
   const membership = await ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collectionId).eq("libraryItemId", item._id)).unique();
   if (left && membership) {
@@ -219,7 +221,8 @@ export const bookkeep = internalMutation({
     for (const result of results) byJob.set(result.jobId, [...(byJob.get(result.jobId) ?? []), result]);
     // Papers of each person's that stopped running. A paper skipped before it started held no slot, but its
     // person is still listed: with it out of the queue, the papers that waited behind it can start.
-    const freed = new Map<Id<"users">, number>();
+    // Papers freed in each workspace's pool, with a person whose job freed them for a new slots row.
+    const freed = new Map<Id<"workspaces">, { userId: Id<"users">; finished: number }>();
     for (const [jobId, jobResults] of byJob) {
       const job = await ctx.db.get("screeningJobs", jobId);
       if (job) {
@@ -249,12 +252,13 @@ export const bookkeep = internalMutation({
         }
         await countFinished(ctx, current, jobResults, deltas, moved);
         await finishIfDone(ctx, jobId);
-        freed.set(job.userId, (freed.get(job.userId) ?? 0) + jobResults.filter((result) => result.workId !== undefined).length);
+        const workspaceId = await workspaceOf(ctx, job);
+        freed.set(workspaceId, { userId: job.userId, finished: (freed.get(workspaceId)?.finished ?? 0) + jobResults.filter((result) => result.workId !== undefined).length });
       }
       // Bookkept, or its job is gone: out of the queue.
       for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
     }
-    for (const [userId, finished] of freed) await startWaitingPapers(ctx, userId, finished);
+    for (const [workspaceId, { userId, finished }] of freed) await startWaitingPapers(ctx, { userId, workspaceId }, finished);
     return null;
   },
 });

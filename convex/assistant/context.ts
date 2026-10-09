@@ -174,6 +174,8 @@ export async function summarize(
     agentThreadId: string;
     through: number;
     senderId: Id<"users">;
+    /** The workspace the reply acts in, which pays for the summary. */
+    workspaceId: Id<"workspaces">;
     modelId: Id<"models"> | null;
     effort?: Effort;
     lastInputTokens: number;
@@ -195,7 +197,7 @@ export async function summarize(
   const own = args.midReply ? docsToModelMessages(docs.filter((doc) => doc.order === args.through)) : [];
   const estimate = calculateCostInDollars({ inputTokens: args.lastInputTokens, outputTokens: SUMMARY_MAX_TOKENS }, pricing);
   const held = convertUsdToCredits({ usd: estimate }) || 1;
-  if (!(await reserveCredits(ctx, { userId: args.senderId, chargeId: args.chargeId, credits: held }))) throw new Error("Not enough credits to summarize the conversation.");
+  if (!(await reserveCredits(ctx, { userId: args.senderId, workspaceId: args.workspaceId, chargeId: args.chargeId, credits: held }))) throw new Error("Not enough credits to summarize the conversation.");
   // Started once nothing before the call can fail, so it's always stopped below.
   const stopped = new AbortController();
   const stopPolling = startAbortPoller({ readFlag: args.shouldStop, onAbort: () => stopped.abort() });
@@ -219,6 +221,7 @@ export async function summarize(
     const credits = convertUsdToCredits({ usd }) || 1;
     await settleCredits(ctx, {
       userId: args.senderId,
+      workspaceId: args.workspaceId,
       chargeId: args.chargeId,
       credits,
       usage: { kind: "chat", description: "Conversation summary", model: modelSlug, ...tokenDetails(usage), costUsd: usd },
@@ -245,7 +248,7 @@ export async function summarize(
     throw error;
   } finally {
     await stopPolling();
-    if (!settled) await releaseCredits(ctx, { userId: args.senderId, chargeId: args.chargeId }).catch(() => {});
+    if (!settled) await releaseCredits(ctx, { chargeId: args.chargeId }).catch(() => {});
   }
 }
 

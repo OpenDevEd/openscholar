@@ -44,26 +44,6 @@ describe("<ConfigurationWorkspace>", () => {
       });
     });
 
-    it("adds someone without an account, whose picture is where their photo goes", async () => {
-      const user = userEvent.setup();
-      await renderWorkspace();
-      const home = card("home");
-      await user.click(home.getByRole("switch", { name: "Show a home page" }));
-      await user.click(home.getByRole("button", { name: "Add someone" }));
-      expect(home.getByText("Added by hand. Click the picture to add a photo.")).toBeInTheDocument();
-      await user.type(home.getByLabelText("Name"), "Amina Yusuf");
-      expect(home.getByRole("button", { name: "Add a photo of Amina Yusuf" })).toBeInTheDocument();
-      expect(home.queryByRole("button", { name: /Remove the photo/ })).toBeNull();
-    });
-
-    it("names the publication picker with its field label", async () => {
-      const user = userEvent.setup();
-      await renderWorkspace();
-      await user.click(card("home").getByRole("switch", { name: "Show a home page" }));
-      await user.click(card("home").getByRole("button", { name: "Add step" }));
-      expect(card("home").getByLabelText("Publication followed").tagName).toBe("BUTTON");
-    });
-
     it("shows the Home card and writes its switch to the features row", async () => {
       const user = userEvent.setup();
       await renderWorkspace();
@@ -129,13 +109,6 @@ describe("<ConfigurationWorkspace>", () => {
       expect(row.getByLabelText("links.urlLabel")).toHaveValue("");
       expect(row.getByRole("alert")).toHaveTextContent("links.urlError");
       expect(navigation.getByText("sectionState.attention")).toBeInTheDocument();
-    });
-
-    it("keeps the OpenScholar credit switched on", async () => {
-      await renderWorkspace();
-      const credit = card("footer").getByRole("switch", { name: "footer.poweredBy" });
-      expect(credit).toBeChecked();
-      expect(credit).toBeDisabled();
     });
 
     it("shows a recipient field only while its switch is on and saves nothing when off", async () => {

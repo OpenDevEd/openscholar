@@ -3,7 +3,7 @@ import { internal } from "./_generated/api";
 import { httpAction, internalQuery, query } from "./_generated/server";
 import { requireAuth } from "./lib/auth";
 import { createError, readConvexErrorData } from "./lib/errors";
-import { internalMutation, mutation } from "./lib/functions";
+import { internalMutation } from "./lib/functions";
 import { digestOpaqueToken } from "./lib/opaqueTokenDigest";
 import { EXPORT_LINK_MS, exportFilename, exportFiles } from "../lib/export";
 import { validateAndExpandKeywordsSilently } from "../lib/keyword-validation";
@@ -12,6 +12,8 @@ import { expandShortcuts, shortcutNames } from "../lib/query-shortcuts";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
 import { readLibraryPage } from "./library/queries";
 import { shortcutExpansions } from "./research/records";
+import { isInWorkspace, workspaceOf } from "./workspaces/actor";
+import { workspaceMutation } from "./lib/userActions";
 import { screeningExportFiles, screeningItems } from "../lib/screening/export";
 import { readScreeningProgressCounts } from "./screening/progress";
 import { readScreeningResultsPage } from "./screening/queries";
@@ -33,18 +35,21 @@ const PART_BYTES = 15 * 1024 * 1024;
 /** How long serving one part may take: an HTTP action runs at most 10 minutes. */
 const PART_SERVE_MS = 10 * 60_000;
 
-/** Registers an export of a library view, the search history, the query shortcuts or a screening job's results; `/export` downloads it a part at a time. */
-export const start = mutation({
+/**
+ * Registers an export of a workspace's library view, search history, query shortcuts or a
+ * screening job's results; `/export` downloads it a part at a time. The export is the person's,
+ * and reads the workspace it was started in (#650).
+ */
+export const start = workspaceMutation({
   args: { digest: v.string(), format: exportFormatValidator, source: exportSourceValidator },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
+  handler: async (ctx, { userId, workspaceId }, args) => {
     if (!/^[0-9a-f]{64}$/.test(args.digest)) throw createError("VALIDATION_ERROR", "An export needs a SHA-256 digest.");
     const expiresAt = Date.now() + EXPORT_LINK_MS;
     const job = args.source.kind === "screening" ? await ctx.db.get("screeningJobs", args.source.jobId) : null;
-    if (args.source.kind === "screening" && (!job || job.userId !== user._id)) throw createError("NOT_FOUND", "Screening job not found");
+    if (args.source.kind === "screening" && (!job || !(await isInWorkspace(ctx, job, workspaceId)))) throw createError("NOT_FOUND", "Screening job not found");
     const sourceRevision = job ? await screeningRevision(ctx, job) : undefined;
-    const id = await ctx.db.insert("exports", { ...args, sourceRevision, userId: user._id, part: 1, cursor: null, serving: false, failed: false, expiresAt });
+    const id = await ctx.db.insert("exports", { ...args, sourceRevision, userId, workspaceId, part: 1, cursor: null, serving: false, failed: false, expiresAt });
     await ctx.scheduler.runAfter(EXPORT_LINK_MS, internal.exports.expire, { id });
     return null;
   },
@@ -79,7 +84,7 @@ export const expire = internalMutation({
 export const claim = internalMutation({
   args: { digest: v.string(), part: v.number() },
   returns: v.union(
-    v.object({ id: v.id("exports"), userId: v.id("users"), format: exportFormatValidator, source: exportSourceValidator, sourceRevision: v.optional(v.string()), cursor: v.union(v.string(), v.null()) }),
+    v.object({ id: v.id("exports"), userId: v.id("users"), workspaceId: v.id("workspaces"), format: exportFormatValidator, source: exportSourceValidator, sourceRevision: v.optional(v.string()), cursor: v.union(v.string(), v.null()) }),
     v.null(),
   ),
   handler: async (ctx, { digest, part }) => {
@@ -88,7 +93,7 @@ export const claim = internalMutation({
     const expiresAt = Date.now() + PART_SERVE_MS;
     await ctx.db.patch("exports", row._id, { serving: true, expiresAt });
     await ctx.scheduler.runAfter(PART_SERVE_MS, internal.exports.expire, { id: row._id });
-    return { id: row._id, userId: row.userId, format: row.format, source: row.source, sourceRevision: row.sourceRevision, cursor: row.cursor };
+    return { id: row._id, userId: row.userId, workspaceId: await workspaceOf(ctx, row), format: row.format, source: row.source, sourceRevision: row.sourceRevision, cursor: row.cursor };
   },
 });
 
@@ -132,9 +137,9 @@ export const failPart = internalMutation({
  * where the next read starts (null at the end). `written` rows came before in this part.
  */
 export const page = internalQuery({
-  args: { userId: v.id("users"), source: exportSourceValidator, sourceRevision: v.optional(v.string()), format: exportFormatValidator, cursor: v.union(v.string(), v.null()), written: v.number() },
+  args: { workspaceId: v.id("workspaces"), source: exportSourceValidator, sourceRevision: v.optional(v.string()), format: exportFormatValidator, cursor: v.union(v.string(), v.null()), written: v.number() },
   returns: v.object({ text: v.string(), count: v.number(), cursor: v.union(v.string(), v.null()) }),
-  handler: async (ctx, { userId, source, sourceRevision, format, cursor, written }) => {
+  handler: async (ctx, { workspaceId, source, sourceRevision, format, cursor, written }) => {
     const write = <Item>(read: { page: Item[]; isDone: boolean; continueCursor: string }, item: (item: Item, index: number) => string) => ({
       text: read.page.map((row, i) => item(row, written + i)).join(""),
       count: read.page.length,
@@ -142,23 +147,23 @@ export const page = internalQuery({
     });
     if (source.kind === "library") {
       const numItems = source.view.searchText === undefined ? EXPORT_PAGE_SIZE : LIBRARY_SEARCH_RESULTS_MAX;
-      return write(await readLibraryPage(ctx, userId, source.view, { cursor, numItems }), exportFiles.library[format].item);
+      return write(await readLibraryPage(ctx, workspaceId, source.view, { cursor, numItems }), exportFiles.library[format].item);
     }
     if (source.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", source.jobId);
-      if (!job || job.userId !== userId) throw createError("NOT_FOUND", "Screening job not found");
+      if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("NOT_FOUND", "Screening job not found");
       await screeningRevision(ctx, job, sourceRevision);
       return write(await readScreeningResultsPage(ctx, job, { cursor, numItems: EXPORT_PAGE_SIZE }), screeningItems(job.questions, { ...job, revision: sourceRevision })[format]);
     }
     if (source.kind === "shortcuts") {
-      const read = await ctx.db.query("queryShortcuts").withIndex("by_user", (q) => q.eq("userId", userId)).paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
+      const read = await ctx.db.query("queryShortcuts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
       return write({ ...read, page: read.page.map((row) => row.data) }, exportFiles.shortcuts[format].item);
     }
-    const read = await ctx.db.query("searches").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId)).order("desc").paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
-    // Each query with the person's shortcuts expanded, as the history page shows it.
+    const read = await ctx.db.query("searches").withIndex("by_workspace_and_createdAt", (q) => q.eq("workspaceId", workspaceId)).order("desc").paginate({ cursor, numItems: EXPORT_PAGE_SIZE, maximumBytesRead: HISTORY_PAGE_BYTES });
+    // Each query with the workspace's shortcuts expanded, as the history page shows it.
     // ponytail: one lookup per shortcut name the page uses; a page naming more than a
     // function's 4,096 lookups fails the export by name, and would need the names read in chunks.
-    const expansions = await shortcutExpansions(ctx, userId, shortcutNames(read.page.map((row) => row.data.query).join("\n")));
+    const expansions = await shortcutExpansions(ctx, workspaceId, shortcutNames(read.page.map((row) => row.data.query).join("\n")));
     const searches = read.page.map(({ data }) => ({
       ...currentSearch(data),
       resolvedQuery: validateAndExpandKeywordsSilently(data.query, (text) => expandShortcuts(text, expansions)).expandedQuery,
@@ -167,9 +172,9 @@ export const page = internalQuery({
   },
 });
 
-/** What a screening job's export says about the job, or null when it isn't the person's. */
+/** What a screening job's export says about the job, or null when it isn't in the export's workspace. */
 export const screeningJob = internalQuery({
-  args: { userId: v.id("users"), jobId: v.id("screeningJobs") },
+  args: { workspaceId: v.id("workspaces"), jobId: v.id("screeningJobs") },
   returns: v.union(v.null(), v.object({
     _id: v.id("screeningJobs"),
     revision: v.string(),
@@ -186,9 +191,9 @@ export const screeningJob = internalQuery({
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
   })),
-  handler: async (ctx, { userId, jobId }) => {
+  handler: async (ctx, { workspaceId, jobId }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || job.userId !== userId) return null;
+    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
     const { status, questions, scoringConfig, totalPapers, createdAt, completedAt } = job;
     return { _id: jobId, revision: await screeningRevision(ctx, job), set: job.set, snapshot: job.snapshot, serverEffort: job.serverEffort, first: job.first, last: job.last, status, questions, scoringConfig, totalPapers, qualifiedPapers: (await readScreeningProgressCounts(ctx, job)).qualifiedCount, createdAt, completedAt };
   },
@@ -209,9 +214,9 @@ export const download = httpAction(async (ctx, request) => {
     : null;
   if (!claimed) return new Response("This export link has expired or was used. Start the export again.", { status: 410 });
 
-  const { id, userId, source, format } = claimed;
+  const { id, userId, workspaceId, source, format } = claimed;
   const at = new Date();
-  const job = source.kind === "screening" ? await ctx.runQuery(internal.exports.screeningJob, { userId, jobId: source.jobId }) : null;
+  const job = source.kind === "screening" ? await ctx.runQuery(internal.exports.screeningJob, { workspaceId, jobId: source.jobId }) : null;
   if (source.kind === "screening" && !job) {
     await ctx.runMutation(internal.exports.failPart, { id });
     return new Response("This screening job wasn't found.", { status: 404 });
@@ -239,7 +244,7 @@ export const download = httpAction(async (ctx, request) => {
           started = true;
           send(controller, file.start(at));
         }
-        const read: { text: string; count: number; cursor: string | null } = await ctx.runQuery(internal.exports.page, { userId, source, sourceRevision: claimed.sourceRevision, format, cursor, written: count });
+        const read: { text: string; count: number; cursor: string | null } = await ctx.runQuery(internal.exports.page, { workspaceId, source, sourceRevision: claimed.sourceRevision, format, cursor, written: count });
         send(controller, read.text);
         count += read.count;
         cursor = read.cursor;

@@ -33,6 +33,7 @@ import { runsOf, shownSteps } from "@/lib/assistant/step-cards";
 import { OrbitMark } from "./orbit-mark";
 import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 export type StepItem = Extract<Item, { role: "step" }>;
@@ -139,6 +140,7 @@ export function Steps({
   /** The reply's steps as the chat's page holds them, in the order they ran: the newest of each exchange it ran in. */
   steps: StepItem[];
 }) {
+  const workspaceId = useWorkspace();
   // An exchange that ran more than the page holds has the ones before them a page away. Reading them here also
   // keeps the ones the page lets go of as the reply runs on, so no card leaves the map: the read starts at half
   // a page, well before the page lets any go. It runs from the reply's first exchange through its last, which
@@ -147,7 +149,7 @@ export function Steps({
   for (const step of newest) ran.set(step.order, (ran.get(step.order) ?? 0) + 1);
   const cut = [...ran.values()].some((count) => count >= STEPS_SHOWN / 2);
   const range = { order: Math.min(...ran.keys()), through: Math.max(...ran.keys()) };
-  const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.steps, cut ? { threadId, ...range } : "skip", { initialNumItems: STEPS_SHOWN });
+  const { results, status, loadMore } = usePaginatedQuery(api.assistant.replies.steps, inWorkspace(workspaceId, cut ? { threadId, ...range } : "skip"), { initialNumItems: STEPS_SHOWN });
   // In the order they ran, whichever page brought them. The page's copy of a step is the one kept: it says what a step that waits for the person would do.
   const all = [...new Map([...results.toReversed(), ...newest].map((step) => [step.id, step])).values()].sort((a, b) => a.order - b.order || a.at - b.at);
   const asked = all.filter((step) => step.canAnswer);

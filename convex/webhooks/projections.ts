@@ -2,6 +2,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_INVITATIONS_PER_EMAIL, SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
 import { internalMutation, type MutationCtx } from "../lib/functions";
+import { ensureWorkspace } from "../workspaces/create";
 import { v } from "convex/values";
 import {
   clerkEventOutcomeValidator,
@@ -46,12 +47,16 @@ async function upsertOrganizationSnapshot(
     )
     .unique();
   if (!existing) {
-    return await ctx.db.insert("organizations", {
+    const organizationId = await ctx.db.insert("organizations", {
       ...snapshot,
       state: "active",
       createdAt: processedAt,
       updatedAt: processedAt,
     });
+    const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
+    // Its own Autumn customer, on the free organization plan (#650).
+    await ctx.scheduler.runAfter(0, internal.billing.accounts.provisionOrganization, { workspaceId });
+    return organizationId;
   }
   if (
     snapshot.clerkUpdatedAt < existing.clerkUpdatedAt ||
@@ -78,11 +83,12 @@ async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizat
   const page = await ctx.db.query("evidenceLibraryMembers")
     .withIndex("by_clerkUserId", q => q.eq("clerkUserId", clerkUserId))
     .paginate({ cursor, numItems: MAX_LIBRARY_GRANTS_PER_PERSON });
+  const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
   for (const assignment of page.page) {
     // A grant made since they left, by a later invitation, is theirs to keep.
     if (assignment._creationTime > before) continue;
     const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
-    if (library?.organizationId === organizationId) {
+    if (library?.workspaceId === workspaceId) {
       await ctx.db.delete("evidenceLibraryMembers", assignment._id);
     }
   }
@@ -233,9 +239,10 @@ export async function applyMembershipProjection(
         if (user) {
           const invitations = await ctx.db.query("evidenceLibraryInvitations")
             .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_EMAIL);
+          const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
           for (const invitation of invitations) {
             const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
-            if (library?.organizationId === organizationId) await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: "cancelled" });
+            if (library?.workspaceId === workspaceId) await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: "cancelled" });
           }
         }
       }

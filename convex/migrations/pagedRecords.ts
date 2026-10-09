@@ -5,6 +5,7 @@ import type { DataModel } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { countRow, startCount, type Counted } from "../research/recordCounts";
+import { workspaceOf } from "../workspaces/personal";
 import { shortcutSortName } from "../../lib/query-shortcuts";
 
 /**
@@ -29,7 +30,7 @@ export const prepareSearches = migrations.define({
   table: "searches",
   batchSize: 5,
   migrateOne: async (ctx, search) => {
-    await startCount(ctx, "searches", search.userId);
+    await startCount(ctx, "searches", search);
   },
 });
 
@@ -37,7 +38,7 @@ export const prepareShortcuts = migrations.define({
   table: "queryShortcuts",
   batchSize: 5,
   migrateOne: async (ctx, shortcut) => {
-    await startCount(ctx, "queryShortcuts", shortcut.userId);
+    await startCount(ctx, "queryShortcuts", shortcut);
     const sortName = shortcutSortName(shortcut.data.shorthand);
     if (shortcut.sortName !== sortName) return { sortName };
   },
@@ -53,8 +54,8 @@ export const verifyPage = internalQuery({
     const read = { cursor, numItems: 50, maximumBytesRead: 4 * 1024 * 1024 };
     const page = table === "searches" ? await ctx.db.query("searches").paginate(read) : await ctx.db.query("queryShortcuts").paginate(read);
     let wrong = page.page.filter((row) => !("localId" in row) && row.sortName !== shortcutSortName(row.data.shorthand)).length;
-    for (const userId of new Set(page.page.map((row) => row.userId))) {
-      const row = await countRow(ctx, table, userId);
+    for (const workspaceId of new Set(await Promise.all(page.page.map((row) => workspaceOf(ctx, row))))) {
+      const row = await countRow(ctx, table, workspaceId);
       if (!row || row.countedTo !== undefined) wrong++;
     }
     return { wrong, isDone: page.isDone, continueCursor: page.continueCursor };
@@ -68,7 +69,7 @@ export const resume = internalMutation({
   handler: async (ctx, { cursor = null }) => {
     const page = await ctx.db.query("recordCounts").paginate({ cursor, numItems: 100 });
     for (const row of page.page) {
-      if (row.countedTo !== undefined) await ctx.scheduler.runAfter(0, internal.research.records.countRecordsPage, { table: row.table, userId: row.userId });
+      if (row.countedTo !== undefined) await ctx.scheduler.runAfter(0, internal.research.records.countRecordsPage, { table: row.table, workspaceId: await workspaceOf(ctx, row) });
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.migrations.pagedRecords.resume, { cursor: page.continueCursor });
     return null;

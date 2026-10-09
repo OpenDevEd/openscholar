@@ -63,7 +63,6 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { ExtractionResultsShell } from "@/components/extraction/extraction-results-shell";
 import { ExtractionCitationSidebar } from "@/components/extraction/extraction-citation-sidebar";
 import { CostBadge } from "@/components/extraction/cost-badge";
-import { CreditsExhaustedBanner } from "@/components/extraction/credits-exhausted-banner";
 import { JobStatusBanner } from "@/components/extraction/job-status-banner";
 import { JobProgressBar } from "@/components/extraction/job-progress-bar";
 import { NowProcessing } from "@/components/extraction/now-processing";
@@ -86,6 +85,7 @@ import {
   type Question,
 } from "@/lib/extraction/filtering";
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
+import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 export default function JobDetailPage() {
   const toast = useAppToast();
@@ -147,9 +147,8 @@ export default function JobDetailPage() {
 
   const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
   const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
-  const duplicateJob = useMutation(
-    api.extraction.mutations.duplicateJob,
-  );
+  const duplicateJob = useWorkspaceMutation(api.extraction.mutations.duplicateJob);
+  const workspaceId = useWorkspace();
   const pauseJob = useMutation(api.extraction.mutations.pause.pauseExtraction);
   const resumeJob = useMutation(
     api.extraction.mutations.resume.resumeExtraction,
@@ -165,7 +164,7 @@ export default function JobDetailPage() {
   const isExtractionJob = hasCurrentJobShell && shellJob !== undefined;
   const jobDetailsQuery = useProtectedQuery(
     api.extraction.queries.getJobDetails,
-    isExtractionJob ? { jobId } : "skip",
+    inWorkspace(workspaceId, isExtractionJob ? { jobId } : "skip"),
   );
   const jobDetails = jobDetailsQuery.data;
   const hasCurrentJobDetails =
@@ -204,13 +203,13 @@ export default function JobDetailPage() {
   const resultsView = useMemo(() => ({ jobId, filters: serializedResultsFilters }), [jobId, serializedResultsFilters]);
   const results = useCursorPage(
     api.extraction.queries.listJobResults,
-    isExtractionJob ? { ...resultsView, sortBy: resultsSortBy } : "skip",
+    inWorkspace(workspaceId, isExtractionJob ? { ...resultsView, sortBy: resultsSortBy } : "skip"),
     pageSize,
   );
   // Only a filtered view is counted: without filters every paper of the job matches.
   const { data: resultCounts } = useProtectedQuery(
     api.extraction.queries.countJobResults,
-    isExtractionJob && hasActiveResultFilters ? resultsView : "skip",
+    inWorkspace(workspaceId, isExtractionJob && hasActiveResultFilters ? resultsView : "skip"),
   );
   // The last count stays up, dimmed, while the filters now set are counted.
   const [lastMatching, setLastMatching] = useState(resultCounts?.matching);
@@ -219,10 +218,11 @@ export default function JobDetailPage() {
   const convex = useConvex();
   const loadExport = useCallback(
     (signal?: AbortSignal, selectedPaperIds?: Id<"extractionPapers">[]) => {
-      const exportView = selectedPaperIds === undefined ? resultsView : {
+      if (!workspaceId) throw new Error("The workspace hasn't loaded yet. Try again in a moment.");
+      const exportView = { workspaceId, ...(selectedPaperIds === undefined ? resultsView : {
         jobId,
         filters: { ...defaultFilters, statusFilters: [], questionFilters: [] },
-      };
+      }) };
       return readExtractionExport(
         (cursor) =>
           convex.query(api.extraction.queries.listJobResults, {
@@ -233,14 +233,14 @@ export default function JobDetailPage() {
           }),
         () => convex.query(api.extraction.queries.countJobResults, { ...exportView, selectedPaperIds, includeRevision: true }),
         async () => {
-          const details = await convex.query(api.extraction.queries.getJobDetails, { jobId });
+          const details = await convex.query(api.extraction.queries.getJobDetails, { jobId, workspaceId });
           if (details.status !== "ok") throw new Error("This extraction is no longer available.");
           return { job: details.job, questions: details.questions };
         },
         { signal },
       );
     },
-    [convex, jobId, resultsView, resultsSortBy],
+    [convex, jobId, resultsView, resultsSortBy, workspaceId],
   );
   const loadAllExport = useCallback((signal?: AbortSignal) => loadExport(signal), [loadExport]);
 
@@ -683,7 +683,8 @@ export default function JobDetailPage() {
               padding remains on clean completed / idle jobs. */}
           <div className="space-y-3 border-b border-border-subtle px-4 py-4 empty:hidden md:px-6">
             {job.status === "creditsExhausted" && (
-              <CreditsExhaustedBanner
+              <JobStatusBanner
+                variant="creditsExhausted"
                 allowed={job.spendCap}
                 onResume={handleResume}
                 onCancelRemaining={handleCancel}

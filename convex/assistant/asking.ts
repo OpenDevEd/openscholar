@@ -9,19 +9,20 @@ import { availableCredits } from "../billing/accounts";
 import { readConvexErrorData } from "../lib/errors";
 import { internalQuery } from "../lib/functions";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
+import { actingAs } from "../lib/userActions";
 import { TOOL_OF, allowanceOf, covers, toolAllowed } from "./spending";
 import { DOCK_FULL, STARTS } from "./jobEnds";
 import { JOBS_DOCKED } from "./validators";
 
 export const first = internalQuery({
   // `input` is the call's arguments, as JSON.
-  args: { userId: v.id("users"), path: v.string(), input: v.string() },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), path: v.string(), input: v.string() },
   returns: v.boolean(),
-  handler: async (ctx, { userId, path, input }) => {
+  handler: async (ctx, { userId, workspaceId, path, input }) => {
     const entry = USER_ACTIONS.find((candidate) => candidate.path === path);
     if (!entry || entry.kind === "query" || !entry.asksFirst) return false;
     try {
-      return await entry.asksFirst(ctx, userId, JSON.parse(input));
+      return await entry.asksFirst(ctx, await actingAs(ctx, userId, workspaceId, "assistant"), JSON.parse(input));
     } catch (error) {
       // Arguments the check can't read (an ID of another table, say) aren't a reason to ask, and
       // threw here, where nothing caught it: the whole reply failed. The call goes on to run,
@@ -42,13 +43,13 @@ export const first = internalQuery({
  */
 /** Why an action that calls an outside service would refuse a call, from its `check`, before the person is asked about it. Null when nothing it can read refuses it. */
 export const check = internalQuery({
-  args: { userId: v.id("users"), path: v.string(), input: v.string() },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), path: v.string(), input: v.string() },
   returns: v.union(v.null(), v.string()),
-  handler: async (ctx, { userId, path, input }) => {
+  handler: async (ctx, { userId, workspaceId, path, input }) => {
     const entry = USER_ACTIONS.find((candidate) => candidate.path === path);
     if (entry?.kind !== "action" || !entry.check) return null;
     try {
-      await entry.check(ctx, userId, JSON.parse(input));
+      await entry.check(ctx, await actingAs(ctx, userId, workspaceId, "assistant"), JSON.parse(input));
       return null;
     } catch (error) {
       const refused = readConvexErrorData(error)?.message;
@@ -61,16 +62,16 @@ export const check = internalQuery({
 
 export const spend = internalQuery({
   // `input` is the call's arguments, as JSON.
-  args: { threadId: v.id("assistantThreads"), userId: v.id("users"), path: v.string(), input: v.string() },
+  args: { threadId: v.id("assistantThreads"), userId: v.id("users"), workspaceId: v.id("workspaces"), path: v.string(), input: v.string() },
   returns: v.union(v.null(), v.object({ credits: v.number(), covered: v.boolean() }), v.object({ refused: v.string() })),
-  handler: async (ctx, { threadId, userId, path, input }) => {
+  handler: async (ctx, { threadId, userId, workspaceId, path, input }) => {
     const entry = USER_ACTIONS.find((candidate) => candidate.path === path);
     if (!entry || entry.kind === "query" || !entry.spendsCredits || !entry.estimate) return null;
     // A job its chat couldn't dock would be refused as it starts: it's refused before anyone is asked to pay for it.
     if (STARTS[path] && (await ctx.db.query("assistantJobs").withIndex("by_thread", (q) => q.eq("threadId", threadId)).take(JOBS_DOCKED)).length >= JOBS_DOCKED) return { refused: DOCK_FULL };
     let credits: number;
     try {
-      credits = Math.ceil(await entry.estimate(ctx, userId, JSON.parse(input), { threadId }));
+      credits = Math.ceil(await entry.estimate(ctx, await actingAs(ctx, userId, workspaceId, "assistant"), JSON.parse(input), { threadId }));
     } catch (error) {
       const refused = readConvexErrorData(error)?.message;
       if (refused) return { refused };
@@ -80,7 +81,7 @@ export const spend = internalQuery({
     if (!Number.isFinite(credits) || credits < 0) return null;
     // A web search or a PDF read is covered by its own switch in the chat; anything else by what jobs may hold.
     const tool = TOOL_OF[path];
-    const balance = await availableCredits(ctx, userId);
+    const balance = await availableCredits(ctx, workspaceId);
     return { credits, covered: tool ? (await toolAllowed(ctx, threadId, userId, tool)) && credits <= balance : covers(await allowanceOf(ctx, threadId, userId), credits, balance) };
   },
 });

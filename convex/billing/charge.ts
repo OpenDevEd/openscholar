@@ -4,9 +4,12 @@
  * cost isn't known up front holds an estimate first, then settles the real
  * amount once it's known:
  *
- *   if (!(await reserveCredits(ctx, { userId, chargeId, credits: estimate }))) throw insufficient credits;
- *   try { ...work... } catch (e) { await releaseCredits(ctx, { userId, chargeId }); throw e; }
- *   await settleCredits(ctx, { userId, chargeId, credits: actual, usage });
+ *   if (!(await reserveCredits(ctx, { userId, workspaceId, chargeId, credits: estimate }))) throw insufficient credits;
+ *   try { ...work... } catch (e) { await releaseCredits(ctx, { chargeId }); throw e; }
+ *   await settleCredits(ctx, { userId, workspaceId, chargeId, credits: actual, usage });
+ *
+ * `workspaceId` pays (#650): its Autumn customer is held and charged, and `userId` is who
+ * spent it, which the ledger keeps.
  *
  * Bulk work of small, bounded items (a Screen all paper) holds nothing and
  * settles each item with one `track`, as Firecrawl bills each page of a crawl.
@@ -24,7 +27,7 @@ import { internalAction, internalMutation, internalQuery, type ActionCtx, type M
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { autumn, AutumnError } from "./autumn";
-import { requestRefresh, zeroCachedBalance } from "./accounts";
+import { customerOf, ownWorkspaceOf, requestRefresh, zeroCachedBalance } from "./accounts";
 import { billingUsageFields, usageKindValidator } from "./validators";
 import { insertUsage } from "./ledger";
 import { createError } from "../lib/errors";
@@ -63,6 +66,17 @@ function isInsufficientBalance(error: unknown): boolean {
   return error instanceof AutumnError && /insufficient_balance/i.test(JSON.stringify(error.body));
 }
 
+/**
+ * Who pays a charge: the workspace its hold was taken on, when it has one, since that's whose
+ * credits are held; else the workspace it names; else, for one started before charges named
+ * their payer (#650), the spender's own. Slice 8 drops that fallback.
+ */
+async function payerOf(ctx: MutationCtx, args: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }, hold?: { userId: Id<"users">; workspaceId?: Id<"workspaces"> } | null) {
+  const workspaceId = hold ? (hold.workspaceId ?? (await ownWorkspaceOf(ctx, hold.userId))) : (args.workspaceId ?? (await ownWorkspaceOf(ctx, args.userId)));
+  if (!workspaceId) throw createError("NOT_FOUND", "Workspace not found");
+  return { workspaceId, customerId: await customerOf(ctx, workspaceId) };
+}
+
 async function holdFor(ctx: MutationCtx, chargeId: string) {
   return await ctx.db
     .query("billingHolds")
@@ -90,15 +104,17 @@ export const charged = internalQuery({
  * cancels it.
  */
 export const hold = internalMutation({
-  args: { userId: v.id("users"), chargeId: v.string(), credits: v.number(), expiresAt: v.number(), spend: v.optional(v.literal(true)) },
-  returns: v.null(),
-  handler: async (ctx, { userId, chargeId, credits, expiresAt, spend }) => {
+  // Returns the Autumn customer to hold the credits on: the paying workspace's.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), chargeId: v.string(), credits: v.number(), expiresAt: v.number(), spend: v.optional(v.literal(true)) },
+  returns: v.string(),
+  handler: async (ctx, { userId, chargeId, credits, expiresAt, spend, ...given }) => {
+    const { workspaceId, customerId } = await payerOf(ctx, { userId, ...given });
     // A job's hold has charges recorded under it: left standing, it is settled with them, never given back whole.
     const release = spend
       ? await ctx.scheduler.runAt(expiresAt, internal.billing.charge.settleSpent, { chargeId, attempt: 0 })
       : await ctx.scheduler.runAt(expiresAt, internal.billing.charge.releaseLock, { userId, chargeId, attempt: 0 });
-    await ctx.db.insert("billingHolds", { userId, chargeId, credits, release, ...(spend ? { spend } : {}) });
-    return null;
+    await ctx.db.insert("billingHolds", { userId, workspaceId, chargeId, credits, release, ...(spend ? { spend } : {}) });
+    return customerId;
   },
 });
 
@@ -111,7 +127,7 @@ export const endHold = internalMutation({
     if (!row) return null;
     if ((await ctx.db.system.get(row.release))?.state.kind === "pending") await ctx.scheduler.cancel(row.release);
     await ctx.db.delete("billingHolds", row._id);
-    await requestRefresh(ctx, row.userId);
+    await requestRefresh(ctx, (await payerOf(ctx, row, row)).workspaceId);
     return null;
   },
 });
@@ -122,19 +138,20 @@ export const endHold = internalMutation({
  */
 export async function reserveCredits(
   ctx: ActionCtx,
-  args: { userId: Id<"users">; chargeId: string; credits: number; holdMs?: number; spend?: true },
+  args: { userId: Id<"users">; workspaceId: Id<"workspaces">; chargeId: string; credits: number; holdMs?: number; spend?: true },
 ): Promise<boolean> {
   if (args.credits <= 0) return true;
   const expiresAt = Date.now() + (args.holdMs ?? DEFAULT_HOLD_MS);
-  await ctx.runMutation(internal.billing.charge.hold, {
+  const customerId: string = await ctx.runMutation(internal.billing.charge.hold, {
     userId: args.userId,
+    workspaceId: args.workspaceId,
     chargeId: args.chargeId,
     credits: args.credits,
     expiresAt,
     ...(args.spend ? { spend: args.spend } : {}),
   });
   const result = await autumn.lock({
-    customerId: args.userId,
+    customerId,
     credits: args.credits,
     lockId: args.chargeId,
     expiresAt,
@@ -154,14 +171,15 @@ async function releaseHold(chargeId: string): Promise<void> {
 /** Gives back whatever `chargeId` still holds. */
 export async function releaseCredits(
   ctx: ActionCtx,
-  args: { userId: Id<"users">; chargeId: string },
+  args: { chargeId: string },
 ): Promise<void> {
   await releaseHold(args.chargeId);
   await ctx.runMutation(internal.billing.charge.endHold, { chargeId: args.chargeId });
 }
 
 export const releaseLock = internalAction({
-  args: { userId: v.id("users"), chargeId: v.string(), attempt: v.number() },
+  // `userId`: kept for releases scheduled before a lock was released by its ID alone; slice 8 drops it.
+  args: { userId: v.optional(v.id("users")), chargeId: v.string(), attempt: v.number() },
   returns: v.null(),
   handler: async (ctx, args) => {
     try {
@@ -207,6 +225,8 @@ export function tokenDetails(usage: Usage) {
 
 const settleValidator = v.object({
   userId: v.id("users"),
+  // The workspace that pays; absent on a retry scheduled before charges named their payer (#650), until slice 8.
+  workspaceId: v.optional(v.id("workspaces")),
   chargeId: v.string(),
   credits: v.number(),
   usage: usageDetailsValidator,
@@ -242,13 +262,14 @@ export const beginSettle = internalMutation({
   args: settleValidator.fields,
   returns: v.union(
     v.object({ kind: v.literal("settled") }),
-    v.object({ kind: v.literal("held"), credits: v.number(), rest: v.boolean() }),
-    v.object({ kind: v.literal("unheld") }),
+    v.object({ kind: v.literal("held"), credits: v.number(), rest: v.boolean(), workspaceId: v.id("workspaces"), customerId: v.string() }),
+    v.object({ kind: v.literal("unheld"), workspaceId: v.id("workspaces"), customerId: v.string() }),
   ),
   handler: async (ctx, args) => {
     if (await usageFor(ctx, args.chargeId)) return { kind: "settled" as const };
     const row = await holdFor(ctx, args.chargeId);
-    if (!row) return { kind: "unheld" as const };
+    const payer = await payerOf(ctx, args, row);
+    if (!row) return { kind: "unheld" as const, ...payer };
     const release = (await ctx.db.system.get(row.release))?.state.kind;
     if (release === "pending") {
       // The release was the hold's only scheduled way out; the backstop replaces it.
@@ -256,16 +277,16 @@ export const beginSettle = internalMutation({
       await ctx.scheduler.runAfter(SETTLE_BACKSTOP_MS, internal.billing.charge.retrySettle, { ...args, attempt: 1 });
     }
     if (release === "pending" || release === "canceled") {
-      return { kind: "held" as const, credits: row.credits, rest: row.rest === true };
+      return { kind: "held" as const, credits: row.credits, rest: row.rest === true, ...payer };
     }
-    return { kind: "unheld" as const };
+    return { kind: "unheld" as const, ...payer };
   },
 });
 
-/** Charges up to `credits` with one idempotent `track`, stopping at a zero balance. */
-async function track(userId: Id<"users">, key: string, credits: number) {
+/** Charges `customerId` up to `credits` with one idempotent `track`, stopping at a zero balance. */
+async function track(customerId: string, key: string, credits: number) {
   try {
-    const result = await autumn.track({ customerId: userId, credits, idempotencyKey: key });
+    const result = await autumn.track({ customerId, credits, idempotencyKey: key });
     return {
       charged: result.deductions.reduce((sum, deduction) => sum + deduction.value, 0),
       remaining: result.balance?.remaining,
@@ -303,7 +324,7 @@ async function confirmAsHeld(chargeId: string) {
  * stands, and the rest charged down to zero. A retry of a marked hold repeats
  * those two idempotent steps.
  */
-async function confirm(ctx: ActionCtx, args: Pick<SettleArgs, "userId" | "chargeId" | "credits">, held: number, rest: boolean) {
+async function confirm(ctx: ActionCtx, args: Pick<SettleArgs, "chargeId" | "credits">, customerId: string, held: number, rest: boolean) {
   if (!rest) {
     try {
       await autumn.finalize(args.chargeId, "confirm", args.credits);
@@ -316,7 +337,7 @@ async function confirm(ctx: ActionCtx, args: Pick<SettleArgs, "userId" | "charge
     await ctx.runMutation(internal.billing.charge.markRest, { chargeId: args.chargeId });
   }
   await confirmAsHeld(args.chargeId);
-  return held + (await track(args.userId, `${args.chargeId}:rest`, args.credits - held)).charged;
+  return held + (await track(customerId, `${args.chargeId}:rest`, args.credits - held)).charged;
 }
 
 /**
@@ -324,11 +345,11 @@ async function confirm(ctx: ActionCtx, args: Pick<SettleArgs, "userId" | "charge
  * lock may still hold this charge's credits (one reserved before holds were
  * recorded, or a release still running); it's released and the rest charged.
  */
-async function trackUnheld(args: SettleArgs) {
-  const first = await track(args.userId, args.chargeId, args.credits);
+async function trackUnheld(args: SettleArgs, customerId: string) {
+  const first = await track(customerId, args.chargeId, args.credits);
   if (first.charged >= args.credits) return first;
   await releaseHold(args.chargeId);
-  const rest = await track(args.userId, `${args.chargeId}:rest`, args.credits - first.charged);
+  const rest = await track(customerId, `${args.chargeId}:rest`, args.credits - first.charged);
   return { charged: first.charged + rest.charged, remaining: rest.remaining };
 }
 
@@ -344,10 +365,11 @@ async function settleOnce(ctx: ActionCtx, args: SettleArgs): Promise<void> {
   const charge = { ...args, credits };
   const { charged, remaining } =
     state.kind === "held"
-      ? { charged: await confirm(ctx, charge, state.credits, state.rest), remaining: undefined }
-      : await trackUnheld(charge);
+      ? { charged: await confirm(ctx, charge, state.customerId, state.credits, state.rest), remaining: undefined }
+      : await trackUnheld(charge, state.customerId);
   await ctx.runMutation(internal.billing.charge.recordUsage, {
     userId: args.userId,
+    workspaceId: state.workspaceId,
     chargeId: args.chargeId,
     credits: charged,
     ...args.usage,
@@ -368,7 +390,6 @@ export const retrySettle = internalAction({
         console.error(`[billing] gave up settling ${args.chargeId}`, error);
         // The hold's release was cancelled when settling began; give it back, with its own retries.
         await ctx.scheduler.runAfter(0, internal.billing.charge.releaseLock, {
-          userId: args.userId,
           chargeId: args.chargeId,
           attempt: 0,
         });
@@ -397,7 +418,7 @@ export const recordUsage = internalMutation({
     await insertUsage(ctx, args);
     const row = await holdFor(ctx, args.chargeId);
     if (row) await ctx.db.delete("billingHolds", row._id);
-    if (remaining !== undefined && remaining <= 0) await zeroCachedBalance(ctx, args.userId);
+    if (remaining !== undefined && remaining <= 0) await zeroCachedBalance(ctx, (await payerOf(ctx, args)).workspaceId);
     return true;
   },
 });
@@ -410,7 +431,7 @@ export const recordUsage = internalMutation({
  * can't cover it. The job keeps `chargeId`: its items are charged under it (`settleUnder`),
  * and it is settled once, when the job has ended and its items have been recorded (./spend.ts).
  */
-export const holdSpend = (ctx: ActionCtx, args: { userId: Id<"users">; chargeId: string; credits: number }) =>
+export const holdSpend = (ctx: ActionCtx, args: { userId: Id<"users">; workspaceId: Id<"workspaces">; chargeId: string; credits: number }) =>
   reserveCredits(ctx, { ...args, holdMs: SPEND_HOLD_MS, spend: true });
 
 /** How long after a hold request that never answered its hold is settled: longer than the request can still be on its way. */
@@ -423,9 +444,9 @@ const UNANSWERED_HOLD_MS = 5 * 60_000;
  * if Autumn doesn't answer. A hold request that fails without an answer may have been taken,
  * or may yet be: its hold is settled a few minutes on, with nothing spent under it.
  */
-export async function startHeld<T>(ctx: ActionCtx, { userId, credits, kind }: { userId: Id<"users">; credits: number; kind: string }, make: (hold: string) => Promise<T>): Promise<T> {
+export async function startHeld<T>(ctx: ActionCtx, { userId, workspaceId, credits, kind }: { userId: Id<"users">; workspaceId: Id<"workspaces">; credits: number; kind: string }, make: (hold: string) => Promise<T>): Promise<T> {
   const hold = `${kind}-job:${crypto.randomUUID()}`;
-  const held = await holdSpend(ctx, { userId, chargeId: hold, credits }).catch(async (error) => {
+  const held = await holdSpend(ctx, { userId, workspaceId, chargeId: hold, credits }).catch(async (error) => {
     await ctx.runMutation(internal.billing.charge.laterSpent, { chargeId: hold, attempt: 0, delay: UNANSWERED_HOLD_MS });
     throw error;
   });
@@ -433,7 +454,7 @@ export async function startHeld<T>(ctx: ActionCtx, { userId, credits, kind }: { 
   try {
     return await make(hold);
   } catch (error) {
-    await ctx.scheduler.runAfter(0, internal.billing.charge.releaseLock, { userId, chargeId: hold, attempt: 0 });
+    await ctx.scheduler.runAfter(0, internal.billing.charge.releaseLock, { chargeId: hold, attempt: 0 });
     throw error;
   }
 }
@@ -453,9 +474,9 @@ export const recordUnder = internalMutation({
       console.error(`[billing] ${usage.chargeId} (${usage.credits} credits) ended after the hold ${under} it was approved under stopped taking items; not charged`);
       return false;
     }
-    // Recorded once, however often its action runs: on the ledger, and beside the hold for its sum.
+    // Recorded once, however often its action runs: on the ledger, and beside the hold for its sum. The hold's workspace paid.
     if (await usageFor(ctx, usage.chargeId)) return true;
-    await insertUsage(ctx, usage);
+    await insertUsage(ctx, { ...usage, workspaceId: (await payerOf(ctx, usage, row)).workspaceId });
     await ctx.db.insert("billingHoldItems", { under, chargeId: usage.chargeId, credits: usage.credits });
     return true;
   },
@@ -543,12 +564,12 @@ export const endSpent = internalMutation({
     const charged = item && (await usageFor(ctx, item.chargeId));
     if (charged) {
       console.error(`[billing] ${chargeId} spent ${row.credits + over} under a hold of ${row.credits}; the hold was charged`);
-      await insertUsage(ctx, { userId: row.userId, chargeId: `${chargeId}:over`, credits: -over, kind: charged.kind, description: "Not charged: over the credits approved", ...(charged.jobId ? { jobId: charged.jobId } : {}), createdAt: Date.now() });
+      await insertUsage(ctx, { userId: row.userId, workspaceId: (await payerOf(ctx, row, row)).workspaceId, chargeId: `${chargeId}:over`, credits: -over, kind: charged.kind, description: "Not charged: over the credits approved", ...(charged.jobId ? { jobId: charged.jobId } : {}), createdAt: Date.now() });
     }
     if ((await ctx.db.system.get(row.release))?.state.kind === "pending") await ctx.scheduler.cancel(row.release);
     await ctx.db.delete("billingHolds", row._id);
     await ctx.scheduler.runAfter(0, internal.billing.charge.forgetSpent, { under: chargeId });
-    await requestRefresh(ctx, row.userId);
+    await requestRefresh(ctx, (await payerOf(ctx, row, row)).workspaceId);
     return null;
   },
 });
@@ -585,6 +606,13 @@ export const spentUnder = internalQuery({
  * confirm that fails is tried again, for as long as it takes: the hold keeps the person's
  * credits until it is settled.
  */
+/** The Autumn customer a hold is on, for an action. */
+export const holdCustomer = internalMutation({
+  args: { chargeId: v.string(), userId: v.id("users") },
+  returns: v.string(),
+  handler: async (ctx, { chargeId, userId }) => (await payerOf(ctx, { userId }, await holdFor(ctx, chargeId))).customerId,
+});
+
 export const confirmSpent = internalAction({
   args: { userId: v.id("users"), chargeId: v.string(), credits: v.number(), attempt: v.number() },
   returns: v.null(),
@@ -597,7 +625,7 @@ export const confirmSpent = internalAction({
         spent += read.credits;
         ({ cursor, done } = read);
       }
-      if (spent > 0) await confirm(ctx, { userId, chargeId, credits: Math.min(spent, held) }, held, false);
+      if (spent > 0) await confirm(ctx, { chargeId, credits: Math.min(spent, held) }, await ctx.runMutation(internal.billing.charge.holdCustomer, { chargeId, userId }), held, false);
       else await releaseHold(chargeId);
       await ctx.runMutation(internal.billing.charge.endSpent, { chargeId, over: Math.max(0, spent - held) });
     } catch (error) {

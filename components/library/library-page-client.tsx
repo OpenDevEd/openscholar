@@ -50,6 +50,7 @@ import { LibraryCommandCenter } from "./library-command-center";
 import { LibraryEmptyState } from "./library-empty-state";
 import { LibraryFilterSidebar } from "./library-filter-sidebar";
 import { LibraryItemSkeleton } from "./library-item-skeleton";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 const PAGE_SIZE = 20;
 
@@ -61,6 +62,7 @@ const GRID_CLASSES: Record<ViewMode, string> = {
 };
 
 export function LibraryPageClient() {
+  const workspaceId = useWorkspace();
   const t = useTranslations("libraryPage");
   const tf = useTranslations("searchFilters");
   const format = useFormatter();
@@ -98,7 +100,7 @@ export function LibraryPageClient() {
 
   const { data: totalCount } = useProtectedQuery(
     api.library.queries.getLibraryCount,
-    {},
+    inWorkspace(workspaceId, {}),
   );
 
   const queryText = debouncedSearch.trim();
@@ -148,17 +150,17 @@ export function LibraryPageClient() {
   );
   const { data: filteredTotalCount } = useProtectedQuery(
     api.library.queries.getLibraryFilteredCount,
-    filteredCountQueryArgs,
+    inWorkspace(workspaceId, filteredCountQueryArgs),
   );
 
   const browseItems = useCursorPage(
     api.library.queries.browseLibrary,
-    queryText ? "skip" : libraryFilters,
+    inWorkspace(workspaceId, queryText ? "skip" : libraryFilters),
     PAGE_SIZE,
   );
   const searchItems = useCursorPage(
     api.library.queries.searchLibrary,
-    queryText ? { ...libraryFilters, searchText: queryText } : "skip",
+    inWorkspace(workspaceId, queryText ? { ...libraryFilters, searchText: queryText } : "skip"),
     PAGE_SIZE,
   );
   const paged = queryText ? searchItems : browseItems;
@@ -171,7 +173,8 @@ export function LibraryPageClient() {
       if (isExporting) return;
       setIsExporting(true);
       try {
-        await downloadExport(convex, { kind: "library", view: { ...libraryFilters, searchText: queryText || undefined } }, format);
+        if (!workspaceId) throw new Error("The workspace hasn't loaded yet. Try again in a moment.");
+        await downloadExport(convex, workspaceId, { kind: "library", view: { ...libraryFilters, searchText: queryText || undefined } }, format);
       } catch (error) {
         console.error(`[Library] Failed to start the ${format} export:`, error);
         toast.error(t("exportError"));
@@ -179,7 +182,7 @@ export function LibraryPageClient() {
         setIsExporting(false);
       }
     },
-    [convex, isExporting, libraryFilters, queryText, t],
+    [convex, isExporting, libraryFilters, queryText, t, workspaceId],
   );
 
   const pageItems = paged.items;
@@ -278,7 +281,7 @@ export function LibraryPageClient() {
 
   const { data: selectedCollection } = useProtectedQuery(
     api.library.collections.getCollection,
-    params.col ? { collectionId: params.col as Id<"collections"> } : "skip",
+    inWorkspace(workspaceId, params.col ? { collectionId: params.col as Id<"collections"> } : "skip"),
   );
 
   const sortLabelMap = useMemo<Record<LibrarySortCombined, string>>(

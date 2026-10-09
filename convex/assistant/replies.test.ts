@@ -11,6 +11,7 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import { CALL_TOKENS, estimateCredits } from "../../lib/pricing";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import schema from "../schema";
+import { personalWorkspaceOf } from "../workspaces/actor";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { endStep } from "./steps";
 import { insertJob } from "../screening/createJob.test-support";
@@ -102,6 +103,10 @@ describe("assistant replies", () => {
       { role: "user", text: "Hi there", status: "done", sender: { userId: ben }, mine: false },
     ]);
     expect((await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[1]).toMatchObject({ mine: true });
+    // Once Ben's account is gone, his message still says who sent it.
+    await t.run((ctx) => ctx.db.patch("users", ben, { firstName: "Ben", lastName: "Mwangi", state: "deleted", updatedAt: 1 }));
+    await t.mutation(internal.maintenance.mutations.cleanupDeletedUsers, {});
+    expect((await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[1]).toMatchObject({ sender: { userId: ben, name: "Ben Mwangi" } });
     expect(page[0].order).toBe(page[1].order);
     expect(await asAda.query(api.assistant.replies.live, { threadId })).toBeNull();
     expect(await asAda.query(api.assistant.replies.outcome, { threadId })).toEqual({ phase: "complete", order: page[0].order });
@@ -759,6 +764,10 @@ describe("a job a reply started", () => {
     const row = async () => (await asBen.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page.find((listed) => listed._id === threadId);
     expect(await running()).toEqual([{ stepId, kind: "screening" }]);
     expect(await asBen.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ card: { kind: "screening", jobId, total: 2 }, mine: false });
+    // Its starter suspended, the others in the chat still see its card.
+    await t.run((ctx) => ctx.db.patch("users", ada, { state: "suspended" }));
+    expect(await asBen.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ card: { kind: "screening", jobId, total: 2 }, mine: false });
+    await t.run((ctx) => ctx.db.patch("users", ada, { state: "active" }));
     expect(await row()).toMatchObject({ jobs: [{ id: jobId, kind: "screening", done: 0, total: 2 }], moreJobs: 0 });
 
     // It ends: the chat's dock and row let it go.
@@ -856,7 +865,7 @@ describe("a job a reply started", () => {
     expect(await asAda.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ mine: true });
     // Starting, it isn't waiting; a paper of it in Ada's queue, behind her other papers, is.
     expect((await asAda.query(api.assistant.jobs.card, { threadId, stepId }))!.card).not.toHaveProperty("waiting");
-    const queued = await t.run((ctx) => ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "Trial 1", status: "processing", waitingUser: ada, createdAt: 1 }));
+    const queued = await t.run(async (ctx) => ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "Trial 1", status: "processing", waitingWorkspace: await personalWorkspaceOf(ctx, ada), createdAt: 1 }));
     expect((await asAda.query(api.assistant.jobs.card, { threadId, stepId }))!.card).toMatchObject({ waiting: { done: 0, total: 0 } });
     await t.run((ctx) => ctx.db.delete("screeningResults", queued));
 

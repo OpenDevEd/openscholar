@@ -1,6 +1,7 @@
 import { hasPublicationProviderChanges } from "./publicationProviders";
 import { readTopicsEnabled } from "./activeTopics";
 import { requireLibraryOrganization } from "../organizationFeatures";
+import { ensureWorkspace } from "../workspaces/create";
 import {
   internalMutation,
   mutation,
@@ -64,8 +65,8 @@ import {
   type EvidenceLibrarySetupIdentity,
 } from "./setupNaming";
 import { readEvidenceLibrarySetupRecords } from "./setupRecords";
-import { MAX_LIBRARIES_PER_ORGANIZATION } from "../lib/queryBounds";
-import { countOf, organizationLibrariesOf } from "../lib/listCounts";
+import { MAX_LIBRARIES_PER_WORKSPACE } from "../lib/queryBounds";
+import { countOf, workspaceLibrariesOf } from "../lib/listCounts";
 import {
   configurationSnapshotsEqual,
   loadDraftConfigurationSnapshot,
@@ -116,6 +117,7 @@ export async function createEvidenceLibrarySetup(
   },
 ) {
   const access = await requireLibraryOrganization(ctx, args.organizationId);
+  const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId: access.organization._id });
   const name = validateEvidenceLibrarySetupName(args.name);
   const shortName = createInitialEvidenceLibraryShortName(name);
   const slug = args.slug.trim();
@@ -128,8 +130,8 @@ export async function createEvidenceLibrarySetup(
   }
   const existing = await ctx.db
     .query("evidenceLibraries")
-    .withIndex("by_organizationId_and_slug", (query) =>
-      query.eq("organizationId", access.organization._id).eq("slug", slug),
+    .withIndex("by_workspace_and_slug", (query) =>
+      query.eq("workspaceId", workspaceId).eq("slug", slug),
     )
     .unique();
   if (existing) {
@@ -149,15 +151,18 @@ export async function createEvidenceLibrarySetup(
     return toSetupDraftResult(setup, identity);
   }
 
-  if ((await countOf(ctx, organizationLibrariesOf(access.organization._id))) >= MAX_LIBRARIES_PER_ORGANIZATION) {
-    throw createError("VALIDATION_ERROR", `An organization can have up to ${MAX_LIBRARIES_PER_ORGANIZATION} libraries. Delete one to make another.`);
+  if ((await countOf(ctx, workspaceLibrariesOf(workspaceId))) >= MAX_LIBRARIES_PER_WORKSPACE) {
+    throw createError("VALIDATION_ERROR", `A workspace can have up to ${MAX_LIBRARIES_PER_WORKSPACE} libraries. Delete one to make another.`);
   }
 
   const now = Date.now();
+  const creator = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", access.clerkUserId)).unique();
   const libraryId = await ctx.db.insert("evidenceLibraries", {
     // No revisions yet, so every version it publishes is recorded as it's saved.
     approvedQueriesRecorded: true,
     organizationId: access.organization._id,
+    workspaceId,
+    ...(creator ? { createdBy: creator._id } : {}),
     name,
     slug,
     state: "provisioning",
@@ -999,17 +1004,15 @@ export const reserveAddress = internalMutation({
   ),
   handler: async (ctx, args) => {
     const access = await requireLibraryOrganization(ctx, args.organizationId);
+    const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId: access.organization._id });
     const name = validateEvidenceLibrarySetupName(args.name);
-    const named = await readEvidenceLibraryByName(ctx, {
-      organizationId: access.organization._id,
-      name,
-    });
+    const named = await readEvidenceLibraryByName(ctx, { workspaceId, name });
     if (named) {
       return { status: "name-taken" as const, libraryId: named._id };
     }
     if (
       !(await isEvidenceLibraryAddressFree(ctx, {
-        organizationId: access.organization._id,
+        workspaceId,
         publicAddress: args.publicAddress,
         slug: args.slug,
       }))

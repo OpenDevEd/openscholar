@@ -30,10 +30,11 @@ import { MAX_JOB_SOURCES, writeJobSources, type BucketItemInput } from "../jobSo
 import { extractionPaperCredits } from "../../../lib/pricing";
 import { jobText } from "../../lib/searchText";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
-import { refillPerson } from "../queue/dispatcher";
+import { refillWorkspace } from "../queue/dispatcher";
 import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
 import { checkScreeningSelection } from "../sources/screening";
 import { bucketItemFromRow } from "../jobSources";
+import { actorOnRecord, isInWorkspace, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../../workspaces/actor";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -64,7 +65,8 @@ const startArgs = {
  * figure (#328), and that figure (../start.ts): the hold already has the credits, so the
  * balance isn't checked again, and the job's papers are charged under it.
  */
-export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number }, chatStep?: Id<"assistantSteps">): Promise<{ jobId: Id<"extractionJobs"> }> {
+export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number }, chatStep?: Id<"assistantSteps">): Promise<{ jobId: Id<"extractionJobs"> }> {
+  const { userId, workspaceId } = writer;
   await requireFeature(ctx, "extraction.enabled", userId);
   await requireFeature(ctx, "extraction.start", userId);
   await rateLimit(ctx, {
@@ -83,19 +85,19 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
       throw createError("VALIDATION_ERROR", "Select a screening job and its decision revision for extraction.");
     }
     const selection = item.screeningSelection;
-    selection.count = await checkScreeningSelection(ctx, userId, selection.jobId, selection.revision);
+    selection.count = await checkScreeningSelection(ctx, workspaceId, selection.jobId, selection.revision);
     item.sourceRefId = selection.jobId;
   }
   // A range of a collection or the library holds what the server counts in it now, never what it was sent.
   for (const item of deduped) {
     if (!item.librarySet) continue;
     const { collectionId, first, last } = item.librarySet;
-    const held = await papersIn(ctx, userId, collectionId ? { kind: "collection", collectionId } : { kind: "saved" });
+    const held = await papersIn(ctx, writer, collectionId ? { kind: "collection", collectionId } : { kind: "saved" });
     if (held === null) throw createError("NOT_FOUND", "Collection not found");
     if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
     item.librarySet = { ...item.librarySet, count: Math.max(0, Math.min(last, held) - first + 1) };
   }
-  const bucketLimits = assertBucketWithinLimits(deduped, await planLimit(ctx, userId, "request_papers"));
+  const bucketLimits = assertBucketWithinLimits(deduped, await planLimit(ctx, workspaceId, "request_papers"));
   const sourceType = deriveSourceType(deduped);
 
   // Stamp what extraction runs on (credits path), read back at run by paperWorker.
@@ -122,7 +124,7 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
   // it now than stop it part way. A job with a hold has its credits already.
   if (!spend) {
     const credits = bucketLimits.effectiveCount * extractionPaperCredits(await extractionPricing(ctx, stamp), qs, args.usePdfs ?? false);
-    const totalAvailable = await readAvailableCredits(ctx, userId);
+    const totalAvailable = await readAvailableCredits(ctx, workspaceId);
     if (totalAvailable < credits) {
       throw createError(
         "INSUFFICIENT_CREDITS",
@@ -134,6 +136,8 @@ export async function startJobFor(ctx: MutationCtx, userId: Id<"users">, args: O
   const now = Date.now();
   const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
     userId,
+    workspaceId,
+    createdBy: userId,
     name: args.name,
     searchText: jobText({ name: args.name }),
     sourceType,
@@ -181,7 +185,7 @@ export const startJobAction = defineUserMutation({
   undoable: false,
   args: startArgs,
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  run: (ctx, userId, args) => startJobFor(ctx, userId, args),
+  run: (ctx, { userId, workspaceId }, args) => startJobFor(ctx, { userId, workspaceId }, args),
 });
 
 export const startJob = userMutation(startJobAction);
@@ -195,11 +199,12 @@ export const duplicateJobAction = defineUserMutation({
   undoable: false,
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  run: async (ctx, userId, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
+  run: async (ctx, { userId, workspaceId }, args): Promise<{ jobId: Id<"extractionJobs"> }> => {
     await requireFeature(ctx, "extraction.enabled", userId);
 
     const oldJob = await ctx.db.get("extractionJobs", args.jobId);
-    if (!oldJob || oldJob.userId !== userId) {
+    // The copy is made in the workspace the call acts in, which the original must be in.
+    if (!oldJob || !(await isInWorkspace(ctx, oldJob, workspaceId))) {
       throw createError("NOT_FOUND", "Job not found");
     }
 
@@ -217,9 +222,9 @@ export const duplicateJobAction = defineUserMutation({
       .take(MAX_JOB_SOURCES);
     const bucketItems = oldSourceRows.map(bucketItemFromRow);
     for (const item of bucketItems) {
-      if (item.source === "screening" && item.screeningSelection) await checkScreeningSelection(ctx, userId, item.screeningSelection.jobId, item.screeningSelection.revision);
+      if (item.source === "screening" && item.screeningSelection) await checkScreeningSelection(ctx, workspaceId, item.screeningSelection.jobId, item.screeningSelection.revision);
     }
-    assertBucketWithinLimits(bucketItems, await planLimit(ctx, userId, "request_papers"));
+    assertBucketWithinLimits(bucketItems, await planLimit(ctx, workspaceId, "request_papers"));
 
     const now = Date.now();
 
@@ -232,6 +237,8 @@ export const duplicateJobAction = defineUserMutation({
     const dupStamp = await extractionStamp(ctx, userId);
     const newJobId = await ctx.db.insert("extractionJobs", {
       userId,
+      workspaceId,
+      createdBy: userId,
       name: `${oldJob.name} (Copy)`,
       searchText: jobText({ name: `${oldJob.name} (Copy)` }),
       sourceType: oldJob.sourceType,
@@ -279,10 +286,11 @@ export const cancelExtraction = mutation({
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get("extractionJobs", args.jobId);
-
-    if (!job || job.userId !== user._id) {
+    const actor = job && (await actorOnRecord(ctx, user, job));
+    if (!job || !actor) {
       throw createError("NOT_FOUND", "Job not found");
     }
+    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
 
     if (
       job.status &&
@@ -298,7 +306,7 @@ export const cancelExtraction = mutation({
     });
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
     // Its papers no longer count against the person's limit; their other jobs start in it.
-    await refillPerson(ctx, job.userId);
+    await refillWorkspace(ctx, await workspaceOf(ctx, job));
 
     // Any in-flight paper action sees the cancelled job on its next
     // status check and returns without persisting.
@@ -313,14 +321,16 @@ export const deleteExtraction = mutation({
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get("extractionJobs", args.jobId);
-    if (!job || job.userId !== user._id) {
+    const actor = job && (await actorOnRecord(ctx, user, job));
+    if (!job || !actor) {
       throw createError("NOT_FOUND", "Job not found");
     }
+    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
 
     await ctx.db.delete(args.jobId);
     // Its papers stop holding the person's capacity now, not when the cascade reaches them.
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
-    await refillPerson(ctx, user._id);
+    await refillWorkspace(ctx, await workspaceOf(ctx, job));
 
     // Schedule the cascade delete as an independent mutation to avoid
     // transaction limits on a large job's child tables.

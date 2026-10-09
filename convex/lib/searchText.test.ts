@@ -6,6 +6,7 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 it("the backfill makes rows from before findable, and an admin is found by the name they change to", async () => {
   vi.useFakeTimers();
@@ -18,8 +19,8 @@ it("the backfill makes rows from before findable, and an admin is found by the n
     });
     // Rows from before, written without the triggers that keep their text.
     await runUntriggered(t, async (ctx) => {
-      await ctx.db.insert("queryShortcuts", { userId, data: { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 } });
-      await ctx.db.insert("extractionJobs", { userId, name: "Tutoring review", sourceType: "history", status: "completed", totalPapers: 1, createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("queryShortcuts", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, data: { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 } });
+      await ctx.db.insert("extractionJobs", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, name: "Tutoring review", sourceType: "history", status: "completed", totalPapers: 1, createdAt: 1, updatedAt: 1 });
     });
     const as = t.withIdentity({ subject: "admin" });
     const shortcuts = async () => (await as.query(api.research.records.listedShortcuts, { accountId: "admin", sort: "recent", text: "randomized", paginationOpts: { cursor: null, numItems: 10 } })).page.map((row) => row.shorthand);

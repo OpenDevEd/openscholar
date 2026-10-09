@@ -2,6 +2,7 @@ import { MutationCtx } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { readAccount } from "../billing/accounts";
+import { ensureWorkspace } from "../workspaces/create";
 
 export async function createUserWithDefaults(
   ctx: MutationCtx,
@@ -22,8 +23,9 @@ export async function createUserWithDefaults(
     createdAt: now,
     updatedAt: now,
   });
+  const workspaceId = await ensureWorkspace(ctx, { kind: "personal", userId });
   // A new person starts with a count row, so the library never reads the count on their user row.
-  await ctx.db.insert("libraryCounts", { userId, count: 0 });
+  await ctx.db.insert("libraryCounts", { userId, workspaceId, count: 0 });
 
   await ctx.scheduler.runAfter(0, internal.billing.accounts.provision, { userId });
   return userId;
@@ -34,6 +36,7 @@ export async function ensureBillingAccount(
   ctx: MutationCtx,
   userId: Id<"users">,
 ): Promise<void> {
-  if ((await readAccount(ctx, userId))?.signupGranted) return;
+  const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
+  if (own && (await readAccount(ctx, own._id))?.signupGranted) return;
   await ctx.scheduler.runAfter(0, internal.billing.accounts.provision, { userId });
 }

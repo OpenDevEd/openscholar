@@ -3,7 +3,7 @@
  * they cost. Shared by Convex functions and the UI.
  */
 import type { BillingCatalog, CatalogPlan } from "@/convex/billing/validators";
-import { SIGNUP_PLAN, TOPUP_PLAN } from "./plans";
+import { ORGANIZATION_PLAN, SIGNUP_PLAN, TOPUP_PLAN } from "./plans";
 
 const MONTHS_PER_INTERVAL: Record<string, number> = {
   week: 12 / 52,
@@ -19,10 +19,10 @@ export function monthlyPrice(plan: CatalogPlan): number {
   return plan.price.amount / (MONTHS_PER_INTERVAL[plan.price.interval] ?? 1);
 }
 
-/** The plans a customer picks between, cheapest first. */
+/** The plans a person picks between, cheapest first. The organization plan is an organization's (#650). */
 export function mainPlans(catalog: BillingCatalog): CatalogPlan[] {
   return catalog.plans
-    .filter((plan) => !plan.addOn)
+    .filter((plan) => !plan.addOn && plan.id !== ORGANIZATION_PLAN)
     .sort((a, b) => monthlyPrice(a) - monthlyPrice(b) || Number(b.autoEnable) - Number(a.autoEnable));
 }
 

@@ -10,7 +10,7 @@ import { localSearchHistoryStore } from "@/lib/store";
 import type { SearchResult } from "@/lib/types";
 import type { ListedSort } from "./records";
 import { restoreSearch } from "./records";
-import { useResearchSession } from "./reads";
+import { useResearchScope, useResearchSession } from "./reads";
 import { usePagedRecords } from "./paged-records";
 
 /** One search in this browser matching the history page's search text: its query or a question asked of it. */
@@ -39,11 +39,11 @@ const LOCAL_ORDER: Record<ListedSort, (a: SearchResult, b: SearchResult) => numb
  * the text. The account's searches come without screening answers.
  */
 export function useSearchList({ sort, text = "", pageSize, excludeId }: { sort: ListedSort; text?: string; pageSize: number; excludeId?: string }) {
-  const session = useResearchSession();
-  const accountId = session?.accountId;
+  const accountId = useResearchSession()?.accountId;
+  const scope = useResearchScope();
   const match = useDebouncedValue(text.trim(), 300);
-  const remote = useCursorPage(api.research.records.listedSearches, accountId ? { accountId, sort, text: match || undefined, exclude: excludeId } : "skip", pageSize);
-  const { data: count } = useProtectedQuery(api.research.records.countSearches, accountId ? { accountId } : "skip");
+  const remote = useCursorPage(api.research.records.listedSearches, scope ? { ...scope, sort, text: match || undefined, exclude: excludeId } : "skip", pageSize);
+  const { data: count } = useProtectedQuery(api.research.records.countSearches, scope ?? "skip");
 
   const localHistory = useStore(localSearchHistoryStore, (state) => state.searchHistory);
   const local = useMemo(() => {

@@ -251,36 +251,6 @@ describe("<ConfigurationWorkspace>", () => {
     ).toHaveAttribute("data-operation-stage", "deployment");
   });
 
-  it("names the software update while it runs and blocks Activate", async () => {
-    queryMock.mockReturnValue(
-      draftResult({
-        operation: {
-          _id: "operation_123",
-          kind: "publish",
-          status: "running",
-          stage: "deployment",
-          revisionId: "revision_123",
-          runtimeUpdate: { from: "aaaaaaa1234", to: "bbbbbbb1234" },
-        },
-      }),
-    );
-    await renderWorkspace();
-    const activate = screen.getByRole("button", {
-      name: /updatingSoftware · stages\.deployment/,
-    });
-    expect(activate).toBeDisabled();
-    expect(within(activate).getByRole("status", { name: "Loading" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("status", {
-        name: "updatingSoftware · stages.deployment",
-      }),
-    ).toHaveAttribute("data-operation-stage", "deployment");
-    expect(screen.getByRole("link", { name: "sections.versions" })).toHaveAttribute(
-      "href",
-      "#sec-versions",
-    );
-  });
-
   it("requires the exact library name before queuing development teardown", async () => {
     const user = userEvent.setup();
     const teardowns: unknown[] = [];

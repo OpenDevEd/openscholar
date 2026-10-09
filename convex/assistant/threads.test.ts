@@ -1,10 +1,13 @@
 // Assistant chats (#324): who can open, change and share one, and how a person's chats list.
 import { convexTest } from "convex-test";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import schema from "../schema";
+import { personalWorkspaceOf } from "../workspaces/actor";
+import { ensureWorkspace } from "../workspaces/create";
+import { runUntriggered } from "../../tests/convex-test-with-limits";
 import { touchThread } from "./access";
 import { people } from "./assistant.test-support";
 import { previewOf } from "./threads";
@@ -92,6 +95,83 @@ describe("assistant chats", () => {
     await expect(asCy.mutation(api.assistant.threads.rename, { threadId, title: "Mine now" })).rejects.toThrow(/Chat not found/);
     await expect(asCy.mutation(api.assistant.threads.remove, { threadId })).rejects.toThrow(/Chat not found/);
     expect(titles(await asCy.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage }))).toEqual([]);
+  });
+
+  it("in an organization are its members': each opens them, its makers and admins manage them, and they list only there", async () => {
+    const t = convexTest(schema);
+    const { asAda, asBen, asCy, team } = await people(t);
+    const lab = await t.run(async (ctx) => ensureWorkspace(ctx, { kind: "organization", organizationId: team }));
+    const threadId = await asBen.mutation(api.assistant.threads.create, { workspaceId: lab, title: "Lab review" });
+    await asAda.mutation(api.assistant.threads.create, { title: "Mine" });
+    const listed = async (as: typeof asAda, scope: "all" | "mine" | "shared", workspaceId?: Id<"workspaces">) =>
+      titles(await as.query(api.assistant.threads.list, { ...(workspaceId ? { workspaceId } : {}), scope, paginationOpts: firstPage }));
+
+    // The lab's chat lists in the lab for each member, by who made it, and in nobody's own workspace.
+    expect(await listed(asAda, "all", lab)).toEqual(["Lab review"]);
+    expect(await listed(asAda, "mine", lab)).toEqual([]);
+    expect(await listed(asBen, "mine", lab)).toEqual(["Lab review"]);
+    expect(await listed(asAda, "shared", lab)).toEqual([]);
+    expect(await listed(asAda, "all")).toEqual(["Mine"]);
+    expect(await listed(asBen, "all")).toEqual([]);
+
+    // Ada writes in it; only Ben, who made it, manages it. A page or a reply in her own workspace doesn't reach it.
+    expect(await asAda.query(api.assistant.threads.get, { workspaceId: lab, threadId })).toMatchObject({ role: "write" });
+    await expect(asAda.query(api.assistant.threads.get, { threadId })).rejects.toThrow(/Chat not found/);
+    await expect(asAda.mutation(api.assistant.threads.rename, { workspaceId: lab, threadId, title: "Mine now" })).rejects.toThrow(/Only the chat's owner/);
+    await asBen.mutation(api.assistant.threads.rename, { workspaceId: lab, threadId, title: "Lab chat" });
+    // Cy isn't in the lab.
+    await expect(asCy.query(api.assistant.threads.get, { threadId })).rejects.toThrow(/Chat not found/);
+    await expect(asCy.query(api.assistant.threads.list, { workspaceId: lab, scope: "all", paginationOpts: firstPage })).rejects.toThrow(/Workspace not found/);
+
+    // Made an admin of the lab, Ada manages it too.
+    await t.run(async (ctx) => {
+      const membership = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", team).eq("clerkUserId", "ada").eq("state", "active")).unique();
+      await ctx.db.patch("organizationMemberships", membership!._id, { role: "org:admin" });
+    });
+    expect(await asAda.query(api.assistant.threads.get, { workspaceId: lab, threadId })).toMatchObject({ title: "Lab chat", role: "owner" });
+    await asAda.mutation(api.assistant.threads.remove, { workspaceId: lab, threadId });
+    expect(await listed(asBen, "all", lab)).toEqual([]);
+  });
+
+  it("from before workspaces go to their owner's own, with each person's record there, however often the backfill runs", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      const { ada } = await people(t);
+      // As they were before workspaces: no workspace, no maker.
+      const own = await t.run(async (ctx) => personalWorkspaceOf(ctx, ada));
+      await runUntriggered(t, async (ctx) => {
+        await ctx.db.insert("assistantThreads", { ownerId: ada, title: "Old", agentThreadId: "old", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("assistantSpenders", { userId: ada, newChats: { replyLimit: 50 }, recent: [{ reply: "old", credits: 3 }, { reply: "settled late", credits: 2 }] });
+      });
+      // Before the backfill reaches her record, a chat she starts in her own workspace still takes what she chose for new chats.
+      const asAda = t.withIdentity({ subject: "ada", tokenIdentifier: "ada|test" });
+      const fresh = await asAda.mutation(api.assistant.threads.create, {});
+      expect(await asAda.query(api.assistant.spending.get, { threadId: fresh })).toMatchObject({ replyLimit: 50 });
+      await t.run(async (ctx) => {
+        // That chat goes, and a record of hers is written in her own workspace after the deploy, before the backfill.
+        for (const thread of await ctx.db.query("assistantThreads").collect()) if (thread._id === fresh) await ctx.db.delete("assistantThreads", fresh);
+        for (const limit of await ctx.db.query("assistantLimits").collect()) await ctx.db.delete("assistantLimits", limit._id);
+        await ctx.db.insert("assistantSpenders", { userId: ada, workspaceId: own, recent: [{ reply: "settled late", credits: 4 }, { reply: "new", credits: 5 }] });
+      });
+      expect(await t.action(internal.migrations.assistantWorkspaces.verify, {})).toBe(2);
+      const rows = () => t.run(async (ctx) => ({ threads: await ctx.db.query("assistantThreads").collect(), spenders: await ctx.db.query("assistantSpenders").collect() }));
+      await t.mutation(internal.migrations.assistantWorkspaces.run, {});
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const once = await rows();
+      // Run again from the start, it changes nothing.
+      await t.mutation(internal.migrations.assistantWorkspaces.run, { reset: true });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await rows()).toEqual(once);
+      expect(await t.action(internal.migrations.assistantWorkspaces.verify, {})).toBe(0);
+      expect(await t.run(async (ctx) => ctx.db.query("assistantThreads").collect())).toMatchObject([{ workspaceId: own, createdBy: ada }]);
+      // One record of hers there, with the settings she chose and every reply's cost, one settled in both added up.
+      expect(await t.run(async (ctx) => ctx.db.query("assistantSpenders").collect())).toMatchObject([
+        { workspaceId: own, newChats: { replyLimit: 50 }, recent: [{ reply: "old", credits: 3 }, { reply: "settled late", credits: 6 }, { reply: "new", credits: 5 }] },
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("are shared to read or to write, and only the owner renames, shares or deletes", async () => {
@@ -219,9 +299,11 @@ describe("assistant chats", () => {
     expect(await t.run((ctx) => ctx.db.query("assistantThreadAccess").take(5))).toEqual([]);
   });
 
-  it("go with their owner's account when it is purged, and so does that person's access to other chats", async () => {
+  it("go with their owner's account when it is purged, and so does that person's access to other chats, but not the chats they made in an organization", async () => {
     const t = convexTest(schema);
-    const { asAda, asBen, ada, ben } = await people(t);
+    const { asAda, asBen, ada, ben, team } = await people(t);
+    const lab = await t.run(async (ctx) => ensureWorkspace(ctx, { kind: "organization", organizationId: team }));
+    const labs = await asAda.mutation(api.assistant.threads.create, { workspaceId: lab, title: "Ada's lab chat" });
     const hers = await asAda.mutation(api.assistant.threads.create, { title: "Ada's" });
     await asAda.mutation(api.assistant.sharing.grant, { threadId: hers, principal: { kind: "user", userId: ben }, role: "read" });
     const his = await asBen.mutation(api.assistant.threads.create, { title: "Ben's" });
@@ -235,6 +317,8 @@ describe("assistant chats", () => {
     expect(titles(await asBen.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage }))).toEqual(["Ben's"]);
     const left = await t.run((ctx) => ctx.db.query("assistantThreadAccess").take(10));
     expect(left.map((row) => [row.threadId, row.role])).toEqual([[his, "owner"]]);
+    // The lab's chat stays the lab's.
+    expect(await asBen.query(api.assistant.threads.get, { workspaceId: lab, threadId: labs })).toMatchObject({ title: "Ada's lab chat" });
   });
 
   it("are refused while the assistant is switched off", async () => {

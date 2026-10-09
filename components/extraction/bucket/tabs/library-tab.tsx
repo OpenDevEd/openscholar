@@ -39,6 +39,7 @@ import { buildDedupeKey } from "@/lib/bucket/dedupe";
 import { BUCKET_SOURCE_LABELS } from "@/lib/bucket/source-labels";
 import { bucketAdded } from "@/lib/toast/bucket";
 import { hoverSpring, sidebarSpring } from "@/lib/ui/sidebar-motion";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import {
   getExtractionSourceSidebarDimensions,
   useExtractionSourceSidebarStore,
@@ -53,6 +54,7 @@ const SIDEBAR_PAGE_SIZE = 20;
 const SIDEBAR_ROW_PX = 34;
 
 export function LibraryTab({ paperLimit }: { paperLimit: number }) {
+  const workspaceId = useWorkspace();
   const [view, setView] = useState<ViewId>("all");
   const [viewName, setViewName] = useState<string | undefined>(undefined);
   const [searchInput, setSearchInput] = useState("");
@@ -65,7 +67,7 @@ export function LibraryTab({ paperLimit }: { paperLimit: number }) {
 
   const list = usePaginatedQuery(
     api.extraction.sources.library.list,
-    { query, collectionId: collectionArg },
+    inWorkspace(workspaceId, { query, collectionId: collectionArg }),
     { initialNumItems: 30 },
   );
 
@@ -129,9 +131,10 @@ export function LibraryTab({ paperLimit }: { paperLimit: number }) {
   };
 
   const selectAllAcross = async () => {
+    if (!workspaceId) return;
     const res = await convex.query(
       api.extraction.sources.library.listAllIds,
-      { query, collectionId: collectionArg },
+      { workspaceId, query, collectionId: collectionArg },
     );
     const result = addMany(
       res.items.map((r) => toBucketItem(r)),
@@ -248,8 +251,9 @@ type SourceSidebarProps = {
 };
 
 function SourceSidebar({ view, onChange }: SourceSidebarProps) {
-  const collections = useCursorPage(api.library.collections.listCollections, {}, SIDEBAR_PAGE_SIZE);
-  const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, {});
+  const workspaceId = useWorkspace();
+  const collections = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), SIDEBAR_PAGE_SIZE);
+  const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
   const isCollapsed = useExtractionSourceSidebarStore((s) => s.isCollapsed);
   const hasHydrated = useExtractionSourceSidebarStore((s) => s._hasHydrated);
   const toggle = useExtractionSourceSidebarStore((s) => s.toggle);

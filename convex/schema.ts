@@ -63,17 +63,24 @@ import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValid
 
 export default defineSchema({
   // `searchText`: what its list's search matches, kept by a trigger (convex/lib/searchText.ts); missing until migrations/searchText reaches a row from before.
-  searches: defineTable({ userId: v.id("users"), localId: v.string(), revision: v.number(), data: storedSearchValidator, searchText: v.optional(v.string()) })
+  // The workspace a search is in and who made it (#650): set on every new one, and backfilled
+  // (convex/migrations/researchWorkspaces.ts) before reads move off `userId`.
+  searches: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), createdBy: v.optional(v.id("users")), localId: v.string(), revision: v.number(), data: storedSearchValidator, searchText: v.optional(v.string()) })
     .index("by_user", ["userId"])
     .index("by_user_and_createdAt", ["userId", "data.createdAt"])
     .index("by_user_and_count", ["userId", "data.count"])
     .index("by_user_and_localId", ["userId", "localId"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId"] }),
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_and_createdAt", ["workspaceId", "data.createdAt"])
+    .index("by_workspace_and_count", ["workspaceId", "data.count"])
+    .index("by_workspace_and_localId", ["workspaceId", "localId"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "workspaceId"] }),
   // How many saved searches, shortcuts and screening jobs a person has, kept by the triggers on those tables
   // (research/recordCounts.ts), for page totals. While a first count is being taken,
   // `countedTo` is the creation time it has reached.
-  recordCounts: defineTable({ userId: v.id("users"), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), count: v.number(), countedTo: v.optional(v.number()) })
-    .index("by_user_and_table", ["userId", "table"]),
+  recordCounts: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), count: v.number(), countedTo: v.optional(v.number()) })
+    .index("by_user_and_table", ["userId", "table"])
+    .index("by_workspace_and_table", ["workspaceId", "table"]),
   searchRevisions: defineTable({
     userId: v.id("users"), searchId: v.id("searches"), revision: v.number(),
     author: v.union(v.literal("user"), v.literal("assistant")),
@@ -92,7 +99,7 @@ export default defineSchema({
   // page and its Screen all jobs both answer into; a Screen all job run before #334 has its
   // own, with no search. `version` counts the writes to its answers, so a revision finds its
   // answers exactly.
-  screenings: defineTable({ userId: v.id("users"), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number(), removals: removalsValidator })
+  screenings: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), searchId: v.optional(v.id("searches")), version: v.number(), createdAt: v.number(), removals: removalsValidator })
     .index("by_search", ["searchId"]),
   // `version`: the screening's when the row was last written; a row from before this was kept owes every removal.
   screeningAnswers: defineTable({ screeningId: v.id("screenings"), paperId: v.string(), answers: paperAnswersValidator, version: v.optional(v.number()) })
@@ -103,12 +110,17 @@ export default defineSchema({
     // A paper's answers as of a version: what a Screen all job answered, for its export.
     .index("by_screening_and_paper_and_version", ["screeningId", "paperId", "version"]),
   // `sortName` is the name as the Bookmarks page orders it (lower case); optional until migrations/pagedRecords has run.
-  queryShortcuts: defineTable({ userId: v.id("users"), data: shortcutValidator, sortName: v.optional(v.string()), searchText: v.optional(v.string()) })
+  // Bookmarks, by workspace from #650 as searches are.
+  queryShortcuts: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), createdBy: v.optional(v.id("users")), data: shortcutValidator, sortName: v.optional(v.string()), searchText: v.optional(v.string()) })
     .index("by_user_and_createdAt", ["userId", "data.createdAt"])
     .index("by_user_and_sortName", ["userId", "sortName"])
     .index("by_user", ["userId"])
     .index("by_user_and_shorthand", ["userId", "data.shorthand"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId"] }),
+    .index("by_workspace_and_createdAt", ["workspaceId", "data.createdAt"])
+    .index("by_workspace_and_sortName", ["workspaceId", "sortName"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_and_shorthand", ["workspaceId", "data.shorthand"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "workspaceId"] }),
   paperRatings: defineTable({ userId: v.id("users"), data: ratingValidator })
     .index("by_user", ["userId"])
     .index("by_user_and_paperId", ["userId", "data.paperId"]),
@@ -155,10 +167,15 @@ export default defineSchema({
   authorProfiles: defineTable({
     ...authorContentFields,
     ownerId: v.id("users"),
+    // The workspace that owns it, and who made it (#650). A profile whose owner's account was purged
+    // before workspaces has neither: it stays in the directory, owned by nobody.
+    workspaceId: v.optional(v.id("workspaces")),
+    createdBy: v.optional(v.id("users")),
     photoId: v.optional(v.id("_storage")),
     revision: v.number(),
     updatedAt: v.number(),
   }).index("by_ownerId", ["ownerId"])
+    .index("by_workspace", ["workspaceId"])
     .searchIndex("search_name", {searchField: "name"}),
 
   authorProfileMembers: defineTable({
@@ -206,10 +223,10 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   assistantThreads: defineTable(assistantThreadFields)
     .index("by_agentThreadId", ["agentThreadId"])
-    // An account's chats, for deleting them with it.
-    .index("by_owner", ["ownerId"])
-    // The replies being written for a person, which are limited.
-    .index("by_replySender", ["reply.senderId"])
+    // A workspace's chats, newest first.
+    .index("by_workspace_and_lastMessageAt", ["workspaceId", "lastMessageAt"])
+    // The replies being written in a workspace, which are limited.
+    .index("by_replyWorkspace", ["reply.workspaceId"])
     // Every chat writing a reply, oldest first, for releasing the ones whose action died.
     .index("by_replyStartedAt", ["reply.startedAt"]),
   // The actions a chat's replies ran, each found by the model's ID for the call.
@@ -230,7 +247,7 @@ export default defineSchema({
   assistantBulkPapers: defineTable({ userId: v.id("users"), key: v.string(), first: v.number(), items: v.string(), runningSince: v.optional(v.number()) }).index("by_key_and_first", ["key", "first"]),
   // What each person lets the assistant spend in a chat, and each person's own record (convex/assistant/spending.ts).
   assistantLimits: defineTable(assistantLimitFields).index("by_thread_and_user", ["threadId", "userId"]).index("by_user", ["userId"]),
-  assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]),
+  assistantSpenders: defineTable(assistantSpenderFields).index("by_user", ["userId"]).index("by_workspace_and_user", ["workspaceId", "userId"]),
   // Files attached to chats (convex/assistant/files.ts): a message's, a chat's and a person's, and the ones due to expire.
   assistantFiles: defineTable(assistantFileFields)
     .index("by_message", ["messageId"])
@@ -250,14 +267,11 @@ export default defineSchema({
   evidenceLibraryApprovedQueries: defineTable({ libraryId: v.id("evidenceLibraries"), version: v.string(), fingerprint: v.string() })
     .index("by_libraryId_and_version", ["libraryId", "version"]),
   evidenceLibraries: defineTable(evidenceLibraryFields)
-    .index("by_organizationId", ["organizationId"])
-    .index("by_organizationId_and_name_and_state", [
-      "organizationId",
-      "name",
-      "state",
-    ])
-    .index("by_organizationId_and_slug", ["organizationId", "slug"])
-    .index("by_organizationId_and_state", ["organizationId", "state"]),
+    // A workspace's libraries, in the order they were made.
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_and_state", ["workspaceId", "state"])
+    .index("by_workspace_and_name_and_state", ["workspaceId", "name", "state"])
+    .index("by_workspace_and_slug", ["workspaceId", "slug"]),
 
   evidenceLibraryInvitations: defineTable({
     libraryId: v.id("evidenceLibraries"),
@@ -324,7 +338,7 @@ export default defineSchema({
     // The sweep walks working domains oldest check first, so none starves.
     .index("by_state_and_checkedAt", ["state", "checkedAt"]),
 
-  clerkDeletedUsers: defineTable(clerkDeletedUserFields).index("by_clerkId", ["clerkId"]),
+  clerkDeletedUsers: defineTable(clerkDeletedUserFields).index("by_clerkId", ["clerkId"]).index("by_userId", ["userId"]),
 
   // One row per library: its Clerk OAuth application.
   evidenceLibraryOAuthClients: defineTable(evidenceLibraryOAuthClientFields)
@@ -551,6 +565,19 @@ export default defineSchema({
     .index("by_state", ["state"]),
 
   // ═══════════════════════════════════════════════════════════════
+  // WORKSPACES (#650) - where work lives: one per account, its own,
+  // and one per organization (convex/workspaces/create.ts)
+  // ═══════════════════════════════════════════════════════════════
+  workspaces: defineTable(
+    v.union(
+      v.object({ kind: v.literal("personal"), userId: v.id("users") }),
+      v.object({ kind: v.literal("organization"), organizationId: v.id("organizations") }),
+    ),
+  )
+    .index("by_userId", ["userId"])
+    .index("by_organizationId", ["organizationId"]),
+
+  // ═══════════════════════════════════════════════════════════════
   // BILLING - balances and plans live in Autumn (convex/billing).
   // billingAccounts caches each user's plan, features and balance;
   // billingCatalog caches Autumn's plans and features;
@@ -559,6 +586,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   billingAccounts: defineTable(billingAccountFields)
     .index("by_user", ["userId"])
+    .index("by_workspace", ["workspaceId"])
     .index("by_stripe_customer", ["stripeCustomerId"]),
   billingCatalog: defineTable({ ...billingCatalogValidator.fields, syncedAt: v.number() }),
   billingUsage: defineTable({
@@ -570,10 +598,13 @@ export default defineSchema({
     .index("by_charge", ["chargeId"])
     .index("by_queuedAt", ["queuedAt"])
     .index("by_user_and_createdAt", ["userId", "createdAt"])
+    .index("by_workspace_and_createdAt", ["workspaceId", "createdAt"])
     .index("by_job_and_createdAt", ["jobId", "createdAt"])
     .index("by_stripe_charge", ["stripeChargeId"]),
   billingHolds: defineTable({
     userId: v.id("users"),
+    // The workspace whose customer the hold is on (#650); slice 8 makes it required.
+    workspaceId: v.optional(v.id("workspaces")),
     chargeId: v.string(),
     credits: v.number(),
     release: v.id("_scheduled_functions"),
@@ -772,7 +803,10 @@ export default defineSchema({
     .index("by_user_status", ["userId", "status"])
     // The job list ordered by name.
     .index("by_user_and_sortName", ["userId", "sortName"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId"] }),
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_status", ["workspaceId", "status"])
+    .index("by_workspace_and_sortName", ["workspaceId", "sortName"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["userId", "workspaceId"] }),
 
   // ═══════════════════════════════════════════════════════════════
   // CHAT GENERATION USAGE - Provider-authoritative chat billing ledger
@@ -893,6 +927,7 @@ export default defineSchema({
     .index("by_job_and_status", ["jobId", "status"])
     .index("by_job_and_epoch_and_status", ["jobId", "runEpoch", "status"])
     .index("by_user_and_status", ["userId", "status"])
+    .index("by_workspace_and_status", ["workspaceId", "status"])
     .index("by_job_and_epoch_and_status_and_priority_and_createdAt", [
       "jobId",
       "runEpoch",
@@ -980,6 +1015,8 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   screeningJobs: defineTable({
     userId: v.id("users"),
+    workspaceId: v.optional(v.id("workspaces")),
+    createdBy: v.optional(v.id("users")),
     status: v.union(
       v.literal("processing"),
       v.literal("completed"),
@@ -1040,7 +1077,9 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
-    .index("by_user_status", ["userId", "status"]),
+    .index("by_user_status", ["userId", "status"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_status", ["workspaceId", "status"]),
 
   // ═══════════════════════════════════════════════════════════════
   // SCREENING RESULTS - individual paper screening outcomes
@@ -1110,6 +1149,8 @@ export default defineSchema({
     // Set while the paper waits for one of its person's paper slots (#335), whose papers
     // start oldest first across their jobs; cleared when it starts and gets its `workId`.
     waitingUser: v.optional(v.id("users")),
+    // The workspace whose slots it waits for (#650): a workspace's papers share one pool. Replaces `waitingUser`, which slice 8 drops.
+    waitingWorkspace: v.optional(v.id("workspaces")),
     waitingSince: v.optional(v.number()),
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
@@ -1126,12 +1167,14 @@ export default defineSchema({
     // A job's papers the model is reading: processing, and no longer waiting for a slot.
     .index("by_job_and_status_and_waitingUser", ["jobId", "status", "waitingUser"])
     .index("by_waitingUser_and_waitingSince", ["waitingUser", "waitingSince"])
+    .index("by_job_and_status_and_waitingWorkspace", ["jobId", "status", "waitingWorkspace"])
+    .index("by_waitingWorkspace_and_waitingSince", ["waitingWorkspace", "waitingSince"])
     .index("by_doneAt", ["doneAt"])
     .searchIndex("search_text", { searchField: "searchText", filterFields: ["jobId", "outcome"] }),
   // How many of a person's Screen all papers are running (#335). Written by job creation and
   // the bookkeeping worker, which start a person's waiting papers while this is under their
   // plan's limit, as Firecrawl's per-team semaphore does.
-  screeningSlots: defineTable({ userId: v.id("users"), running: v.number() }).index("by_user", ["userId"]),
+  screeningSlots: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), running: v.number() }).index("by_user", ["userId"]).index("by_workspace", ["workspaceId"]),
   // A Screen all job's finished papers, counted by the bookkeeping worker alone.
   screeningJobProgress: defineTable({
     jobId: v.id("screeningJobs"),
@@ -1157,7 +1200,7 @@ export default defineSchema({
   // How many papers a person has saved. It has its own row, not a field on `users`, because
   // every mutation of the person's reads their user row: a bulk save rewriting it would make
   // their other edits conflict (#383).
-  libraryCounts: defineTable({ userId: v.id("users"), count: v.number() }).index("by_user", ["userId"]),
+  libraryCounts: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), count: v.number() }).index("by_user", ["userId"]).index("by_workspace", ["workspaceId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEMS - User's saved paper library
@@ -1170,9 +1213,16 @@ export default defineSchema({
     .index("by_user_year", ["userId", "publicationYear"])
     .index("by_user_citedByCount", ["userId", "citedByCount"])
     .index("by_user_title", ["userId", "title"])
+    .index("by_workspace", ["workspaceId"])
+    .index("by_workspace_openalexId", ["workspaceId", "openalexId"])
+    .index("by_workspace_rating", ["workspaceId", "rating"])
+    .index("by_workspace_savedAt", ["workspaceId", "savedAt"])
+    .index("by_workspace_year", ["workspaceId", "publicationYear"])
+    .index("by_workspace_citedByCount", ["workspaceId", "citedByCount"])
+    .index("by_workspace_title", ["workspaceId", "title"])
     .searchIndex("search_library", {
       searchField: "searchableText",
-      filterFields: ["userId", "rating"],
+      filterFields: ["userId", "rating", "workspaceId"],
     }),
 
   paperMetadataChanges: defineTable({
@@ -1188,6 +1238,7 @@ export default defineSchema({
   // put it back by this record's ID. The collections it was in are its removedPlaces.
   libraryRemovals: defineTable({
     userId: v.id("users"),
+    workspaceId: v.optional(v.id("workspaces")),
     item: removedItemValidator,
     // The removed paper's ID, which its places not moved yet still name.
     itemId: v.id("libraryItems"),
@@ -1212,6 +1263,8 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   collections: defineTable({
     userId: v.id("users"),
+    workspaceId: v.optional(v.id("workspaces")),
+    createdBy: v.optional(v.id("users")),
     name: v.string(),
     // `name` folded for ordering (collectionSortName).
     sortName: v.string(),
@@ -1222,12 +1275,15 @@ export default defineSchema({
     membershipRevision: v.optional(v.number()),
   })
     .index("by_user_sortName", ["userId", "sortName"])
-    .searchIndex("search_name", { searchField: "name", filterFields: ["userId"] }),
+    .index("by_workspace_sortName", ["workspaceId", "sortName"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["userId", "workspaceId"] }),
 
   // An export a browser is downloading in parts: its token's SHA-256 digest, what it writes,
   // the next part to serve and where it starts, whether a part failed, and when the link expires.
   exports: defineTable({
     userId: v.id("users"),
+    // The workspace it reads (#650); the export itself is the person's.
+    workspaceId: v.optional(v.id("workspaces")),
     digest: v.string(),
     format: exportFormatValidator,
     source: exportSourceValidator,
@@ -1241,7 +1297,7 @@ export default defineSchema({
   }).index("by_digest", ["digest"]),
 
   // How many collections a person has, kept as they make and delete them, for page totals.
-  collectionCounts: defineTable({ userId: v.id("users"), count: v.number() }).index("by_user", ["userId"]),
+  collectionCounts: defineTable({ userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), count: v.number() }).index("by_user", ["userId"]).index("by_workspace", ["workspaceId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // LIBRARY ITEM COLLECTIONS - Junction table for many-to-many

@@ -17,6 +17,7 @@ import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./acc
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { moveResultAnswers } from "./drain";
 import { screeningJobPaperValidator, screeningOutcomeValidator } from "./validators";
+import { isInWorkspace } from "../workspaces/actor";
 
 /** Papers one page holds at most; each also reads its answers. */
 const PAGE_MAX = 50;
@@ -49,9 +50,9 @@ export const listAction = defineUserQuery({
     "each with its score, stars and the answer to every question it was scored on. Given `text`, the papers whose title or authors best match its words, best first.",
   args: { jobId: v.id("screeningJobs"), outcome: screeningOutcomeValidator, text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(screeningJobPaperValidator),
-  run: async (ctx, userId, { jobId, outcome, text, paginationOpts }) => {
+  run: async (ctx, { workspaceId }, { jobId, outcome, text, paginationOpts }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || job.userId !== userId) return { page: [], isDone: true, continueCursor: "" };
+    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return { page: [], isDone: true, continueCursor: "" };
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX), maximumBytesRead: PAGE_BYTES };
     const needle = searchTerms(text);
     const page = await (needle
@@ -75,9 +76,9 @@ export const getAction = defineUserQuery({
   description: "One screened paper of one of the person's screening jobs, as the job's list shows it: where it landed, its score, stars and the answer to every question it was scored on. `paperId` is the paper's `openalexId`.",
   args: { jobId: v.id("screeningJobs"), paperId: v.string() },
   returns: v.union(v.null(), screeningJobPaperValidator),
-  run: async (ctx, userId, { jobId, paperId }) => {
+  run: async (ctx, { workspaceId }, { jobId, paperId }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || job.userId !== userId) return null;
+    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
     const result = await screened(ctx, jobId, paperId);
     return result?.outcome ? await paperOf(ctx, job, result, result.outcome) : null;
   },
@@ -104,9 +105,9 @@ export const answerAction = defineUserMutation({
   // A change returns its undo, but not every one: an answer that moves a paper in or out of
   // what the job saves has none yet (#342). Until it does, the assistant asks before it changes one.
   undoable: false,
-  run: async (ctx, userId, { jobId, paperId: given, questionKey, answer, expect }, author) => {
+  run: async (ctx, { userId, workspaceId, author }, { jobId, paperId: given, questionKey, answer, expect }) => {
     let job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || job.userId !== userId) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
+    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
     const question = job.questions.find((q) => q.key === questionKey);
     if (!question) throw createError("VALIDATION_ERROR", "This screening doesn't ask that question");
     let result = await screened(ctx, jobId, given);

@@ -2,7 +2,7 @@
 // libraries are added (#357).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { MAX_ACCOUNTS_PER_EMAIL, MAX_ACTIVE_OPERATIONS_READ, MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_ORGANIZATION, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
+import { MAX_ACCOUNTS_PER_EMAIL, MAX_ACTIVE_OPERATIONS_READ, MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
 import { assertCredentialRoom, writeEvidenceLibraryCredentialRecord } from "./credentials";
 import { requireNoActiveConfigurationDeployment } from "./configurationDeployment";
 import { RUNTIME_ARRIVALS_READ } from "./versions";
@@ -16,14 +16,14 @@ describe("Evidence Library limits", () => {
   });
   afterEach(() => vi.unstubAllEnvs());
 
-  it("refuses another person once a library has the most it can grant", async () => {
+  it("refuses another person once a library has the most it can grant", { tags: ["size"] }, async () => {
     const fixture = await createReadySetupFixture("member_limit");
     const libraryId = fixture.created.libraryId;
     const organizationId = await fixture.t.run(async (ctx) => (await ctx.db.get("evidenceLibraries", libraryId))!.organizationId);
     await insertMany(fixture.t, "evidenceLibraryMembers", Array.from({ length: MAX_LIBRARY_MEMBERS }, (_, i) => ({ libraryId, clerkUserId: `user_full_${i}`, role: "editor", grantedBy: "owner", grantedAt: 1 })), 100);
     await fixture.t.run((ctx) => ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: "orgmem_next", clerkUserId: "user_next", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 }));
     await expect(fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_next", role: "editor" })).rejects.toThrow(/up to 1,000 people/);
-  }, 120_000);
+  });
 
   it("refuses a grant to someone who already has the most libraries one person can be granted (#427)", async () => {
     const fixture = await createReadySetupFixture("grant_limit");
@@ -162,7 +162,7 @@ describe("Evidence Library limits", () => {
     const fixture = await createDraftSetupFixture("library_limit");
     const template = await fixture.t.run(async (ctx) => (await ctx.db.get("evidenceLibraries", fixture.created.libraryId))!);
     const { _id, _creationTime, ...library } = template;
-    await insertMany(fixture.t, "evidenceLibraries", Array.from({ length: MAX_LIBRARIES_PER_ORGANIZATION - 1 }, (_, i) => ({ ...library, name: `Library ${i}`, slug: `library-limit-${i}` })), 100);
+    await insertMany(fixture.t, "evidenceLibraries", Array.from({ length: MAX_LIBRARIES_PER_WORKSPACE - 1 }, (_, i) => ({ ...library, name: `Library ${i}`, slug: `library-limit-${i}` })), 100);
     await expect(reserveLibraryAddressByName(fixture.admin, "One More", template.organizationId)).rejects.toThrow(/up to 200 libraries/);
   });
 });

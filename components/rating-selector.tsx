@@ -37,11 +37,11 @@ import { useRatingsStore } from "@/lib/store";
 import { useEffectiveRating } from "@/components/results-contexts";
 import posthog from "posthog-js";
 import { useTranslations } from "next-intl";
-import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { WorkInput } from "@/lib/library/trim-paper-data";
 import { paperArgs } from "@/components/library/save-control";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { useWorkspaceMutation } from "@/lib/workspaces/url";
 
 /**
  * Rates a paper. The rating is kept for the person either way; signed in, rating
@@ -50,8 +50,8 @@ import { useAuthReadiness } from "@/components/providers/convex-provider";
 export function useRatePaper() {
   const { setRating } = useRatingsStore();
   const { phase } = useAuthReadiness();
-  const saveToLibrary = useMutation(api.library.mutations.saveToLibrary);
-  const setLibraryRating = useMutation(api.library.mutations.setLibraryRating);
+  const saveToLibrary = useWorkspaceMutation(api.library.mutations.saveToLibrary);
+  const setLibraryRating = useWorkspaceMutation(api.library.mutations.setLibraryRating);
 
   return useCallback((paper: WorkInput, rating: number | null) => {
     setRating(paper.id, rating);

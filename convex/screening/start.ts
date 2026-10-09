@@ -10,6 +10,7 @@ import { heldPapers } from "../paperSets/held";
 import { countSearch, numbered, PAGE_SIZE, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest } from "../paperSets/search";
 import { checkScreening, papersIn, requireMinimum, screeningHold } from "./estimate";
+import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
 
 type PaperSet = Infer<typeof paperSetValidator>;
@@ -27,9 +28,10 @@ const READ_ACTION_MS = 4 * 60_000;
 
 /** How many papers a held set has, as the account counts them: what a job on it can take at most. */
 export const heldCount = internalQuery({
-  args: { userId: v.id("users"), set: paperSetValidator },
+  // `workspaceId` is optional only for a call from an action already running when this deployed (#650); required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), set: paperSetValidator },
   returns: v.union(v.number(), v.null()),
-  handler: (ctx, { userId, set }) => papersIn(ctx, userId, set),
+  handler: async (ctx, { userId, workspaceId, set }) => papersIn(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, set),
 });
 
 /**
@@ -38,24 +40,24 @@ export const heldCount = internalQuery({
  * counted first, so a query OpenAlex won't take, or a range past the search's last paper, is
  * refused here; a held set's count is the account's.
  */
-async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assistant", { set, first, last: through, ...config }: Config & { set: PaperSet; first: number; last: number }, call?: ChangeCall): Promise<{ jobId: Id<"screeningJobs"> }> {
+async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, author: "user" | "assistant", { set, first, last: through, ...config }: Config & { set: PaperSet; first: number; last: number }, call?: ChangeCall): Promise<{ jobId: Id<"screeningJobs"> }> {
   const spendCap = call?.credits;
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(through) || first < 1 || through < first) {
     throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   }
   requireMinimum(config.scoringConfig);
   // Everything the estimate checks before the person is asked, checked again by the start itself, so no path skips it.
-  await ctx.runQuery(internal.screening.start.check, { userId, set, first, last: through, ...config });
+  await ctx.runQuery(internal.screening.start.check, { userId, workspaceId, set, first, last: through, ...config });
   let total: number;
   let snapshot: SearchSnapshot | undefined;
   if (set.kind === "search") {
     // Typed here: the generated API's types depend on this module, so inference would loop.
-    const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId: set.searchId });
+    const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, workspaceId, searchId: set.searchId });
     snapshot = snapshotOf(found);
     total = await countSearch(snapshot.request, spender(ctx, found.clerkId));
   } else {
     // A set the account doesn't count is read to its end, or to `last`.
-    total = (await ctx.runQuery(internal.screening.start.heldCount, { userId, set })) ?? through;
+    total = (await ctx.runQuery(internal.screening.start.heldCount, { userId, workspaceId, set })) ?? through;
   }
   if (first > total) throw createError("VALIDATION_ERROR", "There are no papers in that range");
   // No further than the set goes: papers past its last are never asked for.
@@ -63,9 +65,9 @@ async function start(ctx: ActionCtx, userId: Id<"users">, author: "user" | "assi
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
   const step = call?.from ? { chatStep: call.from } : {};
   const open = (spend: { spendCap?: number; spendHold?: string }) =>
-    ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...config, papers: last - first + 1, ...step, ...spend });
+    ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, workspaceId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...config, papers: last - first + 1, ...step, ...spend });
   // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
-  return spendCap === undefined ? await open({}) : await startHeld(ctx, { userId, credits: spendCap, kind: "screening" }, (spendHold) => open({ spendCap, spendHold }));
+  return spendCap === undefined ? await open({}) : await startHeld(ctx, { userId, workspaceId, credits: spendCap, kind: "screening" }, (spendHold) => open({ spendCap, spendHold }));
 }
 
 /** How often an ended job is looked at again while a paper of it is still being read, and for how long at most: longer than a paper's worker can run. */
@@ -106,7 +108,7 @@ export const read = internalAction({
     try {
       for (;;) {
         // Typed here: the generated API's types depend on this module, so inference would loop.
-        const job: { userId: Id<"users">; set: PaperSet; first: number; last: number; read: number; resume?: string; snapshot?: SearchSnapshot } | null = await ctx.runQuery(internal.screening.queries.readingJob, { jobId });
+        const job: { userId: Id<"users">; workspaceId: Id<"workspaces">; set: PaperSet; first: number; last: number; read: number; resume?: string; snapshot?: SearchSnapshot } | null = await ctx.runQuery(internal.screening.queries.readingJob, { jobId });
         if (!job) return null;
         if (Date.now() - started > READ_ACTION_MS) return void (await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId }));
         const from = job.first + job.read;
@@ -114,13 +116,13 @@ export const read = internalAction({
         if (job.set.kind === "search") {
           // Numbered pages when the search's order has them as far as the job goes, each step its own; otherwise one cursor page a step, carrying on from where the last stopped.
           const paged = job.snapshot !== undefined && numbered(job.snapshot.request, job.last);
-          const { papers, ended, resume, taken } = await searchPapers(ctx, job.userId, { searchId: job.set.searchId, first: from, last: to }, job.snapshot, paged ? { goesOn: false } : { resume: job.resume, goesOn: true });
+          const { papers, ended, resume, taken } = await searchPapers(ctx, { userId: job.userId, workspaceId: job.workspaceId }, { searchId: job.set.searchId, first: from, last: to }, job.snapshot, paged ? { goesOn: false } : { resume: job.resume, goesOn: true });
           const read = paged ? to - from + 1 : taken;
           const done = ended || from + read > job.last;
           await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read, ...(resume ? { resume } : {}), ended: done });
           if (done) return null;
         } else {
-          const { papers, resume } = await heldPapers(ctx, job.userId, job.set, { first: from, last: to }, job.resume);
+          const { papers, resume } = await heldPapers(ctx, { userId: job.userId, workspaceId: job.workspaceId }, job.set, { first: from, last: to }, job.resume);
           const done = !resume || to >= job.last;
           await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: to - from + 1, ...(resume ? { resume } : {}), ended: done });
           if (done) return null;
@@ -136,10 +138,11 @@ export const read = internalAction({
 
 /** What starting a screening refuses before it reads a paper (./estimate.ts `checkScreening`). */
 export const check = internalQuery({
-  args: { userId: v.id("users"), set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: v.optional(saveToValidator), prune: v.optional(v.boolean()) },
+  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: v.optional(saveToValidator), prune: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { userId, ...request }) => {
-    await checkScreening(ctx, userId, request);
+  handler: async (ctx, { userId, workspaceId, ...request }) => {
+    await checkScreening(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, request);
     return null;
   },
 });
@@ -156,7 +159,7 @@ export const screenAction = defineUserAction({
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
-  estimate: screeningHold,
+  estimate: (ctx, actor, args) => screeningHold(ctx, actor, args),
   // The papers, the questions put to them and where the included ones go. How each answer scores is the job's own business.
   shown: ({ set, first, last, questions, saveTo, prune }) => ({
     ...(set.kind === "collection" ? { collectionId: set.collectionId } : set.kind === "search" ? { search: set.searchId } : set.kind === "screening" ? { screening: set.jobId } : { papers: "library" }),
@@ -167,7 +170,7 @@ export const screenAction = defineUserAction({
     ...(prune ? { prune } : {}),
   }),
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  run: (ctx, userId, args, author, call): Promise<{ jobId: Id<"screeningJobs"> }> => start(ctx, userId, author, args, call),
+  run: (ctx, { userId, workspaceId, author }, args, call): Promise<{ jobId: Id<"screeningJobs"> }> => start(ctx, { userId, workspaceId }, author, args, call),
 });
 export const screen = userAction(screenAction);
 export const screenForAssistant = assistantAction(screenAction);

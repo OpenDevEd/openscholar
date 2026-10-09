@@ -6,6 +6,7 @@ import schema from "../schema";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "./billing.test-support";
 import { insertUsage } from "./ledger";
 import { requestRefresh } from "./accounts";
+import { personalWorkspaceOf } from "../workspaces/personal";
 import { creditsAgg } from "../extraction/aggregates";
 import { convertUsdToCredits } from "../../lib/pricing";
 
@@ -305,14 +306,15 @@ describe("holding and charging", () => {
       await ctx.db.patch("billingAccounts", account!._id, { purchased: 5 });
     });
     const fetchedAt = Date.now();
-    await t.mutation(internal.billing.accounts.zeroBalance, { userId });
+    const workspaceId = await t.run(async (ctx) => personalWorkspaceOf(ctx, userId));
+    await t.mutation(internal.billing.accounts.zeroBalance, { workspaceId });
     expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.purchased)).toBe(0);
     const snapshot = await t.run(async (ctx) => {
-      const { _id, _creationTime, userId: _user, refreshedAt, refreshQueuedAt, ...rest } = (await ctx.db.query("billingAccounts").first())!;
+      const { _id, _creationTime, userId: _user, workspaceId: _workspace, refreshedAt, refreshQueuedAt, ...rest } = (await ctx.db.query("billingAccounts").first())!;
       return { ...rest, balance: 10 };
     });
 
-    await t.mutation(internal.billing.accounts.writeSnapshot, { userId, snapshot, withCard: false, fetchedAt: fetchedAt - 1 });
+    await t.mutation(internal.billing.accounts.writeSnapshot, { workspaceId, snapshot, withCard: false, fetchedAt: fetchedAt - 1 });
 
     expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.balance)).toBe(0);
   });
@@ -374,7 +376,7 @@ describe("holding and charging", () => {
     const t = convexTest(schema);
     const { userId } = await seedChat(t, 1_000);
     const user = await t.run(async (ctx) => {
-      await requestRefresh(ctx, userId);
+      await requestRefresh(ctx, await personalWorkspaceOf(ctx, userId));
       return await ctx.db.get(userId);
     });
 
@@ -385,6 +387,19 @@ describe("holding and charging", () => {
 });
 
 describe("an approved job's hold", () => {
+  it("names the hold's workspace as payer of every item under it, whichever workspace the item says", async () => {
+    const t = convexTest(schema);
+    const { userId, own, lab } = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { clerkId: "clerk_payer", email: "payer@test.local", state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_payer", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      return { userId, own: await personalWorkspaceOf(ctx, userId), lab: (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id };
+    });
+    // A job's hold taken on her own workspace, as one started before charges named their payer was.
+    await t.mutation(internal.billing.charge.hold, { userId, workspaceId: own, chargeId: "job-hold", credits: 50, expiresAt: Date.now() + 60_000, spend: true });
+    await t.mutation(internal.billing.charge.recordUnder, { userId, workspaceId: lab, under: "job-hold", chargeId: "item-1", credits: 5, kind: "extraction", description: "item", createdAt: 1 });
+    expect(await t.run(async (ctx) => (await ctx.db.query("billingUsage").collect()).map((row) => [row.chargeId, row.workspaceId]))).toEqual([["item-1", own]]);
+  });
+
   beforeEach(() => {
     fakeAutumn.reset();
     vi.stubGlobal("fetch", fakeAutumnFetch());
@@ -528,7 +543,7 @@ describe("an approved job's hold", () => {
 });
 
 describe("the usage ledger", () => {
-  it("counts hundreds of charges for one extraction job within Convex's limits", async () => {
+  it("counts hundreds of charges for one extraction job within Convex's limits", { tags: ["size"] }, async () => {
     vi.useFakeTimers();
     try {
       const t = convexTest({ schema, transactionLimits: true });
@@ -548,5 +563,5 @@ describe("the usage ledger", () => {
     } finally {
       vi.useRealTimers();
     }
-  }, 300_000);
+  });
 });

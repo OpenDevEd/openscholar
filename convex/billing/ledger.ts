@@ -12,7 +12,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { recordJobCredits } from "../extraction/aggregates";
-import { requestRefresh } from "./accounts";
+import { ownWorkspaceOf, requestRefresh } from "./accounts";
 import { usageAgg, usageOps } from "./usageLog";
 
 /**
@@ -40,7 +40,9 @@ export async function ledgerLater(ctx: MutationCtx) {
  * this worker, so charges settling together write nothing shared.
  */
 export async function insertUsage(ctx: MutationCtx, row: Omit<Doc<"billingUsage">, "_id" | "_creationTime" | "queuedAt">) {
-  const _id = await ctx.db.insert("billingUsage", { ...row, queuedAt: ctx.db.vars.commitTs });
+  // Paid by the spender's own workspace until charges name their payer (#650).
+  const workspaceId = row.workspaceId ?? (await ownWorkspaceOf(ctx, row.userId));
+  const _id = await ctx.db.insert("billingUsage", { ...row, ...(workspaceId ? { workspaceId } : {}), queuedAt: ctx.db.vars.commitTs });
   await ledgerLater(ctx);
   return _id;
 }
@@ -81,7 +83,8 @@ export const record = internalMutation({
         await recordJobCredits(ctx, { jobId: row.jobId, chargeId: row.chargeId, credits: row.credits });
       }
     }
-    for (const userId of new Set<Id<"users">>(rows.map((row) => row.userId))) await requestRefresh(ctx, userId);
+    // Each workspace that paid re-reads its account once.
+    for (const workspaceId of new Set(rows.flatMap((row) => (row.workspaceId ? [row.workspaceId] : [])))) await requestRefresh(ctx, workspaceId);
     // Counted: out of the queue.
     for (const row of rows) await ctx.db.patch("billingUsage", row._id, { queuedAt: undefined });
     return null;

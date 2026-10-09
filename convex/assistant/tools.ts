@@ -339,6 +339,7 @@ export function toolsFor(
   ctx: ActionCtx,
   {
     userId,
+    workspaceId,
     threadId,
     order,
     attemptId,
@@ -348,6 +349,8 @@ export function toolsFor(
     changed = {},
   }: {
     userId: Id<"users">;
+    /** The workspace its actions run in: the sender's own until chats belong to one (#650). */
+    workspaceId: Id<"workspaces">;
     threadId: Id<"assistantThreads">;
     order: number;
     attemptId: string;
@@ -375,7 +378,7 @@ export function toolsFor(
   const hold = async (entry: UserAction, input: Record<string, unknown>) => {
     const key = sameCall(entry.path, input);
     if (!holds.has(key)) {
-      const read = await ctx.runQuery(internal.assistant.asking.spend, { threadId, userId, path: entry.path, input: JSON.stringify(input) });
+      const read = await ctx.runQuery(internal.assistant.asking.spend, { threadId, userId, workspaceId, path: entry.path, input: JSON.stringify(input) });
       if (!read) return null;
       holds.set(key, read);
     }
@@ -413,12 +416,12 @@ export function toolsFor(
     const subject = subjectOf(input);
     const stepId =
       allowed ??
-      (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(within ? { credits: within.credits } : {}), ...(onlyReads(entry) ? { reads: true as const, request: made } : {}) }));
+      (await ctx.runMutation(internal.assistant.steps.begin, { threadId, order, userId, workspaceId, toolCallId, path: entry.path, input: cut(JSON.stringify(input), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(within ? { credits: within.credits } : {}), ...(onlyReads(entry) ? { reads: true as const, request: made } : {}) }));
     try {
       // A change ends its step in its own transaction, so the two are saved together. A read's step is ended here.
       const change = changesSomething(entry);
       // What the person let it hold goes with a call that spends credits: the figure they said yes to, or the one their allowance covered.
-      const result = await written(() => runAction(ctx, userId, entry, input, key, stepId, approved, allowed ? approvedFor : within?.credits));
+      const result = await written(() => runAction(ctx, { userId, workspaceId }, entry, input, key, stepId, approved, allowed ? approvedFor : within?.credits));
       if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
       note(entry.path, input, change ? "made" : result);
       // A change that returns nothing says it was made. A read that returns nothing found nothing.
@@ -441,9 +444,9 @@ export function toolsFor(
       const held = await hold(entry, input);
       return held !== null && "credits" in held && !held.covered;
     }
-    if (runsWithoutAsking(entry) && !(await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) }))) return false;
+    if (runsWithoutAsking(entry) && !(await ctx.runQuery(internal.assistant.asking.first, { userId, workspaceId, path: entry.path, input: JSON.stringify(input) }))) return false;
     // A change the person would be asked about is tried first, and undone: what would refuse it is told to the model instead of asked about.
-    const refused = entry.kind === "mutation" ? await tried(entry.path, [input]) : await ctx.runQuery(internal.assistant.asking.check, { userId, path: entry.path, input: JSON.stringify(input) });
+    const refused = entry.kind === "mutation" ? await tried(entry.path, [input]) : await ctx.runQuery(internal.assistant.asking.check, { userId, workspaceId, path: entry.path, input: JSON.stringify(input) });
     if (refused) {
       holds.set(sameCall(entry.path, input), { refused });
       return false;
@@ -453,7 +456,7 @@ export function toolsFor(
   /** Why changes would all be refused, from trying them and undoing it (./bulk.ts `tryChanges`). Null when one of them would be made, or trying says nothing. */
   const tried = async (path: string, items: unknown[]): Promise<string | null> => {
     try {
-      await ctx.runMutation(internal.assistant.bulk.tryChanges, { userId, path, items: JSON.stringify(items) });
+      await ctx.runMutation(internal.assistant.bulk.tryChanges, { userId, workspaceId, path, items: JSON.stringify(items) });
     } catch (error) {
       const data = readConvexErrorData(error);
       if (data?.code === TRIED && data.message) {
@@ -478,7 +481,7 @@ export function toolsFor(
         found = { entry: batch.entry, items: batch.each, kept: JSON.stringify(batch.each), about: shared(batch.each) };
       } else {
         const given = input as ChangePapers;
-        const papers = await papersOf(ctx, userId, given);
+        const papers = await papersOf(ctx, { userId, workspaceId }, given);
         if (!papers.length) return { error: "There are no papers there: the set holds none in that range." };
         const change = changeOf(given, papers);
         const entry = entryAt(change.path)!;
@@ -494,7 +497,7 @@ export function toolsFor(
         found = { entry, items: change.items, kept, about: change.shared, shown: JSON.stringify({ shared: change.shared, each: papers.slice(0, ASKED_EACH_MAX).map((paper) => cut(paper.title, 200)) }) };
       }
       const about = JSON.stringify(found.about);
-      const subject = await ctx.runQuery(internal.assistant.steps.about, { userId, input: about });
+      const subject = await ctx.runQuery(internal.assistant.steps.about, { userId, workspaceId, input: about });
       const variant = variantIn(found.entry.path, found.items[0]);
       return { tool: toolName, entry: found.entry, items: found.items, kept: found.kept, about, ...(found.shown ? { shown: found.shown } : {}), ...(variant ? { variant } : {}), ...(subject ? { subject } : {}) };
     } catch (error) {
@@ -525,7 +528,7 @@ export function toolsFor(
     if (!runsWithoutAsking(entry)) return true;
     if ((changes.get(kindOf(entry, items[0])) ?? 0) + items.length > BULK) return true;
     if (entry.kind === "query" || !entry.asksFirst) return false;
-    for (const input of items) if (await ctx.runQuery(internal.assistant.asking.first, { userId, path: entry.path, input: JSON.stringify(input) })) return true;
+    for (const input of items) if (await ctx.runQuery(internal.assistant.asking.first, { userId, workspaceId, path: entry.path, input: JSON.stringify(input) })) return true;
     return false;
   };
   /**
@@ -553,6 +556,7 @@ export function toolsFor(
         threadId,
         order,
         userId,
+        workspaceId,
         toolCallId,
         path: entry.path,
         // The first of them say what kind of change it is; all of them would not fit.
@@ -580,7 +584,7 @@ export function toolsFor(
       }
       try {
         // Typed here: the generated API's types depend on this module, so inference would loop.
-        const done: { took: number; made: number; reversible: number; failed: number; why?: string } = await written(() => ctx.runMutation(internal.assistant.bulk.apply, { userId, stepId, path: entry.path, items: JSON.stringify(chunk), approved: asked !== undefined, key: `${key}:${tried}` }));
+        const done: { took: number; made: number; reversible: number; failed: number; why?: string } = await written(() => ctx.runMutation(internal.assistant.bulk.apply, { userId, workspaceId, stepId, path: entry.path, items: JSON.stringify(chunk), approved: asked !== undefined, key: `${key}:${tried}` }));
         made += done.made;
         reversible += done.reversible;
         failed += done.failed;
@@ -696,7 +700,7 @@ export function toolsFor(
     return true;
   };
   const tools: ToolSet = {
-    ...assistantTools(ctx, userId, core(), ({ entry, input, toolCallId }) => call(entry, input, toolCallId)),
+    ...assistantTools(ctx, { userId, workspaceId }, core(), ({ entry, input, toolCallId }) => call(entry, input, toolCallId)),
     find_action: tool({
       description:
         "Finds what else you can do in the person's account: every action that has no tool of its own, by keywords from what you want to do, such as \"rename collection\" or \"extraction results\". " +

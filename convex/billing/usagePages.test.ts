@@ -56,6 +56,24 @@ describe("charge pages", () => {
     expect(await other.query(api.billing.usage.countCharges, { jobId })).toBe(0);
   });
 
+  it("lists and totals what each workspace paid: an organization's charges stay off its member's own page", async () => {
+    const { t, userId, me } = await setup();
+    const lab = await t.run(async (ctx) => {
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: "orgmem_pages", clerkUserId: "clerk_pages", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+      const lab = (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id;
+      await insertUsage(ctx, { userId, chargeId: "own", credits: 3, kind: "search", description: "own", createdAt: 1000 });
+      await insertUsage(ctx, { userId, workspaceId: lab, chargeId: "lab", credits: 5, kind: "search", description: "lab", createdAt: 2000 });
+      return lab;
+    });
+    await counted(t);
+    const listed = async (of: { workspaceId?: typeof lab } = {}) => (await me.query(api.billing.usage.listCharges, { ...of, paginationOpts: { cursor: null, numItems: 10 } })).page.map((r) => r.description);
+    expect(await listed()).toEqual(["own"]);
+    expect(await listed({ workspaceId: lab })).toEqual(["lab"]);
+    expect(await me.query(api.billing.usage.countCharges, {})).toBe(1);
+    expect(await me.query(api.billing.usage.spending, { workspaceId: lab, since: 0, days: 1 })).toMatchObject({ page: [{ kind: "search", credits: 5 }] });
+  });
+
   it("lists a job's charges by their time, whatever order they were recorded in", async () => {
     const { t, userId, jobId, me } = await setup();
     await t.run(async (ctx) => {

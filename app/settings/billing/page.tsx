@@ -38,6 +38,7 @@ import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { defaultPlanId, findPlan, planCreditCap, topUpBundles } from "@/lib/billing/catalog";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 type Kind = "chat" | "extraction" | "screening" | "search" | "translation" | "wallet_api" | "refund";
 const KINDS: Record<Kind, { icon: AppIcon; tint: string }> = {
@@ -54,6 +55,7 @@ const DAYS = 30;
 const CHARGES_PER_PAGE = 8;
 
 export default function BillingPage() {
+  const workspaceId = useWorkspace();
   const t = useTranslations("billingPage");
   const tu = useTranslations("billingPage.usage");
   const tc = useTranslations("common");
@@ -82,11 +84,11 @@ export default function BillingPage() {
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   const start = today.getTime() - (DAYS - 1) * DAY;
-  const { data: spending } = useProtectedQuery(api.billing.usage.spending, { since: start, days: DAYS });
+  const { data: spending } = useProtectedQuery(api.billing.usage.spending, inWorkspace(workspaceId, { since: start, days: DAYS }));
   // Charges are read a page at a time, newest first; the count totals the pages.
   const ofJob = jobId ? { jobId: jobId as Id<"extractionJobs"> } : {};
-  const charges = useCursorPage(api.billing.usage.listCharges, ofJob, CHARGES_PER_PAGE);
-  const { data: counted } = useProtectedQuery(api.billing.usage.countCharges, ofJob);
+  const charges = useCursorPage(api.billing.usage.listCharges, inWorkspace(workspaceId, ofJob), CHARGES_PER_PAGE);
+  const { data: counted } = useProtectedQuery(api.billing.usage.countCharges, inWorkspace(workspaceId, ofJob));
   // The last count stays up while another job's charges are counted.
   const [chargeCount, setChargeCount] = useState(counted);
   if (counted !== undefined && counted !== chargeCount) setChargeCount(counted);

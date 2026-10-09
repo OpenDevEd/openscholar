@@ -65,7 +65,7 @@ describe("admin model list", () => {
     await expect(member.query(api.models.admin.summary, all)).rejects.toThrow(/Admins only/);
   });
 
-  it("counts on a catalog the sync never lets pass its cap, models it keeps without reading included", async () => {
+  it("counts on a catalog the sync never lets pass its cap, models it keeps without reading included", { tags: ["size"] }, async () => {
     const { t } = await setup();
     const entry = (i: number) => ({ modelId: `bulk/model-${i}`, name: `Bulk ${i}`, provider: "bulk", inputPricePerMillion: 1, outputPricePerMillion: 2 });
     // The ten seeded models are kept as they are, so a full catalog beside them is one sync too large.
@@ -74,5 +74,5 @@ describe("admin model list", () => {
     await expect(sync(MAX_CATALOG_MODELS - 9)).rejects.toThrow(/sync limit/);
     await sync(MAX_CATALOG_MODELS - 10);
     expect(await t.run(async (ctx) => (await activeModels(ctx).take(MAX_CATALOG_MODELS + 1)).length)).toBe(MAX_CATALOG_MODELS);
-  }, 120_000);
+  });
 });

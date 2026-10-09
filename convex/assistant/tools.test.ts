@@ -26,6 +26,9 @@ import { notePart } from "../../lib/assistant/view";
 import { misfit } from "./failures";
 import { BULK_FIRST, DEFINITION_MAX, MAX_FAILED_ROUNDS, NO_ESTIMATE, batched, circling, core, definition, found, kindOf, written } from "./tools";
 import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor } from "./turn.test-support";
+import { personalWorkspaceOf } from "../workspaces/actor";
+import { ensureWorkspace } from "../workspaces/create";
+import { ownActor } from "../workspaces/actor.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
@@ -329,7 +332,7 @@ describe("the assistant's tools", () => {
     const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => item.title).sort());
     const undos = () => t.run(async (ctx) => (await ctx.db.query("assistantStepUndos").collect()).length);
     // On a card, a saved paper's ID reads as its title. A title or a name typed to look like an ID stays as typed, and what a call does to a record is always said.
-    const said = (args: unknown) => t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify(args)));
+    const said = (args: unknown) => t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, await personalWorkspaceOf(ctx, ada), JSON.stringify(args)));
     expect(await said({ title: "W1", openalexId: work(1).openalexId })).toEqual([{ name: "title", value: "W1" }, { name: "title", value: "Trial 1" }]);
     expect(await said({ command: { kind: "editSearch", edit: { kind: "clearResponses", paperId: work(1).openalexId } } })).toContainEqual({ name: "kind", value: "clearResponses" });
 
@@ -532,7 +535,7 @@ describe("the assistant's tools", () => {
     vi.unstubAllEnvs();
   });
 
-  it("change as many papers as the plan allows in one go: past it the set is refused unread, and a big change runs exactly the papers asked about (#637)", async () => {
+  it("change as many papers as the plan allows in one go: past it the set is refused unread, and a big change runs exactly the papers asked about (#637)", { tags: ["size"] }, async () => {
     const t = convexTest(schema);
     const { asAda, say, sayUntilAsked, settled, steps } = await chatOf(t);
     vi.stubEnv("OPENALEX_CONTACT_EMAIL", "contact@example.test");
@@ -581,7 +584,7 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").take(total + 1)).length)).toBe(total);
     expect((await steps())[0]).toMatchObject({ status: "done", count: total });
     vi.unstubAllEnvs();
-  }, 300_000);
+  });
 
   it("tell the model a change that returns nothing was made, make again a write that collided, and keep a reply going past arguments the asking check can't read", async () => {
     const t = convexTest(schema);
@@ -598,7 +601,8 @@ describe("the assistant's tools", () => {
     expect(await shown()).toEqual(["user: Delete it", "step: library/collections:deleteCollection done", "assistant: Deleted."]);
 
     // Whether a call asks first is read before it runs. Arguments that check can't read aren't a reason to ask: the call goes on to run, and fails there with a message the model reads.
-    expect(await t.query(internal.assistant.asking.first, { userId: ada, path: "library/mutations:removeFromLibrary", input: "{}" })).toBe(false);
+    const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, ada));
+    expect(await t.query(internal.assistant.asking.first, { userId: ada, workspaceId, path: "library/mutations:removeFromLibrary", input: "{}" })).toBe(false);
 
     // Calls made in one step run together. A write that lost a race for a row changed nothing, and is made again.
     const collision = new Error('Documents read from or written to the "libraryCounts" table changed while this mutation was being run and on every subsequent retry.');
@@ -936,9 +940,9 @@ describe("the assistant's tools", () => {
     expect(await always(300, 5_000)).toEqual({});
     // A search's papers are OpenAlex's to count, so its hold is for the whole range asked for, whatever count the account last saw.
     await asAda.mutation(api.research.records.importBatch, { accountId: "ada", searches: [{ search: { id: "not-counted-yet", query: "tutoring", field: "title_and_abstract", count: 0, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z" } }], shortcuts: [], ratings: [] });
-    expect(await t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(100 * perPaper);
+    expect(await t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(100 * perPaper);
     // Rules with no least score include every paper whatever it's answered: refused before anyone is asked to pay for it.
-    await expect(t.run(async (ctx) => screeningHold(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId, { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [] } }))).rejects.toThrow(/minimumScore/);
+    await expect(t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [] } }))).rejects.toThrow(/minimumScore/);
     // A collection's hold covers the papers its count says it has, not the whole range asked for.
     const uncounted = await t.run(async (ctx) => {
       const userId = (await ctx.db.get("assistantThreads", threadId))!.ownerId;
@@ -947,7 +951,7 @@ describe("the assistant's tools", () => {
         const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId, title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
         await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: 1 });
       }
-      return screeningHold(ctx, userId, { set: { kind: "collection", collectionId }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } });
+      return screeningHold(ctx, await ownActor(ctx, userId), { set: { kind: "collection", collectionId }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } });
     });
     expect(uncounted).toBe(3 * perPaper);
 
@@ -968,17 +972,17 @@ describe("the assistant's tools", () => {
     const { ada, asAda, threadId } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
     const paper = Object.fromEntries(Array.from({ length: 14 }, (_, index) => [`field${index}`, `value ${index}`]));
-    const details = await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ paper, collectionId, inCollection: false, note: null })));
+    const details = await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, await personalWorkspaceOf(ctx, ada), JSON.stringify({ paper, collectionId, inCollection: false, note: null })));
     // The call's own arguments lead, a value taken off is said, and the paper's fields fill what's left.
     expect(details.slice(0, 3)).toEqual([{ name: "collection", value: "Trials" }, { name: "inCollection", value: "false" }, { name: "note", value: "null" }]);
     expect(details).toHaveLength(12);
     // A collection that isn't hers stays an ID.
-    const theirs = await t.run(async (ctx) => ctx.db.insert("collections", { ...(await ctx.db.get("collections", collectionId))!, _id: undefined, _creationTime: undefined, userId: (await ctx.db.query("users").collect()).find((user) => user._id !== ada)!._id, name: "Private to someone else" } as never));
-    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId: theirs })))).toEqual([{ name: "collection", value: theirs }]);
+    const theirs = await t.run(async (ctx) => ctx.db.insert("collections", { ...(await ctx.db.get("collections", collectionId))!, _id: undefined, _creationTime: undefined, workspaceId: undefined, createdBy: undefined, userId: (await ctx.db.query("users").collect()).find((user) => user._id !== ada)!._id, name: "Private to someone else" } as never));
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, await personalWorkspaceOf(ctx, ada), JSON.stringify({ collectionId: theirs })))).toEqual([{ name: "collection", value: theirs }]);
     // A collection named by its ID and again by the name the call expects it to have is one line.
-    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ collectionId, name: "Trials" })))).toEqual([{ name: "collection", value: "Trials" }]);
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, await personalWorkspaceOf(ctx, ada), JSON.stringify({ collectionId, name: "Trials" })))).toEqual([{ name: "collection", value: "Trials" }]);
     // What an undo expects the record to be, and which kind of record an ID beside it names, aren't part of what's asked.
-    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ threadId, principal: { kind: "user", userId: ada }, role: "read", expect: { answer: true, by: "model", at: 7 } })))).toEqual([
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, await personalWorkspaceOf(ctx, ada), JSON.stringify({ threadId, principal: { kind: "user", userId: ada }, role: "read", expect: { answer: true, by: "model", at: 7 } })))).toEqual([
       { name: "thread", value: "Reading trials" },
       { name: "role", value: "read" },
       { name: "user", value: expect.any(String) },
@@ -986,11 +990,11 @@ describe("the assistant's tools", () => {
     // A saved search is shown by its query, and one saved with filters alone by nothing, never by its ID.
     const { id: asked } = await asAda.mutation(api.research.searches.create, { query: "tutoring trials" });
     const { id: filtered } = await asAda.mutation(api.research.searches.create, { fromYear: 2020, toYear: 2024 });
-    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ id: asked })))).toEqual([{ name: "id", value: "tutoring trials" }]);
-    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ id: filtered })))).toEqual([{ name: "id", value: "" }]);
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, await personalWorkspaceOf(ctx, ada), JSON.stringify({ id: asked })))).toEqual([{ name: "id", value: "tutoring trials" }]);
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, await personalWorkspaceOf(ctx, ada), JSON.stringify({ id: filtered })))).toEqual([{ name: "id", value: "" }]);
     // Two records that share a name are both said: who a chat is shared with is never left out.
     await asAda.mutation(api.assistant.threads.rename, { threadId, title: "Trials" });
-    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, JSON.stringify({ threadId, collectionId })))).toEqual([{ name: "thread", value: "Trials" }, { name: "collection", value: "Trials" }]);
+    expect(await t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, await personalWorkspaceOf(ctx, ada), JSON.stringify({ threadId, collectionId })))).toEqual([{ name: "thread", value: "Trials" }, { name: "collection", value: "Trials" }]);
   });
 
   it("name a step after the saved paper or the collection its call gave only the ID of", async () => {
@@ -1264,7 +1268,8 @@ describe("the assistant's tools", () => {
     expect(circling(["a", "a", "b"])).toBe(false);
     expect(circling(["a", "b", "c", "a", "b", "c"])).toBe(false);
     expect(circling(["a", "b", "a", "b"])).toBe(false);
-  });
+    // Its four replies run over twenty model requests between them: about 13 seconds alone, more on a busy runner.
+  }, 60_000);
 
   it("stop asking the person for the same thing once they have declined it three times", async () => {
     const t = convexTest(schema);
@@ -1399,6 +1404,82 @@ describe("the assistant's tools", () => {
     expect((await asAda.query(api.assistant.spending.get, { threadId })).recent).toEqual([paid + 4, 7]);
   });
 
+  it("run a reply in an organization's chat in its workspace, held to its replies at once, and a guest's reply in the guest's own", async () => {
+    const t = convexTest(schema);
+    instances.add(t);
+    const { ada, ben, asAda, asBen } = await people(t);
+    const { labOrganization, lab, mine, theirs } = await t.run(async (ctx) => {
+      await seedCreditsForTest(ctx, { userId: ada, free: 100_000 });
+      await seedCreditsForTest(ctx, { userId: ben, free: 100_000 });
+      // The lab is Ada's alone; Ben shares the team with her, not the lab.
+      const labOrganization = await seedOrganizationFeatures(ctx, ["ada"], {});
+      const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId: labOrganization });
+      // The lab pays for replies in its chats (#650); Ben, a guest, pays for his own.
+      await seedCreditsForTest(ctx, { workspaceId: lab, free: 100_000 });
+      return { labOrganization, lab, mine: await personalWorkspaceOf(ctx, ada), theirs: await personalWorkspaceOf(ctx, ben) };
+    });
+    const threadId = await asAda.mutation(api.assistant.threads.create, { workspaceId: lab, title: "Lab" });
+    const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => [item.openalexId, item.workspaceId]));
+
+    // As many replies as the lab has at once are being written there. Her own workspace's are apart.
+    await t.run(async (ctx) => {
+      for (let n = 0; n < ASSISTANT_REPLIES_AT_ONCE; n++) {
+        const scheduledId = await ctx.scheduler.runAfter(60_000, internal.assistant.replies.sweep, {});
+        await ctx.db.insert("assistantThreads", { ownerId: ada, workspaceId: lab, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, workspaceId: lab, order: 0, startedAt: 1, scheduledId } });
+      }
+    });
+    await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "Save W1" })).rejects.toThrow(/already writing/);
+    await t.run(async (ctx) => {
+      for (const busy of await ctx.db.query("assistantThreads").collect()) if (busy.title === "Busy") await ctx.db.delete("assistantThreads", busy._id);
+    });
+
+    // What her reply saves is the lab's.
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Lab paper" } } })).mockImplementationOnce(finishingDoStream(["Saved."]));
+    const adaBefore = fakeAutumn.balance(ada);
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "Save W1" });
+    await finishReply(t, threadId);
+    expect(await saved()).toEqual([["https://openalex.org/W1", lab]]);
+    // The lab paid for her reply, not her own workspace.
+    expect(fakeAutumn.balance(lab)).toBeLessThan(100_000);
+    expect(fakeAutumn.balance(ada)).toBe(adaBefore);
+
+    // Shared with Ben, who isn't in the lab, what his reply saves is his own.
+    await asAda.mutation(api.assistant.sharing.grant, { workspaceId: lab, threadId, principal: { kind: "user", userId: ben }, role: "write" });
+    mockDoStream.mockImplementationOnce(calling({ id: "save2", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W2", title: "His paper" } } })).mockImplementationOnce(finishingDoStream(["Saved."]));
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Save W2" });
+    await finishReply(t, threadId);
+    expect(await saved()).toEqual([["https://openalex.org/W1", lab], ["https://openalex.org/W2", theirs]]);
+    expect(await saved()).not.toContainEqual(["https://openalex.org/W1", mine]);
+
+    // A reply of his that asks first carries on in his own workspace, where it asked from, even once he has joined the lab.
+    const his = await asBen.mutation(api.assistant.threads.create, { title: "His old chat" });
+    mockDoStream.mockImplementationOnce(calling({ id: "delete", name: "run_action", input: { name: "assistant/threads:remove", arguments: { threadId: his } } })).mockImplementationOnce(finishingDoStream(["Done."]));
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Delete my old chat" });
+    await finishReply(t, threadId);
+    const chat = () => t.run(async (ctx) => ctx.db.get("assistantThreads", threadId));
+    expect((await chat())?.asking).toMatchObject({ senderId: ben, workspaceId: theirs });
+    const asked = (await t.run(async (ctx) => ctx.db.query("assistantSteps").collect())).find((step) => step.status === "asking")!;
+    expect(asked.workspaceId).toBe(theirs);
+    await t.run(async (ctx) => {
+      await ctx.db.insert("organizationMemberships", { organizationId: labOrganization, clerkUserId: "ben", clerkMembershipId: "lab-ben", role: "org:member", state: "active", createdAt: 1, updatedAt: 1, clerkCreatedAt: 1, clerkUpdatedAt: 1 });
+    });
+    await asBen.mutation(api.assistant.replies.answer, { threadId, stepId: asked._id, allow: true });
+    expect((await chat())?.reply?.workspaceId).toBe(theirs);
+    await finishReply(t, threadId);
+    expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", his))).toBeNull();
+
+    // A member now, his next reply acts in the lab. He leaves before it runs: no request goes to the model for him.
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "One more" });
+    expect((await chat())?.reply?.workspaceId).toBe(lab);
+    const before = requests.length;
+    await t.run(async (ctx) => {
+      const membership = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", labOrganization).eq("clerkUserId", "ben").eq("state", "active")).unique();
+      await ctx.db.patch("organizationMemberships", membership!._id, { state: "revoked" });
+    });
+    await finishReply(t, threadId);
+    expect(requests.length).toBe(before);
+  });
+
   it.each([true, false])("hold a reply that asked with its limit already reached until it's carried on, when the answer is %s", async (allow) => {
     const t = convexTest(schema);
     const { ada, asAda, threadId, thread, steps, settled } = await chatOf(t);
@@ -1414,11 +1495,12 @@ describe("the assistant's tools", () => {
     const paid = (await t.run(async (ctx) => ctx.db.query("billingUsage").collect())).filter((charge) => charge.userId === ada).reduce((sum, charge) => sum + charge.credits, 0);
     expect((await thread())!.asking!.spent).toBe(paid);
     expect(paid).toBeGreaterThanOrEqual(1);
-    // As many replies of hers as one person has at once are being written elsewhere. Her answer is still taken: it starts none.
+    // As many replies as her workspace has at once are being written elsewhere. Her answer is still taken: it starts none.
     await t.run(async (ctx) => {
+      const workspaceId = await personalWorkspaceOf(ctx, ada);
       for (let n = 0; n < ASSISTANT_REPLIES_AT_ONCE; n++) {
         const scheduledId = await ctx.scheduler.runAfter(60_000, internal.assistant.replies.sweep, {});
-        await ctx.db.insert("assistantThreads", { ownerId: ada, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, order: 0, startedAt: 1, scheduledId } });
+        await ctx.db.insert("assistantThreads", { ownerId: ada, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, workspaceId, order: 0, startedAt: 1, scheduledId } });
       }
     });
     // Answering the question isn't agreeing to more credits: the reply waits to be carried on, with the answer kept.

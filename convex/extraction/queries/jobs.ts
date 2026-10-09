@@ -54,11 +54,11 @@ export const listJobsAction = defineUserQuery({
     "Given `text`, those whose name or description best match its words, best first.",
   args: { paginationOpts: paginationOptsValidator, sort: jobSortValidator, text: v.optional(v.string()) },
   returns: paginationResultValidator(extractionJobValidator),
-  run: async (ctx, userId, { paginationOpts, sort, text }) => {
+  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text }) => {
     await requireFeature(ctx, "extraction.enabled", userId);
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, JOBS_PAGE_MAX), maximumBytesRead: JOBS_PAGE_BYTES };
     const needle = searchTerms(text);
-    if (needle) return await ctx.db.query("extractionJobs").withSearchIndex("search_text", (q) => q.search("searchText", needle).eq("userId", userId)).paginate(opts);
+    if (needle) return await ctx.db.query("extractionJobs").withSearchIndex("search_text", (q) => q.search("searchText", needle).eq("workspaceId", workspaceId)).paginate(opts);
     // What a page by status has read so far: the statuses of one page share one allowance.
     let rows = 0;
     let bytes = 0;
@@ -73,7 +73,7 @@ export const listJobsAction = defineUserQuery({
       // however many groups it takes them from.
       const from: { rank: number; after: string | null } = opts.cursor ? JSON.parse(opts.cursor) : { rank: 0, after: null };
       const readGroup = async (rank: number, cursor: string | null, room: number) => {
-        const statuses = STATUS_GROUPS[rank].map((status) => stream(ctx.db, schema).query("extractionJobs").withIndex("by_user_status", (q) => q.eq("userId", userId).eq("status", status)).order("desc"));
+        const statuses = STATUS_GROUPS[rank].map((status) => stream(ctx.db, schema).query("extractionJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status)).order("desc"));
         const read = await mergedStream(statuses, ["_creationTime"])
           .filterWith(matches)
           .paginate({ cursor, numItems: room, maximumBytesRead: JOBS_PAGE_BYTES - bytes, maximumRowsRead: JOBS_FILTER_ROWS - rows });
@@ -87,9 +87,9 @@ export const listJobsAction = defineUserQuery({
       }
       return { page, isDone: true, continueCursor: "" };
     }
-    const index = sort === "name" ? "by_user_and_sortName" : "by_user";
+    const index = sort === "name" ? "by_workspace_and_sortName" : "by_workspace";
     const order = sort === "recent" ? "desc" : "asc";
-    return await ctx.db.query("extractionJobs").withIndex(index, (q) => q.eq("userId", userId)).order(order).paginate(opts);
+    return await ctx.db.query("extractionJobs").withIndex(index, (q) => q.eq("workspaceId", workspaceId)).order(order).paginate(opts);
   },
 });
 export const listJobs = userQuery(listJobsAction);
@@ -101,7 +101,7 @@ export const countJobsAction = defineUserQuery({
   args: {},
   returns: v.number(),
   // Someone with no job has no count; one from before counts were kept gets theirs from migrations/pagedExtractionJobs.
-  run: async (ctx, userId) => (await countRow(ctx, "extractionJobs", userId))?.count ?? 0,
+  run: async (ctx, { workspaceId }) => (await countRow(ctx, "extractionJobs", workspaceId))?.count ?? 0,
 });
 export const countJobs = userQuery(countJobsAction);
 export const countJobsForAssistant = assistantQuery(countJobsAction);
@@ -116,8 +116,8 @@ export const getJobDetailsAction = defineUserQuery({
     job: extractionJobValidator,
     questions: jobQuestionsValidator,
   }),
-  run: async (ctx, userId, { jobId }) => {
-    const job = await ownJob(ctx, userId, jobId);
+  run: async (ctx, { userId, workspaceId }, { jobId }) => {
+    const job = await ownJob(ctx, workspaceId, jobId);
     if (!job) return noAccess();
     await requireFeature(ctx, "extraction.enabled", userId);
     const questions = await ctx.db

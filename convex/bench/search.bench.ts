@@ -8,6 +8,7 @@ import { listJobsAction } from "../extraction/queries/jobs";
 import { insertMany, seedAccount, text } from "../lib/maxSize.test-support";
 import { measure, save } from "./measure.test-support";
 import { jobText, searchText, shortcutText } from "../lib/searchText";
+import { ownActor } from "../workspaces/actor.test-support";
 
 const SIZES = (process.env.BENCH_LIST_SIZES ?? "500,5000,10000").split(",").map(Number);
 const page = { cursor: null, numItems: 20 };
@@ -26,16 +27,18 @@ describe("text search of a person's lists by size", () => {
     it(`${size} rows each`, async () => {
       const t = convexTest(schema);
       const { userId } = await seedAccount(t);
+      // Resolved before any measured transaction, so its reads aren't counted as the core's.
+      const actor = await t.run((ctx) => ownActor(ctx, userId));
       const at = (scenario: string) => ({ area: "text search", scenario, size });
       const day = "2026-10-01T00:00:00Z";
       // Each row with its search text, as the app writes it (../lib/searchText.ts).
       await insertMany(t, "searches", Array.from({ length: size }, (_, i) => {
         const data = { id: `s${i}`, query: words(i, 60), field: "title_and_abstract" as const, count: i, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: day, updatedAt: day };
-        return { userId, localId: `s${i}`, revision: 1, data, searchText: searchText(data) };
+        return { userId, workspaceId: actor.workspaceId, createdBy: userId, localId: `s${i}`, revision: 1, data, searchText: searchText(data) };
       }));
       await insertMany(t, "queryShortcuts", Array.from({ length: size }, (_, i) => {
         const data = { shorthand: `b${i}`, expansion: words(i, 80), createdAt: i };
-        return { userId, sortName: `b${i}`, data, searchText: shortcutText(data) };
+        return { userId, workspaceId: actor.workspaceId, createdBy: userId, sortName: `b${i}`, data, searchText: shortcutText(data) };
       }));
       await insertMany(t, "extractionJobs", Array.from({ length: size }, (_, i) => ({ userId, name: words(i, 50), searchText: jobText({ name: words(i, 50) }), sourceType: "history", status: "completed", totalPapers: 10, createdAt: i, updatedAt: i })));
       const rows = (read: { page: unknown[] } | undefined) => `${read?.page.length ?? 0} rows`;
@@ -43,9 +46,9 @@ describe("text search of a person's lists by size", () => {
       const want = (label: string) => (read: { page: unknown[]; isDone: boolean }) => (label === "none" ? read.page.length === 0 && read.isDone : read.page.length === Math.min(page.numItems, Math.ceil(size / 100)));
       for (const [label, needle] of [["1 row in 100", "malaria"], ["none", "zzzz"]] as const) {
         const shown = (read: { page: unknown[]; isDone: boolean } | undefined) => `${rows(read)}${read?.isDone ? "" : ", not done"}`;
-        await measure(t, at(`saved searches, word in ${label === "none" ? "no row" : label}`), (ctx) => listedSearchesAction.run(ctx, userId, { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
-        await measure(t, at(`bookmarks, word in ${label === "none" ? "no row" : label}`), (ctx) => listedShortcutsAction.run(ctx, userId, { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
-        await measure(t, at(`extraction jobs, word in ${label === "none" ? "no row" : label}`), (ctx) => listJobsAction.run(ctx, userId, { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
+        await measure(t, at(`saved searches, word in ${label === "none" ? "no row" : label}`), (ctx) => listedSearchesAction.run(ctx, actor, { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
+        await measure(t, at(`bookmarks, word in ${label === "none" ? "no row" : label}`), (ctx) => listedShortcutsAction.run(ctx, actor, { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
+        await measure(t, at(`extraction jobs, word in ${label === "none" ? "no row" : label}`), (ctx) => listJobsAction.run(ctx, actor, { paginationOpts: page, sort: "recent", text: needle }), shown, want(label));
       }
     });
   }

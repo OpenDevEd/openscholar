@@ -15,7 +15,7 @@ import { MAX_ASSISTANT_THREAD_GRANTS } from "../lib/queryBounds";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { readMemberOrganizations } from "../organizationFeatures";
 import schema from "../schema";
-import { accessRow, accessRows, personName, principalKey, principalOf, requireThread, type AssistantPrincipal } from "./access";
+import { accessRow, accessRows, personName, principalKey, principalOf, requireThreadIn, type AssistantPrincipal } from "./access";
 import { assistantCandidateValidator, assistantGrantRoleValidator, assistantPrincipalValidator, assistantRoleValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
@@ -62,9 +62,10 @@ export const grantAction = defineUserMutation({
   // Someone else gains access to the conversation.
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, userId, { threadId, principal, role }) => {
+  run: async (ctx, actor, { threadId, principal, role }) => {
+    const { userId } = actor;
     await requireFeature(ctx, FLAG, userId);
-    const { thread } = await requireThread(ctx, userId, threadId, "owner");
+    const { thread } = await requireThreadIn(ctx, actor, threadId, "owner");
     const owner = await ctx.db.get("users", userId);
     if (!owner) throw createError("NOT_FOUND", "Chat not found");
     await shareable(ctx, owner, principal);
@@ -94,9 +95,9 @@ export const revokeAction = defineUserMutation({
   // Someone else loses access to the conversation.
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, userId, { threadId, principal }) => {
-    await requireFeature(ctx, FLAG, userId);
-    await requireThread(ctx, userId, threadId, "owner");
+  run: async (ctx, actor, { threadId, principal }) => {
+    await requireFeature(ctx, FLAG, actor.userId);
+    await requireThreadIn(ctx, actor, threadId, "owner");
     const row = await accessRow(ctx, threadId, principalKey(principal));
     if (row && row.role !== "owner") await ctx.db.delete("assistantThreadAccess", row._id);
     return null;
@@ -123,9 +124,10 @@ export const listAccessAction = defineUserQuery({
       imageUrl: v.optional(v.string()),
     }),
   ),
-  run: async (ctx, userId, { threadId, paginationOpts }) => {
+  run: async (ctx, actor, { threadId, paginationOpts }) => {
+    const { userId } = actor;
     await requireFeature(ctx, FLAG, userId);
-    const { role } = await requireThread(ctx, userId, threadId);
+    const { role } = await requireThreadIn(ctx, actor, threadId);
     const read = await ctx.db
       .query("assistantThreadAccess")
       .withIndex("by_thread_and_principal", (q) => q.eq("threadId", threadId))
@@ -162,7 +164,7 @@ export const candidatesAction = defineUserQuery({
     "A chat can only be shared inside the person's organizations: with no `text`, an empty first page means they belong to none, so there is nobody to share with until they join or create one.",
   args: { text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(assistantCandidateValidator),
-  run: async (ctx, userId, { text, paginationOpts }) => {
+  run: async (ctx, { userId }, { text, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const me = await ctx.db.get("users", userId);
     if (!me) return { page: [], isDone: true, continueCursor: "" };

@@ -3,8 +3,10 @@ import { v } from "convex/values";
 import { internalQuery, internalMutation } from "../lib/functions";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { readLibrarySessionAccess } from "../evidenceLibraries/sessionAccess";
+import { libraryOwner, ownerActive } from "../evidenceLibraries/access";
 import { createError } from "../lib/errors";
 import { createProfile, searchProfilePage } from "./profiles";
+import { ensureWorkspace } from "../workspaces/create";
 import type { Doc } from "../_generated/dataModel";
 import { authenticateLibraryServiceCredential } from "../evidenceLibraries/credentials";
 
@@ -25,8 +27,7 @@ export const resolve = internalQuery({
     if (!libraryId || args.profileIds.length > 100) throw createError("VALIDATION_ERROR", "Invalid profile request");
     await authenticateLibraryServiceCredential(ctx, {libraryId, credentialDigest: args.credentialDigest});
     const library = await ctx.db.get("evidenceLibraries", libraryId);
-    const organization = library && await ctx.db.get("organizations", library.organizationId);
-    if (library?.state !== "active" || organization?.state !== "active") throw createError("FORBIDDEN", "Library is unavailable");
+    if (library?.state !== "active" || !ownerActive(await libraryOwner(ctx, library))) throw createError("FORBIDDEN", "Library is unavailable");
     const profiles = await Promise.all([...new Set(args.profileIds)].map(async value => {
       const id = ctx.db.normalizeId("authorProfiles", value);
       const profile = id ? await ctx.db.get("authorProfiles", id) : null;
@@ -61,7 +62,8 @@ export const create = internalMutation({
   args: {...serviceArgs, name: v.string()},
   handler: async (ctx, args) => {
     const user = await requireLibraryUser(ctx, args);
-    const id = await createProfile(ctx, user._id, args.name);
+    // Made from a library's admin, it's its maker's, in their own workspace.
+    const id = await createProfile(ctx, user._id, await ensureWorkspace(ctx, {kind: "personal", userId: user._id}), args.name);
     const profile = await ctx.db.get("authorProfiles", id);
     if (!profile) throw createError("NOT_FOUND", "Author profile was not created");
     return {...await publicProfile(ctx, profile), canEdit: true};

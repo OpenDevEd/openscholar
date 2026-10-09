@@ -9,6 +9,7 @@ import { createContext, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useMutation } from "convex/react";
+import { useWorkspaceMutation } from "@/lib/workspaces/url";
 import { FileText, Hourglass, ImageIcon, Paperclip, TriangleAlert, X } from "@/components/icons";
 import { EASE } from "@/components/settings/model-map";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -122,7 +123,7 @@ export const sendingOf = (files: readonly Attachment[]) => files.filter((file) =
  */
 export function useAttach(add: (files: Attachment[]) => void, patch: (key: string, change: Partial<Attachment>) => void) {
   const t = useTranslations("assistant.files");
-  const startUpload = useMutation(api.assistant.files.startUpload);
+  const startUpload = useWorkspaceMutation(api.assistant.files.startUpload);
   const remove = useMutation(api.assistant.files.remove);
   /**
    * `attached`: files already going with the draft, which count towards what one message carries.

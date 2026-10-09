@@ -24,6 +24,7 @@ import { doneOf, phaseOf, type Job, type JobRow, type Phase } from "@/lib/screen
 import { cn } from "@/lib/utils";
 import { JobView, jobName } from "./job-view";
 import { SetupView } from "./setup-view";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 /** Screenings one page of the rail lists. */
 const RAIL_PAGE = 12;
@@ -38,6 +39,7 @@ const ICON: Record<Exclude<Phase, "processing">, AppIcon> = {
 };
 
 export function ScreeningPage() {
+  const workspaceId = useWorkspace();
   const t = useTranslations("screeningPage");
   const format = useFormatter();
   const date = (at: number) => format.dateTime(new Date(at), { dateStyle: "medium" });
@@ -46,12 +48,12 @@ export function ScreeningPage() {
   const [searchId] = useQueryState("search");
   const [picked, setPicked] = useQueryState("job");
 
-  const jobs = useCursorPage(api.screening.queries.listUserScreeningJobs, {}, RAIL_PAGE);
-  const { data: total } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, {});
+  const jobs = useCursorPage(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, {}), RAIL_PAGE);
+  const { data: total } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, inWorkspace(workspaceId, {}));
   // Until the person's screenings arrive, nothing says whether the form or the newest of them shows.
   const waiting = picked === null && !searchId && jobs.isLoading;
   const jobId = picked === "new" || waiting ? null : (picked ?? (searchId ? null : (jobs.items[0]?._id ?? null)));
-  const { data: read } = useProtectedQuery(api.screening.queries.getScreeningJob, jobId ? { jobId: jobId as Id<"screeningJobs"> } : "skip");
+  const { data: read } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, jobId ? { jobId: jobId as Id<"screeningJobs"> } : "skip"));
   // The screening last shown stays up while the next one is read.
   const [shown, setShown] = useState<Job | null>(null);
   if (read && read !== shown) setShown(read);
@@ -69,7 +71,7 @@ export function ScreeningPage() {
   };
 
   // Every screening in progress, whatever page of the rail shows: which of them is being read decides who waits for whom.
-  const { data: processing } = useProtectedQuery(api.screening.queries.listUserScreeningJobs, { status: "processing", paginationOpts: { cursor: null, numItems: ACTIVE_MAX } });
+  const { data: processing } = useProtectedQuery(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, { status: "processing" as const, paginationOpts: { cursor: null, numItems: ACTIVE_MAX } }));
   const active = processing?.page ?? [];
   const running = jobs.items.filter((row) => row.status === "processing");
   const past = jobs.items.filter((row) => row.status !== "processing");

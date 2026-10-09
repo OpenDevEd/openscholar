@@ -30,17 +30,18 @@ import { searchSnapshotValidator } from "../paperSets/openalex";
 import { bookkeepLater, finishIfDone } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
-import { applyCommand } from "../research/records";
+import { applyCommand, findSearch } from "../research/records";
 
 import { availableCredits } from "../billing/accounts";
 import { MAX_AUTHORS } from "../lib/listCaps";
+import { actorOnRecord, isInWorkspace, personalWorkspaceOf, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../workspaces/actor";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */
-async function destination(ctx: MutationCtx, userId: Id<"users">, saveTo: Infer<typeof saveToValidator> | undefined) {
+async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
   if (!saveTo) return {};
   if (saveTo.kind === "none") return { unsaved: true as const };
-  if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, userId, saveTo.name) };
-  if ((await ctx.db.get("collections", saveTo.collectionId))?.userId !== userId) throw createError("NOT_FOUND", "Collection not found");
+  if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, writer, saveTo.name) };
+  if ((await ctx.db.get("collections", saveTo.collectionId))?.workspaceId !== writer.workspaceId) throw createError("NOT_FOUND", "Collection not found");
   return { targetCollectionId: saveTo.collectionId };
 }
 
@@ -70,16 +71,17 @@ type JobSetup = ObjectType<typeof jobSetup>;
  * Makes a job's row for `user`, with its progress row: finds the screening its answers go to,
  * names it after its set, and stamps it with the model Screen all runs on.
  */
-async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, saveTo, prune, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading" | "newCollection">) {
+async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"workspaces">, { author, set, saveTo, prune, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading" | "newCollection">) {
   if (prune && set?.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
 
+  const writer = { userId: user._id, workspaceId };
   // The screening its answers go to, and the set's name as the page shows it.
   const now = Date.now();
   let screeningId: Id<"screenings">;
   let label: string | undefined;
   if (set?.kind === "search") {
     const localId = set.searchId;
-    const search = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", user._id).eq("localId", localId)).unique();
+    const search = await findSearch(ctx, workspaceId, localId);
     if (!search) throw createError("NOT_FOUND", "Search not found");
     // The search's page shows answers to its own questions, so it takes on the job's it
     // lacks, all in one edit with one revision.
@@ -87,27 +89,31 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, sa
     const missing = [...new Set(args.questions.map((q) => q.question))].filter((question) => !asked.has(question));
     if (missing.length) {
       const screeningQuestions = [...search.data.screeningQuestions, ...missing.map((question) => ({ question }))];
-      await applyCommand(ctx, user._id, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
+      await applyCommand(ctx, writer, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
     }
     screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
     label = search.data.query;
   } else {
-    screeningId = await ctx.db.insert("screenings", { userId: user._id, version: 0, createdAt: now });
-    const source = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
-    if (set && set.kind !== "saved" && source?.userId !== user._id) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
-    label = source ? ("name" in source ? source.name : source.label) : undefined;
+    screeningId = await ctx.db.insert("screenings", { userId: user._id, workspaceId, version: 0, createdAt: now });
+    const collection = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : null;
+    const job = set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
+    if (set?.kind === "collection" && collection?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
+    if (set?.kind === "screening" && (!job || !(await isInWorkspace(ctx, job, workspaceId)))) throw createError("NOT_FOUND", "Screening not found");
+    label = collection?.name ?? job?.label;
   }
 
   // Stamped with what Screen All runs on (read back at run by screenPaperAction).
   const serverPick = await resolveTaskPick(ctx, user._id, "screenAll");
   const jobId = await ctx.db.insert("screeningJobs", {
     userId: user._id,
+    workspaceId,
+    createdBy: user._id,
     ...state,
     screeningId,
     ...args,
     ...(set ? { set } : {}),
     ...(label ? { label } : {}),
-    ...(await destination(ctx, user._id, saveTo)),
+    ...(await destination(ctx, writer, saveTo)),
     ...(prune ? { prune: true as const } : {}),
     ...serverStamp(serverPick),
     createdAt: now,
@@ -118,11 +124,11 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, { author, set, sa
 }
 
 /**
- * Whether the person can pay for screening `papers` papers, with the figures a refusal names: on the
- * model the job was stamped with when it has one, else what their Screen all runs on now.
+ * Whether the workspace can pay for screening `papers` papers, with the figures a refusal names: on the
+ * model the job was stamped with when it has one, else what the person's Screen all runs on now.
  */
-async function affords(ctx: MutationCtx, userId: Id<"users">, papers: number, job?: Doc<"screeningJobs">) {
-  const available = await availableCredits(ctx, userId);
+async function affords(ctx: MutationCtx, userId: Id<"users">, workspaceId: Id<"workspaces">, papers: number, job?: Doc<"screeningJobs">) {
+  const available = await availableCredits(ctx, workspaceId);
   const perPaper = job ? screeningPaperCredits(await pricingOf(ctx, job.serverModelId)) : await screeningPaperCreditsFor(ctx, userId);
   const estimate = estimateScreening(papers, available, perPaper).credits;
   return { affordable: available >= estimate, estimate, available };
@@ -141,14 +147,15 @@ const READ_LIMIT_MS = 15 * 60_000;
  * it may get. They follow (`screening/start:read`), and the job is `reading` until they do.
  */
 export const openScreeningJob = internalMutation({
-  args: { userId: v.id("users"), papers: v.number(), ...jobSetup, first: v.number(), last: v.number() },
+  // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which makes the job in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), papers: v.number(), ...jobSetup, first: v.number(), last: v.number() },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, papers, saveTo, ...setup }) => {
+  handler: async (ctx, { userId, workspaceId, papers, saveTo, ...setup }) => {
     const user = await requireActiveUser(ctx, userId);
     // A new collection is made with the papers, so a job that never gets any leaves none behind.
     const later = saveTo?.kind === "new" ? saveTo.name.trim() : undefined;
     if (later === "") throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
-    const jobId = await insertJob(ctx, user, { ...setup, ...(later ? {} : { saveTo }) }, { status: "processing", totalPapers: papers, reading: true, ...(later ? { newCollection: later } : {}) });
+    const jobId = await insertJob(ctx, user, workspaceId ?? (await personalWorkspaceOf(ctx, userId)), { ...setup, ...(later ? {} : { saveTo }) }, { status: "processing", totalPapers: papers, reading: true, ...(later ? { newCollection: later } : {}) });
     await ctx.db.patch("screeningJobs", jobId, { readPlace: { read: 0, papers: 0 } });
     await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId });
     await ctx.scheduler.runAfter(READ_LIMIT_MS, internal.screening.mutations.failScreeningRead, { jobId, reason: "Its papers took too long to read. Run it again.", stalled: true });
@@ -190,11 +197,11 @@ export const fillScreeningJob = internalMutation({
     const free = reading.reused ?? 0;
     const done = progress ? progress.completed + progress.skipped + progress.failed : 0;
     const unpaid = Math.max(0, place.papers - free - Math.max(0, done - free));
-    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.userId, unpaid + papers.length - reused.size, reading)).affordable;
+    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.userId, await workspaceOf(ctx, reading), unpaid + papers.length - reused.size, reading)).affordable;
     const now = Date.now();
     const taken = { read: place.read + read, papers: place.papers + (affordable ? papers.length : 0) };
     const over = ended || !affordable;
-    const made = affordable && papers.length && reading.newCollection ? { targetCollectionId: await newCollection(ctx, reading.userId, reading.newCollection), newCollection: undefined } : {};
+    const made = affordable && papers.length && reading.newCollection ? { targetCollectionId: await newCollection(ctx, { userId: reading.userId, workspaceId: await workspaceOf(ctx, reading) }, reading.newCollection), newCollection: undefined } : {};
     await ctx.db.patch("screeningJobs", jobId, {
       readPlace: taken,
       resume,
@@ -249,6 +256,7 @@ type PaperInput = Infer<typeof screeningPaperInputValidator>;
  */
 async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: PaperInput[], createdAt: number, answered?: Set<string>) {
   const batch = papers.slice(0, CREATE_BATCH);
+  const pool = { userId: job.userId, workspaceId: await workspaceOf(ctx, job) };
   const screening = (await ctx.db.get("screenings", job.screeningId))!;
   const ids = batch.map((paper) => paper.openalexId);
   // Given which papers are answered already, as their step found them; a later batch looks for itself.
@@ -273,12 +281,12 @@ async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers
         : job.capped
           ? // The job reached the most it may spend while its papers were still being made: the rest are never read.
             { status: "skipped" as const, completedAt: createdAt, doneAt: ctx.db.vars.commitTs }
-          : { status: "processing" as const, waitingUser: job.userId, waitingSince: createdAt }),
+          : { status: "processing" as const, waitingWorkspace: pool.workspaceId, waitingSince: createdAt }),
     });
   }
   if (reused.size) await ctx.db.patch("screeningJobs", job._id, { reused: (job.reused ?? 0) + reused.size });
   if (reused.size || job.capped) await bookkeepLater(ctx);
-  await startWaitingPapers(ctx, job.userId);
+  await startWaitingPapers(ctx, pool);
   if (papers.length > CREATE_BATCH) {
     await ctx.scheduler.runAfter(0, internal.screening.mutations.createScreeningResults, { jobId: job._id, papers: papers.slice(CREATE_BATCH), createdAt });
   }
@@ -312,10 +320,11 @@ export const cancelScreeningJob = mutation({
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get("screeningJobs", args.jobId);
-
-    if (!job || job.userId !== user._id) {
+    const actor = job && (await actorOnRecord(ctx, user, job));
+    if (!job || !actor) {
       throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
     }
+    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
 
     // Terminal states are idempotent no-ops
     if (isTerminalScreeningJobStatus(job.status)) {
@@ -357,7 +366,7 @@ export const endScreeningWork = internalMutation({
     for (const result of page.page) {
       if (result.waitingSince === undefined) continue;
       // Never started: counted as skipped by the bookkeeping worker.
-      await ctx.db.patch("screeningResults", result._id, { status: "skipped", waitingUser: undefined, waitingSince: undefined, completedAt: Date.now(), doneAt: ctx.db.vars.commitTs });
+      await ctx.db.patch("screeningResults", result._id, { status: "skipped", waitingUser: undefined, waitingWorkspace: undefined, waitingSince: undefined, completedAt: Date.now(), doneAt: ctx.db.vars.commitTs });
       skipped++;
     }
     if (skipped) await bookkeepLater(ctx);

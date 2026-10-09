@@ -9,6 +9,8 @@ import { purgeFiles } from "../assistant/files";
 import { collectionCountRow } from "../library/collections";
 import { countRow } from "../research/recordCounts";
 import { libraryCountRow } from "../library/counter";
+import { readAccount } from "../billing/accounts";
+import { purgeWorkspace } from "../workspaces/purge";
 
 // Retention period for deleted users (30 days)
 const DELETED_USER_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -35,6 +37,8 @@ export const cleanupDeletedUsers = internalMutation({
 
     for (const user of deletedUsers) {
       if (user.updatedAt < cutoff) {
+        // Their own workspace goes with them (#650); what they made in an organization stays the organization's.
+        const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique();
         // Clean up user's API keys
         const apiKeys = await ctx.db
           .query("apiKeys")
@@ -45,12 +49,11 @@ export const cleanupDeletedUsers = internalMutation({
           await ctx.db.delete("apiKeys", key._id);
         }
 
-        // Delete extraction jobs (cascade to papers, results, evidence units, etc.)
+        // Delete their own workspace's extraction jobs (cascade to papers, results, evidence units, etc.)
         // Uses existing deleteExtractionInternal which handles all 9 child tables
-        const extractionJobs = await ctx.db
-          .query("extractionJobs")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .take(BATCH_SIZE);
+        const extractionJobs = workspace
+          ? await ctx.db.query("extractionJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id)).take(BATCH_SIZE)
+          : [];
         for (const job of extractionJobs) {
           await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.admin.deleteExtractionInternal, {
             jobId: job._id,
@@ -92,22 +95,32 @@ export const cleanupDeletedUsers = internalMutation({
           deferred = true;
           continue; // Skip user delete, process on next run
         }
+        // Everything else in their own workspace: searches, screenings, bookmarks, library and collections.
+        if (workspace && !(await purgeWorkspace(ctx, workspace._id))) {
+          deferred = true;
+          continue; // Skip user delete, process on next run
+        }
 
-        // billingUsage rows stay as financial records; the snapshot is a cache.
-        const account = await ctx.db
-          .query("billingAccounts")
-          .withIndex("by_user", (q) => q.eq("userId", user._id))
-          .unique();
+        // billingUsage rows stay as financial records; their own workspace's cached account goes.
+        const account = workspace && (await readAccount(ctx, workspace._id));
         if (account) await ctx.db.delete("billingAccounts", account._id);
-        // The library count is a cache of the person's saved papers, so it goes with them.
-        const libraryCount = await libraryCountRow(ctx, user._id);
+        // Its library counts are a cache of its saved papers and collections, so they go with it.
+        const libraryCount = workspace && (await libraryCountRow(ctx, workspace._id));
         if (libraryCount) await ctx.db.delete("libraryCounts", libraryCount._id);
-        const collectionCount = await collectionCountRow(ctx, user._id);
+        const collectionCount = workspace && (await collectionCountRow(ctx, workspace._id));
         if (collectionCount) await ctx.db.delete("collectionCounts", collectionCount._id);
-        for (const table of ["searches", "queryShortcuts"] as const) {
-          const counted = await countRow(ctx, table, user._id);
+        for (const table of ["searches", "queryShortcuts", "screeningJobs", "extractionJobs"] as const) {
+          const counted = workspace && (await countRow(ctx, table, workspace._id));
           if (counted) await ctx.db.delete("recordCounts", counted._id);
         }
+
+        if (workspace) await ctx.db.delete("workspaces", workspace._id);
+
+        // The tombstone keeps who they were, in the transaction that deletes them, for what they made in organizations.
+        const kept = { userId: user._id, name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email };
+        const tombstone = await ctx.db.query("clerkDeletedUsers").withIndex("by_clerkId", (q) => q.eq("clerkId", user.clerkId)).unique();
+        if (tombstone) await ctx.db.patch("clerkDeletedUsers", tombstone._id, kept);
+        else await ctx.db.insert("clerkDeletedUsers", { clerkId: user.clerkId, deletedAt: user.updatedAt, ...kept });
 
         // Hard delete the user to prevent re-processing
         await ctx.db.delete("users", user._id);

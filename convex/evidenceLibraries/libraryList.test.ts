@@ -26,7 +26,7 @@ async function setup() {
     await library(partner, "Not mine");
     await ctx.db.insert("evidenceLibraryMembers", { libraryId: shared, clerkUserId: "me", role: "editor", grantedBy: "someone", grantedAt: 1 });
     // A grant inside an organization the person owns lists once, as its owner.
-    const owned = (await ctx.db.query("evidenceLibraries").withIndex("by_organizationId", (q) => q.eq("organizationId", alpha)).first())!;
+    const owned = (await ctx.db.query("evidenceLibraries").collect()).find((library) => library.organizationId === alpha)!;
     await ctx.db.insert("evidenceLibraryMembers", { libraryId: owned._id, clerkUserId: "me", role: "creator", grantedBy: "someone", grantedAt: 1 });
     return { alpha, beta, partner };
   });
@@ -83,7 +83,7 @@ describe("the library list", () => {
     expect((await me.query(api.evidenceLibraries.queries.listLibraryOwners, {})).page.map((owner) => owner.name)).toEqual(["Alpha", "Beta", "Partner"]);
 
     await t.run(async (ctx) => {
-      const library = (await ctx.db.query("evidenceLibraries").withIndex("by_organizationId", (q) => q.eq("organizationId", beta)).first())!;
+      const library = (await ctx.db.query("evidenceLibraries").collect()).find((row) => row.organizationId === beta)!;
       await ctx.db.delete(library._id);
     });
     expect(await me.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(4);
@@ -102,7 +102,8 @@ describe("the library list", () => {
       const before = await me.query(api.evidenceLibraries.queries.countLibraries, {});
       // As libraries made before the count: written without the trigger that keeps it.
       await runUntriggered(t, async (ctx) => {
-        for (const name of ["Older one", "Older two"]) await ctx.db.insert("evidenceLibraries", { organizationId: alpha, name, slug: name.toLowerCase().replace(" ", "-"), state: "active", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1 });
+        const workspaceId = (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", alpha)).unique())!._id;
+        for (const name of ["Older one", "Older two"]) await ctx.db.insert("evidenceLibraries", { organizationId: alpha, workspaceId, name, slug: name.toLowerCase().replace(" ", "-"), state: "active", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1 });
       });
       expect(await t.action(internal.migrations.pagedLibraryList.verify, {})).toBe(2);
       for (let runs = 0; runs < 2; runs++) {

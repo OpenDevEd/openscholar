@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { OrbitMark } from "./orbit-mark";
 import { IconButton, WorkingText } from "./parts";
 import { KIND, KindTile, type Waiting } from "./steps";
+import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 /** A sheet open over the panel. */
 export type OpenSheet =
@@ -244,6 +245,7 @@ export function HistorySheet({
   onNew: () => void;
   onShare: (id: ThreadId, title: string, role: Role) => void;
 }) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("assistant");
   const format = useFormatter();
   const now = useNow().getTime();
@@ -251,7 +253,7 @@ export function HistorySheet({
   const [scope, setScope] = useState<Scope>("all");
   // The list follows the typing a beat behind, so every keystroke doesn't ask for a new one.
   const text = useDeferredValue(query.trim());
-  const { results, status, loadMore } = usePaginatedQuery(api.assistant.threads.list, { scope, ...(text ? { text } : {}) }, { initialNumItems: CHATS_PER_PAGE });
+  const { results, status, loadMore } = usePaginatedQuery(api.assistant.threads.list, inWorkspace(workspaceId, { scope, ...(text ? { text } : {}) }), { initialNumItems: CHATS_PER_PAGE });
 
   const today = new Date(now).setHours(0, 0, 0, 0);
   const live = (chat: Chat) => chat.writing || chat.jobs.length > 0 || chat.members.some((member) => member.here);
@@ -366,9 +368,10 @@ function Tile({ principal, name, imageUrl }: { principal: Principal; name: strin
 }
 
 export function ShareSheet({ threadId, title, role, onBack }: { threadId: ThreadId; title: string; role: Role; onBack: () => void }) {
+  const workspaceId = useWorkspace();
   const t = useTranslations("assistant");
   const toast = useAppToast();
-  const { results } = usePaginatedQuery(api.assistant.sharing.listAccess, { threadId }, { initialNumItems: ACCESS_ROWS });
+  const { results } = usePaginatedQuery(api.assistant.sharing.listAccess, inWorkspace(workspaceId, { threadId }), { initialNumItems: ACCESS_ROWS });
   // The owner first, then organizations, then people.
   const rank = (person: Access) => (person.role === "owner" ? 0 : person.principal.kind === "organization" ? 1 : 2);
   const people = [...results].sort((a, b) => rank(a) - rank(b));
@@ -379,9 +382,9 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
   const [active, setActive] = useState(0);
   const [copied, setCopied] = useState(false);
   const text = useDeferredValue(query.trim());
-  const found = usePaginatedQuery(api.assistant.sharing.candidates, owner && adding ? (text ? { text } : {}) : "skip", { initialNumItems: CANDIDATES_PER_PAGE });
-  const grant = useMutation(api.assistant.sharing.grant);
-  const revoke = useMutation(api.assistant.sharing.revoke);
+  const found = usePaginatedQuery(api.assistant.sharing.candidates, inWorkspace(workspaceId, owner && adding ? (text ? { text } : {}) : "skip"), { initialNumItems: CANDIDATES_PER_PAGE });
+  const grant = useWorkspaceMutation(api.assistant.sharing.grant);
+  const revoke = useWorkspaceMutation(api.assistant.sharing.revoke);
   const failed = (error: unknown) => toast.error(t("shareFailed"), getErrorMessage(error, ""));
 
   // Whoever is in the chat already is left out, and someone in several organizations shows once.

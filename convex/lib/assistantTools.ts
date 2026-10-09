@@ -57,16 +57,19 @@ export function inputSchema(entry: UserAction) {
   return z.object({ ...convexToZodFields(fieldsWithStringIds(fields)), ...("paginationOpts" in fields ? { paginationOpts: PAGE } : {}) });
 }
 
+/** Who the assistant acts as, and in which workspace. */
+export type ActingAs = { userId: Id<"users">; workspaceId: Id<"workspaces"> };
+
 /**
- * Runs an action as `userId`. `callKey` names this call and fills the action's retry key, so
+ * Runs an action as `as.userId`, in `as.workspaceId`. `callKey` names this call and fills the action's retry key, so
  * the same call tried again applies once. `stepId` is the step this call is: a change ends it
  * itself, in its own transaction, and an action that doesn't change anything is told it as
  * `fromStep`, for a job it starts to keep. `approved`: the person was asked about this call and said yes.
  * `credits`: the most they let a call that spends credits hold, which goes with it.
  */
-export function runAction(ctx: ActionCtx, userId: Id<"users">, entry: UserAction, input: Record<string, unknown>, callKey: string, stepId?: Id<"assistantSteps">, approved = false, credits?: number): Promise<unknown> {
+export function runAction(ctx: ActionCtx, as: ActingAs, entry: UserAction, input: Record<string, unknown>, callKey: string, stepId?: Id<"assistantSteps">, approved = false, credits?: number): Promise<unknown> {
   const retryKey = retryKeyOf(entry);
-  const args = { ...input, ...(retryKey ? { [retryKey]: callKey } : {}), userId, ...(credits === undefined || entry.kind === "query" ? {} : { approvedCredits: credits }) };
+  const args = { ...input, ...(retryKey ? { [retryKey]: callKey } : {}), ...as, ...(credits === undefined || entry.kind === "query" ? {} : { approvedCredits: credits }) };
   const ref = assistantPath(entry.path);
   if (entry.kind === "query") return ctx.runQuery(makeFunctionReference<"query">(ref), args);
   const change = { ...args, ...(stepId ? { stepId } : {}), ...(approved ? { approved } : {}) };
@@ -80,14 +83,14 @@ export type ToolCall = { entry: UserAction; input: Record<string, unknown>; tool
 export type Around = (call: ToolCall) => Promise<unknown>;
 
 /**
- * The assistant's tools for these actions, acting as `userId`. Each tool's input is its
+ * The assistant's tools for these actions, acting as `as`. Each tool's input is its
  * action's arguments, minus the retry key, which the tool fills from its call's ID.
  */
 export function assistantTools(
   ctx: ActionCtx,
-  userId: Id<"users">,
+  as: ActingAs,
   entries: readonly UserAction[],
-  around: Around = ({ entry, input, toolCallId }) => runAction(ctx, userId, entry, input, toolCallId),
+  around: Around = ({ entry, input, toolCallId }) => runAction(ctx, as, entry, input, toolCallId),
 ): Record<string, Tool> {
   return Object.fromEntries(
     entries.map((entry) => [

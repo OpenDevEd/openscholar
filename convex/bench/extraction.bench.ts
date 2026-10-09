@@ -9,6 +9,7 @@ import { seedAccount, seedExtractionJob, text } from "../lib/maxSize.test-suppor
 import { measure, now, record, save } from "./measure.test-support";
 import { writeAnswerRows, writePaperFacts } from "../extraction/listProjection";
 import { catchUp } from "../lib/catchUp.test-support";
+import { ownActor } from "../workspaces/actor.test-support";
 
 /** Writes each paper's answer rows and facts as the list projection does when its results land. */
 async function project(t: ReturnType<typeof convexTest>, paperIds: Array<Id<"extractionPapers">>) {
@@ -41,13 +42,15 @@ describe("extraction reads by job size", () => {
     it(`${size} papers`, async () => {
       const t = convexTest(schema);
       const { userId } = await seedAccount(t);
+      // Resolved before any measured transaction, so its reads aren't counted as the core's.
+      const actor = await t.run((ctx) => ownActor(ctx, userId));
       const { jobId, paperIds } = await seedExtractionJob(t, userId, { papers: size, questions: 2 });
       await project(t, paperIds);
       // As the counts and tallies workers leave a job once its results are in.
       await catchUp(t);
       const at = (scenario: string) => ({ area: "extraction", scenario, size });
       const page = (filters: typeof all, sortBy = "default", cursor: string | null = null, numItems = PAGE) =>
-        (ctx: any) => listJobResultsAction.run(ctx, userId, { jobId, filters, sortBy: sortBy as never, paginationOpts: { cursor, numItems } });
+        (ctx: any) => listJobResultsAction.run(ctx, actor, { jobId, filters, sortBy: sortBy as never, paginationOpts: { cursor, numItems } });
       const rows = (read: { page: unknown[] } | undefined) => `${read?.page.length ?? 0} rows`;
 
       await measure(t, at("results page, no filter"), page(all), rows);
@@ -58,8 +61,8 @@ describe("extraction reads by job size", () => {
       await measure(t, at("results page, answer filter"), page({ ...all, questionFilters: [{ questionKey: "q0", value: text(120, 0).trim() }] }), rows, (r) => r.page.length === PAGE);
       await measure(t, at("results page, sorted by title"), page(all, "title-asc"), rows);
       await measure(t, at("results page, text search"), page({ ...all, searchQuery: "tutoring" }), rows, (r) => r.page.length === PAGE);
-      await measure(t, at("filtered count"), (ctx) => countJobResultsAction.run(ctx, userId, { jobId, filters: { ...all, confidenceRange: [0, 10] } }), (r) => `${r.matching} of ${r.all}`, (r) => r.all === size && r.matching === 0);
-      await measure(t, at("summary of one question"), (ctx) => summarizeJobResultsAction.run(ctx, userId, { jobId, questionKey: "q0" }), (r) => `${r.papers} papers`, (r) => r.papers === size);
+      await measure(t, at("filtered count"), (ctx) => countJobResultsAction.run(ctx, actor, { jobId, filters: { ...all, confidenceRange: [0, 10] } }), (r) => `${r.matching} of ${r.all}`, (r) => r.all === size && r.matching === 0);
+      await measure(t, at("summary of one question"), (ctx) => summarizeJobResultsAction.run(ctx, actor, { jobId, questionKey: "q0" }), (r) => `${r.papers} papers`, (r) => r.papers === size);
 
       // An export reads every page in turn: how many calls it takes, the most one of them reads, and whether it finishes.
       let cursor: string | null = null;

@@ -20,8 +20,37 @@ import {
   billingAccountSnapshotValidator,
   type BillingAccountSnapshot,
 } from "./validators";
-import { PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
+import { ORGANIZATION_PLAN, PLAN_LIMITS, SIGNUP_PLAN, TOPUP_PLAN, type PlanLimit } from "../../lib/billing/plans";
 import { readCatalog } from "./catalog";
+
+/** A person's own workspace, if they still have one: what their billing rows were paid by before workspaces paid (#650). */
+export const ownWorkspaceOf = async (ctx: Pick<QueryCtx, "db">, userId: Id<"users">) =>
+  (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())?._id;
+
+/**
+ * The Autumn customer a workspace's plan and credits are on (#650): a person's own workspace
+ * keeps theirs, the user's ID, so no customer moved; an organization's is its workspace's ID.
+ */
+export async function customerOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">): Promise<string> {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  if (!workspace) throw createError("NOT_FOUND", "Workspace not found");
+  return workspace.kind === "personal" ? workspace.userId : workspace._id;
+}
+
+/** The workspace an Autumn customer is, for what Autumn and Stripe tell us about it; null for one that isn't ours. */
+export async function workspaceOfCustomer(ctx: Pick<QueryCtx, "db">, customerId: string): Promise<Id<"workspaces"> | null> {
+  const userId = ctx.db.normalizeId("users", customerId);
+  if (userId) return (await ownWorkspaceOf(ctx, userId)) ?? null;
+  const workspaceId = ctx.db.normalizeId("workspaces", customerId);
+  return workspaceId && (await ctx.db.get("workspaces", workspaceId)) ? workspaceId : null;
+}
+
+/** The workspace's Autumn customer, for an action. */
+export const customerFor = internalQuery({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.string(),
+  handler: (ctx, { workspaceId }) => customerOf(ctx, workspaceId),
+});
 
 /** Reads what OpenScholar needs from an Autumn customer. */
 export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSnapshot {
@@ -58,48 +87,53 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
   };
 }
 
-export async function readAccount(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
+/** The workspace's cached account: its Autumn customer's plan, features and balance (#650). */
+export async function readAccount(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
   return await ctx.db
     .query("billingAccounts")
-    .withIndex("by_user", (q) => q.eq("userId", userId))
+    .withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
     .unique();
 }
 
-/** The cached balance, for preflight checks. Locks enforce the real limit. */
-export async function availableCredits(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
-  return (await readAccount(ctx, userId))?.balance ?? 0;
+/** The workspace's cached balance, for preflight checks. Locks enforce the real limit. */
+export async function availableCredits(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
+  return (await readAccount(ctx, workspaceId))?.balance ?? 0;
 }
 
 /**
- * What the person's plan allows of `limit` (#632), or undefined when it sets none. Their
- * cached snapshot says, unless their plan's version predates the limit or nothing is cached
- * yet: then their plan in the synced catalog does, or, with no plan, the plan every new
- * customer gets. A plan the catalog no longer lists sets none.
+ * What the workspace's plan allows of `limit` (#632; the workspace's since #650), or
+ * undefined when it sets none. Its cached snapshot says, unless its plan's version predates
+ * the limit or nothing is cached yet: then its plan in the synced catalog does, or, with no
+ * plan, the plan a new customer of its kind starts on. A plan the catalog no longer lists
+ * sets none.
  */
-export async function planLimit(ctx: QueryCtx | MutationCtx, userId: Id<"users">, limit: PlanLimit): Promise<number | undefined> {
-  const account = await readAccount(ctx, userId);
+export async function planLimit(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">, limit: PlanLimit): Promise<number | undefined> {
+  const account = await readAccount(ctx, workspaceId);
   const own = account?.limits?.[limit];
   if (own !== undefined) return own ?? undefined;
   const plans = (await readCatalog(ctx))?.plans ?? [];
-  const plan = account?.plan ? plans.find((candidate) => candidate.id === account.plan) : plans.find((candidate) => candidate.autoEnable && !candidate.addOn);
+  const organization = (await ctx.db.get("workspaces", workspaceId))?.kind === "organization";
+  const plan = account?.plan
+    ? plans.find((candidate) => candidate.id === account.plan)
+    : plans.find((candidate) => (organization ? candidate.id === ORGANIZATION_PLAN : candidate.autoEnable && !candidate.addOn));
   return plan?.limits?.[limit] ?? undefined;
 }
 
-/** Refuses a request for more papers than the person's plan takes in one (#632). */
-export async function checkRequestPapers(ctx: QueryCtx | MutationCtx, userId: Id<"users">, papers: number, what: "screening" | "extraction") {
-  const most = await planLimit(ctx, userId, "request_papers");
+/** Refuses a request for more papers than the workspace's plan takes in one (#632). */
+export async function checkRequestPapers(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">, papers: number, what: "screening" | "extraction") {
+  const most = await planLimit(ctx, workspaceId, "request_papers");
   if (most !== undefined && papers > most) {
     throw createError("VALIDATION_ERROR", `Your plan takes up to ${most.toLocaleString("en")} papers in one ${what}. Pick fewer, or change plan for more.`);
   }
 }
 
-/** Whether the user's plans grant `featureId`, per the cached snapshot. */
+/** Whether the workspace's plans grant `featureId`, per the cached snapshot. */
 export async function hasPlanFeature(
-  ctx: QueryCtx | MutationCtx,
-  userId: Id<"users">,
+  ctx: Pick<QueryCtx, "db">,
+  workspaceId: Id<"workspaces">,
   featureId: string,
 ): Promise<boolean> {
-  return (await readAccount(ctx, userId))?.features?.includes(featureId) ?? false;
+  return (await readAccount(ctx, workspaceId))?.features?.includes(featureId) ?? false;
 }
 
 /**
@@ -108,10 +142,12 @@ export async function hasPlanFeature(
  * after `fetchedAt` (a charge that emptied it) stays too.
  */
 export const writeSnapshot = internalMutation({
-  args: { userId: v.id("users"), snapshot: billingAccountSnapshotValidator, withCard: v.boolean(), fetchedAt: v.number() },
+  args: { workspaceId: v.id("workspaces"), snapshot: billingAccountSnapshotValidator, withCard: v.boolean(), fetchedAt: v.number() },
   returns: v.null(),
-  handler: async (ctx, { userId, snapshot, withCard, fetchedAt }) => {
-    const existing = await readAccount(ctx, userId);
+  handler: async (ctx, { workspaceId, snapshot, withCard, fetchedAt }) => {
+    const existing = await readAccount(ctx, workspaceId);
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    if (!workspace) return null;
     // A snapshot read before the one cached would bring back an older plan and its limits. Its card can still be the newest read.
     if (existing?.fetchedAt !== undefined && existing.fetchedAt > fetchedAt) {
       if (withCard && (existing.cardFetchedAt ?? 0) < fetchedAt) await ctx.db.patch("billingAccounts", existing._id, { card: snapshot.card, cardFetchedAt: fetchedAt });
@@ -122,7 +158,9 @@ export const writeSnapshot = internalMutation({
       ...snapshot,
       ...(withCard ? { card: snapshot.card, cardFetchedAt: fetchedAt } : { card: existing?.card, cardFetchedAt: existing?.cardFetchedAt }),
       ...(newer && { balance: existing.balance, purchased: existing.purchased }),
-      userId,
+      // A person's own workspace's account still names them, until slice 8 drops the field.
+      ...(workspace.kind === "personal" ? { userId: workspace.userId } : {}),
+      workspaceId,
       refreshedAt: newer ? existing.refreshedAt : fetchedAt,
       fetchedAt,
     };
@@ -137,19 +175,19 @@ export const writeSnapshot = internalMutation({
  * charge reported the balance empty, or couldn't reach Autumn. The queued
  * refresh restores the real balance.
  */
-export async function zeroCachedBalance(ctx: MutationCtx, userId: Id<"users">) {
-  const account = await readAccount(ctx, userId);
+export async function zeroCachedBalance(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
+  const account = await readAccount(ctx, workspaceId);
   if (account && account.balance > 0) {
     await ctx.db.patch("billingAccounts", account._id, { balance: 0, purchased: 0, refreshedAt: Date.now() });
   }
-  await requestRefresh(ctx, userId);
+  await requestRefresh(ctx, workspaceId);
 }
 
 export const zeroBalance = internalMutation({
-  args: { userId: v.id("users") },
+  args: { workspaceId: v.id("workspaces") },
   returns: v.null(),
-  handler: async (ctx, { userId }) => {
-    await zeroCachedBalance(ctx, userId);
+  handler: async (ctx, { workspaceId }) => {
+    await zeroCachedBalance(ctx, workspaceId);
     return null;
   },
 });
@@ -160,12 +198,13 @@ export const zeroBalance = internalMutation({
  */
 export async function refreshAccount(
   ctx: ActionCtx,
-  userId: Id<"users">,
+  workspaceId: Id<"workspaces">,
   options: { email?: string; name?: string; card?: boolean } = {},
 ): Promise<BillingAccountSnapshot> {
   const fetchedAt = Date.now();
-  const snapshot = snapshotFromCustomer(await autumn.customer(userId, options));
-  await ctx.runMutation(internal.billing.accounts.writeSnapshot, { userId, snapshot, withCard: options.card ?? false, fetchedAt });
+  const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
+  const snapshot = snapshotFromCustomer(await autumn.customer(customerId, options));
+  await ctx.runMutation(internal.billing.accounts.writeSnapshot, { workspaceId, snapshot, withCard: options.card ?? false, fetchedAt });
   return snapshot;
 }
 
@@ -179,18 +218,20 @@ const REFRESH_STUCK_MS = 60_000;
  * queued. Charges call it instead of reading Autumn themselves, so parallel
  * work doesn't write the account row once per charge.
  */
-export async function requestRefresh(ctx: MutationCtx, userId: Id<"users">) {
-  const account = await readAccount(ctx, userId);
+export async function requestRefresh(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
+  const account = await readAccount(ctx, workspaceId);
   if (account?.refreshQueuedAt && Date.now() - account.refreshQueuedAt < REFRESH_STUCK_MS) return;
   if (account) await ctx.db.patch("billingAccounts", account._id, { refreshQueuedAt: Date.now() });
-  await ctx.scheduler.runAfter(REFRESH_DELAY_MS, internal.billing.accounts.refresh, { userId });
+  await ctx.scheduler.runAfter(REFRESH_DELAY_MS, internal.billing.accounts.refresh, { workspaceId });
 }
 
 export const refresh = internalAction({
-  args: { userId: v.id("users") },
+  // `userId` alone: a refresh scheduled before accounts were a workspace's (#650), which is the person's own; slice 8 drops it.
+  args: { workspaceId: v.optional(v.id("workspaces")), userId: v.optional(v.id("users")) },
   returns: v.null(),
-  handler: async (ctx, { userId }) => {
-    await refreshAccount(ctx, userId);
+  handler: async (ctx, { workspaceId, userId }) => {
+    const refreshed = workspaceId ?? (userId ? await ctx.runQuery(internal.workspaces.actor.personalOf, { userId }) : null);
+    if (refreshed) await refreshAccount(ctx, refreshed);
     return null;
   },
 });
@@ -205,17 +246,50 @@ export const provision = internalAction({
   handler: async (ctx, { userId }) => {
     const user = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!user) return null;
+    const workspaceId: Id<"workspaces"> = await ctx.runQuery(internal.workspaces.actor.personalOf, { userId });
     const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || undefined;
-    const snapshot = await refreshAccount(ctx, userId, { email: user.email, name });
+    const snapshot = await refreshAccount(ctx, workspaceId, { email: user.email, name });
     if (!snapshot.signupGranted) {
       await autumn.attach({
         customerId: userId,
         planId: SIGNUP_PLAN,
         idempotencyKey: `signup-${userId}`,
       });
-      await refreshAccount(ctx, userId);
+      await refreshAccount(ctx, workspaceId);
     }
     return null;
+  },
+});
+
+/**
+ * Creates an organization's Autumn customer, its workspace's ID, on the free organization
+ * plan (#650): its own credits and limits from the start. Safe to run again.
+ */
+export const provisionOrganization = internalAction({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId }) => {
+    const organization = await ctx.runQuery(internal.billing.accounts.organizationOf, { workspaceId });
+    if (!organization) return null;
+    const snapshot = await refreshAccount(ctx, workspaceId, { name: organization.name });
+    // Autumn gives every new customer the personal Free plan; the organization plan, in its group, takes its place.
+    // One that has paid for a plan of its own keeps it.
+    if (snapshot.plan !== ORGANIZATION_PLAN && !snapshot.hasPaid) {
+      await autumn.attach({ customerId: workspaceId, planId: ORGANIZATION_PLAN, idempotencyKey: `organization-${workspaceId}` });
+      await refreshAccount(ctx, workspaceId);
+    }
+    return null;
+  },
+});
+
+/** The organization a workspace is, if it's one. */
+export const organizationOf = internalQuery({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.union(v.object({ name: v.string() }), v.null()),
+  handler: async (ctx, { workspaceId }) => {
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
+    return organization ? { name: organization.name } : null;
   },
 });
 
@@ -233,25 +307,27 @@ export const refreshMine = action({
   handler: async (ctx) => {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
     if (!user) return null;
-    const account = await ctx.runQuery(internal.billing.accounts.forUser, { userId: user._id });
+    // The billing page is the person's own until organizations have theirs (#651, #652).
+    const workspaceId: Id<"workspaces"> = await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: user._id });
+    const account = await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId });
     if (account && Date.now() - account.refreshedAt < REFRESH_AFTER_MS) return null;
-    await refreshAccount(ctx, user._id, { card: true });
+    await refreshAccount(ctx, workspaceId, { card: true });
     return null;
   },
 });
 
-/** What the person's plan allows of `limit`, for an action: a number, or null for none. */
+/** What the workspace's plan allows of `limit`, for an action: a number, or null for none. */
 export const planLimitOf = internalQuery({
-  args: { userId: v.id("users"), limit: v.union(...PLAN_LIMITS.map((limit) => v.literal(limit))) },
+  args: { workspaceId: v.id("workspaces"), limit: v.union(...PLAN_LIMITS.map((limit) => v.literal(limit))) },
   returns: v.union(v.number(), v.null()),
-  handler: async (ctx, { userId, limit }) => (await planLimit(ctx, userId, limit)) ?? null,
+  handler: async (ctx, { workspaceId, limit }) => (await planLimit(ctx, workspaceId, limit)) ?? null,
 });
 
-export const forUser = internalQuery({
-  args: { userId: v.id("users") },
+export const forWorkspace = internalQuery({
+  args: { workspaceId: v.id("workspaces") },
   returns: v.union(v.object(billingAccountFields), v.null()),
-  handler: async (ctx, { userId }) => {
-    const row = await readAccount(ctx, userId);
+  handler: async (ctx, { workspaceId }) => {
+    const row = await readAccount(ctx, workspaceId);
     if (!row) return null;
     const { _id, _creationTime, ...fields } = row;
     return fields;
@@ -267,8 +343,10 @@ export const mine = query({
   returns: v.union(v.object(myAccountFields), v.null()),
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-    if (!user) return null;
-    const row = await readAccount(ctx, user._id);
+    const workspaceId = user ? await ownWorkspaceOf(ctx, user._id) : undefined;
+    if (!workspaceId) return null;
+    // The person's own workspace's, until organizations have billing pages (#651, #652).
+    const row = await readAccount(ctx, workspaceId);
     if (!row) return null;
     // Copy only the fields the validator declares, so internal columns stay private.
     return pick(row, myAccountKeys);
@@ -281,8 +359,9 @@ export const myLimits = query({
   returns: v.union(v.object({ collections: v.union(v.number(), v.null()), concurrency: v.union(v.number(), v.null()), assistant_replies: v.union(v.number(), v.null()), request_papers: v.union(v.number(), v.null()) }), v.null()),
   handler: async (ctx) => {
     const user = await getCurrentUser(ctx);
-    if (!user) return null;
-    const limit = async (name: PlanLimit) => (await planLimit(ctx, user._id, name)) ?? null;
+    const workspaceId = user ? await ownWorkspaceOf(ctx, user._id) : undefined;
+    if (!workspaceId) return null;
+    const limit = async (name: PlanLimit) => (await planLimit(ctx, workspaceId, name)) ?? null;
     return { collections: await limit("collections"), concurrency: await limit("concurrency"), assistant_replies: await limit("assistant_replies"), request_papers: await limit("request_papers") };
   },
 });
@@ -303,8 +382,9 @@ export const checkBalance = query({
   ),
   handler: async (ctx, { requiredAmount }) => {
     const user = await getCurrentUser(ctx);
-    if (!user) return null;
-    const account = await readAccount(ctx, user._id);
+    const workspaceId = user ? await ownWorkspaceOf(ctx, user._id) : undefined;
+    if (!workspaceId) return null;
+    const account = await readAccount(ctx, workspaceId);
     const total = account?.balance ?? 0;
     const paid = account?.purchased ?? 0;
     return {

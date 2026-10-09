@@ -5,6 +5,7 @@ import type { DataModel } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { countRow, startCount } from "../research/recordCounts";
+import { workspaceOf } from "../workspaces/personal";
 
 /**
  * Gives each person who has screening jobs the count their job history totals its pages from
@@ -25,7 +26,7 @@ export const jobs = migrations.define({
   table: "screeningJobs",
   batchSize: 5,
   migrateOne: async (ctx, job) => {
-    await startCount(ctx, "screeningJobs", job.userId);
+    await startCount(ctx, "screeningJobs", job);
   },
 });
 
@@ -38,8 +39,8 @@ export const verifyPage = internalQuery({
   handler: async (ctx, { cursor }) => {
     const page = await ctx.db.query("screeningJobs").paginate({ cursor, numItems: 200 });
     let wrong = 0;
-    for (const userId of new Set(page.page.map((job) => job.userId))) {
-      const row = await countRow(ctx, "screeningJobs", userId);
+    for (const workspaceId of new Set(await Promise.all(page.page.map((job) => workspaceOf(ctx, job))))) {
+      const row = await countRow(ctx, "screeningJobs", workspaceId);
       if (!row || row.countedTo !== undefined) wrong++;
     }
     return { wrong, isDone: page.isDone, continueCursor: page.continueCursor };

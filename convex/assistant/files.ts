@@ -38,6 +38,7 @@ import { convertUsdToCredits } from "../../lib/pricing";
 import { pricingOf } from "../ai/serverModel";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { requireThread } from "./access";
+import { actorFor } from "../workspaces/actor";
 import { MODEL_READS } from "./steps";
 import { citedFileIdsValidator, citedFilesValidator } from "./validators";
 import { chatModel } from "./threads";
@@ -62,10 +63,13 @@ export const startUpload = mutation({
   // `digest`: the SHA-256 of the token the browser posts the file's bytes with (convex/lib/opaqueTokenDigest.ts).
   // A PDF (#648): `pdfBytes`, its size; it comes in parts (lib/assistant/files.ts `PDF_CHUNK_BYTES`).
   // A text file (plain text, Markdown, CSV): `text`, its type, which the upload route holds it to.
-  args: { name: v.string(), digest: v.string(), pdfBytes: v.optional(v.number()), text: v.optional(v.union(v.literal("text/plain"), v.literal("text/markdown"), v.literal("text/csv"))) },
+  // `workspaceId`: the page's, whose plan says how many files an hour may be attached (#650).
+  args: { workspaceId: v.id("workspaces"), name: v.string(), digest: v.string(), pdfBytes: v.optional(v.number()), text: v.optional(v.union(v.literal("text/plain"), v.literal("text/markdown"), v.literal("text/csv"))) },
   returns: v.object({ fileId: v.id("assistantFiles") }),
-  handler: async (ctx, { name, digest, pdfBytes, text }) => {
-    const userId = (await requireAuth(ctx))._id;
+  handler: async (ctx, { workspaceId, name, digest, pdfBytes, text }) => {
+    const user = await requireAuth(ctx);
+    await actorFor(ctx, user, workspaceId);
+    const userId = user._id;
     await requireFeature(ctx, FLAG, userId);
     if (!/^[0-9a-f]{64}$/.test(digest)) throw createError("VALIDATION_ERROR", "An upload needs a SHA-256 digest.");
     if (pdfBytes !== undefined && pdfBytes > MAX_PDF_BYTES) throw createError("VALIDATION_ERROR", `A PDF can be up to ${MAX_PDF_MB} MB.`);
@@ -78,9 +82,9 @@ export const startUpload = mutation({
       if (oldest._creationTime > Date.now() - ABANDONED_MS) throw createError("VALIDATION_ERROR", `You can have up to ${MAX_PENDING_FILES} files waiting to be sent. Send or remove some first.`);
       await deleteFile(ctx, oldest);
     }
-    const perHour = await planLimit(ctx, userId, "uploads_per_hour");
+    const perHour = await planLimit(ctx, workspaceId, "uploads_per_hour");
     if (perHour !== undefined) {
-      const { ok, retryAt } = await rateLimit(ctx, { name: "assistant-upload", key: userId, config: { kind: "token bucket", rate: perHour, period: HOUR, capacity: perHour } });
+      const { ok, retryAt } = await rateLimit(ctx, { name: "assistant-upload", key: `${userId}:${workspaceId}`, config: { kind: "token bucket", rate: perHour, period: HOUR, capacity: perHour } });
       if (!ok) {
         const minutes = Math.max(1, Math.ceil(((retryAt ?? Date.now()) - Date.now()) / 60_000));
         throw createError("VALIDATION_ERROR", `Your plan lets you attach ${perHour} files an hour. You can attach more in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`);
@@ -504,16 +508,15 @@ export const forget = internalMutation({
   },
 });
 
-/** Deletes a batch of a purged account's files, wherever they were sent. Returns whether all are gone. */
+/**
+ * Deletes a batch of a purged account's files that were never sent. What it sent is part of the
+ * chats it went to: those in its own workspace go with their chats, and others keep theirs (#650).
+ * Returns whether all are gone.
+ */
 export async function purgeFiles(ctx: MutationCtx, userId: Id<"users">) {
-  let left = FORGET_FILES;
-  for (const state of ["pending", "sent", "expired"] as const) {
-    const files = await ctx.db.query("assistantFiles").withIndex("by_user_and_state", (q) => q.eq("userId", userId).eq("state", state)).take(left);
-    for (const file of files) await deleteFile(ctx, file);
-    left -= files.length;
-    if (left === 0) return false;
-  }
-  return true;
+  const files = await ctx.db.query("assistantFiles").withIndex("by_user_and_state", (q) => q.eq("userId", userId).eq("state", "pending")).take(FORGET_FILES);
+  for (const file of files) await deleteFile(ctx, file);
+  return files.length < FORGET_FILES;
 }
 
 /**
@@ -659,11 +662,11 @@ export const readAction = defineUserAction({
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
-  estimate: async (ctx, userId, args) => (await readable(ctx, userId, args)).credits,
-  check: async (ctx, userId, args) => {
+  estimate: async (ctx, { userId }, args) => (await readable(ctx, userId, args)).credits,
+  check: async (ctx, { userId }, args) => {
     await readable(ctx, userId, args);
   },
-  run: async (ctx, userId, { file, range }): Promise<Infer<typeof readResult>> => {
+  run: async (ctx, { userId }, { file, range }): Promise<Infer<typeof readResult>> => {
     const read = await ctx.runQuery(internal.assistant.files.readRange, { userId, file, range });
     const span = (first: number, last: number) => (first === last ? `${first}` : `${first}-${last}`);
     // A file read is one in use: it doesn't expire while a chat reads it.

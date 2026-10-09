@@ -962,7 +962,7 @@ describe("saving without a rating", () => {
     }
   });
 
-  it("puts a paper back in every collection it was in, even when rows of a deleted collection came first", async () => {
+  it("puts a paper back in every collection it was in, even when rows of a deleted collection came first", { tags: ["size"] }, async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
@@ -990,7 +990,7 @@ describe("saving without a rating", () => {
     expect(await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", itemId)).take(1))).toEqual([]);
   });
 
-  it("deletes every membership of a deleted collection, however many, so none is left behind", async () => {
+  it("deletes every membership of a deleted collection, however many, so none is left behind", { tags: ["size"] }, async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
@@ -1005,7 +1005,7 @@ describe("saving without a rating", () => {
     await asUser.mutation(api.library.collections.deleteCollection, { collectionId });
     await t.finishAllScheduledFunctions(() => {});
     expect(await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).take(1))).toEqual([]);
-  }, 60_000);
+  });
 
   it("keeps the research rating search cards show in step with the library", async () => {
     const t = convexTest(schema);

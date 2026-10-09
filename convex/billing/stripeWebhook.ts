@@ -10,7 +10,7 @@ import { httpAction, internalAction, internalQuery } from "../_generated/server"
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { autumn } from "./autumn";
-import { refreshAccount } from "./accounts";
+import { refreshAccount, workspaceOfCustomer } from "./accounts";
 import { TOPUP_PLAN } from "../../lib/billing/plans";
 import { findPlan } from "../../lib/billing/catalog";
 
@@ -62,15 +62,26 @@ export const stripeWebhook = httpAction(async (ctx, request) => {
   return new Response(null, { status: 200 });
 });
 
-export const userForStripeCustomer = internalQuery({
-  args: { stripeCustomerId: v.string() },
-  returns: v.union(v.id("users"), v.null()),
-  handler: async (ctx, { stripeCustomerId }) => {
+/** The workspace a Stripe customer pays for (#650), by its cached account, or else by the Autumn customer Stripe names. */
+export const workspaceForStripeCustomer = internalQuery({
+  args: { stripeCustomerId: v.string(), autumnId: v.optional(v.string()) },
+  returns: v.union(v.id("workspaces"), v.null()),
+  handler: async (ctx, { stripeCustomerId, autumnId }) => {
     const account = await ctx.db
       .query("billingAccounts")
       .withIndex("by_stripe_customer", (q) => q.eq("stripeCustomerId", stripeCustomerId))
       .first();
-    return account?.userId ?? null;
+    return account?.workspaceId ?? (autumnId ? await workspaceOfCustomer(ctx, autumnId) : null);
+  },
+});
+
+/** The person whose own workspace this is; null for an organization's. */
+export const personOfWorkspace = internalQuery({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.union(v.id("users"), v.null()),
+  handler: async (ctx, { workspaceId }) => {
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    return workspace?.kind === "personal" ? workspace.userId : null;
   },
 });
 
@@ -79,22 +90,23 @@ export const handleEvent = internalAction({
   returns: v.null(),
   handler: async (ctx, { stripeCustomerId, refundedChargeId }) => {
     const stripe = stripeClient();
-    let userId = await ctx.runQuery(internal.billing.stripeWebhook.userForStripeCustomer, {
-      stripeCustomerId,
-    });
-    if (!userId) {
+    let workspaceId = await ctx.runQuery(internal.billing.stripeWebhook.workspaceForStripeCustomer, { stripeCustomerId });
+    if (!workspaceId) {
       const customer = await stripe.customers.retrieve(stripeCustomerId);
       const autumnId = customer.deleted ? undefined : customer.metadata.autumn_id;
-      if (!autumnId) {
-        console.warn(`[stripe webhook] no OpenScholar user for ${stripeCustomerId}`);
+      workspaceId = autumnId ? await ctx.runQuery(internal.billing.stripeWebhook.workspaceForStripeCustomer, { stripeCustomerId, autumnId }) : null;
+      if (!workspaceId) {
+        console.warn(`[stripe webhook] no OpenScholar workspace for ${stripeCustomerId}`);
         return null;
       }
-      userId = autumnId as Id<"users">;
     }
     if (refundedChargeId) {
-      await reverseRefundedTopUp(ctx, stripe, userId, refundedChargeId);
+      // Top-ups are bought on a person's own billing page until organizations have one (#652).
+      const userId = await ctx.runQuery(internal.billing.stripeWebhook.personOfWorkspace, { workspaceId });
+      if (userId) await reverseRefundedTopUp(ctx, stripe, userId, refundedChargeId);
+      else console.error(`[stripe webhook] refund ${refundedChargeId} is for an organization's customer; not reversed`);
     }
-    await refreshAccount(ctx, userId, { card: true });
+    await refreshAccount(ctx, workspaceId, { card: true });
     return null;
   },
 });

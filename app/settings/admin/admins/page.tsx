@@ -19,6 +19,7 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { Enter, LIST, Paged, Segmented, Zone } from "@/components/settings/parts";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 const PER_PAGE = 8;
 /** Users the picker reads at a time, and how close to the bottom of its list, in pixels, the next page starts loading. */
@@ -26,13 +27,14 @@ const PICKER_PAGE_SIZE = 20;
 const LOAD_AHEAD_PX = 80;
 
 export default function AdminsPage() {
+  const workspaceId = useWorkspace();
   const t = useTranslations("settingsAdmin.admins");
   const tc = useTranslations("common");
   const [query, setQuery] = useState("");
   // Read a page at a time, by email, searched on the server. A search's matches aren't counted, so its pager shows the page alone.
   const search = useDebouncedValue(query.trim(), 300);
-  const admins = useCursorPage(api.admins.queries.listAdmins, search ? { search } : {}, PER_PAGE);
-  const { data: count } = useProtectedQuery(api.admins.queries.countAdmins, {});
+  const admins = useCursorPage(api.admins.queries.listAdmins, inWorkspace(workspaceId, search ? { search } : {}), PER_PAGE);
+  const { data: count } = useProtectedQuery(api.admins.queries.countAdmins, inWorkspace(workspaceId, {}));
   const remove = useMutation(api.admins.mutations.remove);
   const resend = useAction(api.admins.invitations.resend);
   const [confirm, setConfirm] = useState<Id<"admins"> | null>(null);
@@ -146,6 +148,7 @@ export default function AdminsPage() {
 
 /** Add an existing user, or invite an email that becomes an admin on first sign-in. */
 function AddAdmin() {
+  const workspaceId = useWorkspace();
   const t = useTranslations("settingsAdmin.admins");
   const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
@@ -157,7 +160,7 @@ function AddAdmin() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // The picker searches on the server and reads the next page as its list scrolls.
-  const candidates = useProtectedStreamPaginatedQuery(api.admins.queries.listCandidates, open && mode === "user" ? { search } : "skip", { initialNumItems: PICKER_PAGE_SIZE });
+  const candidates = useProtectedStreamPaginatedQuery(api.admins.queries.listCandidates, inWorkspace(workspaceId, open && mode === "user" ? { search } : "skip"), { initialNumItems: PICKER_PAGE_SIZE });
   const loadOnScroll = (event: UIEvent<HTMLElement>) => {
     const { scrollHeight, scrollTop, clientHeight } = event.currentTarget;
     if (candidates.status === "CanLoadMore" && scrollHeight - scrollTop - clientHeight < LOAD_AHEAD_PX) candidates.loadMore(PICKER_PAGE_SIZE);

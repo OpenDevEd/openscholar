@@ -10,6 +10,7 @@ import {
   useUIStore,
 } from "@/lib/store";
 import { downloadExport } from "@/lib/export";
+import { useWorkspace } from "@/lib/workspaces/url";
 import {
   jsonToCSV,
   downloadAsFile,
@@ -65,6 +66,7 @@ import type { BookmarkEntry } from "./types";
 export type { BookmarkEntry } from "./types";
 
 export function BookmarksCommandCenter() {
+  const workspaceId = useWorkspace();
   const toast = useAppToast();
   const tb = useTranslations("bookmarksPage");
   const tc = useTranslations("common");
@@ -126,7 +128,10 @@ export function BookmarksCommandCenter() {
   // An account's bookmarks are written by the server, a page at a time; this browser's are all here.
   const download = async (format: "json" | "csv") => {
     try {
-      if (account) return await downloadExport(convex, { kind: "shortcuts" }, format);
+      if (account) {
+        if (!workspaceId) throw new Error("The workspace hasn't loaded yet. Try again in a moment.");
+        return await downloadExport(convex, workspaceId, { kind: "shortcuts" }, format);
+      }
       const data = Object.entries(localKeywordExpansionStore.getState().keywords).map(([name, bookmark]) => ({
         name,
         expansion: bookmark.expansion,

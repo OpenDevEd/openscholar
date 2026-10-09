@@ -17,7 +17,8 @@ import { searchResultToParams } from "../../lib/search-params/converters";
 import { paramsToBucketSearchFilters } from "../../lib/bucket/search-filters";
 import { isRatingFilterActive } from "../../lib/utils";
 import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
-import { ratingsAmong, shortcutExpansions } from "../research/records";
+import { findSearch, ratingsAmong, shortcutExpansions } from "../research/records";
+import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { readSearchRun, searchRequestValidator, type SearchSnapshot } from "./openalex";
 
 /** The fields a screening paper keeps. */
@@ -37,18 +38,18 @@ export const savedSearchValidator = v.object({
 export type SavedSearchRequest = Infer<typeof savedSearchValidator>;
 
 /** A search as its results page reads it: its settings, and the query and OpenAlex request a chat or an extraction keeps of it. Null filters for a query OpenAlex can't read. */
-export async function filtersOf(ctx: QueryCtx, userId: Id<"users">, saved: SavedSearch) {
+export async function filtersOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, saved: SavedSearch) {
   const params = { ...DEFAULT_SEARCH_PARAMS, ...searchResultToParams(restoreSearch({ ...saved, screeningResponses: [] })), q: saved.query };
-  // The account's shortcuts this query uses, as the results page expands them.
-  const expansions = await shortcutExpansions(ctx, userId, shortcutNames(saved.query));
+  // The workspace's shortcuts this query uses, as the results page expands them.
+  const expansions = await shortcutExpansions(ctx, workspaceId, shortcutNames(saved.query));
   return { params, filters: paramsToBucketSearchFilters(params, { expand: (query) => expandShortcuts(query, expansions) }) };
 }
 
 /** The request a search's results page makes for it, and its rating filter: a saved search's, or one that's only being tried. */
-export async function requestOf(ctx: QueryCtx, userId: Id<"users">, saved: SavedSearch, revision: number): Promise<SavedSearchRequest> {
+export async function requestOf(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, saved: SavedSearch, revision: number): Promise<SavedSearchRequest> {
   const user = await ctx.db.get("users", userId);
   if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
-  const { params, filters } = await filtersOf(ctx, userId, saved);
+  const { params, filters } = await filtersOf(ctx, workspaceId, saved);
   const request = filters?.openAlexQuery ?? null;
   const ratingRange: [number, number] = [params.rmin, params.rmax];
   return { clerkId: user.clerkId, request, ratingRange: isRatingFilterActive(ratingRange, params.rated) ? ratingRange : null, revision };
@@ -56,12 +57,14 @@ export async function requestOf(ctx: QueryCtx, userId: Id<"users">, saved: Saved
 
 /** The request a saved search's results page makes, and its rating filter. */
 export const readSearch = internalQuery({
-  args: { userId: v.id("users"), searchId: v.string() },
+  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), searchId: v.string() },
   returns: savedSearchValidator,
-  handler: async (ctx, { userId, searchId }) => {
-    const row = await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", searchId)).unique();
+  handler: async (ctx, { userId, workspaceId, searchId }) => {
+    const reader = { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) };
+    const row = await findSearch(ctx, reader.workspaceId, searchId);
     if (!row) throw createError("NOT_FOUND", "Search not found");
-    return await requestOf(ctx, userId, currentSearch(row.data), row.revision);
+    return await requestOf(ctx, reader, currentSearch(row.data), row.revision);
   },
 });
 
@@ -169,14 +172,14 @@ export function snapshotOf(found: SavedSearchRequest): SearchSnapshot {
  */
 export async function searchPapers(
   ctx: ActionCtx,
-  userId: Id<"users">,
+  reader: InWorkspace,
   { searchId, first, last }: { searchId: string; first: number; last: number },
   snapshot?: SearchSnapshot,
   run: { resume?: string; goesOn: boolean } = { goesOn: false },
 ): Promise<{ papers: SearchPaper[]; ended: boolean; snapshot: SearchSnapshot; resume?: string; taken: number }> {
   checkRange(first, last);
   // Typed here: the generated API's types depend on this module, so inference would loop.
-  const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, searchId });
+  const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId: reader.userId, workspaceId: reader.workspaceId, searchId });
   const taken = snapshot ?? snapshotOf(found);
   const { request, rating } = taken;
 
@@ -184,7 +187,7 @@ export async function searchPapers(
   // OpenAlex can return a work twice in one read: a job holds it once, or it is screened and paid for twice.
   const ids = new Set<string>();
   const papers = works.map(toPaper).filter((paper) => !ids.has(paper.openalexId) && ids.add(paper.openalexId));
-  return { papers: await keptByRating(ctx, userId, papers, rating), ended, snapshot: taken, ...(resume ? { resume } : {}), taken: works.length };
+  return { papers: await keptByRating(ctx, reader.userId, papers, rating), ended, snapshot: taken, ...(resume ? { resume } : {}), taken: works.length };
 }
 
 /** The papers a search's rating filter keeps, as its results page does: those the person rated within it. Every paper, when it has none. */

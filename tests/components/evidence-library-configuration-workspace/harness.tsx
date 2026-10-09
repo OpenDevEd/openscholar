@@ -6,9 +6,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { beforeAll, vi } from "vitest";
 
 // Shared by the configuration workspace tests. Every test renders all fifteen
-// configuration sections, so a single case can pass five seconds on a busy
-// machine. The tests are spread over several files so Vitest runs them at once.
-vi.setConfig({ testTimeout: 20_000 });
+// configuration sections. A case takes about two seconds alone, and up to 22
+// seconds in CI, where the type check and the browser job's build share the
+// CPU. The tests are spread over several files so Vitest runs them at once.
+vi.setConfig({ testTimeout: 60_000 });
 
 /** What the mocked Convex hooks answer; each test sets what it needs. */
 export const harness = {

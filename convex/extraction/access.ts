@@ -1,8 +1,7 @@
 /**
- * Extraction ownership helpers — single source of truth for "does the
- * current user own this job / paper" checks. Used by both queries and
- * mutations so the auth shape stays consistent across read and write
- * paths.
+ * Who may reach an extraction job or paper: the one place that says so for queries and
+ * mutations alike. A job opened by its ID is open to anyone who can act in its workspace
+ * (#650); a function given the page's workspace takes only that workspace's jobs.
  */
 
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -10,6 +9,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { noAccess, ok, unauthenticated } from "../lib/query_states";
+import { actorOnRecord as actorOnJob, type Actor } from "../workspaces/actor";
+import { isInWorkspace } from "../workspaces/personal";
 
 export type OwnedJobResolution =
   | { status: "ok"; user: Doc<"users">; job: Doc<"extractionJobs"> }
@@ -24,15 +25,15 @@ export async function resolveOwnedJob(
   if (!user) return unauthenticated();
 
   const job = await ctx.db.get("extractionJobs", jobId);
-  if (!job || job.userId !== user._id) return noAccess();
+  if (!job || !(await actorOnJob(ctx, user, job))) return noAccess();
 
   return ok({ user, job });
 }
 
-/** The job when it belongs to `userId`, for a function that acts for a named person; else null. */
-export async function ownJob(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"extractionJobs">) {
+/** The job when it's in `workspaceId`, the workspace a user action runs in; else null. */
+export async function ownJob(ctx: QueryCtx, workspaceId: Id<"workspaces">, jobId: Id<"extractionJobs">) {
   const job = await ctx.db.get("extractionJobs", jobId);
-  return job?.userId === userId ? job : null;
+  return job && (await isInWorkspace(ctx, job, workspaceId)) ? job : null;
 }
 
 export type OwnedPaperResolution =
@@ -56,23 +57,22 @@ export async function resolveOwnedPaper(
   if (!paper) return noAccess();
 
   const job = await ctx.db.get("extractionJobs", paper.jobId);
-  if (!job || job.userId !== user._id) return noAccess();
+  if (!job || !(await actorOnJob(ctx, user, job))) return noAccess();
 
   return ok({ user, job, paper });
 }
 
 /**
- * Mutation-side ownership check — throws NOT_FOUND (not FORBIDDEN, to
- * avoid leaking existence) when the job does not belong to `userId`.
+ * Mutation-side check: the job, and `user` acting on it in its workspace. Throws NOT_FOUND
+ * (not FORBIDDEN, so nobody outside the workspace learns the job exists) when they can't.
  */
-export async function assertJobOwnership(
+export async function assertJobAccess(
   ctx: MutationCtx,
-  userId: Id<"users">,
+  user: Doc<"users">,
   jobId: Id<"extractionJobs">,
-): Promise<Doc<"extractionJobs">> {
+): Promise<{ job: Doc<"extractionJobs">; actor: Actor }> {
   const job = await ctx.db.get("extractionJobs", jobId);
-  if (!job || job.userId !== userId) {
-    throw createError("NOT_FOUND", "Job not found");
-  }
-  return job;
+  const actor = job && (await actorOnJob(ctx, user, job));
+  if (!job || !actor) throw createError("NOT_FOUND", "Job not found");
+  return { job, actor };
 }

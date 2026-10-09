@@ -28,9 +28,11 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { ASSISTANT_JOB_CAPS, ASSISTANT_REQUESTS_BEFORE_ASKING } from "../lib/constants";
+import { MAX_ORGANIZATIONS_PER_PERSON } from "../lib/queryBounds";
 import { createError } from "../lib/errors";
 import { internalMutation, mutation, query } from "../lib/functions";
-import { requireThread } from "./access";
+import { personalWorkspaceOf } from "../workspaces/actor";
+import { replyWorkspace, requireThread } from "./access";
 import { RECENT_REPLIES, recentCostsValidator } from "./validators";
 
 const FLAG = "assistant.enabled";
@@ -44,7 +46,24 @@ const FORGET_LIMITS = 100;
 type Reader = Pick<QueryCtx, "db">;
 const limitOf = (ctx: Reader, threadId: Id<"assistantThreads">, userId: Id<"users">) =>
   ctx.db.query("assistantLimits").withIndex("by_thread_and_user", (q) => q.eq("threadId", threadId).eq("userId", userId)).unique();
-const spenderOf = (ctx: Reader, userId: Id<"users">) => ctx.db.query("assistantSpenders").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+/**
+ * A person's own record with the assistant in a workspace (#650). Until the backfill reaches
+ * it, their record from before workspaces is their own workspace's; slice 8 drops that read.
+ */
+async function spenderOf(ctx: Reader, workspaceId: Id<"workspaces">, userId: Id<"users">) {
+  const scoped = await ctx.db.query("assistantSpenders").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).unique();
+  if (scoped) return scoped;
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  if (workspace?.kind !== "personal" || workspace.userId !== userId) return null;
+  // A person has one record from before workspaces, and one in each workspace since.
+  return (await ctx.db.query("assistantSpenders").withIndex("by_user", (q) => q.eq("userId", userId)).take(MAX_ORGANIZATIONS_PER_PERSON + 2)).find((spender) => !spender.workspaceId) ?? null;
+}
+/** The workspace a person's replies in this chat act in, whose record of theirs the chat's settings go with. */
+async function workspaceFor(ctx: Reader, threadId: Id<"assistantThreads">, userId: Id<"users">) {
+  const thread = await ctx.db.get("assistantThreads", threadId);
+  if (!thread) throw createError("NOT_FOUND", "Chat not found");
+  return await replyWorkspace(ctx, userId, thread);
+}
 
 /** Credits a reply to this person may spend in this chat before it pauses. With none, it has no limit. */
 export async function replyLimitOf(ctx: Reader, threadId: Id<"assistantThreads">, userId: Id<"users">) {
@@ -90,7 +109,7 @@ export const covers = (allowance: Allowance | undefined, credits: number, balanc
  * limits go on taking them.
  */
 async function setLimits(ctx: MutationCtx, threadId: Id<"assistantThreads">, userId: Id<"users">, change: (now: Limits) => Limits) {
-  const [row, spender] = await Promise.all([limitOf(ctx, threadId, userId), spenderOf(ctx, userId)]);
+  const [row, spender] = await Promise.all([limitOf(ctx, threadId, userId), workspaceFor(ctx, threadId, userId).then((workspaceId) => spenderOf(ctx, workspaceId, userId))]);
   const now = limitsIn(row);
   const next = change(now);
   if (spender?.newChats !== undefined && sameLimits(limitsIn(spender.newChats), now)) await ctx.db.patch("assistantSpenders", spender._id, { newChats: next });
@@ -132,35 +151,39 @@ export function carriedOn(waiting: Pick<NonNullable<Doc<"assistantThreads">["ask
   return { ...(cap === undefined ? {} : { cap }), ...(lap === undefined ? {} : { lap }) };
 }
 
-/** A chat the person starts begins with what they chose for their new chats. */
-export async function startWith(ctx: MutationCtx, threadId: Id<"assistantThreads">, userId: Id<"users">) {
-  const limits = limitsIn((await spenderOf(ctx, userId))?.newChats);
+/** A chat the person starts begins with what they chose for their new chats in its workspace. */
+export async function startWith(ctx: MutationCtx, threadId: Id<"assistantThreads">, userId: Id<"users">, workspaceId: Id<"workspaces">) {
+  const limits = limitsIn((await spenderOf(ctx, workspaceId, userId))?.newChats);
   if (limits.replyLimit !== undefined || limits.jobs !== undefined) await ctx.db.insert("assistantLimits", { threadId, userId, ...limits });
 }
 
 /**
- * Keeps what a reply cost among the person's last, for the Spending sheet's chart, under the
- * reply's name. Credits for a reply already among them are added to it: a request stopped or
- * failed partway is settled after the reply has ended. Nothing is kept for no credits.
+ * Keeps what a reply cost among the person's last in the workspace it acted in, for the
+ * Spending sheet's chart, under the reply's name. Credits for a reply already among them are
+ * added to it: a request stopped or failed partway is settled after the reply has ended.
+ * Nothing is kept for no credits.
  */
-export async function noteReply(ctx: MutationCtx, userId: Id<"users">, reply: string, credits: number) {
+export async function noteReply(ctx: MutationCtx, userId: Id<"users">, given: Id<"workspaces"> | undefined, reply: string, credits: number) {
   // A reply can outlast its sender's account, paused in someone else's chat: nothing is kept for an account that is gone.
   if (credits <= 0 || !(await ctx.db.get("users", userId))) return;
-  const spender = await spenderOf(ctx, userId);
+  // One from before replies named their workspace ran in its sender's own (#650); slice 8 makes it required.
+  const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
+  const spender = await spenderOf(ctx, workspaceId, userId);
   const kept = spender?.recent ?? [];
   const recent = kept.some((entry) => entry.reply === reply)
     ? kept.map((entry) => (entry.reply === reply ? { reply, credits: entry.credits + credits } : entry))
     : [...kept, { reply, credits }].slice(-RECENT_REPLIES);
   if (spender) await ctx.db.patch("assistantSpenders", spender._id, { recent });
-  else await ctx.db.insert("assistantSpenders", { userId, recent });
+  else await ctx.db.insert("assistantSpenders", { userId, workspaceId, recent });
 }
 
 /** A request of a reply that was stopped or failed partway is settled once OpenRouter says what it cost (convex/billing/openRouter.ts). */
 export const settledLate = internalMutation({
-  args: { userId: v.id("users"), reply: v.string(), credits: v.number() },
+  // `workspaceId`: the one the reply acted in; one scheduled before replies named theirs (#650) goes to the person's own, until slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), reply: v.string(), credits: v.number() },
   returns: v.null(),
-  handler: async (ctx, { userId, reply, credits }) => {
-    await noteReply(ctx, userId, reply, credits);
+  handler: async (ctx, { userId, workspaceId, reply, credits }) => {
+    await noteReply(ctx, userId, workspaceId, reply, credits);
     return null;
   },
 });
@@ -177,9 +200,9 @@ export async function purgeSpending(ctx: MutationCtx, userId: Id<"users">) {
   const rows = await ctx.db.query("assistantLimits").withIndex("by_user", (q) => q.eq("userId", userId)).take(FORGET_LIMITS);
   for (const row of rows) await ctx.db.delete("assistantLimits", row._id);
   if (rows.length === FORGET_LIMITS) return false;
-  const spender = await spenderOf(ctx, userId);
-  if (spender) await ctx.db.delete("assistantSpenders", spender._id);
-  return true;
+  const spenders = await ctx.db.query("assistantSpenders").withIndex("by_user", (q) => q.eq("userId", userId)).take(FORGET_LIMITS);
+  for (const spender of spenders) await ctx.db.delete("assistantSpenders", spender._id);
+  return spenders.length < FORGET_LIMITS;
 }
 
 export const get = query({
@@ -204,7 +227,7 @@ export const get = query({
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
-    const [limit, spender] = await Promise.all([limitOf(ctx, threadId, userId), spenderOf(ctx, userId)]);
+    const [limit, spender] = await Promise.all([limitOf(ctx, threadId, userId), workspaceFor(ctx, threadId, userId).then((workspaceId) => spenderOf(ctx, workspaceId, userId))]);
     return { replyLimit: limit?.replyLimit ?? null, allowance: limit?.jobs ? { cap: limit.jobs.cap ?? null } : null, ...(spender?.newChats === undefined ? {} : { newChats: { replyLimit: spender.newChats.replyLimit ?? null, allowance: spender.newChats.jobs ? { cap: spender.newChats.jobs.cap ?? null } : null } }), recent: (spender?.recent ?? []).map((entry) => entry.credits), web: limit?.web === true, files: limit?.files === true };
   },
 });
@@ -268,9 +291,10 @@ export const setForNewChats = mutation({
     await requireFeature(ctx, FLAG, userId);
     await requireThread(ctx, userId, threadId);
     const newChats = on ? limitsIn(await limitOf(ctx, threadId, userId)) : undefined;
-    const spender = await spenderOf(ctx, userId);
+    const workspaceId = await workspaceFor(ctx, threadId, userId);
+    const spender = await spenderOf(ctx, workspaceId, userId);
     if (spender) await ctx.db.patch("assistantSpenders", spender._id, { newChats });
-    else if (newChats) await ctx.db.insert("assistantSpenders", { userId, newChats, recent: [] });
+    else if (newChats) await ctx.db.insert("assistantSpenders", { userId, workspaceId, newChats, recent: [] });
     return null;
   },
 });

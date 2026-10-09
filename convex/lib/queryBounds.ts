@@ -2,7 +2,7 @@
 export const MAX_LIBRARY_MEMBERS = 1_000;
 
 /** Most Evidence Libraries one organization can make, so its library list reads in one query. */
-export const MAX_LIBRARIES_PER_ORGANIZATION = 200;
+export const MAX_LIBRARIES_PER_WORKSPACE = 200;
 
 /** Maximum evidence units loaded per paper.
  * Each extraction run produces evidence; 200 per paper is generous. */

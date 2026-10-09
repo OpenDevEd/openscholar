@@ -36,7 +36,7 @@ import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import { requireAuth } from "../../lib/auth";
 import { createError } from "../../lib/errors";
-import { assertJobOwnership } from "../access";
+import { assertJobAccess } from "../access";
 import {
   assertValidJobTransition,
   type JobStatus,
@@ -51,6 +51,7 @@ import {
 } from "../../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { availableCredits as readAvailableCredits } from "../../billing/accounts";
+import { workspaceOf } from "../../workspaces/actor";
 import { getFlag } from "../../featureFlags/guard";
 import {
   dispatchPaperQueueWindowTx,
@@ -126,7 +127,7 @@ export const resumeExtraction = mutation({
     reason?: string;
   }> => {
     const user = await requireAuth(ctx);
-    const job = await assertJobOwnership(ctx, user._id, jobId);
+    const { job } = await assertJobAccess(ctx, user, jobId);
     await requireOrganizationFeature(ctx, "extraction");
 
     if (!job.status) {
@@ -140,7 +141,8 @@ export const resumeExtraction = mutation({
     let remainingEstimateHigh = 0;
 
     if (job.status === "creditsExhausted") {
-      availableCredits = await readAvailableCredits(ctx, user._id);
+      // Its workspace pays for it (#650).
+      availableCredits = await readAvailableCredits(ctx, await workspaceOf(ctx, job));
       const questions = await ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))

@@ -15,6 +15,7 @@ import { paperSetValidator, screeningPaperInputValidator } from "../screening/va
 import { checkRange, type SearchPaper } from "./search";
 import { authorMetadata, sourceMetadata } from "../../lib/library/paper-metadata";
 import { screeningRevision } from "../screening/accounting";
+import { isInWorkspace, personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 
 type PaperSet = Infer<typeof paperSetValidator>;
 export type HeldSet = Exclude<PaperSet, { kind: "search" }>;
@@ -41,16 +42,18 @@ const fromResult = (paper: Doc<"screeningResults">): SearchPaper => ({
   openalexId: paper.openalexId, title: paper.title, abstract: paper.abstract, authors: paper.authors, publicationYear: paper.publicationYear, doi: paper.doi, venue: paper.venue, citedByCount: paper.citedByCount,
 });
 
-/** One page of a held set's papers, in its order. Another person's collection or job reads as not found. */
+/** One page of a held set's papers, in its order. Another workspace's collection or another person's job reads as not found. */
 export const page = internalQuery({
-  args: { userId: v.id("users"), set: paperSetValidator, cursor: v.union(v.string(), v.null()), numItems: v.number(), revision: v.optional(v.string()) },
+  // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which reads its person's own; required again in slice 8.
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), set: paperSetValidator, cursor: v.union(v.string(), v.null()), numItems: v.number(), revision: v.optional(v.string()) },
   returns: v.object({ page: v.array(screeningPaperInputValidator), isDone: v.boolean(), continueCursor: v.string() }),
-  handler: async (ctx, { userId, set, cursor, numItems, revision }) => {
+  handler: async (ctx, { userId, workspaceId: given, set, cursor, numItems, revision }) => {
     if (set.kind === "search") throw new Error("A search's papers are read from OpenAlex (./search.ts)");
     const opts = { cursor, numItems: Math.min(numItems, PAGE), maximumBytesRead: PAGE_BYTES };
+    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
     if (set.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", set.jobId);
-      if (!job || job.userId !== userId) throw createError("NOT_FOUND", "Screening not found");
+      if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("NOT_FOUND", "Screening not found");
       if (revision !== undefined && revision !== await screeningRevision(ctx, job)) {
         throw createError("CONFLICT", "Screening decisions changed. Remove this source and select it again to review the current Included papers.");
       }
@@ -61,17 +64,17 @@ export const page = internalQuery({
       return { page: read.page.map(fromResult), isDone: read.isDone, continueCursor: read.continueCursor };
     }
     const collectionId = set.kind === "collection" ? set.collectionId : undefined;
-    if (collectionId && (await ctx.db.get("collections", collectionId))?.userId !== userId) throw createError("NOT_FOUND", "Collection not found");
-    const read = await readLibraryPage(ctx, userId, { sortBy: "savedAt", sortOrder: "desc", collectionId }, opts);
+    if (collectionId && (await ctx.db.get("collections", collectionId))?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
+    const read = await readLibraryPage(ctx, workspaceId, { sortBy: "savedAt", sortOrder: "desc", collectionId }, opts);
     return { page: read.page.map(fromLibrary), isDone: read.isDone, continueCursor: read.continueCursor };
   },
 });
 
 /** The set's pages from `cursor` on, each of at most `size()` papers, with where the set goes on after it (`after`, missing on the last). */
-async function* pages(ctx: ActionCtx, userId: Id<"users">, set: HeldSet, cursor: string | null, size: () => number, revision?: string) {
+async function* pages(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, set: HeldSet, cursor: string | null, size: () => number, revision?: string) {
   for (;;) {
     // Typed here: the generated API's types depend on this module, so inference would loop.
-    const read: { page: SearchPaper[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.paperSets.held.page, { userId, set, cursor, numItems: size(), revision });
+    const read: { page: SearchPaper[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.paperSets.held.page, { userId, workspaceId, set, cursor, numItems: size(), revision });
     yield { papers: read.page, after: read.isDone ? undefined : read.continueCursor };
     if (read.isDone) return;
     cursor = read.continueCursor;
@@ -86,12 +89,12 @@ async function* pages(ctx: ActionCtx, userId: Id<"users">, set: HeldSet, cursor:
  * to come. Pages end exactly where the skipped papers end and where the range ends, and
  * only the range is kept: never more than one job's papers.
  */
-export async function heldPapers(ctx: ActionCtx, userId: Id<"users">, set: HeldSet, { first, last }: { first: number; last: number }, resume?: string, revision?: string): Promise<{ papers: SearchPaper[]; resume?: string }> {
+export async function heldPapers(ctx: ActionCtx, reader: InWorkspace, set: HeldSet, { first, last }: { first: number; last: number }, resume?: string, revision?: string): Promise<{ papers: SearchPaper[]; resume?: string }> {
   checkRange(first, last);
   const papers: SearchPaper[] = [];
   let skip = resume === undefined ? first - 1 : 0;
   const want = last - first + 1;
-  for await (const read of pages(ctx, userId, set, resume ?? null, () => skip || want - papers.length, revision)) {
+  for await (const read of pages(ctx, reader, set, resume ?? null, () => skip || want - papers.length, revision)) {
     if (skip) skip -= read.papers.length;
     else papers.push(...read.papers);
     if (papers.length >= want) return { papers, ...(read.after === undefined ? {} : { resume: read.after }) };

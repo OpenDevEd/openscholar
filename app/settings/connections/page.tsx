@@ -13,19 +13,21 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 const PER_PAGE = 8;
 const APP_TINTS = ["#a78bfa", "#60a5fa", "#34d399", "#f472b6", "#2dd4bf", "#d9a27c"];
 
 export default function ConnectionsPage() {
+  const workspaceId = useWorkspace();
   const t = useTranslations("connectionsPage");
   const tc = useTranslations("common");
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
   // Each list is read a page at a time, newest first; the counts total their pages.
-  const active = useCursorPage(api.wallet.queries.listKeys, { active: true }, PER_PAGE);
-  const revoked = useCursorPage(api.wallet.queries.listKeys, { active: false }, PER_PAGE);
-  const { data: counts } = useProtectedQuery(api.wallet.queries.countKeys, {});
+  const active = useCursorPage(api.wallet.queries.listKeys, inWorkspace(workspaceId, { active: true }), PER_PAGE);
+  const revoked = useCursorPage(api.wallet.queries.listKeys, inWorkspace(workspaceId, { active: false }), PER_PAGE);
+  const { data: counts } = useProtectedQuery(api.wallet.queries.countKeys, inWorkspace(workspaceId, {}));
   const revokeKey = useMutation(api.wallet.mutations.revokeKey);
   const [confirm, setConfirm] = useState<Id<"walletKeys"> | null>(null);
   const [revoking, setRevoking] = useState<Id<"walletKeys"> | null>(null);

@@ -25,6 +25,7 @@ import { ListLoading } from "@/components/evidence-libraries/list-controls";
 import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { JobListItem } from "./job-list-item";
 import type { ViewMode } from "@/lib/types";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 function createExtractionJobListItem(viewMode: ViewMode) {
   return function ExtractionJobListItem({ item }: { item: ExtractionJob }) {
@@ -35,6 +36,7 @@ function createExtractionJobListItem(viewMode: ViewMode) {
 type ExtractionJob = Doc<"extractionJobs">;
 
 export function ExtractionCommandCenter() {
+  const workspaceId = useWorkspace();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
 
@@ -55,9 +57,9 @@ export function ExtractionCommandCenter() {
   } = useUIStore();
 
   // Read a page at a time, sorted and filtered on the server: the page number can't be jumped to, so it stays out of the URL.
-  const jobs = useCursorPage(api.extraction.queries.listJobs, { sort: extractionSortBy, ...(text ? { text } : {}) }, COMMAND_CENTER_ITEMS_PER_PAGE);
+  const jobs = useCursorPage(api.extraction.queries.listJobs, inWorkspace(workspaceId, { sort: extractionSortBy, ...(text ? { text } : {}) }), COMMAND_CENTER_ITEMS_PER_PAGE);
   // A search's matches aren't counted, so its pager shows the page alone.
-  const { data: count } = useProtectedQuery(api.extraction.queries.countJobs, {});
+  const { data: count } = useProtectedQuery(api.extraction.queries.countJobs, inWorkspace(workspaceId, {}));
   const total = text ? undefined : count;
   const step = (to: () => void) => () => {
     to();
