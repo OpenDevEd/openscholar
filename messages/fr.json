@@ -3934,7 +3934,8 @@
       "buy": "Ajouter {credits, number} crédits pour {price}",
       "plans": "Voir les offres",
       "note": "L'assistant demande toujours avant de les dépenser.",
-      "failed": "Impossible d'ajouter des crédits"
+      "failed": "Impossible d'ajouter des crédits",
+      "askAdmin": "Seul un administrateur de {organization} y ajoute des crédits. Demandez à l'un d'eux."
     },
     "allowance": {
       "any": "Crédits autorisés",
@@ -4151,6 +4152,7 @@
       "refillOn": "{amount} le {date}",
       "upToMembers": "Jusqu'à {count, number} membres",
       "included": "Inclus"
-    }
+    },
+    "couldntInvite": "L'organisation a été créée, mais les invitations ne sont pas parties. Envoyez-les depuis ses paramètres Membres."
   }
 }

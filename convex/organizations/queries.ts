@@ -9,9 +9,10 @@ import { readAccount } from "../billing/accounts";
 import { collectionCountRow } from "../library/collections";
 import { countRow } from "../research/recordCounts";
 import { query } from "../lib/functions";
+import { createError } from "../lib/errors";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
-import { organizationOf } from "./read";
+import { organizationAt, organizationOf } from "./read";
 
 /** An organization's members are counted up to one past this; past it they show as more than it. */
 const MEMBERS_COUNTED = 100;
@@ -27,6 +28,8 @@ const workspaceValidator = v.object({
   name: v.string(),
   /** An organization's: the part of the address its pages sit under. */
   slug: v.optional(v.string()),
+  /** An organization's ID. */
+  organizationId: v.optional(v.id("organizations")),
   imageUrl: v.optional(v.string()),
   role: ROLE,
   /** An organization's active members, up to one past MEMBERS_COUNTED. */
@@ -36,6 +39,19 @@ const workspaceValidator = v.object({
   /** The colour an organization's admins picked. */
   colour: v.optional(v.string()),
 });
+
+/** An organization as the switcher lists it, with the person's role there. */
+async function organizationRow(ctx: QueryCtx, organization: Doc<"organizations">, workspaceId: Id<"workspaces">, role: "admin" | "member") {
+  const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MEMBERS_COUNTED + 1);
+  const plan = (await readAccount(ctx, workspaceId))?.plan;
+  return { workspaceId, kind: "organization" as const, name: organization.name, slug: organization.slug, organizationId: organization._id, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role, members: members.length, ...(plan ? { plan } : {}), ...(organization.colour ? { colour: organization.colour } : {}) };
+}
+
+/** The person's own workspace as the switcher lists it: named for them, with their photo. */
+async function ownRow(ctx: QueryCtx, user: Doc<"users">, workspaceId: Id<"workspaces">) {
+  const plan = (await readAccount(ctx, workspaceId))?.plan;
+  return { workspaceId, kind: "personal" as const, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), role: "admin" as const, ...(plan ? { plan } : {}) };
+}
 
 export const workspacesAction = defineUserQuery({
   path: "organizations/queries:workspaces",
@@ -53,20 +69,32 @@ export const workspacesAction = defineUserQuery({
       page.page.map(async (membership) => {
         const organization = await ctx.db.get("organizations", membership.organizationId);
         const workspace = organization?.state === "active" ? await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organization._id)).unique() : null;
-        if (!organization || !workspace) return [];
-        const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MEMBERS_COUNTED + 1);
-        const plan = (await readAccount(ctx, workspace._id))?.plan;
-        return [{ workspaceId: workspace._id, kind: "organization" as const, name: organization.name, slug: organization.slug, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role: roleOf(membership.role), members: members.length, ...(plan ? { plan } : {}), ...(organization.colour ? { colour: organization.colour } : {}) }];
+        return organization && workspace ? [await organizationRow(ctx, organization, workspace._id, roleOf(membership.role))] : [];
       }),
     );
     // The person's own workspace heads the first page.
-    const ownPlan = paginationOpts.cursor ? undefined : (await readAccount(ctx, own._id))?.plan;
-    const mine = paginationOpts.cursor ? [] : [{ workspaceId: own._id, kind: "personal" as const, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), role: "admin" as const, ...(ownPlan ? { plan: ownPlan } : {}) }];
+    const mine = paginationOpts.cursor ? [] : [await ownRow(ctx, user, own._id)];
     return { ...page, page: [...mine, ...organizations.flat()] };
   },
 });
 export const workspaces = userQuery(workspacesAction, { signedOut: { page: [], isDone: true, continueCursor: "" } });
 export const workspacesForAssistant = assistantQuery(workspacesAction);
+
+export const workspaceAction = defineUserQuery({
+  path: "organizations/queries:workspace",
+  description: "Says which workspace the person is in: their own, or an organization, with its name, address, their role there, how many members it has, its plan and its colour.",
+  args: {},
+  returns: workspaceValidator,
+  run: async (ctx, { userId, workspaceId, role }) => {
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    const user = await ctx.db.get("users", userId);
+    if (!workspace || !user) throw createError("NOT_FOUND", "Workspace not found.");
+    if (workspace.kind === "personal") return await ownRow(ctx, user, workspaceId);
+    return await organizationRow(ctx, await organizationOf(ctx, workspaceId), workspaceId, role);
+  },
+});
+export const workspace = userQuery(workspaceAction);
+export const workspaceForAssistant = assistantQuery(workspaceAction);
 
 const memberValidator = v.object({
   userId: v.id("users"),
@@ -186,8 +214,8 @@ export const invitationTo = query({
   ),
   handler: async (ctx, { slug }) => {
     const user = await getCurrentUser(ctx);
-    const organization = await ctx.db.query("organizations").withIndex("by_slug", (q) => q.eq("slug", slug)).first();
-    if (!user || organization?.state !== "active") return null;
+    const organization = await organizationAt(ctx, slug);
+    if (!user || !organization) return null;
     const membership = await ctx.db
       .query("organizationMemberships")
       .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organization._id).eq("clerkUserId", user.clerkId).eq("state", "active"))

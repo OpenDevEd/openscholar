@@ -3934,7 +3934,8 @@
       "buy": "以 {price} 添加 {credits, number} 积分",
       "plans": "查看方案",
       "note": "助手在使用积分前仍会询问。",
-      "failed": "无法添加积分"
+      "failed": "无法添加积分",
+      "askAdmin": "只有 {organization} 的管理员可以为其添加积分。请联系其中一位管理员。"
     },
     "allowance": {
       "any": "已允许使用积分",
@@ -4151,6 +4152,7 @@
       "refillOn": "{date} 补充 {amount}",
       "upToMembers": "最多 {count, number} 名成员",
       "included": "包含"
-    }
+    },
+    "couldntInvite": "组织已创建，但邀请未能发出。请在其成员设置中发送。"
   }
 }

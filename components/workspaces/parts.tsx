@@ -22,15 +22,18 @@ export type WorkspaceLook = Pick<WorkspaceRow, "kind" | "name" | "imageUrl"> & {
 /** Clerk's limit on a free organization's members, invitations included. */
 export const FREE_MEMBERS = 5;
 
-/** The most workspaces the switcher lists. ponytail: one page; page on if people join more than 20 organizations. */
+/** The most workspaces the switcher lists. ponytail: one page, with the one you're in read apart; page on if people join more than 20 organizations. */
 const LISTED = 20;
 
-/** The workspaces the person can switch to, their own first, and the one the page is in; undefined while they load. */
+/** The workspaces the person can switch to, their own first; undefined while they load. */
 export function useWorkspaces() {
   const here = useWorkspace();
-  const { data } = useProtectedQuery(api.organizations.queries.workspaces, inWorkspace(here, { paginationOpts: { cursor: null, numItems: LISTED } }));
-  const all = data?.page;
-  return { all, current: all?.find((workspace) => workspace.workspaceId === here) };
+  return useProtectedQuery(api.organizations.queries.workspaces, inWorkspace(here, { paginationOpts: { cursor: null, numItems: LISTED } })).data?.page;
+}
+
+/** The workspace the page is in, read on its own: it may not be on the switcher's first page. Undefined while it loads. */
+export function useCurrentWorkspace() {
+  return useProtectedQuery(api.organizations.queries.workspace, inWorkspace(useWorkspace(), {})).data;
 }
 
 /** Your own workspace's colour, the brand's; an organization takes another until its admins pick one. */

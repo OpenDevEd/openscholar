@@ -6,7 +6,7 @@
 // it, and what you run uses its credits and plan.
 
 import { useState } from "react";
-import { useOrganizationList } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import { useTranslations } from "next-intl";
@@ -28,7 +28,7 @@ import { workspaceHref } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { pageItem } from "./item-home";
-import { FREE_MEMBERS, Framed, PlanChip, settingsHref, usePlanOf, useWorkspaces, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
+import { FREE_MEMBERS, Framed, PlanChip, settingsHref, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 
 const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-left transition-colors hover:bg-foreground/[0.045]";
 
@@ -71,9 +71,22 @@ function RoleOf({ workspace }: { workspace: WorkspaceRow }) {
  * Answers an invitation: joining is Clerk's own, whose client turns the invitation into a
  * membership, which is kept at once; declining takes it back. `answering` is the one being answered.
  */
+/** Pages of someone's pending invitations Clerk is read for one to accept: 250, past which it reads as gone. */
+const INVITATION_PAGES = 5;
+const INVITATION_PAGE = 50;
+
+/** Clerk's own copy of someone's pending invitation, which accepts it, read a page at a time until it turns up. */
+async function pendingInClerk(user: NonNullable<ReturnType<typeof useUser>["user"]>, invitationId: string) {
+  for (let page = 1; page <= INVITATION_PAGES; page++) {
+    const { data, total_count } = await user.getOrganizationInvitations({ status: "pending", initialPage: page, pageSize: INVITATION_PAGE });
+    const found = data.find((one) => one.id === invitationId);
+    if (found || page * INVITATION_PAGE >= total_count) return found;
+  }
+}
+
 export function useAnswerInvitation() {
   const t = useTranslations("workspaces");
-  const { userInvitations } = useOrganizationList({ userInvitations: { infinite: true } });
+  const { user } = useUser();
   const decline = useWorkspaceAction(api.organizations.manage.declineInvitation);
   const confirmJoin = useAction(api.organizations.manage.confirmJoin);
   const [answering, setAnswering] = useState<string | null>(null);
@@ -83,7 +96,7 @@ export function useAnswerInvitation() {
     join: async (invitation: { clerkInvitationId: string; organization: { slug: string } }) => {
       setAnswering(invitation.clerkInvitationId);
       try {
-        const clerkInvitation = userInvitations.data?.find((one) => one.id === invitation.clerkInvitationId);
+        const clerkInvitation = user ? await pendingInClerk(user, invitation.clerkInvitationId) : undefined;
         if (!clerkInvitation) throw new Error(t("invitationGone"));
         await clerkInvitation.accept();
         await confirmJoin({ slug: invitation.organization.slug });
@@ -115,7 +128,8 @@ export function useAnswerInvitation() {
 export function WorkspaceMenu({ onDone, onCreate }: { onDone: () => void; onCreate: () => void }) {
   const t = useTranslations("workspaces");
   const router = useRouter();
-  const { all, current } = useWorkspaces();
+  const all = useWorkspaces();
+  const current = useCurrentWorkspace();
   const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(current?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
   const { answering, join, decline } = useAnswerInvitation();
   const others = (all ?? []).filter((workspace) => workspace.workspaceId !== current?.workspaceId);
@@ -268,15 +282,18 @@ function NewOrganization({ close }: { close: () => void }) {
   };
   const done = async () => {
     setBusy(true);
+    let made: { workspaceId: Id<"workspaces">; slug: string };
     try {
-      const made = await create({ name: name.trim() });
-      if (emails.length) await inviteThere({ workspaceId: made.workspaceId, emails, role: "member" });
-      close();
-      router.push(workspaceHref(made.slug, "/library"));
+      made = await create({ name: name.trim() });
     } catch (error) {
       showStyledToast("error", getErrorMessage(error, t("couldntCreate")));
       setBusy(false);
+      return;
     }
+    // It's made: trying again would make another. Invitations that fail are sent again from its Members settings.
+    if (emails.length) await inviteThere({ workspaceId: made.workspaceId, emails, role: "member" }).catch((error) => showStyledToast("error", getErrorMessage(error, t("couldntInvite"))));
+    close();
+    router.push(workspaceHref(made.slug, "/library"));
   };
   return (
     <>

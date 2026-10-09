@@ -3526,7 +3526,7 @@ describe("custom domains", () => {
 
       const { page: overviews } = await fixture.admin.query(
         api.evidenceLibraries.queries.listLibraries,
-        { paginationOpts: { cursor: null, numItems: 50 } },
+        { organization: fixture.organizationId, paginationOpts: { cursor: null, numItems: 50 } },
       );
       const row = overviews.find(
         (library) => library._id === fixture.created.libraryId,

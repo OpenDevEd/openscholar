@@ -3934,7 +3934,8 @@
       "buy": "Add {credits, number} credits for {price}",
       "plans": "See plans",
       "note": "The assistant still asks before it spends them.",
-      "failed": "Couldn't add credits"
+      "failed": "Couldn't add credits",
+      "askAdmin": "Only an admin of {organization} adds credits to it. Ask one of them."
     },
     "allowance": {
       "any": "Credits allowed",
@@ -4151,6 +4152,7 @@
       "refillOn": "{amount} on {date}",
       "upToMembers": "Up to {count, number} members",
       "included": "Included"
-    }
+    },
+    "couldntInvite": "The organization was made, but the invitations didn't go out. Send them from its Members settings."
   }
 }

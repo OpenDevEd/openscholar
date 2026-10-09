@@ -22,7 +22,6 @@ vi.mock("next-themes", () => ({ useTheme: () => ({ theme: "system", setTheme: vi
 vi.mock("@clerk/nextjs", () => ({
   useUser: () => ({ user: { fullName: "Ada", imageUrl: undefined, primaryEmailAddress: { emailAddress: "ada@example.org" } } }),
   useClerk: () => ({ signOut: vi.fn() }),
-  useOrganizationList: () => ({ userInvitations: { data: [] } }),
 }));
 vi.mock("convex/react", () => ({ useAction: () => vi.fn(), useMutation: () => vi.fn() }));
 vi.mock("@/convex/_generated/api", () => ({

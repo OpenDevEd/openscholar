@@ -51,7 +51,7 @@ import { cn } from "@/lib/utils";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { CreateOrganization, WorkspaceMenu } from "./switcher";
-import { Framed, settingsHref, usePlanOf, useWorkspaces, workspaceTint, WorkspaceTile, type WorkspaceRow } from "./parts";
+import { Framed, settingsHref, usePlanOf, useCurrentWorkspace, workspaceTint, WorkspaceTile, type WorkspaceRow } from "./parts";
 
 /** How far the rail steps back while a card is up. */
 const RECEDE = 0.9;
@@ -88,7 +88,7 @@ export function SidebarContent({ onClose }: { onClose?: () => void }) {
   const path = bareWorkspacePath(usePathname());
   const searchParams = useSearchParams();
   const here = useWorkspace();
-  const { current } = useWorkspaces();
+  const current = useCurrentWorkspace();
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
 

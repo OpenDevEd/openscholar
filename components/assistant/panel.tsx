@@ -8,7 +8,7 @@
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { Component, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
-import { insertAtTop, useAction, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import Link from "@/components/workspace-link";
@@ -62,7 +62,7 @@ import { DockedJobs, JobDock, JobFlight, type Flight } from "./job-cards";
 import { IconButton, WorkingText } from "./parts";
 import { Dim, HistorySheet, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
 import { SHEET_SPRING } from "@/lib/motion";
-import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -235,7 +235,8 @@ function Overlay({
   }
   // A purchase of credits belongs to the panel, not to the sheet that started it: the sheet can be closed and opened
   // again while the purchase is on its way, and a second one started then would charge the card twice.
-  const buyCredits = useAction(api.billing.actions.buyCredits);
+  // Bought for the workspace the panel is in: an organization's admins buy its credits.
+  const buyCredits = useWorkspaceAction(api.billing.actions.buyCredits);
   const toast = useAppToast();
   const [buying, setBuying] = useState<number | null>(null);
   const [bought, setBought] = useState<number | null>(null);

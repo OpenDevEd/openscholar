@@ -220,6 +220,34 @@ describe("an organization", () => {
     expect((await aliceAs.action(api.organizations.manage.create, { name: "研究室" })).slug).toBe("organization");
   });
 
+  it("takes credits bought in it from its admins, charged to it, and refuses its members", async () => {
+    const { t, aliceAs, bobAs, webhook } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const inLab = { workspaceId: lab.workspaceId };
+    await t.run((ctx) => ctx.db.insert("billingCatalog", { plans: [{ id: "top_up", name: "Credit top-up", addOn: true, autoEnable: false, credits: { included: 0, interval: "one_off", unitPrice: { amount: 1, billingUnits: 10_000 } }, features: [], popular: false }], features: [], syncedAt: Date.now() }));
+    await aliceAs.action(api.organizations.manage.invite, { ...inLab, emails: ["bob@example.org"], role: "member" });
+    const [invited] = (await bobAs.query(api.organizations.queries.myInvitations, page)).page;
+    await webhook("organizationMembership.created", clerk.accept(invited.clerkInvitationId, "bob").membership, "msg_1");
+    const attached: Array<Record<string, unknown>> = [];
+    const through = globalThis.fetch;
+    vi.stubGlobal("fetch", (input: string | URL, init?: RequestInit) => {
+      if (String(input).endsWith("/v1/billing.attach")) attached.push(JSON.parse(String(init?.body)));
+      return through(input, init);
+    });
+    await expect(bobAs.action(api.billing.actions.buyCredits, { ...inLab, credits: 10_000 })).rejects.toThrow(/Only an admin/);
+    await aliceAs.action(api.billing.actions.buyCredits, { ...inLab, credits: 10_000 });
+    expect(attached).toEqual([expect.objectContaining({ customer_id: lab.workspaceId, plan_id: "top_up" })]);
+  });
+
+  it("gives a deleted organization's address to the next one that takes it", async () => {
+    const { aliceAs } = await people();
+    const first = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    await aliceAs.action(api.organizations.manage.deleteOrganization, { workspaceId: first.workspaceId });
+    const second = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    expect(second.slug).toBe("lab");
+    expect(await aliceAs.query(api.workspaces.queries.bySlug, { slug: "lab" })).toBe(second.workspaceId);
+  });
+
   it("says when its plan has room for no more members", async () => {
     const { aliceAs } = await people();
     const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });

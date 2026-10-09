@@ -195,7 +195,8 @@ export default defineSchema({
 
   organizations: defineTable(organizationFields)
     .index("by_clerkOrganizationId", ["clerkOrganizationId"])
-    .index("by_slug", ["slug"])
+    // A deleted organization keeps its row, and Clerk lets another take its address: one at an address is its active one.
+    .index("by_slug_and_state", ["slug", "state"])
     .index("by_state", ["state"]),
 
   // Invitations to organizations, as Clerk's webhook and the actions that send them project them (#651).

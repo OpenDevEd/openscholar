@@ -153,13 +153,14 @@ export const workspaceOf = internalQuery({
   },
 });
 
+/** The organization at an address, or null: a deleted one's address can be another's since. */
+export const organizationAt = (ctx: QueryCtx, slug: string) =>
+  ctx.db.query("organizations").withIndex("by_slug_and_state", (q) => q.eq("slug", slug).eq("state", "active")).first();
+
 /** The Clerk ID of the organization at an address, or null. */
 export const clerkIdOf = internalQuery({
   args: { slug: v.string() },
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, { slug }) => {
-    const organization = await ctx.db.query("organizations").withIndex("by_slug", (q) => q.eq("slug", slug)).first();
-    return organization?.state === "active" ? organization.clerkOrganizationId : null;
-  },
+  handler: async (ctx, { slug }) => (await organizationAt(ctx, slug))?.clerkOrganizationId ?? null,
 });
 
