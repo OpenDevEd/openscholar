@@ -22,13 +22,18 @@ const localSubscribe = () => activateResearch(null);
 const getLocalSnapshot = () => localSnapshot;
 const StatusContext = createContext({ ...localSnapshot, error: null as Error | null, retry: () => {} });
 const sessions = new WeakMap<ConvexReactClient, Map<string, ResearchSession>>();
-/** The account's records in one workspace (#651): switching workspace reads another's. */
-function workspaceSession(client: ConvexReactClient, accountId: string, workspaceId: Id<"workspaces"> | undefined, own: boolean) {
+/**
+ * The account's records in the workspace an address names (#651): switching workspace reads
+ * another's. Keyed by the address, so the session a page starts while its workspace loads is the
+ * one that workspace's records are read and written through once it's known.
+ */
+function workspaceSession(client: ConvexReactClient, accountId: string, slug: string | undefined, workspaceId: Id<"workspaces"> | undefined) {
   let accounts = sessions.get(client);
   if (!accounts) { accounts = new Map(); sessions.set(client, accounts); }
-  const key = `${accountId}:${workspaceId ?? ""}`;
+  const key = `${accountId}:${slug ?? ""}`;
   let session = accounts.get(key);
-  if (!session) { session = new ResearchSession(client, accountId, workspaceId && { workspaceId, own }); accounts.set(key, session); }
+  if (!session) { session = new ResearchSession(client, accountId); accounts.set(key, session); }
+  if (workspaceId) session.bind({ workspaceId, own: slug === undefined });
   return session;
 }
 
@@ -44,8 +49,8 @@ export function ResearchStateProvider({ children }: { children: ReactNode }) {
   }, [retryLabel]);
   // The session reads the account's records in the page's workspace, from when it has loaded.
   const workspaceId = useWorkspace();
-  const own = useWorkspaceSlug() === undefined;
-  const session = userId ? workspaceSession(client, userId, workspaceId, own) : null;
+  const slug = useWorkspaceSlug();
+  const session = userId ? workspaceSession(client, userId, slug, workspaceId) : null;
   const subscribe = useCallback((listener: () => void) => session ? session.subscribe(listener, phase === "authenticated", report) : localSubscribe(), [session, phase, report]);
   const status = useSyncExternalStore(subscribe, session?.getSnapshot ?? getLocalSnapshot, session?.getServerSnapshot ?? getLocalSnapshot);
   // The same account and workspace the session reads under, for hooks reading beside it.

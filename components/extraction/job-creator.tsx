@@ -141,7 +141,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
   );
   const { data: preflightBalance } = useProtectedQuery(
     api.billing.accounts.checkBalance,
-    preflightCredits ? { requiredAmount: preflightCredits } : "skip",
+    preflightCredits && scope !== "skip" ? { ...scope, requiredAmount: preflightCredits } : "skip",
   );
   const preflightBlocked =
     !!preflightCredits &&
