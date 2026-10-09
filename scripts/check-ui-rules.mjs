@@ -12,16 +12,25 @@
 // ends, and a Framer layout animation wobbles. Tailwind's bare `transition`
 // covers opacity and transform too, so only explicit property lists are safe
 // on animated elements. Shared `components/ui` parts name the properties they
-// transition, so animating one is safe.
+// transition, so animating one is safe. A `before:` or `after:` class styles
+// another box. new-el runs the same rules (tools/uiRules.ts); keep them in step.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 // TypeScript 7 ships no JavaScript API until 7.1, so this script parses with TypeScript 6.
 import ts from "typescript6";
 
-const TRANSITION = /(?:^|[\s"'`])(?:[\w-]+:)*transition(?:-all|-opacity|-transform)?(?=$|[\s"'`])/;
+// Bare `transition` and `transition-all` cover opacity and transform too; an
+// arbitrary list counts when it names either.
+const TRANSITION = /(?:^|[\s"'`])(?:[\w-]+:)*transition(?:-all|-opacity|-transform|-\[[^\]]*(?:opacity|transform|translate|scale|rotate|all)[^\]]*\])?(?=$|[\s"'`])/;
 const BROAD_TRANSITION = /(?:^|[\s"'`])(?:[\w-]+:)*transition(?:-all)?(?=$|[\s"'`])/;
-const CSS_ANIMATION = /(?:^|[\s"'`])(?:[\w[\]=-]+:)*(animate-in|animate-out|fade-enter|animate-(?!none|spin|pulse|ping|bounce)[\w[\]-]+)/;
+// Every animation counts, the built-in spin, pulse, ping and bounce too: they
+// animate transform or opacity.
+const CSS_ANIMATION = /(?:^|[\s"'`])(?:[\w[\]=-]+:)*(fade-enter|animate-(?!none(?=$|[\s"'`]))[\w[\]-]+)/;
+// Variants that style a pseudo-element, a different box from the element itself.
+const PSEUDO_ELEMENT = /(^|:)(before|after|placeholder|file|marker|selection|first-letter|first-line|backdrop):/;
+/** A class list without the classes that style a pseudo-element. */
+const ownClasses = (classes) => classes.split(/[\s"'`{}]+/).filter((token) => !PSEUDO_ELEMENT.test(token)).join(" ");
 const FRAMER_PROPS = new Set(["initial", "animate", "exit", "layout", "layoutId", "variants", "whileHover", "whileTap", "whileInView", "whileFocus", "whileDrag"]);
 // The `uppercase` utility with variants or the important mark (`sm:uppercase`,
 // `uppercase!`), looked for only where classes are written so prose that says
@@ -101,7 +110,8 @@ function check(file) {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       if (UPPERCASE_CSS.test(node.text) || (UPPERCASE_CLASS.test(node.text) && classContext(node))) report(node, "uppercase");
       if (DOT.test(node.text)) report(node, "dot-separator");
-      if (ts.isStringLiteral(node) && LOADING.test(node.text.trim()) && renderedInJsx(node)) report(node, "loading-text");
+      const whole = ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
+      if (whole && LOADING.test(node.text.trim()) && renderedInJsx(node)) report(node, "loading-text");
     }
     if (ts.isJsxText(node)) {
       if (DOT.test(node.text)) report(node, "dot-separator");
@@ -125,7 +135,8 @@ function check(file) {
         if (name === "title") title = attribute;
         if (tag === "AvatarFallback" && name === "children" && attribute.initializer && rendersText(attribute.initializer)) report(attribute, "initials");
       }
-      if (TRANSITION.test(className) && (framer || CSS_ANIMATION.test(className))) report(node, "animation-clash");
+      const own = ownClasses(className);
+      if (TRANSITION.test(own) && (framer || CSS_ANIMATION.test(own))) report(node, "animation-clash");
       // Built-in elements only; an iframe's title is its accessible name, and
       // the hidden Z3988 spans carry citation data for Zotero.
       const coins = tag === "span" && /(?:^|[\s"'`])Z3988(?=$|[\s"'`])/.test(className) && /display:\s*["']none["']/.test(style);
