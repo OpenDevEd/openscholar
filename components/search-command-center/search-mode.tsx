@@ -294,7 +294,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
       {/* Keywords Input */}
       <form onSubmit={handleSearchSubmit}>
         <FloatingInput
-          label={isOql ? t('oqlQuery') : t('keywords')}
+          label={isOql ? t('oqlQuery') : byMeaning ? t('questionByMeaning') : t('keywords')}
           labelAddon={
             <QueryHistoryNav
               historyIndex={historyIndex}
@@ -306,7 +306,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
               disabled={isFormDisabled}
             />
           }
-          placeholder={isTranslating ? tc('translating') : t(isOql ? 'placeholder.oql' : 'placeholder.keywords')}
+          placeholder={isTranslating ? tc('translating') : t(isOql ? 'placeholder.oql' : byMeaning ? 'placeholder.questionByMeaning' : 'placeholder.keywords')}
           value={localInputValue.replace(/[\r\n]+/g, " ")}
           onChange={(e) => handleQueryChange(e.target.value)}
           disabled={isFormDisabled}

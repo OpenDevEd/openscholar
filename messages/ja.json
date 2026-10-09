@@ -1393,6 +1393,7 @@
     "researchQuestion": "研究質問",
     "keywords": "キーワード",
     "oqlQuery": "OQL クエリ",
+    "questionByMeaning": "質問（意味で検索）",
     "oqlReference": "OQL リファレンス",
     "byMeaningNoAI": "意味による質問は書いたとおりに検索されるため、キーワードを書き換え・翻訳する AI はオフです。",
     "askAI": "AIに聞く",
@@ -1448,6 +1449,7 @@
       "researchQuestion": "マインドフルネスが不安に与える影響は？",
       "keywords": "mindfulness AND (anxiety OR stress)",
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
+      "questionByMeaning": "教員が地方の学校に留まるには何が役立つか？",
       "enhance": "例：臨床試験についてより具体的に...",
       "screeningQuestion": "スクリーニング質問を追加..."
     }

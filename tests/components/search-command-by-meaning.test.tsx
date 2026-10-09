@@ -76,6 +76,8 @@ describe("search mode", () => {
   it("turns off the AI that writes and translates keywords for a question asked by meaning", () => {
     searchRef.current = { field: "semantic", q: QUESTION };
     render(<SearchMode />);
+    expect(screen.getByText("questionByMeaning")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("placeholder.questionByMeaning")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "askAI" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "translate" })).toBeDisabled();
     expect(screen.getByText("byMeaningNoAI")).toBeInTheDocument();
@@ -84,6 +86,8 @@ describe("search mode", () => {
   it("keeps the AI for a keyword search", () => {
     searchRef.current = { field: "title_and_abstract", q: "rural teachers" };
     render(<SearchMode />);
+    expect(screen.getByText("keywords")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("placeholder.keywords")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "askAI" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "translate" })).toBeEnabled();
     expect(screen.queryByText("byMeaningNoAI")).not.toBeInTheDocument();

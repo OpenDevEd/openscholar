@@ -1383,6 +1383,7 @@
     "researchQuestion": "Research Question",
     "keywords": "Keywords",
     "oqlQuery": "OQL query",
+    "questionByMeaning": "Question (by meaning)",
     "oqlReference": "OQL reference",
     "byMeaningNoAI": "A question by meaning is searched as you write it, so the AI that rewrites and translates keywords is off.",
     "askAI": "Ask AI",
@@ -1438,6 +1439,7 @@
       "researchQuestion": "What are the effects of mindfulness on anxiety?",
       "keywords": "mindfulness AND (anxiety OR stress)",
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
+      "questionByMeaning": "What helps teachers stay in rural schools?",
       "enhance": "e.g., make it more specific about clinical trials...",
       "screeningQuestion": "Add a screening question..."
     }

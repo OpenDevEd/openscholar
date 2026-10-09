@@ -1393,6 +1393,7 @@
     "researchQuestion": "Question de recherche",
     "keywords": "Mots-clés",
     "oqlQuery": "Requête OQL",
+    "questionByMeaning": "Question (par le sens)",
     "oqlReference": "Référence OQL",
     "byMeaningNoAI": "Une question par le sens est cherchée telle que vous l'écrivez : l'IA qui réécrit et traduit les mots-clés est désactivée.",
     "askAI": "Demander à l'IA",
@@ -1448,6 +1449,7 @@
       "researchQuestion": " Quels sont les effets de la pleine conscience sur l'anxiété ?",
       "keywords": "mindfulness AND (anxiety OR stress)",
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
+      "questionByMeaning": "Qu'est-ce qui aide les enseignants à rester dans les écoles rurales ?",
       "enhance": "ex. rendez-le plus spécifique sur les essais cliniques...",
       "screeningQuestion": "Ajouter une question de sélection..."
     }

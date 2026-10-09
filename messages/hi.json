@@ -1393,6 +1393,7 @@
     "researchQuestion": "शोध प्रश्न",
     "keywords": "कीवर्ड",
     "oqlQuery": "OQL क्वेरी",
+    "questionByMeaning": "प्रश्न (अर्थ से)",
     "oqlReference": "OQL संदर्भ",
     "byMeaningNoAI": "अर्थ से पूछा गया प्रश्न वैसे ही खोजा जाता है जैसे आप उसे लिखते हैं, इसलिए कीवर्ड को फिर से लिखने और अनुवाद करने वाला AI बंद है।",
     "askAI": "AI से पूछें",
@@ -1448,6 +1449,7 @@
       "researchQuestion": "चिंता पर माइंडफुलनेस के प्रभाव क्या हैं?",
       "keywords": "mindfulness AND (anxiety OR stress)",
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
+      "questionByMeaning": "ग्रामीण स्कूलों में शिक्षकों को टिके रहने में क्या मदद करता है?",
       "enhance": "जैसे, क्लिनिकल ट्रायल्स के बारे में अधिक विशिष्ट बनाएं...",
       "screeningQuestion": "एक स्क्रीनिंग प्रश्न जोड़ें..."
     }

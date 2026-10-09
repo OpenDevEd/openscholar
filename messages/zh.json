@@ -1393,6 +1393,7 @@
     "researchQuestion": "研究问题",
     "keywords": "关键词",
     "oqlQuery": "OQL 查询",
+    "questionByMeaning": "问题（按语义）",
     "oqlReference": "OQL 参考",
     "byMeaningNoAI": "按语义的问题会按您写的原样搜索，因此改写和翻译关键词的 AI 已关闭。",
     "askAI": "询问 AI",
@@ -1448,6 +1449,7 @@
       "researchQuestion": "冥想对焦虑有什么影响？",
       "keywords": "mindfulness AND (anxiety OR stress)",
       "oql": "title/abstract has (chatgpt) and year >= (2020)",
+      "questionByMeaning": "什么能帮助教师留在农村学校？",
       "enhance": "例如，使其更具体地关于临床试验...",
       "screeningQuestion": "添加筛选问题..."
     }
