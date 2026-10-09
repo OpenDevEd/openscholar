@@ -132,6 +132,7 @@ export async function deleteThread(ctx: MutationCtx, thread: Doc<"assistantThrea
   await ctx.scheduler.runAfter(0, internal.assistant.presence.forgetRoom, { threadId: thread._id });
   await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId: thread._id });
   await ctx.scheduler.runAfter(0, internal.assistant.files.forget, { threadId: thread._id });
+  await ctx.scheduler.runAfter(0, internal.lib.paperPdfs.forget, { scope: `chat:${thread._id}` });
   await ctx.runMutation(components.agent.threads.deleteAllForThreadIdAsync, { threadId: thread.agentThreadId });
 }
 

@@ -3,6 +3,7 @@ import { clerk } from "@clerk/testing/playwright";
 import { ConvexHttpClient } from "convex/browser";
 import { readFile } from "node:fs/promises";
 import { api } from "../convex/_generated/api";
+import { organizationSlug } from "./clerk-test-user";
 
 function getTestUserEmail() {
   const emailAddress = process.env.E2E_CLERK_USER_EMAIL;
@@ -261,7 +262,8 @@ test.describe("clerk auth flows", () => {
     page,
   }) => {
     await signIn(page);
-    await page.goto("/evidence-libraries/new");
+    // A library belongs to the organization whose workspace it's made in (#651).
+    await page.goto(`/o/${await organizationSlug()}/evidence-libraries/new`);
 
     const libraryName = `E2E Library ${Date.now()}`;
     await page

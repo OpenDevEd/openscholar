@@ -352,7 +352,7 @@ async function reservePaperCredits(
   const { credits: reserved, questions: questionCount } = await ctx.runQuery(internal.extraction.queries.internal.paperCredits, {
     jobId: job._id,
     ...(queueRow.kind === "initial" ? {} : { questionKeys: queueRow.questionKeys ?? [] }),
-    pdf: args.pdfEnabled && Boolean(paper.pdfUrl || paper.oaUrl || paper.storageId),
+    pdf: getProcessableFlags({ ...paper, pdfEnabled: args.pdfEnabled }).hasPdfUrl,
   });
   const reservation = {
     chargeId: `extraction:${queueRow._id}:${crypto.randomUUID()}`,
@@ -455,6 +455,8 @@ export const runPaperQueueItem = internalAction({
       oaUrl: paper.oaUrl,
       storageId: paper.storageId,
       abstract: paper.abstract,
+      openalexId: paper.openalexId,
+      doi: paper.doi,
       pdfEnabled: args.pdfEnabled,
     });
     const isProcessable = paper.processable !== false && computedProcessable;
@@ -515,7 +517,8 @@ export const runPaperQueueItem = internalAction({
           await completeQueueItem(ctx, queueRow, "completed");
         return null;
       }
-      charged += indexed.embeddingCredits;
+      // A copy of its PDF from the store or OpenAlex is charged with the paper, under its hold.
+      charged += indexed.embeddingCredits + indexed.pdfCredits;
 
       await markPaperStatus(ctx, {
         paperId: paper._id,

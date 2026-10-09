@@ -9,7 +9,19 @@ const REQUIRED_ENV_VARS = [
   "STRIPE_WEBHOOK_SECRET",
   "CLERK_JWT_ISSUER_DOMAIN",
   "EVIDENCE_LIBRARY_PLATFORM_DOMAIN",
+  "PAPER_PDFS_ENDPOINT",
+  "PAPER_PDFS_BUCKET",
+  "PAPER_PDFS_ACCESS_KEY_ID",
+  "PAPER_PDFS_SECRET_ACCESS_KEY",
 ];
+
+/** The paper PDF store's settings, all present. */
+function setPaperStore() {
+  process.env.PAPER_PDFS_ENDPOINT = "https://r2.example.test";
+  process.env.PAPER_PDFS_BUCKET = "papers";
+  process.env.PAPER_PDFS_ACCESS_KEY_ID = "key";
+  process.env.PAPER_PDFS_SECRET_ACCESS_KEY = "secret";
+}
 
 describe("validateRequiredEnvVars", () => {
   const originalEnv: Record<string, string | undefined> = {};
@@ -77,6 +89,7 @@ describe("validateRequiredEnvVars", () => {
     process.env.STRIPE_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
     process.env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN = "libraries.example.test";
+    setPaperStore();
 
     const { validateRequiredEnvVars } = await import(
       "../convex/lib/envValidation"
@@ -94,6 +107,7 @@ describe("validateRequiredEnvVars", () => {
     process.env.AUTUMN_WEBHOOK_SECRET = "whsec_test";
     process.env.CLERK_JWT_ISSUER_DOMAIN = "https://test.clerk.dev";
     process.env.EVIDENCE_LIBRARY_PLATFORM_DOMAIN = "libraries.example.test";
+    setPaperStore();
 
     const { validateRequiredEnvVars } = await import(
       "../convex/lib/envValidation"
