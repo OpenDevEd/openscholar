@@ -5,7 +5,7 @@
 // running screening or extraction fills a ring around its icon and its label becomes the
 // progress, so it's visible from any page. Everything a page already lists stays on that page.
 
-import React, { useRef, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
@@ -256,6 +256,8 @@ function RailCard({ open, from, label, onClose, head, children }: { open: boolea
   const t = useTranslations("workspaces");
   const reduceMotion = useReducedMotion();
   const enter = from === "bottom" ? 36 : -36;
+  // Stable, so it focuses the card once, as it mounts, and not again as it renders.
+  const focusOnOpen = useCallback((node: HTMLDivElement | null) => node?.focus({ preventScroll: true }), []);
   return (
     <AnimatePresence>
       {open ? (
@@ -279,8 +281,9 @@ function RailCard({ open, from, label, onClose, head, children }: { open: boolea
               role="dialog"
               aria-label={label}
               tabIndex={-1}
-              // eslint-disable-next-line jsx-a11y/no-autofocus -- a card takes focus as it opens, like a dialog
-              autoFocus
+              // A card takes focus as it opens, like a dialog, so Escape and Tab start in it. React's
+              // autoFocus only focuses form controls.
+              ref={focusOnOpen}
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
                   e.stopPropagation();

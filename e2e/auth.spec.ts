@@ -199,33 +199,28 @@ for (const kind of ["history", "bookmarks"] as const) {
   });
 }
 
-test("sidebar links keep their names and a single keyboard stop when collapsed or expanded", async ({ page }) => {
+test("rail links keep their names, mark the page they open and take one keyboard stop each", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto("/");
   await clerk.loaded({ page });
-  const expand = page.getByRole("button", { name: "Expand sidebar (Ctrl+B)", exact: true });
-  await expect(expand).toHaveAttribute("aria-expanded", "false");
-  const home = page.getByRole("link", { name: "Home", exact: true });
-  const library = page.getByRole("link", { name: "Library", exact: true });
-  await expect(home).toHaveAttribute("aria-current", "page");
-  await home.focus();
-  await expect(page.getByRole("tooltip")).toContainText("Home");
+  const rail = page.getByRole("navigation", { name: "Main", exact: true });
+  const search = rail.getByRole("link", { name: "Search", exact: true });
+  const library = rail.getByRole("link", { name: "Library", exact: true });
+  await expect(search).toHaveAttribute("aria-current", "page");
+  await search.focus();
   await page.keyboard.press("Tab");
   await expect(library).toBeFocused();
   await page.keyboard.press("Tab");
-  await expect(page.getByRole("link", { name: "Bookmarks", exact: true })).toBeFocused();
-  await expect(page.getByRole("button", { name: "Screening", exact: true })).toBeVisible();
-  const language = page.getByRole("button", { name: /^Language:/ });
-  await language.focus();
+  await expect(rail.getByRole("link", { name: "History", exact: true })).toBeFocused();
+  await expect(rail.getByRole("link", { name: "Screen", exact: true })).toBeVisible();
+  // The account card opens from the rail, and Escape closes it and gives the keyboard back.
+  const account = page.getByRole("button", { name: "Account", exact: true });
+  await account.focus();
   await page.keyboard.press("Enter");
-  await expect(language).toHaveAttribute("aria-expanded", "true");
+  await expect(account).toHaveAttribute("aria-expanded", "true");
   await page.keyboard.press("Escape");
-  await expect(language).toBeFocused();
-  await expand.click();
-  await expect(page.getByRole("button", { name: "Collapse sidebar (Ctrl+B)", exact: true })).toHaveAttribute("aria-expanded", "true");
-  await home.focus();
-  await page.keyboard.press("Tab");
-  await expect(library).toBeFocused();
+  await expect(account).toHaveAttribute("aria-expanded", "false");
+  await expect(account).toBeFocused();
 });
 
 test("choosing History dismisses the mobile navigation", async ({ page }) => {
