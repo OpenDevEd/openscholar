@@ -197,7 +197,8 @@
       "fr": "Français",
       "hi": "Hindi",
       "ja": "Japonais"
-    }
+    },
+    "you": "Vous"
   },
   "home": {
     "tagline": "Recherchez des millions d'articles académiques et de recherche",
@@ -3165,7 +3166,6 @@
       "title": "Administrateurs",
       "admins": "administrateurs",
       "search": "Rechercher par nom ou e-mail",
-      "you": "Vous",
       "invited": "Invité",
       "notDelivered": "Invitation non remise",
       "remove": "Retirer",
@@ -3375,7 +3375,6 @@
       "failed": "Impossible de reprendre la réponse"
     },
     "addPeople": "Ajouter des personnes ou une organisation",
-    "you": "Vous",
     "owner": "Propriétaire",
     "canChat": "Peut discuter",
     "canView": "Peut consulter",

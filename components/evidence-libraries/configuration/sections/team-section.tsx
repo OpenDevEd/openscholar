@@ -1,5 +1,6 @@
 "use client";
 
+import { useUser } from "@clerk/nextjs";
 import { Users } from "@/components/icons";
 import { Spinner } from "@/components/ui/spinner";
 import { SectionCard } from "../section-card";
@@ -10,6 +11,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { TeamAccess, type AccessMember } from "./team-access";
 
 export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> }) {
+  const { user } = useUser();
   const { data } = useProtectedQuery(api.evidenceLibraries.queries.listTeam, { libraryId });
   const add = useMutation(api.evidenceLibraries.team.addOrganizationMember);
   const changeRole = useMutation(api.evidenceLibraries.team.changeRole);
@@ -22,9 +24,9 @@ export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> 
     </SectionCard>
   );
   const members: AccessMember[] = [
-    ...data.owners.map(person => ({ ...person, id: person.clerkUserId, role: "Owner" as const, invited: false })),
-    ...data.editors.map(person => ({ ...person, id: person.clerkUserId, role: "Editor" as const, invited: false })),
-    ...data.creators.map(person => ({ ...person, id: person.clerkUserId, role: "Creator" as const, invited: false })),
+    ...data.owners.map(person => ({ ...person, id: person.clerkUserId, role: "Owner" as const, invited: false, you: person.clerkUserId === user?.id })),
+    ...data.editors.map(person => ({ ...person, id: person.clerkUserId, role: "Editor" as const, invited: false, you: person.clerkUserId === user?.id })),
+    ...data.creators.map(person => ({ ...person, id: person.clerkUserId, role: "Creator" as const, invited: false, you: person.clerkUserId === user?.id })),
     ...data.invitations.map(person => ({ id: person.invitationId, delivery: person.delivery, name: person.email.split("@")[0], email: person.email, role: person.role === "editor" ? "Editor" as const : "Creator" as const, invited: true })),
   ];
   const roleOf = (member: AccessMember) => member.role === "Editor" ? "editor" as const : "creator" as const;

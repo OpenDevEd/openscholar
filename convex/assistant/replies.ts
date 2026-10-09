@@ -653,7 +653,7 @@ const stepValidator = v.object({
   variant: v.optional(v.string()),
   /** What it was about: a title, a name or a query from its arguments, or the title or name of what it returned. */
   subject: v.optional(v.string()),
-  /** Where its subject leads, in the app: the results of a query it looked up, as a new search. */
+  /** Where it leads, in the app: the results of what it looked up, by a query or by filters alone, as a new search. */
   href: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
@@ -928,7 +928,7 @@ function hrefOf(step: Doc<"assistantSteps">) {
   try {
     const { query, ...rest } = JSON.parse(step.input) as Record<string, unknown>;
     const settings = Object.fromEntries(Object.entries(rest).filter(([key]) => key in searchSettings)) as Parameters<typeof searchHref>[1];
-    const href = searchHref(typeof query === "string" ? query : undefined, settings);
+    const href = searchHref(typeof query === "string" ? query : undefined, settings, new Date(step.startedAt).getFullYear());
     return href ? { href } : {};
   } catch {
     // Arguments too long to keep whole were cut, and don't parse.
@@ -949,7 +949,8 @@ function shownStep(
     ...(step.reads ? { reads: true as const } : {}),
     ...(step.request === undefined ? {} : { request: step.request }),
     ...variantOf(step),
-    ...(step.subject ? { subject: step.subject, ...hrefOf(step) } : {}),
+    ...(step.subject ? { subject: step.subject } : {}),
+    ...hrefOf(step),
     ...(step.count === undefined ? {} : { count: step.count }),
     ...(step.sources?.length ? { sources: step.sources } : {}),
     ...(step.credits === undefined ? {} : { credits: step.credits }),
