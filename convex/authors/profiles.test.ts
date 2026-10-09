@@ -61,6 +61,10 @@ describe("author profiles", () => {
       for (const row of await ctx.db.query("organizationMemberships").collect()) if (row.clerkUserId === "maker") await ctx.db.patch("organizationMemberships", row._id, {state: "revoked"});
     });
     expect(await role("maker")).toBeNull();
+    // Invited back, they edit it as anyone invited does.
+    const invitationId = await as("admin").mutation(internal.authors.invitations.prepare, {profileId, email: "maker@example.org"});
+    await as("maker").mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["maker@example.org"], accept: true});
+    expect(await role("maker")).toBe("editor");
   });
 
   it("sends profile invitations with the profile identity and a direct invitation link", async () => {
