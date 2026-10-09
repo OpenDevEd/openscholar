@@ -278,7 +278,8 @@ Return a more targeted version of this query.`;
     }
 
     if (!search) return;
-    if (!effectiveQuery.trim()) {
+    // A search for the works nearest given papers needs no words: those papers narrow it.
+    if (!effectiveQuery.trim() && !search.params.like.length) {
       toast.validation.failed(tv("noQueryToBroaden"));
       return;
     }

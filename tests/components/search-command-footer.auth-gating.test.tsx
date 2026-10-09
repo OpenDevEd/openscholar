@@ -16,6 +16,8 @@ const {
   savedFieldRef,
   searchedCountRef,
   searchFieldRef,
+  searchLikeRef,
+  searchQueryRef,
   searchHistoryRef,
   setQueryMock,
   startJobMock,
@@ -43,6 +45,9 @@ const {
     // How many works a search by meaning looked among, as the API's meta says; null for any other search.
     searchedCountRef: { current: null as number | null },
     searchFieldRef: { current: "title_and_abstract" },
+    // The search's words and the papers it finds the works nearest, as its address has them.
+    searchQueryRef: { current: "graph neural networks" },
+    searchLikeRef: { current: [] as string[] },
     setQueryMock: vi.fn(),
     searchHistoryRef: { current: [] as unknown[] },
     startJobMock: vi.fn(async () => ({ jobId: "job_for_current_account" })),
@@ -161,7 +166,7 @@ vi.mock("@/lib/feature-flags/hook", () => ({
 vi.mock("@/lib/search", () => ({
   useSearchOptional: () => ({
     params: {
-      q: "graph neural networks",
+      q: searchQueryRef.current,
       field: searchFieldRef.current,
       sort: "relevance_score:desc",
       page: 1,
@@ -178,7 +183,7 @@ vi.mock("@/lib/search", () => ({
       cites: "",
       citedBy: "",
       rel: "",
-      like: [],
+      like: searchLikeRef.current,
       review: false,
       area: [],
       sdg: [],
@@ -414,6 +419,43 @@ describe("<SearchCommandFooter> auth-gated limits", () => {
           acct_x: "job_for_account_x",
           acct_y: "job_for_current_account",
         },
+      });
+    });
+  });
+
+  it("starts a chat on the papers a search finds nearest given ones, which needs no words", async () => {
+    authReadinessRef.current = {
+      phase: "authenticated",
+      isBootstrapping: false,
+      canRunProtectedQueries: true,
+      retryUserSync: vi.fn(),
+    };
+    currentUserIdRef.current = "acct_y";
+    searchHistoryRef.current = [{ id: "search_1" }];
+    searchQueryRef.current = "";
+    searchLikeRef.current = ["OS64233829"];
+    onTestFinished(() => {
+      searchQueryRef.current = "graph neural networks";
+      searchLikeRef.current = [];
+    });
+
+    render(
+      <SearchCommandFooter
+        totalCount={300}
+        currentQuery=""
+        isScreeningOpen={false}
+        onScreeningToggle={vi.fn()}
+        screeningPanelId="screening-panel"
+        screeningQuestionCount={0}
+        searchId="search_1"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "startChat" }));
+
+    await waitFor(() => {
+      expect(updateSearchResultMock).toHaveBeenCalledWith("search_1", {
+        chatJobIdsByAccountId: { acct_y: "job_for_current_account" },
       });
     });
   });
