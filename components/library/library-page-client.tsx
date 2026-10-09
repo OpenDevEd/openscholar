@@ -182,7 +182,7 @@ export function LibraryPageClient() {
         setIsExporting(false);
       }
     },
-    [convex, isExporting, libraryFilters, queryText, t],
+    [convex, isExporting, libraryFilters, queryText, t, workspaceId],
   );
 
   const pageItems = paged.items;
