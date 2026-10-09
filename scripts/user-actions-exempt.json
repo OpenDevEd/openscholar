@@ -9,8 +9,6 @@
     "assistant/files:startUpload": "Starts an upload of a file the person attaches to a message, for a token their browser holds. The assistant reads attached files; it doesn't attach its own.",
     "assistant/jobs:card": "A job's live card in the chat that started it. The assistant reads the same job through screening/queries:getScreeningJob and extraction/queries:listJobResults.",
     "assistant/jobs:running": "Which of a chat's jobs are running, for the panel to dock their live cards. The assistant hears when each ends, and reads them through screening/queries:getScreeningJob and extraction/queries:listJobResults.",
-    "assistant/presence:heartbeat": "The browser's own signal that a chat is still open in it.",
-    "assistant/presence:leave": "The panel closing a chat, so its room drops the person at once.",
     "assistant/replies:answer": "The person's answer to a call the assistant asked about. Only the person asked can give it.",
     "assistant/replies:carryOn": "Carries on a reply that paused at a spending limit. Only the person whose credits it spends does that.",
     "assistant/replies:live": "The reply being written now, for the chat page to show as it arrives.",
@@ -48,7 +46,11 @@
     "workspaces/queries:homeOf": "Which workspace an item a page's address names is in, for the page to open it there. The assistant names items by ID in its own workspace.",
     "workspaces/queries:bySlug": "Which organization's workspace a page's address names, for the page's own calls. The assistant acts in its chat's workspace.",
     "workspaces/queries:personal": "The workspace a page outside an organization's address is in, for the page's own calls. The assistant acts in its chat's workspace.",
-    "zotero/actions:startOAuth": "Starts Zotero's OAuth redirect, which only the person's browser can complete."
+    "zotero/actions:startOAuth": "Starts Zotero's OAuth redirect, which only the person's browser can complete.",
+    "presence:heartbeat": "The browser's own signal that an item's page is still open in it.",
+    "presence:chatHeartbeat": "The browser's own signal that a chat is still open in it.",
+    "presence:leave": "A page or the panel closing an item, so its room drops the person at once.",
+    "presence:here": "Who else has an item open, for the item's first row; a room names people only."
   },
   "pending": {
     "admins/invitations:invite": "#323",

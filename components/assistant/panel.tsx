@@ -6,6 +6,7 @@
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
+import { useRoomHeartbeat } from "@/lib/hooks/use-room-heartbeat";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { Component, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
@@ -36,7 +37,6 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
-import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
 import { stillNamed, withTokens, type Mention } from "@/lib/assistant/mentions";
 import { MentionComposer, MessageText, RECORD_CHIP, recordChipStyle } from "./mentions";
@@ -392,31 +392,9 @@ function Overlay({
 
 /** Keeps the person in the chat's room while the panel has it open, so the others in it see they're there. */
 function Here({ threadId }: { threadId: ThreadId }) {
-  const heartbeat = useMutation(api.assistant.presence.heartbeat);
-  const leave = useMutation(api.assistant.presence.leave);
-  // A timer is an outside system: a beat now, one every PRESENCE_HEARTBEAT_MS, and leaving when the chat closes.
-  // A tab that closes just stops beating, and the room drops it after 2.5 beats.
-  useEffect(() => {
-    const sessionId = crypto.randomUUID();
-    let token: string | null = null;
-    let left = false;
-    const beat = () =>
-      heartbeat({ threadId, sessionId }).then(
-        (sessionToken) => {
-          token = sessionToken;
-          // The chat closed while this beat was on its way.
-          if (left) leave({ sessionToken }).catch(() => {});
-        },
-        () => {},
-      );
-    void beat();
-    const timer = setInterval(beat, PRESENCE_HEARTBEAT_MS);
-    return () => {
-      left = true;
-      clearInterval(timer);
-      if (token) leave({ sessionToken: token }).catch(() => {});
-    };
-  }, [threadId, heartbeat, leave]);
+  const heartbeat = useMutation(api.presence.chatHeartbeat);
+  const leave = useMutation(api.presence.leave);
+  useRoomHeartbeat(threadId, (sessionId) => heartbeat({ threadId, sessionId }), (sessionToken) => leave({ sessionToken }));
   return null;
 }
 

@@ -24,7 +24,7 @@ import type { Effort } from "../../lib/ai/core/call-options";
 import { NEW_CHAT_TITLE } from "../../lib/assistant/title";
 import { accessRows, best, deleteThread, principalOf, principalsOf, requireThreadIn, userPrincipal, type AssistantRole } from "./access";
 import { personName } from "../lib/people";
-import { viewers } from "./presence";
+import { chatViewers } from "../presence";
 import { startWith } from "./spending";
 import { ASSISTANT_MEMBERS_SHOWN, assistantMembersValidator, assistantRoleValidator, JOBS_DOCKED, JOBS_LISTED, listedJobsValidator } from "./validators";
 import { progressOf } from "./jobs";
@@ -265,7 +265,7 @@ export const listAction = defineUserQuery({
         if (!thread || !found) return [];
         // One more than the row shows, since the reader may be among them. Anyone in the room
         // could open the chat when they joined it, through a grant of their own or an organization's.
-        const here = (await viewers(ctx, thread._id, ASSISTANT_MEMBERS_SHOWN + 1)).filter((viewer) => viewer !== userId);
+        const here = (await chatViewers(ctx, thread._id, ASSISTANT_MEMBERS_SHOWN + 1)).filter((viewer) => viewer !== userId);
         const others = found.access.flatMap((other) => {
           const principal = principalOf(ctx, other.principal);
           return principal && !(principal.kind === "user" && principal.userId === userId) ? [{ principal, owner: other.role === "owner" }] : [];

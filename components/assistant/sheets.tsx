@@ -36,7 +36,7 @@ import { inWorkspace, useWorkspace, useWorkspaceMutation, useWorkspaceScope } fr
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { useRunBy } from "@/components/workspaces/run-by";
-import { tintOf } from "@/components/ui/identity";
+import { PresentAvatar as Avatar } from "@/components/ui/identity";
 
 /** A sheet open over the panel. */
 export type OpenSheet =
@@ -109,28 +109,6 @@ type Member = Chat["members"][number];
 type Scope = "all" | "mine" | "shared";
 
 const CHATS_PER_PAGE = 20;
-
-/** A member's photo; someone in the chat right now gets a ring that ripples outward. */
-function Avatar({ member }: { member: Member }) {
-  const reduceMotion = useReducedMotion();
-  const tint = tintOf(member.userId);
-  return (
-    <span className="relative flex size-6 shrink-0">
-      {member.here && !reduceMotion ? (
-        <motion.span
-          aria-hidden
-          className="absolute inset-0 rounded-full"
-          style={{ boxShadow: `0 0 0 1.5px ${tint}` }}
-          animate={{ scale: [1.15, 1.7], opacity: [0.6, 0] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
-        />
-      ) : null}
-      <span className="relative flex rounded-full ring-2 ring-card" style={{ boxShadow: member.here ? `0 0 0 2px var(--card), 0 0 0 3.5px ${tint}` : undefined }}>
-        <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-6" />
-      </span>
-    </span>
-  );
-}
 
 function Members({ members, organization }: { members: Member[]; organization?: string }) {
   const t = useTranslations("assistant");

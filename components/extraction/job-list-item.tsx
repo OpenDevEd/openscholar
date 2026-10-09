@@ -20,6 +20,8 @@ interface JobListItemProps {
   face?: ReactNode;
   /** Its papers done so far, which its list reads from the counts its workers keep. */
   done?: number;
+  /** Who has it open, beside its name, in an organization (#657). */
+  presence?: ReactNode;
 }
 
 /** The ring's colour for a job's state; a job waiting to start has a dashed one. */
@@ -32,7 +34,7 @@ const RING: Record<string, { color: string; dashed?: boolean }> = {
   creditsExhausted: { color: "var(--warning)" },
 };
 
-export function JobListItem({ job, viewMode, face, done = 0 }: JobListItemProps) {
+export function JobListItem({ job, viewMode, face, done = 0, presence }: JobListItemProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const tJob = useTranslations("jobStatus");
@@ -99,6 +101,7 @@ export function JobListItem({ job, viewMode, face, done = 0 }: JobListItemProps)
             {kind}
             {state}
             <span className="flex-1" />
+            {presence}
             {time}
           </div>
           {open("line-clamp-2")}
@@ -112,6 +115,7 @@ export function JobListItem({ job, viewMode, face, done = 0 }: JobListItemProps)
             <div className="flex items-center gap-2">
               {open("truncate")}
               {state}
+              {presence}
             </div>
             {description}
             {size}

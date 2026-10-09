@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ItemPresence } from "@/components/workspaces/presence";
 import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
@@ -494,7 +495,14 @@ export function LibraryPageClient() {
                   // An open collection heads the command center; its name is no longer a filter chip.
                   title={heading}
                   // An open collection's Activity (#656), at the end of its heading.
-                  actions={selectedCollection ? <ActivityButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} /> : undefined}
+                  actions={
+                    selectedCollection ? (
+                      <>
+                        <ItemPresence kind="collection" id={selectedCollection._id} />
+                        <ActivityButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
+                      </>
+                    ) : undefined
+                  }
                   rawSearch={rawSearch}
                   onSearchChange={setRawSearch}
                   totalCount={totalCount}
