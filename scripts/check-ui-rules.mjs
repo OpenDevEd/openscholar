@@ -43,6 +43,17 @@ function boxes(classes) {
   for (const token of classes.split(/[\s"'`{}()]+/).filter(Boolean)) groups.set(box(token), [...(groups.get(box(token)) ?? []), token]);
   return groups;
 }
+/** Every class list a className can produce: the two sides of `a ? b : c` never apply together. */
+function classLists(node, source) {
+  if (!node) return [""];
+  if (ts.isConditionalExpression(node)) return [...classLists(node.whenTrue, source), ...classLists(node.whenFalse, source)];
+  const children = node.getChildren(source);
+  if (children.length === 0) return [node.getText(source)];
+  return children.reduce((lists, child) => {
+    const texts = classLists(child, source);
+    return lists.flatMap((list) => texts.map((text) => `${list} ${text}`));
+  }, [""]);
+}
 /** Whether one box both animates and transitions opacity or transform; Framer props animate the element itself. */
 const clashes = (classes, framer) => [...boxes(classes)].some(([target, tokens]) => tokens.some(transitionsMovement) && ((framer && target === "") || tokens.some(animates)));
 const FRAMER_PROPS = new Set(["initial", "animate", "exit", "layout", "layoutId", "variants", "whileHover", "whileTap", "whileInView", "whileFocus", "whileDrag"]);
@@ -136,23 +147,23 @@ function check(file) {
     }
     if (ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) {
       const tag = node.tagName.getText(source);
-      let className = "";
+      let classes = [""];
       let framer = false;
       let style = "";
       let title = null;
       for (const attribute of node.attributes.properties) {
         if (!ts.isJsxAttribute(attribute)) continue;
         const name = attribute.name.getText(source);
-        if (name === "className" && attribute.initializer) className = attribute.initializer.getText(source);
+        if (name === "className") classes = classLists(attribute.initializer, source);
         if (name === "style" && attribute.initializer) style = attribute.initializer.getText(source);
         if (FRAMER_PROPS.has(name) && tag.startsWith("motion.")) framer = true;
         if (name === "title") title = attribute;
         if (tag === "AvatarFallback" && name === "children" && attribute.initializer && rendersText(attribute.initializer)) report(attribute, "initials");
       }
-      if (clashes(className, framer)) report(node, "animation-clash");
+      if (classes.some((list) => clashes(list, framer))) report(node, "animation-clash");
       // Built-in elements only; an iframe's title is its accessible name, and
       // the hidden Z3988 spans carry citation data for Zotero.
-      const coins = tag === "span" && /(?:^|[\s"'`])Z3988(?=$|[\s"'`])/.test(className) && /display:\s*["']none["']/.test(style);
+      const coins = tag === "span" && classes.every((list) => /(?:^|[\s"'`])Z3988(?=$|[\s"'`])/.test(list)) && /display:\s*["']none["']/.test(style);
       if (title && /^[a-z]/.test(tag) && tag !== "iframe" && !coins) report(title, "native-title");
     }
     ts.forEachChild(node, visit);
