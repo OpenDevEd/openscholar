@@ -20,6 +20,8 @@ import type { ItemKind } from "./activity";
 
 /** Photos shown at once; the tooltip names everyone the room read gave. */
 const SHOWN = 3;
+/** People the room read names, for the tooltip. */
+const NAMED = 8;
 
 /** `join`: the item's own page, which puts the person in its room; a list leaves it off and only reads. */
 export function ItemPresence({ kind, id, join = true }: { kind: ItemKind; id: string; join?: boolean }) {
@@ -30,8 +32,8 @@ export function ItemPresence({ kind, id, join = true }: { kind: ItemKind; id: st
   const heartbeat = useWorkspaceMutation(api.presence.heartbeat);
   const leave = useMutation(api.presence.leave);
   useRoomHeartbeat(join && org && workspaceId ? `${workspaceId}|${kind}:${id}` : null, (sessionId) => heartbeat({ kind, id, sessionId }), (sessionToken) => leave({ sessionToken }));
-  const { data: here } = useProtectedQuery(api.presence.here, inWorkspace(org ? workspaceId : undefined, { kind, id }));
-  const people = here ?? [];
+  const { data: here } = useProtectedQuery(api.presence.here, inWorkspace(org ? workspaceId : undefined, { kind, id, paginationOpts: { cursor: null, numItems: NAMED } }));
+  const people = here?.page ?? [];
   const label = t("hasOpen", { count: people.length, names: format.list(people.map((person) => person.name), { type: "conjunction" }) });
   // Each person arriving or leaving fades on their own. It sits where growing moves nothing else:
   // after a row's spacer, or first in a right-aligned group.

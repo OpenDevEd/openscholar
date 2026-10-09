@@ -7,6 +7,8 @@ import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 import { ensureWorkspace } from "./workspaces/create";
 
+const page = { paginationOpts: { cursor: null, numItems: 8 } };
+
 /** Alice and Bob in a lab, and Carol, who isn't. */
 async function lab() {
   const t = convexTest(schema);
@@ -27,8 +29,8 @@ it("shows the others in an item's room, never yourself", async () => {
   const { id } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Trials" });
   const item = { workspaceId, kind: "collection" as const, id };
   await alice.mutation(api.presence.heartbeat, { ...item, sessionId: "alice-tab" });
-  expect((await bob.query(api.presence.here, item)).map((person) => person.name)).toEqual(["Alice"]);
-  expect(await alice.query(api.presence.here, item)).toEqual([]);
+  expect((await bob.query(api.presence.here, { ...item, ...page })).page.map((person) => person.name)).toEqual(["Alice"]);
+  expect((await alice.query(api.presence.here, { ...item, ...page })).page).toEqual([]);
 });
 
 it("lets no one in who can't open the item", async () => {
@@ -36,7 +38,7 @@ it("lets no one in who can't open the item", async () => {
   const { id } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Trials" });
   // Carol isn't in the lab.
   await expect(carol.mutation(api.presence.heartbeat, { workspaceId, kind: "collection", id, sessionId: "carol-tab" })).rejects.toThrow();
-  await expect(carol.query(api.presence.here, { workspaceId, kind: "collection", id })).rejects.toThrow();
+  await expect(carol.query(api.presence.here, { workspaceId, kind: "collection", id, ...page })).rejects.toThrow();
   // An item named from another workspace has no room there.
   await expect(carol.mutation(api.presence.heartbeat, { workspaceId: carolOwn, kind: "collection", id, sessionId: "carol-tab" })).rejects.toThrow(/isn't in this workspace/);
 });
@@ -48,5 +50,5 @@ it("keeps an extraction's room shut to someone without the extraction feature", 
   const id = await t.run((ctx) => ctx.db.insert("extractionJobs", { workspaceId, createdBy: users.alice, name: "Sample sizes", searchText: "sample sizes", sourceType: "history", status: "pending", totalPapers: 0, runEpoch: 0, createdAt: 1, updatedAt: 1 }));
   const item = { workspaceId, kind: "extraction" as const, id };
   await expect(alice.mutation(api.presence.heartbeat, { ...item, sessionId: "alice-tab" })).rejects.toThrow(/isn't in this workspace/);
-  expect(await bob.query(api.presence.here, item)).toEqual([]);
+  expect((await bob.query(api.presence.here, { ...item, ...page })).page).toEqual([]);
 });

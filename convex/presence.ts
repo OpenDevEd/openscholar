@@ -7,6 +7,7 @@
  */
 import { Presence } from "@convex-dev/presence";
 import { v } from "convex/values";
+import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { QueryCtx } from "./_generated/server";
@@ -26,7 +27,7 @@ const presence = new Presence<string, Id<"users">>(components.presence);
 /** An item's room: its workspace and its key, apart from chats' rooms, which are their IDs. */
 const roomOf = (workspaceId: Id<"workspaces">, kind: ItemKind, id: string) => `${workspaceId}|${itemKey(kind, id)}`;
 
-/** The others in an item's room one read names; its row shows a few and the tooltip the rest. */
+/** The most of an item's room one read names; its row shows a few and the tooltip the rest. */
 const HERE_READ = 8;
 
 const itemArgs = { kind: itemKindValidator, id: v.string() };
@@ -71,16 +72,23 @@ export const leave = mutation({
   handler: async (ctx, { sessionToken }) => await presence.disconnect(ctx, sessionToken),
 });
 
-/** The others who have an item open now, first few first; none for an item the person can't open. */
+/**
+ * The others who have an item open now, first few first, as one page of at most HERE_READ: a room
+ * lists people in the order they came, with no cursor to read on from. None for an item the person
+ * can't open.
+ */
 export const here = workspaceQuery({
-  args: itemArgs,
-  returns: v.array(v.object({ userId: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) })),
-  handler: async (ctx, { userId, workspaceId }, { kind, id }) => {
-    if (!(await opens(ctx, userId, kind)) || !(await itemIn(ctx, workspaceId, kind, id))) return [];
-    const people = await presence.listRoom(ctx, roomOf(workspaceId, kind, id), true, HERE_READ + 1);
-    const others = people.filter((person) => person.userId !== userId).slice(0, HERE_READ);
-    const users = await Promise.all(others.map((person) => ctx.db.get("users", person.userId)));
-    return users.flatMap((user) => (user ? [{ userId: user._id, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}) }] : []));
+  args: { ...itemArgs, paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(v.object({ userId: v.id("users"), name: v.string(), imageUrl: v.optional(v.string()) })),
+  handler: async (ctx, { userId, workspaceId }, { kind, id, paginationOpts }) => {
+    const none = { page: [], isDone: true, continueCursor: "" };
+    if (!(await opens(ctx, userId, kind)) || !(await itemIn(ctx, workspaceId, kind, id))) return none;
+    const wanted = Math.min(paginationOpts.numItems, HERE_READ);
+    const people = await presence.listRoom(ctx, roomOf(workspaceId, kind, id), true, wanted + 1);
+    const others = people.filter((person) => person.userId !== userId);
+    const users = await Promise.all(others.slice(0, wanted).map((person) => ctx.db.get("users", person.userId)));
+    const page = users.flatMap((user) => (user ? [{ userId: user._id, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}) }] : []));
+    return { page, isDone: others.length <= wanted, continueCursor: "" };
   },
 });
 
