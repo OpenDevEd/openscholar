@@ -12,6 +12,7 @@ import { defaultPlanId, findPlan } from "@/lib/billing/catalog";
 import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 import { ORGANIZATION_PLAN } from "@/lib/billing/plans";
 import { cn } from "@/lib/utils";
+import { ORGANIZATION_COLOURS } from "@/lib/workspaces/colours";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 export type WorkspaceRow = FunctionReturnType<typeof api.organizations.queries.workspaces>["page"][number];
@@ -32,9 +33,9 @@ export function useWorkspaces() {
   return { all, current: all?.find((workspace) => workspace.workspaceId === here) };
 }
 
-/** An organization's colour until its admins pick one, from its ID; your own workspace's is the brand's. */
-const TINTS = ["#d97706", "#7c3aed", "#0d9488", "#db2777", "#0891b2", "#65a30d", "#dc2626", "#4f46e5"];
+/** Your own workspace's colour, the brand's; an organization takes another until its admins pick one. */
 const OWN_TINT = "#2563eb";
+const TINTS = ORGANIZATION_COLOURS.filter((colour) => colour !== OWN_TINT);
 
 /** A workspace's colour, which tints the rail while you're in it. */
 export function workspaceTint(workspace: WorkspaceLook) {

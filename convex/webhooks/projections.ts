@@ -230,6 +230,18 @@ export async function applyMembershipProjection(
             });
           }
         }
+        // A member has no invitation to answer. Clerk's own event saying so can come later than
+        // the membership, so the seat it held frees now; a late event from before can't reopen it.
+        const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", args.membership.clerkUserId)).unique();
+        if (user) {
+          const answered = await ctx.db.query("organizationInvitations")
+            .withIndex("by_email_and_state", (q) => q.eq("email", user.email.toLowerCase()).eq("state", "pending"))
+            .filter((q) => q.eq(q.field("organizationId"), organizationId))
+            .take(SINGLE_ROW_CLEANUP);
+          for (const invitation of answered) {
+            await ctx.db.patch("organizationInvitations", invitation._id, { state: "accepted", clerkUpdatedAt: Math.max(invitation.clerkUpdatedAt, args.membership.clerkCreatedAt), updatedAt: args.processedAt });
+          }
+        }
       }
       if (args.membership.state === "revoked") {
         // The sweep takes the grants up to the newest they hold now. A clock can't draw that

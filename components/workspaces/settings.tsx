@@ -37,6 +37,7 @@ import { findPlan, planCreditCap } from "@/lib/billing/catalog";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
+import { ORGANIZATION_COLOURS } from "@/lib/workspaces/colours";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { FREE_MEMBERS, PlanChip, usePlanOf, useWorkspaces, WorkspaceTile, workspaceTint } from "./parts";
 
@@ -45,9 +46,6 @@ const PER_PAGE = 10;
 /** A row with a photo, and its divider. */
 const ROW_HEIGHT = 61;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-/** The colours an organization can take, as convex/organizations/manage.ts takes them. */
-const SWATCHES = ["#d97706", "#ea580c", "#e11d48", "#db2777", "#7c3aed", "#2563eb", "#0d9488", "#16a34a", "#64748b"] as const;
-type Swatch = (typeof SWATCHES)[number];
 type Role = "admin" | "member";
 
 /** The organization the page is in, once the switcher's list has it. */
@@ -213,7 +211,7 @@ export function WorkspaceGeneral() {
         {admin ? (
           <Zone label={t("colour")}>
             <div role="radiogroup" aria-label={t("colour")} className="flex flex-wrap gap-2">
-              {SWATCHES.map((swatch) => {
+              {ORGANIZATION_COLOURS.map((swatch) => {
                 const on = swatch === tint;
                 return (
                   <button
@@ -222,7 +220,7 @@ export function WorkspaceGeneral() {
                     role="radio"
                     aria-checked={on}
                     aria-label={swatch}
-                    onClick={() => void attempt("colour", () => setColour({ colour: swatch as Swatch }))}
+                    onClick={() => void attempt("colour", () => setColour({ colour: swatch }))}
                     className="relative flex size-9 items-center justify-center rounded-full"
                     style={{ backgroundColor: `color-mix(in oklab, ${swatch} 22%, var(--background))` }}
                   >
@@ -336,6 +334,8 @@ export function WorkspaceMembers() {
   const [role, setInviteRole] = useState<Role>("member");
   const [removing, setRemoving] = useState<{ userId: Id<"users">; name: string } | null>(null);
   const tc = useTranslations("common");
+  // A time Clerk set a moment after the clock last ticked reads as now, not as in a few seconds.
+  const ago = (at: number) => format.relativeTime(at, Math.max(now.getTime(), at));
   const { name: planName } = usePlanOf(organization ?? { kind: "organization", name: "" });
   if (!organization || members.isLoading || !invitations) return <Enter ready={false}>{null}</Enter>;
 
@@ -395,7 +395,7 @@ export function WorkspaceMembers() {
               {members.items.map((member) => (
                 <li key={member.userId}>
                   <IdentityRow className="p-3" avatar={<IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-9" />} name={member.name} you={member.you} detail={member.email}>
-                    <span className="hidden shrink-0 text-xs tabular-nums text-muted-foreground @min-[40rem]/configuration:inline">{t("joined", { when: format.relativeTime(member.joinedAt, now) })}</span>
+                    <span className="hidden shrink-0 text-xs tabular-nums text-muted-foreground @min-[40rem]/configuration:inline">{t("joined", { when: ago(member.joinedAt) })}</span>
                     {admin && !member.you ? (
                       <>
                         <Segmented
@@ -423,7 +423,7 @@ export function WorkspaceMembers() {
             <ul className={LIST}>
               {invitations.page.map((invitation) => (
                 <li key={invitation.invitationId}>
-                  <IdentityRow className="p-3" avatar={<EmailAvatar />} name={invitation.email} detail={t("invited", { when: format.relativeTime(invitation.sentAt, now) })}>
+                  <IdentityRow className="p-3" avatar={<EmailAvatar />} name={invitation.email} detail={t("invited", { when: ago(invitation.sentAt) })}>
                     <RoleLabel role={invitation.role} className="pr-1">
                       {invitation.role === "admin" ? tw("admin") : tw("member")}
                     </RoleLabel>

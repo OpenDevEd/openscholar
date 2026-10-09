@@ -12,6 +12,7 @@ import { requireAppUrl } from "../lib/env";
 import { createError } from "../lib/errors";
 import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, reversedBy, userAction, userMutation, type Acting } from "../lib/userActions";
 import { processClerkWebhookEvent } from "../webhooks/clerk";
+import { ORGANIZATION_COLOURS, type OrganizationColour } from "../../lib/workspaces/colours";
 import { organizationOf } from "./read";
 import type { Actor } from "../workspaces/actor";
 
@@ -107,7 +108,7 @@ export const createAction = defineUserAction({
   run: async (ctx, { userId, workspaceId }, { name }): Promise<{ workspaceId: Id<"workspaces">; slug: string }> => {
     const key = clerkSecretKey();
     const { clerkUserId }: Context = await ctx.runQuery(internal.organizations.read.context, { userId, workspaceId });
-    const organization = await clerk(key, "POST", "/organizations", { name: requireName(name), created_by: clerkUserId });
+    const organization = await createInClerk(key, requireName(name), clerkUserId);
     if (!isRecord(organization) || typeof organization.id !== "string") throw new Error("Clerk answered without the organization");
     await keep(ctx, key, "organization.created", organization);
     // Clerk makes its creator an admin; keep that membership too. Clerk's webhook brings it if this
@@ -125,6 +126,23 @@ export const createAction = defineUserAction({
   },
 });
 export const create = userAction(createAction);
+
+/** The address an organization's name gives it: its letters and digits, lowercase, in words joined by hyphens. */
+const slugOf = (name: string) =>
+  name.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 40).replace(/^-+|-+$/g, "") || "organization";
+
+/** Makes the organization in Clerk at the address its name gives it, or, when another has that, the same with a few letters after it. */
+async function createInClerk(key: string, name: string, clerkUserId: string) {
+  const slug = slugOf(name);
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return (await clerkRequest(key, "POST", "/organizations", { name, slug: attempt ? `${slug}-${crypto.randomUUID().slice(0, 4)}` : slug, created_by: clerkUserId })).body;
+    } catch (error) {
+      if (attempt < 3 && error instanceof ClerkApiError && error.code === "form_identifier_exists") continue;
+      refused(error);
+    }
+  }
+}
 export const createForAssistant = assistantAction(createAction);
 
 export const inviteAction = defineUserAction({
@@ -361,13 +379,11 @@ export const confirmJoin = action({
 });
 
 const SET_COLOUR = "organizations/manage:setColour" as const;
-/** The colours an organization can take, as Workspace settings offers them. */
-const COLOURS = ["#d97706", "#ea580c", "#e11d48", "#db2777", "#7c3aed", "#2563eb", "#0d9488", "#16a34a", "#64748b"] as const;
-const colourArg = v.union(...COLOURS.map((colour) => v.literal(colour)));
+const colourArg = v.union(...ORGANIZATION_COLOURS.map((colour) => v.literal(colour)));
 
 export const setColourAction = defineUserMutation({
   path: SET_COLOUR,
-  description: `Sets the colour of the organization the person is in, which tints the sidebar for everyone while they're in it; an admin of it does this. One of ${COLOURS.join(", ")}; without \`colour\`, it goes back to the one it started with. Returns \`undo\`, which puts the colour back.`,
+  description: `Sets the colour of the organization the person is in, which tints the sidebar for everyone while they're in it; an admin of it does this. One of ${ORGANIZATION_COLOURS.join(", ")}; without \`colour\`, it goes back to the one it started with. Returns \`undo\`, which puts the colour back.`,
   args: { colour: v.optional(colourArg) },
   returns: v.object({ undo: v.optional(reversedBy(SET_COLOUR, { colour: v.optional(colourArg) })) }),
   spendsCredits: false,
@@ -376,7 +392,7 @@ export const setColourAction = defineUserMutation({
   run: async (ctx, { workspaceId, role }, { colour }) => {
     if (role !== "admin") throw createError("FORBIDDEN", "Only an admin of the organization changes its colour.");
     const organization = await organizationOf(ctx, workspaceId);
-    const was = organization.colour as (typeof COLOURS)[number] | undefined;
+    const was = organization.colour as OrganizationColour | undefined;
     if (was === colour) return {};
     await ctx.db.patch("organizations", organization._id, { colour });
     return { undo: { path: SET_COLOUR, args: was ? { colour: was } : {} } };
