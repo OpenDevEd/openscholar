@@ -107,10 +107,12 @@ export function SetupView({
   };
 
   const [kind, setKind] = useState<Kind>(again?.set?.kind ?? "search");
-  // The set picked stays picked whatever page its list shows; until one is, a job run again starts on its own set, and otherwise the first listed that has papers.
+  // The set picked stays picked whatever page its list shows; until one is, a job run again starts on its own set, and otherwise the first listed.
   const [picked, setPicked] = useState<Source | null>(null);
   const againId = again?.set && (again.set.kind === "search" ? again.set.searchId : again.set.kind === "collection" ? again.set.collectionId : again.set.kind === "screening" ? again.set.jobId : "saved");
-  const source = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : (lists[kind].rows.find((row) => row.id === againId) ?? lists[kind].rows.find((row) => row.count > 0));
+  const kept = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : lists[kind].rows.find((row) => row.id === againId);
+  // A set with no papers is never the one picked, even one a job ran on that has emptied since.
+  const source = kept && kept.count > 0 ? kept : lists[kind].rows.find((row) => row.count > 0);
   // Opened from a results page, it starts on the page the person was reading; run again, on the job's own papers.
   const [scope, setScope] = useState<"all" | "page" | "range">(again?.first ? "range" : fromSearchId && !again ? "page" : again?.set && again.set.kind !== "search" ? "all" : "range");
   const [range, setRange] = useState<[number, number]>(again?.first && again.last ? [again.first, again.through ?? again.last] : [1, 300]);

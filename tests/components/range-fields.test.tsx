@@ -6,7 +6,7 @@
  */
 import { useState } from "react";
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RangeFields } from "@/components/screening/source-row";
 
@@ -17,10 +17,13 @@ function Range({ start, seen }: { start: [number, number]; seen: [number, number
   return (
     <RangeFields
       value={value}
-      onChange={(next) => {
-        seen.push(next);
-        setValue(next);
-      }}
+      onChange={(next) =>
+        setValue((current) => {
+          const range = typeof next === "function" ? next(current) : next;
+          seen.push(range);
+          return range;
+        })
+      }
       total={500}
       labels={LABELS}
     />
@@ -52,6 +55,25 @@ describe("a screening's range fields", () => {
 
     await userEvent.type(from, "80{Enter}");
     expect(seen.at(-1)).toEqual([50, 50]);
+    expect(from).toHaveValue(50);
+  });
+
+  it("keep a From snapped as the slider is pressed, moving To from there", async () => {
+    const seen: [number, number][] = [];
+    const { container } = render(<Range start={[1, 50]} seen={seen} />);
+    const from = screen.getByRole("spinbutton", { name: "First paper" });
+    await userEvent.clear(from);
+    await userEvent.type(from, "80");
+
+    // Pressing the track at paper 90 takes focus from From, which snaps to 50, and moves To in the same moment.
+    const slider = container.querySelector<HTMLElement>("[data-slot=slider]")!;
+    slider.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, width: 499, height: 20, right: 499, bottom: 20, toJSON() {} });
+    // jsdom has no pointer capture, which the slider takes on a press.
+    Object.assign(slider, { setPointerCapture() {}, hasPointerCapture: () => false, releasePointerCapture() {} });
+    fireEvent.pointerDown(slider, { clientX: 89, clientY: 5, pointerId: 1, button: 0 });
+    fireEvent.pointerUp(slider, { clientX: 89, clientY: 5, pointerId: 1, button: 0 });
+
+    expect(seen.at(-1)).toEqual([50, 90]);
     expect(from).toHaveValue(50);
   });
 
