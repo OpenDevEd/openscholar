@@ -82,11 +82,40 @@ export function restoreFromHistory(entry: SearchResult): string {
  * 
  * Creates a new history entry and returns a URL.
  */
+/** The most papers a search for the works nearest them takes, as the OpenScholar API does. */
+export const MAX_SIMILAR_PAPERS = 100;
+
+/**
+ * Starts a search for the works nearest these papers by meaning, closest first (the OpenScholar
+ * API's similar_to), each by its short id, at most MAX_SIMILAR_PAPERS of them.
+ */
+export function createSimilarSearch(paperIds: readonly string[]): SubmitSearchResult {
+  const { addSearchResult } = useSearchHistoryStore.getState();
+  const similarTo = [...new Set(paperIds.map((id) => shortWorkId(id) ?? id))].slice(0, MAX_SIMILAR_PAPERS);
+  const entry = {
+    query: '',
+    field: 'title_and_abstract' as SearchField,
+    count: 0,
+    sortBy: 'relevance_score:desc',
+    filterType: 'year' as const,
+    selectedRegions: [] as string[],
+    selectedCountryFocus: [] as string[],
+    citesItemId: '',
+    citedByItemId: '',
+    relatedToItemId: '',
+    similarTo,
+    reviewFilter: false,
+  };
+  const id = addSearchResult(entry);
+  return { id, url: buildResultsUrl(id, searchResultToParams({ ...entry, id } as SearchResult)) };
+}
+
 export function createCitationSearch(
   paperId: string,
   type: 'cites' | 'citedBy' | 'related' | 'similar',
   currentSearchField?: SearchField
 ): SubmitSearchResult {
+  if (type === 'similar') return createSimilarSearch([paperId]);
   const { addSearchResult } = useSearchHistoryStore.getState();
   
   // Build entry with all required fields
@@ -102,10 +131,6 @@ export function createCitationSearch(
     citedByItemId: type === 'citedBy' ? paperId : '',
     relatedToItemId: type === 'related' ? paperId : '',
     reviewFilter: false,
-    // The works nearest the paper by meaning, closest first (the OpenScholar API's similar_to).
-    ...(type === 'similar'
-      ? { field: 'title_and_abstract' as SearchField, similarTo: [shortWorkId(paperId) ?? paperId], sortBy: 'relevance_score:desc' }
-      : {}),
   };
   
   const id = addSearchResult(entry);

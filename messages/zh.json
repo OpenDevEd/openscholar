@@ -1401,6 +1401,7 @@
     "oqlReference": "OQL 参考",
     "byMeaningNoAI": "按语义的问题会按您写的原样搜索，因此改写和翻译关键词的 AI 已关闭。",
     "closestOf": "篇最相近（共 {total, number} 篇）",
+    "moreLikeRated": "更多与您评分的 {count} 篇论文相似的论文",
     "askAI": "询问 AI",
     "translate": "翻译",
     "clearLanguage": "清除语言",

@@ -27,6 +27,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { AnimatedCount } from "./components/animated-count";
+import { MoreLikeRated } from "./components/more-like-rated";
 import { useSearchOptional } from "@/lib/search";
 import { useCurrentQuestionStore, useSearchHistoryStore } from "@/lib/store";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
@@ -380,6 +381,7 @@ Return a more targeted version of this query.`;
             {searchedCount === null ? t("common.results") : t("searchCommand.closestOf", { total: searchedCount })}
           </span>
         </div>
+        <MoreLikeRated />
       </div>
 
       <div className="self-end sm:self-auto">

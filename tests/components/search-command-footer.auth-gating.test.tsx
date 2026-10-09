@@ -201,6 +201,7 @@ vi.mock("@/lib/search", () => ({
 vi.mock("@/lib/store", () => ({
   useKeywordExpansionStore: { getState: () => ({ ensureShortcuts: ensureShortcutsMock, expandQuery: (query: string) => ({ expandedQuery: query, warnings: [] }) }) },
   useCurrentQuestionStore: () => ({ currentQuestion: "" }),
+  useRatingsStore: <T,>(select: (state: { ratings: Record<string, number> }) => T) => select({ ratings: {} }),
   useSearchHistoryStore: Object.assign(
     <T,>(selector: (state: unknown) => T) =>
       selector({

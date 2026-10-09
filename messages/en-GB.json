@@ -1391,6 +1391,7 @@
     "oqlReference": "OQL reference",
     "byMeaningNoAI": "A question by meaning is searched as you write it, so the AI that rewrites and translates keywords is off.",
     "closestOf": "closest of {total, number}",
+    "moreLikeRated": "More like the {count, plural, one {# paper} other {# papers}} you rated",
     "askAI": "Ask AI",
     "translate": "Translate",
     "clearLanguage": "Clear language",
