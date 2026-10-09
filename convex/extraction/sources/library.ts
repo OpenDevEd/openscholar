@@ -11,12 +11,12 @@
  * keyed on libraryItems directly and can't be composed with the
  * junction join).
  */
-import { query, type QueryCtx } from "../../_generated/server";
+import type { QueryCtx } from "../../_generated/server";
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import { stream } from "convex-helpers/server/stream";
 import schema from "../../schema";
-import { requireAuth } from "../../lib/auth";
+import { workspaceQuery } from "../../lib/userActions";
 import { requireFeature } from "../../featureFlags/guard";
 import { createError } from "../../lib/errors";
 import { MAX_SELECTED_PAPERS } from "../../lib/listCaps";
@@ -51,11 +51,11 @@ async function isUnfiled(ctx: QueryCtx, item: Doc<"libraryItems">) {
   return membership === null;
 }
 
-/** The user's papers not in any collection, newest first. */
-function unfiledItems(ctx: QueryCtx, userId: Id<"users">) {
+/** The workspace's papers not in any collection, newest first. */
+function unfiledItems(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
   return stream(ctx.db, schema)
     .query("libraryItems")
-    .withIndex("by_user_savedAt", (q) => q.eq("userId", userId))
+    .withIndex("by_workspace_savedAt", (q) => q.eq("workspaceId", workspaceId))
     .order("desc")
     .filterWith((item) => isUnfiled(ctx, item));
 }
@@ -65,16 +65,15 @@ async function withoutFiled(ctx: QueryCtx, items: Doc<"libraryItems">[]) {
   return items.filter((_, i) => unfiled[i]);
 }
 
-export const list = query({
+export const list = workspaceQuery({
   args: {
     paginationOpts: paginationOptsValidator,
     query: v.optional(v.string()),
     collectionId: collectionIdValidator,
   },
   returns: paginationResultValidator(libraryItemValidator),
-  handler: async (ctx, args) => {
+  handler: async (ctx, { workspaceId }, args) => {
     await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
 
     const search = searchTerms(args.query);
     const needle = search?.toLowerCase();
@@ -83,7 +82,7 @@ export const list = query({
     if (args.collectionId && args.collectionId !== "unfiled") {
       const collectionId = args.collectionId;
       const collection = await ctx.db.get(collectionId);
-      if (!collection || collection.userId !== user._id) {
+      if (!collection || collection.workspaceId !== workspaceId) {
         throw createError("NOT_FOUND", "Collection not found");
       }
       const page = await ctx.db
@@ -105,12 +104,12 @@ export const list = query({
 
     if (args.collectionId === "unfiled") {
       if (!search) {
-        return await unfiledItems(ctx, user._id).paginate({ ...paginationOpts, maximumRowsRead: UNFILED_PAGE_ROWS, maximumBytesRead: UNFILED_BYTES });
+        return await unfiledItems(ctx, workspaceId).paginate({ ...paginationOpts, maximumRowsRead: UNFILED_PAGE_ROWS, maximumBytesRead: UNFILED_BYTES });
       }
       const page = await ctx.db
         .query("libraryItems")
         .withSearchIndex("search_library", (q) =>
-          q.search("searchableText", search).eq("userId", user._id),
+          q.search("searchableText", search).eq("workspaceId", workspaceId),
         )
         .paginate(paginationOpts);
       return { ...page, page: await withoutFiled(ctx, page.page) };
@@ -120,13 +119,13 @@ export const list = query({
       return await ctx.db
         .query("libraryItems")
         .withSearchIndex("search_library", (q) =>
-          q.search("searchableText", search).eq("userId", user._id),
+          q.search("searchableText", search).eq("workspaceId", workspaceId),
         )
         .paginate(paginationOpts);
     }
     return await ctx.db
       .query("libraryItems")
-      .withIndex("by_user_savedAt", (q) => q.eq("userId", user._id))
+      .withIndex("by_workspace_savedAt", (q) => q.eq("workspaceId", workspaceId))
       .order("desc")
       .paginate(paginationOpts);
   },
@@ -138,15 +137,14 @@ export const list = query({
  * row signals truncation without another query — then slices down to
  * the cap. Mirrors the three-way branch on `collectionId` used by `list`.
  */
-export const listAllIds = query({
+export const listAllIds = workspaceQuery({
   args: {
     query: v.optional(v.string()),
     collectionId: collectionIdValidator,
   },
   returns: v.object({ items: paperSelectionValidator(libraryItemValidator), truncated: v.boolean() }),
-  handler: async (ctx, args) => {
+  handler: async (ctx, { workspaceId }, args) => {
     await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
     const limit = MAX_SELECTED_PAPERS;
 
     const search = searchTerms(args.query);
@@ -155,7 +153,7 @@ export const listAllIds = query({
     if (args.collectionId && args.collectionId !== "unfiled") {
       const collectionId = args.collectionId;
       const collection = await ctx.db.get(collectionId);
-      if (!collection || collection.userId !== user._id) {
+      if (!collection || collection.workspaceId !== workspaceId) {
         throw createError("NOT_FOUND", "Collection not found");
       }
       const rows = await ctx.db
@@ -182,7 +180,7 @@ export const listAllIds = query({
         const found = await ctx.db
           .query("libraryItems")
           .withSearchIndex("search_library", (q) =>
-            q.search("searchableText", search).eq("userId", user._id),
+            q.search("searchableText", search).eq("workspaceId", workspaceId),
           )
           .take(limit + 1);
         const unfiled = await withoutFiled(ctx, found);
@@ -192,7 +190,7 @@ export const listAllIds = query({
       }
       // Stops after UNFILED_SELECT_ROWS papers: when that many are read before the end,
       // there may be more unfiled papers than were selected.
-      const page = await unfiledItems(ctx, user._id).paginate({ cursor: null, numItems: limit, maximumRowsRead: UNFILED_SELECT_ROWS, maximumBytesRead: UNFILED_BYTES });
+      const page = await unfiledItems(ctx, workspaceId).paginate({ cursor: null, numItems: limit, maximumRowsRead: UNFILED_SELECT_ROWS, maximumBytesRead: UNFILED_BYTES });
       return { items: page.page, truncated: !page.isDone };
     }
 
@@ -200,12 +198,12 @@ export const listAllIds = query({
       ? await ctx.db
           .query("libraryItems")
           .withSearchIndex("search_library", (q) =>
-            q.search("searchableText", search).eq("userId", user._id),
+            q.search("searchableText", search).eq("workspaceId", workspaceId),
           )
           .take(limit + 1)
       : await ctx.db
           .query("libraryItems")
-          .withIndex("by_user_savedAt", (q) => q.eq("userId", user._id))
+          .withIndex("by_workspace_savedAt", (q) => q.eq("workspaceId", workspaceId))
           .order("desc")
           .take(limit + 1);
 

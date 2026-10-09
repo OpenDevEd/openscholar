@@ -50,12 +50,12 @@ export async function screeningPaperCreditsFor(ctx: QueryCtx, userId: Id<"users"
  * search's papers are OpenAlex's to count: the figure its page last saw can be behind, and
  * is 0 on a search not counted yet, so it says nothing about what a job would read.
  */
-export async function papersIn(ctx: QueryCtx, userId: Id<"users">, set: Infer<typeof paperSetValidator>): Promise<number | null> {
+export async function papersIn(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, set: Infer<typeof paperSetValidator>): Promise<number | null> {
   if (set.kind === "collection") {
     const collection = await ctx.db.get("collections", set.collectionId);
-    return collection?.userId === userId ? collection.itemCount : null;
+    return collection?.workspaceId === workspaceId ? collection.itemCount : null;
   }
-  if (set.kind === "saved") return (await libraryCountRow(ctx, userId))?.count ?? null;
+  if (set.kind === "saved") return (await libraryCountRow(ctx, workspaceId))?.count ?? null;
   if (set.kind === "screening") {
     const job = await ctx.db.get("screeningJobs", set.jobId);
     if (job?.userId !== userId) return null;
@@ -85,14 +85,15 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
     if (asked.size > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `This search's page already asks ${row.data.screeningQuestions.length} screening questions, and holds up to ${MAX_QUESTIONS}: ask fewer new ones, or ask the ones it has.`);
     await checkRequestPapers(ctx, userId, last - first + 1, "screening");
   } else {
-    const owner = set.kind === "collection" ? (await ctx.db.get("collections", set.collectionId))?.userId : set.kind === "screening" ? (await ctx.db.get("screeningJobs", set.jobId))?.userId : userId;
-    if (owner !== userId) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
-    const held = await papersIn(ctx, userId, set);
+    // A collection is the workspace's; a screening is still its person's until jobs belong to a workspace (#650).
+    const mine = set.kind === "collection" ? (await ctx.db.get("collections", set.collectionId))?.workspaceId === workspaceId : set.kind === "screening" ? (await ctx.db.get("screeningJobs", set.jobId))?.userId === userId : true;
+    if (!mine) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
+    const held = await papersIn(ctx, { userId, workspaceId }, set);
     if (held !== null && first > held) throw createError("VALIDATION_ERROR", "There are no papers in that range");
     await checkRequestPapers(ctx, userId, Math.min(last, held ?? last) - first + 1, "screening");
   }
-  if (saveTo?.kind === "new") await collectionAllowed(ctx, userId, saveTo.name);
-  if (saveTo?.kind === "collection" && (await ctx.db.get("collections", saveTo.collectionId))?.userId !== userId) throw createError("NOT_FOUND", "Collection not found");
+  if (saveTo?.kind === "new") await collectionAllowed(ctx, { userId, workspaceId }, saveTo.name);
+  if (saveTo?.kind === "collection" && (await ctx.db.get("collections", saveTo.collectionId))?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
 }
 
 /**
@@ -104,6 +105,6 @@ export async function screeningHold(ctx: QueryCtx, reader: InWorkspace, request:
   const { userId } = reader;
   await checkScreening(ctx, reader, request);
   const { set, first, last } = request;
-  const held = await papersIn(ctx, userId, set);
+  const held = await papersIn(ctx, reader, set);
   return estimateScreening(Math.max(0, Math.min(last, held ?? last) - first + 1), 0, await screeningPaperCreditsFor(ctx, userId)).credits;
 }

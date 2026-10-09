@@ -216,6 +216,11 @@
   },
   "inWorkspace": [
     "research/records",
-    "research/searches"
+    "research/searches",
+    "library/queries",
+    "library/collections",
+    "library/mutations",
+    "library/papers",
+    "extraction/sources/library"
   ]
 }

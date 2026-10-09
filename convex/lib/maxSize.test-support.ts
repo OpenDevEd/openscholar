@@ -12,6 +12,7 @@ import type { Id, TableNames } from "../_generated/dataModel";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { foldCounts } from "../extraction/counts.test-support";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 type Test = ReturnType<typeof convexTest>;
 
@@ -93,8 +94,10 @@ export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers =
  * full size: a test that reads no filtered count leaves them out.
  */
 export async function seedLibrary(t: Test, userId: Id<"users">, { items = MAX_SIZE.libraryItems as number, abstractChars = 0, counted = false } = {}) {
+  // Written without triggers when not counted, so they name the workspace a save gives them.
+  const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
   const docs = Array.from({ length: items }, (_, i) => ({
-    userId, openalexId: `https://openalex.org/W${i}`, rating: (i % 5) + 1, title: text(100, i), authors: [text(60, i)], publicationYear: 1990 + (i % 35),
+    userId, workspaceId, createdBy: userId, openalexId: `https://openalex.org/W${i}`, rating: (i % 5) + 1, title: text(100, i), authors: [text(60, i)], publicationYear: 1990 + (i % 35),
     journal: text(40, i), citedByCount: i % 500, paperData: text(1_700, i), searchableText: text(160, i), savedAt: 1_700_000_000_000 + i, updatedAt: 1,
     ...(abstractChars ? { abstract: text(abstractChars, i) } : {}),
   }));

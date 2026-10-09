@@ -50,18 +50,22 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
   const mine = await readMemberOrganizations(ctx, reader);
   // The reader's own workspace, read once when a search is named, until chats belong to one (#650).
   let workspace: Promise<Id<"workspaces">> | undefined;
+  const own = () => (workspace ??= personalWorkspaceOf(ctx, reader._id));
   /** The name of the record an ID names, when the reader can already see it. */
   const named = async (id: string, key: string): Promise<string | null> => {
     // A saved search has the ID its page gave it, not a document's. It is the reader's own or it isn't found.
     if (SEARCH_ID.test(id)) {
-      const search = await findSearch(ctx, await (workspace ??= personalWorkspaceOf(ctx, reader._id)), id);
+      const search = await findSearch(ctx, await own(), id);
       // One saved with filters alone has no query to show: it is named as such, never by its ID.
       return search ? currentSearch(search.data).query : null;
     }
     // A paper by its OpenAlex ID is shown by its title when it's one the reader has saved. Only where the
     // argument is a paper's ID: a name or a title that reads like one is shown as it was typed.
     const work = PAPER_KEYS.has(key) ? workUrl(id) : null;
-    if (work) return (await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", reader._id).eq("openalexId", work)).first())?.title ?? null;
+    if (work) {
+      const workspaceId = await own();
+      return (await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", work)).first())?.title ?? null;
+    }
     const threadId = ctx.db.normalizeId("assistantThreads", id);
     if (threadId) return (await roleAmong(ctx, threadId, await principalsOf(ctx, reader))) ? ((await ctx.db.get("assistantThreads", threadId))?.title ?? null) : null;
     // A change the assistant made, which undoing one names by its step: how many changes it was and what they were about, to someone who reads its chat.
@@ -80,17 +84,17 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, input: stri
     const collectionId = ctx.db.normalizeId("collections", id);
     if (collectionId) {
       const collection = await ctx.db.get("collections", collectionId);
-      return collection?.userId === reader._id ? collection.name : null;
+      return collection && collection.workspaceId === (await own()) ? collection.name : null;
     }
     const itemId = ctx.db.normalizeId("libraryItems", id);
     if (itemId) {
       const item = await ctx.db.get("libraryItems", itemId);
-      return item?.userId === reader._id ? item.title : null;
+      return item && item.workspaceId === (await own()) ? item.title : null;
     }
     const removalId = ctx.db.normalizeId("libraryRemovals", id);
     if (removalId) {
       const removal = await ctx.db.get("libraryRemovals", removalId);
-      return removal?.userId === reader._id ? removal.item.title : null;
+      return removal && removal.workspaceId === (await own()) ? removal.item.title : null;
     }
     const screeningId = ctx.db.normalizeId("screeningJobs", id);
     if (screeningId) {

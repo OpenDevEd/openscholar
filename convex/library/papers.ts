@@ -32,16 +32,16 @@ export const saveAction = defineUserAction({
   undoable: true,
   changes: true,
   // As the page's save asks (./mutations.ts): one that would have no undo. What isn't a paper's ID asks nothing here, and is refused when it runs.
-  asksFirst: async (ctx, { userId }, { id, rating, collectionId }) => {
+  asksFirst: async (ctx, actor, { id, rating, collectionId }) => {
     const openalexId = workUrl(id);
     // A library may follow the collection, which shows the paper outside the account.
-    return openalexId !== null && ((await saveAsksFirst(ctx, userId, openalexId, rating ?? undefined)) || (collectionId != null && (await followed(ctx, collectionId))));
+    return openalexId !== null && ((await saveAsksFirst(ctx, actor, openalexId, rating ?? undefined)) || (collectionId != null && (await followed(ctx, collectionId))));
   },
-  check: async (ctx, { userId }, { id, rating, collectionId }) => {
+  check: async (ctx, actor, { id, rating, collectionId }) => {
     const openalexId = workUrl(id);
-    if (openalexId) await checkSave(ctx, userId, { openalexId, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }) });
+    if (openalexId) await checkSave(ctx, actor, { openalexId, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }) });
   },
-  run: async (ctx, { userId, author }, { id, rating, collectionId }, call) => {
+  run: async (ctx, { userId, workspaceId, author }, { id, rating, collectionId }, call) => {
     const openalexId = workUrl(id);
     if (!openalexId) throw createError("VALIDATION_ERROR", "A paper is saved by its ID, such as W2741809807, as results give it.");
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
@@ -53,7 +53,7 @@ export const saveAction = defineUserAction({
     const work: WorkInput = { ...rest, id: openalexId, ...(index ? { abstract: convertAbstractArrayToString(index) } : {}) };
     const paper = { ...trimPaperData(work), paperData: JSON.stringify(work) };
     // Typed here: the generated API's types depend on this module, so inference would loop.
-    const saved: Infer<typeof savedByIdValidator> = await ctx.runMutation(internal.library.mutations.saveRead, { userId, paper, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }), author, ...(call?.stepId ? { stepId: call.stepId } : {}), ...(call?.approved ? { approved: true } : {}) });
+    const saved: Infer<typeof savedByIdValidator> = await ctx.runMutation(internal.library.mutations.saveRead, { userId, workspaceId, paper, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }), author, ...(call?.stepId ? { stepId: call.stepId } : {}), ...(call?.approved ? { approved: true } : {}) });
     return saved;
   },
 });
@@ -79,7 +79,7 @@ export const collectAction = defineUserMutation({
   // A library may follow the collection, which shows the change outside the account.
   asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
   run: async (ctx, actor, { id, collectionId, inCollection }) => {
-    const item = await findItem(ctx, actor.userId, id);
+    const item = await findItem(ctx, actor.workspaceId, id);
     if (inCollection && !item) throw createError("NOT_FOUND", "This paper isn't in the library yet. Call library/papers:save with this collectionId: it saves the paper and puts it in the collection.");
     // By the ID the paper is saved under: one saved before the library kept one form is under the ID it was given.
     return await setPaperInCollectionAction.run(ctx, actor, { paper: { openalexId: item?.openalexId ?? canonical(id) }, collectionId, inCollection });

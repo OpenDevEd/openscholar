@@ -23,6 +23,7 @@ import { assistant } from "./agent";
 import { forgetLimits, noteReply } from "./spending";
 import { linked } from "./links";
 import { WEB_SOURCES_KEPT } from "./validators";
+import { personalWorkspaceOf } from "../workspaces/actor";
 
 /** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
 export const STEP_TEXT_MAX = 16_000;
@@ -229,6 +230,8 @@ export const about = internalQuery({
  * theirs yet, and gets its title from what the call returns (`namedBy`).
  */
 async function aboutOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, input: string) {
+  // The person's own workspace until chats belong to one (#650), read only when a record is named.
+  const own = () => personalWorkspaceOf(ctx, userId);
   let args: Record<string, unknown>;
   try {
     args = JSON.parse(input) as Record<string, unknown>;
@@ -241,14 +244,15 @@ async function aboutOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, input: st
   const paper = [args.id, args.openalexId, args.paperId, command.paperId].find((value): value is string => typeof value === "string");
   const openalexId = paper ? workUrl(paper) : null;
   if (openalexId) {
-    const item = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", openalexId)).first();
+    const workspaceId = await own();
+    const item = await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", openalexId)).first();
     // A call about a paper is named after the paper. One it is about to save isn't theirs yet, and is named by the
     // title its result gives, not by the collection it goes into.
     return item?.title ? cut(item.title, 200) : undefined;
   }
   const collectionId = typeof args.collectionId === "string" ? ctx.db.normalizeId("collections", args.collectionId) : null;
   const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;
-  return collection?.userId === userId ? cut(collection.name, 200) : undefined;
+  return collection && collection.workspaceId === (await own()) ? cut(collection.name, 200) : undefined;
 }
 
 /** A step that read something ends with its result. A change ends its own (`endStep`). */

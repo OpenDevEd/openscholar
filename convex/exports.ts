@@ -143,7 +143,8 @@ export const page = internalQuery({
     });
     if (source.kind === "library") {
       const numItems = source.view.searchText === undefined ? EXPORT_PAGE_SIZE : LIBRARY_SEARCH_RESULTS_MAX;
-      return write(await readLibraryPage(ctx, userId, source.view, { cursor, numItems }), exportFiles.library[format].item);
+      // The person's own library until an export names its workspace (#650).
+      return write(await readLibraryPage(ctx, await personalWorkspaceOf(ctx, userId), source.view, { cursor, numItems }), exportFiles.library[format].item);
     }
     if (source.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", source.jobId);

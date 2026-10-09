@@ -100,7 +100,7 @@ export function LibraryPageClient() {
 
   const { data: totalCount } = useProtectedQuery(
     api.library.queries.getLibraryCount,
-    {},
+    inWorkspace(workspaceId, {}),
   );
 
   const queryText = debouncedSearch.trim();
@@ -150,17 +150,17 @@ export function LibraryPageClient() {
   );
   const { data: filteredTotalCount } = useProtectedQuery(
     api.library.queries.getLibraryFilteredCount,
-    filteredCountQueryArgs,
+    inWorkspace(workspaceId, filteredCountQueryArgs),
   );
 
   const browseItems = useCursorPage(
     api.library.queries.browseLibrary,
-    queryText ? "skip" : libraryFilters,
+    inWorkspace(workspaceId, queryText ? "skip" : libraryFilters),
     PAGE_SIZE,
   );
   const searchItems = useCursorPage(
     api.library.queries.searchLibrary,
-    queryText ? { ...libraryFilters, searchText: queryText } : "skip",
+    inWorkspace(workspaceId, queryText ? { ...libraryFilters, searchText: queryText } : "skip"),
     PAGE_SIZE,
   );
   const paged = queryText ? searchItems : browseItems;

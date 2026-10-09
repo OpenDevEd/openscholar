@@ -19,7 +19,7 @@ import schema from "../schema";
 import { countRecordPage, countRow } from "./recordCounts";
 import { shortcutSortName } from "../../lib/query-shortcuts";
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
-import { personalWorkspaceOf, type Actor, type InWorkspace } from "../workspaces/actor";
+import { personalWorkspaceOf, requireMakerOrAdmin, type Actor, type InWorkspace } from "../workspaces/actor";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
@@ -576,7 +576,7 @@ export async function checkRemoval(ctx: QueryCtx, actor: Actor, command: Researc
   const row = command.kind === "deleteSearch" ? await findSearch(ctx, actor.workspaceId, command.id)
     : command.kind === "shortcut" && command.value === null ? await shortcut(ctx, actor.workspaceId, command.shorthand)
       : null;
-  if (row && row.createdBy !== actor.userId) throw createError("FORBIDDEN", "Only an admin of this workspace takes away what someone else made.");
+  if (row) requireMakerOrAdmin(actor, row.createdBy);
 }
 
 async function received(ctx: MutationCtx, userId: Id<"users">, key: string) {

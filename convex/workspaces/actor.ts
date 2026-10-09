@@ -15,6 +15,14 @@ export type Actor = Infer<typeof actorValidator>;
 export type InWorkspace = Pick<Actor, "userId" | "workspaceId">;
 
 /**
+ * Refuses taking away what someone else made unless `actor` is an admin of the workspace
+ * (#650). In their own workspace a person is its admin, so nothing is refused there.
+ */
+export function requireMakerOrAdmin(actor: Actor, createdBy: Id<"users"> | undefined) {
+  if (actor.role !== "admin" && createdBy !== actor.userId) throw createError("FORBIDDEN", "Only an admin of this workspace takes away what someone else made.");
+}
+
+/**
  * `user` acting in `workspaceId`: their own workspace, which they're the admin of, or an
  * active organization they're an active member of. Any other is refused as not found, so
  * nobody outside a workspace learns that it exists. Convex never takes the token's active
@@ -44,7 +52,7 @@ async function organizationRole(ctx: QueryCtx, organizationId: Id<"organizations
  * A person's own workspace. The assistant acts in its sender's until chats belong to a
  * workspace (#650, the assistant's slice), and the browser names it until pages carry theirs.
  */
-export async function personalWorkspaceOf(ctx: QueryCtx, userId: Id<"users">): Promise<Id<"workspaces">> {
+export async function personalWorkspaceOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">): Promise<Id<"workspaces">> {
   const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
   if (!workspace) throw createError("NOT_FOUND", "Workspace not found");
   return workspace._id;

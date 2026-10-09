@@ -98,11 +98,12 @@ async function seedLibrarySmokeFixture(args: {
 
   const [{ count: filteredCount }, totalCount] = await Promise.all([
     client.query(api.library.queries.getLibraryFilteredCount, {
+      workspaceId,
       sortBy: "savedAt",
       sortOrder: "desc",
       collectionId,
     }),
-    client.query(api.library.queries.getLibraryCount, {}),
+    client.query(api.library.queries.getLibraryCount, { workspaceId }),
   ]);
 
   return {
