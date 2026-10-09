@@ -3079,7 +3079,6 @@
   "settingsShell": {
     "groups": {
       "account": "खाता",
-      "research": "शोध",
       "admin": "एडमिन"
     },
     "items": {
@@ -3863,6 +3862,23 @@
         "did": "संगठन हटाया",
         "where": "वर्कस्पेस सेटिंग्स",
         "ask": "संगठन हटाएँ"
+      },
+      "workspaceSummary": {
+        "doing": "वर्कस्पेस की सामग्री गिन रहा है",
+        "did": "वर्कस्पेस की सामग्री गिनी",
+        "where": "वर्कस्पेस सेटिंग्स"
+      },
+      "workspaceColour": {
+        "doing": "संगठन का रंग बदल रहा है",
+        "did": "संगठन का रंग बदला",
+        "where": "वर्कस्पेस सेटिंग्स",
+        "ask": "संगठन का रंग बदलें"
+      },
+      "resendInvite": {
+        "doing": "आमंत्रण फिर से भेज रहा है",
+        "did": "आमंत्रण फिर से भेजा",
+        "where": "सदस्य",
+        "ask": "आमंत्रण फिर से भेजें"
       }
     },
     "asks": {
@@ -4080,6 +4096,61 @@
     "pointCredits": "इसके क्रेडिट पर चलने वाला काम",
     "pointOwn": "आपका अपना वर्कस्पेस आपका ही रहता है",
     "invitationGoneTitle": "यह आमंत्रण अब खुला नहीं है",
-    "invitationGoneDetail": "भेजने वाले से नया आमंत्रण माँगें"
+    "invitationGoneDetail": "भेजने वाले से नया आमंत्रण माँगें",
+    "settings": {
+      "general": "सामान्य",
+      "collections": "संग्रह",
+      "searches": "खोजें",
+      "screenings": "स्क्रीनिंग",
+      "extractions": "एक्सट्रैक्शन",
+      "evidenceLibraries": "एविडेंस लाइब्रेरी",
+      "changeLogo": "लोगो बदलें",
+      "organizationName": "संगठन का नाम",
+      "saveName": "नाम सहेजें",
+      "rename": "संगठन का नाम बदलें",
+      "copyAddress": "{address} कॉपी करें",
+      "colour": "रंग",
+      "inName": "{name} में",
+      "leaveOrDelete": "छोड़ें या हटाएँ",
+      "leaveName": "{name} छोड़ें",
+      "leaveDetail": "यहाँ आपका काम संगठन के पास रहता है",
+      "makeAdminFirst": "पहले किसी और को एडमिन बनाएँ",
+      "leave": "छोड़ें",
+      "deleteName": "{name} हटाएँ",
+      "libraryIsLive": "{library} लाइव है। पहले उसे हटाएँ या कहीं और ले जाएँ।",
+      "deleteDetail": "यह इसे {count, plural, one {इसके # सदस्य} other {इसके सभी # सदस्यों}} के लिए हटा देता है",
+      "moveLibrariesFirst": "पहले इसकी एविडेंस लाइब्रेरी हटाएँ या कहीं और ले जाएँ",
+      "delete": "हटाएँ",
+      "deleteConfirm": "इसके संग्रह, खोजें, स्क्रीनिंग और एक्सट्रैक्शन भी {count, plural, one {इसके # सदस्य} other {इसके सभी # सदस्यों}} के लिए हट जाते हैं। इसे वापस नहीं लिया जा सकता।",
+      "leaveConfirm": "जब तक कोई एडमिन आपको फिर से आमंत्रित न करे, आप इसके काम तक नहीं पहुँच पाएँगे।",
+      "ofSeats": "{seats} में से",
+      "membersOnPlan": "{plan} पर सदस्य",
+      "invite": "आमंत्रित करें",
+      "emailAddress": "ईमेल पता",
+      "theirRole": "उनकी भूमिका",
+      "freeUpTo": "मुफ़्त संगठन में आमंत्रणों सहित अधिकतम {count} सदस्य होते हैं",
+      "membersLabel": "सदस्य",
+      "joined": "{when} जुड़े",
+      "roleOf": "{name} की भूमिका",
+      "removeName": "{name} को हटाएँ",
+      "invitations": "आमंत्रण",
+      "invited": "{when} आमंत्रित",
+      "sentAgain": "{email} को आमंत्रण फिर से भेजा",
+      "resend": "फिर से भेजें",
+      "cancelInvitation": "{email} का आमंत्रण रद्द करें",
+      "removeConfirm": "{name} की {organization} तक पहुँच खत्म हो जाती है। उनका काम वहीं रहता है।",
+      "remove": "हटाएँ",
+      "includedMembers": "{count} सदस्य",
+      "unlimitedCollections": "असीमित संग्रह",
+      "includedCollections": "{count} संग्रह",
+      "papersAtOnce": "एक साथ {count} पेपर",
+      "anyPapersAJob": "हर काम में कितने भी पेपर",
+      "papersAJob": "हर काम में {count} पेपर तक",
+      "sharedCredits": "साझा क्रेडिट",
+      "membersDraw": "{count} सदस्य इनका उपयोग करते हैं",
+      "refillOn": "{date} को {amount}",
+      "upToMembers": "{count} सदस्यों तक",
+      "included": "शामिल"
+    }
   }
 }

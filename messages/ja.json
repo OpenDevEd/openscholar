@@ -3079,7 +3079,6 @@
   "settingsShell": {
     "groups": {
       "account": "アカウント",
-      "research": "リサーチ",
       "admin": "管理"
     },
     "items": {
@@ -3863,6 +3862,23 @@
         "did": "組織を削除しました",
         "where": "ワークスペース設定",
         "ask": "組織を削除"
+      },
+      "workspaceSummary": {
+        "doing": "ワークスペースの内容を数えています",
+        "did": "ワークスペースの内容を数えました",
+        "where": "ワークスペース設定"
+      },
+      "workspaceColour": {
+        "doing": "組織の色を変更しています",
+        "did": "組織の色を変更しました",
+        "where": "ワークスペース設定",
+        "ask": "組織の色を変更"
+      },
+      "resendInvite": {
+        "doing": "招待を再送しています",
+        "did": "招待を再送しました",
+        "where": "メンバー",
+        "ask": "招待を再送"
       }
     },
     "asks": {
@@ -4080,6 +4096,61 @@
     "pointCredits": "組織のクレジットで実行する作業",
     "pointOwn": "あなたのワークスペースはそのまま",
     "invitationGoneTitle": "この招待は無効になりました",
-    "invitationGoneDetail": "送信者に新しい招待を依頼してください"
+    "invitationGoneDetail": "送信者に新しい招待を依頼してください",
+    "settings": {
+      "general": "一般",
+      "collections": "コレクション",
+      "searches": "検索",
+      "screenings": "スクリーニング",
+      "extractions": "抽出",
+      "evidenceLibraries": "エビデンスライブラリ",
+      "changeLogo": "ロゴを変更",
+      "organizationName": "組織名",
+      "saveName": "名前を保存",
+      "rename": "組織の名前を変更",
+      "copyAddress": "{address} をコピー",
+      "colour": "色",
+      "inName": "{name} の内容",
+      "leaveOrDelete": "退出または削除",
+      "leaveName": "{name} から退出",
+      "leaveDetail": "ここでの作業は組織に残ります",
+      "makeAdminFirst": "先に別のメンバーを管理者にしてください",
+      "leave": "退出",
+      "deleteName": "{name} を削除",
+      "libraryIsLive": "{library} は公開中です。先に移動するか削除してください。",
+      "deleteDetail": "{count} 人のメンバー全員から削除されます",
+      "moveLibrariesFirst": "先にエビデンスライブラリを移動するか削除してください",
+      "delete": "削除",
+      "deleteConfirm": "コレクション、検索、スクリーニング、抽出も {count} 人のメンバー全員から削除されます。元に戻せません。",
+      "leaveConfirm": "管理者に再び招待されるまで、この組織の作業にアクセスできなくなります。",
+      "ofSeats": "/ {seats}",
+      "membersOnPlan": "{plan} のメンバー",
+      "invite": "招待",
+      "emailAddress": "メールアドレス",
+      "theirRole": "役割",
+      "freeUpTo": "無料の組織は招待を含めて最大 {count} 人です",
+      "membersLabel": "メンバー",
+      "joined": "{when}に参加",
+      "roleOf": "{name} の役割",
+      "removeName": "{name} を削除",
+      "invitations": "招待",
+      "invited": "{when}に招待",
+      "sentAgain": "{email} に招待を再送しました",
+      "resend": "再送",
+      "cancelInvitation": "{email} への招待を取り消す",
+      "removeConfirm": "{name} は {organization} にアクセスできなくなります。作業は組織に残ります。",
+      "remove": "削除",
+      "includedMembers": "{count} 人のメンバー",
+      "unlimitedCollections": "コレクション無制限",
+      "includedCollections": "{count} 件のコレクション",
+      "papersAtOnce": "同時に {count} 件の論文",
+      "anyPapersAJob": "ジョブあたりの論文数は無制限",
+      "papersAJob": "ジョブあたり最大 {count} 件の論文",
+      "sharedCredits": "共有クレジット",
+      "membersDraw": "{count} 人のメンバーが使用",
+      "refillOn": "{date}に {amount}",
+      "upToMembers": "最大 {count} 人",
+      "included": "含まれるもの"
+    }
   }
 }

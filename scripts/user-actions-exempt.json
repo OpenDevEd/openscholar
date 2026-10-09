@@ -36,6 +36,7 @@
     "featureFlags/queries:list": "Feature flags the pages check before showing a feature.",
     "openalex/limits:spend": "Counts a signed-in account's OpenAlex requests for the server actions that make them.",
     "organizations/manage:confirmJoin": "Keeps the membership Clerk made when the person accepted an invitation in Clerk's own client. The assistant doesn't accept invitations for anyone.",
+    "organizations/manage:setLogo": "Takes an image file the person picked in their browser. The assistant has no file to give it.",
     "organizations/queries:invitationTo": "The join page's reading of one invitation to the organization at its address. The assistant reads invitations through organizations/queries:myInvitations.",
     "extraction/queries/jobs:runningJob": "The ring the rail draws around Extract for a running extraction. The assistant reads jobs through extraction/queries:listJobs.",
     "organizationFeatures:get": "Which features the person's organization has, for the pages to check.",

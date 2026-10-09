@@ -3081,7 +3081,6 @@
   "settingsShell": {
     "groups": {
       "account": "Account",
-      "research": "Research",
       "admin": "Admin"
     },
     "items": {
@@ -3865,6 +3864,23 @@
         "did": "Deleted the organisation",
         "where": "Workspace settings",
         "ask": "Delete the organisation"
+      },
+      "workspaceSummary": {
+        "doing": "Counting what's in the workspace",
+        "did": "Counted what's in the workspace",
+        "where": "Workspace settings"
+      },
+      "workspaceColour": {
+        "doing": "Changing the organisation's colour",
+        "did": "Changed the organisation's colour",
+        "where": "Workspace settings",
+        "ask": "Change the organisation's colour"
+      },
+      "resendInvite": {
+        "doing": "Sending the invitation again",
+        "did": "Sent the invitation again",
+        "where": "Members",
+        "ask": "Send the invitation again"
       }
     },
     "asks": {
@@ -4082,6 +4098,61 @@
     "pointCredits": "Work that runs on its credits",
     "pointOwn": "Your own workspace stays yours",
     "invitationGoneTitle": "This invitation is no longer open",
-    "invitationGoneDetail": "Ask whoever sent it for a new one"
+    "invitationGoneDetail": "Ask whoever sent it for a new one",
+    "settings": {
+      "general": "General",
+      "collections": "Collections",
+      "searches": "Searches",
+      "screenings": "Screenings",
+      "extractions": "Extractions",
+      "evidenceLibraries": "Evidence Libraries",
+      "changeLogo": "Change logo",
+      "organizationName": "Organisation name",
+      "saveName": "Save name",
+      "rename": "Rename organisation",
+      "copyAddress": "Copy {address}",
+      "colour": "Colour",
+      "inName": "In {name}",
+      "leaveOrDelete": "Leave or delete",
+      "leaveName": "Leave {name}",
+      "leaveDetail": "Your work here stays with the organisation",
+      "makeAdminFirst": "Make someone else an admin first",
+      "leave": "Leave",
+      "deleteName": "Delete {name}",
+      "libraryIsLive": "{library} is live. Move or delete it first.",
+      "deleteDetail": "Removes it for {count, plural, one {its # member} other {all # members}}",
+      "moveLibrariesFirst": "Move or delete its Evidence Libraries first",
+      "delete": "Delete",
+      "deleteConfirm": "Its collections, searches, screenings and extractions go with it, for {count, plural, one {its # member} other {all # members}}. This can't be undone.",
+      "leaveConfirm": "You lose access to its work until an admin invites you again.",
+      "ofSeats": "of {seats}",
+      "membersOnPlan": "Members on {plan}",
+      "invite": "Invite",
+      "emailAddress": "Email address",
+      "theirRole": "Their role",
+      "freeUpTo": "Free organisations have up to {count} members, invitations included",
+      "membersLabel": "members",
+      "joined": "Joined {when}",
+      "roleOf": "{name}'s role",
+      "removeName": "Remove {name}",
+      "invitations": "Invitations",
+      "invited": "Invited {when}",
+      "sentAgain": "Invitation sent again to {email}",
+      "resend": "Resend",
+      "cancelInvitation": "Cancel the invitation to {email}",
+      "removeConfirm": "{name} loses access to {organization}. Their work stays with it.",
+      "remove": "Remove",
+      "includedMembers": "{count} members",
+      "unlimitedCollections": "Unlimited collections",
+      "includedCollections": "{count, plural, one {# collection} other {# collections}}",
+      "papersAtOnce": "{count, plural, one {# paper at once} other {# papers at once}}",
+      "anyPapersAJob": "Any number of papers a job",
+      "papersAJob": "Up to {count} papers a job",
+      "sharedCredits": "Shared credits",
+      "membersDraw": "{count, plural, one {# member draws} other {# members draw}} from them",
+      "refillOn": "{amount} on {date}",
+      "upToMembers": "Up to {count} members",
+      "included": "Included"
+    }
   }
 }

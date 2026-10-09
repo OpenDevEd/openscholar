@@ -176,6 +176,25 @@ describe("an organization", () => {
     expect((await bobAs.query(api.organizations.queries.workspaces, page)).page.map(({ name }) => name)).toEqual(["Bob"]);
   });
 
+  it("sends an invitation again as a new one, and takes the colour its admins pick, with an undo", async () => {
+    const { aliceAs } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const inLab = { workspaceId: lab.workspaceId };
+    await aliceAs.action(api.organizations.manage.invite, { ...inLab, emails: ["carol@example.org"], role: "admin" });
+    const [first] = (await aliceAs.query(api.organizations.queries.invitations, { ...inLab, ...page })).page;
+    await aliceAs.action(api.organizations.manage.resendInvitation, { ...inLab, invitationId: first.invitationId });
+    const [again, ...more] = (await aliceAs.query(api.organizations.queries.invitations, { ...inLab, ...page })).page;
+    expect(more).toEqual([]);
+    expect(again).toMatchObject({ email: "carol@example.org", role: "admin" });
+    expect(again.invitationId).not.toBe(first.invitationId);
+
+    const colourOf = async () => (await aliceAs.query(api.organizations.queries.workspaces, page)).page.find((one) => one.kind === "organization")?.colour;
+    const { undo } = await aliceAs.mutation(api.organizations.manage.setColour, { ...inLab, colour: "#0d9488" });
+    expect(await colourOf()).toBe("#0d9488");
+    await aliceAs.mutation(api.organizations.manage.setColour, { ...inLab, ...undo!.args });
+    expect(await colourOf()).toBeUndefined();
+  });
+
   it("says when its plan has room for no more members", async () => {
     const { aliceAs } = await people();
     const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });

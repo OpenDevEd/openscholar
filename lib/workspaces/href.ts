@@ -8,7 +8,11 @@ import { useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 /** The sections whose pages are a workspace's: their paths take an organization's prefix. */
-const SECTIONS = ["/library", "/history", "/results", "/screening", "/extraction", "/bookmarks", "/evidence-libraries", "/authors", "/topics"];
+const SECTIONS = ["/library", "/history", "/results", "/screening", "/extraction", "/bookmarks", "/evidence-libraries", "/authors", "/topics", "/settings"];
+/** The deployment's own settings, which are no workspace's. */
+const ADMIN = "/settings/admin";
+
+const within = (path: string, section: string) => path === section || path.startsWith(`${section}/`);
 
 /** The organization a page's address names, or undefined in the person's own workspace. */
 export function useWorkspaceSlug(): string | undefined {
@@ -21,7 +25,7 @@ export function workspaceHref(slug: string | undefined, path: string) {
   if (!slug || !path.startsWith("/") || path.startsWith(`/o/`)) return path;
   const bare = path.split(/[?#]/)[0]!;
   if (bare === "/") return `/o/${slug}${path.slice(1)}`;
-  return SECTIONS.some((section) => bare === section || bare.startsWith(`${section}/`)) ? `/o/${slug}${path}` : path;
+  return SECTIONS.some((section) => within(bare, section)) && !within(bare, ADMIN) ? `/o/${slug}${path}` : path;
 }
 
 /** `workspaceHref` for the workspace the page is in. */

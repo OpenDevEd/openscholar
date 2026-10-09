@@ -6,6 +6,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { personName } from "../assistant/access";
 import { readAccount } from "../billing/accounts";
+import { collectionCountRow } from "../library/collections";
+import { countRow } from "../research/recordCounts";
 import { query } from "../lib/functions";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
@@ -31,6 +33,8 @@ const workspaceValidator = v.object({
   members: v.optional(v.number()),
   /** Its plan's ID in Autumn, which the catalog names; absent until its account is read. */
   plan: v.optional(v.string()),
+  /** The colour an organization's admins picked. */
+  colour: v.optional(v.string()),
 });
 
 export const workspacesAction = defineUserQuery({
@@ -52,7 +56,7 @@ export const workspacesAction = defineUserQuery({
         if (!organization || !workspace) return [];
         const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MEMBERS_COUNTED + 1);
         const plan = (await readAccount(ctx, workspace._id))?.plan;
-        return [{ workspaceId: workspace._id, kind: "organization" as const, name: organization.name, slug: organization.slug, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role: roleOf(membership.role), members: members.length, ...(plan ? { plan } : {}) }];
+        return [{ workspaceId: workspace._id, kind: "organization" as const, name: organization.name, slug: organization.slug, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role: roleOf(membership.role), members: members.length, ...(plan ? { plan } : {}), ...(organization.colour ? { colour: organization.colour } : {}) }];
       }),
     );
     // The person's own workspace heads the first page.
@@ -71,13 +75,14 @@ const memberValidator = v.object({
   imageUrl: v.optional(v.string()),
   role: ROLE,
   you: v.boolean(),
+  joinedAt: v.number(),
 });
 
 /** A member as the list shows them; one whose account isn't projected yet is left out until it is. */
 async function memberRow(ctx: QueryCtx, membership: Doc<"organizationMemberships">, you: Id<"users">) {
   const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
   if (!user || user.state !== "active") return null;
-  return { userId: user._id, name: personName(user) || user.email, email: user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), role: roleOf(membership.role), you: user._id === you };
+  return { userId: user._id, name: personName(user) || user.email, email: user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), role: roleOf(membership.role), you: user._id === you, joinedAt: membership.clerkCreatedAt };
 }
 
 export const membersAction = defineUserQuery({
@@ -201,3 +206,42 @@ export const invitationTo = query({
     return shown ? { joined: false as const, invitation: shown, members: members.length, ...(plan ? { plan } : {}) } : null;
   },
 });
+
+/** Evidence Libraries a workspace's summary counts up to one past; past it, it says more than that. */
+const LIBRARIES_COUNTED = 100;
+
+export const summaryAction = defineUserQuery({
+  path: "organizations/queries:summary",
+  description:
+    "Counts what's in the workspace the person is in: its collections, searches, screenings, extractions and Evidence Libraries, with the first library's name. " +
+    "In an organization, also how many admins it has.",
+  args: {},
+  returns: v.object({
+    collections: v.number(),
+    searches: v.number(),
+    screenings: v.number(),
+    extractions: v.number(),
+    libraries: v.number(),
+    library: v.optional(v.string()),
+    admins: v.optional(v.number()),
+  }),
+  run: async (ctx, { workspaceId }) => {
+    const counted = async (table: "searches" | "screeningJobs" | "extractionJobs") => (await countRow(ctx, table, workspaceId))?.count ?? 0;
+    const libraries = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(LIBRARIES_COUNTED + 1);
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    const admins = workspace?.kind === "organization"
+      ? await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state_and_role", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active").eq("role", "org:admin")).take(MEMBERS_COUNTED + 1)
+      : null;
+    return {
+      collections: (await collectionCountRow(ctx, workspaceId))?.count ?? 0,
+      searches: await counted("searches"),
+      screenings: await counted("screeningJobs"),
+      extractions: await counted("extractionJobs"),
+      libraries: libraries.length,
+      ...(libraries[0] ? { library: libraries[0].name } : {}),
+      ...(admins ? { admins: admins.length } : {}),
+    };
+  },
+});
+export const summary = userQuery(summaryAction);
+export const summaryForAssistant = assistantQuery(summaryAction);

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Enter, Paged, pagerOf } from "@/components/settings/parts";
 import { cn } from "@/lib/utils";
+import { useWorkspaceHref } from "@/lib/workspaces/href";
 
 /**
  * Profile and Security. Each opens with a summary drawn from Clerk's own data;
@@ -25,6 +26,8 @@ export default function Page() {
 }
 
 function ProfilePage({ security }: { security: boolean }) {
+  // Clerk's pages sit under the settings of the workspace the page is in.
+  const settingsPath = useWorkspaceHref()("/settings");
   const [clerkReady, setClerkReady] = useState(false);
   const { user } = useUser();
   // The session request lives here, above the Suspense boundary: a component that
@@ -60,7 +63,7 @@ function ProfilePage({ security }: { security: boolean }) {
           )}
           <UserProfile
             routing="path"
-            path="/settings"
+            path={settingsPath}
             appearance={{
               // The settings template owns the page entrance; Clerk's own would run on top of it.
               options: { animations: false },

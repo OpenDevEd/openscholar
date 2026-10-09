@@ -147,6 +147,8 @@ export const organizationFields = {
   state: organizationStateValidator,
   /** Set while an admin's deletion runs (convex/organizations/manage.ts): nobody acts in its workspace meanwhile. */
   deletingAt: v.optional(v.number()),
+  /** The colour its admins picked (#651), which tints the rail while someone is in it. Clerk doesn't keep it. */
+  colour: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };

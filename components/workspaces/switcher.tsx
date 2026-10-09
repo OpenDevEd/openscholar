@@ -28,15 +28,13 @@ import { workspaceHref } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { pageItem } from "./item-home";
-import { Framed, PlanChip, settingsHref, usePlanOf, useWorkspaces, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
+import { FREE_MEMBERS, Framed, PlanChip, settingsHref, usePlanOf, useWorkspaces, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 
 const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-left transition-colors hover:bg-foreground/[0.045]";
 
 /** The square at the head of a rail card that the workspace tile flies into from the rail. */
 const HEAD = 40;
 
-/** Clerk's limit on a free organization's members, invitations included. */
-export const FREE_MEMBERS = 5;
 
 /**
  * Where a switch to another workspace lands: the same page there, or where its section starts

@@ -3079,7 +3079,6 @@
   "settingsShell": {
     "groups": {
       "account": "账户",
-      "research": "研究",
       "admin": "管理"
     },
     "items": {
@@ -3863,6 +3862,23 @@
         "did": "已删除组织",
         "where": "工作区设置",
         "ask": "删除组织"
+      },
+      "workspaceSummary": {
+        "doing": "正在统计工作区内容",
+        "did": "已统计工作区内容",
+        "where": "工作区设置"
+      },
+      "workspaceColour": {
+        "doing": "正在更改组织颜色",
+        "did": "已更改组织颜色",
+        "where": "工作区设置",
+        "ask": "更改组织颜色"
+      },
+      "resendInvite": {
+        "doing": "正在重新发送邀请",
+        "did": "已重新发送邀请",
+        "where": "成员",
+        "ask": "重新发送邀请"
       }
     },
     "asks": {
@@ -4080,6 +4096,61 @@
     "pointCredits": "使用其积分运行的工作",
     "pointOwn": "你自己的工作区仍归你所有",
     "invitationGoneTitle": "此邀请已失效",
-    "invitationGoneDetail": "请向发送者索取新的邀请"
+    "invitationGoneDetail": "请向发送者索取新的邀请",
+    "settings": {
+      "general": "常规",
+      "collections": "收藏集",
+      "searches": "搜索",
+      "screenings": "筛选",
+      "extractions": "提取",
+      "evidenceLibraries": "证据库",
+      "changeLogo": "更换标志",
+      "organizationName": "组织名称",
+      "saveName": "保存名称",
+      "rename": "重命名组织",
+      "copyAddress": "复制 {address}",
+      "colour": "颜色",
+      "inName": "{name} 中的内容",
+      "leaveOrDelete": "退出或删除",
+      "leaveName": "退出 {name}",
+      "leaveDetail": "你在这里的工作留在组织中",
+      "makeAdminFirst": "请先让其他人成为管理员",
+      "leave": "退出",
+      "deleteName": "删除 {name}",
+      "libraryIsLive": "{library} 正在线上。请先移走或删除它。",
+      "deleteDetail": "将为全部 {count} 名成员删除它",
+      "moveLibrariesFirst": "请先移走或删除它的证据库",
+      "delete": "删除",
+      "deleteConfirm": "它的收藏集、搜索、筛选和提取也会一并为全部 {count} 名成员删除。此操作无法撤销。",
+      "leaveConfirm": "在管理员再次邀请你之前，你将无法访问它的工作。",
+      "ofSeats": "/ {seats}",
+      "membersOnPlan": "{plan} 上的成员",
+      "invite": "邀请",
+      "emailAddress": "邮箱地址",
+      "theirRole": "其角色",
+      "freeUpTo": "免费组织最多 {count} 名成员（含邀请）",
+      "membersLabel": "成员",
+      "joined": "{when}加入",
+      "roleOf": "{name} 的角色",
+      "removeName": "移除 {name}",
+      "invitations": "邀请",
+      "invited": "{when}邀请",
+      "sentAgain": "已重新向 {email} 发送邀请",
+      "resend": "重新发送",
+      "cancelInvitation": "取消对 {email} 的邀请",
+      "removeConfirm": "{name} 将无法访问 {organization}。其工作仍保留在组织中。",
+      "remove": "移除",
+      "includedMembers": "{count} 名成员",
+      "unlimitedCollections": "无限收藏集",
+      "includedCollections": "{count} 个收藏集",
+      "papersAtOnce": "同时处理 {count} 篇论文",
+      "anyPapersAJob": "每个任务论文数不限",
+      "papersAJob": "每个任务最多 {count} 篇论文",
+      "sharedCredits": "共享积分",
+      "membersDraw": "{count} 名成员使用",
+      "refillOn": "{date} 补充 {amount}",
+      "upToMembers": "最多 {count} 名成员",
+      "included": "包含"
+    }
   }
 }

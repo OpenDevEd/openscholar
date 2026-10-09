@@ -134,11 +134,11 @@ export const invitationFor = internalQuery({
 /** A pending invitation of the organization, for an admin to take back. */
 export const pendingInvitation = internalQuery({
   args: { invitationId: v.id("organizationInvitations"), organizationId: v.id("organizations") },
-  returns: v.string(),
+  returns: v.object({ clerkInvitationId: v.string(), email: v.string(), role: v.union(v.literal("org:admin"), v.literal("org:member")) }),
   handler: async (ctx, { invitationId, organizationId }) => {
     const invitation = await ctx.db.get("organizationInvitations", invitationId);
     if (!invitation || invitation.organizationId !== organizationId || invitation.state !== "pending") throw createError("NOT_FOUND", "This invitation is no longer open.");
-    return invitation.clerkInvitationId;
+    return { clerkInvitationId: invitation.clerkInvitationId, email: invitation.email, role: invitation.role };
   },
 });
 
@@ -162,3 +162,4 @@ export const clerkIdOf = internalQuery({
     return organization?.state === "active" ? organization.clerkOrganizationId : null;
   },
 });
+

@@ -16,7 +16,10 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 export type WorkspaceRow = FunctionReturnType<typeof api.organizations.queries.workspaces>["page"][number];
 /** Enough of a workspace to draw it, which an invitation has before it's one of yours. */
-export type WorkspaceLook = Pick<WorkspaceRow, "kind" | "name" | "imageUrl"> & { workspaceId?: string; plan?: string };
+export type WorkspaceLook = Pick<WorkspaceRow, "kind" | "name" | "imageUrl"> & { workspaceId?: string; plan?: string; colour?: string };
+
+/** Clerk's limit on a free organization's members, invitations included. */
+export const FREE_MEMBERS = 5;
 
 /** The most workspaces the switcher lists. ponytail: one page; page on if people join more than 20 organizations. */
 const LISTED = 20;
@@ -29,13 +32,14 @@ export function useWorkspaces() {
   return { all, current: all?.find((workspace) => workspace.workspaceId === here) };
 }
 
-/** Each organization's colour, picked from its ID; your own workspace's is the brand's. */
+/** An organization's colour until its admins pick one, from its ID; your own workspace's is the brand's. */
 const TINTS = ["#d97706", "#7c3aed", "#0d9488", "#db2777", "#0891b2", "#65a30d", "#dc2626", "#4f46e5"];
 const OWN_TINT = "#2563eb";
 
 /** A workspace's colour, which tints the rail while you're in it. */
 export function workspaceTint(workspace: WorkspaceLook) {
   if (workspace.kind === "personal") return OWN_TINT;
+  if (workspace.colour) return workspace.colour;
   const seed = workspace.workspaceId ?? workspace.name;
   return TINTS[[...seed].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TINTS.length]!;
 }
@@ -82,6 +86,6 @@ export function PlanChip({ workspace, className }: { workspace: WorkspaceLook; c
   return <span className={cn("inline-flex h-5 shrink-0 items-center rounded-full px-2 text-2xs font-medium", paid ? "bg-primary/12 text-primary" : "bg-muted text-muted-foreground", className)}>{name}</span>;
 }
 
-/** Where a workspace's settings and billing are: an organization's under its address, your own's at /settings. */
-export const settingsHref = (workspace: Pick<WorkspaceRow, "kind" | "slug"> | undefined, page = "") =>
-  workspace?.kind === "organization" && workspace.slug ? `/o/${workspace.slug}/settings/workspace${page}` : page === "/billing" ? "/settings/billing" : `/settings/workspace${page}`;
+/** Where a workspace's settings or its plan and credits are: an organization's under its address, your own's with your account. */
+export const settingsHref = (workspace: Pick<WorkspaceRow, "kind" | "slug"> | undefined, page: "" | "/billing" = "") =>
+  workspace?.kind === "organization" && workspace.slug ? `/o/${workspace.slug}/settings${page || "/workspace"}` : `/settings${page}`;

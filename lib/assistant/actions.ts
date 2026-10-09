@@ -1,7 +1,7 @@
 export type Kind = "web" | "file" | "search" | "paper" | "collection" | "screening" | "extraction" | "chat" | "library" | "topic" | "other";
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "webSearch" | "readFile" | "readPaperPdf" | "undoBulk" | "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "extraction" | "chats" | "findRecords" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "workspaces" | "orgMembers" | "myInvites" | "newOrganization" | "inviteMembers" | "revokeInvite" | "declineInvite" | "memberRole" | "removeMember" | "leaveOrganization" | "renameOrganization" | "deleteOrganization" | "other";
+type Words = "webSearch" | "readFile" | "readPaperPdf" | "undoBulk" | "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "extraction" | "chats" | "findRecords" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "workspaces" | "orgMembers" | "myInvites" | "newOrganization" | "inviteMembers" | "revokeInvite" | "declineInvite" | "memberRole" | "removeMember" | "leaveOrganization" | "renameOrganization" | "deleteOrganization" | "workspaceSummary" | "workspaceColour" | "resendInvite" | "other";
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }> = {
@@ -121,6 +121,9 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "organizations/manage:leave": { kind: "other", words: "leaveOrganization" },
   "organizations/manage:rename": { kind: "other", words: "renameOrganization" },
   "organizations/manage:deleteOrganization": { kind: "other", words: "deleteOrganization" },
+  "organizations/queries:summary": { kind: "other", words: "workspaceSummary" },
+  "organizations/manage:setColour": { kind: "other", words: "workspaceColour" },
+  "organizations/manage:resendInvitation": { kind: "other", words: "resendInvite" },
 };
 /** Every action with words of its own, for the test that none the assistant can run is left without. */
 export const WORDED = new Set(Object.keys(ACTIONS));

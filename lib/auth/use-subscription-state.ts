@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { defaultPlanId } from "@/lib/billing/catalog";
 import { useBillingCatalog } from "@/lib/billing/catalog-provider";
+import { ORGANIZATION_PLAN } from "@/lib/billing/plans";
 import { useWorkspaceScope } from "@/lib/workspaces/url";
 
 type SubscriptionState = ReturnType<typeof useOwnedSubscriptionState>;
@@ -31,8 +32,8 @@ function useOwnedSubscriptionState() {
   const resolvedPlan: string | null = isReady
     ? (account?.plan ?? (catalog ? defaultPlanId(catalog) : undefined) ?? null)
     : null;
-  // On the plan every customer starts with (Free), rather than one they chose.
-  const onDefaultPlan = resolvedPlan === null ? null : !catalog || resolvedPlan === defaultPlanId(catalog);
+  // On the plan every customer of its kind starts with (Free, or an organization's), rather than one they chose.
+  const onDefaultPlan = resolvedPlan === null ? null : !catalog || resolvedPlan === defaultPlanId(catalog) || resolvedPlan === ORGANIZATION_PLAN;
   // Autumn features the user's plans grant; null until known.
   const planFeatures: readonly string[] | null = isReady ? (account?.features ?? NO_FEATURES) : null;
 
