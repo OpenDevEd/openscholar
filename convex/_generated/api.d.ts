@@ -294,7 +294,6 @@ import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
-import type * as migrations_clearPaperRatings from "../migrations/clearPaperRatings.js";
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
 import type * as migrations_extractionEvidence from "../migrations/extractionEvidence.js";
@@ -694,7 +693,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/assistantJobs": typeof migrations_assistantJobs;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
-  "migrations/clearPaperRatings": typeof migrations_clearPaperRatings;
   "migrations/expireInvitations": typeof migrations_expireInvitations;
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;
   "migrations/extractionEvidence": typeof migrations_extractionEvidence;
