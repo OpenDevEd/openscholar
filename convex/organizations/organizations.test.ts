@@ -248,6 +248,19 @@ describe("an organization", () => {
     expect(await aliceAs.query(api.workspaces.queries.bySlug, { slug: "lab" })).toBe(second.workspaceId);
   });
 
+  it("tells the assistant what refuses deleting it before the person is asked", async () => {
+    const { t, alice, bob, aliceAs, bobAs, webhook } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    await aliceAs.action(api.organizations.manage.invite, { workspaceId: lab.workspaceId, emails: ["bob@example.org"], role: "member" });
+    const [invited] = (await bobAs.query(api.organizations.queries.myInvitations, page)).page;
+    await webhook("organizationMembership.created", clerk.accept(invited.clerkInvitationId, "bob").membership, "msg_1");
+    const refusal = (userId: Id<"users">) => t.query(internal.assistant.asking.check, { userId, workspaceId: lab.workspaceId, path: "organizations/manage:deleteOrganization", input: "{}" });
+    expect(await refusal(bob)).toMatch(/Only an admin/);
+    expect(await refusal(alice)).toBeNull();
+    await t.run((ctx) => ctx.db.insert("evidenceLibraries", { workspaceId: lab.workspaceId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "alice", updatedByClerkUserId: "alice", createdAt: 1, updatedAt: 1 }));
+    expect(await refusal(alice)).toMatch(/Evidence Library, Library/);
+  });
+
   it("says when its plan has room for no more members", async () => {
     const { aliceAs } = await people();
     const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });

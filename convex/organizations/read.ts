@@ -75,6 +75,17 @@ export const checkMemberChange = internalQuery({
 /** How long a deletion holds its organization, at most, should the action that started it never finish. */
 const DELETION_HOLD_MS = 5 * 60_000;
 
+/** The organization of a workspace, refused while something stops it being deleted: a deletion under way, an Evidence Library, or a plan that renews. */
+export async function deletable(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
+  const organization = await organizationOf(ctx, workspaceId);
+  if (organization.deletingAt !== undefined) throw createError("CONFLICT", "This organization is being deleted already.");
+  const library = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).first();
+  if (library) throw createError("VALIDATION_ERROR", `This organization has an Evidence Library, ${library.name}. Move or delete it first.`);
+  // ponytail: refused, until #652 cancels a Team plan as a step of the deletion.
+  if ((await readAccount(ctx, workspaceId))?.renewsAt !== undefined) throw createError("VALIDATION_ERROR", "This organization pays for a plan that renews. Cancel it in its billing settings first.");
+  return organization;
+}
+
 /**
  * Starts deleting an organization, refused while it has an Evidence Library, which has to be
  * moved or deleted first. From here nobody acts in its workspace (../workspaces/actor.ts), so no
@@ -84,16 +95,24 @@ export const beginDeletion = internalMutation({
   args: { workspaceId: v.id("workspaces") },
   returns: v.number(),
   handler: async (ctx, { workspaceId }) => {
-    const organization = await organizationOf(ctx, workspaceId);
-    if (organization.deletingAt !== undefined) throw createError("CONFLICT", "This organization is being deleted already.");
-    const library = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).first();
-    if (library) throw createError("VALIDATION_ERROR", `This organization has an Evidence Library, ${library.name}. Move or delete it first.`);
-    // ponytail: refused, until #652 cancels a Team plan as a step of the deletion.
-    if ((await readAccount(ctx, workspaceId))?.renewsAt !== undefined) throw createError("VALIDATION_ERROR", "This organization pays for a plan that renews. Cancel it in its billing settings first.");
+    const organization = await deletable(ctx, workspaceId);
     const deletingAt = Date.now();
     await ctx.db.patch("organizations", organization._id, { deletingAt });
     await ctx.scheduler.runAfter(DELETION_HOLD_MS, internal.organizations.read.endDeletion, { organizationId: organization._id, deletingAt });
     return deletingAt;
+  },
+});
+
+/**
+ * Closes an organization Clerk has deleted, at once: nothing reopens it then, though the event
+ * that also ends its memberships, kept next or sent by Clerk's webhook, comes after.
+ */
+export const deletedInClerk = internalMutation({
+  args: { organizationId: v.id("organizations") },
+  returns: v.null(),
+  handler: async (ctx, { organizationId }) => {
+    await ctx.db.patch("organizations", organizationId, { state: "deleted", updatedAt: Date.now() });
+    return null;
   },
 });
 
