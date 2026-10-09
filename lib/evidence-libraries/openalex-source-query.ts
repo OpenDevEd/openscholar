@@ -4,6 +4,7 @@ import type { SearchParams } from "@/lib/search";
 import { buildOpenAlexWorksQuery } from "@/lib/openalex/works-query";
 import type { OpenAlexQuery, OpenAlexSourceEntry } from "./configuration/sources";
 import { browserExpand } from "@/lib/keyword-validation-browser";
+import { SEMANTIC_FIELD } from "@/lib/openalex/semantic";
 
 /** Pagination and display settings do not change which records a source imports. */
 export function sameOpenAlexSourceSearch(left: SearchParams, right: SearchParams): boolean {
@@ -29,11 +30,18 @@ function narrowsOql(oql: string | undefined): boolean {
   );
 }
 
+/** Whether the search asks a question by meaning, which can't be a library source yet. */
+export function isSearchByMeaning(params: SearchParams): boolean {
+  return params.field === SEMANTIC_FIELD;
+}
+
 /**
  * What OpenAlex is asked for an import. Saved as it is, so the library asks the
  * same thing on every update whatever the search code later becomes.
  */
 export function buildOpenAlexSourceQuery(params: SearchParams): OpenAlexQuery | null {
+  // A search by meaning is tried on the test environment alone: library sources and new-el don't take one.
+  if (isSearchByMeaning(params)) return null;
   // Leaving out retracted works is on by default and narrows nothing on its own,
   // so a search must still have its own query or filter to be imported.
   const narrowing = buildOpenAlexWorksQuery({ ...params, retracted: true }, { expand: browserExpand });

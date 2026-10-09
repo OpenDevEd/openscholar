@@ -2596,6 +2596,7 @@
         "backToResults": "結果に戻る",
         "fromHistory": "検索履歴から選ぶ",
         "unbounded": "先にキーワードかフィルターを追加してください。空の検索では OpenAlex のすべてがインポートされます。",
+        "byMeaningNotImported": "意味による検索はまだライブラリのソースにできません。別の検索フィールドを選んでください。",
         "importsAll": "{count, plural, other {保存すると # 件のレコードをすべてインポートし、最新の状態に保ちます。}}",
         "nothingImported": "保存するまで何もインポートされません。",
         "processPdfs": "PDF を処理"

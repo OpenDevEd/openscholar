@@ -2596,6 +2596,7 @@
         "backToResults": "返回结果",
         "fromHistory": "从我的搜索历史中选择",
         "unbounded": "请先添加关键词或筛选条件。空搜索会导入整个 OpenAlex。",
+        "byMeaningNotImported": "按语义的搜索暂时不能作为图书馆来源。请选择其他搜索字段。",
         "importsAll": "{count, plural, other {保存后会导入全部 # 条记录并保持更新。}}",
         "nothingImported": "保存之前不会导入任何内容。",
         "processPdfs": "处理 PDF"

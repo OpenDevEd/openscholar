@@ -4,7 +4,7 @@ import { DEFAULT_SEARCH_PARAMS, buildResultsUrl } from "@/lib/search-params";
 import { readDraft, changedSectionRows } from "./configuration/rules";
 import { approveOpenAlexQuery, type OpenAlexSourceEntry } from "./configuration/sources";
 import { validateSectionStructure } from "./configuration/generated-validation";
-import { buildOpenAlexSourceQuery, openAlexSourceSearchUrl, readOpenAlexSourceSearch, sameOpenAlexSourceSearch, sourceSearchHistoryId } from "./openalex-source-query";
+import { buildOpenAlexSourceQuery, isSearchByMeaning, openAlexSourceSearchUrl, readOpenAlexSourceSearch, sameOpenAlexSourceSearch, sourceSearchHistoryId } from "./openalex-source-query";
 
 const params = {
   ...DEFAULT_SEARCH_PARAMS, q: "education", ft: "date", df: "2020-03-15", dt: "2025-06-30", reg: ["GB"], focus: ["KE"],
@@ -79,5 +79,12 @@ describe("saved source search", () => {
     // (The API key is a separate credential this entry does not carry.)
     const issues = validateSectionStructure("sources", [source]).issues;
     expect(issues.filter((issue) => issue.pointer.startsWith("/sources/0/settings"))).toEqual([]);
+  });
+
+  it("refuses a search by meaning, which a library can't import yet", () => {
+    const byMeaning = {...DEFAULT_SEARCH_PARAMS, field: "semantic", q: "What helps teachers stay in rural schools?", type: ["article"]};
+    expect(isSearchByMeaning(byMeaning)).toBe(true);
+    expect(buildOpenAlexSourceQuery(byMeaning)).toBeNull();
+    expect(isSearchByMeaning({...byMeaning, field: "title_and_abstract"})).toBe(false);
   });
 });

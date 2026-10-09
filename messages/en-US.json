@@ -2586,6 +2586,7 @@
         "backToResults": "Back to results",
         "fromHistory": "From my search history",
         "unbounded": "Add keywords or a filter first. An empty search would import all of OpenAlex.",
+        "byMeaningNotImported": "A search by meaning can't be a library source yet. Choose another search field.",
         "importsAll": "{count, plural, one {Saving imports # record and keeps it up to date.} other {Saving imports all # records and keeps them up to date.}}",
         "nothingImported": "Nothing is imported until you save.",
         "processPdfs": "Process PDFs"

@@ -2596,6 +2596,7 @@
         "backToResults": "Retour aux résultats",
         "fromHistory": "Depuis mon historique de recherche",
         "unbounded": "Ajoutez d'abord des mots-clés ou un filtre. Une recherche vide importerait tout OpenAlex.",
+        "byMeaningNotImported": "Une recherche par le sens ne peut pas encore être une source de bibliothèque. Choisissez un autre champ de recherche.",
         "importsAll": "{count, plural, one {L'enregistrement importe # notice et la tient à jour.} other {L'enregistrement importe les # notices et les tient à jour.}}",
         "nothingImported": "Rien n'est importé avant l'enregistrement.",
         "processPdfs": "Traiter les PDF"

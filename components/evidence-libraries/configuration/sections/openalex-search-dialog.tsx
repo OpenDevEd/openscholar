@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
 import { approveOpenAlexQuery, type OpenAlexSourceEntry } from "@/lib/evidence-libraries/configuration/sources";
-import { buildOpenAlexSourceQuery, openAlexSourceSearchUrl, readOpenAlexSourceSearch, sameOpenAlexSourceSearch } from "@/lib/evidence-libraries/openalex-source-query";
+import { buildOpenAlexSourceQuery, isSearchByMeaning, openAlexSourceSearchUrl, readOpenAlexSourceSearch, sameOpenAlexSourceSearch } from "@/lib/evidence-libraries/openalex-source-query";
 import { countActiveFilters } from "@/lib/filters";
 import { useIsTablet } from "@/lib/hooks";
 import { DEFAULT_SEARCH_PARAMS, SearchProvider, useSearch, type SearchParams } from "@/lib/search";
@@ -221,7 +221,7 @@ function SearchWorkspace({
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <p className="text-xs text-muted-foreground">
               {unbounded
-                ? t("unbounded")
+                ? t(isSearchByMeaning(params) ? "byMeaningNotImported" : "unbounded")
                 : !busy && search.totalCount > 0
                   ? t("importsAll", { count: search.totalCount })
                   : t("nothingImported")}
