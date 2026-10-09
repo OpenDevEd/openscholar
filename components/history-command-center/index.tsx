@@ -40,7 +40,7 @@ import { useSearchList } from "@/lib/research/search-list";
 import { useWorkspace } from "@/lib/workspaces/url";
 import { useWorkspaceRouter, useWorkspaceSlug } from "@/lib/workspaces/href";
 import { PersonTag } from "@/components/ui/identity";
-import { useWorkspaces } from "@/components/workspaces/parts";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 import posthog from "posthog-js";
@@ -58,7 +58,7 @@ interface HistoryCommandCenterProps {
 export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   const workspaceId = useWorkspace();
   const inOrganization = useWorkspaceSlug() !== undefined;
-  const admin = useWorkspaces().current?.role === "admin";
+  const admin = useCurrentWorkspace()?.role === "admin";
   const toast = useAppToast();
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
