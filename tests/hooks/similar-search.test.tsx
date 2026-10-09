@@ -66,6 +66,13 @@ describe("the results page's search for the works nearest given papers", () => {
     expect(result.current.search.params.like).toEqual([]);
   });
 
+  it("drops the papers when the search turns to OQL, which the API runs without them", async () => {
+    const { result } = renderHook(() => ({ search: useSearch(), updateFilter: useUpdateSearchFilter() }), { wrapper });
+    act(() => result.current.updateFilter({ currentSearchField: "oql" }));
+    await waitFor(() => expect(result.current.search.params.field).toBe("oql"));
+    expect(result.current.search.params.like).toEqual([]);
+  });
+
   it("keeps the papers when the search's words turn to another field, which only filter what they find", async () => {
     const { result } = renderHook(() => ({ search: useSearch(), updateFilter: useUpdateSearchFilter() }), { wrapper });
     act(() => result.current.updateFilter({ currentSearchField: "title" }));
