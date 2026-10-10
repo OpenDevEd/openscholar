@@ -18,6 +18,12 @@ describe("paperCountForItem", () => {
     expect(paperCountForItem({ source: "history", searchFilters: { limit: Number.NaN } })).toBe(0);
   });
 
+  it("counts a search read from a later result from there to its limit (#690)", () => {
+    expect(paperCountForItem({ source: "history", searchFilters: { first: 101, limit: 300 } })).toBe(200);
+    expect(paperCountForItem({ source: "history", searchFilters: { first: 301, limit: 300 } })).toBe(0);
+    expect(paperCountForItem({ source: "history", searchFilters: { first: 0, limit: 300 } })).toBe(0);
+  });
+
   it("counts a screening by its included papers", () => {
     expect(paperCountForItem({ source: "screening", screeningSelection: { count: 1_234 } })).toBe(1_234);
   });

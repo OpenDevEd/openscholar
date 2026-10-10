@@ -5,6 +5,7 @@ import { beforeEach, afterEach, describe, it, test, expect, vi } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { savedPapersPick } from "./picks.test-support";
 import { register as registerAgentComponent } from "@convex-dev/agent/test";
 import {
   seedCreditsForTest,
@@ -200,12 +201,12 @@ describe("startJob — extraction mode", () => {
 
   it("creates an extraction job and schedules queue setup", async () => {
     const t = convexTest(schema);
-    await seedUserAndFlags(t);
+    const { userId } = await seedUserAndFlags(t);
     const auth = t.withIdentity(STARTJOB_IDENTITY);
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "Extraction Job",
-      bucketItems: [BUCKET_ITEM_HISTORY],
+      sources: [await savedPapersPick(t, userId, 1)],
       questions: [
         { key: "q1", question: "What is the outcome?", type: "string" },
       ],
@@ -313,23 +314,6 @@ describe("duplicateJob", () => {
 
 describe("searches saved before exact OpenAlex requests", () => {
   const oldSearch = { query: "heart disease", yearRange: [2015, 2024], sortBy: "relevance" };
-
-  it("are refused by startJob", async () => {
-    const t = convexTest(schema);
-    await seedUserAndFlags(t);
-    const auth = t.withIdentity(STARTJOB_IDENTITY);
-
-    await expect(
-      auth.mutation(api.extraction.mutations.startJob, {
-        name: "Old search",
-        bucketItems: [
-          { ...BUCKET_ITEM_SAVED_SEARCH, searchFilters: oldSearch as never },
-        ],
-        questions: [{ key: "q1", question: "What is the outcome?", type: "string" }],
-        usePdfs: false,
-      }),
-    ).rejects.toThrow(/Validator error/);
-  });
 
   it("are not copied onto a duplicate job", async () => {
     const t = convexTest(schema);

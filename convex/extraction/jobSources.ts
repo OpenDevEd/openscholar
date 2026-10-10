@@ -12,8 +12,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { sourceMetadata, type PaperSourceMetadata } from "../../lib/library/paper-metadata";
-import type { BucketSource } from "../../lib/bucket/bucketItem";
-export type { BucketSource } from "../../lib/bucket/bucketItem";
+/** Where a job's source came from. */
+export type BucketSource = "screening" | "history" | "library" | "collection" | "zotero" | "upload";
 
 export type JobSourceSearchFilters = NonNullable<
   Doc<"extractionJobSources">["searchFilters"]

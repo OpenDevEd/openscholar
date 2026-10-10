@@ -19,6 +19,11 @@ export function useResearchSession() {
   return useContext(SessionContext).session;
 }
 
+/** Whether the person is signed in, signed out, or not known yet: a signed-in person's records are the account's, never this browser's. */
+export function useResearchPhase() {
+  return useContext(SessionContext).phase;
+}
+
 /** What the account's records are read and changed under: the account and the page's workspace; undefined signed out, or while the workspace loads. */
 export function useResearchScope() {
   return useContext(SessionContext).scope;
