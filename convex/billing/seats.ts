@@ -6,13 +6,15 @@
  * credits back out of the pool; an organization off Team has none.
  *
  * `sync` brings Autumn to that from what Convex holds, so running it again changes nothing: it
- * runs on each membership change, on each Autumn event for the organization, and daily.
+ * runs on each membership change, on each Autumn event for the organization, and daily for every
+ * organization on Team or still holding seats. One runs at a time for an organization; one asked
+ * for meanwhile runs once more after it.
  */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { paginationOptsValidator } from "convex/server";
-import { internalAction, internalMutation, internalQuery, type ActionCtx } from "../lib/functions";
+import { internalAction, internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "../lib/functions";
 import { personName } from "../lib/people";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
 import { SEAT_PLAN, SEATS_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
@@ -26,7 +28,7 @@ const ENTITIES_PAGE = 100;
 
 /**
  * What to change so each member holds one seat and nobody else does: the members to seat (with
- * whether their entity must be made first), and the entities to end (with whether they hold a seat).
+ * whether their entity must be made first), and the entities to end.
  */
 export function seatChanges(members: SeatMember[], entities: AutumnEntity[]) {
   const seated = (entity: AutumnEntity) => entity.subscriptions.some((s) => s.plan_id === SEAT_PLAN && s.status === "active");
@@ -37,7 +39,7 @@ export function seatChanges(members: SeatMember[], entities: AutumnEntity[]) {
       const entity = byId.get(member.clerkUserId);
       return entity && seated(entity) ? [] : [{ ...member, make: !entity }];
     }),
-    end: entities.filter((entity) => !memberIds.has(entity.id)).map((entity) => ({ entityId: entity.id, seated: seated(entity) })),
+    end: entities.filter((entity) => !memberIds.has(entity.id)).map((entity) => entity.id),
   };
 }
 
@@ -82,49 +84,96 @@ async function entitiesOf(customerId: string) {
   }
 }
 
-async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">) {
+/** Brings the organization's seats to its members, and says how many seats it holds after; undefined when it changed nothing. */
+async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise<number | undefined> {
   const account = await refreshAccount(ctx, workspaceId);
   const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
   const members: SeatMember[] | null = account.plan === TEAM_PLAN ? await ctx.runQuery(internal.billing.seats.membersOf, { workspaceId }) : [];
   if (members === null) {
     console.error(`[seats] ${workspaceId} has more than ${MAX_ORGANIZATION_MEMBERS} members; its seats are left as they are`);
-    return;
+    return undefined;
   }
   const entities = await entitiesOf(customerId);
   const { seat, end } = seatChanges(members, entities);
+  // Departures first, so a missing card never keeps a seat that should end. Each is cancelled
+  // whatever the listing said: a seat attached since must still be refunded before it goes.
+  for (const entityId of end) {
+    await unlessAlready("cus_product_not_found", () => autumn.update({ customerId, entityId, planId: SEAT_PLAN, cancelAction: "cancel_immediately" }));
+    await unlessAlready("entity_not_found", () => autumn.deleteEntity(customerId, entityId));
+  }
+  let added = 0;
   for (const member of seat) {
     if (member.make) await unlessAlready("entity_already_exists", () => autumn.createEntity({ customerId, entityId: member.clerkUserId, featureId: SEATS_FEATURE, name: member.name }));
     const attached = await unlessAlready("plan_already_attached", () => autumn.attach({ customerId, entityId: member.clerkUserId, planId: SEAT_PLAN }));
     // Seats are charged to the organization's saved card; without one, Autumn asks for checkout instead.
     if (attached?.payment_url) {
-      console.error(`[seats] ${workspaceId} has no saved card, so ${member.clerkUserId}'s seat wasn't added`);
-      return;
+      console.error(`[seats] ${workspaceId} has no saved card, so ${seat.length - added} new members' seats weren't added`);
+      break;
     }
-  }
-  for (const entity of end) {
-    if (entity.seated) await unlessAlready("cus_product_not_found", () => autumn.update({ customerId, entityId: entity.entityId, planId: SEAT_PLAN, cancelAction: "cancel_immediately" }));
-    await unlessAlready("entity_not_found", () => autumn.deleteEntity(customerId, entity.entityId));
+    added++;
   }
   if (seat.length || end.length) {
     await refreshAccount(ctx, workspaceId);
-    console.log(`[seats] ${workspaceId} on ${account.plan}: ${members.length} members; seated ${seat.length}, ended ${end.length}`);
+    console.log(`[seats] ${workspaceId} on ${account.plan}: ${members.length} members; seated ${added}, ended ${end.length}`);
   }
+  return members.length - (seat.length - added);
 }
 
-/** Team accounts each run of `syncTeams` schedules a sync for, before it carries on in the next. */
+/** How long a sync holds its organization before another may start: longer than an action runs. */
+const SYNC_LEASE_MS = 15 * 60_000;
+
+const syncRow = (ctx: QueryCtx, workspaceId: Id<"workspaces">) => ctx.db.query("seatSyncs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
+
+/** Starts a sync of the organization's seats, unless one is running: then it runs once more after that one. */
+export const claim = internalMutation({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.boolean(),
+  handler: async (ctx, { workspaceId }) => {
+    const row = await syncRow(ctx, workspaceId);
+    const now = Date.now();
+    if (row?.runningSince !== undefined && now - row.runningSince < SYNC_LEASE_MS) {
+      await ctx.db.patch("seatSyncs", row._id, { again: true });
+      return false;
+    }
+    if (row) await ctx.db.patch("seatSyncs", row._id, { runningSince: now, again: undefined });
+    else await ctx.db.insert("seatSyncs", { workspaceId, seats: 0, runningSince: now });
+    return true;
+  },
+});
+
+/** Ends a sync, keeping how many seats it left, and runs the one asked for meanwhile. */
+export const release = internalMutation({
+  args: { workspaceId: v.id("workspaces"), seats: v.optional(v.number()) },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, seats }) => {
+    const row = await syncRow(ctx, workspaceId);
+    if (!row) return null;
+    await ctx.db.patch("seatSyncs", row._id, { runningSince: undefined, again: undefined, ...(seats === undefined ? {} : { seats }) });
+    if (row.again) await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId });
+    return null;
+  },
+});
+
+/** Organizations each run of `syncTeams` schedules a sync for, before it carries on in the next. */
 const TEAMS_PAGE = 100;
 
-/** Syncs every Team organization's seats: the daily check that catches a change an event missed. */
+/**
+ * The daily check that catches a change an event missed: syncs every organization on Team, then
+ * every one still holding seats, such as one that left Team and whose seats couldn't all end yet.
+ * One on both lists syncs twice, which changes nothing the second time.
+ */
 export const syncTeams = internalMutation({
-  args: { paginationOpts: v.optional(paginationOptsValidator) },
+  args: { paginationOpts: v.optional(paginationOptsValidator), holding: v.optional(v.literal(true)) },
   returns: v.null(),
-  handler: async (ctx, { paginationOpts }) => {
-    const page = await ctx.db
-      .query("billingAccounts")
-      .withIndex("by_plan", (q) => q.eq("plan", TEAM_PLAN))
-      .paginate(paginationOpts ?? { cursor: null, numItems: TEAMS_PAGE });
-    for (const account of page.page) await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId: account.workspaceId });
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.billing.seats.syncTeams, { paginationOpts: { cursor: page.continueCursor, numItems: TEAMS_PAGE } });
+  handler: async (ctx, { paginationOpts, holding }) => {
+    const opts = paginationOpts ?? { cursor: null, numItems: TEAMS_PAGE };
+    const page = holding
+      ? await ctx.db.query("seatSyncs").withIndex("by_seats", (q) => q.gt("seats", 0)).paginate(opts)
+      : await ctx.db.query("billingAccounts").withIndex("by_plan", (q) => q.eq("plan", TEAM_PLAN)).paginate(opts);
+    for (const row of page.page) await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId: row.workspaceId });
+    const next = { cursor: page.continueCursor, numItems: TEAMS_PAGE };
+    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.billing.seats.syncTeams, { paginationOpts: next, ...(holding ? { holding } : {}) });
+    else if (!holding) await ctx.scheduler.runAfter(0, internal.billing.seats.syncTeams, { holding: true });
     return null;
   },
 });
@@ -133,7 +182,13 @@ export const sync = internalAction({
   args: { workspaceId: v.id("workspaces") },
   returns: v.null(),
   handler: async (ctx, { workspaceId }) => {
-    await syncSeats(ctx, workspaceId);
+    if (!(await ctx.runMutation(internal.billing.seats.claim, { workspaceId }))) return null;
+    let seats: number | undefined;
+    try {
+      seats = await syncSeats(ctx, workspaceId);
+    } finally {
+      await ctx.runMutation(internal.billing.seats.release, { workspaceId, ...(seats === undefined ? {} : { seats }) });
+    }
     return null;
   },
 });

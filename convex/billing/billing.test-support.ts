@@ -30,11 +30,14 @@ export const fakeAutumn = {
   /** Each customer's entities (#652), and whether each holds a Team seat. */
   entities: new Map<string, Map<string, { seated: boolean }>>(),
   calls: [] as Array<{ path: string; body: Record<string, unknown> }>,
+  /** Set when the customer has no saved card: a seat's attach asks for checkout instead of charging. */
+  noCard: false,
   /** Makes the next call to this endpoint fail, as if Autumn were down. */
   failNext: null as string | null,
 
   reset() {
     this.failNext = null;
+    this.noCard = false;
     this.customers.clear();
     this.locks.clear();
     this.idempotencyKeys.clear();
@@ -134,6 +137,7 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
         const entity = fakeAutumn.entitiesOf(customerId!).get(body.entity_id as string);
         if (!entity) return respond(404, { code: "entity_not_found" });
         if (entity.seated) return respond(400, { code: "plan_already_attached" });
+        if (fakeAutumn.noCard) return respond(200, { customer_id: customerId, entity_id: body.entity_id, payment_url: "https://checkout.test" });
         entity.seated = true;
         customer.plan += FAKE_SEAT_CREDITS;
         return respond(200, { customer_id: customerId, entity_id: body.entity_id, payment_url: null });

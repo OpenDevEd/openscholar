@@ -16,7 +16,7 @@ it("seats each member who has no seat, making their entity if needed, and ends e
   const members = ["a", "b", "c"].map((id) => ({ clerkUserId: id, name: id.toUpperCase() }));
   expect(seatChanges(members, [entity("a", true), entity("b", false), entity("x", true), entity("y", false)])).toEqual({
     seat: [{ clerkUserId: "b", name: "B", make: false }, { clerkUserId: "c", name: "C", make: true }],
-    end: [{ entityId: "x", seated: true }, { entityId: "y", seated: false }],
+    end: ["x", "y"],
   });
 });
 
@@ -39,6 +39,7 @@ it("gives a Team organization's members a seat each as they join, takes one back
       },
     });
   const seats = () => [...fakeAutumn.entitiesOf(lab)].filter(([, { seated }]) => seated).map(([id]) => id).sort();
+  const held = async () => (await t.run((ctx) => ctx.db.query("seatSyncs").withIndex("by_workspace", (q) => q.eq("workspaceId", lab)).unique()))?.seats;
   const writes = () => fakeAutumn.calls.filter((call) => ["entities.create", "entities.delete", "billing.attach", "billing.update"].includes(call.path)).length;
 
   await membership("ada", true);
@@ -61,8 +62,38 @@ it("gives a Team organization's members a seat each as they join, takes one back
   await t.action(internal.billing.seats.sync, { workspaceId: lab });
   expect(writes()).toBe(before);
 
+  // Without a saved card a new member waits for a seat, and one who leaves still gives theirs up.
+  fakeAutumn.noCard = true;
+  await membership("cy", false);
+  await membership("ben", true);
+  await t.finishAllScheduledFunctions(() => {});
+  expect(seats()).toEqual(["user_ada"]);
+  expect(await held()).toBe(1);
+  fakeAutumn.noCard = false;
+
+  // Off Team, every seat ends. One that fails to end keeps the organization in the daily check until it does.
   fakeAutumn.customer(lab).planId = ORGANIZATION_PLAN;
-  await t.action(internal.billing.seats.sync, { workspaceId: lab });
+  fakeAutumn.failNext = "billing.update";
+  await expect(t.action(internal.billing.seats.sync, { workspaceId: lab })).rejects.toThrow();
+  expect(seats()).toEqual(["user_ada"]);
+  await t.mutation(internal.billing.seats.syncTeams, {});
+  await t.finishAllScheduledFunctions(() => {});
   expect(fakeAutumn.entitiesOf(lab).size).toBe(0);
   expect(fakeAutumn.balance(lab)).toBe(0);
+  expect(await held()).toBe(0);
+});
+
+it("runs one sync of an organization at a time, and the one asked for meanwhile once after it", async () => {
+  const t = convexTest(schema);
+  const workspaceId = await t.run(async (ctx) => {
+    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+    return (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id;
+  });
+  expect(await t.mutation(internal.billing.seats.claim, { workspaceId })).toBe(true);
+  expect(await t.mutation(internal.billing.seats.claim, { workspaceId })).toBe(false);
+  expect(await t.mutation(internal.billing.seats.claim, { workspaceId })).toBe(false);
+  await t.mutation(internal.billing.seats.release, { workspaceId, seats: 0 });
+  const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
+  expect(scheduled.filter((job) => job.name.includes("seats:sync"))).toHaveLength(1);
+  expect(await t.mutation(internal.billing.seats.claim, { workspaceId })).toBe(true);
 });
