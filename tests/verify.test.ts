@@ -65,6 +65,10 @@ describe("analyzePhase on a page load", () => {
     // A dialog growing 10 px, a pixel at a time, with its last pixels far apart.
     const tailAt = [0, 9, 16, 25, 33, 41, 50, 58, 83, 138];
     expect(analyzePhase(tailAt.map((at) => frame(500 + at, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 1 }] })), load)).toEqual([]);
+    // The same sections in a busy Firefox: what pushes them arrives over the first two frames, and a frame is dropped near the end.
+    const busy = [2, 14, 12, 15, 6, 11, 2, 2, 3, 1];
+    const busyAt = [0, 16, 31, 40, 73, 86, 108, 117, 172, 213];
+    expect(analyzePhase(busy.map((dy, index) => frame(500 + busyAt[index], { moved: [{ id: 1, dx: 0, dy, dw: 0, dh: 0 }], added: index < 2 ? [{ id: 50 + index, box: [0, 0, 300, 20] }] : [] })), load)).toEqual([]);
     // Five rows popping in one after another are not a slide.
     expect(analyzePhase([0, 100, 200, 300, 400].map((at) => frame(500 + at, { moved: [{ id: 1, dx: 0, dy: 20, dw: 0, dh: 0 }] })), load)).not.toEqual([]);
   });

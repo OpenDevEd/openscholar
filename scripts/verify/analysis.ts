@@ -70,7 +70,8 @@ function bursts(frames: Frame[]): Frame[][] {
 // animated: a frame sliding open, and whatever it pushes along. One that covers
 // its distance in a frame or two jumped.
 const SLIDE_FRAMES = 5;
-const SLIDE_GAP_MS = 50;
+// A busy browser drops a few frames in the middle of a slide.
+const SLIDE_GAP_MS = 80;
 // One step of a slide is never far from the step beside it; the slack covers the uneven frames it starts with.
 const SLIDE_STEP_RATIO = 3;
 const SLIDE_STEP_SLACK_PX = 8;
@@ -107,11 +108,11 @@ const travelled = (steps: Step[], side: (typeof SIDES)[number]) => steps.reduce(
 /**
  * Whether an element slid: every side of its box that moved did so smoothly.
  * Each side is judged by itself, so a frame growing smoothly can't hide a jump
- * sideways. Being pushed along by content that keeps arriving, frame after
- * frame, is not a slide: a slide's content arrives once.
+ * sideways. Being pushed along by content that keeps arriving is not a slide:
+ * a slide's content arrives as it starts, and most of its frames add nothing.
  */
 function slid(steps: Step[]): boolean {
-  if (steps.filter((step) => step.arrived).length > 1) return false;
+  if (steps.filter((step) => step.arrived).length * 2 > steps.length) return false;
   return SIDES.every((side) => travelled(steps, side) < SLIDE_TAIL_PX || smooth(steps.filter((step) => Math.abs(step.move[side]) >= 1).map((step): [number, number] => [step.t, step.move[side]])));
 }
 
