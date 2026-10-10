@@ -301,6 +301,9 @@ export function WorkspaceMembers() {
   const { workspaceId, organization, admin } = useOrganization();
   const members = useCursorPage(api.organizations.queries.members, inWorkspace(workspaceId, {}), PER_PAGE);
   const invitations = useCursorPage(api.organizations.queries.invitations, inWorkspace(workspaceId, {}), PER_PAGE);
+  // Team's seats are its members, counted in full: the switcher's count stops at a hundred and one.
+  const team = organization?.plan === TEAM_PLAN;
+  const counts = useProtectedQuery(api.billing.seats.counts, team && workspaceId ? { workspaceId } : "skip").data;
   const invite = useWorkspaceAction(api.organizations.manage.invite);
   const setRole = useWorkspaceAction(api.organizations.manage.setRole);
   const removeMember = useWorkspaceAction(api.organizations.manage.removeMember);
@@ -314,15 +317,14 @@ export function WorkspaceMembers() {
   // A time Clerk set a moment after the clock last ticked reads as now, not as in a few seconds.
   const ago = (at: number) => format.relativeTime(at, Math.max(now.getTime(), at));
   const { name: planName } = usePlanOf(organization ?? { kind: "organization", name: "" });
-  if (!organization || members.isLoading || invitations.isLoading) return <Enter ready={false}>{null}</Enter>;
+  if (!organization || members.isLoading || invitations.isLoading || (team && !counts)) return <Enter ready={false}>{null}</Enter>;
 
   const roleOptions = [
     { id: "member" as const, label: tw("member"), icon: ROLE_ICONS.member },
     { id: "admin" as const, label: tw("admin"), icon: ROLE_ICONS.admin },
   ];
-  const memberCount = organization.members ?? 0;
+  const memberCount = counts?.members ?? organization.members ?? 0;
   // Team has a seat for each member, so it's never full; a free organization has FREE_MEMBERS, invitations included, which one page holds (#652).
-  const team = organization.plan === TEAM_PLAN;
   const used = memberCount + (team ? 0 : invitations.items.length);
   const seats = team ? used : FREE_MEMBERS;
   const full = !team && used >= seats;

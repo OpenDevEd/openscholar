@@ -9,6 +9,8 @@ import type { Id } from "../_generated/dataModel";
 import { action, type ActionCtx } from "../_generated/server";
 import { ClerkApiError, clerkRequest, clerkSecretKey, isRecord } from "../lib/clerk";
 import { requireAppUrl } from "../lib/env";
+import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
+import { FREE_MEMBERS } from "../../lib/billing/plans";
 import { createError } from "../lib/errors";
 import { assistantAction, assistantMutation, defineChangingAction, defineUserMutation, reversedBy, userAction, userMutation, type Acting } from "../lib/userActions";
 import { processClerkWebhookEvent } from "../webhooks/clerk";
@@ -151,7 +153,7 @@ export const inviteAction = defineChangingAction({
   path: "organizations/manage:invite",
   description:
     `Invites people to the organization the person is in, by email, as admins or members; an admin of it does this. Clerk emails each a link to join. At most ${INVITES_AT_ONCE} at once. ` +
-    "A free organization has up to 5 members, invitations included; one on Team has no limit. Returns how many were invited.",
+    `A free organization has up to ${FREE_MEMBERS} members, invitations included; one on Team up to ${MAX_ORGANIZATION_MEMBERS.toLocaleString("en")}. Returns how many were invited.`,
   args: { emails: v.array(v.string()), role: ROLE },
   returns: v.object({ invited: v.number() }),
   spendsCredits: false,

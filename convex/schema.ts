@@ -612,7 +612,7 @@ export default defineSchema({
     again: v.optional(v.literal(true)),
     /** The member limit a sync last set on the organization in Clerk: 0 for none. */
     memberLimit: v.optional(v.number()),
-    /** Set once the organization is gone, until a sync has ended everything of Team it held. */
+    /** Set while its Team is ending, or once the organization is gone, until a sync has ended everything of Team it held. */
     ending: v.optional(v.literal(true)),
   })
     .index("by_workspace", ["workspaceId"])
