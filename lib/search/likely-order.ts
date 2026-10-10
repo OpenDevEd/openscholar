@@ -48,21 +48,22 @@ export function resultsKey(papers: readonly { id: string }[]): string {
 }
 
 /**
- * `papers` in the order `ids` gives them: those not rated yet first, then those rated, each in that
- * order; a paper the order lacks comes after, as it was.
+ * The likely order of the papers `closest` gives, closest first: those not rated yet first, then those
+ * rated, each closest first, as `ratings` has them when the order is made. Fixed then, so that rating
+ * a paper later doesn't move it, nor the paper the person is reading.
  */
-export function inLikelyOrder<Paper extends { id: string }>(papers: readonly Paper[], ids: readonly string[], ratings: Readonly<Record<string, number>>): Paper[] {
+export function likelyOrder(closest: readonly string[], ratings: Readonly<Record<string, number>>): string[] {
+  return [...closest.filter((id) => ratings[id] === undefined), ...closest.filter((id) => ratings[id] !== undefined)];
+}
+
+/** `papers` in the order `ids` gives them; a paper the order lacks comes after, as it was. */
+export function inOrder<Paper extends { id: string }>(papers: readonly Paper[], ids: readonly string[]): Paper[] {
   const place = new Map(ids.map((id, at) => [id, at]));
-  // The papers not rated take the first places, those rated the next, and those the order lacks the last.
-  const rank = (paper: Paper) => {
-    const at = place.get(paper.id);
-    if (at === undefined) return 2 * ids.length;
-    return ratings[paper.id] === undefined ? at : ids.length + at;
-  };
+  const rank = (paper: Paper) => place.get(paper.id) ?? ids.length;
   return papers.map((paper, at) => ({ paper, at })).sort((left, right) => rank(left.paper) - rank(right.paper) || left.at - right.at).map(({ paper }) => paper);
 }
 
-/** An order made for a search: for which results, the results' ids in it, and by which ratings. */
+/** An order made for a search: for which results, the results' ids in their likely order, and by which ratings. */
 export type LikelyOrder = { key: string; ids: string[]; seeds: Seeds };
 
 type LikelyOrderState = {
@@ -90,9 +91,8 @@ export function useLikelyOrdered<Paper extends { id: string }>(
   searchId: string | undefined,
   results: readonly { id: string }[],
   kept: Paper[],
-  ratings: Readonly<Record<string, number>>,
 ): Paper[] {
   const order = useLikelyOrderStore((state) => (searchId ? state.orders[searchId] : undefined));
   const key = resultsKey(results);
-  return useMemo(() => (order?.key === key ? inLikelyOrder(kept, order.ids, ratings) : kept), [order, key, kept, ratings]);
+  return useMemo(() => (order?.key === key ? inOrder(kept, order.ids) : kept), [order, key, kept]);
 }

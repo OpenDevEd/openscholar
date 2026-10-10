@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { inLikelyOrder, MAX_RATED_SEEDS, resultsKey, sameSeeds, seedsOf, useLikelyOrderStore } from "./likely-order";
+import { inOrder, likelyOrder, MAX_RATED_SEEDS, resultsKey, sameSeeds, seedsOf, useLikelyOrderStore } from "./likely-order";
 
 const paper = (n: number) => ({ id: `https://openscholar.ai/OS${n}` });
 
@@ -25,11 +25,15 @@ describe("the papers a likely order is made by", () => {
 });
 
 describe("a search's results in their likely order", () => {
-  it("put the papers not rated yet first, the likeliest first, then those rated, then any the order lacks", () => {
+  it("put the papers not rated yet first, the likeliest first, then those rated, as rated when ordered", () => {
+    const closest = [4, 1, 3, 2].map((n) => paper(n).id);
+    expect(likelyOrder(closest, { [paper(1).id]: 5 })).toEqual([4, 3, 2, 1].map((n) => paper(n).id));
+  });
+
+  it("are shown in the order made, then any paper the order lacks, as it was", () => {
     const papers = [1, 2, 3, 4, 5].map(paper);
-    const order = [paper(4).id, paper(1).id, paper(3).id, paper(2).id];
-    const ratings = { [paper(1).id]: 5 };
-    expect(inLikelyOrder(papers, order, ratings).map((one) => one.id)).toEqual([4, 3, 2, 1, 5].map((n) => paper(n).id));
+    const ids = [4, 3, 2, 1].map((n) => paper(n).id);
+    expect(inOrder(papers, ids).map((one) => one.id)).toEqual([4, 3, 2, 1, 5].map((n) => paper(n).id));
   });
 
   it("are kept per search, for the results they were made for, until cleared", () => {

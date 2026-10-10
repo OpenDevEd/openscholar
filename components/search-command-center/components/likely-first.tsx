@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { getClosenessOrder } from "@/app/actions/openalex";
 import { shortWorkId } from "@/lib/openalex/work-id";
 import { useSearchOptional } from "@/lib/search";
-import { resultsKey, sameSeeds, seedsOf, useLikelyOrderStore } from "@/lib/search/likely-order";
+import { likelyOrder, resultsKey, sameSeeds, seedsOf, useLikelyOrderStore } from "@/lib/search/likely-order";
 import { useRatingsStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
 
@@ -47,7 +47,7 @@ export function LikelyFirst() {
         toast.error(t("likelyFirstFailed"), answer.message);
         return;
       }
-      setOrder(searchId, { key, ids: answer.order.map((one) => one.id), seeds });
+      setOrder(searchId, { key, ids: likelyOrder(answer.order.map((one) => one.id), ratings), seeds });
       search.setPage(1);
     } catch {
       toast.error(t("likelyFirstFailed"));

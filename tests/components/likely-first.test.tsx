@@ -53,6 +53,7 @@ describe("likely relevant first", () => {
     fireEvent.click(screen.getByRole("button", { name: "likelyFirst" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "likelyFirst" })).toHaveAttribute("aria-pressed", "true"));
     expect(ordered).toHaveBeenCalledWith(["OS1", "OS2", "OS3", "OS4"], ["OS1"], ["OS3"]);
+    // The API's order is 2, 4, 1, 3: the papers not rated yet, 2 and 4, come before 1 and 3, rated.
     expect(useLikelyOrderStore.getState().orders["search-1"]?.ids).toEqual([2, 4, 1, 3].map((n) => paper(n).id));
     expect(setPage).toHaveBeenCalledWith(1);
   });
@@ -62,8 +63,11 @@ describe("likely relevant first", () => {
     fireEvent.click(screen.getByRole("button", { name: "likelyFirst" }));
     await waitFor(() => expect(useLikelyOrderStore.getState().orders["search-1"]).toBeDefined());
     expect(screen.queryByRole("button", { name: "likelyFirstResort" })).not.toBeInTheDocument();
+    const before = useLikelyOrderStore.getState().orders["search-1"]?.ids;
     ratings.current = { ...ratings.current, [paper(2).id]: 4 };
     rerender(<LikelyFirst />);
+    // Rated now, paper 2 stays where it was until the person orders again.
+    expect(useLikelyOrderStore.getState().orders["search-1"]?.ids).toEqual(before);
     fireEvent.click(screen.getByRole("button", { name: "likelyFirstResort" }));
     await waitFor(() => expect(ordered).toHaveBeenLastCalledWith(["OS1", "OS2", "OS3", "OS4"], ["OS1", "OS2"], ["OS3"]));
     await waitFor(() => expect(screen.queryByRole("button", { name: "likelyFirstResort" })).not.toBeInTheDocument());

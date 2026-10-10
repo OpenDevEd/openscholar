@@ -156,7 +156,7 @@ export function ResultsList({
   // Filter results based on rating filter
   const keptResults = results.filter((result) => preview || ratingFilterKeeps(ratings[result.id], ratingRange, onlyRatedPapers));
   // In their likely order when one was made for these results (Likely relevant first, beside the counter).
-  const filteredResults = useLikelyOrdered(searchId ?? undefined, search.results, keptResults, ratings);
+  const filteredResults = useLikelyOrdered(searchId ?? undefined, search.results, keptResults);
 
   const totalPages = useMemo(
     () => Math.ceil(filteredResults.length / ITEMS_PER_PAGE),
