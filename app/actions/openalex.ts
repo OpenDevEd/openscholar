@@ -10,6 +10,7 @@ import { fetchWorksPage } from "@/lib/openalex/works-page";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
 import { OpenAlexLimitedError } from "@/lib/openalex/limited";
 import { fetchClosenessOrder, type ClosenessResult } from "@/lib/openalex/closeness";
+import { worksAskOpenAlex } from "@/lib/openalex/request-url";
 
 /**
  * Result of a search action. We return a structured error instead of throwing:
@@ -67,6 +68,8 @@ const closenessAsked = z.object({
 export async function getClosenessOrder(works: string[], similarTo: string[], dissimilarTo: string[]): Promise<ClosenessResult> {
   const asked = closenessAsked.safeParse({ works, similarTo, dissimilarTo });
   if (!asked.success) return { ok: false, status: 400, message: "Order 1 to 200 works by 1 to 100 papers alike and up to 100 unlike" };
+  // OpenAlex has no such order: nothing to spend a request on.
+  if (worksAskOpenAlex()) return { ok: false, status: null, message: "Ordering by closeness needs the OpenScholar API" };
   const limited = await spendOne();
   if (limited) return limited;
   return fetchClosenessOrder(asked.data.works, asked.data.similarTo, asked.data.dissimilarTo);

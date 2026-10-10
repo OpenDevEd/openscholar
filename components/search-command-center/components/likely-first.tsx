@@ -36,7 +36,9 @@ export function LikelyFirst() {
   const key = resultsKey(papers);
   const seeds = seedsOf(papers, ratings);
   const current = order?.key === key ? order : undefined;
-  if (!current && seeds.liked.length === 0) return null;
+  // The OpenScholar API alone orders works by closeness; its works are OS ones, OpenAlex's W ones.
+  const ours = papers.some((paper) => shortWorkId(paper.id)?.startsWith("OS"));
+  if (!ours || (!current && seeds.liked.length === 0)) return null;
 
   const orderNow = async () => {
     setOrdering(true);

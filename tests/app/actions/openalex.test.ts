@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 
+const { spent } = vi.hoisted(() => ({ spent: vi.fn(async () => {}) }));
 // Request limits are tested in tests/openalex-request-limit.test.ts.
-vi.mock("@/lib/openalex/spend-requests", () => ({ spendOpenAlexRequests: async () => {}, OpenAlexRequestLimitError: class extends Error {} }));
+vi.mock("@/lib/openalex/spend-requests", () => ({ spendOpenAlexRequests: spent, OpenAlexRequestLimitError: class extends Error {} }));
 // A search never goes through the SDK, which keeps one key for every host; were it to, this
 // keeps the test off the network.
 vi.mock("@/lib/openalex", () => ({ default: { works: () => Promise.reject(new Error("the SDK was asked")) } }));
@@ -110,6 +111,14 @@ describe("getClosenessOrder", () => {
     expect(await getClosenessOrder(["OS1"], ["OS7"], ["OS8"])).toEqual({ ok: true, order: [{ id: "https://openscholar.ai/OS1", score: 0.2 }] });
     const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
     expect([url.pathname, url.searchParams.get("works"), url.searchParams.get("similar_to"), url.searchParams.get("dissimilar_to")]).toEqual(["/works/closeness", "OS1", "OS7", "OS8"]);
+  });
+
+  it("orders nothing, and spends nothing, without the OpenScholar API", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "");
+    spent.mockClear();
+    const fetchMock = answering(200, { results: [] });
+    expect(await getClosenessOrder(["W1"], ["W2"], [])).toMatchObject({ ok: false, status: null });
+    expect([spent.mock.calls.length, fetchMock.mock.calls.length]).toEqual([0, 0]);
   });
 
   it("refuses, without asking, more than the API takes, or no paper to be like", async () => {

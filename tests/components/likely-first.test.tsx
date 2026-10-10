@@ -8,11 +8,12 @@ import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
-const { ratings, ordered, failed, setPage } = vi.hoisted(() => ({
+const { ratings, ordered, failed, setPage, results } = vi.hoisted(() => ({
   ratings: { current: {} as Record<string, number> },
   ordered: vi.fn(),
   failed: vi.fn(),
   setPage: vi.fn(),
+  results: { current: [] as { id: string }[] },
 }));
 
 const paper = (n: number) => ({ id: `https://openscholar.ai/OS${n}` });
@@ -21,7 +22,7 @@ const RESULTS = [1, 2, 3, 4].map(paper);
 vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/app/actions/openalex", () => ({ getClosenessOrder: ordered }));
 vi.mock("@/lib/toast", () => ({ useAppToast: () => ({ error: failed }) }));
-vi.mock("@/lib/search", () => ({ useSearchOptional: () => ({ searchId: "search-1", results: RESULTS, setPage }) }));
+vi.mock("@/lib/search", () => ({ useSearchOptional: () => ({ searchId: "search-1", results: results.current, setPage }) }));
 vi.mock("@/lib/store", () => ({
   useRatingsStore: <T,>(select: (state: { ratings: Record<string, number> }) => T) => select({ ratings: ratings.current }),
 }));
@@ -30,6 +31,7 @@ import { LikelyFirst } from "@/components/search-command-center/components/likel
 import { useLikelyOrderStore } from "@/lib/search/likely-order";
 
 beforeEach(() => {
+  results.current = RESULTS;
   useLikelyOrderStore.setState({ orders: {} });
   ratings.current = { [paper(1).id]: 5, [paper(3).id]: 1 };
   ordered.mockResolvedValue({ ok: true, order: [paper(2), paper(4), paper(1), paper(3)].map(({ id }) => ({ id, score: 0.1 })) });
@@ -44,6 +46,13 @@ afterEach(() => {
 describe("likely relevant first", () => {
   it("is offered once a result is rated 4 or 5", () => {
     ratings.current = { [paper(3).id]: 1 };
+    const { container } = render(<LikelyFirst />);
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it("isn't offered for results from OpenAlex, which has no such order", () => {
+    results.current = [{ id: "https://openalex.org/W1" }, { id: "https://openalex.org/W2" }];
+    ratings.current = { "https://openalex.org/W1": 5 };
     const { container } = render(<LikelyFirst />);
     expect(container).toBeEmptyDOMElement();
   });
