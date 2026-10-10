@@ -3332,6 +3332,7 @@
     "earlier": "Messages précédents",
     "model": "Modèle",
     "sendFailed": "Impossible d'envoyer votre message",
+    "lost": "Cette discussion a été supprimée ou n'est plus partagée avec vous",
     "modelFailed": "Impossible de changer de modèle",
     "chats": "Discussions",
     "back": "Retour",

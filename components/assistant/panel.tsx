@@ -117,6 +117,8 @@ type Drafts = {
 const setOpen = (update: (open: boolean) => boolean) => panelPlace.set((now) => ({ ...now, open: update(now.open) }));
 
 export function AssistantPanel() {
+  const t = useTranslations("assistant");
+  const toast = useAppToast();
   const enabled = useFeatureFlag("assistant.enabled");
   // Signed in, and the account's own record made: the chat's reads fail before it is, and a failed read loses a linked chat.
   const { canRunProtectedQueries } = useAuthReadiness();
@@ -161,7 +163,18 @@ export function AssistantPanel() {
   return (
     // Session replays show none of the conversation (instrumentation-client.ts).
     <div data-ph-mask className="contents">
-      <Lost onLost={() => setThreadId(null)}>
+      <Lost
+        onLost={() => {
+          // What was being typed in it stays in the box, for the new chat, and the person is told why the chat closed.
+          const lost = threadIn(place, key);
+          if (lost) {
+            setTyped(({ [lost]: text, ...rest }) => (text && !rest[NEW] ? { ...rest, [NEW]: text } : rest));
+            setPicked(({ [lost]: mine, ...rest }) => (mine?.length && !rest[NEW]?.length ? { ...rest, [NEW]: mine } : rest));
+          }
+          setThreadId(null);
+          toast.error(t("lost"));
+        }}
+      >
         <Overlay open={place.open} setOpen={setOpen} threadId={threadIn(place, key) as ThreadId | null} setThreadId={setThreadId} drafts={drafts} />
       </Lost>
     </div>
