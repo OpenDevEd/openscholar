@@ -526,6 +526,8 @@ export type ConfigurationDraft = {
     enabled: boolean;
     /** What a digest covers: publications dated in its period, or added in it. */
     digestCovers: "published" | "added";
+    /** When digests were paused, or null while they go out. */
+    pausedSince: string | null;
     schedule: DigestScheduleDraft;
   };
   legal: LegalDraft;
@@ -819,6 +821,7 @@ function readNotifications(
   return {
     enabled: flag(value.enabled, false),
     digestCovers: value.digestCovers === "added" ? "added" : "published",
+    pausedSince: text(value.pausedSince) || null,
     schedule:
       schedule.frequency === "monthly"
         ? {

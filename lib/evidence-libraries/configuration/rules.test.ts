@@ -1495,7 +1495,8 @@ describe("notification configuration", () => {
   it("saves and resets the schedule and what a digest covers with the contact section and rejects invalid schedules", () => {
     const draft = savedDraft();
     expect(draft.notifications.digestCovers).toBe("published");
-    draft.notifications = {enabled: true, digestCovers: "added", schedule: {frequency: "weekly", weekday: 5, time: "16:30", timezone: "Europe/London"}};
+    expect(draft.notifications.pausedSince).toBeNull();
+    draft.notifications = {enabled: true, digestCovers: "added", pausedSince: "2026-10-10T18:00:00.000Z", schedule: {frequency: "weekly", weekday: 5, time: "16:30", timezone: "Europe/London"}};
     expect(changedSectionRows(draft, savedRows)).toEqual([{sectionKey: "notifications", payload: draft.notifications}]);
     expect(resetSection(draft, savedRows, "contact").notifications).toEqual(savedDraft().notifications);
     expect(sectionProblems(draft, "contact")).toEqual([]);
