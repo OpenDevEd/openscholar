@@ -265,7 +265,30 @@
     "sessionSetupIssue": "会话设置问题",
     "retrySyncToContinue": "重试会话同步以继续账单操作。",
     "paymentPendingDefault": "付款待处理。请在 Stripe 计费门户中完成付款以激活您的计划和积分。",
-    "downgradeScheduledTo": "计划降级至"
+    "downgradeScheduledTo": "计划降级至",
+    "plansFor": "方案适用于",
+    "forYou": "个人",
+    "forAnOrganization": "组织",
+    "organizations": {
+      "freeOrganization": "免费组织",
+      "freeDescription": "与少数几人协作。",
+      "teamDescription": "适合实验室和综述团队，共用一个积分池。",
+      "aMonth": "每月",
+      "aSeat": "每席位 {price}",
+      "seats": "{count, number} 个席位",
+      "oneSeatFewer": "减少一个席位",
+      "oneSeatMore": "增加一个席位",
+      "sharedCreditsAMonth": "每月 {credits, number} 共享积分",
+      "capsForEachMember": "每位成员的积分上限",
+      "yourOrganizationsPlan": "你的组织当前方案",
+      "createOrganization": "创建组织",
+      "moveTo": "改为{plan}",
+      "onlyAdmins": "只有 {organization} 的管理员可以更改其方案",
+      "organizationsOnly": "Team 仅适用于组织：请先创建一个",
+      "seatsAt": "{count, number} 个席位，每个 {price}",
+      "moveToFreeTitle": "将 {organization} 改为{plan}？",
+      "moveToFreeDetail": "{count, number} 个席位将立即结束。之后最多 {members, number} 名成员，每月 {credits, number} 共享积分。"
+    }
   },
   "publicationSettings": {
     "credentials": "{provider} 凭据",
@@ -4155,6 +4178,7 @@
       "theirRole": "其角色",
       "freeUpTo": "免费组织最多 {count, number} 名成员（含邀请）",
       "membersLabel": "成员",
+      "invitationsLabel": "邀请",
       "joined": "{when}加入",
       "roleOf": "{name} 的角色",
       "removeName": "移除 {name}",
@@ -4183,7 +4207,12 @@
       "cap": "上限",
       "capNone": "无",
       "noCap": "不设上限",
-      "capAMonth": "每月 {amount}"
+      "capAMonth": "每月 {amount}",
+      "aSeat": "每席位 {price}",
+      "seats": "{count, number} 个席位",
+      "amountAMonth": "每月 {amount}",
+      "manageBilling": "管理账单",
+      "moveTo": "改为{plan}"
     },
     "couldntInvite": "组织已创建，但邀请未能发出。请在其成员设置中发送。",
     "fromCredits": "使用 {name} 的积分",
@@ -4243,19 +4272,15 @@
       "hasOpen": "{names} 正在查看"
     },
     "move": {
-      "collection": "移动收藏集",
       "search": "移动搜索",
       "screening": "移动筛选",
       "extraction": "移动提取",
       "chat": "移动对话",
-      "author": "移动作者主页",
       "fromTo": "从 {workspace} 移到",
       "onlyYou": "仅你自己",
       "membersSee": "{count, number} 名成员可见",
       "goesWithIt": "一同移动",
       "goes": {
-        "itsPapers": "其中的论文",
-        "ratingsInIt": "其中的评分",
         "resultsRatings": "结果及其评分",
         "screeningAnswers": "筛选答案",
         "earlierQueries": "之前的查询",
@@ -4265,6 +4290,8 @@
         "messages": "消息",
         "files": "文件",
         "activity": "动态",
+        "itsPapers": "其中的论文",
+        "ratingsInIt": "其中的评分",
         "publications": "出版物",
         "editors": "编辑"
       },
@@ -4272,6 +4299,8 @@
       "move": "移动",
       "toAnother": "移到另一个工作区",
       "moveNamed": "将 {name} 移到另一个工作区",
+      "collection": "移动收藏集",
+      "author": "移动作者主页",
       "libraryKeeps": "{workspace} 的文献库会保留已保存的论文。",
       "yourLibraryKeeps": "你的文献库会保留已保存的论文。"
     }

@@ -265,7 +265,30 @@
     "sessionSetupIssue": "Session setup issue",
     "retrySyncToContinue": "Retry session sync to continue with billing actions.",
     "paymentPendingDefault": "Payment is pending. Complete payment in Stripe Billing Portal to activate your plan and credits.",
-    "downgradeScheduledTo": "Downgrade scheduled to"
+    "downgradeScheduledTo": "Downgrade scheduled to",
+    "plansFor": "Plans for",
+    "forYou": "For you",
+    "forAnOrganization": "For an organisation",
+    "organizations": {
+      "freeOrganization": "Free organisation",
+      "freeDescription": "Work together with a few people.",
+      "teamDescription": "For labs and review teams on one credit pool.",
+      "aMonth": "a month",
+      "aSeat": "{price} a seat",
+      "seats": "{count, plural, one {# seat} other {# seats}}",
+      "oneSeatFewer": "One seat fewer",
+      "oneSeatMore": "One more seat",
+      "sharedCreditsAMonth": "{credits, number} shared credits a month",
+      "capsForEachMember": "Credit caps for each member",
+      "yourOrganizationsPlan": "Your organisation's plan",
+      "createOrganization": "Create an organisation",
+      "moveTo": "Move to {plan}",
+      "onlyAdmins": "Only admins of {organization} change its plan",
+      "organizationsOnly": "Team is for organisations: create one first",
+      "seatsAt": "{count, plural, one {# seat} other {# seats}} at {price}",
+      "moveToFreeTitle": "Move {organization} to {plan}?",
+      "moveToFreeDetail": "{count, plural, one {Its seat ends} other {Its # seats end}} now. It then has up to {members, number} members and {credits, number} shared credits a month."
+    }
   },
   "publicationSettings": {
     "credentials": "{provider} credentials",
@@ -4157,6 +4180,7 @@
       "theirRole": "Their role",
       "freeUpTo": "Free organisations have up to {count, number} members, invitations included",
       "membersLabel": "members",
+      "invitationsLabel": "invitations",
       "joined": "Joined {when}",
       "roleOf": "{name}'s role",
       "removeName": "Remove {name}",
@@ -4185,7 +4209,12 @@
       "cap": "Cap",
       "capNone": "None",
       "noCap": "No cap",
-      "capAMonth": "{amount} a month"
+      "capAMonth": "{amount} a month",
+      "aSeat": "{price} a seat",
+      "seats": "{count, plural, one {# seat} other {# seats}}",
+      "amountAMonth": "{amount} a month",
+      "manageBilling": "Manage billing",
+      "moveTo": "Move to {plan}"
     },
     "couldntInvite": "The organisation was made, but the invitations didn't go out. Send them from its Members settings.",
     "fromCredits": "From {name}'s credits",
@@ -4245,19 +4274,15 @@
       "hasOpen": "{count, plural, one {{names} has it open} other {{names} have it open}}"
     },
     "move": {
-      "collection": "Move collection",
       "search": "Move search",
       "screening": "Move screening",
       "extraction": "Move extraction",
       "chat": "Move chat",
-      "author": "Move author profile",
       "fromTo": "From {workspace} to",
       "onlyYou": "Only you",
       "membersSee": "{count, plural, one {# member sees it} other {# members see it}}",
       "goesWithIt": "Goes with it",
       "goes": {
-        "itsPapers": "Its papers",
-        "ratingsInIt": "Ratings in it",
         "resultsRatings": "Results and their ratings",
         "screeningAnswers": "Screening answers",
         "earlierQueries": "Earlier queries",
@@ -4267,6 +4292,8 @@
         "messages": "Messages",
         "files": "Files",
         "activity": "Activity",
+        "itsPapers": "Its papers",
+        "ratingsInIt": "Ratings in it",
         "publications": "Publications",
         "editors": "Editors"
       },
@@ -4274,6 +4301,8 @@
       "move": "Move",
       "toAnother": "Move to another workspace",
       "moveNamed": "Move {name} to another workspace",
+      "collection": "Move collection",
+      "author": "Move author profile",
       "libraryKeeps": "{workspace}'s library keeps the papers it saved.",
       "yourLibraryKeeps": "Your library keeps the papers it saved."
     }

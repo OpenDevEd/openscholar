@@ -265,7 +265,30 @@
     "sessionSetupIssue": "セッション設定の問題",
     "retrySyncToContinue": "請求操作を続けるにはセッション同期を再試行してください。",
     "paymentPendingDefault": "お支払いが保留中です。プランとクレジットを有効化するには、Stripe請求ポータルでお支払いを完了してください。",
-    "downgradeScheduledTo": "ダウングレード予定："
+    "downgradeScheduledTo": "ダウングレード予定：",
+    "plansFor": "プランの対象",
+    "forYou": "個人向け",
+    "forAnOrganization": "組織向け",
+    "organizations": {
+      "freeOrganization": "無料の組織",
+      "freeDescription": "少人数で共同作業できます。",
+      "teamDescription": "ラボやレビューチーム向け。クレジットを 1 つのプールで共有します。",
+      "aMonth": "/月",
+      "aSeat": "1 席 {price}",
+      "seats": "{count, number} 席",
+      "oneSeatFewer": "1 席減らす",
+      "oneSeatMore": "1 席増やす",
+      "sharedCreditsAMonth": "毎月 {credits, number} の共有クレジット",
+      "capsForEachMember": "メンバーごとのクレジット上限",
+      "yourOrganizationsPlan": "組織の現在のプラン",
+      "createOrganization": "組織を作成",
+      "moveTo": "{plan} に変更",
+      "onlyAdmins": "{organization} のプランを変更できるのは管理者だけです",
+      "organizationsOnly": "Team は組織向けです。先に組織を作成してください",
+      "seatsAt": "{count, number} 席 × {price}",
+      "moveToFreeTitle": "{organization} を {plan} に変更しますか？",
+      "moveToFreeDetail": "{count, number} 席は今すぐ終了します。その後は最大 {members, number} 人、毎月 {credits, number} の共有クレジットになります。"
+    }
   },
   "publicationSettings": {
     "credentials": "{provider} 認証情報",
@@ -4155,6 +4178,7 @@
       "theirRole": "役割",
       "freeUpTo": "無料の組織は招待を含めて最大 {count, number} 人です",
       "membersLabel": "メンバー",
+      "invitationsLabel": "招待",
       "joined": "{when}に参加",
       "roleOf": "{name} の役割",
       "removeName": "{name} を削除",
@@ -4183,7 +4207,12 @@
       "cap": "上限",
       "capNone": "なし",
       "noCap": "上限なし",
-      "capAMonth": "月 {amount}"
+      "capAMonth": "月 {amount}",
+      "aSeat": "1 席 {price}",
+      "seats": "{count, number} 席",
+      "amountAMonth": "月額 {amount}",
+      "manageBilling": "請求を管理",
+      "moveTo": "{plan} に変更"
     },
     "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。",
     "fromCredits": "{name} のクレジットから",
@@ -4243,19 +4272,15 @@
       "hasOpen": "{names} が開いています"
     },
     "move": {
-      "collection": "コレクションを移動",
       "search": "検索を移動",
       "screening": "スクリーニングを移動",
       "extraction": "抽出を移動",
       "chat": "チャットを移動",
-      "author": "著者プロフィールを移動",
       "fromTo": "{workspace} から移動先",
       "onlyYou": "自分のみ",
       "membersSee": "{count, number} 人のメンバーが見られます",
       "goesWithIt": "一緒に移動するもの",
       "goes": {
-        "itsPapers": "論文",
-        "ratingsInIt": "その中の評価",
         "resultsRatings": "結果と評価",
         "screeningAnswers": "スクリーニングの回答",
         "earlierQueries": "以前のクエリ",
@@ -4265,6 +4290,8 @@
         "messages": "メッセージ",
         "files": "ファイル",
         "activity": "アクティビティ",
+        "itsPapers": "論文",
+        "ratingsInIt": "その中の評価",
         "publications": "出版物",
         "editors": "編集者"
       },
@@ -4272,6 +4299,8 @@
       "move": "移動",
       "toAnother": "別のワークスペースに移動",
       "moveNamed": "{name} を別のワークスペースに移動",
+      "collection": "コレクションを移動",
+      "author": "著者プロフィールを移動",
       "libraryKeeps": "{workspace} のライブラリには保存済みの論文が残ります。",
       "yourLibraryKeeps": "あなたのライブラリには保存済みの論文が残ります。"
     }

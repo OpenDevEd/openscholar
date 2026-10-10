@@ -30,14 +30,22 @@ export const fakeAutumn = {
   /** Each customer's entities (#652): whether each holds a Team seat, its monthly cap, and what it used of it. */
   entities: new Map<string, Map<string, { seated: boolean; cap?: number; used: number }>>(),
   calls: [] as Array<{ path: string; body: Record<string, unknown> }>,
-  /** Set when the customer has no saved card: a seat's attach asks for checkout instead of charging. */
+  /** Set when the customer has no saved card: a seat's attach asks for checkout instead of charging, and the customer shows no card. */
   noCard: false,
+  /** Set when the saved card asks to confirm each payment (3-D Secure): a seat's attach sends a page to pay on. */
+  confirmPayments: false,
   /** Makes the next call to this endpoint fail, as if Autumn were down. */
   failNext: null as string | null,
+  /** The member limits set on organizations in Clerk (#652), in order, and how many more Clerk refuses first. */
+  memberLimits: [] as Array<{ organization: string; limit: number }>,
+  refuseLimits: 0,
 
   reset() {
     this.failNext = null;
+    this.memberLimits = [];
+    this.refuseLimits = 0;
     this.noCard = false;
+    this.confirmPayments = false;
     this.customers.clear();
     this.locks.clear();
     this.idempotencyKeys.clear();
@@ -141,7 +149,10 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
   const customerId = body.customer_id as string | undefined;
   switch (path) {
     case "customers.get_or_create":
-      return respond(200, customerBody(customerId!));
+      // The saved card, when the call asks for it and the customer has one.
+      return respond(200, { ...customerBody(customerId!), ...((body.expand as string[] | undefined)?.includes("payment_method") && !fakeAutumn.noCard ? { payment_method: { card: { brand: "visa", last4: "4242" } } } : {}) });
+    case "billing.setup_payment":
+      return respond(200, { customer_id: customerId, url: "https://setup.test" });
     case "billing.attach": {
       const customer = fakeAutumn.customer(customerId!);
       if (body.entity_id) {
@@ -149,7 +160,7 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
         const entity = fakeAutumn.entitiesOf(customerId!).get(body.entity_id as string);
         if (!entity) return respond(404, { code: "entity_not_found" });
         if (entity.seated) return respond(400, { code: "plan_already_attached" });
-        if (fakeAutumn.noCard) return respond(200, { customer_id: customerId, entity_id: body.entity_id, payment_url: "https://checkout.test" });
+        if (fakeAutumn.noCard || fakeAutumn.confirmPayments) return respond(200, { customer_id: customerId, entity_id: body.entity_id, payment_url: "https://checkout.test" });
         entity.seated = true;
         customer.plan += FAKE_SEAT_CREDITS;
         return respond(200, { customer_id: customerId, entity_id: body.entity_id, payment_url: null });
@@ -258,6 +269,14 @@ export function fakeAutumnFetch(
   process.env.AUTUMN_SECRET_KEY = "am_sk_test_fake";
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    // A seat sync setting an organization's member limit in Clerk.
+    const organization = url.match(/^https:\/\/api\.clerk\.com\/v1\/organizations\/([^/]+)$/)?.[1];
+    const limit = init?.method === "PATCH" && organization ? (JSON.parse(String(init.body ?? "{}")) as { max_allowed_memberships?: number }).max_allowed_memberships : undefined;
+    if (organization && limit !== undefined) {
+      if (fakeAutumn.refuseLimits > 0 && fakeAutumn.refuseLimits--) return respond(500, { errors: [{ code: "internal_clerk_error" }] });
+      fakeAutumn.memberLimits.push({ organization, limit });
+      return respond(200, { id: organization, max_allowed_memberships: limit });
+    }
     if (!url.startsWith(`${AUTUMN_URL}/v1/`)) return fallback(input, init);
     return handle(
       url.slice(`${AUTUMN_URL}/v1/`.length),
@@ -267,10 +286,11 @@ export function fakeAutumnFetch(
   };
 }
 
-/** Routes Autumn calls to a fresh in-memory fake; other requests go through. */
+/** Routes Autumn calls, and Clerk's member limits, to a fresh in-memory fake; other requests go through. */
 export function installFakeAutumn() {
   fakeAutumn.reset();
   vi.stubGlobal("fetch", fakeAutumnFetch(globalThis.fetch));
+  vi.stubEnv("CLERK_SECRET_KEY", "sk_test_fake");
 }
 
 /** Gives a person's own workspace, or another workspace (#650), credits in the fake and in the cached snapshot. */

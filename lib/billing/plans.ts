@@ -19,6 +19,9 @@ export const ORGANIZATION_PLAN = "free_organization";
 /** An organization's paid plan (#652): its limits and features. Its price and credits are on its members' seats. */
 export const TEAM_PLAN = "team";
 
+/** Clerk's limit on a free organization's members, invitations included; Team has none. */
+export const FREE_MEMBERS = 5;
+
 /**
  * A Team member's seat (#652), attached to the member's entity on the organization's customer.
  * Each is billed on its own and adds its monthly credits to the organization's one pool.

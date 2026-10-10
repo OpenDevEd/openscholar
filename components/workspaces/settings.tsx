@@ -3,11 +3,11 @@
 // An organization's settings (#651): the organization itself, its members and invitations, and
 // its plan and credits. Your own workspace is just you, so its plan sits with your account.
 
-import { useState, type ReactElement } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { Camera, Check, ChevronRight, Coins, Copy, EvidenceLibrariesIcon, FileSearch, Folder, ListFilter, LogOut, Mail, Pencil, Repeat, Search, Trash2, Users, X } from "@/components/icons";
+import { ArrowRight, Camera, Check, ChevronRight, Coins, Copy, EvidenceLibrariesIcon, FileSearch, Folder, ListFilter, LogOut, Mail, Pencil, Repeat, Search, Trash2, Users, X } from "@/components/icons";
 import { IconButton } from "@/components/assistant/parts";
 import { EASE } from "@/components/settings/model-map";
 import { Enter, LIST, Paged, Segmented, Tile, Zone } from "@/components/settings/parts";
@@ -39,12 +39,14 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { ORGANIZATION_COLOURS } from "@/lib/workspaces/colours";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { FREE_MEMBERS, MemberFaces, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
+import { Guarded, MemberFaces, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
 import { MemberSpending, useMemberSpending } from "./spending";
-import { TEAM_PLAN } from "@/lib/billing/plans";
+import { FREE_MEMBERS, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
 
 /** Rows a page of members holds. */
 const PER_PAGE = 10;
+/** Seats the members card draws one segment for each of; past it, one bar. */
+const SEAT_SEGMENTS = 20;
 /** A row with a photo, and its divider. */
 const ROW_HEIGHT = 61;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -289,18 +291,6 @@ export function WorkspaceGeneral() {
   );
 }
 
-/** A control that is off for a reason: the reason shows on hover. */
-function Guarded({ reason, children }: { reason: string | null; children: ReactElement }) {
-  if (!reason) return children;
-  return (
-    <TooltipHint label={reason}>
-      <span tabIndex={0} className="rounded-md">
-        <span className="pointer-events-none opacity-50">{children}</span>
-      </span>
-    </TooltipHint>
-  );
-}
-
 // ─── Members ─────────────────────────────────────────────────────────────
 
 export function WorkspaceMembers() {
@@ -310,8 +300,10 @@ export function WorkspaceMembers() {
   const now = useNow({ updateInterval: 60_000 });
   const { workspaceId, organization, admin } = useOrganization();
   const members = useCursorPage(api.organizations.queries.members, inWorkspace(workspaceId, {}), PER_PAGE);
-  // ponytail: one page; a free organization has at most FREE_MEMBERS, invitations included. Team (#652) counts them.
-  const { data: invitations } = useProtectedQuery(api.organizations.queries.invitations, inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: FREE_MEMBERS } }));
+  const invitations = useCursorPage(api.organizations.queries.invitations, inWorkspace(workspaceId, {}), PER_PAGE);
+  // Team's seats are its members, counted in full: the switcher's count stops at a hundred and one.
+  const team = organization?.plan === TEAM_PLAN;
+  const counts = useProtectedQuery(api.billing.seats.counts, team && workspaceId ? { workspaceId } : "skip").data;
   const invite = useWorkspaceAction(api.organizations.manage.invite);
   const setRole = useWorkspaceAction(api.organizations.manage.setRole);
   const removeMember = useWorkspaceAction(api.organizations.manage.removeMember);
@@ -325,16 +317,17 @@ export function WorkspaceMembers() {
   // A time Clerk set a moment after the clock last ticked reads as now, not as in a few seconds.
   const ago = (at: number) => format.relativeTime(at, Math.max(now.getTime(), at));
   const { name: planName } = usePlanOf(organization ?? { kind: "organization", name: "" });
-  if (!organization || members.isLoading || !invitations) return <Enter ready={false}>{null}</Enter>;
+  if (!organization || members.isLoading || invitations.isLoading || (team && !counts)) return <Enter ready={false}>{null}</Enter>;
 
   const roleOptions = [
     { id: "member" as const, label: tw("member"), icon: ROLE_ICONS.member },
     { id: "admin" as const, label: tw("admin"), icon: ROLE_ICONS.admin },
   ];
-  const memberCount = organization.members ?? 0;
-  const seats = FREE_MEMBERS;
-  const used = memberCount + invitations.page.length;
-  const full = used >= seats;
+  const memberCount = counts?.members ?? organization.members ?? 0;
+  // Team has a seat for each member, so it's never full; a free organization has FREE_MEMBERS, invitations included, which one page holds (#652).
+  const used = memberCount + (team ? 0 : invitations.items.length);
+  const seats = team ? used : FREE_MEMBERS;
+  const full = !team && used >= seats;
 
   return (
     <Enter ready>
@@ -346,12 +339,19 @@ export function WorkspaceMembers() {
             </p>
             <p className="mt-1 text-sm text-muted-foreground">{t("membersOnPlan", { plan: planName })}</p>
           </div>
-          {/* A segment a seat: members, then invitations waiting for an answer. */}
-          <div className="flex gap-1" aria-hidden>
-            {Array.from({ length: seats }, (_, i) => (
-              <span key={i} className={cn("h-2 flex-1 rounded-full", i < memberCount ? "bg-primary" : i < used ? "bg-primary/40" : "bg-muted")} />
-            ))}
-          </div>
+          {/* A segment a seat while they're few enough to count, members then invitations waiting for an answer; past that, one bar. */}
+          {seats <= SEAT_SEGMENTS ? (
+            <div className="flex gap-1" aria-hidden>
+              {Array.from({ length: seats }, (_, i) => (
+                <span key={i} className={cn("h-2 flex-1 rounded-full", i < memberCount ? "bg-primary" : i < used ? "bg-primary/40" : "bg-muted")} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+              <span className="h-full rounded-full bg-primary" style={{ width: `${(memberCount / seats) * 100}%` }} />
+              {used > memberCount ? <span className="h-full rounded-full bg-primary/40" style={{ width: `${((used - memberCount) / seats) * 100}%` }} /> : null}
+            </div>
+          )}
         </section>
 
         {admin ? (
@@ -406,10 +406,11 @@ export function WorkspaceMembers() {
           </Paged>
         </Zone>
 
-        {invitations.page.length ? (
+        {invitations.items.length ? (
           <Zone label={t("invitations")}>
-            <ul className={LIST}>
-              {invitations.page.map((invitation) => (
+            <Paged pager={{ list: invitations, size: PER_PAGE }} rowHeight={ROW_HEIGHT} label={t("invitationsLabel")}>
+            <ul key={invitations.page} className={LIST}>
+              {invitations.items.map((invitation) => (
                 <li key={invitation.invitationId}>
                   <IdentityRow className="p-3" avatar={<EmailAvatar />} name={invitation.email} detail={t("invited", { when: ago(invitation.sentAt) })}>
                     <RoleLabel role={invitation.role} className="pr-1">
@@ -437,6 +438,7 @@ export function WorkspaceMembers() {
                 </li>
               ))}
             </ul>
+            </Paged>
           </Zone>
         ) : null}
       </div>
@@ -474,19 +476,31 @@ export function WorkspaceBilling() {
   const { workspaceId, organization, admin } = useOrganization();
   const { account, catalog } = useSharedSubscriptionState();
   const spending = useMemberSpending(workspaceId);
-  if (!organization || !account || !catalog || !spending.ready) return <Enter ready={false}>{null}</Enter>;
+  // The seats it pays for, counted in full.
+  const counts = useProtectedQuery(api.billing.seats.counts, workspaceId ? { workspaceId } : "skip").data;
+  const openPortal = useWorkspaceAction(api.billing.actions.openPortal);
+  const { busy, attempt } = useAttempt();
+  if (!organization || !account || !catalog || !spending.ready || counts === undefined) return <Enter ready={false}>{null}</Enter>;
 
   const planId = account.plan ?? organization.plan ?? "";
   const plan = findPlan(catalog, planId);
-  const cap = planCreditCap(catalog, planId);
-  const monthly = plan?.credits?.interval === "month" ? plan.credits.included : 0;
   const fromPlan = Math.max(0, account.balance - account.purchased);
   const memberCount = organization.members ?? 0;
+  const team = planId === TEAM_PLAN;
+  const teamPlan = findPlan(catalog, TEAM_PLAN);
+  const seat = findPlan(catalog, SEAT_PLAN);
+  const seatPrice = seat?.price?.amount;
+  // Team's credits are its seats'.
+  const seats = counts?.seats ?? 0;
+  const monthly = team ? seats * (seat?.credits?.included ?? 0) : plan?.credits?.interval === "month" ? plan.credits.included : 0;
+  const cap = team ? monthly : planCreditCap(catalog, planId);
+  const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: 0 });
   const limits = plan?.limits;
   const date = (ms: number) => format.dateTime(new Date(ms), { month: "long", day: "numeric" });
   // A limit the plan doesn't set isn't named; null is unlimited.
   const included = [
-    { icon: Users, label: t("includedMembers", { count: FREE_MEMBERS }) },
+    // Team's members are its seats, which the card above counts.
+    ...(team ? [] : [{ icon: Users, label: t("includedMembers", { count: FREE_MEMBERS }) }]),
     ...(limits?.collections === undefined ? [] : [{ icon: Folder, label: limits.collections === null ? t("unlimitedCollections") : t("includedCollections", { count: limits.collections }) }]),
     ...(limits?.concurrency == null ? [] : [{ icon: ListFilter, label: t("papersAtOnce", { count: limits.concurrency }) }]),
     ...(limits?.request_papers === undefined ? [] : [{ icon: FileSearch, label: limits.request_papers === null ? t("anyPapersAJob") : t("papersAJob", { count: limits.request_papers }) }]),
@@ -529,13 +543,40 @@ export function WorkspaceBilling() {
           </div>
           <div className="flex flex-col justify-between gap-4 border-t border-border-subtle bg-inset p-5 @min-[46rem]/configuration:border-l @min-[46rem]/configuration:border-t-0">
             <div className="space-y-1">
-              <p className="text-xl font-semibold tracking-tight">{plan?.name}</p>
-              <p className="text-sm tabular-nums text-muted-foreground">{t("upToMembers", { count: FREE_MEMBERS })}</p>
+              <p className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+                {plan?.name}
+                {team && seatPrice !== undefined ? <span className="text-sm font-normal text-muted-foreground">{t("aSeat", { price: money(seatPrice) })}</span> : null}
+              </p>
+              {team ? (
+                // A seat for each member (#652).
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted px-2.5 text-xs tabular-nums text-muted-foreground">
+                    <Users className="size-3.5" />
+                    {t("seats", { count: seats })}
+                  </span>
+                  {seatPrice !== undefined ? <span className="inline-flex h-6 items-center whitespace-nowrap rounded-full bg-muted px-2.5 text-xs font-medium tabular-nums text-foreground">{t("amountAMonth", { amount: money(seatPrice * seats) })}</span> : null}
+                </div>
+              ) : (
+                <p className="text-sm tabular-nums text-muted-foreground">{t("upToMembers", { count: FREE_MEMBERS })}</p>
+              )}
             </div>
+            {admin ? (
+              team ? (
+                <Button variant="outline" size="sm" disabled={busy === "portal"} onClick={() => void attempt("portal", async () => window.location.assign(await openPortal({})))}>
+                  {t("manageBilling")}
+                </Button>
+              ) : (
+                <Button asChild size="sm">
+                  <Link href="/pricing">
+                    {t("moveTo", { plan: teamPlan?.name ?? "" })} <ArrowRight />
+                  </Link>
+                </Button>
+              )
+            ) : null}
           </div>
         </section>
 
-        <MemberSpending spending={spending} admin={admin} team={account.plan === TEAM_PLAN} members={memberCount} />
+        <MemberSpending spending={spending} admin={admin} team={team} members={memberCount} />
 
         <Zone label={t("included")}>
           <div className="flex flex-wrap gap-1.5">

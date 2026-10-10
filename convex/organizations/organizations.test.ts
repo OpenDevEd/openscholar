@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
-import { fakeAutumnFetch } from "../billing/billing.test-support";
+import { fakeAutumn, fakeAutumnFetch } from "../billing/billing.test-support";
+import { ORGANIZATION_PLAN, TEAM_PLAN } from "../../lib/billing/plans";
 
 /** Clerk's Backend API for organizations, as far as these actions use it, kept in memory. */
 function fakeClerk() {
@@ -89,6 +90,7 @@ function fakeClerk() {
 let clerk: ReturnType<typeof fakeClerk>;
 beforeEach(() => {
   clerk = fakeClerk();
+  fakeAutumn.reset();
   // Each organization gets its Autumn customer as it's made.
   vi.stubGlobal("fetch", fakeAutumnFetch(clerk.fetch as typeof fetch));
   vi.stubEnv("CLERK_SECRET_KEY", "sk_test");
@@ -303,13 +305,7 @@ describe("an organization", () => {
     const { t, aliceAs } = await people();
     const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
     const inLab = { workspaceId: lab.workspaceId };
-    // A plan that renews is cancelled first.
-    const accountId = await t.run(async (ctx) => (await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", lab.workspaceId)).unique())?._id);
-    const renewing = { plan: "team", renewsAt: Date.now() + 86_400_000 };
-    const account = accountId ?? (await t.run((ctx) => ctx.db.insert("billingAccounts", { workspaceId: lab.workspaceId, pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1, ...renewing })));
-    if (accountId) await t.run((ctx) => ctx.db.patch("billingAccounts", accountId, renewing));
-    await expect(aliceAs.action(api.organizations.manage.deleteOrganization, inLab)).rejects.toThrow(/plan that renews/);
-    await t.run((ctx) => ctx.db.patch("billingAccounts", account, { renewsAt: undefined }));
+    fakeAutumn.customer(lab.workspaceId).planId = TEAM_PLAN;
     // While a deletion runs, nobody acts in it: no Evidence Library can be made to strand.
     const deletingAt = await t.mutation(internal.organizations.read.beginDeletion, inLab);
     await expect(aliceAs.mutation(api.library.collections.createCollection, { ...inLab, name: "Late" })).rejects.toThrow(/Workspace not found/);
@@ -317,7 +313,8 @@ describe("an organization", () => {
     await t.mutation(internal.organizations.read.endDeletion, { organizationId, deletingAt });
     clerk.failDeletions(true);
     await expect(aliceAs.action(api.organizations.manage.deleteOrganization, inLab)).rejects.toThrow();
-    // Clerk didn't delete it, so it's hers to work in again.
+    // Its Team plan ended first, so nothing of it would be billed once it's gone (#652). Clerk didn't delete it, so it's hers to work in again, on Free.
+    expect(fakeAutumn.customer(lab.workspaceId).planId).toBe(ORGANIZATION_PLAN);
     expect((await aliceAs.query(api.organizations.queries.members, { ...inLab, ...page })).page).toHaveLength(1);
   });
 

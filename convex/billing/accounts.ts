@@ -296,18 +296,18 @@ export const organizationOf = internalQuery({
 const REFRESH_AFTER_MS = 30_000;
 
 /**
- * Re-reads the signed-in user's account from Autumn. The billing page calls
- * it while rendering on the server, so edits made in Autumn's dashboard
- * that send no webhook (a balance grant, say) show when the page opens.
+ * Re-reads the signed-in user's account from Autumn, or in `workspaceId` its organization's.
+ * The billing page calls it while rendering on the server, so edits made in Autumn's dashboard
+ * that send no webhook (a balance grant, say) show when the page opens, as Pricing does when an
+ * admin comes back from saving the organization's card (#652).
  */
 export const refreshMine = action({
-  args: {},
+  args: { workspaceId: v.optional(v.id("workspaces")) },
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async (ctx, { workspaceId: given }) => {
     const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
     if (!user) return null;
-    // The billing page is the person's own until organizations have theirs (#651, #652).
-    const workspaceId: Id<"workspaces"> = await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: user._id });
+    const workspaceId: Id<"workspaces"> = given ? (await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId: given })).workspaceId : await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: user._id });
     const account = await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId });
     if (account && Date.now() - account.refreshedAt < REFRESH_AFTER_MS) return null;
     await refreshAccount(ctx, workspaceId, { card: true });
