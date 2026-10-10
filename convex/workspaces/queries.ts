@@ -18,8 +18,10 @@ export const personal = query({
 });
 
 /**
- * The workspace of the organization a page's address names (/o/<slug>, #651), for a person who is
- * an active member of it; null for anyone else, so nobody outside it learns it exists.
+ * The workspace of the organization a page's address names (/o/<slug>, #651), for a person who can
+ * act in it: an active member, while it isn't being deleted. Null for anyone else, so nobody
+ * outside it learns it exists, and so a page in one being deleted stops reading it at once rather
+ * than failing on every read.
  */
 export const bySlug = query({
   args: { slug: v.string() },
@@ -28,12 +30,8 @@ export const bySlug = query({
     const user = await getCurrentUser(ctx);
     const organization = user ? await organizationAt(ctx, slug) : null;
     if (!user || !organization) return null;
-    const membership = await ctx.db
-      .query("organizationMemberships")
-      .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organization._id).eq("clerkUserId", user.clerkId).eq("state", "active"))
-      .first();
-    if (!membership) return null;
-    return (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organization._id)).unique())?._id ?? null;
+    const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organization._id)).unique();
+    return workspace && (await actorIn(ctx, user, workspace._id)) ? workspace._id : null;
   },
 });
 

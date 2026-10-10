@@ -309,8 +309,11 @@ describe("an organization", () => {
     // While a deletion runs, nobody acts in it: no Evidence Library can be made to strand.
     const deletingAt = await t.mutation(internal.organizations.read.beginDeletion, inLab);
     await expect(aliceAs.mutation(api.library.collections.createCollection, { ...inLab, name: "Late" })).rejects.toThrow(/Workspace not found/);
+    // Its pages stop reading it at once, as its address no longer names a workspace, instead of every read failing.
+    expect(await aliceAs.query(api.workspaces.queries.bySlug, { slug: "lab" })).toBeNull();
     const organizationId = await t.run(async (ctx) => (await ctx.db.query("organizations").first())!._id);
     await t.mutation(internal.organizations.read.endDeletion, { organizationId, deletingAt });
+    expect(await aliceAs.query(api.workspaces.queries.bySlug, { slug: "lab" })).toBe(lab.workspaceId);
     clerk.failDeletions(true);
     await expect(aliceAs.action(api.organizations.manage.deleteOrganization, inLab)).rejects.toThrow();
     // Its Team plan ended first, so nothing of it would be billed once it's gone (#652). Clerk didn't delete it, so it's hers to work in again, on Free.
