@@ -42,6 +42,8 @@ import type { WorkInput } from "@/lib/library/trim-paper-data";
 import { paperArgs } from "@/components/library/save-control";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useWorkspaceMutation } from "@/lib/workspaces/url";
+import { TooltipHint } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 /**
  * Rates a paper. The rating is kept for the person either way; signed in, rating
@@ -105,7 +107,7 @@ export function RatingSelector({ paper, variant = "default" }: RatingSelectorPro
         value={currentRating?.toString() || "no-rating"}
         onValueChange={handleRatingChange}
       >
-        <SelectTrigger size="sm" className="w-auto min-w-[4rem] px-2">
+        <SelectTrigger size="sm" className={cn("w-auto min-w-[4rem] shrink-0 px-2", collection && "rounded-l-none shadow-none")}>
           <SelectValue placeholder={t('noRating')} />
         </SelectTrigger>
         <SelectContent>
@@ -121,12 +123,16 @@ export function RatingSelector({ paper, variant = "default" }: RatingSelectorPro
     );
     if (!collection) return select;
     return (
-      <span className="relative inline-flex">
-        {/* Whose rating this is: the collection's name, on the control's top edge. It takes no room in the row. */}
-        <span className="pointer-events-none absolute -top-2.5 left-1.5 z-10 inline-flex h-4 max-w-40 items-center gap-1 rounded-full bg-muted px-1.5 text-2xs font-medium text-muted-foreground">
-          <Folder className="size-2.5 shrink-0" />
-          <span className="min-w-0 truncate">{collection.name}</span>
-        </span>
+      // Whose rating this is: the collection's name, joined to the control as its left half, the way Saved is joined to its collections.
+      // The name gives way when the row is tight, and shows in full on hover while it's cut off.
+      <span className="inline-flex min-w-0 max-w-full rounded-md shadow-xs">
+        <TooltipHint label={collection.name} onlyWhenClipped>
+          {/* In a narrow card (a three-column grid's, a phone's) the name has no room beside Saved: the folder stands for it there, and hovering names it. */}
+          <span className="inline-flex h-8 min-w-0 max-w-40 items-center gap-1.5 rounded-l-md border border-r-0 border-input bg-inset px-2 text-xs font-medium text-muted-foreground @max-[24rem]/card:gap-0">
+            <Folder className="size-3.5 shrink-0" />
+            <span className="min-w-0 truncate @max-[24rem]/card:w-0">{collection.name}</span>
+          </span>
+        </TooltipHint>
         {select}
       </span>
     );
