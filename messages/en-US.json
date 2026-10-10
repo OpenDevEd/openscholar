@@ -3956,6 +3956,21 @@
         "did": "Answered an invitation",
         "where": "Sharing",
         "ask": "Answer an invitation"
+      },
+      "guests": {
+        "doing": "Reading who it's shared with",
+        "did": "Read who it's shared with",
+        "where": "Sharing"
+      },
+      "sharedWithMe": {
+        "doing": "Reading what's shared with you",
+        "did": "Read what's shared with you",
+        "where": "Sharing"
+      },
+      "readInvite": {
+        "doing": "Reading an invitation",
+        "did": "Read an invitation",
+        "where": "Sharing"
       }
     },
     "asks": {

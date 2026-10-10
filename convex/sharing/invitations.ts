@@ -12,7 +12,7 @@ import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
 import { MAX_ACCOUNTS_PER_EMAIL, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { rateLimit } from "../lib/rateLimit";
-import { actingAs, assistantAction, defineChangingAction, userAction } from "../lib/userActions";
+import { actingAs, assistantAction, assistantQuery, defineChangingAction, defineUserQuery, userAction, userQuery } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
 import { workspaceName } from "../workspaces/personal";
 import { invitationTo, noteShared, requireRoom } from "./access";
@@ -162,3 +162,32 @@ export const respondAction = defineChangingAction({
 });
 export const respond = userAction(respondAction);
 export const respondForAssistant = assistantAction(respondAction);
+
+export const getAction = defineUserQuery({
+  path: "sharing/invitations:get",
+  description:
+    "An invitation to an item by its ID, as its email links to it: the item's kind, ID and name, what the invitation lets them do, who sent it, the workspace the item is in and how much it holds. " +
+    "`state` is `pending` while it can be answered, and `accepted` once the person took it up. Null when it's gone, expired, or answered by someone else.",
+  args: { invitationId: v.string() },
+  returns: v.union(
+    v.null(),
+    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: v.string(), size: v.number(), state: v.union(v.literal("pending"), v.literal("accepted")) }),
+  ),
+  run: async (ctx, { userId }, { invitationId }) => {
+    const id = ctx.db.normalizeId("itemInvitations", invitationId);
+    const invitation = id ? await ctx.db.get("itemInvitations", id) : null;
+    const shared = invitation ? await findShared(ctx, invitation.kind, invitation.item) : null;
+    if (!invitation || !shared) return null;
+    // One that was accepted shows only to whoever holds the place it gave.
+    const state = invitation.state === "pending" ? ("pending" as const) : invitation.state === "accepted" && (await grantOf(ctx, shared.id, userId)) ? ("accepted" as const) : null;
+    if (!state) return null;
+    const inviter = await ctx.db.get("users", invitation.invitedBy);
+    return {
+      kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role,
+      by: { name: inviter ? personName(inviter) || inviter.email : "", ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) },
+      from: await workspaceName(ctx, shared.workspaceId), size: shared.size, state,
+    };
+  },
+});
+export const get = userQuery(getAction);
+export const getForAssistant = assistantQuery(getAction);

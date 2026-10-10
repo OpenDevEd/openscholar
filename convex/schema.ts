@@ -1304,9 +1304,13 @@ export default defineSchema({
   // People outside an item's workspace who may open it (#653), and the invitations waiting for an answer.
   itemAccess: defineTable(itemAccessFields)
     .index("by_item_and_user", ["item", "userId"])
-    // A person's "Shared with me", newest first, in all or of one kind.
+    // An item's guests in the order they were given it.
+    .index("by_item_and_grantedAt", ["item", "grantedAt"])
+    // A person's "Shared with me", newest first or by name, in all or of one kind.
     .index("by_user_and_grantedAt", ["userId", "grantedAt"])
-    .index("by_user_and_kind_and_grantedAt", ["userId", "kind", "grantedAt"]),
+    .index("by_user_and_kind_and_grantedAt", ["userId", "kind", "grantedAt"])
+    .index("by_user_and_name", ["userId", "name"])
+    .index("by_user_and_kind_and_name", ["userId", "kind", "name"]),
   itemInvitations: defineTable(itemInvitationFields)
     .index("by_item_and_email", ["item", "email"])
     .index("by_item_and_state", ["item", "state"])

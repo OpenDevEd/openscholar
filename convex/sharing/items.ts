@@ -14,22 +14,22 @@ import type { GuestRole, SharedKind } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
 
-/** An item as sharing sees it: where it is and what it's called. */
-export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string };
+/** An item as sharing sees it: where it is, what it's called, and how much it holds (a collection's papers). */
+export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size: number };
 
-/** Each kind's table, what its row is called, and the word for one in a sentence. */
+/** Each kind's table, what its row is called, how much it holds, and the word for one in a sentence. */
 const KINDS = {
-  collection: { table: "collections", name: (row: Doc<"collections">) => row.name, word: "collection" },
-} as const satisfies { [K in SharedKind]: { table: TableNames; name: (row: never) => string; word: string } };
+  collection: { table: "collections", name: (row: Doc<"collections">) => row.name, size: (row: Doc<"collections">) => row.itemCount, word: "collection" },
+} as const satisfies { [K in SharedKind]: { table: TableNames; name: (row: never) => string; size: (row: never) => number; word: string } };
 
 export const kindWord = (kind: SharedKind) => KINDS[kind].word;
 
 /** The item of `kind` with this ID, or null when there's none. */
 export async function findShared(ctx: Read, kind: SharedKind, id: string): Promise<Shared | null> {
-  const { table, name } = KINDS[kind];
+  const { table, name, size } = KINDS[kind];
   const rowId = ctx.db.normalizeId(table, id);
   const row = rowId ? await ctx.db.get(table, rowId) : null;
-  return row ? { kind, id: row._id, workspaceId: row.workspaceId, name: name(row) } : null;
+  return row ? { kind, id: row._id, workspaceId: row.workspaceId, name: name(row), size: size(row) } : null;
 }
 
 /** The item, for someone who acts in its workspace: only they share it, and anyone else learns nothing of it. */

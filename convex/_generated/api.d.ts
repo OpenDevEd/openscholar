@@ -377,6 +377,7 @@ import type * as sharing_guests from "../sharing/guests.js";
 import type * as sharing_invitations from "../sharing/invitations.js";
 import type * as sharing_items from "../sharing/items.js";
 import type * as sharing_mail from "../sharing/mail.js";
+import type * as sharing_shared from "../sharing/shared.js";
 import type * as sharing_upkeep from "../sharing/upkeep.js";
 import type * as sharing_validators from "../sharing/validators.js";
 import type * as testing_evidenceLibraryAddresses from "../testing/evidenceLibraryAddresses.js";
@@ -805,6 +806,7 @@ declare const fullApi: ApiFromModules<{
   "sharing/invitations": typeof sharing_invitations;
   "sharing/items": typeof sharing_items;
   "sharing/mail": typeof sharing_mail;
+  "sharing/shared": typeof sharing_shared;
   "sharing/upkeep": typeof sharing_upkeep;
   "sharing/validators": typeof sharing_validators;
   "testing/evidenceLibraryAddresses": typeof testing_evidenceLibraryAddresses;
