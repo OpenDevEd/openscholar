@@ -156,6 +156,12 @@ it("opens a shared collection to its guest from their own workspace, and to nobo
   expect(await titles(dave)).toEqual([]);
   expect(await dave.query(api.library.collections.getCollection, { collectionId: item.id })).toBeNull();
 
+  // The assistant lists it for her too. Its rows are the lab's: each names a library item only once she has saved the paper herself.
+  const listed = async () => (await carol.query(api.library.queries.papers, { collectionId: item.id })).papers.map(({ id, libraryItemId, inCollection }) => ({ id, libraryItemId, inCollection }));
+  expect(await listed()).toEqual([{ id: "https://openalex.org/W1", libraryItemId: undefined, inCollection: false }]);
+  const { id: hers } = await carol.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W1", title: "One" });
+  expect(await listed()).toEqual([{ id: "https://openalex.org/W1", libraryItemId: hers, inCollection: false }]);
+
   // An export she started reads the collection again for each part, so it ends with her place.
   const carolOwn = await t.run((ctx) => personalWorkspaceOf(ctx, users.carol));
   const exported = () => t.query(internal.exports.page, { userId: users.carol, workspaceId: carolOwn, source: { kind: "library", view }, format: "json", cursor: null, written: 0 });

@@ -446,7 +446,8 @@ async function inCollection(ctx: QueryCtx, libraryItemIds: Id<"libraryItems">[])
 export const papersAction = defineUserQuery({
   path: "library/queries:papers",
   description:
-    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, its rating (in their own library theirs, in an organization's its members' average), whether it's in any of their collections, the day they saved it, its paper ID and its library item ID. ` +
+    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, its rating (in their own library theirs, in an organization's its members' average), whether it's in any of their collections, the day it was saved, its paper ID and its library item ID. ` +
+    "`collectionId` may also be a collection shared with them from another workspace: its papers are that workspace's, so each comes with their own library item ID only if they saved the paper themselves, and `inCollection` says whether their own copy is in a collection of theirs. " +
     "`total` is how many papers the whole library or one collection has; a narrowed list has none, and library/queries:countPapers counts it. " +
     "With nothing else given it lists the whole library, newest saved first. To narrow it: `search` is words to find in titles, abstracts and authors; `collectionId` is one of their collections (from library/collections:listCollections); " +
     "`rated` is true for only the papers with a rating and false for only those without; `minRating` and `maxRating` are 0 to 5. Both go by the rating listed, which in an organization's library is its members' average. `yearFrom` and `yearTo` are years published. " +
@@ -466,19 +467,22 @@ export const papersAction = defineUserQuery({
     const read = await readLibraryPage(ctx, library, { ...view, sortBy: SORTS[given.sort ?? "saved"], sortOrder: given.ascending ? "asc" : "desc" }, { cursor: given.cursor || null, numItems: PAPERS_PAGE });
     // A narrowed view is counted by reading it, which a page of it leaves no room for in one read: its count is its own action.
     const kept = view.searchText === undefined && !hasNonCollectionLibraryFilters(view);
+    // In a collection shared from another workspace the rows are that library's: what the person can act on is their own copy of each paper, if they saved one.
+    const own = library === workspaceId ? read.page : await Promise.all(read.page.map((item) => findItem(ctx, workspaceId, item.openalexId)));
     // Asked paper by paper, finding the ones in no collection took a library of sixty a hundred reads.
-    const collected = await inCollection(ctx, read.page.map((item) => item._id));
+    const places = await inCollection(ctx, own.flatMap((item) => (item ? [item._id] : [])));
+    const collected = new Map(own.flatMap((item) => (item ? [item._id] : [])).map((id, at) => [id, places[at]]));
     return {
       ...(kept ? { total: (await countLibraryView(ctx, library, view)).count } : {}),
       papers: read.page.map((item, at) => ({
-        libraryItemId: item._id,
+        ...(own[at] ? { libraryItemId: own[at]._id } : {}),
         id: item.openalexId,
         title: short(item.title, PAPER_SHOWN.title),
         ...(authorDisplay(item) ? { authors: short(authorDisplay(item), PAPER_SHOWN.authors) } : {}),
         ...(item.publicationYear == null ? {} : { year: item.publicationYear }),
         ...(item.journal ? { journal: short(item.journal, PAPER_SHOWN.journal) } : {}),
         ...(item.rating === undefined ? {} : { rating: item.rating }),
-        inCollection: collected[at],
+        inCollection: (own[at] && collected.get(own[at]._id)) ?? false,
         savedOn: new Date(item.savedAt).toISOString().slice(0, 10),
         ...(item.pdfUrl ? { pdf: true as const } : {}),
       })),

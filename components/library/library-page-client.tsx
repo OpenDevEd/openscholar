@@ -436,8 +436,7 @@ export function LibraryPageClient() {
   return (
     <TranslationContext.Provider value={{}}>
       <ScreeningContext.Provider value={{}}>
-        {/* A guest's cards say what's in their own library, as a search's results do: these papers are saved in the collection's. */}
-        <ServerRatingsContext.Provider value={guest ? undefined : serverRatingsMap}>
+        <ServerRatingsContext.Provider value={serverRatingsMap}>
         <FocusMode
           isOpen={isFocusModeOpen}
           onClose={() => useUIStore.getState().setIsFocusModeOpen(false)}
