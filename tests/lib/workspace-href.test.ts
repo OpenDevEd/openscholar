@@ -7,12 +7,13 @@ describe("workspaceHref", () => {
     expect(workspaceHref("lab", "/library?sort=rating")).toBe("/o/lab/library?sort=rating");
     expect(workspaceHref("lab", "/settings")).toBe("/o/lab/settings");
     expect(workspaceHref("lab", "/settings/workspace/members")).toBe("/o/lab/settings/workspace/members");
+    // Its plans (#652).
+    expect(workspaceHref("lab", "/pricing")).toBe("/o/lab/pricing");
     expect(workspaceHref("lab", "/")).toBe("/o/lab");
   });
 
   it("leaves the deployment's admin pages, other pages and your own workspace as they are", () => {
     expect(workspaceHref("lab", "/settings/admin/models")).toBe("/settings/admin/models");
-    expect(workspaceHref("lab", "/pricing")).toBe("/pricing");
     expect(workspaceHref("lab", "/settingsx")).toBe("/settingsx");
     expect(workspaceHref(undefined, "/settings")).toBe("/settings");
   });
