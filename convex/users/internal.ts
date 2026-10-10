@@ -146,6 +146,9 @@ export async function applyUserDeleteProjection(
       state: "deleted",
       updatedAt: Date.now(),
     });
+    // What they shared from their own workspace closes to its guests now, not when the account's data is purged (#653).
+    const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique();
+    if (workspace) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.close, { workspaceId: workspace._id, cursor: null });
   });
 }
 

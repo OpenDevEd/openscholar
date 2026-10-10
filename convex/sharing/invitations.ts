@@ -105,8 +105,10 @@ export const respondVerified = internalMutation({
   handler: async (ctx, { userId, invitationId, emails, accept }) => {
     const [invitation, person] = await Promise.all([ctx.db.get("itemInvitations", invitationId), ctx.db.get("users", userId)]);
     if (!invitation || person?.state !== "active" || !emails.includes(invitation.email)) throw createError("FORBIDDEN", "Sign in with the invited email address");
-    if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     const shared = await findShared(ctx, invitation.kind, invitation.item);
+    // Accepting again what they already accepted, as a second tab does, opens it again.
+    if (accept && shared && invitation.state === "accepted" && (await grantOf(ctx, shared.id, userId))) return { kind: shared.kind, id: shared.id };
+    if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     if (!shared) throw createError("NOT_FOUND", "What you were invited to is no longer there.");
     // Its place becomes theirs. Someone who joined its workspace since has it without one.
     if (accept && !(await actorIn(ctx, person, shared.workspaceId)) && !(await grantOf(ctx, shared.id, userId))) {

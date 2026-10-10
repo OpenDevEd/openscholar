@@ -120,6 +120,9 @@ it("makes an invitation the place of whoever accepts it with the invited address
   expect(await dave.action(api.sharing.invitations.respond, { invitationId, accept: true })).toEqual({ kind: "collection", id: item.id });
   expect(await guestsOf()).toEqual([{ userId: users.dave, role: "viewer", name: "Trials" }]);
   expect(await invitationsOf()).toEqual([{ email: "dave@example.org", role: "viewer", state: "accepted" }]);
+  // A second tab that accepts it too opens the same item.
+  expect(await dave.action(api.sharing.invitations.respond, { invitationId, accept: true })).toEqual({ kind: "collection", id: item.id });
+  expect(await guestsOf()).toHaveLength(1);
   // It was the item's one place, and still is: nobody else fits.
   await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" })).rejects.toThrow(/allows 1 guest /);
 });
@@ -170,6 +173,25 @@ it("opens a shared collection to its guest from their own workspace, and to nobo
   await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
   expect(await titles(carol)).toEqual([]);
   expect((await exported()).count).toBe(0);
+});
+
+it("closes what a deleted account shared from its own workspace, though its data waits to be purged", async () => {
+  const { t, alice, carol, users } = await lab();
+  const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, users.alice));
+  const { id } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Mine" });
+  await alice.mutation(api.sharing.guests.add, { workspaceId, kind: "collection", id, userId: users.carol, role: "viewer" });
+  await alice.action(api.sharing.invitations.invite, { workspaceId, kind: "collection", id, email: "dave@example.org", role: "viewer" });
+  const shared = { kind: undefined, text: "", sort: "recent" as const, paginationOpts: { cursor: null, numItems: 10 } };
+  expect((await carol.query(api.sharing.shared.list, shared)).page.map((row) => row.name)).toEqual(["Mine"]);
+
+  await t.mutation(internal.users.internal.markUserDeletedFromClerk, { eventId: "evt_gone", eventType: "user.deleted", instanceId: "ins_test", occurredAt: Date.now(), payloadSha256: "sha_gone", clerkId: "alice" });
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+  // The collection is still there, for its retention, and nobody is its guest or invited to it.
+  expect(await t.run((ctx) => ctx.db.get("collections", id as Id<"collections">))).not.toBeNull();
+  expect(await t.run((ctx) => ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", id)).collect())).toEqual([]);
+  expect(await t.run((ctx) => ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", id)).collect())).toEqual([]);
+  expect((await carol.query(api.sharing.shared.list, shared)).page).toEqual([]);
 });
 
 it("takes a deleted account's places as a guest in steps of their own", async () => {
