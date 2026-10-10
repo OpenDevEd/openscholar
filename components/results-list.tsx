@@ -32,7 +32,7 @@ import { useSearch } from "@/lib/search";
 import { SearchCommandCenter } from "./search-command-center";
 
 import { NoResults, LoadingResults, QueryErrorState } from "@/components/no-results";
-import { SearchError, rejectedQuery } from "@/lib/search/search-error";
+import { rejectedQuery } from "@/lib/search/search-error";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { motion, AnimatePresence } from "motion/react";
 import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-utils";
@@ -263,7 +263,7 @@ export function ResultsList({
   const search = useSearch();
   const queryError = rejectedQuery(search.error);
   // A search that failed found nothing to call no results: the empty screen says what failed.
-  const failed = !queryError && search.error instanceof SearchError ? { problem: search.error.message } : null;
+  const failed = !queryError && search.error ? { problem: search.error.message } : null;
   // Get the current search ID from the URL
   const pathname = usePathname();
   const searchId = getEffectiveSearchId(pathname, search.searchId || undefined);
