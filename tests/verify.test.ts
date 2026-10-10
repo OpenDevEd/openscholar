@@ -75,6 +75,24 @@ describe("analyzePhase on a page load", () => {
     expect(analyzePhase([frame(500, { moved: [{ id: 2, dx: 0, dy: 2, dw: 0, dh: 0 }] })], load)).toHaveLength(1);
   });
 
+  it("reports what only looks like a slide: a long one with one big step, a wobble, and rows arriving one after another", () => {
+    const moves = (sizes: number[], added: (index: number) => boolean = () => false) =>
+      sizes.map((dy, index) => frame(500 + index * 16, { moved: [{ id: 1, dx: 0, dy, dw: 0, dh: 0 }], added: added(index) ? [{ id: 50 + index, box: [0, 0, 300, 20] as [number, number, number, number] }] : [] }));
+    // Fifty-nine steps of 10 px and one of 60: a long slide doesn't buy a bigger jump.
+    expect(analyzePhase(moves([...Array(30).fill(10), 60, ...Array(29).fill(10)]), load)).toHaveLength(1);
+    // Back and forth, frame after frame.
+    expect(analyzePhase(moves([10, -10, 10, -10, 10, -10]), load)).toHaveLength(1);
+    // A footer pushed 20 px by a new row in each of six frames in a row.
+    expect(analyzePhase(moves(Array(6).fill(20), () => true), load)).toHaveLength(1);
+    // One overshoot and return is how a spring settles.
+    expect(analyzePhase(moves([14, 18, 16, 12, 8, 5, 3, -3, -2, -1]), load)).toEqual([]);
+  });
+
+  it("keeps a jump out and back that happens beside a slide", () => {
+    const slide = Array.from({ length: 12 }, (_, step) => frame(500 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 10 }, ...(step === 3 ? [{ id: 2, dx: 0, dy: 100, dw: 0, dh: 0 }] : step === 4 ? [{ id: 2, dx: 0, dy: -100, dw: 0, dh: 0 }] : [])] }));
+    expect(analyzePhase(slide, load)).toHaveLength(1);
+  });
+
   it("still reports a jump that is followed by a few small settling steps", () => {
     const settle = Array.from({ length: 5 }, (_, step) => frame(516 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 2 }] }));
     const findings = analyzePhase([frame(500, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 110 }] }), ...settle], load);
