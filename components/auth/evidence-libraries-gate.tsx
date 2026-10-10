@@ -5,9 +5,9 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { PageWrapper } from "@/components/PageWrapper";
-import { pageItem, useItemHome } from "@/components/workspaces/item-home";
+import { useItemHome } from "@/components/workspaces/item-home";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
-import { bareWorkspacePath } from "@/lib/workspaces/paths";
+import { bareWorkspacePath, pageItem } from "@/lib/workspaces/paths";
 import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
 import { AuthStatePanel } from "./auth-state-panel";
 
