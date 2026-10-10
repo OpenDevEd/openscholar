@@ -4,7 +4,7 @@
 // the switcher and the join page.
 
 import type { FunctionReturnType } from "convex/server";
-import type { ReactElement } from "react";
+import { createContext, use, type ReactElement, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Home } from "@/components/icons";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -26,18 +26,32 @@ export type WorkspaceLook = Pick<WorkspaceRow, "kind" | "name" | "imageUrl"> & {
 /** Workspaces a list of them reads at a time; the one you're in is read apart. */
 const LISTED = 20;
 
+type Workspaces = { list: WorkspaceRow[] | undefined; more: boolean; loading: boolean; loadMore: () => void };
+const WorkspacesContext = createContext<Workspaces | null>(null);
+
 /**
- * The workspaces the person can switch to, their own first, a page at a time: `list` is
- * undefined while the first page loads, and `more` says there are more for `loadMore` to read.
+ * Reads the workspaces the person can switch to once, for the whole page, so the rail's card, the
+ * Move dialog and every workspace picker open with the list already in them.
  */
-export function useWorkspaces() {
+export function WorkspacesProvider({ children }: { children: ReactNode }) {
   const read = useProtectedPaginatedQuery(api.organizations.queries.workspaces, inWorkspace(useWorkspace(), {}), { initialNumItems: LISTED });
-  return {
+  const workspaces = {
     list: read.status === "LoadingFirstPage" ? undefined : read.results,
     more: read.status === "CanLoadMore" || read.status === "LoadingMore",
     loading: read.status === "LoadingMore",
     loadMore: () => read.loadMore(LISTED),
   };
+  return <WorkspacesContext value={workspaces}>{children}</WorkspacesContext>;
+}
+
+/**
+ * The workspaces the person can switch to, their own first, a page at a time: `list` is
+ * undefined while the first page loads, and `more` says there are more for `loadMore` to read.
+ */
+export function useWorkspaces(): Workspaces {
+  const workspaces = use(WorkspacesContext);
+  if (!workspaces) throw new Error("useWorkspaces needs WorkspacesProvider above it.");
+  return workspaces;
 }
 
 /** The workspace the page is in, read on its own: it may not be on the switcher's first page. Undefined while it loads. */

@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { ItemPresence } from "./presence";
 import { MoveDialog, type Movable } from "./move-dialog";
-import { usePaginatedQuery } from "convex/react";
+import { usePaginatedQuery, type UsePaginatedQueryReturnType } from "convex/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { AiIcon, ArrowRight, FileSearch, FolderPlus, History, ListChecks, Move, Pause, PenLine, Play, Plus, RotateCcw, Share2, Square, Star, Trash2, type AppIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,9 @@ export function ActivityButton({ kind, id, name }: { kind: ItemKind; id: string;
 
 export function ActivitySheet({ open, onOpenChange, kind, id, name }: { open: boolean; onOpenChange: (open: boolean) => void; kind: ItemKind; id: string; name: string }) {
   const t = useTranslations("workspaces.activity");
+  const workspaceId = useWorkspace();
+  // Read here, while the sheet is shut, so it opens with its rows in it.
+  const rows = usePaginatedQuery(api.activity.queries.list, inWorkspace(workspaceId, { kind, id }), { initialNumItems: PAGE });
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-full gap-0 p-0 sm:max-w-md">
@@ -105,18 +108,17 @@ export function ActivitySheet({ open, onOpenChange, kind, id, name }: { open: bo
           <SheetTitle>{t("title")}</SheetTitle>
           <SheetDescription className="truncate">{name}</SheetDescription>
         </SheetHeader>
-        {/* Inside the content, so it reads nothing while it's shut. */}
-        <ActivityRows kind={kind} id={id} />
+        <ActivityRows rows={rows} />
       </SheetContent>
     </Sheet>
   );
 }
 
-function ActivityRows({ kind, id }: { kind: ItemKind; id: string }) {
+function ActivityRows({ rows: { results, status, loadMore } }: { rows: UsePaginatedQueryReturnType<typeof api.activity.queries.list> }) {
   const t = useTranslations("workspaces.activity");
-  const workspaceId = useWorkspace();
   const now = useNow();
-  const { results, status, loadMore } = usePaginatedQuery(api.activity.queries.list, inWorkspace(workspaceId, { kind, id }), { initialNumItems: PAGE });
+  // The sheet opens with its rows. Opened before they were read, they fade in when they come.
+  const [late] = useState(status === "LoadingFirstPage");
   // Calendar days, from this morning's midnight: 23:00 last night is yesterday at 01:00.
   const midnight = new Date(now).setHours(0, 0, 0, 0);
   const dayOf = (at: number) => (at >= midnight ? "today" : at >= midnight - DAY ? "yesterday" : at >= midnight - 6 * DAY ? "thisWeek" : "earlier");
@@ -130,7 +132,7 @@ function ActivityRows({ kind, id }: { kind: ItemKind; id: string }) {
   if (status === "LoadingFirstPage") return <div className="flex-1" aria-busy />;
   return (
     <>
-      <ScrollArea shades className="min-h-0 flex-1">
+      <ScrollArea shades className={cn("min-h-0 flex-1", late && "animate-in fade-in-0 duration-200")}>
         {results.length ? (
           <div className="space-y-5 px-3 py-4">
             {groups.map((group) => (

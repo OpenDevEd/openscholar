@@ -33,19 +33,22 @@ type Item = { kind: SharedKind; id: string; name: string };
 
 /** Guests and invitations the dialog reads at a time. */
 const PAGE = 25;
+const SUGGESTED = 8;
 const WEEK = 7 * 86_400_000;
 
 /**
- * An item's guests, its waiting invitations and how many its plan allows. The button reads
- * them while the item has any, so its dialog opens with them in place.
+ * An item's guests, its waiting invitations, how many its plan allows and who to offer. The
+ * button reads them while the dialog is shut, so it opens with them in place.
  */
-function useGuests({ kind, id }: Pick<Item, "kind" | "id">, wanted: boolean) {
+function useGuests({ kind, id }: Pick<Item, "kind" | "id">) {
   const workspaceId = useWorkspace();
-  const args = inWorkspace(workspaceId, wanted ? { kind, id } : "skip");
+  const args = inWorkspace(workspaceId, { kind, id });
   return {
     room: useProtectedQuery(api.sharing.guests.room, args).data,
     guests: usePaginatedQuery(api.sharing.guests.list, args, { initialNumItems: PAGE }),
     invited: usePaginatedQuery(api.sharing.guests.invited, args, { initialNumItems: PAGE }),
+    // The people offered before anything is typed.
+    suggested: usePaginatedQuery(api.sharing.guests.candidates, args, { initialNumItems: SUGGESTED }),
   };
 }
 
@@ -57,7 +60,7 @@ function useGuests({ kind, id }: Pick<Item, "kind" | "id">, wanted: boolean) {
 export function ShareButton({ guests, ...item }: Item & { guests: number }) {
   const t = useTranslations("workspaces.share");
   const [open, setOpen] = useState(false);
-  const access = useGuests(item, open || guests > 0);
+  const access = useGuests(item);
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {/* The dialog's own trigger, so closing it gives the keyboard back to the button. */}
@@ -92,7 +95,8 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
   const params = useSearchParams();
   const [query, setQuery] = useState("");
   const text = useDeferredValue(query.trim());
-  const candidates = usePaginatedQuery(api.sharing.guests.candidates, inWorkspace(workspaceId, { kind, id, ...(text ? { text } : {}) }), { initialNumItems: 8 });
+  const searched = usePaginatedQuery(api.sharing.guests.candidates, inWorkspace(workspaceId, text ? { kind, id, text } : "skip"), { initialNumItems: SUGGESTED });
+  const candidates = text ? searched : access.suggested;
   const add = useWorkspaceMutation(api.sharing.guests.add);
   const invite = useWorkspaceAction(api.sharing.invitations.invite);
   const setRole = useWorkspaceMutation(api.sharing.guests.setRole);
@@ -133,7 +137,7 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
             detail: person.email,
             pick: () => void add({ kind, id, userId: person.userId, role: "viewer" }).catch(failed),
           })),
-          more: candidates.status === "CanLoadMore" || candidates.status === "LoadingMore" ? { loading: candidates.status === "LoadingMore", load: () => candidates.loadMore(8) } : undefined,
+          more: candidates.status === "CanLoadMore" || candidates.status === "LoadingMore" ? { loading: candidates.status === "LoadingMore", load: () => candidates.loadMore(SUGGESTED) } : undefined,
           invite: (email) => void invite({ kind, id, email, role: "viewer" }).catch(failed),
           has: (email) => invited.results.some((invitation) => invitation.email === email) || guests.results.some((guest) => guest.email.toLowerCase() === email),
           full: limit !== null && used >= limit ? t(`full.${kind}`, { plan: plan.name, count: limit }) : undefined,

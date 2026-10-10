@@ -83,9 +83,10 @@ function Raters({ collectionId, libraryItemId, average, ratings }: { collectionI
         <p className="px-2 pb-2 pt-1 text-xs font-medium text-muted-foreground">{t("heading")}</p>
         {/* As tall as everyone's ratings from the first frame, up to a few rows and then it scrolls, so the list doesn't grow as it arrives. */}
         <div className="overflow-y-auto" style={{ height: Math.min(ratings.count, ROWS_SHOWN) * ROW_PX - 2 }}>
-          <ul className={cn("space-y-0.5", more && !loaded && "opacity-60")}>
+          <ul className={cn("space-y-0.5 transition-opacity duration-200", more && !loaded && "opacity-60")}>
             {[...listed].sort((a, b) => b.rating - a.rating).map((rater) => (
-              <li key={rater.id} className="flex items-center gap-2.5 rounded-lg px-2 py-1.5">
+              // The ones read once the list opened fade in beside the ones the page already had.
+              <li key={rater.id} className={cn("flex items-center gap-2.5 rounded-lg px-2 py-1.5", !ratings.raters.some((first) => first.id === rater.id) && "animate-in fade-in-0 duration-200")}>
                 <IdentityAvatar name={rater.name} imageUrl={rater.imageUrl} className="size-6" />
                 <PersonName name={rater.name} you={rater.you} className="flex-1 text-sm" />
                 <Stars value={rater.rating} />

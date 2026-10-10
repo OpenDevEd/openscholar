@@ -24,6 +24,7 @@ import { auth } from "@clerk/nextjs/server";
 import { LOOK_COOKIE, lookKey, readCache, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
 import { AssistantPanel } from "@/components/assistant/panel";
 import { ItemHome, WorkspaceGone } from "@/components/workspaces/item-home";
+import { WorkspacesProvider } from "@/components/workspaces/parts";
 import { api } from "@/convex/_generated/api";
 
 // The brand typeface. To change it, swap the family here; --font-app feeds
@@ -98,28 +99,30 @@ export default async function RootLayout({
                 <NuqsAdapter>
                   <QuerySyncProvider>
                     <TooltipProvider>
-                      <div className="flex min-h-screen">
-                        {/* Sidebar */}
-                        <AppSidebar firstWorkspace={{ slug, ...(userId ? { user: userId } : {}), ...(me ? { me } : {}), ...(look ? { look } : {}) }} />
+                      <WorkspacesProvider>
+                        <div className="flex min-h-screen">
+                          {/* Sidebar */}
+                          <AppSidebar firstWorkspace={{ slug, ...(userId ? { user: userId } : {}), ...(me ? { me } : {}), ...(look ? { look } : {}) }} />
 
-                        {/* Main Content Area */}
-                        <div className="flex-1 flex flex-col min-w-0 min-h-0 [--app-navbar-height:3.5rem] md:[--app-navbar-height:0px]">
-                          {/* Mobile Navbar */}
-                          <MobileNavbar />
+                          {/* Main Content Area */}
+                          <div className="flex-1 flex flex-col min-w-0 min-h-0 [--app-navbar-height:3.5rem] md:[--app-navbar-height:0px]">
+                            {/* Mobile Navbar */}
+                            <MobileNavbar />
 
-                          <AuthRouteGate>{children}</AuthRouteGate>
+                            <AuthRouteGate>{children}</AuthRouteGate>
+                          </div>
                         </div>
-                      </div>
-                      <Toaster />
-                      <ConfirmationHost />
-                      {/* A link to an item in another of the person's workspaces opens there (#651), and a page of an organization they're no longer in gives way to their own. */}
-                      <Suspense fallback={null}>
-                        <ItemHome />
-                        <WorkspaceGone />
-                      </Suspense>
-                      <AssistantPanel />
-                      <CookieConsentBanner />
-                      <ConsentAwareGoogleAnalytics />
+                        <Toaster />
+                        <ConfirmationHost />
+                        {/* A link to an item in another of the person's workspaces opens there (#651), and a page of an organization they're no longer in gives way to their own. */}
+                        <Suspense fallback={null}>
+                          <ItemHome />
+                          <WorkspaceGone />
+                        </Suspense>
+                        <AssistantPanel />
+                        <CookieConsentBanner />
+                        <ConsentAwareGoogleAnalytics />
+                      </WorkspacesProvider>
                     </TooltipProvider>
                   </QuerySyncProvider>
                 </NuqsAdapter>
