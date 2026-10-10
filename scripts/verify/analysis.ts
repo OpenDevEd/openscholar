@@ -142,9 +142,10 @@ function shift(frames: Frame[]): Finding | null {
   const steps = new Map<number, Step[]>();
   for (const frame of frames) for (const move of frame.moved) steps.set(move.id, [...(steps.get(move.id) ?? []), { t: frame.t, move, changed: frame.added.length + frame.removed.length > 0 }]);
   const rest = [...steps].filter(([, own]) => !slid(own));
-  // A slide leaves a pixel or two of rounding on the parts it carries along.
+  // A slide leaves rounding on the parts it carries along: a pixel or two in all, or a pixel at a time as its frame passes them.
   const beside = rest.length < steps.size;
-  const jumped = rest.filter(([, own]) => !(beside && SIDES.every((side) => travelled(own, side) <= SLIDE_TAIL_PX)));
+  const rounding = (own: Step[]) => SIDES.every((side) => travelled(own, side) <= SLIDE_TAIL_PX || own.every((step) => Math.abs(step.move[side]) <= 1));
+  const jumped = rest.filter(([, own]) => !(beside && rounding(own)));
   if (jumped.length === 0) return null;
   const times = jumped.flatMap(([, own]) => own.map((step) => step.t));
   return { kind: "shift", from: Math.min(...times), to: Math.max(...times), moves: jumped.map(([id, own]) => furthest(id, own)) };
