@@ -14,7 +14,7 @@ export function recorder(config: { allow: string }) {
   let nextId = 1;
   let mutated = true;
   let allowed = new Set<Element>();
-  const state = { frames: [] as unknown[], lastChange: 0, baseline: null as number | null, painted: null as number | null };
+  const state = { frames: [] as unknown[], lastChange: 0, baseline: null as number | null };
 
   const attribute = (element: Element, names: string[]) => names.map((name) => element.getAttribute(name)).find((value) => value !== null) ?? "";
   const label = (element: Element) => attribute(element, ["aria-label", "data-testid", "data-slot", "role"]);
@@ -39,7 +39,7 @@ export function recorder(config: { allow: string }) {
     take: () => {
       const frames = state.frames;
       state.frames = [];
-      return { frames, baseline: state.baseline, painted: state.painted };
+      return { frames, baseline: state.baseline };
     },
     times: () => [state.lastChange, performance.now()],
     // What identifies an element across two sites: tag, classes and label,
@@ -57,13 +57,7 @@ export function recorder(config: { allow: string }) {
     mutated = true;
   }).observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
 
-  // The first frame a person sees. From here on, text that its web font
-  // moves has moved on screen, even while the rest of the page is arriving.
-  new PerformanceObserver((list) => {
-    state.painted ??= list.getEntriesByName("first-contentful-paint")[0]?.startTime ?? null;
-  }).observe({ type: "paint", buffered: true });
-
-  // Everything counts from the parsed document with every font it declares
+  // Recording counts from the parsed document with every font it declares
   // loaded. A weight first used when data arrives would otherwise swap in
   // later, at a different moment on each site.
   document.addEventListener("DOMContentLoaded", () => {

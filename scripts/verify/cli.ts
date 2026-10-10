@@ -277,8 +277,6 @@ async function optionsFor(values: Values, mode: string): Promise<RunOptions> {
     allow: [...ALWAYS_ALLOWED, ...list(values.allow)].flatMap((selector) => [selector, `${selector} *`]).join(", "),
     full: values.full === true,
     analyze: shift,
-    // dev.openscholar.ai paints and loads its fonts at other moments than a build on this machine.
-    reflows: false,
     prepare: await prepareFor(values),
     finish: values.anon === true ? undefined : signOut,
   };
