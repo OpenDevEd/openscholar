@@ -14,16 +14,19 @@ import type { GuestRole, SharedKind } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
 
-/** An item as sharing sees it: where it is, what it's called, and how much it holds (a collection's papers). */
+/** An item as sharing sees it: where it is, what it's called, and how much it holds (a collection's papers, a screening's). */
 export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size: number };
 
 /**
  * Each kind's table, what its row is called, how much it holds, the word for one in a sentence,
  * and the roles a guest of one can be given. A collection's editor puts papers in it and takes
- * them out (../library/collectionMembership.ts `editableCollection`).
+ * them out (../library/collectionMembership.ts `editableCollection`). A screening goes by the
+ * name it was given as it started, else by its papers' set as it was named then, as its
+ * Activity does; one of the saved papers, or from before sets were kept, has neither.
  */
 const KINDS = {
   collection: { table: "collections", name: (row: Doc<"collections">) => row.name, size: (row: Doc<"collections">) => row.itemCount, word: "collection", roles: ["viewer", "editor"] },
+  screening: { table: "screeningJobs", name: (row: Doc<"screeningJobs">) => row.name ?? row.label ?? (row.set?.kind === "saved" ? "Saved papers" : "Screening"), size: (row: Doc<"screeningJobs">) => row.totalPapers, word: "screening", roles: ["viewer"] },
 } as const satisfies { [K in SharedKind]: { table: TableNames; name: (row: never) => string; size: (row: never) => number; word: string; roles: readonly GuestRole[] } };
 
 export const kindWord = (kind: SharedKind) => KINDS[kind].word;
@@ -39,7 +42,8 @@ const NAME_MAX = 200;
 
 /** The item of `kind` with this ID, or null when there's none. */
 export async function findShared(ctx: Read, kind: SharedKind, id: string): Promise<Shared | null> {
-  const { table, name, size } = KINDS[kind];
+  // The row is the kind's own table's, which the type of a table picked by a value doesn't say.
+  const { table, name, size } = KINDS[kind] as { table: (typeof KINDS)[SharedKind]["table"]; name: (row: unknown) => string; size: (row: unknown) => number };
   const rowId = ctx.db.normalizeId(table, id);
   const row = rowId ? await ctx.db.get(table, rowId) : null;
   // Whole characters: an emoji cut in two is no character at all.
@@ -92,7 +96,7 @@ export const FOLLOW_STEP = 50;
 const follow = makeFunctionReference<"mutation", { kind: SharedKind; item: string; cursor: string | null }, null>("sharing/upkeep:follow");
 
 /** Whether anyone was given the item or invited to it. */
-async function hasGuests(ctx: Read, item: string) {
+export async function hasGuests(ctx: Read, item: string) {
   return Boolean(
     (await ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", item)).first()) ??
       (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", item)).first()),

@@ -7,6 +7,7 @@ import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
+import { readableJob } from "./access";
 import { searchTerms } from "../lib/searchText";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { answerAt, answerPaper, paperAnswers, restoreAnswer, restoreModelAnswer } from "../research/answers";
@@ -45,13 +46,13 @@ async function paperOf(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, res
 export const listAction = defineUserQuery({
   path: "screening/papers:list",
   description:
-    "Lists the papers of one of the person's screening jobs that landed in one outcome (included, unclear, excluded or failed), a page at a time in the order the job took them, " +
+    "Lists the papers of a screening job the person may read (one of their workspace's, or one shared with them) that landed in one outcome (included, unclear, excluded or failed), a page at a time in the order the job took them, " +
     "each with its score, stars and the answer to every question it was scored on. Given `text`, the papers whose title or authors best match its words, best first.",
   args: { jobId: v.id("screeningJobs"), outcome: screeningOutcomeValidator, text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(screeningJobPaperValidator),
-  run: async (ctx, { workspaceId }, { jobId, outcome, text, paginationOpts }) => {
-    const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || !(job.workspaceId === workspaceId)) return { page: [], isDone: true, continueCursor: "" };
+  run: async (ctx, actor, { jobId, outcome, text, paginationOpts }) => {
+    const job = await readableJob(ctx, actor, jobId);
+    if (!job) return { page: [], isDone: true, continueCursor: "" };
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX), maximumBytesRead: PAGE_BYTES };
     const needle = searchTerms(text);
     const page = await (needle
@@ -72,12 +73,12 @@ async function screened(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, p
 
 export const getAction = defineUserQuery({
   path: "screening/papers:get",
-  description: "One screened paper of one of the person's screening jobs, as the job's list shows it: where it landed, its score, stars and the answer to every question it was scored on. `paperId` is the paper's `openalexId`.",
+  description: "One screened paper of a screening job the person may read, as the job's list shows it: where it landed, its score, stars and the answer to every question it was scored on. `paperId` is the paper's `openalexId`.",
   args: { jobId: v.id("screeningJobs"), paperId: v.string() },
   returns: v.union(v.null(), screeningJobPaperValidator),
-  run: async (ctx, { workspaceId }, { jobId, paperId }) => {
-    const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || !(job.workspaceId === workspaceId)) return null;
+  run: async (ctx, actor, { jobId, paperId }) => {
+    const job = await readableJob(ctx, actor, jobId);
+    if (!job) return null;
     const result = await screened(ctx, jobId, paperId);
     return result?.outcome ? await paperOf(ctx, job, result, result.outcome) : null;
   },

@@ -26,6 +26,11 @@ import { jobModel, screeningRevision } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
 import { actorIn, type InWorkspace } from "../workspaces/actor";
+import { workspaceFrom } from "../workspaces/personal";
+import { countOf } from "../lib/listCounts";
+import { guestRole, itemGuestsOf } from "../sharing/items";
+import { guestRoleValidator, sharedFromValidator } from "../sharing/validators";
+import { readableJob } from "./access";
 import { makersIn, makerValidator } from "../workspaces/makers";
 import { availableCredits } from "../billing/accounts";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
@@ -170,15 +175,14 @@ export const getScreeningProgress = query({
 });
 
 /**
- * Get the full screening job record.
- *
- * Returns the complete job document for the authenticated owner, or null
- * if the user is not authenticated, the job doesn't exist, or it belongs
- * to another user.
+ * A screening job as its page shows it, for its workspace's members and for a guest of it
+ * (#653); null for anyone else, and when it doesn't exist.
  */
 export const getScreeningJobAction = defineUserQuery({
   path: "screening/queries:getScreeningJob",
-  description: "Read a screening job's source, questions, scoring rules, decision revision and outcome counts. Only the owner can read it.",
+  description:
+    "Read a screening job's source, questions, scoring rules, decision revision and outcome counts. Its workspace's members read it, with `guests`: how many people outside the workspace it's shared with, invitations still waiting included. " +
+    "Someone it's shared with reads it from their own workspace, with `guest`: what they may do with it and whose it is, and `source`, the kind of thing its papers came from. They get neither what it cost, where its papers went, nor which collection, search or screening they came from: those are its workspace's.",
   args: { jobId: v.id("screeningJobs") },
   returns: v.union(
     v.null(),
@@ -211,27 +215,45 @@ export const getScreeningJobAction = defineUserQuery({
       saved: v.optional(v.number()),
       removed: v.optional(v.number()),
       // Credits its counted papers cost, of the most they were expected to when it started.
-      // No `spent` for a job from before jobs kept what they cost.
-      credits: v.object({ spent: v.optional(v.number()), estimate: v.number() }),
+      // No `spent` for a job from before jobs kept what they cost. Its workspace's alone: a guest gets none.
+      credits: v.optional(v.object({ spent: v.optional(v.number()), estimate: v.number() })),
+      // How many people outside its workspace it's shared with, for its members; what a guest may do with it and whose it is, for a guest (#653).
+      guests: v.optional(v.number()),
+      guest: v.optional(v.object({ role: guestRoleValidator, from: sharedFromValidator })),
+      // For a guest, in place of `set`: the kind of thing its papers came from, and not which one. Its name is `label`, as the job itself goes by it.
+      source: v.optional(v.union(v.literal("search"), v.literal("collection"), v.literal("saved"), v.literal("screening"))),
     })
   ),
-  run: async (ctx, { workspaceId }, args) => {
+  run: async (ctx, actor, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job || !(job.workspaceId === workspaceId)) return null;
+    if (!job) return null;
+    const role = job.workspaceId === actor.workspaceId ? null : await guestRole(ctx, actor, job);
+    if (job.workspaceId !== actor.workspaceId && !role) return null;
     const progress = await readJobProgressSnapshot(ctx, job);
     const kept = await progressRow(ctx, job._id);
     const counts = await readScreeningProgressCounts(ctx, job);
     const unclear = kept?.unclear ?? 0;
     const target = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
+    const { spendCap, set, ...facts } = await factsOf(ctx, job);
+    // What it cost, the most it may spend, the collections its papers went to and which collection, search or screening they came from are its workspace's.
+    const own = role
+      ? { guest: { role, from: await workspaceFrom(ctx, job.workspaceId) }, ...(set ? { source: set.kind } : {}) }
+      : {
+          set,
+          ...(spendCap === undefined ? {} : { spendCap }),
+          // A job still to get its papers names the collection it will make.
+          ...(target ? { targetCollectionName: target.name } : job.newCollection ? { targetCollectionName: job.newCollection } : {}),
+          targetCollectionId: job.targetCollectionId,
+          ...(job.set ? { saved: kept?.saved ?? 0, removed: kept?.removed ?? 0 } : {}),
+          credits: { spent: kept?.credits ?? (job.set ? 0 : undefined), estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0, screeningPaperCredits(await pricingOf(ctx, job.serverModelId))).credits },
+          guests: await countOf(ctx, itemGuestsOf(job._id)),
+        };
 
     return {
-      ...(await factsOf(ctx, job)),
-      // A job still to get its papers names the collection it will make.
-      ...(target ? { targetCollectionName: target.name } : job.newCollection ? { targetCollectionName: job.newCollection } : {}),
+      ...facts,
+      ...own,
       unsaved: job.unsaved,
       prune: job.prune,
-      ...(job.set ? { saved: kept?.saved ?? 0, removed: kept?.removed ?? 0 } : {}),
-      credits: { spent: kept?.credits ?? (job.set ? 0 : undefined), estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0, screeningPaperCredits(await pricingOf(ctx, job.serverModelId))).credits },
       outcomes: { included: counts.qualifiedCount, unclear, excluded: Math.max(0, counts.completedCount - counts.qualifiedCount - unclear), failed: counts.failedCount },
       tallies: kept?.tallies,
       _id: job._id,
@@ -246,7 +268,6 @@ export const getScreeningJobAction = defineUserQuery({
       qualifiedPapers: progress.qualifiedPapers,
       questions: job.questions,
       scoringConfig: job.scoringConfig,
-      targetCollectionId: job.targetCollectionId,
       createdAt: job.createdAt,
       updatedAt: job.updatedAt,
       completedAt: job.completedAt,
@@ -464,15 +485,15 @@ export async function readScreeningResultsPage(ctx: QueryCtx, job: Doc<"screenin
 }
 export type ScreeningResultRow = Awaited<ReturnType<typeof readScreeningResultsPage>>["page"][number];
 
-/** One page of the results of a job the person owns; an empty page for anyone else. */
+/** One page of the results of a job the person may read; an empty page for anyone else. */
 export const listScreeningResultsAction = defineUserQuery({
   path: "screening/queries:listScreeningResults",
   description: "Read a page of a screening job's scored decisions with original model answers and decision provenance. Pass the job revision to reject changes between pages.",
   args: { jobId: v.id("screeningJobs"), paginationOpts: paginationOptsValidator, revision: v.optional(v.string()) },
   returns: paginationResultValidator(screeningResultRowValidator),
-  run: async (ctx, { workspaceId }, args) => {
-    const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job || !(job.workspaceId === workspaceId)) return { page: [], isDone: true, continueCursor: "" };
+  run: async (ctx, actor, args) => {
+    const job = await readableJob(ctx, actor, args.jobId);
+    if (!job) return { page: [], isDone: true, continueCursor: "" };
     await screeningRevision(ctx, job, args.revision);
     return await readScreeningResultsPage(ctx, job, args.paginationOpts);
   },

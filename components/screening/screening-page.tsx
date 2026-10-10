@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { JobView, jobName } from "./job-view";
 import { SetupView } from "./setup-view";
 import { ItemBar } from "@/components/workspaces/activity";
+import { ShareButton } from "@/components/workspaces/share-dialog";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { faceOf, useRunBy } from "@/components/workspaces/run-by";
 
@@ -160,11 +161,20 @@ export function ScreeningPage() {
               <motion.div key={job?._id ?? "new"} initial={{ opacity: 0, y: begun ? 8 : 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }} onAnimationStart={() => setBegun(true)} className={cn("flow-root", stale && "pointer-events-none opacity-60")} aria-busy={stale}>
                 {job ? (
                   <>
-                    <ItemBar kind="screening" id={job._id} name={jobName(t, job, date)} started="runBy" className={PANE_HEADER} />
+                    <ItemBar
+                      kind="screening"
+                      id={job._id}
+                      name={jobName(t, job, date)}
+                      started="runBy"
+                      className={PANE_HEADER}
+                      share={<ShareButton kind="screening" id={job._id} name={jobName(t, job, date)} guests={job.guests ?? 0} />}
+                      guest={job.guest}
+                    />
+                    {/* A screening shared with you waits on its own workspace's screenings, not on yours. */}
                     <JobView
                       job={job}
-                      phase={phaseOf(job, active)}
-                      blocker={blockerOf(reading(job._id))}
+                      phase={phaseOf(job, job.guest ? [] : active)}
+                      blocker={job.guest ? undefined : blockerOf(reading(job._id))}
                       onRunAgain={() => openForm(job)}
                     />
                   </>

@@ -4336,10 +4336,12 @@
     "share": {
       "share": "Partager",
       "shareThis": {
-        "collection": "Partager cette collection"
+        "collection": "Partager cette collection",
+        "screening": "Partager ce criblage"
       },
       "title": {
-        "collection": "Partager la collection"
+        "collection": "Partager la collection",
+        "screening": "Partager le criblage"
       },
       "addPeople": "Ajouter des personnes par nom ou e-mail",
       "inviteEmail": "Inviter {email}",
@@ -4365,7 +4367,8 @@
       "usedOf": "{used} sur {limit}",
       "moreGuests": "Plus d'invités",
       "full": {
-        "collection": "{plan} permet {count, plural, one {# invité} other {# invités}} par collection"
+        "collection": "{plan} permet {count, plural, one {# invité} other {# invités}} par collection",
+        "screening": "{plan} permet {count, plural, one {# invité} other {# invités}} par criblage"
       },
       "failed": "Impossible de modifier le partage"
     },
@@ -4377,10 +4380,12 @@
       "search": "Rechercher dans les éléments partagés",
       "all": "Tout",
       "kinds": {
-        "collection": "Collections"
+        "collection": "Collections",
+        "screening": "Criblages"
       },
       "size": {
-        "collection": "{count, plural, one {# article} other {# articles}}"
+        "collection": "{count, plural, one {# article} other {# articles}}",
+        "screening": "{count, plural, one {# article} other {# articles}}"
       },
       "runUses": "Tout ce que vous lancez dessus utilise",
       "yourCredits": "vos crédits",
@@ -4393,7 +4398,8 @@
       "more": "Afficher plus",
       "from": "De {workspace}",
       "sharedOne": {
-        "collection": "{name} a partagé une collection"
+        "collection": "{name} a partagé une collection",
+        "screening": "{name} a partagé un criblage"
       },
       "pointOwn": "Elle se trouve dans votre propre espace de travail",
       "pointCredits": "Ce que vous lancez dessus utilise vos crédits",

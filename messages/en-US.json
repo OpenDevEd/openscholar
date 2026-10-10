@@ -4336,10 +4336,12 @@
     "share": {
       "share": "Share",
       "shareThis": {
-        "collection": "Share this collection"
+        "collection": "Share this collection",
+        "screening": "Share this screening"
       },
       "title": {
-        "collection": "Share collection"
+        "collection": "Share collection",
+        "screening": "Share screening"
       },
       "addPeople": "Add people by name or email",
       "inviteEmail": "Invite {email}",
@@ -4365,7 +4367,8 @@
       "usedOf": "{used} of {limit}",
       "moreGuests": "More guests",
       "full": {
-        "collection": "{plan} allows {count, plural, one {# guest} other {# guests}} on each collection"
+        "collection": "{plan} allows {count, plural, one {# guest} other {# guests}} on each collection",
+        "screening": "{plan} allows {count, plural, one {# guest} other {# guests}} on each screening"
       },
       "failed": "Couldn't change who this is shared with"
     },
@@ -4377,10 +4380,12 @@
       "search": "Search shared items",
       "all": "All",
       "kinds": {
-        "collection": "Collections"
+        "collection": "Collections",
+        "screening": "Screenings"
       },
       "size": {
-        "collection": "{count, plural, one {# paper} other {# papers}}"
+        "collection": "{count, plural, one {# paper} other {# papers}}",
+        "screening": "{count, plural, one {# paper} other {# papers}}"
       },
       "runUses": "Anything you run on these uses",
       "yourCredits": "your credits",
@@ -4393,7 +4398,8 @@
       "more": "Show more",
       "from": "From {workspace}",
       "sharedOne": {
-        "collection": "{name} shared a collection"
+        "collection": "{name} shared a collection",
+        "screening": "{name} shared a screening"
       },
       "pointOwn": "It sits in your own workspace",
       "pointCredits": "Work you run on it uses your credits",

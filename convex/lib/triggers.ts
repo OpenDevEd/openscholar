@@ -76,3 +76,4 @@ triggers.register("itemInvitations", countList((invitation) => (invitation.state
 triggers.register("itemAccess", countList((grant) => sharedWithOf(grant.userId)));
 triggers.register("itemAccess", countList((grant) => sharedWithOf(grant.userId, grant.kind)));
 triggers.register("collections", followShared("collection"));
+triggers.register("screeningJobs", followShared("screening"));
