@@ -6,6 +6,8 @@ import { api } from "../_generated/api";
 import schema from "../schema";
 import { madeBy } from "../workspaces/actor.test-support";
 import { organizationWorkspaceOf } from "../workspaces/personal";
+import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const token = "els_" + "a".repeat(43);
@@ -13,7 +15,8 @@ const token = "els_" + "a".repeat(43);
 async function setup() {
   const t = convexTest(schema, modules);
   const seeded = await t.run(async (ctx) => {
-    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_sources", evidenceLibrariesEnabled: true, name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_sources", evidenceLibrariesEnabled: false, name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+    await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
     const users = new Map<string, Awaited<ReturnType<typeof ctx.db.insert<"users">>>>();
     for (const clerkId of ["owner", "colleague"]) {
       users.set(clerkId, await ctx.db.insert("users", {clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 }));

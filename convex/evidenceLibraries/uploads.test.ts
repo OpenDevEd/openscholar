@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import schema from "../schema";
 import { api } from "../_generated/api";
 import { organizationWorkspaceOf } from "../workspaces/personal";
+import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const STORAGE_ORIGIN = "https://storage.example.test";
@@ -21,8 +23,9 @@ async function seedLibrary(role: "org:admin" | "org:member") {
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
-      evidenceLibrariesEnabled: true,
+      evidenceLibrariesEnabled: false,
     });
+    await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
     await ctx.db.insert("organizationMemberships", {
       organizationId,
       clerkMembershipId: "orgmem_uploads",

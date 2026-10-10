@@ -9,6 +9,8 @@ import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries
 import { queueConfigurationDeploymentOperation } from "./operations";
 import { createEvidenceLibrarySetup } from "./mutations";
 import { toSectionRows } from "../../tests/helpers/evidence-library-setup-fixture";
+import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -43,8 +45,9 @@ async function createOperationFixture(
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
-      evidenceLibrariesEnabled: true,
+      evidenceLibrariesEnabled: false,
     });
+    await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
     await seedFeatureUser(ctx, clerkUserId);
     await ctx.db.insert("organizationMemberships", {
       organizationId,
@@ -111,8 +114,9 @@ async function createActivationFixture(
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
-      evidenceLibrariesEnabled: true,
+      evidenceLibrariesEnabled: false,
     });
+    await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
     await seedFeatureUser(ctx, clerkUserId);
     await ctx.db.insert("organizationMemberships", {
       organizationId,
