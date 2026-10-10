@@ -179,6 +179,9 @@ jobs:
       - name: Check only extraction imports its mutations and queries
         run: npm run check:extraction-imports
 
+      - name: Check only the assistant's modules load its agent
+        run: npm run check:module-weight
+
       - name: Check every user action is registered for the assistant
         run: npm run check:user-actions
 

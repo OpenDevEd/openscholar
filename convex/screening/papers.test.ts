@@ -49,8 +49,9 @@ async function screened({ bookkept = true, before }: { bookkept?: boolean; befor
   vi.useFakeTimers();
   for (const [i, answers] of ANSWERS.entries()) {
     await t.mutation(internal.screening.mutations.handleScreeningComplete, {
-      workId: `work_${i}`,
-      context: { jobId, resultId: results[i]._id },
+      // A paper's completion finds it by its work in the pool.
+      workId: results[i].workId!,
+      context: {},
       result: answers
         ? { kind: "success", returnValue: { responses: encodeQuestionResponseMap(answers), confidences: encodeQuestionResponseMap({ "Randomized?": 0.9, "Primary schools?": 0.7 }), confidence: 0.8 } }
         : { kind: "failed", error: "The model didn't answer" },

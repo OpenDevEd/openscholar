@@ -1215,6 +1215,8 @@ export default defineSchema({
     .index("by_job_and_status_and_waitingWorkspace", ["jobId", "status", "waitingWorkspace"])
     .index("by_waitingWorkspace_and_waitingSince", ["waitingWorkspace", "waitingSince"])
     .index("by_doneAt", ["doneAt"])
+    // A started paper by its work in the pool: how the pool's callback finds the paper that finished (#796).
+    .index("by_workId", ["workId"])
     // A job's papers waiting for that bookkeeping, which a move waits for (#654).
     .index("by_job_and_doneAt", ["jobId", "doneAt"])
     .searchIndex("search_text", { searchField: "searchText", filterFields: ["jobId", "outcome"] }),

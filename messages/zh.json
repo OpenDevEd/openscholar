@@ -4269,8 +4269,8 @@
     "creditsLeft": "剩余 {credits} 积分",
     "drawsOn": "使用",
     "ratings": {
-      "collection": "收藏集",
-      "yours": "你在此收藏集中的评分",
+      "average": "{organization}的平均评分：{average}（满分 5）",
+      "headingIn": "{organization}中的评分",
       "everyone": "大家在此收藏集中的评分",
       "heading": "此收藏集中的评分",
       "none": "暂无评分",

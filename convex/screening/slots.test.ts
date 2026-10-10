@@ -44,12 +44,14 @@ const papersOf = (t: T, jobId: Id<"screeningJobs">) =>
 const running = (t: T, userId: Id<"users">) =>
   t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return (await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())?.running; });
 
-/** Papers finishing as their work completes them, then one batch of the bookkeeping worker. */
+/** Papers finishing as their work completes them, then one batch of the bookkeeping worker: what its query reads, handed to its mutation. */
 async function finishAndBookkeep(t: T, ids: Id<"screeningResults">[]) {
   await t.run(async (ctx) => {
     for (const id of ids) await ctx.db.patch("screeningResults", id, { status: "completed", completedAt: 2, doneAt: ctx.db.vars.commitTs });
   });
-  await t.mutation(internal.screening.bookkeeping.bookkeep, { results: ids });
+  const work = await t.query(internal.screening.bookkeeping.nextFinished, { name: "screening" });
+  expect(work.batch?.results).toEqual(ids);
+  await t.mutation(internal.screening.bookkeeping.bookkeep, work.batch!);
 }
 
 describe("each person's paper slots", () => {

@@ -27,7 +27,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { useCollectionPicker } from "./use-collection-picker";
 import { NewCollectionDialog, useCollectionDialogsReady } from "./collection-dialogs";
-import { useCurrentWorkspace, WorkspaceTag } from "@/components/workspaces/parts";
+import { useCurrentWorkspace, WorkspaceTile } from "@/components/workspaces/parts";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 /** A removal's ID: the server keeps what was removed for a day, for Undo. */
@@ -348,7 +348,11 @@ function CollectionsPanel({
     <>
       <div className="flex items-center gap-2 px-2 pt-1 pb-2">
         <p className="flex-1 shrink-0 text-sm font-medium">{t("addToCollection")}</p>
-        {workspace ? <WorkspaceTag workspace={workspace} size="sm" /> : null}
+        {workspace ? (
+          <span role="img" aria-label={workspace.name} className="flex">
+            <WorkspaceTile workspace={workspace} size="sm" />
+          </span>
+        ) : null}
       </div>
       <div className="relative mb-1">
         <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

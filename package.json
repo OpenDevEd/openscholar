@@ -21,6 +21,7 @@
     "check:convex-rules": "vite-node scripts/check-convex-rules.ts",
     "check:openalex-key": "bash scripts/check-openalex-key.sh",
     "check:extraction-imports": "bash scripts/check-extraction-imports.sh",
+    "check:module-weight": "node scripts/check-module-weight.mjs",
     "check:user-actions": "vite-node --config vitest.config.ts scripts/check-user-actions.ts",
     "schema:check:evidence-library-config": "node scripts/sync-evidence-library-config-contract.mjs --check",
     "test:e2e:auth": "playwright test e2e/auth.spec.ts --config=playwright.config.ts",

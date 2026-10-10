@@ -5,6 +5,7 @@
  * their workspace's queue, oldest job first, and every paper that finishes lets the next one
  * start. One workspace's 1,000 papers no longer hold the whole pool while another's job waits.
  */
+import type { Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -13,6 +14,7 @@ import { pricingOf } from "../ai/serverModel";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
 import { progressOf } from "./bookkeeping";
+import type { startFactsValidator } from "./validators";
 
 /**
  * Papers a person may have running when their plan sets no `concurrency` in Autumn: the
@@ -26,15 +28,48 @@ export async function paperLimit(ctx: QueryCtx | MutationCtx, workspaceId: Id<"w
   return Math.max(1, Math.min(SCREENING_POOL_SIZE, concurrency));
 }
 
-/** Starts one waiting paper: its work goes into the pool. */
-async function startPaper(ctx: MutationCtx, result: Doc<"screeningResults">) {
-  const workId = await screeningPool.enqueueAction(
+/**
+ * Starts waiting papers: their work goes into the pool in one call, which costs about what one
+ * paper's used to (#796). The pool's callback finds each paper by its work.
+ */
+async function startPapers(ctx: MutationCtx, results: Doc<"screeningResults">[]) {
+  if (!results.length) return;
+  const workIds = await screeningPool.enqueueActionBatch(
     ctx,
     internal.screening.workpoolActions.screenPaperAction,
-    { resultId: result._id, jobId: result.jobId },
-    { onComplete: internal.screening.mutations.handleScreeningComplete, context: { resultId: result._id, jobId: result.jobId } },
+    results.map((result) => ({ resultId: result._id, jobId: result.jobId })),
+    { onComplete: internal.screening.mutations.handleScreeningComplete, context: {} },
   );
-  await ctx.db.patch("screeningResults", result._id, { workId, waitingWorkspace: undefined, waitingSince: undefined });
+  for (const [i, result] of results.entries()) await ctx.db.patch("screeningResults", result._id, { workId: workIds[i], waitingWorkspace: undefined, waitingSince: undefined });
+}
+
+/**
+ * A workspace's first waiting papers, oldest job first, then in each job's order. A paper of a
+ * job cancelled a moment ago may start before the job's sweep skips it; it sees the job
+ * and stops before asking the model.
+ */
+const waitingPapers = (ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">, most: number) =>
+  ctx.db
+    .query("screeningResults")
+    .withIndex("by_waitingWorkspace_and_waitingSince", (q) => q.eq("waitingWorkspace", workspaceId).gte("waitingSince", 0))
+    .take(Math.min(most, SCREENING_POOL_SIZE));
+
+type StartFacts = Infer<typeof startFactsValidator>;
+
+/**
+ * Reads what a pass over each of `workspaceIds` needs (./validators.ts). A job's spending limit
+ * is set when it's made and never added later, so one read as having none still has none.
+ */
+export async function readStartFacts(ctx: QueryCtx, workspaceIds: Id<"workspaces">[]): Promise<StartFacts> {
+  const limits = await Promise.all(workspaceIds.map(async (workspaceId) => ({ workspaceId, limit: await paperLimit(ctx, workspaceId) })));
+  const uncapped = new Set<Id<"screeningJobs">>();
+  for (const { workspaceId, limit } of limits) {
+    const waiting = await waitingPapers(ctx, workspaceId, limit);
+    for (const jobId of new Set(waiting.map((result) => result.jobId))) {
+      if ((await ctx.db.get("screeningJobs", jobId))?.spendCap === undefined) uncapped.add(jobId);
+    }
+  }
+  return { limits, uncapped: [...uncapped] };
 }
 
 /**
@@ -55,33 +90,34 @@ async function budgetOf(ctx: MutationCtx, jobId: Id<"screeningJobs">): Promise<B
 
 /**
  * Starts a workspace's waiting papers while it's under its limit, first counting off
- * `finished` papers of its that stopped running. Firecrawl's `concurrentJobDone`.
+ * `finished` papers of its that stopped running. Firecrawl's `concurrentJobDone`. With `facts`,
+ * read by the bookkeeping worker's query, it reads neither the workspace's account nor an
+ * uncapped job; without them, as when a job's papers are made, it reads both itself.
+ * ponytail: the limit in `facts` is a moment old, so a plan that drops during a pass is seen by the
+ * next one, and that pass's papers finish above it, as the ones already running always did. Keep
+ * the limit on the slots row, written when the plan changes, if a drop must hold within the pass.
  */
-export async function startWaitingPapers(ctx: MutationCtx, workspaceId: Id<"workspaces">, finished = 0) {
+export async function startWaitingPapers(ctx: MutationCtx, workspaceId: Id<"workspaces">, finished = 0, facts?: StartFacts) {
   const slots = await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
   let running = Math.max(0, (slots?.running ?? 0) - finished);
-  const limit = await paperLimit(ctx, workspaceId);
+  const limit = facts?.limits.find((row) => row.workspaceId === workspaceId)?.limit ?? (await paperLimit(ctx, workspaceId));
   if (running < limit) {
-    // The workspace's waiting papers, oldest job first, then in each job's order. A paper of a
-    // job cancelled a moment ago may start before the job's sweep skips it; it sees the job
-    // and stops before asking the model.
-    const waiting = await ctx.db
-      .query("screeningResults")
-      .withIndex("by_waitingWorkspace_and_waitingSince", (q) => q.eq("waitingWorkspace", workspaceId).gte("waitingSince", 0))
-      .take(limit - running);
+    const waiting = await waitingPapers(ctx, workspaceId, limit - running);
     // A paper of a job with a spending limit starts only while the job has room for it, and waits otherwise.
     // ponytail: such a job's waiting papers still fill this pass, so with 20 of them at the head a later job's wait a pass longer.
     const budgets = new Map<Id<"screeningJobs">, Budget | null>();
     const started = new Map<Id<"screeningJobs">, number>();
+    const starting: Doc<"screeningResults">[] = [];
     for (const result of waiting) {
-      if (!budgets.has(result.jobId)) budgets.set(result.jobId, await budgetOf(ctx, result.jobId));
+      if (!budgets.has(result.jobId)) budgets.set(result.jobId, facts?.uncapped.includes(result.jobId) ? null : await budgetOf(ctx, result.jobId));
       const budget = budgets.get(result.jobId);
       if (budget && budget.taken >= budget.room) continue;
-      await startPaper(ctx, result);
+      starting.push(result);
       if (budget) budget.taken++;
       started.set(result.jobId, (started.get(result.jobId) ?? 0) + 1);
       running++;
     }
+    await startPapers(ctx, starting);
     // Each job's papers in a slot, until the bookkeeping counts them off: what its page shows as being read, and what a spending limit holds.
     for (const [jobId, taken] of started) {
       const progress = budgets.get(jobId)?.progress ?? (await progressOf(ctx, jobId));

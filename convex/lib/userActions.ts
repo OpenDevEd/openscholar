@@ -13,7 +13,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { getCurrentUser, requireActiveUser, requireAuth } from "./auth";
 import { createError } from "./errors";
-import { DONE, endStep } from "../assistant/steps";
+import { DONE } from "../../lib/assistant/steps";
 import { actorFor, type Actor } from "../workspaces/actor";
 import { noteActivity } from "../activity/notes";
 import type { Note } from "../activity/validators";
@@ -366,7 +366,8 @@ export function assistantMutation<Args extends PropertyValidators, Returns exten
         if (!approved && entry.asksFirst && (await entry.asksFirst(ctx, actor, rest))) throw createError("FORBIDDEN", ASKS_FIRST);
         const result = await changed(ctx, entry, actor, rest);
         // The step, and through it the model, is told a change that returns nothing was made.
-        if (stepId) await endStep(ctx, stepId, result ?? DONE);
+        // Called by reference, in this transaction: importing the steps module would load the assistant's agent with every action defined here.
+        if (stepId) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? DONE) });
         return result;
       },
     }),

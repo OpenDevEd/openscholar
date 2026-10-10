@@ -37,8 +37,21 @@ export function parseStep(raw: string): Step {
   return { verb, target, text, label: raw };
 }
 
+/**
+ * With --early the first step is taken while the page loads, as soon as its
+ * target answers, so it has to have one. A click or a hover: what typing into
+ * a field opens is a list of suggestions, which isn't followed as an overlay.
+ */
+export function earlyStep(steps: Step[]): Step {
+  const [first] = steps;
+  if (!first || !["click", "hover"].includes(first.verb)) throw new Error("--early takes the first --do step early: give it one that clicks or hovers.");
+  return first;
+}
+
 export type RunOptions = {
   steps: Step[];
+  /** The first step runs as soon as its target answers clicks, before the page's data is in. */
+  early: boolean;
   slow: number;
   quietMs: number;
   viewport: { width: number; height: number };
@@ -129,14 +142,14 @@ async function itemFor(page: Page, finding: Finding, start: number): Promise<Ite
 const INTERRUPTED = /NS_BINDING_ABORTED|interrupted by another navigation|frame was detached/i;
 
 /** Opens a URL, starting again if the page's own navigation (a reload after signing in) interrupts it. */
-export async function open(page: Page, url: string, attempt = 1): Promise<Response | null> {
+export async function open(page: Page, url: string, attempt = 1, until: "load" | "commit" = "load"): Promise<Response | null> {
   try {
-    return await page.goto(url);
+    return await page.goto(url, { waitUntil: until });
   } catch (error) {
     if (attempt === 3 || !INTERRUPTED.test((error as Error).message)) throw error;
     await page.waitForLoadState("load").catch(() => {});
     await sleep(500);
-    return open(page, url, attempt + 1);
+    return open(page, url, attempt + 1, until);
   }
 }
 
@@ -307,10 +320,51 @@ async function runStep(session: Session, step: Step) {
   );
 }
 
+/**
+ * Waits until React answers events on the step's target: until then a click
+ * does nothing. The target is looked up again each time, since hydration can
+ * replace it.
+ */
+async function answers(page: Page, step: Step, timeout: number) {
+  const deadline = Date.now() + timeout;
+  const hydrated = (element: Element) => Object.keys(element).some((key) => key.startsWith("__reactProps$"));
+  while (Date.now() < deadline) {
+    const ready = await page.locator(step.target).first().evaluate(hydrated, undefined, { timeout: Math.max(1, deadline - Date.now()) }).catch(() => false);
+    if (ready) return;
+    await sleep(20);
+  }
+  throw new Error(`its target didn't answer within ${timeout}ms`);
+}
+
+/**
+ * Opens the page and takes the step at once, the way someone clicks a button
+ * before the page's data has arrived. The load isn't waited for or judged:
+ * only what the step opens is.
+ */
+async function earlyPhase(session: Session, step: Step) {
+  const timeout = session.tolerant ? 10_000 : 15_000;
+  const opened = session.run.opened;
+  session.run.stopped = step.label;
+  await runPhase(session, { name: `early ${step.label}`, kind: "early", start: 0 }, async () => {
+    // Not waiting for the page's images and scripts to finish: the step is taken as soon as its target answers.
+    const response = await withTimeout(open(session.page, session.origin + session.target, 1, "commit"), 90_000, `Opening ${session.origin}${session.target}`);
+    await answers(session.page, step, timeout)
+      .then(() => act(session.page, step, timeout))
+      .catch((error: Error) => {
+        throw new Error(`Step "${step.label}" failed early on ${session.origin}${session.target}: ${error.message.split("\n")[0]}`);
+      });
+    return response;
+  });
+  // Only what the step opens is judged, so one that opened nothing checked nothing.
+  if (session.run.opened === opened && !session.tolerant) throw new Error(`Step "${step.label}" opened no dialog, sheet, popover or menu on ${session.origin}${session.target}, so --early had nothing to check.`);
+}
+
 async function runAll(session: Session) {
+  const { early, steps } = session.options;
   session.run.stopped = `load ${session.target}`;
-  await loadPhase(session, `load ${session.target}`, session.target);
-  for (const step of session.options.steps) {
+  if (early) await earlyPhase(session, earlyStep(steps));
+  else await loadPhase(session, `load ${session.target}`, session.target);
+  for (const step of early ? steps.slice(1) : steps) {
     session.run.stopped = step.label;
     await runStep(session, step);
   }

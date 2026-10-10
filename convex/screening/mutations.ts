@@ -197,11 +197,14 @@ export const fillScreeningJob = internalMutation({
     const reused = reading.set?.kind === "search" ? await answeredFully(ctx, screening, reading.questions.map((q) => q.question), papers.map((paper) => paper.openalexId)) : new Set<string>();
     // The papers it took that cost credits and aren't done, so not paid for yet, and this step's: as a job made with all of them is checked.
     // Reused papers count as done only once bookkept, so taking them all as done-first can only overstate what's unpaid.
-    const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();
-    const free = reading.reused ?? 0;
-    const done = progress ? progress.completed + progress.skipped + progress.failed : 0;
-    const unpaid = Math.max(0, place.papers - free - Math.max(0, done - free));
-    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.createdBy, reading.workspaceId, unpaid + papers.length - reused.size, reading)).affordable;
+    // Read only for a job with no hold: the bookkeeping worker rewrites the progress row as papers finish, and a step that read it conflicted with it (#796).
+    const unpaid = async () => {
+      const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();
+      const free = reading.reused ?? 0;
+      const done = progress ? progress.completed + progress.skipped + progress.failed : 0;
+      return Math.max(0, place.papers - free - Math.max(0, done - free));
+    };
+    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.createdBy, reading.workspaceId, (await unpaid()) + papers.length - reused.size, reading)).affordable;
     const now = Date.now();
     const taken = { read: place.read + read, papers: place.papers + (affordable ? papers.length : 0) };
     const over = ended || !affordable;
@@ -460,18 +463,20 @@ export const addToCollectionInternal = internalMutation({
  * schedules any secondary work as follow-up mutations.
  */
 export const handleScreeningComplete = screeningPool.defineOnComplete({
+  // Papers start in one call to the pool and share a context (./slots.ts), so the paper is found by its
+  // work. A paper started before #796 carries its own IDs here, which nothing reads.
   context: v.object({
-    resultId: v.id("screeningResults"),
-    jobId: v.id("screeningJobs"),
+    resultId: v.optional(v.id("screeningResults")),
+    jobId: v.optional(v.id("screeningJobs")),
   }),
-  handler: async (ctx, { context, result }) => {
-    const job = await ctx.db.get("screeningJobs", context.jobId) as
+  handler: async (ctx, { workId, result }) => {
+    const screeningResult = await ctx.db
+      .query("screeningResults")
+      .withIndex("by_workId", (q) => q.eq("workId", workId))
+      .unique() as Doc<"screeningResults"> | null;
+    const job = (screeningResult ? await ctx.db.get("screeningJobs", screeningResult.jobId) : null) as
       | Doc<"screeningJobs">
       | null;
-    const screeningResult = await ctx.db.get(
-      "screeningResults",
-      context.resultId,
-    ) as Doc<"screeningResults"> | null;
     if (!job || !screeningResult) {
       return;
     }
@@ -537,14 +542,14 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
     const completedAt = Date.now();
     const doneAt = ctx.db.vars.commitTs;
     if (transition.rowPatch.status === "completed") {
-      await ctx.db.patch("screeningResults", context.resultId, {
+      await ctx.db.patch("screeningResults", screeningResult._id, {
         ...transition.rowPatch,
         completedAt,
         doneAt,
         ...(pending ? { ...pending, pendingAnswers: true as const } : {}),
       });
     } else {
-      await ctx.db.patch("screeningResults", context.resultId, {
+      await ctx.db.patch("screeningResults", screeningResult._id, {
         ...transition.rowPatch,
         completedAt,
         doneAt,
