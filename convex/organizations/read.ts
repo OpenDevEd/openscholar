@@ -6,6 +6,7 @@ import { readAccount } from "../billing/accounts";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
+import { searchTerms } from "../lib/searchText";
 import { FREE_MEMBERS, TEAM_PLAN } from "../../lib/billing/plans";
 
 /** Invitations past an organization's room that one read names, for whoever takes them back a few at a time. */
@@ -26,6 +27,48 @@ export async function membershipOf(ctx: Pick<QueryCtx, "db">, organizationId: Id
     .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organizationId).eq("clerkUserId", clerkUserId).eq("state", "active"))
     .first();
 }
+
+/** Members an email's words match that a check compares with it. */
+const MEMBERS_MATCHED = 20;
+
+/**
+ * Whether someone with this email is an active member of the organization. Clerk keeps an email
+ * in the case it was given: the members are searched by its words, and compared whatever the case.
+ */
+export async function memberWithEmail(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, email: string) {
+  const wanted = email.trim().toLowerCase();
+  const terms = searchTerms(wanted);
+  if (!terms) return false;
+  const found = await ctx.db.query("organizationMemberships").withSearchIndex("search_member_text", (q) => q.search("searchText", terms).eq("organizationId", organizationId).eq("state", "active")).take(MEMBERS_MATCHED);
+  for (const membership of found) {
+    const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
+    if (user && user.state !== "deleted" && user.email.toLowerCase() === wanted) return true;
+  }
+  return false;
+}
+
+/** An address's waiting invitations one read looks through for this organization's: someone is rarely invited to many at once. */
+const INVITATIONS_MATCHED = 50;
+
+/**
+ * Which of these addresses can't be invited to the organization: a member's, or one with an
+ * invitation to it waiting. Clerk refuses a whole request for one such address, so the request
+ * leaves them out.
+ */
+export const alreadyIn = internalQuery({
+  args: { workspaceId: v.id("workspaces"), emails: v.array(v.string()) },
+  returns: v.array(v.string()),
+  handler: async (ctx, { workspaceId, emails }) => {
+    const organization = await organizationOf(ctx, workspaceId);
+    const known = await Promise.all(
+      emails.map(async (email) => {
+        const waiting = await ctx.db.query("organizationInvitations").withIndex("by_email_and_state", (q) => q.eq("email", email).eq("state", "pending")).take(INVITATIONS_MATCHED);
+        return waiting.some((invitation) => invitation.organizationId === organization._id) || (await memberWithEmail(ctx, organization._id, email));
+      }),
+    );
+    return emails.filter((_, at) => known[at]);
+  },
+});
 
 /** Whether `clerkUserId` is the organization's only active admin, whom it can't lose. */
 export async function onlyAdmin(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, clerkUserId: string) {

@@ -168,7 +168,11 @@ export const inviteAction = defineChangingAction({
     if (wanted.some((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw createError("VALIDATION_ERROR", "One of these isn't an email address.");
     const key = clerkSecretKey();
     const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: true });
-    return { invited: await sendInvitations(ctx, key, actor.workspaceId, clerkUserId, organization, wanted, clerkRole(role)) };
+    // Clerk refuses a whole request for one address that's a member's or invited already: those are left out, and the rest go.
+    const known: string[] = await ctx.runQuery(internal.organizations.read.alreadyIn, { workspaceId: actor.workspaceId, emails: wanted });
+    const fresh = wanted.filter((email) => !known.includes(email));
+    if (fresh.length === 0) throw createError("CONFLICT", wanted.length === 1 ? "That person is already a member or invited." : "These people are already members or invited.");
+    return { invited: await sendInvitations(ctx, key, actor.workspaceId, clerkUserId, organization, fresh, clerkRole(role)) };
   },
 });
 

@@ -418,7 +418,7 @@
     "title": {
       "rate_limit": "Le modèle est occupé",
       "insufficient_credits": "Crédits insuffisants",
-      "member_cap": "Plafond mensuel atteint",
+      "member_cap": "Plafond mensuel insuffisant",
       "model_unavailable": "Modèle indisponible",
       "auth": "Problème d'authentification",
       "moderation": "Requête signalée",
@@ -440,7 +440,7 @@
     "body": {
       "rate_limit": "La capacité amont de ce modèle est temporairement épuisée. Réessayez dans un instant ou choisissez un autre modèle.",
       "insufficient_credits": "Votre compte n'a pas assez de crédits pour générer une réponse.",
-      "member_cap": "Il faut plus de crédits qu'il n'en reste dans le plafond mensuel qu'un administrateur vous a fixé. Demandez à un administrateur de le relever.",
+      "member_cap": "Il faut plus de crédits que votre plafond n'en a de disponibles pour l'instant. D'autres tâches en cours peuvent en retenir une partie : réessayez quand elles sont terminées, ou demandez à un administrateur de relever votre plafond.",
       "model_unavailable": "Le modèle sélectionné n'accepte pas de requêtes pour le moment. Essayez un autre modèle.",
       "auth": "Impossible de s'authentifier auprès du fournisseur du modèle. Vérifiez la configuration de la clé API.",
       "moderation": "Le filtre de contenu du fournisseur a signalé cette entrée. Modifiez votre message et réessayez.",

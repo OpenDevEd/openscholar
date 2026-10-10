@@ -97,6 +97,12 @@ export async function requireLibraryOrganization(
   return { ...entry, clerkUserId: entry.membership.clerkUserId };
 }
 
+/** Whether one of the person's organizations has extraction switched on by hand, whatever its plan: `userId`'s when the assistant acts for them, else the signed-in person's. */
+export async function hasSwitch(ctx: QueryCtx | MutationCtx, feature: "extraction", userId?: Id<"users">) {
+  const person = userId ? await ctx.db.get("users", userId) : null;
+  return (await readMemberOrganizations(ctx, person)).some(({ organization }) => organization[`${feature}Enabled`] === true);
+}
+
 /** Refuses unless one of the person's organizations has the feature: `userId`'s when the assistant acts for them, else the signed-in person's. */
 export async function requireOrganizationFeature(
   ctx: QueryCtx | MutationCtx,

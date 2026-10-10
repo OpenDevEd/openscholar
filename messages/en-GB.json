@@ -418,7 +418,7 @@
     "title": {
       "rate_limit": "The model is busy",
       "insufficient_credits": "Not enough credits",
-      "member_cap": "Monthly cap reached",
+      "member_cap": "Not enough left of your monthly cap",
       "model_unavailable": "Model unavailable",
       "auth": "Authentication problem",
       "moderation": "Request was flagged",
@@ -440,7 +440,7 @@
     "body": {
       "rate_limit": "Upstream capacity for this model is temporarily exhausted. Retry shortly or switch to another model.",
       "insufficient_credits": "Your account doesn't have enough credits to generate a response.",
-      "member_cap": "This needs more credits than are left of the monthly cap an admin set for you. Ask an admin to raise it.",
+      "member_cap": "This needs more credits than your cap has free right now. Other work of yours may be holding some of it: try again when that finishes, or ask an admin to raise your cap.",
       "model_unavailable": "The selected model isn't accepting requests right now. Try another model.",
       "auth": "We couldn't authenticate with the model provider. Check your API key configuration.",
       "moderation": "The provider's content filter flagged this input. Revise your message and try again.",

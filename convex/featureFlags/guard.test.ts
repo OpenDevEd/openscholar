@@ -69,6 +69,21 @@ describe("an organization whose plan grants extraction", () => {
     await t.run((ctx) => requireFeature(ctx, "extraction.start", userId, workspaceId));
     // In their own workspace it's their own plan that says.
     await expect(t.run((ctx) => requireFeature(ctx, "extraction.start", userId))).rejects.toThrow();
+
+    // Where the flag names no plan feature, as on shared dev, starting one is still the workspace's: the organization's plan doesn't follow them home.
+    const own = await t.run(async (ctx) => {
+      const flag = (await ctx.db.query("featureFlags").withIndex("by_key", (q) => q.eq("key", "extraction.start")).unique())!;
+      await ctx.db.patch("featureFlags", flag._id, { planFeature: undefined });
+      return (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())!._id;
+    });
+    await t.run((ctx) => requireFeature(ctx, "extraction.start", userId, workspaceId));
+    await expect(t.run((ctx) => requireFeature(ctx, "extraction.start", userId, own))).rejects.toThrow(/this workspace's plan/);
+    // An organization with extraction switched on by hand still gives it to its members wherever they work.
+    await t.run(async (ctx) => {
+      const organization = (await ctx.db.query("organizations").withIndex("by_clerkOrganizationId", (q) => q.eq("clerkOrganizationId", "org_lab")).unique())!;
+      await ctx.db.patch("organizations", organization._id, { extractionEnabled: true });
+    });
+    await t.run((ctx) => requireFeature(ctx, "extraction.start", userId, own));
   });
 });
 

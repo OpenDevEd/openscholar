@@ -1,4 +1,4 @@
-import { requireOrganizationFeature } from "../organizationFeatures";
+import { hasSwitch, requireOrganizationFeature } from "../organizationFeatures";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { hasPlanFeature } from "../billing/accounts";
@@ -27,6 +27,12 @@ export async function requireFeature(
   }
 
   if (flagKey === "extraction.enabled") await requireOrganizationFeature(ctx, "extraction", userId);
+  // Starting one is the workspace's to do: its plan grants extraction (#652), or one of the person's
+  // organizations has it switched on by hand, which holds wherever they work until those move to plans.
+  // A Team organization's member doesn't take it into a workspace whose plan has none.
+  if (flagKey === "extraction.start" && workspaceId !== undefined && !(await hasPlanFeature(ctx, workspaceId, "extraction")) && !(await hasSwitch(ctx, "extraction", userId))) {
+    throw createError("FEATURE_PLAN_REQUIRED", "Data extraction isn't included in this workspace's plan.");
+  }
 
   if (flag.planFeature) {
     if (!userId) {
