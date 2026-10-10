@@ -13,7 +13,7 @@ import path from "node:path";
 import { parseArgs, parseEnv } from "node:util";
 import type { BrowserContext, Page } from "@playwright/test";
 
-import { open, parseStep, type RunOptions } from "./browser.ts";
+import { earlyStep, open, parseStep, type RunOptions } from "./browser.ts";
 import { compare, printShots, report, type Comparison } from "./compare.ts";
 import { hookStop } from "./hook.ts";
 import { git, listening, members, readJson, runsNext, sleep, stopGroup, withLock, withTimeout, writeJson } from "./util.ts";
@@ -282,7 +282,7 @@ const signOut = (page: Page) => page.evaluate("window.Clerk && window.Clerk.sign
 async function optionsFor(values: Values, mode: string): Promise<RunOptions> {
   const shift = mode === "shift";
   const steps = list(values.do).map(parseStep);
-  if (values.early === true && !["click", "hover", "press", "fill"].includes(steps[0]?.verb ?? "")) throw new Error("--early takes the first --do step early: give it one that clicks, hovers, presses or fills.");
+  if (values.early === true) earlyStep(steps);
   return {
     steps,
     early: values.early === true,

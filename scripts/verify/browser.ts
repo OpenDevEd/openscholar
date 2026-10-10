@@ -37,6 +37,13 @@ export function parseStep(raw: string): Step {
   return { verb, target, text, label: raw };
 }
 
+/** With --early the first step is taken while the page loads, so it has to be one that acts on the page. */
+export function earlyStep(steps: Step[]): Step {
+  const [first] = steps;
+  if (!first || first.verb === "goto" || first.verb === "wait") throw new Error("--early takes the first --do step early: give it one that clicks, hovers, presses or fills.");
+  return first;
+}
+
 export type RunOptions = {
   steps: Step[];
   /** The first step runs as soon as its target answers clicks, before the page's data is in. */
@@ -341,12 +348,11 @@ async function earlyPhase(session: Session, step: Step) {
 }
 
 async function runAll(session: Session) {
-  const [first, ...rest] = session.options.steps;
-  const early = session.options.early && first !== undefined;
+  const { early, steps } = session.options;
   session.run.stopped = `load ${session.target}`;
-  if (early) await earlyPhase(session, first);
+  if (early) await earlyPhase(session, earlyStep(steps));
   else await loadPhase(session, `load ${session.target}`, session.target);
-  for (const step of early ? rest : session.options.steps) {
+  for (const step of early ? steps.slice(1) : steps) {
     session.run.stopped = step.label;
     await runStep(session, step);
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { analyzePhase, knownAfterLooks, matchKnown, stopDecision, type Frame, type Item } from "../scripts/verify/analysis.ts";
-import { parseStep } from "../scripts/verify/browser.ts";
+import { earlyStep, parseStep } from "../scripts/verify/browser.ts";
 
 function frame(t: number, change: Partial<Frame> = {}): Frame {
   return { t, moved: [], added: [], removed: [], textAdded: [], textRemoved: [], ...change };
@@ -453,6 +453,13 @@ describe("knownAfterLooks", () => {
 });
 
 describe("parseStep", () => {
+  it("takes only a step that acts on the page early", () => {
+    expect(earlyStep([parseStep("click text=Workspace"), parseStep("press Escape")]).label).toBe("click text=Workspace");
+    expect(() => earlyStep([])).toThrow("--early");
+    expect(() => earlyStep([parseStep("wait 500")])).toThrow("--early");
+    expect(() => earlyStep([parseStep("goto /library")])).toThrow("--early");
+  });
+
   it("types the text after => into a selector that holds spaces", () => {
     expect(parseStep('fill role=textbox[name="Search terms"] => climate evidence')).toMatchObject({ verb: "fill", target: 'role=textbox[name="Search terms"]', text: "climate evidence" });
     expect(parseStep("fill #search climate evidence")).toMatchObject({ target: "#search", text: "climate evidence" });
