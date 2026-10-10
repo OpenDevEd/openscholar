@@ -33,13 +33,23 @@ export function seedsOf(papers: readonly { id: string }[], ratings: Readonly<Rec
   return { liked: rated((rating) => rating >= LIKED_RATING), disliked: rated((rating) => rating >= 1 && rating <= DISLIKED_RATING) };
 }
 
+/** Whether two lists name the same papers, whatever their order. */
+export function sameIds(left: readonly string[], right: readonly string[]): boolean {
+  const named = new Set(left);
+  return named.size === left.length && left.length === right.length && right.every((id) => named.has(id));
+}
+
 /** Whether two lists of seeds name the same papers, whatever their order. */
 export function sameSeeds(left: Seeds, right: Seeds): boolean {
-  const same = (a: string[], b: string[]) => {
-    const named = new Set(a);
-    return named.size === a.length && a.length === b.length && b.every((id) => named.has(id));
-  };
-  return same(left.liked, right.liked) && same(left.disliked, right.disliked);
+  return sameIds(left.liked, right.liked) && sameIds(left.disliked, right.disliked);
+}
+
+/**
+ * The papers among `papers` rated in any way, 3 included: which come after those not rated yet. A
+ * paper rated 3 moves among them without changing the seeds.
+ */
+export function ratedOf(papers: readonly { id: string }[], ratings: Readonly<Record<string, number>>): string[] {
+  return papers.filter((paper) => ratings[paper.id] !== undefined).map((paper) => paper.id);
 }
 
 /** What an order was made for: the results' ids, in their order. */
@@ -63,8 +73,11 @@ export function inOrder<Paper extends { id: string }>(papers: readonly Paper[], 
   return papers.map((paper, at) => ({ paper, at })).sort((left, right) => rank(left.paper) - rank(right.paper) || left.at - right.at).map(({ paper }) => paper);
 }
 
-/** An order made for a search: for which results, the results' ids in their likely order, and by which ratings. */
-export type LikelyOrder = { key: string; ids: string[]; seeds: Seeds };
+/**
+ * An order made for a search: for which results, the results' ids in their likely order, and by which
+ * ratings: the seeds, and the papers rated then.
+ */
+export type LikelyOrder = { key: string; ids: string[]; seeds: Seeds; rated: string[] };
 
 type LikelyOrderState = {
   orders: Record<string, LikelyOrder>;

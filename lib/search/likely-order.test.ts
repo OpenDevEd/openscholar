@@ -38,7 +38,7 @@ describe("a search's results in their likely order", () => {
 
   it("are kept per search, for the results they were made for, until cleared", () => {
     const store = useLikelyOrderStore.getState();
-    const order = { key: resultsKey([paper(1), paper(2)]), ids: [paper(2).id, paper(1).id], seeds: { liked: ["OS1"], disliked: [] } };
+    const order = { key: resultsKey([paper(1), paper(2)]), ids: [paper(2).id, paper(1).id], seeds: { liked: ["OS1"], disliked: [] }, rated: [paper(1).id] };
     store.setOrder("search-1", order);
     expect(useLikelyOrderStore.getState().orders["search-1"]).toEqual(order);
     expect(order.key).not.toBe(resultsKey([paper(2), paper(1)]));

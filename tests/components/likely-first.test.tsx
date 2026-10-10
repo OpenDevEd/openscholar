@@ -101,6 +101,27 @@ describe("likely relevant first", () => {
     expect(useLikelyOrderStore.getState().orders["search-1"]).toBeUndefined();
   });
 
+  it("offers to order again when a paper is rated 3, or its rating taken off, which moves it among the rated", async () => {
+    const { rerender } = render(<LikelyFirst />);
+    fireEvent.click(screen.getByRole("button", { name: "likelyFirst" }));
+    await waitFor(() => expect(useLikelyOrderStore.getState().orders["search-1"]).toBeDefined());
+    ratings.current = { ...ratings.current, [paper(2).id]: 3 };
+    rerender(<LikelyFirst />);
+    expect(screen.getByRole("button", { name: "likelyFirstResort" })).toBeInTheDocument();
+  });
+
+  it("offers to order again when a rating is taken off", async () => {
+    ratings.current = { ...ratings.current, [paper(2).id]: 3 };
+    const { rerender } = render(<LikelyFirst />);
+    fireEvent.click(screen.getByRole("button", { name: "likelyFirst" }));
+    await waitFor(() => expect(useLikelyOrderStore.getState().orders["search-1"]).toBeDefined());
+    expect(screen.queryByRole("button", { name: "likelyFirstResort" })).not.toBeInTheDocument();
+    const { [paper(2).id]: _taken, ...rest } = ratings.current;
+    ratings.current = rest;
+    rerender(<LikelyFirst />);
+    expect(screen.getByRole("button", { name: "likelyFirstResort" })).toBeInTheDocument();
+  });
+
   it("goes back to the first page as it's pressed, and not when an answer comes later", async () => {
     let answer: (value: unknown) => void = () => {};
     ordered.mockReturnValue(new Promise((resolve) => { answer = resolve; }));

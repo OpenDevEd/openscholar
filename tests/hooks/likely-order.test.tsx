@@ -18,12 +18,12 @@ describe("a results list's likely order", () => {
   it("is the order made for the search's results, and the list's own until one is", () => {
     const { result } = renderHook(() => useLikelyOrdered("search-1", results, results));
     expect(result.current.map((one) => one.id)).toEqual(results.map((one) => one.id));
-    act(() => useLikelyOrderStore.getState().setOrder("search-1", { key: resultsKey(results), ids: [paper(3).id, paper(1).id, paper(2).id], seeds: { liked: ["OS9"], disliked: [] } }));
+    act(() => useLikelyOrderStore.getState().setOrder("search-1", { key: resultsKey(results), ids: [paper(3).id, paper(1).id, paper(2).id], seeds: { liked: ["OS9"], disliked: [] }, rated: [] }));
     expect(result.current.map((one) => one.id)).toEqual([3, 1, 2].map((n) => paper(n).id));
   });
 
   it("is the list's own for results the order wasn't made for, or another search's", () => {
-    useLikelyOrderStore.getState().setOrder("search-1", { key: resultsKey([paper(1), paper(2)]), ids: [paper(2).id, paper(1).id], seeds: { liked: ["OS9"], disliked: [] } });
+    useLikelyOrderStore.getState().setOrder("search-1", { key: resultsKey([paper(1), paper(2)]), ids: [paper(2).id, paper(1).id], seeds: { liked: ["OS9"], disliked: [] }, rated: [] });
     const other = renderHook(() => useLikelyOrdered("search-1", results, results));
     expect(other.result.current.map((one) => one.id)).toEqual(results.map((one) => one.id));
     const elsewhere = renderHook(() => useLikelyOrdered("search-2", [paper(1), paper(2)], [paper(1), paper(2)]));

@@ -16,7 +16,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { getClosenessOrder } from "@/app/actions/openalex";
 import { shortWorkId } from "@/lib/openalex/work-id";
 import { useSearchOptional } from "@/lib/search";
-import { likelyOrder, resultsKey, sameSeeds, seedsOf, useLikelyOrderStore } from "@/lib/search/likely-order";
+import { likelyOrder, ratedOf, resultsKey, sameIds, sameSeeds, seedsOf, useLikelyOrderStore } from "@/lib/search/likely-order";
 import { useRatingsStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
 
@@ -36,7 +36,10 @@ export function LikelyFirst() {
   const papers = search.results;
   const key = resultsKey(papers);
   const seeds = seedsOf(papers, ratings);
+  const rated = ratedOf(papers, ratings);
   const current = order?.key === key ? order : undefined;
+  // Any rating since the order moves a paper in a new one: a 3 among the rated, a 4 or 5 as a seed.
+  const changed = current !== undefined && (!sameSeeds(current.seeds, seeds) || !sameIds(current.rated, rated));
   // The OpenScholar API alone orders works by closeness; its works are OS ones, OpenAlex's W ones.
   const ours = papers.some((paper) => shortWorkId(paper.id)?.startsWith("OS"));
   if (!ours || (!current && seeds.liked.length === 0)) return null;
@@ -52,7 +55,7 @@ export function LikelyFirst() {
         toast.error(t("likelyFirstFailed"), answer.message);
         return;
       }
-      setOrder(searchId, { key, ids: likelyOrder(answer.order.map((one) => one.id), ratings), seeds });
+      setOrder(searchId, { key, ids: likelyOrder(answer.order.map((one) => one.id), ratings), seeds, rated });
     } catch {
       toast.error(t("likelyFirstFailed"));
     } finally {
@@ -76,7 +79,7 @@ export function LikelyFirst() {
           {t("likelyFirst")}
         </Button>
       </TooltipHint>
-      {current && seeds.liked.length > 0 && !sameSeeds(current.seeds, seeds) && (
+      {changed && seeds.liked.length > 0 && (
         <Button type="button" variant="ghost" size="sm" className={QUIET} disabled={ordering} onClick={() => void orderNow()}>
           {t("likelyFirstResort")}
         </Button>
