@@ -16,7 +16,7 @@ import { actingAs, assistantAction, assistantQuery, defineChangingAction, define
 import { actorIn } from "../workspaces/actor";
 import { workspaceFrom, workspaceName } from "../workspaces/personal";
 import { invitationTo, noteShared, requireRoom } from "./access";
-import { findShared, grantOf, kindWord, sharedIn } from "./items";
+import { findShared, grantOf, kindWord, requireRole, sharedIn } from "./items";
 import { guestRoleValidator, sharedFromValidator, sharedKindValidator } from "./validators";
 
 const WEEK = 7 * 86_400_000;
@@ -28,6 +28,7 @@ export const prepare = internalMutation({
   args: { ...actingValidator, ...invitationArgs },
   returns: v.id("itemInvitations"),
   handler: async (ctx, { userId, workspaceId, author, kind, id, role, ...args }) => {
+    requireRole(kind, role);
     const actor = await actingAs(ctx, userId, workspaceId, author);
     const shared = await sharedIn(ctx, actor, kind, id);
     await rateLimit(ctx, { name: "item-invitation", key: String(userId), throws: true });
@@ -127,7 +128,7 @@ export const responder = internalQuery({
 export const inviteAction = defineChangingAction({
   path: "sharing/invitations:invite",
   description:
-    "Invites someone by email to one of the workspace's items, to view it (`viewer`), or to change what's in it and run jobs on it too (`editor`). Any member of the item's workspace can. " +
+    "Invites someone by email to one of the workspace's items, to view it (`viewer`: open, read and export). A collection is shared to view only: `editor` is refused for one. Any member of the item's workspace can. " +
     "They get an email with a link, good for seven days, and accept it signed in with that address; the item then shows under their Shared with me, and what they run on it uses their own credits. " +
     "The invitation takes one of the guest places the workspace's plan allows on each item until it's answered. Inviting the same address again sends the email again.",
   args: invitationArgs,

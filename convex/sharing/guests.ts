@@ -16,7 +16,7 @@ import { readMemberOrganizations } from "../organizationFeatures";
 import schema from "../schema";
 import { actorIn } from "../workspaces/actor";
 import { give, invitationTo } from "./access";
-import { grantOf, itemGuestsOf, sharedIn } from "./items";
+import { grantOf, itemGuestsOf, requireRole, sharedIn } from "./items";
 import { guestRoleValidator, sharedKindValidator } from "./validators";
 
 /** Most guests or invitations one page of the share dialog holds. */
@@ -28,7 +28,7 @@ const CANDIDATE_ROWS = 500;
 /** A guest as a change names them: someone given the item, or an address invited to it. */
 const guestValidator = v.union(v.object({ userId: v.id("users") }), v.object({ email: v.string() }));
 
-const ROLES = "to view it (`viewer`), or to change what's in it and run jobs on it too (`editor`)";
+const ROLES = "to view it (`viewer`: open, read and export). A collection is shared to view only: `editor` is refused for one";
 
 export const addAction = defineUserMutation({
   path: "sharing/guests:add",
@@ -43,6 +43,7 @@ export const addAction = defineUserMutation({
   outsideEffect: true,
   undoable: false,
   run: async (ctx, actor, { kind, id, userId, role }) => {
+    requireRole(kind, role);
     const shared = await sharedIn(ctx, actor, kind, id);
     const [sharer, person] = await Promise.all([ctx.db.get("users", actor.userId), ctx.db.get("users", userId)]);
     if (!sharer || person?.state !== "active") throw createError("NOT_FOUND", "Person not found");
@@ -67,6 +68,7 @@ export const setRoleAction = defineUserMutation({
   outsideEffect: true,
   undoable: false,
   run: async (ctx, actor, { kind, id, guest, role }) => {
+    requireRole(kind, role);
     const shared = await sharedIn(ctx, actor, kind, id);
     if ("userId" in guest) {
       const grant = await grantOf(ctx, shared.id, guest.userId);

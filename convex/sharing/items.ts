@@ -17,12 +17,22 @@ type Read = Pick<QueryCtx, "db">;
 /** An item as sharing sees it: where it is, what it's called, and how much it holds (a collection's papers). */
 export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size: number };
 
-/** Each kind's table, what its row is called, how much it holds, and the word for one in a sentence. */
+/**
+ * Each kind's table, what its row is called, how much it holds, the word for one in a sentence,
+ * and the roles a guest of one can be given. A collection's guests view it: changing what's in
+ * one from outside its workspace comes with the actions that let them.
+ */
 const KINDS = {
-  collection: { table: "collections", name: (row: Doc<"collections">) => row.name, size: (row: Doc<"collections">) => row.itemCount, word: "collection" },
-} as const satisfies { [K in SharedKind]: { table: TableNames; name: (row: never) => string; size: (row: never) => number; word: string } };
+  collection: { table: "collections", name: (row: Doc<"collections">) => row.name, size: (row: Doc<"collections">) => row.itemCount, word: "collection", roles: ["viewer"] },
+} as const satisfies { [K in SharedKind]: { table: TableNames; name: (row: never) => string; size: (row: never) => number; word: string; roles: readonly GuestRole[] } };
 
 export const kindWord = (kind: SharedKind) => KINDS[kind].word;
+
+/** Refuses a role a guest of this kind can't be given. */
+export function requireRole(kind: SharedKind, role: GuestRole) {
+  const roles: readonly GuestRole[] = KINDS[kind].roles;
+  if (!roles.includes(role)) throw createError("VALIDATION_ERROR", `A ${KINDS[kind].word} is shared to ${roles.map((one) => (one === "viewer" ? "view" : "edit")).join(" or ")} only.`);
+}
 
 /** The item of `kind` with this ID, or null when there's none. */
 export async function findShared(ctx: Read, kind: SharedKind, id: string): Promise<Shared | null> {

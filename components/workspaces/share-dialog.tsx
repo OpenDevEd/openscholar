@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { PlanChip, useCurrentWorkspace, usePlanOf, WorkspaceTile } from "./parts";
+import { SHARED_KINDS } from "./shared";
 
 type Item = { kind: SharedKind; id: string; name: string };
 
@@ -103,7 +104,9 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
   const roles = [
     { id: "viewer" as const, kind: "view" as const, label: t("view"), can: t("canView") },
     { id: "editor" as const, kind: "edit" as const, label: t("edit"), can: t("canEdit") },
-  ];
+  ].filter((role) => SHARED_KINDS[kind].roles.includes(role.id));
+  // A kind with one role has nothing to pick: each guest's row says what they can do.
+  const picks = roles.length > 1;
   const me = { name: user?.fullName || user?.primaryEmailAddress?.emailAddress || "", email: user?.primaryEmailAddress?.emailAddress ?? "", imageUrl: user?.imageUrl };
   const more = [guests, invited].find((list) => list.status === "CanLoadMore");
 
@@ -144,7 +147,7 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
             name: guest.name || guest.email,
             detail: guest.email,
             role: guest.role,
-            onRole: (role: GuestRole) => void setRole({ kind, id, guest: { userId: guest.userId }, role }).catch(failed),
+            ...(picks ? { onRole: (role: GuestRole) => void setRole({ kind, id, guest: { userId: guest.userId }, role }).catch(failed) } : {}),
             onRemove: () => void remove({ kind, id, guest: { userId: guest.userId } }).catch(failed),
           })),
           ...invited.results.map((invitation) => ({
@@ -154,7 +157,7 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
             // Sent a week before it expires, by the server's clock: never later than now by this one's.
             detail: invitation.delivery === "failed" ? t("notSent") : t("invited", { when: format.relativeTime(Math.min(invitation.expiresAt - WEEK, now.getTime()), now) }),
             role: invitation.role,
-            onRole: (role: GuestRole) => void setRole({ kind, id, guest: { email: invitation.email }, role }).catch(failed),
+            ...(picks ? { onRole: (role: GuestRole) => void setRole({ kind, id, guest: { email: invitation.email }, role }).catch(failed) } : {}),
             onRemove: () => void remove({ kind, id, guest: { email: invitation.email } }).catch(failed),
           })),
         ]}

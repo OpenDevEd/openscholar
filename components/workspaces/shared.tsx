@@ -7,6 +7,7 @@
 import { useDeferredValue, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePaginatedQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { Building2, Coins, Folder, LogOut, SearchX, Share2, Unlink, UserRound, type AppIcon } from "@/components/icons";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
@@ -20,24 +21,25 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { showStyledToast } from "@/components/ui/sonner";
 import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
-import type { SharedKind } from "@/convex/sharing/validators";
+import type { GuestRole, SharedKind } from "@/convex/sharing/validators";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { SHARED_PAGE } from "@/lib/sharing";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { Chip, Hero, Landing, Point } from "./join";
 import { useCurrentWorkspace, WorkspaceTag, WorkspaceTile } from "./parts";
 
-/** Each kind's look, and where one opens in your own workspace. */
-export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; href: (id: string) => string }> = {
-  collection: { icon: Folder, tint: "#e8890c", href: (id) => `/library?col=${id}` },
+/** Each kind's look, where one opens in your own workspace, and the roles its guests can be given (convex/sharing/items.ts). */
+export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; href: (id: string) => string; roles: readonly GuestRole[] }> = {
+  collection: { icon: Folder, tint: "#e8890c", href: (id) => `/library?col=${id}`, roles: ["viewer"] },
 };
 
 type Sort = "recent" | "name";
-/** Shared items one page shows, and each page more. */
-const PAGE = 25;
+type Counts = FunctionReturnType<typeof api.sharing.shared.counts>;
 
-export function SharedWithMe() {
+/** `initial` is what the page's route read on the server: the counts, and the first page newest first. */
+export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: SharedItem[] } }) {
   const t = useTranslations("workspaces.shared");
   const workspaceId = useWorkspace();
   const workspace = useCurrentWorkspace();
@@ -45,8 +47,13 @@ export function SharedWithMe() {
   const [text, setText] = useState("");
   const [sort, setSort] = useState<Sort>("recent");
   const needle = useDeferredValue(text.trim());
-  const { data: counts } = useProtectedQuery(api.sharing.shared.counts, inWorkspace(workspaceId, {}));
-  const { results, status, loadMore } = usePaginatedQuery(api.sharing.shared.list, inWorkspace(workspaceId, { sort, ...(kind ? { kind } : {}), ...(needle ? { text: needle } : {}) }), { initialNumItems: PAGE });
+  const counts = useProtectedQuery(api.sharing.shared.counts, inWorkspace(workspaceId, {})).data ?? initial?.counts;
+  const { results, status, loadMore } = usePaginatedQuery(api.sharing.shared.list, inWorkspace(workspaceId, { sort, ...(kind ? { kind } : {}), ...(needle ? { text: needle } : {}) }), { initialNumItems: SHARED_PAGE });
+  // The rows shown: the view asked for once it's read, and until then the ones shown last, which at first are the page's own.
+  const loading = status === "LoadingFirstPage";
+  const [kept, keep] = useState(initial?.rows);
+  if (!loading && kept !== results) keep(results);
+  const rows = loading ? kept : results;
   const kinds = (Object.keys(SHARED_KINDS) as SharedKind[]).filter((one) => counts?.[one]);
 
   return (
@@ -97,20 +104,21 @@ export function SharedWithMe() {
         </div>
       }
     >
-      {results.length ? (
-        <div className="divide-y divide-border-subtle">
-          {results.map((item) => (
+      {rows?.length ? (
+        // Rows of the view before stay, dimmed and still, until the one asked for arrives.
+        <div className={cn("divide-y divide-border-subtle", loading && "pointer-events-none opacity-60")}>
+          {rows.map((item) => (
             <Row key={item.id} item={item} />
           ))}
         </div>
-      ) : status === "LoadingFirstPage" ? (
+      ) : !rows ? (
         <ListLoading label={t("loading")} />
       ) : (
         <ListEmpty icon={needle ? SearchX : Share2}>{needle ? t("emptySearch") : kind ? t("emptyKind") : t("empty")}</ListEmpty>
       )}
       {status === "CanLoadMore" || status === "LoadingMore" ? (
         <div className="flex justify-center border-t border-border-subtle p-3">
-          <Button variant="ghost" size="sm" disabled={status === "LoadingMore"} onClick={() => loadMore(PAGE)}>
+          <Button variant="ghost" size="sm" disabled={status === "LoadingMore"} onClick={() => loadMore(SHARED_PAGE)}>
             {t("more")}
           </Button>
         </div>

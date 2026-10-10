@@ -72,9 +72,11 @@ it("gives a colleague an item at once, and no one a stranger's, a member's or an
   // A guest acts in their own workspace, where the item isn't: they can't share it on.
   await expect(carol.mutation(api.sharing.guests.add, { kind: "collection", id: item.id, userId: users.dave, role: "viewer" })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
 
-  // Any member changes what a guest may do, and a guest gives up their own place.
-  await bob.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" });
-  expect(await guestsOf()).toEqual([{ userId: users.carol, role: "editor", name: "Trials" }]);
+  // A collection's guests view it: no one is given more, by any member.
+  await expect(bob.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "editor" })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
+  expect(await guestsOf()).toEqual([{ userId: users.carol, role: "viewer", name: "Trials" }]);
+  // A guest gives up their own place.
   await carol.mutation(api.sharing.guests.leave, { id: item.id });
   expect(await guestsOf()).toEqual([]);
 });
@@ -100,7 +102,7 @@ it("holds an item to the guests its workspace's plan allows, invitations still w
 
 it("makes an invitation the place of whoever accepts it with the invited address verified", async () => {
   const { alice, dave, item, guestsOf, invitationsOf, users, t } = await lab(1);
-  await alice.action(api.sharing.invitations.invite, { ...item, email: "dave@example.org", role: "editor" });
+  await alice.action(api.sharing.invitations.invite, { ...item, email: "dave@example.org", role: "viewer" });
   const invitationId = await t.run(async (ctx) => (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", item.id)).first())!._id);
 
   // Clerk hasn't verified that address on Dave's account.
@@ -110,8 +112,8 @@ it("makes an invitation the place of whoever accepts it with the invited address
 
   verified = ["dave@example.org"];
   await dave.action(api.sharing.invitations.respond, { invitationId, accept: true });
-  expect(await guestsOf()).toEqual([{ userId: users.dave, role: "editor", name: "Trials" }]);
-  expect(await invitationsOf()).toEqual([{ email: "dave@example.org", role: "editor", state: "accepted" }]);
+  expect(await guestsOf()).toEqual([{ userId: users.dave, role: "viewer", name: "Trials" }]);
+  expect(await invitationsOf()).toEqual([{ email: "dave@example.org", role: "viewer", state: "accepted" }]);
   // It was the item's one place, and still is: nobody else fits.
   await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" })).rejects.toThrow(/allows 1 guest /);
 });
