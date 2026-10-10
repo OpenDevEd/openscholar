@@ -71,14 +71,32 @@ function bursts(frames: Frame[]): Frame[][] {
 // its distance in a frame or two jumped.
 const SLIDE_FRAMES = 5;
 const SLIDE_GAP_MS = 50;
-const travel = (move: Move) => Math.abs(move.dx) + Math.abs(move.dy) + Math.abs(move.dw) + Math.abs(move.dh);
+// One step of a slide is never far from the step beside it, give or take the rounding at its slow end.
+const SLIDE_STEP_RATIO = 3;
+const SLIDE_STEP_SLACK_PX = 4;
+const SIDES = ["dx", "dy", "dw", "dh"] as const;
 
-/** Whether an element's steps, each with the time of its frame, are one smooth slide. */
-function slid(steps: { t: number; move: Move }[]): boolean {
+/** Whether one side's steps, each the time of its frame and how far it went, are one smooth slide. */
+function smooth(steps: [number, number][]): boolean {
   if (steps.length < SLIDE_FRAMES) return false;
-  const total = steps.reduce((sum, step) => sum + travel(step.move), 0);
-  // No pause between steps, and no single step that is most of the way: a jump followed by a settle is a jump.
-  return steps.every((step, index) => travel(step.move) <= total / 2 && (index === 0 || step.t - steps[index - 1].t <= SLIDE_GAP_MS));
+  return steps.every(([t, size], index) => {
+    if (index === 0) return true;
+    const [before, last] = steps[index - 1];
+    return t - before <= SLIDE_GAP_MS && Math.max(size, last) <= SLIDE_STEP_RATIO * Math.min(size, last) + SLIDE_STEP_SLACK_PX;
+  });
+}
+
+/**
+ * Whether an element slid: every side of its box that moved did so smoothly.
+ * Each side is judged by itself, so a frame growing smoothly can't hide a jump
+ * sideways, and a step out of line with its neighbours is a jump wherever it
+ * falls. A pixel of rounding on a side that isn't moving doesn't count.
+ */
+function slid(steps: { t: number; move: Move }[]): boolean {
+  return SIDES.every((side) => {
+    const own = steps.filter((step) => Math.abs(step.move[side]) >= 1).map((step): [number, number] => [step.t, Math.abs(step.move[side])]);
+    return own.reduce((sum, [, size]) => sum + size, 0) < 2 || smooth(own);
+  });
 }
 
 function shift(frames: Frame[]): Finding | null {
