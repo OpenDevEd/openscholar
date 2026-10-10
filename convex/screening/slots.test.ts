@@ -82,7 +82,8 @@ describe("each person's paper slots", () => {
   it("starts the next waiting papers as running ones finish, oldest job first", async () => {
     const { t, person } = await setup();
     const ada = await person("ada");
-    const first = await createJob(ada.as, { papers: papers(25, "a"), questions, scoringConfig });
+    // Five more papers than the pool holds: they wait.
+    const first = await createJob(ada.as, { papers: papers(SCREENING_POOL_SIZE + 5, "a"), questions, scoringConfig });
     const second = await createJob(ada.as, { papers: papers(10, "b"), questions, scoringConfig });
 
     await finishAndBookkeep(t, (await papersOf(t, first.jobId)).started.slice(0, 8).map((row) => row._id));
@@ -109,13 +110,13 @@ describe("each person's paper slots", () => {
   it("skips an ended job's waiting papers, which held no slot, and frees its running ones as they finish", async () => {
     const { t, person } = await setup();
     const ada = await person("ada");
-    const ended = await createJob(ada.as, { papers: papers(30, "a"), questions, scoringConfig });
+    const ended = await createJob(ada.as, { papers: papers(SCREENING_POOL_SIZE + 10, "a"), questions, scoringConfig });
     const next = await createJob(ada.as, { papers: papers(5, "b"), questions, scoringConfig });
     await t.run((ctx) => ctx.db.patch("screeningJobs", ended.jobId, { status: "cancelled" }));
 
     await t.mutation(internal.screening.mutations.endScreeningWork, { jobId: ended.jobId, cursor: null });
     const skipped = (await papersOf(t, ended.jobId)).rows.filter((row) => row.status === "skipped");
-    expect(skipped).toHaveLength(30 - SCREENING_POOL_SIZE);
+    expect(skipped).toHaveLength(10);
     await t.mutation(internal.screening.bookkeeping.bookkeep, { results: skipped.map((row) => row._id) });
     expect(await running(t, ada.userId)).toBe(SCREENING_POOL_SIZE);
 
@@ -159,8 +160,8 @@ describe("each person's paper slots", () => {
   it("starts the person's next job once one that filled the queue has stopped at its limit", async () => {
     const { t, person } = await setup();
     const ada = await person("ada");
-    // Room for one paper of twenty-five: the rest wait at the head of Ada's queue, ahead of her next job's.
-    const first = await createJob(ada.as, { papers: papers(25, "a"), questions, scoringConfig, spendCap: estimateScreening(1, 0, await t.run(async (ctx) => screeningPaperCreditsFor(ctx, { userId: ada.userId, workspaceId: await personalWorkspaceOf(ctx, ada.userId) }))).credits });
+    // Room for one paper of more than the pool holds: the rest wait at the head of Ada's queue, ahead of her next job's.
+    const first = await createJob(ada.as, { papers: papers(SCREENING_POOL_SIZE + 5, "a"), questions, scoringConfig, spendCap: estimateScreening(1, 0, await t.run(async (ctx) => screeningPaperCreditsFor(ctx, { userId: ada.userId, workspaceId: await personalWorkspaceOf(ctx, ada.userId) }))).credits });
     const next = await createJob(ada.as, { papers: papers(3, "b"), questions, scoringConfig });
     expect((await papersOf(t, next.jobId)).started).toHaveLength(0);
 
