@@ -1,4 +1,5 @@
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { beforeEach, afterEach, describe, it, test, expect, vi } from "vitest";
@@ -146,7 +147,7 @@ async function seedUserAndFlags(
     });
     // Seed a large credit balance so plan-03's preflight gate in
     // startJob does not block these routing tests.
-    await seedCreditsForTest(ctx, { userId, free: 0, paid: 100_000, now });
+    await seedCreditsForTest(ctx, { userId, free: 0, paid: 100_000, now, features: [PLAN_FEATURES.extraction] });
     return { userId };
   });
 }

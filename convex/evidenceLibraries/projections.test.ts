@@ -16,9 +16,6 @@ const organizationSnapshot = {
   name: "Evidence Team",
   slug: "evidence-team",
   imageUrl: "https://img.example/org.png",
-  evidenceLibrariesEnabled: false,
-  authorsEnabled: false,
-  extractionEnabled: false,
   clerkCreatedAt: 1_700_000_000_000,
   clerkUpdatedAt: 1_700_000_001_000,
 };
@@ -44,7 +41,6 @@ describe("Evidence Library identity projections", () => {
         name: "Evidence Team",
         slug: "evidence-team",
         state: "active",
-        evidenceLibrariesEnabled: false,
         clerkCreatedAt: 1_700_000_000_000,
         clerkUpdatedAt: 1_700_000_001_000,
         createdAt: 1_700_000_002_000,
@@ -260,7 +256,7 @@ describe("Evidence Library identity projections", () => {
     expect(stored).toMatchObject({ name: "Evidence Team", state: "deleted" });
   });
 
-  it("keeps a newer Evidence Libraries switch when a stale membership event arrives", async () => {
+  it("keeps a newer switch when a stale membership event arrives", async () => {
     const t = convexTest(schema);
 
     // Clerk switches the organisation on.
@@ -271,7 +267,7 @@ describe("Evidence Library identity projections", () => {
         entityId: "org_123",
         organization: {
           ...organizationSnapshot,
-          evidenceLibrariesEnabled: true,
+          devEnabled: true,
           clerkUpdatedAt: 1_700_000_010_000,
         },
       }),
@@ -291,7 +287,6 @@ describe("Evidence Library identity projections", () => {
           clerkUserId: "user_123",
           organization: {
             ...organizationSnapshot,
-            evidenceLibrariesEnabled: false,
             clerkUpdatedAt: 1_700_000_009_000,
           },
           role: "org:member",
@@ -308,7 +303,7 @@ describe("Evidence Library identity projections", () => {
         )
         .unique(),
     );
-    expect(stored).toMatchObject({ evidenceLibrariesEnabled: true });
+    expect(stored).toMatchObject({ devEnabled: true });
   });
 
   it("removes library grants and pending invitations only under the revoked organization", async () => {

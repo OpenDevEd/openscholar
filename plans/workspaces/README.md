@@ -192,7 +192,7 @@ One place owns each rule, and nothing else implements it again.
 | Who may open an item, and with which role | `convex/sharing/access.ts` (`requireItem`), replacing the role reads in `convex/assistant/access.ts`, `convex/authors/access.ts` and `convex/evidenceLibraries/access.ts` |
 | Who pays | `convex/billing/charge.ts`. Reserve, settle and release take a payer: the workspace's Autumn customer and, in an organization, the member's entity |
 | Which members are billed as seats | `convex/billing/seats.ts`, from the Clerk webhook's memberships, with a daily reconcile |
-| What a plan allows | `planLimit` and `hasPlanFeature` in `convex/billing/accounts.ts`, keyed by workspace. `convex/organizationFeatures.ts` goes |
+| What a plan allows | `planLimit` and `hasPlanFeature` in `convex/billing/accounts.ts`, keyed by workspace. `convex/organizationFeatures.ts` goes. 2026-10-10 (#652): its switch readers went; the module stays to read a person's organizations and what their plans grant, for the pages that sit outside a workspace (Evidence Libraries, author profiles, extraction) |
 | What changed on an item | the wrappers, which write activity from each entry's `activity` declaration (`convex/activity/`) |
 | Who has an item open | `convex/presence.ts`, rooms keyed by item, moved from `convex/assistant/presence.ts` |
 | How many records a workspace and each member have | `convex/research/recordCounts.ts` and the triggers in `convex/lib/triggers.ts`, keyed by workspace, and by workspace and creator |

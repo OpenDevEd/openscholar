@@ -683,7 +683,7 @@ describe("jobs in workspaces (#650)", () => {
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 100, 0);
     const lab = await t.run(async (ctx) => {
-      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
       const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId });
       await seedCreditsForTest(ctx, { workspaceId: lab, free: 100 });
       return lab;
@@ -704,7 +704,7 @@ describe("jobs in workspaces (#650)", () => {
     await seedUser(t, "carol", "carol@example.com");
     for (const user of [alice, bob]) await seedCredits(t, user._id, 100, 0);
     const lab = await t.run(async (ctx) => {
-      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
       for (const [clerkUserId, role] of [["alice", "org:member"], ["bob", "org:admin"]] as const) {
         await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role, state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
       }

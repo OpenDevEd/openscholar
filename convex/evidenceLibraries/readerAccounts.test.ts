@@ -96,7 +96,7 @@ describe("deleting an OpenScholar account", () => {
     // A library that never went live has no readers and gets no call.
     await t.run(async (ctx) => {
       const organizationId = await ctx.db.insert("organizations", {
-        clerkOrganizationId: "org_draft", evidenceLibrariesEnabled: false, name: "Draft", slug: "draft",
+        clerkOrganizationId: "org_draft", name: "Draft", slug: "draft",
         state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1,
       });
       await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);

@@ -166,7 +166,6 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: false,
       });
       await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
       const libraryId = await ctx.db.insert("evidenceLibraries", {
@@ -230,7 +229,6 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: false,
       });
       await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
       await seedFeatureUser(ctx, "user_identity_contract");
@@ -323,7 +321,6 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: false,
       });
       await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
       await seedFeatureUser(ctx, "user_generic_sections");
@@ -473,7 +470,6 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: false,
       });
       await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
       await seedFeatureUser(ctx, "user_admin");
@@ -602,7 +598,6 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: false,
       });
       await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
       await seedFeatureUser(ctx, "user_revision");

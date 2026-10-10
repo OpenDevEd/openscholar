@@ -3,6 +3,7 @@ import { api, internal } from "../../_generated/api";
 import schema from "../../schema";
 import { insertMany, seedAccount, text } from "../../lib/maxSize.test-support";
 import { seedCreditsForTest } from "../../billing/billing.test-support";
+import { PLAN_FEATURES } from "../../../lib/billing/plans";
 import { insertJob } from "../../screening/createJob.test-support";
 import type { FunctionArgs } from "convex/server";
 import type { Id } from "../../_generated/dataModel";
@@ -17,7 +18,7 @@ export async function screeningInputs(count = 2) {
   setupExtractionPaperWorkpool(t);
   const { userId, as } = await seedAccount(t, "screening_owner");
   const jobId = await t.run(async ctx => {
-    await seedCreditsForTest(ctx, { userId, free: 100_000 });
+    await seedCreditsForTest(ctx, { userId, free: 100_000, features: [PLAN_FEATURES.extraction] });
     return insertJob(ctx, {
       userId, status: "completed", totalPapers: count, unsaved: true, label: "Reading interventions",
       questions: [{ key: "q1", question: "Randomized?" }, { key: "q2", question: "Primary schools?" }],

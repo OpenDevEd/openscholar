@@ -14,7 +14,7 @@ async function lab() {
   const seeded = await t.run(async (ctx) => {
     const users: Record<string, Id<"users">> = {};
     for (const clerkId of ["alice", "bob"]) users[clerkId] = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, firstName: clerkId[0].toUpperCase() + clerkId.slice(1), state: "active", createdAt: 1, updatedAt: 1 });
-    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Learning Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Learning Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
     for (const [clerkUserId, role] of [["alice", "org:admin"], ["bob", "org:member"]] as const) await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role, state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
     return { users, lab: await ensureWorkspace(ctx, { kind: "organization", organizationId }), aliceOwn: await personalWorkspaceOf(ctx, users.alice), bobOwn: await personalWorkspaceOf(ctx, users.bob) };
   });
@@ -128,7 +128,8 @@ it("moves an author profile only to a workspace that has author profiles", async
   await expect(alice.mutation(api.workspaces.move.move, { kind: "author", id: profile, to: labId })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
   expect((await t.run((ctx) => ctx.db.get("authorProfiles", profile)))?.workspaceId).toBe(aliceOwn);
 
-  await t.run(async (ctx) => ctx.db.patch("organizations", (await ctx.db.query("organizations").first())!._id, { authorsEnabled: true }));
+  // Its plan includes them.
+  await t.run((ctx) => ctx.db.insert("billingAccounts", { workspaceId: labId, plan: "team", features: ["authors"], pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: Date.now() }));
   await alice.mutation(api.workspaces.move.move, { kind: "author", id: profile, to: labId });
   expect((await t.run((ctx) => ctx.db.get("authorProfiles", profile)))?.workspaceId).toBe(labId);
 });

@@ -335,7 +335,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "अनुमति नहीं है",
-    "organizationFeatureDescription": "आपके किसी भी संगठन के लिए यह सुविधा चालू नहीं है।",
+    "organizationFeatureDescription": "आपके किसी भी संगठन के प्लान में यह सुविधा शामिल नहीं है।",
     "backToSearch": "खोज पर वापस जाएँ",
     "loadingTitle": "वर्कस्पेस लोड हो रहा है",
     "loadingDescription": "आपका प्रमाणित वर्कस्पेस तैयार हो रहा है।",

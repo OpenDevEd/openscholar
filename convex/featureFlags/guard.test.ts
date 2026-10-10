@@ -59,7 +59,7 @@ describe("an organization whose plan grants extraction", () => {
     const workspaceId = await t.run(async (ctx) => {
       const user = (await ctx.db.get("users", userId))!;
       await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
-      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: "mem_1", clerkUserId: user.clerkId, role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
       const workspace = (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!;
       await ctx.db.insert("billingAccounts", { workspaceId: workspace._id, plan: "team", features: ["extraction"], pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1 });
@@ -78,12 +78,6 @@ describe("an organization whose plan grants extraction", () => {
     });
     await t.run((ctx) => requireFeature(ctx, "extraction.start", userId, workspaceId));
     await expect(t.run((ctx) => requireFeature(ctx, "extraction.start", userId, own))).rejects.toThrow(/this workspace's plan/);
-    // An organization with extraction switched on by hand still gives it to its members wherever they work.
-    await t.run(async (ctx) => {
-      const organization = (await ctx.db.query("organizations").withIndex("by_clerkOrganizationId", (q) => q.eq("clerkOrganizationId", "org_lab")).unique())!;
-      await ctx.db.patch("organizations", organization._id, { extractionEnabled: true });
-    });
-    await t.run((ctx) => requireFeature(ctx, "extraction.start", userId, own));
   });
 });
 

@@ -342,7 +342,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     const t = convexTest(schema);
     const { as } = await seedAccount(t);
     const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
-    const organizations = await insertMany(t, "organizations", Array.from({ length: 200 }, (_, i) => ({ clerkOrganizationId: `org_max_${i}`, evidenceLibrariesEnabled: true, name: `Organization ${String(i).padStart(3, "0")}`, slug: `organization-${i}`, state: "active", ...stamp })));
+    const organizations = await insertMany(t, "organizations", Array.from({ length: 200 }, (_, i) => ({ clerkOrganizationId: `org_max_${i}`, name: `Organization ${String(i).padStart(3, "0")}`, slug: `organization-${i}`, state: "active", ...stamp })));
     // The account's own organization comes with the seed, so 199 more reach the most a person may belong to.
     await insertMany(t, "organizationMemberships", organizations.slice(0, 199).map((organizationId, i) => ({ organizationId, clerkMembershipId: `orgmem_max_owner_${i}`, clerkUserId: "max_size_user", role: "org:admin", state: "active", ...stamp })));
     await insertMany(t, "evidenceLibraries", organizations.slice(0, 199).flatMap((organizationId, i) => Array.from({ length: 10 }, (_, n) => ({ organizationId, name: `Library ${i}-${n}`, slug: `library-${i}-${n}`, state: "active", createdByClerkUserId: "max_size_user", updatedByClerkUserId: "max_size_user", createdAt: 1, updatedAt: 1 }))), 200);
@@ -592,7 +592,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       const items = 2_000;
       const { collectionId } = await seedLibrary(t, userId, { items, abstractChars: 4_500 });
       const lab = await t.run(async (ctx) => {
-        const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_move", name: "Lab", slug: "org_move", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+        const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_move", name: "Lab", slug: "org_move", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
         await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: "orgmem_move", clerkUserId: "max_move_user", role: "org:admin", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
         return ensureWorkspace(ctx, { kind: "organization", organizationId });
       });
@@ -618,7 +618,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       const members = Array.from({ length: 1_000 }, (_, i) => `member_${i}`);
       const userIds = await insertMany(t, "users", members.map((clerkId) => ({ clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 })), 250);
       const lab = await t.run(async (ctx) => {
-        const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_large", name: "Large", slug: "org_large", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+        const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_large", name: "Large", slug: "org_large", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
         const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
         await ctx.db.insert("libraryItems", { workspaceId, createdBy: userIds[0], openalexId: "https://openalex.org/W1", title: "Rated by everyone", searchableText: "Rated by everyone", savedAt: 1, updatedAt: 1 });
         return { organizationId, workspaceId };

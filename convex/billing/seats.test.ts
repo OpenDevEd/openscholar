@@ -23,7 +23,7 @@ it("seats each member who has no seat, making their entity if needed, and ends e
 it("gives a Team organization's members a seat each as they join, takes one back as they leave, and ends them all when it leaves Team", async () => {
   const t = convexTest(schema);
   const lab = await t.run(async (ctx) => {
-    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
     for (const who of ["ada", "ben", "cy"]) await ctx.db.insert("users", { clerkId: `user_${who}`, email: `${who}@lab.test`, firstName: who, state: "active", createdAt: 1, updatedAt: 1 });
     return (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id;
   });
@@ -35,7 +35,7 @@ it("gives a Team organization's members a seat each as they join, takes one back
       action: joined ? "upsert" : "delete",
       membership: {
         clerkMembershipId: `mem_${who}`, clerkUserId: `user_${who}`, role: "org:member", state: joined ? "active" : "revoked", clerkCreatedAt: 1, clerkUpdatedAt: at,
-        organization: { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1 },
+        organization: { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1 },
       },
     });
   const seats = () => [...fakeAutumn.entitiesOf(lab)].filter(([, { seated }]) => seated).map(([id]) => id).sort();
@@ -86,7 +86,7 @@ it("gives a Team organization's members a seat each as they join, takes one back
 it("runs one sync of an organization at a time, and the one asked for meanwhile once after it", async () => {
   const t = convexTest(schema);
   const workspaceId = await t.run(async (ctx) => {
-    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
     return (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id;
   });
   expect(await t.mutation(internal.billing.seats.claim, { workspaceId })).toBe(true);

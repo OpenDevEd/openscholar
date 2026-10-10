@@ -45,7 +45,6 @@ async function createOperationFixture(
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
-      evidenceLibrariesEnabled: false,
     });
     await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
     await seedFeatureUser(ctx, clerkUserId);
@@ -114,7 +113,6 @@ async function createActivationFixture(
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
-      evidenceLibrariesEnabled: false,
     });
     await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
     await seedFeatureUser(ctx, clerkUserId);

@@ -62,7 +62,6 @@ async function seedOwner(
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
-      evidenceLibrariesEnabled: false,
     });
     await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
     await seedFeatureUser(ctx, `user_${suffix}`);

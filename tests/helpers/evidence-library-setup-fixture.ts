@@ -104,7 +104,6 @@ export async function createDraftSetupFixture(suffix: string) {
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
-      evidenceLibrariesEnabled: false,
     });
     // Evidence Libraries come with the organization's plan (#652).
     await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);

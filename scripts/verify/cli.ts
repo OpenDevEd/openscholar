@@ -213,22 +213,20 @@ async function signIn(page: Page, url: string, email: string, attempt = 1) {
   await page.waitForLoadState("load");
 }
 
-// The verify user's own organization turns on every organization feature,
-// so gated pages (extraction, Evidence Libraries, authors) open for it. Clerk
-// syncs the organization's public metadata to Convex. The development Clerk
-// instance has organization slugs turned off, so it is found by name.
-const VERIFY_ORGANIZATION = { name: "Verify Agent", publicMetadata: { evidenceLibraries: true, authors: true, extraction: true } };
-const wanted = (metadata: Record<string, unknown> | null | undefined) => Object.entries(VERIFY_ORGANIZATION.publicMetadata).every(([key, value]) => metadata?.[key] === value);
+// The verify user's own organization is on the Team plan, which grants every
+// plan feature, so gated pages (extraction, Evidence Libraries, authors) open
+// for it. The development Clerk instance has organization slugs turned off, so
+// it is found by name.
+const VERIFY_ORGANIZATION = "Verify Agent";
 
 type Clerk = ReturnType<typeof import("@clerk/backend").createClerkClient>;
 
-/** Puts the verify user in the Verify Agent organization, creating or updating it. */
-async function joinOrganization(clerk: Clerk, userId: string, membership: { organization: { id: string } } | undefined) {
-  if (membership) return clerk.organizations.updateOrganizationMetadata(membership.organization.id, { publicMetadata: VERIFY_ORGANIZATION.publicMetadata });
-  const found = (await clerk.organizations.getOrganizationList({ query: VERIFY_ORGANIZATION.name, limit: 10 })).data.find((organization) => organization.name === VERIFY_ORGANIZATION.name);
-  if (!found) return clerk.organizations.createOrganization({ ...VERIFY_ORGANIZATION, createdBy: userId });
+/** Puts the verify user in the Verify Agent organization. */
+async function joinOrganization(clerk: Clerk, userId: string) {
+  const found = (await clerk.organizations.getOrganizationList({ query: VERIFY_ORGANIZATION, limit: 10 })).data.find((organization) => organization.name === VERIFY_ORGANIZATION);
+  // One made here would be on the free plan, without the features the gated pages need.
+  if (!found) throw new Error(`No "${VERIFY_ORGANIZATION}" organization in the development Clerk instance. Create it in the app and put it on the Team plan, then run this again.`);
   await clerk.organizations.createOrganizationMembership({ organizationId: found.id, userId, role: "org:admin" });
-  return clerk.organizations.updateOrganizationMetadata(found.id, { publicMetadata: VERIFY_ORGANIZATION.publicMetadata });
 }
 
 async function existingUser(clerk: Clerk, email: string) {
@@ -245,12 +243,12 @@ async function verifyUser(env: Record<string, string>, as: string | undefined): 
   }
   const existing = await existingUser(clerk, VERIFY_USER);
   const user = existing ?? (await clerk.users.createUser({ emailAddress: [VERIFY_USER], firstName: "Verify", lastName: "Agent", skipPasswordRequirement: true }));
-  const membership = (await clerk.users.getOrganizationMembershipList({ userId: user.id, limit: 20 })).data.find((entry) => entry.organization.name === VERIFY_ORGANIZATION.name);
-  if (existing && membership && wanted(membership.organization.publicMetadata)) return VERIFY_USER;
-  await joinOrganization(clerk, user.id, membership);
+  const member = (await clerk.users.getOrganizationMembershipList({ userId: user.id, limit: 20 })).data.some((entry) => entry.organization.name === VERIFY_ORGANIZATION);
+  if (existing && member) return VERIFY_USER;
+  await joinOrganization(clerk, user.id);
   // Clerk sends this to Convex by webhook; checking before it lands would test
   // the "not allowed" page instead of the feature.
-  throw new Error(`Set up ${VERIFY_USER} in the "${VERIFY_ORGANIZATION.name}" organization. Clerk sends it to Convex within a few seconds: run the same command again.`);
+  throw new Error(`Set up ${VERIFY_USER} in the "${VERIFY_ORGANIZATION}" organization. Clerk sends it to Convex within a few seconds: run the same command again.`);
 }
 
 // The cookie banner lies across the foot of every page on the deployed site

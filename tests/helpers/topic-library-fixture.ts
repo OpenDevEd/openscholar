@@ -7,7 +7,7 @@ import { PLAN_FEATURES } from "../../lib/billing/plans";
 
 export async function seedTopicLibrary(ctx: MutationCtx, name: string, credentialDigest: string, url = "https://library.example.test", enabled = true) {
   const now = Date.now();
-  const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: `org_${name}`, evidenceLibrariesEnabled: false, name, slug: name, state: "active", clerkCreatedAt: now, clerkUpdatedAt: now, createdAt: now, updatedAt: now});
+  const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: `org_${name}`, name, slug: name, state: "active", clerkCreatedAt: now, clerkUpdatedAt: now, createdAt: now, updatedAt: now});
   // Evidence Libraries come with the organization's plan (#652).
   await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
   const libraryId = await ctx.db.insert("evidenceLibraries", {workspaceId: await organizationWorkspaceOf(ctx, organizationId), name, slug: name, state: "active", createdByClerkUserId: "topic-test", updatedByClerkUserId: "topic-test", createdAt: now, updatedAt: now});

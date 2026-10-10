@@ -37,9 +37,6 @@ describe("parseClerkProjectionEvent", () => {
           clerkCreatedAt: 1_700_000_000_000,
           clerkOrganizationId: "org_123",
           clerkUpdatedAt: 1_700_000_001_000,
-          evidenceLibrariesEnabled: false,
-          authorsEnabled: false,
-          extractionEnabled: false,
           devEnabled: false,
           imageUrl: "https://img.example/org.png",
           name: "Evidence Team",
@@ -50,15 +47,15 @@ describe("parseClerkProjectionEvent", () => {
   );
 
   it.each([
-    ["switched on", { evidenceLibraries: true }, true],
-    ["switched off", { evidenceLibraries: false }, false],
+    ["switched on", { dev: true }, true],
+    ["switched off", { dev: false }, false],
     ["missing the key", { somethingElse: true }, false],
     ["an empty object", {}, false],
-    ["the string true", { evidenceLibraries: "true" }, false],
-    ["the number one", { evidenceLibraries: 1 }, false],
+    ["the string true", { dev: "true" }, false],
+    ["the number one", { dev: 1 }, false],
     ["null", null, false],
   ] as const)(
-    "reads the Evidence Libraries switch from public metadata: %s",
+    "reads the dev switch from public metadata: %s",
     (_label, publicMetadata, expected) => {
       const event = parseClerkProjectionEvent("organization.updated", {
         ...organization,
@@ -66,7 +63,7 @@ describe("parseClerkProjectionEvent", () => {
       });
 
       expect(event).toMatchObject({
-        organization: { evidenceLibrariesEnabled: expected },
+        organization: { devEnabled: expected },
       });
     },
   );
@@ -77,11 +74,11 @@ describe("parseClerkProjectionEvent", () => {
         ...membership,
         organization: {
           ...organization,
-          public_metadata: { evidenceLibraries: true },
+          public_metadata: { dev: true },
         },
       }),
     ).toMatchObject({
-      membership: { organization: { evidenceLibrariesEnabled: true } },
+      membership: { organization: { devEnabled: true } },
     });
   });
 
@@ -118,9 +115,6 @@ describe("parseClerkProjectionEvent", () => {
           clerkCreatedAt: 1_700_000_000_000,
           clerkOrganizationId: "org_123",
           clerkUpdatedAt: 1_700_000_001_000,
-          evidenceLibrariesEnabled: false,
-          authorsEnabled: false,
-          extractionEnabled: false,
           devEnabled: false,
           imageUrl: "https://img.example/org.png",
           name: "Evidence Team",

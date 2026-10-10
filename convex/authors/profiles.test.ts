@@ -56,7 +56,7 @@ describe("author profiles", () => {
       const organizationId = await seedOrganizationFeatures(ctx, ["maker"], {});
       return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
     });
-    await expect(as("maker").mutation(api.authors.profiles.create, {workspaceId: plain, name: "Elsewhere"})).rejects.toThrow(/doesn't have author profiles/);
+    await expect(as("maker").mutation(api.authors.profiles.create, {workspaceId: plain, name: "Elsewhere"})).rejects.toThrow(/doesn't include author profiles/);
     // Its maker who leaves the lab no longer owns it.
     await t.run(async ctx => {
       for (const row of await ctx.db.query("organizationMemberships").collect()) if (row.clerkUserId === "maker") await ctx.db.patch("organizationMemberships", row._id, {state: "revoked"});

@@ -67,7 +67,7 @@ describe("Evidence Library limits", () => {
       action: "delete",
       membership: {
         clerkMembershipId: "orgmem_leaving", clerkUserId: "user_leaving", role: "org:member", state: "revoked", clerkCreatedAt: 1, clerkUpdatedAt: 2,
-        organization: { clerkOrganizationId: organization.clerkOrganizationId, name: organization.name, slug: organization.slug, evidenceLibrariesEnabled: organization.evidenceLibrariesEnabled, authorsEnabled: organization.authorsEnabled ?? false, extractionEnabled: organization.extractionEnabled ?? false, clerkCreatedAt: organization.clerkCreatedAt, clerkUpdatedAt: organization.clerkUpdatedAt },
+        organization: { clerkOrganizationId: organization.clerkOrganizationId, name: organization.name, slug: organization.slug, clerkCreatedAt: organization.clerkCreatedAt, clerkUpdatedAt: organization.clerkUpdatedAt },
       },
     });
     // A grant made after they left, by a later invitation, isn't the sweep's to take.

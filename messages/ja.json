@@ -335,7 +335,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "アクセスできません",
-    "organizationFeatureDescription": "所属する組織でこの機能が有効になっていません。",
+    "organizationFeatureDescription": "所属する組織のプランにこの機能は含まれていません。",
     "backToSearch": "検索に戻る",
     "loadingTitle": "ワークスペースを読み込み中",
     "loadingDescription": "認証済みワークスペースを準備しています。",

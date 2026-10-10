@@ -54,7 +54,7 @@ describe("a job's library and collection sources", () => {
       const paper = async (userId: typeof ada, title: string) =>
         ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/${title}`, title, searchableText: title, savedAt: 1, updatedAt: 1 });
       // One Ada saved in an organization's workspace is that workspace's, not hers.
-      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
       const lab = await ctx.db.insert("workspaces", { kind: "organization", organizationId });
       const labPaper = await ctx.db.insert("libraryItems", { workspaceId: lab, createdBy: ada, openalexId: "https://openalex.org/W3", title: "W3", searchableText: "W3", savedAt: 1, updatedAt: 1 });
       return { ada, grace, adaPaper: await paper(ada, "W1"), gracePaper: await paper(grace, "W2"), labPaper };

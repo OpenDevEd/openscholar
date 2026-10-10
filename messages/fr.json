@@ -335,7 +335,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "Accès non autorisé",
-    "organizationFeatureDescription": "Cette fonctionnalité n’est activée pour aucune de vos organisations.",
+    "organizationFeatureDescription": "Le forfait d’aucune de vos organisations n’inclut cette fonctionnalité.",
     "backToSearch": "Retour à la recherche",
     "loadingTitle": "Chargement de l'espace de travail",
     "loadingDescription": "Préparation de votre espace de travail authentifié.",

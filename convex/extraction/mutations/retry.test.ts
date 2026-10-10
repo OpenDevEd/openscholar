@@ -1,4 +1,5 @@
 import { seedOrganizationFeatures } from "../../organizationFeatures.test-support";
+import { PLAN_FEATURES } from "../../../lib/billing/plans";
 /**
  * Plan-05 — retryFailedQuestions + applyRetryResetTx behavior tests.
  *
@@ -60,6 +61,7 @@ async function seedFlagsAndCredits(
       free: opts.free ?? 0,
       paid: opts.paid ?? 100_000,
       now,
+      features: [PLAN_FEATURES.extraction],
     });
     return { userId };
   });

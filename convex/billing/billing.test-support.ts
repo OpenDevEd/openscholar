@@ -20,8 +20,8 @@ export const FAKE_SIGNUP_CREDITS = 500;
 /** Credits each Team seat adds to its organization's pool in the fake (#652). */
 export const FAKE_SEAT_CREDITS = 8000;
 
-/** `planId`: the main plan, Free until another is attached, as Autumn auto-enables it on every new customer. */
-type Customer = { plan: number; topUp: number; signup: boolean; planId: string };
+/** `planId`: the main plan, Free until another is attached, as Autumn auto-enables it on every new customer. `flags`: the boolean features its plan grants. */
+type Customer = { plan: number; topUp: number; signup: boolean; planId: string; flags?: readonly string[] };
 
 export const fakeAutumn = {
   customers: new Map<string, Customer>(),
@@ -97,6 +97,7 @@ function customerBody(id: string) {
   return {
     id,
     stripe_id: null,
+    flags: Object.fromEntries((customer.flags ?? []).map((feature) => [feature, {}])),
     subscriptions: [
       { plan_id: customer.planId, status: "active", past_due: false, canceled_at: null, current_period_end: null, add_on: false, auto_enable: customer.planId === "free" },
       ...(customer.signup
@@ -293,10 +294,10 @@ export function installFakeAutumn() {
   vi.stubEnv("CLERK_SECRET_KEY", "sk_test_fake");
 }
 
-/** Gives a person's own workspace, or another workspace (#650), credits in the fake and in the cached snapshot. */
+/** Gives a person's own workspace, or another workspace (#650), credits in the fake and in the cached snapshot, on a plan that grants `features`. */
 export async function seedCreditsForTest(
   ctx: MutationCtx,
-  args: ({ userId: Id<"users">; workspaceId?: undefined } | { workspaceId: Id<"workspaces">; userId?: undefined }) & { free?: number; paid?: number; now?: number },
+  args: ({ userId: Id<"users">; workspaceId?: undefined } | { workspaceId: Id<"workspaces">; userId?: undefined }) & { free?: number; paid?: number; now?: number; features?: readonly string[] },
 ): Promise<void> {
   const free = args.free ?? 0;
   const paid = args.paid ?? 0;
@@ -304,6 +305,7 @@ export async function seedCreditsForTest(
   // A workspace's Autumn customer: its person for their own, else the workspace itself.
   const customerId = workspace ? (workspace.kind === "personal" ? workspace.userId : workspace._id) : args.userId!;
   fakeAutumn.setBalance(customerId, { free, paid });
+  if (args.features) fakeAutumn.customer(customerId).flags = args.features;
   await ctx.db.insert("billingAccounts", {
     workspaceId: args.workspaceId ?? (await personalWorkspaceOf(ctx, args.userId!)),
     plan: "free",
@@ -313,6 +315,7 @@ export async function seedCreditsForTest(
     signupGranted: true,
     hasPaid: paid > 0,
     refreshedAt: args.now ?? Date.now(),
+    ...(args.features ? { features: [...args.features] } : {}),
   });
 }
 

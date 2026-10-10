@@ -19,7 +19,7 @@ afterEach(() => {
 
 const limits = () => fakeAutumn.memberLimits;
 
-const ORGANIZATION = { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1 };
+const ORGANIZATION = { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1 };
 
 /** A lab organization on the free plan, its people, and Clerk's webhooks for them. */
 async function lab(people: string[]) {

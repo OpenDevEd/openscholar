@@ -21,9 +21,6 @@ export async function seedOrganizationFeatures(
     name: "Feature test",
     state: "active",
     ...timestamps,
-    evidenceLibrariesEnabled: false,
-    authorsEnabled: false,
-    extractionEnabled: false,
   });
   // What the organization's plan includes (#652).
   const granted = (Object.keys(PLAN_FEATURES) as OrganizationFeature[]).filter((feature) => features[feature] === true);

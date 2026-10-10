@@ -15,7 +15,7 @@ const token = "els_" + "a".repeat(43);
 async function setup() {
   const t = convexTest(schema, modules);
   const seeded = await t.run(async (ctx) => {
-    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_sources", evidenceLibrariesEnabled: false, name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_sources", name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
     await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
     const users = new Map<string, Awaited<ReturnType<typeof ctx.db.insert<"users">>>>();
     for (const clerkId of ["owner", "colleague"]) {

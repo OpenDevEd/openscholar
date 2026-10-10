@@ -128,14 +128,6 @@ export const clerkOrganizationSnapshotFields = {
   name: v.string(),
   slug: v.string(),
   imageUrl: v.optional(v.string()),
-  /**
-   * Whether the platform team switched Evidence Libraries on for this
-   * organisation, from Clerk public metadata `{ "evidenceLibraries": true }`.
-   * The webhook always computes it, so the snapshot always carries it.
-   */
-  evidenceLibrariesEnabled: v.boolean(),
-  authorsEnabled: v.boolean(),
-  extractionEnabled: v.boolean(),
   devEnabled: v.optional(v.boolean()),
   clerkCreatedAt: v.number(),
   clerkUpdatedAt: v.number(),
@@ -143,6 +135,9 @@ export const clerkOrganizationSnapshotFields = {
 
 export const organizationFields = {
   ...clerkOrganizationSnapshotFields,
+  // The switches set by hand in Clerk, which nothing reads or writes now that plans grant features (#652).
+  // They go once migrations/organizationSwitches has cleared them from every organization.
+  evidenceLibrariesEnabled: v.optional(v.boolean()),
   authorsEnabled: v.optional(v.boolean()),
   extractionEnabled: v.optional(v.boolean()),
   state: organizationStateValidator,

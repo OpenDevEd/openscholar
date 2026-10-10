@@ -25,7 +25,6 @@ async function seedLibrary() {
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
-      evidenceLibrariesEnabled: false,
     });
     await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
     await ctx.db.insert("organizationMemberships", {
