@@ -12,6 +12,7 @@ import { useFormatter, useNow, useTranslations } from "next-intl";
 import { IconButton } from "@/components/assistant/parts";
 import { Share2, X } from "@/components/icons";
 import { SharePanel } from "@/components/shared/share-panel";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger, focusContent } from "@/components/ui/dialog";
 import { EmailAvatar } from "@/components/ui/identity";
@@ -170,7 +171,7 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
                 {t("morePeople")}
               </Button>
             ) : null}
-            <GuestMeter used={used} limit={limit} />
+            <GuestMeter room={room} />
           </>
         }
         // The link without the organization in it opens for a member in the organization and for a guest in their own workspace.
@@ -181,40 +182,46 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
   );
 }
 
-/** Guests on this item against what the owning workspace's plan allows. */
-function GuestMeter({ used, limit }: { used: number; limit: number | null }) {
+/**
+ * Guests on this item against what the owning workspace's plan allows. Until both are read
+ * (`room`), the meter says neither: a dialog opened before then showed "No limit" and the guests
+ * read so far, and changed under the person. What arrives fades in, and its bar slides the foot open.
+ */
+function GuestMeter({ room }: { room: { used: number; limit: number | null } | undefined }) {
   const t = useTranslations("workspaces.share");
   const workspace = useCurrentWorkspace();
   return (
-    <div className="flex items-center gap-3">
-      <div className="min-w-0 flex-1 space-y-1.5">
-        <div className="flex items-baseline justify-between gap-3 text-xs">
-          <span className="flex min-w-0 items-center gap-1.5 font-medium">
-            {t("guests")}
-            {workspace ? <PlanChip workspace={workspace} /> : null}
-          </span>
-          {limit === null ? (
-            <span className="flex shrink-0 items-center gap-1.5 tabular-nums text-muted-foreground">
-              {t("guestCount", { count: used })}
-              <span className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-success/10 px-2.5 text-xs ink-success">{t("noLimit")}</span>
+    <AutoHeight>
+      <div className="flex min-h-6 items-center gap-3">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <div className="flex items-baseline justify-between gap-3 text-xs">
+            <span className="flex min-w-0 items-center gap-1.5 font-medium">
+              {t("guests")}
+              {workspace ? <PlanChip workspace={workspace} /> : null}
             </span>
-          ) : (
-            <span className="shrink-0 tabular-nums text-muted-foreground">{t("usedOf", { used, limit })}</span>
-          )}
-        </div>
-        {limit === null ? null : (
-          <div className="flex gap-1" aria-hidden>
-            {Array.from({ length: limit }, (_, i) => (
-              <span key={i} className={cn("h-1.5 flex-1 rounded-full transition-colors", i < used ? (used >= limit ? "bg-warning" : "bg-primary") : "bg-muted")} />
-            ))}
+            {!room ? null : room.limit === null ? (
+              <span className="fade-enter flex shrink-0 items-center gap-1.5 tabular-nums text-muted-foreground">
+                {t("guestCount", { count: room.used })}
+                <span className="inline-flex h-6 shrink-0 items-center whitespace-nowrap rounded-full bg-success/10 px-2.5 text-xs ink-success">{t("noLimit")}</span>
+              </span>
+            ) : (
+              <span className="fade-enter shrink-0 tabular-nums text-muted-foreground">{t("usedOf", { used: room.used, limit: room.limit })}</span>
+            )}
           </div>
-        )}
+          {room && room.limit !== null ? (
+            <div className="fade-enter flex gap-1" aria-hidden>
+              {Array.from({ length: room.limit }, (_, i) => (
+                <span key={i} className={cn("h-1.5 flex-1 rounded-full transition-colors", i < room.used ? (room.used >= room.limit! ? "bg-warning" : "bg-primary") : "bg-muted")} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+        {room && room.limit !== null && room.used >= room.limit ? (
+          <Button asChild size="sm" variant="outline" className="fade-enter h-8 shrink-0">
+            <Link href="/pricing">{t("moreGuests")}</Link>
+          </Button>
+        ) : null}
       </div>
-      {limit !== null && used >= limit ? (
-        <Button asChild size="sm" variant="outline" className="h-8 shrink-0">
-          <Link href="/pricing">{t("moreGuests")}</Link>
-        </Button>
-      ) : null}
-    </div>
+    </AutoHeight>
   );
 }
