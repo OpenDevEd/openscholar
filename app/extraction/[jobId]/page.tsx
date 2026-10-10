@@ -625,18 +625,18 @@ export default function JobDetailPage() {
                 <AlertDialog open={confirming === "delete"} onOpenChange={(open) => !open && setConfirming(null)}>
                   <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
+                        <AlertDialogTitle>{tConfirm('deleteJob')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          {tConfirm('cancelJobDescription')}
+                          {tConfirm('deleteJobDescription')}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
+                        <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={handleCancel}
+                          onClick={handleDelete}
                           className="bg-destructive hover:bg-destructive/90"
                         >
-                          {tConfirm('yesCancel')}
+                          {tc('delete')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -765,7 +765,8 @@ export default function JobDetailPage() {
                     ) : (
                       <ListEmpty
                         icon={FileText}
-                        description={papersWithResults.length === 0 && job.status === "completed" ? tPdf('noResultsDescription') : tPdf('resultsWillAppear')}
+                        // One that has ended has no more to bring: only a job still going promises results.
+                        description={job.status === "completed" || job.status === "failed" || job.status === "cancelled" ? tPdf('noResultsDescription') : tPdf('resultsWillAppear')}
                       >
                         {tc('noResultsFound')}
                       </ListEmpty>
