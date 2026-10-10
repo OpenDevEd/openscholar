@@ -20,7 +20,6 @@ import { PaperCard } from "./paper-card";
 import type { PaperCardHide } from "./paper-card/shared";
 
 interface PapersListProps {
-  results: PaperResult[];
   filteredResults: PaperResult[];
   paginatedResults: PaperResult[];
   ratingRange: [number, number];
@@ -40,7 +39,6 @@ interface PapersListProps {
 }
 
 export function PapersGrid({
-  results,
   paginatedResults,
   currentPage,
   totalPages,
@@ -63,14 +61,13 @@ export function PapersGrid({
     <div ref={resultsContainerRef}>
       <div className={cn(gridClasses[viewMode])}>
         {paginatedResults.map((result, index) => {
-          const originalIndex = results.findIndex(
-            (r) => r.id === result.id
-          );
+          // Its place in the papers kept, in their order, which focus mode opens at.
+          const keptIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
           return (
             <PaperCard
               key={result.id}
               result={result}
-              resultIndex={originalIndex}
+              resultIndex={keptIndex}
               onDownloadItem={onDownloadItem}
               onDownloadEssentialItem={onDownloadEssentialItem}
               viewMode={viewMode}

@@ -402,7 +402,6 @@ export function ResultsList({
                 />
               ) : (
                 <PapersGrid
-                  results={results}
                   filteredResults={filteredResults}
                   paginatedResults={paginatedResults}
                   ratingRange={ratingRange}
