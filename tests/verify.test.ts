@@ -64,6 +64,11 @@ describe("analyzePhase on a page load", () => {
     expect(findings).toEqual([]);
   });
 
+  it("reports a stale number that is corrected once, moments after it appeared", () => {
+    const findings = analyzePhase([frame(400, { textAdded: ["0 papers"] }), frame(500, { textRemoved: ["0 papers"], textAdded: ["126 papers"] })], load);
+    expect(findings).toEqual([{ kind: "brief-text", text: "0 papers", from: 400, to: 500 }]);
+  });
+
   it("still reports a counting number that leaves moments after it first appeared", () => {
     const findings = analyzePhase(
       [
@@ -81,6 +86,7 @@ describe("analyzePhase on a page load", () => {
       [
         frame(400, { textAdded: ["4 credits", "4 credits"] }),
         frame(416, { textRemoved: ["4 credits", "4 credits"], textAdded: ["126 credits"] }),
+        frame(432, { textRemoved: ["126 credits"], textAdded: ["250 credits"] }),
       ],
       load,
     );

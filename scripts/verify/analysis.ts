@@ -103,19 +103,33 @@ function counted(frame: Frame): { pairs: [string, string][]; removed: string[]; 
   return { pairs, removed, added };
 }
 
+// How often a line has changed its value so far, by the text it shows now.
+// A line that changes once may be a stale value corrected ("0 papers", then
+// "126 papers"), which is a blink of the stale one; a line that changes again
+// is counting.
+type Changes = Map<string, { times: number; stale: Finding | null }>;
+
 /** A line that changed its value has been on screen since the old value appeared. */
-function carry(history: TextHistory, from: string, to: string) {
+function carry(history: TextHistory, changes: Changes, [from, to]: [string, string], t: number, since: number) {
   const shown = history.shownAt.get(from)?.pop();
   if (shown !== undefined) history.shownAt.set(to, [...(history.shownAt.get(to) ?? []), shown]);
+  const before = changes.get(from);
+  changes.delete(from);
+  const brief = shown !== undefined && shown >= since && t - shown < BRIEF_MS;
+  changes.set(to, { times: (before?.times ?? 0) + 1, stale: !before && brief ? { kind: "brief-text", text: from, from: shown, to: t } : null });
 }
 
 function textBlinks(frames: Frame[], since: number): Finding[] {
   const history: TextHistory = { shownAt: new Map(), goneAt: new Map() };
-  const findings = frames.flatMap((frame) => {
+  const changes: Changes = new Map();
+  const seen = frames.flatMap((frame) => {
     const { pairs, removed, added } = counted(frame);
-    for (const [from, to] of pairs) carry(history, from, to);
+    for (const pair of pairs) carry(history, changes, pair, frame.t, since);
+    // A line that leaves is judged by how long it was there, whatever it showed.
+    for (const text of removed) changes.delete(text);
     return [...removed.flatMap((text) => textGone(history, text, frame.t, since)), ...added.flatMap((text) => textShown(history, text, frame.t))];
   });
+  const findings = [...seen, ...[...changes.values()].flatMap((change) => (change.stale ? [change.stale] : []))];
   // Text hidden and then shown again is one flash, not also a blink.
   const flashes = findings.filter((finding) => finding.kind === "text-flash");
   const partOfFlash = (finding: Finding) => flashes.some((flash) => flash.kind === "text-flash" && finding.kind === "brief-text" && flash.text === finding.text && flash.from === finding.to);
