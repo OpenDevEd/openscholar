@@ -40,6 +40,8 @@ export function LikelyFirst() {
 
   const orderNow = async () => {
     setOrdering(true);
+    // From the first page, as the person asks: an answer that comes after the results changed moves nothing.
+    search.setPage(1);
     try {
       const works = papers.map((paper) => shortWorkId(paper.id) ?? paper.id);
       const answer = await getClosenessOrder(works, seeds.liked, seeds.disliked);
@@ -48,7 +50,6 @@ export function LikelyFirst() {
         return;
       }
       setOrder(searchId, { key, ids: likelyOrder(answer.order.map((one) => one.id), ratings), seeds });
-      search.setPage(1);
     } catch {
       toast.error(t("likelyFirstFailed"));
     } finally {

@@ -77,6 +77,20 @@ describe("likely relevant first", () => {
     expect(useLikelyOrderStore.getState().orders["search-1"]).toBeUndefined();
   });
 
+  it("goes back to the first page as it's pressed, and not when an answer comes later", async () => {
+    let answer: (value: unknown) => void = () => {};
+    ordered.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    render(<LikelyFirst />);
+    fireEvent.click(screen.getByRole("button", { name: "likelyFirst" }));
+    expect(setPage).toHaveBeenCalledWith(1);
+    // The person moves on while the order is made, as to another page of other results.
+    setPage.mockClear();
+    await act(async () => {
+      answer({ ok: true, order: [paper(2)].map(({ id }) => ({ id, score: 0.1 })) });
+    });
+    expect(setPage).not.toHaveBeenCalled();
+  });
+
   it("says when the results couldn't be ordered, and leaves them as they were", async () => {
     ordered.mockResolvedValue({ ok: false, status: 503, message: "down" });
     render(<LikelyFirst />);
