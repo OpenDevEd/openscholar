@@ -5,9 +5,10 @@
 
 import { useState } from "react";
 import { ItemPresence } from "./presence";
+import { MoveDialog, type Movable } from "./move-dialog";
 import { usePaginatedQuery } from "convex/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { AiIcon, FileSearch, FolderPlus, History, ListChecks, Pause, PenLine, Play, Plus, RotateCcw, Square, Star, Trash2, type AppIcon } from "@/components/icons";
+import { AiIcon, ArrowRight, FileSearch, FolderPlus, History, ListChecks, Move, Pause, PenLine, Play, Plus, RotateCcw, Square, Star, Trash2, type AppIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { PersonTag, YouTag } from "@/components/ui/identity";
@@ -37,6 +38,7 @@ const LOOK: Record<Happened, { icon: AppIcon; tint: string; counted: boolean }> 
   resumed: { icon: Play, tint: "#34d399", counted: false },
   retried: { icon: RotateCcw, tint: "#60a5fa", counted: true },
   stopped: { icon: Square, tint: "#f87171", counted: false },
+  moved: { icon: ArrowRight, tint: "#fb923c", counted: false },
 };
 
 /** Changes one page of Activity shows, and each page more. */
@@ -58,7 +60,23 @@ export function ItemBar({ kind, id, name, started, className }: { kind: ItemKind
       <span className="flex-1" />
       <ItemPresence kind={kind} id={id} />
       <ActivityButton kind={kind} id={id} name={name} />
+      {kind === "collection" ? null : <MoveButton kind={kind} id={id} name={name} />}
     </div>
+  );
+}
+
+/** An item's Move button (#654), and the dialog it opens. */
+export function MoveButton({ kind, id, name }: { kind: Movable; id: string; name: string }) {
+  const t = useTranslations("workspaces.move");
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => setOpen(true)}>
+        <Move />
+        {t("move")}
+      </Button>
+      <MoveDialog open={open} onOpenChange={setOpen} kind={kind} id={id} name={name} />
+    </>
   );
 }
 
@@ -147,8 +165,8 @@ function ActivityRow({ row, now }: { row: Row; now: Date }) {
   const format = useFormatter();
   const look = LOOK[row.happened];
   const Icon = look.icon;
-  // A renamed item shows the name it had beside the verb; other details sit in a chip under it.
-  const inline = row.happened === "renamed" && row.detail;
+  // A renamed item shows the name it had beside the verb, a moved one the workspace it came from; other details sit in a chip under it.
+  const inline = (row.happened === "renamed" || row.happened === "moved") && row.detail;
   return (
     <div className="flex gap-3 rounded-xl px-2 py-2.5">
       <span className="relative mt-0.5 shrink-0 self-start">

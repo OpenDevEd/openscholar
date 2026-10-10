@@ -3892,6 +3892,17 @@
         "did": "メンバーのクレジット上限を変更しました",
         "where": "プランとクレジット",
         "ask": "メンバーのクレジット上限を変更"
+      },
+      "moveCheck": {
+        "doing": "移動できるか確認しています",
+        "did": "移動できるか確認しました",
+        "where": "ワークスペース"
+      },
+      "moveItem": {
+        "doing": "別のワークスペースに移動しています",
+        "did": "別のワークスペースに移動しました",
+        "where": "ワークスペース",
+        "ask": "別のワークスペースに移動"
       }
     },
     "asks": {
@@ -4204,6 +4215,7 @@
       "resumed": "が再開しました",
       "retried": "が失敗した {count} 件の回答を再実行しました",
       "stopped": "が停止しました",
+      "moved": "ここに移動しました。移動元:",
       "viaAssistant": "アシスタント経由",
       "today": "今日",
       "yesterday": "昨日",
@@ -4229,6 +4241,31 @@
     },
     "presence": {
       "hasOpen": "{names} が開いています"
+    },
+    "move": {
+      "search": "検索を移動",
+      "screening": "スクリーニングを移動",
+      "extraction": "抽出を移動",
+      "chat": "チャットを移動",
+      "fromTo": "{workspace} から移動先",
+      "onlyYou": "自分のみ",
+      "membersSee": "{count, number} 人のメンバーが見られます",
+      "goesWithIt": "一緒に移動するもの",
+      "goes": {
+        "resultsRatings": "結果と評価",
+        "screeningAnswers": "スクリーニングの回答",
+        "earlierQueries": "以前のクエリ",
+        "answers": "回答",
+        "questions": "質問",
+        "pdfs": "PDF",
+        "messages": "メッセージ",
+        "files": "ファイル",
+        "activity": "アクティビティ"
+      },
+      "moveTo": "{workspace} に移動",
+      "move": "移動",
+      "toAnother": "別のワークスペースに移動",
+      "moveNamed": "{name} を別のワークスペースに移動"
     }
   },
   "models": {

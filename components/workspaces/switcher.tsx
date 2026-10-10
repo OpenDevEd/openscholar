@@ -40,7 +40,7 @@ const HEAD = 40;
  * Where a switch to another workspace lands: the same page there, or where its section starts
  * when the page shows an item, which is in one workspace only (Slack and Linear do the same).
  */
-function switchTarget(slug: string | undefined, pathname: string, search: string) {
+export function switchTarget(slug: string | undefined, pathname: string, search: string) {
   const path = bareWorkspacePath(pathname);
   // An organization's own settings have no page in your own workspace: its settings start there.
   if (!slug && (path === "/settings/workspace" || path.startsWith("/settings/workspace/"))) return "/settings";

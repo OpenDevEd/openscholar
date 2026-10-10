@@ -86,6 +86,7 @@
       "MAKER_ROWS_READ": "the makers of one kind of record the Run by filter reads for members who left; one row per person who ever made one, so an organization past it lists the first of them"
     },
     "batches": {
+      "ACTIVITY_STEP": "a moved item's activity rows, a step at a time; it reschedules itself until none are left in the old workspace",
       "BATCH": "a worker's batch; it pings itself for the next",
       "BATCH_SIZE": "a cascade's batch; it reschedules itself until nothing is left",
       "CANCEL_BATCH": "a cancel's batch; it reschedules itself",

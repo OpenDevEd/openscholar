@@ -3892,6 +3892,17 @@
         "did": "已更改成员的积分上限",
         "where": "套餐和积分",
         "ask": "更改成员的积分上限"
+      },
+      "moveCheck": {
+        "doing": "正在检查能否移动",
+        "did": "已检查能否移动",
+        "where": "工作区"
+      },
+      "moveItem": {
+        "doing": "正在移到另一个工作区",
+        "did": "已移到另一个工作区",
+        "where": "工作区",
+        "ask": "移到另一个工作区"
       }
     },
     "asks": {
@@ -4204,6 +4215,7 @@
       "resumed": "恢复了它",
       "retried": "重试了 {count} 个失败的回答",
       "stopped": "停止了它",
+      "moved": "把它移到这里，来自",
       "viaAssistant": "通过助手",
       "today": "今天",
       "yesterday": "昨天",
@@ -4229,6 +4241,31 @@
     },
     "presence": {
       "hasOpen": "{names} 正在查看"
+    },
+    "move": {
+      "search": "移动搜索",
+      "screening": "移动筛选",
+      "extraction": "移动提取",
+      "chat": "移动对话",
+      "fromTo": "从 {workspace} 移到",
+      "onlyYou": "仅你自己",
+      "membersSee": "{count, number} 名成员可见",
+      "goesWithIt": "一同移动",
+      "goes": {
+        "resultsRatings": "结果及其评分",
+        "screeningAnswers": "筛选答案",
+        "earlierQueries": "之前的查询",
+        "answers": "答案",
+        "questions": "问题",
+        "pdfs": "PDF",
+        "messages": "消息",
+        "files": "文件",
+        "activity": "动态"
+      },
+      "moveTo": "移到 {workspace}",
+      "move": "移动",
+      "toAnother": "移到另一个工作区",
+      "moveNamed": "将 {name} 移到另一个工作区"
     }
   },
   "models": {

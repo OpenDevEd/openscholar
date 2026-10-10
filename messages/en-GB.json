@@ -3894,6 +3894,17 @@
         "did": "Changed a member's credit cap",
         "where": "Plan and credits",
         "ask": "Change a member's credit cap"
+      },
+      "moveCheck": {
+        "doing": "Checking whether it can move",
+        "did": "Checked whether it can move",
+        "where": "Workspaces"
+      },
+      "moveItem": {
+        "doing": "Moving it to another workspace",
+        "did": "Moved it to another workspace",
+        "where": "Workspaces",
+        "ask": "Move it to another workspace"
       }
     },
     "asks": {
@@ -4206,6 +4217,7 @@
       "resumed": "resumed it",
       "retried": "retried {count, plural, one {# failed answer} other {# failed answers}}",
       "stopped": "stopped it",
+      "moved": "moved it here from",
       "viaAssistant": "Through the assistant",
       "today": "Today",
       "yesterday": "Yesterday",
@@ -4231,6 +4243,31 @@
     },
     "presence": {
       "hasOpen": "{count, plural, one {{names} has it open} other {{names} have it open}}"
+    },
+    "move": {
+      "search": "Move search",
+      "screening": "Move screening",
+      "extraction": "Move extraction",
+      "chat": "Move chat",
+      "fromTo": "From {workspace} to",
+      "onlyYou": "Only you",
+      "membersSee": "{count, plural, one {# member sees it} other {# members see it}}",
+      "goesWithIt": "Goes with it",
+      "goes": {
+        "resultsRatings": "Results and their ratings",
+        "screeningAnswers": "Screening answers",
+        "earlierQueries": "Earlier queries",
+        "answers": "Answers",
+        "questions": "Questions",
+        "pdfs": "PDFs",
+        "messages": "Messages",
+        "files": "Files",
+        "activity": "Activity"
+      },
+      "moveTo": "Move to {workspace}",
+      "move": "Move",
+      "toAnother": "Move to another workspace",
+      "moveNamed": "Move {name} to another workspace"
     }
   },
   "models": {

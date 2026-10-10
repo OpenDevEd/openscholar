@@ -36,8 +36,13 @@ export async function startCount(ctx: Pick<MutationCtx, "db" | "scheduler">, tab
 }
 
 /** The trigger for a counted table. */
-export const countChange = (table: Counted) => async (ctx: MutationCtx, change: Change<DataModel, Counted>) => {
-  if (change.operation === "update") return;
+export const countChange = (table: Counted) => async (ctx: MutationCtx, change: Change<DataModel, Counted>): Promise<void> => {
+  // A record moved to another workspace (#654) leaves one count and joins the other.
+  if (change.operation === "update") {
+    if (change.oldDoc.workspaceId === change.newDoc.workspaceId) return;
+    await countChange(table)(ctx, { ...change, operation: "delete", newDoc: null } as Change<DataModel, Counted>);
+    return await countChange(table)(ctx, { ...change, operation: "insert", oldDoc: null } as Change<DataModel, Counted>);
+  }
   const record = change.newDoc ?? change.oldDoc;
   const row = await countRow(ctx, table, record.workspaceId);
   // The first count reads the records as this change leaves them.
@@ -90,8 +95,13 @@ export async function startMakerCount(ctx: Pick<MutationCtx, "db" | "scheduler">
 }
 
 /** The trigger that keeps each maker's count of a table, in an organization; a person's own workspace is all theirs. */
-export const countMakerChange = (table: ByMaker) => async (ctx: MutationCtx, change: Change<DataModel, ByMaker>) => {
-  if (change.operation === "update") return;
+export const countMakerChange = (table: ByMaker) => async (ctx: MutationCtx, change: Change<DataModel, ByMaker>): Promise<void> => {
+  // As `countChange`: a record moved to another workspace counts for its maker there instead.
+  if (change.operation === "update") {
+    if (change.oldDoc.workspaceId === change.newDoc.workspaceId) return;
+    await countMakerChange(table)(ctx, { ...change, operation: "delete", newDoc: null } as Change<DataModel, ByMaker>);
+    return await countMakerChange(table)(ctx, { ...change, operation: "insert", oldDoc: null } as Change<DataModel, ByMaker>);
+  }
   const record = (change.newDoc ?? change.oldDoc) as Made & { _creationTime: number };
   const row = await makerCountRow(ctx, table, record.workspaceId, record.createdBy);
   // The first count reads the records as this change leaves them. A delete with none starts none: a

@@ -220,3 +220,4 @@ export { CompassIcon as Compass } from "@solar-icons/react/bold-duotone/compass"
 // Solar has no match for these: spinners, a balance scale, a few plain shapes
 // and other companies' logos.
 export { CircleIcon, Cookie, Github, Linkedin, Loader2, Loader2Icon, LoaderCircle, Scale, Youtube } from "lucide-react";
+export { MoveToFolderIcon as Move } from "@solar-icons/react/bold-duotone/move-to-folder";
