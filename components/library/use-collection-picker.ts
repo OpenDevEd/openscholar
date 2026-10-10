@@ -32,15 +32,21 @@ export function useCollectionPicker({ enabled = true, openalexId }: { enabled?: 
     const next = [list, shared].find((one) => one.status !== "Exhausted");
     if (next?.status === "CanLoadMore") next.loadMore(PICKER_PAGE_SIZE);
   };
+  // Both lists come together, so the shared ones don't arrive under a list already shown.
+  const isLoading = list.isInitialLoading || shared.isInitialLoading;
+  // The last answer stays while the next search is read, so the list isn't emptied between two: none before the first.
+  // Told apart by what it holds: a list that isn't being read yet is a new empty array every render.
+  const [answer, setAnswer] = useState<{ holds: string; collections: typeof list.results; shared: typeof shared.results }>();
+  const holds = isLoading || list.status === "Deferred" || shared.status === "Deferred" ? undefined : JSON.stringify([list.results, shared.results]);
+  if (holds !== undefined && holds !== answer?.holds) setAnswer({ holds, collections: list.results, shared: shared.results });
   return {
     query,
     setQuery,
     /** The search the list shows, once typing settles. */
     search,
-    collections: list.results,
-    shared: shared.results,
-    // Both lists come together, so the shared ones don't arrive under a list already shown.
-    isLoading: list.isInitialLoading || shared.isInitialLoading,
+    collections: answer?.collections,
+    shared: answer?.shared ?? [],
+    isLoading,
     onScroll,
   };
 }
