@@ -1865,7 +1865,8 @@
     "startFailed": "无法开始筛选",
     "showAnswers": "显示 {title} 的回答",
     "hideAnswers": "隐藏 {title} 的回答",
-    "yesOrNo": "是或否"
+    "yesOrNo": "是或否",
+    "lost": "此筛选已被删除，或不再与你共享"
   },
   "connectionsPage": {
     "connectedApps": "已连接的应用",

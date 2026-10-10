@@ -6,7 +6,8 @@ import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
-import { AiIcon, CircleCheck, CircleX, FileSearch, Hourglass, ListChecks, Plus, Square, type AppIcon } from "@/components/icons";
+import { AiIcon, CircleCheck, CircleX, FileSearch, Hourglass, ListChecks, Plus, Square, Unlink, type AppIcon } from "@/components/icons";
+import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -70,7 +71,9 @@ export function ScreeningPage() {
   const job = !jobId || read === null ? null : (read ?? shown);
   // Shown while the one picked is read: it stays dimmed and inert until then.
   const stale = Boolean(job && jobId && job._id !== jobId);
-  const showsForm = !job && !waiting && !(jobId && read === undefined);
+  // The address names a screening that isn't there to read: deleted, or shared with the person no longer. It says so, where it showed the form.
+  const lost = picked !== null && picked !== "new" && read === null;
+  const showsForm = !job && !waiting && !lost && !(jobId && read === undefined);
   // Whether something has shown yet. The first screening to arrive only fades in, since the page is
   // still rising under it; what replaces it rises as well. The form, when the page opens on it, is there from the start.
   const [begun, setBegun] = useState(showsForm);
@@ -157,8 +160,8 @@ export function ScreeningPage() {
           <AnimatePresence mode="popLayout" initial={false}>
             {/* Nothing stands in while a screening is read. An empty block has no height, so it could not be
                 lifted out of the flow as it left, and held the next one a gap lower until it was gone. */}
-            {job || showsForm ? (
-              <motion.div key={job?._id ?? "new"} initial={{ opacity: 0, y: begun ? 8 : 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }} onAnimationStart={() => setBegun(true)} className={cn("flow-root", stale && "pointer-events-none opacity-60")} aria-busy={stale}>
+            {job || showsForm || lost ? (
+              <motion.div key={job?._id ?? (lost ? "lost" : "new")} initial={{ opacity: 0, y: begun ? 8 : 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }} onAnimationStart={() => setBegun(true)} className={cn("flow-root", stale && "pointer-events-none opacity-60")} aria-busy={stale}>
                 {job ? (
                   <>
                     <ItemBar
@@ -178,6 +181,8 @@ export function ScreeningPage() {
                       onRunAgain={() => openForm(job)}
                     />
                   </>
+                ) : lost ? (
+                  <ListEmpty icon={Unlink}>{t("lost")}</ListEmpty>
                 ) : (
                   <SetupView
                     key={again?._id ?? searchId ?? "new"}
