@@ -83,7 +83,3 @@ export function topUpBundles(catalog: BillingCatalog): TopUpBundle[] {
     }));
 }
 
-/** Main plans that grant `featureId`, cheapest first. */
-export function plansWithFeature(catalog: BillingCatalog, featureId: string): CatalogPlan[] {
-  return mainPlans(catalog).filter((plan) => plan.features.includes(featureId));
-}

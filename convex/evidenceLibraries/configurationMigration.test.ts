@@ -8,7 +8,7 @@ import schema from "../schema";
 import { auditHeaderVersion } from "./configurationMigration";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 type AuditPage = {
@@ -40,7 +40,7 @@ async function seedHeaders(
       createdAt: 1,
       updatedAt: 1,
     });
-    await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+    await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
     const libraryId = await ctx.db.insert("evidenceLibraries", {
       workspaceId: await organizationWorkspaceOf(ctx, organizationId),
       name: "Migration Library",
@@ -207,7 +207,7 @@ describe("Evidence Library configuration migration", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       return await ctx.db.insert("evidenceLibraries", {
         workspaceId: await organizationWorkspaceOf(ctx, organizationId),
         name: "Other Migration Library",

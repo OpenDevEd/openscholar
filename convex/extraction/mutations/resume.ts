@@ -1,4 +1,3 @@
-import { requireOrganizationFeature } from "../../organizationFeatures";
 /**
  * Plan-06 resume mutation, queue-runtime version.
  *
@@ -53,7 +52,7 @@ import {
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { availableCredits as readAvailableCredits } from "../../billing/accounts";
 
-import { getFlag } from "../../featureFlags/guard";
+import { getFlag, requireFeature } from "../../featureFlags/guard";
 import {
   dispatchPaperQueueWindowTx,
   enqueueInitialPapersForJobTx,
@@ -129,7 +128,7 @@ export const resumeExtraction = mutation({
   }> => {
     const user = await requireAuth(ctx);
     const { job } = await assertJobAccess(ctx, user, jobId);
-    await requireOrganizationFeature(ctx, "extraction");
+    await requireFeature(ctx, "extraction.enabled", user._id);
 
     if (!job.status) {
       return { resumed: false, reason: "not_paused" };

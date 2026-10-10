@@ -1,4 +1,3 @@
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { ConvexError } from "convex/values";
@@ -14,7 +13,6 @@ const identity = {
 async function seed(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
     const now = Date.now();
-    await seedOrganizationFeatures(ctx, ["clerk_uploader"], { extraction: true });
     await ctx.db.insert("users", {
       
       clerkId: "clerk_uploader",

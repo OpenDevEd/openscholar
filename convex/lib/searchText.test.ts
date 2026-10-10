@@ -5,7 +5,6 @@ import { expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { personalWorkspaceOf } from "../workspaces/actor";
 
 it("the backfill makes rows from before findable, and an admin is found by the name they change to", async () => {
@@ -27,7 +26,6 @@ it("the backfill makes rows from before findable, and an admin is found by the n
     const jobs = async () => (await t.query(internal.extraction.queries.listJobsForAssistant, { userId, sort: "recent", text: "tutoring", paginationOpts: { cursor: null, numItems: 10 } })).page.map((job) => job.name);
     await t.run(async (ctx) => {
       await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
-      await seedOrganizationFeatures(ctx, ["admin"], { extraction: true });
     });
     expect(await t.action(internal.migrations.searchText.verify, {})).toBe(2);
     await t.mutation(internal.migrations.searchText.run, {});

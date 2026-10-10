@@ -1,7 +1,6 @@
-// How the rail looked in this browser (#651): a cookie keeps the signed-in person's name, photo
-// and the sections their features open, and each workspace's name, colour and logo, so the
-// server draws the rail as it was from the page's first frame, before Clerk or the workspace
-// load. The rail writes it whenever it reads them. It names the account it's for, so someone
+// How the rail looked in this browser (#651): a cookie keeps the signed-in person's name and
+// photo, and each workspace's name, colour, logo and the sections it opens, so the server draws
+// the rail as it was from the page's first frame, before Clerk or the workspace load. The rail writes it whenever it reads them. It names the account it's for, so someone
 // else signing in on the same browser doesn't see it.
 
 /** The cookie the rail's looks are kept in. */
@@ -10,12 +9,10 @@ export const LOOK_COOKIE = "workspace-looks";
 /** The request header the proxy names the address's workspace in: its slug, or empty for the person's own. */
 export const WORKSPACE_HEADER = "x-workspace-slug";
 
-/** The sections the person's features open in the rail: theirs, whichever workspace they're in. */
-export type CachedFeatures = { extraction?: boolean; evidenceLibraries?: boolean; authors?: boolean };
-/** A workspace as the rail drew it; `extract`: it showed Extract, which waits on the workspace's plan as well as the person's features. */
-export type CachedLook = { kind: "personal" | "organization"; workspaceId: string; name: string; imageUrl?: string; colour?: string; extract?: true };
-/** The signed-in person, as the rail's account button shows them, and their features. */
-export type CachedMe = { name: string; imageUrl?: string; features?: CachedFeatures };
+/** A workspace as the rail drew it; `extract` and `publish`: it showed Extract, and Publish, which its plan opens (Evidence Libraries). */
+export type CachedLook = { kind: "personal" | "organization"; workspaceId: string; name: string; imageUrl?: string; colour?: string; extract?: true; publish?: true };
+/** The signed-in person, as the rail's account button shows them. */
+export type CachedMe = { name: string; imageUrl?: string };
 export type LookCache = { me?: CachedMe; looks: Record<string, CachedLook> };
 
 /** What the server knew when it drew the page: the address's workspace, who's signed in, and how the rail looked last time. */
@@ -35,13 +32,12 @@ export const slugOf = (pathname: string) => /^\/o\/([^/]+)/.exec(pathname)?.[1] 
 
 const COLOUR = /^#[0-9a-f]{6}$/i;
 const photo = (value: unknown) => (typeof value === "string" && value.startsWith("https://") ? { imageUrl: value } : {});
-const FEATURES = ["extraction", "evidenceLibraries", "authors"] as const;
 
 /** What the cookie holds for `user` (their Clerk ID), raw or encoded. It's the person's own to change, so anything off is dropped. */
 export function readCache(raw: string | undefined, user: string | null | undefined): LookCache {
   if (!raw || !user) return { looks: {} };
   try {
-    const parsed = JSON.parse(raw.startsWith("%") ? decodeURIComponent(raw) : raw) as { user?: unknown; me?: Partial<CachedMe> & { features?: Record<string, unknown> }; looks?: unknown } | null;
+    const parsed = JSON.parse(raw.startsWith("%") ? decodeURIComponent(raw) : raw) as { user?: unknown; me?: Partial<CachedMe>; looks?: unknown } | null;
     if (parsed?.user !== user) return { looks: {} };
     const looks: Record<string, CachedLook> = {};
     for (const [key, value] of Object.entries((parsed.looks ?? {}) as Record<string, Partial<CachedLook>>)) {
@@ -53,11 +49,10 @@ export function readCache(raw: string | undefined, user: string | null | undefin
         ...photo(value.imageUrl),
         ...(typeof value.colour === "string" && COLOUR.test(value.colour) ? { colour: value.colour } : {}),
         ...(value.extract === true ? { extract: true as const } : {}),
+        ...(value.publish === true ? { publish: true as const } : {}),
       };
     }
-    const given = parsed.me?.features;
-    const features = given && typeof given === "object" ? Object.fromEntries(FEATURES.filter((feature) => given[feature] === true).map((feature) => [feature, true])) : undefined;
-    const me = typeof parsed.me?.name === "string" ? { name: parsed.me.name, ...photo(parsed.me.imageUrl), ...(features ? { features } : {}) } : undefined;
+    const me = typeof parsed.me?.name === "string" ? { name: parsed.me.name, ...photo(parsed.me.imageUrl) } : undefined;
     return { ...(me ? { me } : {}), looks };
   } catch {
     return { looks: {} };

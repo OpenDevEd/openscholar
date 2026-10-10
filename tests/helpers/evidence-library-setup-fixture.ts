@@ -1,6 +1,6 @@
 import { seedFeatureUser } from "../../convex/organizationFeatures.test-support";
 import { grantPlanFeaturesForTest } from "../../convex/billing/billing.test-support";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 import { convexTest } from "convex-test";
 import type { Id } from "../../convex/_generated/dataModel";
 import type { QueryCtx } from "../../convex/_generated/server";
@@ -106,7 +106,7 @@ export async function createDraftSetupFixture(suffix: string) {
       updatedAt: 1,
     });
     // Evidence Libraries come with the organization's plan (#652).
-    await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+    await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
     await seedFeatureUser(ctx, clerkUserId);
     const membershipId = await ctx.db.insert("organizationMemberships", {
       organizationId,

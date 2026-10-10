@@ -42,7 +42,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { useOrganizationFeatures } from "@/lib/auth/use-organization-features";
+import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { findPlan } from "@/lib/billing/catalog";
@@ -133,22 +133,23 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const { userId } = auth;
   const cached = cachedRail(firstWorkspace, slug, auth, useHydrated());
   const current: WorkspaceLook | undefined = picked && (waiting || loading) ? picked.to : (loaded ?? cached.look);
-  // The person as the account button shows them, and the sections their features open: as last time until Clerk and Convex load.
+  // The person as the account button shows them: as last time until Clerk and Convex load.
   const { user } = useUser();
   const { phase } = useAuthReadiness();
-  const { data: features } = useOrganizationFeatures();
   const live: CachedMe | undefined = user ? { name: user.fullName || user.primaryEmailAddress?.emailAddress || "", ...(user.imageUrl ? { imageUrl: user.imageUrl } : {}) } : undefined;
   const me = live ?? cached.me;
-  const shownFeatures = features ?? cached.me?.features;
-  // Extract waits on the workspace's plan as well as the person's features: until both are read, it shows as it did last time.
+  // The sections the workspace opens: Extract, which its flags turn on, and Publish, which its plan does. Until they're read, each shows as it did last time.
   const { planFeatures } = useSubscriptionState();
   const extractionOn = useFeatureFlagForPlan("extraction.enabled", planFeatures);
   const extractionStarts = useFeatureFlagForPlan("extraction.start", planFeatures);
-  const liveExtracts = features === undefined || planFeatures === null ? undefined : features.extraction && extractionOn && extractionStarts;
-  // The rail's last answer, held while a switch reads the next workspace's plan, so Extract doesn't leave and come back.
-  const [heldExtracts, setHeldExtracts] = useState(false);
-  if (liveExtracts !== undefined && liveExtracts !== heldExtracts) setHeldExtracts(liveExtracts);
-  const extracts = liveExtracts ?? (cached.look ? cached.look.extract === true : heldExtracts);
+  const liveExtracts = planFeatures === null ? undefined : extractionOn && extractionStarts;
+  const livePublishes = useWorkspaceFeatures().data?.evidenceLibraries;
+  // The rail's last answers, held while a switch reads the next workspace, so a section doesn't leave and come back.
+  const [held, setHeld] = useState({ extracts: false, publishes: false });
+  const read = { extracts: liveExtracts ?? held.extracts, publishes: livePublishes ?? held.publishes };
+  if (read.extracts !== held.extracts || read.publishes !== held.publishes) setHeld(read);
+  const extracts = liveExtracts ?? (cached.look ? cached.look.extract === true : held.extracts);
+  const publishes = (livePublishes ?? (cached.look ? cached.look.publish === true : held.publishes)) ? "/evidence-libraries" : null;
   const signedIn = phase === "authenticated" || (phase === "initializing" && !!(auth.isLoaded ? userId : firstWorkspace.user));
   // The browser's cookies are the outside system: the server draws the rail from them next time.
   useEffect(() => {
@@ -157,13 +158,12 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
     const cache = readCache(raw, userId);
     const was = cache.looks[lookKey(slug)];
     const extract = liveExtracts ?? was?.extract === true;
-    const look: CachedLook | undefined = loaded && (loaded.slug ?? null) === slug ? { kind: loaded.kind, workspaceId: loaded.workspaceId, name: loaded.name, ...(loaded.imageUrl ? { imageUrl: loaded.imageUrl } : {}), ...(loaded.colour ? { colour: loaded.colour } : {}), ...(extract ? { extract: true as const } : {}) } : undefined;
-    const on = features ? Object.fromEntries(Object.entries(features).filter(([, enabled]) => enabled)) : cache.me?.features;
-    const person = live ? { ...live, ...(on ? { features: on } : {}) } : undefined;
-    if (!look && !person) return;
-    const next = writeCache(cache, userId, lookKey(slug), look, person);
+    const publish = livePublishes ?? was?.publish === true;
+    const look: CachedLook | undefined = loaded && (loaded.slug ?? null) === slug ? { kind: loaded.kind, workspaceId: loaded.workspaceId, name: loaded.name, ...(loaded.imageUrl ? { imageUrl: loaded.imageUrl } : {}), ...(loaded.colour ? { colour: loaded.colour } : {}), ...(extract ? { extract: true as const } : {}), ...(publish ? { publish: true as const } : {}) } : undefined;
+    if (!look && !live) return;
+    const next = writeCache(cache, userId, lookKey(slug), look, live);
     if (next && next !== raw) document.cookie = `${LOOK_COOKIE}=${next}; Path=/; Max-Age=${LOOK_KEPT_S}; SameSite=Lax`;
-  }, [userId, slug, loaded, live?.name, live?.imageUrl, features, liveExtracts]);
+  }, [userId, slug, loaded, live?.name, live?.imageUrl, liveExtracts, livePublishes]);
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
 
@@ -175,7 +175,6 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
 
   const is = (p: string) => (p === "/" ? path === "/" || path.startsWith("/results") : path === p || path.startsWith(`${p}/`));
   // Sections a workspace's features open, until plans hold them (#652): extraction, and Evidence Libraries or author profiles behind Publish.
-  const publishes = shownFeatures?.evidenceLibraries ? "/evidence-libraries" : shownFeatures?.authors ? "/authors" : null;
   const { data: screening } = useProtectedQuery(api.screening.queries.getActiveScreeningJobProgress, inWorkspace(here, {}));
   const { data: extraction } = useProtectedQuery(api.extraction.queries.jobs.runningJob, inWorkspace(here, {}));
   const tint = current ? workspaceTint(current) : undefined;

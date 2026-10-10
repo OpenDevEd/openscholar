@@ -12,7 +12,7 @@
  * Autumn's dashboard.
  */
 
-type FlagDefault = {
+export type FlagDefault = {
   enabled: boolean;
   planFeature?: string;
   description: string;
@@ -21,7 +21,7 @@ type FlagDefault = {
 export const FLAG_REGISTRY = {
   "extraction.enabled": { enabled: true, description: "Master switch for the extraction feature" },
   "extraction.pdf": { enabled: true, description: "PDF processing capability gate (per-job toggle visibility)" },
-  "extraction.start": { enabled: true, planFeature: "extraction", description: "Start new extraction jobs" },
+  "extraction.start": { enabled: true, description: "Start new extraction jobs" },
   "assistant.enabled": { enabled: false, description: "The research assistant and its chats" },
   "credits.enabled": { enabled: true, description: "Credit system master switch" },
   "credits.topups": { enabled: true, description: "On-demand credit top-up purchases" },

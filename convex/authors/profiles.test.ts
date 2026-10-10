@@ -12,7 +12,7 @@ const content = {name: "Caitlin Mills", headline: "Learning scientist", affiliat
 async function setup() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async ctx => {
-    await seedOrganizationFeatures(ctx, ["owner", "editor"], { authors: true });
+    await seedOrganizationFeatures(ctx, ["owner", "editor"], { evidenceLibraries: true });
     const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
     return {
       owner: await ctx.db.insert("users", {...fields, clerkId: "owner", email: "owner@example.org"}),
@@ -31,7 +31,7 @@ describe("author profiles", () => {
     const lab = await t.run(async ctx => {
       const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
       for (const clerkId of ["admin", "maker", "member", "outsider"]) await ctx.db.insert("users", {...fields, clerkId, email: `${clerkId}@example.org`});
-      const organizationId = await seedOrganizationFeatures(ctx, ["admin", "maker", "member"], {authors: true});
+      const organizationId = await seedOrganizationFeatures(ctx, ["admin", "maker", "member"], { evidenceLibraries: true });
       const admin = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", q => q.eq("organizationId", organizationId).eq("clerkUserId", "admin").eq("state", "active")).unique();
       await ctx.db.patch("organizationMemberships", admin!._id, {role: "org:admin"});
       return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;

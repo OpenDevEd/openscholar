@@ -6,16 +6,16 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 const modules = import.meta.glob("/convex/**/*.ts");
 
 it("keeps associations tenant scoped and does not let old retries restore removed works", async () => {
   const t = convexTest(schema, modules);
   const libraryId = await t.run(async ctx => {
-    await seedOrganizationFeatures(ctx, ["profile-owner"], { authors: true });
+    await seedOrganizationFeatures(ctx, ["profile-owner"], { evidenceLibraries: true });
     await ctx.db.insert("users", {clerkId: "profile-owner", email: "owner@example.org", state: "active", createdAt: 1, updatedAt: 1});
     const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: "org_library", name: "Library team", slug: "library-team", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
-    await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+    await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
     const libraryId = await ctx.db.insert("evidenceLibraries", {workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Learning", slug: "learning", state: "active", createdByClerkUserId: "library-owner", updatedByClerkUserId: "library-owner", createdAt: 1, updatedAt: 1});
     await ctx.db.insert("evidenceLibraryCredentials", {libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: "correct-digest", validationState: "valid", createdByClerkUserId: "library-owner", updatedByClerkUserId: "library-owner", createdAt: 1, updatedAt: 1});
     return libraryId;

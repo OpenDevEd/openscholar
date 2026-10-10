@@ -529,8 +529,6 @@ export default defineSchema({
     enabled: v.boolean(),
     /** An Autumn feature the user's plan must grant, such as "extraction". */
     planFeature: v.optional(v.string()),
-    /** Retired: the plan tier gate. `featureFlags/internal:adoptPlanFeatures` clears it. */
-    minimumTier: v.optional(v.number()),
     description: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_key", ["key"]),

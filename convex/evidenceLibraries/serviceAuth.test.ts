@@ -8,7 +8,7 @@ import schema from "../schema";
 import { authenticateLibraryServiceCredential } from "./credentials";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const encryptionKey = "ab".repeat(32);
@@ -26,7 +26,7 @@ async function seedLibrary() {
       createdAt: 1,
       updatedAt: 1,
     });
-    await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+    await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
     await ctx.db.insert("organizationMemberships", {
       organizationId,
       clerkMembershipId: "orgmem_service_auth",

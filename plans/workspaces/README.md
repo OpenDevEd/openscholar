@@ -50,6 +50,16 @@ through `requireAuth` directly.
   an optional monthly cap per member.
 - Features come from the workspace's plan. The hand-set organization switches
   go, and the dev organizations move to plans that keep their features.
+  - 2026-10-10 (the user): the workspace a person acts in decides, never the
+    account. A subscription pays for one workspace and grants nothing in
+    another: a person's own plan opens nothing in an organization, and an
+    organization's nothing in its members' own workspaces. Extraction comes
+    with every plan, limited by credits, and its upgrade card is gone.
+    Evidence Libraries are the one plan feature left (Team). An author
+    profile is made, and the directory of profiles read, where the workspace
+    has Evidence Libraries; a profile's own page stays public. Someone a
+    library was shared with still reaches it from their own workspace: that
+    is access to an item, not a plan feature.
 - In an organization, the AI preset is the organization's, and members have no
   "My key" (browser key) option.
 - Items can move between workspaces. An organization with an Evidence Library
@@ -192,7 +202,7 @@ One place owns each rule, and nothing else implements it again.
 | Who may open an item, and with which role | `convex/sharing/access.ts` (`requireItem`), replacing the role reads in `convex/assistant/access.ts`, `convex/authors/access.ts` and `convex/evidenceLibraries/access.ts` |
 | Who pays | `convex/billing/charge.ts`. Reserve, settle and release take a payer: the workspace's Autumn customer and, in an organization, the member's entity |
 | Which members are billed as seats | `convex/billing/seats.ts`, from the Clerk webhook's memberships, with a daily reconcile |
-| What a plan allows | `planLimit` and `hasPlanFeature` in `convex/billing/accounts.ts`, keyed by workspace. `convex/organizationFeatures.ts` goes. 2026-10-10 (#652): its switch readers went; the module stays to read a person's organizations and what their plans grant, for the pages that sit outside a workspace (Evidence Libraries, author profiles, extraction) |
+| What a plan allows | `planLimit` and `hasPlanFeature` in `convex/billing/accounts.ts`, keyed by workspace. `convex/organizationFeatures.ts` goes. 2026-10-10 (#652): its switch readers went; the module stays to read a person's organizations, where they may make a library, and what the workspace they act in opens (`get`) |
 | What changed on an item | the wrappers, which write activity from each entry's `activity` declaration (`convex/activity/`) |
 | Who has an item open | `convex/presence.ts`, rooms keyed by item, moved from `convex/assistant/presence.ts` |
 | How many records a workspace and each member have | `convex/research/recordCounts.ts` and the triggers in `convex/lib/triggers.ts`, keyed by workspace, and by workspace and creator |

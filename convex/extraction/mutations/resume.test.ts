@@ -7,7 +7,6 @@
  * and the resume requeue integration below.
  */
 
-import { seedOrganizationFeatures } from "../../organizationFeatures.test-support";
 import { convexTest } from "convex-test";
 import { describe, it, expect, vi } from "vitest";
 import { api, internal } from "../../_generated/api";
@@ -42,7 +41,6 @@ async function seedUserAndCredits(
       createdAt: now,
       updatedAt: now,
     });
-    await seedOrganizationFeatures(ctx, [CLERK], {extraction: true});
     await seedCreditsForTest(ctx, {
       userId,
       free: opts.free ?? 0,

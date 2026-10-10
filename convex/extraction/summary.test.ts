@@ -4,7 +4,6 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { recomputePaperListProjection } from "./listProjection";
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { catchUp } from "../lib/catchUp.test-support";
 
 type Row = { title: string; country: string | null; outcomes: string[]; confidence?: number; status?: "completed" };
@@ -15,7 +14,6 @@ async function seedJob(t: ReturnType<typeof convexTest>, rows: Row[], project = 
     const now = Date.now();
     const userId = await ctx.db.insert("users", { clerkId: "clerk_summary", email: "summary@test.com", state: "active", createdAt: now, updatedAt: now });
     await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: now });
-    await seedOrganizationFeatures(ctx, ["clerk_summary"], { extraction: true });
     const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history", status: "completed", totalPapers: rows.length, name: "Summary", createdAt: now, updatedAt: now });
     await ctx.db.insert("extractionQuestions", { jobId, key: "country", question: "In what country was the study done?", type: "string", order: 0, createdAt: now });
     await ctx.db.insert("extractionQuestions", { jobId, key: "outcomes", question: "Which outcomes were measured?", type: "array", order: 1, createdAt: now });

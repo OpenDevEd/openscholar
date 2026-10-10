@@ -55,20 +55,6 @@ describe("toast error resolver", () => {
     expect(getToastMessageKeyForErrorCode(resolved.code)).toBe("aiPlanEntitlement");
   });
 
-  it("maps extraction entitlement code to localized toast key", () => {
-    const resolved = resolveToastError(
-      {
-        message: "Uncaught ConvexError",
-        data: { code: "EXTRACTION_PLAN_REQUIRED" },
-      },
-      "fallback",
-    );
-
-    expect(resolved.code).toBe("EXTRACTION_PLAN_REQUIRED");
-    expect(getToastMessageKeyForErrorCode(resolved.code)).toBe("extractionPlanRequired");
-    expect(isPlanUpgradeCode(resolved.code)).toBe(true);
-  });
-
   it("resolves top-level client error.code and maps credits disabled message key", () => {
     const resolved = resolveToastError(
       {

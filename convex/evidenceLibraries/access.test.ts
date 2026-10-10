@@ -6,7 +6,7 @@ import schema from "../schema";
 import { requireEvidenceLibraryAccess } from "./access";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
 describe("library access", () => {
   async function seedMembership(
@@ -53,7 +53,7 @@ describe("library access", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      await grantPlanFeaturesForTest(ctx, otherOrganizationId, [PLAN_FEATURES.evidenceLibraries]);
+      await grantPlanFeaturesForTest(ctx, otherOrganizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       const crossTenantLibraryId = await ctx.db.insert("evidenceLibraries", {
         workspaceId: await organizationWorkspaceOf(ctx, otherOrganizationId),
         name: "Other Library",

@@ -1,6 +1,6 @@
-import { requireOrganizationFeature } from "../organizationFeatures";
+import { opensEvidenceLibraries } from "../organizationFeatures";
 import { hasPlanFeature } from "../billing/accounts";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 import { searchTerms } from "../lib/searchText";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import schema from "../schema";
@@ -11,7 +11,7 @@ import type { Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { authorContentFields } from "./validators";
 import { profileRole, requireProfileAccess } from "./access";
-import { workspaceMutation } from "../lib/userActions";
+import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 
 export function cleanContent(content: { [K in keyof typeof authorContentFields]: string }) {
   const next = {...content};
@@ -45,13 +45,11 @@ export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, wo
 const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union(v.string(), v.null())};
 
 /**
- * Refuses unless `workspaceId` may hold author profiles: in an organization, its own plan grants
- * them; in `userId`'s own workspace, the plan of any of their organizations (#652).
+ * Refuses unless `workspaceId` may take a new author profile, or one moved into it: its plan
+ * includes Evidence Libraries, which profiles are managed with. A plan is its workspace's alone.
  */
-export async function requireAuthorProfiles(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) {
-  const workspace = await ctx.db.get("workspaces", workspaceId);
-  if (workspace?.kind !== "organization") return await requireOrganizationFeature(ctx, "authors", userId);
-  if (!(await hasPlanFeature(ctx, workspaceId, PLAN_FEATURES.authors))) throw createError("FORBIDDEN", "This organization's plan doesn't include author profiles.");
+export async function requireAuthorProfiles(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
+  if (!(await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE))) throw createError("FORBIDDEN", "This workspace's plan doesn't include Evidence Libraries, which author profiles come with.");
 }
 
 /** Makes a profile owned by the page's workspace. */
@@ -59,7 +57,7 @@ export const create = workspaceMutation({
   args: {name: v.string()},
   returns: v.id("authorProfiles"),
   handler: async (ctx, {userId, workspaceId}, args) => {
-    await requireAuthorProfiles(ctx, workspaceId, userId);
+    await requireAuthorProfiles(ctx, workspaceId);
     return await createProfile(ctx, userId, workspaceId, args.name);
   },
 });
@@ -84,11 +82,12 @@ export function searchProfilePage(ctx: QueryCtx, term: string, paginationOpts: P
   return query.paginate({...paginationOpts, numItems: Math.max(1, Math.min(30, Math.floor(paginationOpts.numItems)))});
 }
 
-export const list = query({
+/** The directory of profiles, for someone the workspace they're in opens Evidence Libraries for. A profile's own page is public (`get`). */
+export const list = workspaceQuery({
   args: {search: v.string(), paginationOpts: paginationOptsValidator},
   returns: paginationResultValidator(v.object(profileWithPhoto)),
-  handler: async (ctx, args) => {
-    await requireOrganizationFeature(ctx, "authors");
+  handler: async (ctx, actor, args) => {
+    if (!(await opensEvidenceLibraries(ctx, actor))) throw createError("FORBIDDEN", "This workspace doesn't have Evidence Libraries, which the directory of authors comes with.");
     const rows = await searchProfilePage(ctx, args.search, args.paginationOpts);
     return {...rows, page: await Promise.all(rows.page.map(async profile => ({...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null})))};
   },
