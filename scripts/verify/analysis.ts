@@ -66,15 +66,85 @@ function bursts(frames: Frame[]): Frame[][] {
   return groups;
 }
 
-function shift(frames: Frame[]): Finding | null {
-  const moves = new Map<number, Move>();
-  for (const move of frames.flatMap((frame) => frame.moved)) {
-    const total = moves.get(move.id) ?? { id: move.id, dx: 0, dy: 0, dw: 0, dh: 0 };
-    moves.set(move.id, { id: move.id, dx: total.dx + move.dx, dy: total.dy + move.dy, dw: total.dw + move.dw, dh: total.dh + move.dh });
+// An element that moves a little in each of several frames in a row is being
+// animated: a frame sliding open, and whatever it pushes along. One that covers
+// its distance in a frame or two jumped.
+const SLIDE_FRAMES = 5;
+// A busy browser drops a few frames in the middle of a slide.
+const SLIDE_GAP_MS = 80;
+// One step of a slide is never far from the step beside it; the slack covers the uneven frames it starts with.
+const SLIDE_STEP_RATIO = 3;
+const SLIDE_STEP_SLACK_PX = 8;
+// No one step of a slide covers much of the distance by itself.
+const SLIDE_STEP_SHARE = 1 / 3;
+// The slow end of a slide moves a pixel every few frames.
+const SLIDE_TAIL_PX = 2;
+const SIDES = ["dx", "dy", "dw", "dh"] as const;
+
+type Step = { t: number; move: Move; changed: boolean };
+const near = (size: number, other: number) => size <= SLIDE_STEP_RATIO * other + SLIDE_STEP_SLACK_PX;
+
+/**
+ * Whether one side's steps, each the time of its frame and how far it went,
+ * are one smooth slide: enough frames in a row, going one way, each step near
+ * the one beside it and none covering much of the distance. It may start on a
+ * short step, since a slide rarely begins on a frame.
+ */
+function smooth(steps: [number, number][]): boolean {
+  if (steps.length < SLIDE_FRAMES) return false;
+  const total = steps.reduce((sum, [, size]) => sum + Math.abs(size), 0);
+  // ponytail: a spring that overshoots and comes back reads as a shift; allow one decaying turn if a slide ever bounces.
+  const way = Math.sign(steps[0][1]);
+  return steps.every(([t, signed], index) => {
+    const size = Math.abs(signed);
+    if (Math.sign(signed) !== way || size > total * SLIDE_STEP_SHARE + SLIDE_TAIL_PX) return false;
+    if (index === 0) return true;
+    const [before, lastSigned] = steps[index - 1];
+    const last = Math.abs(lastSigned);
+    const unbroken = t - before <= SLIDE_GAP_MS || Math.max(size, last) <= SLIDE_TAIL_PX;
+    return unbroken && near(last, size) && (index === 1 || near(size, last));
+  });
+}
+
+/** How far a side went in all, whichever way. */
+const travelled = (steps: Step[], side: (typeof SIDES)[number]) => steps.reduce((sum, step) => sum + Math.abs(step.move[side]), 0);
+
+/**
+ * Whether an element slid: every side of its box that moved did so smoothly,
+ * bar a pixel or two of rounding on another side. Each side is judged by
+ * itself, so a frame growing smoothly can't hide a jump sideways. Being pushed
+ * along by rows that keep arriving or leaving is not a slide: a slide's
+ * content changes as it starts, and most of its frames add and remove nothing.
+ */
+function slid(steps: Step[]): boolean {
+  if (steps.filter((step) => step.changed).length * 2 > steps.length) return false;
+  const sides = SIDES.filter((side) => travelled(steps, side) > SLIDE_TAIL_PX);
+  return sides.length > 0 && sides.every((side) => smooth(steps.filter((step) => Math.abs(step.move[side]) >= 1).map((step): [number, number] => [step.t, step.move[side]])));
+}
+
+/** The furthest each side got from where it started. A jump out and back ends where it began, and is still that jump. */
+function furthest(id: number, steps: Step[]): Move {
+  const at: Delta = { dx: 0, dy: 0, dw: 0, dh: 0 };
+  const peak: Move = { id, dx: 0, dy: 0, dw: 0, dh: 0 };
+  for (const { move } of steps) {
+    for (const side of SIDES) {
+      at[side] += move[side];
+      if (Math.abs(at[side]) > Math.abs(peak[side])) peak[side] = at[side];
+    }
   }
-  const moving = frames.filter((frame) => frame.moved.length > 0);
-  if (moving.length === 0) return null;
-  return { kind: "shift", from: moving[0].t, to: moving.at(-1)!.t, moves: [...moves.values()] };
+  return peak;
+}
+
+function shift(frames: Frame[]): Finding | null {
+  const steps = new Map<number, Step[]>();
+  for (const frame of frames) for (const move of frame.moved) steps.set(move.id, [...(steps.get(move.id) ?? []), { t: frame.t, move, changed: frame.added.length + frame.removed.length > 0 }]);
+  const rest = [...steps].filter(([, own]) => !slid(own));
+  // A slide leaves a pixel or two of rounding on the parts it carries along.
+  const beside = rest.length < steps.size;
+  const jumped = rest.filter(([, own]) => !(beside && SIDES.every((side) => travelled(own, side) <= SLIDE_TAIL_PX)));
+  if (jumped.length === 0) return null;
+  const times = jumped.flatMap(([, own]) => own.map((step) => step.t));
+  return { kind: "shift", from: Math.min(...times), to: Math.max(...times), moves: jumped.map(([id, own]) => furthest(id, own)) };
 }
 
 /** Lines of text shown and hidden over the phase, oldest first, so each change pairs with the one before it. */
