@@ -111,6 +111,7 @@ export const renameCollectionAction = defineUserMutation({
   undoable: true,
   // A library that follows the collection shows its name.
   asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
+  seenOutside: true,
   run: async (ctx, { workspaceId }, args) => {
     const collection = await ownCollection(ctx, workspaceId, args.collectionId);
     if (args.expect !== undefined && collection.name !== args.expect) throw createError("CONFLICT", "This collection has been renamed since then, so it was left as it is.");
@@ -338,6 +339,7 @@ export const addToCollectionAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   asksFirst: shownOutside,
+  seenOutside: true,
   run: async (ctx, actor, args) => {
     const collection = await editableCollection(ctx, actor, args.collectionId);
     const item = await ctx.db.get("libraryItems", args.libraryItemId);
@@ -365,6 +367,7 @@ export const removeFromCollectionAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   asksFirst: shownOutside,
+  seenOutside: true,
   run: async (ctx, actor, args) => {
     await editableCollection(ctx, actor, args.collectionId);
     const existing = await ctx.db

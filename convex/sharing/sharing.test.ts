@@ -73,6 +73,11 @@ it("gives a colleague an item at once, and no one a stranger's, a member's or an
   await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.bob, role: "viewer" })).rejects.toMatchObject({ data: { code: "CONFLICT" } });
   // A guest acts in their own workspace, where the item isn't: they can't share it on.
   await expect(carol.mutation(api.sharing.guests.add, { kind: "collection", id: item.id, userId: users.dave, role: "viewer" })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+  // The assistant is told so before it asks her about an invitation that could never go: a yes is never followed by a refusal.
+  const carolOwn = await t.run((ctx) => personalWorkspaceOf(ctx, users.carol));
+  const refused = (userId: Id<"users">, from: Id<"workspaces">) => t.query(internal.assistant.asking.check, { userId, workspaceId: from, path: "sharing/invitations:invite", input: JSON.stringify({ kind: "collection", id: item.id, email: "dave@example.org", role: "viewer" }) });
+  expect(await refused(users.carol, carolOwn)).toBe("It isn't in this workspace.");
+  expect(await refused(users.alice, workspaceId)).toBeNull();
 
   // Any member makes a guest an editor.
   await bob.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" });

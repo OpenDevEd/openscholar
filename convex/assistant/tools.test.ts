@@ -765,6 +765,8 @@ describe("the assistant's tools", () => {
     const step = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
     expect(step).toMatchObject({ action: "research/records:change", variant: "clearSearches" });
     expect(step && "outside" in step).toBe(false);
+    // Its action can be undone as a whole; this call of it can't, and the card must not say otherwise.
+    expect(step && "undoable" in step).toBe(false);
     expect(step && "details" in step && step.details?.some((detail) => detail.name === "kind")).toBe(false);
   });
 

@@ -35,6 +35,7 @@ export const saveAction = defineUserAction({
   changes: true,
   // A library may follow the collection, which shows the paper outside the account. What isn't a paper's ID asks nothing here, and is refused when it runs.
   asksFirst: async (ctx, _actor, { id, collectionId }) => workUrl(id) !== null && collectionId != null && (await followed(ctx, collectionId)),
+  seenOutside: true,
   check: async (ctx, actor, { id, rating, collectionId }) => {
     const openalexId = workUrl(id);
     if (openalexId) await checkSave(ctx, actor, { openalexId, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }) });
@@ -78,6 +79,7 @@ export const collectAction = defineUserMutation({
   undoable: true,
   // A library may follow the collection, which shows the change outside the account.
   asksFirst: shownOutside,
+  seenOutside: true,
   run: async (ctx, actor, { id, collectionId, inCollection }) => {
     // A collection's papers are its own workspace's library's: for one shared with the person to edit, not theirs.
     const { workspaceId } = await editableCollection(ctx, actor, collectionId);
