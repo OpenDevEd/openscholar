@@ -24,6 +24,7 @@ import {
   Moon,
   Search,
   SettingsIcon,
+  Share2,
   Sun,
   TopicsIcon,
   type AppIcon,
@@ -241,6 +242,8 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                 </Opening>
               ) : null}
               {publishes ? <Opening key="publish">{item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-libraries") || is("/authors") })}</Opening> : null}
+              {/* What's shared with you is in your own workspace (#653), which the address says from the first frame. */}
+              {slug === null ? <Opening key="shared">{item({ href: "/shared", icon: Share2, label: t("shared.nav"), active: is("/shared") })}</Opening> : null}
             </AnimatePresence>
 
             <div className="my-1.5 h-px w-8 bg-foreground/10" />

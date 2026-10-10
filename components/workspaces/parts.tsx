@@ -100,12 +100,12 @@ function GeneratedLogo({ seed, tint, className }: { seed: string; tint: string; 
   );
 }
 
-/** A chip led by a workspace's tile and named for it; a long name is cut. */
-export function WorkspaceTag({ workspace, size = "md", strong = false }: { workspace: WorkspaceLook; size?: "sm" | "md"; strong?: boolean }) {
+/** A chip led by a workspace's tile and named for it, or saying what `children` say of it; a long name is cut. */
+export function WorkspaceTag({ workspace, size = "md", strong = false, children }: { workspace: WorkspaceLook; size?: "sm" | "md"; strong?: boolean; children?: React.ReactNode }) {
   return (
     <span className={cn("inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted pr-2.5 text-xs", size === "sm" ? "h-6 pl-0.5" : "h-7 pl-1", strong && "font-medium text-foreground")}>
       <WorkspaceTile workspace={workspace} size="xs" />
-      <span className="min-w-0 truncate">{workspace.name}</span>
+      <span className="min-w-0 truncate">{children ?? workspace.name}</span>
     </span>
   );
 }
