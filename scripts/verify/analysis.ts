@@ -23,7 +23,7 @@ export type Frame = {
   added: { id: number; box: Box; within?: number; entering?: boolean }[];
   // The dialogs, sheets, popovers and menus that opened in this frame.
   opened?: number[];
-  removed: { id: number; box: Box }[];
+  removed: { id: number; box: Box; within?: number }[];
   textAdded: string[];
   textRemoved: string[];
 };
@@ -82,9 +82,11 @@ const SLIDE_STEP_SLACK_PX = 8;
 const SLIDE_STEP_SHARE = 1 / 3;
 // The slow end of a slide moves a pixel every few frames.
 const SLIDE_TAIL_PX = 2;
+const SLIDE_ROUNDING = 1 / 10;
 const SIDES = ["dx", "dy", "dw", "dh"] as const;
 
-type Step = { t: number; move: Move; changed: boolean };
+// `counted` is false for movement that belongs to an overlay's own opening: it still says whether the element slid.
+type Step = { t: number; move: Move; changed: boolean; counted: boolean };
 const near = (size: number, other: number) => size <= SLIDE_STEP_RATIO * other + SLIDE_STEP_SLACK_PX;
 
 /**
@@ -138,14 +140,18 @@ function furthest(id: number, steps: Step[]): Move {
   return peak;
 }
 
-function shift(frames: Frame[]): Finding | null {
+function shift(frames: Frame[], counted: (frame: Frame, move: Move) => boolean = () => true): Finding | null {
   const steps = new Map<number, Step[]>();
-  for (const frame of frames) for (const move of frame.moved) steps.set(move.id, [...(steps.get(move.id) ?? []), { t: frame.t, move, changed: frame.added.length + frame.removed.length > 0 }]);
-  const rest = [...steps].filter(([, own]) => !slid(own));
-  // A slide leaves rounding on the parts it carries along: a pixel or two in all, or a pixel at a time as its frame passes them.
-  const beside = rest.length < steps.size;
-  const rounding = (own: Step[]) => SIDES.every((side) => travelled(own, side) <= SLIDE_TAIL_PX || own.every((step) => Math.abs(step.move[side]) <= 1));
-  const jumped = rest.filter(([, own]) => !(beside && rounding(own)));
+  for (const frame of frames) for (const move of frame.moved) steps.set(move.id, [...(steps.get(move.id) ?? []), { t: frame.t, move, changed: frame.added.length + frame.removed.length > 0, counted: counted(frame, move) }]);
+  const slides = [...steps].filter(([, own]) => slid(own));
+  // A slide leaves rounding on the parts it carries along: a pixel or two in all, or a pixel at a
+  // time for up to a tenth of how far it went.
+  const reach = Math.max(0, ...slides.flatMap(([, own]) => SIDES.map((side) => travelled(own, side))));
+  const rounding = (own: Step[]) => SIDES.every((side) => travelled(own, side) <= SLIDE_TAIL_PX || (travelled(own, side) <= reach * SLIDE_ROUNDING && own.every((step) => Math.abs(step.move[side]) <= 1)));
+  const jumped = [...steps]
+    .filter(([, own]) => !slid(own) && !(slides.length > 0 && rounding(own)))
+    .map(([id, own]): [number, Step[]] => [id, own.filter((step) => step.counted)])
+    .filter(([, own]) => own.length > 0);
   if (jumped.length === 0) return null;
   const times = jumped.flatMap(([, own]) => own.map((step) => step.t));
   return { kind: "shift", from: Math.min(...times), to: Math.max(...times), moves: jumped.map(([id, own]) => furthest(id, own)) };
@@ -258,22 +264,19 @@ function arrivals(frames: Frame[]): Finding[] {
 }
 
 /**
- * The frames with only what happened inside a dialog, sheet, popover or menu
- * once it had opened. The page behind an overlay opened early is still
- * loading, which a load phase judges.
+ * An overlay opened while the page loads: what moved in it after it opened,
+ * and what popped into it. The page behind is still loading, which a load
+ * phase judges, so only what is inside a dialog, sheet, popover or menu is
+ * looked at. What moves as it opens is its opening, but still says whether
+ * what follows is one slide.
  */
-function insideOverlays(frames: Frame[]): Frame[] {
-  const opened = new Map<number, number>();
-  return frames.map((frame) => {
-    for (const id of frame.opened ?? []) opened.set(id, frame.t);
-    const late = (within: number | undefined) => frame.t - (opened.get(within ?? -1) ?? Infinity) > OPENING_MS;
-    return { ...frame, moved: frame.moved.filter((move) => late(move.within)), added: frame.added.filter((element) => late(element.within)), removed: [], textAdded: [], textRemoved: [] };
-  });
-}
-
-/** An overlay opened while the page loads: what moved in it after it opened, and what popped into it. */
 function analyzeEarly(frames: Frame[]): Finding[] {
-  const shifts = bursts(insideOverlays(frames).filter(changed)).map(shift).filter((finding): finding is Finding => finding !== null);
+  const opened = new Map<number, number>();
+  for (const frame of frames) for (const id of frame.opened ?? []) opened.set(id, frame.t);
+  const inside = (entry: { within?: number }) => opened.has(entry.within ?? -1);
+  const overlays = frames.map((frame): Frame => ({ ...frame, moved: frame.moved.filter(inside), added: frame.added.filter(inside), removed: frame.removed.filter(inside), textAdded: [], textRemoved: [] }));
+  const late = (frame: Frame, move: Move) => frame.t - opened.get(move.within!)! > OPENING_MS;
+  const shifts = bursts(overlays.filter(changed)).map((burst) => shift(burst, late)).filter((finding): finding is Finding => finding !== null);
   return [...shifts, ...arrivals(frames)].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
 }
 
@@ -285,7 +288,7 @@ export function analyzePhase(frames: Frame[], phase: Phase): Finding[] {
   // After an action, the first burst is the response (a dialog opening, a row
   // growing as it animates). Anything that moves after it moved on its own.
   const late = phase.kind === "step" ? groups.slice(1) : groups;
-  const shifts = late.map(shift).filter((finding): finding is Finding => finding !== null);
+  const shifts = late.map((burst) => shift(burst)).filter((finding): finding is Finding => finding !== null);
   // Only what an action opened is judged for late content: a page still loading fills in by design.
   const popped = phase.kind === "step" ? arrivals(frames.filter((frame) => frame.t >= since)) : [];
   return [...shifts, ...textBlinks(frames, since), ...elementBlinks(frames, since), ...popped].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
