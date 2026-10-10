@@ -5,14 +5,15 @@ import schema from "./schema";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
-import { PLAN_FEATURES } from "../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../lib/billing/plans";
 import { seedFeatureUser, seedOrganizationFeatures } from "./organizationFeatures.test-support";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { MEMBERSHIP_REVOKE_BATCH } from "./webhooks/projections";
 import { organizationWorkspaceOf } from "./workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
-const denied = { authors: false, extraction: false, evidenceLibraries: false };
+const off = { evidenceLibraries: false, authors: false };
+const on = { evidenceLibraries: true, authors: true };
 
 /** Sets what the plan of an organization's workspace grants, as when it changes plan. */
 async function planGrants(ctx: MutationCtx, organizationId: Id<"organizations">, features: string[]) {
@@ -21,100 +22,67 @@ async function planGrants(ctx: MutationCtx, organizationId: Id<"organizations">,
   await ctx.db.patch("billingAccounts", account!._id, { features });
 }
 
-describe("organization feature access", () => {
-  test("unions every active membership without using active organization claims", async () => {
+describe("what a workspace opens", () => {
+  test("Evidence Libraries where the workspace's own plan includes them, and nowhere else of the person's", async () => {
     const t = convexTest(schema, modules);
-    await t.run(async (ctx) => {
-      await ctx.db.insert("users", {
-        clerkId: "member",
-        email: "member@example.org",
-        state: "active",
-        createdAt: 1,
-        updatedAt: 1,
-      });
-      await seedOrganizationFeatures(ctx, ["member"], { authors: true });
-      await seedOrganizationFeatures(ctx, ["member"], {
-        evidenceLibraries: true,
-        extraction: true,
-      });
+    const { withThem, without } = await t.run(async (ctx) => {
+      await seedFeatureUser(ctx, "member");
+      const withThem = await seedOrganizationFeatures(ctx, ["member"], { evidenceLibraries: true });
+      const without = await seedOrganizationFeatures(ctx, ["member"], {});
+      return { withThem: await organizationWorkspaceOf(ctx, withThem), without: await organizationWorkspaceOf(ctx, without) };
     });
-    for (const identity of [
-      { subject: "member" },
-      { subject: "member", o: { id: "unrelated", rol: "org:member" } },
-    ]) {
-      expect(
-        await t.withIdentity(identity).query(api.organizationFeatures.get, {}),
-      ).toEqual({ authors: true, evidenceLibraries: true, extraction: true });
+    // The session's active organization claim changes nothing: the workspace asked about decides.
+    for (const identity of [{ subject: "member" }, { subject: "member", o: { id: "unrelated", rol: "org:member" } }]) {
+      const member = t.withIdentity(identity);
+      expect(await member.query(api.organizationFeatures.opens, { workspaceId: withThem })).toEqual(on);
+      // Being in an organization that has them opens nothing in another, nor in the person's own workspace.
+      expect(await member.query(api.organizationFeatures.opens, { workspaceId: without })).toEqual(off);
+      expect(await member.query(api.organizationFeatures.opens, {})).toEqual(off);
     }
+    // An author profile is made where Evidence Libraries are: not in their own workspace, whatever their organizations have.
+    const member = t.withIdentity({ subject: "member" });
+    await expect(member.mutation(api.authors.profiles.create, { name: "Someone" })).rejects.toThrow(/FORBIDDEN/);
+    await expect(member.mutation(api.authors.profiles.create, { workspaceId: without, name: "Someone" })).rejects.toThrow(/FORBIDDEN/);
+    await member.mutation(api.authors.profiles.create, { workspaceId: withThem, name: "Someone" });
   });
 
-  test("revocation, disabled features and deleted organizations immediately remove grants", async () => {
+  test("a change of plan takes it away at once, and a workspace the person can no longer act in answers nothing", async () => {
     const t = convexTest(schema, modules);
-    const id = await t.run(async (ctx) => {
-      await ctx.db.insert("users", {
-        clerkId: "member",
-        email: "member@example.org",
-        state: "active",
-        createdAt: 1,
-        updatedAt: 1,
-      });
-      return seedOrganizationFeatures(ctx, ["member"], {
-        authors: true,
-        evidenceLibraries: true,
-        extraction: true,
-      });
+    const { id, workspaceId } = await t.run(async (ctx) => {
+      await seedFeatureUser(ctx, "member");
+      const id = await seedOrganizationFeatures(ctx, ["member"], { evidenceLibraries: true });
+      return { id, workspaceId: await organizationWorkspaceOf(ctx, id) };
     });
-    const user = t.withIdentity({ subject: "member" });
-    await t.run((ctx) => planGrants(ctx, id, [PLAN_FEATURES.evidenceLibraries, PLAN_FEATURES.extraction]));
-    expect(await user.query(api.organizationFeatures.get, {})).toEqual({
-      authors: false,
-      extraction: true,
-      evidenceLibraries: true,
-    });
-    await t.run((ctx) =>
-      ctx.db.patch("organizations", id, { state: "deleted" }),
-    );
-    expect(await user.query(api.organizationFeatures.get, {})).toEqual(denied);
+    const member = t.withIdentity({ subject: "member" });
+    const opens = () => member.query(api.organizationFeatures.opens, { workspaceId });
+    expect(await opens()).toEqual(on);
+    await t.run((ctx) => planGrants(ctx, id, []));
+    expect(await opens()).toEqual(off);
+    await t.run((ctx) => planGrants(ctx, id, [EVIDENCE_LIBRARIES_FEATURE]));
+    expect(await opens()).toEqual(on);
+    // Deleted, or left: it isn't theirs to ask about.
+    await t.run((ctx) => ctx.db.patch("organizations", id, { state: "deleted" }));
+    await expect(opens()).rejects.toThrow();
     await t.run(async (ctx) => {
       await ctx.db.patch("organizations", id, { state: "active" });
       const membership = await ctx.db.query("organizationMemberships").first();
-      await ctx.db.patch("organizationMemberships", membership!._id, {
-        state: "revoked",
-      });
+      await ctx.db.patch("organizationMemberships", membership!._id, { state: "revoked" });
     });
-    expect(await user.query(api.organizationFeatures.get, {})).toEqual(denied);
-    await expect(
-      user.mutation(api.authors.profiles.create, { name: "Someone" }),
-    ).rejects.toThrow(/FORBIDDEN/);
+    await expect(opens()).rejects.toThrow();
   });
 
-  test("does not expose another user's features to anonymous or unaffiliated accounts", async () => {
+  test("nothing of another's for someone signed out or outside the organization", async () => {
     const t = convexTest(schema, modules);
-    await t.run(async (ctx) => {
-      for (const clerkId of ["member", "outsider"])
-        await ctx.db.insert("users", {
-          clerkId,
-          email: `${clerkId}@example.org`,
-          state: "active",
-          createdAt: 1,
-          updatedAt: 1,
-        });
-      await seedOrganizationFeatures(ctx, ["member"], { authors: true });
+    const workspaceId = await t.run(async (ctx) => {
+      for (const clerkId of ["member", "outsider"]) await seedFeatureUser(ctx, clerkId);
+      return organizationWorkspaceOf(ctx, await seedOrganizationFeatures(ctx, ["member"], { evidenceLibraries: true }));
     });
-    expect(await t.query(api.organizationFeatures.get, {})).toEqual(denied);
-    const outsider = t.withIdentity({
-      subject: "outsider",
-      o: { id: "forged", rol: "org:admin" },
-    });
-    expect(await outsider.query(api.organizationFeatures.get, {})).toEqual(
-      denied,
-    );
-    await expect(
-      outsider.query(api.authors.profiles.list, {
-        search: "",
-        paginationOpts: { numItems: 10, cursor: null },
-      }),
-    ).rejects.toThrow(/FORBIDDEN/);
+    expect(await t.query(api.organizationFeatures.opens, { workspaceId })).toEqual(off);
+    const outsider = t.withIdentity({ subject: "outsider", o: { id: "forged", rol: "org:admin" } });
+    await expect(outsider.query(api.organizationFeatures.opens, { workspaceId })).rejects.toThrow();
+    expect(await outsider.query(api.organizationFeatures.opens, {})).toEqual(off);
+    // The directory of authors comes with Evidence Libraries.
+    await expect(outsider.query(api.authors.profiles.directory, { search: "", paginationOpts: { numItems: 10, cursor: null } })).rejects.toThrow(/FORBIDDEN/);
   });
 });
 
@@ -199,18 +167,19 @@ test("refuses to read a person in more organizations than one read takes, not a 
   const t = convexTest(schema, modules);
   await t.run(async (ctx) => {
     await seedFeatureUser(ctx, "joiner");
-    for (let i = 0; i < MAX_ORGANIZATIONS_PER_PERSON; i += 1) await seedOrganizationFeatures(ctx, ["joiner"], { authors: true });
+    for (let i = 0; i < MAX_ORGANIZATIONS_PER_PERSON; i += 1) await seedOrganizationFeatures(ctx, ["joiner"], { evidenceLibraries: true });
   });
   const joiner = t.withIdentity({ subject: "joiner" });
-  expect(await joiner.query(api.organizationFeatures.get, {})).toMatchObject({ authors: true });
-  await t.run((ctx) => seedOrganizationFeatures(ctx, ["joiner"], { authors: true }));
-  await expect(joiner.query(api.organizationFeatures.get, {})).rejects.toThrow(/more than 200 organizations/);
+  // A member of each and an admin of none: nowhere to make a library, and all of them read.
+  expect((await joiner.query(api.organizationFeatures.listLibraryOrganizations, {})).page).toEqual([]);
+  await t.run((ctx) => seedOrganizationFeatures(ctx, ["joiner"], { evidenceLibraries: true }));
+  await expect(joiner.query(api.organizationFeatures.listLibraryOrganizations, {})).rejects.toThrow(/more than 200 organizations/);
 });
 
 test("a sweep of a deleted organization's memberships stops once the organization is active again (#427)", async () => {
   const t = convexTest(schema, modules);
   const organization = await t.run(async (ctx) =>
-    (await ctx.db.get("organizations", await seedOrganizationFeatures(ctx, Array.from({ length: MEMBERSHIP_REVOKE_BATCH + 1 }, (_, i) => `member_${i}`), { authors: true })))!);
+    (await ctx.db.get("organizations", await seedOrganizationFeatures(ctx, Array.from({ length: MEMBERSHIP_REVOKE_BATCH + 1 }, (_, i) => `member_${i}`), { evidenceLibraries: true })))!);
   const event = { instanceId: "ins_test", payloadSha256: "a".repeat(64), entityId: organization.clerkOrganizationId };
   const { _id, clerkOrganizationId, name, slug, clerkCreatedAt, clerkUpdatedAt } = organization;
   const snapshot = { clerkOrganizationId, name, slug, clerkCreatedAt, clerkUpdatedAt: clerkUpdatedAt + 1 };
@@ -228,8 +197,8 @@ test("a deleted organization's memberships are revoked, however many it has (#42
   const t = convexTest(schema, modules);
   const members = ["joiner", ...Array.from({ length: MEMBERSHIP_REVOKE_BATCH }, (_, i) => `member_${i}`)];
   const { gone, kept } = await t.run(async (ctx) => {
-    const gone = (await ctx.db.get("organizations", await seedOrganizationFeatures(ctx, members, { authors: true })))!;
-    return { gone, kept: await seedOrganizationFeatures(ctx, ["joiner"], { authors: true }) };
+    const gone = (await ctx.db.get("organizations", await seedOrganizationFeatures(ctx, members, { evidenceLibraries: true })))!;
+    return { gone, kept: await seedOrganizationFeatures(ctx, ["joiner"], { evidenceLibraries: true }) };
   });
   vi.useFakeTimers();
   await t.mutation(internal.webhooks.projections.applyOrganizationEvent, {

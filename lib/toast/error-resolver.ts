@@ -6,7 +6,6 @@ export type ToastErrorMessageKey =
   | "convexUnknownError"
   | "convexAuthRequired"
   | "convexPermissionDenied"
-  | "extractionPlanRequired"
   | "convexNotFound"
   | "convexInvalidInput"
   | "convexInsufficientCredits"
@@ -84,7 +83,6 @@ const LEGACY_CODE_MATCHERS: Array<{ pattern: RegExp; code: string }> = [
 const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   UNAUTHENTICATED: "convexAuthRequired",
   FORBIDDEN: "convexPermissionDenied",
-  EXTRACTION_PLAN_REQUIRED: "extractionPlanRequired",
   NOT_FOUND: "convexNotFound",
   VALIDATION_ERROR: "convexInvalidInput",
   INVALID_DATA: "convexInvalidInput",
@@ -130,7 +128,6 @@ const INSUFFICIENT_CREDITS_CODES = new Set<string>([
 ]);
 
 const PLAN_UPGRADE_CODES = new Set<string>([
-  "EXTRACTION_PLAN_REQUIRED",
   "AI_PLAN_ENTITLEMENT",
 ]);
 

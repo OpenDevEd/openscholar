@@ -5,7 +5,6 @@ import {
   isUpgrade,
   mainPlans,
   planCreditCap,
-  plansWithFeature,
   signupCredits,
   topUpBundles,
 } from "../../lib/billing/catalog";
@@ -100,7 +99,6 @@ describe("the billing catalog", () => {
     expect(pro.features).toEqual(["extraction"]);
     expect(pro.popular).toBe(true);
     expect(pro.highlights).toEqual(["Priority support", "All Go features"]);
-    expect(plansWithFeature(catalog, "extraction").map((p) => p.id)).toEqual(["pro"]);
   });
 
   it("reads what each plan allows: an amount, or null for unlimited, and nothing for a limit it leaves out (#632)", () => {

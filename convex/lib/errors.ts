@@ -4,7 +4,6 @@ export type ErrorCode =
   // Generic auth/permission/data
   | "UNAUTHENTICATED"
   | "FORBIDDEN"
-  | "EXTRACTION_PLAN_REQUIRED"
   | "FEATURE_DISABLED"
   | "FEATURE_PLAN_REQUIRED"
   | "NOT_FOUND"

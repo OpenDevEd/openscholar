@@ -46,7 +46,7 @@ export function isPublicPath(pathname: string) {
 /**
  * Signed-in pages that show their own frame while sign-in finishes, so the
  * route gate skips its full-screen loader for them. Each one must stay
- * correct before access is known (see OrganizationFeatureGate's fallback).
+ * correct before access is known (see EvidenceLibrariesGate's fallback).
  */
 const PAGES_WITH_OWN_LOADING = ["/evidence-libraries", "/authors"] as const;
 /** Every page in these sections draws its own frame while loading. */

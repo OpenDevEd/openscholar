@@ -1,4 +1,3 @@
-import { seedOrganizationFeatures } from "../../organizationFeatures.test-support";
 import { convexTest } from "convex-test";
 import { describe, expect, it, vi } from "vitest";
 import { api } from "../../_generated/api";
@@ -29,7 +28,6 @@ const DEFAULT_FILTERS = {
 async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
   const seeded = await t.run(async (ctx) => {
     const now = Date.now();
-    await seedOrganizationFeatures(ctx, [CLERK_OWNER], { extraction: true });
     const userId = await ctx.db.insert("users", {
       
       clerkId: CLERK_OWNER,

@@ -1,6 +1,5 @@
 import { convexTest } from "convex-test";
 import { describe, expect, it } from "vitest";
-import { internal } from "../_generated/api";
 import schema from "../schema";
 import { requireFeature } from "./guard";
 
@@ -52,51 +51,31 @@ describe("a flag that requires a plan feature", () => {
   });
 });
 
-describe("an organization whose plan grants extraction", () => {
-  it("lets its members start one in it, whatever their own plan", async () => {
+describe("a plan feature is its workspace's, not the account's", () => {
+  it("is asked of the workspace the person acts in: an organization's plan grants nothing in their own, nor theirs in it", async () => {
     const t = convexTest(schema);
     const userId = await seed(t, []);
-    const workspaceId = await t.run(async (ctx) => {
+    const { workspaceId, own } = await t.run(async (ctx) => {
       const user = (await ctx.db.get("users", userId))!;
-      await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
       const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: "mem_1", clerkUserId: user.clerkId, role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
       const workspace = (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!;
       await ctx.db.insert("billingAccounts", { workspaceId: workspace._id, plan: "team", features: ["extraction"], pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: 1 });
-      return workspace._id;
+      return { workspaceId: workspace._id, own: (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())!._id };
     });
-    await t.run((ctx) => requireFeature(ctx, "extraction.enabled", userId));
+    // The organization's plan has it and their own doesn't.
     await t.run((ctx) => requireFeature(ctx, "extraction.start", userId, workspaceId));
-    // In their own workspace it's their own plan that says.
-    await expect(t.run((ctx) => requireFeature(ctx, "extraction.start", userId))).rejects.toThrow();
+    await expect(t.run((ctx) => requireFeature(ctx, "extraction.start", userId, own))).rejects.toThrow(/FEATURE_PLAN_REQUIRED/);
+    await expect(t.run((ctx) => requireFeature(ctx, "extraction.start", userId))).rejects.toThrow(/FEATURE_PLAN_REQUIRED/);
 
-    // Where the flag names no plan feature, as on shared dev, starting one is still the workspace's: the organization's plan doesn't follow them home.
-    const own = await t.run(async (ctx) => {
-      const flag = (await ctx.db.query("featureFlags").withIndex("by_key", (q) => q.eq("key", "extraction.start")).unique())!;
-      await ctx.db.patch("featureFlags", flag._id, { planFeature: undefined });
-      return (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())!._id;
-    });
-    await t.run((ctx) => requireFeature(ctx, "extraction.start", userId, workspaceId));
-    await expect(t.run((ctx) => requireFeature(ctx, "extraction.start", userId, own))).rejects.toThrow(/this workspace's plan/);
-  });
-});
-
-describe("moving flags from plan tiers to plan features", () => {
-  it("gives tier-gated flags their plan feature, clears tiers, and drops retired flags", async () => {
-    const t = convexTest(schema);
+    // The other way round: what they pay for themselves opens nothing in the organization.
     await t.run(async (ctx) => {
-      await ctx.db.insert("featureFlags", { key: "extraction.start", enabled: true, minimumTier: 20, updatedAt: 1 });
-      await ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: true, minimumTier: 0, updatedAt: 1 });
-      await ctx.db.insert("featureFlags", { key: "subscriptions.plan.go", enabled: true, minimumTier: 0, updatedAt: 1 });
+      for (const [id, features] of [[own, ["extraction"]], [workspaceId, []]] as const) {
+        const account = (await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", id)).unique())!;
+        await ctx.db.patch("billingAccounts", account._id, { features: [...features] });
+      }
     });
-
-    await t.mutation(internal.featureFlags.internal.adoptPlanFeatures, {});
-    await t.mutation(internal.featureFlags.internal.adoptPlanFeatures, {});
-
-    const flags = await t.run((ctx) => ctx.db.query("featureFlags").collect());
-    expect(flags.map(({ key, planFeature, minimumTier }) => ({ key, planFeature, minimumTier }))).toEqual([
-      { key: "extraction.start", planFeature: "extraction", minimumTier: undefined },
-      { key: "extraction.pdf", planFeature: undefined, minimumTier: undefined },
-    ]);
+    await t.run((ctx) => requireFeature(ctx, "extraction.start", userId, own));
+    await expect(t.run((ctx) => requireFeature(ctx, "extraction.start", userId, workspaceId))).rejects.toThrow(/FEATURE_PLAN_REQUIRED/);
   });
 });

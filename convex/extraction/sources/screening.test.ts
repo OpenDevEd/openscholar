@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../../_generated/api";
 import { screeningInputs } from "./screening.test-support";
-import { seedFeatureUser, seedOrganizationFeatures } from "../../organizationFeatures.test-support";
+import { seedFeatureUser } from "../../organizationFeatures.test-support";
 import { madeBy } from "../../workspaces/actor.test-support";
 import { accountOf } from "../../billing/billing.test-support";
 import { savedPapersPick } from "../picks.test-support";
@@ -50,7 +50,7 @@ describe("extraction from Included screening papers", () => {
 
   it("refuses another account's or deleted job without creating an extraction", async () => {
     const { t, jobId, selection, start } = await screeningInputs();
-    await t.run(async ctx => { await seedOrganizationFeatures(ctx, ["outsider"], { extraction: true }); await seedFeatureUser(ctx, "outsider"); });
+    await t.run(async ctx => { await seedFeatureUser(ctx, "outsider"); });
     const source = selection();
     await expect(t.withIdentity({ subject: "outsider" }).mutation(api.extraction.mutations.startJob, { name: "No access", sources: [source] })).rejects.toThrow(/Screening not found/);
     await t.run(ctx => ctx.db.delete("screeningJobs", jobId));

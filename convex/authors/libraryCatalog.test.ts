@@ -1,4 +1,3 @@
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
@@ -6,19 +5,19 @@ import { expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { organizationWorkspaceOf } from "../workspaces/personal";
-import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
+import { grantPlanFeaturesForTest, seedCreditsForTest } from "../billing/billing.test-support";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 const modules = import.meta.glob("/convex/**/*.ts");
 
 async function setupCatalog() {
   const t = convexTest(schema, modules);
   const libraryId = await t.run(async ctx => {
-    await seedOrganizationFeatures(ctx, ["profile-owner", "library-owner"], { authors: true });
     for (const clerkId of ["profile-owner", "library-owner"]) {
-      await ctx.db.insert("users", {clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1});
+      // Each one's own workspace's plan includes Evidence Libraries, which a profile is made with.
+      await seedCreditsForTest(ctx, {userId: await ctx.db.insert("users", {clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1}), features: [EVIDENCE_LIBRARIES_FEATURE]});
     }
     const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: "org_catalog", name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
-    await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+    await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
     await ctx.db.insert("organizationMemberships", {organizationId, clerkMembershipId: "membership", clerkUserId: "library-owner", role: "org:admin", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
     const libraryId = await ctx.db.insert("evidenceLibraries", {workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Library", slug: "library", state: "active", createdByClerkUserId: "library-owner", updatedByClerkUserId: "library-owner", createdAt: 1, updatedAt: 1});
     await ctx.db.insert("evidenceLibraryCredentials", {libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: createHash("sha256").update("els_" + "a".repeat(43)).digest("hex"), validationState: "valid", createdByClerkUserId: "library-owner", updatedByClerkUserId: "library-owner", createdAt: 1, updatedAt: 1});

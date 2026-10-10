@@ -34,7 +34,6 @@ const {
     startJobMock: vi.fn(async () => ({ jobId: "job_for_current_account" })),
     updateSearchResultMock: vi.fn(),
     useQueryMock: vi.fn((queryRef: unknown, args?: unknown) => {
-      if (queryRef === "organizationFeatures") return {extraction: true};
       return undefined;
     }),
   };
@@ -112,7 +111,6 @@ vi.mock("convex/react", () => ({
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
-    organizationFeatures: {get: "organizationFeatures"},
     chat: {
       threads: {
         continueChatWithSourceRefresh: "continueChatWithSourceRefresh",

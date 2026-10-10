@@ -1,5 +1,3 @@
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { beforeEach, afterEach, describe, it, test, expect, vi } from "vitest";
@@ -123,7 +121,6 @@ async function seedUserAndFlags(
 ): Promise<{ userId: Id<"users"> }> {
   return await t.run(async (ctx) => {
     const now = Date.now();
-    await seedOrganizationFeatures(ctx, [STARTJOB_CLERK], { extraction: true });
     const userId = await ctx.db.insert("users", {
       
       clerkId: STARTJOB_CLERK,
@@ -147,7 +144,7 @@ async function seedUserAndFlags(
     });
     // Seed a large credit balance so plan-03's preflight gate in
     // startJob does not block these routing tests.
-    await seedCreditsForTest(ctx, { userId, free: 0, paid: 100_000, now, features: [PLAN_FEATURES.extraction] });
+    await seedCreditsForTest(ctx, { userId, free: 0, paid: 100_000, now });
     return { userId };
   });
 }

@@ -45,11 +45,3 @@ export function useFeatureFlags(): ResolvedFlags {
   const dbFlags = useDbFlags();
   return useMemo(() => resolveAllFlags(dbFlags, planFeatures), [dbFlags, planFeatures]);
 }
-
-/** The Autumn feature a flag requires of the user's plan, if any. */
-export function useFlagPlanFeature(name: FlagName): string | undefined {
-  const dbFlags = useDbFlags();
-  const registered = FLAG_REGISTRY[name] as { planFeature?: string };
-  const flag = dbFlags?.find((f) => f.key === name);
-  return flag ? flag.planFeature : registered.planFeature;
-}

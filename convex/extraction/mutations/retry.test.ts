@@ -1,5 +1,3 @@
-import { seedOrganizationFeatures } from "../../organizationFeatures.test-support";
-import { PLAN_FEATURES } from "../../../lib/billing/plans";
 /**
  * Plan-05 — retryFailedQuestions + applyRetryResetTx behavior tests.
  *
@@ -37,7 +35,6 @@ async function seedFlagsAndCredits(
 ): Promise<{ userId: Id<"users"> }> {
   return await t.run(async (ctx) => {
     const now = Date.now();
-    await seedOrganizationFeatures(ctx, [CLERK], { extraction: true });
     const userId = await ctx.db.insert("users", {
       
       clerkId: CLERK,
@@ -61,7 +58,6 @@ async function seedFlagsAndCredits(
       free: opts.free ?? 0,
       paid: opts.paid ?? 100_000,
       now,
-      features: [PLAN_FEATURES.extraction],
     });
     return { userId };
   });
@@ -406,7 +402,6 @@ describe("retryFailedQuestions — public mutation guards", () => {
     });
     await t.run(async (ctx) => {
       const now = Date.now();
-      await seedOrganizationFeatures(ctx, ["clerk_retry_other"], { extraction: true });
       await ctx.db.insert("users", {
         clerkId: "clerk_retry_other",
         email: "other@test.com",

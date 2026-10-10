@@ -1,5 +1,3 @@
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
@@ -37,7 +35,6 @@ async function seedUserFlagsAndCredits(
 ): Promise<{ userId: Id<"users"> }> {
   return await t.run(async (ctx) => {
     const now = Date.now();
-    await seedOrganizationFeatures(ctx, [CLERK], { extraction: true });
     const userId = await ctx.db.insert("users", {
       
       clerkId: CLERK,
@@ -61,7 +58,6 @@ async function seedUserFlagsAndCredits(
       free: opts.free ?? 0,
       paid: opts.paid,
       now,
-      features: [PLAN_FEATURES.extraction],
     });
     await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: LUNA.input, outputPricePerMillion: LUNA.output, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: ["structured_outputs"], syncedAt: 1, createdAt: 1, updatedAt: 1 });
     return { userId };

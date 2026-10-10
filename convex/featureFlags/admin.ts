@@ -1,7 +1,7 @@
 import { assertFlagRoom } from "./internal";
 import { v } from "convex/values";
 import { mutation } from "../lib/functions";
-import { FLAG_REGISTRY } from "../../lib/feature-flags/registry";
+import { FLAG_REGISTRY, type FlagDefault } from "../../lib/feature-flags/registry";
 import { requireAdmin } from "../admins/access";
 import { createError } from "../lib/errors";
 
@@ -12,7 +12,7 @@ export const setEnabled = mutation({
   handler: async (ctx, { key, enabled }) => {
     await requireAdmin(ctx);
     if (!(key in FLAG_REGISTRY)) throw createError("NOT_FOUND", `No flag "${key}"`);
-    const flag = FLAG_REGISTRY[key as keyof typeof FLAG_REGISTRY];
+    const flag: FlagDefault = FLAG_REGISTRY[key as keyof typeof FLAG_REGISTRY];
     const row = await ctx.db
       .query("featureFlags")
       .withIndex("by_key", (q) => q.eq("key", key))
@@ -23,7 +23,7 @@ export const setEnabled = mutation({
       await ctx.db.insert("featureFlags", {
         key,
         enabled,
-        ...("planFeature" in flag ? { planFeature: flag.planFeature } : {}),
+        ...(flag.planFeature ? { planFeature: flag.planFeature } : {}),
         description: flag.description,
         updatedAt: Date.now(),
       });

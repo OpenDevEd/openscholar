@@ -4,17 +4,16 @@ import type { ReactNode } from "react";
 import { PageWrapper } from "@/components/PageWrapper";
 import { PageFrameLoading } from "@/components/evidence-libraries/library-page-shell";
 import { useTranslations } from "next-intl";
-import { CommandCenterContainer } from "@/components/command-center";
+import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
-import { ExtractionPlanGate } from "./extraction-plan-gate";
 
 type ExtractionAccessGateProps = {
   children: ReactNode;
 };
 
 /** An extraction page while access is checked: the empty page frame with the list spinner. */
-export function ExtractionLoading() {
+function ExtractionLoading() {
   const tc = useTranslations("common");
   return (
     <PageWrapper>
@@ -23,22 +22,22 @@ export function ExtractionLoading() {
   );
 }
 
+/**
+ * Extraction comes with every plan, and credits are what limit it. Only its switches turn it
+ * off, for everyone at once (Settings, Admin).
+ */
 export function ExtractionAccessGate({ children }: ExtractionAccessGateProps) {
+  const t = useTranslations("auth");
   const { isSettling } = useSubscriptionState();
   const extractionEnabled = useFeatureFlag("extraction.enabled");
   const canStartExtraction = useFeatureFlag("extraction.start");
-  const hasExtractionAccess = extractionEnabled && canStartExtraction;
 
   if (isSettling) return <ExtractionLoading />;
 
-  if (!hasExtractionAccess) {
+  if (!extractionEnabled || !canStartExtraction) {
     return (
       <PageWrapper>
-        <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
-          <CommandCenterContainer>
-            <ExtractionPlanGate />
-          </CommandCenterContainer>
-        </div>
+        <AuthStatePanel layout="fullscreen" variant="no_access" primaryHref="/" primaryLabel={t("backToSearch")} />
       </PageWrapper>
     );
   }
