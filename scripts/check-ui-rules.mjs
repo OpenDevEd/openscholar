@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // The UI rules agents kept breaking, checked on every .ts, .tsx and .css file
-// under app/ and components/ and on the copy in messages/. Each problem names the
-// fix. A line that needs an exception says why on the line before it:
+// under app/ and components/, on the .tsx files under lib/ and hooks/, and on
+// the copy in messages/ and content/. Each problem names the fix. A line that needs an exception says why on the line before it:
 //
 //   // ui-rules-allow: <rule> -- <reason>
 //
@@ -249,6 +249,8 @@ function translates(callee) {
 // dialog, popover or picker the app already has.
 const PRIMITIVE = /^(radix-ui|@radix-ui\/.+|vaul|cmdk)$/;
 const COOLIFY = /coolify/i;
+// Attributes whose words people read or hear.
+const SPOKEN = new Set(["placeholder", "aria-label", "aria-description", "title", "alt", "label", "description"]);
 
 const SR_ONLY = /(?:^|[\s"'`])sr-only(?=$|[\s"'`])/;
 const allowed = (line, rule) => new RegExp(`ui-rules-allow:\\s*${rule}\\s+--\\s*\\S`).test(line ?? "");
@@ -460,6 +462,11 @@ function check(file) {
     if (ts.isBinaryExpression(node) && [ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(node.operatorToken.kind)) return rendersText(node.left) || rendersText(node.right);
     return !(node.kind === ts.SyntaxKind.NullKeyword || node.kind === ts.SyntaxKind.FalseKeyword || (ts.isIdentifier(node) && node.text === "undefined"));
   };
+  // The words an attribute holds when they are written out: `label="…"` or `label={"…"}`.
+  const written = (initializer) => {
+    const value = initializer && ts.isJsxExpression(initializer) ? initializer.expression : initializer;
+    return value && (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) ? value.text : "";
+  };
   const visit = (node) => {
     if (classValue(node) && !insideClassList(node) && clashesAlone(node)) report(node, "animation-clash");
     if (ts.isImportDeclaration(node) && !shared && PRIMITIVE.test(node.moduleSpecifier.text)) report(node, "raw-primitive");
@@ -470,6 +477,8 @@ function check(file) {
       if (((whole && LOADING.test(node.text.trim()) && shown(node)) || translatedLoading(node)) && !screenReaderOnly(node)) report(node, "loading-text");
       if (whole && COOLIFY.test(node.text) && shown(node)) report(node, "coolify");
     }
+    // The written parts of an interpolated string, never the names it interpolates.
+    if (ts.isTemplateExpression(node) && [node.head, ...node.templateSpans.map((span) => span.literal)].some((part) => COOLIFY.test(part.text)) && shown(node)) report(node, "coolify");
     if (ts.isJsxText(node)) {
       if (DOT.test(node.text)) report(node, "dot-separator");
       if (COOLIFY.test(node.text)) report(node, "coolify");
@@ -493,6 +502,7 @@ function check(file) {
         const switchedOff = attribute.initializer && ts.isJsxExpression(attribute.initializer) && attribute.initializer.expression?.kind === ts.SyntaxKind.FalseKeyword;
         if (FRAMER_PROPS.has(name) && MOTION_TAG.test(tag) && !switchedOff) framer = true;
         if (name === "title") title = attribute;
+        if (SPOKEN.has(name) && COOLIFY.test(written(attribute.initializer))) report(attribute, "coolify");
         if (tag === "AvatarFallback" && name === "children" && attribute.initializer && rendersText(attribute.initializer)) report(attribute, "initials");
       }
       if (classes.some((list) => clashes(list, framer))) report(node, "animation-clash");
@@ -543,7 +553,11 @@ const copy = files("messages", [".json"]).flatMap((file) => {
   );
 });
 
-const problems = [...files("components", [".ts", ".tsx"]), ...files("app", [".ts", ".tsx"])].flatMap(check).concat(broad, stylesheets, stylesheetClashes, copy);
+// The legal pages are Markdown rendered as written.
+const legal = scanLines(files("content", [".md"]), COOLIFY, "coolify", FIX.coolify);
+
+const scanned = [...files("components", [".ts", ".tsx"]), ...files("app", [".ts", ".tsx"]), ...files("lib", [".tsx"]), ...files("hooks", [".tsx"])];
+const problems = scanned.flatMap(check).concat(broad, stylesheets, stylesheetClashes, copy, legal);
 if (problems.length) {
   console.error(problems.join("\n"));
   process.exit(1);
