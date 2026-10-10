@@ -118,3 +118,33 @@ it("shows each paper in an organization's collection with its members' ratings t
   // Outside a collection, nothing.
   expect((await alice.query(api.library.queries.browseLibrary, { workspaceId, sortBy: "savedAt", sortOrder: "desc", paginationOpts: { cursor: null, numItems: 10 } })).page[0]!.collection).toBeUndefined();
 });
+
+it("shows each paper in an organization's library with how its members rated it themselves, and nobody else's rating (#801)", async () => {
+  const { t, alice, bob, settled, bobIs, workspaceId } = await lab();
+  // Carol rated the same paper for herself and isn't in the lab.
+  await t.run((ctx) => ctx.db.insert("users", { clerkId: "carol", email: "carol@example.org", state: "active", createdAt: 1, updatedAt: 1 }));
+  const carol = t.withIdentity({ subject: "carol" });
+  const { id: one } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "One", rating: 4 });
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W2", title: "Two" });
+  await bob.mutation(api.research.records.change, { accountId: "bob", requestId: "bob-rated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 2 } });
+  await carol.mutation(api.research.records.change, { accountId: "carol", requestId: "carol-rated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 5 } });
+  await settled();
+
+  const shown = async (as: typeof alice) => (await as.query(api.library.queries.browseLibrary, { workspaceId, sortBy: "title", sortOrder: "asc", paginationOpts: { cursor: null, numItems: 10 } })).page;
+  const [rated, unrated] = await shown(alice);
+  // The average is the two members', and each of them is listed with what they gave, the person reading first.
+  expect(rated.rating).toBe(3);
+  expect(rated.members).toMatchObject({ count: 2, raters: [{ you: true, rating: 4 }, { you: false, rating: 2 }] });
+  expect((await shown(bob))[0]!.members).toMatchObject({ count: 2, raters: [{ you: true, rating: 2 }, { you: false, rating: 4 }] });
+  // A paper nobody in the lab rated has no list.
+  expect(unrated.members).toBeUndefined();
+
+  const everyone = (as: typeof alice) => as.query(api.library.collections.raters, { workspaceId, libraryItemId: one, paginationOpts: { cursor: null, numItems: 10 } });
+  expect((await everyone(alice)).page.map((rater) => [rater.you, rater.rating]).sort()).toEqual([[false, 2], [true, 4]]);
+  // Someone outside the lab doesn't read its members' ratings.
+  await expect(everyone(carol)).rejects.toThrow();
+
+  // Someone who left isn't one of them.
+  await bobIs("revoked");
+  expect((await shown(alice))[0]!.members).toMatchObject({ count: 1, raters: [{ you: true, rating: 4 }] });
+});
