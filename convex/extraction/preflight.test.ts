@@ -5,6 +5,7 @@ import { describe, it, expect } from "vitest";
 import { api } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { savedPapersPick } from "./picks.test-support";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
@@ -27,31 +28,6 @@ const CLERK = "clerk_extraction_preflight";
 const IDENTITY = {
   subject: CLERK,
   tokenIdentifier: `${CLERK}|test`,
-};
-
-const BUCKET_ITEM_HISTORY = {
-  bucketKey: "history:W1",
-  source: "history" as const,
-  sourceRefId: "W1",
-  title: "Paper One",
-  authors: ["A"],
-  openalexId: "W1",
-  searchFilters: {
-    query: "Paper One",
-    openAlexQuery: { sort: "relevance_score:desc" },
-    limit: 1,
-  },
-};
-
-const BUCKET_ITEM_HISTORY_200 = {
-  ...BUCKET_ITEM_HISTORY,
-  bucketKey: "history:W200",
-  sourceRefId: "W200",
-  searchFilters: {
-    query: "Paper One",
-    openAlexQuery: { sort: "relevance_score:desc" },
-    limit: 200,
-  },
 };
 
 async function seedUserFlagsAndCredits(
@@ -113,7 +89,7 @@ describe("startJob — pre-flight credit check", () => {
     await expect(
       auth.mutation(api.extraction.mutations.startJob, {
         name: "Poor Job",
-        bucketItems: [BUCKET_ITEM_HISTORY],
+        sources: [await savedPapersPick(t, userId, 1)],
         questions: [
           { key: "q1", question: "What is the outcome?", type: "string" },
         ],
@@ -136,7 +112,7 @@ describe("startJob — pre-flight credit check", () => {
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "Rich Job",
-      bucketItems: [BUCKET_ITEM_HISTORY],
+      sources: [await savedPapersPick(t, userId, 1)],
       questions: [
         { key: "q1", question: "What is the outcome?", type: "string" },
         { key: "q2", question: "Second question?", type: "string" },
@@ -152,17 +128,16 @@ describe("startJob — pre-flight credit check", () => {
     await expectQueueSetupScheduled(t);
   });
 
-  it("counts saved-search history placeholders by expanded paper count, not row count", async () => {
+  it("counts a range by its papers, not as one source", async () => {
     const t = convexTest(schema);
-    // Enough for far more than one paper and less than 200: counted as one row, the
-    // placeholder would pass.
-    await seedUserFlagsAndCredits(t, { paid: 100 * perPaper(1) });
+    // Enough for far more than one paper and less than 200: counted as one source, the range would pass.
+    const { userId } = await seedUserFlagsAndCredits(t, { paid: 100 * perPaper(1) });
     const auth = t.withIdentity(IDENTITY);
 
     await expect(
       auth.mutation(api.extraction.mutations.startJob, {
         name: "Expanded History",
-        bucketItems: [BUCKET_ITEM_HISTORY_200],
+        sources: [await savedPapersPick(t, userId, 200)],
         questions: [
           { key: "q1", question: "What is the outcome?", type: "string" },
         ],
@@ -173,12 +148,12 @@ describe("startJob — pre-flight credit check", () => {
 
   it("zero questions short-circuits the preflight (estimator returns zero; insufficient balance still allowed)", async () => {
     const t = convexTest(schema);
-    await seedUserFlagsAndCredits(t, { paid: 0 });
+    const { userId } = await seedUserFlagsAndCredits(t, { paid: 0 });
     const auth = t.withIdentity(IDENTITY);
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "No Qs",
-      bucketItems: [BUCKET_ITEM_HISTORY],
+      sources: [await savedPapersPick(t, userId, 1)],
       questions: [],
       usePdfs: false,
     });
@@ -191,12 +166,12 @@ describe("startJob — pre-flight credit check", () => {
   it("PDF-tier estimate is materially higher than abstract-tier for the same job shape", async () => {
     // Just enough for the one paper's two questions from its abstract, not from its PDF.
     const t = convexTest(schema);
-    await seedUserFlagsAndCredits(t, { paid: perPaper(2) });
+    const { userId } = await seedUserFlagsAndCredits(t, { paid: perPaper(2) });
     const auth = t.withIdentity(IDENTITY);
 
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "Abstract",
-      bucketItems: [BUCKET_ITEM_HISTORY],
+      sources: [await savedPapersPick(t, userId, 1)],
       questions: [
         { key: "q1", question: "Q1?", type: "string" },
         { key: "q2", question: "Q2?", type: "string" },
@@ -212,7 +187,7 @@ describe("startJob — pre-flight credit check", () => {
     await expect(
       auth.mutation(api.extraction.mutations.startJob, {
         name: "PDFs",
-        bucketItems: [BUCKET_ITEM_HISTORY],
+        sources: [await savedPapersPick(t, userId, 1)],
         questions: [
           { key: "q1", question: "Q1?", type: "string" },
           { key: "q2", question: "Q2?", type: "string" },
@@ -225,12 +200,13 @@ describe("startJob — pre-flight credit check", () => {
   it("holds the job to the price of the model it runs on", async () => {
     // Enough for a paper on GPT-6 Luna, a fraction of one on Claude Sonnet.
     const t = convexTest(schema);
-    await seedUserFlagsAndCredits(t, { paid: perPaper(1) });
+    const { userId } = await seedUserFlagsAndCredits(t, { paid: perPaper(1) });
     const auth = t.withIdentity(IDENTITY);
+    const source = await savedPapersPick(t, userId, 1);
     const start = () =>
       auth.mutation(api.extraction.mutations.startJob, {
         name: "One paper",
-        bucketItems: [BUCKET_ITEM_HISTORY],
+        sources: [source],
         questions: [{ key: "q1", question: "What is the outcome?", type: "string" }],
         usePdfs: false,
       });

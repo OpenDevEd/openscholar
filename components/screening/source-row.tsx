@@ -1,7 +1,8 @@
 "use client";
 
-// A place papers come from, as screening lists them: a search, a collection, saved papers or a
-// screening. Picked, a row opens to how many of its papers to read.
+// A place papers come from, as screening and extraction list them: a search, a collection, saved
+// papers or a screening. Screening picks one; extraction takes several. Picked, a row opens to how
+// many of its papers to read.
 
 import { useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { AnimatePresence, motion } from "motion/react";
@@ -17,6 +18,7 @@ export function SourceRow({
   on,
   onToggle,
   disabled = false,
+  many = false,
   icon: Icon,
   label,
   detail,
@@ -27,6 +29,8 @@ export function SourceRow({
   onToggle: () => void;
   /** A source with no papers, which there's nothing to take from. */
   disabled?: boolean;
+  /** Extraction takes any number of sources, so a row is a checkbox there; screening's is a radio. */
+  many?: boolean;
   icon: AppIcon;
   label: ReactNode;
   /** What the source is, under its name. */
@@ -37,7 +41,7 @@ export function SourceRow({
 }) {
   return (
     <div className={cn("transition-colors", on && "bg-primary/5")}>
-      <button type="button" role="radio" aria-checked={on} disabled={disabled} onClick={onToggle} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50", !on && "enabled:hover:bg-muted")}>
+      <button type="button" role={many ? "checkbox" : "radio"} aria-checked={on} disabled={disabled} onClick={onToggle} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50", !on && "enabled:hover:bg-muted")}>
         <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", on ? "text-primary" : "text-muted-foreground")}>
           <Icon className="size-4" />
         </span>
@@ -83,13 +87,17 @@ export type Scope = "range" | "page" | "all";
  * results page being read (a search opened from it), or all. `summary` takes the range's place
  * when the papers aren't a range.
  */
-export function PaperScope({ search, scope, onScope, range, onRange, total, label, summary }: {
+export function PaperScope({ search, page = search, scope, onScope, range, onRange, total, most = total, label, summary }: {
   search: boolean;
+  /** Whether the results page being read is a choice: a search opened from its page. */
+  page?: boolean;
   scope: Scope;
   onScope: (scope: Scope) => void;
   range: [number, number];
   onRange: Dispatch<SetStateAction<[number, number]>>;
   total: number;
+  /** How far the range may reach, where the plan has room for fewer than `total`. */
+  most?: number;
   /** The slider's name. */
   label: string;
   summary: ReactNode;
@@ -103,11 +111,11 @@ export function PaperScope({ search, scope, onScope, range, onRange, total, labe
         onChange={onScope}
         options={[
           { id: "range" as const, label: t("scope.range") },
-          ...(search ? [{ id: "page" as const, label: t("scope.page") }] : []),
+          ...(page ? [{ id: "page" as const, label: t("scope.page") }] : []),
           { id: "all" as const, label: search ? t("scope.allResults") : t("scope.allPapers") },
         ]}
       />
-      {scope === "range" ? <RangeFields value={range} onChange={onRange} total={total} labels={{ slider: label, from: t("rangeFrom"), to: t("rangeTo"), of: t("rangeOf", { total }), first: t("firstPaper"), last: t("lastPaper") }} /> : summary}
+      {scope === "range" ? <RangeFields value={range} onChange={onRange} total={total} most={most} labels={{ slider: label, from: t("rangeFrom"), to: t("rangeTo"), of: t("rangeOf", { total }), first: t("firstPaper"), last: t("lastPaper") }} /> : summary}
     </>
   );
 }
@@ -119,13 +127,15 @@ export function PaperScope({ search, scope, onScope, range, onRange, total, labe
  * Each change is worked out from the range as it stands, so a slider move just after a field
  * snaps starts from the snap.
  */
-export function RangeFields({ value, onChange, total, labels }: {
+export function RangeFields({ value, onChange, total, most = total, labels }: {
   value: [number, number];
   onChange: Dispatch<SetStateAction<[number, number]>>;
   total: number;
+  /** How far the range may reach, where the plan has room for fewer than `total`. */
+  most?: number;
   labels: { slider: string; from: string; to: string; of: string; first: string; last: string };
 }) {
-  const top = Math.max(1, total);
+  const top = Math.max(1, Math.min(total, most));
   const [first, last] = value;
   // The end being typed, as typed, so a half-typed number isn't rewritten under the cursor.
   const [typing, setTyping] = useState<{ end: 0 | 1; text: string } | null>(null);

@@ -10,6 +10,7 @@ import { extractionPaperCredits } from "../../lib/pricing";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
+import { savedPapersPick } from "./picks.test-support";
 
 const {
   mockProviderGenerate,
@@ -162,21 +163,24 @@ describe("extraction full flow with mocked provider I/O", () => {
     const auth = t.withIdentity(TEST_IDENTITY);
     expect(fakeAutumn.balance(userId)).toBe(STARTING_CREDITS);
 
+    // One saved paper, read from its abstract.
+    await t.run(async (ctx) =>
+      ctx.db.insert("libraryItems", {
+        ...(await madeBy(ctx, userId)),
+        openalexId: "full-flow-paper",
+        title: "Abstract-only paper",
+        authors: ["Fixture Author"],
+        publicationYear: 2024,
+        abstract:
+          "This abstract is intentionally long enough to be processed without a PDF. It states the intervention improved retention and gives the mocked extraction flow source material.",
+        searchableText: "abstract-only paper",
+        savedAt: 1,
+        updatedAt: 1,
+      }),
+    );
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "Full Flow E2E",
-      bucketItems: [
-        {
-          bucketKey: "upload:full-flow-paper",
-          source: "upload",
-          sourceRefId: "full-flow-paper",
-          title: "Abstract-only paper",
-          authors: ["Fixture Author"],
-          year: 2024,
-          openalexId: "full-flow-paper",
-          abstract:
-            "This abstract is intentionally long enough to be processed without a PDF. It states the intervention improved retention and gives the mocked extraction flow source material.",
-        },
-      ],
+      sources: [await savedPapersPick(t, userId, 1)],
       questions: [
         {
           key: "main_finding",

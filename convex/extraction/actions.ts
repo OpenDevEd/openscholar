@@ -218,10 +218,11 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
   if (item.source === "history" && item.searchFilters) {
     const filters = item.searchFilters;
     if (!("openAlexQuery" in filters)) throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
-    // As many papers as the bucket counted it for (lib/bucket/effective-paper-count.ts).
+    // As many papers as the bucket counted it for (lib/bucket/effective-paper-count.ts), from the result it starts at.
     const wanted = paperCountForItem(item);
-    const first = place.read + 1;
-    const last = Math.min(wanted, place.read + SEARCH_STEP);
+    const start = filters.first ?? 1;
+    const first = start + place.read;
+    const last = Math.min(start + wanted - 1, first + SEARCH_STEP - 1);
     if (last < first) return { papers: [], next: onTo(position + 1) };
     const run = await readSearchRun<unknown>(filters.openAlexQuery, { first, last, select: OPENALEX_WORK_SELECT_FIELDS.join(","), resume: place.resume, goesOn: true }, spender(ctx, clerkId));
     const papers = run.works.map((work): SetupPaper => ({ ...mapOpenAlexWorkToPaperData(toOpenAlexWork(work)), sourceType: "history", sourceId: item.sourceRefId }));
@@ -242,10 +243,12 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
   if (item.source === "screening") {
     const selection = item.screeningSelection;
     if (!selection) throw createError("VALIDATION_ERROR", "Screening selection is missing.");
-    const { papers: held, resume } = await heldPapers(ctx, await jobReader(ctx, job), { kind: "screening", jobId: selection.jobId }, { first: place.read + 1, last: place.read + SETUP_STEP }, place.resume, selection.revision);
+    // From the first paper of its range, as many as the start counted.
+    const from = (selection.first ?? 1) + place.read;
+    const { papers: held, resume } = await heldPapers(ctx, await jobReader(ctx, job), { kind: "screening", jobId: selection.jobId }, { first: from, last: Math.min((selection.first ?? 1) + selection.count - 1, from + SETUP_STEP - 1) }, place.resume, selection.revision);
     const papers = held.map(({ venue, ...paper }): SetupPaper => ({ ...paper, venueName: venue, sourceType: "screening", sourceId: selection.jobId, screeningRevision: selection.revision }));
     const read = place.read + papers.length;
-    if (resume) return { papers, next: { ...place, read, resume } };
+    if (resume && read < selection.count) return { papers, next: { ...place, read, resume } };
     if (read !== selection.count) throw createError("CONFLICT", "Screening inputs changed. Select the screening again before starting extraction.");
     return { papers, next: onTo(position + 1) };
   }
