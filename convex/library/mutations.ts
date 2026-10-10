@@ -6,14 +6,15 @@ import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
+import { guestRole } from "../sharing/items";
 import { ASKS_FIRST, actingAs, assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Acting, type Author } from "../lib/userActions";
 import { requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
 import { noteActivity } from "../activity/notes";
 import { undoCommandValidator } from "../../lib/research/records";
 import { canonical, findItem } from "./find";
 import { libraryCountRow } from "./counter";
-import { addCollectionMembership, livePlaces, removeCollectionMembership } from "./collectionMembership";
-import { followed, inFollowedCollection } from "./followed";
+import { addCollectionMembership, editableCollection, livePlaces, removeCollectionMembership } from "./collectionMembership";
+import { collectionHome, followed, inFollowedCollection, shownOutside } from "./followed";
 import { authorDisplay, mergePaperMetadata } from "../../lib/library/paper-metadata";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { personalRatingRow, rateItem, ratingOrNone, requireRating, rerate as rerateCopy, rerateMemberStep, setPersonalRating } from "../ratings";
@@ -127,13 +128,6 @@ async function ownRating(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId
   return (await personalRatingRow(ctx, userId, paperId))?.rating ?? null;
 }
 
-async function ownedCollection(ctx: MutationCtx, workspaceId: Id<"workspaces">, collectionId: Id<"collections">) {
-  const collection = await ctx.db.get("collections", collectionId);
-  if (!collection) throw createError("NOT_FOUND", "This collection no longer exists.");
-  if (collection.workspaceId !== workspaceId) throw createError("FORBIDDEN", "Not your collection");
-  return collection;
-}
-
 /** What takes a paper out of a collection again, or puts it back: the undo of a change to its place there. */
 const placeUndo = reversal(IN_COLLECTION, { paper: savedPaper, collectionId: v.id("collections"), inCollection: v.boolean(), assignedAt: v.number() });
 const removeUndo = reversal(REMOVE, { openalexId: v.string(), expect: ratingAsLeft, rating: v.optional(ratingOrNone) });
@@ -150,7 +144,11 @@ export async function checkSave(ctx: QueryCtx, { userId, workspaceId }: InWorksp
   if (collectionId !== undefined) {
     const collection = await ctx.db.get("collections", collectionId);
     if (!collection) throw createError("NOT_FOUND", "Collection not found");
-    if (collection.workspaceId !== workspaceId) throw createError("FORBIDDEN", "Not your collection");
+    if (collection.workspaceId !== workspaceId) {
+      // A save is to the person's own library; a collection shared with them to edit holds its own workspace's papers.
+      const edits = (await guestRole(ctx, { userId, workspaceId }, collection)) === "editor";
+      throw createError("FORBIDDEN", edits ? "This collection is another workspace's, shared with the person to edit, and a save goes to their own library. Put a paper in it with library/mutations:setPaperInCollection, giving the paper whole." : "Not your collection");
+    }
   }
   const before = await findItem(ctx, workspaceId, openalexId);
   if (before && collectionId !== undefined && rating !== undefined && rating !== (await ownRating(ctx, userId, openalexId))) {
@@ -515,8 +513,10 @@ export const restoreLibraryItemForAssistant = assistantMutation(restoreLibraryIt
 export const setPaperInCollectionAction = defineUserMutation({
   path: "library/mutations:setPaperInCollection",
   activity: ({ paper, collectionId, inCollection }, { undo }) => (undo ? { kind: "collection", id: collectionId, happened: inCollection ? "added" : "removed", count: 1, ...("title" in paper ? { detail: paper.title } : {}) } : null),
+  activityIn: collectionHome,
   description:
     "Adds a paper to one of the person's collections, saving it to their library first if needed, or takes it out of the collection. Taking it out keeps it in the library. " +
+    "A collection shared with the person to edit takes papers the same way: the paper is saved to that collection's own library, not the person's. " +
     "The paper is given whole, or by its ID alone when it's already in the library. " +
     "A change returns `undo`: the action to run and the arguments to run it with to put the collection back as it was. Undoing an add leaves the paper in the library.",
   // `assignedAt` is when the paper was put in the collection. Taking it out takes only that
@@ -526,11 +526,17 @@ export const setPaperInCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, { userId, workspaceId }, { paper, collectionId, inCollection, assignedAt }) => {
-    const collection = await ownedCollection(ctx, workspaceId, collectionId);
+  asksFirst: shownOutside,
+  run: async (ctx, actor, { paper, collectionId, inCollection, assignedAt }) => {
+    const collection = await editableCollection(ctx, actor, collectionId);
+    // The collection's own library: for a guest who edits it, not the one they act in.
+    const { userId } = actor;
+    const { workspaceId } = collection;
     const whole = "title" in paper;
-    const item = whole && inCollection ? await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId, workspaceId }, paper)) : await findItem(ctx, workspaceId, paper.openalexId);
+    const held = await findItem(ctx, workspaceId, paper.openalexId);
+    // A guest's record of a paper never rewrites the one that library already has: they change what's in the collection, not its papers.
+    const saves = whole && inCollection && !(held && workspaceId !== actor.workspaceId);
+    const item = saves ? await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId, workspaceId }, paper)) : held;
     if (!whole && paper.savedAt !== undefined && item && item.savedAt !== paper.savedAt) throw createError("CONFLICT", "This paper was removed and saved again since then, so the collection was left as it is.");
     // Only a change has an undo, so undoing never touches a paper that was already in, or already
     // out. It names the save and the place in the collection it's for.

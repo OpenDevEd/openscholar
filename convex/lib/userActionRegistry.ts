@@ -24,7 +24,7 @@ import { invitationsAction as organizationInvitationsAction, membersAction as or
 import { heldAction as moveHeldAction, moveAction } from "../workspaces/move";
 import { addAction as guestAddAction, candidatesAction as guestCandidatesAction, invitedAction as guestInvitedAction, leaveAction as guestLeaveAction, listAction as guestListAction, removeAction as guestRemoveAction, roomAction as guestRoomAction, setRoleAction as guestRoleAction } from "../sharing/guests";
 import { getAction as guestInvitationAction, inviteAction as guestInviteAction, respondAction as guestRespondAction } from "../sharing/invitations";
-import { countsAction as sharedCountsAction, listAction as sharedListAction } from "../sharing/shared";
+import { countsAction as sharedCountsAction, editableCollectionsAction as sharedEditableCollectionsAction, listAction as sharedListAction } from "../sharing/shared";
 import { addToCollectionAction, countCollectionsAction, createCollectionAction, deleteCollectionAction, getCollectionAction, listCollectionsAction, ratersAction as collectionRatersAction, removeFromCollectionAction, renameCollectionAction, setCollectionRatingAction } from "../library/collections";
 import { estimateAction as screeningEstimateAction, listJobsAction as screeningJobsAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
@@ -163,6 +163,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   guestInvitationAction,
   sharedListAction,
   sharedCountsAction,
+  sharedEditableCollectionsAction,
   listChargesAction,
   countChargesAction,
   spendingAction,
