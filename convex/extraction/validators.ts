@@ -248,6 +248,9 @@ export const searchFiltersValidator = v.object({
     oql: v.optional(v.string()),
     sort: v.string(),
   }),
+  /** The search's result its papers start from, from 1 (#690); from its first when left out. */
+  first: v.optional(v.number()),
+  /** The search's result its papers end at. */
   limit: v.optional(v.number()),
 });
 

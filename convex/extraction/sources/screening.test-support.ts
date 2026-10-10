@@ -8,7 +8,8 @@ import type { FunctionArgs } from "convex/server";
 import type { Id } from "../../_generated/dataModel";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
 
-type SourceInput = FunctionArgs<typeof api.extraction.mutations.startJob>["bucketItems"][number];
+type Pick = FunctionArgs<typeof api.extraction.mutations.startJob>["sources"][number];
+type Upload = NonNullable<FunctionArgs<typeof api.extraction.mutations.startJob>["uploads"]>[number];
 
 export async function screeningInputs(count = 2) {
   const t = convexTest(schema);
@@ -33,11 +34,11 @@ export async function screeningInputs(count = 2) {
     const progress = (await ctx.db.query("screeningJobProgress").withIndex("by_job", q => q.eq("jobId", jobId)).unique())!;
     await ctx.db.patch("screeningJobProgress", progress._id, { completed: count, qualified: count });
   });
-  const selection = async (): Promise<SourceInput> => {
-    const job = (await as.query(api.screening.queries.getScreeningJob, { jobId }))!;
-    return { source: "screening", bucketKey: `screening:${jobId}`, sourceRefId: jobId, title: "Browser title", authors: ["Browser author"], abstract: "Browser abstract", screeningSelection: { jobId, revision: job.revision, count: job.qualifiedPapers } };
-  };
-  const start = async (items?: SourceInput[]) => as.mutation(api.extraction.mutations.startJob, { name: "Included snapshot", bucketItems: items ?? [await selection()], questions: [{ key: "answer", question: "What was measured?", type: "string" }], usePdfs: false });
+  // The screening as an extraction's pick: its included papers as they are when the job starts.
+  const selection = (): Pick => ({ set: { kind: "screening", jobId }, first: 1, last: 1 });
+  /** The screening's decisions as they stand, which a job started now reads. */
+  const revision = async () => (await as.query(api.screening.queries.getScreeningJob, { jobId }))!.revision;
+  const start = async (picks?: Pick[], uploads?: Upload[]) => as.mutation(api.extraction.mutations.startJob, { name: "Included snapshot", sources: picks ?? [selection()], ...(uploads ? { uploads } : {}), questions: [{ key: "answer", question: "What was measured?", type: "string" }], usePdfs: false });
   const papers = (extractionJobId: Id<"extractionJobs">) => t.run(ctx => ctx.db.query("extractionPapers").withIndex("by_job", q => q.eq("jobId", extractionJobId)).take(count + 1));
   // Runs the job's setup, which reads its sources and saves its papers; a setup that failed throws why.
   const snapshot = async (extractionJobId: Id<"extractionJobs">) => {
@@ -47,5 +48,5 @@ export async function screeningInputs(count = 2) {
     if (job.status === "failed") throw new Error(job.error?.message);
     return { totalPapers: (await papers(extractionJobId)).length, processableCount: job.totalPapers };
   };
-  return { t, as, userId, jobId, selection, start, snapshot, papers };
+  return { t, as, userId, jobId, selection, revision, start, snapshot, papers };
 }

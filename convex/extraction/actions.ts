@@ -218,10 +218,11 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
   if (item.source === "history" && item.searchFilters) {
     const filters = item.searchFilters;
     if (!("openAlexQuery" in filters)) throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
-    // As many papers as the bucket counted it for (lib/bucket/effective-paper-count.ts).
+    // As many papers as the bucket counted it for (lib/bucket/effective-paper-count.ts), from the result it starts at.
     const wanted = paperCountForItem(item);
-    const first = place.read + 1;
-    const last = Math.min(wanted, place.read + SEARCH_STEP);
+    const start = filters.first ?? 1;
+    const first = start + place.read;
+    const last = Math.min(start + wanted - 1, first + SEARCH_STEP - 1);
     if (last < first) return { papers: [], next: onTo(position + 1) };
     const run = await readSearchRun<unknown>(filters.openAlexQuery, { first, last, select: OPENALEX_WORK_SELECT_FIELDS.join(","), resume: place.resume, goesOn: true }, spender(ctx, clerkId));
     const papers = run.works.map((work): SetupPaper => ({ ...mapOpenAlexWorkToPaperData(toOpenAlexWork(work)), sourceType: "history", sourceId: item.sourceRefId }));

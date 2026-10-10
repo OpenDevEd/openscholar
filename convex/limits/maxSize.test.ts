@@ -36,13 +36,13 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
   it("captures all 1,000 Included screening papers for extraction through bounded pages", async () => {
     vi.useFakeTimers();
     try {
-      const { start, snapshot, papers, selection } = await screeningInputs(MAX_SIZE.papersPerJob);
-      const source = await selection();
-      const created = await start([source]);
+      const { start, snapshot, papers, revision } = await screeningInputs(MAX_SIZE.papersPerJob);
+      const decided = await revision();
+      const created = await start();
       expect(await snapshot(created.jobId)).toMatchObject({ totalPapers: 1000, processableCount: 1000 });
       const saved = await papers(created.jobId);
       expect(saved.map(p => p.openalexId)).toEqual(Array.from({ length: 1000 }, (_, i) => `https://openalex.org/W${i}`));
-      expect(saved.every(p => p.screeningRevision === source.screeningSelection!.revision && p.abstract?.length === 2000)).toBe(true);
+      expect(saved.every(p => p.screeningRevision === decided && p.abstract?.length === 2000)).toBe(true);
     } finally { vi.useRealTimers(); }
   }, 300_000);
 

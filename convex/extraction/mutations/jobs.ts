@@ -36,6 +36,7 @@ import { assistantMutation, defineUserMutation, userMutation } from "../../lib/u
 import { checkScreeningSelection } from "../sources/screening";
 import { bucketItemFromRow } from "../jobSources";
 import { actorIn, requireMakerOrAdmin, type InWorkspace } from "../../workspaces/actor";
+import { paperPickValidator, sourcesFor, uploadPickValidator } from "../picks";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -180,13 +181,15 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
 export const startJobAction = defineUserMutation({
   path: "extraction/mutations:startJob",
   activity: ({ name }, { jobId }) => ({ kind: "extraction", id: jobId, happened: "created", detail: name }),
-  description: "Start an extraction from the sources picked on the extraction page. From a chat, an extraction over a collection, saved papers, a search or a screening is extraction/start:extract. Screening sources use the owned job's current Included papers and require its decision revision. Extraction saves those papers unchanged by later screening edits. The person's plan sets how many papers one job takes.",
+  description:
+    "Start an extraction from the sources picked on the extraction page, any number of them: each a paper set (a saved search, a collection, the saved papers, or a finished screening) with its papers `first` to `last`, and PDFs the person uploaded. " +
+    "From a chat, an extraction over one set is extraction/start:extract. A screening is its Included papers as they are now; later screening edits leave the extraction as it is. The person's plan sets how many papers one job takes.",
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
-  args: startArgs,
+  args: { name: v.string(), sources: v.array(paperPickValidator), uploads: v.optional(v.array(uploadPickValidator)), questions: v.optional(v.array(questionInputValidator)), usePdfs: v.optional(v.boolean()) },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  run: (ctx, { userId, workspaceId }, args) => startJobFor(ctx, { userId, workspaceId }, args),
+  run: async (ctx, { userId, workspaceId }, { sources, uploads, ...args }) => startJobFor(ctx, { userId, workspaceId }, { ...args, bucketItems: await sourcesFor(ctx, { userId, workspaceId }, sources, uploads) }),
 });
 
 export const startJob = userMutation(startJobAction);
