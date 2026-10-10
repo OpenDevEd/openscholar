@@ -210,9 +210,10 @@ export const ratersAction = defineUserQuery({
     const { userId, workspaceId } = actor;
     const collection = await ctx.db.get("collections", collectionId);
     // Its workspace's members read them, and so does a guest of it, from their own workspace.
-    if (!collection || (collection.workspaceId !== workspaceId && !(await guestRole(ctx, actor, collection._id)))) throw createError("NOT_FOUND", "Collection not found.");
+    if (!collection || (collection.workspaceId !== workspaceId && !(await guestRole(ctx, actor, collection)))) throw createError("NOT_FOUND", "Collection not found.");
     const item = await ctx.db.get("libraryItems", libraryItemId);
-    if (!item || item.workspaceId !== collection.workspaceId) throw createError("NOT_FOUND", "This paper isn't in the library.");
+    // A paper taken out of the collection keeps its ratings there for a return, and they're no longer the collection's to show.
+    if (!item || item.workspaceId !== collection.workspaceId || !(await placeOf(ctx, collectionId, libraryItemId))) throw createError("NOT_FOUND", "This paper isn't in the collection.");
     const organizationId = await organizationOfCollection(ctx, collectionId);
     if (!organizationId) return { page: [], isDone: true, continueCursor: "" };
     const read = await collectionRatingsOf(ctx, collectionId, item.openalexId).paginate(paginationOpts);
@@ -466,7 +467,7 @@ export const getCollectionAction = defineUserQuery({
     if (!collection) return null;
     const own = { _id: collection._id, name: collection.name, itemCount: collection.itemCount };
     if (collection.workspaceId === actor.workspaceId) return { ...own, guests: await countOf(ctx, itemGuestsOf(collection._id)) };
-    const role = await guestRole(ctx, actor, collection._id);
+    const role = await guestRole(ctx, actor, collection);
     return role ? { ...own, guest: { role, from: await workspaceFrom(ctx, collection.workspaceId) } } : null;
   },
 });

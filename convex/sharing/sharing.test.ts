@@ -178,13 +178,18 @@ it("opens a shared collection to its guest from their own workspace, and to nobo
   const exported = () => t.query(internal.exports.page, { userId: users.carol, workspaceId: carolOwn, source: { kind: "library", view }, format: "json", cursor: null, written: 0 });
   expect((await exported()).count).toBe(1);
 
+  // A paper taken out of the collection takes its ratings there out of her reach.
+  await alice.mutation(api.library.collections.removeFromCollection, { workspaceId: item.workspaceId, collectionId: item.id, libraryItemId: saved });
+  await expect(raters(carol)).rejects.toThrow();
+  await alice.mutation(api.library.collections.addToCollection, { workspaceId: item.workspaceId, collectionId: item.id, libraryItemId: saved });
+
   await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
   expect(await titles(carol)).toEqual([]);
   expect((await exported()).count).toBe(0);
 });
 
 it("closes what a deleted account shared from its own workspace, though its data waits to be purged", async () => {
-  const { t, alice, carol, users } = await lab();
+  const { t, alice, carol, dave, users } = await lab();
   const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, users.alice));
   const { id } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Mine" });
   await alice.mutation(api.sharing.guests.add, { workspaceId, kind: "collection", id, userId: users.carol, role: "viewer" });
@@ -193,6 +198,11 @@ it("closes what a deleted account shared from its own workspace, though its data
   expect((await carol.query(api.sharing.shared.list, shared)).page.map((row) => row.name)).toEqual(["Mine"]);
 
   await t.mutation(internal.users.internal.markUserDeletedFromClerk, { eventId: "evt_gone", eventType: "user.deleted", instanceId: "ins_test", occurredAt: Date.now(), payloadSha256: "sha_gone", clerkId: "alice" });
+  // Closed from that moment, before the cleanup has taken a row: nobody opens it or accepts an invitation to it.
+  expect(await carol.query(api.library.collections.getCollection, { collectionId: id as Id<"collections"> })).toBeNull();
+  const waiting = await t.run(async (ctx) => (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", id)).first())!._id);
+  verified = ["dave@example.org"];
+  await expect(dave.action(api.sharing.invitations.respond, { invitationId: waiting, accept: true })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
   await t.finishAllScheduledFunctions(vi.runAllTimers);
 
   // The collection is still there, for its retention, and nobody is its guest or invited to it.

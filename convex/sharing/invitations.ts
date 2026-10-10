@@ -17,7 +17,7 @@ import { actingAs, assistantAction, assistantQuery, defineChangingAction, define
 import { actorIn } from "../workspaces/actor";
 import { workspaceFrom, workspaceName } from "../workspaces/personal";
 import { invitationTo, noteShared, requireRoom } from "./access";
-import { findShared, grantOf, kindWord, requireRole, sharedIn } from "./items";
+import { findShared, grantOf, kindWord, open, requireRole, sharedIn } from "./items";
 import { guestRoleValidator, sharedFromValidator, sharedKindValidator, type SharedKind } from "./validators";
 
 const WEEK = 7 * 86_400_000;
@@ -105,9 +105,11 @@ export const respondVerified = internalMutation({
   handler: async (ctx, { userId, invitationId, emails, accept }) => {
     const [invitation, person] = await Promise.all([ctx.db.get("itemInvitations", invitationId), ctx.db.get("users", userId)]);
     if (!invitation || person?.state !== "active" || !emails.includes(invitation.email)) throw createError("FORBIDDEN", "Sign in with the invited email address");
-    const shared = await findShared(ctx, invitation.kind, invitation.item);
-    // Accepting again what they already accepted, as a second tab does, opens it again.
-    if (accept && shared && invitation.state === "accepted" && (await grantOf(ctx, shared.id, userId))) return { kind: shared.kind, id: shared.id };
+    const found = await findShared(ctx, invitation.kind, invitation.item);
+    // An item whose workspace is gone, its owner's account deleted, is no longer there to accept.
+    const shared = found && (await open(ctx, found.workspaceId)) ? found : null;
+    // Accepting again what they already accepted, as a second tab does, opens it again: theirs by their place, or by having joined its workspace since.
+    if (accept && shared && invitation.state === "accepted" && ((await grantOf(ctx, shared.id, userId)) || (await actorIn(ctx, person, shared.workspaceId)))) return { kind: shared.kind, id: shared.id };
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     if (!shared) throw createError("NOT_FOUND", "What you were invited to is no longer there.");
     // Its place becomes theirs. Someone who joined its workspace since has it without one.

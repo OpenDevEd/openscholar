@@ -213,7 +213,7 @@ function along(ctx: QueryCtx, scope: Scope, field: LibrarySortBy, order: "asc" |
 export async function libraryOf(ctx: QueryCtx, actor: InWorkspace, collectionId: Id<"collections"> | undefined) {
   const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;
   if (!collection || collection.workspaceId === actor.workspaceId) return actor.workspaceId;
-  return (await guestRole(ctx, actor, collection._id)) ? collection.workspaceId : actor.workspaceId;
+  return (await guestRole(ctx, actor, collection)) ? collection.workspaceId : actor.workspaceId;
 }
 
 /** The workspace's collection, or null when it's gone or in another. */
