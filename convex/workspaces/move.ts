@@ -9,7 +9,6 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { createError } from "../lib/errors";
-import { personName } from "../lib/people";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery, type Acting } from "../lib/userActions";
 import { findSearch } from "../research/records";
 import { screeningFor } from "../research/answers";
@@ -24,6 +23,7 @@ import { collectionRatingRow, personalRatingRow, placeOf, placeRated, setPersona
 import { libraryPaper, upsertLibraryItem } from "../library/mutations";
 import { requireAuthorProfiles } from "../authors/profiles";
 import { actorIn } from "./actor";
+import { workspaceName } from "./personal";
 
 export const movableKinds = ["collection", "search", "screening", "extraction", "chat", "author"] as const;
 export type Movable = (typeof movableKinds)[number];
@@ -54,15 +54,6 @@ const PAPERS_STEP_QUERIES = 3_000;
 const PAPERS_STEP_CHARS = 2_000_000;
 
 type Read = Pick<QueryCtx, "db">;
-
-/** A workspace as the person sees it named: an organization's name, or its person's for their own. */
-export async function workspaceName(ctx: Read, workspaceId: Id<"workspaces">) {
-  const workspace = await ctx.db.get("workspaces", workspaceId);
-  if (!workspace) return "";
-  if (workspace.kind === "organization") return (await ctx.db.get("organizations", workspace.organizationId))?.name ?? "";
-  const person = await ctx.db.get("users", workspace.userId);
-  return (person && (personName(person) || person.email)) || "";
-}
 
 const inWorkspace = <T extends { workspaceId: Id<"workspaces"> }>(row: T | null, workspaceId: Id<"workspaces">) => (row?.workspaceId === workspaceId ? row : null);
 

@@ -49,6 +49,8 @@ import { CommandCenterContainer } from "@/components/command-center/command-cent
 import { cn } from "@/lib/utils";
 import { ManageCollectionsDialog, NewCollectionDialog, useCollectionDialogsReady, useManageCollections } from "./collection-dialogs";
 import { ActivityButton, MoveButton } from "@/components/workspaces/activity";
+import { ShareButton } from "@/components/workspaces/share-dialog";
+import { GuestChips } from "@/components/workspaces/shared";
 import { LibraryCommandCenter } from "./library-command-center";
 import { LibraryEmptyState } from "./library-empty-state";
 import { LibraryFilterSidebar } from "./library-filter-sidebar";
@@ -304,6 +306,8 @@ export function LibraryPageClient() {
     inWorkspace(workspaceId, params.col ? { collectionId: params.col as Id<"collections"> } : "skip"),
   );
 
+  const guest = selectedCollection?.guest;
+
   // The heading as last settled: an opened collection's name once it's read, so a switch keeps the last one meanwhile and a cold visit shows none.
   const settledHeading = params.col ? (selectedCollection === undefined ? undefined : (selectedCollection?.name ?? t("title"))) : t("title");
   const [heading, setHeading] = useState(settledHeading);
@@ -494,19 +498,23 @@ export function LibraryPageClient() {
                 <LibraryCommandCenter
                   // An open collection heads the command center; its name is no longer a filter chip.
                   title={heading}
-                  // An open collection's Activity (#656), at the end of its heading.
+                  // A collection shared with you from another workspace says whose it is and what you may do with it (#653).
+                  meta={guest ? <GuestChips from={guest.from} role={guest.role} person /> : undefined}
+                  // An open collection's Activity (#656), Move and Share, at the end of its heading: they are its workspace's, not a guest's.
                   actions={
-                    selectedCollection ? (
+                    selectedCollection && !guest ? (
                       <>
                         <ItemPresence kind="collection" id={selectedCollection._id} />
                         <ActivityButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
                         <MoveButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
+                        <ShareButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} guests={selectedCollection.guests ?? 0} />
                       </>
                     ) : undefined
                   }
                   rawSearch={rawSearch}
                   onSearchChange={setRawSearch}
-                  totalCount={totalCount}
+                  // A guest's count is of the collection: the library around it isn't theirs.
+                  totalCount={guest ? selectedCollection?.itemCount : totalCount}
                   filteredCount={filteredTotal ?? filteredAtLeast}
                   filteredCountIsAtLeast={filteredAtLeast !== undefined}
                   activeFilterLabels={activeFilterLabels}
@@ -565,7 +573,8 @@ export function LibraryPageClient() {
                             }
                             viewMode={effectiveViewMode}
                             extra={(() => {
-                              const rated = params.col ? collectionRatings.get(paper.id) : undefined;
+                              // Rating in a collection, and who did, are its members': a guest's page has neither.
+                              const rated = params.col && !guest ? collectionRatings.get(paper.id) : undefined;
                               return rated ? <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} compact={effectiveViewMode === "list-simple"} /> : undefined;
                             })()}
                           />

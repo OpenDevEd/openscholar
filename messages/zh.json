@@ -1137,7 +1137,8 @@
     "libraryTitle": "文献库 - OpenScholar",
     "libraryDescription": "浏览和管理您保存的学术论文",
     "creditsTitle": "致谢 | OpenScholar",
-    "creditsDescription": "OpenScholar 所使用的项目、数据与许可。"
+    "creditsDescription": "OpenScholar 所使用的项目、数据与许可。",
+    "sharedTitle": "与我共享 | OpenScholar"
   },
   "validation": {
     "bookmarkNameNoSpaces": "书签名称不能包含空格",
@@ -3928,6 +3929,51 @@
         "did": "已移到另一个工作区",
         "where": "工作区",
         "ask": "移到另一个工作区"
+      },
+      "shareItem": {
+        "doing": "正在与他人共享",
+        "did": "已与他人共享",
+        "where": "共享",
+        "ask": "与他人共享"
+      },
+      "guestRole": {
+        "doing": "正在更改访客权限",
+        "did": "已更改访客权限",
+        "where": "共享",
+        "ask": "更改访客权限"
+      },
+      "unshareItem": {
+        "doing": "正在停止与他人共享",
+        "did": "已停止与他人共享",
+        "where": "共享",
+        "ask": "停止与他人共享"
+      },
+      "leaveShared": {
+        "doing": "正在退出与你共享的内容",
+        "did": "已退出与你共享的内容",
+        "where": "共享",
+        "ask": "退出与你共享的内容"
+      },
+      "answerShare": {
+        "doing": "正在回复邀请",
+        "did": "已回复邀请",
+        "where": "共享",
+        "ask": "回复邀请"
+      },
+      "guests": {
+        "doing": "正在查看共享对象",
+        "did": "已查看共享对象",
+        "where": "共享"
+      },
+      "sharedWithMe": {
+        "doing": "正在查看与你共享的内容",
+        "did": "已查看与你共享的内容",
+        "where": "共享"
+      },
+      "readInvite": {
+        "doing": "正在查看邀请",
+        "did": "已查看邀请",
+        "where": "共享"
       }
     },
     "asks": {
@@ -4247,6 +4293,7 @@
       "retried": "重试了 {count} 个失败的回答",
       "stopped": "停止了它",
       "moved": "把它移到这里，来自",
+      "shared": "把它共享给了",
       "viaAssistant": "通过助手",
       "today": "今天",
       "yesterday": "昨天",
@@ -4305,6 +4352,77 @@
       "author": "移动作者主页",
       "libraryKeeps": "{workspace} 的文献库会保留已保存的论文。",
       "yourLibraryKeeps": "你的文献库会保留已保存的论文。"
+    },
+    "share": {
+      "share": "共享",
+      "shareThis": {
+        "collection": "共享此合集"
+      },
+      "title": {
+        "collection": "共享合集"
+      },
+      "addPeople": "按姓名或邮箱添加",
+      "inviteEmail": "邀请 {email}",
+      "byEmail": "通过邮件",
+      "noCandidates": "没有匹配的人。输入邮箱来邀请对方。",
+      "morePeople": "更多人",
+      "accessOf": "{name} 的权限",
+      "remove": "移除",
+      "copyLink": "复制链接给有权限的人",
+      "linkCopied": "链接已复制",
+      "view": "查看",
+      "edit": "编辑",
+      "canView": "可查看",
+      "canEdit": "可编辑",
+      "owner": "所有者",
+      "everyone": "{workspace} 的所有人",
+      "members": "{count, plural, other {# 位成员}}",
+      "invited": "{when}已邀请",
+      "notSent": "邮件未发出",
+      "guests": "访客",
+      "guestCount": "{count, plural, other {# 位访客}}",
+      "noLimit": "无上限",
+      "usedOf": "{used} / {limit}",
+      "moreGuests": "更多访客",
+      "full": {
+        "collection": "{plan} 允许每个合集有 {count, plural, other {# 位访客}}"
+      },
+      "failed": "无法更改共享对象"
+    },
+    "shared": {
+      "title": "与我共享",
+      "nav": "共享",
+      "sortRecent": "最近共享",
+      "sortName": "名称",
+      "search": "搜索共享内容",
+      "all": "全部",
+      "kinds": {
+        "collection": "合集"
+      },
+      "size": {
+        "collection": "{count, plural, other {# 篇论文}}"
+      },
+      "runUses": "你在这些内容上运行的任务使用",
+      "yourCredits": "你的积分",
+      "empty": "还没有与你共享的内容",
+      "emptyKind": "还没有与你共享的这类内容",
+      "emptySearch": "没有匹配的共享内容",
+      "leave": "退出",
+      "leaveFailed": "无法退出",
+      "loading": "正在加载与你共享的内容",
+      "more": "显示更多",
+      "from": "来自 {workspace}",
+      "sharedOne": {
+        "collection": "{name} 共享了一个合集"
+      },
+      "pointOwn": "它在你自己的工作区里",
+      "pointCredits": "你在上面运行的任务使用你的积分",
+      "open": "打开",
+      "openFailed": "无法打开",
+      "goneTitle": "此链接已失效",
+      "goneDetail": "请让共享的人重新共享",
+      "otherTitle": "此邀请发送到了另一个邮箱",
+      "otherDetail": "如果此账户也有该邮箱，可以直接打开；否则请用收到邀请的邮箱登录"
     }
   },
   "models": {

@@ -38,7 +38,8 @@ export const libraryPapersValidator = v.object({
   papers: capped(
     v.array(
       v.object({
-        libraryItemId: v.id("libraryItems"),
+        /** The person's own saved copy. Left out for a paper of a collection shared with them from another workspace that they haven't saved themselves. */
+        libraryItemId: v.optional(v.id("libraryItems")),
         id: v.string(),
         title: v.string(),
         authors: v.optional(v.string()),

@@ -1137,7 +1137,8 @@
     "libraryTitle": "ライブラリ - OpenScholar",
     "libraryDescription": "保存した学術論文を閲覧・管理する",
     "creditsTitle": "クレジット | OpenScholar",
-    "creditsDescription": "OpenScholar が利用しているプロジェクト、データ、ライセンス。"
+    "creditsDescription": "OpenScholar が利用しているプロジェクト、データ、ライセンス。",
+    "sharedTitle": "共有アイテム | OpenScholar"
   },
   "validation": {
     "bookmarkNameNoSpaces": "ブックマーク名にスペースは使用できません",
@@ -3928,6 +3929,51 @@
         "did": "別のワークスペースに移動しました",
         "where": "ワークスペース",
         "ask": "別のワークスペースに移動"
+      },
+      "shareItem": {
+        "doing": "共有しています",
+        "did": "共有しました",
+        "where": "共有",
+        "ask": "ほかの人と共有"
+      },
+      "guestRole": {
+        "doing": "ゲストの権限を変更しています",
+        "did": "ゲストの権限を変更しました",
+        "where": "共有",
+        "ask": "ゲストの権限を変更"
+      },
+      "unshareItem": {
+        "doing": "共有を解除しています",
+        "did": "共有を解除しました",
+        "where": "共有",
+        "ask": "共有を解除"
+      },
+      "leaveShared": {
+        "doing": "共有されたアイテムから退出しています",
+        "did": "共有されたアイテムから退出しました",
+        "where": "共有",
+        "ask": "共有されたアイテムから退出"
+      },
+      "answerShare": {
+        "doing": "招待に回答しています",
+        "did": "招待に回答しました",
+        "where": "共有",
+        "ask": "招待に回答"
+      },
+      "guests": {
+        "doing": "共有相手を確認しています",
+        "did": "共有相手を確認しました",
+        "where": "共有"
+      },
+      "sharedWithMe": {
+        "doing": "共有されたアイテムを確認しています",
+        "did": "共有されたアイテムを確認しました",
+        "where": "共有"
+      },
+      "readInvite": {
+        "doing": "招待を確認しています",
+        "did": "招待を確認しました",
+        "where": "共有"
       }
     },
     "asks": {
@@ -4247,6 +4293,7 @@
       "retried": "が失敗した {count} 件の回答を再実行しました",
       "stopped": "が停止しました",
       "moved": "ここに移動しました。移動元:",
+      "shared": "共有しました。共有先:",
       "viaAssistant": "アシスタント経由",
       "today": "今日",
       "yesterday": "昨日",
@@ -4305,6 +4352,77 @@
       "author": "著者プロフィールを移動",
       "libraryKeeps": "{workspace} のライブラリには保存済みの論文が残ります。",
       "yourLibraryKeeps": "あなたのライブラリには保存済みの論文が残ります。"
+    },
+    "share": {
+      "share": "共有",
+      "shareThis": {
+        "collection": "このコレクションを共有"
+      },
+      "title": {
+        "collection": "コレクションを共有"
+      },
+      "addPeople": "名前またはメールで追加",
+      "inviteEmail": "{email} を招待",
+      "byEmail": "メールで",
+      "noCandidates": "一致する人がいません。メールアドレスを入力して招待してください。",
+      "morePeople": "さらに表示",
+      "accessOf": "{name} のアクセス権",
+      "remove": "削除",
+      "copyLink": "アクセス権のある人向けのリンクをコピー",
+      "linkCopied": "リンクをコピーしました",
+      "view": "閲覧",
+      "edit": "編集",
+      "canView": "閲覧可",
+      "canEdit": "編集可",
+      "owner": "オーナー",
+      "everyone": "{workspace} の全員",
+      "members": "{count, plural, other {#人のメンバー}}",
+      "invited": "{when}に招待",
+      "notSent": "メールを送信できませんでした",
+      "guests": "ゲスト",
+      "guestCount": "{count, plural, other {#人のゲスト}}",
+      "noLimit": "上限なし",
+      "usedOf": "{used} / {limit}",
+      "moreGuests": "ゲストを増やす",
+      "full": {
+        "collection": "{plan} ではコレクションごとに{count, plural, other {#人}}までゲストを追加できます"
+      },
+      "failed": "共有を変更できませんでした"
+    },
+    "shared": {
+      "title": "共有アイテム",
+      "nav": "共有",
+      "sortRecent": "共有された順",
+      "sortName": "名前",
+      "search": "共有アイテムを検索",
+      "all": "すべて",
+      "kinds": {
+        "collection": "コレクション"
+      },
+      "size": {
+        "collection": "{count, plural, other {#件の論文}}"
+      },
+      "runUses": "ここで実行する処理に使われるのは",
+      "yourCredits": "あなたのクレジット",
+      "empty": "共有されたアイテムはまだありません",
+      "emptyKind": "この種類の共有アイテムはまだありません",
+      "emptySearch": "一致する共有アイテムはありません",
+      "leave": "退出",
+      "leaveFailed": "退出できませんでした",
+      "loading": "共有アイテムを読み込んでいます",
+      "more": "さらに表示",
+      "from": "{workspace} から",
+      "sharedOne": {
+        "collection": "{name} がコレクションを共有しました"
+      },
+      "pointOwn": "あなた自身のワークスペースに表示されます",
+      "pointCredits": "実行する処理にはあなたのクレジットが使われます",
+      "open": "開く",
+      "openFailed": "開けませんでした",
+      "goneTitle": "このリンクはもう使えません",
+      "goneDetail": "共有した人にもう一度共有してもらってください",
+      "otherTitle": "この招待は別のアドレスに送信されました",
+      "otherDetail": "このアカウントにそのアドレスも登録されていれば開けます。そうでなければ、招待されたアドレスでサインインしてください"
     }
   },
   "models": {

@@ -1,7 +1,7 @@
 export type Kind = "web" | "file" | "search" | "paper" | "collection" | "screening" | "extraction" | "chat" | "library" | "topic" | "other";
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "webSearch" | "readFile" | "readPaperPdf" | "undoBulk" | "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "extraction" | "chats" | "findRecords" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "workspaces" | "orgMembers" | "myInvites" | "newOrganization" | "inviteMembers" | "revokeInvite" | "declineInvite" | "memberRole" | "memberCap" | "removeMember" | "leaveOrganization" | "renameOrganization" | "deleteOrganization" | "workspaceSummary" | "workspaceColour" | "workspacePreset" | "resendInvite" | "activity" | "moveCheck" | "moveItem" | "other";
+type Words = "webSearch" | "readFile" | "readPaperPdf" | "undoBulk" | "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "shareChat" | "unshareChat" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "extraction" | "chats" | "findRecords" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "workspaces" | "orgMembers" | "myInvites" | "newOrganization" | "inviteMembers" | "revokeInvite" | "declineInvite" | "memberRole" | "memberCap" | "removeMember" | "leaveOrganization" | "renameOrganization" | "deleteOrganization" | "workspaceSummary" | "workspaceColour" | "workspacePreset" | "resendInvite" | "activity" | "moveCheck" | "moveItem" | "shareItem" | "guestRole" | "unshareItem" | "leaveShared" | "answerShare" | "guests" | "sharedWithMe" | "readInvite" | "other";
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }> = {
@@ -136,6 +136,19 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "organizations/manage:resendInvitation": { kind: "other", words: "resendInvite" },
   "workspaces/move:held": { kind: "other", words: "moveCheck" },
   "workspaces/move:move": { kind: "other", words: "moveItem" },
+  "sharing/guests:add": { kind: "other", words: "shareItem" },
+  "sharing/invitations:invite": { kind: "other", words: "shareItem" },
+  "sharing/guests:setRole": { kind: "other", words: "guestRole" },
+  "sharing/guests:remove": { kind: "other", words: "unshareItem" },
+  "sharing/guests:leave": { kind: "other", words: "leaveShared" },
+  "sharing/invitations:respond": { kind: "other", words: "answerShare" },
+  "sharing/guests:room": { kind: "other", words: "guests" },
+  "sharing/guests:list": { kind: "other", words: "guests" },
+  "sharing/guests:invited": { kind: "other", words: "guests" },
+  "sharing/guests:candidates": { kind: "other", words: "sharePeople" },
+  "sharing/invitations:get": { kind: "other", words: "readInvite" },
+  "sharing/shared:list": { kind: "other", words: "sharedWithMe" },
+  "sharing/shared:counts": { kind: "other", words: "sharedWithMe" },
 };
 /** Every action with words of its own, for the test that none the assistant can run is left without. */
 export const WORDED = new Set(Object.keys(ACTIONS));

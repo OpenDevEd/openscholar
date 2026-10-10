@@ -1137,7 +1137,8 @@
     "libraryTitle": "Library - OpenScholar",
     "libraryDescription": "Browse and manage your saved academic papers",
     "creditsTitle": "Credits | OpenScholar",
-    "creditsDescription": "The projects, data and licences OpenScholar builds on."
+    "creditsDescription": "The projects, data and licences OpenScholar builds on.",
+    "sharedTitle": "Shared with me | OpenScholar"
   },
   "validation": {
     "bookmarkNameNoSpaces": "Bookmark name cannot contain spaces",
@@ -3930,6 +3931,51 @@
         "did": "Moved it to another workspace",
         "where": "Workspaces",
         "ask": "Move it to another workspace"
+      },
+      "shareItem": {
+        "doing": "Sharing it with someone",
+        "did": "Shared it with someone",
+        "where": "Sharing",
+        "ask": "Share it with someone"
+      },
+      "guestRole": {
+        "doing": "Changing what a guest can do",
+        "did": "Changed what a guest can do",
+        "where": "Sharing",
+        "ask": "Change what a guest can do"
+      },
+      "unshareItem": {
+        "doing": "Ending someone's access to it",
+        "did": "Stopped sharing it with someone",
+        "where": "Sharing",
+        "ask": "Stop sharing it with someone"
+      },
+      "leaveShared": {
+        "doing": "Leaving something shared with you",
+        "did": "Left something shared with you",
+        "where": "Sharing",
+        "ask": "Leave something shared with you"
+      },
+      "answerShare": {
+        "doing": "Answering an invitation",
+        "did": "Answered an invitation",
+        "where": "Sharing",
+        "ask": "Answer an invitation"
+      },
+      "guests": {
+        "doing": "Reading who it's shared with",
+        "did": "Read who it's shared with",
+        "where": "Sharing"
+      },
+      "sharedWithMe": {
+        "doing": "Reading what's shared with you",
+        "did": "Read what's shared with you",
+        "where": "Sharing"
+      },
+      "readInvite": {
+        "doing": "Reading an invitation",
+        "did": "Read an invitation",
+        "where": "Sharing"
       }
     },
     "asks": {
@@ -4249,6 +4295,7 @@
       "retried": "retried {count, plural, one {# failed answer} other {# failed answers}}",
       "stopped": "stopped it",
       "moved": "moved it here from",
+      "shared": "shared it with",
       "viaAssistant": "Through the assistant",
       "today": "Today",
       "yesterday": "Yesterday",
@@ -4307,6 +4354,77 @@
       "author": "Move author profile",
       "libraryKeeps": "{workspace}'s library keeps the papers it saved.",
       "yourLibraryKeeps": "Your library keeps the papers it saved."
+    },
+    "share": {
+      "share": "Share",
+      "shareThis": {
+        "collection": "Share this collection"
+      },
+      "title": {
+        "collection": "Share collection"
+      },
+      "addPeople": "Add people by name or email",
+      "inviteEmail": "Invite {email}",
+      "byEmail": "By email",
+      "noCandidates": "Nobody matches. Type their email to invite them.",
+      "morePeople": "More people",
+      "accessOf": "{name}'s access",
+      "remove": "Remove",
+      "copyLink": "Copy link for people with access",
+      "linkCopied": "Link copied",
+      "view": "View",
+      "edit": "Edit",
+      "canView": "Can view",
+      "canEdit": "Can edit",
+      "owner": "Owner",
+      "everyone": "Everyone in {workspace}",
+      "members": "{count, plural, one {# member} other {# members}}",
+      "invited": "Invited {when}",
+      "notSent": "The email didn't send",
+      "guests": "Guests",
+      "guestCount": "{count, plural, one {# guest} other {# guests}}",
+      "noLimit": "No limit",
+      "usedOf": "{used} of {limit}",
+      "moreGuests": "More guests",
+      "full": {
+        "collection": "{plan} allows {count, plural, one {# guest} other {# guests}} on each collection"
+      },
+      "failed": "Couldn't change who this is shared with"
+    },
+    "shared": {
+      "title": "Shared with me",
+      "nav": "Shared",
+      "sortRecent": "Recently shared",
+      "sortName": "Name",
+      "search": "Search shared items",
+      "all": "All",
+      "kinds": {
+        "collection": "Collections"
+      },
+      "size": {
+        "collection": "{count, plural, one {# paper} other {# papers}}"
+      },
+      "runUses": "Anything you run on these uses",
+      "yourCredits": "your credits",
+      "empty": "Nothing shared with you yet",
+      "emptyKind": "Nothing shared with you of this kind yet",
+      "emptySearch": "Nothing shared with you matches",
+      "leave": "Leave",
+      "leaveFailed": "Couldn't leave it",
+      "loading": "Loading what's shared with you",
+      "more": "Show more",
+      "from": "From {workspace}",
+      "sharedOne": {
+        "collection": "{name} shared a collection"
+      },
+      "pointOwn": "It sits in your own workspace",
+      "pointCredits": "Work you run on it uses your credits",
+      "open": "Open",
+      "openFailed": "Couldn't open it",
+      "goneTitle": "This link is no longer open",
+      "goneDetail": "Ask whoever shared it to share it again",
+      "otherTitle": "This invitation was sent to another address",
+      "otherDetail": "Open it if this account has that address too, or sign in with the one it was sent to"
     }
   },
   "models": {

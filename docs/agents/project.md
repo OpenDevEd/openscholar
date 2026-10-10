@@ -42,14 +42,6 @@ supported process changed. Read the page back before claiming success.
   `convex/_generated/ai/guidelines.md`.
 - Application state uses Convex queries alongside the shared React rules in
   `AGENTS.md`.
-- An animated element (a CSS animation class or Framer props) never also
-  transitions opacity or transform: no `transition`, `transition-all`,
-  `transition-opacity`, or `transition-transform` on it. Put the animation on a
-  wrapper, or transition only colors, borders, and shadows. Shared
-  `components/ui` parts name the properties they transition.
-- The shared tooltip is `TooltipHint` or `Tooltip` from
-  `components/ui/tooltip`. The only native `title` left is on the hidden
-  `Z3988` spans, which carry citation data for Zotero.
 - `npm run check:ui-rules` runs in CI and enforces the UI rules agents kept
   breaking. Each error names the fix. A line that needs an exception says why
   on the line before it: `// ui-rules-allow: <rule> -- <reason>`.
@@ -62,6 +54,8 @@ supported process changed. Read the page back before claiming success.
   | No dot separators, in code or in `messages/` | `check:ui-rules` (`dot-separator`) |
   | An avatar without a photo shows an icon, never initials | `check:ui-rules` (`initials`) |
   | No "Loading" text; the shared Spinner or the final size | `check:ui-rules` (`loading-text`) |
+  | A dialog, popover or picker comes from `components/ui`, never a raw primitive | `check:ui-rules` (`raw-primitive`) |
+  | No "Coolify" in text people read | `check:ui-rules` (`coolify`) |
   | Nothing moves or flashes as data arrives | `npm run verify -- shift` |
 
 ## Research assistant
@@ -153,11 +147,6 @@ settings, so every change to its shape ships a migration.
 - For Convex work, upload from the correct checkout, require
   `Convex functions ready!`, run the changed function or browser flow, and
   confirm the matching remote logs are clean.
-- For `app/` or `components/` work, prove the change with `npm run verify`
-  (the `verify` skill): `up --prod`, `shift <route>` with a `--do` step for
-  each changed interaction, look at the screenshots, then `down`. A stop hook
-  on the user's machine sends an agent back while a changed page has no
-  passing `shift`.
 - GitHub CI runs the pre-merge suite. Tests tagged `size` run nightly.
 - Convex and plain test files share modules within a Vitest worker, so a test
   can't count on a fresh module. A file that calls `vi.mock`, itself or through
