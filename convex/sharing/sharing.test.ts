@@ -203,6 +203,7 @@ it("closes what a deleted account shared from its own workspace, though its data
   const waiting = await t.run(async (ctx) => (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", id)).first())!._id);
   verified = ["dave@example.org"];
   await expect(dave.action(api.sharing.invitations.respond, { invitationId: waiting, accept: true })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+  expect(await dave.query(api.sharing.invitations.get, { invitationId: waiting })).toBeNull();
   await t.finishAllScheduledFunctions(vi.runAllTimers);
 
   // The collection is still there, for its retention, and nobody is its guest or invited to it.
