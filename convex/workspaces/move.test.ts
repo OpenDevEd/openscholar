@@ -127,4 +127,12 @@ it("moves an author profile with its editors", async () => {
   const profile = await t.run((ctx) => ctx.db.insert("authorProfiles", { name: "Ada", headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: "", workspaceId: aliceOwn, createdBy: users.alice, revision: 1, updatedAt: 1 }));
   await alice.mutation(api.workspaces.move.move, { kind: "author", id: profile, to: labId });
   expect((await t.run((ctx) => ctx.db.get("authorProfiles", profile)))?.workspaceId).toBe(labId);
+it("moves a screening that stopped when its credits ran out, which has finished", async () => {
+  const { t, alice, lab: labId, aliceOwn, users } = await lab();
+  const job = await t.run(async (ctx) => {
+    const screeningId = await ctx.db.insert("screenings", { workspaceId: aliceOwn, version: 0, createdAt: 1 });
+    return ctx.db.insert("screeningJobs", { workspaceId: aliceOwn, createdBy: users.alice, screeningId, status: "creditsExhausted", totalPapers: 4, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
+  });
+  await alice.mutation(api.workspaces.move.move, { kind: "screening", id: job, to: labId });
+  expect((await t.run((ctx) => ctx.db.get("screeningJobs", job)))?.workspaceId).toBe(labId);
 });

@@ -26,6 +26,8 @@ export type Movable = (typeof movableKinds)[number];
 
 /** A job moves once it has finished: until then its credits are held by the workspace it runs in. */
 const FINISHED = new Set(["completed", "cancelled", "failed"]);
+/** A screening that stopped at its spending limit or out of credits has finished too; an extraction's can be resumed. */
+const SCREENING_FINISHED = new Set([...FINISHED, "creditsExhausted"]);
 
 /** Activity rows one step moves with their item. */
 const ACTIVITY_STEP = 200;
@@ -76,7 +78,7 @@ const chatIn = async (ctx: Read, workspaceId: Id<"workspaces">, id: string) => {
  * or waiting for a slot, and none waits for the bookkeeping that frees its workspace's slots.
  */
 async function screeningSettled(ctx: Read, job: Doc<"screeningJobs">) {
-  if (!FINISHED.has(job.status)) return false;
+  if (!SCREENING_FINISHED.has(job.status)) return false;
   const reading = await ctx.db.query("screeningResults").withIndex("by_job_and_status_and_waitingWorkspace", (q) => q.eq("jobId", job._id).eq("status", "processing")).first();
   const unkept = await ctx.db.query("screeningResults").withIndex("by_job_and_doneAt", (q) => q.eq("jobId", job._id).gte("doneAt", 0n)).first();
   return !reading && !unkept;
@@ -258,10 +260,9 @@ export const moveAction = defineUserMutation({
   args: { kind: kindValidator, id: v.string(), to: v.id("workspaces") },
   returns: v.object({ to: v.id("workspaces") }),
   spendsCredits: false,
-  outsideEffect: false,
-  undoable: false,
   // Everyone in the workspace it goes to sees it from then on.
-  asksFirst: async () => true,
+  outsideEffect: true,
+  undoable: false,
   run: async (ctx, actor, { kind, id, to }) => {
     if (to === actor.workspaceId) throw createError("VALIDATION_ERROR", "It's in that workspace already.");
     const person = await ctx.db.get("users", actor.userId);
