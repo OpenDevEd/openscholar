@@ -170,15 +170,16 @@ export function recorder(config: { allow: string }) {
 
   // A dialog, sheet, popover or menu: what opens over the page.
   const OVERLAY = '[role="dialog"], [role="alertdialog"], [role="menu"]';
-  const clips = (element: Element) => /hidden|clip/.test(getComputedStyle(element).overflowY);
+  // A frame that cuts off what is outside it; with `scrollers`, a scrolling list too.
+  const clips = (element: Element, scrollers: boolean) => (scrollers ? /hidden|clip|auto|scroll/ : /hidden|clip/).test(getComputedStyle(element).overflowY);
 
   /** How much of a new element shows inside the ancestors that clip it, as a share of its height. */
-  function showing(element: HTMLElement, overlay: Element): number {
+  function showing(element: HTMLElement, overlay: Element, scrollers: boolean): number {
     const rect = element.getBoundingClientRect();
     let top = rect.top;
     let bottom = rect.bottom;
     for (let parent = element.parentElement; parent && parent !== overlay.parentElement; parent = parent.parentElement) {
-      if (!clips(parent)) continue;
+      if (!clips(parent, scrollers)) continue;
       const clip = parent.getBoundingClientRect();
       top = Math.max(top, clip.top);
       bottom = Math.min(bottom, clip.bottom);
@@ -186,9 +187,16 @@ export function recorder(config: { allow: string }) {
     return rect.height > 0 ? Math.max(0, bottom - top) / rect.height : 0;
   }
 
-  // Fading or sliding in, or being uncovered by a frame that grows around it.
-  const entering = (element: HTMLElement, overlay: Element) =>
-    Number(getComputedStyle(element).opacity) < 1 || element.getAnimations().some((animation) => animation.playState === "running") || showing(element, overlay) < 0.5;
+  /** Fading or sliding in, by itself or with something it is inside. The overlay's own opening doesn't count: what lands while it opens still pops. */
+  function fading(element: HTMLElement, overlay: Element): boolean {
+    for (let node: HTMLElement | null = element; node && node !== overlay; node = node.parentElement) {
+      if (Number(getComputedStyle(node).opacity) < 1 || node.getAnimations().some((animation) => animation.playState === "running")) return true;
+    }
+    return false;
+  }
+
+  // Not a pop: fading or sliding in, being uncovered by a frame that grows around it, or scrolled out of sight.
+  const entering = (element: HTMLElement, overlay: Element) => fading(element, overlay) || showing(element, overlay, false) < 0.5 || showing(element, overlay, true) === 0;
 
   /**
    * For what opens over the page: the overlay a new element arrives in. Only
