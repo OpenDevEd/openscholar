@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useAction } from "convex/react";
-import { BookOpen, CalendarDays, Check, ChevronDown, Clock3, Pause, Repeat2, Globe2, Mail, Send, TimerReset } from "@/components/icons";
+import { BadgeCheck, BookOpen, CalendarDays, Check, ChevronDown, Clock3, Pause, PenLine, Repeat2, Globe2, Mail, Send, TimerReset } from "@/components/icons";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -67,6 +67,23 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
         {(id, invalid) => <TimezonePicker id={id} invalid={invalid} value={schedule.timezone} onChange={timezone => setSchedule({...schedule, timezone})} />}
       </Field>
     </div>}
+    {notifications.enabled && <Field
+      label={<span className="inline-flex items-center gap-2"><BadgeCheck className="size-4 text-muted-foreground" />Before a digest goes out</span>}
+      hint={notifications.approval
+        ? "It waits in the library's admin panel, where Creators can edit it and an Editor or Owner publishes it."
+        : "It is published and emailed as soon as it is written. It can still be corrected in the library's admin panel."}
+    >
+      {id => <Select value={notifications.approval ? "editor" : "none"} onValueChange={value => patch(draft => {draft.notifications.approval = value === "editor";return draft;})}>
+        <SelectTrigger id={id} className="w-full bg-background"><SelectValue /></SelectTrigger>
+        <SelectContent><SelectItem value="editor">An editor approves it</SelectItem><SelectItem value="none">It is sent as AI wrote it</SelectItem></SelectContent>
+      </Select>}
+    </Field>}
+    {notifications.enabled && <ToggleRow
+      label={<span className="inline-flex items-center gap-2"><PenLine className="size-4 text-muted-foreground" />Name who checked it</span>}
+      hint="On the digest, in the list of digests and in the email, with any note they wrote. A digest nobody checked says it was written by AI."
+      checked={notifications.attribution}
+      onChange={attribution => patch(draft => {draft.notifications.attribution = attribution;return draft;})}
+    />}
     {notifications.enabled && <ToggleRow
       label={<span className="inline-flex items-center gap-2"><Pause className="size-4 text-muted-foreground" />Pause digests</span>}
       hint={notifications.pausedSince

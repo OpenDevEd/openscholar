@@ -1496,7 +1496,9 @@ describe("notification configuration", () => {
     const draft = savedDraft();
     expect(draft.notifications.digestCovers).toBe("published");
     expect(draft.notifications.pausedSince).toBeNull();
-    draft.notifications = {enabled: true, digestCovers: "added", pausedSince: "2026-10-10T18:00:00.000Z", schedule: {frequency: "weekly", weekday: 5, time: "16:30", timezone: "Europe/London"}};
+    // A library saved before these settings existed sends digests as written and names nobody.
+    expect(draft.notifications).toMatchObject({approval: false, attribution: false});
+    draft.notifications = {enabled: true, digestCovers: "added", pausedSince: "2026-10-10T18:00:00.000Z", approval: true, attribution: true, schedule: {frequency: "weekly", weekday: 5, time: "16:30", timezone: "Europe/London"}};
     expect(changedSectionRows(draft, savedRows)).toEqual([{sectionKey: "notifications", payload: draft.notifications}]);
     expect(resetSection(draft, savedRows, "contact").notifications).toEqual(savedDraft().notifications);
     expect(sectionProblems(draft, "contact")).toEqual([]);
