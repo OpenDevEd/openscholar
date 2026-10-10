@@ -15,7 +15,8 @@ export function itemInvitationMessage({ origin, invitationId, email, kind, name,
 }) {
   const acceptUrl = new URL(`/shared/${invitationId}`, origin).href;
   const identity = { name: "OpenScholar", baseUrl: origin, logoUrl: new URL("/web-app-manifest-192x192.png", origin).href, accent: "#2563eb" };
-  const can = role === "editor" ? `Change what's in this ${kind} and run jobs on it.` : `Open, read and export this ${kind}.`;
+  // What each role does today: an editor's jobs on a shared item aren't built yet.
+  const can = role === "editor" ? `Open, read and export this ${kind}, put papers in it and take them out.` : `Open, read and export this ${kind}.`;
   const from = workspace && workspace !== inviter ? ` from ${workspace}` : "";
   return {
     subject: `${inviter} shared "${name}" with you`,

@@ -12,7 +12,8 @@ import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import schema from "../schema";
 import type { InWorkspace } from "../workspaces/actor";
 import { workspaceFrom } from "../workspaces/personal";
-import { findShared, sharedWithOf } from "./items";
+import { findItem } from "../library/find";
+import { findShared, open, sharedWithOf } from "./items";
 import { guestRoleValidator, sharedFromValidator, sharedKindValidator, sharedKinds, type SharedKind } from "./validators";
 
 /** Most shared items one page holds. */
@@ -62,6 +63,40 @@ export const listAction = defineUserQuery({
 });
 export const list = userQuery(listAction);
 export const listForAssistant = assistantQuery(listAction);
+
+export const editableCollectionsAction = defineUserQuery({
+  path: "sharing/shared:editableCollections",
+  description:
+    "A page of the collections shared with the person to edit, from other workspaces, by name: each with how many papers it holds and whose it is. With `search`, those whose name contains it. " +
+    "With a paper's OpenAlex ID, each also says whether that paper is in it. library/mutations:setPaperInCollection puts a paper in one or takes it out. Empty in an organization: what's shared with someone is in their own workspace.",
+  args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), openalexId: v.optional(v.string()) },
+  returns: paginationResultValidator(v.object({ _id: v.id("collections"), name: v.string(), itemCount: v.number(), containsItem: v.boolean(), from: sharedFromValidator })),
+  run: async (ctx, actor, { paginationOpts, search, openalexId }) => {
+    if (!(await inOwn(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
+    const needle = search?.trim().toLowerCase() ?? "";
+    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHARED_PAGE_MAX) };
+    // The index holds only the ones they may edit, by name. A search reads on until a page is full or the list ends,
+    // so no page comes back empty with more behind it: the picker has no scroll to ask for the next from.
+    const editable = stream(ctx.db, schema)
+      .query("itemAccess")
+      .withIndex("by_user_and_kind_and_role_and_name", (q) => q.eq("userId", actor.userId).eq("kind", "collection").eq("role", "editor"))
+      .order("asc");
+    const read = await (needle ? editable.filterWith(async (row) => row.name.toLowerCase().includes(needle)) : editable).paginate(opts);
+    const page = await Promise.all(read.page.map(async (row) => {
+      const collectionId = ctx.db.normalizeId("collections", row.item);
+      const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;
+      // One whose collection or workspace is gone goes with it in a moment (./upkeep.ts).
+      if (!collection || !(await open(ctx, collection.workspaceId))) return [];
+      // The paper as the collection's own library holds it, which is where it's put.
+      const item = openalexId ? await findItem(ctx, collection.workspaceId, openalexId) : null;
+      const place = item ? await ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collection._id).eq("libraryItemId", item._id)).unique() : null;
+      return [{ _id: collection._id, name: collection.name, itemCount: collection.itemCount, containsItem: place !== null, from: await workspaceFrom(ctx, collection.workspaceId) }];
+    }));
+    return { ...read, page: page.flat() };
+  },
+});
+export const editableCollections = userQuery(editableCollectionsAction);
+export const editableCollectionsForAssistant = assistantQuery(editableCollectionsAction);
 
 export const countsAction = defineUserQuery({
   path: "sharing/shared:counts",

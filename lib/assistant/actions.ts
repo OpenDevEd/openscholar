@@ -149,6 +149,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "sharing/invitations:get": { kind: "other", words: "readInvite" },
   "sharing/shared:list": { kind: "other", words: "sharedWithMe" },
   "sharing/shared:counts": { kind: "other", words: "sharedWithMe" },
+  "sharing/shared:editableCollections": { kind: "other", words: "sharedWithMe" },
 };
 /** Every action with words of its own, for the test that none the assistant can run is left without. */
 export const WORDED = new Set(Object.keys(ACTIONS));

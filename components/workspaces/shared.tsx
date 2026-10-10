@@ -33,7 +33,7 @@ import { useCurrentWorkspace, WorkspaceTag, WorkspaceTile } from "./parts";
 
 /** Each kind's look, where one opens in your own workspace, and the roles its guests can be given (convex/sharing/items.ts). */
 export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; href: (id: string) => string; roles: readonly GuestRole[] }> = {
-  collection: { icon: Folder, tint: "#e8890c", href: (id) => `/library?col=${id}`, roles: ["viewer"] },
+  collection: { icon: Folder, tint: "#e8890c", href: (id) => `/library?col=${id}`, roles: ["viewer", "editor"] },
 };
 
 type Sort = "recent" | "name";

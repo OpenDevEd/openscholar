@@ -1,8 +1,23 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import { stream } from "convex-helpers/server/stream";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { createError } from "../lib/errors";
 import schema from "../schema";
+import { guestRole } from "../sharing/items";
+import type { InWorkspace } from "../workspaces/actor";
 import { placeFacets } from "./facets";
+
+/**
+ * The collection, for someone who may change which papers are in it: it's in the workspace they
+ * act in, or it's shared with them to edit (#653). Its papers are its own workspace's library's,
+ * whoever puts them there, so a guest's change is written in `collection.workspaceId`.
+ */
+export async function editableCollection(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, collectionId: Id<"collections">) {
+  const collection = await ctx.db.get("collections", collectionId);
+  if (!collection) throw createError("NOT_FOUND", "This collection no longer exists.");
+  if (collection.workspaceId !== actor.workspaceId && (await guestRole(ctx, actor, collection)) !== "editor") throw createError("FORBIDDEN", "Not your collection");
+  return collection;
+}
 
 /**
  * Every change to a collection's items goes through here, so its item count
