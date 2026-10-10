@@ -11,6 +11,7 @@ import React, {
 import { usePathname } from "next/navigation";
 import { cn, ratingFilterKeeps, getEffectiveSearchId } from "@/lib/utils";
 import { useLikelyOrdered } from "@/lib/search/likely-order";
+import { focusedIndex } from "@/lib/focus-index";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import {
   useRatingsStore,
@@ -122,7 +123,7 @@ export function ResultsList({
     return () => clearTimeout(timer);
   }, []);
 
-  const { isFocusModeOpen, focusModeIndex, viewMode } = useUIStore();
+  const { isFocusModeOpen, focusModeIndex, focusModePaperId, viewMode } = useUIStore();
   const isMobile = useIsTablet();
   
   // Force list-detail on mobile
@@ -177,12 +178,12 @@ export function ResultsList({
   const papersForBatchScreening = useMemo(() => {
     if (isFocusModeOpen) {
       // Batch in groups of 20 based on focus index
-      const batchStart = Math.floor(focusModeIndex / ITEMS_PER_PAGE) * ITEMS_PER_PAGE;
+      const batchStart = Math.floor(focusedIndex(filteredResults, focusModePaperId, focusModeIndex) / ITEMS_PER_PAGE) * ITEMS_PER_PAGE;
       const batchEnd = Math.min(batchStart + ITEMS_PER_PAGE, filteredResults.length);
       return filteredResults.slice(batchStart, batchEnd);
     }
     return paginatedResults;
-  }, [isFocusModeOpen, focusModeIndex, filteredResults, paginatedResults]);
+  }, [isFocusModeOpen, focusModeIndex, focusModePaperId, filteredResults, paginatedResults]);
 
   const missingResponses = useMemo(() => {
     return generateMissingScreeningCombinationsByPaper(

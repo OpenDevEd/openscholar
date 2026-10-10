@@ -26,6 +26,7 @@ import { useSavePaper } from "@/components/library/save-control";
 import { useRatePaper } from "@/components/rating-selector";
 import { FocusModeSettings } from "@/components/focus-mode/focus-mode-settings";
 import type { PaperResult } from "@/lib/types";
+import { focusedIndex } from "@/lib/focus-index";
 import { FocusModeClose } from "@/components/focus-mode/close-context";
 
 interface FocusModeProps {
@@ -43,9 +44,11 @@ export function FocusMode({
   onDownloadItem,
   onDownloadEssentialItem,
 }: FocusModeProps) {
-  const { focusModeIndex, setFocusModeIndex: setCurrentIndex } = useUIStore();
+  const { focusModeIndex, focusModePaperId, setFocusModePaper } = useUIStore();
   // One paper, such as one a chat names, is read on its own: the index the page's list keeps is for that list.
-  const currentIndex = papers.length === 1 ? 0 : focusModeIndex;
+  // The paper open stays open when the list is reordered under it, as when a likely order arrives.
+  const currentIndex = focusedIndex(papers, focusModePaperId, focusModeIndex);
+  const moveTo = (index: number) => setFocusModePaper(index, papers[index]?.id ?? null);
   const [showSettings, setShowSettings] = useState(false);
   // It stays mounted while closed, so it can slide out: each opening starts on the paper, not on the settings left open.
   const [openedBefore, setOpenedBefore] = useState(isOpen);
@@ -229,7 +232,7 @@ export function FocusMode({
         setSwipeDirection("left");
       }
       const nextPaper = papers[currentIndex + 1];
-      setCurrentIndex((prev) => prev + 1);
+      moveTo(currentIndex + 1);
 
       // Track focus mode navigation
       posthog.capture("focus_mode_navigation", {
@@ -246,7 +249,7 @@ export function FocusMode({
         setSwipeDirection("right");
       }
       const previousPaper = papers[currentIndex - 1];
-      setCurrentIndex((prev) => prev - 1);
+      moveTo(currentIndex - 1);
 
       // Track focus mode navigation
       posthog.capture("focus_mode_navigation", {
@@ -368,7 +371,7 @@ export function FocusMode({
       if (isMobile) {
         setSwipeDirection(index > currentIndex ? "left" : "right");
       }
-      setCurrentIndex(index);
+      moveTo(index);
     }
   };
 

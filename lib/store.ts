@@ -93,6 +93,8 @@ interface UIState {
   loadingResultIndex: number | null
   isFocusModeOpen: boolean
   focusModeIndex: number
+  /** The paper focus mode was opened on or moved to, so that it stays open when the list is reordered. */
+  focusModePaperId: string | null
   viewMode: ViewMode
   historyViewMode: ViewMode
   historySortBy: HistorySortBy
@@ -106,6 +108,8 @@ interface UIState {
   setLoadingResultIndex: (index: number | null) => void
   setIsFocusModeOpen: (open: boolean) => void
   setFocusModeIndex: (index: number | ((prev: number) => number)) => void
+  /** Opens or moves focus mode to the paper at `index`, `paperId`, or to the place alone for null. */
+  setFocusModePaper: (index: number, paperId: string | null) => void
   setViewMode: (mode: ViewMode) => void
   setHistoryViewMode: (mode: ViewMode) => void
   setHistorySortBy: (sort: HistorySortBy) => void
@@ -632,6 +636,7 @@ export const useUIStore = create<UIState>()(
       loadingResultIndex: null,
       isFocusModeOpen: false,
       focusModeIndex: 0,
+      focusModePaperId: null,
       viewMode: 'list-detail',
       historyViewMode: 'list-detail',
       historySortBy: 'recent',
@@ -651,6 +656,7 @@ export const useUIStore = create<UIState>()(
               ? indexOrUpdater(state.focusModeIndex)
               : indexOrUpdater,
         })),
+      setFocusModePaper: (index, paperId) => set({ focusModeIndex: index, focusModePaperId: paperId }),
       setViewMode: (mode) => set({ viewMode: mode }),
       setHistoryViewMode: (mode) => set({ historyViewMode: mode }),
       setHistorySortBy: (sort) => set({ historySortBy: sort }),

@@ -279,14 +279,15 @@ export const openFocusMode = (
   initialIndex: number = 0,
   paperId?: string
 ) => {
-  const { setIsDialogOpen, setIsFocusModeOpen, setFocusModeIndex } = useUIStore.getState();
+  const { setIsDialogOpen, setIsFocusModeOpen, setFocusModePaper } = useUIStore.getState();
 
   // If isMobile is provided, use it; otherwise fall back to window check for backward compatibility
   const isDesktop = isMobile !== undefined ? !isMobile : window.matchMedia("(min-width: 768px)").matches;
   if (!isDesktop) {
     setIsDialogOpen(false);
   }
-  setFocusModeIndex(initialIndex);
+  // The paper, when named, stays open however the list is reordered under it.
+  setFocusModePaper(initialIndex, paperId ?? null);
   setIsFocusModeOpen(true);
 
   // Track focus mode opened
