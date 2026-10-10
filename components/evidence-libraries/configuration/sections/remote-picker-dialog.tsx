@@ -353,6 +353,10 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
               className="bg-background pl-8"
               onChange={(event) => search(event.target.value)}
             />
+            {/* The rows of the last answer stay while the next one loads, so the wait is said here. */}
+            <span className="sr-only" role="status">
+              {stale ? loadingLabel : null}
+            </span>
             {query ? (
               <button
                 type="button"
@@ -378,7 +382,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                       <Checkbox
                         aria-label={t("selectAll")}
                         checked={allPicked}
-                        disabled={selectable.length === 0}
+                        disabled={selectable.length === 0 || stale}
                         onCheckedChange={(value) =>
                           setPicked((current) => {
                             const next = new Map(current);
@@ -413,7 +417,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                   <TableHead className="w-24" />
                 </TableRow>
               </TableHeader>
-              <TableBody inert={stale} aria-busy={stale || undefined} className={cn("transition-opacity duration-200", stale && "opacity-60")}>
+              <TableBody className="[&_tr:last-child]:border-b">
                 {/* "None" and the typed name are the owner's own choices, so
                     they stay offered even when the library cannot be read. */}
                 {props.mode === "single" && props.noneLabel ? (
@@ -432,7 +436,9 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                     onChoose={() => choose({ id: typed, title: typed })}
                   />
                 ) : null}
-
+              </TableBody>
+              {/* While the next answer loads, the last one is out of reach; "None" and the typed name above stay within it. */}
+              <TableBody inert={stale} className={cn("transition-opacity duration-200", stale && "opacity-60")}>
                 {status === "loading" && !stale ? (
                   <MessageRow key="loading" columnCount={columnCount}>
                     <span className="flex items-center justify-center gap-2" role="status">
