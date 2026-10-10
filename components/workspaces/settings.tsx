@@ -45,6 +45,8 @@ import { FREE_MEMBERS, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
 
 /** Rows a page of members holds. */
 const PER_PAGE = 10;
+/** Seats the members card draws one segment for each of; past it, one bar. */
+const SEAT_SEGMENTS = 20;
 /** A row with a photo, and its divider. */
 const ROW_HEIGHT = 61;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -298,8 +300,10 @@ export function WorkspaceMembers() {
   const now = useNow({ updateInterval: 60_000 });
   const { workspaceId, organization, admin } = useOrganization();
   const members = useCursorPage(api.organizations.queries.members, inWorkspace(workspaceId, {}), PER_PAGE);
-  // ponytail: one page; a free organization has at most FREE_MEMBERS, invitations included. Team (#652) counts them.
-  const { data: invitations } = useProtectedQuery(api.organizations.queries.invitations, inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: FREE_MEMBERS } }));
+  const invitations = useCursorPage(api.organizations.queries.invitations, inWorkspace(workspaceId, {}), PER_PAGE);
+  // Team's seats are its members, counted in full: the switcher's count stops at a hundred and one.
+  const team = organization?.plan === TEAM_PLAN;
+  const counts = useProtectedQuery(api.billing.seats.counts, team && workspaceId ? { workspaceId } : "skip").data;
   const invite = useWorkspaceAction(api.organizations.manage.invite);
   const setRole = useWorkspaceAction(api.organizations.manage.setRole);
   const removeMember = useWorkspaceAction(api.organizations.manage.removeMember);
@@ -313,16 +317,17 @@ export function WorkspaceMembers() {
   // A time Clerk set a moment after the clock last ticked reads as now, not as in a few seconds.
   const ago = (at: number) => format.relativeTime(at, Math.max(now.getTime(), at));
   const { name: planName } = usePlanOf(organization ?? { kind: "organization", name: "" });
-  if (!organization || members.isLoading || !invitations) return <Enter ready={false}>{null}</Enter>;
+  if (!organization || members.isLoading || invitations.isLoading || (team && !counts)) return <Enter ready={false}>{null}</Enter>;
 
   const roleOptions = [
     { id: "member" as const, label: tw("member"), icon: ROLE_ICONS.member },
     { id: "admin" as const, label: tw("admin"), icon: ROLE_ICONS.admin },
   ];
-  const memberCount = organization.members ?? 0;
-  const seats = FREE_MEMBERS;
-  const used = memberCount + invitations.page.length;
-  const full = used >= seats;
+  const memberCount = counts?.members ?? organization.members ?? 0;
+  // Team has a seat for each member, so it's never full; a free organization has FREE_MEMBERS, invitations included, which one page holds (#652).
+  const used = memberCount + (team ? 0 : invitations.items.length);
+  const seats = team ? used : FREE_MEMBERS;
+  const full = !team && used >= seats;
 
   return (
     <Enter ready>
@@ -334,12 +339,19 @@ export function WorkspaceMembers() {
             </p>
             <p className="mt-1 text-sm text-muted-foreground">{t("membersOnPlan", { plan: planName })}</p>
           </div>
-          {/* A segment a seat: members, then invitations waiting for an answer. */}
-          <div className="flex gap-1" aria-hidden>
-            {Array.from({ length: seats }, (_, i) => (
-              <span key={i} className={cn("h-2 flex-1 rounded-full", i < memberCount ? "bg-primary" : i < used ? "bg-primary/40" : "bg-muted")} />
-            ))}
-          </div>
+          {/* A segment a seat while they're few enough to count, members then invitations waiting for an answer; past that, one bar. */}
+          {seats <= SEAT_SEGMENTS ? (
+            <div className="flex gap-1" aria-hidden>
+              {Array.from({ length: seats }, (_, i) => (
+                <span key={i} className={cn("h-2 flex-1 rounded-full", i < memberCount ? "bg-primary" : i < used ? "bg-primary/40" : "bg-muted")} />
+              ))}
+            </div>
+          ) : (
+            <div className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+              <span className="h-full rounded-full bg-primary" style={{ width: `${(memberCount / seats) * 100}%` }} />
+              {used > memberCount ? <span className="h-full rounded-full bg-primary/40" style={{ width: `${((used - memberCount) / seats) * 100}%` }} /> : null}
+            </div>
+          )}
         </section>
 
         {admin ? (
@@ -394,10 +406,11 @@ export function WorkspaceMembers() {
           </Paged>
         </Zone>
 
-        {invitations.page.length ? (
+        {invitations.items.length ? (
           <Zone label={t("invitations")}>
-            <ul className={LIST}>
-              {invitations.page.map((invitation) => (
+            <Paged pager={{ list: invitations, size: PER_PAGE }} rowHeight={ROW_HEIGHT} label={t("invitationsLabel")}>
+            <ul key={invitations.page} className={LIST}>
+              {invitations.items.map((invitation) => (
                 <li key={invitation.invitationId}>
                   <IdentityRow className="p-3" avatar={<EmailAvatar />} name={invitation.email} detail={t("invited", { when: ago(invitation.sentAt) })}>
                     <RoleLabel role={invitation.role} className="pr-1">
@@ -425,6 +438,7 @@ export function WorkspaceMembers() {
                 </li>
               ))}
             </ul>
+            </Paged>
           </Zone>
         ) : null}
       </div>

@@ -4169,6 +4169,7 @@
       "theirRole": "Their role",
       "freeUpTo": "Free organisations have up to {count, number} members, invitations included",
       "membersLabel": "members",
+      "invitationsLabel": "invitations",
       "joined": "Joined {when}",
       "roleOf": "{name}'s role",
       "removeName": "Remove {name}",

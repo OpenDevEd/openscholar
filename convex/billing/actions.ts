@@ -9,7 +9,7 @@ import { autumn } from "./autumn";
 import { refreshAccount } from "./accounts";
 import { previewLineItemsValidator, type BillingCatalog } from "./validators";
 import { MAX_PLAN_DETAILS } from "../lib/listCaps";
-import { FREE_MEMBERS, ORGANIZATION_PLAN, ORGANIZATION_PLANS, TEAM_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
+import { FREE_MEMBERS, ORGANIZATION_PLANS, TEAM_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
 import { findPlan, topUpBundles } from "../../lib/billing/catalog";
 
 async function requireUser(ctx: ActionCtx): Promise<Doc<"users">> {
@@ -215,8 +215,7 @@ export const moveToFree = action({
     await organizationAdminOf(ctx, workspaceId);
     const counted: { members: number; invitations: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
     if (!counted || counted.members + counted.invitations > FREE_MEMBERS) throw createError("VALIDATION_ERROR", `Free has up to ${FREE_MEMBERS} members, invitations included: remove members or cancel invitations down to ${FREE_MEMBERS} first.`);
-    await autumn.attach({ customerId: workspaceId, planId: ORGANIZATION_PLAN, idempotencyKey: `free-${workspaceId}-${crypto.randomUUID()}` });
-    await ctx.runAction(internal.billing.seats.sync, { workspaceId });
+    await ctx.runAction(internal.billing.seats.endTeam, { workspaceId });
     await refreshAccount(ctx, workspaceId, { card: true });
     return null;
   },

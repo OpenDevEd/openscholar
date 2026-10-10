@@ -9,6 +9,8 @@ import type { Id } from "../_generated/dataModel";
 import { action, type ActionCtx } from "../_generated/server";
 import { ClerkApiError, clerkRequest, clerkSecretKey, isRecord } from "../lib/clerk";
 import { requireAppUrl } from "../lib/env";
+import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
+import { FREE_MEMBERS } from "../../lib/billing/plans";
 import { createError } from "../lib/errors";
 import { assistantAction, assistantMutation, defineChangingAction, defineUserMutation, reversedBy, userAction, userMutation, type Acting } from "../lib/userActions";
 import { processClerkWebhookEvent } from "../webhooks/clerk";
@@ -151,7 +153,7 @@ export const inviteAction = defineChangingAction({
   path: "organizations/manage:invite",
   description:
     `Invites people to the organization the person is in, by email, as admins or members; an admin of it does this. Clerk emails each a link to join. At most ${INVITES_AT_ONCE} at once. ` +
-    "A free organization has up to 5 members, invitations included. Returns how many were invited.",
+    `A free organization has up to ${FREE_MEMBERS} members, invitations included; one on Team up to ${MAX_ORGANIZATION_MEMBERS.toLocaleString("en")}. Returns how many were invited.`,
   args: { emails: v.array(v.string()), role: ROLE },
   returns: v.object({ invited: v.number() }),
   spendsCredits: false,
@@ -334,7 +336,7 @@ export const deleteOrganizationAction = defineChangingAction({
   path: "organizations/manage:deleteOrganization",
   description:
     "Deletes the organization the person is in, and with it every member's access to its workspace; an admin of it does this, and it can't be undone. " +
-    "It's refused while the organization has an Evidence Library, which has to be moved or deleted first, or a paid plan that renews, which has to be cancelled first.",
+    "It's refused while the organization has an Evidence Library, which has to be moved or deleted first. An organization on Team has its plan and seats ended first.",
   args: {},
   returns: v.null(),
   spendsCredits: false,
@@ -351,6 +353,8 @@ export const deleteOrganizationAction = defineChangingAction({
     const deletingAt: number = await ctx.runMutation(internal.organizations.read.beginDeletion, { workspaceId: actor.workspaceId });
     const sentAt = Date.now();
     try {
+      // A Team organization's plan and seats end first: Clerk deletes it only once Autumn shows neither (#652).
+      await ctx.runAction(internal.billing.seats.endTeam, { workspaceId: actor.workspaceId });
       await clerk(key, "DELETE", `/organizations/${organization.clerkOrganizationId}`);
     } catch (error) {
       await ctx.runMutation(internal.organizations.read.endDeletion, { organizationId: organization.organizationId, deletingAt });

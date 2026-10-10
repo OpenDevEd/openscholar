@@ -4167,6 +4167,7 @@
       "theirRole": "其角色",
       "freeUpTo": "免费组织最多 {count, number} 名成员（含邀请）",
       "membersLabel": "成员",
+      "invitationsLabel": "邀请",
       "joined": "{when}加入",
       "roleOf": "{name} 的角色",
       "removeName": "移除 {name}",

@@ -36,9 +36,14 @@ export const fakeAutumn = {
   confirmPayments: false,
   /** Makes the next call to this endpoint fail, as if Autumn were down. */
   failNext: null as string | null,
+  /** The member limits set on organizations in Clerk (#652), in order, and how many more Clerk refuses first. */
+  memberLimits: [] as Array<{ organization: string; limit: number }>,
+  refuseLimits: 0,
 
   reset() {
     this.failNext = null;
+    this.memberLimits = [];
+    this.refuseLimits = 0;
     this.noCard = false;
     this.confirmPayments = false;
     this.customers.clear();
@@ -264,6 +269,14 @@ export function fakeAutumnFetch(
   process.env.AUTUMN_SECRET_KEY = "am_sk_test_fake";
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    // A seat sync setting an organization's member limit in Clerk.
+    const organization = url.match(/^https:\/\/api\.clerk\.com\/v1\/organizations\/([^/]+)$/)?.[1];
+    const limit = init?.method === "PATCH" && organization ? (JSON.parse(String(init.body ?? "{}")) as { max_allowed_memberships?: number }).max_allowed_memberships : undefined;
+    if (organization && limit !== undefined) {
+      if (fakeAutumn.refuseLimits > 0 && fakeAutumn.refuseLimits--) return respond(500, { errors: [{ code: "internal_clerk_error" }] });
+      fakeAutumn.memberLimits.push({ organization, limit });
+      return respond(200, { id: organization, max_allowed_memberships: limit });
+    }
     if (!url.startsWith(`${AUTUMN_URL}/v1/`)) return fallback(input, init);
     return handle(
       url.slice(`${AUTUMN_URL}/v1/`.length),
@@ -273,10 +286,11 @@ export function fakeAutumnFetch(
   };
 }
 
-/** Routes Autumn calls to a fresh in-memory fake; other requests go through. */
+/** Routes Autumn calls, and Clerk's member limits, to a fresh in-memory fake; other requests go through. */
 export function installFakeAutumn() {
   fakeAutumn.reset();
   vi.stubGlobal("fetch", fakeAutumnFetch(globalThis.fetch));
+  vi.stubEnv("CLERK_SECRET_KEY", "sk_test_fake");
 }
 
 /** Gives a person's own workspace, or another workspace (#650), credits in the fake and in the cached snapshot. */

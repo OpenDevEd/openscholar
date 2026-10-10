@@ -4167,6 +4167,7 @@
       "theirRole": "役割",
       "freeUpTo": "無料の組織は招待を含めて最大 {count, number} 人です",
       "membersLabel": "メンバー",
+      "invitationsLabel": "招待",
       "joined": "{when}に参加",
       "roleOf": "{name} の役割",
       "removeName": "{name} を削除",

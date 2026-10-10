@@ -4,6 +4,7 @@ import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_INVITATIONS_PER_EMAIL, SINGL
 import { internalMutation, type MutationCtx } from "../lib/functions";
 import { ensureWorkspace } from "../workspaces/create";
 import { TEAM_PLAN } from "../../lib/billing/plans";
+import { endWhatsLeft } from "../billing/seatSyncs";
 import { v } from "convex/values";
 import {
   clerkEventOutcomeValidator,
@@ -169,8 +170,10 @@ export async function applyOrganizationProjection(
           updatedAt: args.processedAt,
         });
         await revokeMembershipsPage(ctx, existing._id);
-        // Its workspace and everything in it go (#651).
+        // Its workspace and everything in it go (#651), and whatever of Team it held in Autumn ends (#652).
         await ctx.scheduler.runAfter(0, internal.workspaces.purge.purgeOrganization, { organizationId: existing._id });
+        const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", existing._id)).unique();
+        if (workspace) await endWhatsLeft(ctx, workspace._id);
       }
     },
   );
