@@ -273,7 +273,7 @@ describe("analyzePhase on a step taken while the page loads", () => {
   });
 
   it("reports rows that land in the open overlay in one frame, and the jump they give it", () => {
-    const rows = frame(1_400, { added: [{ id: 11, box: [16, 60, 284, 132], within: 10, entering: false }], moved: [{ id: 10, dx: 0, dy: 0, dw: 0, dh: 132, within: 10 }] });
+    const rows = frame(1_400, { added: [{ id: 11, box: [16, 60, 284, 132], inside: 10, within: 10, entering: false }], moved: [{ id: 10, dx: 0, dy: 0, dw: 0, dh: 132, inside: 10 }] });
     expect(analyzePhase([opening, behind, rows], early)).toMatchObject([
       { kind: "late-content", id: 11, from: 400, to: 1_400 },
       { kind: "shift", moves: [{ id: 10, dh: 132 }] },
@@ -282,24 +282,33 @@ describe("analyzePhase on a step taken while the page loads", () => {
 
   it("accepts rows that fade in while the overlay slides to their height", () => {
     const slide = Array.from({ length: 12 }, (_, at) =>
-      frame(1_400 + at * 16, { moved: [{ id: 10, dx: 0, dy: 0, dw: 0, dh: 11, within: 10 }], added: at === 0 ? [{ id: 11, box: [16, 60, 284, 132], within: 10, entering: true }] : [] }),
+      frame(1_400 + at * 16, { moved: [{ id: 10, dx: 0, dy: 0, dw: 0, dh: 11, inside: 10 }], added: at === 0 ? [{ id: 11, box: [16, 60, 284, 132], inside: 10, within: 10, entering: true }] : [] }),
     );
     expect(analyzePhase([opening, behind, ...slide], early)).toEqual([]);
   });
 
   it("takes what moves as the overlay opens as its opening", () => {
-    const settling = frame(480, { moved: [{ id: 12, dx: 0, dy: 6, dw: 0, dh: 0, within: 10 }] });
+    const settling = frame(480, { moved: [{ id: 12, dx: 0, dy: 6, dw: 0, dh: 0, inside: 10 }] });
     expect(analyzePhase([opening, settling], early)).toEqual([]);
   });
 
   it("accepts a slide that starts as the overlay opens and runs on after", () => {
-    const growing = Array.from({ length: 12 }, (_, at) => frame(416 + at * 16, { moved: [{ id: 10, dx: 0, dy: 0, dw: 0, dh: 10, within: 10 }] }));
+    const growing = Array.from({ length: 12 }, (_, at) => frame(416 + at * 16, { moved: [{ id: 10, dx: 0, dy: 0, dw: 0, dh: 10, inside: 10 }] }));
     expect(analyzePhase([opening, ...growing], early)).toEqual([]);
+  });
+
+  it("reports text and a row that show only for a moment in the open overlay, and none behind it", () => {
+    const stale = frame(1_400, { overlayTextAdded: ["0 members"], textAdded: ["0 members", "0 results"], added: [{ id: 30, box: [16, 60, 284, 40], inside: 10, within: 10, entering: true }, { id: 40, box: [400, 300, 600, 40] }] });
+    const read = frame(1_600, { overlayTextRemoved: ["0 members"], textRemoved: ["0 members", "0 results"], removed: [{ id: 30, box: [16, 60, 284, 40], inside: 10 }, { id: 40, box: [400, 300, 600, 40] }] });
+    expect(analyzePhase([opening, stale, read], early)).toMatchObject([
+      { kind: "brief-element", id: 30 },
+      { kind: "brief-text", text: "0 members" },
+    ]);
   });
 
   it("reports rows that leave the open overlay one after another", () => {
     const leaving = Array.from({ length: 6 }, (_, at) =>
-      frame(1_400 + at * 16, { moved: [{ id: 12, dx: 0, dy: -20, dw: 0, dh: 0, within: 10 }], removed: [{ id: 20 + at, box: [16, 60, 284, 20], within: 10 }] }),
+      frame(1_400 + at * 16, { moved: [{ id: 12, dx: 0, dy: -20, dw: 0, dh: 0, inside: 10 }], removed: [{ id: 20 + at, box: [16, 60, 284, 20], inside: 10 }] }),
     );
     expect(analyzePhase([opening, ...leaving], early)).toMatchObject([{ kind: "shift", moves: [{ id: 12, dy: -120 }] }]);
   });
@@ -473,8 +482,9 @@ describe("parseStep", () => {
     expect(() => earlyStep([])).toThrow("--early");
     expect(() => earlyStep([parseStep("wait 500")])).toThrow("--early");
     expect(() => earlyStep([parseStep("goto /library")])).toThrow("--early");
-    // A key has no target to wait for.
+    // A key has no target to wait for, and what a field opens as you type isn't followed.
     expect(() => earlyStep([parseStep("press Control+k")])).toThrow("--early");
+    expect(() => earlyStep([parseStep("fill #search => climate")])).toThrow("--early");
   });
 
   it("types the text after => into a selector that holds spaces", () => {
