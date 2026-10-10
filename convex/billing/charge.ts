@@ -30,6 +30,7 @@ import { autumn, AutumnError } from "./autumn";
 import { customerOf, requestRefresh, zeroCachedBalance } from "./accounts";
 import { billingUsageFields, usageKindValidator } from "./validators";
 import { insertUsage } from "./ledger";
+import { checkMemberCap } from "./memberCaps";
 import { createError } from "../lib/errors";
 import type { Usage } from "../../lib/ai/core/types";
 
@@ -107,6 +108,7 @@ export const hold = internalMutation({
   args: { userId: v.id("users"), workspaceId: v.id("workspaces"), chargeId: v.string(), credits: v.number(), expiresAt: v.number(), spend: v.optional(v.literal(true)) },
   returns: v.string(),
   handler: async (ctx, { userId, workspaceId, chargeId, credits, expiresAt, spend }) => {
+    await checkMemberCap(ctx, workspaceId, userId, credits);
     const customerId = await customerOf(ctx, workspaceId);
     // A job's hold has charges recorded under it: left standing, it is settled with them, never given back whole.
     const release = spend

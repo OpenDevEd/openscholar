@@ -623,7 +623,17 @@ export default defineSchema({
     // Set before a settle confirms the hold as it stands and charges the rest
     // separately, so a retry finishes that path instead of confirming again.
     rest: v.optional(v.literal(true)),
-  }).index("by_charge", ["chargeId"]),
+  })
+    .index("by_charge", ["chargeId"])
+    .index("by_workspace_and_user", ["workspaceId", "userId"]),
+  // A cap on what an organization's member spends of its credits each month, set by an admin on Team (#652).
+  memberCaps: defineTable({
+    workspaceId: v.id("workspaces"),
+    userId: v.id("users"),
+    cap: v.number(),
+    setBy: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_workspace_and_user", ["workspaceId", "userId"]),
   // What each item of an approved job cost, kept beside the job's hold until the hold is confirmed with their
   // sum (convex/billing/charge.ts). Its own table, so the usage ledger needs no index for it.
   billingHoldItems: defineTable({ under: v.string(), chargeId: v.string(), credits: v.number() }).index("by_under", ["under"]),
