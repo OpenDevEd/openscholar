@@ -29,7 +29,7 @@ const VERIFY_USER = "verify-agent+clerk_test@example.com";
 // beside components. Route handlers and other .ts files under app/ are not.
 const USER_FACING = /^((app|components)\/.+\.(tsx|css)|components\/.+\.ts)$/;
 // Code that holds something that opens over the page: a dialog, sheet, popover or menu.
-const OVERLAY_CODE = /<(Dialog|AlertDialog|Sheet|Drawer|Popover|DropdownMenu)(Content|Primitive\.Content)\b|role="(dialog|alertdialog|menu)"/;
+const OVERLAY_CODE = /<\w*(Dialog|Sheet|Drawer|Popover|DropdownMenu)(Content|Primitive\.Content)\b|role="(dialog|alertdialog|menu)"/;
 // Elements whose movement is their job: progress bars, Next's dev badge, and
 // anything a page marks with data-verify-ignore.
 const ALWAYS_ALLOWED = ["[role=progressbar]", "[data-verify-ignore]", "nextjs-portal"];
