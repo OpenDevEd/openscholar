@@ -7,6 +7,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { action, type ActionCtx } from "../_generated/server";
+import { internalAction } from "../lib/functions";
 import { ClerkApiError, clerkRequest, clerkSecretKey, isRecord } from "../lib/clerk";
 import { requireAppUrl } from "../lib/env";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
@@ -15,7 +16,7 @@ import { createError } from "../lib/errors";
 import { assistantAction, assistantMutation, defineChangingAction, defineUserMutation, reversedBy, userAction, userMutation, type Acting } from "../lib/userActions";
 import { processClerkWebhookEvent } from "../webhooks/clerk";
 import { ORGANIZATION_COLOURS, type OrganizationColour } from "../../lib/workspaces/colours";
-import { deletable, organizationOf } from "./read";
+import { deletable, organizationOf, PAST_ROOM_STEP } from "./read";
 import { presetKeyValidator } from "../aiModelConfig/validators";
 import { DEFAULT_PRESET, PRESET_KEYS } from "../../lib/ai/tasks";
 import type { Actor } from "../workspaces/actor";
@@ -63,24 +64,26 @@ async function keep(ctx: ActionCtx, key: string, eventType: string, data: unknow
   if (outcome.status !== 200) throw new Error(`Couldn't keep what Clerk answered to ${eventType}: ${outcome.body}`);
 }
 
-/** What Clerk refused, in the person's words; anything else is thrown as it is. */
-function refused(error: unknown): never {
+const FULL = "This organization has as many members as its plan allows, invitations included.";
+
+/** What Clerk refused, in the person's words, with `invalid` for a request it found wrong; anything else is thrown as it is. */
+function refused(error: unknown, invalid = "Clerk refused this change. Check the name or email and try again."): never {
   if (error instanceof ClerkApiError) {
     console.error("[organizations] Clerk refused", { status: error.status, code: error.code, traceId: error.traceId, message: error.message });
     if (error.code === "organization_membership_quota_exceeded" || error.code === "organization_membership_plan_quota_exceeded") {
-      throw createError("VALIDATION_ERROR", "This organization has as many members as its plan allows, invitations included.");
+      throw createError("VALIDATION_ERROR", FULL);
     }
     if (error.code === "duplicate_record" || error.code === "already_a_member_in_organization") throw createError("CONFLICT", "That person is already a member or invited.");
-    if (error.status === 422 || error.status === 400) throw createError("VALIDATION_ERROR", "Clerk refused this change. Check the name or email and try again.");
+    if (error.status === 422 || error.status === 400) throw createError("VALIDATION_ERROR", invalid);
   }
   throw error;
 }
 
-async function clerk(key: string, method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE", path: string, body?: unknown) {
+async function clerk(key: string, method: "GET" | "POST" | "PATCH" | "PUT" | "DELETE", path: string, body?: unknown, invalid?: string) {
   try {
     return (await clerkRequest(key, method, path, body)).body;
   } catch (error) {
-    refused(error);
+    refused(error, invalid);
   }
 }
 
@@ -165,12 +168,17 @@ export const inviteAction = defineChangingAction({
     if (wanted.some((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw createError("VALIDATION_ERROR", "One of these isn't an email address.");
     const key = clerkSecretKey();
     const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: true });
-    return { invited: await sendInvitations(ctx, key, clerkUserId, organization, wanted, clerkRole(role)) };
+    return { invited: await sendInvitations(ctx, key, actor.workspaceId, clerkUserId, organization, wanted, clerkRole(role)) };
   },
 });
 
-/** Has Clerk email each address a link to the organization's join page, and keeps the invitations. Returns how many went out. */
-async function sendInvitations(ctx: ActionCtx, key: string, clerkUserId: string, organization: { clerkOrganizationId: string; slug: string }, emails: string[], role: "org:admin" | "org:member") {
+/**
+ * Has Clerk email each address a link to the organization's join page, and keeps the invitations.
+ * Returns how many went out. Clerk counts for its limit as each request arrives, so requests made
+ * at the same moment all pass it: once these are kept, the ones past the plan's room are taken
+ * back, and the call is refused when that's all of them.
+ */
+async function sendInvitations(ctx: ActionCtx, key: string, workspaceId: Id<"workspaces">, clerkUserId: string, organization: { clerkOrganizationId: string; slug: string }, emails: string[], role: "org:admin" | "org:member") {
   const sent = await clerk(
     key,
     "POST",
@@ -185,7 +193,38 @@ async function sendInvitations(ctx: ActionCtx, key: string, clerkUserId: string,
   );
   const invitations = Array.isArray(sent) ? sent : isRecord(sent) && Array.isArray(sent.data) ? sent.data : [];
   for (const invitation of invitations) await keep(ctx, key, "organizationInvitation.created", invitation);
-  return invitations.length;
+  const made = invitations.flatMap((invitation) => (isRecord(invitation) && typeof invitation.id === "string" ? [invitation.id] : []));
+  const past: string[] = await ctx.runQuery(internal.organizations.read.pastRoom, { workspaceId, sent: made });
+  for (const id of past) await takeBack(ctx, key, organization.clerkOrganizationId, id, clerkUserId);
+  if (past.length && past.length === made.length) throw createError("VALIDATION_ERROR", FULL);
+  return invitations.length - past.length;
+}
+
+/**
+ * Takes back the invitations past the organization's room, as the admin `userId`: a move to Free
+ * runs it once the move is made, for one sent while it was under way.
+ */
+export const trimInvitations = internalAction({
+  args: { workspaceId: v.id("workspaces"), userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, userId }) => {
+    const key = clerkSecretKey();
+    const { clerkUserId, organization }: Context = await ctx.runQuery(internal.organizations.read.context, { userId, workspaceId });
+    if (!organization) return null;
+    // As many reads as clear a full organization; a move is crossed by a request or two.
+    for (let step = 0; step < MAX_ORGANIZATION_MEMBERS / PAST_ROOM_STEP; step++) {
+      const past: string[] = await ctx.runQuery(internal.organizations.read.pastRoom, { workspaceId });
+      if (past.length === 0) break;
+      for (const id of past) await takeBack(ctx, key, organization.clerkOrganizationId, id, clerkUserId);
+    }
+    return null;
+  },
+});
+
+/** Takes back an invitation that hasn't been answered, and keeps that. */
+async function takeBack(ctx: ActionCtx, key: string, clerkOrganizationId: string, clerkInvitationId: string, clerkUserId: string) {
+  const revoked = await clerk(key, "POST", `/organizations/${clerkOrganizationId}/invitations/${clerkInvitationId}/revoke`, { requesting_user_id: clerkUserId });
+  await keep(ctx, key, "organizationInvitation.revoked", revoked);
 }
 export const invite = userAction(inviteAction);
 export const inviteForAssistant = assistantAction(inviteAction);
@@ -202,8 +241,7 @@ export const revokeInvitationAction = defineChangingAction({
     const key = clerkSecretKey();
     const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: true });
     const { clerkInvitationId }: Pending = await ctx.runQuery(internal.organizations.read.pendingInvitation, { invitationId, organizationId: organization.organizationId });
-    const revoked = await clerk(key, "POST", `/organizations/${organization.clerkOrganizationId}/invitations/${clerkInvitationId}/revoke`, { requesting_user_id: clerkUserId });
-    await keep(ctx, key, "organizationInvitation.revoked", revoked);
+    await takeBack(ctx, key, organization.clerkOrganizationId, clerkInvitationId, clerkUserId);
     return null;
   },
 });
@@ -248,9 +286,10 @@ export const setRoleAction = defineChangingAction({
     const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: true });
     const was = await memberRole(ctx, actor.workspaceId, userId);
     if (was === role) return {};
-    const target: string = await ctx.runQuery(internal.organizations.read.checkMemberChange, { workspaceId: actor.workspaceId, actorClerkUserId: clerkUserId, actorIsAdmin: true, userId, becomes: clerkRole(role) });
-    const membership = await clerk(key, "PATCH", `/organizations/${organization.clerkOrganizationId}/memberships/${target}`, { role: clerkRole(role) });
-    await keep(ctx, key, "organizationMembership.updated", membership);
+    const target = await changeMember(ctx, actor.workspaceId, clerkUserId, userId, clerkRole(role), async (target) => {
+      const membership = await clerk(key, "PATCH", `/organizations/${organization.clerkOrganizationId}/memberships/${target}`, { role: clerkRole(role) });
+      await keep(ctx, key, "organizationMembership.updated", membership);
+    });
     // An admin who made themselves a member can't make anyone an admin again, themselves included.
     return target === clerkUserId ? {} : { undo: { path: SET_ROLE, args: { userId, role: was } } };
   },
@@ -269,10 +308,23 @@ async function memberRole(ctx: ActionCtx, workspaceId: Id<"workspaces">, userId:
 async function endMembership(ctx: ActionCtx, actor: Acting, userId: Id<"users">) {
   const key = clerkSecretKey();
   const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: false });
-  const target: string = await ctx.runQuery(internal.organizations.read.checkMemberChange, { workspaceId: actor.workspaceId, actorClerkUserId: clerkUserId, actorIsAdmin: actor.role === "admin", userId, becomes: "gone" });
-  const sentAt = Date.now();
-  const membership = await clerk(key, "DELETE", `/organizations/${organization.clerkOrganizationId}/memberships/${target}`);
-  await keep(ctx, key, "organizationMembership.deleted", membership, sentAt);
+  await changeMember(ctx, actor.workspaceId, clerkUserId, userId, "gone", async (target) => {
+    const sentAt = Date.now();
+    const membership = await clerk(key, "DELETE", `/organizations/${organization.clerkOrganizationId}/memberships/${target}`);
+    await keep(ctx, key, "organizationMembership.deleted", membership, sentAt);
+  });
+}
+
+/**
+ * Makes a change to someone's place in the organization once it's allowed, and returns their
+ * Clerk ID. One that takes an admin away holds its admins until it's kept, so the next sees it.
+ */
+async function changeMember(ctx: ActionCtx, workspaceId: Id<"workspaces">, clerkUserId: string, userId: Id<"users">, becomes: "org:admin" | "org:member" | "gone", change: (target: string) => Promise<void>): Promise<string> {
+  const { target, heldAt }: { target: string; heldAt?: number } = await ctx.runMutation(internal.organizations.read.beginMemberChange, { workspaceId, actorClerkUserId: clerkUserId, userId, becomes });
+  // A change that fails may still have been made in Clerk and not kept here: its hold runs out by itself, by when Clerk's webhook has brought it.
+  await change(target);
+  if (heldAt !== undefined) await ctx.runMutation(internal.organizations.read.endMemberChange, { workspaceId, heldAt });
+  return target;
 }
 
 export const removeMemberAction = defineChangingAction({
@@ -455,9 +507,8 @@ export const resendInvitationAction = defineChangingAction({
     const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: true });
     const invitation: Pending = await ctx.runQuery(internal.organizations.read.pendingInvitation, { invitationId, organizationId: organization.organizationId });
     // Clerk can't send one again: it's taken back, which frees its seat, and a new one goes out to the same address.
-    const revoked = await clerk(key, "POST", `/organizations/${organization.clerkOrganizationId}/invitations/${invitation.clerkInvitationId}/revoke`, { requesting_user_id: clerkUserId });
-    await keep(ctx, key, "organizationInvitation.revoked", revoked);
-    await sendInvitations(ctx, key, clerkUserId, organization, [invitation.email], invitation.role);
+    await takeBack(ctx, key, organization.clerkOrganizationId, invitation.clerkInvitationId, clerkUserId);
+    await sendInvitations(ctx, key, actor.workspaceId, clerkUserId, organization, [invitation.email], invitation.role);
     return null;
   },
 });
@@ -483,7 +534,7 @@ export const setLogo = action({
     const form = new FormData();
     form.append("file", new Blob([image], { type: contentType }), "logo");
     form.append("uploader_user_id", clerkUserId);
-    const body = await clerk(key, "PUT", `/organizations/${organization.clerkOrganizationId}/logo`, form);
+    const body = await clerk(key, "PUT", `/organizations/${organization.clerkOrganizationId}/logo`, form, "That file couldn't be read as an image. Pick a PNG, JPEG, WebP or GIF.");
     await keep(ctx, key, "organization.updated", body);
     return null;
   },

@@ -291,6 +291,43 @@ describe("an organization", () => {
     await expect(aliceAs.action(api.organizations.manage.invite, { workspaceId: lab.workspaceId, emails, role: "member" })).rejects.toThrow(/as many members as its plan allows/);
   });
 
+  it("keeps an admin when its two admins each make the other a member at the same moment", async () => {
+    const { bob, aliceAs, bobAs, webhook } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const inLab = { workspaceId: lab.workspaceId };
+    await aliceAs.action(api.organizations.manage.invite, { ...inLab, emails: ["bob@example.org"], role: "admin" });
+    const [invited] = (await bobAs.query(api.organizations.queries.myInvitations, page)).page;
+    const accepted = clerk.accept(invited.clerkInvitationId, "bob");
+    await webhook("organizationInvitation.accepted", accepted.invitation, "msg_1");
+    await webhook("organizationMembership.created", accepted.membership, "msg_2");
+    const members = () => aliceAs.query(api.organizations.queries.members, { ...inLab, ...page });
+    const alice = (await members()).page.find((member) => member.you)!.userId;
+
+    const changes = await Promise.allSettled([
+      aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: bob, role: "member" }),
+      bobAs.action(api.organizations.manage.setRole, { ...inLab, userId: alice, role: "member" }),
+    ]);
+    expect(changes.map((change) => change.status).sort()).toEqual(["fulfilled", "rejected"]);
+    expect((await members()).page.filter((member) => member.role === "admin")).toHaveLength(1);
+    // The hold is gone with the change: the admin left makes the other one again.
+    const admin = changes[0].status === "fulfilled" ? aliceAs : bobAs;
+    await admin.action(api.organizations.manage.setRole, { ...inLab, userId: changes[0].status === "fulfilled" ? bob : alice, role: "admin" });
+    expect((await members()).page.filter((member) => member.role === "admin")).toHaveLength(2);
+  });
+
+  it("takes back the invitations Clerk let past its room, as it lets requests made at the same moment", async () => {
+    const { aliceAs } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const invite = (...emails: string[]) => aliceAs.action(api.organizations.manage.invite, { workspaceId: lab.workspaceId, emails, role: "member" });
+    const open = () => [...clerk.invitations.values()].filter((row) => row.status === "pending").map((row) => row.email_address);
+    await invite("a@example.org", "b@example.org", "c@example.org");
+    // This Clerk counts members alone, so it lets every request here through.
+    expect(await invite("d@example.org", "e@example.org")).toEqual({ invited: 1 });
+    await expect(invite("f@example.org")).rejects.toThrow();
+    expect(open()).toEqual(["a@example.org", "b@example.org", "c@example.org", "d@example.org"]);
+    expect((await aliceAs.query(api.billing.seats.counts, { workspaceId: lab.workspaceId }))?.invitations).toBe(4);
+  });
+
   it("lets someone decline an invitation sent to them", async () => {
     const { aliceAs, bobAs } = await people();
     const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });

@@ -360,7 +360,11 @@ export function WorkspaceMembers() {
               className="flex flex-wrap items-center gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
-                void attempt("invite", () => invite({ emails: [email.trim()], role })).then((done) => done && setEmail(""));
+                // Enter submits whatever the button looks like: a full organization, or an invitation still going, sends nothing.
+                if (full || busy === "invite" || !EMAIL.test(email.trim())) return;
+                const sent = email;
+                // The address that went is cleared; one typed since stays.
+                void attempt("invite", () => invite({ emails: [sent.trim()], role })).then((done) => done && setEmail((now) => (now === sent ? "" : now)));
               }}
             >
               <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">

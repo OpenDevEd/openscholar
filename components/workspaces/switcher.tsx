@@ -295,11 +295,17 @@ function NewOrganization({ close }: { close: () => void }) {
   const [busy, setBusy] = useState(false);
   const seats = 1 + emails.length;
   const full = seats >= FREE_MEMBERS;
-  const add = () => {
-    const email = draft.trim().replace(/,$/, "");
-    if (!EMAIL.test(email) || emails.includes(email) || full) return;
-    setEmails([...emails, email]);
-    setDraft("");
+  // Each address in what's typed or pasted becomes its own while there's room; what isn't one, or doesn't fit, stays in the box to be seen.
+  const take = (text: string) => {
+    const next = [...emails];
+    const left: string[] = [];
+    for (const part of text.split(/[\s,;]+/).filter(Boolean)) {
+      if (next.includes(part)) continue;
+      if (EMAIL.test(part) && 1 + next.length < FREE_MEMBERS) next.push(part);
+      else left.push(part);
+    }
+    if (next.length !== emails.length) setEmails(next);
+    setDraft(left.join(" "));
   };
   const done = async () => {
     setBusy(true);
@@ -341,14 +347,15 @@ function NewOrganization({ close }: { close: () => void }) {
             <input
               value={draft}
               disabled={full}
-              onChange={(e) => setDraft(e.target.value)}
+              // A pasted list has its separators in it already.
+              onChange={(e) => (/[\s,;]/.test(e.target.value) ? take(e.target.value) : setDraft(e.target.value))}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === "," || e.key === " ") {
                   e.preventDefault();
-                  add();
+                  take(draft);
                 }
               }}
-              onBlur={add}
+              onBlur={() => take(draft)}
               placeholder={full ? "" : emails.length ? t("addAnother") : t("emailPlaceholder")}
               aria-label={t("emailToInvite")}
               className="min-w-32 flex-1 bg-transparent px-1 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"

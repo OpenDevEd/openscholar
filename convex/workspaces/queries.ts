@@ -5,7 +5,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "../lib/queryBounds";
 import { actorIn, personalWorkspaceOf } from "./actor";
-import { organizationAt } from "../organizations/read";
+import { membershipOf, organizationAt } from "../organizations/read";
 import { grantOf } from "../sharing/items";
 
 /** The signed-in person's own workspace, which a page outside /o/<slug> is in; null when signed out. */
@@ -33,6 +33,21 @@ export const bySlug = query({
     if (!user || !organization) return null;
     const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organization._id)).unique();
     return workspace && (await actorIn(ctx, user, workspace._id)) ? workspace._id : null;
+  },
+});
+
+/**
+ * Whether the person is a member of the organization a page's address names, being deleted or not:
+ * a page left open in one they're no longer in leaves it (components/workspaces/item-home.tsx),
+ * and one whose deletion may still fail stays.
+ */
+export const memberAt = query({
+  args: { slug: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { slug }) => {
+    const user = await getCurrentUser(ctx);
+    const organization = user ? await organizationAt(ctx, slug) : null;
+    return user !== null && organization !== null && (await membershipOf(ctx, organization._id, user.clerkId)) !== null;
   },
 });
 

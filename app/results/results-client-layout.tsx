@@ -1,7 +1,7 @@
 "use client";
 
-import React, { Suspense, useContext } from "react";
-import { usePathname } from "next/navigation";
+import React, { Suspense, useContext, useState } from "react";
+import { redirect, usePathname } from "next/navigation";
 import { SearchProvider, SearchInitializer } from "@/lib/search";
 import { ResearchLoading, useResearchStatus } from "@/lib/research/provider";
 import { useWatchedSearch } from "@/lib/research/reads";
@@ -10,7 +10,7 @@ import { ResearchContext } from "@/lib/research/binding";
 import { useSearchHistoryStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { useItemHome } from "@/components/workspaces/item-home";
-import { useWorkspaceSlug } from "@/lib/workspaces/href";
+import { useWorkspaceSlug, workspaceHref } from "@/lib/workspaces/href";
 
 function InitializeResults({ children }: { children: React.ReactNode }) {
   const account = useContext(ResearchContext);
@@ -24,11 +24,18 @@ function InitializeResults({ children }: { children: React.ReactNode }) {
   const home = useItemHome(unknown ? { kind: "search", id: searchId } : null);
   const slug = useWorkspaceSlug();
   const elsewhere = unknown && (home === undefined || (home !== null && home.slug !== slug));
+  // The searches this tab has shown. Once one is gone, deleted in another tab or moved where the person
+  // can't follow, the tab leaves for search, at once or when Back returns to it: a new one is made only
+  // at an address never opened here.
+  const [shown, setShown] = useState<ReadonlySet<string>>(new Set());
+  if (saved && searchId !== undefined && !shown.has(searchId)) setShown(new Set(shown).add(searchId));
+  const gone = account !== null && searchId !== undefined && !saved && shown.has(searchId);
+  if (gone && unknown && home === null) redirect(workspaceHref(slug, "/"));
   // An existing account record owns its state. A stale URL must not overwrite it, so the
   // page waits to learn whether the account has this search.
   if (account && watched === "failed") return <AuthStatePanel variant="sync_error_retry" onRetry={retry} />;
   if (account && watched === "loading") return <ResultsLoading />;
-  if (elsewhere) return <ResultsLoading />;
+  if (elsewhere || gone) return <ResultsLoading />;
   return account && saved ? children : <SearchInitializer>{children}</SearchInitializer>;
 }
 

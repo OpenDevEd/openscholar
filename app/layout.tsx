@@ -23,7 +23,7 @@ import { cookies, headers } from "next/headers";
 import { auth } from "@clerk/nextjs/server";
 import { LOOK_COOKIE, lookKey, readCache, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
 import { AssistantPanel } from "@/components/assistant/panel";
-import { ItemHome } from "@/components/workspaces/item-home";
+import { ItemHome, WorkspaceGone } from "@/components/workspaces/item-home";
 import { api } from "@/convex/_generated/api";
 
 // The brand typeface. To change it, swap the family here; --font-app feeds
@@ -112,9 +112,10 @@ export default async function RootLayout({
                       </div>
                       <Toaster />
                       <ConfirmationHost />
-                      {/* A link to an item in another of the person's workspaces opens there (#651). */}
+                      {/* A link to an item in another of the person's workspaces opens there (#651), and a page of an organization they're no longer in gives way to their own. */}
                       <Suspense fallback={null}>
                         <ItemHome />
+                        <WorkspaceGone />
                       </Suspense>
                       <AssistantPanel />
                       <CookieConsentBanner />
