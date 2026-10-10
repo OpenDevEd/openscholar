@@ -71,18 +71,25 @@ function bursts(frames: Frame[]): Frame[][] {
 // its distance in a frame or two jumped.
 const SLIDE_FRAMES = 5;
 const SLIDE_GAP_MS = 50;
-// One step of a slide is never far from the step beside it, give or take the rounding at its slow end.
+// One step of a slide is never far from the step beside it. The slack covers
+// the uneven frames a slide starts with, and scales with a long slide.
 const SLIDE_STEP_RATIO = 3;
-const SLIDE_STEP_SLACK_PX = 4;
+const SLIDE_STEP_SLACK_PX = 8;
+const SLIDE_STEP_SLACK = 0.05;
+// The slow end of a slide moves a pixel every few frames.
+const SLIDE_TAIL_PX = 2;
 const SIDES = ["dx", "dy", "dw", "dh"] as const;
 
 /** Whether one side's steps, each the time of its frame and how far it went, are one smooth slide. */
 function smooth(steps: [number, number][]): boolean {
   if (steps.length < SLIDE_FRAMES) return false;
+  const slack = Math.max(SLIDE_STEP_SLACK_PX, SLIDE_STEP_SLACK * steps.reduce((sum, [, size]) => sum + size, 0));
   return steps.every(([t, size], index) => {
     if (index === 0) return true;
     const [before, last] = steps[index - 1];
-    return t - before <= SLIDE_GAP_MS && Math.max(size, last) <= SLIDE_STEP_RATIO * Math.min(size, last) + SLIDE_STEP_SLACK_PX;
+    const larger = Math.max(size, last);
+    const unbroken = t - before <= SLIDE_GAP_MS || larger <= SLIDE_TAIL_PX;
+    return unbroken && larger <= SLIDE_STEP_RATIO * Math.min(size, last) + slack;
   });
 }
 

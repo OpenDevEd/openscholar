@@ -57,6 +57,18 @@ describe("analyzePhase on a page load", () => {
     expect(analyzePhase(steps([15, 15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1]), load)).toEqual([]);
   });
 
+  it("accepts real slides: an uneven start, and a slow end that moves a pixel every few frames", () => {
+    // The rail's sections sliding down 68 px, as recorded at 120 frames a second.
+    const rail = [2, 12, 7, 5, 8, 7, 6, 5, 3, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1];
+    const railAt = [0, 11, 19, 28, 36, 44, 53, 61, 69, 78, 86, 94, 103, 111, 119, 136, 153, 178, 219];
+    expect(analyzePhase(rail.map((dy, index) => frame(500 + railAt[index], { moved: [{ id: 1, dx: 0, dy, dw: 0, dh: 0 }] })), load)).toEqual([]);
+    // A dialog growing 10 px, a pixel at a time, with its last pixels far apart.
+    const tailAt = [0, 9, 16, 25, 33, 41, 50, 58, 83, 138];
+    expect(analyzePhase(tailAt.map((at) => frame(500 + at, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 1 }] })), load)).toEqual([]);
+    // Five rows popping in one after another are not a slide.
+    expect(analyzePhase([0, 100, 200, 300, 400].map((at) => frame(500 + at, { moved: [{ id: 1, dx: 0, dy: 20, dw: 0, dh: 0 }] })), load)).not.toEqual([]);
+  });
+
   it("still reports a jump that is followed by a few small settling steps", () => {
     const settle = Array.from({ length: 5 }, (_, step) => frame(516 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 2 }] }));
     const findings = analyzePhase([frame(500, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 110 }] }), ...settle], load);
