@@ -35,19 +35,25 @@ async function readInput(): Promise<{ stop_hook_active?: boolean; transcript_pat
 
 const sessionStart = (transcript: string | null | undefined) => (transcript && existsSync(transcript) ? statSync(transcript).birthtimeMs : 0);
 
+/** When the last passing check ran and how many overlays it opened. A recorded skip has no count. */
+function lastPass(file: string): { lastPassMs: number | null; lastPassOpened?: number } {
+  const pass = readJson<{ at: number; opened?: number }>(file);
+  return { lastPassMs: pass?.at ?? null, lastPassOpened: pass?.opened };
+}
+
 export async function hookStop(options: { root: string; baseBranch: string; userFacing: RegExp; overlay: RegExp; lastPassFile: string; start: string }) {
   const input = await readInput();
-  const pass = readJson<{ at: number; opened?: number }>(options.lastPassFile);
   const decision = stopDecision({
     stopHookActive: input.stop_hook_active === true,
     sessionStartMs: sessionStart(input.transcript_path),
-    lastPassMs: pass?.at ?? null,
-    lastPassOpened: pass?.opened,
+    ...lastPass(options.lastPassFile),
     changed: changedFiles(options.root, options.baseBranch, options.overlay),
     userFacing: options.userFacing,
   });
-  if (decision.block) process.stdout.write(JSON.stringify({ decision: "block", reason: decision.unopened ? unopened(decision.files) : reason(decision.files, options.start) }));
+  if (decision.block) process.stdout.write(JSON.stringify({ decision: "block", reason: told(decision, options.start) }));
 }
+
+const told = (decision: { files: string[]; unopened?: true }, start: string) => (decision.unopened ? unopened(decision.files) : reason(decision.files, start));
 
 function listed(files: string[]): string {
   const more = files.length > 8 ? `, and ${files.length - 8} more` : "";
