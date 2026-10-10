@@ -70,7 +70,7 @@ const startArgs = {
 export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number }, chatStep?: Id<"assistantSteps">): Promise<{ jobId: Id<"extractionJobs"> }> {
   const { userId, workspaceId } = writer;
   await requireFeature(ctx, "extraction.enabled", userId);
-  await requireFeature(ctx, "extraction.start", userId);
+  await requireFeature(ctx, "extraction.start", userId, workspaceId);
   await rateLimit(ctx, {
     name: "start-extraction",
     key: userId,
@@ -216,7 +216,7 @@ export const duplicateJobAction = defineUserMutation({
       throw createError("NOT_FOUND", "Job not found");
     }
 
-    await requireFeature(ctx, "extraction.start", userId);
+    await requireFeature(ctx, "extraction.start", userId, workspaceId);
     await rateLimit(ctx, {
       name: "start-extraction",
       key: userId,

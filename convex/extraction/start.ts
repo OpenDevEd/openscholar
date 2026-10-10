@@ -55,7 +55,7 @@ function checkQuestions(questions: Array<{ question: string }>) {
  */
 async function checkExtraction(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, { set, first, last, questions, usePdfs }: { set: PaperSet; first: number; last: number; questions: Array<{ question: string }>; usePdfs?: boolean }) {
   await requireFeature(ctx, "extraction.enabled", userId);
-  await requireFeature(ctx, "extraction.start", userId);
+  await requireFeature(ctx, "extraction.start", userId, workspaceId);
   // Read, not spent: the start spends it (./mutations/jobs.ts).
   const limited = await checkRateLimit(ctx, { name: "start-extraction", key: userId });
   if (!limited.ok) throw createError("CONFLICT", `This account has started as many extractions as an hour allows. This one can start in ${Math.max(1, Math.ceil(((limited.retryAt ?? Date.now()) - Date.now()) / 60_000))} minutes.`);
