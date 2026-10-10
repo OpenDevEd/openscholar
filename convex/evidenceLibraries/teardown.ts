@@ -96,7 +96,7 @@ async function requestTeardown(
   const access = await requireEvidenceLibraryAccess(
     ctx,
     args.libraryId,
-    "manage",
+    "remove",
   );
   if (args.confirmationName !== access.library.name) {
     throw createError(
@@ -261,7 +261,7 @@ export const getDevelopmentTeardownStatus = query({
     }
     const library = await ctx.db.get("evidenceLibraries", operation.libraryId);
     if (!library) return { status: "complete" as const };
-    if (!await readEvidenceLibraryAccess(ctx, library._id, "manage")) return null;
+    if (!await readEvidenceLibraryAccess(ctx, library._id, "remove")) return null;
     return {
       ...(operation.error
         ? {
@@ -288,7 +288,7 @@ export const restartDevelopmentTeardown = mutation({
   returns: v.object({ status: v.literal("queued") }),
   handler: async (ctx, args) => {
     requireDevelopmentTeardownEnabled();
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "remove");
     const operation = await ctx.db
       .query("evidenceLibraryConfigOperations")
       .withIndex("by_libraryId_and_createdAt", (query) =>
@@ -846,4 +846,12 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
     await ctx.db.delete(args.libraryId);
     return { complete: true };
   },
+});
+
+/** A workspace's first library, by name: what moving its organization to a plan without Evidence Libraries waits on. Null when it has none. */
+export const heldBy = internalQuery({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.union(v.null(), v.string()),
+  handler: async (ctx, { workspaceId }) =>
+    (await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).first())?.name ?? null,
 });

@@ -5,7 +5,12 @@ import { createError } from "../lib/errors";
 import { hasPlanFeature } from "../billing/accounts";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
-export type OrganizationAction = "read" | "manage";
+/**
+ * What someone does with a library. Managing it takes the plan of the workspace that owns it.
+ * Removing it is its owners' whatever the plan says: a workspace whose plan stopped including
+ * Evidence Libraries must still be able to clear them, or it could never be deleted (#652).
+ */
+export type OrganizationAction = "read" | "manage" | "remove";
 export type EvidenceLibraryAdminRole = "owner" | "editor" | "creator";
 type OrganizationAccessCtx = Pick<QueryCtx | MutationCtx, "auth" | "db">;
 
@@ -134,7 +139,7 @@ export async function readEvidenceLibraryAccess(
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   if (!library) return null;
   const role = await readLibraryRole(ctx, library, identity.subject);
-  if (!role || (action === "manage" && role !== "owner")) return null;
+  if (!role || (action !== "read" && role !== "owner")) return null;
   const owner = await libraryOwner(ctx, library);
   if (!owner) return null;
   // Managing takes the feature, which the plan of the workspace that owns the library grants (#652).

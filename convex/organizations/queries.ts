@@ -5,7 +5,9 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
-import { readAccount } from "../billing/accounts";
+import { hasPlanFeature, readAccount } from "../billing/accounts";
+import { readEvidenceLibraryAccess } from "../evidenceLibraries/access";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 import { collectionCountRow } from "../library/counter";
 import { countRow } from "../research/recordCounts";
 import { query } from "../lib/functions";
@@ -246,11 +248,24 @@ export const invitationTo = query({
 /** Evidence Libraries a workspace's summary counts up to one past; past it, it says more than that. */
 const LIBRARIES_COUNTED = 100;
 
+/**
+ * A library as the organization's settings offer it for deletion: its address is what the dialog
+ * says goes with it, and `state` is whether it's still there (`held`), being deleted, or stopped
+ * part-way (`failed`), which the settings then offer to try again: the library's own list, where
+ * that's done otherwise, is shut with the plan.
+ */
+async function removableOf(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+  const binding = library.runtimeBindingId ? await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId) : null;
+  const latest = library.state === "disabled" ? await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_createdAt", (q) => q.eq("libraryId", library._id)).order("desc").first() : null;
+  const state = library.state !== "disabled" ? ("held" as const) : latest?.kind === "teardown" && latest.status === "failed" ? ("failed" as const) : ("deleting" as const);
+  return { _id: library._id, name: library.name, publicAddress: binding?.canonicalBaseUrl ?? binding?.targetBaseUrl ?? "", state };
+}
+
 export const summaryAction = defineUserQuery({
   path: "organizations/queries:summary",
   description:
     "Counts what's in the workspace the person is in: its collections, searches, screenings, extractions and Evidence Libraries, with the first library's name. " +
-    "In an organization, also how many admins it has.",
+    "In an organization, also how many admins it has. `removable` is that first library for one of its owners to delete, when the workspace's plan no longer includes Evidence Libraries and their own pages are shut: `state` says whether it's still there, being deleted, or its deletion stopped part-way.",
   args: {},
   returns: v.object({
     collections: v.number(),
@@ -259,6 +274,8 @@ export const summaryAction = defineUserQuery({
     extractions: v.number(),
     libraries: v.number(),
     library: v.optional(v.string()),
+    // The first library, for an owner to delete from the organization's settings once its plan no longer opens the library's own pages (#652).
+    removable: v.optional(v.object({ _id: v.id("evidenceLibraries"), name: v.string(), publicAddress: v.string(), state: v.union(v.literal("held"), v.literal("deleting"), v.literal("failed")) })),
     admins: v.optional(v.number()),
   }),
   run: async (ctx, { workspaceId }) => {
@@ -275,6 +292,7 @@ export const summaryAction = defineUserQuery({
       extractions: await counted("extractionJobs"),
       libraries: libraries.length,
       ...(libraries[0] ? { library: libraries[0].name } : {}),
+      ...(libraries[0] && !(await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE)) && (await readEvidenceLibraryAccess(ctx, libraries[0]._id, "remove")) ? { removable: await removableOf(ctx, libraries[0]) } : {}),
       ...(admins ? { admins: admins.length } : {}),
     };
   },
