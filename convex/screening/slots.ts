@@ -72,19 +72,24 @@ export async function startWaitingPapers(ctx: MutationCtx, workspaceId: Id<"work
     // A paper of a job with a spending limit starts only while the job has room for it, and waits otherwise.
     // ponytail: such a job's waiting papers still fill this pass, so with 20 of them at the head a later job's wait a pass longer.
     const budgets = new Map<Id<"screeningJobs">, Budget | null>();
+    const started = new Map<Id<"screeningJobs">, number>();
     for (const result of waiting) {
       if (!budgets.has(result.jobId)) budgets.set(result.jobId, await budgetOf(ctx, result.jobId));
       const budget = budgets.get(result.jobId);
       if (budget && budget.taken >= budget.room) continue;
       await startPaper(ctx, result);
       if (budget) budget.taken++;
+      started.set(result.jobId, (started.get(result.jobId) ?? 0) + 1);
       running++;
     }
+    // Each job's papers in a slot, until the bookkeeping counts them off: what its page shows as being read, and what a spending limit holds.
+    for (const [jobId, taken] of started) {
+      const progress = budgets.get(jobId)?.progress ?? (await progressOf(ctx, jobId));
+      await ctx.db.patch("screeningJobProgress", progress._id, { running: (progress.running ?? 0) + taken });
+    }
     for (const budget of budgets.values()) {
-      if (!budget) continue;
-      if (budget.taken) await ctx.db.patch("screeningJobProgress", budget.progress._id, { running: (budget.progress.running ?? 0) + budget.taken });
       // Nothing left for another paper and none still being read: the job stops here, its waiting papers unread.
-      else if (!budget.progress.running && !budget.job.capped) await ctx.scheduler.runAfter(0, internal.screening.mutations.capScreeningJob, { jobId: budget.job._id });
+      if (budget && !budget.taken && !budget.progress.running && !budget.job.capped) await ctx.scheduler.runAfter(0, internal.screening.mutations.capScreeningJob, { jobId: budget.job._id });
     }
   }
   if (!slots) await ctx.db.insert("screeningSlots", { workspaceId, running });
