@@ -48,10 +48,17 @@ describe("development Evidence Library teardown", () => {
     });
     // Managing it is shut, and its settings offer its Owner the one thing left: deleting it.
     expect(await fixture.admin.query(api.evidenceLibraries.queries.getDraft, { libraryId })).toBeNull();
-    expect(await summary()).toMatchObject({ library: "Climate Evidence", removable: { _id: libraryId, name: "Climate Evidence", deleting: false } });
+    expect(await summary()).toMatchObject({ library: "Climate Evidence", removable: { _id: libraryId, name: "Climate Evidence", state: "held" } });
     const requested = await fixture.admin.mutation(api.evidenceLibraries.teardown.requestDevelopmentTeardown, { libraryId, confirmationName: "Climate Evidence" });
     expect(requested.status).toBe("queued");
     await expect(fixture.admin.query(api.evidenceLibraries.teardown.getDevelopmentTeardownStatus, { operationId: requested.operationId })).resolves.toMatchObject({ libraryId, status: "queued" });
+    expect(await summary()).toMatchObject({ removable: { state: "deleting" } });
+
+    // A deletion that stops part-way is tried again from the same row: the libraries' list, where it is otherwise, is shut with the plan.
+    await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraryConfigOperations", requested.operationId, { status: "failed" }));
+    expect(await summary()).toMatchObject({ removable: { state: "failed" } });
+    await expect(fixture.admin.mutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown, { libraryId })).resolves.toEqual({ status: "queued" });
+    expect(await summary()).toMatchObject({ removable: { state: "deleting" } });
   });
 
   it("queues one teardown and removes only the library records in bounded batches", async () => {
