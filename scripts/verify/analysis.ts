@@ -83,21 +83,39 @@ function textShown(history: TextHistory, text: string, t: number): Finding[] {
   return gone !== undefined && t - gone <= FLASH_RETURN_MS ? [{ kind: "text-flash", text, from: gone, to: t }] : [];
 }
 
-// A line with its numbers blanked. A number counting up or down changes its
-// line every frame: the same words with new numbers is one line changing its
-// value, not text blinking.
+// A line with its numbers blanked.
 const words = (text: string) => text.replace(/\d+(?:[.,]\d+)*/g, "0");
-const besides = (lines: string[], others: string[]) => {
-  const counting = new Set(others.map(words));
-  return lines.filter((text) => !counting.has(words(text)));
-};
+
+/**
+ * A frame's text changes with the lines that only changed their numbers
+ * paired off, one removed line to one added line. A number counting up or
+ * down changes its line every frame: the same words with new numbers is one
+ * line changing its value, not text blinking.
+ */
+function counted(frame: Frame): { pairs: [string, string][]; removed: string[]; added: string[] } {
+  const added = [...frame.textAdded];
+  const pairs: [string, string][] = [];
+  const removed = frame.textRemoved.filter((text) => {
+    const at = added.findIndex((other) => words(other) === words(text));
+    if (at >= 0) pairs.push([text, added.splice(at, 1)[0]]);
+    return at < 0;
+  });
+  return { pairs, removed, added };
+}
+
+/** A line that changed its value has been on screen since the old value appeared. */
+function carry(history: TextHistory, from: string, to: string) {
+  const shown = history.shownAt.get(from)?.pop();
+  if (shown !== undefined) history.shownAt.set(to, [...(history.shownAt.get(to) ?? []), shown]);
+}
 
 function textBlinks(frames: Frame[], since: number): Finding[] {
   const history: TextHistory = { shownAt: new Map(), goneAt: new Map() };
-  const findings = frames.flatMap((frame) => [
-    ...besides(frame.textRemoved, frame.textAdded).flatMap((text) => textGone(history, text, frame.t, since)),
-    ...besides(frame.textAdded, frame.textRemoved).flatMap((text) => textShown(history, text, frame.t)),
-  ]);
+  const findings = frames.flatMap((frame) => {
+    const { pairs, removed, added } = counted(frame);
+    for (const [from, to] of pairs) carry(history, from, to);
+    return [...removed.flatMap((text) => textGone(history, text, frame.t, since)), ...added.flatMap((text) => textShown(history, text, frame.t))];
+  });
   // Text hidden and then shown again is one flash, not also a blink.
   const flashes = findings.filter((finding) => finding.kind === "text-flash");
   const partOfFlash = (finding: Finding) => flashes.some((flash) => flash.kind === "text-flash" && finding.kind === "brief-text" && flash.text === finding.text && flash.from === finding.to);
