@@ -3,6 +3,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { workUrl } from "../lib/openalex/work-id";
 import { findItem } from "./library/find";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
+import { MAX_RATERS_KEPT } from "./lib/listCaps";
 import { createError } from "./lib/errors";
 import type { Change } from "convex-helpers/server/triggers";
 import { makeFunctionReference } from "convex/server";
@@ -88,17 +89,29 @@ async function raters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizatio
 
 const average = (ratings: number[]) => (ratings.length ? ratings.reduce((total, rating) => total + rating, 0) / ratings.length : undefined);
 
+/** A member's own rating of a paper, as a saved paper keeps the first of them: the rating row, whose it is, and what they gave. */
+type Given = { id: Id<"ratings">; userId: Id<"users">; rating: number };
+
 /**
- * A saved paper's rating in a workspace: the average of its people's own ratings of it, or none
- * when none of them rated it. In a person's own workspace that's their rating.
+ * How a workspace's people rated a saved paper themselves: the average of their own ratings of it,
+ * or none when none of them rated it. In a person's own workspace that's their rating. In an
+ * organization's, also how many members gave one and the first of them (#801), which its library
+ * lists beside the average.
  */
-export async function workspaceRating(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, paperId: string): Promise<number | undefined> {
+export async function workspaceRated(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, paperId: string): Promise<{ rating?: number; count?: number; by?: Given[] }> {
   const workspace = await ctx.db.get("workspaces", workspaceId);
-  if (!workspace) return undefined;
-  if (workspace.kind === "personal") return (await personalRatingRow(ctx, workspace.userId, paperId))?.rating;
+  if (!workspace) return {};
+  if (workspace.kind === "personal") {
+    const rating = (await personalRatingRow(ctx, workspace.userId, paperId))?.rating;
+    return rating === undefined ? {} : { rating };
+  }
   const rows = await Promise.all((await raters(ctx, workspace.organizationId)).map((userId) => personalRatingRow(ctx, userId, paperId)));
-  return average(rows.flatMap((row) => (row ? [row.rating] : [])));
+  const given = rows.flatMap((row) => (row ? [{ id: row._id, userId: row.userId, rating: row.rating }] : []));
+  return given.length ? { rating: average(given.map((one) => one.rating)), count: given.length, by: given.slice(0, MAX_RATERS_KEPT) } : {};
 }
+
+/** A saved paper's rating in a workspace (`workspaceRated`). */
+export const workspaceRating = async (ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, paperId: string) => (await workspaceRated(ctx, workspaceId, paperId)).rating;
 
 /** Whether someone is an active member of an organization now. */
 async function isMember(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, userId: Id<"users">) {
@@ -109,17 +122,6 @@ async function isMember(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizat
     .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organizationId).eq("clerkUserId", user.clerkId).eq("state", "active"))
     .first();
   return membership !== null;
-}
-
-type IsMember = (userId: Id<"users">) => Promise<boolean>;
-/** Whether someone is a member of an organization now, read once for each person however often it's asked: a page of papers asks about the same few people for every paper. */
-export function membersOf(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">): IsMember {
-  const known = new Map<Id<"users">, Promise<boolean>>();
-  return (userId) => {
-    const answer = known.get(userId) ?? isMember(ctx, organizationId, userId);
-    known.set(userId, answer);
-    return answer;
-  };
 }
 
 /** Someone's rating of a paper in an organization's collection, with who they are; `id` is the rating's. */
@@ -154,15 +156,18 @@ export const personalRatingsOf = (ctx: Pick<QueryCtx, "db">, paperId: string) =>
   ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", undefined).eq("paperId", ratedPaper(paperId)));
 
 /**
- * How an organization's members rated a paper themselves (#801): up to `max` of them, the person
- * reading first, and how many did. These are the ratings its library's average is made of. Other
- * people's ratings of the paper are passed over.
- * ponytail: a paper more than PREVIEW_READ people rated is counted from the first of them, so the
- * count can fall short there; keep the count on the saved paper, as a collection's place does, if it does.
+ * The members a saved paper keeps as having rated it, as the organization's library lists them
+ * (#801): the person reading first, by their own rating row `mine`, then the others it keeps.
+ * `person` reads someone once however many papers ask.
  */
-export async function memberRatings(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, paperId: string, viewer: Id<"users">, max: number, member?: IsMember): Promise<{ raters: Rater[]; count: number }> {
-  const rated = await asRaters(ctx, organizationId, await personalRatingsOf(ctx, paperId).take(PREVIEW_READ), viewer, member);
-  return { raters: [...rated.filter((rater) => rater.you), ...rated.filter((rater) => !rater.you)].slice(0, max), count: rated.length };
+export async function keptRaters(item: Doc<"libraryItems">, viewer: Id<"users">, mine: Doc<"ratings"> | null, person: (userId: Id<"users">) => Promise<Doc<"users"> | null>): Promise<Rater[]> {
+  const own = mine ? [{ id: mine._id, userId: viewer, rating: mine.rating }] : [];
+  const given = [...own, ...(item.ratedBy ?? []).filter((one) => one.userId !== viewer)].slice(0, MAX_RATERS_KEPT);
+  const people = await Promise.all(given.map((one) => person(one.userId)));
+  return given.flatMap((one, at) => {
+    const user = people[at];
+    return user ? [{ ...one, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), you: one.userId === viewer }] : [];
+  });
 }
 
 /** A paper's ratings in a collection, a query to read them from. */
@@ -177,8 +182,8 @@ export async function organizationOfCollection(ctx: Pick<QueryCtx, "db">, collec
 }
 
 /** Ratings with who gave them, those of the organization's members now. */
-export async function asRaters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, rows: Doc<"ratings">[], viewer: Id<"users">, member: IsMember = (userId) => isMember(ctx, organizationId, userId)): Promise<Rater[]> {
-  const people = await Promise.all(rows.map(async (row) => ((await member(row.userId)) ? { row, user: (await ctx.db.get("users", row.userId))! } : null)));
+export async function asRaters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, rows: Doc<"ratings">[], viewer: Id<"users">): Promise<Rater[]> {
+  const people = await Promise.all(rows.map(async (row) => ((await isMember(ctx, organizationId, row.userId)) ? { row, user: (await ctx.db.get("users", row.userId))! } : null)));
   return people.flatMap((person) => (person ? [{ id: person.row._id, userId: person.user._id, name: personName(person.user) || person.user.email, ...(person.user.avatarUrl ? { imageUrl: person.user.avatarUrl } : {}), you: person.user._id === viewer, rating: person.row.rating }] : []));
 }
 
@@ -226,10 +231,11 @@ export async function purgeCollectionRatings(ctx: MutationCtx, collectionId: Id<
   return rows.length < step;
 }
 
-/** Brings a saved paper's rating in step with its workspace's people's ratings of it. */
+/** Brings a saved paper's rating in step with its workspace's people's ratings of it, and in an organization who gave it. */
 export async function rateItem(ctx: MutationCtx, item: Doc<"libraryItems">) {
-  const rating = await workspaceRating(ctx, item.workspaceId, item.openalexId);
-  if (rating !== item.rating) await ctx.db.patch("libraryItems", item._id, { rating });
+  const { rating, count, by } = await workspaceRated(ctx, item.workspaceId, item.openalexId);
+  const same = rating === item.rating && count === item.ratingCount && JSON.stringify(by ?? null) === JSON.stringify(item.ratedBy ?? null);
+  if (!same) await ctx.db.patch("libraryItems", item._id, { rating, ratingCount: count, ratedBy: by });
 }
 
 /** How many of a person's ratings one step re-rates in an organization they joined or left. */

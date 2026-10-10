@@ -138,6 +138,15 @@ it("shows each paper in an organization's library with how its members rated it 
   expect((await shown(bob))[0]!.members).toMatchObject({ count: 2, raters: [{ you: true, rating: 2 }, { you: false, rating: 4 }] });
   // A paper nobody in the lab rated has no list.
   expect(unrated.members).toBeUndefined();
+  // Who rated goes out as `members` alone: what the paper keeps of it isn't on the page, which a guest of a collection reads too.
+  expect(rated).not.toHaveProperty("ratedBy");
+  expect(rated).not.toHaveProperty("ratingCount");
+  // In a collection the page carries the collection's ratings, not the library's.
+  const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Reading" });
+  await alice.mutation(api.library.collections.addToCollection, { workspaceId, collectionId, libraryItemId: one });
+  const inCollection = (await alice.query(api.library.queries.browseLibrary, { workspaceId, collectionId, sortBy: "title", sortOrder: "asc", paginationOpts: { cursor: null, numItems: 10 } })).page[0]!;
+  expect(inCollection.members).toBeUndefined();
+  expect(inCollection).not.toHaveProperty("ratedBy");
 
   const everyone = (as: typeof alice) => as.query(api.library.collections.raters, { workspaceId, libraryItemId: one, paginationOpts: { cursor: null, numItems: 10 } });
   expect((await everyone(alice)).page.map((rater) => [rater.you, rater.rating]).sort()).toEqual([[false, 2], [true, 4]]);

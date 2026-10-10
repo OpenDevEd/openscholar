@@ -106,8 +106,10 @@ function RatersList({ heading, paper, ratings, children }: { heading: string; pa
   const workspaceId = useWorkspace();
   const more = ratings.count > ratings.raters.length;
   const all = usePaginatedQuery(api.library.collections.raters, inWorkspace(workspaceId, open && more ? paper : "skip"), { initialNumItems: RATERS_LISTED });
-  const loaded = all.status !== "LoadingFirstPage" && all.results.length > 0;
-  const listed = loaded ? all.results : ratings.raters;
+  const loaded = open && more && all.status !== "LoadingFirstPage";
+  // The ones the page gave stay, and the ones read since join them: a page of the rest can come back with none of them, when the
+  // ratings it read were other people's, and then there is still more to ask for.
+  const listed = loaded ? [...ratings.raters, ...all.results.filter((rater) => !ratings.raters.some((first) => first.id === rater.id))] : ratings.raters;
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>

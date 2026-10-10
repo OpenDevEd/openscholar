@@ -7,7 +7,7 @@ import { stream, type QueryStream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { createError } from "../lib/errors";
 import { findItem } from "./find";
-import { collectionRaters, memberRatings, membersOf, personalRatingRow, placeOf, raterValidator, shownRater } from "../ratings";
+import { collectionRaters, keptRaters, personalRatingRow, placeOf, raterValidator, shownRater } from "../ratings";
 import type { InWorkspace } from "../workspaces/actor";
 import { guestRole } from "../sharing/items";
 import { authorDisplay } from "../../lib/library/paper-metadata";
@@ -317,29 +317,33 @@ export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces
 async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, read: LibraryPage, collectionId: Id<"collections"> | undefined, guest: boolean) {
   const workspace = await ctx.db.get("workspaces", workspaceId);
   const own = workspace?.kind === "personal" && workspace.userId === userId;
-  const ratings = await Promise.all(read.page.map(async (item) => (own ? item.rating : (await personalRatingRow(ctx, userId, item.openalexId))?.rating)));
+  // In their own workspace a paper's rating is the person's; anywhere else it's read from their own ratings.
+  const mine = own ? null : await Promise.all(read.page.map((item) => personalRatingRow(ctx, userId, item.openalexId)));
   // Who rated it in the collection is for anyone who reads it, a guest too. Rating it there is its members': a guest has no rating in it.
   const inCollection = workspace?.kind === "organization" && collectionId ? await Promise.all(read.page.map(async (item) => {
     const [raters, place] = await Promise.all([collectionRaters(ctx, collectionId, item.openalexId, userId, RATERS_SHOWN), placeOf(ctx, collectionId, item._id)]);
-    const mine = guest ? undefined : raters.find((rater) => rater.you)?.rating;
-    return { ...(mine === undefined ? {} : { mine }), raters: raters.map(shownRater), count: place?.ratingCount ?? raters.length };
+    const given = guest ? undefined : raters.find((rater) => rater.you)?.rating;
+    return { ...(given === undefined ? {} : { mine: given }), raters: raters.map(shownRater), count: place?.ratingCount ?? raters.length };
   })) : null;
-  // Outside a collection only its members read an organization's library, so each sees what the others gave. A paper nobody rated has no list.
-  const organizationId = workspace?.kind === "organization" && !collectionId ? workspace.organizationId : null;
-  const member = organizationId ? membersOf(ctx, organizationId) : undefined;
-  const members = organizationId ? await Promise.all(read.page.map(async (item) => {
-    if (item.rating === undefined) return undefined;
-    const { raters, count } = await memberRatings(ctx, organizationId, item.openalexId, userId, RATERS_SHOWN, member);
-    return { raters: raters.map(shownRater), count };
-  })) : null;
+  // Outside a collection only its members read an organization's library, so each sees what the others gave: the ones the paper
+  // keeps (convex/ratings.ts), the person reading first. A paper nobody rated has no list.
+  const people = new Map<Id<"users">, Promise<Doc<"users"> | null>>();
+  const person = (id: Id<"users">) => people.get(id) ?? people.set(id, ctx.db.get("users", id)).get(id)!;
+  const members = workspace?.kind === "organization" && !collectionId && !guest ? await Promise.all(read.page.map(async (item, at) =>
+    item.ratingCount ? { raters: (await keptRaters(item, userId, mine?.[at] ?? null, person)).map(shownRater), count: item.ratingCount } : undefined,
+  )) : null;
   return {
     ...read,
-    page: read.page.map((item, at) => ({
-      ...item,
-      ...(ratings[at] === undefined ? {} : { myRating: ratings[at] }),
-      ...(inCollection ? { collection: inCollection[at] } : {}),
-      ...(members?.[at] ? { members: members[at] } : {}),
-    })),
+    // Who gave a paper's rating goes out as `members`, to the organization's members alone, never as the paper keeps it.
+    page: read.page.map(({ ratingCount: _count, ratedBy: _by, ...item }, at) => {
+      const myRating = own ? item.rating : mine?.[at]?.rating;
+      return {
+        ...item,
+        ...(myRating === undefined ? {} : { myRating }),
+        ...(inCollection ? { collection: inCollection[at] } : {}),
+        ...(members?.[at] ? { members: members[at] } : {}),
+      };
+    }),
   };
 }
 

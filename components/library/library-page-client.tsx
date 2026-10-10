@@ -466,7 +466,6 @@ export function LibraryPageClient() {
     <TranslationContext.Provider value={{}}>
       <ScreeningContext.Provider value={{}}>
         <ServerRatingsContext.Provider value={serverRatingsMap}>
-        <CollectionRatingContext.Provider value={collectionScope}>
         <FocusMode
           isOpen={isFocusModeOpen}
           onClose={() => useUIStore.getState().setIsFocusModeOpen(false)}
@@ -589,6 +588,8 @@ export function LibraryPageClient() {
                 {!isLoading && (pageResults.length > 0 || paged.hasPages) && (
                   <>
                     {/* The page shown stays, dimmed and still, until the one it steps to arrives. */}
+                    {/* Only the cards rate in the open collection. Focus mode keeps the person's own rating, on its stars, its shortcuts and its phone control alike. */}
+                    <CollectionRatingContext.Provider value={collectionScope}>
                     <div className={cn(GRID_CLASSES[effectiveViewMode], paged.isStale && "pointer-events-none opacity-60")}>
                       {pageResults.map((paper, index) => {
                         const globalIndex = pageStart + index;
@@ -614,6 +615,7 @@ export function LibraryPageClient() {
                         );
                       })}
                     </div>
+                    </CollectionRatingContext.Provider>
 
                     <CommandCenterContainer>
                       <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -675,7 +677,6 @@ export function LibraryPageClient() {
         {/* Outside the layout, whose phone tabs show the sidebar or the results, never both: the sidebar opens them. A collection made here opens, as a new folder does. */}
         <NewCollectionDialog open={collectionDialog === "new"} onOpenChange={(open) => setCollectionDialog(open ? "new" : null)} onCreated={(id) => setParams({ col: id })} returnFocus={() => dialogOpener.current} />
         <ManageCollectionsDialog manage={manage} open={collectionDialog === "manage"} onOpenChange={(open) => setCollectionDialog(open ? "manage" : null)} onNew={() => setCollectionDialog("new")} returnFocus={() => dialogOpener.current} />
-        </CollectionRatingContext.Provider>
         </ServerRatingsContext.Provider>
       </ScreeningContext.Provider>
     </TranslationContext.Provider>

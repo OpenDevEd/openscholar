@@ -1,5 +1,5 @@
 import { v, type Infer } from "convex/values";
-import { capped, MAX_AUTHORS } from "../lib/listCaps";
+import { capped, MAX_AUTHORS, MAX_RATERS_KEPT } from "../lib/listCaps";
 
 export const librarySortValidator = v.union(
   v.literal("savedAt"),
@@ -64,6 +64,10 @@ export const libraryItemFields = {
     createdBy: v.id("users"),
     openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
     rating: v.optional(v.number()), // 0-5; unset when the paper was saved without rating it
+    // In an organization's library `rating` is its members' average of their own ratings (#801): how many of them gave one,
+    // and the first of them with what each gave, kept in step with it (convex/ratings.ts). Unset in a person's own workspace.
+    ratingCount: v.optional(v.number()),
+    ratedBy: capped(v.optional(v.array(v.object({ id: v.id("ratings"), userId: v.id("users"), rating: v.number() }))), MAX_RATERS_KEPT),
     title: v.string(),
     authors: capped(v.optional(v.array(v.string())), MAX_AUTHORS),
     authorsUnparsed: v.optional(v.string()),
