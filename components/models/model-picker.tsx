@@ -8,6 +8,7 @@ import { useDeferredValue, useRef, useState, type KeyboardEvent, type ReactNode 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
+// ui-rules-allow: raw-primitive -- the picker draws its own search field and rows; the shared Command parts add an icon row and row padding
 import { Command as CommandPrimitive } from "cmdk";
 import { ArrowLeft, ArrowUpRight, Check, FileText, ImageIcon, Search } from "@/components/icons";
 import type { FunctionReturnType } from "convex/server";

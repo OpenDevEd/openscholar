@@ -62,6 +62,8 @@ supported process changed. Read the page back before claiming success.
   | No dot separators, in code or in `messages/` | `check:ui-rules` (`dot-separator`) |
   | An avatar without a photo shows an icon, never initials | `check:ui-rules` (`initials`) |
   | No "Loading" text; the shared Spinner or the final size | `check:ui-rules` (`loading-text`) |
+  | A dialog, popover or picker comes from `components/ui`, never a raw primitive | `check:ui-rules` (`raw-primitive`) |
+  | No "Coolify" in text people read | `check:ui-rules` (`coolify`) |
   | Nothing moves or flashes as data arrives | `npm run verify -- shift` |
 
 ## Research assistant

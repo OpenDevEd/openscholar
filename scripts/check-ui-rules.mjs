@@ -17,6 +17,9 @@
 // reported where it is written; a constant from the same file is read where
 // className uses it; and each stylesheet rule is checked the same way. new-el
 // runs the same rules (tools/uiRules.ts); keep them in step.
+//
+// raw-primitive and coolify are OpenScholar's own: new-el has no shared
+// components/ui layer and never names its host.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -242,6 +245,11 @@ function translates(callee) {
   if (!ts.isIdentifier(callee)) return translationFactory(callee);
   return TRANSLATE.test(callee.text) || translationFactory(declaredValue(callee));
 }
+// The libraries components/ui wraps. Importing one anywhere else rebuilds a
+// dialog, popover or picker the app already has.
+const PRIMITIVE = /^(radix-ui|@radix-ui\/.+|vaul|cmdk)$/;
+const COOLIFY = /coolify/i;
+
 const SR_ONLY = /(?:^|[\s"'`])sr-only(?=$|[\s"'`])/;
 const allowed = (line, rule) => new RegExp(`ui-rules-allow:\\s*${rule}\\s+--\\s*\\S`).test(line ?? "");
 
@@ -252,6 +260,8 @@ const FIX = {
   "dot-separator": "no dot separators; use spacing, a divider or an icon.",
   initials: "AvatarFallback shows an icon when there is no photo, never initials or text (see IdentityAvatar and AuthorAvatar).",
   "loading-text": "no \"Loading\" text; show the shared Spinner, or hold the final size until the data is there.",
+  "raw-primitive": "raw primitive import; use the shared part in components/ui (Dialog, Popover, Command), or add what is missing there.",
+  coolify: "\"Coolify\" is our hosting tool, not something people see; say what is happening instead.",
 };
 
 /** Every string in a messages file, with the key that holds it. */
@@ -279,6 +289,7 @@ function check(file) {
   const lines = text.split("\n");
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const found = [];
+  const shared = file.startsWith(path.join("components", "ui") + path.sep);
   // The class lists each constant adds, read once.
   const constantLists = new Map();
   // What a logical operator can give: `a && b` gives b or nothing, `a || b` and `a ?? b` give one side.
@@ -451,14 +462,17 @@ function check(file) {
   };
   const visit = (node) => {
     if (classValue(node) && !insideClassList(node) && clashesAlone(node)) report(node, "animation-clash");
+    if (ts.isImportDeclaration(node) && !shared && PRIMITIVE.test(node.moduleSpecifier.text)) report(node, "raw-primitive");
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       if (UPPERCASE_CSS.test(node.text) || (UPPERCASE_CLASS.test(node.text) && classContext(node))) report(node, "uppercase");
       if (DOT.test(node.text)) report(node, "dot-separator");
       const whole = ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
       if (((whole && LOADING.test(node.text.trim()) && shown(node)) || translatedLoading(node)) && !screenReaderOnly(node)) report(node, "loading-text");
+      if (whole && COOLIFY.test(node.text) && shown(node)) report(node, "coolify");
     }
     if (ts.isJsxText(node)) {
       if (DOT.test(node.text)) report(node, "dot-separator");
+      if (COOLIFY.test(node.text)) report(node, "coolify");
       if (LOADING.test(node.text.trim()) && !screenReaderOnly(node)) report(node, "loading-text");
     }
     if (ts.isJsxElement(node) && node.openingElement.tagName.getText(source) === "AvatarFallback") {
@@ -515,14 +529,18 @@ const stylesheetClashes = cssFiles.flatMap((file) => {
     .map((line) => `${file}:${line} animation-clash: ${FIX["animation-clash"]}`);
 });
 
+const COPY_RULES = [
+  ["dot-separator", DOT],
+  ["coolify", COOLIFY],
+];
 // Copy shown in the app lives in messages/. Values are read decoded, so an
 // escaped \u00b7 counts too; the line is the one that holds the key.
 const copy = files("messages", [".json"]).flatMap((file) => {
   const text = readFileSync(file, "utf8");
   const lines = text.split("\n");
-  return strings(JSON.parse(text), "")
-    .filter(([, value]) => DOT.test(value))
-    .map(([key]) => `${file}:${lines.findIndex((line) => line.includes(`"${key}"`)) + 1} dot-separator: ${FIX["dot-separator"]}`);
+  return strings(JSON.parse(text), "").flatMap(([key, value]) =>
+    COPY_RULES.filter(([, pattern]) => pattern.test(value)).map(([rule]) => `${file}:${lines.findIndex((line) => line.includes(`"${key}"`)) + 1} ${rule}: ${FIX[rule]}`),
+  );
 });
 
 const problems = [...files("components", [".ts", ".tsx"]), ...files("app", [".ts", ".tsx"])].flatMap(check).concat(broad, stylesheets, stylesheetClashes, copy);
@@ -530,4 +548,4 @@ if (problems.length) {
   console.error(problems.join("\n"));
   process.exit(1);
 }
-console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials or Loading text.");
+console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials, Loading text, raw primitives or host names.");
