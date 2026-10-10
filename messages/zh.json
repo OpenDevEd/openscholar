@@ -4194,7 +4194,7 @@
       "makeAdminFirst": "请先让其他人成为管理员",
       "leave": "退出",
       "deleteName": "删除 {name}",
-      "libraryIsLive": "{library} 正在线上。请先移走或删除它。",
+      "stillHasLibrary": "{library} 是它的证据库之一。请先移走或删除它。",
       "deleteDetail": "将为全部 {count, number} 名成员删除它",
       "moveLibrariesFirst": "请先移走或删除它的证据库",
       "delete": "删除",

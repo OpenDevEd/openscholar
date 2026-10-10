@@ -4194,7 +4194,7 @@
       "makeAdminFirst": "先に別のメンバーを管理者にしてください",
       "leave": "退出",
       "deleteName": "{name} を削除",
-      "libraryIsLive": "{library} は公開中です。先に移動するか削除してください。",
+      "stillHasLibrary": "{library} はこの組織のエビデンスライブラリです。先に移動するか削除してください。",
       "deleteDetail": "{count, number} 人のメンバー全員から削除されます",
       "moveLibrariesFirst": "先にエビデンスライブラリを移動するか削除してください",
       "delete": "削除",

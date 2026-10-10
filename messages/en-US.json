@@ -4194,7 +4194,7 @@
       "makeAdminFirst": "Make someone else an admin first",
       "leave": "Leave",
       "deleteName": "Delete {name}",
-      "libraryIsLive": "{library} is live. Move or delete it first.",
+      "stillHasLibrary": "{library} is one of its Evidence Libraries. Move or delete it first.",
       "deleteDetail": "Removes it for {count, plural, one {its # member} other {all # members}}",
       "moveLibrariesFirst": "Move or delete its Evidence Libraries first",
       "delete": "Delete",

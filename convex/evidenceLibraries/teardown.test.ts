@@ -30,6 +30,30 @@ describe("development Evidence Library teardown", () => {
     ).rejects.toThrow(/full library name/i);
   });
 
+  it("keeps an organization on its plan while it has a library, and lets an Owner delete one the plan no longer covers", async () => {
+    const fixture = await createReadySetupFixture("teardown_no_plan");
+    const { libraryId } = fixture.created;
+    const workspaceId = await fixture.t.run(async (ctx) => (await ctx.db.get("evidenceLibraries", libraryId))!.workspaceId);
+    const summary = () => fixture.admin.query(api.organizations.queries.summary, { workspaceId });
+
+    // Free has no Evidence Libraries, so the organization isn't moved there with one: it couldn't be opened to delete afterwards.
+    await expect(fixture.admin.action(api.billing.actions.moveToFree, { workspaceId })).rejects.toThrow(/Move or delete its Evidence Libraries first/);
+    // While the plan covers it, it's deleted from its own page: the organization's settings offer nothing.
+    expect(await summary()).not.toHaveProperty("removable");
+
+    // The plan stops covering it without the organization asking, as when its payment lapses.
+    await fixture.t.run(async (ctx) => {
+      const account = (await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())!;
+      await ctx.db.patch("billingAccounts", account._id, { features: [] });
+    });
+    // Managing it is shut, and its settings offer its Owner the one thing left: deleting it.
+    expect(await fixture.admin.query(api.evidenceLibraries.queries.getDraft, { libraryId })).toBeNull();
+    expect(await summary()).toMatchObject({ library: "Climate Evidence", removable: { _id: libraryId, name: "Climate Evidence", deleting: false } });
+    const requested = await fixture.admin.mutation(api.evidenceLibraries.teardown.requestDevelopmentTeardown, { libraryId, confirmationName: "Climate Evidence" });
+    expect(requested.status).toBe("queued");
+    await expect(fixture.admin.query(api.evidenceLibraries.teardown.getDevelopmentTeardownStatus, { operationId: requested.operationId })).resolves.toMatchObject({ libraryId, status: "queued" });
+  });
+
   it("queues one teardown and removes only the library records in bounded batches", async () => {
     const fixture = await createReadySetupFixture("teardown_records");
     await fixture.t.run(async (ctx) => {

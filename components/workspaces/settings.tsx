@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { DeleteLibraryDialog } from "@/components/evidence-libraries/configuration/delete-library-dialog";
 import { EmailAvatar, IdentityRow, ROLE_ICONS, RoleLabel } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Input } from "@/components/ui/input";
@@ -98,6 +99,9 @@ export function WorkspaceGeneral() {
   const [logo, setLogoPreview] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [confirm, setConfirm] = useState<"leave" | "delete" | null>(null);
+  // The organization's plan no longer includes Evidence Libraries, so the library's own pages are shut: it's deleted from here (#652).
+  const [removing, setRemoving] = useState(false);
+  const td = useTranslations("evidenceLibraryConfiguration.deleteDialog");
   if (!organization || !summary) return <Enter ready={false}>{null}</Enter>;
 
   const { name, slug } = organization;
@@ -256,9 +260,14 @@ export function WorkspaceGeneral() {
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{t("deleteName", { name })}</p>
                   <p className="text-xs text-muted-foreground">
-                    {summary.library ? t("libraryIsLive", { library: summary.library }) : t("deleteDetail", { count: organization.members ?? 0 })}
+                    {summary.removable?.deleting ? td("startedDescription", { name: summary.removable.name }) : summary.library ? t("stillHasLibrary", { library: summary.library }) : t("deleteDetail", { count: organization.members ?? 0 })}
                   </p>
                 </div>
+                {summary.removable && !summary.removable.deleting ? (
+                  <Button variant="outline" size="sm" onClick={() => setRemoving(true)}>
+                    <Trash2 /> {td("confirm")}
+                  </Button>
+                ) : null}
                 <Guarded reason={summary.library ? t("moveLibrariesFirst") : null}>
                   <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirm("delete")}>
                     <Trash2 /> {t("delete")}
@@ -270,6 +279,9 @@ export function WorkspaceGeneral() {
         </Zone>
       </div>
 
+      {summary.removable ? (
+        <DeleteLibraryDialog libraryId={summary.removable._id} name={summary.removable.name} address={summary.removable.publicAddress} open={removing} onOpenChange={setRemoving} />
+      ) : null}
       <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

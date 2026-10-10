@@ -213,6 +213,9 @@ export const moveToFree = action({
   handler: async (ctx, { workspaceId }): Promise<null> => {
     const user = await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
+    // Free has no Evidence Libraries: one left behind couldn't be opened to delete, nor its organization deleted while it's there.
+    const library: string | null = await ctx.runQuery(internal.evidenceLibraries.teardown.heldBy, { workspaceId });
+    if (library) throw createError("VALIDATION_ERROR", `${library} is an Evidence Library of this organization, and Free has none. Move or delete its Evidence Libraries first.`);
     // Clerk holds it to Free's members before they're counted, so nobody joins past them while it moves.
     await ctx.runAction(internal.billing.seats.limitMembers, { workspaceId, team: false });
     try {

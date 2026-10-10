@@ -4194,7 +4194,7 @@
       "makeAdminFirst": "Nommez d'abord un autre administrateur",
       "leave": "Quitter",
       "deleteName": "Supprimer {name}",
-      "libraryIsLive": "{library} est en ligne. Déplacez-la ou supprimez-la d'abord.",
+      "stillHasLibrary": "{library} est l'une de ses bibliothèques de données probantes. Déplacez-la ou supprimez-la d'abord.",
       "deleteDetail": "La supprime pour {count, plural, one {son # membre} other {ses # membres}}",
       "moveLibrariesFirst": "Déplacez ou supprimez d'abord ses bibliothèques de données probantes",
       "delete": "Supprimer",

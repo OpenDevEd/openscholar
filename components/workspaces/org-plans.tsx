@@ -56,6 +56,8 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
   const organizationId = workspace?.kind === "organization" ? workspace.workspaceId : undefined;
   // In full: the switcher's count stops at a hundred and one, and a move charges for every member.
   const counts = useProtectedQuery(api.billing.seats.counts, organizationId ? { workspaceId: organizationId } : "skip").data;
+  // Free has no Evidence Libraries: the move waits on them, as deleting the organization does (workspaces/settings.tsx).
+  const holdsLibrary = useProtectedQuery(api.organizations.queries.summary, organizationId ? { workspaceId: organizationId } : "skip").data?.library !== undefined;
   const { account, catalog } = useSubscriptionState();
   const moveToTeam = useWorkspaceAction(api.billing.actions.moveToTeam);
   const moveToFree = useWorkspaceAction(api.billing.actions.moveToFree);
@@ -139,7 +141,7 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
               ? action(t("createOrganization"), () => setCreating(true), null)
               : !onTeam
                 ? current
-                : action(t("moveTo", { plan: free.name }), () => setAsking("free"), notAdmin ?? (members + (counts?.invitations ?? 0) > FREE_MEMBERS ? ts("freeUpTo", { count: FREE_MEMBERS }) : null))}
+                : action(t("moveTo", { plan: free.name }), () => setAsking("free"), notAdmin ?? (members + (counts?.invitations ?? 0) > FREE_MEMBERS ? ts("freeUpTo", { count: FREE_MEMBERS }) : holdsLibrary ? ts("moveLibrariesFirst") : null))}
         </PlanCard>
 
         <PlanCard
