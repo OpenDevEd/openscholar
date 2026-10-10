@@ -10,6 +10,7 @@ import { useRoomHeartbeat } from "@/lib/hooks/use-room-heartbeat";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { Component, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import { ConvexError } from "convex/values";
 import { useSmoothText } from "@convex-dev/agent/react";
 import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -164,15 +165,18 @@ export function AssistantPanel() {
     // Session replays show none of the conversation (instrumentation-client.ts).
     <div data-ph-mask className="contents">
       <Lost
-        onLost={() => {
-          // What was being typed in it stays in the box, for the new chat, and the person is told why the chat closed.
+        onLost={(error) => {
           const lost = threadIn(place, key);
-          if (lost) {
-            setTyped(({ [lost]: text, ...rest }) => (text && !rest[NEW] ? { ...rest, [NEW]: text } : rest));
-            setPicked(({ [lost]: mine, ...rest }) => (mine?.length && !rest[NEW]?.length ? { ...rest, [NEW]: mine } : rest));
+          // A chat that's gone, deleted or no longer shared, answers its reads with NOT_FOUND. Any other failure leaves the chat and its draft as they are, to come back to.
+          if (lost && error instanceof ConvexError && (error.data as { code?: string } | undefined)?.code === "NOT_FOUND") {
+            // What was being typed in it goes to the new chat's box, whole, when nothing is waiting there: text, picks or files.
+            if (!typed[NEW] && !picked[NEW]?.length && !attached[NEW]?.length) {
+              setTyped(({ [lost]: text, ...rest }) => (text ? { ...rest, [NEW]: text } : rest));
+              setPicked(({ [lost]: mine, ...rest }) => (mine?.length ? { ...rest, [NEW]: mine } : rest));
+            }
+            toast.error(t("lost"));
           }
           setThreadId(null);
-          toast.error(t("lost"));
         }}
       >
         <Overlay open={place.open} setOpen={setOpen} threadId={threadIn(place, key) as ThreadId | null} setThreadId={setThreadId} drafts={drafts} />
@@ -186,18 +190,18 @@ export function AssistantPanel() {
  * or in a sheet open on it. The panel then starts over on a new chat, with its sheets
  * closed, instead of taking the page down with it.
  */
-class Lost extends Component<{ onLost: () => void; children: ReactNode }, { failed: boolean }> {
+class Lost extends Component<{ onLost: (error: unknown) => void; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   private failedAt = 0;
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  componentDidCatch() {
+  componentDidCatch(error: unknown) {
     // Failing again straight after starting over isn't a lost chat, so the panel stays away rather than loop.
     const again = Date.now() - this.failedAt < LOOP_MS;
     this.failedAt = Date.now();
     if (again) return;
-    this.props.onLost();
+    this.props.onLost(error);
     this.setState({ failed: false });
   }
   render() {
