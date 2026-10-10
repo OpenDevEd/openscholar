@@ -135,11 +135,6 @@ export const clerkOrganizationSnapshotFields = {
 
 export const organizationFields = {
   ...clerkOrganizationSnapshotFields,
-  // The switches set by hand in Clerk, which nothing reads or writes now that plans grant features (#652).
-  // They go once migrations/organizationSwitches has cleared them from every organization.
-  evidenceLibrariesEnabled: v.optional(v.boolean()),
-  authorsEnabled: v.optional(v.boolean()),
-  extractionEnabled: v.optional(v.boolean()),
   state: organizationStateValidator,
   /** Set while an admin's deletion runs (convex/organizations/manage.ts): nobody acts in its workspace meanwhile. */
   deletingAt: v.optional(v.number()),
