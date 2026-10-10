@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { shownOutside } from "../library/followed";
 import { ensureWorkspace } from "../workspaces/create";
 import { personalWorkspaceOf } from "../workspaces/personal";
 
@@ -99,6 +100,9 @@ it("lets a guest who edits a collection put papers in it and take them out, in t
 
   await alice.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" });
   expect(await offered(carol)).toEqual([{ _id: collectionId, name: "Trials", itemCount: 0, containsItem: false, from: { name: "lab", organization: true } }]);
+  // Her assistant asks her before it changes the lab's collection, which the lab's people see; Dave's has nothing to ask about.
+  const asks = (userId: Id<"users">) => t.run(async (ctx) => shownOutside(ctx, { userId, workspaceId: await personalWorkspaceOf(ctx, userId) }, { collectionId }));
+  expect([await asks(users.carol), await asks(users.dave)]).toEqual([true, false]);
   const { undo } = await put(carol);
   expect(await held()).toBe(1);
   expect(await offered(carol)).toMatchObject([{ itemCount: 1, containsItem: true }]);
@@ -113,6 +117,10 @@ it("lets a guest who edits a collection put papers in it and take them out, in t
   // Her undo takes it out again, and by the saved paper's ID she puts it back and takes it out.
   await carol.mutation(api.library.mutations.setPaperInCollection, undo!.args);
   expect(await held()).toBe(0);
+  // Putting in a paper the lab already has leaves the lab's record of it as it is, whatever hers says.
+  await carol.mutation(api.library.mutations.setPaperInCollection, { paper: { ...paper, title: "Renamed by a guest" }, collectionId, inCollection: true });
+  expect((await t.run((ctx) => ctx.db.query("libraryItems").collect())).map((saved) => saved.title)).toEqual(["Tutoring at scale"]);
+  await put(carol, false);
   const libraryItemId = (await t.run((ctx) => ctx.db.query("libraryItems").first()))!._id;
   await carol.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId });
   expect(await held()).toBe(1);

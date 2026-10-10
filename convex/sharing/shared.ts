@@ -74,12 +74,19 @@ export const editableCollectionsAction = defineUserQuery({
   run: async (ctx, actor, { paginationOpts, search, openalexId }) => {
     if (!(await inOwn(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
     const needle = search?.trim().toLowerCase() ?? "";
-    const read = await stream(ctx.db, schema)
-      .query("itemAccess")
-      .withIndex("by_user_and_kind_and_name", (q) => q.eq("userId", actor.userId).eq("kind", "collection"))
-      .order("asc")
-      .filterWith(async (row) => row.role === "editor" && (!needle || row.name.toLowerCase().includes(needle)))
-      .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHARED_PAGE_MAX), maximumRowsRead: SHARED_FILTER_ROWS });
+    const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHARED_PAGE_MAX) };
+    // Read by the index alone, so its pages keep their places as grants change; only a search looks through rows for a name.
+    const read = needle
+      ? await stream(ctx.db, schema)
+          .query("itemAccess")
+          .withIndex("by_user_and_kind_and_role_and_name", (q) => q.eq("userId", actor.userId).eq("kind", "collection").eq("role", "editor"))
+          .order("asc")
+          .filterWith(async (row) => row.name.toLowerCase().includes(needle))
+          .paginate({ ...opts, maximumRowsRead: SHARED_FILTER_ROWS })
+      : await ctx.db
+          .query("itemAccess")
+          .withIndex("by_user_and_kind_and_role_and_name", (q) => q.eq("userId", actor.userId).eq("kind", "collection").eq("role", "editor"))
+          .paginate(opts);
     const page = await Promise.all(read.page.map(async (row) => {
       const collectionId = ctx.db.normalizeId("collections", row.item);
       const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;

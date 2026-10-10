@@ -6,6 +6,7 @@ import { stream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
+import { guestRole } from "../sharing/items";
 import { ASKS_FIRST, actingAs, assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Acting, type Author } from "../lib/userActions";
 import { requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
 import { noteActivity } from "../activity/notes";
@@ -143,7 +144,11 @@ export async function checkSave(ctx: QueryCtx, { userId, workspaceId }: InWorksp
   if (collectionId !== undefined) {
     const collection = await ctx.db.get("collections", collectionId);
     if (!collection) throw createError("NOT_FOUND", "Collection not found");
-    if (collection.workspaceId !== workspaceId) throw createError("FORBIDDEN", "Not your collection");
+    if (collection.workspaceId !== workspaceId) {
+      // A save is to the person's own library; a collection shared with them to edit holds its own workspace's papers.
+      const edits = (await guestRole(ctx, { userId, workspaceId }, collection)) === "editor";
+      throw createError("FORBIDDEN", edits ? "This collection is another workspace's, shared with the person to edit, and a save goes to their own library. Put a paper in it with library/mutations:setPaperInCollection, giving the paper whole." : "Not your collection");
+    }
   }
   const before = await findItem(ctx, workspaceId, openalexId);
   if (before && collectionId !== undefined && rating !== undefined && rating !== (await ownRating(ctx, userId, openalexId))) {
@@ -528,7 +533,10 @@ export const setPaperInCollectionAction = defineUserMutation({
     const { userId } = actor;
     const { workspaceId } = collection;
     const whole = "title" in paper;
-    const item = whole && inCollection ? await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId, workspaceId }, paper)) : await findItem(ctx, workspaceId, paper.openalexId);
+    const held = await findItem(ctx, workspaceId, paper.openalexId);
+    // A guest's record of a paper never rewrites the one that library already has: they change what's in the collection, not its papers.
+    const saves = whole && inCollection && !(held && workspaceId !== actor.workspaceId);
+    const item = saves ? await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId, workspaceId }, paper)) : held;
     if (!whole && paper.savedAt !== undefined && item && item.savedAt !== paper.savedAt) throw createError("CONFLICT", "This paper was removed and saved again since then, so the collection was left as it is.");
     // Only a change has an undo, so undoing never touches a paper that was already in, or already
     // out. It names the save and the place in the collection it's for.
