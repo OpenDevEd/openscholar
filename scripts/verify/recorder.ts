@@ -279,10 +279,14 @@ export function recorder(config: { allow: string }) {
     return counts;
   }
 
-  /** What the dialogs, sheets, popovers and menus that are open show, so their text can be judged by itself. */
+  /**
+   * What the dialogs, sheets, popovers and menus that are open show, so their
+   * text can be judged by itself. One kept in the page while shut has no size,
+   * and its text isn't showing.
+   */
   const overlayText = () =>
     [...document.querySelectorAll<HTMLElement>(OVERLAY)]
-      .filter((overlay) => !overlay.parentElement?.closest(OVERLAY))
+      .filter((overlay) => measurable(overlay) && !overlay.parentElement?.closest(OVERLAY))
       .map((overlay) => overlay.innerText)
       .join("\n");
 
