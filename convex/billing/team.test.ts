@@ -5,30 +5,18 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { FREE_MEMBERS, ORGANIZATION_PLAN, TEAM_PLAN } from "../../lib/billing/plans";
-import { FAKE_SEAT_CREDITS, fakeAutumn, fakeAutumnFetch } from "./billing.test-support";
-
-/** The member limits set on organizations in Clerk, in order. */
-let limits: Array<{ organization: string; limit: number }> = [];
+import { FAKE_SEAT_CREDITS, fakeAutumn, installFakeAutumn } from "./billing.test-support";
 
 beforeEach(() => {
-  fakeAutumn.reset();
-  limits = [];
-  vi.stubGlobal(
-    "fetch",
-    fakeAutumnFetch(async (input, init) => {
-      const organization = String(input).match(/api\.clerk\.com\/v1\/organizations\/([^/]+)$/)?.[1];
-      if (!organization || init?.method !== "PATCH") throw new Error(`unexpected fetch ${String(input)}`);
-      limits.push({ organization, limit: JSON.parse(String(init.body)).max_allowed_memberships });
-      return new Response("{}", { status: 200, headers: { "Content-Type": "application/json" } });
-    }),
-  );
+  installFakeAutumn();
   vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.test");
-  vi.stubEnv("CLERK_SECRET_KEY", "sk_test");
 });
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.unstubAllEnvs();
 });
+
+const limits = () => fakeAutumn.memberLimits;
 
 const ORGANIZATION = { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1 };
 
@@ -85,10 +73,10 @@ it("moves an organization to Team for its admin, saving a card or confirming a p
   expect(await ada.query(api.billing.seats.counts, { workspaceId })).toEqual({ members: 2, seats: 2 });
   expect(await t.run((ctx) => ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())).toMatchObject({ plan: TEAM_PLAN, card: { last4: "4242" } });
   // Team has no member limit in Clerk, set once however often its seats sync.
-  expect(limits).toEqual([{ organization: "org_lab", limit: 0 }]);
+  expect(limits()).toEqual([{ organization: "org_lab", limit: 0 }]);
 
   for (const who of people.slice(2)) await membership(who, true);
-  expect(limits).toHaveLength(1);
+  expect(limits()).toHaveLength(1);
   expect(people.length).toBeGreaterThan(FREE_MEMBERS);
   await expect(ada.action(api.billing.actions.moveToFree, { workspaceId })).rejects.toThrow();
   expect(fakeAutumn.customer(workspaceId).planId).toBe(TEAM_PLAN);
@@ -97,24 +85,59 @@ it("moves an organization to Team for its admin, saving a card or confirming a p
   await ada.action(api.billing.actions.moveToFree, { workspaceId });
   expect(fakeAutumn.customer(workspaceId).planId).toBe(ORGANIZATION_PLAN);
   expect(seated()).toEqual([]);
-  expect(limits.at(-1)).toEqual({ organization: "org_lab", limit: FREE_MEMBERS });
+  expect(limits().at(-1)).toEqual({ organization: "org_lab", limit: FREE_MEMBERS });
 });
 
-it("ends the seats and Team of an organization deleted in Clerk, after its workspace is gone", async () => {
+it("ends the seats and Team of an organization deleted in Clerk, after its workspace is gone and whatever its seats were last counted as", async () => {
   const { t, workspaceId, membership, deleted, seated, ada } = await lab(["ada", "ben"]);
   await membership("ada", true, "org:admin");
   await membership("ben", true);
   await ada.action(api.billing.actions.moveToTeam, { workspaceId });
   expect(seated()).toEqual(["user_ada", "user_ben"]);
+  // A sync that failed partway left its row counting none.
+  await t.run(async (ctx) => ctx.db.patch("seatSyncs", (await ctx.db.query("seatSyncs").first())!._id, { seats: 0 }));
 
-  // Deleted in Clerk's dashboard rather than here: its webhook closes it, and its workspace is purged, account and all.
+  // Deleted in Clerk's dashboard rather than here, while Autumn is down: its webhook closes it, and its workspace is purged, account and all.
+  fakeAutumn.failNext = "entities.list";
   await deleted();
   expect(await t.run((ctx) => ctx.db.get("workspaces", workspaceId))).toBeNull();
+  expect(seated()).toEqual(["user_ada", "user_ben"]);
 
-  // The daily check still finds the seats it holds, ends them, and cancels its Team plan.
+  // The daily check still finds it, ends its seats, cancels its Team plan, and lets it go.
   await t.mutation(internal.billing.seats.syncTeams, {});
   await t.finishAllScheduledFunctions(() => {});
   expect(seated()).toEqual([]);
   expect(fakeAutumn.customer(workspaceId).planId).toBe(ORGANIZATION_PLAN);
+  expect(await t.run((ctx) => ctx.db.query("seatSyncs").withIndex("by_ending", (q) => q.eq("ending", true)).collect())).toEqual([]);
   expect(await t.run((ctx) => ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())).toBeNull();
+});
+
+it("ends Team only while no other sync of the organization runs", async () => {
+  const { t, workspaceId, membership, seated, ada } = await lab(["ada", "ben"]);
+  await membership("ada", true, "org:admin");
+  await membership("ben", true);
+  await ada.action(api.billing.actions.moveToTeam, { workspaceId });
+  // A sync that read Team a moment ago could still seat someone: moving off Team waits for it.
+  expect(await t.mutation(internal.billing.seats.claim, { workspaceId })).toBe(true);
+  await expect(ada.action(api.billing.actions.moveToFree, { workspaceId })).rejects.toThrow(/being updated/);
+  expect(fakeAutumn.customer(workspaceId).planId).toBe(TEAM_PLAN);
+  await t.mutation(internal.billing.seats.release, { workspaceId });
+  await t.finishAllScheduledFunctions(() => {});
+  await ada.action(api.billing.actions.moveToFree, { workspaceId });
+  expect(seated()).toEqual([]);
+});
+
+it("tries again later to set a member limit Clerk refused", async () => {
+  vi.useFakeTimers();
+  try {
+    const { t, workspaceId, membership, ada } = await lab(["ada"]);
+    await membership("ada", true, "org:admin");
+    fakeAutumn.refuseLimits = 1;
+    await ada.action(api.billing.actions.moveToTeam, { workspaceId });
+    expect(limits()).toEqual([]);
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    expect(limits()).toEqual([{ organization: "org_lab", limit: 0 }]);
+  } finally {
+    vi.useRealTimers();
+  }
 });
