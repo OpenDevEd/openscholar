@@ -55,8 +55,8 @@ function AuthorProfileBody({profileId, record, references, browsedBefore = false
   invitation?: boolean;
 }) {
   const { isLoading: authLoading } = useConvexAuth();
-  // The directory of authors comes with Evidence Libraries, which the workspace the page is in has or hasn't.
-  const browses = useWorkspaceFeatures().data?.evidenceLibraries ?? browsedBefore;
+  // The directory of authors comes with Evidence Libraries, which the plan of the workspace the page is in has or hasn't.
+  const browses = useWorkspaceFeatures().data?.authors ?? browsedBefore;
   const publications = useSWR(references ? ["author-publications", profileId, JSON.stringify(references)] : null, () => readAuthorPublications(profileId), {refreshInterval: data => data?.unavailableCount ? 15000 : 0});
   const save = useAction(api.authors.photos.save);
   const [search, setSearch] = useState("");

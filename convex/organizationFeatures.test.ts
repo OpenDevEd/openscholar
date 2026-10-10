@@ -12,7 +12,8 @@ import { MEMBERSHIP_REVOKE_BATCH } from "./webhooks/projections";
 import { organizationWorkspaceOf } from "./workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
-const off = { evidenceLibraries: false };
+const off = { evidenceLibraries: false, authors: false };
+const on = { evidenceLibraries: true, authors: true };
 
 /** Sets what the plan of an organization's workspace grants, as when it changes plan. */
 async function planGrants(ctx: MutationCtx, organizationId: Id<"organizations">, features: string[]) {
@@ -33,7 +34,7 @@ describe("what a workspace opens", () => {
     // The session's active organization claim changes nothing: the workspace asked about decides.
     for (const identity of [{ subject: "member" }, { subject: "member", o: { id: "unrelated", rol: "org:member" } }]) {
       const member = t.withIdentity(identity);
-      expect(await member.query(api.organizationFeatures.opens, { workspaceId: withThem })).toEqual({ evidenceLibraries: true });
+      expect(await member.query(api.organizationFeatures.opens, { workspaceId: withThem })).toEqual(on);
       // Being in an organization that has them opens nothing in another, nor in the person's own workspace.
       expect(await member.query(api.organizationFeatures.opens, { workspaceId: without })).toEqual(off);
       expect(await member.query(api.organizationFeatures.opens, {})).toEqual(off);
@@ -54,11 +55,11 @@ describe("what a workspace opens", () => {
     });
     const member = t.withIdentity({ subject: "member" });
     const opens = () => member.query(api.organizationFeatures.opens, { workspaceId });
-    expect(await opens()).toEqual({ evidenceLibraries: true });
+    expect(await opens()).toEqual(on);
     await t.run((ctx) => planGrants(ctx, id, []));
     expect(await opens()).toEqual(off);
     await t.run((ctx) => planGrants(ctx, id, [EVIDENCE_LIBRARIES_FEATURE]));
-    expect(await opens()).toEqual({ evidenceLibraries: true });
+    expect(await opens()).toEqual(on);
     // Deleted, or left: it isn't theirs to ask about.
     await t.run((ctx) => ctx.db.patch("organizations", id, { state: "deleted" }));
     await expect(opens()).rejects.toThrow();

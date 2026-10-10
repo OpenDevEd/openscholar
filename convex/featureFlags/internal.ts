@@ -45,7 +45,7 @@ export const upsert = internalMutation({
 
 /**
  * Inserts every flag in the registry that doesn't exist yet, with its
- * default. Idempotent.
+ * default, and brings an existing one's plan feature in line. Idempotent.
  */
 export const seed = internalMutation({
   args: {},
@@ -65,6 +65,9 @@ export const seed = internalMutation({
           description: flag.description,
           updatedAt: Date.now(),
         });
+        // The registry says which plan feature a flag needs: a row seeded before one was dropped (extraction's, 2026-10-10) loses it here.
+      } else if (existing.planFeature !== flag.planFeature) {
+        await ctx.db.patch("featureFlags", existing._id, { planFeature: flag.planFeature, updatedAt: Date.now() });
       }
     }
     return null;

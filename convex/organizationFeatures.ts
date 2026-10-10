@@ -81,12 +81,18 @@ export async function requireLibraryOrganization(
   return { ...entry, clerkUserId: entry.membership.clerkUserId };
 }
 
-/** What the workspace the page is in opens for the person. */
+/**
+ * What the workspace the page is in opens for the person: Evidence Libraries (see
+ * `opensEvidenceLibraries`), and the managing of author profiles, which takes the plan itself.
+ */
 export const opens = workspaceQuery({
   args: {},
-  returns: v.object({ evidenceLibraries: v.boolean() }),
-  signedOut: { evidenceLibraries: false },
-  handler: async (ctx, actor) => ({ evidenceLibraries: await opensEvidenceLibraries(ctx, actor) }),
+  returns: v.object({ evidenceLibraries: v.boolean(), authors: v.boolean() }),
+  signedOut: { evidenceLibraries: false, authors: false },
+  handler: async (ctx, actor) => {
+    const authors = await hasPlanFeature(ctx, actor.workspaceId, EVIDENCE_LIBRARIES_FEATURE);
+    return { authors, evidenceLibraries: authors || (await opensEvidenceLibraries(ctx, actor)) };
+  },
 });
 
 /**

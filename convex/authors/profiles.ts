@@ -1,4 +1,4 @@
-import { openedBefore, opensEvidenceLibraries } from "../organizationFeatures";
+import { openedBefore } from "../organizationFeatures";
 import { hasPlanFeature } from "../billing/accounts";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 import { searchTerms } from "../lib/searchText";
@@ -46,8 +46,9 @@ export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, wo
 const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union(v.string(), v.null())};
 
 /**
- * Refuses unless `workspaceId` may take a new author profile, or one moved into it: its plan
- * includes Evidence Libraries, which profiles are managed with. A plan is its workspace's alone.
+ * Refuses unless `workspaceId` manages author profiles: takes a new one, or one moved into it,
+ * and reads the directory. Its plan includes Evidence Libraries, which profiles are managed with;
+ * a library shared with the person isn't that. A plan is its workspace's alone.
  */
 export async function requireAuthorProfiles(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
   if (!(await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE))) throw createError("FORBIDDEN", "This workspace's plan doesn't include Evidence Libraries, which author profiles come with.");
@@ -90,12 +91,12 @@ async function directoryOf(ctx: QueryCtx, args: {search: string; paginationOpts:
   return {...rows, page: await Promise.all(rows.page.map(async profile => ({...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null})))};
 }
 
-/** The directory of profiles, for someone the workspace they're in opens Evidence Libraries for. A profile's own page is public (`get`). */
+/** The directory of profiles, in a workspace whose plan includes Evidence Libraries, as making one needs. A profile's own page is public (`get`). */
 export const directory = workspaceQuery({
   args: directoryArgs,
   returns: directoryPage,
-  handler: async (ctx, actor, args) => {
-    if (!(await opensEvidenceLibraries(ctx, actor))) throw createError("FORBIDDEN", "This workspace doesn't have Evidence Libraries, which the directory of authors comes with.");
+  handler: async (ctx, {workspaceId}, args) => {
+    await requireAuthorProfiles(ctx, workspaceId);
     return directoryOf(ctx, args);
   },
 });
