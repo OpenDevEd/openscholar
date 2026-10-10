@@ -4269,9 +4269,8 @@
     "creditsLeft": "残り {credits} クレジット",
     "drawsOn": "使用するワークスペース",
     "ratings": {
-      "collection": "コレクション",
       "average": "{organization}の平均評価: 5 段階中 {average}",
-      "yours": "このコレクションでのあなたの評価",
+      "headingIn": "{organization}での評価",
       "everyone": "このコレクションでの全員の評価",
       "heading": "このコレクションでの評価",
       "none": "評価なし",

@@ -37,9 +37,10 @@ import type { ViewMode } from "@/lib/types";
 import {
   TranslationContext,
   ScreeningContext,
+  CollectionRatingContext,
   ServerRatingsContext,
 } from "@/components/results-contexts";
-import { CollectionRatings, MembersAverage } from "@/components/workspaces/collection-ratings";
+import { CollectionRatings, MembersAverage, useRateInCollection } from "@/components/workspaces/collection-ratings";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
@@ -312,6 +313,26 @@ export function LibraryPageClient() {
 
   const guest = selectedCollection?.guest;
   const workspace = useCurrentWorkspace();
+  // In an open collection whose members rate in it, the cards' rating control is the person's rating there (#655).
+  // A guest gives none in it, so theirs stays their own rating of the paper.
+  const rateInCollection = useRateInCollection(params.col ? (params.col as Id<"collections">) : undefined);
+  const collectionName = selectedCollection?.name;
+  const ratesInCollection = !selectedCollection?.guest && collectionRatings.size > 0 && collectionName !== undefined;
+  const collectionScope = useMemo(
+    () =>
+      ratesInCollection
+        ? {
+            name: collectionName,
+            ratings: new Map([...collectionRatings].map(([paperId, rated]) => [paperId, rated.ratings.mine ?? null] as const)),
+            rate: (paperId: string, rating: number | null) => {
+              const rated = collectionRatings.get(paperId);
+              if (rated) rateInCollection(rated.libraryItemId, rating, rated.ratings.mine ?? null);
+            },
+          }
+        : undefined,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `rateInCollection` is a new function each render over the same mutation.
+    [ratesInCollection, collectionName, collectionRatings],
+  );
 
   // The heading as last settled: an opened collection's name once it's read, so a switch keeps the last one meanwhile and a cold visit shows none.
   const settledHeading = params.col ? (selectedCollection === undefined ? undefined : (selectedCollection?.name ?? t("title"))) : t("title");
@@ -442,6 +463,7 @@ export function LibraryPageClient() {
     <TranslationContext.Provider value={{}}>
       <ScreeningContext.Provider value={{}}>
         <ServerRatingsContext.Provider value={serverRatingsMap}>
+        <CollectionRatingContext.Provider value={collectionScope}>
         <FocusMode
           isOpen={isFocusModeOpen}
           onClose={() => useUIStore.getState().setIsFocusModeOpen(false)}
@@ -578,12 +600,12 @@ export function LibraryPageClient() {
                             }
                             viewMode={effectiveViewMode}
                             extra={(() => {
-                              // Who rated in a collection is for anyone who reads it; rating in it is its members', so a guest's is read only.
+                              // Who rated in a collection is for anyone who reads it. Rating in it is its members', through the card's own rating control.
                               const rated = params.col ? collectionRatings.get(paper.id) : undefined;
-                              if (rated) return <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} compact={effectiveViewMode === "list-simple"} readOnly={!!guest} />;
+                              if (rated) return <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} />;
                               // Outside a collection, an organization's library shows its members' average of their own ratings, beside yours.
                               const average = !params.col && workspace?.kind === "organization" ? averages.get(paper.id) : undefined;
-                              return average === undefined ? undefined : <MembersAverage workspace={workspace!} average={average} />;
+                              return average === undefined ? undefined : <MembersAverage workspace={workspace!} average={average} mine={serverRatingsMap.get(paper.id) ?? null} />;
                             })()}
                           />
                         );
@@ -650,6 +672,7 @@ export function LibraryPageClient() {
         {/* Outside the layout, whose phone tabs show the sidebar or the results, never both: the sidebar opens them. A collection made here opens, as a new folder does. */}
         <NewCollectionDialog open={collectionDialog === "new"} onOpenChange={(open) => setCollectionDialog(open ? "new" : null)} onCreated={(id) => setParams({ col: id })} returnFocus={() => dialogOpener.current} />
         <ManageCollectionsDialog manage={manage} open={collectionDialog === "manage"} onOpenChange={(open) => setCollectionDialog(open ? "manage" : null)} onNew={() => setCollectionDialog("new")} returnFocus={() => dialogOpener.current} />
+        </CollectionRatingContext.Provider>
         </ServerRatingsContext.Provider>
       </ScreeningContext.Provider>
     </TranslationContext.Provider>

@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useCallback } from 'react';
-import { Star } from "@/components/icons";
+import React, { useCallback, useContext } from 'react';
+import { Folder, Star } from "@/components/icons";
 
 function NoRatingDisplay() {
   return (
@@ -34,7 +34,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useRatingsStore } from "@/lib/store";
-import { useEffectiveRating } from "@/components/results-contexts";
+import { CollectionRatingContext, useEffectiveRating } from "@/components/results-contexts";
 import posthog from "posthog-js";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
@@ -76,13 +76,17 @@ interface RatingSelectorProps {
 export function RatingSelector({ paper, variant = "default" }: RatingSelectorProps) {
   const t = useTranslations('rating');
   const paperId = paper.id;
-  const currentRating = useEffectiveRating(paperId);
+  // In an open collection whose members rate in it, this is the person's rating there, and it's set there.
+  const collection = useContext(CollectionRatingContext);
+  const ownRating = useEffectiveRating(paperId);
+  const currentRating = collection ? (collection.ratings.get(paperId) ?? undefined) : ownRating;
   const rate = useRatePaper();
 
   const handleRatingChange = (rating: string) => {
     const previousRating = currentRating;
     const newRating = rating === "no-rating" ? null : parseInt(rating);
-    rate(paper, newRating);
+    if (collection) collection.rate(paperId, newRating);
+    else rate(paper, newRating);
 
     // PostHog tracking
     posthog.capture("paper_rated", {
@@ -96,7 +100,7 @@ export function RatingSelector({ paper, variant = "default" }: RatingSelectorPro
   
   // Compact variant for mobile focus mode
   if (variant === "compact") {
-    return (
+    const select = (
       <Select
         value={currentRating?.toString() || "no-rating"}
         onValueChange={handleRatingChange}
@@ -114,6 +118,17 @@ export function RatingSelector({ paper, variant = "default" }: RatingSelectorPro
           <SelectItem value="5" aria-label={t('nStars', { count: 5 })}><RatingStarsDisplay count={5} /></SelectItem>
         </SelectContent>
       </Select>
+    );
+    if (!collection) return select;
+    return (
+      <span className="relative inline-flex">
+        {/* Whose rating this is: the collection's name, on the control's top edge. It takes no room in the row. */}
+        <span className="pointer-events-none absolute -top-2.5 left-1.5 z-10 inline-flex h-4 max-w-40 items-center gap-1 rounded-full bg-muted px-1.5 text-2xs font-medium text-muted-foreground">
+          <Folder className="size-2.5 shrink-0" />
+          <span className="min-w-0 truncate">{collection.name}</span>
+        </span>
+        {select}
+      </span>
     );
   }
 

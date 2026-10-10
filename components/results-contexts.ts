@@ -43,6 +43,19 @@ export const TranslationContext = createContext<TranslationContextValue>({});
 export const ServerRatingsContext = createContext<Map<string, number | null> | undefined>(undefined);
 
 /**
+ * An open collection whose members rate its papers in it (#655): while it's provided, the cards'
+ * rating control shows and sets the person's rating in that collection, under a chip with its name,
+ * in place of their own rating of the paper. One way to rate at a time.
+ */
+export interface CollectionRatingScope {
+  name: string;
+  /** The person's rating of each paper in the collection; null for one they haven't rated there. */
+  ratings: Map<string, number | null>;
+  rate: (paperId: string, rating: number | null) => void;
+}
+export const CollectionRatingContext = createContext<CollectionRatingScope | undefined>(undefined);
+
+/**
  * Resolves the effective rating for a paper.
  * DB (via ServerRatingsContext) wins when available; Zustand cache is the fallback.
  */

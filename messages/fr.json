@@ -4269,9 +4269,8 @@
     "creditsLeft": "{credits} crédits restants",
     "drawsOn": "Utilise",
     "ratings": {
-      "collection": "Collection",
       "average": "Note moyenne de {organization} : {average} sur 5",
-      "yours": "Votre note dans cette collection",
+      "headingIn": "Notes dans {organization}",
       "everyone": "Les notes de chacun dans cette collection",
       "heading": "Notes dans cette collection",
       "none": "Aucune note",

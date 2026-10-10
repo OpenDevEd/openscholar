@@ -4269,9 +4269,8 @@
     "creditsLeft": "{credits} credits left",
     "drawsOn": "Draws on",
     "ratings": {
-      "collection": "Collection",
       "average": "{organization}'s average rating: {average} of 5",
-      "yours": "Your rating in this collection",
+      "headingIn": "Ratings in {organization}",
       "everyone": "Everyone's ratings in this collection",
       "heading": "Ratings in this collection",
       "none": "No ratings",
