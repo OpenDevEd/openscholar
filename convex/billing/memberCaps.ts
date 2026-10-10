@@ -16,6 +16,9 @@ import { usageKindValidator } from "./validators";
 /** The highest cap an admin sets on one member, in credits a month. */
 export const MAX_MEMBER_CAP = 1_000_000;
 
+/** A member's open holds one read sums: a job holds a paper at a time for each slot, and a workspace has 40 slots at most. */
+const OPEN_HOLDS_READ = 200;
+
 /** Credits the organization was charged for the member's work since `month`; it can be a moment behind the newest charge. */
 export async function spentSince(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">, month: number) {
   return await usageAgg.sum(ctx, { namespace: memberSpace(workspaceId, userId), bounds: { lower: { key: month, id: "", inclusive: true } }, stale: true });
@@ -41,14 +44,17 @@ export async function capOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId
 
 /**
  * Credits the person can spend in the workspace now, for a hold sized to them: its cached balance,
- * or what's left of their cap this month when that's less. Undefined before the account is first
- * read. Autumn enforces both.
+ * or what's left of their cap this month when that's less. Their cap counts what they hold as well
+ * as what they spent: a job of theirs running beside a reply holds its papers' credits. Undefined
+ * before the account is first read. Autumn enforces both.
  */
 export async function spendable(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) {
   const balance = (await readAccount(ctx, workspaceId))?.balance;
   const cap = await capOf(ctx, workspaceId, userId);
   if (cap === undefined) return balance;
-  const left = Math.max(0, cap - (await spentSince(ctx, workspaceId, userId, monthStart(Date.now()))));
+  const holds = await ctx.db.query("billingHolds").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).take(OPEN_HOLDS_READ);
+  const held = holds.reduce((sum, hold) => sum + hold.credits, 0);
+  const left = Math.max(0, cap - held - (await spentSince(ctx, workspaceId, userId, monthStart(Date.now()))));
   return Math.min(balance ?? left, left);
 }
 

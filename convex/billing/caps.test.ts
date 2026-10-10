@@ -63,6 +63,8 @@ it("caps a member on their seat in Autumn, makes their holds and charges as that
   expect([await spendable("ada"), await spendable("ben")]).toEqual([await balance(), 1_000]);
 
   expect(await t.mutation(internal.billing.charge.hold, { userId: users.ben, workspaceId, chargeId: "hold:ben", credits: 100, expiresAt: Date.now() + 60_000 })).toEqual({ customerId: workspaceId, entityId: "user_ben" });
+  // What he holds counts against his cap, as what he spent does.
+  expect(await spendable("ben")).toBe(900);
 
   // A charge past the cap is made as the seat, so Autumn stops it at the cap.
   await t.action(internal.billing.charge.retrySettle, { userId: users.ben, workspaceId, chargeId: "charge:ben", credits: 1_500, usage, attempt: 0 });
