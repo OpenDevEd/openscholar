@@ -2316,6 +2316,14 @@
 						}
 					]
 				},
+				"approval": {
+					"default": false,
+					"type": "boolean"
+				},
+				"attribution": {
+					"default": false,
+					"type": "boolean"
+				},
 				"schedule": {
 					"default": {
 						"frequency": "weekly",
