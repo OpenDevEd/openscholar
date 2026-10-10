@@ -117,6 +117,8 @@ export function ActivitySheet({ open, onOpenChange, kind, id, name }: { open: bo
 function ActivityRows({ rows: { results, status, loadMore } }: { rows: UsePaginatedQueryReturnType<typeof api.activity.queries.list> }) {
   const t = useTranslations("workspaces.activity");
   const now = useNow();
+  // The sheet opens with its rows. Opened before they were read, they fade in when they come.
+  const [late] = useState(status === "LoadingFirstPage");
   // Calendar days, from this morning's midnight: 23:00 last night is yesterday at 01:00.
   const midnight = new Date(now).setHours(0, 0, 0, 0);
   const dayOf = (at: number) => (at >= midnight ? "today" : at >= midnight - DAY ? "yesterday" : at >= midnight - 6 * DAY ? "thisWeek" : "earlier");
@@ -130,7 +132,7 @@ function ActivityRows({ rows: { results, status, loadMore } }: { rows: UsePagina
   if (status === "LoadingFirstPage") return <div className="flex-1" aria-busy />;
   return (
     <>
-      <ScrollArea shades className="min-h-0 flex-1">
+      <ScrollArea shades className={cn("min-h-0 flex-1", late && "animate-in fade-in-0 duration-200")}>
         {results.length ? (
           <div className="space-y-5 px-3 py-4">
             {groups.map((group) => (

@@ -12,6 +12,7 @@ import { IconButton } from "@/components/assistant/parts";
 import { ArrowRight, Info, X } from "@/components/icons";
 import { Chip } from "@/components/screening/parts";
 import { Zone } from "@/components/settings/parts";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, focusContent } from "@/components/ui/dialog";
 import { showStyledToast } from "@/components/ui/sonner";
@@ -109,32 +110,39 @@ function Move({ close, kind, id, name, from: itemWorkspace, onMoved }: { close: 
         </div>
         <IconButton label={tc("close")} icon={<X className="size-4" />} onClick={close} />
       </div>
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
-        {held ? (
-          <p className="flex items-start gap-2.5 rounded-2xl bg-warning/10 p-3 text-sm ink-warning">
-            <Info className="mt-0.5 size-4 shrink-0" />
-            {held}
-          </p>
-        ) : null}
-        <Zone label={t("fromTo", { workspace: from?.name ?? "" })}>
-          <WorkspacePicker
-            value={to}
-            onChange={setTo}
-            disabled={Boolean(held) || busy}
-            except={workspaceId}
-            detail={(workspace) => (workspace.kind === "personal" ? t("onlyYou") : t("membersSee", { count: workspace.members ?? 0 }))}
-          />
-        </Zone>
-        <Zone label={t("goesWithIt")}>
-          <div className="flex flex-wrap gap-1.5">
-            {GOES[kind].map((what) => (
-              <Chip key={what} className="text-foreground">
-                {t(`goes.${what}`)}
-              </Chip>
-            ))}
-          </div>
-          {kind === "collection" ? <p className="px-1 text-xs text-muted-foreground">{from?.kind === "organization" ? t("libraryKeeps", { workspace: from.name }) : t("yourLibraryKeeps")}</p> : null}
-        </Zone>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {/* Known before the dialog opens wherever it's mounted while shut. Where it isn't, the warning slides in. */}
+        <AutoHeight>
+          {held ? (
+            <div className="pb-6">
+              <p className="flex items-start gap-2.5 rounded-2xl bg-warning/10 p-3 text-sm ink-warning">
+                <Info className="mt-0.5 size-4 shrink-0" />
+                {held}
+              </p>
+            </div>
+          ) : null}
+        </AutoHeight>
+        <div className="space-y-6">
+          <Zone label={t("fromTo", { workspace: from?.name ?? "" })}>
+            <WorkspacePicker
+              value={to}
+              onChange={setTo}
+              disabled={Boolean(held) || busy}
+              except={workspaceId}
+              detail={(workspace) => (workspace.kind === "personal" ? t("onlyYou") : t("membersSee", { count: workspace.members ?? 0 }))}
+            />
+          </Zone>
+          <Zone label={t("goesWithIt")}>
+            <div className="flex flex-wrap gap-1.5">
+              {GOES[kind].map((what) => (
+                <Chip key={what} className="text-foreground">
+                  {t(`goes.${what}`)}
+                </Chip>
+              ))}
+            </div>
+            {kind === "collection" ? <p className="px-1 text-xs text-muted-foreground">{from?.kind === "organization" ? t("libraryKeeps", { workspace: from.name }) : t("yourLibraryKeeps")}</p> : null}
+          </Zone>
+        </div>
       </div>
       <div className="flex items-center justify-end gap-2 border-t border-border/50 px-4 py-3">
         <Button variant="ghost" onClick={close}>
