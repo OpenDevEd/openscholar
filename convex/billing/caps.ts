@@ -12,7 +12,7 @@ import { personName } from "../lib/people";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { TEAM_PLAN } from "../../lib/billing/plans";
 import { readAccount } from "./accounts";
-import { capOf, capRow, MAX_MEMBER_CAP, spentThisMonth } from "./memberCaps";
+import { capOf, capRow, MAX_MEMBER_CAP, spentThisMonth, workspaceSpentThisMonth } from "./memberCaps";
 
 const SET_CAP = "billing/caps:setCap" as const;
 
@@ -67,12 +67,13 @@ export const allowanceAction = defineUserQuery({
   path: "billing/caps:allowance",
   description:
     "Says what the person spent of the organization's credits this month, and their cap if an admin set one on the Team plan; with no cap they draw on its credits freely. " +
-    "In their own workspace it's what they spent of their own credits.",
+    "`total` is what everyone spent this month for an admin, and the person's own for anyone else. In their own workspace it's what they spent of their own credits.",
   args: {},
-  returns: v.object({ spent: v.number(), cap: v.optional(v.number()) }),
-  run: async (ctx, { userId, workspaceId }) => {
+  returns: v.object({ spent: v.number(), cap: v.optional(v.number()), total: v.number() }),
+  run: async (ctx, { userId, workspaceId, role }) => {
     const cap = await capOf(ctx, workspaceId, userId);
-    return { spent: await spentThisMonth(ctx, workspaceId, userId), ...(cap === undefined ? {} : { cap }) };
+    const spent = await spentThisMonth(ctx, workspaceId, userId);
+    return { spent, ...(cap === undefined ? {} : { cap }), total: role === "admin" ? await workspaceSpentThisMonth(ctx, workspaceId) : spent };
   },
 });
 export const allowance = userQuery(allowanceAction);

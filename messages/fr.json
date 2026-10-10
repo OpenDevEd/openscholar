@@ -4181,7 +4181,15 @@
       "membersDraw": "{count, plural, one {# membre y puise} other {# membres y puisent}}",
       "refillOn": "{amount} le {date}",
       "upToMembers": "Jusqu'à {count, number} membres",
-      "included": "Inclus"
+      "included": "Inclus",
+      "spendingThisMonth": "Dépenses ce mois-ci",
+      "yourSpendingThisMonth": "Vos dépenses ce mois-ci",
+      "creditsCount": "{count, plural, one {# crédit} other {# crédits}}",
+      "spentOfCap": "{spent} sur {cap}",
+      "cap": "Plafond",
+      "capNone": "Aucun",
+      "noCap": "Sans plafond",
+      "capAMonth": "{amount} par mois"
     },
     "couldntInvite": "L'organisation a été créée, mais les invitations ne sont pas parties. Envoyez-les depuis ses paramètres Membres.",
     "fromCredits": "Sur les crédits de {name}",

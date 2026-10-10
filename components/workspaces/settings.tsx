@@ -40,6 +40,8 @@ import { cn } from "@/lib/utils";
 import { ORGANIZATION_COLOURS } from "@/lib/workspaces/colours";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { FREE_MEMBERS, MemberFaces, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
+import { MemberSpending, useMemberSpending } from "./spending";
+import { TEAM_PLAN } from "@/lib/billing/plans";
 
 /** Rows a page of members holds. */
 const PER_PAGE = 10;
@@ -469,9 +471,10 @@ export function WorkspaceMembers() {
 export function WorkspaceBilling() {
   const t = useTranslations("workspaces.settings");
   const format = useFormatter();
-  const { workspaceId, organization } = useOrganization();
+  const { workspaceId, organization, admin } = useOrganization();
   const { account, catalog } = useSharedSubscriptionState();
-  if (!organization || !account || !catalog) return <Enter ready={false}>{null}</Enter>;
+  const spending = useMemberSpending(workspaceId);
+  if (!organization || !account || !catalog || !spending.ready) return <Enter ready={false}>{null}</Enter>;
 
   const planId = account.plan ?? organization.plan ?? "";
   const plan = findPlan(catalog, planId);
@@ -531,6 +534,8 @@ export function WorkspaceBilling() {
             </div>
           </div>
         </section>
+
+        <MemberSpending spending={spending} admin={admin} team={account.plan === TEAM_PLAN} members={memberCount} />
 
         <Zone label={t("included")}>
           <div className="flex flex-wrap gap-1.5">

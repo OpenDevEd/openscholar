@@ -4181,7 +4181,15 @@
       "membersDraw": "{count, number} 人のメンバーが使用",
       "refillOn": "{date}に {amount}",
       "upToMembers": "最大 {count, number} 人",
-      "included": "含まれるもの"
+      "included": "含まれるもの",
+      "spendingThisMonth": "今月の利用額",
+      "yourSpendingThisMonth": "今月のあなたの利用額",
+      "creditsCount": "{count, plural, other {# クレジット}}",
+      "spentOfCap": "{spent} / {cap}",
+      "cap": "上限",
+      "capNone": "なし",
+      "noCap": "上限なし",
+      "capAMonth": "月 {amount}"
     },
     "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。",
     "fromCredits": "{name} のクレジットから",

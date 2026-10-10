@@ -8,7 +8,8 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { TEAM_PLAN } from "../../lib/billing/plans";
 import { readAccount } from "./accounts";
-import { memberSpace, usageAgg } from "./usageLog";
+import { memberSpace, spendSpace, usageAgg } from "./usageLog";
+import { usageKindValidator } from "./validators";
 
 /** The highest cap an admin sets on one member, in credits a month. */
 export const MAX_MEMBER_CAP = 1_000_000;
@@ -25,6 +26,14 @@ export const monthStart = (now: number) => {
 /** Credits the organization was charged for the member's work this month; it can be a moment behind the newest charge. */
 export async function spentThisMonth(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">, now = Date.now()) {
   return await usageAgg.sum(ctx, { namespace: memberSpace(workspaceId, userId), bounds: { lower: { key: monthStart(now), id: "", inclusive: true } }, stale: true });
+}
+
+/** Credits the workspace was charged this month, for everyone's work. Refunds aren't counted, as on the spending chart. */
+export async function workspaceSpentThisMonth(ctx: QueryCtx, workspaceId: Id<"workspaces">, now = Date.now()) {
+  const kinds = usageKindValidator.members.map((member) => member.value).filter((kind) => kind !== "refund");
+  const lower = { key: monthStart(now), id: "", inclusive: true };
+  const sums = await usageAgg.sumBatch(ctx, kinds.map((kind) => ({ namespace: spendSpace(workspaceId, kind), bounds: { lower } })), { stale: true });
+  return sums.reduce((sum, credits) => sum + credits, 0);
 }
 
 export const capRow = (ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) =>
