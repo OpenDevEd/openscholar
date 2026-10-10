@@ -296,8 +296,8 @@ function NewOrganization({ close }: { close: () => void }) {
   const [busy, setBusy] = useState(false);
   const seats = 1 + emails.length;
   const full = seats >= FREE_MEMBERS;
-  // Each address in what's typed or pasted becomes its own while there's room; what isn't one, or doesn't fit, stays in the box to be seen.
-  const take = (text: string) => {
+  // Each address in what's typed or pasted becomes its own while there's room; what isn't one, or doesn't fit, is left over.
+  const split = (text: string) => {
     const next = [...emails];
     const left: string[] = [];
     for (const part of text.split(/[\s,;]+/).filter(Boolean)) {
@@ -305,10 +305,17 @@ function NewOrganization({ close }: { close: () => void }) {
       if (EMAIL.test(part) && 1 + next.length < FREE_MEMBERS) next.push(part);
       else left.push(part);
     }
+    return { next, left };
+  };
+  // What's left over stays in the box to be seen.
+  const take = (text: string) => {
+    const { next, left } = split(text);
     if (next.length !== emails.length) setEmails(next);
     setDraft(left.join(" "));
   };
   const done = async () => {
+    // An address still typed in the box is invited too.
+    const invited = split(draft).next;
     setBusy(true);
     let made: { workspaceId: Id<"workspaces">; slug: string };
     try {
@@ -319,7 +326,7 @@ function NewOrganization({ close }: { close: () => void }) {
       return;
     }
     // It's made: trying again would make another. Invitations that fail are sent again from its Members settings.
-    if (emails.length) await inviteThere({ workspaceId: made.workspaceId, emails, role: "member" }).catch((error) => showStyledToast("error", getErrorMessage(error, t("couldntInvite"))));
+    if (invited.length) await inviteThere({ workspaceId: made.workspaceId, emails: invited, role: "member" }).catch((error) => showStyledToast("error", getErrorMessage(error, t("couldntInvite"))));
     close();
     router.push(workspaceHref(made.slug, "/library"));
   };
@@ -377,7 +384,8 @@ function NewOrganization({ close }: { close: () => void }) {
           </div>
         </div>
       </div>
-      <div className="flex justify-end gap-2 pt-1">
+      {/* Pressing a button here leaves the focus where it was: an address still typed would become a chip as its box lost the focus, and the taller field would move the button out from under the press. */}
+      <div className="flex justify-end gap-2 pt-1" onMouseDown={(e) => e.preventDefault()}>
         <Button variant="ghost" onClick={close} disabled={busy}>
           {tc("cancel")}
         </Button>
