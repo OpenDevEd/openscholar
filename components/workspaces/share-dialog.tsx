@@ -14,7 +14,7 @@ import { IconButton } from "@/components/assistant/parts";
 import { Share2, X } from "@/components/icons";
 import { SharePanel } from "@/components/shared/share-panel";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle, focusContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger, focusContent } from "@/components/ui/dialog";
 import { EmailAvatar } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { showStyledToast } from "@/components/ui/sonner";
@@ -59,18 +59,19 @@ export function ShareButton({ guests, ...item }: Item & { guests: number }) {
   const [open, setOpen] = useState(false);
   const access = useGuests(item, open || guests > 0);
   return (
-    <>
-      <Button variant="outline" size="sm" className="h-8 shrink-0" aria-label={t(`shareThis.${item.kind}`)} onClick={() => setOpen(true)}>
-        <Share2 />
-        {t("share")}
-        {guests ? <span className="ml-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{guests}</span> : null}
-      </Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent showCloseButton={false} onOpenAutoFocus={focusContent} className="top-[max(1rem,12dvh)] flex max-h-[min(40rem,calc(88dvh-1rem))] max-w-lg translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0">
-          <Share close={() => setOpen(false)} access={access} {...item} />
-        </DialogContent>
-      </Dialog>
-    </>
+    <Dialog open={open} onOpenChange={setOpen}>
+      {/* The dialog's own trigger, so closing it gives the keyboard back to the button. */}
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="h-8 shrink-0" aria-label={t(`shareThis.${item.kind}`)}>
+          <Share2 />
+          {t("share")}
+          {guests ? <span className="ml-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{guests}</span> : null}
+        </Button>
+      </DialogTrigger>
+      <DialogContent showCloseButton={false} onOpenAutoFocus={focusContent} className="top-[max(1rem,12dvh)] flex max-h-[min(40rem,calc(88dvh-1rem))] max-w-lg translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0">
+        <Share close={() => setOpen(false)} access={access} {...item} />
+      </DialogContent>
+    </Dialog>
   );
 }
 
