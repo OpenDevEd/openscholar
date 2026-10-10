@@ -335,7 +335,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "Not allowed",
-    "organizationFeatureDescription": "None of your organisations has this feature enabled.",
+    "organizationFeatureDescription": "None of your organisations' plans includes this feature.",
     "backToSearch": "Back to search",
     "loadingTitle": "Loading workspace",
     "loadingDescription": "Preparing your authenticated workspace.",

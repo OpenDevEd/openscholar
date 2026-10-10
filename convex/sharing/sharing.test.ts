@@ -41,7 +41,7 @@ async function lab(guests?: number) {
     const users: Record<string, Id<"users">> = {};
     for (const clerkId of ["alice", "bob", "carol", "dave"]) users[clerkId] = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, firstName: clerkId[0].toUpperCase() + clerkId.slice(1), state: "active", createdAt: 1, updatedAt: 1 });
     const organization = async (slug: string, members: string[]) => {
-      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: `org_${slug}`, name: slug, slug, evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: `org_${slug}`, name: slug, slug, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
       for (const clerkUserId of members) await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${slug}_${clerkUserId}`, clerkUserId, role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
       return ensureWorkspace(ctx, { kind: "organization", organizationId });
     };

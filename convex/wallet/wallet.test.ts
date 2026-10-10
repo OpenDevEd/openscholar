@@ -516,7 +516,7 @@ describe("a connected app's workspace (#651)", () => {
     const { lab, elsewhere } = await t.run(async (ctx) => {
       await ensureWorkspace(ctx, { kind: "personal", userId });
       const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
-      const organization = (name: string) => ctx.db.insert("organizations", { clerkOrganizationId: `org_${name}`, name, slug: name, evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, state: "active", ...stamp });
+      const organization = (name: string) => ctx.db.insert("organizations", { clerkOrganizationId: `org_${name}`, name, slug: name, state: "active", ...stamp });
       const [lab, other] = [await organization("lab"), await organization("other")];
       await ctx.db.insert("organizationMemberships", { organizationId: lab, clerkMembershipId: "orgmem_ada", clerkUserId: "ada", role: "org:member", state: "active", ...stamp });
       return { lab: await ensureWorkspace(ctx, { kind: "organization", organizationId: lab }), elsewhere: await ensureWorkspace(ctx, { kind: "organization", organizationId: other }) };

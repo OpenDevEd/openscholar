@@ -32,10 +32,6 @@ export type ClerkOrganizationSnapshot = {
   name: string;
   slug: string;
   imageUrl?: string;
-  /** Whether the platform team switched Evidence Libraries on for this organisation. */
-  evidenceLibrariesEnabled: boolean;
-  authorsEnabled: boolean;
-  extractionEnabled: boolean;
   devEnabled?: boolean;
   clerkCreatedAt: number;
   clerkUpdatedAt: number;
@@ -121,9 +117,6 @@ function mapOrganizationSnapshot(value: unknown): ClerkOrganizationSnapshot | nu
       organization.has_image === true && typeof organization.image_url === "string"
         ? organization.image_url
         : undefined,
-    evidenceLibrariesEnabled: features?.evidenceLibraries === true,
-    authorsEnabled: features?.authors === true,
-    extractionEnabled: features?.extraction === true,
     devEnabled: features?.dev === true,
     clerkCreatedAt: organization.created_at,
     clerkUpdatedAt: organization.updated_at,

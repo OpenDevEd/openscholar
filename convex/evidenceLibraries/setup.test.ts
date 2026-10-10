@@ -8,6 +8,8 @@ import {
   createActivatedSetupFixture,
   reserveLibraryAddressByName,
 } from "../../tests/helpers/evidence-library-setup-fixture";
+import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -29,8 +31,8 @@ async function seedOrganization(
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
-      evidenceLibrariesEnabled: true,
     });
+    await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
     await seedFeatureUser(ctx, args.clerkUserId);
     await ctx.db.insert("organizationMemberships", {
       organizationId,

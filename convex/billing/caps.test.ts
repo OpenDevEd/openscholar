@@ -25,7 +25,7 @@ const usage = { kind: "search" as const, description: "A search" };
 async function lab(people: string[] = ["ada", "ben"]) {
   const t = convexTest(schema);
   const ids = await t.run(async (ctx) => {
-    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
     const workspaceId = (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id;
     const users: Record<string, Id<"users">> = {};
     for (const who of people) users[who] = await ctx.db.insert("users", { clerkId: `user_${who}`, email: `${who}@lab.test`, firstName: who, state: "active", createdAt: 1, updatedAt: 1 });
@@ -35,7 +35,7 @@ async function lab(people: string[] = ["ada", "ben"]) {
   for (const [i, who] of people.entries()) {
     await t.mutation(internal.webhooks.projections.applyOrganizationMembershipEvent, {
       eventId: `evt_${who}`, eventType: "organizationMembership.created", instanceId: "ins_test", occurredAt: 2, payloadSha256: `sha_${who}`, action: "upsert",
-      membership: { clerkMembershipId: `mem_${who}`, clerkUserId: `user_${who}`, role: i === 0 ? "org:admin" : "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 2, organization: { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1 } },
+      membership: { clerkMembershipId: `mem_${who}`, clerkUserId: `user_${who}`, role: i === 0 ? "org:admin" : "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 2, organization: { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1 } },
     });
   }
   const { workspaceId } = ids;

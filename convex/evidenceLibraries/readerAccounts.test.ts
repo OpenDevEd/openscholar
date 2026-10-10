@@ -9,6 +9,8 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { seedTopicLibrary } from "../../tests/helpers/topic-library-fixture";
 import { READER_DELETION_MAX_ATTEMPTS } from "./readerDeletions";
 import { organizationWorkspaceOf } from "../workspaces/personal";
+import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const encryptionKey = "ab".repeat(32);
@@ -94,9 +96,10 @@ describe("deleting an OpenScholar account", () => {
     // A library that never went live has no readers and gets no call.
     await t.run(async (ctx) => {
       const organizationId = await ctx.db.insert("organizations", {
-        clerkOrganizationId: "org_draft", evidenceLibrariesEnabled: true, name: "Draft", slug: "draft",
+        clerkOrganizationId: "org_draft", name: "Draft", slug: "draft",
         state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1,
       });
+      await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
       await ctx.db.insert("evidenceLibraries", {
         workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Draft", slug: "draft", state: "active",
         createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1,

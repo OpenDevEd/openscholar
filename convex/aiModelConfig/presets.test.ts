@@ -62,7 +62,7 @@ describe("presets", () => {
     await admin.mutation(api.aiModelConfig.admin.setPresetPick, { preset: "fast", task: "chat", modelId: flash });
     const lab = await t.run(async (ctx) => {
       const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
-      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, state: "active", ...stamp });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", state: "active", ...stamp });
       for (const [clerkUserId, role] of [["clerk_user", "org:member"], ["clerk_admin", "org:admin"]] as const) await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role, state: "active", ...stamp });
       return await ensureWorkspace(ctx, { kind: "organization", organizationId });
     });

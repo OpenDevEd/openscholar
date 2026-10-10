@@ -120,7 +120,7 @@ async function people() {
 const invitationSnapshot = (row: any) => ({ clerkInvitationId: row.id, clerkOrganizationId: row.organization_id, email: row.email_address, role: row.role, state: row.status, ...(row.public_metadata?.inviterClerkUserId ? { inviterClerkUserId: row.public_metadata.inviterClerkUserId } : {}), clerkCreatedAt: row.created_at, clerkUpdatedAt: row.updated_at });
 const membershipSnapshot = (row: any) => ({
   clerkMembershipId: row.id, clerkUserId: row.public_user_data.user_id, role: row.role, state: "active", clerkCreatedAt: row.created_at, clerkUpdatedAt: row.updated_at,
-  organization: { clerkOrganizationId: row.organization.id, name: row.organization.name, slug: row.organization.slug, evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, devEnabled: false, clerkCreatedAt: row.organization.created_at, clerkUpdatedAt: row.organization.updated_at },
+  organization: { clerkOrganizationId: row.organization.id, name: row.organization.name, slug: row.organization.slug, devEnabled: false, clerkCreatedAt: row.organization.created_at, clerkUpdatedAt: row.organization.updated_at },
 });
 const page = { paginationOpts: { cursor: null, numItems: 20 } };
 

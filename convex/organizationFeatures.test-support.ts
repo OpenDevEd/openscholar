@@ -1,5 +1,7 @@
 import type { MutationCtx } from "./_generated/server";
 import type { OrganizationFeature } from "./organizationFeatures";
+import { grantPlanFeaturesForTest } from "./billing/billing.test-support";
+import { PLAN_FEATURES } from "../lib/billing/plans";
 
 export async function seedOrganizationFeatures(
   ctx: MutationCtx,
@@ -19,10 +21,10 @@ export async function seedOrganizationFeatures(
     name: "Feature test",
     state: "active",
     ...timestamps,
-    evidenceLibrariesEnabled: features.evidenceLibraries === true,
-    authorsEnabled: features.authors === true,
-    extractionEnabled: features.extraction === true,
   });
+  // What the organization's plan includes (#652).
+  const granted = (Object.keys(PLAN_FEATURES) as OrganizationFeature[]).filter((feature) => features[feature] === true);
+  if (granted.length) await grantPlanFeaturesForTest(ctx, organizationId, granted.map((feature) => PLAN_FEATURES[feature]));
   for (const clerkUserId of clerkUserIds)
     await ctx.db.insert("organizationMemberships", {
       organizationId,

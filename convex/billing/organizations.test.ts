@@ -13,7 +13,7 @@ it("puts each organization on its own customer and the free organization plan, o
   const t = convexTest(schema);
   // The harness makes an organization's workspace with it, as the Clerk webhook does.
   const lab = await t.run(async (ctx) => {
-    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+    const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
     return (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id;
   });
   expect(await t.action(internal.migrations.organizationCustomers.verify, {})).toBe(1);

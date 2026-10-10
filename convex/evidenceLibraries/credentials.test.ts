@@ -9,6 +9,8 @@ import {
   storeEvidenceLibraryCredential,
 } from "./credentials";
 import { organizationWorkspaceOf } from "../workspaces/personal";
+import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 
 describe("resolveCredentialPath", () => {
   it("derives generated write-only patterns and stable keys", () => {
@@ -48,8 +50,8 @@ describe("Evidence Library credential storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: true,
       });
+      await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
       await ctx.db.insert("organizationMemberships", {
         organizationId,
         clerkMembershipId: "orgmem_credential_action",
@@ -103,8 +105,8 @@ describe("Evidence Library credential storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: true,
       });
+      await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
       await ctx.db.insert("organizationMemberships", {
         organizationId,
         clerkMembershipId: "orgmem_credentials",

@@ -12,7 +12,7 @@ it("gives an organization's rated papers who rated them, and leaves a person's o
     const t = convexTest(schema);
     const { ada, bob } = await t.run(async (ctx) => {
       const [ada, bob] = await Promise.all(["ada", "bob"].map((clerkId) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 })));
-      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "org_lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1, state: "active" });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "org_lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1, state: "active" });
       for (const clerkUserId of ["ada", "bob"]) await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
       const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId });
       const saved = (where: { workspaceId: typeof lab; createdBy: typeof ada }, paper: string, rating?: number) =>

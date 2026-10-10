@@ -17,7 +17,7 @@ import { SERVER_MODEL_SLUG } from "../ai/config";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningPool } from "../workpool";
 import { people } from "./assistant.test-support";
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { detailsOf } from "./details";
 import { onlyReads } from "./tools";
 import { allowAlways, carriedOn, pausedAt } from "./spending";
@@ -32,6 +32,7 @@ import { ownActor } from "../workspaces/actor.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { accountOf } from "../billing/billing.test-support";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
@@ -154,11 +155,12 @@ async function chatOf(t: Test) {
   return { ...who, threadId, say, sayUntilAsked, settled, stop, thread, steps, results, shown };
 }
 
-/** Extraction switched on, with Ada in an organization that has it. */
+/** Extraction switched on, with Ada in an organization whose plan has it, and on her own plan. */
 const extractionOn = (t: ReturnType<typeof convexTest>) =>
   t.run(async (ctx) => {
     for (const key of ["extraction.enabled", "extraction.start"]) await ctx.db.insert("featureFlags", { key, enabled: true, updatedAt: 1 });
     await seedOrganizationFeatures(ctx, ["ada"], { extraction: true });
+    await ctx.db.patch("billingAccounts", (await accountOf(ctx, await seedFeatureUser(ctx, "ada")))!._id, { features: [PLAN_FEATURES.extraction] });
   });
 
 describe("the assistant's tools", () => {

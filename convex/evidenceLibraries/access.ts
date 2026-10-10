@@ -2,6 +2,8 @@ import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_INVITATIONS_PER_EMAIL } from
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
+import { hasPlanFeature } from "../billing/accounts";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 
 export type OrganizationAction = "read" | "manage";
 export type EvidenceLibraryAdminRole = "owner" | "editor" | "creator";
@@ -135,8 +137,8 @@ export async function readEvidenceLibraryAccess(
   if (!role || (action === "manage" && role !== "owner")) return null;
   const owner = await libraryOwner(ctx, library);
   if (!owner) return null;
-  // Managing takes the feature, which only an organization's switch turns on until plans do (#652).
-  if (action === "manage" && owner.organization?.evidenceLibrariesEnabled !== true) return null;
+  // Managing takes the feature, which the plan of the workspace that owns the library grants (#652).
+  if (action === "manage" && !(await hasPlanFeature(ctx, owner.workspace._id, PLAN_FEATURES.evidenceLibraries))) return null;
   return { clerkUserId: identity.subject, owner, organization: owner.organization, role, library };
 }
 

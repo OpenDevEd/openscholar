@@ -3,6 +3,9 @@ import { convexTest } from "convex-test";
 import { describe, expect, test, vi } from "vitest";
 import schema from "./schema";
 import { api, internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
+import { PLAN_FEATURES } from "../lib/billing/plans";
 import { seedFeatureUser, seedOrganizationFeatures } from "./organizationFeatures.test-support";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { MEMBERSHIP_REVOKE_BATCH } from "./webhooks/projections";
@@ -10,6 +13,13 @@ import { organizationWorkspaceOf } from "./workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const denied = { authors: false, extraction: false, evidenceLibraries: false };
+
+/** Sets what the plan of an organization's workspace grants, as when it changes plan. */
+async function planGrants(ctx: MutationCtx, organizationId: Id<"organizations">, features: string[]) {
+  const workspaceId = await organizationWorkspaceOf(ctx, organizationId);
+  const account = await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
+  await ctx.db.patch("billingAccounts", account!._id, { features });
+}
 
 describe("organization feature access", () => {
   test("unions every active membership without using active organization claims", async () => {
@@ -55,9 +65,7 @@ describe("organization feature access", () => {
       });
     });
     const user = t.withIdentity({ subject: "member" });
-    await t.run((ctx) =>
-      ctx.db.patch("organizations", id, { authorsEnabled: false }),
-    );
+    await t.run((ctx) => planGrants(ctx, id, [PLAN_FEATURES.evidenceLibraries, PLAN_FEATURES.extraction]));
     expect(await user.query(api.organizationFeatures.get, {})).toEqual({
       authors: false,
       extraction: true,
@@ -176,9 +184,7 @@ test("the creation picker and authorization use the same eligible organizations"
     await expect(
       owner.run((ctx) => requireLibraryOrganization(ctx, id!)),
     ).rejects.toThrow(/FORBIDDEN/);
-  await t.run((ctx) =>
-    ctx.db.patch("organizations", second!, { evidenceLibrariesEnabled: false }),
-  );
+  await t.run((ctx) => planGrants(ctx, second!, []));
   expect(
     ((await owner.query(api.organizationFeatures.listLibraryOrganizations, {})).page).map(
       (org) => org.id,
@@ -206,8 +212,8 @@ test("a sweep of a deleted organization's memberships stops once the organizatio
   const organization = await t.run(async (ctx) =>
     (await ctx.db.get("organizations", await seedOrganizationFeatures(ctx, Array.from({ length: MEMBERSHIP_REVOKE_BATCH + 1 }, (_, i) => `member_${i}`), { authors: true })))!);
   const event = { instanceId: "ins_test", payloadSha256: "a".repeat(64), entityId: organization.clerkOrganizationId };
-  const { _id, clerkOrganizationId, name, slug, evidenceLibrariesEnabled, clerkCreatedAt, clerkUpdatedAt } = organization;
-  const snapshot = { clerkOrganizationId, name, slug, evidenceLibrariesEnabled, authorsEnabled: true, extractionEnabled: false, clerkCreatedAt, clerkUpdatedAt: clerkUpdatedAt + 1 };
+  const { _id, clerkOrganizationId, name, slug, clerkCreatedAt, clerkUpdatedAt } = organization;
+  const snapshot = { clerkOrganizationId, name, slug, clerkCreatedAt, clerkUpdatedAt: clerkUpdatedAt + 1 };
   vi.useFakeTimers();
   await t.mutation(internal.webhooks.projections.applyOrganizationEvent, { ...event, eventId: "msg_gone", eventType: "organization.deleted", occurredAt: 100, action: "delete" });
   // A newer organization event arrives before the second batch runs.

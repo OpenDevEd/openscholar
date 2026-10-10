@@ -7,6 +7,7 @@ import { getCurrentUser } from "./lib/auth";
 import { createError } from "./lib/errors";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { hasDirectLibraryAccess } from "./evidenceLibraries/access";
+import { PLAN_FEATURES } from "../lib/billing/plans";
 
 export const organizationFeatureFields = {
   evidenceLibraries: v.boolean(),
@@ -45,9 +46,9 @@ export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, perso
 }
 
 /** Whether the plan of an organization's workspace grants `feature`. */
-async function planGrants(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">, feature: string) {
+async function planGrants(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">, feature: OrganizationFeature) {
   const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
-  return workspace !== null && (await hasPlanFeature(ctx, workspace._id, feature));
+  return workspace !== null && (await hasPlanFeature(ctx, workspace._id, PLAN_FEATURES[feature]));
 }
 
 export async function readOrganizationFeatures(
@@ -59,11 +60,9 @@ export async function readOrganizationFeatures(
     authors: false,
     extraction: false,
   };
+  // A person has a feature when the plan of one of their organizations grants it (#652).
   for (const { organization } of await readMemberOrganizations(ctx, person)) {
-    access.evidenceLibraries ||= organization.evidenceLibrariesEnabled === true;
-    access.authors ||= organization.authorsEnabled === true;
-    // Its plan grants extraction on Team (#652); the switch set by hand stays until the organizations that have it move to plans.
-    access.extraction ||= organization.extractionEnabled === true || (await planGrants(ctx, organization._id, "extraction"));
+    for (const feature of Object.keys(access) as OrganizationFeature[]) access[feature] ||= await planGrants(ctx, organization._id, feature);
   }
   if (!access.evidenceLibraries) {
     const user = person ?? (await getCurrentUser(ctx));
@@ -72,12 +71,11 @@ export async function readOrganizationFeatures(
   return access;
 }
 
+/** The organizations the person may create a library in: those they're an admin of whose plan includes Evidence Libraries. */
 export async function readLibraryOrganizations(ctx: QueryCtx | MutationCtx) {
-  return (await readMemberOrganizations(ctx)).filter(
-    ({ membership, organization }) =>
-      membership.role === "org:admin" &&
-      organization.evidenceLibrariesEnabled === true,
-  );
+  const admin = (await readMemberOrganizations(ctx)).filter(({ membership }) => membership.role === "org:admin");
+  const granted = await Promise.all(admin.map(({ organization }) => planGrants(ctx, organization._id, "evidenceLibraries")));
+  return admin.filter((_, i) => granted[i]);
 }
 
 export async function requireLibraryOrganization(
@@ -92,15 +90,9 @@ export async function requireLibraryOrganization(
   if (!entry)
     throw createError(
       "FORBIDDEN",
-      "Choose an organization you own with Evidence Libraries enabled.",
+      "Choose an organization you're an admin of whose plan includes Evidence Libraries.",
     );
   return { ...entry, clerkUserId: entry.membership.clerkUserId };
-}
-
-/** Whether one of the person's organizations has extraction switched on by hand, whatever its plan: `userId`'s when the assistant acts for them, else the signed-in person's. */
-export async function hasSwitch(ctx: QueryCtx | MutationCtx, feature: "extraction", userId?: Id<"users">) {
-  const person = userId ? await ctx.db.get("users", userId) : null;
-  return (await readMemberOrganizations(ctx, person)).some(({ organization }) => organization[`${feature}Enabled`] === true);
 }
 
 /** Refuses unless one of the person's organizations has the feature: `userId`'s when the assistant acts for them, else the signed-in person's. */
@@ -115,7 +107,7 @@ export async function requireOrganizationFeature(
   if (!(await readOrganizationFeatures(ctx, person))[feature]) {
     throw createError(
       "FORBIDDEN",
-      "None of your organizations has this feature enabled.",
+      "None of your organizations' plans includes this feature.",
     );
   }
 }

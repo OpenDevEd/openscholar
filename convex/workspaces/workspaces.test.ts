@@ -15,9 +15,6 @@ const organization = (clerkOrganizationId: string, clerkUpdatedAt: number) => ({
   clerkOrganizationId,
   name: "Learning Lab",
   slug: clerkOrganizationId,
-  evidenceLibrariesEnabled: false,
-  authorsEnabled: false,
-  extractionEnabled: false,
   clerkCreatedAt: 1,
   clerkUpdatedAt,
 });

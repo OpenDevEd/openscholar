@@ -318,6 +318,7 @@ import type * as migrations_memberSpending from "../migrations/memberSpending.js
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
 import type * as migrations_organizationCustomers from "../migrations/organizationCustomers.js";
 import type * as migrations_organizationLogos from "../migrations/organizationLogos.js";
+import type * as migrations_organizationSwitches from "../migrations/organizationSwitches.js";
 import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLists.js";
 import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
@@ -748,6 +749,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
   "migrations/organizationCustomers": typeof migrations_organizationCustomers;
   "migrations/organizationLogos": typeof migrations_organizationLogos;
+  "migrations/organizationSwitches": typeof migrations_organizationSwitches;
   "migrations/pagedAccountLists": typeof migrations_pagedAccountLists;
   "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;

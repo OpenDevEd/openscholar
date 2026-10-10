@@ -5,12 +5,13 @@ import schema from "../schema";
 
 import { requireEvidenceLibraryAccess } from "./access";
 import { organizationWorkspaceOf } from "../workspaces/personal";
+import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 
 describe("library access", () => {
   async function seedMembership(
     role: "org:admin" | "org:member",
     state: "active" | "revoked" = "active",
-    evidenceLibrariesEnabled = true,
   ) {
     const t = convexTest(schema);
     await t.run(async (ctx) => {
@@ -19,7 +20,6 @@ describe("library access", () => {
         name: "Evidence Team",
         slug: "evidence-team",
         state: "active",
-        evidenceLibrariesEnabled,
         clerkCreatedAt: 1,
         clerkUpdatedAt: 1,
         createdAt: 1,
@@ -52,8 +52,8 @@ describe("library access", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: true,
       });
+      await grantPlanFeaturesForTest(ctx, otherOrganizationId, [PLAN_FEATURES.evidenceLibraries]);
       const crossTenantLibraryId = await ctx.db.insert("evidenceLibraries", {
         workspaceId: await organizationWorkspaceOf(ctx, otherOrganizationId),
         name: "Other Library",

@@ -1,4 +1,5 @@
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -123,6 +124,7 @@ async function seedUserFlagsAndCredits(
       userId,
       paid: STARTING_CREDITS,
       now,
+      features: [PLAN_FEATURES.extraction],
     });
     return { userId };
   });

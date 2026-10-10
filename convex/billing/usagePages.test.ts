@@ -61,7 +61,7 @@ describe("charge pages", () => {
   it("lists and totals what each workspace paid: an organization's charges stay off its member's own page", async () => {
     const { t, userId, me } = await setup();
     const lab = await t.run(async (ctx) => {
-      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: "orgmem_pages", clerkUserId: "clerk_pages", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
       const lab = (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id;
       await insertUsage(ctx, { userId, workspaceId: await personalWorkspaceOf(ctx, userId), chargeId: "own", credits: 3, kind: "search", description: "own", createdAt: 1000 });
