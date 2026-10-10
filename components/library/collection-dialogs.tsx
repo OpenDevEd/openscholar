@@ -343,15 +343,18 @@ function ManageCollections({ manage, close, onNew }: { manage: Manage; close: ()
     };
     useDeleting.setState((s) => ({ ids: [...s.ids, id] }));
     // The server holds the deletion while Undo is open, so leaving the page doesn't cancel it.
-    deleteSoon({ collectionId: id }).catch((error) => {
+    const held = deleteSoon({ collectionId: id });
+    held.catch((error) => {
       failed(error);
       show();
     });
-    toast(t("collectionDeleted"), {
+    const notice = toast(t("collectionDeleted"), {
       description: name,
       duration: COLLECTION_UNDO_MS,
-      action: { label: t("undoDelete"), onClick: () => void keepCollection({ collectionId: id }).then(show, failed) },
+      action: { label: t("undoDelete"), onClick: () => void held.then((deletingAt) => keepCollection({ collectionId: id, deletingAt })).then(show, failed) },
     });
+    // A toast stays open while it's pointed at, and the server's wait doesn't: Undo goes when its time is up.
+    setTimeout(() => toast.dismiss(notice), COLLECTION_UNDO_MS);
   };
 
   return (

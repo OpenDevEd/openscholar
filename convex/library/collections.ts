@@ -266,26 +266,27 @@ async function deletableBy(ctx: MutationCtx, actor: Actor, collectionId: Id<"col
  * The Library page's delete, which its Undo takes back with `keepCollection`: the collection is
  * deleted once the Undo has had its time, and a moment more for a click at its end to arrive. The
  * wait is held here and not in the page, so leaving or reloading the page doesn't cancel the deletion.
+ * Returns the deletion's mark, which its Undo gives back.
  */
 export const deleteSoon = workspaceMutation({
   args: heldArgs,
-  returns: v.null(),
+  returns: v.number(),
   handler: async (ctx, actor, { collectionId }) => {
     await deletableBy(ctx, actor, collectionId);
     const deletingAt = Date.now();
     await ctx.db.patch("collections", collectionId, { deletingAt });
     await ctx.scheduler.runAfter(COLLECTION_UNDO_MS + 1_000, internal.library.collections.deleteDue, { collectionId, deletingAt });
-    return null;
+    return deletingAt;
   },
 });
 
-/** Undo of `deleteSoon`: the collection stays. */
+/** Undo of the `deleteSoon` that made `deletingAt`: the collection stays, unless someone deleted it again since, and then theirs stands. */
 export const keepCollection = workspaceMutation({
-  args: heldArgs,
+  args: { ...heldArgs, deletingAt: v.number() },
   returns: v.null(),
-  handler: async (ctx, actor, { collectionId }) => {
-    await deletableBy(ctx, actor, collectionId);
-    await ctx.db.patch("collections", collectionId, { deletingAt: undefined });
+  handler: async (ctx, actor, { collectionId, deletingAt }) => {
+    const collection = await deletableBy(ctx, actor, collectionId);
+    if (collection.deletingAt === deletingAt) await ctx.db.patch("collections", collectionId, { deletingAt: undefined });
     return null;
   },
 });

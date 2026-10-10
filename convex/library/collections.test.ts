@@ -275,8 +275,10 @@ describe("deleteCollection", () => {
       const kept = await seedCollection(t, user!._id, "Kept");
 
       await asUser.mutation(api.library.collections.deleteSoon, { workspaceId, collectionId: gone!._id });
-      await asUser.mutation(api.library.collections.deleteSoon, { workspaceId, collectionId: kept!._id });
-      await asUser.mutation(api.library.collections.keepCollection, { workspaceId, collectionId: kept!._id });
+      const deletingAt = await asUser.mutation(api.library.collections.deleteSoon, { workspaceId, collectionId: kept!._id });
+      await asUser.mutation(api.library.collections.keepCollection, { workspaceId, collectionId: kept!._id, deletingAt });
+      // An Undo of an earlier deletion than the one standing leaves that one be.
+      await asUser.mutation(api.library.collections.keepCollection, { workspaceId, collectionId: gone!._id, deletingAt: 1 });
       // Held, not gone: Undo is still open.
       expect(await t.run((ctx) => ctx.db.get("collections", gone!._id))).not.toBeNull();
 
