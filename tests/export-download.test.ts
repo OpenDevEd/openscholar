@@ -172,7 +172,8 @@ describe("exporting a search by meaning", () => {
 describe("exporting a search for the works nearest given papers", () => {
   const like: DownloadSearchState = { query: "", field: "title_and_abstract", searchId: "search_3", similarTo: ["OS64233829", "OS14687712"] };
 
-  it("records the papers, in every kind of download, and asks for them in its parameters", async () => {
+  // A CSV file holds the papers alone, as for any search, so only a JSON file keeps what each download is given.
+  it("gives every kind of download the papers in its metadata, and builds its parameters with them", async () => {
     await downloadAll("json", mockToast, false, like, mockResults);
     await downloadItem(mockItem, "json", mockToast, like);
     await downloadEssentialItem(mockItem, "csv", mockToast, like);
