@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 // The UI rules agents kept breaking, checked on every .ts, .tsx and .css file
-// under app/ and components/ and on the copy in messages/. Each problem names the
-// fix. A line that needs an exception says why on the line before it:
+// under app/ and components/, on the .tsx files under lib/ and hooks/, and on
+// the copy in messages/ and content/. Each problem names the fix. A line that needs an exception says why on the line before it:
 //
 //   // ui-rules-allow: <rule> -- <reason>
 //
@@ -17,6 +17,9 @@
 // reported where it is written; a constant from the same file is read where
 // className uses it; and each stylesheet rule is checked the same way. new-el
 // runs the same rules (tools/uiRules.ts); keep them in step.
+//
+// raw-primitive and coolify are OpenScholar's own: new-el has no shared
+// components/ui layer and never names its host.
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -242,6 +245,13 @@ function translates(callee) {
   if (!ts.isIdentifier(callee)) return translationFactory(callee);
   return TRANSLATE.test(callee.text) || translationFactory(declaredValue(callee));
 }
+// The libraries components/ui wraps. Importing one anywhere else rebuilds a
+// dialog, popover or picker the app already has.
+const PRIMITIVE = /^(radix-ui|@radix-ui\/.+|vaul|cmdk)$/;
+const COOLIFY = /coolify/i;
+// Attributes whose words people read or hear.
+const SPOKEN = new Set(["placeholder", "aria-label", "aria-description", "title", "alt", "label", "description"]);
+
 const SR_ONLY = /(?:^|[\s"'`])sr-only(?=$|[\s"'`])/;
 const allowed = (line, rule) => new RegExp(`ui-rules-allow:\\s*${rule}\\s+--\\s*\\S`).test(line ?? "");
 
@@ -252,6 +262,8 @@ const FIX = {
   "dot-separator": "no dot separators; use spacing, a divider or an icon.",
   initials: "AvatarFallback shows an icon when there is no photo, never initials or text (see IdentityAvatar and AuthorAvatar).",
   "loading-text": "no \"Loading\" text; show the shared Spinner, or hold the final size until the data is there.",
+  "raw-primitive": "raw primitive import; use the shared part in components/ui (Dialog, Popover, Command), or add what is missing there.",
+  coolify: "\"Coolify\" is our hosting tool, not something people see; say what is happening instead.",
 };
 
 /** Every string in a messages file, with the key that holds it. */
@@ -279,6 +291,7 @@ function check(file) {
   const lines = text.split("\n");
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true, file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
   const found = [];
+  const shared = file.startsWith(path.join("components", "ui") + path.sep);
   // The class lists each constant adds, read once.
   const constantLists = new Map();
   // What a logical operator can give: `a && b` gives b or nothing, `a || b` and `a ?? b` give one side.
@@ -449,16 +462,26 @@ function check(file) {
     if (ts.isBinaryExpression(node) && [ts.SyntaxKind.BarBarToken, ts.SyntaxKind.QuestionQuestionToken].includes(node.operatorToken.kind)) return rendersText(node.left) || rendersText(node.right);
     return !(node.kind === ts.SyntaxKind.NullKeyword || node.kind === ts.SyntaxKind.FalseKeyword || (ts.isIdentifier(node) && node.text === "undefined"));
   };
+  // The words an attribute holds when they are written out: `label="…"` or `label={"…"}`.
+  const written = (initializer) => {
+    const value = initializer && ts.isJsxExpression(initializer) ? initializer.expression : initializer;
+    return value && (ts.isStringLiteral(value) || ts.isNoSubstitutionTemplateLiteral(value)) ? value.text : "";
+  };
   const visit = (node) => {
     if (classValue(node) && !insideClassList(node) && clashesAlone(node)) report(node, "animation-clash");
+    if (ts.isImportDeclaration(node) && !shared && PRIMITIVE.test(node.moduleSpecifier.text)) report(node, "raw-primitive");
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateHead(node) || ts.isTemplateMiddle(node) || ts.isTemplateTail(node)) {
       if (UPPERCASE_CSS.test(node.text) || (UPPERCASE_CLASS.test(node.text) && classContext(node))) report(node, "uppercase");
       if (DOT.test(node.text)) report(node, "dot-separator");
       const whole = ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node);
       if (((whole && LOADING.test(node.text.trim()) && shown(node)) || translatedLoading(node)) && !screenReaderOnly(node)) report(node, "loading-text");
+      if (whole && COOLIFY.test(node.text) && shown(node)) report(node, "coolify");
     }
+    // The written parts of an interpolated string, never the names it interpolates.
+    if (ts.isTemplateExpression(node) && [node.head, ...node.templateSpans.map((span) => span.literal)].some((part) => COOLIFY.test(part.text)) && shown(node)) report(node, "coolify");
     if (ts.isJsxText(node)) {
       if (DOT.test(node.text)) report(node, "dot-separator");
+      if (COOLIFY.test(node.text)) report(node, "coolify");
       if (LOADING.test(node.text.trim()) && !screenReaderOnly(node)) report(node, "loading-text");
     }
     if (ts.isJsxElement(node) && node.openingElement.tagName.getText(source) === "AvatarFallback") {
@@ -479,6 +502,7 @@ function check(file) {
         const switchedOff = attribute.initializer && ts.isJsxExpression(attribute.initializer) && attribute.initializer.expression?.kind === ts.SyntaxKind.FalseKeyword;
         if (FRAMER_PROPS.has(name) && MOTION_TAG.test(tag) && !switchedOff) framer = true;
         if (name === "title") title = attribute;
+        if (SPOKEN.has(name) && COOLIFY.test(written(attribute.initializer))) report(attribute, "coolify");
         if (tag === "AvatarFallback" && name === "children" && attribute.initializer && rendersText(attribute.initializer)) report(attribute, "initials");
       }
       if (classes.some((list) => clashes(list, framer))) report(node, "animation-clash");
@@ -515,19 +539,27 @@ const stylesheetClashes = cssFiles.flatMap((file) => {
     .map((line) => `${file}:${line} animation-clash: ${FIX["animation-clash"]}`);
 });
 
+const COPY_RULES = [
+  ["dot-separator", DOT],
+  ["coolify", COOLIFY],
+];
 // Copy shown in the app lives in messages/. Values are read decoded, so an
 // escaped \u00b7 counts too; the line is the one that holds the key.
 const copy = files("messages", [".json"]).flatMap((file) => {
   const text = readFileSync(file, "utf8");
   const lines = text.split("\n");
-  return strings(JSON.parse(text), "")
-    .filter(([, value]) => DOT.test(value))
-    .map(([key]) => `${file}:${lines.findIndex((line) => line.includes(`"${key}"`)) + 1} dot-separator: ${FIX["dot-separator"]}`);
+  return strings(JSON.parse(text), "").flatMap(([key, value]) =>
+    COPY_RULES.filter(([, pattern]) => pattern.test(value)).map(([rule]) => `${file}:${lines.findIndex((line) => line.includes(`"${key}"`)) + 1} ${rule}: ${FIX[rule]}`),
+  );
 });
 
-const problems = [...files("components", [".ts", ".tsx"]), ...files("app", [".ts", ".tsx"])].flatMap(check).concat(broad, stylesheets, stylesheetClashes, copy);
+// The legal pages are Markdown rendered as written.
+const legal = scanLines(files("content", [".md"]), COOLIFY, "coolify", FIX.coolify);
+
+const scanned = [...files("components", [".ts", ".tsx"]), ...files("app", [".ts", ".tsx"]), ...files("lib", [".tsx"]), ...files("hooks", [".tsx"])];
+const problems = scanned.flatMap(check).concat(broad, stylesheets, stylesheetClashes, copy, legal);
 if (problems.length) {
   console.error(problems.join("\n"));
   process.exit(1);
 }
-console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials or Loading text.");
+console.log("UI rules hold: no animation clashes, uppercase labels, native title tooltips, dot separators, initials, Loading text, raw primitives or host names.");
