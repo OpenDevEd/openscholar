@@ -25,6 +25,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { COLLECTION_UNDO_MS } from "@/lib/library/limits";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
@@ -251,10 +252,7 @@ function CollectionMeter({ count, limit, plan }: { count: number; limit: number 
   );
 }
 
-/** How long a deleted collection can be put back. */
-const UNDO_MS = 5000;
-
-/** Collections deleted with their Undo still open: hidden at once, deleted when its time is up. Kept outside the dialog, so closing it doesn't drop a delete. */
+/** Collections deleted here, hidden at once: the server deletes one when its Undo's time is up. Kept outside the dialog, so closing it doesn't show one again. */
 const useDeleting = create<{ ids: string[] }>(() => ({ ids: [] }));
 
 const MANAGE_PAGE = 8;
@@ -311,7 +309,8 @@ function ManageCollections({ manage, close, onNew }: { manage: Manage; close: ()
   const workspaceId = useWorkspace();
   const workspace = useCurrentWorkspace();
   const renameCollection = useWorkspaceMutation(api.library.collections.renameCollection);
-  const deleteCollection = useWorkspaceMutation(api.library.collections.deleteCollection);
+  const deleteSoon = useWorkspaceMutation(api.library.collections.deleteSoon);
+  const keepCollection = useWorkspaceMutation(api.library.collections.keepCollection);
   const { query, setQuery, search, total, list } = manage;
   const deleting = useDeleting((s) => s.ids);
   const shown = list.items.filter((c) => !deleting.includes(c._id));
@@ -337,27 +336,21 @@ function ManageCollections({ manage, close, onNew }: { manage: Manage; close: ()
     setEditing(null);
   };
   const remove = (id: Id<"collections">, name: string) => {
-    const keep = () => useDeleting.setState((s) => ({ ids: s.ids.filter((x) => x !== id) }));
+    const show = () => useDeleting.setState((s) => ({ ids: s.ids.filter((x) => x !== id) }));
+    const failed = (error: unknown) => {
+      console.error("[Library] Failed to delete collection:", error);
+      toast.error(t("deleteCollectionError"));
+    };
     useDeleting.setState((s) => ({ ids: [...s.ids, id] }));
-    const timer = setTimeout(() => {
-      // A mutation resolves once the lists show it, so the row isn't shown again in between.
-      deleteCollection({ collectionId: id })
-        .catch((error) => {
-          console.error("[Library] Failed to delete collection:", error);
-          toast.error(t("deleteCollectionError"));
-        })
-        .finally(keep);
-    }, UNDO_MS);
+    // The server holds the deletion while Undo is open, so leaving the page doesn't cancel it.
+    deleteSoon({ collectionId: id }).catch((error) => {
+      failed(error);
+      show();
+    });
     toast(t("collectionDeleted"), {
       description: name,
-      duration: UNDO_MS,
-      action: {
-        label: t("undoDelete"),
-        onClick: () => {
-          clearTimeout(timer);
-          keep();
-        },
-      },
+      duration: COLLECTION_UNDO_MS,
+      action: { label: t("undoDelete"), onClick: () => void keepCollection({ collectionId: id }).then(show, failed) },
     });
   };
 

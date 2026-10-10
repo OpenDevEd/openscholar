@@ -1327,6 +1327,8 @@ export default defineSchema({
     itemCount: v.number(),
     // Goes up on every item added or removed; libraries following the collection compare it.
     membershipRevision: v.optional(v.number()),
+    // Set while the Library's Undo holds its deletion (./library/collections.ts `deleteSoon`): it's deleted when that time is up, unless Undo clears this.
+    deletingAt: v.optional(v.number()),
   })
     .index("by_workspace_sortName", ["workspaceId", "sortName"])
     // One person's collections (#656): counted, and listed by name.

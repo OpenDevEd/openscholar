@@ -1,7 +1,8 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import type { Id } from "../_generated/dataModel";
 import { collectionCountRow } from "./counter";
-import { requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
+import { requireMakerOrAdmin, type Actor, type InWorkspace } from "../workspaces/actor";
+import { COLLECTION_UNDO_MS } from "../../lib/library/limits";
 import { makersIn, makerValidator } from "../workspaces/makers";
 import { searchTerms } from "../lib/searchText";
 import type { QueryCtx } from "../_generated/server";
@@ -10,7 +11,7 @@ import { internalMutation, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
-import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
+import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery, workspaceMutation } from "../lib/userActions";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
 import { asRaters, collectionRatingRow, collectionRatingsOf, organizationOfCollection, placeOf, purgeCollectionRatings, raterValidator, ratingOrNone, requireRating, setCollectionRating as setRating, shownRater } from "../ratings";
 import { followed } from "./followed";
@@ -235,18 +236,70 @@ export const deleteCollectionAction = defineUserMutation({
     if (args.expect && (collection.name !== args.expect.name || collection.itemCount !== 0)) {
       throw createError("CONFLICT", "This collection has been renamed or holds papers now, so it was left as it is.");
     }
-    // Its papers' places in it go with it: this batch now, the rest in the batches it schedules.
-    if (await deleteMembershipBatch(ctx, args.collectionId)) {
-      await ctx.scheduler.runAfter(0, internal.library.collections.deleteMemberships, { collectionId: args.collectionId });
-    }
-    await ctx.db.delete("collections", args.collectionId);
-    const counted = await collectionCountRow(ctx, actor.workspaceId);
-    if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: Math.max(0, counted.count - 1) });
+    await removeCollection(ctx, actor.workspaceId, args.collectionId);
     return null;
   },
 });
 export const deleteCollection = userMutation(deleteCollectionAction);
 export const deleteCollectionForAssistant = assistantMutation(deleteCollectionAction);
+
+/** Deletes a collection: its papers' places in it go with it, this batch now and the rest in the batches it schedules. */
+async function removeCollection(ctx: MutationCtx, workspaceId: Id<"workspaces">, collectionId: Id<"collections">) {
+  if (await deleteMembershipBatch(ctx, collectionId)) {
+    await ctx.scheduler.runAfter(0, internal.library.collections.deleteMemberships, { collectionId });
+  }
+  await ctx.db.delete("collections", collectionId);
+  const counted = await collectionCountRow(ctx, workspaceId);
+  if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: Math.max(0, counted.count - 1) });
+}
+
+const heldArgs = { collectionId: v.id("collections") };
+
+/** One of the workspace's collections that the person may delete: its maker, or an admin. */
+async function deletableBy(ctx: MutationCtx, actor: Actor, collectionId: Id<"collections">) {
+  const collection = await ownCollection(ctx, actor.workspaceId, collectionId);
+  requireMakerOrAdmin(actor, collection.createdBy);
+  return collection;
+}
+
+/**
+ * The Library page's delete, which its Undo takes back with `keepCollection`: the collection is
+ * deleted once the Undo has had its time, and a moment more for a click at its end to arrive. The
+ * wait is held here and not in the page, so leaving or reloading the page doesn't cancel the deletion.
+ */
+export const deleteSoon = workspaceMutation({
+  args: heldArgs,
+  returns: v.null(),
+  handler: async (ctx, actor, { collectionId }) => {
+    await deletableBy(ctx, actor, collectionId);
+    const deletingAt = Date.now();
+    await ctx.db.patch("collections", collectionId, { deletingAt });
+    await ctx.scheduler.runAfter(COLLECTION_UNDO_MS + 1_000, internal.library.collections.deleteDue, { collectionId, deletingAt });
+    return null;
+  },
+});
+
+/** Undo of `deleteSoon`: the collection stays. */
+export const keepCollection = workspaceMutation({
+  args: heldArgs,
+  returns: v.null(),
+  handler: async (ctx, actor, { collectionId }) => {
+    await deletableBy(ctx, actor, collectionId);
+    await ctx.db.patch("collections", collectionId, { deletingAt: undefined });
+    return null;
+  },
+});
+
+/** Deletes a collection whose Undo ran out, unless it was kept, or deleted again since: then that deletion's own time says. */
+export const deleteDue = internalMutation({
+  args: { collectionId: v.id("collections"), deletingAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { collectionId, deletingAt }) => {
+    const collection = await ctx.db.get("collections", collectionId);
+    if (collection?.deletingAt === deletingAt) await removeCollection(ctx, collection.workspaceId, collectionId);
+    return null;
+  },
+});
 
 // ═══════════════════════════════════════════════════════════════
 // COLLECTION ASSIGNMENT (Plan 02)
