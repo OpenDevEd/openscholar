@@ -3,7 +3,7 @@
  * request the provider runs, so the OpenScholar API is asked for them as similar_to.
  */
 import React from "react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, onTestFinished, vi } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 
@@ -39,7 +39,9 @@ import { SearchProvider, useSearch, type SearchParams } from "@/lib/search";
 import { useUpdateSearchFilter } from "@/lib/hooks";
 import { createSimilarSearch } from "@/lib/search/actions";
 import { DEFAULT_SEARCH_PARAMS } from "@/lib/search-params/parsers";
-import { useSearchHistoryStore } from "@/lib/store";
+import { localKeywordExpansionStore, localRatingsStore, localSearchHistoryStore, useSearchHistoryStore } from "@/lib/store";
+import { ResearchContext } from "@/lib/research/binding";
+import type { SearchResult } from "@/lib/types";
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <NuqsTestingAdapter searchParams="?like=OS64233829,OS14687712">
@@ -113,6 +115,35 @@ describe("the results page's search for the works nearest given papers", () => {
     act(() => result.current({ currentSearchField: "oql" }));
     expect(onParamsChange).toHaveBeenCalledWith(expect.objectContaining({ field: "oql", like: [] }));
     expect(useSearchHistoryStore.getState().getSearchResult(id)).toMatchObject({ field: "oql", similarTo: [] });
+  });
+
+  it("drops papers a saved search gains beside a question by meaning when the scope changes later", async () => {
+    const now = new Date().toISOString();
+    const saved = {
+      id: "similar-search", query: "tidal flats", field: "semantic", queryHistory: [], questionHistory: [], queryHistoryCount: 1,
+      questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: {}, count: 0, createdAt: now, updatedAt: now,
+    } as SearchResult;
+    const before = localSearchHistoryStore.getState().searchHistory;
+    localSearchHistoryStore.setState({ searchHistory: [saved] });
+    onTestFinished(() => {
+      localSearchHistoryStore.setState({ searchHistory: before });
+    });
+    // Signed in, the page shows the saved search rather than its address.
+    const account = { history: localSearchHistoryStore, shortcuts: localKeywordExpansionStore, ratings: localRatingsStore };
+    const signedIn = ({ children }: { children: React.ReactNode }) => (
+      <NuqsTestingAdapter hasMemory>
+        <ResearchContext.Provider value={account}><SearchProvider>{children}</SearchProvider></ResearchContext.Provider>
+      </NuqsTestingAdapter>
+    );
+    const { result } = renderHook(() => ({ search: useSearch(), updateFilter: useUpdateSearchFilter() }), { wrapper: signedIn });
+    expect(result.current.search.params).toMatchObject({ field: "semantic", like: [] });
+    // Edited elsewhere, as on another device: papers come into the saved search with no change of field.
+    act(() => localSearchHistoryStore.getState().updateSearchResult("similar-search", { similarTo: ["OS64233829"] }));
+    expect(result.current.search.params.like).toEqual([]);
+    act(() => result.current.updateFilter({ currentSearchField: "title" }));
+    await waitFor(() => expect(result.current.search.params.field).toBe("title"));
+    expect(result.current.search.params.like).toEqual([]);
+    expect(localSearchHistoryStore.getState().getSearchResult("similar-search")?.similarTo).toEqual([]);
   });
 
   it("keeps the papers when the search's words turn to another field, which only filter what they find", async () => {

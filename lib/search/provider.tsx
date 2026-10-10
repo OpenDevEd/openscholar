@@ -235,7 +235,8 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
         options,
       );
     },
-    [onLocalParamsChange, setRouteUrlParams, routeSearchParams.field, local, searchId, keepInEntry],
+    // The search shown whole, its field and the papers it is like alike: either can change alone.
+    [onLocalParamsChange, setRouteUrlParams, routeSearchParams, local, searchId, keepInEntry],
   );
 
   const currentParams = urlParams as SearchParams;
