@@ -204,6 +204,8 @@ export const assistantStepFields = {
   batch: v.optional(v.number()),
   /** On a call that asks first because what it does can reach other people (sharing a chat, deleting one) as well as because it can't be undone. */
   outside: v.optional(v.literal(true)),
+  /** On a call that asks first though its change can be undone: other people see it, as a change to a collection shared with the person or followed by a library is. */
+  undoable: v.optional(v.literal(true)),
   /** Which of its several jobs its action does (lib/assistant/actions.ts), where its arguments don't say it one by one: a bulk change. */
   variant: v.optional(v.string()),
   /** Its action only reads (./tools.ts `onlyReads`): one that failed and was run again with success is hidden from the chat (lib/assistant/step-cards.ts). */

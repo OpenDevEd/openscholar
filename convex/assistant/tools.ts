@@ -262,7 +262,9 @@ export function askedSteps(requests: Asked[], held: (path: string, input: unknow
     const shown = call && call.entry.kind !== "query" && call.entry.shown ? cut(JSON.stringify(call.entry.shown(call.input)), STEP_TEXT_MAX) : undefined;
     // Why it asks, for the person asked: what it does can reach other people too, besides that it can't be undone.
     const outside = call?.entry.kind !== "query" && call?.entry.outsideEffect === true;
-    return { toolCallId, tool, path: call?.entry.path ?? tool, input: cut(JSON.stringify(call?.input ?? input ?? {}), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(credits === undefined ? {} : { credits }), ...(shown ? { shown } : {}), ...(outside ? { outside: true as const } : {}) };
+    // Or it can be undone, and this call of it asks only because other people see the change (`asksFirst`).
+    const undoable = call?.entry.kind !== "query" && call?.entry.undoable === true && !outside;
+    return { toolCallId, tool, path: call?.entry.path ?? tool, input: cut(JSON.stringify(call?.input ?? input ?? {}), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(credits === undefined ? {} : { credits }), ...(shown ? { shown } : {}), ...(outside ? { outside: true as const } : {}), ...(undoable ? { undoable: true as const } : {}) };
   });
 }
 
