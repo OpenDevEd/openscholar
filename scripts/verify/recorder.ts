@@ -133,14 +133,10 @@ export function recorder(config: { allow: string }) {
 
   const tracked = (element: Element) => ids.has(element) && last.has(ids.get(element)!);
 
-  /**
-   * The nearest ancestor measured before this frame, whose movement a child may
-   * share. One first measured now, a wrapper that has just opened, has no
-   * movement of its own yet, so the child shares the next one's.
-   */
-  function trackedParent(frame: Frame, element: HTMLElement): Element | null {
+  /** The nearest measured ancestor, whose movement this frame a child may share. */
+  function trackedParent(element: HTMLElement): Element | null {
     let parent = element.parentElement;
-    while (parent && (!tracked(parent) || frame.fresh.has(parent))) parent = parent.parentElement;
+    while (parent && !tracked(parent)) parent = parent.parentElement;
     return parent;
   }
 
@@ -155,7 +151,9 @@ export function recorder(config: { allow: string }) {
    * the part of a card that grows upward, hasn't moved either.
    */
   function ownDelta(frame: Frame, element: HTMLElement, delta: number[]): number[] {
-    const parent = trackedParent(frame, element);
+    const parent = trackedParent(element);
+    // A parent measured for the first time this frame is a wrapper opening around the element: it has moved with that, not by itself.
+    if (parent && frame.fresh.has(parent)) return [0, 0, delta[2], delta[3]];
     const moved = parent && frame.deltas.get(ids.get(parent)!);
     return moved ? [least(delta[0], delta[0] - moved[0]), least(delta[1], delta[1] - moved[1]), delta[2], delta[3]] : delta;
   }

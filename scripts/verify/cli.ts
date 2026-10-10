@@ -11,7 +11,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, openSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { parseArgs, parseEnv } from "node:util";
-import type { Page } from "@playwright/test";
+import type { BrowserContext, Page } from "@playwright/test";
 
 import { open, parseStep, type RunOptions } from "./browser.ts";
 import { compare, printShots, report, type Comparison } from "./compare.ts";
@@ -253,13 +253,23 @@ async function verifyUser(env: Record<string, string>, as: string | undefined): 
   throw new Error(`Set up ${VERIFY_USER} in the "${VERIFY_ORGANIZATION.name}" organization. Clerk sends it to Convex within a few seconds: run the same command again.`);
 }
 
+// The cookie banner lies across the foot of every page on the deployed site
+// until it is answered, over the account button, and never shows here, where
+// PostHog doesn't start. Declining keeps the two sites alike, and keeps the
+// check's visits out of the product's analytics.
+const declineCookies = (context: BrowserContext) =>
+  context.addInitScript(() => localStorage.setItem("openscholar_cookie_consent", JSON.stringify({ version: "1.0", timestamp: new Date().toISOString(), choice: "denied", policyVersion: "1.0" })));
+
 async function prepareFor(values: Values): Promise<RunOptions["prepare"]> {
   const env = ensureEnv();
   Object.assign(process.env, env, { CLERK_PUBLISHABLE_KEY: env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY });
-  if (values.anon === true) return async () => {};
+  if (values.anon === true) return declineCookies;
   const email = await verifyUser(env, values.as as string | undefined);
   await (await import("@clerk/testing/playwright")).clerkSetup({ dotenv: false });
-  return (_context, page, origin) => withTimeout(signIn(page, origin, email), 120_000, `Signing in on ${origin}`);
+  return async (context, page, origin) => {
+    await declineCookies(context);
+    await withTimeout(signIn(page, origin, email), 120_000, `Signing in on ${origin}`);
+  };
 }
 
 const number = (value: unknown, fallback: number) => Number(value ?? fallback);
