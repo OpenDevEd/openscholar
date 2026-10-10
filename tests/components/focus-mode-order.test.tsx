@@ -58,6 +58,17 @@ describe("focus mode over a list reordered under it", () => {
     expect(screen.getByTestId("open-paper")).toHaveTextContent("C");
   });
 
+  it("shows a paper of the list when the one open leaves it, as a rating filter can take it out", () => {
+    const d = paper("D");
+    act(() => openFocusMode(false, 3, "D"));
+    const { rerender } = render(show([a, b, c, d]));
+    rerender(show([d, a, b, c]));
+    expect(screen.getByTestId("open-paper")).toHaveTextContent("D");
+    // Rated 3 under a filter that keeps 4 and 5, D leaves the list: its place was 3, beyond the three left.
+    rerender(show([a, b, c]));
+    expect(screen.getByTestId("open-paper")).toHaveTextContent("C");
+  });
+
   it("opens at the place given when no paper is named, as before", () => {
     act(() => openFocusMode(false, 2));
     render(show([a, b, c]));

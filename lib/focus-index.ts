@@ -4,9 +4,12 @@
  * reordered under it, as when a search's likely order arrives; a list of one paper is read on its own.
  */
 
-/** The place in `papers` of the paper open: the paper `paperId` names, wherever it now is, else `index`. */
+/**
+ * The place in `papers` of the paper open: the paper `paperId` names, wherever it now is; else `index`,
+ * within the list, as when the paper named has left it, taken out by a rating filter.
+ */
 export function focusedIndex(papers: readonly { id: string }[], paperId: string | null, index: number): number {
-  if (papers.length === 1) return 0;
+  if (papers.length <= 1) return 0;
   const named = paperId === null ? -1 : papers.findIndex((paper) => paper.id === paperId);
-  return named >= 0 ? named : index;
+  return named >= 0 ? named : Math.min(Math.max(index, 0), papers.length - 1);
 }
