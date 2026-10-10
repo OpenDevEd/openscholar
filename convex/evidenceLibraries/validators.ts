@@ -566,6 +566,13 @@ export const evidenceLibraryDigestResultValidator = v.object({
   markdown: v.string(),
   model: v.string(),
   reasoning: v.string(),
+  // What each likely review the library marked turned out to be, by record key. Absent from digests written before libraries marked any.
+  kinds: v.optional(
+    v.record(
+      v.string(),
+      v.union(v.literal("meta-analysis"), v.literal("review"), v.literal("study")),
+    ),
+  ),
 });
 
 export const evidenceLibraryDigestJobFields = {
