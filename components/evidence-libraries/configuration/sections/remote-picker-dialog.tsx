@@ -9,6 +9,7 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Check, Plus, Search, X } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { type ReactNode, type Ref, useImperativeHandle, useRef, useState } from "react";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -170,7 +171,10 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
 
   const used = new Set(usedIds ?? []);
   const ready = status === "ready" || status === "loading-more";
-  const visible = ready ? (rowFilter ? rows.filter(rowFilter) : rows) : [];
+  // While the next answer is on its way the last one stays, dimmed and out of
+  // reach, so the list doesn't empty and fill again with every search.
+  const stale = status === "loading" && rows.length > 0;
+  const visible = ready || stale ? (rowFilter ? rows.filter(rowFilter) : rows) : [];
   const selectable = visible.filter((row) => !used.has(row.id));
   const allPicked = selectable.length > 0 && selectable.every((row) => picked.has(row.id));
   const typed = query.trim();
@@ -190,10 +194,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
   }) {
     const id = ++run.current;
     setStatus(next.cursor ? "loading-more" : "loading");
-    if (!next.cursor) {
-      setRows([]);
-      setCursor(null);
-    }
+    if (!next.cursor) setCursor(null);
     source(next)
       .then((page) => {
         if (id !== run.current) return;
@@ -222,6 +223,9 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
     setBusy(false);
     const start = firstSort ? { value: firstSort.value, direction: firstSort.direction } : null;
     setSort(start);
+    // Each opening starts from an empty list, never from the last one's rows.
+    setRows([]);
+    setCursor(null);
     if (!nextOpen) {
       run.current += 1;
       return;
@@ -234,10 +238,10 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
   function search(value: string) {
     setQuery(value);
     clearTimeout(debounce.current);
-    // The answer to the old text is dropped at once, so a slow page can
-    // never land under new text, and "Load more" cannot mix the two.
+    // An answer still on its way to the old text is dropped at once, so a
+    // slow page can never land under new text, and "Load more" goes until
+    // the new answer is in, so it cannot mix the two.
     run.current += 1;
-    setRows([]);
     setCursor(null);
     setStatus("loading");
     debounce.current = setTimeout(
@@ -360,210 +364,214 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto" ref={body}>
-          <Table aria-label={title} className="w-full table-fixed">
-            <TableHeader className="sticky top-0 z-10 bg-background">
-              <TableRow>
-                <TableHead className="w-10">
-                  {props.mode === "multi" ? (
-                    <Checkbox
-                      aria-label={t("selectAll")}
-                      checked={allPicked}
-                      disabled={selectable.length === 0}
-                      onCheckedChange={(value) =>
-                        setPicked((current) => {
-                          const next = new Map(current);
-                          for (const row of selectable) {
-                            if (value === true) next.set(row.id, row);
-                            else next.delete(row.id);
-                          }
-                          return next;
-                        })
-                      }
-                    />
+          {/* The list arrives after the dialog opens: the frame slides to its height and the rows fade in. */}
+          <AutoHeight>
+            <Table aria-label={title} className="w-full table-fixed">
+              <TableHeader className="sticky top-0 z-10 bg-background">
+                <TableRow>
+                  <TableHead className="w-10">
+                    {props.mode === "multi" ? (
+                      <Checkbox
+                        aria-label={t("selectAll")}
+                        checked={allPicked}
+                        disabled={selectable.length === 0}
+                        onCheckedChange={(value) =>
+                          setPicked((current) => {
+                            const next = new Map(current);
+                            for (const row of selectable) {
+                              if (value === true) next.set(row.id, row);
+                              else next.delete(row.id);
+                            }
+                            return next;
+                          })
+                        }
+                      />
+                    ) : null}
+                  </TableHead>
+                  <SortHead sort={sortFor("title")} active={sort} onSort={sortBy}>
+                    {columns.title}
+                  </SortHead>
+                  {columns.meta ? (
+                    <SortHead sort={sortFor("meta")} active={sort} onSort={sortBy}>
+                      {columns.meta}
+                    </SortHead>
                   ) : null}
-                </TableHead>
-                <SortHead sort={sortFor("title")} active={sort} onSort={sortBy}>
-                  {columns.title}
-                </SortHead>
-                {columns.meta ? (
-                  <SortHead sort={sortFor("meta")} active={sort} onSort={sortBy}>
-                    {columns.meta}
-                  </SortHead>
+                  {columns.count ? (
+                    <SortHead
+                      sort={sortFor("count")}
+                      active={sort}
+                      onSort={sortBy}
+                      className="w-28 text-right"
+                    >
+                      {columns.count}
+                    </SortHead>
+                  ) : null}
+                  <TableHead className="w-24" />
+                </TableRow>
+              </TableHeader>
+              <TableBody inert={stale} aria-busy={stale || undefined} className={cn("transition-opacity duration-200", stale && "opacity-60")}>
+                {/* "None" and the typed name are the owner's own choices, so
+                    they stay offered even when the library cannot be read. */}
+                {props.mode === "single" && props.noneLabel ? (
+                  <ChoiceRow
+                    columnCount={columnCount}
+                    chosen={props.value === ""}
+                    label={props.noneLabel}
+                    onChoose={() => choose(null)}
+                  />
                 ) : null}
-                {columns.count ? (
-                  <SortHead
-                    sort={sortFor("count")}
-                    active={sort}
-                    onSort={sortBy}
-                    className="w-28 text-right"
-                  >
-                    {columns.count}
-                  </SortHead>
+                {typedIsNew && props.mode === "single" && props.newLabel ? (
+                  <ChoiceRow
+                    columnCount={columnCount}
+                    chosen={false}
+                    label={props.newLabel(typed)}
+                    onChoose={() => choose({ id: typed, title: typed })}
+                  />
                 ) : null}
-                <TableHead className="w-24" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {/* "None" and the typed name are the owner's own choices, so
-                  they stay offered even when the library cannot be read. */}
-              {props.mode === "single" && props.noneLabel ? (
-                <ChoiceRow
-                  columnCount={columnCount}
-                  chosen={props.value === ""}
-                  label={props.noneLabel}
-                  onChoose={() => choose(null)}
-                />
-              ) : null}
-              {typedIsNew && props.mode === "single" && props.newLabel ? (
-                <ChoiceRow
-                  columnCount={columnCount}
-                  chosen={false}
-                  label={props.newLabel(typed)}
-                  onChoose={() => choose({ id: typed, title: typed })}
-                />
-              ) : null}
 
-              {status === "loading" ? (
-                <MessageRow columnCount={columnCount}>
-                  <span className="flex items-center justify-center gap-2" role="status">
-                    <Spinner className="h-4 w-4" />
-                    {loadingLabel}
-                  </span>
-                </MessageRow>
-              ) : status === "failed" ? (
-                <MessageRow columnCount={columnCount}>
-                  <span role="alert">
-                    <span className="text-destructive">{failedLabel}</span>{" "}
-                    <Button
-                      type="button"
-                      variant="link"
-                      size="sm"
-                      className="h-auto p-0"
-                      onClick={() =>
-                        load({
-                          query: typed,
-                          sort: sort?.value ?? null,
-                          direction: sort?.direction ?? null,
-                          cursor: null,
-                        })
-                      }
-                    >
-                      {t("tryAgain")}
-                    </Button>
-                  </span>
-                </MessageRow>
-              ) : status === "not-set-up" ? (
-                <MessageRow columnCount={columnCount}>
-                  <span data-picker-state="not-set-up">{notSetUpLabel}</span>
-                </MessageRow>
-              ) : visible.length === 0 ? (
-                <MessageRow columnCount={columnCount}>{emptyMessage}</MessageRow>
-              ) : (
-                visible.map((row) => {
-                  const already = used.has(row.id);
-                  const checked = picked.has(row.id);
-                  const chosen = props.mode === "single" && props.value === row.id;
-                  const act = () => {
-                    if (already) return;
-                    if (props.mode === "single") choose(row);
-                    else toggle(row);
-                  };
-                  return (
-                    <TableRow
-                      key={row.id}
-                      data-picker-row
-                      data-picker-id={row.id}
-                      data-picked={props.mode === "multi" ? checked : chosen}
-                      tabIndex={-1}
-                      aria-disabled={already || undefined}
-                      className={cn(
-                        "cursor-pointer",
-                        already && "cursor-default opacity-60",
-                        (checked || chosen) && "bg-primary/5",
-                      )}
-                      onClick={act}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return;
-                        event.preventDefault();
-                        act();
-                      }}
-                    >
-                      <TableCell onClick={(event) => event.stopPropagation()}>
-                        {props.mode === "multi" ? (
-                          <Checkbox
-                            aria-label={row.title}
-                            checked={checked}
-                            disabled={already}
-                            onCheckedChange={act}
-                          />
-                        ) : (
-                          <Check className={chosen ? "h-4 w-4" : "h-4 w-4 opacity-0"} aria-hidden />
+                {status === "loading" && !stale ? (
+                  <MessageRow key="loading" columnCount={columnCount}>
+                    <span className="flex items-center justify-center gap-2" role="status">
+                      <Spinner className="h-4 w-4" />
+                      {loadingLabel}
+                    </span>
+                  </MessageRow>
+                ) : status === "failed" ? (
+                  <MessageRow key="failed" columnCount={columnCount}>
+                    <span role="alert">
+                      <span className="text-destructive">{failedLabel}</span>{" "}
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0"
+                        onClick={() =>
+                          load({
+                            query: typed,
+                            sort: sort?.value ?? null,
+                            direction: sort?.direction ?? null,
+                            cursor: null,
+                          })
+                        }
+                      >
+                        {t("tryAgain")}
+                      </Button>
+                    </span>
+                  </MessageRow>
+                ) : status === "not-set-up" ? (
+                  <MessageRow key="not-set-up" columnCount={columnCount}>
+                    <span data-picker-state="not-set-up">{notSetUpLabel}</span>
+                  </MessageRow>
+                ) : visible.length === 0 ? (
+                  <MessageRow key="empty" columnCount={columnCount}>{emptyMessage}</MessageRow>
+                ) : (
+                  visible.map((row) => {
+                    const already = used.has(row.id);
+                    const checked = picked.has(row.id);
+                    const chosen = props.mode === "single" && props.value === row.id;
+                    const act = () => {
+                      if (already) return;
+                      if (props.mode === "single") choose(row);
+                      else toggle(row);
+                    };
+                    return (
+                      <TableRow
+                        key={row.id}
+                        data-picker-row
+                        data-picker-id={row.id}
+                        data-picked={props.mode === "multi" ? checked : chosen}
+                        tabIndex={-1}
+                        aria-disabled={already || undefined}
+                        className={cn(
+                          ARRIVES,
+                          "cursor-pointer",
+                          already && "cursor-default opacity-60",
+                          (checked || chosen) && "bg-primary/5",
                         )}
-                      </TableCell>
-                      <TableCell className="min-w-0">
-                        <div className="flex min-w-0 items-center gap-3">
-                          {renderLeading ? (
-                            <span className="shrink-0 text-muted-foreground">
-                              {renderLeading(row)}
-                            </span>
-                          ) : null}
-                          <div className="min-w-0 flex-1">
-                            <TooltipHint label={row.title} onlyWhenClipped>
-                              <p className="truncate font-medium">{row.title}</p>
-                            </TooltipHint>
-                            {row.detail}
-                          </div>
-                        </div>
-                      </TableCell>
-                      {columns.meta ? (
+                        onClick={act}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Enter" && event.key !== " ") return;
+                          event.preventDefault();
+                          act();
+                        }}
+                      >
+                        <TableCell onClick={(event) => event.stopPropagation()}>
+                          {props.mode === "multi" ? (
+                            <Checkbox
+                              aria-label={row.title}
+                              checked={checked}
+                              disabled={already}
+                              onCheckedChange={act}
+                            />
+                          ) : (
+                            <Check className={chosen ? "h-4 w-4" : "h-4 w-4 opacity-0"} aria-hidden />
+                          )}
+                        </TableCell>
                         <TableCell className="min-w-0">
-                          <TooltipHint label={row.meta} onlyWhenClipped>
-                            <p className="truncate text-muted-foreground">{row.meta}</p>
-                          </TooltipHint>
+                          <div className="flex min-w-0 items-center gap-3">
+                            {renderLeading ? (
+                              <span className="shrink-0 text-muted-foreground">
+                                {renderLeading(row)}
+                              </span>
+                            ) : null}
+                            <div className="min-w-0 flex-1">
+                              <TooltipHint label={row.title} onlyWhenClipped>
+                                <p className="truncate font-medium">{row.title}</p>
+                              </TooltipHint>
+                              {row.detail}
+                            </div>
+                          </div>
                         </TableCell>
-                      ) : null}
-                      {columns.count ? (
-                        <TableCell className="text-right font-mono text-xs tabular-nums">
-                          {row.count}
-                        </TableCell>
-                      ) : null}
-                      <TableCell>
-                        {already && usedLabel ? (
-                          <StatusChip tone="neutral">{usedLabel}</StatusChip>
+                        {columns.meta ? (
+                          <TableCell className="min-w-0">
+                            <TooltipHint label={row.meta} onlyWhenClipped>
+                              <p className="truncate text-muted-foreground">{row.meta}</p>
+                            </TooltipHint>
+                          </TableCell>
                         ) : null}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              )}
-            </TableBody>
-          </Table>
-          {ready && cursor ? (
-            <div className="flex justify-center border-t border-border-subtle py-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={status === "loading-more"}
-                onClick={() =>
-                  load({
-                    query: typed,
-                    sort: sort?.value ?? null,
-                    direction: sort?.direction ?? null,
-                    cursor,
+                        {columns.count ? (
+                          <TableCell className="text-right font-mono text-xs tabular-nums">
+                            {row.count}
+                          </TableCell>
+                        ) : null}
+                        <TableCell>
+                          {already && usedLabel ? (
+                            <StatusChip tone="neutral">{usedLabel}</StatusChip>
+                          ) : null}
+                        </TableCell>
+                      </TableRow>
+                    );
                   })
-                }
-              >
-                {status === "loading-more" ? <Spinner className="h-4 w-4" /> : null}
-                {t("loadMore")}
-              </Button>
-            </div>
-          ) : null}
-          {note ? (
-            <p className="border-t border-border-subtle px-5 py-3 text-xs text-muted-foreground">
-              {note}
-            </p>
-          ) : null}
+                )}
+              </TableBody>
+            </Table>
+            {ready && cursor ? (
+              <div className="flex justify-center border-t border-border-subtle py-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={status === "loading-more"}
+                  onClick={() =>
+                    load({
+                      query: typed,
+                      sort: sort?.value ?? null,
+                      direction: sort?.direction ?? null,
+                      cursor,
+                    })
+                  }
+                >
+                  {status === "loading-more" ? <Spinner className="h-4 w-4" /> : null}
+                  {t("loadMore")}
+                </Button>
+              </div>
+            ) : null}
+            {note ? (
+              <p className="border-t border-border-subtle px-5 py-3 text-xs text-muted-foreground">
+                {note}
+              </p>
+            ) : null}
+          </AutoHeight>
         </div>
 
         <DialogFooter className="items-center border-t border-border-subtle px-5 py-3 sm:justify-between">
@@ -591,10 +599,13 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
   );
 }
 
+// What comes after the dialog opened fades in: rows, and the line that says why there are none.
+const ARRIVES = "animate-in fade-in-0 duration-200";
+
 /** One line across the table: loading, a failure, or nothing to show. */
 function MessageRow({ columnCount, children }: { columnCount: number; children: ReactNode }) {
   return (
-    <TableRow>
+    <TableRow className={ARRIVES}>
       <TableCell colSpan={columnCount + 1} className="py-10 text-center text-sm text-muted-foreground">
         {children}
       </TableCell>
@@ -618,7 +629,7 @@ function ChoiceRow({
     <TableRow
       data-picker-row
       tabIndex={-1}
-      className={cn("cursor-pointer", chosen && "bg-primary/5")}
+      className={cn(ARRIVES, "cursor-pointer", chosen && "bg-primary/5")}
       onClick={onChoose}
       onKeyDown={(event) => {
         if (event.key !== "Enter" && event.key !== " ") return;
