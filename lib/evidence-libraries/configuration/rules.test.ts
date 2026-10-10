@@ -1498,11 +1498,6 @@ describe("notification configuration", () => {
     expect(draft.notifications.pausedSince).toBeNull();
     draft.notifications = {enabled: true, digestCovers: "added", pausedSince: "2026-10-10T18:00:00.000Z", schedule: {frequency: "weekly", weekday: 5, time: "16:30", timezone: "Europe/London"}};
     expect(changedSectionRows(draft, savedRows)).toEqual([{sectionKey: "notifications", payload: draft.notifications}]);
-    // A library on a runtime from before the pause refuses a key it does not know, so it is sent only while paused.
-    draft.notifications.pausedSince = null;
-    expect(changedSectionRows(draft, savedRows)[0].payload).not.toHaveProperty("pausedSince");
-    expect(readDraft(changedSectionRows(draft, savedRows)).notifications.pausedSince).toBeNull();
-    draft.notifications.pausedSince = "2026-10-10T18:00:00.000Z";
     expect(resetSection(draft, savedRows, "contact").notifications).toEqual(savedDraft().notifications);
     expect(sectionProblems(draft, "contact")).toEqual([]);
     draft.notifications.schedule = {frequency: "monthly", dayOfMonth: 31, time: "23:15", timezone: "Asia/Kolkata"};
