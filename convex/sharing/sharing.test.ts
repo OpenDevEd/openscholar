@@ -141,7 +141,7 @@ it("opens a shared collection to its guest from their own workspace, and to nobo
   // Carol reads it in her own workspace: its papers, its count and whose it is.
   expect(await titles(carol)).toEqual(["One"]);
   expect((await carol.query(api.library.queries.getLibraryFilteredCount, view)).count).toBe(1);
-  expect(await carol.query(api.library.collections.getCollection, { collectionId: item.id })).toEqual({ _id: item.id, name: "Trials", itemCount: 1, guest: { role: "viewer", from: "lab" } });
+  expect(await carol.query(api.library.collections.getCollection, { collectionId: item.id })).toEqual({ _id: item.id, name: "Trials", itemCount: 1, guest: { role: "viewer", from: { name: "lab", organization: true } } });
   // Not while she acts in the club, whose credits aren't hers to spend on it.
   expect(await titles(carol, club)).toEqual([]);
   // Dave was given nothing.

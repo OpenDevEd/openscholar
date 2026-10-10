@@ -16,9 +16,10 @@ import { asRaters, collectionRatingRow, collectionRatingsOf, organizationOfColle
 import { followed } from "./followed";
 import { copyFacetBatch } from "./facets";
 import { collectionSortName } from "./sortName";
-import { guestRole } from "../sharing/items";
-import { guestRoleValidator } from "../sharing/validators";
-import { workspaceName } from "../workspaces/personal";
+import { countOf } from "../lib/listCounts";
+import { guestRole, itemGuestsOf } from "../sharing/items";
+import { guestRoleValidator, sharedFromValidator } from "../sharing/validators";
+import { workspaceFrom } from "../workspaces/personal";
 
 /** Most collections one page holds. */
 const COLLECTIONS_PAGE_MAX = 50;
@@ -396,15 +397,20 @@ export const getCollectionAction = defineUserQuery({
   path: "library/collections:getCollection",
   description:
     "One of the workspace's collections by its ID, or one shared with the person from another workspace: its name and how many papers it holds. " +
+    "One of the workspace's comes with `guests`: how many people outside the workspace it's shared with, invitations still waiting included. " +
     "A shared one comes with `guest`: what they may do with it (`viewer` or `editor`) and whose it is. Null when it's gone or isn't theirs to open.",
   args: { collectionId: v.id("collections") },
-  returns: v.union(v.object({ _id: v.id("collections"), name: v.string(), itemCount: v.number(), guest: v.optional(v.object({ role: guestRoleValidator, from: v.string() })) }), v.null()),
+  returns: v.union(
+    v.object({ _id: v.id("collections"), name: v.string(), itemCount: v.number(), guests: v.optional(v.number()), guest: v.optional(v.object({ role: guestRoleValidator, from: sharedFromValidator })) }),
+    v.null(),
+  ),
   run: async (ctx, actor, args) => {
     const collection = await ctx.db.get("collections", args.collectionId);
     if (!collection) return null;
-    const role = collection.workspaceId === actor.workspaceId ? null : await guestRole(ctx, actor, collection._id);
-    if (collection.workspaceId !== actor.workspaceId && !role) return null;
-    return { _id: collection._id, name: collection.name, itemCount: collection.itemCount, ...(role ? { guest: { role, from: await workspaceName(ctx, collection.workspaceId) } } : {}) };
+    const own = { _id: collection._id, name: collection.name, itemCount: collection.itemCount };
+    if (collection.workspaceId === actor.workspaceId) return { ...own, guests: await countOf(ctx, itemGuestsOf(collection._id)) };
+    const role = await guestRole(ctx, actor, collection._id);
+    return role ? { ...own, guest: { role, from: await workspaceFrom(ctx, collection.workspaceId) } } : null;
   },
 });
 export const getCollection = userQuery(getCollectionAction);

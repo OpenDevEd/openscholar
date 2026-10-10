@@ -11,6 +11,9 @@ export type SharedKind = Infer<typeof sharedKindValidator>;
 export const guestRoleValidator = v.union(v.literal("viewer"), v.literal("editor"));
 export type GuestRole = Infer<typeof guestRoleValidator>;
 
+/** The workspace a shared item is in, as its guest is told of it: its name, and whether it's an organization's or a person's own. */
+export const sharedFromValidator = v.object({ name: v.string(), organization: v.boolean() });
+
 /** Someone outside an item's workspace who may open it: one row a person and item, which stays theirs wherever the item moves. */
 export const itemAccessFields = {
   kind: sharedKindValidator,

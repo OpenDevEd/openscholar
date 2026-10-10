@@ -1135,7 +1135,8 @@
     "libraryTitle": "Bibliothèque - OpenScholar",
     "libraryDescription": "Parcourez et gérez vos articles académiques sauvegardés",
     "creditsTitle": "Crédits | OpenScholar",
-    "creditsDescription": "Les projets, données et licences sur lesquels OpenScholar s’appuie."
+    "creditsDescription": "Les projets, données et licences sur lesquels OpenScholar s’appuie.",
+    "sharedTitle": "Partagés avec moi | OpenScholar"
   },
   "validation": {
     "bookmarkNameNoSpaces": "Le nom du favori ne peut pas contenir d'espaces",
@@ -4349,6 +4350,75 @@
       "author": "Déplacer le profil d'auteur",
       "libraryKeeps": "La bibliothèque de {workspace} garde les articles qu'elle a enregistrés.",
       "yourLibraryKeeps": "Votre bibliothèque garde les articles qu'elle a enregistrés."
+    },
+    "share": {
+      "share": "Partager",
+      "shareThis": {
+        "collection": "Partager cette collection"
+      },
+      "title": {
+        "collection": "Partager la collection"
+      },
+      "addPeople": "Ajouter des personnes par nom ou e-mail",
+      "inviteEmail": "Inviter {email}",
+      "byEmail": "Par e-mail",
+      "noCandidates": "Personne ne correspond. Saisissez son e-mail pour l'inviter.",
+      "morePeople": "Plus de personnes",
+      "accessOf": "Accès de {name}",
+      "remove": "Retirer",
+      "copyLink": "Copier le lien pour les personnes ayant accès",
+      "linkCopied": "Lien copié",
+      "view": "Lecture",
+      "edit": "Modification",
+      "canView": "Peut consulter",
+      "canEdit": "Peut modifier",
+      "owner": "Propriétaire",
+      "everyone": "Tout le monde dans {workspace}",
+      "members": "{count, plural, one {# membre} other {# membres}}",
+      "invited": "Invité {when}",
+      "notSent": "L'e-mail n'est pas parti",
+      "guests": "Invités",
+      "guestCount": "{count, plural, one {# invité} other {# invités}}",
+      "noLimit": "Sans limite",
+      "usedOf": "{used} sur {limit}",
+      "moreGuests": "Plus d'invités",
+      "full": {
+        "collection": "{plan} permet {count, plural, one {# invité} other {# invités}} par collection"
+      },
+      "failed": "Impossible de modifier le partage"
+    },
+    "shared": {
+      "title": "Partagés avec moi",
+      "nav": "Partagés",
+      "sortRecent": "Partagés récemment",
+      "sortName": "Nom",
+      "search": "Rechercher dans les éléments partagés",
+      "all": "Tout",
+      "kinds": {
+        "collection": "Collections"
+      },
+      "size": {
+        "collection": "{count, plural, one {# article} other {# articles}}"
+      },
+      "runUses": "Tout ce que vous lancez dessus utilise",
+      "yourCredits": "vos crédits",
+      "empty": "Rien n'est encore partagé avec vous",
+      "emptyKind": "Rien de ce type n'est encore partagé avec vous",
+      "emptySearch": "Aucun élément partagé ne correspond",
+      "leave": "Quitter",
+      "leaveFailed": "Impossible de le quitter",
+      "loading": "Chargement de ce qui est partagé avec vous",
+      "more": "Afficher plus",
+      "from": "De {workspace}",
+      "sharedOne": {
+        "collection": "{name} a partagé une collection"
+      },
+      "pointOwn": "Elle se trouve dans votre propre espace de travail",
+      "pointCredits": "Ce que vous lancez dessus utilise vos crédits",
+      "open": "Ouvrir",
+      "openFailed": "Impossible de l'ouvrir",
+      "goneTitle": "Ce lien n'est plus ouvert",
+      "goneDetail": "Demandez à la personne qui l'a partagé de le partager à nouveau"
     }
   },
   "models": {

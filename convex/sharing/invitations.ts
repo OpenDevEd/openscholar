@@ -14,10 +14,10 @@ import { MAX_ACCOUNTS_PER_EMAIL, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "
 import { rateLimit } from "../lib/rateLimit";
 import { actingAs, assistantAction, assistantQuery, defineChangingAction, defineUserQuery, userAction, userQuery } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
-import { workspaceName } from "../workspaces/personal";
+import { workspaceFrom, workspaceName } from "../workspaces/personal";
 import { invitationTo, noteShared, requireRoom } from "./access";
 import { findShared, grantOf, kindWord, sharedIn } from "./items";
-import { guestRoleValidator, sharedKindValidator } from "./validators";
+import { guestRoleValidator, sharedFromValidator, sharedKindValidator } from "./validators";
 
 const WEEK = 7 * 86_400_000;
 const actingValidator = { userId: v.id("users"), workspaceId: v.id("workspaces"), author: v.union(v.literal("user"), v.literal("assistant")) };
@@ -171,7 +171,7 @@ export const getAction = defineUserQuery({
   args: { invitationId: v.string() },
   returns: v.union(
     v.null(),
-    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: v.string(), size: v.number(), state: v.union(v.literal("pending"), v.literal("accepted")) }),
+    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.number(), state: v.union(v.literal("pending"), v.literal("accepted")) }),
   ),
   run: async (ctx, { userId }, { invitationId }) => {
     const id = ctx.db.normalizeId("itemInvitations", invitationId);
@@ -185,7 +185,7 @@ export const getAction = defineUserQuery({
     return {
       kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role,
       by: { name: inviter ? personName(inviter) || inviter.email : "", ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) },
-      from: await workspaceName(ctx, shared.workspaceId), size: shared.size, state,
+      from: await workspaceFrom(ctx, shared.workspaceId), size: shared.size, state,
     };
   },
 });

@@ -25,11 +25,13 @@ export async function organizationWorkspaceOf(ctx: Pick<QueryCtx, "db">, organiz
 }
 
 
-/** A workspace as a person sees it named: an organization's name, or for someone's own their name. */
-export async function workspaceName(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
+/** A workspace as someone outside it is told of it: an organization's name, or for a person's own their name, and which of the two it is. */
+export async function workspaceFrom(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
   const workspace = await ctx.db.get("workspaces", workspaceId);
-  if (!workspace) return "";
-  if (workspace.kind === "organization") return (await ctx.db.get("organizations", workspace.organizationId))?.name ?? "";
-  const person = await ctx.db.get("users", workspace.userId);
-  return (person && (personName(person) || person.email)) || "";
+  if (workspace?.kind === "organization") return { name: (await ctx.db.get("organizations", workspace.organizationId))?.name ?? "", organization: true };
+  const person = workspace ? await ctx.db.get("users", workspace.userId) : null;
+  return { name: (person && (personName(person) || person.email)) || "", organization: false };
 }
+
+/** A workspace as a person sees it named: an organization's name, or for someone's own their name. */
+export const workspaceName = async (ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) => (await workspaceFrom(ctx, workspaceId)).name;

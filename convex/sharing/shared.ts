@@ -11,9 +11,9 @@ import { personName } from "../lib/people";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import schema from "../schema";
 import type { InWorkspace } from "../workspaces/actor";
-import { workspaceName } from "../workspaces/personal";
+import { workspaceFrom } from "../workspaces/personal";
 import { findShared, sharedWithOf } from "./items";
-import { guestRoleValidator, sharedKindValidator, sharedKinds, type SharedKind } from "./validators";
+import { guestRoleValidator, sharedFromValidator, sharedKindValidator, sharedKinds, type SharedKind } from "./validators";
 
 /** Most shared items one page holds. */
 const SHARED_PAGE_MAX = 50;
@@ -33,7 +33,7 @@ export const listAction = defineUserQuery({
     "the workspace it's in and how much it holds (a collection's papers). `kind` keeps one kind, and `text` the items whose name contains it. Empty in an organization: what's shared with someone is in their own workspace.",
   args: { kind: v.optional(sharedKindValidator), text: v.optional(v.string()), sort: v.union(v.literal("recent"), v.literal("name")), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(
-    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, at: v.number(), by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: v.string(), size: v.number() }),
+    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, at: v.number(), by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.number() }),
   ),
   run: async (ctx, actor, { kind, text, sort, paginationOpts }) => {
     if (!(await inOwn(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
@@ -54,7 +54,7 @@ export const listAction = defineUserQuery({
       return [{
         kind: row.kind, id: shared.id, name: shared.name, role: row.role, at: row.grantedAt,
         by: { name: sharer ? personName(sharer) || sharer.email : "", ...(sharer?.avatarUrl ? { imageUrl: sharer.avatarUrl } : {}) },
-        from: await workspaceName(ctx, shared.workspaceId), size: shared.size,
+        from: await workspaceFrom(ctx, shared.workspaceId), size: shared.size,
       }];
     }));
     return { ...read, page: page.flat() };

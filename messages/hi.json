@@ -1135,7 +1135,8 @@
     "libraryTitle": "लाइब्रेरी - OpenScholar",
     "libraryDescription": "अपने सहेजे गए शैक्षणिक शोधपत्रों को ब्राउज़ करें और प्रबंधित करें",
     "creditsTitle": "क्रेडिट | OpenScholar",
-    "creditsDescription": "वे परियोजनाएँ, डेटा और लाइसेंस जिन पर OpenScholar आधारित है।"
+    "creditsDescription": "वे परियोजनाएँ, डेटा और लाइसेंस जिन पर OpenScholar आधारित है।",
+    "sharedTitle": "मेरे साथ साझा | OpenScholar"
   },
   "validation": {
     "bookmarkNameNoSpaces": "बुकमार्क नाम में रिक्त स्थान नहीं हो सकते",
@@ -4349,6 +4350,75 @@
       "author": "लेखक प्रोफ़ाइल ले जाएँ",
       "libraryKeeps": "{workspace} की लाइब्रेरी इसके सहेजे पेपर रखती है।",
       "yourLibraryKeeps": "आपकी लाइब्रेरी इसके सहेजे पेपर रखती है।"
+    },
+    "share": {
+      "share": "साझा करें",
+      "shareThis": {
+        "collection": "यह संग्रह साझा करें"
+      },
+      "title": {
+        "collection": "संग्रह साझा करें"
+      },
+      "addPeople": "नाम या ईमेल से लोग जोड़ें",
+      "inviteEmail": "{email} को आमंत्रित करें",
+      "byEmail": "ईमेल से",
+      "noCandidates": "कोई मेल नहीं खाता। आमंत्रित करने के लिए उनका ईमेल लिखें।",
+      "morePeople": "और लोग",
+      "accessOf": "{name} की पहुँच",
+      "remove": "हटाएँ",
+      "copyLink": "पहुँच वाले लोगों के लिए लिंक कॉपी करें",
+      "linkCopied": "लिंक कॉपी हुआ",
+      "view": "देखना",
+      "edit": "संपादन",
+      "canView": "देख सकते हैं",
+      "canEdit": "संपादित कर सकते हैं",
+      "owner": "स्वामी",
+      "everyone": "{workspace} में सभी",
+      "members": "{count, plural, one {# सदस्य} other {# सदस्य}}",
+      "invited": "{when} आमंत्रित",
+      "notSent": "ईमेल नहीं गया",
+      "guests": "अतिथि",
+      "guestCount": "{count, plural, one {# अतिथि} other {# अतिथि}}",
+      "noLimit": "कोई सीमा नहीं",
+      "usedOf": "{limit} में से {used}",
+      "moreGuests": "और अतिथि",
+      "full": {
+        "collection": "{plan} हर संग्रह पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है"
+      },
+      "failed": "साझाकरण नहीं बदल सका"
+    },
+    "shared": {
+      "title": "मेरे साथ साझा",
+      "nav": "साझा",
+      "sortRecent": "हाल में साझा",
+      "sortName": "नाम",
+      "search": "साझा की गई चीज़ें खोजें",
+      "all": "सभी",
+      "kinds": {
+        "collection": "संग्रह"
+      },
+      "size": {
+        "collection": "{count, plural, one {# पेपर} other {# पेपर}}"
+      },
+      "runUses": "इन पर आप जो भी चलाते हैं, वह खर्च करता है",
+      "yourCredits": "आपके क्रेडिट",
+      "empty": "अभी आपके साथ कुछ साझा नहीं है",
+      "emptyKind": "इस तरह का कुछ अभी आपके साथ साझा नहीं है",
+      "emptySearch": "साझा की गई कोई चीज़ मेल नहीं खाती",
+      "leave": "छोड़ें",
+      "leaveFailed": "इसे छोड़ा नहीं जा सका",
+      "loading": "आपके साथ साझा की गई चीज़ें लोड हो रही हैं",
+      "more": "और दिखाएँ",
+      "from": "{workspace} से",
+      "sharedOne": {
+        "collection": "{name} ने एक संग्रह साझा किया"
+      },
+      "pointOwn": "यह आपके अपने वर्कस्पेस में रहता है",
+      "pointCredits": "इस पर आप जो चलाते हैं, वह आपके क्रेडिट खर्च करता है",
+      "open": "खोलें",
+      "openFailed": "इसे खोला नहीं जा सका",
+      "goneTitle": "यह लिंक अब खुला नहीं है",
+      "goneDetail": "जिसने साझा किया था, उनसे दोबारा साझा करने को कहें"
     }
   },
   "models": {
