@@ -182,7 +182,7 @@ export const getScreeningJobAction = defineUserQuery({
   path: "screening/queries:getScreeningJob",
   description:
     "Read a screening job's source, questions, scoring rules, decision revision and outcome counts. Its workspace's members read it, with `guests`: how many people outside the workspace it's shared with, invitations still waiting included. " +
-    "Someone it's shared with reads it from their own workspace, with `guest`: what they may do with it and whose it is, and `source`, the kind of thing its papers came from. They get neither what it cost, where its papers went, nor which collection, search or screening they came from: those are its workspace's.",
+    "Someone it's shared with reads it from their own workspace, with `guest`: what they may do with it and whose it is, and `source`, the kind of thing its papers came from. They get neither what it cost, where its papers went, nor the ID of the collection, search or screening they came from: those are its workspace's. What was searched (`snapshot`) is the screening's own, and a guest reads it.",
   args: { jobId: v.id("screeningJobs") },
   returns: v.union(
     v.null(),
@@ -235,7 +235,8 @@ export const getScreeningJobAction = defineUserQuery({
     const unclear = kept?.unclear ?? 0;
     const target = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
     const { spendCap, set, ...facts } = await factsOf(ctx, job);
-    // What it cost, the most it may spend, the collections its papers went to and which collection, search or screening they came from are its workspace's.
+    // What it cost, the most it may spend, the collections its papers went to and the ID of what they came from are its workspace's.
+    // What was searched (`snapshot`) holds no ID and is the screening's own: a guest reads it, and their export gives it.
     const own = role
       ? { guest: { role, from: await workspaceFrom(ctx, job.workspaceId) }, ...(set ? { source: set.kind } : {}) }
       : {
