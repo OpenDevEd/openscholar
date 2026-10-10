@@ -9,7 +9,7 @@ import { autumn } from "./autumn";
 import { refreshAccount } from "./accounts";
 import { previewLineItemsValidator, type BillingCatalog } from "./validators";
 import { MAX_PLAN_DETAILS } from "../lib/listCaps";
-import { ORGANIZATION_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
+import { ORGANIZATION_PLANS, TOPUP_PLAN } from "../../lib/billing/plans";
 import { findPlan, topUpBundles } from "../../lib/billing/catalog";
 
 async function requireUser(ctx: ActionCtx): Promise<Doc<"users">> {
@@ -33,7 +33,7 @@ async function requireCatalog(ctx: ActionCtx): Promise<BillingCatalog> {
  */
 async function requireChoosablePlan(ctx: ActionCtx, planId: string): Promise<void> {
   const plan = findPlan(await requireCatalog(ctx), planId);
-  if (!plan || plan.addOn || plan.autoEnable || plan.id === ORGANIZATION_PLAN) {
+  if (!plan || plan.addOn || plan.autoEnable || ORGANIZATION_PLANS.includes(plan.id)) {
     throw createError("BILLING_PLAN_INVALID", `No plan "${planId}" to choose`);
   }
 }

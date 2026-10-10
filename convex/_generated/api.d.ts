@@ -75,6 +75,7 @@ import type * as billing_charge from "../billing/charge.js";
 import type * as billing_ledger from "../billing/ledger.js";
 import type * as billing_migrate from "../billing/migrate.js";
 import type * as billing_openRouter from "../billing/openRouter.js";
+import type * as billing_seats from "../billing/seats.js";
 import type * as billing_spend from "../billing/spend.js";
 import type * as billing_stripeWebhook from "../billing/stripeWebhook.js";
 import type * as billing_usage from "../billing/usage.js";
@@ -489,6 +490,7 @@ declare const fullApi: ApiFromModules<{
   "billing/ledger": typeof billing_ledger;
   "billing/migrate": typeof billing_migrate;
   "billing/openRouter": typeof billing_openRouter;
+  "billing/seats": typeof billing_seats;
   "billing/spend": typeof billing_spend;
   "billing/stripeWebhook": typeof billing_stripeWebhook;
   "billing/usage": typeof billing_usage;

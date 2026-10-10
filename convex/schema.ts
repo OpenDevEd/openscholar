@@ -594,6 +594,7 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   billingAccounts: defineTable(billingAccountFields)
     .index("by_workspace", ["workspaceId"])
+    .index("by_plan", ["plan"])
     .index("by_stripe_customer", ["stripeCustomerId"]),
   billingCatalog: defineTable({ ...billingCatalogValidator.fields, syncedAt: v.number() }),
   billingUsage: defineTable({
