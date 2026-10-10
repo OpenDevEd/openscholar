@@ -3,11 +3,11 @@
 // An organization's settings (#651): the organization itself, its members and invitations, and
 // its plan and credits. Your own workspace is just you, so its plan sits with your account.
 
-import { useState, type ReactElement } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { Camera, Check, ChevronRight, Coins, Copy, EvidenceLibrariesIcon, FileSearch, Folder, ListFilter, LogOut, Mail, Pencil, Repeat, Search, Trash2, Users, X } from "@/components/icons";
+import { ArrowRight, Camera, Check, ChevronRight, Coins, Copy, EvidenceLibrariesIcon, FileSearch, Folder, ListFilter, LogOut, Mail, Pencil, Repeat, Search, Trash2, Users, X } from "@/components/icons";
 import { IconButton } from "@/components/assistant/parts";
 import { EASE } from "@/components/settings/model-map";
 import { Enter, LIST, Paged, Segmented, Tile, Zone } from "@/components/settings/parts";
@@ -39,9 +39,9 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { ORGANIZATION_COLOURS } from "@/lib/workspaces/colours";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { FREE_MEMBERS, MemberFaces, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
+import { Guarded, MemberFaces, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
 import { MemberSpending, useMemberSpending } from "./spending";
-import { TEAM_PLAN } from "@/lib/billing/plans";
+import { FREE_MEMBERS, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
 
 /** Rows a page of members holds. */
 const PER_PAGE = 10;
@@ -289,18 +289,6 @@ export function WorkspaceGeneral() {
   );
 }
 
-/** A control that is off for a reason: the reason shows on hover. */
-function Guarded({ reason, children }: { reason: string | null; children: ReactElement }) {
-  if (!reason) return children;
-  return (
-    <TooltipHint label={reason}>
-      <span tabIndex={0} className="rounded-md">
-        <span className="pointer-events-none opacity-50">{children}</span>
-      </span>
-    </TooltipHint>
-  );
-}
-
 // ─── Members ─────────────────────────────────────────────────────────────
 
 export function WorkspaceMembers() {
@@ -474,19 +462,28 @@ export function WorkspaceBilling() {
   const { workspaceId, organization, admin } = useOrganization();
   const { account, catalog } = useSharedSubscriptionState();
   const spending = useMemberSpending(workspaceId);
+  const openPortal = useWorkspaceAction(api.billing.actions.openPortal);
+  const { busy, attempt } = useAttempt();
   if (!organization || !account || !catalog || !spending.ready) return <Enter ready={false}>{null}</Enter>;
 
   const planId = account.plan ?? organization.plan ?? "";
   const plan = findPlan(catalog, planId);
-  const cap = planCreditCap(catalog, planId);
-  const monthly = plan?.credits?.interval === "month" ? plan.credits.included : 0;
   const fromPlan = Math.max(0, account.balance - account.purchased);
   const memberCount = organization.members ?? 0;
+  const team = planId === TEAM_PLAN;
+  const teamPlan = findPlan(catalog, TEAM_PLAN);
+  const seat = findPlan(catalog, SEAT_PLAN);
+  const seatPrice = seat?.price?.amount;
+  // Team's credits are its seats', a seat for each member.
+  const monthly = team ? memberCount * (seat?.credits?.included ?? 0) : plan?.credits?.interval === "month" ? plan.credits.included : 0;
+  const cap = team ? monthly : planCreditCap(catalog, planId);
+  const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: 0 });
   const limits = plan?.limits;
   const date = (ms: number) => format.dateTime(new Date(ms), { month: "long", day: "numeric" });
   // A limit the plan doesn't set isn't named; null is unlimited.
   const included = [
-    { icon: Users, label: t("includedMembers", { count: FREE_MEMBERS }) },
+    // Team's members are its seats, which the card above counts.
+    ...(team ? [] : [{ icon: Users, label: t("includedMembers", { count: FREE_MEMBERS }) }]),
     ...(limits?.collections === undefined ? [] : [{ icon: Folder, label: limits.collections === null ? t("unlimitedCollections") : t("includedCollections", { count: limits.collections }) }]),
     ...(limits?.concurrency == null ? [] : [{ icon: ListFilter, label: t("papersAtOnce", { count: limits.concurrency }) }]),
     ...(limits?.request_papers === undefined ? [] : [{ icon: FileSearch, label: limits.request_papers === null ? t("anyPapersAJob") : t("papersAJob", { count: limits.request_papers }) }]),
@@ -529,13 +526,40 @@ export function WorkspaceBilling() {
           </div>
           <div className="flex flex-col justify-between gap-4 border-t border-border-subtle bg-inset p-5 @min-[46rem]/configuration:border-l @min-[46rem]/configuration:border-t-0">
             <div className="space-y-1">
-              <p className="text-xl font-semibold tracking-tight">{plan?.name}</p>
-              <p className="text-sm tabular-nums text-muted-foreground">{t("upToMembers", { count: FREE_MEMBERS })}</p>
+              <p className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+                {plan?.name}
+                {team && seatPrice !== undefined ? <span className="text-sm font-normal text-muted-foreground">{t("aSeat", { price: money(seatPrice) })}</span> : null}
+              </p>
+              {team ? (
+                // A seat for each member (#652).
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted px-2.5 text-xs tabular-nums text-muted-foreground">
+                    <Users className="size-3.5" />
+                    {t("seats", { count: memberCount })}
+                  </span>
+                  {seatPrice !== undefined ? <span className="inline-flex h-6 items-center whitespace-nowrap rounded-full bg-muted px-2.5 text-xs font-medium tabular-nums text-foreground">{t("amountAMonth", { amount: money(seatPrice * memberCount) })}</span> : null}
+                </div>
+              ) : (
+                <p className="text-sm tabular-nums text-muted-foreground">{t("upToMembers", { count: FREE_MEMBERS })}</p>
+              )}
             </div>
+            {admin ? (
+              team ? (
+                <Button variant="outline" size="sm" disabled={busy === "portal"} onClick={() => void attempt("portal", async () => window.location.assign(await openPortal({})))}>
+                  {t("manageBilling")}
+                </Button>
+              ) : (
+                <Button asChild size="sm">
+                  <Link href="/pricing">
+                    {t("moveTo", { plan: teamPlan?.name ?? "" })} <ArrowRight />
+                  </Link>
+                </Button>
+              )
+            ) : null}
           </div>
         </section>
 
-        <MemberSpending spending={spending} admin={admin} team={account.plan === TEAM_PLAN} members={memberCount} />
+        <MemberSpending spending={spending} admin={admin} team={team} members={memberCount} />
 
         <Zone label={t("included")}>
           <div className="flex flex-wrap gap-1.5">

@@ -28,7 +28,8 @@ import { workspaceHref } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { pageItem } from "./item-home";
-import { FREE_MEMBERS, Framed, PlanChip, settingsHref, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
+import { Framed, PlanChip, settingsHref, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
+import { FREE_MEMBERS } from "@/lib/billing/plans";
 
 const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-left transition-colors hover:bg-foreground/[0.045]";
 

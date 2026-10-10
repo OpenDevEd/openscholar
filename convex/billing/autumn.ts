@@ -295,6 +295,11 @@ export const autumn = {
     });
   },
 
+  /** A Stripe checkout that saves a card for the customer, charging nothing, after which Autumn attaches `planId`: an organization moving to Team, whose seats are charged to the card (#652). */
+  setupPayment(customerId: string, planId: string, successUrl: string) {
+    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, plan_id: planId, success_url: successUrl });
+  },
+
   portal(customerId: string, returnUrl: string) {
     return call<{ url: string }>("billing.open_customer_portal", {
       customer_id: customerId,

@@ -99,6 +99,8 @@
     "billing/actions:buyCredits": "#323",
     "billing/actions:choosePlan": "#323",
     "billing/actions:keepPlan": "#323",
+    "billing/actions:moveToFree": "#323",
+    "billing/actions:moveToTeam": "#323",
     "billing/actions:openPortal": "#323",
     "billing/actions:previewPlan": "#323",
     "evidenceLibraries/addressActions:checkAddress": "#329",

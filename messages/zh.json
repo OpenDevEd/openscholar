@@ -265,7 +265,31 @@
     "sessionSetupIssue": "会话设置问题",
     "retrySyncToContinue": "重试会话同步以继续账单操作。",
     "paymentPendingDefault": "付款待处理。请在 Stripe 计费门户中完成付款以激活您的计划和积分。",
-    "downgradeScheduledTo": "计划降级至"
+    "downgradeScheduledTo": "计划降级至",
+    "plansFor": "方案适用于",
+    "forYou": "个人",
+    "forAnOrganization": "组织",
+    "organizations": {
+      "freeOrganization": "免费组织",
+      "freeDescription": "与少数几人协作。",
+      "teamDescription": "适合实验室和综述团队，共用一个积分池。",
+      "aMonth": "每月",
+      "aSeat": "每席位 {price}",
+      "seats": "{count, number} 个席位",
+      "oneSeatFewer": "减少一个席位",
+      "oneSeatMore": "增加一个席位",
+      "sharedCreditsAMonth": "每月 {credits, number} 共享积分",
+      "capsForEachMember": "每位成员的积分上限",
+      "yourOrganizationsPlan": "你的组织当前方案",
+      "createOrganization": "创建组织",
+      "moveTo": "改为{plan}",
+      "onlyAdmins": "只有 {organization} 的管理员可以更改其方案",
+      "organizationsOnly": "Team 仅适用于组织：请先创建一个",
+      "tooManyForFree": "免费方案最多 {count, number} 名成员：请先移除成员",
+      "seatsAt": "{count, number} 个席位，每个 {price}",
+      "moveToFreeTitle": "将 {organization} 改为{plan}？",
+      "moveToFreeDetail": "{count, number} 个席位将立即结束。之后最多 {members, number} 名成员，每月 {credits, number} 共享积分。"
+    }
   },
   "publicationSettings": {
     "credentials": "{provider} 凭据",
@@ -4183,7 +4207,12 @@
       "cap": "上限",
       "capNone": "无",
       "noCap": "不设上限",
-      "capAMonth": "每月 {amount}"
+      "capAMonth": "每月 {amount}",
+      "aSeat": "每席位 {price}",
+      "seats": "{count, number} 个席位",
+      "amountAMonth": "每月 {amount}",
+      "manageBilling": "管理账单",
+      "moveTo": "改为{plan}"
     },
     "couldntInvite": "组织已创建，但邀请未能发出。请在其成员设置中发送。",
     "fromCredits": "使用 {name} 的积分",

@@ -265,7 +265,31 @@
     "sessionSetupIssue": "सेटअप समस्या",
     "retrySyncToContinue": "बिलिंग कार्यों के साथ जारी रखने के लिए सिंक पुनः प्रयास करें।",
     "paymentPendingDefault": "भुगतान लंबित है। अपना प्लान और क्रेडिट सक्रिय करने के लिए Stripe बिलिंग पोर्टल में भुगतान पूरा करें।",
-    "downgradeScheduledTo": "के लिए डाउनग्रेड निर्धारित"
+    "downgradeScheduledTo": "के लिए डाउनग्रेड निर्धारित",
+    "plansFor": "किसके लिए प्लान",
+    "forYou": "आपके लिए",
+    "forAnOrganization": "किसी संगठन के लिए",
+    "organizations": {
+      "freeOrganization": "मुफ़्त संगठन",
+      "freeDescription": "कुछ लोगों के साथ मिलकर काम करें।",
+      "teamDescription": "लैब और रिव्यू टीमों के लिए, एक साझा क्रेडिट पूल पर।",
+      "aMonth": "प्रति माह",
+      "aSeat": "{price} प्रति सीट",
+      "seats": "{count, plural, one {# सीट} other {# सीटें}}",
+      "oneSeatFewer": "एक सीट कम",
+      "oneSeatMore": "एक सीट और",
+      "sharedCreditsAMonth": "प्रति माह {credits, number} साझा क्रेडिट",
+      "capsForEachMember": "हर सदस्य के लिए क्रेडिट सीमा",
+      "yourOrganizationsPlan": "आपके संगठन का प्लान",
+      "createOrganization": "संगठन बनाएँ",
+      "moveTo": "{plan} पर जाएँ",
+      "onlyAdmins": "केवल {organization} के एडमिन इसका प्लान बदलते हैं",
+      "organizationsOnly": "Team संगठनों के लिए है: पहले एक बनाएँ",
+      "tooManyForFree": "मुफ़्त में अधिकतम {count, number} सदस्य होते हैं: पहले सदस्य हटाएँ",
+      "seatsAt": "{price} पर {count, plural, one {# सीट} other {# सीटें}}",
+      "moveToFreeTitle": "{organization} को {plan} पर ले जाएँ?",
+      "moveToFreeDetail": "{count, plural, one {इसकी सीट} other {इसकी # सीटें}} अभी समाप्त होंगी। इसके बाद इसमें अधिकतम {members, number} सदस्य और प्रति माह {credits, number} साझा क्रेडिट होंगे।"
+    }
   },
   "publicationSettings": {
     "credentials": "{provider} क्रेडेंशियल",
@@ -4183,7 +4207,12 @@
       "cap": "सीमा",
       "capNone": "कोई नहीं",
       "noCap": "कोई सीमा नहीं",
-      "capAMonth": "{amount} प्रति माह"
+      "capAMonth": "{amount} प्रति माह",
+      "aSeat": "{price} प्रति सीट",
+      "seats": "{count, plural, one {# सीट} other {# सीटें}}",
+      "amountAMonth": "{amount} प्रति माह",
+      "manageBilling": "बिलिंग प्रबंधित करें",
+      "moveTo": "{plan} पर जाएँ"
     },
     "couldntInvite": "संगठन बन गया, पर आमंत्रण नहीं भेजे जा सके। उन्हें इसकी सदस्य सेटिंग्स से भेजें।",
     "fromCredits": "{name} के क्रेडिट से",

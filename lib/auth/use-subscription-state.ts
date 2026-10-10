@@ -16,10 +16,12 @@ const SubscriptionStateContext = createContext<SubscriptionState | null>(null);
 
 /**
  * The signed-in user's plan, plan features and credits, from the cached
- * billing snapshot, and Autumn's catalog to describe them.
+ * billing snapshot, and Autumn's catalog to describe them: the workspace's the
+ * page is in, or with `own` the person's own, as Pricing's plans for them are.
  */
-function useOwnedSubscriptionState() {
-  const query = useOptionalAuthQuery(api.billing.accounts.mine, useWorkspaceScope());
+function useOwnedSubscriptionState({ own = false }: { own?: boolean } = {}) {
+  const scope = useWorkspaceScope();
+  const query = useOptionalAuthQuery(api.billing.accounts.mine, own ? {} : scope);
   const catalog = useBillingCatalog();
   const account = query.data ?? null;
 
@@ -60,8 +62,8 @@ export function SubscriptionStateProvider({
   return createElement(SubscriptionStateContext.Provider, { value: state }, children);
 }
 
-export function useSubscriptionState() {
-  return useOwnedSubscriptionState();
+export function useSubscriptionState(options?: { own?: boolean }) {
+  return useOwnedSubscriptionState(options);
 }
 
 export function useSharedSubscriptionState() {

@@ -9,7 +9,7 @@ import { autumn } from "./autumn";
 import { refreshAccount } from "./accounts";
 import { previewLineItemsValidator, type BillingCatalog } from "./validators";
 import { MAX_PLAN_DETAILS } from "../lib/listCaps";
-import { ORGANIZATION_PLANS, TOPUP_PLAN } from "../../lib/billing/plans";
+import { FREE_MEMBERS, ORGANIZATION_PLAN, ORGANIZATION_PLANS, TEAM_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
 import { findPlan, topUpBundles } from "../../lib/billing/catalog";
 
 async function requireUser(ctx: ActionCtx): Promise<Doc<"users">> {
@@ -46,7 +46,7 @@ const billingUrl = () => `${requireAppUrl()}/settings/billing`;
  * so Autumn expires the old session and starts a fresh one, or charges a
  * card saved since.
  */
-const returnUrl = (result: "checkout" | "topup", page = "/settings/billing") =>
+const returnUrl = (result: "checkout" | "topup" | "team", page = "/settings/billing") =>
   `${requireAppUrl()}${page}?${result}=success&request=${crypto.randomUUID()}`;
 
 /**
@@ -161,12 +161,61 @@ export const buyCredits = action({
   },
 });
 
-/** Stripe's portal for invoices and payment methods. */
+/** Stripe's portal for invoices and payment methods: the person's own, or in `workspaceId` its organization's, which its admins manage. */
 export const openPortal = action({
-  args: {},
+  args: { workspaceId: v.optional(v.id("workspaces")) },
   returns: v.string(),
-  handler: async (ctx): Promise<string> => {
+  handler: async (ctx, { workspaceId }): Promise<string> => {
     const user = await requireUser(ctx);
-    return (await autumn.portal(user._id, billingUrl())).url;
+    if (!workspaceId) return (await autumn.portal(user._id, billingUrl())).url;
+    const organization = await organizationAdminOf(ctx, workspaceId);
+    return (await autumn.portal(workspaceId, `${requireAppUrl()}/o/${organization.slug}/settings/billing`)).url;
+  },
+});
+
+/** The organization a workspace is, which the person is an admin of: only its admins change its plan (#652). */
+async function organizationAdminOf(ctx: ActionCtx, workspaceId: Id<"workspaces">) {
+  const actor: Actor = await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId });
+  const organization: { name: string; slug: string } | null = await ctx.runQuery(internal.billing.accounts.organizationOf, { workspaceId });
+  if (!organization) throw createError("VALIDATION_ERROR", "Only an organization changes to Team or back.");
+  if (actor.role !== "admin") throw createError("FORBIDDEN", `Only an admin of ${organization.name} changes its plan.`);
+  return organization;
+}
+
+/**
+ * Moves an organization to Team (#652): its limits and features from the Team plan, and a seat
+ * for each member, charged to its saved card now, each adding its credits to the pool. Without a
+ * saved card it returns a checkout that saves one, after which Autumn moves it, and its webhook
+ * seats the members (autumnWebhook.ts).
+ */
+export const moveToTeam = action({
+  args: { workspaceId: v.id("workspaces") },
+  returns: checkoutResult,
+  handler: async (ctx, { workspaceId }): Promise<{ url: string | null }> => {
+    await requireUser(ctx);
+    const organization = await organizationAdminOf(ctx, workspaceId);
+    const customer = await autumn.customer(workspaceId, { card: true });
+    if (!customer.payment_method?.card) return { url: (await autumn.setupPayment(workspaceId, TEAM_PLAN, returnUrl("team", `/o/${organization.slug}/pricing`))).url };
+    await autumn.attach({ customerId: workspaceId, planId: TEAM_PLAN, idempotencyKey: `team-${workspaceId}-${crypto.randomUUID()}` });
+    // Its seats now, so the page it comes back to shows them; the same sync runs on each change after.
+    await ctx.runAction(internal.billing.seats.sync, { workspaceId });
+    await refreshAccount(ctx, workspaceId, { card: true });
+    return { url: null };
+  },
+});
+
+/** Moves an organization back to the free plan (#652), which has up to FREE_MEMBERS members: its seats end at once. */
+export const moveToFree = action({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId }): Promise<null> => {
+    await requireUser(ctx);
+    await organizationAdminOf(ctx, workspaceId);
+    const members: Array<{ clerkUserId: string }> | null = await ctx.runQuery(internal.billing.seats.membersOf, { workspaceId });
+    if (members === null || members.length > FREE_MEMBERS) throw createError("VALIDATION_ERROR", `Free has up to ${FREE_MEMBERS} members: remove members down to ${FREE_MEMBERS} first.`);
+    await autumn.attach({ customerId: workspaceId, planId: ORGANIZATION_PLAN, idempotencyKey: `free-${workspaceId}-${crypto.randomUUID()}` });
+    await ctx.runAction(internal.billing.seats.sync, { workspaceId });
+    await refreshAccount(ctx, workspaceId, { card: true });
+    return null;
   },
 });

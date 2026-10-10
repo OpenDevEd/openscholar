@@ -265,7 +265,31 @@
     "sessionSetupIssue": "Session setup issue",
     "retrySyncToContinue": "Retry session sync to continue with billing actions.",
     "paymentPendingDefault": "Payment is pending. Complete payment in Stripe Billing Portal to activate your plan and credits.",
-    "downgradeScheduledTo": "Downgrade scheduled to"
+    "downgradeScheduledTo": "Downgrade scheduled to",
+    "plansFor": "Plans for",
+    "forYou": "For you",
+    "forAnOrganization": "For an organization",
+    "organizations": {
+      "freeOrganization": "Free organization",
+      "freeDescription": "Work together with a few people.",
+      "teamDescription": "For labs and review teams on one credit pool.",
+      "aMonth": "a month",
+      "aSeat": "{price} a seat",
+      "seats": "{count, plural, one {# seat} other {# seats}}",
+      "oneSeatFewer": "One seat fewer",
+      "oneSeatMore": "One more seat",
+      "sharedCreditsAMonth": "{credits, number} shared credits a month",
+      "capsForEachMember": "Credit caps for each member",
+      "yourOrganizationsPlan": "Your organization's plan",
+      "createOrganization": "Create an organization",
+      "moveTo": "Move to {plan}",
+      "onlyAdmins": "Only admins of {organization} change its plan",
+      "organizationsOnly": "Team is for organizations: create one first",
+      "tooManyForFree": "Free has up to {count, number} members: remove members first",
+      "seatsAt": "{count, plural, one {# seat} other {# seats}} at {price}",
+      "moveToFreeTitle": "Move {organization} to {plan}?",
+      "moveToFreeDetail": "{count, plural, one {Its seat ends} other {Its # seats end}} now. It then has up to {members, number} members and {credits, number} shared credits a month."
+    }
   },
   "publicationSettings": {
     "credentials": "{provider} credentials",
@@ -4183,7 +4207,12 @@
       "cap": "Cap",
       "capNone": "None",
       "noCap": "No cap",
-      "capAMonth": "{amount} a month"
+      "capAMonth": "{amount} a month",
+      "aSeat": "{price} a seat",
+      "seats": "{count, plural, one {# seat} other {# seats}}",
+      "amountAMonth": "{amount} a month",
+      "manageBilling": "Manage billing",
+      "moveTo": "Move to {plan}"
     },
     "couldntInvite": "The organization was made, but the invitations didn't go out. Send them from its Members settings.",
     "fromCredits": "From {name}'s credits",

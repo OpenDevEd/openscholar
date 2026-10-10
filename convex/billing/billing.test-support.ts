@@ -30,7 +30,7 @@ export const fakeAutumn = {
   /** Each customer's entities (#652): whether each holds a Team seat, its monthly cap, and what it used of it. */
   entities: new Map<string, Map<string, { seated: boolean; cap?: number; used: number }>>(),
   calls: [] as Array<{ path: string; body: Record<string, unknown> }>,
-  /** Set when the customer has no saved card: a seat's attach asks for checkout instead of charging. */
+  /** Set when the customer has no saved card: a seat's attach asks for checkout instead of charging, and the customer shows no card. */
   noCard: false,
   /** Makes the next call to this endpoint fail, as if Autumn were down. */
   failNext: null as string | null,
@@ -141,7 +141,10 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
   const customerId = body.customer_id as string | undefined;
   switch (path) {
     case "customers.get_or_create":
-      return respond(200, customerBody(customerId!));
+      // The saved card, when the call asks for it and the customer has one.
+      return respond(200, { ...customerBody(customerId!), ...((body.expand as string[] | undefined)?.includes("payment_method") && !fakeAutumn.noCard ? { payment_method: { card: { brand: "visa", last4: "4242" } } } : {}) });
+    case "billing.setup_payment":
+      return respond(200, { customer_id: customerId, url: "https://setup.test" });
     case "billing.attach": {
       const customer = fakeAutumn.customer(customerId!);
       if (body.entity_id) {
