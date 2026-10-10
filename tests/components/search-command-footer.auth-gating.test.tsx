@@ -276,6 +276,10 @@ vi.mock("posthog-js", () => ({
   default: { capture: vi.fn() },
 }));
 
+// The actions on the papers rated, which have tests of their own, as markers of where they show.
+vi.mock("@/components/search-command-center/components/more-like-rated", () => ({ MoreLikeRated: () => <span>more-like-rated</span> }));
+vi.mock("@/components/search-command-center/components/likely-first", () => ({ LikelyFirst: () => <span>likely-first</span> }));
+
 describe("<SearchCommandFooter> auth-gated limits", () => {
   beforeEach(() => {
     authReadinessRef.current = {
@@ -537,5 +541,34 @@ describe("<SearchCommandFooter> with a question asked by meaning", () => {
     });
     expect(enhanceMock).toHaveBeenCalled();
     expect(setQueryMock).not.toHaveBeenCalled();
+  });
+});
+
+// A preview of a search's query, as an Evidence Library import shows one, only shows what it finds.
+describe("<SearchCommandFooter> previewing a search's query alone", () => {
+  const footer = (queryOnly: boolean) =>
+    render(
+      <SearchCommandFooter
+        totalCount={500}
+        currentQuery="graph neural networks"
+        isScreeningOpen={false}
+        onScreeningToggle={vi.fn()}
+        screeningPanelId="screening-panel"
+        screeningQuestionCount={0}
+        searchId="search_1"
+        queryOnly={queryOnly}
+      />,
+    );
+
+  it("offers no order or search by the papers rated, which a preview doesn't act on", () => {
+    footer(true);
+    expect(screen.queryByText("likely-first")).not.toBeInTheDocument();
+    expect(screen.queryByText("more-like-rated")).not.toBeInTheDocument();
+  });
+
+  it("offers them on a results page", () => {
+    footer(false);
+    expect(screen.getByText("likely-first")).toBeInTheDocument();
+    expect(screen.getByText("more-like-rated")).toBeInTheDocument();
   });
 });

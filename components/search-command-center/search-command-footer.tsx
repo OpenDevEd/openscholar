@@ -383,8 +383,9 @@ Return a more targeted version of this query.`;
             {searchedCount === null ? t("common.results") : t("searchCommand.closestOf", { total: searchedCount })}
           </span>
         </div>
-        <MoreLikeRated />
-        <LikelyFirst />
+        {/* A preview of a search's query doesn't act on its papers: it neither opens a search nor reorders them. */}
+        {!queryOnly && <MoreLikeRated />}
+        {!queryOnly && <LikelyFirst />}
       </div>
 
       <div className="self-end sm:self-auto">
