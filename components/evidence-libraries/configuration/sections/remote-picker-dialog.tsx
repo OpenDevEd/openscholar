@@ -159,6 +159,9 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
   );
   const [rows, setRows] = useState<PickerRow[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
+  // Counts the answers shown. A new answer's rows are new rows, so they fade in where they
+  // are, and a row both answers hold doesn't jump from its old place to its new one.
+  const [answer, setAnswer] = useState(0);
   const [status, setStatus] = useState<Status>("loading");
   // Ticked rows are kept whole, so a later search or filter cannot lose a
   // choice the owner already made.
@@ -205,6 +208,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
           return;
         }
         setRows((current) => (next.cursor ? [...current, ...page.items] : page.items));
+        if (!next.cursor) setAnswer((count) => count + 1);
         onRowsLoaded?.(page.items);
         setCursor(page.nextCursor);
         setStatus("ready");
@@ -476,7 +480,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                     };
                     return (
                       <TableRow
-                        key={row.id}
+                        key={`${answer} ${row.id}`}
                         data-picker-row
                         data-picker-id={row.id}
                         data-picked={props.mode === "multi" ? checked : chosen}
