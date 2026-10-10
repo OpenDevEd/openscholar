@@ -440,7 +440,7 @@ export const release = internalMutation({
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
-        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()), batch: v.optional(v.number()), variant: v.optional(v.string()), outside: v.optional(v.literal(true)) })),
+        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()), batch: v.optional(v.number()), variant: v.optional(v.string()), outside: v.optional(v.literal(true)), undoable: v.optional(v.literal(true)) })),
         spent: v.number(),
         rounds: v.number(),
         made: v.number(),
@@ -662,8 +662,9 @@ const stepValidator = v.object({
   sources: webSourcesValidator,
   /** The most it holds, on a call that spends credits (#328). */
   credits: v.optional(v.number()),
-  /** On a call that asks first: what it does can reach other people too. Otherwise it asks because it can't be undone. */
+  /** On a call that asks first: other people see what it does. With `undoable`, that is the only reason it asks; without, it can't be undone either. Neither: it asks because it can't be undone. */
   outside: v.optional(v.literal(true)),
+  undoable: v.optional(v.literal(true)),
   /**
    * `failed` also covers a step whose reply died while it ran. `asking`: the person is asked before it runs.
    * `allowed`: they said yes, and it runs once the reply carries on. `declined`: they said no, or stopped the reply.
@@ -956,6 +957,7 @@ function shownStep(
     ...(step.sources?.length ? { sources: step.sources } : {}),
     ...(step.credits === undefined ? {} : { credits: step.credits }),
     ...(step.outside ? { outside: true as const } : {}),
+    ...(step.undoable ? { undoable: true as const } : {}),
     status: shownStatus(step.status, answering === step.order),
     ...(step.batch === undefined ? {} : { batch: step.batch }),
     canAnswer: asked !== undefined,

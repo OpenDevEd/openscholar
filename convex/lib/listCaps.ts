@@ -137,6 +137,8 @@ export const MAX_REDIRECT_URIS = 20;
 export const MAX_RELEASE_CHANGES = 250;
 export const MAX_RELEASES = 100;
 export const MAX_RELEASE_NOTES = 40;
+/** Likely reviews one digest request has read (digests/kinds.ts reads no more). */
+export const MAX_DIGEST_KINDS = 300;
 /** Sources one Evidence Library reports a status for. */
 export const MAX_LIBRARY_SOURCES = 200;
 /** Kinds of issue one source reports. */

@@ -156,6 +156,11 @@ export const inviteAction = defineChangingAction({
   // An email goes out, and someone outside the workspace can take up access to the item.
   outsideEffect: true,
   undoable: false,
+  // Read before the person is asked: a role the kind doesn't take, and an item that isn't this workspace's to share, as one shared with them isn't.
+  check: async (ctx, actor, { kind, id, role }) => {
+    requireRole(kind, role);
+    await sharedIn(ctx, actor, kind, id);
+  },
   run: async (ctx, { userId, workspaceId, author }, args) => {
     const invitationId: Id<"itemInvitations"> = await ctx.runMutation(internal.sharing.invitations.prepare, { userId, workspaceId, author, ...args });
     await ctx.runAction(internal.sharing.mail.deliver, { invitationId });

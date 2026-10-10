@@ -66,11 +66,14 @@ export const reversal = <Path extends string, Args extends PropertyValidators>(p
   v.object({ path: v.literal(path), args: v.object(args) });
 
 /**
- * Whether one call asks the person first although its action as a whole doesn't: the call
- * would show outside the account, such as a change to a collection a library follows
- * (decision 12). The assistant reads it before it runs the call.
+ * Whether one call asks the person first although its action as a whole doesn't. The assistant
+ * reads it before it runs the call. An action asks this way for one of two reasons, and the
+ * person asked is told which: other people would see the change, such as one to a collection
+ * a library follows (decision 12), which `seenOutside` says; or nothing puts this call's change
+ * back, such as clearing every search.
+ * ponytail: the reason is the action's, not the call's. Have `asksFirst` return it when one action asks for both.
  */
-type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, actor: Acting, args: ObjectType<Args>): Promise<boolean> };
+type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, actor: Acting, args: ObjectType<Args>): Promise<boolean>; seenOutside?: true };
 
 /**
  * The most one call of an action that spends credits holds (#328): an upper estimate, read
