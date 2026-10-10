@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { subMonths, subWeeks, subYears } from "date-fns";
+import { startOfDay, subMonths, subWeeks, subYears } from "date-fns";
 import { Check, Clock, Folder, FolderPlus, LibraryBig, Plus, Search, Settings, SlidersHorizontal, Star } from "@/components/icons";
 import { TooltipHint } from "@/components/ui/tooltip";
 import type { DateRange } from "react-day-picker";
@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { FilterSection } from "@/components/shared/filter-section";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { DateRangePicker, type DatePreset } from "@/components/shared/date-range-picker";
@@ -100,7 +101,7 @@ export function LibraryFilterContent({
   const isSortActive = sort !== "savedAt:desc";
   const isCollectionActive = collectionId !== null;
 
-  // Date presets for the "date saved" filter
+  // Date saved's quick picks, and how many papers each keeps of the library or collection.
   const savedDatePresets: DatePreset[] = useMemo(
     () => [
       {
@@ -121,6 +122,17 @@ export function LibraryFilterContent({
     ],
     [t],
   );
+  // Each pick's first day, fixed when the sidebar opens so the counts aren't asked for again each render.
+  const [since] = useState(() => ({
+    week: startOfDay(subWeeks(new Date(), 1)).getTime(),
+    month: startOfDay(subMonths(new Date(), 1)).getTime(),
+    year: startOfDay(subYears(new Date(), 1)).getTime(),
+  }));
+  const workspaceId = useWorkspace();
+  const { data: savedCounts } = useProtectedQuery(
+    api.library.queries.getSavedSinceCounts,
+    inWorkspace(workspaceId, { since, ...(collectionId ? { collectionId: collectionId as Id<"collections"> } : {}) }),
+  );
 
   return (
     <div className={cn("space-y-4 p-4", !isMobile && "pt-15")}>
@@ -138,7 +150,7 @@ export function LibraryFilterContent({
         <DateRangePicker
           value={savedDateRange}
           onValueChange={onSavedDateRangeChange}
-          presets={savedDatePresets}
+          presets={{ label: t("filterDateSaved"), options: savedDatePresets, counts: savedCounts ?? null }}
         />
       </FilterSection>
 
@@ -167,7 +179,6 @@ export function LibraryFilterContent({
         <RatingRangePicker
           ratingRange={ratingRange}
           onRatingRangeChange={onRatingRangeChange}
-          minValue={0}
         />
       </FilterSection>
 

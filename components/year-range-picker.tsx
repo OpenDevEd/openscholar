@@ -14,6 +14,7 @@ import { MIN_YEAR, getYearRangePresets } from "@/lib/constants";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { useTranslations } from "next-intl";
+import { PresetStrip } from "@/components/shared/date-range-picker";
 
 interface YearRangePickerProps {
   /** Current year range tuple */
@@ -145,7 +146,7 @@ export function YearRangePicker({
             "w-full h-10 justify-start text-left font-normal transition-all duration-200",
             isFilterActive
               ? "border-sidebar-primary/50"
-              : "border-dashed border-muted-foreground/30",
+              : "border-dashed border-muted-foreground/30 dark:border-muted-foreground/20",
           )}
         >
           <span className="truncate">
@@ -280,24 +281,13 @@ export function YearRangePicker({
                 {tf("quickPresets")}
               </div>
             )}
-            <div className="grid grid-cols-2 gap-2">
-              {getYearRangePresets().map((preset) => (
-                <Button
-                  key={preset.key}
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => applyYearPreset(preset.range)}
-                  className={
-                    showToggle
-                      ? "h-8 px-3 text-xs font-normal"
-                      : undefined
-                  }
-                >
-                  {tf(preset.key)}
-                </Button>
-              ))}
-            </div>
+            <PresetStrip
+              label={tf("quickPresets")}
+              columns={2}
+              options={getYearRangePresets().map((preset) => ({ key: preset.key, label: tf(preset.key) }))}
+              active={isEnabled ? (getYearRangePresets().find((preset) => preset.range[0] === yearRange[0] && preset.range[1] === yearRange[1])?.key ?? null) : null}
+              onPick={(key) => applyYearPreset(getYearRangePresets().find((preset) => preset.key === key)!.range)}
+            />
           </div>
         </div>
       </PopoverContent>

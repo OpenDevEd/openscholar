@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { DateRange } from "react-day-picker";
+import { isSameDay } from "date-fns";
+import { motion, useReducedMotion } from "motion/react";
+import { SHEET_SPRING } from "@/lib/motion";
 import { useFormatter, useTranslations } from "next-intl";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
@@ -10,6 +13,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Check } from "@/components/icons";
+import { radioKeys, radioTabIndex } from "@/lib/radio-keys";
 import { cn } from "@/lib/utils";
 
 export interface DatePreset {
@@ -18,10 +23,17 @@ export interface DatePreset {
   getRange: () => DateRange;
 }
 
+/** How many of `total` items each preset keeps, by its key. */
+export type PresetCounts = { total: number; kept: Record<string, number> };
+
 interface DateRangePickerProps {
   value: DateRange | undefined;
   onValueChange: (range: DateRange | undefined) => void;
-  presets?: DatePreset[];
+  /**
+   * Quick picks above the calendar, named `label`. With `counts`, each shows how many items it
+   * keeps and a bar for its share; null while the counts are on their way.
+   */
+  presets?: { label: string; options: DatePreset[]; counts?: PresetCounts | null };
   placeholder?: string;
   className?: string;
 }
@@ -43,6 +55,7 @@ export function DateRangePicker({
   const tc = useTranslations("common");
   const tf = useTranslations("searchFilters");
   const format = useFormatter();
+  const reduce = useReducedMotion();
 
   const [isOpen, setIsOpen] = useState(false);
   const [tempRange, setTempRange] = useState<DateRange | undefined>(value);
@@ -68,6 +81,11 @@ export function DateRangePicker({
     setIsOpen(false);
   };
 
+  // A preset is on while the filter is exactly its range, which ends today.
+  const ranges = (presets?.options ?? []).map((preset) => ({ preset, range: preset.getRange() }));
+  const activePreset = ranges.find(({ range }) => value?.from && value.to && range.from && range.to && isSameDay(value.from, range.from) && isSameDay(value.to, range.to))?.preset.key ?? null;
+  const counts = presets?.counts;
+
   const isActive = Boolean(value?.from || value?.to);
 
   const label = useMemo(() => {
@@ -85,6 +103,52 @@ export function DateRangePicker({
 
   return (
     <div className={cn("space-y-3", className)}>
+      {ranges.length ? (
+        <div role="radiogroup" aria-label={presets?.label} onKeyDown={radioKeys} className="space-y-1">
+          {ranges.map(({ preset, range }, index) => {
+            const on = preset.key === activePreset;
+            const kept = counts?.kept[preset.key];
+            return (
+              <button
+                key={preset.key}
+                type="button"
+                role="radio"
+                aria-checked={on}
+                tabIndex={radioTabIndex(on, index, activePreset !== null)}
+                // Picking the one that is on clears it.
+                onClick={() => (on ? onValueChange(undefined) : handlePresetClick(range))}
+                className={cn(
+                  "group relative flex h-9 w-full items-center gap-2 overflow-hidden rounded-lg bg-inset px-3 text-left text-sm transition-colors",
+                  on ? "text-primary ring-1 ring-primary/40" : "text-foreground hover:bg-muted",
+                )}
+              >
+                {/* How much of what's here the preset keeps: it grows in when the counts arrive. */}
+                {kept !== undefined && counts?.total ? (
+                  <motion.span
+                    aria-hidden
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(kept / counts.total) * 100}%` }}
+                    transition={reduce ? { duration: 0 } : SHEET_SPRING}
+                    className={cn("absolute inset-y-0 left-0 transition-colors", on ? "bg-primary/20" : "bg-primary/10 group-hover:bg-primary/15")}
+                  />
+                ) : null}
+                <span className={cn("relative flex-1 truncate", on && "font-medium")}>{preset.label}</span>
+                {on ? <Check className="relative size-3.5" /> : null}
+                {/* The count's column is kept while it loads, so the check doesn't move when it arrives. */}
+                {counts !== undefined ? (
+                  <span className={cn("relative h-5 min-w-[4ch] text-right tabular-nums", on ? "text-primary" : "text-muted-foreground")}>
+                    {kept !== undefined ? (
+                      <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={reduce ? { duration: 0 } : { duration: 0.2 }}>
+                        {format.number(kept)}
+                      </motion.span>
+                    ) : null}
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       <Popover open={isOpen} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>
           <Button
@@ -94,7 +158,7 @@ export function DateRangePicker({
               "w-full h-10 justify-start text-left font-normal",
               isActive
                 ? "border-sidebar-primary/50"
-                : "border-dashed border-muted-foreground/30",
+                : "border-dashed border-muted-foreground/30 dark:border-muted-foreground/20",
             )}
           >
             <span className="truncate text-sm">{label}</span>
@@ -112,22 +176,49 @@ export function DateRangePicker({
           />
         </PopoverContent>
       </Popover>
+    </div>
+  );
+}
 
-      {presets && presets.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
-          {presets.map((preset) => (
-            <Button
-              key={preset.key}
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => handlePresetClick(preset.getRange())}
-            >
-              {preset.label}
-            </Button>
-          ))}
-        </div>
-      )}
+/**
+ * Quick picks as one segmented strip. A raised thumb slides to the pick that matches the
+ * filter. Pass `columns` to wrap them into a grid.
+ */
+export function PresetStrip({ label, options, active, onPick, columns = options.length }: {
+  label: string;
+  options: Array<{ key: string; label: string }>;
+  active: string | null;
+  onPick: (key: string) => void;
+  columns?: number;
+}) {
+  const thumb = useId();
+  const reduce = useReducedMotion();
+  const round = columns === options.length ? "rounded-full" : "rounded-[0.625rem]";
+  return (
+    <div
+      role="radiogroup"
+      aria-label={label}
+      onKeyDown={radioKeys}
+      className={cn("grid gap-0.5 bg-segment p-0.5", columns === options.length ? "rounded-full" : "rounded-xl")}
+      style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+    >
+      {options.map((option, index) => {
+        const on = option.key === active;
+        return (
+          <button
+            key={option.key}
+            type="button"
+            role="radio"
+            aria-checked={on}
+            tabIndex={radioTabIndex(on, index, active !== null)}
+            onClick={() => onPick(option.key)}
+            className={cn("relative flex h-8 min-w-0 items-center justify-center px-2 text-xs font-medium transition-colors", round, on ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
+          >
+            {on ? <motion.span layoutId={thumb} aria-hidden className={cn("absolute inset-0 bg-segment-active shadow-sm", round)} transition={reduce ? { duration: 0 } : SHEET_SPRING} /> : null}
+            <span className="relative truncate">{option.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
