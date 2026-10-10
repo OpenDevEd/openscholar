@@ -90,4 +90,11 @@ describe("saved source search", () => {
     const similar = {...DEFAULT_SEARCH_PARAMS, like: ["OS64233829"]};
     expect([isSearchByMeaning(similar), buildOpenAlexSourceQuery(similar)]).toEqual([true, null]);
   });
+
+  it("imports an OQL search without the papers a saved search names beside it, as its preview runs it", () => {
+    const oql = {...DEFAULT_SEARCH_PARAMS, field: "oql", q: "title has (chatgpt)"};
+    const named = {...oql, like: ["OS64233829"]};
+    expect(isSearchByMeaning(named)).toBe(false);
+    expect(buildOpenAlexSourceQuery(named)).toEqual(buildOpenAlexSourceQuery(oql));
+  });
 });

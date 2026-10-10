@@ -5,6 +5,7 @@ import { buildOpenAlexWorksQuery } from "@/lib/openalex/works-query";
 import type { OpenAlexQuery, OpenAlexSourceEntry } from "./configuration/sources";
 import { browserExpand } from "@/lib/keyword-validation-browser";
 import { SEMANTIC_FIELD } from "@/lib/openalex/semantic";
+import { runnableParams } from "@/lib/search-params/converters";
 
 /** Pagination and display settings do not change which records a source imports. */
 export function sameOpenAlexSourceSearch(left: SearchParams, right: SearchParams): boolean {
@@ -32,7 +33,9 @@ function narrowsOql(oql: string | undefined): boolean {
 
 /** Whether the search asks a question by meaning, or for the works nearest given papers, which can't be a library source yet. */
 export function isSearchByMeaning(params: SearchParams): boolean {
-  return params.field === SEMANTIC_FIELD || params.like.length > 0;
+  // As the search runs and its preview shows it: papers named beside an OQL query are not searched by.
+  const { field, like } = runnableParams(params);
+  return field === SEMANTIC_FIELD || like.length > 0;
 }
 
 /**
