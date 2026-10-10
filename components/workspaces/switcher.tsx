@@ -8,10 +8,9 @@
 import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
 import { Home, Loader2, Plus, Settings, Users, X } from "@/components/icons";
-import { EASE } from "@/components/settings/model-map";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -28,7 +27,7 @@ import { workspaceHref } from "@/lib/workspaces/href";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { pageItem } from "./item-home";
-import { Framed, PlanChip, settingsHref, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
+import { Framed, Opening, PlanChip, settingsHref, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 import { FREE_MEMBERS } from "@/lib/billing/plans";
 
 const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-left transition-colors hover:bg-foreground/[0.045]";
@@ -130,9 +129,11 @@ export function useAnswerInvitation() {
 /**
  * The workspace card: the one you're in, the others, invitations, and making one. `all` is read by
  * the rail, which is always there, so the list is in the card as it opens. `onPick` hears the
- * workspace picked as the card closes, so the rail shows it while its pages load.
+ * workspace picked as the card closes, so the rail shows it while its pages load. The card can be
+ * opened while the page is still loading: it then has the name the rail shows (`shown`), and what
+ * is read after opens its place.
  */
-export function WorkspaceMenu({ all, onDone, onPick, onCreate }: { all: ReturnType<typeof useWorkspaces>; onDone: () => void; onPick: (workspace: WorkspaceRow) => void; onCreate: () => void }) {
+export function WorkspaceMenu({ shown, all, onDone, onPick, onCreate }: { shown: WorkspaceLook | undefined; all: ReturnType<typeof useWorkspaces>; onDone: () => void; onPick: (workspace: WorkspaceRow) => void; onCreate: () => void }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -140,6 +141,8 @@ export function WorkspaceMenu({ all, onDone, onPick, onCreate }: { all: ReturnTy
   const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(current?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
   const { answering, join, decline } = useAnswerInvitation();
   const others = (all.list ?? []).filter((workspace) => workspace.workspaceId !== current?.workspaceId);
+  // A list that is in the card as it opens is simply there; one read after opens its place.
+  const [listed] = useState(others.length > 0);
   const go = (slug: string | undefined) => {
     onDone();
     router.push(switchTarget(slug, window.location.pathname, window.location.search.slice(1)));
@@ -149,17 +152,22 @@ export function WorkspaceMenu({ all, onDone, onPick, onCreate }: { all: ReturnTy
       <div className="flex items-center gap-3 px-2.5 pb-3 pt-2.5">
         <span aria-hidden className="shrink-0 rounded-xl" style={{ width: HEAD, height: HEAD }} />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold leading-tight tracking-tight">{current?.name}</span>
-          <span className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-            {current ? <PlanChip workspace={current} /> : null}
-            {current?.kind === "organization" ? <span className="tabular-nums">{t("members", { count: current.members ?? 0 })}</span> : null}
-            {current ? <RoleOf workspace={current} /> : null}
+          <span className="block truncate text-[15px] font-semibold leading-tight tracking-tight">{current?.name ?? shown?.name}</span>
+          {/* The line keeps its height while the plan, the members and the role are read, and they fade in. */}
+          <span className="mt-1 flex h-5 text-xs text-muted-foreground">
+            {current ? (
+              <span className="flex items-center gap-2 animate-in fade-in-0 duration-200">
+                <PlanChip workspace={current} />
+                {current.kind === "organization" ? <span className="tabular-nums">{t("members", { count: current.members ?? 0 })}</span> : null}
+                <RoleOf workspace={current} />
+              </span>
+            ) : null}
           </span>
         </span>
       </div>
 
       {others.length ? (
-        <>
+        <Opening instant={listed}>
           <p className="flex h-6 items-center border-t border-border/60 px-2.5 pt-2 text-[11px] font-medium text-muted-foreground">{t("switchTo")}</p>
           <ul role="listbox" aria-label={t("otherWorkspaces")} className="space-y-px pt-1">
             {others.map((workspace) => (
@@ -195,19 +203,12 @@ export function WorkspaceMenu({ all, onDone, onPick, onCreate }: { all: ReturnTy
               </li>
             ) : null}
           </ul>
-        </>
+        </Opening>
       ) : null}
 
       <AnimatePresence initial={false}>
         {(invitations?.page ?? []).map((invitation) => (
-          <motion.div
-            key={invitation.invitationId}
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: EASE }}
-            className="overflow-hidden"
-          >
+          <Opening key={invitation.invitationId}>
             <div className="mt-1 space-y-2 border-t border-border/60 px-2 pb-1 pt-2.5">
               <div className="flex items-center gap-2.5">
                 {/* The organization's logo and whoever invited you, as its page shows them. */}
@@ -238,7 +239,7 @@ export function WorkspaceMenu({ all, onDone, onPick, onCreate }: { all: ReturnTy
                 </Button>
               </div>
             </div>
-          </motion.div>
+          </Opening>
         ))}
       </AnimatePresence>
 

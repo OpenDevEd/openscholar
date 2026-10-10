@@ -55,7 +55,7 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { LOOK_COOKIE, lookCookieIn, lookKey, readCache, writeCache, type CachedLook, type CachedMe, type FirstWorkspace } from "@/lib/workspaces/look-cache";
 import { CreateOrganization, WorkspaceMenu } from "./switcher";
-import { Framed, settingsHref, usePlanOf, useCurrentWorkspace, useWorkspaces, workspaceTint, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
+import { Framed, Opening, settingsHref, usePlanOf, useCurrentWorkspace, useWorkspaces, workspaceTint, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 
 /** How far the rail steps back while a card is up. */
 const RECEDE = 0.9;
@@ -293,6 +293,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
         }
       >
         <WorkspaceMenu
+          shown={current}
           all={workspaces}
           onDone={close}
           onPick={(to) => setPicked({ to, from: pathname })}
@@ -314,6 +315,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
         }
       >
         <AccountCard
+          me={me}
           workspace={loaded}
           onNavigate={() => {
             setCard(null);
@@ -323,22 +325,6 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
       </RailCard>
       <CreateOrganization open={creating} onOpenChange={setCreating} />
     </ShownWorkspace.Provider>
-  );
-}
-
-/** A rail section that opens its place as it comes, and closes it as it goes. */
-function Opening({ children }: { children: React.ReactNode }) {
-  const reduceMotion = useReducedMotion();
-  return (
-    <motion.div
-      className="w-full overflow-hidden"
-      initial={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-      animate={{ height: "auto", opacity: 1 }}
-      exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-      transition={{ duration: 0.3, ease: EASE }}
-    >
-      {children}
-    </motion.div>
   );
 }
 
@@ -551,8 +537,12 @@ const AccountButton = React.forwardRef<HTMLButtonElement, { me: CachedMe | undef
   );
 });
 
-/** The account card: you, the workspace's credits, settings, theme, language and sign out. */
-function AccountCard({ workspace, onNavigate }: { workspace: WorkspaceRow | undefined; onNavigate: () => void }) {
+/**
+ * The account card: you, the workspace's credits, settings, theme, language and sign out. It can be
+ * opened while the page is still loading: it then has your name as the rail knows it (`me`), and
+ * what is read after fades in or opens its place.
+ */
+function AccountCard({ me, workspace, onNavigate }: { me: CachedMe | undefined; workspace: WorkspaceRow | undefined; onNavigate: () => void }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
   const format = useFormatter();
@@ -561,34 +551,41 @@ function AccountCard({ workspace, onNavigate }: { workspace: WorkspaceRow | unde
   const { theme, setTheme } = useTheme();
   const { account, catalog, resolvedPlan } = useSubscriptionState();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
-  const name = user?.fullName || user?.primaryEmailAddress?.emailAddress || "";
+  const email = user?.primaryEmailAddress?.emailAddress;
   const billing = settingsHref(workspace, "/billing");
   const catalogPlan = catalog && resolvedPlan ? findPlan(catalog, resolvedPlan) : undefined;
   const monthly = catalogPlan?.credits?.interval === "month" ? catalogPlan.credits.included : undefined;
   const credits = account?.balance;
   const share = monthly && credits !== undefined ? Math.min(1, credits / monthly) : null;
+  const hasCredits = !!workspace && credits !== undefined;
+  // Credits that are in the card as it opens are simply there; ones read after open their place.
+  const [creditsFromStart] = useState(hasCredits);
   return (
     <>
       <div className="flex items-center gap-3 px-2.5 pb-2.5 pt-2.5">
         <span aria-hidden className="size-10 shrink-0 rounded-full" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[15px] font-semibold leading-tight tracking-tight">{name}</span>
-          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{user?.primaryEmailAddress?.emailAddress}</span>
+          {/* On a first visit the rail has no name until Clerk loads: the line is there, and the name fades in. */}
+          <span className="block truncate text-[15px] font-semibold leading-tight tracking-tight">{me?.name ? <span className="animate-in fade-in-0 duration-200">{me.name}</span> : "\u00a0"}</span>
+          {/* The line keeps its height while Clerk loads, and the address fades in. */}
+          <span className="mt-0.5 block h-4 truncate text-xs text-muted-foreground">{email ? <span className="animate-in fade-in-0 duration-200">{email}</span> : null}</span>
         </span>
       </div>
-      {workspace && credits !== undefined ? (
-        <Link href={billing} onClick={onNavigate} className="mx-1 mb-1 block space-y-2 rounded-2xl bg-foreground/[0.04] px-3 pb-3 pt-2.5 transition-colors hover:bg-foreground/[0.07]">
-          <span className="flex items-baseline justify-between gap-2">
-            <span className="text-xl font-semibold tabular-nums tracking-tight">{format.number(credits)}</span>
-            <span className="truncate text-xs text-muted-foreground">{t("planFor", { plan: plan.name, workspace: workspace.name })}</span>
-          </span>
-          {/* Against the month's credits, on a plan that grants them each month. */}
-          {share !== null ? (
-            <span className="block h-1 overflow-hidden rounded-full bg-foreground/[0.08]">
-              <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${share * 100}%` }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
+      {hasCredits ? (
+        <Opening instant={creditsFromStart}>
+          <Link href={billing} onClick={onNavigate} className="mx-1 mb-1 block space-y-2 rounded-2xl bg-foreground/[0.04] px-3 pb-3 pt-2.5 transition-colors hover:bg-foreground/[0.07]">
+            <span className="flex items-baseline justify-between gap-2">
+              <span className="text-xl font-semibold tabular-nums tracking-tight">{format.number(credits)}</span>
+              <span className="truncate text-xs text-muted-foreground">{t("planFor", { plan: plan.name, workspace: workspace.name })}</span>
             </span>
-          ) : null}
-        </Link>
+            {/* Against the month's credits, on a plan that grants them each month. */}
+            {share !== null ? (
+              <span className="block h-1 overflow-hidden rounded-full bg-foreground/[0.08]">
+                <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${share * 100}%` }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
+              </span>
+            ) : null}
+          </Link>
+        </Opening>
       ) : null}
       <div className="space-y-px pt-1">
         <MenuLink href="/settings" icon={SettingsIcon} onClick={onNavigate}>
