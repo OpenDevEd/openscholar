@@ -91,12 +91,12 @@ export function JoinOrganization({ slug }: { slug: string }) {
 const CHIP_TONES = { muted: "bg-muted text-muted-foreground", primary: "bg-primary/10 text-primary", success: "bg-success/10 ink-success" } as const;
 
 /** A pill; a `lead` sits as far from the left edge as from the top and bottom. */
-function Chip({ lead, tone = "muted", children }: { lead?: ReactNode; tone?: keyof typeof CHIP_TONES; children: ReactNode }) {
+export function Chip({ lead, tone = "muted", children }: { lead?: ReactNode; tone?: keyof typeof CHIP_TONES; children: ReactNode }) {
   return <span className={cn("inline-flex h-7 min-w-0 max-w-full shrink items-center gap-1.5 whitespace-nowrap rounded-full pr-2.5 text-xs", lead ? "pl-1" : "pl-2.5", CHIP_TONES[tone])}>{lead}{children}</span>;
 }
 
 /** A page with one thing to decide, in the middle of the screen. */
-function Landing({ hero, lead, title, chips, children }: { hero?: ReactNode; lead?: ReactNode; title?: string; chips?: ReactNode; children?: ReactNode }) {
+export function Landing({ hero, lead, title, chips, children }: { hero?: ReactNode; lead?: ReactNode; title?: string; chips?: ReactNode; children?: ReactNode }) {
   return (
     <PageWrapper>
       <div className="flex flex-1 items-center justify-center px-6 py-16">
@@ -118,7 +118,7 @@ function Landing({ hero, lead, title, chips, children }: { hero?: ReactNode; lea
   );
 }
 
-function Hero({ icon: Icon }: { icon: AppIcon }) {
+export function Hero({ icon: Icon }: { icon: AppIcon }) {
   return (
     <span aria-hidden className="flex size-24 items-center justify-center rounded-3xl bg-muted text-muted-foreground">
       <Icon className="size-10" />
@@ -137,7 +137,7 @@ function Gone() {
   );
 }
 
-function Point({ lead, children }: { lead: ReactNode; children: ReactNode }) {
+export function Point({ lead, children }: { lead: ReactNode; children: ReactNode }) {
   return (
     <li className="flex items-center gap-3 p-3 text-sm">
       {lead}

@@ -10,7 +10,7 @@ import { validateAndExpandKeywordsSilently } from "../lib/keyword-validation";
 import { LIBRARY_SEARCH_RESULTS_MAX } from "../lib/library/limits";
 import { expandShortcuts, shortcutNames } from "../lib/query-shortcuts";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
-import { readLibraryPage } from "./library/queries";
+import { libraryOf, readLibraryPage } from "./library/queries";
 import { shortcutExpansions } from "./research/records";
 
 import { workspaceMutation } from "./lib/userActions";
@@ -137,9 +137,9 @@ export const failPart = internalMutation({
  * where the next read starts (null at the end). `written` rows came before in this part.
  */
 export const page = internalQuery({
-  args: { workspaceId: v.id("workspaces"), source: exportSourceValidator, sourceRevision: v.optional(v.string()), format: exportFormatValidator, cursor: v.union(v.string(), v.null()), written: v.number() },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), source: exportSourceValidator, sourceRevision: v.optional(v.string()), format: exportFormatValidator, cursor: v.union(v.string(), v.null()), written: v.number() },
   returns: v.object({ text: v.string(), count: v.number(), cursor: v.union(v.string(), v.null()) }),
-  handler: async (ctx, { workspaceId, source, sourceRevision, format, cursor, written }) => {
+  handler: async (ctx, { userId, workspaceId, source, sourceRevision, format, cursor, written }) => {
     const write = <Item>(read: { page: Item[]; isDone: boolean; continueCursor: string }, item: (item: Item, index: number) => string) => ({
       text: read.page.map((row, i) => item(row, written + i)).join(""),
       count: read.page.length,
@@ -147,7 +147,9 @@ export const page = internalQuery({
     });
     if (source.kind === "library") {
       const numItems = source.view.searchText === undefined ? EXPORT_PAGE_SIZE : LIBRARY_SEARCH_RESULTS_MAX;
-      return write(await readLibraryPage(ctx, workspaceId, source.view, { cursor, numItems }), exportFiles.library[format].item);
+      // A collection shared with the person from another workspace is read where it is (#653), while it's still shared with them: each read checks.
+      const library = await libraryOf(ctx, { userId, workspaceId }, source.view.collectionId);
+      return write(await readLibraryPage(ctx, library, source.view, { cursor, numItems }), exportFiles.library[format].item);
     }
     if (source.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", source.jobId);
@@ -244,7 +246,7 @@ export const download = httpAction(async (ctx, request) => {
           started = true;
           send(controller, file.start(at));
         }
-        const read: { text: string; count: number; cursor: string | null } = await ctx.runQuery(internal.exports.page, { workspaceId, source, sourceRevision: claimed.sourceRevision, format, cursor, written: count });
+        const read: { text: string; count: number; cursor: string | null } = await ctx.runQuery(internal.exports.page, { userId, workspaceId, source, sourceRevision: claimed.sourceRevision, format, cursor, written: count });
         send(controller, read.text);
         count += read.count;
         cursor = read.cursor;

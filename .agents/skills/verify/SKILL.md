@@ -34,7 +34,7 @@ npm run verify -- skip "<reason>"    # record why a change needs no browser chec
 `shift` loads the page with every server message delayed by 600 ms, records each animation frame, and reports:
 
 - **layout shift**: an element moved or resized after the page settled, measured within its container: content carried along by a moving container is reported once, as the container. Transforms and opacity never count, so fades and slides are fine, and neither does an element moving through its own CSS transition (a switch's thumb). An element that draws no background, border or shadow counts only when it moves, never when it resizes: a wrapper growing around new content is seen through the content and the elements it pushes.
-- **text disappeared and came back** or **showed for only N ms**: a flash.
+- **text disappeared and came back** or **showed for only N ms**: a flash. A number counting up or down in place is fine.
 - **element showed for only N ms**: a blink. A placeholder replaced in the same place and size is fine.
 - **uncaught error** and **never settled**.
 

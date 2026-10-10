@@ -109,7 +109,7 @@ describe("a screening job's papers", () => {
     await answer("W1", "q2", false);
     expect((await job())!.qualifiedPapers).toBe(before.qualifiedPapers);
     await expect(as.query(api.screening.queries.listScreeningResults, { jobId, revision: before.revision, paginationOpts: { cursor: first.continueCursor, numItems: 1 } })).rejects.toThrow(/changed during export/);
-    await expect(t.query(internal.exports.page, { workspaceId: claimed.workspaceId, source: { kind: "screening", jobId }, sourceRevision: claimed.sourceRevision, format: "json", cursor: first.continueCursor, written: 1 })).rejects.toThrow(/changed during export/);
+    await expect(t.query(internal.exports.page, { userId: claimed.userId, workspaceId: claimed.workspaceId, source: { kind: "screening", jobId }, sourceRevision: claimed.sourceRevision, format: "json", cursor: first.continueCursor, written: 1 })).rejects.toThrow(/changed during export/);
     await expect(t.mutation(internal.exports.finishPart, { id: claimed.id, cursor: null })).rejects.toThrow(/changed during export/);
   });
 

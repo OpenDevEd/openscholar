@@ -19,6 +19,7 @@ import { countAnswerChange, countPaperChange as countPaperFacets } from "../extr
 import { tallyAnswerChange } from "../extraction/tallies";
 import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchText, shortcutText } from "./searchText";
 import { ADMIN_LIST, countList, libraryMembersOf, personGrantsOf, libraryVersionList, walletKeyList, workspaceLibrariesOf } from "./listCounts";
+import { followShared, itemGuestsOf, sharedWithOf } from "../sharing/items";
 
 export const triggers = new Triggers<DataModel>();
 
@@ -69,3 +70,9 @@ triggers.register("users", keepTextOfUser);
 // A library's people and a person's libraries, which granting another checks against its cap (convex/evidenceLibraries/members.ts).
 triggers.register("evidenceLibraryMembers", countList((grant) => libraryMembersOf(grant.libraryId)));
 triggers.register("evidenceLibraryMembers", countList((grant) => personGrantsOf(grant.clerkUserId)));
+// Guests (#653): an item's count is the people given it and the invitations still waiting, and a person's is what's shared with them, in all and of each kind.
+triggers.register("itemAccess", countList((grant) => itemGuestsOf(grant.item)));
+triggers.register("itemInvitations", countList((invitation) => (invitation.state === "pending" ? itemGuestsOf(invitation.item) : null)));
+triggers.register("itemAccess", countList((grant) => sharedWithOf(grant.userId)));
+triggers.register("itemAccess", countList((grant) => sharedWithOf(grant.userId, grant.kind)));
+triggers.register("collections", followShared("collection"));

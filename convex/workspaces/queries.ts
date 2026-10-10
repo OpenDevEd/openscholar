@@ -6,6 +6,7 @@ import type { QueryCtx } from "../_generated/server";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "../lib/queryBounds";
 import { actorIn, personalWorkspaceOf } from "./actor";
 import { organizationAt } from "../organizations/read";
+import { grantOf } from "../sharing/items";
 
 /** The signed-in person's own workspace, which a page outside /o/<slug> is in; null when signed out. */
 export const personal = query({
@@ -61,8 +62,9 @@ async function itemWorkspace(ctx: QueryCtx, user: Doc<"users">, kind: "search" |
 }
 
 /**
- * Where an item a page's address names lives (#651): an organization's slug, or none for the
- * person's own workspace. Null when it's in no workspace they act in, so the page answers as it would.
+ * Where an item a page's address names opens (#651): an organization's slug, or none for the
+ * person's own workspace, which is also where a guest opens what's shared with them. Null when
+ * it's in no workspace they act in and isn't shared with them, so the page answers as it would.
  */
 export const homeOf = query({
   args: { kind: itemKind, id: v.string(), here: v.id("workspaces") },
@@ -70,7 +72,9 @@ export const homeOf = query({
   handler: async (ctx, { kind, id, here }) => {
     const user = await getCurrentUser(ctx);
     const workspaceId = user ? await itemWorkspace(ctx, user, kind, id, here) : null;
-    if (!user || !workspaceId || !(await actorIn(ctx, user, workspaceId))) return null;
+    if (!user || !workspaceId) return null;
+    // A guest of it opens it in their own workspace (#653).
+    if (!(await actorIn(ctx, user, workspaceId))) return (await grantOf(ctx, id, user._id)) ? {} : null;
     const workspace = await ctx.db.get("workspaces", workspaceId);
     if (workspace?.kind !== "organization") return {};
     const organization = await ctx.db.get("organizations", workspace.organizationId);

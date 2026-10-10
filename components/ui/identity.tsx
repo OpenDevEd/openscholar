@@ -22,6 +22,7 @@ export const ROLE_ICONS = {
   creator: PenLine,
   member: UserRound,
   view: Eye,
+  edit: PenLine,
   chat: MessageSquare,
 } satisfies Record<string, ComponentType<{ className?: string }>>;
 export type RoleKind = keyof typeof ROLE_ICONS;
