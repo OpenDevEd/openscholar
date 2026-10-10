@@ -3,9 +3,9 @@
 import { describe, expect, it } from "vitest";
 import { lookCookieIn, readCache, writeCache, type CachedLook } from "./look-cache";
 
-const lab = (n: number): CachedLook => ({ kind: "organization", workspaceId: `w${n}`, name: `Lab ${n}`, colour: "#16a34a" });
+const lab = (n: number): CachedLook => ({ kind: "organization", workspaceId: `w${n}`, name: `Lab ${n}`, colour: "#16a34a", extract: true, publish: true });
 const own: CachedLook = { kind: "personal", workspaceId: "w0", name: "Ada" };
-const ada = { name: "Ada", imageUrl: "https://img.clerk.com/ada", features: { extraction: true } };
+const ada = { name: "Ada", imageUrl: "https://img.clerk.com/ada" };
 
 describe("the rail's cookie", () => {
   it("reads back what it keeps, for the account it was kept for only", () => {
@@ -16,13 +16,14 @@ describe("the rail's cookie", () => {
     expect(readCache(lookCookieIn(`theme=dark; workspace-looks=${cookie}; other=1`), "user_ada").looks).toEqual({ "lab-1": lab(1) });
   });
 
-  it("drops a colour, photo or feature that isn't one, and anything that isn't a look", () => {
+  it("drops a colour, photo or section that isn't one, and anything that isn't a look", () => {
     const raw = JSON.stringify({
       user: "user_ada",
-      me: { name: "Ada", imageUrl: "javascript:alert(1)", features: { extraction: "yes", authors: true, admin: true } },
-      looks: { a: { ...lab(1), colour: "red;background:url(x)", imageUrl: "http://plain" }, b: { name: "no kind" } },
+      // `features` is what a cookie written before sections were each workspace's own still holds.
+      me: { name: "Ada", imageUrl: "javascript:alert(1)", features: { authors: true } },
+      looks: { a: { ...lab(1), colour: "red;background:url(x)", imageUrl: "http://plain", publish: "yes", admin: true }, b: { name: "no kind" } },
     });
-    expect(readCache(raw, "user_ada")).toEqual({ me: { name: "Ada", features: { authors: true } }, looks: { a: { kind: "organization", workspaceId: "w1", name: "Lab 1" } } });
+    expect(readCache(raw, "user_ada")).toEqual({ me: { name: "Ada" }, looks: { a: { kind: "organization", workspaceId: "w1", name: "Lab 1", extract: true } } });
     expect(readCache("not json", "user_ada")).toEqual({ looks: {} });
   });
 

@@ -129,7 +129,7 @@ it("moves an author profile only to a workspace that has author profiles", async
   expect((await t.run((ctx) => ctx.db.get("authorProfiles", profile)))?.workspaceId).toBe(aliceOwn);
 
   // Its plan includes them.
-  await t.run((ctx) => ctx.db.insert("billingAccounts", { workspaceId: labId, plan: "team", features: ["authors"], pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: Date.now() }));
+  await t.run((ctx) => ctx.db.insert("billingAccounts", { workspaceId: labId, plan: "team", features: ["evidence_libraries"], pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: true, refreshedAt: Date.now() }));
   await alice.mutation(api.workspaces.move.move, { kind: "author", id: profile, to: labId });
   expect((await t.run((ctx) => ctx.db.get("authorProfiles", profile)))?.workspaceId).toBe(labId);
 });

@@ -161,7 +161,7 @@ async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">,
   if (kind === "author") {
     const profile = await profileIn(ctx, from, id);
     if (!profile) throw createError("NOT_FOUND", "Author profile not found");
-    await requireAuthorProfiles(ctx, to, by);
+    await requireAuthorProfiles(ctx, to);
     // Its publications and editors are its own, by its ID.
     await ctx.db.patch("authorProfiles", profile._id, { workspaceId: to });
     return null;

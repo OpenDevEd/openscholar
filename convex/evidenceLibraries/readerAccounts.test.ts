@@ -10,7 +10,7 @@ import { seedTopicLibrary } from "../../tests/helpers/topic-library-fixture";
 import { READER_DELETION_MAX_ATTEMPTS } from "./readerDeletions";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const encryptionKey = "ab".repeat(32);
@@ -99,7 +99,7 @@ describe("deleting an OpenScholar account", () => {
         clerkOrganizationId: "org_draft", name: "Draft", slug: "draft",
         state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1,
       });
-      await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       await ctx.db.insert("evidenceLibraries", {
         workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Draft", slug: "draft", state: "active",
         createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1,

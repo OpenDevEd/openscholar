@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { preloadQuery } from "convex/nextjs";
-import { OrganizationFeatureGate } from "@/components/auth/organization-feature-gate";
+import { EvidenceLibrariesGate } from "@/components/auth/evidence-libraries-gate";
 import { LibraryList } from "@/components/evidence-libraries/library-list";
 import { PageWrapper } from "@/components/PageWrapper";
 import { api } from "@/convex/_generated/api";
@@ -10,8 +10,8 @@ export default async function EvidenceLibrariesPage() {
   const token = (await (await auth()).getToken({ template: "convex" })) ?? undefined;
   const organizations = await preloadQuery(api.organizationFeatures.listLibraryOrganizations, {}, { token });
   return (
-    <OrganizationFeatureGate feature="evidenceLibraries" fallback={<PageWrapper><LibraryList pending preloadedOrganizations={organizations} /></PageWrapper>}>
+    <EvidenceLibrariesGate fallback={<PageWrapper><LibraryList pending preloadedOrganizations={organizations} /></PageWrapper>}>
       <PageWrapper><LibraryList preloadedOrganizations={organizations} /></PageWrapper>
-    </OrganizationFeatureGate>
+    </EvidenceLibrariesGate>
   );
 }

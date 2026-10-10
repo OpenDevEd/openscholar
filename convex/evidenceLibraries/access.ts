@@ -3,7 +3,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { hasPlanFeature } from "../billing/accounts";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
 export type OrganizationAction = "read" | "manage";
 export type EvidenceLibraryAdminRole = "owner" | "editor" | "creator";
@@ -138,7 +138,7 @@ export async function readEvidenceLibraryAccess(
   const owner = await libraryOwner(ctx, library);
   if (!owner) return null;
   // Managing takes the feature, which the plan of the workspace that owns the library grants (#652).
-  if (action === "manage" && !(await hasPlanFeature(ctx, owner.workspace._id, PLAN_FEATURES.evidenceLibraries))) return null;
+  if (action === "manage" && !(await hasPlanFeature(ctx, owner.workspace._id, EVIDENCE_LIBRARIES_FEATURE))) return null;
   return { clerkUserId: identity.subject, owner, organization: owner.organization, role, library };
 }
 

@@ -17,7 +17,7 @@ import {
 } from "../../tests/helpers/evidence-library-setup-fixture";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
-import { PLAN_FEATURES } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -167,7 +167,7 @@ describe("Evidence Library draft storage", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       const libraryId = await ctx.db.insert("evidenceLibraries", {
         workspaceId: await organizationWorkspaceOf(ctx, organizationId),
         name: "Climate Evidence",
@@ -230,7 +230,7 @@ describe("Evidence Library draft storage", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       await seedFeatureUser(ctx, "user_identity_contract");
     await ctx.db.insert("organizationMemberships", {
         organizationId,
@@ -322,7 +322,7 @@ describe("Evidence Library draft storage", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       await seedFeatureUser(ctx, "user_generic_sections");
     await ctx.db.insert("organizationMemberships", {
         organizationId,
@@ -471,7 +471,7 @@ describe("Evidence Library draft storage", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       await seedFeatureUser(ctx, "user_admin");
     await ctx.db.insert("organizationMemberships", {
         organizationId,
@@ -599,7 +599,7 @@ describe("Evidence Library draft storage", () => {
         createdAt: 1,
         updatedAt: 1,
       });
-      await grantPlanFeaturesForTest(ctx, organizationId, [PLAN_FEATURES.evidenceLibraries]);
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       await seedFeatureUser(ctx, "user_revision");
     await ctx.db.insert("organizationMemberships", {
         organizationId,

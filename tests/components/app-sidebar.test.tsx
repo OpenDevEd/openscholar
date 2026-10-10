@@ -8,7 +8,7 @@ import { act, render, screen } from "@testing-library/react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 
-const reads = vi.hoisted(() => ({ screening: null as unknown, features: {} as Record<string, boolean>, mounted: [] as unknown[] }));
+const reads = vi.hoisted(() => ({ screening: null as unknown, features: {} as Record<string, boolean>, flags: true, mounted: [] as unknown[] }));
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({}),
@@ -49,8 +49,8 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedPaginatedQuery: () => ({ results: [], status: "Exhausted", loadMore: vi.fn() }),
 }));
 vi.mock("@/lib/auth/use-subscription-state", () => ({ useSubscriptionState: () => ({ account: null, catalog: null, resolvedPlan: null }) }));
-vi.mock("@/lib/auth/use-organization-features", () => ({ useOrganizationFeatures: () => ({ data: reads.features }) }));
-vi.mock("@/lib/feature-flags/hook", () => ({ useFeatureFlag: () => true, useFeatureFlagForPlan: () => true }));
+vi.mock("@/lib/workspaces/use-workspace-features", () => ({ useWorkspaceFeatures: () => ({ data: reads.features }) }));
+vi.mock("@/lib/feature-flags/hook", () => ({ useFeatureFlag: () => reads.flags, useFeatureFlagForPlan: () => reads.flags }));
 vi.mock("@/lib/billing/catalog-provider", () => ({ useBillingCatalog: () => null }));
 vi.mock("@/components/providers/convex-provider", () => ({ useAuthReadiness: () => ({ phase: "authenticated" }) }));
 vi.mock("@/lib/research/reads", () => ({ useQueryShortcuts: () => undefined }));
@@ -90,7 +90,8 @@ describe("<AppSidebar>", () => {
   beforeEach(() => {
     reads.mounted = [];
     reads.screening = null;
-    reads.features = { extraction: true, evidenceLibraries: true };
+    reads.features = { evidenceLibraries: true };
+    reads.flags = true;
   });
 
   it("rings Screen with the percent the active screening's query gives", () => {
@@ -129,10 +130,16 @@ describe("<AppSidebar>", () => {
     expect(screen.getByRole("button", { name: "switchFrom" })).toBeInTheDocument();
   });
 
-  it("hides Extract and Publish in a workspace without them", () => {
-    reads.features = {};
+  it("hides Publish in a workspace whose plan has no Evidence Libraries, and keeps Extract, which every plan has", () => {
+    reads.features = { evidenceLibraries: false };
+    renderSidebar();
+    expect(screen.getByRole("link", { name: "extract" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "publish" })).not.toBeInTheDocument();
+  });
+
+  it("hides Extract once it's switched off for everyone", () => {
+    reads.flags = false;
     renderSidebar();
     expect(screen.queryByRole("link", { name: "extract" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "publish" })).not.toBeInTheDocument();
   });
 });

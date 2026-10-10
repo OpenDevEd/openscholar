@@ -6,7 +6,6 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { recomputePaperListProjection } from "./listProjection";
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { catchUp } from "../lib/catchUp.test-support";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
 
@@ -21,7 +20,6 @@ async function seedJob(t: ReturnType<typeof convexTest>, { triggered = true } = 
   const { userId, jobId } = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { clerkId: "clerk_big", email: "big@test.com", state: "active", createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
-    await seedOrganizationFeatures(ctx, ["clerk_big"], { extraction: true });
     const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history", status: "completed", totalPapers: PAPERS, name: "Big", createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("extractionQuestions", { jobId, key: "country", question: "In what country was the study done?", type: "string", order: 0, createdAt: 1 });
     return { userId, jobId };

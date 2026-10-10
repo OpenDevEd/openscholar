@@ -10,7 +10,7 @@ import { facetsOf } from "../library/facets";
 import { createHash } from "node:crypto";
 import type { Id, TableNames } from "../_generated/dataModel";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
-import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { seedFeatureUser } from "../organizationFeatures.test-support";
 import { foldCounts } from "../extraction/counts.test-support";
 import { personalWorkspaceOf } from "../workspaces/actor";
 
@@ -54,7 +54,6 @@ export async function insertMany<T extends TableNames>(t: Test, table: T, docs: 
 /** A signed-in account with extraction on. */
 export async function seedAccount(t: Test, clerkId = "max_size_user") {
   const userId = await t.run(async (ctx) => {
-    await seedOrganizationFeatures(ctx, [clerkId], { extraction: true });
     for (const key of ["extraction.enabled", "extraction.start"]) await ctx.db.insert("featureFlags", { key, enabled: true, updatedAt: 1 });
     return seedFeatureUser(ctx, clerkId);
   });
