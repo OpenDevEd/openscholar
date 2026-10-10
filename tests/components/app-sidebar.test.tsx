@@ -3,8 +3,10 @@
  */
 // The rail (#651): what it reads and which sections it opens.
 import React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 
 const reads = vi.hoisted(() => ({ screening: null as unknown, features: {} as Record<string, boolean>, mounted: [] as unknown[] }));
 
@@ -74,6 +76,7 @@ vi.mock("@/components/ui/dialog", () => ({ Dialog: () => null, DialogContent: ()
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { WorkspacesProvider } from "@/components/workspaces/parts";
+import { LOOK_COOKIE, lookKey } from "@/lib/workspaces/look-cache";
 
 // The rail takes the workspace list from the page's provider, as the root layout gives it.
 const renderSidebar = () =>
@@ -102,6 +105,28 @@ describe("<AppSidebar>", () => {
     renderSidebar();
     expect(screen.getByRole("link", { name: "extract" })).toHaveAttribute("href", "/extraction");
     expect(screen.getByRole("link", { name: "publish" })).toHaveAttribute("href", "/evidence-libraries");
+  });
+
+  it("hydrates as the server drew it when the look cookie changed after the request", async () => {
+    const rail = (
+      <WorkspacesProvider>
+        <AppSidebar firstWorkspace={{ slug: null, user: "user_ada" }} />
+      </WorkspacesProvider>
+    );
+    const container = document.body.appendChild(document.createElement("div"));
+    container.innerHTML = renderToString(rail);
+    // The page before, or another tab, saves the workspace's look once the request has gone.
+    document.cookie = `${LOOK_COOKIE}=${encodeURIComponent(JSON.stringify({ user: "user_ada", looks: { [lookKey(null)]: { kind: "personal", workspaceId: "ws_own", name: "Ada" } } }))}`;
+    const mismatch = vi.fn();
+    const root = await act(async () => hydrateRoot(container, rail, { onRecoverableError: mismatch }));
+    onTestFinished(() => {
+      act(() => root.unmount());
+      container.remove();
+      document.cookie = `${LOOK_COOKIE}=; Max-Age=0`;
+    });
+    expect(mismatch).not.toHaveBeenCalled();
+    // Once hydrated, the rail takes the look the browser now has.
+    expect(screen.getByRole("button", { name: "switchFrom" })).toBeInTheDocument();
   });
 
   it("hides Extract and Publish in a workspace without them", () => {
