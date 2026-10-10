@@ -7,7 +7,7 @@ import {
 } from "../../lib/evidence-libraries/configuration/section-registry";
 import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 import { presetKeyValidator } from "../aiModelConfig/validators";
-import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
+import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DIGEST_KINDS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
 
@@ -560,12 +560,25 @@ export const runtimeContractSupportValidator = v.object({
   latest: v.boolean(),
 });
 
+// What each likely review a library marked turned out to be, by record key.
+export const evidenceLibraryDigestKindsValidator = capped(
+  v.optional(
+    v.record(
+      v.string(),
+      v.union(v.literal("meta-analysis"), v.literal("review"), v.literal("study")),
+    ),
+  ),
+  MAX_DIGEST_KINDS,
+);
+
 export const evidenceLibraryDigestResultValidator = v.object({
   title: v.string(),
   summary: v.string(),
   markdown: v.string(),
   model: v.string(),
   reasoning: v.string(),
+  // Absent from digests written before libraries marked any.
+  kinds: evidenceLibraryDigestKindsValidator,
 });
 
 export const evidenceLibraryDigestJobFields = {
@@ -577,6 +590,8 @@ export const evidenceLibraryDigestJobFields = {
   status: v.union(v.literal("pending"), v.literal("succeeded"), v.literal("failed")),
   startedAt: v.number(),
   result: v.optional(evidenceLibraryDigestResultValidator),
+  // Kept when the writer failed, so the library gets what was read and does not have it read again.
+  kinds: evidenceLibraryDigestKindsValidator,
 };
 
 /** The commits and the release notes one software check holds, capped as the release row stores them. */

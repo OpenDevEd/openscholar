@@ -71,7 +71,7 @@ function describe(publication: Publication, withAbstract = false) {
   return text.slice(0, 420);
 }
 
-async function askJev(questions: Record<string, unknown>, state: string, signal?: AbortSignal) {
+export async function askJev(questions: Record<string, unknown>, state: string, signal?: AbortSignal) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return null;
   const response = await fetch(JEV_URL, {
