@@ -377,7 +377,7 @@ function CollectionsPanel({
           checkedIds={checkedIds}
           onToggle={(collectionId, checked, elsewhere) => onToggle(collectionId, !checked, elsewhere)}
           // Kept still until the paper's collections arrive, so a tick can't land on stale state.
-          className={cn(loadingMembers && "pointer-events-none opacity-50")}
+          busy={loadingMembers}
         />
       </AutoHeight>
       <button
@@ -400,7 +400,7 @@ function CollectionChecklist({
   checkedIds,
   onToggle,
   onScroll,
-  className,
+  busy,
 }: {
   collections: Listed[] | undefined;
   /** The ones other workspaces shared with the person to edit (#653), under their own. */
@@ -409,7 +409,8 @@ function CollectionChecklist({
   checkedIds: ReadonlySet<string>;
   onToggle: (collectionId: Id<"collections">, isCurrentlyChecked: boolean, elsewhere: boolean) => void;
   onScroll: (event: UIEvent<HTMLElement>) => void;
-  className?: string;
+  /** The next answer is being read: the last one stays, dimmed and out of reach of the pointer and the keyboard. */
+  busy: boolean;
 }) {
   const t = useTranslations("libraryPage");
   const ts = useTranslations("workspaces.shared");
@@ -466,7 +467,7 @@ function CollectionChecklist({
   };
 
   return (
-    <div className={cn("fade-enter max-h-[280px] overflow-y-auto space-y-1", className)} onScroll={onScroll}>
+    <div inert={busy} className={cn("fade-enter max-h-[280px] overflow-y-auto space-y-1", busy && "opacity-50")} onScroll={onScroll}>
       {collections.map(row)}
       {shared.length ? <p className="px-3 pb-0.5 pt-2 text-xs font-medium text-muted-foreground">{ts("title")}</p> : null}
       {shared.map(row)}
