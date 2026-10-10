@@ -262,6 +262,8 @@ export function ResultsList({
   // Use the new search context
   const search = useSearch();
   const queryError = rejectedQuery(search.error);
+  // A search that failed found nothing to call no results: the empty screen says what failed.
+  const failed = !queryError && search.error ? { problem: search.error.message } : null;
   // Get the current search ID from the URL
   const pathname = usePathname();
   const searchId = getEffectiveSearchId(pathname, search.searchId || undefined);
@@ -591,6 +593,8 @@ export function ResultsList({
                 <QueryErrorState detail={queryError} oql={search.params.field === OQL_FIELD} />
               ) : isSearching || isInitialLoading ? (
                 <LoadingResults />
+              ) : isEmptySearch && failed ? (
+                <QueryErrorState detail={failed} oql={search.params.field === OQL_FIELD} />
               ) : isEmptySearch ? (
                 <NoResults
                   query={currentQuery}
