@@ -662,7 +662,7 @@ const stepValidator = v.object({
   sources: webSourcesValidator,
   /** The most it holds, on a call that spends credits (#328). */
   credits: v.optional(v.number()),
-  /** On a call that asks first: what it does can reach other people too. Otherwise it asks because it can't be undone, unless it can (`undoable`): then other people see the change. */
+  /** On a call that asks first: other people see what it does. With `undoable`, that is the only reason it asks; without, it can't be undone either. Neither: it asks because it can't be undone. */
   outside: v.optional(v.literal(true)),
   undoable: v.optional(v.literal(true)),
   /**

@@ -243,6 +243,7 @@ export const saveToLibraryAction = defineUserMutation({
   undoable: true,
   // One into a collection a library follows, which shows the paper outside the account.
   asksFirst: async (ctx, _actor, { collectionId }) => collectionId !== undefined && (await followed(ctx, collectionId)),
+  seenOutside: true,
   run: async (ctx, actor, { rating, collectionId, ...given }) => {
     // `paperData` is the record a results card holds, which the library page shows the paper from. The
     // assistant has no such record and made one up, which that page couldn't read: its saves keep none.
@@ -347,6 +348,7 @@ export const removeFromLibraryAction = defineUserMutation({
     const item = await findItem(ctx, workspaceId, args.openalexId);
     return item !== null && (await inFollowedCollection(ctx, item._id));
   },
+  seenOutside: true,
   run: async (ctx, actor, args) => {
     const { userId, workspaceId, author } = actor;
     if (args.rating != null) requireRating(args.rating);
@@ -481,6 +483,7 @@ export const restoreLibraryItemAction = defineUserMutation({
     const removal = await ctx.db.get("libraryRemovals", removalId);
     return removal?.moving === true && (await inFollowedCollection(ctx, removal.itemId));
   },
+  seenOutside: true,
   run: async (ctx, { userId, workspaceId, author }, { removalId }) => {
     const removal = await ctx.db.get("libraryRemovals", removalId);
     // Its day is over even if the cleanup hasn't reached it yet.
@@ -527,6 +530,7 @@ export const setPaperInCollectionAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   asksFirst: shownOutside,
+  seenOutside: true,
   run: async (ctx, actor, { paper, collectionId, inCollection, assignedAt }) => {
     const collection = await editableCollection(ctx, actor, collectionId);
     // The collection's own library: for a guest who edits it, not the one they act in.

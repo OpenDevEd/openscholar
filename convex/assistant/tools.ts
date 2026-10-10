@@ -260,10 +260,11 @@ export function askedSteps(requests: Asked[], held: (path: string, input: unknow
     const credits = call ? held(call.entry.path, call.input) : undefined;
     // What the person is asked about, where the action says: its arguments don't all read as what it does.
     const shown = call && call.entry.kind !== "query" && call.entry.shown ? cut(JSON.stringify(call.entry.shown(call.input)), STEP_TEXT_MAX) : undefined;
-    // Why it asks, for the person asked: what it does can reach other people too, besides that it can't be undone.
-    const outside = call?.entry.kind !== "query" && call?.entry.outsideEffect === true;
-    // Or it can be undone, and this call of it asks only because other people see the change (`asksFirst`).
-    const undoable = call?.entry.kind !== "query" && call?.entry.undoable === true && !outside;
+    // Why it asks, for the person asked. Other people see what it does: its action always, or a call of it that asks first for that.
+    const changes = call && call.entry.kind !== "query" ? call.entry : undefined;
+    const outside = changes !== undefined && (changes.outsideEffect || changes.seenOutside === true);
+    // And whether it can be undone. One that can and still asks is seen by others; a call of an action that asks first without being seen is one nothing puts back.
+    const undoable = outside && changes?.undoable === true;
     return { toolCallId, tool, path: call?.entry.path ?? tool, input: cut(JSON.stringify(call?.input ?? input ?? {}), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(credits === undefined ? {} : { credits }), ...(shown ? { shown } : {}), ...(outside ? { outside: true as const } : {}), ...(undoable ? { undoable: true as const } : {}) };
   });
 }
