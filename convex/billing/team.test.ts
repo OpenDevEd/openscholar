@@ -15,7 +15,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-it("moves an organization to Team for its admin, saving a card first, and back to Free once it has few enough members", async () => {
+it("moves an organization to Team for its admin, saving a card or confirming a payment first, and back to Free once it has few enough members", async () => {
   const t = convexTest(schema);
   const people = ["ada", "ben", "cy", "di", "ed", "fy"];
   const lab = await t.run(async (ctx) => {
@@ -49,10 +49,15 @@ it("moves an organization to Team for its admin, saving a card first, and back t
   expect(fakeAutumn.calls.find((call) => call.path === "billing.setup_payment")?.body).toMatchObject({ customer_id: lab, plan_id: TEAM_PLAN });
   expect(moves()).toBe(0);
 
+  // A card that asks to confirm a seat's payment sends the admin to its page; once paid, the next sync seats everyone.
   fakeAutumn.noCard = false;
-  expect(await ada.action(api.billing.actions.moveToTeam, { workspaceId: lab })).toEqual({ url: null });
+  fakeAutumn.confirmPayments = true;
+  expect(await ada.action(api.billing.actions.moveToTeam, { workspaceId: lab })).toEqual({ url: "https://checkout.test" });
   expect(fakeAutumn.customer(lab).planId).toBe(TEAM_PLAN);
+  fakeAutumn.confirmPayments = false;
+  await t.action(internal.billing.seats.sync, { workspaceId: lab });
   expect(fakeAutumn.balance(lab)).toBe(2 * FAKE_SEAT_CREDITS);
+  expect(await ada.query(api.billing.seats.counts, { workspaceId: lab })).toEqual({ members: 2, seats: 2 });
   expect(await t.run((ctx) => ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", lab)).unique())).toMatchObject({ plan: TEAM_PLAN, card: { last4: "4242" } });
 
   for (const who of people.slice(2)) await membership(who, true);

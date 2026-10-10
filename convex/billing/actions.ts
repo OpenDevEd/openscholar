@@ -198,9 +198,10 @@ export const moveToTeam = action({
     if (!customer.payment_method?.card) return { url: (await autumn.setupPayment(workspaceId, TEAM_PLAN, returnUrl("team", `/o/${organization.slug}/pricing`))).url };
     await autumn.attach({ customerId: workspaceId, planId: TEAM_PLAN, idempotencyKey: `team-${workspaceId}-${crypto.randomUUID()}` });
     // Its seats now, so the page it comes back to shows them; the same sync runs on each change after.
-    await ctx.runAction(internal.billing.seats.sync, { workspaceId });
+    // A card that asks to confirm a seat's payment sends the admin to do that; the sync after it seats the rest.
+    const paymentUrl: string | null = await ctx.runAction(internal.billing.seats.sync, { workspaceId });
     await refreshAccount(ctx, workspaceId, { card: true });
-    return { url: null };
+    return { url: paymentUrl };
   },
 });
 

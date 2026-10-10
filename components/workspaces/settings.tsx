@@ -462,9 +462,11 @@ export function WorkspaceBilling() {
   const { workspaceId, organization, admin } = useOrganization();
   const { account, catalog } = useSharedSubscriptionState();
   const spending = useMemberSpending(workspaceId);
+  // The seats it pays for, counted in full.
+  const counts = useProtectedQuery(api.billing.seats.counts, workspaceId ? { workspaceId } : "skip").data;
   const openPortal = useWorkspaceAction(api.billing.actions.openPortal);
   const { busy, attempt } = useAttempt();
-  if (!organization || !account || !catalog || !spending.ready) return <Enter ready={false}>{null}</Enter>;
+  if (!organization || !account || !catalog || !spending.ready || counts === undefined) return <Enter ready={false}>{null}</Enter>;
 
   const planId = account.plan ?? organization.plan ?? "";
   const plan = findPlan(catalog, planId);
@@ -474,8 +476,9 @@ export function WorkspaceBilling() {
   const teamPlan = findPlan(catalog, TEAM_PLAN);
   const seat = findPlan(catalog, SEAT_PLAN);
   const seatPrice = seat?.price?.amount;
-  // Team's credits are its seats', a seat for each member.
-  const monthly = team ? memberCount * (seat?.credits?.included ?? 0) : plan?.credits?.interval === "month" ? plan.credits.included : 0;
+  // Team's credits are its seats'.
+  const seats = counts?.seats ?? 0;
+  const monthly = team ? seats * (seat?.credits?.included ?? 0) : plan?.credits?.interval === "month" ? plan.credits.included : 0;
   const cap = team ? monthly : planCreditCap(catalog, planId);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: 0 });
   const limits = plan?.limits;
@@ -535,9 +538,9 @@ export function WorkspaceBilling() {
                 <div className="flex flex-wrap items-center gap-1.5">
                   <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted px-2.5 text-xs tabular-nums text-muted-foreground">
                     <Users className="size-3.5" />
-                    {t("seats", { count: memberCount })}
+                    {t("seats", { count: seats })}
                   </span>
-                  {seatPrice !== undefined ? <span className="inline-flex h-6 items-center whitespace-nowrap rounded-full bg-muted px-2.5 text-xs font-medium tabular-nums text-foreground">{t("amountAMonth", { amount: money(seatPrice * memberCount) })}</span> : null}
+                  {seatPrice !== undefined ? <span className="inline-flex h-6 items-center whitespace-nowrap rounded-full bg-muted px-2.5 text-xs font-medium tabular-nums text-foreground">{t("amountAMonth", { amount: money(seatPrice * seats) })}</span> : null}
                 </div>
               ) : (
                 <p className="text-sm tabular-nums text-muted-foreground">{t("upToMembers", { count: FREE_MEMBERS })}</p>

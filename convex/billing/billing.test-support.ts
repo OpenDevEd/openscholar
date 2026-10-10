@@ -32,12 +32,15 @@ export const fakeAutumn = {
   calls: [] as Array<{ path: string; body: Record<string, unknown> }>,
   /** Set when the customer has no saved card: a seat's attach asks for checkout instead of charging, and the customer shows no card. */
   noCard: false,
+  /** Set when the saved card asks to confirm each payment (3-D Secure): a seat's attach sends a page to pay on. */
+  confirmPayments: false,
   /** Makes the next call to this endpoint fail, as if Autumn were down. */
   failNext: null as string | null,
 
   reset() {
     this.failNext = null;
     this.noCard = false;
+    this.confirmPayments = false;
     this.customers.clear();
     this.locks.clear();
     this.idempotencyKeys.clear();
@@ -152,7 +155,7 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
         const entity = fakeAutumn.entitiesOf(customerId!).get(body.entity_id as string);
         if (!entity) return respond(404, { code: "entity_not_found" });
         if (entity.seated) return respond(400, { code: "plan_already_attached" });
-        if (fakeAutumn.noCard) return respond(200, { customer_id: customerId, entity_id: body.entity_id, payment_url: "https://checkout.test" });
+        if (fakeAutumn.noCard || fakeAutumn.confirmPayments) return respond(200, { customer_id: customerId, entity_id: body.entity_id, payment_url: "https://checkout.test" });
         entity.seated = true;
         customer.plan += FAKE_SEAT_CREDITS;
         return respond(200, { customer_id: customerId, entity_id: body.entity_id, payment_url: null });

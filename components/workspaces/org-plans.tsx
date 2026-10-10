@@ -26,6 +26,7 @@ import { showStyledToast } from "@/components/ui/sonner";
 import { api } from "@/convex/_generated/api";
 import type { CatalogPlan } from "@/convex/billing/validators";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { findPlan } from "@/lib/billing/catalog";
 import { FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
@@ -38,7 +39,10 @@ import { CreateOrganization } from "./switcher";
 const SEATS = 8;
 const FEWEST_SEATS = 2;
 
-export function OrganizationPlans({ featureName }: { featureName: (id: string) => string }) {
+/** The workspace the page is in, as the server read it for the first paint. */
+export type CurrentWorkspace = NonNullable<ReturnType<typeof useCurrentWorkspace>>;
+
+export function OrganizationPlans({ featureName, initial }: { featureName: (id: string) => string; initial?: CurrentWorkspace }) {
   const t = useTranslations("pricing.organizations");
   const tp = useTranslations("pricing");
   const ts = useTranslations("workspaces.settings");
@@ -47,7 +51,11 @@ export function OrganizationPlans({ featureName }: { featureName: (id: string) =
   const format = useFormatter();
   const { phase } = useAuthReadiness();
   const signIn = useSignInRedirect();
-  const workspace = useCurrentWorkspace();
+  // Under an organization's address the server read it, so the cards are drawn as they'll stay.
+  const workspace = useCurrentWorkspace() ?? initial;
+  const organizationId = workspace?.kind === "organization" ? workspace.workspaceId : undefined;
+  // In full: the switcher's count stops at a hundred and one, and a move charges for every member.
+  const counts = useProtectedQuery(api.billing.seats.counts, organizationId ? { workspaceId: organizationId } : "skip").data;
   const { account, catalog } = useSubscriptionState();
   const moveToTeam = useWorkspaceAction(api.billing.actions.moveToTeam);
   const moveToFree = useWorkspaceAction(api.billing.actions.moveToFree);
@@ -60,12 +68,11 @@ export function OrganizationPlans({ featureName }: { featureName: (id: string) =
   const team = catalog && findPlan(catalog, TEAM_PLAN);
   const seat = catalog && findPlan(catalog, SEAT_PLAN);
   const signedIn = phase === "authenticated";
-  // The buttons depend on the workspace, so the cards wait for it rather than change under the pointer.
-  if (!free || !team || !seat?.price || (signedIn && !workspace)) return null;
+  if (!free || !team || !seat?.price) return null;
 
   const organization = workspace?.kind === "organization" ? workspace : undefined;
   const onTeam = organization?.plan === TEAM_PLAN;
-  const members = organization?.members ?? 0;
+  const members = counts?.members ?? organization?.members ?? 0;
   const seatPrice = seat.price.amount;
   const seatCredits = seat.credits?.included ?? 0;
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: 0 });
@@ -168,7 +175,7 @@ export function OrganizationPlans({ featureName }: { featureName: (id: string) =
       </div>
 
       <UpgradeConfirmationDialog
-        open={asking === "team" && !!organization && !onTeam && !notAdmin}
+        open={asking === "team" && !!organization && !onTeam && !notAdmin && !!counts}
         onOpenChange={(open) => !busy && !open && setAsking(null)}
         onConfirm={() => void move(() => moveToTeam({}))}
         isConfirming={busy}

@@ -38,7 +38,7 @@ import { useTranslations, useFormatter } from "next-intl";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
 import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
-import { OrganizationPlans } from "@/components/workspaces/org-plans";
+import { OrganizationPlans, type CurrentWorkspace } from "@/components/workspaces/org-plans";
 import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { PlanCard } from "@/components/billing/plan-card";
 
@@ -72,7 +72,8 @@ const PLAN_COPY = {
 /** Translated names for Autumn features; others show the name set in Autumn. */
 const FEATURE_NAMES = { extraction: "features.extraction" } as const;
 
-export function Pricing() {
+/** `organization`: the organization whose address the page is under, as the server read it. */
+export function Pricing({ organization }: { organization?: CurrentWorkspace } = {}) {
   const toast = useAppToast();
   const t = useTranslations("pricing");
   const tb = useTranslations("billingPage");
@@ -480,7 +481,7 @@ export function Pricing() {
         <div className="@3xl:hidden">{audienceTabs}</div>
 
         {audience === "org" ? (
-          <OrganizationPlans featureName={featureName} />
+          <OrganizationPlans featureName={featureName} initial={organization} />
         ) : (
           <>
         {hasPendingDowngrade && account?.changesAt !== undefined && (
