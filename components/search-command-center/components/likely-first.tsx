@@ -12,6 +12,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowUpDown } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { getClosenessOrder } from "@/app/actions/openalex";
 import { shortWorkId } from "@/lib/openalex/work-id";
 import { useSearchOptional } from "@/lib/search";
@@ -61,19 +62,20 @@ export function LikelyFirst() {
 
   return (
     <div className="flex items-center gap-1">
-      <Button
-        type="button"
-        variant={current ? "secondary" : "ghost"}
-        size="sm"
-        className={QUIET}
-        aria-pressed={Boolean(current)}
-        title={t("likelyFirstHint")}
-        disabled={ordering}
-        onClick={current ? () => clearOrder(searchId) : () => void orderNow()}
-      >
-        <ArrowUpDown className="h-3.5 w-3.5" />
-        {t("likelyFirst")}
-      </Button>
+      <TooltipHint label={t("likelyFirstHint")}>
+        <Button
+          type="button"
+          variant={current ? "secondary" : "ghost"}
+          size="sm"
+          className={QUIET}
+          aria-pressed={Boolean(current)}
+          disabled={ordering}
+          onClick={current ? () => clearOrder(searchId) : () => void orderNow()}
+        >
+          <ArrowUpDown className="h-3.5 w-3.5" />
+          {t("likelyFirst")}
+        </Button>
+      </TooltipHint>
       {current && seeds.liked.length > 0 && !sameSeeds(current.seeds, seeds) && (
         <Button type="button" variant="ghost" size="sm" className={QUIET} disabled={ordering} onClick={() => void orderNow()}>
           {t("likelyFirstResort")}

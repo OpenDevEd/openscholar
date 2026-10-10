@@ -23,6 +23,15 @@ vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
 vi.mock("@/app/actions/openalex", () => ({ getClosenessOrder: ordered }));
 vi.mock("@/lib/toast", () => ({ useAppToast: () => ({ error: failed }) }));
 vi.mock("@/lib/search", () => ({ useSearchOptional: () => ({ searchId: "search-1", results: results.current, setPage }) }));
+// The shared tooltip, with its label shown beside what it explains.
+vi.mock("@/components/ui/tooltip", () => ({
+  TooltipHint: ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <>
+      {children}
+      <span role="tooltip">{label}</span>
+    </>
+  ),
+}));
 vi.mock("@/lib/store", () => ({
   useRatingsStore: <T,>(select: (state: { ratings: Record<string, number> }) => T) => select({ ratings: ratings.current }),
 }));
@@ -55,6 +64,12 @@ describe("likely relevant first", () => {
     ratings.current = { "https://openalex.org/W1": 5 };
     const { container } = render(<LikelyFirst />);
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("explains itself with the shared tooltip, not the browser's", () => {
+    render(<LikelyFirst />);
+    expect(screen.getByRole("tooltip")).toHaveTextContent("likelyFirstHint");
+    expect(screen.getByRole("button", { name: "likelyFirst" })).not.toHaveAttribute("title");
   });
 
   it("orders the results by the papers rated alike and unlike, from the first page, and stays pressed", async () => {
