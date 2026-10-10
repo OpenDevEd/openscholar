@@ -12,7 +12,7 @@ import { isStepCount, type ToolSet } from "ai";
 import { components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
-import { releaseCredits, reserveCredits, settleCredits, tokenCounts, tokenDetails } from "../billing/charge";
+import { capReached, holdCredits, releaseCredits, reserveCredits, settleCredits, tokenCounts, tokenDetails } from "../billing/charge";
 import { resolveOpenRouterModel, type Pricing } from "../ai/provider";
 import { createError, errorToLogString } from "../lib/errors";
 import { callOptions, type Effort } from "../../lib/ai/core/call-options";
@@ -221,7 +221,10 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
       const credits = await turn.lesser?.();
       return credits !== undefined && credits > 0 && credits < held && (await reserveCredits(ctx, { userId, workspaceId, chargeId, credits }));
     };
-    if (!(await reserveCredits(ctx, { userId, workspaceId, chargeId, credits: held })) && !(await lesser())) {
+    const why = await holdCredits(ctx, { userId, workspaceId, chargeId, credits: held });
+    // A member at the cap an admin set on them is told so, not that the organization is out of credits (#652).
+    if (why === "capped") throw capReached(held);
+    if (why === "short" && !(await lesser())) {
       const account = await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId });
       const availableCredits = account?.balance ?? 0;
       throw createError(

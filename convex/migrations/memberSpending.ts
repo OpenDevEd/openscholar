@@ -5,6 +5,7 @@ import type { DataModel } from "../_generated/dataModel";
 import { internalAction } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { memberOp, usageAgg } from "../billing/usageLog";
+import { queueCounts } from "../lib/countQueue";
 
 /**
  * Counts each charge made before #652 under the member who spent it, as the ledger counts new ones
@@ -19,10 +20,8 @@ const migrations = new Migrations<DataModel>(components.migrations, { internalMu
 export const charges = migrations.define({
   table: "billingUsage",
   batchSize: 200,
-  migrateOne: async (ctx, row) => {
-    const ops = memberOp(row);
-    if (ops.length) await usageAgg.enqueueBatch(ctx, ops);
-  },
+  // Queued, so a batch's counts go to the aggregate in one call when it ends (../lib/countQueue.ts).
+  migrateOne: async (ctx, row) => queueCounts(ctx, usageAgg, memberOp(row)),
 });
 
 export const run = migrations.runner([internal.migrations.memberSpending.charges]);

@@ -138,15 +138,27 @@ export const endHold = internalMutation({
   },
 });
 
+type HoldArgs = { userId: Id<"users">; workspaceId: Id<"workspaces">; chargeId: string; credits: number; holdMs?: number; spend?: true };
+
 /**
  * Holds `credits` for `chargeId`. Returns false, holding nothing, when the
- * balance can't cover it.
+ * balance can't cover it, or the member's cap (#652): a job's paper is paused then, as it is
+ * when the credits run out.
  */
-export async function reserveCredits(
-  ctx: ActionCtx,
-  args: { userId: Id<"users">; workspaceId: Id<"workspaces">; chargeId: string; credits: number; holdMs?: number; spend?: true },
-): Promise<boolean> {
-  if (args.credits <= 0) return true;
+export async function reserveCredits(ctx: ActionCtx, args: HoldArgs): Promise<boolean> {
+  return (await holdCredits(ctx, args)) === "held";
+}
+
+/** The refusal a person sees when the cap an admin set on them stops a hold (#652). */
+export const capReached = (credits: number) =>
+  createError("MEMBER_CAP_REACHED", `This takes up to ${credits.toLocaleString("en")} credits, more than is left of the monthly cap an admin set for you. Ask an admin to raise your cap.`);
+
+/**
+ * Holds `credits` for `chargeId`, or says why it held nothing: the balance is short of them,
+ * or the member's seat is at its cap, which Autumn refuses while the pool still has the credits.
+ */
+export async function holdCredits(ctx: ActionCtx, args: HoldArgs): Promise<"held" | "short" | "capped"> {
+  if (args.credits <= 0) return "held";
   const expiresAt = Date.now() + (args.holdMs ?? DEFAULT_HOLD_MS);
   const payer: Payer = await ctx.runMutation(internal.billing.charge.hold, {
     userId: args.userId,
@@ -162,14 +174,9 @@ export async function reserveCredits(
     lockId: args.chargeId,
     expiresAt,
   });
-  if (!result.allowed) {
-    await ctx.runMutation(internal.billing.charge.endHold, { chargeId: args.chargeId });
-    // A seat refused while the pool has the credits is at its member's cap.
-    if (payer.entityId && (result.balance?.remaining ?? 0) >= args.credits) {
-      throw createError("MEMBER_CAP_REACHED", `This takes up to ${args.credits.toLocaleString("en")} credits, more than is left of the monthly cap an admin set for you. Ask an admin to raise your cap.`);
-    }
-  }
-  return result.allowed;
+  if (result.allowed) return "held";
+  await ctx.runMutation(internal.billing.charge.endHold, { chargeId: args.chargeId });
+  return payer.entityId && (result.balance?.remaining ?? 0) >= args.credits ? "capped" : "short";
 }
 
 async function releaseHold(chargeId: string): Promise<void> {
@@ -439,12 +446,12 @@ export const recordUsage = internalMutation({
 
 
 /**
- * Holds the most an approved job may spend (#328). False, holding nothing, when the balance
- * can't cover it. The job keeps `chargeId`: its items are charged under it (`settleUnder`),
- * and it is settled once, when the job has ended and its items have been recorded (./spend.ts).
+ * Holds the most an approved job may spend (#328), or says why it held nothing (`holdCredits`).
+ * The job keeps `chargeId`: its items are charged under it (`settleUnder`), and it is settled
+ * once, when the job has ended and its items have been recorded (./spend.ts).
  */
 export const holdSpend = (ctx: ActionCtx, args: { userId: Id<"users">; workspaceId: Id<"workspaces">; chargeId: string; credits: number }) =>
-  reserveCredits(ctx, { ...args, holdMs: SPEND_HOLD_MS, spend: true });
+  holdCredits(ctx, { ...args, holdMs: SPEND_HOLD_MS, spend: true });
 
 /** How long after a hold request that never answered its hold is settled: longer than the request can still be on its way. */
 const UNANSWERED_HOLD_MS = 5 * 60_000;
@@ -462,7 +469,8 @@ export async function startHeld<T>(ctx: ActionCtx, { userId, workspaceId, credit
     await ctx.runMutation(internal.billing.charge.laterSpent, { chargeId: hold, attempt: 0, delay: UNANSWERED_HOLD_MS });
     throw error;
   });
-  if (!held) throw createError("INSUFFICIENT_CREDITS", `This holds up to ${credits.toLocaleString("en")} credits, more than the balance has.`);
+  if (held === "capped") throw capReached(credits);
+  if (held === "short") throw createError("INSUFFICIENT_CREDITS", `This holds up to ${credits.toLocaleString("en")} credits, more than the balance has.`);
   try {
     return await make(hold);
   } catch (error) {
@@ -572,11 +580,12 @@ export const endSpent = internalMutation({
   handler: async (ctx, { chargeId, over }) => {
     const row = await holdFor(ctx, chargeId);
     if (!row) return null;
-    const item = over > 0 ? await ctx.db.query("billingHoldItems").withIndex("by_under", (q) => q.eq("under", chargeId)).first() : null;
+    // The last item recorded under the hold: the correction is dated with it, so it lands in the month it offsets (#652).
+    const item = over > 0 ? await ctx.db.query("billingHoldItems").withIndex("by_under", (q) => q.eq("under", chargeId)).order("desc").first() : null;
     const charged = item && (await usageFor(ctx, item.chargeId));
     if (charged) {
       console.error(`[billing] ${chargeId} spent ${row.credits + over} under a hold of ${row.credits}; the hold was charged`);
-      await insertUsage(ctx, { userId: row.userId, workspaceId: (await payerOf(ctx, row, row)).workspaceId, chargeId: `${chargeId}:over`, credits: -over, kind: charged.kind, description: "Not charged: over the credits approved", ...(charged.jobId ? { jobId: charged.jobId } : {}), createdAt: Date.now() });
+      await insertUsage(ctx, { userId: row.userId, workspaceId: (await payerOf(ctx, row, row)).workspaceId, chargeId: `${chargeId}:over`, credits: -over, kind: charged.kind, description: "Not charged: over the credits approved", ...(charged.jobId ? { jobId: charged.jobId } : {}), createdAt: charged.createdAt });
     }
     if ((await ctx.db.system.get(row.release))?.state.kind === "pending") await ctx.scheduler.cancel(row.release);
     await ctx.db.delete("billingHolds", row._id);
