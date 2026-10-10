@@ -52,6 +52,47 @@ describe("analyzePhase on a page load", () => {
     ]);
   });
 
+  it("accepts a number that counts up in place, since the line keeps its words", () => {
+    const findings = analyzePhase(
+      [
+        frame(400, { textAdded: ["Up to 4 credits"] }),
+        frame(416, { textRemoved: ["Up to 4 credits"], textAdded: ["Up to 126 credits"] }),
+        frame(432, { textRemoved: ["Up to 126 credits"], textAdded: ["Up to 1,250 credits"] }),
+      ],
+      load,
+    );
+    expect(findings).toEqual([]);
+  });
+
+  it("reports a stale number that is corrected once, moments after it appeared", () => {
+    const findings = analyzePhase([frame(400, { textAdded: ["0 papers"] }), frame(500, { textRemoved: ["0 papers"], textAdded: ["126 papers"] })], load);
+    expect(findings).toEqual([{ kind: "brief-text", text: "0 papers", from: 400, to: 500 }]);
+  });
+
+  it("still reports a counting number that leaves moments after it first appeared", () => {
+    const findings = analyzePhase(
+      [
+        frame(400, { textAdded: ["Up to 4 credits"] }),
+        frame(416, { textRemoved: ["Up to 4 credits"], textAdded: ["Up to 126 credits"] }),
+        frame(600, { textRemoved: ["Up to 126 credits"] }),
+      ],
+      load,
+    );
+    expect(findings).toEqual([{ kind: "brief-text", text: "Up to 126 credits", from: 400, to: 600 }]);
+  });
+
+  it("pairs counting lines one to one, so a second copy that vanishes is still a blink", () => {
+    const findings = analyzePhase(
+      [
+        frame(400, { textAdded: ["4 credits", "4 credits"] }),
+        frame(416, { textRemoved: ["4 credits", "4 credits"], textAdded: ["126 credits"] }),
+        frame(432, { textRemoved: ["126 credits"], textAdded: ["250 credits"] }),
+      ],
+      load,
+    );
+    expect(findings).toEqual([{ kind: "brief-text", text: "4 credits", from: 400, to: 416 }]);
+  });
+
   it("reports a large element that is removed moments after it appears, but not a small one", () => {
     const findings = analyzePhase(
       [
