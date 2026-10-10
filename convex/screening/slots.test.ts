@@ -1,7 +1,7 @@
 // Each person's Screen all papers run under their limit and the rest wait their turn (#335).
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { seedCreditsForTest } from "../billing/billing.test-support";
@@ -92,6 +92,24 @@ describe("each person's paper slots", () => {
     expect((await papersOf(t, first.jobId)).waiting).toHaveLength(0);
     expect((await papersOf(t, second.jobId)).started).toHaveLength(3);
     expect(await running(t, ada.userId)).toBe(SCREENING_POOL_SIZE);
+  });
+
+  it("shows a job's papers as being read while they hold a slot, so its page and the slots row agree", async () => {
+    const { t, person } = await setup();
+    const ada = await person("ada");
+    const { jobId } = await createJob(ada.as, { papers: papers(8, "a"), questions, scoringConfig });
+    const beingRead = async () => (await ada.as.query(api.screening.queries.getScreeningJob, { jobId }))!.running;
+    expect([await beingRead(), await running(t, ada.userId)]).toEqual([8, 8]);
+
+    // Three finish. Until they're counted off they still hold their slots, and the job says the same.
+    const done = (await papersOf(t, jobId)).started.slice(0, 3).map((row) => row._id);
+    await t.run(async (ctx) => {
+      for (const id of done) await ctx.db.patch("screeningResults", id, { status: "completed", completedAt: 2, doneAt: ctx.db.vars.commitTs });
+    });
+    expect([await beingRead(), await running(t, ada.userId)]).toEqual([8, 8]);
+
+    await t.mutation(internal.screening.bookkeeping.bookkeep, { results: done });
+    expect([await beingRead(), await running(t, ada.userId)]).toEqual([5, 5]);
   });
 
   it("holds a person to their plan's concurrency", async () => {

@@ -102,7 +102,7 @@ async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   const add = tally(results);
   const credits = results.reduce((sum, result) => sum + (result.creditsUsed ?? 0), 0);
   await ctx.db.patch("screeningJobProgress", row._id, {
-    // Papers of a job with a spending limit stop being held at the estimate once they're counted at what they cost (./slots.ts).
+    // Papers that held a slot leave it as they're counted (./slots.ts): a spending limit stops holding them at the estimate, and the job's page stops showing them as being read.
     ...(row.running ? { running: Math.max(0, row.running - results.filter((result) => result.workId !== undefined).length) } : {}),
     completed: row.completed + add.completed,
     skipped: row.skipped + add.skipped,
