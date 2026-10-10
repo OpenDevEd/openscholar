@@ -809,6 +809,18 @@ function readRecipient(value: unknown): string | null {
   return typeof value === "string" && value !== "" ? value : null;
 }
 
+/**
+ * The digest settings as a library receives them. A library on a runtime from
+ * before the pause refuses a key it does not know, so the pause is only sent
+ * while digests are paused.
+ */
+function notificationsPayload({
+  pausedSince,
+  ...settings
+}: ConfigurationDraft["notifications"]) {
+  return pausedSince ? { ...settings, pausedSince } : settings;
+}
+
 function readNotifications(
   payload: unknown,
 ): ConfigurationDraft["notifications"] {
@@ -1402,7 +1414,7 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
     case "email":
       return emailPayload(draft.email);
     case "notifications":
-      return draft.notifications;
+      return notificationsPayload(draft.notifications);
     case "legal":
       return legalPayload(draft.legal);
     case "collections":
