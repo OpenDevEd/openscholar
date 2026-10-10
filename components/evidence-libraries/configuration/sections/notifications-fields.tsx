@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useAction } from "convex/react";
-import { BookOpen, CalendarDays, Check, ChevronDown, Clock3, Repeat2, Globe2, Mail, Send, TimerReset } from "@/components/icons";
+import { BookOpen, CalendarDays, Check, ChevronDown, Clock3, Pause, Repeat2, Globe2, Mail, Send, TimerReset } from "@/components/icons";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -67,6 +67,14 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
         {(id, invalid) => <TimezonePicker id={id} invalid={invalid} value={schedule.timezone} onChange={timezone => setSchedule({...schedule, timezone})} />}
       </Field>
     </div>}
+    {notifications.enabled && <ToggleRow
+      label={<span className="inline-flex items-center gap-2"><Pause className="size-4 text-muted-foreground" />Pause digests</span>}
+      hint={notifications.pausedSince
+        ? `Paused since ${new Date(notifications.pausedSince).toLocaleDateString("en-GB", {day: "numeric", month: "long"})}. The first digest after you resume covers everything since the last one, up to a month back.`
+        : "New publication emails keep going out."}
+      checked={notifications.pausedSince !== null}
+      onChange={paused => patch(draft => {draft.notifications.pausedSince = paused ? new Date().toISOString() : null;return draft;})}
+    />}
     {canSend && notifications.enabled && <PanelRow
       className="flex-col items-stretch sm:flex-row sm:items-center"
       title={<span className="inline-flex items-center gap-2"><TimerReset className="size-4 text-muted-foreground" />Manual digest</span>}
