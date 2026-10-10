@@ -13,7 +13,7 @@
     "start": "next start",
     "test": "vitest run --tags-filter=!size",
     "verify": "node scripts/verify/cli.ts",
-    "test:size": "vitest run --tags-filter=size --hookTimeout=600000",
+    "test:size": "vitest run --tags-filter=size",
     "bench": "BENCH=1 vitest run --project bench",
     "schema:sync:evidence-library-config": "node scripts/sync-evidence-library-config-contract.mjs",
     "check:email-template": "node scripts/sync-library-email-template.mjs --check",
