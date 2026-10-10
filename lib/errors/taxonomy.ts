@@ -15,6 +15,7 @@ import {
 export const ERROR_CODES = [
   // chat + extraction shared
   "insufficient_credits",
+  "member_cap",
   "rate_limit",
   "model_unavailable",
   "auth",
@@ -45,6 +46,7 @@ export type ErrorCode = (typeof ERROR_CODES)[number];
  */
 export const errorCodeValidator = v.union(
   v.literal("insufficient_credits"),
+  v.literal("member_cap"),
   v.literal("rate_limit"),
   v.literal("model_unavailable"),
   v.literal("auth"),
@@ -94,6 +96,7 @@ export type ChatErrorEnvelope = {
  */
 export const isRetryable: Record<ErrorCode, boolean> = {
   insufficient_credits: true,
+  member_cap: true,
   rate_limit: true,
   model_unavailable: true,
   auth: false,
@@ -120,6 +123,7 @@ const REQUIRES_EDIT: ReadonlySet<ErrorCode> = new Set<ErrorCode>([
 ]);
 const REQUIRES_ATTENTION: ReadonlySet<ErrorCode> = new Set<ErrorCode>([
   "insufficient_credits",
+  "member_cap",
   "auth",
 ]);
 
@@ -155,6 +159,7 @@ const CODE_TO_TAXONOMY: Record<string, ErrorCode> = {
   ) as Record<string, ErrorCode>),
   INSUFFICIENT_CREDITS: "insufficient_credits",
   AI_INSUFFICIENT_CREDITS: "insufficient_credits",
+  MEMBER_CAP_REACHED: "member_cap",
 };
 
 /**
@@ -427,6 +432,11 @@ export function classifyChatError(error: unknown): ChatErrorEnvelope {
   // without provider context to distinguish ours from theirs.
   if (isUserStopAbort(rec)) {
     return envelope("aborted", message, { providerName });
+  }
+
+  // The cap an admin set on a member refused the hold (convex/billing/charge.ts).
+  if (rec.code === "MEMBER_CAP_REACHED") {
+    return envelope("member_cap", message, { providerName });
   }
 
   // Explicit credit guard we throw in generateResponse pre-flight.

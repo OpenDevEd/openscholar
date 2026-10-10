@@ -99,11 +99,17 @@ export const reply = internalAction({
     // What this request holds, on the model it runs on: the most a request costs, or what the person
     // has when that's less, down to the least a reply starts on. It settles to what it cost, and the
     // next request holds again, so what a reply may cost in all is the person's credits and nothing else.
-    let balance = (await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId }))?.balance;
+    // In an organization that's its balance, or what is left of the cap an admin set on them (#652).
+    const spendable = async (): Promise<number | undefined> => (await ctx.runQuery(internal.billing.caps.spendable, { workspaceId, userId: senderId })) ?? undefined;
+    const reread = async () => {
+      await refreshAccount(ctx, workspaceId).catch(() => null);
+      return await spendable();
+    };
+    let balance = await spendable();
     const cap = async (pricing: Pricing) => {
       const most = estimateCredits(pricing, CALL_TOKENS.chatRequest);
       // The account's copy of the balance can be behind a top-up. When it says the request can't hold the most, it's read again from Autumn.
-      if (balance !== undefined && balance < most) balance = (await refreshAccount(ctx, workspaceId).catch(() => null))?.balance ?? balance;
+      if (balance !== undefined && balance < most) balance = await reread();
       // A reply that is under way holds whatever the person has left: its first request settled to what
       // it cost, and the least a reply starts on, asked for again, could stop one the balance still covers.
       const least = used.rounds === 0 ? estimateCredits(pricing, CALL_TOKENS.chatMessage) : 1;
@@ -146,7 +152,12 @@ export const reply = internalAction({
       replyId: attemptId,
       workspaceId,
       credits: cap,
-      lesser: async () => (await refreshAccount(ctx, workspaceId).catch(() => null))?.balance,
+      // Autumn counts a member's cap, and what's known here of their spending runs a moment behind it:
+      // when that says there's no less to hold, a hold the cap refused is tried at half.
+      lesser: async (tried, why) => {
+        const now = await reread();
+        return now !== undefined && now < tried ? now : why === "capped" ? Math.floor(tried / 2) : undefined;
+      },
       tools,
       approval,
       answer,
@@ -170,7 +181,7 @@ export const reply = internalAction({
           },
         },
       }),
-      retry: (failure) => made() === callsBefore && (used.retries ?? 0) < MAX_RETRIES && (PASSING.has(failure.class) || (linked && !used.download && failure.class !== "insufficient_credits")),
+      retry: (failure) => made() === callsBefore && (used.retries ?? 0) < MAX_RETRIES && (PASSING.has(failure.class) || (linked && !used.download && failure.class !== "insufficient_credits" && failure.class !== "member_cap")),
       release: ({ lastInputTokens, asked, credits, requests, more, failed, retry }) => {
         const calls = askedSteps(asked, held, planned);
         const changed = changes();

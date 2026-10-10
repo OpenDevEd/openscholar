@@ -7,6 +7,7 @@
  */
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
+import { monthStart } from "../../lib/billing/month";
 import { TEAM_PLAN } from "../../lib/billing/plans";
 import { readAccount } from "./accounts";
 import { memberSpace, spendSpace, usageAgg } from "./usageLog";
@@ -36,6 +37,19 @@ export async function capOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId
   const row = await capRow(ctx, workspaceId, userId);
   if (!row || (await readAccount(ctx, workspaceId))?.plan !== TEAM_PLAN) return undefined;
   return row.cap;
+}
+
+/**
+ * Credits the person can spend in the workspace now, for a hold sized to them: its cached balance,
+ * or what's left of their cap this month when that's less. Undefined before the account is first
+ * read. Autumn enforces both.
+ */
+export async function spendable(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) {
+  const balance = (await readAccount(ctx, workspaceId))?.balance;
+  const cap = await capOf(ctx, workspaceId, userId);
+  if (cap === undefined) return balance;
+  const left = Math.max(0, cap - (await spentSince(ctx, workspaceId, userId, monthStart(Date.now()))));
+  return Math.min(balance ?? left, left);
 }
 
 /** A member's seat in the organization, by their Clerk ID: the Autumn entity their charges are made as. */

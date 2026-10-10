@@ -30,6 +30,8 @@ export const STOP_ABORT_POLL_INTERVAL_MS = 500;
 /** How long a request waits for the model to start answering, reasoning included, and then between parts of its answer. */
 const FIRST_CHUNK_MS = 120_000;
 const CHUNK_MS = 90_000;
+/** Times a refused hold is tried again at less, before the request is refused. */
+const LESSER_TRIES = 3;
 /** What a request those ended fails with: shown as the model service's error (lib/errors/taxonomy.ts). */
 const STALLED = Object.assign(new Error("The model stopped answering."), { name: "TimeoutError" });
 
@@ -53,8 +55,8 @@ export type Turn = {
   replyId?: string;
   /** Credits held before the reply starts, worked out at the price of the model it runs on (lib/pricing/estimate.ts). */
   credits: (pricing: Pricing) => number | Promise<number>;
-  /** Asked when that hold is refused: what to hold in its place, when the person turns out to have less. */
-  lesser?: () => Promise<number | undefined>;
+  /** Asked when a hold of `tried` credits is refused, for the balance or for a member's cap: what to hold in its place, or nothing when there's no less to try. */
+  lesser?: (tried: number, why: "short" | "capped") => Promise<number | undefined>;
   tools?: ToolSet;
   /** This request is the reply's answer: the model can't call a tool in it. */
   answer?: boolean;
@@ -216,15 +218,19 @@ export async function runTurn(ctx: ActionCtx, turn: Turn): Promise<void> {
     capturedModelSlug = modelSlug;
 
     const held = await turn.credits(pricing);
-    // The account's copy of the balance can be behind a charge just made. A hold it led to that is refused is tried again at what the person really has.
-    const lesser = async () => {
-      const credits = await turn.lesser?.();
-      return credits !== undefined && credits > 0 && credits < held && (await reserveCredits(ctx, { userId, workspaceId, chargeId, credits }));
-    };
     const why = await holdCredits(ctx, { userId, workspaceId, chargeId, credits: held });
-    // A member at the cap an admin set on them is told so, not that the organization is out of credits (#652).
-    if (why === "capped") throw capReached(held);
-    if (why === "short" && !(await lesser())) {
+    // The account's copy of the balance can be behind a charge just made, and so can what a member is known to have spent
+    // of their cap. A hold it led to that is refused is tried again at what `lesser` gives, a few times at most.
+    let got = why === "held";
+    for (let tried = held, tries = 0; why !== "held" && !got && tries < LESSER_TRIES; tries++) {
+      const credits = await turn.lesser?.(tried, why);
+      if (credits === undefined || credits <= 0 || credits >= tried) break;
+      got = await reserveCredits(ctx, { userId, workspaceId, chargeId, credits });
+      tried = credits;
+    }
+    if (!got) {
+      // A member at the cap an admin set on them is told so, not that the organization is out of credits (#652).
+      if (why === "capped") throw capReached(held);
       const account = await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId });
       const availableCredits = account?.balance ?? 0;
       throw createError(

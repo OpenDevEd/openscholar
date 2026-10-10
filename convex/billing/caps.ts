@@ -15,7 +15,7 @@ import { assistantAction, assistantQuery, defineChangingAction, defineUserQuery,
 import { TEAM_PLAN } from "../../lib/billing/plans";
 import { readAccount } from "./accounts";
 import { autumn } from "./autumn";
-import { capOf, capRow, MAX_MEMBER_CAP, seatOf, spentSince, workspaceSpentSince } from "./memberCaps";
+import { capOf, capRow, MAX_MEMBER_CAP, seatOf, spendable as spendableBy, spentSince, workspaceSpentSince } from "./memberCaps";
 import { monthStart } from "../../lib/billing/month";
 
 const SET_CAP = "billing/caps:setCap" as const;
@@ -93,6 +93,13 @@ export const allowanceAction = defineUserQuery({
 });
 export const allowance = userQuery(allowanceAction);
 export const allowanceForAssistant = assistantQuery(allowanceAction);
+
+/** Credits the person can spend in the workspace now (./memberCaps.ts `spendable`), for a reply's hold; null before the account is first read. */
+export const spendable = internalQuery({
+  args: { workspaceId: v.id("workspaces"), userId: v.id("users") },
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx, { workspaceId, userId }) => (await spendableBy(ctx, workspaceId, userId)) ?? null,
+});
 
 /** Who a cap goes on, checked before Autumn is asked: the member's seat and the cap they have now. */
 export const capTarget = internalQuery({
