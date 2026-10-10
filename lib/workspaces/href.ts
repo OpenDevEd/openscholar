@@ -8,7 +8,7 @@ import { useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 /** The sections whose pages are a workspace's: their paths take an organization's prefix. */
-const SECTIONS = ["/library", "/history", "/results", "/screening", "/extraction", "/bookmarks", "/evidence-libraries", "/authors", "/topics", "/settings"];
+const SECTIONS = ["/library", "/history", "/results", "/screening", "/extraction", "/bookmarks", "/evidence-libraries", "/authors", "/topics", "/settings", "/pricing"];
 /** The deployment's own settings, which are no workspace's. */
 const ADMIN = "/settings/admin";
 

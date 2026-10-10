@@ -4,9 +4,11 @@
 // the switcher and the join page.
 
 import type { FunctionReturnType } from "convex/server";
+import type { ReactElement } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { Home } from "@/components/icons";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedPaginatedQuery, useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -20,9 +22,6 @@ import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 export type WorkspaceRow = FunctionReturnType<typeof api.organizations.queries.workspaces>["page"][number];
 /** Enough of a workspace to draw it, which an invitation has before it's one of yours. */
 export type WorkspaceLook = Pick<WorkspaceRow, "kind" | "name" | "imageUrl"> & { workspaceId?: string; plan?: string; colour?: string };
-
-/** Clerk's limit on a free organization's members, invitations included. */
-export const FREE_MEMBERS = 5;
 
 /** Workspaces a list of them reads at a time; the one you're in is read apart. */
 const LISTED = 20;
@@ -154,3 +153,15 @@ export function PlanChip({ workspace, className }: { workspace: WorkspaceLook; c
 /** Where a workspace's settings or its plan and credits are: an organization's under its address, your own's with your account. */
 export const settingsHref = (workspace: Pick<WorkspaceRow, "kind" | "slug"> | undefined, page: "" | "/billing" = "") =>
   workspace?.kind === "organization" && workspace.slug ? `/o/${workspace.slug}/settings${page || "/workspace"}` : `/settings${page}`;
+
+/** A control that is off for a reason: the reason shows on hover. */
+export function Guarded({ reason, children }: { reason: string | null; children: ReactElement }) {
+  if (!reason) return children;
+  return (
+    <TooltipHint label={reason}>
+      <span tabIndex={0} className="rounded-md">
+        <span className="pointer-events-none opacity-50">{children}</span>
+      </span>
+    </TooltipHint>
+  );
+}

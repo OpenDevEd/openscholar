@@ -14,10 +14,13 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { paginationOptsValidator } from "convex/server";
-import { internalAction, internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "../lib/functions";
+import { internalAction, internalMutation, internalQuery, query, type ActionCtx, type QueryCtx } from "../lib/functions";
+import { getCurrentUser } from "../lib/auth";
+import { actorIn } from "../workspaces/actor";
 import { personName } from "../lib/people";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
 import { SEAT_PLAN, SEATS_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
+import { createError } from "../lib/errors";
 import { refreshAccount } from "./accounts";
 import { capRow } from "./memberCaps";
 import { autumn, AutumnError, type AutumnEntity } from "./autumn";
@@ -95,8 +98,12 @@ async function entitiesOf(customerId: string) {
   }
 }
 
-/** Brings the organization's seats to its members, and says how many seats it holds after; undefined when it changed nothing. */
-async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise<number | undefined> {
+/**
+ * Brings the organization's seats to its members, and says how many seats it holds after, with the
+ * page that confirms a seat's payment when its card asked for one (3-D Secure, say); undefined when
+ * it changed nothing.
+ */
+async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise<{ seats: number; paymentUrl?: string } | undefined> {
   const account = await refreshAccount(ctx, workspaceId);
   const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
   const members: SeatMember[] | null = account.plan === TEAM_PLAN ? await ctx.runQuery(internal.billing.seats.membersOf, { workspaceId }) : [];
@@ -117,12 +124,14 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
     await unlessAlready("entity_not_found", () => autumn.deleteEntity(customerId, entityId));
   }
   let added = 0;
+  let paymentUrl: string | undefined;
   for (const member of seat) {
     if (member.make) await unlessAlready("entity_already_exists", () => autumn.createEntity({ customerId, entityId: member.clerkUserId, featureId: SEATS_FEATURE, name: member.name, ...(member.cap === undefined ? {} : { cap: member.cap }) }));
     const attached = await unlessAlready("plan_already_attached", () => autumn.attach({ customerId, entityId: member.clerkUserId, planId: SEAT_PLAN }));
-    // Seats are charged to the organization's saved card; without one, Autumn asks for checkout instead.
+    // Seats are charged to the organization's saved card; without one, or when the card asks to confirm the payment, Autumn sends a page to pay on instead.
     if (attached?.payment_url) {
-      console.error(`[seats] ${workspaceId} has no saved card, so ${seat.length - added} new members' seats weren't added`);
+      console.error(`[seats] ${workspaceId}'s card wasn't charged without a payment page, so ${seat.length - added} new members' seats weren't added`);
+      paymentUrl = attached.payment_url;
       break;
     }
     added++;
@@ -134,7 +143,7 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
     await refreshAccount(ctx, workspaceId);
     console.log(`[seats] ${workspaceId} on ${account.plan}: ${members.length} members; seated ${added}, ended ${end.length}`);
   }
-  return members.length - waiting.size;
+  return { seats: members.length - waiting.size, ...(paymentUrl ? { paymentUrl } : {}) };
 }
 
 /** Keeps which members hold a seat (`memberSeats`): exactly `seated`, at most MAX_ORGANIZATION_MEMBERS. */
@@ -210,17 +219,77 @@ export const syncTeams = internalMutation({
   },
 });
 
+/** Syncs the organization's seats; returns the page that confirms a seat's payment when its card asked for one. */
 export const sync = internalAction({
   args: { workspaceId: v.id("workspaces") },
-  returns: v.null(),
-  handler: async (ctx, { workspaceId }) => {
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { workspaceId }): Promise<string | null> => {
     if (!(await ctx.runMutation(internal.billing.seats.claim, { workspaceId }))) return null;
-    let seats: number | undefined;
+    let synced: { seats: number; paymentUrl?: string } | undefined;
     try {
-      seats = await syncSeats(ctx, workspaceId);
+      synced = await syncSeats(ctx, workspaceId);
     } finally {
-      await ctx.runMutation(internal.billing.seats.release, { workspaceId, ...(seats === undefined ? {} : { seats }) });
+      await ctx.runMutation(internal.billing.seats.release, { workspaceId, ...(synced === undefined ? {} : { seats: synced.seats }) });
     }
-    return null;
+    return synced?.paymentUrl ?? null;
+  },
+});
+
+/**
+ * Starts an organization's Team seats (#652) once its saved card is known: Team attached and a seat
+ * for each member, holding the organization's sync while it does, so the sync Autumn's webhook
+ * asks for runs after and the page that confirms a seat's payment comes back here. Refuses while
+ * another sync runs.
+ */
+export const startTeam = internalAction({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { workspaceId }): Promise<string | null> => {
+    if (!(await ctx.runMutation(internal.billing.seats.claim, { workspaceId }))) throw createError("CONFLICT", "Its seats are being updated. Try again in a minute.");
+    let synced: { seats: number; paymentUrl?: string } | undefined;
+    try {
+      const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
+      await autumn.attach({ customerId, planId: TEAM_PLAN, idempotencyKey: `team-${workspaceId}-${crypto.randomUUID()}` });
+      synced = await syncSeats(ctx, workspaceId);
+    } finally {
+      await ctx.runMutation(internal.billing.seats.release, { workspaceId, ...(synced === undefined ? {} : { seats: synced.seats }) });
+    }
+    return synced?.paymentUrl ?? null;
+  },
+});
+
+const countsValidator = v.object({ members: v.number(), invitations: v.number(), seats: v.number() });
+
+/** An organization's members, pending invitations and the seats it holds, each counted in full up to MAX_ORGANIZATION_MEMBERS. */
+async function countsOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, organizationId: Id<"organizations">) {
+  const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organizationId).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS);
+  const invitations = await ctx.db.query("organizationInvitations").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organizationId).eq("state", "pending")).take(MAX_ORGANIZATION_MEMBERS);
+  return { members: members.length, invitations: invitations.length, seats: (await syncRow(ctx, workspaceId))?.seats ?? 0 };
+}
+
+/**
+ * An organization's members, pending invitations and the seats it holds (#652), counted in full,
+ * for what Team costs it and whether Free takes it: moving to Team charges a seat for each member,
+ * its bill is a seat for each one it holds, and Free has room for FREE_MEMBERS, invitations
+ * included. Null outside an organization and for someone not in it.
+ */
+export const counts = query({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.union(countsValidator, v.null()),
+  handler: async (ctx, { workspaceId }) => {
+    const user = await getCurrentUser(ctx);
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    if (!user || workspace?.kind !== "organization" || !(await actorIn(ctx, user, workspaceId))) return null;
+    return await countsOf(ctx, workspaceId, workspace.organizationId);
+  },
+});
+
+/** The same counts, for an action. */
+export const countsFor = internalQuery({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.union(countsValidator, v.null()),
+  handler: async (ctx, { workspaceId }) => {
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    return workspace?.kind === "organization" ? await countsOf(ctx, workspaceId, workspace.organizationId) : null;
   },
 });

@@ -265,7 +265,30 @@
     "sessionSetupIssue": "Problème de configuration de session",
     "retrySyncToContinue": "Réessayez la synchronisation pour continuer avec les actions de facturation.",
     "paymentPendingDefault": "Paiement en attente. Effectuez le paiement dans le portail Stripe pour activer votre abonnement et vos crédits.",
-    "downgradeScheduledTo": "Rétrogradation planifiée vers"
+    "downgradeScheduledTo": "Rétrogradation planifiée vers",
+    "plansFor": "Offres pour",
+    "forYou": "Pour vous",
+    "forAnOrganization": "Pour une organisation",
+    "organizations": {
+      "freeOrganization": "Organisation gratuite",
+      "freeDescription": "Travaillez à quelques-uns.",
+      "teamDescription": "Pour les laboratoires et les équipes de revue, sur une seule réserve de crédits.",
+      "aMonth": "par mois",
+      "aSeat": "{price} par place",
+      "seats": "{count, plural, one {# place} other {# places}}",
+      "oneSeatFewer": "Une place de moins",
+      "oneSeatMore": "Une place de plus",
+      "sharedCreditsAMonth": "{credits, number} crédits partagés par mois",
+      "capsForEachMember": "Plafond de crédits pour chaque membre",
+      "yourOrganizationsPlan": "L'offre de votre organisation",
+      "createOrganization": "Créer une organisation",
+      "moveTo": "Passer à {plan}",
+      "onlyAdmins": "Seuls les administrateurs de {organization} changent son offre",
+      "organizationsOnly": "Team est réservé aux organisations : créez-en une d'abord",
+      "seatsAt": "{count, plural, one {# place} other {# places}} à {price}",
+      "moveToFreeTitle": "Passer {organization} à {plan} ?",
+      "moveToFreeDetail": "{count, plural, one {Sa place prend fin} other {Ses # places prennent fin}} maintenant. Elle compte ensuite au plus {members, number} membres et {credits, number} crédits partagés par mois."
+    }
   },
   "publicationSettings": {
     "credentials": "Identifiants {provider}",
@@ -4172,7 +4195,12 @@
       "cap": "Plafond",
       "capNone": "Aucun",
       "noCap": "Sans plafond",
-      "capAMonth": "{amount} par mois"
+      "capAMonth": "{amount} par mois",
+      "aSeat": "{price} par place",
+      "seats": "{count, plural, one {# place} other {# places}}",
+      "amountAMonth": "{amount} par mois",
+      "manageBilling": "Gérer la facturation",
+      "moveTo": "Passer à {plan}"
     },
     "couldntInvite": "L'organisation a été créée, mais les invitations ne sont pas parties. Envoyez-les depuis ses paramètres Membres.",
     "fromCredits": "Sur les crédits de {name}",

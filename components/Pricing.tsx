@@ -1,7 +1,8 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-import { useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
+import { useParams } from "next/navigation";
 import { useAction } from "convex/react";
 import posthog from "posthog-js";
 import { api } from "@/convex/_generated/api";
@@ -14,12 +15,11 @@ import {
 } from "@/lib/billing/catalog";
 import { Button } from "@/components/ui/button";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
-import { motion } from "motion/react";
 import {
-  Check,
   Loader2,
   Building2,
   CreditCard,
+  UserRound,
   type AppIcon,
 } from "@/components/icons";
 import { planIcon } from "@/components/billing/plan-icon";
@@ -30,7 +30,6 @@ import {
   type UpgradePreview,
 } from "@/components/billing/upgrade-confirmation-dialog";
 import { cn } from "@/lib/utils";
-import { subtleSpring } from "@/lib/animation-config";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { Spinner } from "@/components/ui/spinner";
@@ -38,7 +37,10 @@ import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useTranslations, useFormatter } from "next-intl";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
+import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
+import { OrganizationPlans, type CurrentWorkspace } from "@/components/workspaces/org-plans";
 import { StickyPageHeader } from "@/components/layout/sticky-page-header";
+import { PlanCard } from "@/components/billing/plan-card";
 
 type PlanCard = {
   id: string;
@@ -70,7 +72,8 @@ const PLAN_COPY = {
 /** Translated names for Autumn features; others show the name set in Autumn. */
 const FEATURE_NAMES = { extraction: "features.extraction" } as const;
 
-export function Pricing() {
+/** `organization`: the organization whose address the page is under, as the server read it. */
+export function Pricing({ organization }: { organization?: CurrentWorkspace } = {}) {
   const toast = useAppToast();
   const t = useTranslations("pricing");
   const tb = useTranslations("billingPage");
@@ -90,8 +93,13 @@ export function Pricing() {
   const [isConfirmingUpgrade, setIsConfirmingUpgrade] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+  // Under an organization's address its plans show first (#652); either tab shows the other's.
+  const inOrganization = Boolean(useParams<{ slug?: string }>().slug);
+  const [audience, setAudience] = useState<"me" | "org">(inOrganization ? "org" : "me");
+
   const { phase, retryUserSync } = useAuthReadiness();
-  const subscriptionState = useSubscriptionState();
+  // Your own plans are your own whichever workspace the page is in.
+  const subscriptionState = useSubscriptionState({ own: true });
   const account = subscriptionState.account;
   const catalog = subscriptionState.catalog;
   const isAuthLoading = subscriptionState.isAuthLoading;
@@ -100,12 +108,16 @@ export function Pricing() {
   const hasResolvedSubscription = subscriptionState.isReady;
   const resolvedPlan = subscriptionState.resolvedPlan;
 
-  const PLANS: PlanCard[] = useMemo(() => {
-    if (!catalog) return [];
-    const featureName = (id: string) =>
+  const featureName = useCallback(
+    (id: string) =>
       id in FEATURE_NAMES
         ? t(FEATURE_NAMES[id as keyof typeof FEATURE_NAMES])
-        : (catalog.features.find((f) => f.id === id)?.name ?? id);
+        : (catalog?.features.find((f) => f.id === id)?.name ?? id),
+    [catalog, t],
+  );
+
+  const PLANS: PlanCard[] = useMemo(() => {
+    if (!catalog) return [];
     const creditsLine = (plan: CatalogPlan) => {
       if (plan.autoEnable) {
         const credits = signupCredits(catalog);
@@ -149,7 +161,7 @@ export function Pricing() {
       });
     }
     return cards;
-  }, [catalog, showEnterprise, t]);
+  }, [catalog, featureName, showEnterprise, t]);
 
   // Track pricing page view
   useEffect(() => {
@@ -446,14 +458,32 @@ export function Pricing() {
     );
   }
 
+  const audienceTabs = (
+    <ListViewTabs
+      label={t("plansFor")}
+      value={audience}
+      onChange={setAudience}
+      tabs={[
+        { value: "me" as const, label: t("forYou"), icon: <UserRound className="size-3.5" /> },
+        { value: "org" as const, label: t("forAnOrganization"), icon: <Building2 className="size-3.5" /> },
+      ]}
+    />
+  );
+
   return (
     <div className="@container w-full pb-16">
       <StickyPageHeader>
-        <PanelHeader icon={CreditCard} title={t("chooseYourPlan")} />
+        <PanelHeader icon={CreditCard} title={t("chooseYourPlan")} tabs={audienceTabs} />
       </StickyPageHeader>
 
       <div className="container mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
-        {/* Plans Grid */}
+        {/* A narrow bar has no room for the tabs. */}
+        <div className="@3xl:hidden">{audienceTabs}</div>
+
+        {audience === "org" ? (
+          <OrganizationPlans featureName={featureName} initial={organization} />
+        ) : (
+          <>
         {hasPendingDowngrade && account?.changesAt !== undefined && (
           <div className="rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm ink-info flex items-center justify-between gap-3">
             <span>
@@ -491,112 +521,56 @@ export function Pricing() {
           {orderedPlans.map((plan, index) => {
             const isCurrent = hasResolvedSubscription && resolvedPlan === plan.id;
             const buttonConfig = getButtonConfig(plan);
-            const Icon = plan.icon;
             const isScheduledTarget = scheduledPlan === plan.id;
 
             return (
-              <motion.div
+              <PlanCard
                 key={plan.id}
-                data-testid={`pricing-plan-${plan.id}`}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ ...subtleSpring, delay: index * 0.1 }}
-                className={cn(
-                  "relative rounded-xl overflow-hidden flex flex-col",
-                  "bg-card",
-                  "border",
-                  isCurrent && "border-primary/50 bg-primary/[0.02]",
-                  !isCurrent && "border-border-subtle",
-                )}
-              >
-                {/* Current Plan Badge */}
-                {isCurrent && (
-                  <div className="bg-success/10 border-b border-success/20 px-4 py-2 flex items-center justify-center">
-                    <span data-testid="pricing-current-badge" className="text-xs font-semibold ink-success">
-                      {tc("currentPlan")}
-                    </span>
-                  </div>
-                )}
-
-                {/* Popular Badge */}
-                {plan.popular && !isCurrent && (
-                  <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-center">
-                    <span className="text-xs font-semibold text-primary">
-                      {tc("mostPopular")}
-                    </span>
-                  </div>
-                )}
-
-                {isScheduledTarget && !isCurrent && (
-                  <div className="bg-info/10 border-b border-info/20 px-4 py-2 flex items-center justify-center">
-                    <span data-testid="pricing-scheduled-badge" className="text-xs font-semibold ink-info">
-                      Scheduled
-                    </span>
-                  </div>
-                )}
-
-                {/* Header */}
-                <div className="p-6 border-b border-border-subtle">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Icon className="w-8 h-8 text-primary" />
-                    <h3 className="text-2xl font-bold">{plan.name}</h3>
-                  </div>
-
-                  {/* Price Display */}
-                  <div className="mb-2">
-                    {plan.id === ENTERPRISE_ID ? (
-                      <div className="text-4xl font-bold">{tc("custom")}</div>
-                    ) : plan.price ? (
-                      <div className="text-4xl font-bold">
-                        {formatPrice(plan.price.amount)}
-                        <span className="text-lg text-muted-foreground">
-                          {plan.price.interval === "month"
-                            ? t("perMonth")
-                            : tb("perInterval", {
-                                interval:
-                                  plan.price.interval === "year" ? tb("intervalYear") : plan.price.interval,
-                              })}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="text-4xl font-bold">{t("freePrice")}</div>
-                    )}
-                  </div>
-
-                  <p className="text-sm text-muted-foreground">
-                    {plan.description}
-                  </p>
-                </div>
-
-                {/* Features */}
-                <div className="p-6 space-y-3 flex-1">
-                  {plan.features.map((feature) => (
-                    <div key={feature} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                      <span className="text-sm">{feature}</span>
+                testId={`pricing-plan-${plan.id}`}
+                index={index}
+                current={isCurrent}
+                badges={[
+                  ...(isCurrent ? [{ tone: "success" as const, label: tc("currentPlan"), testId: "pricing-current-badge" }] : []),
+                  ...(plan.popular && !isCurrent ? [{ tone: "primary" as const, label: tc("mostPopular") }] : []),
+                  ...(isScheduledTarget && !isCurrent ? [{ tone: "info" as const, label: "Scheduled", testId: "pricing-scheduled-badge" }] : []),
+                ]}
+                icon={plan.icon}
+                name={plan.name}
+                price={
+                  plan.id === ENTERPRISE_ID ? (
+                    <div className="text-4xl font-bold">{tc("custom")}</div>
+                  ) : plan.price ? (
+                    <div className="text-4xl font-bold">
+                      {formatPrice(plan.price.amount)}
+                      <span className="text-lg text-muted-foreground">
+                        {plan.price.interval === "month"
+                          ? t("perMonth")
+                          : tb("perInterval", {
+                              interval: plan.price.interval === "year" ? tb("intervalYear") : plan.price.interval,
+                            })}
+                      </span>
                     </div>
-                  ))}
-                </div>
-
-                {/* CTA */}
-                <div className="p-6 pt-0 mt-auto">
-                  <Button
-                    data-testid={`pricing-button-${plan.id}`}
-                    className="w-full"
-                    variant={buttonConfig.variant}
-                    disabled={buttonConfig.disabled || loadingPlanId !== null}
-                    onClick={buttonConfig.onClick}
-                  >
-                    {loadingPlanId === plan.id ||
-                    loadingPlanId === "portal" ||
-                    loadingPlanId === "keep-current" ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      (buttonConfig.label ?? <Spinner aria-label={tc("loading")} />)
-                    )}
-                  </Button>
-                </div>
-              </motion.div>
+                  ) : (
+                    <div className="text-4xl font-bold">{t("freePrice")}</div>
+                  )
+                }
+                description={plan.description}
+                features={plan.features}
+              >
+                <Button
+                  data-testid={`pricing-button-${plan.id}`}
+                  className="w-full"
+                  variant={buttonConfig.variant}
+                  disabled={buttonConfig.disabled || loadingPlanId !== null}
+                  onClick={buttonConfig.onClick}
+                >
+                  {loadingPlanId === plan.id || loadingPlanId === "portal" || loadingPlanId === "keep-current" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    (buttonConfig.label ?? <Spinner aria-label={tc("loading")} />)
+                  )}
+                </Button>
+              </PlanCard>
             );
           })}
         </div>
@@ -615,6 +589,8 @@ export function Pricing() {
           cardBrand={upgradePreview?.card?.brand}
           cardLast4={upgradePreview?.card?.last4}
         />
+          </>
+        )}
       </div>
     </div>
   );
