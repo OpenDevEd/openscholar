@@ -24,7 +24,6 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { showStyledToast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
-import { switchTarget } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { Framed, Opening, PlanChip, settingsHref, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 import { FREE_MEMBERS } from "@/lib/billing/plans";
@@ -112,12 +111,12 @@ export function useAnswerInvitation() {
 
 /**
  * The workspace card: the one you're in, the others, invitations, and making one. `all` is read by
- * the rail, which is always there, so the list is in the card as it opens. `onPick` hears the
- * workspace picked as the card closes, so the rail shows it while its pages load. The card can be
+ * the rail, which is always there, so the list is in the card as it opens. `onSwitch` goes to a
+ * workspace: the rail does it, so one picked here is the rail's while its pages load. The card can be
  * opened while the page is still loading: it then has the name the rail shows (`shown`), and what
  * is read after opens its place.
  */
-export function WorkspaceMenu({ shown, all, onDone, onPick, onCreate }: { shown: WorkspaceLook | undefined; all: ReturnType<typeof useWorkspaces>; onDone: () => void; onPick: (workspace: WorkspaceRow) => void; onCreate: () => void }) {
+export function WorkspaceMenu({ shown, all, onDone, onSwitch, onCreate }: { shown: WorkspaceLook | undefined; all: ReturnType<typeof useWorkspaces>; onDone: () => void; onSwitch: (slug: string | undefined, picked?: WorkspaceRow) => void; onCreate: () => void }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -127,10 +126,6 @@ export function WorkspaceMenu({ shown, all, onDone, onPick, onCreate }: { shown:
   const others = (all.list ?? []).filter((workspace) => workspace.workspaceId !== current?.workspaceId);
   // A list that is in the card as it opens is simply there; one read after opens its place.
   const [listed] = useState(others.length > 0);
-  const go = (slug: string | undefined) => {
-    onDone();
-    router.push(switchTarget(slug, window.location.pathname, window.location.search.slice(1)));
-  };
   return (
     <div>
       <div className="flex items-center gap-3 px-2.5 pb-3 pt-2.5">
@@ -158,10 +153,7 @@ export function WorkspaceMenu({ shown, all, onDone, onPick, onCreate }: { shown:
               <li key={workspace.workspaceId} role="option" aria-selected={false}>
                 <button
                   type="button"
-                  onClick={() => {
-                    onPick(workspace);
-                    go(workspace.slug);
-                  }}
+                  onClick={() => onSwitch(workspace.slug, workspace)}
                   className={cn(ROW, "h-11")}
                 >
                   <Framed>
@@ -217,7 +209,7 @@ export function WorkspaceMenu({ shown, all, onDone, onPick, onCreate }: { shown:
                 >
                   {t("decline")}
                 </Button>
-                <Button size="sm" className="h-7 text-xs" disabled={answering !== null} onClick={() => void join(invitation).then((joined) => joined && go(invitation.organization.slug))}>
+                <Button size="sm" className="h-7 text-xs" disabled={answering !== null} onClick={() => void join(invitation).then((joined) => joined && onSwitch(invitation.organization.slug))}>
                   {answering === invitation.clerkInvitationId ? <Loader2 className="size-3.5 animate-spin" /> : null}
                   {t("join")}
                 </Button>

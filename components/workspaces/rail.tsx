@@ -5,8 +5,8 @@
 // running screening or extraction fills a ring around its icon and its label becomes the
 // progress, so it's visible from any page. Everything a page already lists stays on that page.
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
+import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useClerk, useUser } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import { useFormatter, useTranslations } from "next-intl";
@@ -50,7 +50,7 @@ import { useQueryShortcuts } from "@/lib/research/reads";
 import { useCurrentQueryStore, useKeywordExpansionStore } from "@/lib/store";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
-import { bareWorkspacePath } from "@/lib/workspaces/paths";
+import { bareWorkspacePath, switchTarget } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { LOOK_COOKIE, lookCookieIn, lookKey, readCache, writeCache, type CachedLook, type CachedMe, type FirstWorkspace } from "@/lib/workspaces/look-cache";
@@ -118,21 +118,20 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   // Read here, where the rail always is, so the card opens with the list in it.
   const workspaces = useWorkspaces();
   // A workspace picked in the card is the rail's from the click on, as the mock switched: its tile
-  // flies back to the rail as the card closes, and stays while its pages load. It's held while the
-  // page is still the one it was picked from, and once the page is the picked one's, until it loads.
-  // Anywhere else, Back to where it was picked included, drops it.
+  // flies back to the rail as the card closes, and stays while its pages load. It's held for as long
+  // as the navigation to it runs, and once the page is the picked one's, until it loads. However
+  // that navigation ends (it arrives, another click replaces it, Back), the rail is the address's again.
   const slug = useWorkspaceSlug() ?? null;
-  const [picked, setPicked] = useState<{ to: WorkspaceRow; from: string; landed?: true } | null>(null);
-  const there = picked !== null && slug === (picked.to.slug ?? null);
-  const waiting = picked !== null && !picked.landed && pathname === picked.from;
-  const loading = there && loaded?.workspaceId !== picked.to.workspaceId;
-  if (picked && !waiting && !loading) setPicked(null);
-  else if (picked && there && !picked.landed) setPicked({ ...picked, landed: true });
+  const router = useRouter();
+  const [picked, setPicked] = useState<WorkspaceRow | null>(null);
+  const [switching, startSwitch] = useTransition();
+  const loading = picked !== null && slug === (picked.slug ?? null) && loaded?.workspaceId !== picked.workspaceId;
+  if (picked && !switching && !loading) setPicked(null);
   // Until the address's workspace is read, it's drawn as it looked last time; one never seen fades in once read.
   const auth = useAuth();
   const { userId } = auth;
   const cached = cachedRail(firstWorkspace, slug, auth, useHydrated());
-  const current: WorkspaceLook | undefined = picked && (waiting || loading) ? picked.to : (loaded ?? cached.look);
+  const current: WorkspaceLook | undefined = picked ?? loaded ?? cached.look;
   // The person as the account button shows them: as last time until Clerk and Convex load.
   const { user } = useUser();
   const { phase } = useAuthReadiness();
@@ -295,7 +294,11 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
           shown={current}
           all={workspaces}
           onDone={close}
-          onPick={(to) => setPicked({ to, from: pathname })}
+          onSwitch={(slug, to) => {
+            close();
+            if (to) setPicked(to);
+            startSwitch(() => router.push(switchTarget(slug, window.location.pathname, window.location.search.slice(1))));
+          }}
           onCreate={() => {
             setCard(null);
             setCreating(true);
