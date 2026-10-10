@@ -19,10 +19,9 @@ import {
   screeningScoringConfigValidator,
   screeningTalliesValidator,
 } from "./validators";
-import { progressRow } from "./bookkeeping";
+import { progressOf, progressRow } from "./bookkeeping";
 import { paperLimit } from "./slots";
 import { searchSnapshotValidator } from "../paperSets/openalex";
-import { SCREENING_POOL_SIZE } from "../workpool";
 import { jobModel, screeningRevision } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
@@ -61,7 +60,7 @@ const jobFacts = {
   last: v.optional(v.number()),
   // The end of the range a chained request from before #635 asked for, past its job's `last`: what running it again takes.
   through: v.optional(v.number()),
-  // Papers that failed, papers skipped because the job ended first, and papers the model is reading now.
+  // Papers that failed, papers skipped because the job ended first, and papers in a slot: started, and not counted off yet.
   failedPapers: v.number(),
   skippedPapers: v.number(),
   running: v.number(),
@@ -74,16 +73,9 @@ const jobFacts = {
 };
 
 async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
-  const [counts, reading] = await Promise.all([
-    readScreeningProgressCounts(ctx, job),
-    // Only a running job has papers being read, and never more than the pool holds.
-    job.status === "processing"
-      ? ctx.db
-          .query("screeningResults")
-          .withIndex("by_job_and_status_and_waitingWorkspace", (q) => q.eq("jobId", job._id).eq("status", "processing").eq("waitingWorkspace", undefined))
-          .take(SCREENING_POOL_SIZE)
-      : [],
-  ]);
+  // The job's own count of its papers in a slot, the one its workspace's slots are counted from: the two agree, and a paper
+  // that finished stays in it until it's counted, so what's counted, what's being read and what waits always add up to the job.
+  const [counts, progress] = await Promise.all([readScreeningProgressCounts(ctx, job), progressOf(ctx, job._id)]);
   return {
     set: job.set,
     ...(job.name ? { name: job.name } : {}),
@@ -93,7 +85,8 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
     through: job.through,
     failedPapers: counts.failedCount,
     skippedPapers: counts.skippedCount,
-    running: reading.length,
+    // Only a running job has papers being read.
+    running: job.status === "processing" ? (progress.running ?? 0) : 0,
     ...(job.spendCap === undefined ? {} : { spendCap: job.spendCap }),
     ...(job.capped ? { capped: true } : {}),
     ...(job.reading ? { reading: true } : {}),

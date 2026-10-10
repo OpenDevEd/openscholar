@@ -119,7 +119,8 @@ export function JobView({
     <div className="space-y-8">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <ProgressRing value={done} max={total} phase={phase} />
-        <div className="min-w-0 flex-1 space-y-1.5">
+        {/* A least width, so on a narrow screen the buttons take the next line and not the title's room. */}
+        <div className="min-w-0 flex-1 basis-60 space-y-1.5">
           <div className="flex items-center gap-2.5">
             <h2 className="truncate text-xl font-semibold tracking-tight">{name}</h2>
             {/* One that stopped at the most it may spend still has credits to its name: it says so, not "Out of credits". */}

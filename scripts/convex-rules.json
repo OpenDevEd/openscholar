@@ -75,7 +75,6 @@
       "NEWEST_PUBLISHES_READ": "the newest publishes a library's status looks at",
       "RUNTIME_ARRIVALS_READ": "the newest runtime arrivals the activation looks at",
       "SEARCH_RESULTS_MAX": "Convex's full text search returns at most 1,024 results",
-      "SCREENING_POOL_SIZE": "the papers running at once in the screening pool, which the pool keeps",
       "ASSISTANT_REPLIES_AT_ONCE": "the replies a person runs at once, which admission keeps within it",
       "MAX_ASKS": "the questions one reply asks at a time; the reply refuses to ask more",
       "MEMBERS_COUNTED": "an organization's members are counted up to one past it and shown as more than it",
