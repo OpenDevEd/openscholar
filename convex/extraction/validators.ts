@@ -304,9 +304,8 @@ export const setupPlaceValidator = v.object({
 });
 
 export const extractionJobFields = {
-  userId: v.id("users"),
-  workspaceId: v.optional(v.id("workspaces")),
-  createdBy: v.optional(v.id("users")),
+  workspaceId: v.id("workspaces"),
+  createdBy: v.id("users"),
   sourceType: v.optional(sourceTypeValidator),
   status: v.optional(jobStatusValidator),
   totalPapers: v.optional(v.number()),
@@ -540,8 +539,7 @@ export const extractionQueueStatusValidator = v.union(
 
 export const extractionPaperQueueFields = {
   jobId: v.id("extractionJobs"),
-  userId: v.id("users"),
-  workspaceId: v.optional(v.id("workspaces")),
+  workspaceId: v.id("workspaces"),
   paperId: v.id("extractionPapers"),
   runEpoch: v.number(),
   kind: extractionQueueKindValidator,

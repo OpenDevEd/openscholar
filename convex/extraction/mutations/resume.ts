@@ -36,6 +36,7 @@ import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import { requireAuth } from "../../lib/auth";
 import { createError } from "../../lib/errors";
+import { noteActivity } from "../../activity/notes";
 import { assertJobAccess } from "../access";
 import {
   assertValidJobTransition,
@@ -51,7 +52,7 @@ import {
 } from "../../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { availableCredits as readAvailableCredits } from "../../billing/accounts";
-import { workspaceOf } from "../../workspaces/actor";
+
 import { getFlag } from "../../featureFlags/guard";
 import {
   dispatchPaperQueueWindowTx,
@@ -142,7 +143,7 @@ export const resumeExtraction = mutation({
 
     if (job.status === "creditsExhausted") {
       // Its workspace pays for it (#650).
-      availableCredits = await readAvailableCredits(ctx, await workspaceOf(ctx, job));
+      availableCredits = await readAvailableCredits(ctx, job.workspaceId);
       const questions = await ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))
@@ -182,6 +183,7 @@ export const resumeExtraction = mutation({
       ...(await approvalLeft(ctx, job)),
       updatedAt: Date.now(),
     });
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: jobId, happened: "resumed" });
 
     // Effective pdfEnabled = admin flag × per-job opt-in (mirrors
     // `getJobAndFlagsInternal`). Question concurrency mirrors the

@@ -4,11 +4,12 @@ import { api, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
+import type { Actor } from "../workspaces/actor";
 import { autumn } from "./autumn";
 import { refreshAccount } from "./accounts";
 import { previewLineItemsValidator, type BillingCatalog } from "./validators";
 import { MAX_PLAN_DETAILS } from "../lib/listCaps";
-import { ORGANIZATION_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
+import { ORGANIZATION_PLANS, TOPUP_PLAN } from "../../lib/billing/plans";
 import { findPlan, topUpBundles } from "../../lib/billing/catalog";
 
 async function requireUser(ctx: ActionCtx): Promise<Doc<"users">> {
@@ -32,7 +33,7 @@ async function requireCatalog(ctx: ActionCtx): Promise<BillingCatalog> {
  */
 async function requireChoosablePlan(ctx: ActionCtx, planId: string): Promise<void> {
   const plan = findPlan(await requireCatalog(ctx), planId);
-  if (!plan || plan.addOn || plan.autoEnable || plan.id === ORGANIZATION_PLAN) {
+  if (!plan || plan.addOn || plan.autoEnable || ORGANIZATION_PLANS.includes(plan.id)) {
     throw createError("BILLING_PLAN_INVALID", `No plan "${planId}" to choose`);
   }
 }
@@ -45,8 +46,21 @@ const billingUrl = () => `${requireAppUrl()}/settings/billing`;
  * so Autumn expires the old session and starts a fresh one, or charges a
  * card saved since.
  */
-const returnUrl = (result: "checkout" | "topup") =>
-  `${billingUrl()}?${result}=success&request=${crypto.randomUUID()}`;
+const returnUrl = (result: "checkout" | "topup", page = "/settings/billing") =>
+  `${requireAppUrl()}${page}?${result}=success&request=${crypto.randomUUID()}`;
+
+/**
+ * Who pays for credits bought in `workspaceId`: the person, in their own workspace, or the
+ * organization, which only its admins buy for (#651). With none, the person's own workspace.
+ */
+async function payerIn(ctx: ActionCtx, user: Doc<"users">, workspaceId: Id<"workspaces"> | undefined) {
+  const paying = workspaceId ?? (await ownWorkspace(ctx, user));
+  const actor: Actor = await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId: paying });
+  const organization: { name: string; slug: string } | null = await ctx.runQuery(internal.billing.accounts.organizationOf, { workspaceId: paying });
+  if (organization && actor.role !== "admin") throw createError("FORBIDDEN", `Only an admin of ${organization.name} adds credits to it.`);
+  const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId: paying });
+  return { customerId, page: organization ? `/o/${organization.slug}/settings/billing` : "/settings/billing", workspaceId: paying };
+}
 
 const checkoutResult = v.object({ url: v.union(v.string(), v.null()) });
 
@@ -127,21 +141,22 @@ export const previewPlan = action({
 });
 
 export const buyCredits = action({
-  args: { credits: v.number() },
+  args: { credits: v.number(), workspaceId: v.optional(v.id("workspaces")) },
   returns: checkoutResult,
-  handler: async (ctx, { credits }): Promise<{ url: string | null }> => {
+  handler: async (ctx, { credits, workspaceId }): Promise<{ url: string | null }> => {
     const user = await requireUser(ctx);
+    const payer = await payerIn(ctx, user, workspaceId);
     const bundles = topUpBundles(await requireCatalog(ctx));
     if (!bundles.some((bundle) => bundle.credits === credits)) {
       throw createError("CREDITS_TOPUP_BUNDLE_INVALID", `No top-up of ${credits} credits`);
     }
     const result = await autumn.attach({
-      customerId: user._id,
+      customerId: payer.customerId,
       planId: TOPUP_PLAN,
       credits,
-      successUrl: returnUrl("topup"),
+      successUrl: returnUrl("topup", payer.page),
     });
-    await refreshAccount(ctx, await ownWorkspace(ctx, user), { card: true });
+    await refreshAccount(ctx, payer.workspaceId, { card: true });
     return { url: result.payment_url };
   },
 });

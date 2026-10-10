@@ -9,6 +9,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { EmailAvatar, IdentityRow } from "@/components/ui/identity";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -19,6 +20,7 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { Enter, LIST, Paged, Segmented, Zone } from "@/components/settings/parts";
+import { Spinner } from "@/components/ui/spinner";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 const PER_PAGE = 8;
@@ -69,26 +71,17 @@ export default function AdminsPage() {
               className="h-11 rounded-2xl border border-border-subtle bg-inset pl-11"
             />
           </div>
-          <Paged pager={{ list: admins, size: PER_PAGE, total: search ? undefined : count }} rowHeight={65} label={t("admins")}>
+          <Paged pager={{ list: admins, size: PER_PAGE, total: search ? undefined : count }} rowHeight={61} label={t("admins")}>
             <ul className={LIST}>
               {admins.items.map((a) => (
-                <li key={a._id} className="flex items-center gap-3 p-3">
-                  {a.joined ? (
-                    <IdentityAvatar name={a.name ?? a.email} imageUrl={a.imageUrl} className="size-10 rounded-xl" />
-                  ) : (
-                    <span className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-dashed border-border text-muted-foreground">
-                      <Mail className="size-4" />
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-2 truncate text-sm font-semibold">
-                      {a.joined ? (a.name ?? a.email) : a.email}
-                      {a.you ? <span className="text-xs font-normal text-primary">{t("you")}</span> : null}
-                    </p>
-                    <p className={a.delivery === "failed" ? "truncate text-xs text-destructive" : "truncate text-xs text-muted-foreground"}>
-                      {a.joined ? a.email : a.delivery === "failed" ? t("notDelivered") : t("invited")}
-                    </p>
-                  </div>
+                <li key={a._id}>
+                  <IdentityRow
+                    className="p-3"
+                    avatar={a.joined ? <IdentityAvatar name={a.name ?? a.email} imageUrl={a.imageUrl} className="size-9" /> : <EmailAvatar />}
+                    name={a.joined ? (a.name ?? a.email) : a.email}
+                    you={a.you}
+                    detail={a.joined ? a.email : a.delivery === "failed" ? <span className="text-destructive">{t("notDelivered")}</span> : t("invited")}
+                  >
                   <div className="flex shrink-0 justify-end">
                     {a.you ? null : confirm === a._id ? (
                       <div className="flex items-center gap-1">
@@ -135,6 +128,7 @@ export default function AdminsPage() {
                       </div>
                     )}
                   </div>
+                  </IdentityRow>
                 </li>
               ))}
               {admins.items.length === 0 ? <li className="py-10 text-center text-sm text-muted-foreground">{t("noMatches")}</li> : null}
@@ -246,7 +240,7 @@ function AddAdmin() {
                 <Command shouldFilter={false}>
                   <CommandInput placeholder={t("searchEmail")} value={search} onValueChange={setSearch} />
                   <CommandList onScroll={loadOnScroll}>
-                    <CommandEmpty>{candidates.isInitialLoading ? tc("loading") : t("noUsers")}</CommandEmpty>
+                    <CommandEmpty>{candidates.isInitialLoading ? <Spinner className="mx-auto my-0.5" aria-label={tc("loading")} /> : t("noUsers")}</CommandEmpty>
                     <CommandGroup>
                       {candidates.results.map((u) => (
                         <CommandItem

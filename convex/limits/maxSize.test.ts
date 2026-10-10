@@ -22,6 +22,9 @@ import { createJob, insertJob } from "../screening/createJob.test-support";
 import { searchTextOf } from "../screening/mutations";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { screeningInputs } from "../extraction/sources/screening.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
+import { ensureWorkspace } from "../workspaces/create";
+import { organizationOfLibrary } from "../../tests/helpers/evidence-library-setup-fixture";
 
 /** seedLibrary's papers: rating (i % 5) + 1, published 1990 + (i % 35), saved at 1_700_000_000_000 + i, all in its collection. */
 const seededLibrary = (items: number) => Array.from({ length: items }, (_, i) => ({ rating: (i % 5) + 1, year: 1990 + (i % 35), savedAt: 1_700_000_000_000 + i }));
@@ -90,7 +93,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       const name = `Reading list ${i}: ${text(200, i)}`;
       return { userId, name, sortName: collectionSortName(name), itemCount: 0, createdAt: 1, updatedAt: 1 };
     }));
-    await t.run((ctx) => ctx.db.insert("collectionCounts", { userId, count: COLLECTIONS }));
+    await t.run(async (ctx) => ctx.db.insert("collectionCounts", { workspaceId: await personalWorkspaceOf(ctx, userId), count: COLLECTIONS }));
     expect(await as.query(api.library.collections.countCollections, {})).toBe(COLLECTIONS);
     // Asking for more than the largest page gets the largest page.
     const page = await as.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: COLLECTIONS }, openalexId: "https://openalex.org/W0" });
@@ -229,8 +232,8 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     // Each revision then held the whole history: the 44th, 44 copies of the query.
     const queryHistory = Array.from({ length: 44 }, (_, i) => ({ query: `${i} ${text(MAX_SIZE.oqlQueryChars - 6, i)}`, field: "oql" as const, timestamp: "2026-09-01T00:00:00.000Z" }));
     const data = (revision: number) => ({ id: "legacy", query: queryHistory[revision - 1].query, field: "oql" as const, count: 1, queryHistory: queryHistory.slice(0, revision), questionHistory: [], screeningQuestions: [], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" });
-    const searchId = await t.run(async (ctx) => ctx.db.insert("searches", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: "legacy", data: data(44), revision: 44 }));
-    for (let revision = 1; revision <= 44; revision++) await t.run((ctx) => ctx.db.insert("searchRevisions", { userId, searchId, revision, author: "user", data: data(revision), deleted: false, createdAt: revision }));
+    const searchId = await t.run(async (ctx) => ctx.db.insert("searches", { workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: "legacy", data: data(44), revision: 44 }));
+    for (let revision = 1; revision <= 44; revision++) await t.run((ctx) => ctx.db.insert("searchRevisions", { createdBy: userId, searchId, revision, author: "user", data: data(revision), deleted: false, createdAt: revision }));
     const revisions: number[] = [];
     for (let cursor: string | null = null, isDone = false; !isDone;) {
       const page: { page: Array<{ revision: number }>; isDone: boolean; continueCursor: string } = await as.query(api.research.records.revisions, { accountId: clerkId, id: "legacy", paginationOpts: { cursor, numItems: 25 } });
@@ -244,7 +247,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     const t = convexTest({ schema, transactionLimits: true });
     const clerkId = "max_size_user";
     const { userId, as } = await seedAccount(t, clerkId);
-    const searchId = await t.run(async (ctx) => ctx.db.insert("searches", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: "long", data: { id: "long", query: "q", field: "oql", count: 1, queryHistoryCount: 450, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" }, revision: 1 }));
+    const searchId = await t.run(async (ctx) => ctx.db.insert("searches", { workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, localId: "long", data: { id: "long", query: "q", field: "oql", count: 1, queryHistoryCount: 450, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" }, revision: 1 }));
     await insertMany(t, "searchHistory", Array.from({ length: 450 }, (_, position) => ({ userId, searchId, kind: "query", text: `${position} ${text(MAX_SIZE.oqlQueryChars - 6, position)}`, field: "oql", timestamp: "2026-09-01T00:00:00.000Z", position })), 25);
     let reads = 0;
     let result: { entry: { text: string } | null } | { skipped: number; cursor: string };
@@ -267,7 +270,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       const { section, operation, organizationId } = await fixture.t.run(async (ctx) => ({
         section: (await ctx.db.query("evidenceLibraryConfigSections").withIndex("by_libraryId_and_kind_and_sectionKey", (q) => q.eq("libraryId", libraryId).eq("kind", "revision").eq("sectionKey", "identity")).first())!,
         operation: (await ctx.db.query("evidenceLibraryConfigOperations").withIndex("by_libraryId_and_createdAt", (q) => q.eq("libraryId", libraryId)).first())!,
-        organizationId: (await ctx.db.get("evidenceLibraries", libraryId))!.organizationId,
+        organizationId: await organizationOfLibrary(ctx, libraryId),
       }));
       const strip = <T extends { _id: unknown; _creationTime: unknown }>({ _id, _creationTime, ...doc }: T) => doc;
       // Sources revisions about 20 KB each, as a long-lived library's grow: 20 MB together.
@@ -335,7 +338,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     expect(await fixture.admin.query(api.evidenceLibraries.versions.countVersions, { libraryId })).toBeGreaterThanOrEqual(1_000);
   }, 300_000);
 
-  it("a person who owns 200 organizations of ten libraries each reads, searches and counts the library list (#423)", async () => {
+  it("a person who owns 200 organizations of ten libraries each reads and searches the library list (#423)", async () => {
     const t = convexTest(schema);
     const { as } = await seedAccount(t);
     const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
@@ -344,11 +347,10 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     await insertMany(t, "organizationMemberships", organizations.slice(0, 199).map((organizationId, i) => ({ organizationId, clerkMembershipId: `orgmem_max_owner_${i}`, clerkUserId: "max_size_user", role: "org:admin", state: "active", ...stamp })));
     await insertMany(t, "evidenceLibraries", organizations.slice(0, 199).flatMap((organizationId, i) => Array.from({ length: 10 }, (_, n) => ({ organizationId, name: `Library ${i}-${n}`, slug: `library-${i}-${n}`, state: "active", createdByClerkUserId: "max_size_user", updatedByClerkUserId: "max_size_user", createdAt: 1, updatedAt: 1 }))), 200);
 
-    const first = await as.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 12 } });
-    expect(first.page).toHaveLength(12);
+    // One organization's list, as its pages read it (#651).
+    const first = await as.query(api.evidenceLibraries.queries.listLibraries, { organization: organizations[0], paginationOpts: { cursor: null, numItems: 8 } });
+    expect(first.page).toHaveLength(8);
     expect(first.isDone).toBe(false);
-    expect(await as.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(1_990);
-    expect((await as.query(api.evidenceLibraries.queries.listLibraryOwners, {})).page).toHaveLength(199);
     // A search that matches nothing reads its allowance of libraries a step, and ends.
     let cursor: string | null = null;
     let reads = 0;
@@ -448,7 +450,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     const { jobId, screeningId } = await t.run(async (ctx) => {
       const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 1, createdAt: 1 });
       const jobId = await ctx.db.insert("screeningJobs", {
-        userId, status: "completed", totalPapers: 120, questions, screeningId,
+        ...(await madeBy(ctx, userId)), status: "completed", totalPapers: 120, questions, screeningId,
         scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
         createdAt: 1, updatedAt: 1,
       });
@@ -579,5 +581,32 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     // "Other" names the largest providers from the whole catalog, then reads past their models.
     expect((await read({ provider: "other", search: "" })).page.every((m) => /^(acme|zeta)\//.test(m.modelId))).toBe(true);
     expect(await as.query(api.models.admin.summary, { provider: "other", search: "", show: "all" })).toMatchObject({ total: Math.floor(MAX_CATALOG_MODELS / 6) * 2 + (MAX_CATALOG_MODELS % 6 > 4 ? MAX_CATALOG_MODELS % 6 - 4 : 0) });
+  }, 300_000);
+
+  it("an organization of 1,000 members re-averages a paper one of them rates, in a transaction of its own (#655)", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      const members = Array.from({ length: 1_000 }, (_, i) => `member_${i}`);
+      const userIds = await insertMany(t, "users", members.map((clerkId) => ({ clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 })), 250);
+      const lab = await t.run(async (ctx) => {
+        const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_large", name: "Large", slug: "org_large", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+        const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
+        await ctx.db.insert("libraryItems", { workspaceId, createdBy: userIds[0], openalexId: "https://openalex.org/W1", title: "Rated by everyone", searchableText: "Rated by everyone", savedAt: 1, updatedAt: 1 });
+        return { organizationId, workspaceId };
+      });
+      await insertMany(t, "organizationMemberships", members.map((clerkUserId) => ({ organizationId: lab.organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 })), 250, { triggered: false });
+      // Every member has rated it 1 to 5.
+      const ratings = userIds.map((userId, i) => ({ userId, paperId: "https://openalex.org/W1", rating: (i % 5) + 1 }));
+      await insertMany(t, "ratings", ratings, 250);
+
+      // The first member changes theirs to 5: the lab's copy takes the new average.
+      await t.withIdentity({ subject: members[0] }).mutation(api.research.records.change, { accountId: members[0], requestId: "rerated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 5 } });
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      const average = (ratings.reduce((sum, row) => sum + row.rating, 0) - ratings[0].rating + 5) / ratings.length;
+      expect((await t.run(async (ctx) => ctx.db.query("libraryItems").withIndex("by_workspace", (q) => q.eq("workspaceId", lab.workspaceId)).first()))?.rating).toBe(average);
+    } finally {
+      vi.useRealTimers();
+    }
   }, 300_000);
 });

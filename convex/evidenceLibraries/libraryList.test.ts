@@ -1,12 +1,14 @@
-// The Evidence Library list, read a page at a time on the server (#423): the libraries of each
-// organization a person owns, then the ones they were granted, with its filters, its count,
-// the organizations its filter offers, and the backfill of the count.
+// The Evidence Library list, read a page at a time on the server (#423), for the workspace a page
+// is in (#651): an organization's own libraries and those of it granted, or the person's own and
+// the ones shared with them; its search, and the backfill of the count.
 import { convexTest } from "convex-test";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
+import { countOf, workspaceLibrariesOf } from "../lib/listCounts";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
@@ -18,15 +20,16 @@ async function setup() {
     const organization = (name: string) => ctx.db.insert("organizations", { clerkOrganizationId: `org_${name}`, evidenceLibrariesEnabled: true, name, slug: name.toLowerCase(), state: "active", ...stamp });
     const [beta, alpha, partner] = [await organization("Beta"), await organization("Alpha"), await organization("Partner")];
     for (const organizationId of [beta, alpha]) await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `membership-${organizationId}`, clerkUserId: "me", role: "org:admin", state: "active", ...stamp });
-    const library = (organizationId: Id<"organizations">, name: string) =>
-      ctx.db.insert("evidenceLibraries", { organizationId, name, slug: name.toLowerCase().replaceAll(" ", "-"), state: "active", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1 });
+    const library = async (organizationId: Id<"organizations">, name: string) =>
+      ctx.db.insert("evidenceLibraries", { workspaceId: await organizationWorkspaceOf(ctx, organizationId), name, slug: name.toLowerCase().replaceAll(" ", "-"), state: "active", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1 });
     await library(beta, "Beta one");
     for (const name of ["Alpha one", "Alpha two", "Alpha three"]) await library(alpha, name);
     const shared = await library(partner, "Shared reading");
     await library(partner, "Not mine");
     await ctx.db.insert("evidenceLibraryMembers", { libraryId: shared, clerkUserId: "me", role: "editor", grantedBy: "someone", grantedAt: 1 });
     // A grant inside an organization the person owns lists once, as its owner.
-    const owned = (await ctx.db.query("evidenceLibraries").collect()).find((library) => library.organizationId === alpha)!;
+    const alphaWorkspace = await organizationWorkspaceOf(ctx, alpha);
+    const owned = (await ctx.db.query("evidenceLibraries").collect()).find((library) => library.workspaceId === alphaWorkspace)!;
     await ctx.db.insert("evidenceLibraryMembers", { libraryId: owned._id, clerkUserId: "me", role: "creator", grantedBy: "someone", grantedAt: 1 });
     return { alpha, beta, partner };
   });
@@ -47,82 +50,52 @@ async function names(me: Me, filters: { search?: string; organization?: Id<"orga
 }
 
 describe("the library list", () => {
-  it("steps through each owned organization by name, then the granted libraries, without repeating one", async () => {
-    const { me } = await setup();
-    expect((await names(me)).flat()).toEqual(["Alpha one (owner)", "Alpha two (owner)", "Alpha three (owner)", "Beta one (owner)", "Shared reading (editor)"]);
-    // A page fills from the next organization when one runs out.
-    expect((await names(me, {}, 4))[0]).toEqual(["Alpha one (owner)", "Alpha two (owner)", "Alpha three (owner)", "Beta one (owner)"]);
+  it("lists the libraries of the workspace it's in, a page at a time, without repeating one", async () => {
+    const { me, alpha, partner } = await setup();
+    // An organization the person owns: its own libraries. Their grant to one of them lists it once, as its owner.
+    expect(await names(me, { organization: alpha })).toEqual([["Alpha one (owner)", "Alpha two (owner)"], ["Alpha three (owner)"]]);
+    // One they're given a role in a library of: that library.
+    expect((await names(me, { organization: partner })).flat()).toEqual(["Shared reading (editor)"]);
+    // Their own workspace: theirs, and what was shared with them from organizations they don't own.
+    expect((await names(me)).flat()).toEqual(["Shared reading (editor)"]);
   });
 
-  it("goes on from the next organization when the one a page stopped in is no longer the person's", async () => {
+  it("goes on to the granted libraries when the organization a page stopped in is no longer the person's", async () => {
     const { t, me, alpha } = await setup();
-    const first = await me.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 2 } });
+    const first = await me.query(api.evidenceLibraries.queries.listLibraries, { organization: alpha, paginationOpts: { cursor: null, numItems: 2 } });
     expect(first.page.map((library) => library.name)).toEqual(["Alpha one", "Alpha two"]);
     await t.run(async (ctx) => {
       const membership = (await ctx.db.query("organizationMemberships").collect()).find((row) => row.organizationId === alpha)!;
       await ctx.db.delete(membership._id);
     });
-    const rest = await me.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: first.continueCursor, numItems: 10 } });
+    const rest = await me.query(api.evidenceLibraries.queries.listLibraries, { organization: alpha, paginationOpts: { cursor: first.continueCursor, numItems: 10 } });
     // Alpha one stays: the person holds a grant to it, so it now lists with the granted libraries.
-    expect(rest.page.map((library) => `${library.name} (${library.role})`)).toEqual(["Beta one (owner)", "Shared reading (editor)", "Alpha one (creator)"]);
+    expect(rest.page.map((library) => `${library.name} (${library.role})`)).toEqual(["Alpha one (creator)"]);
     expect(rest.isDone).toBe(true);
   });
 
-  it("keeps one organization's libraries, or those whose name or organization contains the search", async () => {
-    const { me, alpha, partner } = await setup();
-    expect((await names(me, { organization: alpha }, 10)).flat()).toEqual(["Alpha one (owner)", "Alpha two (owner)", "Alpha three (owner)"]);
-    expect((await names(me, { organization: partner }, 10)).flat()).toEqual(["Shared reading (editor)"]);
-    expect((await names(me, { search: " TWO" }, 10)).flat()).toEqual(["Alpha two (owner)"]);
-    expect((await names(me, { search: "partner" }, 10)).flat()).toEqual(["Shared reading (editor)"]);
+  it("keeps those whose name or organization contains the search", async () => {
+    const { t, me, alpha, partner } = await setup();
+    expect((await names(me, { organization: alpha, search: " TWO" }, 10)).flat()).toEqual(["Alpha two (owner)"]);
+    expect((await names(me, { organization: partner, search: "partner" }, 10)).flat()).toEqual(["Shared reading (editor)"]);
     expect((await names(me, { search: "nothing like it" }, 10)).flat()).toEqual([]);
-  });
-
-  it("counts the libraries a person can open, and names the organizations they belong to", async () => {
-    const { t, me, beta } = await setup();
-    expect(await me.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(5);
-    expect((await me.query(api.evidenceLibraries.queries.listLibraryOwners, {})).page.map((owner) => owner.name)).toEqual(["Alpha", "Beta", "Partner"]);
-
-    await t.run(async (ctx) => {
-      const library = (await ctx.db.query("evidenceLibraries").collect()).find((row) => row.organizationId === beta)!;
-      await ctx.db.delete(library._id);
-    });
-    expect(await me.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(4);
-    // An organization left with no library leaves the filter.
-    expect((await me.query(api.evidenceLibraries.queries.listLibraryOwners, {})).page.map((owner) => owner.name)).toEqual(["Alpha", "Partner"]);
     // Someone signed out, or with no library, reads an empty list.
     const stranger = t.withIdentity({ subject: "someone" });
-    expect(await stranger.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(0);
     expect((await stranger.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 10 } })).page).toEqual([]);
   });
 
-  it("counts the libraries made before the list paged, once however often the backfill runs", async () => {
-    vi.useFakeTimers();
-    try {
-      const { t, me, alpha } = await setup();
-      const before = await me.query(api.evidenceLibraries.queries.countLibraries, {});
-      // As libraries made before the count: written without the trigger that keeps it.
-      await runUntriggered(t, async (ctx) => {
-        const workspaceId = (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", alpha)).unique())!._id;
-        for (const name of ["Older one", "Older two"]) await ctx.db.insert("evidenceLibraries", { organizationId: alpha, workspaceId, name, slug: name.toLowerCase().replace(" ", "-"), state: "active", createdByClerkUserId: "someone", updatedByClerkUserId: "someone", createdAt: 1, updatedAt: 1 });
-      });
-      expect(await t.action(internal.migrations.pagedLibraryList.verify, {})).toBe(2);
-      for (let runs = 0; runs < 2; runs++) {
-        await t.mutation(internal.migrations.pagedLibraryList.run, {});
-        await t.finishAllScheduledFunctions(vi.runAllTimers);
-      }
-      expect(await t.action(internal.migrations.pagedLibraryList.verify, {})).toBe(0);
-      expect(await me.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(before + 2);
-
-      // A deployment whose libraries were replaced without their triggers forgets the counts, then counts again.
-      // Twice: a count it already forgot is not cleared again.
-      for (let resets = 0; resets < 2; resets++) await t.action(internal.migrations.pagedLibraryList.reset, {});
-      expect(await t.action(internal.migrations.pagedLibraryList.verify, {})).toBe(8);
-      await t.mutation(internal.migrations.pagedLibraryList.run, { reset: true });
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-      expect(await t.action(internal.migrations.pagedLibraryList.verify, {})).toBe(0);
-      expect(await me.query(api.evidenceLibraries.queries.countLibraries, {})).toBe(before + 2);
-    } finally {
-      vi.useRealTimers();
-    }
+  it("forgets its kept counts when the libraries are replaced without their triggers, as CI's test backend's are", async () => {
+    const { t, alpha } = await setup();
+    const counted = () => t.run(async (ctx) => countOf(ctx, workspaceLibrariesOf((await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", alpha)).unique())!._id)));
+    const before = await counted();
+    expect(before).toBeGreaterThan(0);
+    // As CI's import does: the rows go, and the counts kept from them stay.
+    await runUntriggered(t, async (ctx) => {
+      for (const library of await ctx.db.query("evidenceLibraries").collect()) await ctx.db.delete("evidenceLibraries", library._id);
+    });
+    expect(await counted()).toBe(before);
+    // Twice: a count it already forgot is not cleared again.
+    for (let resets = 0; resets < 2; resets++) await t.action(internal.migrations.pagedLibraryList.reset, {});
+    expect(await counted()).toBe(0);
   });
 });

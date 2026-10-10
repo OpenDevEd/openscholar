@@ -2,6 +2,8 @@ import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { api } from "../_generated/api";
 import schema from "../schema";
+import { madeBy } from "../workspaces/actor.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 async function seedUserAndJob(
   t: ReturnType<typeof convexTest>,
@@ -21,7 +23,7 @@ async function seedUserAndJob(
       lastLoginAt: now,
     });
     const jobId = await ctx.db.insert("extractionJobs", {
-      userId,
+      ...(await madeBy(ctx, userId)),
       sourceType: "history" as const,
       status: "extracting" as const,
       totalPapers: 1,
@@ -146,11 +148,11 @@ describe("cancelling a job with more queue rows than one transaction takes (#427
     for (let start = 0; start < 600; start += 200) {
       await t.run(async (ctx) => {
         for (let i = start; i < start + 200; i++) {
-          await ctx.db.insert("extractionPaperQueue", { jobId, userId, paperId, runEpoch: i % 3, kind: "initial", status: "pending", priority: 0, attempt: 0, createdAt: i, updatedAt: i });
+          await ctx.db.insert("extractionPaperQueue", { jobId, workspaceId: await personalWorkspaceOf(ctx, userId), paperId, runEpoch: i % 3, kind: "initial", status: "pending", priority: 0, attempt: 0, createdAt: i, updatedAt: i });
         }
       });
     }
-    await t.run((ctx) => ctx.db.insert("extractionPaperQueue", { jobId, userId, paperId, runEpoch: 0, kind: "initial", status: "completed", priority: 0, attempt: 0, createdAt: 1, updatedAt: 1 }));
+    await t.run(async (ctx) => ctx.db.insert("extractionPaperQueue", { jobId, workspaceId: await personalWorkspaceOf(ctx, userId), paperId, runEpoch: 0, kind: "initial", status: "completed", priority: 0, attempt: 0, createdAt: 1, updatedAt: 1 }));
 
     await t.withIdentity({ subject: clerkId, tokenIdentifier: `${clerkId}|test` }).mutation(api.extraction.mutations.cancelExtraction, { jobId });
     await t.finishAllScheduledFunctions(() => {});

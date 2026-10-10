@@ -28,7 +28,6 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { ASSISTANT_JOB_CAPS, ASSISTANT_REQUESTS_BEFORE_ASKING } from "../lib/constants";
-import { MAX_ORGANIZATIONS_PER_PERSON } from "../lib/queryBounds";
 import { createError } from "../lib/errors";
 import { internalMutation, mutation, query } from "../lib/functions";
 import { personalWorkspaceOf } from "../workspaces/actor";
@@ -46,18 +45,9 @@ const FORGET_LIMITS = 100;
 type Reader = Pick<QueryCtx, "db">;
 const limitOf = (ctx: Reader, threadId: Id<"assistantThreads">, userId: Id<"users">) =>
   ctx.db.query("assistantLimits").withIndex("by_thread_and_user", (q) => q.eq("threadId", threadId).eq("userId", userId)).unique();
-/**
- * A person's own record with the assistant in a workspace (#650). Until the backfill reaches
- * it, their record from before workspaces is their own workspace's; slice 8 drops that read.
- */
-async function spenderOf(ctx: Reader, workspaceId: Id<"workspaces">, userId: Id<"users">) {
-  const scoped = await ctx.db.query("assistantSpenders").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).unique();
-  if (scoped) return scoped;
-  const workspace = await ctx.db.get("workspaces", workspaceId);
-  if (workspace?.kind !== "personal" || workspace.userId !== userId) return null;
-  // A person has one record from before workspaces, and one in each workspace since.
-  return (await ctx.db.query("assistantSpenders").withIndex("by_user", (q) => q.eq("userId", userId)).take(MAX_ORGANIZATIONS_PER_PERSON + 2)).find((spender) => !spender.workspaceId) ?? null;
-}
+/** A person's own record with the assistant in a workspace (#650). */
+const spenderOf = (ctx: Reader, workspaceId: Id<"workspaces">, userId: Id<"users">) =>
+  ctx.db.query("assistantSpenders").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).unique();
 /** The workspace a person's replies in this chat act in, whose record of theirs the chat's settings go with. */
 async function workspaceFor(ctx: Reader, threadId: Id<"assistantThreads">, userId: Id<"users">) {
   const thread = await ctx.db.get("assistantThreads", threadId);
@@ -168,6 +158,8 @@ export async function noteReply(ctx: MutationCtx, userId: Id<"users">, given: Id
   if (credits <= 0 || !(await ctx.db.get("users", userId))) return;
   // One from before replies named their workspace ran in its sender's own (#650); slice 8 makes it required.
   const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
+  // Nor for a workspace purged since: a deleted organization's (../workspaces/purge.ts).
+  if (!(await ctx.db.get("workspaces", workspaceId))) return;
   const spender = await spenderOf(ctx, workspaceId, userId);
   const kept = spender?.recent ?? [];
   const recent = kept.some((entry) => entry.reply === reply)

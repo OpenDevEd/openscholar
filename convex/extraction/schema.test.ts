@@ -2,6 +2,7 @@
 import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import schema from "../schema";
+import { madeBy } from "../workspaces/actor.test-support";
 
 const modules = import.meta.glob("../**/*.ts");
 
@@ -18,7 +19,7 @@ describe("extractionJobs schema", () => {
         updatedAt: 0,
       });
       const jobId = await ctx.db.insert("extractionJobs", {
-        userId,
+        ...(await madeBy(ctx, userId)),
         sourceType: "history",
         status: "pending",
         totalPapers: 0,

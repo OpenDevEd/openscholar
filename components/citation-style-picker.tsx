@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TooltipHint } from "@/components/ui/tooltip";
+import { Spinner } from "@/components/ui/spinner";
 import { CITATION_FORMATS, type CitationStyle } from "@/lib/citations/formats";
 import {
   loadCitationStyles,
@@ -205,10 +206,10 @@ function StyleMenu({
           })}
         </div>
       </div>
-      {isLoading && (
-        <p role="status" className="px-4 py-3 text-sm text-muted-foreground">
-          {t("loadingStyles")}
-        </p>
+      {isLoading && matches.length === 0 && (
+        <div className="flex justify-center px-4 py-3">
+          <Spinner className="size-5" aria-label={t("loadingStyles")} />
+        </div>
       )}
       {error && (
         <div role="alert" className="px-4 py-3 text-sm">

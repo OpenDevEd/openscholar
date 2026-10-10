@@ -5,20 +5,22 @@
 // edge peeks out, and dims. Each layer is its own card; nothing sits behind them.
 
 import { useDeferredValue, useRef, useState, type ReactNode } from "react";
-import { useRouter } from "next/navigation";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Eye, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, SquarePen, UserPlus, X } from "@/components/icons";
+import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, ShieldCheck, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
+import { Pills } from "@/components/ui/pills";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { EASE } from "@/components/settings/model-map";
+import { SHEET_SPRING } from "@/lib/motion";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { IdentityRow, ROLE_ICONS, RoleLabel } from "@/components/ui/identity";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ASSISTANT_JOB_CAPS } from "@/convex/lib/constants";
 import { viewOf } from "@/lib/assistant/actions";
@@ -30,7 +32,11 @@ import { cn } from "@/lib/utils";
 import { OrbitMark } from "./orbit-mark";
 import { IconButton, WorkingText } from "./parts";
 import { KIND, KindTile, type Waiting } from "./steps";
-import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
+import { useRunBy } from "@/components/workspaces/run-by";
+import { PresentAvatar as Avatar } from "@/components/ui/identity";
 
 /** A sheet open over the panel. */
 export type OpenSheet =
@@ -40,7 +46,6 @@ export type OpenSheet =
   | { kind: "topUp"; waiting: Waiting };
 type Role = "owner" | "write" | "read";
 
-export const SHEET_SPRING = { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.9 };
 
 /** Where a card sits with `depth` cards on top of it: smaller, and nudged left so its edge shows. */
 export const stackedUnder = (depth: number) => ({ scale: 1 - depth * 0.07, x: depth * -22 });
@@ -104,31 +109,6 @@ type Member = Chat["members"][number];
 type Scope = "all" | "mine" | "shared";
 
 const CHATS_PER_PAGE = 20;
-/** One tint per person, picked from their ID, so someone keeps their colour in every chat. */
-const TINTS = ["#2dd4bf", "#a78bfa", "#fb923c", "#60a5fa", "#f472b6", "#34d399", "#facc15", "#818cf8"];
-const tintOf = (id: string) => TINTS[[...id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % TINTS.length]!;
-
-/** A member's photo; someone in the chat right now gets a ring that ripples outward. */
-function Avatar({ member }: { member: Member }) {
-  const reduceMotion = useReducedMotion();
-  const tint = tintOf(member.userId);
-  return (
-    <span className="relative flex size-6 shrink-0">
-      {member.here && !reduceMotion ? (
-        <motion.span
-          aria-hidden
-          className="absolute inset-0 rounded-full"
-          style={{ boxShadow: `0 0 0 1.5px ${tint}` }}
-          animate={{ scale: [1.15, 1.7], opacity: [0.6, 0] }}
-          transition={{ duration: 1.8, repeat: Infinity, ease: "easeOut" }}
-        />
-      ) : null}
-      <span className="relative flex rounded-full ring-2 ring-card" style={{ boxShadow: member.here ? `0 0 0 2px var(--card), 0 0 0 3.5px ${tint}` : undefined }}>
-        <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-6" />
-      </span>
-    </span>
-  );
-}
 
 function Members({ members, organization }: { members: Member[]; organization?: string }) {
   const t = useTranslations("assistant");
@@ -253,7 +233,10 @@ export function HistorySheet({
   const [scope, setScope] = useState<Scope>("all");
   // The list follows the typing a beat behind, so every keystroke doesn't ask for a new one.
   const text = useDeferredValue(query.trim());
-  const { results, status, loadMore } = usePaginatedQuery(api.assistant.threads.list, inWorkspace(workspaceId, { scope, ...(text ? { text } : {}) }), { initialNumItems: CHATS_PER_PAGE });
+  // In an organization the chats are picked by who started them (#656), in place of All, Mine and Shared.
+  const runBy = useRunBy("assistantThreads", { label: "startedBy", compact: true });
+  const listed = runBy.filter ? "all" : scope;
+  const { results, status, loadMore } = usePaginatedQuery(api.assistant.threads.list, inWorkspace(workspaceId, { scope: listed, ...(text ? { text } : {}), ...(runBy.by ? { by: runBy.by } : {}) }), { initialNumItems: CHATS_PER_PAGE });
 
   const today = new Date(now).setHours(0, 0, 0, 0);
   const live = (chat: Chat) => chat.writing || chat.jobs.length > 0 || chat.members.some((member) => member.here);
@@ -288,22 +271,23 @@ export function HistorySheet({
             </button>
           </TooltipHint>
         </div>
-        <Segmented
-          label={t("whichChats")}
-          value={scope}
-          onChange={setScope}
-          fill
-          options={[
-            { id: "all", label: t("scopeAll") },
-            { id: "mine", label: t("scopeMine") },
-            { id: "shared", label: t("scopeShared") },
-          ]}
-        />
+        {runBy.filter ?? (
+          <Pills
+            label={t("whichChats")}
+            value={scope}
+            onChange={setScope}
+            options={[
+              { id: "all", label: t("scopeAll"), icon: MessageSquare },
+              { id: "mine", label: t("scopeMine"), icon: UserRound },
+              { id: "shared", label: t("scopeShared"), icon: Share2 },
+            ]}
+          />
+        )}
       </div>
       {/* A filter change mounts a fresh list that fades and staggers in, with no wait for the old one to leave. */}
       <ScrollArea shades className="min-h-0 flex-1">
         <div className="px-2 pb-3 pt-3">
-          <motion.div key={`${scope}|${text}`} className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
+          <motion.div key={`${listed}|${runBy.by ?? ""}|${text}`} className="space-y-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }}>
             {groups.map((group) => (
               <section key={group.id} className="space-y-1">
                 <h3 className="flex items-center gap-1.5 px-3 pb-0.5 text-xs font-medium text-muted-foreground">
@@ -324,7 +308,7 @@ export function HistorySheet({
               </section>
             ))}
             {/* Nothing is said about an empty list until the list has loaded. */}
-            {status !== "LoadingFirstPage" && results.length === 0 ? <p className="px-3 py-6 text-sm text-muted-foreground">{text || scope !== "all" ? t("noChatsMatch") : t("noChats")}</p> : null}
+            {status !== "LoadingFirstPage" && results.length === 0 ? <p className="px-3 py-6 text-sm text-muted-foreground">{text || listed !== "all" || runBy.by ? t("noChatsMatch") : t("noChats")}</p> : null}
             {status === "CanLoadMore" || status === "LoadingMore" ? (
               <button
                 type="button"
@@ -363,8 +347,7 @@ const keyOf = (principal: Principal) => (principal.kind === "user" ? principal.u
 
 /** A person's photo or an organization's logo, with an icon while it loads or when there's none. */
 function Tile({ principal, name, imageUrl }: { principal: Principal; name: string; imageUrl?: string }) {
-  const organization = principal.kind === "organization";
-  return <IdentityAvatar name={name} imageUrl={imageUrl} kind={organization ? "organization" : "person"} className={cn("size-9", organization && "rounded-lg")} />;
+  return <IdentityAvatar name={name} imageUrl={imageUrl} kind={principal.kind === "organization" ? "organization" : "person"} className="size-9" />;
 }
 
 export function ShareSheet({ threadId, title, role, onBack }: { threadId: ThreadId; title: string; role: Role; onBack: () => void }) {
@@ -491,7 +474,7 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
           ) : null}
           <ul className="space-y-1">
             {people.map((person, i) => {
-              const name = person.role === "owner" && owner ? t("you") : shownName(person);
+              const name = shownName(person);
               const detail =
                 person.role === "owner"
                   ? t("owner")
@@ -508,15 +491,10 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.35, ease: EASE, delay: 0.12 + Math.min(i, 8) * 0.05 }}
-                  className="flex items-center gap-3 rounded-xl px-2 py-2"
                 >
-                  <Tile principal={person.principal} name={person.name} imageUrl={person.imageUrl} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{name}</p>
-                    <p className="truncate text-xs text-muted-foreground">{detail}</p>
-                  </div>
+                  <IdentityRow className="rounded-xl px-2 py-2" avatar={<Tile principal={person.principal} name={person.name} imageUrl={person.imageUrl} />} name={name} you={person.role === "owner" && owner} detail={detail}>
                   {person.role === "owner" ? (
-                    <span className="px-2 text-xs text-muted-foreground">{t("canChat")}</span>
+                    <RoleLabel role="chat" className="px-2">{t("canChat")}</RoleLabel>
                   ) : owner ? (
                     <>
                       <Segmented
@@ -524,15 +502,16 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
                         value={person.role}
                         onChange={(role) => grant({ threadId, principal: person.principal, role }).catch(failed)}
                         options={[
-                          { id: "read", label: t("view"), icon: Eye },
-                          { id: "write", label: t("chat"), icon: MessageSquare },
+                          { id: "read", label: t("view"), icon: ROLE_ICONS.view },
+                          { id: "write", label: t("chat"), icon: ROLE_ICONS.chat },
                         ]}
                       />
                       <IconButton small label={t("remove")} icon={<X className="size-3.5" />} onClick={() => revoke({ threadId, principal: person.principal }).catch(failed)} />
                     </>
                   ) : (
-                    <span className="px-2 text-xs text-muted-foreground">{person.role === "write" ? t("canChat") : t("canView")}</span>
+                    <RoleLabel role={person.role === "write" ? "chat" : "view"} className="px-2">{person.role === "write" ? t("canChat") : t("canView")}</RoleLabel>
                   )}
+                  </IdentityRow>
                 </motion.li>
               );
             })}
@@ -701,7 +680,7 @@ export function SpendingSheet({ threadId, title, onBack }: { threadId: ThreadId;
   const cap = allowance ? allowance.cap : kept;
   // The chat's calls that held credits, the largest first, more of them when the person asks.
   const jobs = usePaginatedQuery(api.assistant.spending.jobs, { threadId }, { initialNumItems: JOBS_FIRST });
-  const account = useQuery(api.billing.accounts.mine, {});
+  const account = useQuery(api.billing.accounts.mine, useWorkspaceScope());
   // The server's rule (convex/assistant/spending.ts): allowed, within what one may hold, and covered by the balance.
   const runs = (credits: number) => allowance !== null && (allowance.cap === null || credits <= allowance.cap) && credits <= Math.floor(account?.balance ?? 0);
   const ta = useTranslations("assistant");
@@ -880,8 +859,11 @@ export type Purchase = { buying: number | null; bought: number | null; buy: (cre
 export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /** The purchase under way and the last one made, which the panel keeps: a sheet closed and opened again finds a purchase still on its way, and can't start a second. */ purchase: Purchase; onBack: () => void }) {
   const t = useTranslations("assistant.topUp");
   const format = useFormatter();
-  const router = useRouter();
-  const account = useQuery(api.billing.accounts.mine, {});
+  const router = useWorkspaceRouter();
+  const account = useQuery(api.billing.accounts.mine, useWorkspaceScope());
+  // In an organization only its admins add credits; a member asks one of them.
+  const current = useCurrentWorkspace();
+  const askAdmin = current?.kind === "organization" && current.role !== "admin" ? current.name : null;
   const topUps = useFeatureFlag("credits.topups");
   const catalog = useBillingCatalog();
   const bundles = catalog && topUps ? topUpBundles(catalog) : [];
@@ -921,7 +903,12 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
             </span>
             <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{t("upTo", { credits: waiting.credits })}</span>
           </div>
-          {bundles.length ? (
+          {askAdmin ? (
+            <p className="flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/20 px-4 py-3 text-sm">
+              <ShieldCheck className="size-4 shrink-0 text-muted-foreground" />
+              {t("askAdmin", { organization: askAdmin })}
+            </p>
+          ) : bundles.length ? (
             <div className="rounded-2xl border border-border/60 bg-muted/20 p-1.5">
               {bundles.map((bundle, i) => (
                 <motion.button

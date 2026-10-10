@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import { useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useUser } from "@clerk/nextjs";
 import { useAction, useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
@@ -18,6 +19,7 @@ import {
   SwitchesIcon,
   ModelsIcon,
   AdminsIcon,
+  TeamIcon,
 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { PageWrapper } from "@/components/PageWrapper";
@@ -39,6 +41,9 @@ import { SubscriptionStateProvider, useSharedSubscriptionState } from "@/lib/aut
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { findPlan } from "@/lib/billing/catalog";
 import { useAppToast } from "@/lib/toast";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
+import { useWorkspaceSlug } from "@/lib/workspaces/href";
+import { bareWorkspacePath } from "@/lib/workspaces/paths";
 
 type Item = { href: string; title: string; icon: Ico; aside?: string; external?: string };
 
@@ -64,8 +69,12 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
 function Shell({ children }: { children: ReactNode }) {
   const t = useTranslations("settingsShell");
   const tc = useTranslations("common");
-  const pathname = usePathname();
-  const router = useRouter();
+  const tw = useTranslations("workspaces");
+  // An organization's settings sit under its address; the rail names them by the path they share with your own.
+  const path = bareWorkspacePath(usePathname());
+  const inOrganization = useWorkspaceSlug() !== undefined;
+  const current = useCurrentWorkspace();
+  const router = useWorkspaceRouter();
   const { user } = useUser();
   const { phase, canRunProtectedQueries } = useAuthReadiness();
   const signedIn = phase === "authenticated";
@@ -91,6 +100,10 @@ function Shell({ children }: { children: ReactNode }) {
     );
   }
 
+  // Your account's settings, then those of the organization you're in. Your own workspace is just
+  // you, so its plan and credits and its AI sit with your account.
+  const planItems: Item[] = hideBilling ? [] : [{ href: "/settings/billing", title: tw("planAndCredits"), icon: BillingIcon, aside: planLabel }];
+  const aiItem: Item = { href: "/settings/ai", title: tc("ai"), icon: AiIcon };
   const groups: Array<{ label: string; items: Item[] }> = [
     {
       label: t("groups.account"),
@@ -98,16 +111,24 @@ function Shell({ children }: { children: ReactNode }) {
         ? [
             { href: "/settings", title: t("items.profile"), icon: PersonIcon },
             { href: "/settings/security", title: t("items.security"), icon: SecurityIcon },
-            ...(hideBilling ? [] : [{ href: "/settings/billing", title: tc("billing"), icon: BillingIcon, aside: planLabel }]),
+            { href: "/settings/connections", title: tc("connections"), icon: ConnectionsIcon },
+            ...(inOrganization ? [] : [...planItems, aiItem]),
           ]
-        : [],
+        : [aiItem],
     },
     {
-      label: t("groups.research"),
-      items: [
-        { href: "/settings/ai", title: tc("ai"), icon: AiIcon },
-        ...(signedIn ? [{ href: "/settings/connections", title: tc("connections"), icon: ConnectionsIcon }] : []),
-      ],
+      // A space holds the label's line until the organization's name loads.
+      label: current?.name ?? "\u00a0",
+      items:
+        signedIn && inOrganization
+          ? [
+              { href: "/settings/workspace", title: tw("settings.general"), icon: SettingsIcon },
+              { href: "/settings/workspace/members", title: tw("membersHeading"), icon: TeamIcon, aside: current?.members === undefined ? undefined : String(current.members) },
+              ...planItems,
+              // The organization's preset, which its admins pick (#651).
+              aiItem,
+            ]
+          : [],
     },
     {
       label: t("groups.admin"),
@@ -135,7 +156,7 @@ function Shell({ children }: { children: ReactNode }) {
             titleAside={
               <>
                 {user ? <span className="hidden text-sm text-muted-foreground @3xl:inline">{tc("settings")}</span> : null}
-                {isAdmin && pathname.startsWith("/settings/admin") ? (
+                {isAdmin && path.startsWith("/settings/admin") ? (
                   <StatusChip tone={env.kind === "production" ? "danger" : "neutral"}>
                     <span className={BAR_LABEL}>
                       {env.kind === "sharedDev" ? t("sharedDev") : env.kind === "production" ? t("production") : env.host}
@@ -151,7 +172,7 @@ function Shell({ children }: { children: ReactNode }) {
               </>
             }
           >
-            {pathname === "/settings/billing" ? (
+            {path === "/settings/billing" && !inOrganization ? (
               <BillingAction showUpgrade={showUpgrade} subscriptionsEnabled={subscriptionsEnabled} />
             ) : null}
           </PanelHeader>
@@ -165,7 +186,7 @@ function Shell({ children }: { children: ReactNode }) {
                     key={item.href}
                     href={item.href}
                     icon={item.icon}
-                    active={pathname === item.href}
+                    active={path === item.href}
                     onClick={() => {
                       if (item.external) {
                         window.open(item.href, "_blank", "noopener,noreferrer");
@@ -203,7 +224,7 @@ function Shell({ children }: { children: ReactNode }) {
 /** Billing's main action sits in the command bar. */
 function BillingAction({ showUpgrade, subscriptionsEnabled }: { showUpgrade: boolean; subscriptionsEnabled: boolean }) {
   const t = useTranslations("billingPage");
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const toast = useAppToast();
   const openPortal = useAction(api.billing.actions.openPortal);
   const [loading, setLoading] = useState(false);

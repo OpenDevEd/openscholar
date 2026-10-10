@@ -5,7 +5,7 @@ import { libraryCountRow } from "../library/counter";
 import { collectionAllowed } from "../library/collections";
 import { requestOf, snapshotOf } from "../paperSets/search";
 import { findSearch } from "../research/records";
-import { isInWorkspace, type InWorkspace } from "../workspaces/actor";
+import { type InWorkspace } from "../workspaces/actor";
 import { currentSearch } from "../../lib/research/records";
 import { MAX_QUESTIONS } from "../lib/listCaps";
 import { taskPricing } from "../ai/serverModel";
@@ -39,9 +39,9 @@ export function estimateScreening(papers: number, available: number, perPaper: n
   };
 }
 
-/** What screening one paper costs a person at most, on the model their Screen all runs on. */
-export async function screeningPaperCreditsFor(ctx: QueryCtx, userId: Id<"users">) {
-  return screeningPaperCredits(await taskPricing(ctx, userId, "screenAll"));
+/** What screening one paper costs at most for someone working in a workspace, on the model Screen all runs on there. */
+export async function screeningPaperCreditsFor(ctx: QueryCtx, working: InWorkspace) {
+  return screeningPaperCredits(await taskPricing(ctx, working, "screenAll"));
 }
 
 /**
@@ -58,7 +58,7 @@ export async function papersIn(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
   if (set.kind === "saved") return (await libraryCountRow(ctx, workspaceId))?.count ?? null;
   if (set.kind === "screening") {
     const job = await ctx.db.get("screeningJobs", set.jobId);
-    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
+    if (!job || !(job.workspaceId === workspaceId)) return null;
     return (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", set.jobId)).unique())?.qualified ?? null;
   }
   return null;
@@ -86,7 +86,7 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
     await checkRequestPapers(ctx, workspaceId, last - first + 1, "screening");
   } else {
     const source = set.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : set.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
-    const mine = set.kind !== "collection" && set.kind !== "screening" ? true : source !== null && (await isInWorkspace(ctx, source, workspaceId));
+    const mine = set.kind !== "collection" && set.kind !== "screening" ? true : source !== null && (source.workspaceId === workspaceId);
     if (!mine) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
     const held = await papersIn(ctx, { userId, workspaceId }, set);
     if (held !== null && first > held) throw createError("VALIDATION_ERROR", "There are no papers in that range");
@@ -102,9 +102,8 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
  * asked for. Papers a search's page already answered cost nothing, so it is an upper figure.
  */
 export async function screeningHold(ctx: QueryCtx, reader: InWorkspace, request: Parameters<typeof checkScreening>[2]) {
-  const { userId } = reader;
   await checkScreening(ctx, reader, request);
   const { set, first, last } = request;
   const held = await papersIn(ctx, reader, set);
-  return estimateScreening(Math.max(0, Math.min(last, held ?? last) - first + 1), 0, await screeningPaperCreditsFor(ctx, userId)).credits;
+  return estimateScreening(Math.max(0, Math.min(last, held ?? last) - first + 1), 0, await screeningPaperCreditsFor(ctx, reader)).credits;
 }

@@ -13,6 +13,7 @@ import {
 import { TooltipHint } from "@/components/ui/tooltip";
 import { CitationStylePicker } from "@/components/citation-style-picker";
 import { CitationText } from "@/components/citation-text";
+import { Spinner } from "@/components/ui/spinner";
 import { enrichPaperCitationMetadata } from "@/app/actions/citations";
 import {
   loadPaperCitations,
@@ -114,9 +115,9 @@ function CitationPanel({ data }: { data: CitationData }) {
         </Button>
       </div>
       {loading && !failed && !displayed ? (
-        <p className="py-5 text-sm text-muted-foreground" role="status">
-          {t("loading")}
-        </p>
+        <div className="flex justify-center py-5">
+          <Spinner className="size-5" aria-label={t("loading")} />
+        </div>
       ) : failed ? (
         <div role="alert" className="space-y-2 text-sm">
           <p>{t("failed")}</p>

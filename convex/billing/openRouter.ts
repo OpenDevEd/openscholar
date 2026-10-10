@@ -163,8 +163,8 @@ async function fetchOpenRouterGeneration(
 
 export const settleArgs = {
   userId: v.id("users"),
-  /** The workspace that pays (#650); absent on a settlement scheduled before charges named their payer, until slice 8. */
-  workspaceId: v.optional(v.id("workspaces")),
+  /** The workspace that pays (#650). */
+  workspaceId: v.id("workspaces"),
   chargeId: v.string(),
   generationId: v.string(),
   /** Cost already known outside this generation: its earlier steps. */
@@ -201,10 +201,9 @@ export async function settle(ctx: ActionCtx, args: ObjectType<typeof settleArgs>
   const usd = (result.kind === "ok" ? result.generation.totalCostUsd : 0) + args.extraUsd;
   // The request's event goes with the call that settles its charge, once, and says what that charge took.
   const settledBefore = args.analytics !== undefined && (await ctx.runQuery(internal.billing.charge.charged, { chargeId: args.chargeId })) !== null;
-  // A settlement scheduled before charges named their payer finds it from its hold, or the spender's own (../billing/charge.ts).
   const settled = await settleCredits(ctx, {
     userId: args.userId,
-    ...(args.workspaceId ? { workspaceId: args.workspaceId } : {}),
+    workspaceId: args.workspaceId,
     chargeId: args.chargeId,
     credits: convertUsdToCredits({ usd }),
     usage: {

@@ -28,6 +28,7 @@ interface LibraryFilterSidebarProps {
   collectionId: string | null;
   onCollectionChange: (id: string | null) => void;
   onManageCollections: () => void;
+  onNewCollection: () => void;
   sort: LibrarySortCombined;
   onSortChange: (value: LibrarySortCombined) => void;
   activeFilterCount: number;
@@ -55,6 +56,7 @@ export function LibraryFilterSidebar(props: LibraryFilterSidebarProps) {
       collectionId={props.collectionId}
       onCollectionChange={props.onCollectionChange}
       onManageCollections={props.onManageCollections}
+      onNewCollection={props.onNewCollection}
       sort={props.sort}
       onSortChange={props.onSortChange}
       isMobile={isMobile}

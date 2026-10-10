@@ -15,13 +15,14 @@
  * attribute, never Tailwind utility strings.
  */
 
-import { useRouter } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations } from "next-intl";
 import { AlertTriangle, Coins, Pause } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
+import { useWorkspaceScope } from "@/lib/workspaces/url";
 
 type CommonProps = {
   onResume?: () => void;
@@ -46,15 +47,17 @@ export type JobStatusBannerProps =
 export function JobStatusBanner(props: JobStatusBannerProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  const router = useRouter();
+  const router = useWorkspaceRouter();
 
   // Skip the balance query on paused-variant renders — paused is not a
   // credit state, so displaying balance would be misleading and the
   // query cost is wasted.
+  // The page's workspace pays (#651).
+  const balanceScope = useWorkspaceScope();
   const { data: balance } = useProtectedQuery(
     api.billing.accounts.checkBalance,
-    props.variant === "creditsExhausted"
-      ? { requiredAmount: props.minCreditsToResume ?? 1 }
+    props.variant === "creditsExhausted" && balanceScope !== "skip"
+      ? { ...balanceScope, requiredAmount: props.minCreditsToResume ?? 1 }
       : "skip",
   );
 

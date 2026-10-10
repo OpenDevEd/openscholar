@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { aiTaskValidator, effortValidator, modelChoiceValidator } from "../aiModelConfig/validators";
 import { requireAuth } from "../lib/auth";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
-import { resolveTaskPick, userAiConfig } from "../ai/serverModel";
+import { ownTaskPick, userAiConfig } from "../ai/serverModel";
 import { AI_TASKS } from "../../lib/ai/tasks";
 import type { Doc, Id } from "../_generated/dataModel";
 
@@ -11,7 +11,7 @@ type CustomPicks = NonNullable<Doc<"userAiConfig">["custom"]>;
 
 /** What every task runs on now, as a Custom map. */
 async function currentPicks(ctx: MutationCtx, userId: Id<"users">): Promise<CustomPicks> {
-  const picks = await Promise.all(AI_TASKS.map(async (task) => [task, await resolveTaskPick(ctx, userId, task)] as const));
+  const picks = await Promise.all(AI_TASKS.map(async (task) => [task, await ownTaskPick(ctx, userId, task)] as const));
   return Object.fromEntries(picks.filter(([, pick]) => pick !== null)) as CustomPicks;
 }
 

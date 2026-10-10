@@ -1,6 +1,8 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import type { Id } from "../_generated/dataModel";
+import { collectionCountRow } from "./counter";
 import { requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
+import { makersIn, makerValidator } from "../workspaces/makers";
 import { searchTerms } from "../lib/searchText";
 import type { QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -10,16 +12,13 @@ import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
+import { asRaters, collectionRatingRow, collectionRatingsOf, organizationOfCollection, placeOf, purgeCollectionRatings, raterValidator, ratingOrNone, requireRating, setCollectionRating as setRating, shownRater } from "../ratings";
 import { followed } from "./followed";
 import { copyFacetBatch } from "./facets";
 import { collectionSortName } from "./sortName";
 
 /** Most collections one page holds. */
 const COLLECTIONS_PAGE_MAX = 50;
-
-export function collectionCountRow(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
-  return ctx.db.query("collectionCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
-}
 
 export { collectionSortName };
 
@@ -46,9 +45,8 @@ export async function collectionAllowed(ctx: QueryCtx, { userId, workspaceId }: 
 export async function newCollection(ctx: MutationCtx, { userId, workspaceId }: InWorkspace, name: string) {
   const { trimmed, counted } = await collectionAllowed(ctx, { userId, workspaceId }, name);
   if (counted) await ctx.db.patch("collectionCounts", counted._id, { count: counted.count + 1 });
-  else await ctx.db.insert("collectionCounts", { userId, workspaceId, count: 1 });
+  else await ctx.db.insert("collectionCounts", { workspaceId, count: 1 });
   return await ctx.db.insert("collections", {
-    userId,
     workspaceId,
     createdBy: userId,
     name: trimmed,
@@ -64,6 +62,7 @@ const RENAME = "library/collections:renameCollection" as const;
 const DELETE = "library/collections:deleteCollection" as const;
 const ADD = "library/collections:addToCollection" as const;
 const REMOVE = "library/collections:removeFromCollection" as const;
+const RATE = "library/collections:setCollectionRating" as const;
 const RETURNS_UNDO = "A change returns `undo`: the action to run and the arguments to run it with to put things back. It is refused if the collection changed again in between.";
 
 /** The workspace's collection, or the reason it can't be used. */
@@ -79,6 +78,7 @@ const asCreated = v.object({ name: v.string() });
 
 export const createCollectionAction = defineUserMutation({
   path: CREATE,
+  activity: (args, { id }) => ({ kind: "collection", id, happened: "created", detail: args.name.trim() }),
   description: `Makes a new, empty collection in the person's library, named as given, as many as their plan allows. Returns \`undo\`, which deletes it while it's empty and still has that name.`,
   args: { name: v.string() },
   returns: v.object({ id: v.id("collections"), undo: reversedBy(DELETE, { collectionId: v.id("collections"), expect: asCreated }) }),
@@ -95,6 +95,8 @@ export const createCollectionForAssistant = assistantMutation(createCollectionAc
 
 export const renameCollectionAction = defineUserMutation({
   path: RENAME,
+  // Renamed from the name its undo puts back; a rename to the same name changed nothing.
+  activity: (args, { undo }) => (undo ? { kind: "collection", id: args.collectionId, happened: "renamed", detail: undo.args.name } : null),
   description: `Renames one of the person's collections. ${RETURNS_UNDO}`,
   // `expect` is the name the collection should have now: a rename since then refuses this one.
   args: { collectionId: v.id("collections"), name: v.string(), expect: v.optional(v.string()) },
@@ -126,14 +128,15 @@ export const renameCollectionForAssistant = assistantMutation(renameCollectionAc
 /** Memberships one transaction deletes of a collection being deleted. */
 const MEMBERSHIP_DELETE_BATCH = 2_000;
 
-/** Deletes a batch of a deleted collection's memberships; says whether more are left. */
+/** Deletes a batch of a deleted collection's memberships, then of its ratings; says whether more are left. */
 async function deleteMembershipBatch(ctx: MutationCtx, collectionId: Id<"collections">) {
   const memberships = await ctx.db
     .query("libraryItemCollections")
     .withIndex("by_collection", (q) => q.eq("collectionId", collectionId))
     .take(MEMBERSHIP_DELETE_BATCH);
   for (const membership of memberships) await ctx.db.delete("libraryItemCollections", membership._id);
-  return memberships.length === MEMBERSHIP_DELETE_BATCH;
+  if (memberships.length === MEMBERSHIP_DELETE_BATCH) return true;
+  return !(await purgeCollectionRatings(ctx, collectionId, MEMBERSHIP_DELETE_BATCH));
 }
 
 /** Gives the next batch of a paper's memberships its changed fields (convex/library/facets.ts). */
@@ -157,6 +160,59 @@ export const deleteMemberships = internalMutation({
     return null;
   },
 });
+
+export const setCollectionRatingAction = defineUserMutation({
+  path: RATE,
+  activity: (args, { undo }) => (undo ? { kind: "collection", id: args.collectionId, happened: "rated", count: 1 } : null),
+  description:
+    "Sets the person's rating, from 0 to 5, of a paper within one of the organization's collections, by its library item ID, or removes it (null). " +
+    "The organization's members see each other's ratings there, and the collection sorts and filters by their average. The person's own rating of the paper, the same everywhere, stays as it is. " +
+    "A collection in the person's own workspace has no ratings of its own: library/mutations:setLibraryRating rates the paper there. " +
+    "A change returns `undo`, which puts the rating back. It is refused if the rating changed again in between.",
+  // `expect` is the person's rating there as it should be now: a change since then refuses this one.
+  args: { collectionId: v.id("collections"), libraryItemId: v.id("libraryItems"), rating: ratingOrNone, expect: v.optional(ratingOrNone) },
+  returns: v.object({ undo: reversedBy(RATE, { collectionId: v.id("collections"), libraryItemId: v.id("libraryItems"), rating: ratingOrNone, expect: ratingOrNone }) }),
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: true,
+  run: async (ctx, { userId, workspaceId }, { collectionId, libraryItemId, rating, expect }) => {
+    if (rating !== null) requireRating(rating);
+    await ownCollection(ctx, workspaceId, collectionId);
+    if ((await ctx.db.get("workspaces", workspaceId))?.kind !== "organization") {
+      throw createError("VALIDATION_ERROR", "A collection in the person's own workspace has no ratings of its own: rate the paper with library/mutations:setLibraryRating.");
+    }
+    const item = await ctx.db.get("libraryItems", libraryItemId);
+    const place = item && (await placeOf(ctx, collectionId, libraryItemId));
+    if (!item || !place) throw createError("NOT_FOUND", "This paper isn't in the collection.");
+    const was = (await collectionRatingRow(ctx, userId, collectionId, item.openalexId))?.rating ?? null;
+    if (expect !== undefined && was !== expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
+    if (was === rating) return {};
+    await setRating(ctx, userId, place, item, rating);
+    return { undo: { path: RATE, args: { collectionId, libraryItemId, rating: was, expect: rating } } };
+  },
+});
+export const setCollectionRating = userMutation(setCollectionRatingAction);
+export const setCollectionRatingForAssistant = assistantMutation(setCollectionRatingAction);
+
+export const ratersAction = defineUserQuery({
+  path: "library/collections:raters",
+  description:
+    "Lists how the members of the organization the person is in rated a paper in one of its collections, by its library item ID: each rating from 0 to 5 with who gave it, the person's own first. " +
+    "A collection in the person's own workspace has no ratings of its own.",
+  args: { collectionId: v.id("collections"), libraryItemId: v.id("libraryItems"), paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(raterValidator),
+  run: async (ctx, { userId, workspaceId }, { collectionId, libraryItemId, paginationOpts }) => {
+    if ((await ctx.db.get("collections", collectionId))?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found.");
+    const item = await ctx.db.get("libraryItems", libraryItemId);
+    if (!item || item.workspaceId !== workspaceId) throw createError("NOT_FOUND", "This paper isn't in the library.");
+    const organizationId = await organizationOfCollection(ctx, collectionId);
+    if (!organizationId) return { page: [], isDone: true, continueCursor: "" };
+    const read = await collectionRatingsOf(ctx, collectionId, item.openalexId).paginate(paginationOpts);
+    return { ...read, page: (await asRaters(ctx, organizationId, read.page, userId)).map(shownRater) };
+  },
+});
+export const raters = userQuery(ratersAction);
+export const ratersForAssistant = assistantQuery(ratersAction);
 
 export const deleteCollectionAction = defineUserMutation({
   path: DELETE,
@@ -199,6 +255,7 @@ const undone = { collectionId: v.id("collections"), libraryItemId: v.id("library
 
 export const addToCollectionAction = defineUserMutation({
   path: ADD,
+  activity: (args, { undo }) => (undo ? { kind: "collection", id: args.collectionId, happened: "added", count: 1 } : null),
   description: "Puts a paper that's in the person's library, by its library item ID, into one of their collections. Returns `undo`, which takes it out again, unless it was already there.",
   args: membership,
   returns: v.object({ undo: reversedBy(REMOVE, undone) }),
@@ -212,7 +269,7 @@ export const addToCollectionAction = defineUserMutation({
     if (!item || item.workspaceId !== workspaceId) {
       throw createError("FORBIDDEN", "Not your library item");
     }
-    const assignedAt = await addCollectionMembership(ctx, { userId, collection, item, assignedAt: args.assignedAt });
+    const assignedAt = await addCollectionMembership(ctx, { collection, item, assignedAt: args.assignedAt });
     return assignedAt === null ? {} : { undo: { path: REMOVE, args: { collectionId: args.collectionId, libraryItemId: args.libraryItemId, assignedAt } } };
   },
 });
@@ -221,6 +278,8 @@ export const addToCollectionForAssistant = assistantMutation(addToCollectionActi
 
 export const removeFromCollectionAction = defineUserMutation({
   path: REMOVE,
+  // Only a paper that was in it is taken out; its undo says so.
+  activity: (args, { undo }) => (undo ? { kind: "collection", id: args.collectionId, happened: "removed", count: 1 } : null),
   description: "Takes a paper, by its library item ID, out of one of the person's collections. It stays in the library. Returns `undo`, which puts it back, unless it wasn't there.",
   args: membership,
   returns: v.object({ undo: reversedBy(ADD, undone) }),
@@ -261,6 +320,8 @@ const collectionRow = v.object({
   itemCount: v.number(),
   /** Whether the paper asked about is in it; false when none was asked about. */
   containsItem: v.boolean(),
+  /** Who made it, in an organization (#656). */
+  by: v.optional(makerValidator),
 });
 
 /**
@@ -271,20 +332,25 @@ const collectionRow = v.object({
 export const listCollectionsAction = defineUserQuery({
   path: "library/collections:listCollections",
   description:
-    `A page of the person's collections by name, each with how many papers it holds, at most ${COLLECTIONS_PAGE_MAX} a page. With \`search\`, those whose name matches, best match first. With a paper's OpenAlex ID, each also says whether that paper is in it.`,
+    `A page of the person's collections by name, each with how many papers it holds, at most ${COLLECTIONS_PAGE_MAX} a page. With \`search\`, those whose name matches, best match first. With a paper's OpenAlex ID, each also says whether that paper is in it. In an organization each names who made it, and \`by\` keeps only that member's (their \`userId\` from workspaces/makers:counts).`,
   args: {
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
     openalexId: v.optional(v.string()),
+    by: v.optional(v.id("users")),
   },
   returns: paginationResultValidator(collectionRow),
-  run: async (ctx, { workspaceId }, args) => {
+  run: async (ctx, { userId, workspaceId }, args) => {
     const paginationOpts = { ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, COLLECTIONS_PAGE_MAX) };
     const search = searchTerms(args.search);
+    const { by } = args;
     const page = await (search
-      ? ctx.db.query("collections").withSearchIndex("search_name", (q) => q.search("name", search).eq("workspaceId", workspaceId))
-      : ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId))
+      ? ctx.db.query("collections").withSearchIndex("search_name", (q) => (by ? q.search("name", search).eq("workspaceId", workspaceId).eq("createdBy", by) : q.search("name", search).eq("workspaceId", workspaceId)))
+      : by
+        ? ctx.db.query("collections").withIndex("by_workspace_and_createdBy_and_sortName", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+        : ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId))
     ).paginate(paginationOpts);
+    const makerOf = await makersIn(ctx, workspaceId, userId);
     const { openalexId } = args;
     const item = openalexId
       ? await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", openalexId)).unique()
@@ -297,6 +363,7 @@ export const listCollectionsAction = defineUserQuery({
           _id: collection._id,
           name: collection.name,
           itemCount: collection.itemCount,
+          ...(await makerOf(collection.createdBy).then((maker) => (maker ? { by: maker } : {}))),
           containsItem:
             libraryItemId !== undefined &&
             (await ctx.db

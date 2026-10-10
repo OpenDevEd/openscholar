@@ -9,6 +9,8 @@ import { SCREENING_POOL_SIZE } from "../workpool";
 import { createJob } from "./createJob.test-support";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
+import { accountOf } from "../billing/billing.test-support";
 
 const questions = [{ key: "q1", question: "Is this relevant?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] };
@@ -40,7 +42,7 @@ const papersOf = (t: T, jobId: Id<"screeningJobs">) =>
     return { rows, started: rows.filter((row) => row.workId !== undefined), waiting: rows.filter((row) => row.waitingSince !== undefined) };
   });
 const running = (t: T, userId: Id<"users">) =>
-  t.run(async (ctx) => (await ctx.db.query("screeningSlots").withIndex("by_user", (q) => q.eq("userId", userId)).unique())?.running);
+  t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return (await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())?.running; });
 
 /** Papers finishing as their work completes them, then one batch of the bookkeeping worker. */
 async function finishAndBookkeep(t: T, ids: Id<"screeningResults">[]) {
@@ -95,7 +97,7 @@ describe("each person's paper slots", () => {
     const { t, person } = await setup();
     const ada = await person("ada");
     await t.run(async (ctx) => {
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada.userId)).unique();
+      const account = await accountOf(ctx, ada.userId);
       await ctx.db.patch("billingAccounts", account!._id, { limits: { concurrency: 5 } });
     });
 
@@ -125,7 +127,7 @@ describe("each person's paper slots", () => {
     const { t, person } = await setup();
     const ada = await person("ada");
     // Ada said yes to what three papers cost at most; the job found twelve.
-    const spendCap = estimateScreening(3, 0, await t.run((ctx) => screeningPaperCreditsFor(ctx, ada.userId))).credits;
+    const spendCap = estimateScreening(3, 0, await t.run(async (ctx) => screeningPaperCreditsFor(ctx, { userId: ada.userId, workspaceId: await personalWorkspaceOf(ctx, ada.userId) }))).credits;
     const { jobId } = await createJob(ada.as, { papers: papers(12, "a"), questions, scoringConfig, spendCap });
     const other = await createJob(ada.as, { papers: papers(4, "b"), questions, scoringConfig });
     const finish = async (ids: Id<"screeningResults">[], creditsUsed: number) => {
@@ -158,7 +160,7 @@ describe("each person's paper slots", () => {
     const { t, person } = await setup();
     const ada = await person("ada");
     // Room for one paper of twenty-five: the rest wait at the head of Ada's queue, ahead of her next job's.
-    const first = await createJob(ada.as, { papers: papers(25, "a"), questions, scoringConfig, spendCap: estimateScreening(1, 0, await t.run((ctx) => screeningPaperCreditsFor(ctx, ada.userId))).credits });
+    const first = await createJob(ada.as, { papers: papers(25, "a"), questions, scoringConfig, spendCap: estimateScreening(1, 0, await t.run(async (ctx) => screeningPaperCreditsFor(ctx, { userId: ada.userId, workspaceId: await personalWorkspaceOf(ctx, ada.userId) }))).credits });
     const next = await createJob(ada.as, { papers: papers(3, "b"), questions, scoringConfig });
     expect((await papersOf(t, next.jobId)).started).toHaveLength(0);
 

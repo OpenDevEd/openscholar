@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations, useFormatter } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { Trash2, Pencil, Check, X, Copy } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
   const tc = useTranslations("common");
   const tToast = useTranslations("toast");
   const format = useFormatter();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const [editValue, setEditValue] = useState(bookmark.expansion);
   const expansionText = useFullText<HTMLButtonElement>(`${viewMode}|${isEditing}|${bookmark.expansion}`);
   const grid = isGrid(viewMode);

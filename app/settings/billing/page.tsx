@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "@/components/workspace-link";
+import { useSearchParams } from "next/navigation";
 import { useAction } from "convex/react";
 import { useQueryState } from "nuqs";
 import posthog from "posthog-js";
@@ -39,6 +39,7 @@ import { defaultPlanId, findPlan, planCreditCap, topUpBundles } from "@/lib/bill
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 type Kind = "chat" | "extraction" | "screening" | "search" | "translation" | "wallet_api" | "refund";
 const KINDS: Record<Kind, { icon: AppIcon; tint: string }> = {
@@ -62,7 +63,7 @@ export default function BillingPage() {
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
   const toast = useAppToast();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const searchParams = useSearchParams();
   const [jobId, setJobId] = useQueryState("jobId");
   const state = useSharedSubscriptionState();

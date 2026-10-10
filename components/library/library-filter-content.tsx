@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { subMonths, subWeeks, subYears } from "date-fns";
-import { Check, Clock, Folder, LibraryBig, Search, Settings, SlidersHorizontal, Star } from "@/components/icons";
+import { startOfDay, subMonths, subWeeks, subYears } from "date-fns";
+import { Check, Clock, Folder, FolderPlus, LibraryBig, Plus, Search, Settings, SlidersHorizontal, Star } from "@/components/icons";
+import { TooltipHint } from "@/components/ui/tooltip";
 import type { DateRange } from "react-day-picker";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { FilterSection } from "@/components/shared/filter-section";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { DateRangePicker, type DatePreset } from "@/components/shared/date-range-picker";
@@ -25,6 +27,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 /**
@@ -64,6 +67,7 @@ interface LibraryFilterContentProps {
   collectionId: string | null;
   onCollectionChange: (id: string | null) => void;
   onManageCollections: () => void;
+  onNewCollection: () => void;
   sort: LibrarySortCombined;
   onSortChange: (value: LibrarySortCombined) => void;
   isMobile: boolean;
@@ -86,6 +90,7 @@ export function LibraryFilterContent({
   collectionId,
   onCollectionChange,
   onManageCollections,
+  onNewCollection,
   sort,
   onSortChange,
   isMobile,
@@ -96,7 +101,7 @@ export function LibraryFilterContent({
   const isSortActive = sort !== "savedAt:desc";
   const isCollectionActive = collectionId !== null;
 
-  // Date presets for the "date saved" filter
+  // Date saved's quick picks, and how many papers each keeps of the library or collection.
   const savedDatePresets: DatePreset[] = useMemo(
     () => [
       {
@@ -117,6 +122,17 @@ export function LibraryFilterContent({
     ],
     [t],
   );
+  // Each pick's first day, fixed when the sidebar opens so the counts aren't asked for again each render.
+  const [since] = useState(() => ({
+    week: startOfDay(subWeeks(new Date(), 1)).getTime(),
+    month: startOfDay(subMonths(new Date(), 1)).getTime(),
+    year: startOfDay(subYears(new Date(), 1)).getTime(),
+  }));
+  const workspaceId = useWorkspace();
+  const { data: savedCounts } = useProtectedQuery(
+    api.library.queries.getSavedSinceCounts,
+    inWorkspace(workspaceId, { since, ...(collectionId ? { collectionId: collectionId as Id<"collections"> } : {}) }),
+  );
 
   return (
     <div className={cn("space-y-4 p-4", !isMobile && "pt-15")}>
@@ -134,7 +150,7 @@ export function LibraryFilterContent({
         <DateRangePicker
           value={savedDateRange}
           onValueChange={onSavedDateRangeChange}
-          presets={savedDatePresets}
+          presets={{ label: t("filterDateSaved"), options: savedDatePresets, counts: savedCounts ?? null }}
         />
       </FilterSection>
 
@@ -163,7 +179,6 @@ export function LibraryFilterContent({
         <RatingRangePicker
           ratingRange={ratingRange}
           onRatingRangeChange={onRatingRangeChange}
-          minValue={0}
         />
       </FilterSection>
 
@@ -172,6 +187,7 @@ export function LibraryFilterContent({
         collectionId={collectionId}
         onCollectionChange={onCollectionChange}
         onManageCollections={onManageCollections}
+        onNewCollection={onNewCollection}
         isCollectionActive={isCollectionActive}
       />
 
@@ -280,6 +296,7 @@ const ROW_PX = 38;
 const FULL_PAGE_PX = (PAGE_SIZE + 1) * ROW_PX - 2;
 
 function CollectionFilterSection({
+  onNewCollection,
   collectionId,
   onCollectionChange,
   onManageCollections,
@@ -288,10 +305,12 @@ function CollectionFilterSection({
   collectionId: string | null;
   onCollectionChange: (id: string | null) => void;
   onManageCollections: () => void;
+  onNewCollection: () => void;
   isCollectionActive: boolean;
 }) {
   const workspaceId = useWorkspace();
   const t = useTranslations("libraryPage");
+  const ts = useTranslations("saveToLibrary");
   const [searchQuery, setSearchQuery] = useState("");
   const search = useDebouncedValue(searchQuery.trim(), 300);
   const { data: totalCollections } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
@@ -310,85 +329,109 @@ function CollectionFilterSection({
         isCollectionActive ? () => onCollectionChange(null) : undefined
       }
       headerAction={
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={onManageCollections}
-          className="h-7 w-7 text-muted-foreground hover:text-foreground"
-        >
-          <Settings className="h-3.5 w-3.5" />
-        </Button>
+        <>
+          <TooltipHint label={ts("newCollection")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={ts("newCollection")}
+              onClick={onNewCollection}
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            >
+              <FolderPlus className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipHint>
+          <TooltipHint label={t("manageCollections")}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("manageCollections")}
+              onClick={onManageCollections}
+              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+            >
+              <Settings className="h-3.5 w-3.5" />
+            </Button>
+          </TooltipHint>
+        </>
       }
     >
-      <div className="space-y-2">
-        {/* Inline search (only when 8+ collections) */}
-        {showSearch && (
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t("searchCollections")}
-              className="h-8 pl-8 text-sm"
-            />
-          </div>
-        )}
+      {/* The list arrives after the page: it slides what's below into place rather than moving it in one frame. */}
+      <AutoHeight>
+        <div className="space-y-2">
+          {/* Inline search (only when 8+ collections) */}
+          {showSearch && (
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder={t("searchCollections")}
+                className="h-8 pl-8 text-sm"
+              />
+            </div>
+          )}
 
-        {/* Vertical list */}
-        <div
-          className={cn("space-y-0.5", collections.isStale && "pointer-events-none opacity-60")}
-          style={showPagination ? { minHeight: FULL_PAGE_PX } : undefined}
-        >
-          {/* "All" row — first on page 1, hidden when searching */}
-          {!hasSearch && collections.page === 1 && (
-            <CollectionRow
-              name={t("allCollections")}
-              isActive={collectionId === null}
-              onClick={() => onCollectionChange(null)}
+          {/* Vertical list */}
+          <div
+            className={cn("space-y-0.5", collections.isStale && "pointer-events-none opacity-60")}
+            // A full page's height while there are pages; while the first loads, the rows the count says it will have.
+            style={showPagination ? { minHeight: FULL_PAGE_PX } : collections.isLoading && totalCollections ? { minHeight: (Math.min(totalCollections, PAGE_SIZE) + 1) * ROW_PX - 2 } : undefined}
+          >
+            {/* "All" row — first on page 1, hidden when searching */}
+            {!hasSearch && collections.page === 1 && (
+              <CollectionRow
+                name={t("allCollections")}
+                isActive={collectionId === null}
+                onClick={() => onCollectionChange(null)}
+              />
+            )}
+
+            {collections.items.map((collection) => (
+              <CollectionRow
+                key={collection._id}
+                name={collection.name}
+                count={collection.itemCount}
+                isActive={collectionId === collection._id}
+                onClick={() => onCollectionChange(collection._id)}
+              />
+            ))}
+
+            {/* No search results */}
+            {hasSearch && !collections.isLoading && collections.items.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-3">
+                {t("noCollections")}
+              </p>
+            )}
+          </div>
+
+          {showPagination && (
+            <PageStepper
+              className="pt-1"
+              page={collections.page}
+              pageCount={hasSearch || totalCollections === undefined ? undefined : Math.ceil(totalCollections / PAGE_SIZE)}
+              canPrevious={collections.canPrevious}
+              canNext={collections.canNext}
+              onPrevious={collections.previous}
+              onNext={collections.next}
             />
           )}
 
-          {collections.items.map((collection) => (
-            <CollectionRow
-              key={collection._id}
-              name={collection.name}
-              count={collection.itemCount}
-              isActive={collectionId === collection._id}
-              onClick={() => onCollectionChange(collection._id)}
-            />
-          ))}
-
-          {/* No search results */}
-          {hasSearch && !collections.isLoading && collections.items.length === 0 && (
-            <p className="text-xs text-muted-foreground text-center py-3">
-              {t("noCollections")}
-            </p>
+          {/* Empty state */}
+          {totalCollections === 0 && (
+            <div className="text-center py-3">
+              <Folder className="h-5 w-5 mx-auto mb-1.5 text-muted-foreground/50" />
+              <p className="text-xs text-muted-foreground">
+                {t("noCollections")}
+              </p>
+              <Button type="button" variant="outline" size="sm" className="mt-2.5 h-8 rounded-lg" onClick={onNewCollection}>
+                <Plus /> {ts("newCollection")}
+              </Button>
+            </div>
           )}
         </div>
-
-        {showPagination && (
-          <PageStepper
-            className="pt-1"
-            page={collections.page}
-            pageCount={hasSearch || totalCollections === undefined ? undefined : Math.ceil(totalCollections / PAGE_SIZE)}
-            canPrevious={collections.canPrevious}
-            canNext={collections.canNext}
-            onPrevious={collections.previous}
-            onNext={collections.next}
-          />
-        )}
-
-        {/* Empty state */}
-        {totalCollections === 0 && (
-          <div className="text-center py-3">
-            <Folder className="h-5 w-5 mx-auto mb-1.5 text-muted-foreground/50" />
-            <p className="text-xs text-muted-foreground">
-              {t("noCollections")}
-            </p>
-          </div>
-        )}
-      </div>
+      </AutoHeight>
     </FilterSection>
   );
 }

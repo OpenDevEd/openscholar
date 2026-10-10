@@ -1,9 +1,8 @@
 // Clerk's Backend API for OAuth applications: the client each Evidence
-// Library signs readers and admins in with. Plain fetch, no Convex imports, so
-// any action can call it.
+// Library signs readers and admins in with.
 
-const CLERK_API = "https://api.clerk.com/v1";
-const REQUEST_TIMEOUT_MS = 15_000;
+import { ClerkApiError, clerkRequest, isRecord } from "../lib/clerk";
+
 const LIST_PAGE_SIZE = 100;
 
 export type ClerkOAuthApplication = {
@@ -13,69 +12,6 @@ export type ClerkOAuthApplication = {
   redirectUris: string[];
   discoveryUrl: string;
 };
-
-export class ClerkApiError extends Error {
-  constructor(
-    message: string,
-    /** Clerk's HTTP status, or undefined when Clerk could not be reached. */
-    readonly status: number | undefined,
-    readonly code: string | undefined,
-    readonly traceId: string | undefined,
-  ) {
-    super(message);
-    this.name = "ClerkApiError";
-  }
-
-  /** Worth trying again later: Clerk was unreachable or failed on its side. */
-  get retryable() {
-    return this.status === undefined || this.status === 429 || this.status >= 500;
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-async function clerkRequest(
-  secretKey: string,
-  method: "GET" | "POST" | "PATCH" | "DELETE",
-  path: string,
-  body?: unknown,
-): Promise<{ status: number; body: unknown }> {
-  let response: Response;
-  try {
-    response = await fetch(`${CLERK_API}${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-      },
-      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-    });
-  } catch (error) {
-    throw new ClerkApiError(
-      `Clerk could not be reached: ${error instanceof Error ? error.message : String(error)}`,
-      undefined,
-      undefined,
-      undefined,
-    );
-  }
-  const parsed: unknown = await response.json().catch(() => null);
-  if (!response.ok) {
-    const firstError =
-      isRecord(parsed) && Array.isArray(parsed.errors) && isRecord(parsed.errors[0])
-        ? parsed.errors[0]
-        : null;
-    throw new ClerkApiError(
-      `Clerk answered ${response.status} to ${method} ${path.split("?")[0]}`,
-      response.status,
-      typeof firstError?.code === "string" ? firstError.code : undefined,
-      isRecord(parsed) && typeof parsed.clerk_trace_id === "string" ? parsed.clerk_trace_id : undefined,
-    );
-  }
-  return { status: response.status, body: parsed };
-}
 
 function readApplication(value: unknown): ClerkOAuthApplication {
   if (

@@ -6,6 +6,7 @@ import { createDraftSetupFixture } from "../../tests/helpers/evidence-library-se
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { auditHeaderVersion } from "./configurationMigration";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 type AuditPage = {
@@ -39,7 +40,7 @@ async function seedHeaders(
       updatedAt: 1,
     });
     const libraryId = await ctx.db.insert("evidenceLibraries", {
-      organizationId,
+      workspaceId: await organizationWorkspaceOf(ctx, organizationId),
       name: "Migration Library",
       slug: "migration-library",
       state,
@@ -206,7 +207,7 @@ describe("Evidence Library configuration migration", () => {
         updatedAt: 1,
       });
       return await ctx.db.insert("evidenceLibraries", {
-        organizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, organizationId),
         name: "Other Migration Library",
         slug: "other-migration-library",
         state: "active",

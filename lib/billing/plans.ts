@@ -16,6 +16,21 @@ export const TOPUP_PLAN = "top_up";
 /** The plan an organization's customer starts on (#650): its own credits, shared by its members, and Free's limits. */
 export const ORGANIZATION_PLAN = "free_organization";
 
+/** An organization's paid plan (#652): its limits and features. Its price and credits are on its members' seats. */
+export const TEAM_PLAN = "team";
+
+/**
+ * A Team member's seat (#652), attached to the member's entity on the organization's customer.
+ * Each is billed on its own and adds its monthly credits to the organization's one pool.
+ */
+export const SEAT_PLAN = "team_seat";
+
+/** The Autumn feature a member's entity is made for. */
+export const SEATS_FEATURE = "seats";
+
+/** The plans only an organization is on; a person's own workspace never picks them. */
+export const ORGANIZATION_PLANS: readonly string[] = [ORGANIZATION_PLAN, TEAM_PLAN, SEAT_PLAN];
+
 /**
  * What a plan allows, each a metered feature in Autumn that is never used up: its amount on
  * the plan is the limit, and an unlimited one sets none (#632).

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { AlertTriangle } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useTranslations } from "next-intl";
@@ -28,7 +28,7 @@ export default function ErrorPage({
         <p className="mb-6 text-sm text-muted-foreground">
           {t("unexpectedIssue")}
         </p>
-        <div className="flex justify-center gap-2">
+        <div className="flex flex-wrap justify-center gap-2">
           <Button onClick={reset}>{tc("retry")}</Button>
           <Button variant="outline" asChild>
             <Link href="/">{tc("goHome")}</Link>

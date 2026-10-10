@@ -13,7 +13,6 @@ import { pricingOf } from "../ai/serverModel";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
 import { progressOf } from "./bookkeeping";
-import type { InWorkspace } from "../workspaces/actor";
 
 /**
  * Papers a person may have running when their plan sets no `concurrency` in Autumn: the
@@ -35,7 +34,7 @@ async function startPaper(ctx: MutationCtx, result: Doc<"screeningResults">) {
     { resultId: result._id, jobId: result.jobId },
     { onComplete: internal.screening.mutations.handleScreeningComplete, context: { resultId: result._id, jobId: result.jobId } },
   );
-  await ctx.db.patch("screeningResults", result._id, { workId, waitingUser: undefined, waitingWorkspace: undefined, waitingSince: undefined });
+  await ctx.db.patch("screeningResults", result._id, { workId, waitingWorkspace: undefined, waitingSince: undefined });
 }
 
 /**
@@ -56,11 +55,9 @@ async function budgetOf(ctx: MutationCtx, jobId: Id<"screeningJobs">): Promise<B
 
 /**
  * Starts a workspace's waiting papers while it's under its limit, first counting off
- * `finished` papers of its that stopped running. Firecrawl's `concurrentJobDone`. `userId` is
- * the person whose job freed or made the papers, kept on a new slots row.
+ * `finished` papers of its that stopped running. Firecrawl's `concurrentJobDone`.
  */
-export async function startWaitingPapers(ctx: MutationCtx, pool: InWorkspace, finished = 0) {
-  const { userId, workspaceId } = pool;
+export async function startWaitingPapers(ctx: MutationCtx, workspaceId: Id<"workspaces">, finished = 0) {
   const slots = await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
   let running = Math.max(0, (slots?.running ?? 0) - finished);
   const limit = await paperLimit(ctx, workspaceId);
@@ -90,6 +87,6 @@ export async function startWaitingPapers(ctx: MutationCtx, pool: InWorkspace, fi
       else if (!budget.progress.running && !budget.job.capped) await ctx.scheduler.runAfter(0, internal.screening.mutations.capScreeningJob, { jobId: budget.job._id });
     }
   }
-  if (!slots) await ctx.db.insert("screeningSlots", { userId, workspaceId, running });
+  if (!slots) await ctx.db.insert("screeningSlots", { workspaceId, running });
   else if (slots.running !== running) await ctx.db.patch("screeningSlots", slots._id, { running });
 }

@@ -3,13 +3,16 @@ import type { Id } from "../_generated/dataModel";
 import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_INVITATIONS_PER_EMAIL, SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
 import { internalMutation, type MutationCtx } from "../lib/functions";
 import { ensureWorkspace } from "../workspaces/create";
+import { TEAM_PLAN } from "../../lib/billing/plans";
 import { v } from "convex/values";
 import {
   clerkEventOutcomeValidator,
+  clerkInvitationSnapshotFields,
   clerkMembershipSnapshotFields,
   clerkOrganizationSnapshotFields,
 } from "../evidenceLibraries/validators";
 import type {
+  ClerkInvitationSnapshot,
   ClerkMembershipSnapshot,
   ClerkOrganizationSnapshot,
 } from "./clerk_mappers";
@@ -83,12 +86,14 @@ async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizat
   const page = await ctx.db.query("evidenceLibraryMembers")
     .withIndex("by_clerkUserId", q => q.eq("clerkUserId", clerkUserId))
     .paginate({ cursor, numItems: MAX_LIBRARY_GRANTS_PER_PERSON });
-  const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
+  // A purged organization's workspace held no library (deleting one with a library is refused), so there's nothing to revoke.
+  const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique();
+  if (!workspace) return;
   for (const assignment of page.page) {
     // A grant made since they left, by a later invitation, is theirs to keep.
     if (assignment._creationTime > before) continue;
     const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
-    if (library?.workspaceId === workspaceId) {
+    if (library?.workspaceId === workspace._id) {
       await ctx.db.delete("evidenceLibraryMembers", assignment._id);
     }
   }
@@ -164,6 +169,8 @@ export async function applyOrganizationProjection(
           updatedAt: args.processedAt,
         });
         await revokeMembershipsPage(ctx, existing._id);
+        // Its workspace and everything in it go (#651).
+        await ctx.scheduler.runAfter(0, internal.workspaces.purge.purgeOrganization, { organizationId: existing._id });
       }
     },
   );
@@ -228,6 +235,18 @@ export async function applyMembershipProjection(
             });
           }
         }
+        // A member has no invitation to answer. Clerk's own event saying so can come later than
+        // the membership, so the seat it held frees now; a late event from before can't reopen it.
+        const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", args.membership.clerkUserId)).unique();
+        if (user) {
+          const answered = await ctx.db.query("organizationInvitations")
+            .withIndex("by_email_and_state", (q) => q.eq("email", user.email.toLowerCase()).eq("state", "pending"))
+            .filter((q) => q.eq(q.field("organizationId"), organizationId))
+            .take(SINGLE_ROW_CLEANUP);
+          for (const invitation of answered) {
+            await ctx.db.patch("organizationInvitations", invitation._id, { state: "accepted", clerkUpdatedAt: Math.max(invitation.clerkUpdatedAt, args.membership.clerkCreatedAt), updatedAt: args.processedAt });
+          }
+        }
       }
       if (args.membership.state === "revoked") {
         // The sweep takes the grants up to the newest they hold now. A clock can't draw that
@@ -236,13 +255,14 @@ export async function applyMembershipProjection(
           .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.membership.clerkUserId)).order("desc").first();
         if (newest) await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null, newest._creationTime);
         const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.membership.clerkUserId)).unique();
-        if (user) {
+        // Read, not made: a deleted organization's workspace is purged, and a late event mustn't bring it back.
+        const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique();
+        if (user && workspace) {
           const invitations = await ctx.db.query("evidenceLibraryInvitations")
             .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_EMAIL);
-          const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
           for (const invitation of invitations) {
             const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
-            if (library?.workspaceId === workspaceId) await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: "cancelled" });
+            if (library?.workspaceId === workspace._id) await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: "cancelled" });
           }
         }
       }
@@ -266,9 +286,46 @@ export async function applyMembershipProjection(
           createdAt: args.processedAt,
         });
       }
+      // On the Team plan, a member who joins gets a seat and one who leaves gives theirs up (#652).
+      const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
+      const account = workspace && await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id)).unique();
+      if (workspace && account?.plan === TEAM_PLAN) await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId: workspace._id });
     },
   );
 }
+
+/**
+ * Keeps an invitation to an organization as Clerk has it (#651): sent, accepted, revoked or
+ * expired. One for an organization not projected yet waits for Clerk to send it again.
+ */
+export async function applyInvitationProjection(
+  ctx: MutationCtx,
+  args: MembershipProjectionMetadata & { invitation: ClerkInvitationSnapshot },
+): Promise<ClerkEventOutcome> {
+  return await applyOrderedClerkEvent(
+    ctx,
+    { ...args, entityType: "organizationInvitation", entityId: args.invitation.clerkInvitationId },
+    async () => {
+      const { clerkOrganizationId, ...invitation } = args.invitation;
+      const organization = await ctx.db.query("organizations").withIndex("by_clerkOrganizationId", (q) => q.eq("clerkOrganizationId", clerkOrganizationId)).unique();
+      if (!organization) throw new Error("Invitation to an organization not projected yet");
+      const existing = await ctx.db.query("organizationInvitations").withIndex("by_clerkInvitationId", (q) => q.eq("clerkInvitationId", invitation.clerkInvitationId)).unique();
+      if (!existing) {
+        const invitationId = await ctx.db.insert("organizationInvitations", { ...invitation, organizationId: organization._id, createdAt: args.processedAt, updatedAt: args.processedAt });
+        // Clerk sends nothing when its link expires.
+        if (invitation.state === "pending" && invitation.expiresAt) await ctx.scheduler.runAt(invitation.expiresAt, internal.organizations.read.expireInvitation, { invitationId });
+      } else if (invitation.clerkUpdatedAt >= existing.clerkUpdatedAt) {
+        await ctx.db.patch("organizationInvitations", existing._id, { ...invitation, updatedAt: args.processedAt });
+      }
+    },
+  );
+}
+
+export const applyOrganizationInvitationEvent = internalMutation({
+  args: { ...eventMetadataFields, invitation: v.object(clerkInvitationSnapshotFields) },
+  returns: clerkEventOutcomeValidator,
+  handler: async (ctx, args) => await applyInvitationProjection(ctx, { ...args, processedAt: Date.now() }),
+});
 
 export const applyOrganizationEvent = internalMutation({
   args: {

@@ -9,6 +9,7 @@ import {
 } from "../webhooks/projections";
 import { readMemberOrganizations } from "../organizationFeatures";
 import { seedFeatureUser } from "../organizationFeatures.test-support";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 const organizationSnapshot = {
   clerkOrganizationId: "org_123",
@@ -321,7 +322,7 @@ describe("Evidence Library identity projections", () => {
       const otherOrganizationId = await ctx.db.insert("organizations", { ...organizationSnapshot, clerkOrganizationId: "other_org", slug: "other", state: "active", createdAt: 1, updatedAt: 1 });
       const libraryIds: Id<"evidenceLibraries">[] = [];
       for (const org of [organizationId, organizationId, otherOrganizationId]) {
-        const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId: org, name: "Library", slug: `library-${libraryIds.length}`, state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+        const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId: await organizationWorkspaceOf(ctx, org), name: "Library", slug: `library-${libraryIds.length}`, state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
         libraryIds.push(libraryId);
         await ctx.db.insert("evidenceLibraryMembers", { libraryId, clerkUserId: "user_123", role: "editor", grantedBy: "owner", grantedAt: 1 });
         await ctx.db.insert("evidenceLibraryInvitations", { libraryId, email: "person@example.org", role: "creator", invitedBy: "owner", expiresAt: Date.now() + 100000, state: "pending", delivery: "sent" });

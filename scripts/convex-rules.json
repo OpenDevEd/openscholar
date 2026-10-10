@@ -61,9 +61,11 @@
       "DRAFT_ROWS_REPLACED": "reads one past it and refuses the restore over a draft with extra rows",
       "SUBSCRIPTIONS_READ": "reads one past it and stops the billing migration for that account",
       "SECTION_REGISTRY.length": "a draft or revision holds one row a section; reads one past it and throws on a different row",
-      "RECOVERY_LIMIT": "reads one past it and stops the recovery as unsafe, naming why"
+      "RECOVERY_LIMIT": "reads one past it and stops the recovery as unsafe, naming why",
+      "MAX_ORGANIZATION_MEMBERS": "reads one past it and leaves the organization's seats as they are, logging why: Clerk's webhooks write memberships, so no write here can"
     },
     "windows": {
+      "PREVIEW_READ": "the first ratings of a paper a collection preview reads for the few raters it names; the count and the full list come from elsewhere",
       "JOBS_DOCKED": "the few jobs a chat docks at once; older ones are on the jobs page",
       "STEPS_SHOWN": "the newest steps a reply shows; the rest are paged in the chat",
       "JOBS_TOLD_AT_ONCE": "the job ends one reply tells its model; the rest are told on the next",
@@ -75,14 +77,19 @@
       "ASSISTANT_REPLIES_AT_ONCE": "the replies a person runs at once, which admission keeps within it",
       "MAX_ASKS": "the questions one reply asks at a time; the reply refuses to ask more",
       "MEMBERS_COUNTED": "an organization's members are counted up to one past it and shown as more than it",
+      "LIBRARIES_COUNTED": "a workspace's Evidence Libraries are counted up to one past it in its summary",
       "MEMBERS_MATCHED": "the best search matches of an email the invite check compares; an exact email is among the first",
       "SINGLE_ROW_CLEANUP": "rows meant to be one per key: a duplicate or two a race left are cleared, and more wait for the next write",
-      "MAX_API_KEYS_PER_USER": "a person has one key per provider, since saving one replaces the provider's, so this many is all of them"
+      "MAX_API_KEYS_PER_USER": "a person has one key per provider, since saving one replaces the provider's, so this many is all of them",
+      "MAX_RATERS": "the members of an organization its averages read, and the ratings of a paper in one collection; Clerk lets a free organization have 5 members",
+      "PLACES_NOTED": "the collections a removed or restored paper notes in their Activity; a paper in more is noted in the first of them",
+      "MAKER_ROWS_READ": "the makers of one kind of record the Run by filter reads for members who left; one row per person who ever made one, so an organization past it lists the first of them"
     },
     "batches": {
       "BATCH": "a worker's batch; it pings itself for the next",
       "BATCH_SIZE": "a cascade's batch; it reschedules itself until nothing is left",
       "CANCEL_BATCH": "a cancel's batch; it reschedules itself",
+      "JOBS_A_STEP": "a deleted organization's purge step; it schedules the next until its workspace is empty",
       "FORGET_BATCH": "a cleanup's batch; it reschedules itself",
       "FORGET_LIMITS": "a cleanup's batch; it reschedules itself",
       "FORGET_RESULTS": "a cleanup's batch; it reschedules itself",
@@ -98,7 +105,8 @@
       "SPENT_PAGE": "a hold cleanup's batch; it reschedules itself",
       "FACET_COPY_INLINE": "the memberships a paper's change copies inline; more are copied by a scheduled batch",
       "MEMBERSHIPS_INLINE": "the memberships a user's change updates inline; more are updated by a scheduled page at a time",
-      "FORGET_FILES": "a cleanup batch of attached files; it reschedules itself until nothing is left"
+      "FORGET_FILES": "a cleanup batch of attached files; it reschedules itself until nothing is left",
+      "PURGE_RATINGS": "a cleanup batch of a deleted account's ratings; the account waits for the next run until none are left"
     }
   }
 }

@@ -5,6 +5,7 @@ import { api } from "../../_generated/api";
 import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
 import { MAX_SELECTED_PAPERS } from "../../lib/listCaps";
+import { madeBy } from "../../workspaces/actor.test-support";
 
 const identity = {
   subject: "clerk_lib",
@@ -120,7 +121,7 @@ describe("extraction.sources.library.list", () => {
       paginationOpts: { numItems: 10, cursor: null },
     });
     expect(res.page).toHaveLength(3);
-    expect(res.page.every((p) => p.userId !== undefined)).toBe(true);
+    expect(res.page.every((p) => p.createdBy !== undefined)).toBe(true);
   });
 
   it("filters by the search_library index when a query is supplied", async () => {
@@ -186,7 +187,7 @@ describe("extraction.sources.library.listAllIds", () => {
     );
     expect(res.items).toHaveLength(3);
     expect(res.truncated).toBe(false);
-    expect(res.items.every((r) => r.userId !== undefined)).toBe(true);
+    expect(res.items.every((r) => r.createdBy !== undefined)).toBe(true);
   });
 
   it("filters via search_library when a query is supplied", async () => {
@@ -314,9 +315,10 @@ describe("extraction.sources.library.listAllIds with collectionId", () => {
     const t = convexTest(schema);
     const { userId, collectionId } = await seed(t);
     await t.run(async (ctx) => {
+      const made = await madeBy(ctx, userId);
       for (let i = 0; i < MAX_SELECTED_PAPERS + 5; i++) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/Wmany${i}`, rating: 3, title: `Many ${i}`, searchableText: "many papers", savedAt: i, updatedAt: i });
-        if (i % 2 === 0) await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: i });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...made, openalexId: `https://openalex.org/Wmany${i}`, rating: 3, title: `Many ${i}`, searchableText: "many papers", savedAt: i, updatedAt: i });
+        if (i % 2 === 0) await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: i });
       }
     });
     const res = await t.withIdentity(identity).query(api.extraction.sources.library.listAllIds, { collectionId: "unfiled", query: "many" });

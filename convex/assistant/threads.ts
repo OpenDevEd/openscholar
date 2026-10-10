@@ -9,20 +9,22 @@ import { v } from "convex/values";
 import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-import { modelSummary, presetPick, resolveTaskPick } from "../ai/serverModel";
+import { modelSummary, organizationPreset, presetPick, resolveTaskPick } from "../ai/serverModel";
 import { DEFAULT_PRESET } from "../../lib/ai/tasks";
 import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validators";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { workingIn } from "../workspaces/actor";
 import { query } from "../lib/functions";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import schema from "../schema";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { NEW_CHAT_TITLE } from "../../lib/assistant/title";
-import { accessRows, best, deleteThread, personName, principalOf, principalsOf, requireThreadIn, userPrincipal, type AssistantRole } from "./access";
-import { viewers } from "./presence";
+import { accessRows, best, deleteThread, principalOf, principalsOf, requireThreadIn, userPrincipal, type AssistantRole } from "./access";
+import { personName } from "../lib/people";
+import { chatViewers } from "../presence";
 import { startWith } from "./spending";
 import { ASSISTANT_MEMBERS_SHOWN, assistantMembersValidator, assistantRoleValidator, JOBS_DOCKED, JOBS_LISTED, listedJobsValidator } from "./validators";
 import { progressOf } from "./jobs";
@@ -107,8 +109,9 @@ const listedValidator = v.object({
  * under Custom (convex/ai/serverModel.ts). The model is null when nothing is set at all.
  */
 export async function chatModel(ctx: QueryCtx | MutationCtx, thread: Doc<"assistantThreads">, userId: Id<"users">): Promise<{ modelId: Id<"models"> | null; effort?: Effort }> {
-  if (thread.modelId) return { modelId: thread.modelId, effort: thread.effort };
-  const pick = await assistantPick(ctx, userId);
+  // An organization's chats run on its current preset, whatever was picked for them (#651).
+  if (thread.modelId && (await organizationPreset(ctx, thread.workspaceId)) === null) return { modelId: thread.modelId, effort: thread.effort };
+  const pick = await assistantPick(ctx, { userId, workspaceId: thread.workspaceId });
   return { modelId: pick?.modelId ?? null, effort: pick?.effort };
 }
 
@@ -116,8 +119,8 @@ export async function chatModel(ctx: QueryCtx | MutationCtx, thread: Doc<"assist
  * What the person's AI settings run chat on, for the assistant. Settings take any chat model, and one the assistant
  * can't run on (`requireAssistantModel`) gives way to the default preset's.
  */
-export async function assistantPick(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
-  const pick = await resolveTaskPick(ctx, userId, "chat");
+export async function assistantPick(ctx: QueryCtx | MutationCtx, working: { userId: Id<"users">; workspaceId: Id<"workspaces"> }) {
+  const pick = await resolveTaskPick(ctx, working, "chat");
   const model = pick ? await ctx.db.get("models", pick.modelId) : null;
   return model && runsAssistant(model) ? pick : presetPick(ctx, DEFAULT_PRESET, "chat");
 }
@@ -158,7 +161,7 @@ function titled(title: string | undefined) {
 
 export const createAction = defineUserMutation({
   path: "assistant/threads:create",
-  description: "Starts a new assistant chat in the workspace, made by the person, on a model and reasoning effort if given. Returns its ID.",
+  description: "Starts a new assistant chat in the workspace, made by the person, on a model and reasoning effort if given; an organization's chats run on its AI preset, so it takes none there. Returns its ID.",
   args: { title: v.optional(v.string()), modelId: v.optional(v.id("models")), effort: v.optional(effortValidator) },
   returns: v.id("assistantThreads"),
   spendsCredits: false,
@@ -167,18 +170,19 @@ export const createAction = defineUserMutation({
   run: async (ctx, { userId, workspaceId }, args) => {
     await requireFeature(ctx, FLAG, userId);
     const title = titled(args.title) || NEW_CHAT_TITLE;
-    if (args.modelId) await pickable(ctx, args.modelId, args.effort);
-    else if (args.effort) throw createError("VALIDATION_ERROR", "Pick a model to set its reasoning effort.");
+    // An organization's chats run on its preset (#651): a model picked for one isn't kept.
+    const own = (await organizationPreset(ctx, workspaceId)) === null;
+    if (own && args.modelId) await pickable(ctx, args.modelId, args.effort);
+    else if (own && args.effort) throw createError("VALIDATION_ERROR", "Pick a model to set its reasoning effort.");
     const now = Date.now();
     const agentThreadId = await createThread(ctx, components.agent, { userId, title });
     const threadId = await ctx.db.insert("assistantThreads", {
-      ownerId: userId,
       workspaceId,
       createdBy: userId,
       title,
       agentThreadId,
       lastMessageAt: now,
-      ...(args.modelId ? { modelId: args.modelId, effort: args.effort } : {}),
+      ...(own && args.modelId ? { modelId: args.modelId, effort: args.effort } : {}),
       createdAt: now,
       updatedAt: now,
     });
@@ -198,10 +202,10 @@ export const listAction = defineUserQuery({
   description:
     "Lists the assistant chats in the workspace the person can open, newest first, a page at a time: all of them, only the ones they made, or only the ones shared with them. " +
     "Given `text`, only chats whose title, or the start of whose newest message, contains it. Each comes with the start of its newest message, whether a reply is being written in it, " +
-    "the first few people in it and who of them has it open now.",
-  args: { scope: v.union(v.literal("all"), v.literal("mine"), v.literal("shared")), text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+    "the first few people in it and who of them has it open now. In an organization, `by` keeps only the chats that member started (their `userId` from workspaces/makers:counts).",
+  args: { scope: v.union(v.literal("all"), v.literal("mine"), v.literal("shared")), text: v.optional(v.string()), by: v.optional(v.id("users")), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(listedValidator),
-  run: async (ctx, { userId, workspaceId, role }, { scope, text, paginationOpts }) => {
+  run: async (ctx, { userId, workspaceId, role }, { scope, text, by, paginationOpts }) => {
     await requireFeature(ctx, FLAG, userId);
     const user = await ctx.db.get("users", userId);
     if (!user) return { page: [], isDone: true, continueCursor: "" };
@@ -214,12 +218,14 @@ export const listAction = defineUserQuery({
     if ((await ctx.db.get("workspaces", workspaceId))?.kind === "organization") {
       // An organization's chats are all its members' (#650): none of them are shared with them, and each is its maker's and its admins' to manage.
       if (scope === "shared") return { page: [], isDone: true, continueCursor: "" };
-      const chats = await stream(ctx.db, schema)
-        .query("assistantThreads")
-        .withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspaceId))
+      // One member's, given `by` or "mine", read along their own index range (#656).
+      const maker = by ?? (scope === "mine" ? userId : undefined);
+      const chats = await (maker
+        ? stream(ctx.db, schema).query("assistantThreads").withIndex("by_workspace_and_createdBy_and_lastMessageAt", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", maker))
+        : stream(ctx.db, schema).query("assistantThreads").withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspaceId)))
         .order("desc")
         .filterWith(async (thread) => {
-          if ((scope === "mine" && thread.createdBy !== userId) || !matches(thread)) return false;
+          if (!matches(thread)) return false;
           kept.set(thread._id, { role: role === "admin" || thread.createdBy === userId ? "owner" : "write", access: await accessRows(ctx, thread._id) });
           return true;
         })
@@ -259,7 +265,7 @@ export const listAction = defineUserQuery({
         if (!thread || !found) return [];
         // One more than the row shows, since the reader may be among them. Anyone in the room
         // could open the chat when they joined it, through a grant of their own or an organization's.
-        const here = (await viewers(ctx, thread._id, ASSISTANT_MEMBERS_SHOWN + 1)).filter((viewer) => viewer !== userId);
+        const here = (await chatViewers(ctx, thread._id, ASSISTANT_MEMBERS_SHOWN + 1)).filter((viewer) => viewer !== userId);
         const others = found.access.flatMap((other) => {
           const principal = principalOf(ctx, other.principal);
           return principal && !(principal.kind === "user" && principal.userId === userId) ? [{ principal, owner: other.role === "owner" }] : [];
@@ -333,12 +339,15 @@ export const get = userQuery(getAction);
 
 /** The model a new chat starts on, shown before it exists: the chat model of the person's AI settings, as a chat with none of its own runs on (`assistantPick`). */
 export const newChatModel = query({
-  args: {},
+  // The workspace the chat would start in, whose preset an organization's chat runs on (#651); none, the person's own.
+  args: { workspaceId: v.optional(v.id("workspaces")) },
   returns: v.object({ model: v.union(modelSummaryValidator, v.null()), effort: v.optional(effortValidator) }),
-  handler: async (ctx) => {
-    const userId = (await requireAuth(ctx))._id;
-    await requireFeature(ctx, FLAG, userId);
-    const pick = await assistantPick(ctx, userId);
+  handler: async (ctx, { workspaceId }) => {
+    const user = await requireAuth(ctx);
+    await requireFeature(ctx, FLAG, user._id);
+    const working = await workingIn(ctx, user, workspaceId);
+    if (!working) throw createError("NOT_FOUND", "Workspace not found");
+    const pick = await assistantPick(ctx, working);
     return { model: await modelSummary(ctx, pick?.modelId ?? null), ...(pick?.effort ? { effort: pick.effort } : {}) };
   },
 });
@@ -368,7 +377,7 @@ export const setModelAction = defineUserMutation({
   path: "assistant/threads:setModel",
   description:
     "Sets the model an assistant chat's replies run on, and their reasoning effort when the model takes one. It applies from the next message. " +
-    "Anyone who can write in the chat can.",
+    "Anyone who can write in the chat can, in their own workspace: an organization's chats run on the AI preset its admins pick.",
   args: { threadId: v.id("assistantThreads"), modelId: v.id("models"), effort: v.optional(effortValidator) },
   returns: v.null(),
   spendsCredits: false,
@@ -377,6 +386,7 @@ export const setModelAction = defineUserMutation({
   run: async (ctx, actor, { threadId, modelId, effort }) => {
     await requireFeature(ctx, FLAG, actor.userId);
     await requireThreadIn(ctx, actor, threadId, "write");
+    if ((await organizationPreset(ctx, actor.workspaceId)) !== null) throw createError("FORBIDDEN", "An organization's chats run on the AI preset its admins pick in its AI settings.");
     await pickable(ctx, modelId, effort);
     await ctx.db.patch("assistantThreads", threadId, { modelId, effort, updatedAt: Date.now() });
     return null;

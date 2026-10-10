@@ -6,7 +6,9 @@ import { v, type ObjectType } from "convex/values";
 import { stream, type QueryStream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { createError } from "../lib/errors";
-import { findItem } from "./mutations";
+import { findItem } from "./find";
+import { collectionRaters, personalRatingRow, placeOf, raterValidator, shownRater } from "../ratings";
+import type { InWorkspace } from "../workspaces/actor";
 import { authorDisplay } from "../../lib/library/paper-metadata";
 import { libraryCount } from "./counter";
 import { livePlaces } from "./collectionMembership";
@@ -31,7 +33,19 @@ const FILTERED_COUNT_ROWS = 16_000;
 /** Bytes one filtered page or count reads at most: half a query's 16 MiB. */
 const FILTERED_BYTES = 8 * 1024 * 1024;
 
-export const libraryPageValidator = paginationResultValidator(schema.tables.libraryItems.validator.extend({ _id: v.id("libraryItems"), _creationTime: v.number() }));
+/** People named beside a paper's ratings in an organization's collection; the rest open from them. */
+const RATERS_SHOWN = 3;
+
+/**
+ * A page of the library view, each paper with `myRating`: the person's own rating of it, where `rating` is its people's average (#655).
+ * In an organization's collection, `collection` is how its members rated it there: the person's own, the first few who did, and how many did.
+ */
+export const libraryPageValidator = paginationResultValidator(schema.tables.libraryItems.validator.extend({
+  _id: v.id("libraryItems"),
+  _creationTime: v.number(),
+  myRating: v.optional(v.number()),
+  collection: v.optional(v.object({ mine: v.optional(v.number()), raters: v.array(raterValidator), count: v.number() })),
+}));
 
 type LibraryItem = Doc<"libraryItems">;
 
@@ -199,8 +213,11 @@ async function ownCollection(ctx: QueryCtx, workspaceId: Id<"workspaces">, colle
 /** Which of these papers are in the collection: one point read each. */
 async function inThatCollection(ctx: QueryCtx, collectionId: Id<"collections">, items: LibraryItem[]) {
   const kept = await Promise.all(items.map((item) => ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collectionId).eq("libraryItemId", item._id)).unique()));
-  return items.filter((_, at) => kept[at] !== null);
+  return items.flatMap((item, at) => (kept[at] ? [inPlace(item, kept[at])] : []));
 }
+
+/** A paper as a collection lists it: with the rating it has there, which in an organization is the collection's own (../ratings.ts). */
+const inPlace = (item: LibraryItem, place: Doc<"libraryItemCollections">): LibraryItem => ({ ...item, rating: place.rating });
 
 /** The workspace's papers matching a text search, most relevant first. */
 async function searchLibraryItems(ctx: QueryCtx, workspaceId: Id<"workspaces">, searchText: string): Promise<LibraryItem[]> {
@@ -246,8 +263,8 @@ export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces
   if (view.searchText !== undefined) {
     const searchText = view.searchText.trim();
     if (!searchText) return emptyPage;
-    const found = (await searchLibraryItems(ctx, workspaceId, searchText)).filter((item) => matchesLibraryFilters(item, view));
-    const items = collection ? await inThatCollection(ctx, collection._id, found) : found;
+    const found = await searchLibraryItems(ctx, workspaceId, searchText);
+    const items = (collection ? await inThatCollection(ctx, collection._id, found) : found).filter((item) => matchesLibraryFilters(item, view));
     return paginateLibraryItems(
       sortLibraryItems(items, view.sortBy, view.sortOrder),
       // Every match is read anyway, so a caller may take them all in one page.
@@ -259,7 +276,10 @@ export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces
   if (collection) {
     // Each membership joined to its paper, whose bytes count toward the page's.
     const memberships = along(ctx, { collectionId: collection._id }, view.sortBy, view.sortOrder, view) as unknown as QueryStream<Doc<"libraryItemCollections">>;
-    return (await new JoinStream(memberships, (membership) => ctx.db.get("libraryItems", membership.libraryItemId))
+    return (await new JoinStream(memberships, async (membership) => {
+      const item = await ctx.db.get("libraryItems", membership.libraryItemId);
+      return item && inPlace(item, membership);
+    })
       .paginate({ ...page, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: FILTERED_BYTES })) as LibraryPage;
   }
   if (!hasNonCollectionLibraryFilters(view)) {
@@ -273,6 +293,21 @@ export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces
     .paginate({ ...page, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: FILTERED_BYTES })) as LibraryPage;
 }
 
+/**
+ * Gives each paper on a page the person's own rating of it, which in their own workspace is the
+ * paper's, and in an organization's collection how its members rated it there.
+ */
+async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, read: LibraryPage, collectionId?: Id<"collections">) {
+  const own = (await ctx.db.get("workspaces", workspaceId))?.kind === "personal";
+  const ratings = await Promise.all(read.page.map(async (item) => (own ? item.rating : (await personalRatingRow(ctx, userId, item.openalexId))?.rating)));
+  const inCollection = !own && collectionId ? await Promise.all(read.page.map(async (item) => {
+    const [raters, place] = await Promise.all([collectionRaters(ctx, collectionId, item.openalexId, userId, RATERS_SHOWN), placeOf(ctx, collectionId, item._id)]);
+    const mine = raters.find((rater) => rater.you)?.rating;
+    return { ...(mine === undefined ? {} : { mine }), raters: raters.map(shownRater), count: place?.ratingCount ?? raters.length };
+  })) : null;
+  return { ...read, page: read.page.map((item, at) => ({ ...item, ...(ratings[at] === undefined ? {} : { myRating: ratings[at] }), ...(inCollection ? { collection: inCollection[at] } : {}) })) };
+}
+
 export const browseLibrary = workspaceQuery({
   args: {
     sortBy: librarySortValidator,
@@ -281,7 +316,7 @@ export const browseLibrary = workspaceQuery({
     paginationOpts: paginationOptsValidator,
   },
   returns: libraryPageValidator,
-  handler: (ctx, { workspaceId }, { paginationOpts, ...view }) => readLibraryPage(ctx, workspaceId, view, paginationOpts),
+  handler: async (ctx, actor, { paginationOpts, ...view }) => withOwnRatings(ctx, actor, await readLibraryPage(ctx, actor.workspaceId, view, paginationOpts), view.collectionId),
 });
 
 export const searchLibrary = workspaceQuery({
@@ -293,7 +328,7 @@ export const searchLibrary = workspaceQuery({
     paginationOpts: paginationOptsValidator,
   },
   returns: libraryPageValidator,
-  handler: (ctx, { workspaceId }, { paginationOpts, sortBy = "savedAt", sortOrder = "desc", ...view }) => readLibraryPage(ctx, workspaceId, { ...view, sortBy, sortOrder }, paginationOpts),
+  handler: async (ctx, actor, { paginationOpts, sortBy = "savedAt", sortOrder = "desc", ...view }) => withOwnRatings(ctx, actor, await readLibraryPage(ctx, actor.workspaceId, { ...view, sortBy, sortOrder }, paginationOpts), view.collectionId),
 });
 
 /**
@@ -331,8 +366,7 @@ async function countLibraryView(ctx: QueryCtx, workspaceId: Id<"workspaces">, ar
   const searchText = args.searchText?.trim();
   if (searchText) {
     const found = await searchLibraryItems(ctx, workspaceId, searchText);
-    const matching = found.filter((item) => matchesLibraryFilters(item, args));
-    const count = (collection ? await inThatCollection(ctx, collection._id, matching) : matching).length;
+    const count = (collection ? await inThatCollection(ctx, collection._id, found) : found).filter((item) => matchesLibraryFilters(item, args)).length;
     return { count, capped: found.length === SEARCH_RESULTS_MAX };
   }
 
@@ -378,7 +412,7 @@ function viewOf(given: ObjectType<typeof narrowing>) {
     ...(given.yearFrom != null ? { yearFrom: given.yearFrom } : {}),
     ...(given.yearTo != null ? { yearTo: given.yearTo } : {}),
   };
-  if (given.rated === false && (view.minRating !== undefined || view.maxRating !== undefined)) throw createError("VALIDATION_ERROR", "A paper they haven't rated has no rating to filter by: give `rated` false or a rating range, not both.");
+  if (given.rated === false && (view.minRating !== undefined || view.maxRating !== undefined)) throw createError("VALIDATION_ERROR", "A paper without a rating has none to filter by: give `rated` false or a rating range, not both.");
   return view;
 }
 
@@ -390,10 +424,10 @@ async function inCollection(ctx: QueryCtx, libraryItemIds: Id<"libraryItems">[])
 export const papersAction = defineUserQuery({
   path: "library/queries:papers",
   description:
-    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, the rating they gave it, whether it's in any of their collections, the day they saved it, its paper ID and its library item ID. ` +
+    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, its rating (in their own library theirs, in an organization's its members' average), whether it's in any of their collections, the day they saved it, its paper ID and its library item ID. ` +
     "`total` is how many papers the whole library or one collection has; a narrowed list has none, and library/queries:countPapers counts it. " +
     "With nothing else given it lists the whole library, newest saved first. To narrow it: `search` is words to find in titles, abstracts and authors; `collectionId` is one of their collections (from library/collections:listCollections); " +
-    "`rated` is true for only the papers they rated and false for only those they haven't; `minRating` and `maxRating` are 0 to 5; `yearFrom` and `yearTo` are years published. " +
+    "`rated` is true for only the papers with a rating and false for only those without; `minRating` and `maxRating` are 0 to 5. Both go by the rating listed, which in an organization's library is its members' average. `yearFrom` and `yearTo` are years published. " +
     "`sort` is saved, rating, year, citations or title, and `ascending` turns its order round. `cursor` is `next` from the page before.",
   args: {
     ...narrowing,
@@ -453,6 +487,25 @@ export const getLibraryCount = workspaceQuery({
   args: {},
   returns: v.number(),
   handler: (ctx, { workspaceId }) => libraryCount(ctx, workspaceId),
+});
+
+const sinceValidator = v.object({ week: v.number(), month: v.number(), year: v.number() });
+
+/**
+ * How many papers Date saved's quick picks each keep, saved since the start of their first day,
+ * out of the whole library or collection: the count and bar beside each pick. The facet counts
+ * answer each, so the size of the library doesn't matter.
+ */
+export const getSavedSinceCounts = workspaceQuery({
+  args: { collectionId: v.optional(v.id("collections")), since: sinceValidator },
+  returns: v.object({ total: v.number(), kept: sinceValidator }),
+  handler: async (ctx, { workspaceId }, { collectionId, since }) => {
+    const collection = await ownCollection(ctx, workspaceId, collectionId);
+    if (collectionId && !collection) return { total: 0, kept: { week: 0, month: 0, year: 0 } };
+    const scope = collection?._id ?? workspaceId;
+    const [week, month, year] = await Promise.all([since.week, since.month, since.year].map((lower) => countInRange(ctx, scope, "savedAt", { lower })));
+    return { total: collection ? collection.itemCount : await libraryCount(ctx, workspaceId), kept: { week, month, year } };
+  },
 });
 
 export const savedPaperAction = defineUserQuery({

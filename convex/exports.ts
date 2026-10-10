@@ -12,7 +12,7 @@ import { expandShortcuts, shortcutNames } from "../lib/query-shortcuts";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
 import { readLibraryPage } from "./library/queries";
 import { shortcutExpansions } from "./research/records";
-import { isInWorkspace, workspaceOf } from "./workspaces/actor";
+
 import { workspaceMutation } from "./lib/userActions";
 import { screeningExportFiles, screeningItems } from "../lib/screening/export";
 import { readScreeningProgressCounts } from "./screening/progress";
@@ -47,7 +47,7 @@ export const start = workspaceMutation({
     if (!/^[0-9a-f]{64}$/.test(args.digest)) throw createError("VALIDATION_ERROR", "An export needs a SHA-256 digest.");
     const expiresAt = Date.now() + EXPORT_LINK_MS;
     const job = args.source.kind === "screening" ? await ctx.db.get("screeningJobs", args.source.jobId) : null;
-    if (args.source.kind === "screening" && (!job || !(await isInWorkspace(ctx, job, workspaceId)))) throw createError("NOT_FOUND", "Screening job not found");
+    if (args.source.kind === "screening" && (!job || !(job.workspaceId === workspaceId))) throw createError("NOT_FOUND", "Screening job not found");
     const sourceRevision = job ? await screeningRevision(ctx, job) : undefined;
     const id = await ctx.db.insert("exports", { ...args, sourceRevision, userId, workspaceId, part: 1, cursor: null, serving: false, failed: false, expiresAt });
     await ctx.scheduler.runAfter(EXPORT_LINK_MS, internal.exports.expire, { id });
@@ -93,7 +93,7 @@ export const claim = internalMutation({
     const expiresAt = Date.now() + PART_SERVE_MS;
     await ctx.db.patch("exports", row._id, { serving: true, expiresAt });
     await ctx.scheduler.runAfter(PART_SERVE_MS, internal.exports.expire, { id: row._id });
-    return { id: row._id, userId: row.userId, workspaceId: await workspaceOf(ctx, row), format: row.format, source: row.source, sourceRevision: row.sourceRevision, cursor: row.cursor };
+    return { id: row._id, userId: row.userId, workspaceId: row.workspaceId, format: row.format, source: row.source, sourceRevision: row.sourceRevision, cursor: row.cursor };
   },
 });
 
@@ -151,7 +151,7 @@ export const page = internalQuery({
     }
     if (source.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", source.jobId);
-      if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("NOT_FOUND", "Screening job not found");
+      if (!job || !(job.workspaceId === workspaceId)) throw createError("NOT_FOUND", "Screening job not found");
       await screeningRevision(ctx, job, sourceRevision);
       return write(await readScreeningResultsPage(ctx, job, { cursor, numItems: EXPORT_PAGE_SIZE }), screeningItems(job.questions, { ...job, revision: sourceRevision })[format]);
     }
@@ -193,7 +193,7 @@ export const screeningJob = internalQuery({
   })),
   handler: async (ctx, { workspaceId, jobId }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
+    if (!job || !(job.workspaceId === workspaceId)) return null;
     const { status, questions, scoringConfig, totalPapers, createdAt, completedAt } = job;
     return { _id: jobId, revision: await screeningRevision(ctx, job), set: job.set, snapshot: job.snapshot, serverEffort: job.serverEffort, first: job.first, last: job.last, status, questions, scoringConfig, totalPapers, qualifiedPapers: (await readScreeningProgressCounts(ctx, job)).qualifiedCount, createdAt, completedAt };
   },

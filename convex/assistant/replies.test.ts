@@ -20,6 +20,8 @@ import { assistant } from "./agent";
 import { people } from "./assistant.test-support";
 import { JOBS_DOCKED } from "./validators";
 import { erroringOnAbortDoStream, finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
+import { accountOf } from "../billing/billing.test-support";
 
 const { mockDoStream, modelIdsSeen, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), modelIdsSeen: [] as unknown[], fetchMock: vi.fn() }));
 vi.stubGlobal("fetch", fetchMock);
@@ -207,7 +209,7 @@ describe("assistant replies", () => {
     const enough = ASSISTANT_REPLIES_AT_ONCE * estimateCredits({ input: 1_000, output: 2_000 }, CALL_TOKENS.chatRequest);
     await t.run(async (ctx) => {
       fakeAutumn.setBalance(ada, { free: enough });
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      const account = await accountOf(ctx, ada);
       await ctx.db.patch("billingAccounts", account!._id, { balance: enough });
     });
     const others = await Promise.all(Array.from({ length: ASSISTANT_REPLIES_AT_ONCE }, (_, index) => asAda.mutation(api.assistant.threads.create, { title: `Chat ${index + 2}` })));
@@ -219,7 +221,7 @@ describe("assistant replies", () => {
     await t.run(async (ctx) => {
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
       await ctx.scheduler.cancel(scheduledId);
-      await ctx.db.patch("assistantThreads", dead, { reply: { attemptId: "dead", senderId: ada, order: 0, startedAt: 1, scheduledId } });
+      await ctx.db.patch("assistantThreads", dead, { reply: { attemptId: "dead", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", dead))!.workspaceId, order: 0, startedAt: 1, scheduledId } });
     });
     for (const id of writing) await asAda.mutation(api.assistant.replies.send, { threadId: id, text: "Go" });
     await expect(asAda.mutation(api.assistant.replies.send, { threadId: others.at(-1)!, text: "Go" })).rejects.toThrow(new RegExp(`already writing ${ASSISTANT_REPLIES_AT_ONCE} replies`));
@@ -237,7 +239,7 @@ describe("assistant replies", () => {
     const t = convexTest(schema);
     const { asAda, ada, threadId } = await sharedChat(t);
     await t.run(async (ctx) => {
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      const account = await accountOf(ctx, ada);
       await ctx.db.patch("billingAccounts", account!._id, { limits: { assistant_replies: 1 } });
     });
     const other = await asAda.mutation(api.assistant.threads.create, { title: "Chat 2" });
@@ -400,7 +402,7 @@ describe("assistant replies", () => {
       const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: "Hi", skipEmbeddings: true });
       await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, promptMessageId: messageId, message: { role: "assistant", content: "" }, metadata: { status: "pending" }, skipEmbeddings: true });
       const waiting = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "waiting", senderId: ada, order: message.order, startedAt: Date.now() - 6 * 60 * 1000, scheduledId: waiting } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "waiting", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: message.order, startedAt: Date.now() - 6 * 60 * 1000, scheduledId: waiting } });
       return waiting;
     });
     const newest = async () => (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page[0];
@@ -415,13 +417,13 @@ describe("assistant replies", () => {
     // Only a running search in this exchange changes the gesture. A stale tool from an older exchange does not.
     const order = (await chat(t, threadId))!.reply!.order;
     const step = await t.run(async (ctx) => {
-      const fields = { threadId, userId: ada, toolCallId: "search", path: "research/papers:search", input: "{}", status: "running" as const, startedAt: 1 };
+      const fields = { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, userId: ada, toolCallId: "search", path: "research/papers:search", input: "{}", status: "running" as const, startedAt: 1 };
       await ctx.db.insert("assistantSteps", { ...fields, order: order - 1 });
       return ctx.db.insert("assistantSteps", { ...fields, order });
     });
     expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "searching", order });
     // A later non-search tool can run alongside the search without hiding it.
-    await t.run(async (ctx) => ctx.db.insert("assistantSteps", { threadId, order, userId: ada, toolCallId: "collection", path: "library/collections:create", input: "{}", status: "running", startedAt: 2 }));
+    await t.run(async (ctx) => ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, toolCallId: "collection", path: "library/collections:create", input: "{}", status: "running", startedAt: 2 }));
     expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "searching", order });
     await t.run(async (ctx) => ctx.db.patch("assistantSteps", step, { status: "done" }));
     expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "thinking", order });
@@ -468,7 +470,7 @@ describe("assistant replies", () => {
       const thread = (await ctx.db.get("assistantThreads", threadId))!;
       const { message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: "Hi", skipEmbeddings: true });
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "early-failure", senderId: ada, order: message.order, startedAt: 1, scheduledId } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "early-failure", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: message.order, startedAt: 1, scheduledId } });
       return { scheduledId, order: message.order };
     });
     expect((await asAda.query(api.assistant.replies.live, { threadId }))!.activity).toEqual({ phase: "thinking", order });
@@ -486,7 +488,7 @@ describe("assistant replies", () => {
       const thread = (await ctx.db.get("assistantThreads", threadId))!;
       const { messageId, message } = await assistant.saveMessage(ctx, { threadId: thread.agentThreadId, userId: ada, prompt: "Hi", skipEmbeddings: true });
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "early", senderId: ada, order: message.order, startedAt: Date.now(), scheduledId, stop: true } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "early", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: message.order, startedAt: Date.now(), scheduledId, stop: true } });
       return { agentThreadId: thread.agentThreadId, promptMessageId: messageId };
     });
 
@@ -649,15 +651,17 @@ describe("assistant replies", () => {
     await expect(asAda.query(api.assistant.replies.live, { threadId })).rejects.toThrow(/disabled/);
   });
 
-  it("link a query the reply looked up to its results, with its filters, as a new search, and say how many papers it matched", async () => {
+  it("link what the reply looked up to its results, by a query or by filters alone, as a new search, and say how many papers it matched", async () => {
     const t = convexTest(schema);
     const { asAda, ada, threadId } = await sharedChat(t);
     mockDoStream.mockImplementation(finishingDoStream(["Found some"]));
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Look these up" });
     await ended(t, threadId);
     const order = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.at(-1)!.order;
+    // The steps ran in 2025: a year a lookup names is checked against the year it ran.
+    const ran = Date.UTC(2025, 5, 1);
     await t.run(async (ctx) => {
-      const step = { threadId, order, userId: ada, status: "running" as const, startedAt: 1 };
+      const step = { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, status: "running" as const, startedAt: ran };
       // A page of a search, and a count by year: each matched more papers than it returned.
       const search = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "search", path: "research/papers:search", input: JSON.stringify({ query: '"machine learning"', minCitations: 11, fromYear: 2020, toYear: 2024, page: 2 }), subject: '"machine learning"' });
       await endStep(ctx, search, { total: 260, page: 2, pages: 13, papers: [] });
@@ -667,16 +671,24 @@ describe("assistant replies", () => {
       const rated = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "rated", path: "research/papers:search", input: JSON.stringify({ query: "phonics", ratedOnly: true }), subject: "phonics" });
       await endStep(ctx, rated, { total: 3, totalIgnoresRatings: true, page: 1, pages: 1, papers: [] });
       await ctx.db.insert("assistantSteps", { ...step, status: "done", endedAt: 1, toolCallId: "collection", path: "library/collections:create", input: JSON.stringify({ name: "Trials" }), subject: "Trials" });
+      // On a filter alone, with no query: nothing names it, and it still leads to its results.
+      const related = await ctx.db.insert("assistantSteps", { ...step, toolCallId: "related", path: "research/papers:search", input: JSON.stringify({ relatedTo: "W3120515101" }) });
+      await endStep(ctx, related, { total: 9, page: 1, pages: 1, papers: [] });
+      // Years left open at one end: its link ends at the year the lookup ran, not at this one.
+      await ctx.db.insert("assistantSteps", { ...step, status: "done", endedAt: ran, toolCallId: "since", path: "research/papers:search", input: JSON.stringify({ query: "coaching", fromYear: 2024 }), subject: "coaching" });
     });
 
-    const steps = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
+    const all = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.filter((item) => item.role === "step");
+    expect(all.find((step) => step.subject === undefined)).toMatchObject({ href: "/results?rel=W3120515101", count: 9 });
+    const steps = all.filter((step) => step.subject !== undefined);
     expect(Object.fromEntries(steps.map((step) => [step.subject, "href" in step ? step.href : null]))).toEqual({
       '"machine learning"': "/results?q=%22machine+learning%22&yf=2020&yt=2024&mincite=11",
       tutoring: "/results?q=tutoring",
       phonics: "/results?q=phonics&rated=true",
+      coaching: "/results?q=coaching&yf=2024&yt=2025",
       Trials: null,
     });
-    expect(Object.fromEntries(steps.map((step) => [step.subject, step.count ?? null]))).toEqual({ '"machine learning"': 260, tutoring: 1840, phonics: null, Trials: null });
+    expect(Object.fromEntries(steps.map((step) => [step.subject, step.count ?? null]))).toEqual({ '"machine learning"': 260, tutoring: 1840, phonics: null, coaching: null, Trials: null });
   });
 });
 
@@ -705,7 +717,7 @@ describe("a job a reply started", () => {
     const t = convexTest(schema);
     const { asAda, ada, threadId } = await sharedChat(t);
     const jobId = await t.run(async (ctx) => {
-      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
       return insertJob(ctx, {
         userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
         questions: [{ key: "q1", question: "Is this a trial?" }],
@@ -731,7 +743,7 @@ describe("a job a reply started", () => {
 
     // A job that ends after the Stop is told as usual, with its readout.
     const later = await t.run(async (ctx) => {
-      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen-2", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "screen-2", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
       return insertJob(ctx, {
         userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
         questions: [{ key: "q1", question: "Is this a trial?" }],
@@ -751,7 +763,7 @@ describe("a job a reply started", () => {
     const { asAda, asBen, ada, threadId } = await sharedChat(t);
     // The job is written while the step that starts it is still running: its card is read from the job's row until the step ends.
     const { jobId, stepId } = await t.run(async (ctx) => {
-      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
       const jobId = await insertJob(ctx, {
         userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
         questions: [{ key: "q1", question: "Is this a trial?" }],
@@ -781,8 +793,8 @@ describe("a job a reply started", () => {
 
     // An extraction paused from its page waits for the person: it leaves the dock until it carries on.
     const { extraction, extractStep } = await t.run(async (ctx) => {
-      const extractStep = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "extract", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 2, endedAt: 2 });
-      const extraction = await ctx.db.insert("extractionJobs", { userId: ada, name: "Sample sizes", status: "extracting", totalPapers: 4, chatStep: extractStep, createdAt: 2, updatedAt: 2 });
+      const extractStep = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "extract", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 2, endedAt: 2 });
+      const extraction = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, ada)), name: "Sample sizes", status: "extracting", totalPapers: 4, chatStep: extractStep, createdAt: 2, updatedAt: 2 });
       return { extraction, extractStep };
     });
     expect(await running()).toEqual([{ stepId: extractStep, kind: "extraction" }, { stepId, kind: "screening" }]);
@@ -797,8 +809,8 @@ describe("a job a reply started", () => {
     });
     await expect(
       t.run(async (ctx) => {
-        const more = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "one-more", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 3, endedAt: 3 });
-        await ctx.db.insert("extractionJobs", { userId: ada, name: "One more", status: "pending", totalPapers: 1, chatStep: more, createdAt: 3, updatedAt: 3 });
+        const more = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "one-more", path: "extraction/start:extract", input: "{}", status: "done", startedAt: 3, endedAt: 3 });
+        await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, ada)), name: "One more", status: "pending", totalPapers: 1, chatStep: more, createdAt: 3, updatedAt: 3 });
       }),
     ).rejects.toThrow(`already has ${JOBS_DOCKED} jobs running`);
     expect(await row()).toMatchObject({ moreJobs: JOBS_DOCKED - 2 });
@@ -812,7 +824,7 @@ describe("a job a reply started", () => {
     const t = convexTest(schema);
     const { ada, threadId } = await sharedChat(t);
     const { jobId, stepId } = await t.run(async (ctx) => {
-      const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "done", startedAt: 1, endedAt: 1 });
       const jobId = await insertJob(ctx, {
         userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
         questions: [{ key: "q1", question: "Is this a trial?" }],
@@ -820,7 +832,7 @@ describe("a job a reply started", () => {
         createdAt: 1, updatedAt: 1,
       });
       // The chat is busy, so the end waits.
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "busy", senderId: ada, order: 0, startedAt: 1, scheduledId: await ctx.scheduler.runAfter(60_000, internal.assistant.jobs.deliver, { threadId }), spent: 0 } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "busy", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, startedAt: 1, scheduledId: await ctx.scheduler.runAfter(60_000, internal.assistant.jobs.deliver, { threadId }), spent: 0 } });
       return { jobId, stepId };
     });
     await t.mutation(internal.screening.mutations.markScreeningJobCreditsExhausted, { jobId });
@@ -849,7 +861,7 @@ describe("a job a reply started", () => {
     // The step that started it, and the job, which keeps that step.
     const order = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.at(-1)!.order;
     const { stepId, jobId } = await t.run(async (ctx) => {
-      const stepId = await ctx.db.insert("assistantSteps", { threadId, order, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", credits: 23, status: "done", startedAt: 1, endedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", credits: 23, status: "done", startedAt: 1, endedAt: 1 });
       const jobId = await insertJob(ctx, {
         userId: ada, status: "processing", totalPapers: 2, chatStep: stepId, spendCap: 23,
         questions: [{ key: "q1", question: "Is this a trial?" }],

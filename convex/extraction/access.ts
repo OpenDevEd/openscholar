@@ -9,8 +9,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { noAccess, ok, unauthenticated } from "../lib/query_states";
-import { actorOnRecord as actorOnJob, type Actor } from "../workspaces/actor";
-import { isInWorkspace } from "../workspaces/personal";
+import { actorIn, type Actor } from "../workspaces/actor";
 
 export type OwnedJobResolution =
   | { status: "ok"; user: Doc<"users">; job: Doc<"extractionJobs"> }
@@ -25,7 +24,7 @@ export async function resolveOwnedJob(
   if (!user) return unauthenticated();
 
   const job = await ctx.db.get("extractionJobs", jobId);
-  if (!job || !(await actorOnJob(ctx, user, job))) return noAccess();
+  if (!job || !(await actorIn(ctx, user, job.workspaceId))) return noAccess();
 
   return ok({ user, job });
 }
@@ -33,7 +32,7 @@ export async function resolveOwnedJob(
 /** The job when it's in `workspaceId`, the workspace a user action runs in; else null. */
 export async function ownJob(ctx: QueryCtx, workspaceId: Id<"workspaces">, jobId: Id<"extractionJobs">) {
   const job = await ctx.db.get("extractionJobs", jobId);
-  return job && (await isInWorkspace(ctx, job, workspaceId)) ? job : null;
+  return job && (job.workspaceId === workspaceId) ? job : null;
 }
 
 export type OwnedPaperResolution =
@@ -57,7 +56,7 @@ export async function resolveOwnedPaper(
   if (!paper) return noAccess();
 
   const job = await ctx.db.get("extractionJobs", paper.jobId);
-  if (!job || !(await actorOnJob(ctx, user, job))) return noAccess();
+  if (!job || !(await actorIn(ctx, user, job.workspaceId))) return noAccess();
 
   return ok({ user, job, paper });
 }
@@ -72,7 +71,7 @@ export async function assertJobAccess(
   jobId: Id<"extractionJobs">,
 ): Promise<{ job: Doc<"extractionJobs">; actor: Actor }> {
   const job = await ctx.db.get("extractionJobs", jobId);
-  const actor = job && (await actorOnJob(ctx, user, job));
+  const actor = job && (await actorIn(ctx, user, job.workspaceId));
   if (!job || !actor) throw createError("NOT_FOUND", "Job not found");
   return { job, actor };
 }

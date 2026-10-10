@@ -9,6 +9,7 @@ import { register as registerAgentComponent } from "@convex-dev/agent/test";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
 
 /**
  * Safety net SN-1 (P3 plan): pin the PUBLIC `api.extraction.{mutations,queries}`
@@ -247,7 +248,7 @@ describe("duplicateJob", () => {
     const sourceJobId = await t.run(async (ctx) => {
       const now = Date.now();
       const jobId = await ctx.db.insert("extractionJobs", {
-        userId,
+        ...(await madeBy(ctx, userId)),
         sourceType: "history" as const,
         status: "completed" as const,
         totalPapers: 1,
@@ -336,7 +337,7 @@ describe("searches saved before exact OpenAlex requests", () => {
     const jobId = await t.run(async (ctx) => {
       const now = Date.now();
       const jobId = await ctx.db.insert("extractionJobs", {
-        userId,
+        ...(await madeBy(ctx, userId)),
         sourceType: "history" as const,
         status: "completed" as const,
         name: "Old",

@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { personalWorkspaceOf } from "../workspaces/personal";
+import { madeBy } from "../workspaces/actor.test-support";
 
 it("migrates retained authors without crossing owners or guessing, and guards rollback", async () => {
   const t = convexTest(schema);
@@ -11,7 +12,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
     const owner = await person("owner"), foreign = await person("foreign");
     const job = async (userId: typeof owner) => {
       const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 0, createdAt: 1 });
-      return ctx.db.insert("screeningJobs", { userId, screeningId, status: "completed", totalPapers: 4, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
+      return ctx.db.insert("screeningJobs", { ...(await madeBy(ctx, userId)), screeningId, status: "completed", totalPapers: 4, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
     };
     const ownedJob = await job(owner), foreignJob = await job(foreign);
     const result = (jobId: typeof ownedJob, id: string, authors: string[]) => ctx.db.insert("screeningResults", { jobId, openalexId: id, title: id, authors, venue: "Retained journal", citedByCount: 0, status: "completed", createdAt: 1 });
@@ -19,7 +20,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
     await result(foreignJob, "https://openalex.org/W2", ["Smith", "John"]);
     await result(ownedJob, "https://openalex.org/W3", ["Smith", "John"]);
     await result(ownedJob, "https://openalex.org/W3", ["Smith, John"]);
-    const saved = (openalexId: string, authors?: string, paperData?: string) => ctx.db.insert("libraryItems", { userId: owner, openalexId, title: openalexId, authorsUnparsed: authors, paperData, rating: 4, searchableText: `${openalexId} ${authors ?? ""}`, savedAt: 10, updatedAt: 20 });
+    const saved = async (openalexId: string, authors?: string, paperData?: string) => ctx.db.insert("libraryItems", { ...(await madeBy(ctx, owner)), openalexId, title: openalexId, authorsUnparsed: authors, paperData, rating: 4, searchableText: `${openalexId} ${authors ?? ""}`, savedAt: 10, updatedAt: 20 });
     const retained = await saved("W1", "Smith, Jr., John, ليلى");
     const foreignOnly = await saved("W2", "Smith, John");
     const ambiguous = await saved("W3", "Smith, John");
@@ -27,7 +28,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
     await saved("W5");
     const longAuthors = Array.from({ length: 101 }, (_, i) => `Author ${i}`);
     const long = await saved("W6", longAuthors.join(", "), JSON.stringify({ authorships: longAuthors.map(display_name => ({ author: { display_name } })) }));
-    const removal = await ctx.db.insert("libraryRemovals", { userId: owner, itemId: retained, item: { openalexId: "W4", title: "Removed", authorsUnparsed: "Doe, Jane", paperData: JSON.stringify({ authorships: [{ author: { display_name: "Doe, Jane" } }] }), searchableText: "Removed Doe, Jane", savedAt: 1, updatedAt: 2 }, expiresAt: Date.now() + 100_000 });
+    const removal = await ctx.db.insert("libraryRemovals", { workspaceId: await personalWorkspaceOf(ctx, owner), itemId: retained, item: { createdBy: owner, openalexId: "W4", title: "Removed", authorsUnparsed: "Doe, Jane", paperData: JSON.stringify({ authorships: [{ author: { display_name: "Doe, Jane" } }] }), searchableText: "Removed Doe, Jane", savedAt: 1, updatedAt: 2 }, expiresAt: Date.now() + 100_000 });
     return { retained, foreignOnly, ambiguous, raw, removal, long, longAuthors };
   });
   const migrate = async () => {

@@ -392,7 +392,7 @@ describe("account research records", () => {
   });
 
   it("reads the person's ratings of the papers asked for, and no one else's", async () => {
-    const { alice, bob } = await setup();
+    const { alice, bob, t } = await setup();
     const rate = (as: typeof alice, accountId: string, paperId: string, rating: number) => as.mutation(api.research.records.change, { accountId, requestId: `${accountId}-${paperId}`, command: { kind: "rating", paperId, rating } });
     await rate(alice, "alice", "W1", 4);
     await rate(alice, "alice", "W2", 0);
@@ -402,6 +402,9 @@ describe("account research records", () => {
     expect((await alice.query(api.research.records.ratingsOf, { accountId: "alice", paperIds: ["W2", "W9", "W1"] })).page).toEqual([{ paperId: "W2", rating: 0 }, { paperId: "W1", rating: 4 }]);
     expect((await bob.query(api.research.records.ratingsOf, { accountId: "bob", paperIds: ["W1", "W3"] })).page).toEqual([{ paperId: "W1", rating: 1 }]);
     await expect(alice.query(api.research.records.ratingsOf, { accountId: "alice", paperIds: Array.from({ length: 201 }, (_, i) => `W${i}`) })).rejects.toThrow("200 papers at a time");
+    // Each is kept in the ratings table too, as its person's own (#655).
+    const kept = await t.run(async (ctx) => (await ctx.db.query("ratings").collect()).map(({ paperId, rating, collectionId }) => `${paperId}:${rating}:${collectionId ?? "own"}`));
+    expect(kept.sort()).toEqual(["https://openalex.org/W1:1:own", "https://openalex.org/W1:4:own", "https://openalex.org/W2:0:own", "https://openalex.org/W3:5:own"]);
   });
 
   it("lists, finds, counts, reads by name and clears the person's shortcuts, and no one else's", async () => {
@@ -448,6 +451,8 @@ describe("account research records", () => {
       await t.finishAllScheduledFunctions(vi.runAllTimers);
       expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page.map(row => row.id)).toEqual(["new"]);
       expect(await alice.query(api.research.records.countSearches, { accountId: "alice" })).toBe(1);
+      // Your own workspace's searches are all yours, so they name no one.
+      expect((await alice.query(api.research.records.listedSearches, { accountId: "alice", sort: "recent", paginationOpts })).page.map(row => row.by)).toEqual([undefined]);
     } finally {
       vi.useRealTimers();
     }
@@ -460,7 +465,7 @@ describe("account research records", () => {
     const stored = (i: number) => ({ workspaceId, createdBy: ids.alice, localId: `old-${i}`, revision: 1, data: { ...record, id: `old-${i}`, screeningResponses: [] } });
     for (let start = 0; start < 1_200; start += 300) await t.run(async ctx => { for (let i = start; i < start + 300; i++) await ctx.db.insert("searches", stored(i)); });
     const change = (requestId: string, command: ResearchCommand) => alice.mutation(api.research.records.change, { accountId: "alice", requestId, command });
-    const row = () => t.run(ctx => ctx.db.query("recordCounts").withIndex("by_workspace_and_table", q => q.eq("workspaceId", workspaceId).eq("table", "searches")).unique());
+    const row = () => t.run(ctx => ctx.db.query("recordCounts").withIndex("by_workspace_and_table_and_createdBy", q => q.eq("workspaceId", workspaceId).eq("table", "searches").eq("createdBy", undefined)).unique());
 
     vi.useFakeTimers();
     try {
@@ -543,7 +548,7 @@ describe("undoing a change to research records (#342)", () => {
     expect((await edit({ kind: "patch", fields: { minCitations: record.minCitations }, clear: [] })).undo).toBeUndefined();
     // A change that also touches what a restore leaves alone would only be half undone, so it has none either.
     expect((await edit({ kind: "patch", fields: { minCitations: 50, screeningQuestions: [{ question: "Children?" }] }, clear: [] })).undo).toBeUndefined();
-    expect((await change({ kind: "rating", paperId: "W1", rating: null })).undo).toBeUndefined();
+    expect((await change({ kind: "rating", paperId: "W404", rating: null })).undo).toBeUndefined();
     expect((await change({ kind: "shortcut", shorthand: "none", value: null })).undo).toBeUndefined();
     expect((await change({ kind: "deleteSearch", id: record.id })).undo).toBeUndefined();
   });
@@ -748,6 +753,10 @@ describe("research records in workspaces (#650)", () => {
       await change(as, accountId, made(`${accountId}-search`));
       await change(as, accountId, bookmark(`${accountId}-bookmark`));
     }
+    // Each names who ran it, and which is the person reading.
+    const listed = await alice.query(api.research.records.listedSearches, { accountId: "alice", workspaceId: lab, sort: "oldest", paginationOpts });
+    expect(listed.page.map(row => [row.id, row.by?.you])).toEqual([["alice-search", true], ["bob-search", false]]);
+    expect(listed.page[1].by?.name).toBeTruthy();
     // A member can't take away what an admin made, by either way of deleting a search.
     await expect(change(alice, "alice", { kind: "deleteSearch", id: "bob-search" })).rejects.toThrow(/admin/);
     await expect(alice.mutation(api.research.searches.deleteSearch, { workspaceId: lab, id: "bob-search" })).rejects.toThrow(/admin/);

@@ -197,7 +197,8 @@
       "fr": "フランス語",
       "hi": "ヒンディー語",
       "ja": "日本語"
-    }
+    },
+    "you": "あなた"
   },
   "home": {
     "tagline": "数百万の学術論文と研究記事を検索",
@@ -233,7 +234,6 @@
   },
   "pricing": {
     "chooseYourPlan": "プランを選択",
-    "subtitle": "透明な料金で無料からエンタープライズまで",
     "perMonth": "/月",
     "freePrice": "無料",
     "enterprisePlanName": "エンタープライズ",
@@ -435,10 +435,6 @@
       "cancelled": "完了する前にキャンセルされました。"
     }
   },
-  "sidebar": {
-    "expandSidebar": "サイドバーを展開（Ctrl+B）",
-    "collapseSidebar": "サイドバーを折りたたむ（Ctrl+B）"
-  },
   "downloads": {
     "downloadAll": "すべてダウンロード",
     "downloadEssentialJSON": "基本情報をJSONでダウンロード",
@@ -578,12 +574,6 @@
       "summary": "{total} 件中 {completed} 件の質問が完了",
       "failedCount": "{count, plural, one {# 件失敗} other {# 件失敗}}",
       "retryingCount": "{count, plural, one {# 件再試行中} other {# 件再試行中}}"
-    },
-    "errorHistory": {
-      "trigger": "エラー履歴 · {count, plural, one {# 回の試行} other {# 回の試行}}",
-      "triggerLabel": "エラー履歴を表示 ({count, plural, one {# 回の試行} other {# 回の試行}})",
-      "attempt": "試行 {n}",
-      "loadMore": "以前の試行を表示"
     },
     "mixedSuccess": {
       "title": "一部成功で完了",
@@ -919,12 +909,8 @@
     "enableToggleToCustomize": "上のトグルを有効にして年範囲をカスタマイズ",
     "defaultAllYears": "デフォルトでは、すべての年が検索に含まれます",
     "yearRangeLabel": "年範囲：",
-    "nStars": "{count, plural, one {# つ星} other {# つ星}}",
-    "zeroStars": "0つ星",
     "onlyShowRated": "評価済み論文のみ表示",
     "hideUnrated": "まだ評価していない論文を非表示",
-    "showingRange": "{range} を表示",
-    "filterActive": "フィルター有効",
     "searchCountriesPlaceholder": "国または地域を検索...",
     "filteringByCountries": "合計 {count} か国でフィルター中",
     "regionsGroup": "地域",
@@ -1165,9 +1151,6 @@
     "bookmarkNotFound": "ブックマーク「{keyword}」が見つかりません"
   },
   "accessibility": {
-    "toggleTheme": "テーマを切り替え",
-    "switchToLightMode": "ライトモードに切り替え",
-    "switchToDarkMode": "ダークモードに切り替え",
     "closeDialog": "閉じる",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "ページ番号",
@@ -1436,13 +1419,13 @@
     "removeFromLibrary": "ライブラリから削除",
     "addToCollection": "コレクションに追加",
     "newCollection": "新しいコレクション",
-    "createAndAdd": "作成して追加",
     "removed": "ライブラリから削除しました",
     "undo": "元に戻す",
     "saveError": "論文を保存できませんでした",
     "removeError": "論文を削除できませんでした",
     "restoreError": "論文を元に戻せませんでした",
-    "collectionError": "コレクションを変更できませんでした"
+    "collectionError": "コレクションを変更できませんでした",
+    "newCollectionWithPaper": "この論文で新しいコレクション"
   },
   "rating": {
     "noRating": "評価なし",
@@ -1668,7 +1651,7 @@
     "filterCollection": "コレクション",
     "allCollections": "すべてのコレクション",
     "manageCollections": "コレクションの管理",
-    "createCollection": "コレクションを作成",
+    "createCollection": "作成",
     "createCollectionDescription": "コレクションに名前を付けて論文を整理しましょう。",
     "collectionNamePlaceholder": "コレクション名",
     "createButton": "作成",
@@ -1694,7 +1677,23 @@
     "noCollectionsMatchSearch": "検索に一致するコレクションがありません",
     "emptyCollectionsTitle": "コレクションがありません",
     "emptyCollectionsDescription": "最初のコレクションを作成して、保存した論文をグループに整理しましょう。",
-    "newCollectionPlaceholder": "新しいコレクション名..."
+    "newCollectionHint": "名前を付け、公開範囲を確認して作成します。",
+    "collectionNameTaken": "同じ名前のコレクションがすでにあります",
+    "collectionNameTakenIn": "{workspace} には同じ名前のコレクションがすでにあります",
+    "whoSeesIt": "公開範囲",
+    "everyoneIn": "{workspace} の全員",
+    "everyMemberEdits": "メンバー全員が編集できます",
+    "onlyYou": "自分のみ",
+    "startWith": "最初に追加",
+    "startWithPaper": "この論文から始める",
+    "collectionsMeter": "コレクション",
+    "collectionsNoun": "コレクション",
+    "collectionsOf": "{count} / {limit}",
+    "collectionsCount": "{count, plural, other {# 件のコレクション}}",
+    "noCollectionLimit": "{plan} は上限なし",
+    "planAllowsCollections": "{plan} のコレクションは {limit, number} 件までです",
+    "nameTheCollection": "コレクションに名前を付けてください",
+    "newName": "{name} の新しい名前"
   },
   "sidebarLayout": {
     "expandFilters": "フィルターを展開 (Ctrl+Shift+F)",
@@ -1872,7 +1871,8 @@
     "screenPapers": "{count, plural, other {# 件}}をスクリーニング",
     "startFailed": "スクリーニングを開始できませんでした",
     "showAnswers": "{title} の回答を表示",
-    "hideAnswers": "{title} の回答を隠す"
+    "hideAnswers": "{title} の回答を隠す",
+    "yesOrNo": "はい／いいえ"
   },
   "connectionsPage": {
     "connectedApps": "接続済みアプリ",
@@ -3084,7 +3084,6 @@
   "settingsShell": {
     "groups": {
       "account": "アカウント",
-      "research": "リサーチ",
       "admin": "管理"
     },
     "items": {
@@ -3171,7 +3170,6 @@
       "title": "管理者",
       "admins": "人の管理者",
       "search": "名前またはメールで検索",
-      "you": "あなた",
       "invited": "招待済み",
       "notDelivered": "招待が届きませんでした",
       "remove": "削除",
@@ -3257,7 +3255,9 @@
       "high": "高",
       "xhigh": "最高",
       "max": "最大"
-    }
+    },
+    "organizationPresetAdmin": "ここで選んだプリセットがメンバー全員に使われます。",
+    "organizationPresetMember": "メンバー全員が使うプリセットは管理者が選びます。"
   },
   "modelPicker": {
     "vendors": "提供元",
@@ -3381,7 +3381,6 @@
       "failed": "返信を再開できませんでした"
     },
     "addPeople": "ユーザーまたは組織を追加",
-    "you": "あなた",
     "owner": "所有者",
     "canChat": "チャット可能",
     "canView": "閲覧可能",
@@ -3801,6 +3800,109 @@
         "did": "論文の PDF を読みました",
         "where": "OpenAlex",
         "ask": "論文の PDF を読む"
+      },
+      "workspaces": {
+        "doing": "ワークスペースを確認しています",
+        "did": "ワークスペースを確認しました",
+        "where": "ワークスペース"
+      },
+      "orgMembers": {
+        "doing": "組織のメンバーを確認しています",
+        "did": "組織のメンバーを確認しました",
+        "where": "メンバー"
+      },
+      "myInvites": {
+        "doing": "招待を確認しています",
+        "did": "招待を確認しました",
+        "where": "ワークスペース"
+      },
+      "newOrganization": {
+        "doing": "組織を作成しています",
+        "did": "組織を作成しました",
+        "where": "ワークスペース",
+        "ask": "組織を作成"
+      },
+      "inviteMembers": {
+        "doing": "メンバーを招待しています",
+        "did": "メンバーを招待しました",
+        "where": "メンバー",
+        "ask": "メンバーを招待"
+      },
+      "revokeInvite": {
+        "doing": "招待を取り消しています",
+        "did": "招待を取り消しました",
+        "where": "メンバー",
+        "ask": "招待を取り消す"
+      },
+      "declineInvite": {
+        "doing": "招待を辞退しています",
+        "did": "招待を辞退しました",
+        "where": "ワークスペース",
+        "ask": "招待を辞退"
+      },
+      "memberRole": {
+        "doing": "メンバーの役割を変更しています",
+        "did": "メンバーの役割を変更しました",
+        "where": "メンバー",
+        "ask": "メンバーの役割を変更"
+      },
+      "removeMember": {
+        "doing": "メンバーを削除しています",
+        "did": "メンバーを削除しました",
+        "where": "メンバー",
+        "ask": "メンバーを削除"
+      },
+      "leaveOrganization": {
+        "doing": "組織から退出しています",
+        "did": "組織から退出しました",
+        "where": "ワークスペース",
+        "ask": "組織から退出"
+      },
+      "renameOrganization": {
+        "doing": "組織の名前を変更しています",
+        "did": "組織の名前を変更しました",
+        "where": "ワークスペース設定",
+        "ask": "組織の名前を変更"
+      },
+      "deleteOrganization": {
+        "doing": "組織を削除しています",
+        "did": "組織を削除しました",
+        "where": "ワークスペース設定",
+        "ask": "組織を削除"
+      },
+      "workspaceSummary": {
+        "doing": "ワークスペースの内容を数えています",
+        "did": "ワークスペースの内容を数えました",
+        "where": "ワークスペース設定"
+      },
+      "workspaceColour": {
+        "doing": "組織の色を変更しています",
+        "did": "組織の色を変更しました",
+        "where": "ワークスペース設定",
+        "ask": "組織の色を変更"
+      },
+      "resendInvite": {
+        "doing": "招待を再送しています",
+        "did": "招待を再送しました",
+        "where": "メンバー",
+        "ask": "招待を再送"
+      },
+      "workspacePreset": {
+        "doing": "組織の AI プリセットを変更しています",
+        "did": "組織の AI プリセットを変更しました",
+        "where": "AI 設定",
+        "ask": "組織の AI プリセットを変更"
+      },
+      "activity": {
+        "doing": "変更履歴を確認中",
+        "did": "変更履歴を確認しました",
+        "where": "アクティビティ"
+      },
+      "memberCap": {
+        "doing": "メンバーのクレジット上限を変更しています",
+        "did": "メンバーのクレジット上限を変更しました",
+        "where": "プランとクレジット",
+        "ask": "メンバーのクレジット上限を変更"
       }
     },
     "asks": {
@@ -3856,7 +3958,8 @@
       "buy": "{price} で {credits, number} クレジットを追加",
       "plans": "プランを見る",
       "note": "アシスタントは使用前に引き続き確認します。",
-      "failed": "クレジットを追加できませんでした"
+      "failed": "クレジットを追加できませんでした",
+      "askAdmin": "{organization} にクレジットを追加できるのは管理者だけです。管理者に依頼してください。"
     },
     "allowance": {
       "any": "クレジット使用を許可中",
@@ -3958,5 +4061,188 @@
       "topic": "トピック",
       "chat": "チャット"
     }
+  },
+  "workspaces": {
+    "main": "メイン",
+    "screen": "スクリーニング",
+    "extract": "抽出",
+    "publish": "公開",
+    "explore": "探索",
+    "workspacesCard": "ワークスペース",
+    "account": "アカウント",
+    "close": "閉じる",
+    "switchFrom": "ワークスペース：{name}。ワークスペースを切り替え",
+    "runningLabel": "{label}、{what}、{total} 件中 {done} 件",
+    "doneOf": "{total} 件中 {done} 件",
+    "planFor": "{workspace} の {plan}",
+    "planAndCredits": "プランとクレジット",
+    "theme": "テーマ",
+    "light": "ライト",
+    "dark": "ダーク",
+    "auto": "自動",
+    "signOut": "サインアウト",
+    "personal": "個人",
+    "admin": "管理者",
+    "member": "メンバー",
+    "members": "{count, plural, other {メンバー # 人}}",
+    "switchTo": "切り替え先",
+    "otherWorkspaces": "ほかのワークスペース",
+    "from": "送信者",
+    "decline": "辞退",
+    "join": "参加",
+    "newOrganization": "新しい組織",
+    "workspaceSettings": "ワークスペース設定",
+    "invitationGone": "この招待は無効になりました。",
+    "couldntJoin": "組織に参加できませんでした",
+    "couldntDecline": "招待を辞退できませんでした",
+    "couldntCreate": "組織を作成できませんでした",
+    "newOrganizationShares": "メンバーはライブラリ、検索、スクリーニング、クレジットを共有します。",
+    "name": "名前",
+    "namePlaceholder": "Learning Lab",
+    "inviteMembers": "メンバーを招待",
+    "removeEmail": "{email} を削除",
+    "addAnother": "さらに追加",
+    "emailPlaceholder": "name@university.edu",
+    "emailToInvite": "招待するメールアドレス",
+    "membersHeading": "メンバー",
+    "seatsOf": "{plan}：{limit} 人中 {seats} 人",
+    "createOrganization": "組織を作成",
+    "invitationDeclined": "招待を辞退しました",
+    "goToSearch": "検索へ移動",
+    "youreIn": "{name} に参加しました",
+    "joined": "参加済み",
+    "open": "{name} を開く",
+    "invitedYou": "{name} さんから招待されました",
+    "joinName": "{name} に参加",
+    "planNamed": "{plan} プラン",
+    "asAdmin": "管理者として",
+    "asMember": "メンバーとして",
+    "pointShared": "組織のコレクションと検索",
+    "pointCredits": "組織のクレジットで実行する作業",
+    "pointOwn": "あなたのワークスペースはそのまま",
+    "invitationGoneTitle": "この招待は無効になりました",
+    "invitationGoneDetail": "送信者に新しい招待を依頼してください",
+    "settings": {
+      "general": "一般",
+      "collections": "コレクション",
+      "searches": "検索",
+      "screenings": "スクリーニング",
+      "extractions": "抽出",
+      "evidenceLibraries": "エビデンスライブラリ",
+      "changeLogo": "ロゴを変更",
+      "organizationName": "組織名",
+      "saveName": "名前を保存",
+      "rename": "組織の名前を変更",
+      "copyAddress": "{address} をコピー",
+      "colour": "色",
+      "inName": "{name} の内容",
+      "leaveOrDelete": "退出または削除",
+      "leaveName": "{name} から退出",
+      "leaveDetail": "ここでの作業は組織に残ります",
+      "makeAdminFirst": "先に別のメンバーを管理者にしてください",
+      "leave": "退出",
+      "deleteName": "{name} を削除",
+      "libraryIsLive": "{library} は公開中です。先に移動するか削除してください。",
+      "deleteDetail": "{count, number} 人のメンバー全員から削除されます",
+      "moveLibrariesFirst": "先にエビデンスライブラリを移動するか削除してください",
+      "delete": "削除",
+      "deleteConfirm": "コレクション、検索、スクリーニング、抽出も {count, number} 人のメンバー全員から削除されます。元に戻せません。",
+      "leaveConfirm": "管理者に再び招待されるまで、この組織の作業にアクセスできなくなります。",
+      "ofSeats": "/ {seats, number}",
+      "membersOnPlan": "{plan} のメンバー",
+      "invite": "招待",
+      "emailAddress": "メールアドレス",
+      "theirRole": "役割",
+      "freeUpTo": "無料の組織は招待を含めて最大 {count, number} 人です",
+      "membersLabel": "メンバー",
+      "joined": "{when}に参加",
+      "roleOf": "{name} の役割",
+      "removeName": "{name} を削除",
+      "invitations": "招待",
+      "invited": "{when}に招待",
+      "sentAgain": "{email} に招待を再送しました",
+      "resend": "再送",
+      "cancelInvitation": "{email} への招待を取り消す",
+      "removeConfirm": "{name} は {organization} にアクセスできなくなります。作業は組織に残ります。",
+      "remove": "削除",
+      "includedMembers": "{count, number} 人のメンバー",
+      "unlimitedCollections": "コレクション無制限",
+      "includedCollections": "{count, number} 件のコレクション",
+      "papersAtOnce": "同時に {count, number} 件の論文",
+      "anyPapersAJob": "ジョブあたりの論文数は無制限",
+      "papersAJob": "ジョブあたり最大 {count, number} 件の論文",
+      "sharedCredits": "共有クレジット",
+      "membersDraw": "{count, number} 人のメンバーが使用",
+      "refillOn": "{date}に {amount}",
+      "upToMembers": "最大 {count, number} 人",
+      "included": "含まれるもの",
+      "spendingThisMonth": "今月の利用額",
+      "yourSpendingThisMonth": "今月のあなたの利用額",
+      "creditsCount": "{count, plural, other {# クレジット}}",
+      "spentOfCap": "{spent} / {cap}",
+      "cap": "上限",
+      "capNone": "なし",
+      "noCap": "上限なし",
+      "capAMonth": "月 {amount}"
+    },
+    "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。",
+    "fromCredits": "{name} のクレジットから",
+    "workspace": "ワークスペース",
+    "creditsLeft": "残り {credits} クレジット",
+    "drawsOn": "使用するワークスペース",
+    "ratings": {
+      "collection": "コレクション",
+      "yours": "このコレクションでのあなたの評価",
+      "everyone": "このコレクションでの全員の評価",
+      "heading": "このコレクションでの評価",
+      "none": "評価なし",
+      "stars": "5 段階中 {value}"
+    },
+    "activity": {
+      "title": "アクティビティ",
+      "runBy": "実行者",
+      "madeBy": "作成者",
+      "created": "が作成しました",
+      "renamed": "が名前を変更しました。旧名",
+      "edited": "が変更しました",
+      "added": "が {count} 件の論文を追加しました",
+      "removed": "が {count} 件の論文を削除しました",
+      "rated": "が {count} 件の論文を評価しました",
+      "answered": "が {count} 件の回答を変更しました",
+      "screened": "が {count} 件の論文をスクリーニングしました",
+      "extracted": "が {count} 件の論文から抽出しました",
+      "paused": "が一時停止しました",
+      "resumed": "が再開しました",
+      "retried": "が失敗した {count} 件の回答を再実行しました",
+      "stopped": "が停止しました",
+      "viaAssistant": "アシスタント経由",
+      "today": "今日",
+      "yesterday": "昨日",
+      "thisWeek": "今週",
+      "earlier": "それ以前",
+      "showEarlier": "以前のアクティビティを表示",
+      "none": "今後の変更はここに表示されます。"
+    },
+    "runBy": {
+      "runBy": "実行者",
+      "startedBy": "開始者",
+      "everyone": "全員",
+      "more": "ほか {count} 人",
+      "find": "人を探す",
+      "noOne": "その名前の人はいません",
+      "busiest": "{count} 人中、最も活発な {listed} 人。ほかの人は名前を入力して探せます。",
+      "searches": "{count} 件の検索",
+      "screenings": "{count} 件のスクリーニング",
+      "extractions": "{count} 件の抽出",
+      "collections": "{count} 件のコレクション",
+      "chats": "{count} 件のチャット",
+      "showMore": "さらに表示"
+    },
+    "presence": {
+      "hasOpen": "{names} が開いています"
+    }
+  },
+  "models": {
+    "changeInSettings": "AI 設定で変更"
   }
 }

@@ -33,9 +33,12 @@ import { cn } from "@/lib/utils";
 import { subtleSpring } from "@/lib/animation-config";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
+import { Spinner } from "@/components/ui/spinner";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useTranslations, useFormatter } from "next-intl";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
+import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 
 type PlanCard = {
   id: string;
@@ -332,7 +335,7 @@ export function Pricing() {
     if (isAuthLoading || isSubscriptionLoading) {
       return {
         disabled: true,
-        label: tc("loading"),
+        label: null,
         variant: "outline" as const,
         onClick: () => {},
       };
@@ -350,7 +353,7 @@ export function Pricing() {
     if (!hasResolvedSubscription || !resolvedPlan || !catalog) {
       return {
         disabled: true,
-        label: tc("loading"),
+        label: null,
         variant: "outline" as const,
         onClick: () => {},
       };
@@ -389,7 +392,7 @@ export function Pricing() {
     if (plan.isDefault) {
       return {
         disabled: false,
-        label: "Manage in Billing Portal",
+        label: "Manage in billing portal",
         variant: "outline" as const,
         onClick: handleOpenPortal,
       };
@@ -444,210 +447,175 @@ export function Pricing() {
   }
 
   return (
-    <div className="space-y-8 min-h-screen">
-      {/* Header Section */}
-      <div>
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={subtleSpring}
-          className="text-center py-8 md:py-12"
-        >
-          {/* Icon with dramatic glow */}
-          <div className="relative inline-block mb-4">
-            <div
-              className={cn(
-                "w-16 h-16 md:w-20 md:h-20 rounded-2xl mx-auto",
-                "bg-gradient-to-br from-primary/30 via-primary/20 to-primary/10",
-                "flex items-center justify-center",
-                "shadow-lg",
-              )}
+    <div className="@container w-full pb-16">
+      <StickyPageHeader>
+        <PanelHeader icon={CreditCard} title={t("chooseYourPlan")} />
+      </StickyPageHeader>
+
+      <div className="container mx-auto max-w-6xl space-y-6 p-4 sm:p-6">
+        {/* Plans Grid */}
+        {hasPendingDowngrade && account?.changesAt !== undefined && (
+          <div className="rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm ink-info flex items-center justify-between gap-3">
+            <span>
+              {t("downgradeScheduledTo")}{" "}
+              <span className="font-semibold">{planName(scheduledPlan!)}</span>{" "}
+              {tc("onDate", {
+                date: format.dateTime(new Date(account.changesAt), {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                }),
+              })}
+              .
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleKeepCurrentPlan}
+              disabled={loadingPlanId !== null}
             >
-              <CreditCard className="w-8 h-8 md:w-10 md:h-10 text-primary" />
-            </div>
-            <div className="absolute inset-0 rounded-2xl bg-primary/20 blur-2xl -z-10 scale-150" />
+              {tc("keepCurrentPlan")}
+            </Button>
           </div>
-
-          {/* Title with gradient */}
-          <h1
-            className={cn(
-              "text-3xl md:text-5xl font-bold mb-2",
-              "bg-gradient-to-r from-foreground via-foreground to-muted-foreground",
-              "bg-clip-text text-transparent",
-            )}
-          >
-            {t("chooseYourPlan")}
-          </h1>
-
-          {/* Subtitle */}
-          <p className="text-sm md:text-lg text-muted-foreground max-w-xl mx-auto">
-            {t("subtitle")}
-          </p>
-        </motion.div>
-      </div>
-
-      {/* Plans Grid */}
-      {hasPendingDowngrade && account?.changesAt !== undefined && (
-        <div className="rounded-xl border border-info/30 bg-info/10 px-4 py-3 text-sm ink-info flex items-center justify-between gap-3">
-          <span>
-            {t("downgradeScheduledTo")}{" "}
-            <span className="font-semibold">{planName(scheduledPlan!)}</span>{" "}
-            {tc("onDate", {
-              date: format.dateTime(new Date(account.changesAt), {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              }),
-            })}
-            .
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleKeepCurrentPlan}
-            disabled={loadingPlanId !== null}
-          >
-            {tc("keepCurrentPlan")}
-          </Button>
-        </div>
-      )}
-
-      <div
-        className={cn(
-          "grid gap-6",
-          "grid-cols-1",
-          "md:grid-cols-2",
-          // One row for however many plans Autumn offers, while they fit.
-          "lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]",
         )}
-      >
-        {orderedPlans.map((plan, index) => {
-          const isCurrent = hasResolvedSubscription && resolvedPlan === plan.id;
-          const buttonConfig = getButtonConfig(plan);
-          const Icon = plan.icon;
-          const isScheduledTarget = scheduledPlan === plan.id;
 
-          return (
-            <motion.div
-              key={plan.id}
-              data-testid={`pricing-plan-${plan.id}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ ...subtleSpring, delay: index * 0.1 }}
-              className={cn(
-                "relative rounded-xl overflow-hidden flex flex-col",
-                "bg-card",
-                "border",
-                isCurrent && "border-primary/50 bg-primary/[0.02]",
-                !isCurrent && "border-border-subtle",
-              )}
-            >
-              {/* Current Plan Badge */}
-              {isCurrent && (
-                <div className="bg-success/10 border-b border-success/20 px-4 py-2 flex items-center justify-center">
-                  <span data-testid="pricing-current-badge" className="text-xs font-semibold ink-success uppercase tracking-wider">
-                    {tc("currentPlan")}
-                  </span>
-                </div>
-              )}
+        <div
+          className={cn(
+            "grid gap-6",
+            "grid-cols-1",
+            "md:grid-cols-2",
+            // One row for however many plans Autumn offers, while they fit.
+            "lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]",
+          )}
+        >
+          {orderedPlans.map((plan, index) => {
+            const isCurrent = hasResolvedSubscription && resolvedPlan === plan.id;
+            const buttonConfig = getButtonConfig(plan);
+            const Icon = plan.icon;
+            const isScheduledTarget = scheduledPlan === plan.id;
 
-              {/* Popular Badge */}
-              {plan.popular && !isCurrent && (
-                <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-center">
-                  <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-                    {tc("mostPopular")}
-                  </span>
-                </div>
-              )}
-
-              {isScheduledTarget && !isCurrent && (
-                <div className="bg-info/10 border-b border-info/20 px-4 py-2 flex items-center justify-center">
-                  <span data-testid="pricing-scheduled-badge" className="text-xs font-semibold ink-info uppercase tracking-wider">
-                    Scheduled
-                  </span>
-                </div>
-              )}
-
-              {/* Header */}
-              <div className="p-6 border-b border-border-subtle">
-                <div className="flex items-center gap-3 mb-4">
-                  <Icon className="w-8 h-8 text-primary" />
-                  <h3 className="text-2xl font-bold">{plan.name}</h3>
-                </div>
-
-                {/* Price Display */}
-                <div className="mb-2">
-                  {plan.id === ENTERPRISE_ID ? (
-                    <div className="text-4xl font-bold">{tc("custom")}</div>
-                  ) : plan.price ? (
-                    <div className="text-4xl font-bold">
-                      {formatPrice(plan.price.amount)}
-                      <span className="text-lg text-muted-foreground">
-                        {plan.price.interval === "month"
-                          ? t("perMonth")
-                          : tb("perInterval", {
-                              interval:
-                                plan.price.interval === "year" ? tb("intervalYear") : plan.price.interval,
-                            })}
-                      </span>
-                    </div>
-                  ) : (
-                    <div className="text-4xl font-bold">{t("freePrice")}</div>
-                  )}
-                </div>
-
-                <p className="text-sm text-muted-foreground">
-                  {plan.description}
-                </p>
-              </div>
-
-              {/* Features */}
-              <div className="p-6 space-y-3 flex-1">
-                {plan.features.map((feature) => (
-                  <div key={feature} className="flex items-start gap-2">
-                    <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">{feature}</span>
+            return (
+              <motion.div
+                key={plan.id}
+                data-testid={`pricing-plan-${plan.id}`}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ ...subtleSpring, delay: index * 0.1 }}
+                className={cn(
+                  "relative rounded-xl overflow-hidden flex flex-col",
+                  "bg-card",
+                  "border",
+                  isCurrent && "border-primary/50 bg-primary/[0.02]",
+                  !isCurrent && "border-border-subtle",
+                )}
+              >
+                {/* Current Plan Badge */}
+                {isCurrent && (
+                  <div className="bg-success/10 border-b border-success/20 px-4 py-2 flex items-center justify-center">
+                    <span data-testid="pricing-current-badge" className="text-xs font-semibold ink-success">
+                      {tc("currentPlan")}
+                    </span>
                   </div>
-                ))}
-              </div>
+                )}
 
-              {/* CTA */}
-              <div className="p-6 pt-0 mt-auto">
-                <Button
-                  data-testid={`pricing-button-${plan.id}`}
-                  className="w-full"
-                  variant={buttonConfig.variant}
-                  disabled={buttonConfig.disabled || loadingPlanId !== null}
-                  onClick={buttonConfig.onClick}
-                >
-                  {loadingPlanId === plan.id ||
-                  loadingPlanId === "portal" ||
-                  loadingPlanId === "keep-current" ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    buttonConfig.label
-                  )}
-                </Button>
-              </div>
-            </motion.div>
-          );
-        })}
+                {/* Popular Badge */}
+                {plan.popular && !isCurrent && (
+                  <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 flex items-center justify-center">
+                    <span className="text-xs font-semibold text-primary">
+                      {tc("mostPopular")}
+                    </span>
+                  </div>
+                )}
+
+                {isScheduledTarget && !isCurrent && (
+                  <div className="bg-info/10 border-b border-info/20 px-4 py-2 flex items-center justify-center">
+                    <span data-testid="pricing-scheduled-badge" className="text-xs font-semibold ink-info">
+                      Scheduled
+                    </span>
+                  </div>
+                )}
+
+                {/* Header */}
+                <div className="p-6 border-b border-border-subtle">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Icon className="w-8 h-8 text-primary" />
+                    <h3 className="text-2xl font-bold">{plan.name}</h3>
+                  </div>
+
+                  {/* Price Display */}
+                  <div className="mb-2">
+                    {plan.id === ENTERPRISE_ID ? (
+                      <div className="text-4xl font-bold">{tc("custom")}</div>
+                    ) : plan.price ? (
+                      <div className="text-4xl font-bold">
+                        {formatPrice(plan.price.amount)}
+                        <span className="text-lg text-muted-foreground">
+                          {plan.price.interval === "month"
+                            ? t("perMonth")
+                            : tb("perInterval", {
+                                interval:
+                                  plan.price.interval === "year" ? tb("intervalYear") : plan.price.interval,
+                              })}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="text-4xl font-bold">{t("freePrice")}</div>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    {plan.description}
+                  </p>
+                </div>
+
+                {/* Features */}
+                <div className="p-6 space-y-3 flex-1">
+                  {plan.features.map((feature) => (
+                    <div key={feature} className="flex items-start gap-2">
+                      <Check className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">{feature}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* CTA */}
+                <div className="p-6 pt-0 mt-auto">
+                  <Button
+                    data-testid={`pricing-button-${plan.id}`}
+                    className="w-full"
+                    variant={buttonConfig.variant}
+                    disabled={buttonConfig.disabled || loadingPlanId !== null}
+                    onClick={buttonConfig.onClick}
+                  >
+                    {loadingPlanId === plan.id ||
+                    loadingPlanId === "portal" ||
+                    loadingPlanId === "keep-current" ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      (buttonConfig.label ?? <Spinner aria-label={tc("loading")} />)
+                    )}
+                  </Button>
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        <UpgradeConfirmationDialog
+          open={isUpgradeDialogOpen}
+          onOpenChange={(open) => {
+            if (!isConfirmingUpgrade) {
+              setIsUpgradeDialogOpen(open);
+              if (!open) setUpgradePreview(null);
+            }
+          }}
+          onConfirm={handleConfirmUpgrade}
+          isConfirming={isConfirmingUpgrade}
+          preview={upgradePreview}
+          cardBrand={upgradePreview?.card?.brand}
+          cardLast4={upgradePreview?.card?.last4}
+        />
       </div>
-
-      <UpgradeConfirmationDialog
-        open={isUpgradeDialogOpen}
-        onOpenChange={(open) => {
-          if (!isConfirmingUpgrade) {
-            setIsUpgradeDialogOpen(open);
-            if (!open) setUpgradePreview(null);
-          }
-        }}
-        onConfirm={handleConfirmUpgrade}
-        isConfirming={isConfirmingUpgrade}
-        preview={upgradePreview}
-        cardBrand={upgradePreview?.card?.brand}
-        cardLast4={upgradePreview?.card?.last4}
-      />
     </div>
   );
 }

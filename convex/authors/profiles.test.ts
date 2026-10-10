@@ -45,7 +45,8 @@ describe("author profiles", () => {
     expect(await role("member")).toBeNull();
     // Its people list the maker and the lab's admin as owners; an owner isn't removed as an editor would be.
     const members = await as("maker").query(api.authors.members.list, {profileId});
-    expect(members.members.map(member => [member.email, member.role])).toEqual([["maker@example.org", "owner"], ["admin@example.org", "owner"]]);
+    // The one reading it is marked, for their You chip.
+    expect(members.members.map(member => [member.email, member.role, member.you])).toEqual([["maker@example.org", "owner", true], ["admin@example.org", "owner", false]]);
     const adminId = members.members.find(member => member.email === "admin@example.org")!.userId;
     await expect(as("maker").mutation(api.authors.members.remove, {profileId, userId: adminId})).rejects.toThrow(/owns the profile/);
     // Someone outside the lab can't make one there.
@@ -61,6 +62,10 @@ describe("author profiles", () => {
       for (const row of await ctx.db.query("organizationMemberships").collect()) if (row.clerkUserId === "maker") await ctx.db.patch("organizationMemberships", row._id, {state: "revoked"});
     });
     expect(await role("maker")).toBeNull();
+    // Invited back, they edit it as anyone invited does.
+    const invitationId = await as("admin").mutation(internal.authors.invitations.prepare, {profileId, email: "maker@example.org"});
+    await as("maker").mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["maker@example.org"], accept: true});
+    expect(await role("maker")).toBe("editor");
   });
 
   it("sends profile invitations with the profile identity and a direct invitation link", async () => {

@@ -33,7 +33,7 @@ import {
   type AppIcon,
   AiIcon,
 } from "@/components/icons";
-import { useRouter } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations } from "next-intl";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { type ReactNode, useState } from "react";
@@ -289,7 +289,7 @@ function Workspace({
   const t = useTranslations("evidenceLibraryConfiguration");
   const tList = useTranslations("evidenceLibraries.list");
   const tc = useTranslations("common");
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const saveDraftSections = useMutation(
     api.evidenceLibraries.mutations.saveDraftSections,
   );
@@ -427,7 +427,7 @@ function Workspace({
           ? t("updatingSoftware", {
               rev: shortCommit(operation.runtimeUpdate.to),
             })
-          : t("applying")} · ${t(`stages.${operation.stage}`)}`
+          : t("applying")}, ${t(`stages.${operation.stage}`)}`
       : null;
   const operationFlowLabel =
     operationRunning && operation

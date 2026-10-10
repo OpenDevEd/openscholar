@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { writeJobSources } from "./jobSources";
 import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
 
 const abstract = "A long enough abstract for the paper to be read from it, about tutoring in primary schools.";
 
@@ -17,12 +18,12 @@ it("reads a collection's range as one source, a page at a time, and runs every p
   const jobId = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { clerkId: "range", email: "range@test", state: "active", createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: false, updatedAt: 1 });
-    const collectionId = await ctx.db.insert("collections", { userId, name: "Trials", sortName: "trials", itemCount: papers, createdAt: 1, updatedAt: 1 });
+    const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: "trials", itemCount: papers, createdAt: 1, updatedAt: 1 });
     for (let i = 0; i < papers; i++) {
-      const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, abstract, searchableText: "x", savedAt: i, updatedAt: 1 });
-      await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: 1 });
+      const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, abstract, searchableText: "x", savedAt: i, updatedAt: 1 });
+      await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: 1 });
     }
-    const id = await ctx.db.insert("extractionJobs", { userId, name: "Range", status: "pending", runEpoch: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 }, createdAt: 1, updatedAt: 1 });
+    const id = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Range", status: "pending", runEpoch: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 }, createdAt: 1, updatedAt: 1 });
     await writeJobSources(ctx, id, [{ source: "collection", bucketKey: "range", sourceRefId: collectionId, title: "Trials", authors: [], librarySet: { collectionId, first: 1, last: papers, count: papers } }]);
     return id;
   });
@@ -44,7 +45,7 @@ it("a screening's copy takes another source's place, and one the job can't read 
   const jobId = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { clerkId: "copies", email: "copies@test", state: "active", createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: false, updatedAt: 1 });
-    return await ctx.db.insert("extractionJobs", { userId, name: "Copies", status: "pending", runEpoch: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 }, createdAt: 1, updatedAt: 1 });
+    return await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Copies", status: "pending", runEpoch: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 }, createdAt: 1, updatedAt: 1 });
   });
   const step = (papers: object[], position: number) => t.mutation(internal.extraction.mutations.papers.createPaperRecords, { jobId, papers: papers as never, setup: { expectedEpoch: 0, next: { position, read: 0, papers: 0, processable: 0 } } });
   const setupOf = async () => (await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!.setup!;

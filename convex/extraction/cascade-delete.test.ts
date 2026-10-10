@@ -4,6 +4,7 @@ import { api } from "../_generated/api";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { SEED_IDENTITY, seedFullJobGraph } from "./tests/seed";
+import { madeBy } from "../workspaces/actor.test-support";
 
 describe("deleteExtractionInternal cascade", () => {
   it("deletes full job graph leaving zero orphaned rows", async () => {
@@ -107,7 +108,7 @@ describe("deleteExtractionInternal cascade", () => {
       });
 
       const jobId = await ctx.db.insert("extractionJobs", {
-        userId,
+        ...(await madeBy(ctx, userId)),
         sourceType: "history" as const,
         status: "completed" as const,
         totalPapers: 0,

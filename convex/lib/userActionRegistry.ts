@@ -7,6 +7,8 @@ import { answersOfAction, changeAction, countSearchesAction, getSearchAction, li
 import { createAction as searchCreateAction, deleteAction as searchDeleteAction, removeAction as searchRemoveAction, restoreAction as searchRestoreAction, resultsAction as searchResultsAction, updateAction as searchUpdateAction } from "../research/searches";
 import { countAction as paperCountAction, getAction as paperGetAction, readPdfAction as paperPdfAction, searchAction as paperSearchAction } from "../research/papers";
 import { findAction as lookupFindAction } from "../research/lookup";
+import { listAction as activityListAction, startedByAction as activityStartedByAction } from "../activity/queries";
+import { countsAction as makerCountsAction, totalAction as makerTotalAction } from "../workspaces/makers";
 import { setLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
 import { collectAction as libraryCollectAction, saveAction as librarySaveAction } from "../library/papers";
 import { countJobsAction as extractionJobCountAction, getJobDetailsAction as extractionJobAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
@@ -17,7 +19,9 @@ import { undoAction as bulkUndoAction } from "../assistant/batches";
 import { messagesAction as chatMessagesAction, stepsAction as chatStepsAction } from "../assistant/replies";
 import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
 import { countPapersAction as libraryCountPapersAction, papersAction as libraryPapersAction, savedPaperAction } from "../library/queries";
-import { addToCollectionAction, countCollectionsAction, createCollectionAction, deleteCollectionAction, getCollectionAction, listCollectionsAction, removeFromCollectionAction, renameCollectionAction } from "../library/collections";
+import { createAction as createOrganizationAction, declineInvitationAction, deleteOrganizationAction, inviteAction, leaveAction, removeMemberAction, renameAction as renameOrganizationAction, resendInvitationAction, revokeInvitationAction, setAiPresetAction, setColourAction, setRoleAction } from "../organizations/manage";
+import { invitationsAction as organizationInvitationsAction, membersAction as organizationMembersAction, myInvitationsAction, summaryAction as workspaceSummaryAction, workspaceAction, workspacesAction } from "../organizations/queries";
+import { addToCollectionAction, countCollectionsAction, createCollectionAction, deleteCollectionAction, getCollectionAction, listCollectionsAction, ratersAction as collectionRatersAction, removeFromCollectionAction, renameCollectionAction, setCollectionRatingAction } from "../library/collections";
 import { estimateAction as screeningEstimateAction, listJobsAction as screeningJobsAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
 import { slotsAction as screeningSlotsAction, getScreeningJobAction, listScreeningResultsAction } from "../screening/queries";
@@ -25,6 +29,7 @@ import { screenAction } from "../screening/start";
 import { countAdminsAction, listAdminsAction, listCandidatesAction } from "../admins/queries";
 import { listModelsAction as adminModelsAction, summaryAction as adminModelSummaryAction } from "../models/admin";
 import { balanceAction, countChargesAction, listChargesAction, planAction, spendingAction } from "../billing/usage";
+import { allowanceAction, setCapAction, spendingAction as memberSpendingAction } from "../billing/caps";
 import { countKeysAction as walletKeyCountAction, listKeysAction as walletKeysAction } from "../wallet/queries";
 import type { UserAction } from "./userActions";
 import { startJobAction as extractionStartAction, duplicateJobAction as extractionDuplicateAction } from "../extraction/mutations/jobs";
@@ -112,6 +117,33 @@ export const USER_ACTIONS: readonly UserAction[] = [
   deleteCollectionAction,
   addToCollectionAction,
   removeFromCollectionAction,
+  setCollectionRatingAction,
+  collectionRatersAction,
+  activityListAction,
+  activityStartedByAction,
+  makerCountsAction,
+  makerTotalAction,
+  workspacesAction,
+  workspaceAction,
+  organizationMembersAction,
+  organizationInvitationsAction,
+  myInvitationsAction,
+  workspaceSummaryAction,
+  createOrganizationAction,
+  inviteAction,
+  resendInvitationAction,
+  revokeInvitationAction,
+  declineInvitationAction,
+  setRoleAction,
+  memberSpendingAction,
+  allowanceAction,
+  setCapAction,
+  removeMemberAction,
+  leaveAction,
+  renameOrganizationAction,
+  setColourAction,
+  setAiPresetAction,
+  deleteOrganizationAction,
   listChargesAction,
   countChargesAction,
   spendingAction,

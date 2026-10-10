@@ -90,7 +90,7 @@ export const connectCollectionSource = mutation({
     const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
     const user = await requireAuth(ctx);
     const collection = await ctx.db.get("collections", args.collectionId);
-    if (!collection || collection.userId !== user._id) {
+    if (!collection || collection.createdBy !== user._id) {
       throw createError("FORBIDDEN", "Only the collection's owner can add it to a library");
     }
     const fields = {
@@ -136,7 +136,7 @@ async function refusal(
   const collection = await ctx.db.get("collections", collectionId);
   if (!collection) return { refused: "collection_not_found" };
   // The collection's maker is still one of the library's: a member of its organization, or the person whose own workspace it's in.
-  const [maker, owner] = await Promise.all([ctx.db.get("users", collection.userId), libraryOwner(ctx, library)]);
+  const [maker, owner] = await Promise.all([ctx.db.get("users", collection.createdBy), libraryOwner(ctx, library)]);
   const member =
     maker && maker.state !== "deleted" && owner
       ? owner.organization

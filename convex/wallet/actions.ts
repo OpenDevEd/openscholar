@@ -21,7 +21,7 @@ export const finalizeConnection = action({
     if (!user) throw createError("UNAUTHENTICATED", "Sign in required");
 
     // Verify ownership
-    const key: { appName: string; redirectOrigin: string } | null = await ctx.runQuery(internal.wallet.internal.lookupById, {
+    const key: { appName: string; redirectOrigin: string; workspaceId: Id<"workspaces"> } | null = await ctx.runQuery(internal.wallet.internal.lookupById, {
       walletKeyId: args.walletKeyId,
       userId: user._id,
     });
@@ -30,6 +30,7 @@ export const finalizeConnection = action({
     // Generate the real key via the internal action (has crypto access)
     const result: { rawKey: string; keyPrefix: string; walletKeyId: Id<"walletKeys"> } = await ctx.runAction(internal.wallet.nodeActions.createKey, {
       userId: user._id,
+      workspaceId: key.workspaceId,
       appName: key.appName,
       redirectOrigin: key.redirectOrigin,
     });

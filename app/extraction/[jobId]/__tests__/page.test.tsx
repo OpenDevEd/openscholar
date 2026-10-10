@@ -308,6 +308,9 @@ vi.mock("motion/react", () => {
   return { motion };
 });
 
+// The item bar (who ran it, who has it open, Activity) has its own tests; these are about the results.
+vi.mock("@/components/workspaces/activity", () => ({ ItemBar: () => null }));
+
 vi.mock("@/components/PageWrapper", () => ({
   PageWrapper: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));

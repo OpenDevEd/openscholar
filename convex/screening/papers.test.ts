@@ -10,6 +10,7 @@ import { createJob } from "./createJob.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import { exportParts } from "../exports.test-support";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 const questions = [{ key: "q1", question: "Randomized?" }, { key: "q2", question: "Primary schools?" }];
 // Included from 2 points: a randomized study, or one unclear on that and set in primary schools.
@@ -64,7 +65,7 @@ async function screened({ bookkept = true, before }: { bookkept?: boolean; befor
   const answer = (paperId: string, questionKey: string, value: boolean | null | "model", signed = as) =>
     signed.mutation(api.screening.papers.answer, { jobId, paperId: `https://openalex.org/${paperId}`, questionKey, answer: value });
   /** How many of the owner's library items are paper W3. */
-  const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", userId).eq("openalexId", "https://openalex.org/W3")).take(2)).length);
+  const saved = () => t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return (await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W3")).take(2)).length; });
   const list = async (outcome: "included" | "unclear" | "excluded" | "failed", extra: { text?: string } = {}, signed = as) =>
     (await signed.query(api.screening.papers.list, { jobId, outcome, paginationOpts: { cursor: null, numItems: 10 }, ...extra })).page;
   return { t, as, jobId, job, list, answer, saved, settle };

@@ -1,5 +1,6 @@
 "use client";
 
+import type { Id } from "@/convex/_generated/dataModel";
 import { useMemo } from "react";
 import { useStore } from "zustand";
 import { api } from "@/convex/_generated/api";
@@ -8,6 +9,7 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { localSearchHistoryStore } from "@/lib/store";
 import type { SearchResult } from "@/lib/types";
+import type { Maker } from "@/convex/workspaces/makers";
 import type { ListedSort } from "./records";
 import { restoreSearch } from "./records";
 import { useResearchScope, useResearchSession } from "./reads";
@@ -38,25 +40,27 @@ const LOCAL_ORDER: Record<ListedSort, (a: SearchResult, b: SearchResult) => numb
  * so `total` and `pageCount` are undefined. `count` is every search the person has, whatever
  * the text. The account's searches come without screening answers.
  */
-export function useSearchList({ sort, text = "", pageSize, excludeId }: { sort: ListedSort; text?: string; pageSize: number; excludeId?: string }) {
+/** `by`: in an organization, one member's searches only (#656). */
+export function useSearchList({ sort, text = "", pageSize, excludeId, by }: { sort: ListedSort; text?: string; pageSize: number; excludeId?: string; by?: Id<"users"> }) {
   const accountId = useResearchSession()?.accountId;
   const scope = useResearchScope();
   const match = useDebouncedValue(text.trim(), 300);
-  const remote = useCursorPage(api.research.records.listedSearches, scope ? { ...scope, sort, text: match || undefined, exclude: excludeId } : "skip", pageSize);
+  const remote = useCursorPage(api.research.records.listedSearches, scope ? { ...scope, sort, text: match || undefined, exclude: excludeId, ...(by ? { by } : {}) } : "skip", pageSize);
   const { data: count } = useProtectedQuery(api.research.records.countSearches, scope ?? "skip");
 
   const localHistory = useStore(localSearchHistoryStore, (state) => state.searchHistory);
-  const local = useMemo(() => {
+  const local = useMemo((): Array<SearchResult & { by?: Maker }> => {
     if (accountId) return [];
     const needle = text.trim().toLowerCase();
     return localHistory.filter((item) => item.id !== excludeId && (!needle || matchesLocally(item, needle))).sort(LOCAL_ORDER[sort]);
   }, [accountId, localHistory, text, excludeId, sort]);
-  const remoteItems = useMemo(() => remote.items.map((item) => restoreSearch({ ...item, screeningResponses: [] })), [remote.items]);
+  // In an organization, each names who ran it.
+  const remoteItems = useMemo(() => remote.items.map(({ by, ...item }): SearchResult & { by?: Maker } => ({ ...restoreSearch({ ...item, screeningResponses: [] }), ...(by ? { by } : {}) })), [remote.items]);
 
   return usePagedRecords({
     remote: accountId ? { ...remote, items: remoteItems } : null,
     count: count === undefined ? undefined : Math.max(0, count - (excludeId ? 1 : 0)),
-    counted: !match,
+    counted: !match && !by,
     local,
     localCount: localHistory.length - (excludeId && localHistory.some((item) => item.id === excludeId) ? 1 : 0),
     localKey: JSON.stringify([sort, text.trim().toLowerCase(), excludeId]),

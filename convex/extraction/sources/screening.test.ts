@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../../_generated/api";
 import { screeningInputs } from "./screening.test-support";
 import { seedFeatureUser, seedOrganizationFeatures } from "../../organizationFeatures.test-support";
+import { madeBy } from "../../workspaces/actor.test-support";
+import { accountOf } from "../../billing/billing.test-support";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -9,7 +11,7 @@ afterEach(() => vi.useRealTimers());
 describe("extraction from Included screening papers", () => {
   it.each([false, true])("saves screening metadata and revision through overlaps, exclusion and undo, library first: %s", async (libraryFirst) => {
     const { t, as, userId, jobId, selection, start, snapshot, papers } = await screeningInputs();
-    const libraryId = await t.run(ctx => ctx.db.insert("libraryItems", { userId, openalexId: "https://openalex.org/W0", title: "Separately saved paper", rating: 4, searchableText: "saved paper", savedAt: 1, updatedAt: 1 }));
+    const libraryId = await t.run(async ctx => ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: "https://openalex.org/W0", title: "Separately saved paper", rating: 4, searchableText: "saved paper", savedAt: 1, updatedAt: 1 }));
     const source = await selection();
     const inputs = [source, { source: "library" as const, bucketKey: "library:W0", sourceRefId: libraryId, title: "Overlap", authors: [] }];
     const first = await start(libraryFirst ? inputs.reverse() : inputs);
@@ -63,7 +65,7 @@ describe("extraction from Included screening papers", () => {
     const full = await screeningInputs(1000);
     // A plan that takes 1,000 papers in one extraction.
     await full.t.run(async ctx => {
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", q => q.eq("userId", full.userId)).unique();
+      const account = await accountOf(ctx, full.userId);
       await ctx.db.patch("billingAccounts", account!._id, { limits: { request_papers: 1000 } });
     });
     const source = await full.selection();

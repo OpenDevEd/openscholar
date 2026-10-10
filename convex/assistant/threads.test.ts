@@ -12,6 +12,7 @@ import { touchThread } from "./access";
 import { people } from "./assistant.test-support";
 import { previewOf } from "./threads";
 import { waitFor } from "./turn.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
 
 const firstPage = { cursor: null, numItems: 10 };
 const titles = (page: { page: Array<{ title: string }> }) => page.page.map((chat) => chat.title);
@@ -54,13 +55,13 @@ describe("assistant chats", () => {
     expect(await row(asBen)).toMatchObject({ members: [{ userId: ada, here: false }], organization });
 
     // Ben opens it through the organization. The row names him while he's there, and the reader never sees themselves.
-    const session = await asBen.mutation(api.assistant.presence.heartbeat, { threadId, sessionId: "tab-1" });
+    const session = await asBen.mutation(api.presence.chatHeartbeat, { threadId, sessionId: "tab-1" });
     expect((await row(asAda)).members).toEqual([{ userId: ben, name: "", here: true }]);
     expect((await row(asBen)).members).toEqual([{ userId: ada, name: "", here: false }]);
-    await expect(asCy.mutation(api.assistant.presence.heartbeat, { threadId, sessionId: "tab-2" })).rejects.toThrow(/Chat not found/);
+    await expect(asCy.mutation(api.presence.chatHeartbeat, { threadId, sessionId: "tab-2" })).rejects.toThrow(/Chat not found/);
 
     // His panel closes the chat.
-    await asBen.mutation(api.assistant.presence.leave, { sessionToken: session });
+    await asBen.mutation(api.presence.leave, { sessionToken: session });
     expect((await row(asAda)).members).toEqual([]);
 
     // Shared with him by name, he is on the row whether he's there or not.
@@ -68,7 +69,7 @@ describe("assistant chats", () => {
     expect((await row(asAda)).members).toEqual([{ userId: ben, name: "", here: false }]);
 
     // Deleting the chat empties its room afterwards, on its own.
-    await asBen.mutation(api.assistant.presence.heartbeat, { threadId, sessionId: "tab-3" });
+    await asBen.mutation(api.presence.chatHeartbeat, { threadId, sessionId: "tab-3" });
     await asAda.mutation(api.assistant.threads.remove, { threadId });
     await waitFor(async () => (await t.run(async (ctx) => ctx.runQuery(components.presence.public.listRoom, { roomId: threadId }))).length === 0);
   });
@@ -131,47 +132,6 @@ describe("assistant chats", () => {
     expect(await asAda.query(api.assistant.threads.get, { workspaceId: lab, threadId })).toMatchObject({ title: "Lab chat", role: "owner" });
     await asAda.mutation(api.assistant.threads.remove, { workspaceId: lab, threadId });
     expect(await listed(asBen, "all", lab)).toEqual([]);
-  });
-
-  it("from before workspaces go to their owner's own, with each person's record there, however often the backfill runs", async () => {
-    vi.useFakeTimers();
-    try {
-      const t = convexTest(schema);
-      const { ada } = await people(t);
-      // As they were before workspaces: no workspace, no maker.
-      const own = await t.run(async (ctx) => personalWorkspaceOf(ctx, ada));
-      await runUntriggered(t, async (ctx) => {
-        await ctx.db.insert("assistantThreads", { ownerId: ada, title: "Old", agentThreadId: "old", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
-        await ctx.db.insert("assistantSpenders", { userId: ada, newChats: { replyLimit: 50 }, recent: [{ reply: "old", credits: 3 }, { reply: "settled late", credits: 2 }] });
-      });
-      // Before the backfill reaches her record, a chat she starts in her own workspace still takes what she chose for new chats.
-      const asAda = t.withIdentity({ subject: "ada", tokenIdentifier: "ada|test" });
-      const fresh = await asAda.mutation(api.assistant.threads.create, {});
-      expect(await asAda.query(api.assistant.spending.get, { threadId: fresh })).toMatchObject({ replyLimit: 50 });
-      await t.run(async (ctx) => {
-        // That chat goes, and a record of hers is written in her own workspace after the deploy, before the backfill.
-        for (const thread of await ctx.db.query("assistantThreads").collect()) if (thread._id === fresh) await ctx.db.delete("assistantThreads", fresh);
-        for (const limit of await ctx.db.query("assistantLimits").collect()) await ctx.db.delete("assistantLimits", limit._id);
-        await ctx.db.insert("assistantSpenders", { userId: ada, workspaceId: own, recent: [{ reply: "settled late", credits: 4 }, { reply: "new", credits: 5 }] });
-      });
-      expect(await t.action(internal.migrations.assistantWorkspaces.verify, {})).toBe(2);
-      const rows = () => t.run(async (ctx) => ({ threads: await ctx.db.query("assistantThreads").collect(), spenders: await ctx.db.query("assistantSpenders").collect() }));
-      await t.mutation(internal.migrations.assistantWorkspaces.run, {});
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-      const once = await rows();
-      // Run again from the start, it changes nothing.
-      await t.mutation(internal.migrations.assistantWorkspaces.run, { reset: true });
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-      expect(await rows()).toEqual(once);
-      expect(await t.action(internal.migrations.assistantWorkspaces.verify, {})).toBe(0);
-      expect(await t.run(async (ctx) => ctx.db.query("assistantThreads").collect())).toMatchObject([{ workspaceId: own, createdBy: ada }]);
-      // One record of hers there, with the settings she chose and every reply's cost, one settled in both added up.
-      expect(await t.run(async (ctx) => ctx.db.query("assistantSpenders").collect())).toMatchObject([
-        { workspaceId: own, newChats: { replyLimit: 50 }, recent: [{ reply: "old", credits: 3 }, { reply: "settled late", credits: 6 }, { reply: "new", credits: 5 }] },
-      ]);
-    } finally {
-      vi.useRealTimers();
-    }
   });
 
   it("are shared to read or to write, and only the owner renames, shares or deletes", async () => {
@@ -264,7 +224,7 @@ describe("assistant chats", () => {
     for (let from = 0; from < 900; from += 300) {
       await t.run(async (ctx) => {
         for (let i = from; i < from + 300; i++) {
-          const threadId = await ctx.db.insert("assistantThreads", { ownerId: ada, title: `Chat ${i}`, agentThreadId: `agent${i}`, lastMessageAt: i, createdAt: i, updatedAt: i });
+          const threadId = await ctx.db.insert("assistantThreads", { ...(await madeBy(ctx, ada)), title: `Chat ${i}`, agentThreadId: `agent${i}`, lastMessageAt: i, createdAt: i, updatedAt: i });
           await ctx.db.insert("assistantThreadAccess", { threadId, principal: `user:${ada}`, role: "owner", lastMessageAt: i, createdAt: i });
           await ctx.db.insert("assistantThreadAccess", { threadId, principal: `organization:${last}`, role: "read", lastMessageAt: i, createdAt: i });
         }

@@ -11,7 +11,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { MAX_ASSISTANT_THREAD_GRANTS } from "../lib/queryBounds";
 import { readMemberOrganizations } from "../organizationFeatures";
-import { actorIn, personalWorkspaceOf, workspaceOf, type InWorkspace } from "../workspaces/actor";
+import { actorIn, personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import type { assistantPrincipalValidator, assistantRoleValidator } from "./validators";
 
 export type AssistantRole = Infer<typeof assistantRoleValidator>;
@@ -61,8 +61,6 @@ export function accessRows(ctx: QueryCtx | MutationCtx, threadId: Id<"assistantT
 }
 
 /** A person's name as they gave it, or empty when they gave none. */
-export const personName = (person: Doc<"users">) => [person.firstName, person.lastName].filter(Boolean).join(" ");
-
 /** The highest of some roles; at least one is given. */
 export const best = (roles: readonly AssistantRole[]) => roles.reduce((most, role) => (RANK[role] > RANK[most] ? role : most));
 
@@ -73,9 +71,6 @@ export async function roleAmong(ctx: QueryCtx | MutationCtx, threadId: Id<"assis
   return roles.length ? best(roles) : null;
 }
 
-/** The workspace a chat is in. */
-export const chatWorkspace = (ctx: Pick<QueryCtx, "db">, thread: Doc<"assistantThreads">) => workspaceOf(ctx, { userId: thread.ownerId, workspaceId: thread.workspaceId });
-
 /**
  * The most this person may do in the chat, or null when they can't open it: through its
  * access rows, and as someone who can act in its workspace, where a chat is its maker's
@@ -84,7 +79,7 @@ export const chatWorkspace = (ctx: Pick<QueryCtx, "db">, thread: Doc<"assistantT
 export async function roleIn(ctx: QueryCtx | MutationCtx, user: Doc<"users">, thread: Doc<"assistantThreads">): Promise<AssistantRole | null> {
   const granted = await roleAmong(ctx, thread._id, await principalsOf(ctx, user));
   if (granted === "owner") return granted;
-  const actor = await actorIn(ctx, user, await chatWorkspace(ctx, thread));
+  const actor = await actorIn(ctx, user, thread.workspaceId);
   const member: AssistantRole | null = !actor ? null : actor.role === "admin" || thread.createdBy === user._id ? "owner" : "write";
   return granted && member ? best([granted, member]) : (granted ?? member);
 }
@@ -109,8 +104,8 @@ export async function requireThread(ctx: QueryCtx | MutationCtx, userId: Id<"use
  * in it is theirs (#650).
  */
 export async function replyWorkspace(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, thread: Doc<"assistantThreads">): Promise<Id<"workspaces">> {
-  const [workspaceId, user] = await Promise.all([chatWorkspace(ctx, thread), ctx.db.get("users", userId)]);
-  return user && (await actorIn(ctx, user, workspaceId)) ? workspaceId : await personalWorkspaceOf(ctx, userId);
+  const user = await ctx.db.get("users", userId);
+  return user && (await actorIn(ctx, user, thread.workspaceId)) ? thread.workspaceId : await personalWorkspaceOf(ctx, userId);
 }
 
 /**
@@ -134,9 +129,10 @@ export async function touchThread(ctx: MutationCtx, threadId: Id<"assistantThrea
 export async function deleteThread(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
   for (const row of await accessRows(ctx, thread._id)) await ctx.db.delete("assistantThreadAccess", row._id);
   await ctx.db.delete("assistantThreads", thread._id);
-  await ctx.scheduler.runAfter(0, internal.assistant.presence.forgetRoom, { threadId: thread._id });
+  await ctx.scheduler.runAfter(0, internal.presence.forgetChatRoom, { threadId: thread._id });
   await ctx.scheduler.runAfter(0, internal.assistant.steps.forget, { threadId: thread._id });
   await ctx.scheduler.runAfter(0, internal.assistant.files.forget, { threadId: thread._id });
+  await ctx.scheduler.runAfter(0, internal.lib.paperPdfs.forget, { scope: `chat:${thread._id}` });
   await ctx.runMutation(components.agent.threads.deleteAllForThreadIdAsync, { threadId: thread.agentThreadId });
 }
 
@@ -150,12 +146,18 @@ const PURGE_BATCH = 20;
  */
 export async function purgeAccountChats(ctx: MutationCtx, userId: Id<"users">) {
   const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
-  const owned = workspace ? await ctx.db.query("assistantThreads").withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspace._id)).take(PURGE_BATCH) : [];
-  for (const thread of owned) await deleteThread(ctx, thread);
+  const ownGone = workspace ? await purgeWorkspaceChats(ctx, workspace._id) : true;
   const shared = await ctx.db
     .query("assistantThreadAccess")
     .withIndex("by_principal_and_lastMessageAt", (q) => q.eq("principal", userPrincipal(userId)))
     .take(PURGE_BATCH);
   for (const row of shared) await ctx.db.delete("assistantThreadAccess", row._id);
-  return owned.length < PURGE_BATCH && shared.length < PURGE_BATCH;
+  return ownGone && shared.length < PURGE_BATCH;
+}
+
+/** Deletes a batch of a workspace's chats, for everyone; whether none are left. */
+export async function purgeWorkspaceChats(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
+  const chats = await ctx.db.query("assistantThreads").withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspaceId)).take(PURGE_BATCH);
+  for (const thread of chats) await deleteThread(ctx, thread);
+  return chats.length < PURGE_BATCH;
 }

@@ -2,10 +2,9 @@
 "use no memo"; // Date.now in posthog handler
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useConvex } from "convex/react";
 import { Clock, Search, ArrowRight, HistoryIcon } from "@/components/icons";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { localSearchHistoryStore, useSearchHistoryStore, useUIStore } from "@/lib/store";
@@ -39,6 +38,10 @@ import { ResearchAccountChangedError } from "@/lib/research/binding";
 import { usePreloadSearch, useResearchSession } from "@/lib/research/reads";
 import { useSearchList } from "@/lib/research/search-list";
 import { useWorkspace } from "@/lib/workspaces/url";
+import { useWorkspaceRouter, useWorkspaceSlug } from "@/lib/workspaces/href";
+import { PersonTag } from "@/components/ui/identity";
+import { useRunBy } from "@/components/workspaces/run-by";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 
 import posthog from "posthog-js";
@@ -55,6 +58,8 @@ interface HistoryCommandCenterProps {
 
 export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   const workspaceId = useWorkspace();
+  const inOrganization = useWorkspaceSlug() !== undefined;
+  const admin = useCurrentWorkspace()?.role === "admin";
   const toast = useAppToast();
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
@@ -67,7 +72,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     { value: "most", label: th("mostResults") },
     { value: "least", label: th("leastResults") },
   ];
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const convex = useConvex();
   const account = useResearchSession();
   const preloadSearch = usePreloadSearch();
@@ -84,7 +89,9 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
     setHistorySortBy,
   } = useUIStore();
   // Read a page at a time: the page number can't be jumped to, so it stays out of the URL.
-  const history = useSearchList({ sort: historySortBy, text: searchFilter, pageSize: COMMAND_CENTER_ITEMS_PER_PAGE, excludeId: pick?.excludeId });
+  // In an organization, everyone's searches or one member's (#656); a chooser lists them all.
+  const runBy = useRunBy("searches");
+  const history = useSearchList({ sort: historySortBy, text: searchFilter, pageSize: COMMAND_CENTER_ITEMS_PER_PAGE, excludeId: pick?.excludeId, by: pick ? undefined : runBy.by });
   const ready = listReady && settingsReady && !history.isLoading;
   // The page's own steps go back to its top; a chooser stays where its host put it.
   const step = (to: () => void) => () => {
@@ -200,6 +207,8 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
             viewMode={historyViewMode}
             onSearchClick={handleSearchClick}
             choosing={Boolean(pick)}
+            runBy={item.by ? <PersonTag {...item.by} /> : undefined}
+            canDelete={!item.by || item.by.you || admin}
           />
         )}
       />}
@@ -228,6 +237,7 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   // A chooser sits in its host's frame with its own toolbar; the page puts its controls in the page bar.
   if (pick) return <CommandCenterContainer><CommandCenterToolbar viewMode={historyViewMode} onViewModeChange={setHistoryViewMode} {...filters} />{list}</CommandCenterContainer>;
   return <HistoryPageFrame
+    intro={runBy.filter}
     tabs={<ViewModeSwitch value={historyViewMode} onChange={setHistoryViewMode} />}
     filters={<CommandCenterFilters {...filters} />}
     actions={<CommandCenterFileActions
@@ -236,7 +246,8 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
       onDownloadCSV={() => download("csv")}
       onUploadJSON={handleUploadJSON}
       onUploadCSV={handleUploadCSV}
-      onClearAll={handleClearAll}
+      // An organization's History has no Clear all: whoever ran a search, or an admin, deletes it (#651).
+      onClearAll={inOrganization ? undefined : handleClearAll}
       clearTooltip={th("clearAllHistory")}
       totalCount={history.count}
     />}
@@ -244,12 +255,14 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
 }
 
 /** The history page's frame, shared with its loading state so nothing moves when it loads. */
-export function HistoryPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
+export function HistoryPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode; intro?: React.ReactNode }) {
   const tc = useTranslations("common");
   return <LibraryPageShell icon={HistoryIcon} title={tc("searchHistory")} {...controls}>{children}</LibraryPageShell>;
 }
 
 export function HistoryLoading() {
   const tc = useTranslations("common");
-  return <HistoryPageFrame><ListLoading label={tc("loading")} /></HistoryPageFrame>;
+  // The Run by row is there while it loads too, so the list below it doesn't move when it comes.
+  const runBy = useRunBy("searches");
+  return <HistoryPageFrame intro={runBy.filter}><ListLoading label={tc("loading")} /></HistoryPageFrame>;
 }

@@ -197,7 +197,8 @@
       "fr": "法语",
       "hi": "印地语",
       "ja": "日语"
-    }
+    },
+    "you": "你"
   },
   "home": {
     "tagline": "搜索数百万学术论文和研究文章",
@@ -233,7 +234,6 @@
   },
   "pricing": {
     "chooseYourPlan": "选择您的计划",
-    "subtitle": "从免费版到企业版，价格透明",
     "perMonth": "/月",
     "freePrice": "免费",
     "enterprisePlanName": "企业版",
@@ -435,10 +435,6 @@
       "cancelled": "此操作在完成前已被取消。"
     }
   },
-  "sidebar": {
-    "expandSidebar": "展开侧边栏 (Ctrl+B)",
-    "collapseSidebar": "折叠侧边栏 (Ctrl+B)"
-  },
   "downloads": {
     "downloadAll": "下载全部",
     "downloadEssentialJSON": "将基本信息下载为 JSON",
@@ -578,12 +574,6 @@
       "summary": "{total} 个问题中已完成 {completed} 个",
       "failedCount": "{count, plural, one {# 个失败} other {# 个失败}}",
       "retryingCount": "{count, plural, one {# 个重试中} other {# 个重试中}}"
-    },
-    "errorHistory": {
-      "trigger": "错误历史 · {count, plural, one {# 次尝试} other {# 次尝试}}",
-      "triggerLabel": "显示错误历史（{count, plural, one {# 次尝试} other {# 次尝试}}）",
-      "attempt": "第 {n} 次尝试",
-      "loadMore": "显示更早的尝试"
     },
     "mixedSuccess": {
       "title": "部分成功完成",
@@ -919,12 +909,8 @@
     "enableToggleToCustomize": "启用上方的切换以自定义年份范围",
     "defaultAllYears": "默认情况下，您的搜索包含所有年份",
     "yearRangeLabel": "年份范围：",
-    "nStars": "{count, plural, other {# 星}}",
-    "zeroStars": "0 星",
     "onlyShowRated": "仅显示已评分的论文",
     "hideUnrated": "隐藏您尚未评分的论文",
-    "showingRange": "显示 {range}",
-    "filterActive": "筛选已激活",
     "searchCountriesPlaceholder": "搜索国家或地区...",
     "filteringByCountries": "共筛选 {count} 个国家",
     "regionsGroup": "地区",
@@ -1165,9 +1151,6 @@
     "bookmarkNotFound": "未找到书签「{keyword}」"
   },
   "accessibility": {
-    "toggleTheme": "切换主题",
-    "switchToLightMode": "切换到浅色模式",
-    "switchToDarkMode": "切换到深色模式",
     "closeDialog": "关闭",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "页码",
@@ -1436,13 +1419,13 @@
     "removeFromLibrary": "从文献库中移除",
     "addToCollection": "添加到合集",
     "newCollection": "新建合集",
-    "createAndAdd": "创建并添加",
     "removed": "已从文献库中移除",
     "undo": "撤销",
     "saveError": "无法保存该论文",
     "removeError": "无法移除该论文",
     "restoreError": "无法恢复该论文",
-    "collectionError": "无法更改合集"
+    "collectionError": "无法更改合集",
+    "newCollectionWithPaper": "用这篇论文新建集合"
   },
   "rating": {
     "noRating": "无评分",
@@ -1668,7 +1651,7 @@
     "filterCollection": "合集",
     "allCollections": "所有合集",
     "manageCollections": "管理合集",
-    "createCollection": "创建合集",
+    "createCollection": "创建",
     "createCollectionDescription": "为您的合集命名以整理论文。",
     "collectionNamePlaceholder": "合集名称",
     "createButton": "创建",
@@ -1694,7 +1677,23 @@
     "noCollectionsMatchSearch": "没有找到匹配的收藏夹",
     "emptyCollectionsTitle": "暂无收藏夹",
     "emptyCollectionsDescription": "创建您的第一个收藏夹，将保存的论文分组整理。",
-    "newCollectionPlaceholder": "新收藏夹名称..."
+    "newCollectionHint": "为它命名，查看谁能看到它，然后创建。",
+    "collectionNameTaken": "你已有同名的集合",
+    "collectionNameTakenIn": "{workspace} 已有同名的集合",
+    "whoSeesIt": "谁能看到",
+    "everyoneIn": "{workspace} 中的所有人",
+    "everyMemberEdits": "每位成员都可以编辑",
+    "onlyYou": "仅你自己",
+    "startWith": "首先加入",
+    "startWithPaper": "从这篇论文开始",
+    "collectionsMeter": "集合",
+    "collectionsNoun": "个集合",
+    "collectionsOf": "{count} / {limit}",
+    "collectionsCount": "{count, plural, other {# 个集合}}",
+    "noCollectionLimit": "{plan} 无上限",
+    "planAllowsCollections": "{plan} 最多可有 {limit, number} 个集合",
+    "nameTheCollection": "为集合命名",
+    "newName": "{name} 的新名称"
   },
   "sidebarLayout": {
     "expandFilters": "展开筛选器 (Ctrl+Shift+F)",
@@ -1872,7 +1871,8 @@
     "screenPapers": "筛选 {count, plural, other {# 篇}}",
     "startFailed": "无法开始筛选",
     "showAnswers": "显示 {title} 的回答",
-    "hideAnswers": "隐藏 {title} 的回答"
+    "hideAnswers": "隐藏 {title} 的回答",
+    "yesOrNo": "是或否"
   },
   "connectionsPage": {
     "connectedApps": "已连接的应用",
@@ -3084,7 +3084,6 @@
   "settingsShell": {
     "groups": {
       "account": "账户",
-      "research": "研究",
       "admin": "管理"
     },
     "items": {
@@ -3171,7 +3170,6 @@
       "title": "管理员",
       "admins": "位管理员",
       "search": "按姓名或邮箱搜索",
-      "you": "你",
       "invited": "已邀请",
       "notDelivered": "邀请未送达",
       "remove": "移除",
@@ -3257,7 +3255,9 @@
       "high": "高",
       "xhigh": "很高",
       "max": "最高"
-    }
+    },
+    "organizationPresetAdmin": "其中所有人都使用你在这里选择的预设。",
+    "organizationPresetMember": "由管理员选择所有人使用的预设。"
   },
   "modelPicker": {
     "vendors": "提供商",
@@ -3381,7 +3381,6 @@
       "failed": "无法继续回复"
     },
     "addPeople": "添加人员或组织",
-    "you": "你",
     "owner": "所有者",
     "canChat": "可对话",
     "canView": "可查看",
@@ -3801,6 +3800,109 @@
         "did": "已阅读论文 PDF",
         "where": "OpenAlex",
         "ask": "阅读论文 PDF"
+      },
+      "workspaces": {
+        "doing": "正在查看工作区",
+        "did": "已查看工作区",
+        "where": "工作区"
+      },
+      "orgMembers": {
+        "doing": "正在查看组织成员",
+        "did": "已查看组织成员",
+        "where": "成员"
+      },
+      "myInvites": {
+        "doing": "正在查看邀请",
+        "did": "已查看邀请",
+        "where": "工作区"
+      },
+      "newOrganization": {
+        "doing": "正在创建组织",
+        "did": "已创建组织",
+        "where": "工作区",
+        "ask": "创建组织"
+      },
+      "inviteMembers": {
+        "doing": "正在邀请成员",
+        "did": "已邀请成员",
+        "where": "成员",
+        "ask": "邀请成员"
+      },
+      "revokeInvite": {
+        "doing": "正在撤回邀请",
+        "did": "已撤回邀请",
+        "where": "成员",
+        "ask": "撤回邀请"
+      },
+      "declineInvite": {
+        "doing": "正在拒绝邀请",
+        "did": "已拒绝邀请",
+        "where": "工作区",
+        "ask": "拒绝邀请"
+      },
+      "memberRole": {
+        "doing": "正在更改成员角色",
+        "did": "已更改成员角色",
+        "where": "成员",
+        "ask": "更改成员角色"
+      },
+      "removeMember": {
+        "doing": "正在移除成员",
+        "did": "已移除成员",
+        "where": "成员",
+        "ask": "移除成员"
+      },
+      "leaveOrganization": {
+        "doing": "正在退出组织",
+        "did": "已退出组织",
+        "where": "工作区",
+        "ask": "退出组织"
+      },
+      "renameOrganization": {
+        "doing": "正在重命名组织",
+        "did": "已重命名组织",
+        "where": "工作区设置",
+        "ask": "重命名组织"
+      },
+      "deleteOrganization": {
+        "doing": "正在删除组织",
+        "did": "已删除组织",
+        "where": "工作区设置",
+        "ask": "删除组织"
+      },
+      "workspaceSummary": {
+        "doing": "正在统计工作区内容",
+        "did": "已统计工作区内容",
+        "where": "工作区设置"
+      },
+      "workspaceColour": {
+        "doing": "正在更改组织颜色",
+        "did": "已更改组织颜色",
+        "where": "工作区设置",
+        "ask": "更改组织颜色"
+      },
+      "resendInvite": {
+        "doing": "正在重新发送邀请",
+        "did": "已重新发送邀请",
+        "where": "成员",
+        "ask": "重新发送邀请"
+      },
+      "workspacePreset": {
+        "doing": "正在更改组织的 AI 预设",
+        "did": "已更改组织的 AI 预设",
+        "where": "AI 设置",
+        "ask": "更改组织的 AI 预设"
+      },
+      "activity": {
+        "doing": "正在查看变更",
+        "did": "已查看变更",
+        "where": "动态"
+      },
+      "memberCap": {
+        "doing": "正在更改成员的积分上限",
+        "did": "已更改成员的积分上限",
+        "where": "套餐和积分",
+        "ask": "更改成员的积分上限"
       }
     },
     "asks": {
@@ -3856,7 +3958,8 @@
       "buy": "以 {price} 添加 {credits, number} 积分",
       "plans": "查看方案",
       "note": "助手在使用积分前仍会询问。",
-      "failed": "无法添加积分"
+      "failed": "无法添加积分",
+      "askAdmin": "只有 {organization} 的管理员可以为其添加积分。请联系其中一位管理员。"
     },
     "allowance": {
       "any": "已允许使用积分",
@@ -3958,5 +4061,188 @@
       "topic": "主题",
       "chat": "对话"
     }
+  },
+  "workspaces": {
+    "main": "主菜单",
+    "screen": "筛选",
+    "extract": "提取",
+    "publish": "发布",
+    "explore": "探索",
+    "workspacesCard": "工作区",
+    "account": "账户",
+    "close": "关闭",
+    "switchFrom": "工作区：{name}。切换工作区",
+    "runningLabel": "{label}，{what}，{done}/{total}",
+    "doneOf": "{done}/{total}",
+    "planFor": "{workspace} 的 {plan}",
+    "planAndCredits": "套餐和积分",
+    "theme": "主题",
+    "light": "浅色",
+    "dark": "深色",
+    "auto": "自动",
+    "signOut": "退出登录",
+    "personal": "个人",
+    "admin": "管理员",
+    "member": "成员",
+    "members": "{count, plural, other {# 名成员}}",
+    "switchTo": "切换到",
+    "otherWorkspaces": "其他工作区",
+    "from": "来自",
+    "decline": "拒绝",
+    "join": "加入",
+    "newOrganization": "新建组织",
+    "workspaceSettings": "工作区设置",
+    "invitationGone": "此邀请已失效。",
+    "couldntJoin": "无法加入组织",
+    "couldntDecline": "无法拒绝邀请",
+    "couldntCreate": "无法创建组织",
+    "newOrganizationShares": "成员共享其文献库、搜索、筛选和积分。",
+    "name": "名称",
+    "namePlaceholder": "Learning Lab",
+    "inviteMembers": "邀请成员",
+    "removeEmail": "移除 {email}",
+    "addAnother": "再添加一个",
+    "emailPlaceholder": "name@university.edu",
+    "emailToInvite": "要邀请的邮箱",
+    "membersHeading": "成员",
+    "seatsOf": "{plan}：{seats}/{limit}",
+    "createOrganization": "创建组织",
+    "invitationDeclined": "已拒绝邀请",
+    "goToSearch": "前往搜索",
+    "youreIn": "你已加入 {name}",
+    "joined": "已加入",
+    "open": "打开 {name}",
+    "invitedYou": "{name} 邀请了你",
+    "joinName": "加入 {name}",
+    "planNamed": "{plan} 套餐",
+    "asAdmin": "作为管理员",
+    "asMember": "作为成员",
+    "pointShared": "其合集和搜索",
+    "pointCredits": "使用其积分运行的工作",
+    "pointOwn": "你自己的工作区仍归你所有",
+    "invitationGoneTitle": "此邀请已失效",
+    "invitationGoneDetail": "请向发送者索取新的邀请",
+    "settings": {
+      "general": "常规",
+      "collections": "收藏集",
+      "searches": "搜索",
+      "screenings": "筛选",
+      "extractions": "提取",
+      "evidenceLibraries": "证据库",
+      "changeLogo": "更换标志",
+      "organizationName": "组织名称",
+      "saveName": "保存名称",
+      "rename": "重命名组织",
+      "copyAddress": "复制 {address}",
+      "colour": "颜色",
+      "inName": "{name} 中的内容",
+      "leaveOrDelete": "退出或删除",
+      "leaveName": "退出 {name}",
+      "leaveDetail": "你在这里的工作留在组织中",
+      "makeAdminFirst": "请先让其他人成为管理员",
+      "leave": "退出",
+      "deleteName": "删除 {name}",
+      "libraryIsLive": "{library} 正在线上。请先移走或删除它。",
+      "deleteDetail": "将为全部 {count, number} 名成员删除它",
+      "moveLibrariesFirst": "请先移走或删除它的证据库",
+      "delete": "删除",
+      "deleteConfirm": "它的收藏集、搜索、筛选和提取也会一并为全部 {count, number} 名成员删除。此操作无法撤销。",
+      "leaveConfirm": "在管理员再次邀请你之前，你将无法访问它的工作。",
+      "ofSeats": "/ {seats, number}",
+      "membersOnPlan": "{plan} 上的成员",
+      "invite": "邀请",
+      "emailAddress": "邮箱地址",
+      "theirRole": "其角色",
+      "freeUpTo": "免费组织最多 {count, number} 名成员（含邀请）",
+      "membersLabel": "成员",
+      "joined": "{when}加入",
+      "roleOf": "{name} 的角色",
+      "removeName": "移除 {name}",
+      "invitations": "邀请",
+      "invited": "{when}邀请",
+      "sentAgain": "已重新向 {email} 发送邀请",
+      "resend": "重新发送",
+      "cancelInvitation": "取消对 {email} 的邀请",
+      "removeConfirm": "{name} 将无法访问 {organization}。其工作仍保留在组织中。",
+      "remove": "移除",
+      "includedMembers": "{count, number} 名成员",
+      "unlimitedCollections": "无限收藏集",
+      "includedCollections": "{count, number} 个收藏集",
+      "papersAtOnce": "同时处理 {count, number} 篇论文",
+      "anyPapersAJob": "每个任务论文数不限",
+      "papersAJob": "每个任务最多 {count, number} 篇论文",
+      "sharedCredits": "共享积分",
+      "membersDraw": "{count, number} 名成员使用",
+      "refillOn": "{date} 补充 {amount}",
+      "upToMembers": "最多 {count, number} 名成员",
+      "included": "包含",
+      "spendingThisMonth": "本月支出",
+      "yourSpendingThisMonth": "你本月的支出",
+      "creditsCount": "{count, plural, other {# 积分}}",
+      "spentOfCap": "{spent} / {cap}",
+      "cap": "上限",
+      "capNone": "无",
+      "noCap": "不设上限",
+      "capAMonth": "每月 {amount}"
+    },
+    "couldntInvite": "组织已创建，但邀请未能发出。请在其成员设置中发送。",
+    "fromCredits": "使用 {name} 的积分",
+    "workspace": "工作区",
+    "creditsLeft": "剩余 {credits} 积分",
+    "drawsOn": "使用",
+    "ratings": {
+      "collection": "收藏集",
+      "yours": "你在此收藏集中的评分",
+      "everyone": "大家在此收藏集中的评分",
+      "heading": "此收藏集中的评分",
+      "none": "暂无评分",
+      "stars": "{value}/5"
+    },
+    "activity": {
+      "title": "动态",
+      "runBy": "运行者",
+      "madeBy": "创建者",
+      "created": "创建了它",
+      "renamed": "重命名了它，原名",
+      "edited": "修改了它",
+      "added": "添加了 {count} 篇论文",
+      "removed": "移除了 {count} 篇论文",
+      "rated": "评分了 {count} 篇论文",
+      "answered": "修改了 {count} 个回答",
+      "screened": "筛选了 {count} 篇论文",
+      "extracted": "从 {count} 篇论文中提取",
+      "paused": "暂停了它",
+      "resumed": "恢复了它",
+      "retried": "重试了 {count} 个失败的回答",
+      "stopped": "停止了它",
+      "viaAssistant": "通过助手",
+      "today": "今天",
+      "yesterday": "昨天",
+      "thisWeek": "本周",
+      "earlier": "更早",
+      "showEarlier": "显示更早的动态",
+      "none": "此后的变更会显示在这里。"
+    },
+    "runBy": {
+      "runBy": "运行者",
+      "startedBy": "发起者",
+      "everyone": "所有人",
+      "more": "另外 {count} 人",
+      "find": "查找成员",
+      "noOne": "没有这个名字的人",
+      "busiest": "{count} 人中最活跃的 {listed} 人。输入名字查找其他人。",
+      "searches": "{count} 次搜索",
+      "screenings": "{count} 次筛选",
+      "extractions": "{count} 次提取",
+      "collections": "{count} 个收藏集",
+      "chats": "{count} 个对话",
+      "showMore": "显示更多成员"
+    },
+    "presence": {
+      "hasOpen": "{names} 正在查看"
+    }
+  },
+  "models": {
+    "changeInSettings": "在 AI 设置中更改"
   }
 }

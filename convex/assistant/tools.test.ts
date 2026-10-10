@@ -29,6 +29,9 @@ import { callingDoStream as calling, finishingDoStream, hangingDoStream, waitFor
 import { personalWorkspaceOf } from "../workspaces/actor";
 import { ensureWorkspace } from "../workspaces/create";
 import { ownActor } from "../workspaces/actor.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
+import { organizationWorkspaceOf } from "../workspaces/personal";
+import { accountOf } from "../billing/billing.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
@@ -167,7 +170,7 @@ describe("the assistant's tools", () => {
 
     // The paper is in the sender's library, not anyone else's.
     const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
-    expect(saved).toMatchObject({ userId: ada, openalexId: "https://openalex.org/W1" });
+    expect(saved).toMatchObject({ createdBy: ada, openalexId: "https://openalex.org/W1" });
     expect(await steps()).toMatchObject([{ threadId, order: 0, userId: ada, toolCallId: "save", path: "library/mutations:saveToLibrary", status: "done", input: expect.stringContaining("Tutoring at scale"), subject: "Tutoring at scale", undo: { path: "library/mutations:removeFromLibrary" } }]);
     // The whole result is kept beside the step, and the model's next request holds it.
     expect(await results()).toMatchObject([{ id: saved._id }]);
@@ -192,7 +195,7 @@ describe("the assistant's tools", () => {
     vi.unstubAllEnvs();
 
     const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
-    expect(saved).toMatchObject({ userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale" });
+    expect(saved).toMatchObject({ createdBy: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale" });
     // The call named the paper by its ID alone, so the step is about the paper it came back with.
     expect(await steps()).toMatchObject([{ path: "library/papers:save", status: "done", subject: "Tutoring at scale", undo: { path: "library/mutations:removeFromLibrary" } }]);
     // One result beside the step: the write ended it, and nothing ended it again.
@@ -269,7 +272,7 @@ describe("the assistant's tools", () => {
     // A library that follows the first collection.
     await t.run(async (ctx) => {
       const organizationId = (await ctx.db.query("organizations").first())!._id;
-      const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
+      const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("evidenceLibraryCollectionSources", { libraryId, collectionId: followed, connectedByClerkUserId: "ada", connectedAt: 1 });
     });
     const collected = () => t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).map((row) => row.collectionId));
@@ -617,18 +620,16 @@ describe("the assistant's tools", () => {
   it("ask about each change that would have no undo, tell the model which the person didn't allow, and carry on once all are answered", async () => {
     const t = convexTest(schema);
     const { ada, asAda, threadId, sayUntilAsked, settled, thread, steps, shown } = await chatOf(t);
-    // The paper already has a rating on search cards, which removing it from the library would clear: saving it has no undo.
-    await asAda.mutation(api.research.records.change, { accountId: "ada", requestId: "rated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 4 } });
     const { id: followed } = await asAda.mutation(api.library.collections.createCollection, { name: "Published" });
     await t.run(async (ctx) => {
       const organizationId = (await ctx.db.query("organizations").first())!._id;
-      const libraryId = await ctx.db.insert("evidenceLibraries", { organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 });
+      const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Library", slug: "library", state: "active", createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("evidenceLibraryCollectionSources", { libraryId, collectionId: followed, connectedByClerkUserId: "ada", connectedAt: 1 });
     });
     mockDoStream.mockImplementationOnce(
       calling(
-        { id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } },
-        // A library that follows the collection shows its name.
+        // A library that follows the collection shows what's in it, and its name.
+        { id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale", collectionId: followed } } },
         { id: "rename", name: "run_action", input: { name: "library/collections:renameCollection", arguments: { collectionId: followed, name: "Public reading" } } },
       ),
     );
@@ -652,7 +653,7 @@ describe("the assistant's tools", () => {
     expect(await t.run(async (ctx) => (await ctx.db.get("collections", followed))?.name)).toBe("Published");
     expect(await shown()).toEqual([
       "user: Save it and rename the collection",
-      "step: library/mutations:saveToLibrary done",
+      "step: library/mutations:saveToLibrary done, can be undone",
       "step: library/collections:renameCollection declined",
       "assistant: Saved. The collection keeps its name.",
     ]);
@@ -662,7 +663,7 @@ describe("the assistant's tools", () => {
     await expect(t.mutation(internal.library.mutations.setPaperInCollectionForAssistant, add)).rejects.toThrow(/needs the person's say first/);
     // The person's own click is their approval.
     await t.mutation(internal.library.mutations.setPaperInCollectionForAssistant, { ...add, approved: true });
-    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).length)).toBe(1);
+    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).length)).toBe(2);
   });
 
   it("decline what a reply still asks when it's stopped, and take the next message as usual", async () => {
@@ -832,8 +833,8 @@ describe("the assistant's tools", () => {
     // A plan that takes 1,000 papers in one extraction, and a collection the account counts at 1,500.
     await t.run(async (ctx) => {
       await ctx.db.patch("collections", collectionId, { itemCount: 1500 });
-      const userId = (await ctx.db.get("collections", collectionId))!.userId;
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", userId)).unique();
+      const userId = (await ctx.db.get("collections", collectionId))!.createdBy;
+      const account = await accountOf(ctx, userId);
       await ctx.db.patch("billingAccounts", account!._id, { limits: { request_papers: 1000 } });
     });
     const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] };
@@ -856,7 +857,7 @@ describe("the assistant's tools", () => {
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
     // Screen all runs on the server's model, at GPT-6 Luna's price: what a paper holds on it.
     await t.run((ctx) => ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: ["tools", "structured_outputs"], contextLength: 400_000, syncedAt: 1, createdAt: 1, updatedAt: 1 }));
-    const perPaper = await t.run((ctx) => screeningPaperCreditsFor(ctx, ada));
+    const perPaper = await t.run(async (ctx) => screeningPaperCreditsFor(ctx, { userId: ada, workspaceId: await personalWorkspaceOf(ctx, ada) }));
     for (const n of [1, 2, 3]) await asAda.mutation(api.library.mutations.setPaperInCollection, { paper: { openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, abstract: "A trial of tutoring." }, collectionId, inCollection: true });
     const screen = (id: string, last = 3) => ({
       id,
@@ -930,7 +931,7 @@ describe("the assistant's tools", () => {
     // "Always" keeps a limit of hers that already covers the job, her own number included, raises one that doesn't to the smallest listed that does, and past the largest listed there is none.
     const always = (cap: number, credits: number) =>
       t.run(async (ctx) => {
-        const userId = (await ctx.db.get("assistantThreads", threadId))!.ownerId;
+        const userId = (await ctx.db.get("assistantThreads", threadId))!.createdBy;
         await ctx.db.patch("assistantLimits", (await ctx.db.query("assistantLimits").withIndex("by_thread_and_user", (q) => q.eq("threadId", threadId).eq("userId", userId)).unique())!._id, { jobs: { cap } });
         return allowAlways(ctx, threadId, userId, credits);
       });
@@ -940,16 +941,16 @@ describe("the assistant's tools", () => {
     expect(await always(300, 5_000)).toEqual({});
     // A search's papers are OpenAlex's to count, so its hold is for the whole range asked for, whatever count the account last saw.
     await asAda.mutation(api.research.records.importBatch, { accountId: "ada", searches: [{ search: { id: "not-counted-yet", query: "tutoring", field: "title_and_abstract", count: 0, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-10-01T10:00:00Z", updatedAt: "2026-10-01T10:00:00Z" } }], shortcuts: [], ratings: [] });
-    expect(await t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(100 * perPaper);
+    expect(await t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.createdBy), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } }))).toBe(100 * perPaper);
     // Rules with no least score include every paper whatever it's answered: refused before anyone is asked to pay for it.
-    await expect(t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.ownerId), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [] } }))).rejects.toThrow(/minimumScore/);
+    await expect(t.run(async (ctx) => screeningHold(ctx, await ownActor(ctx, (await ctx.db.get("assistantThreads", threadId))!.createdBy), { set: { kind: "search", searchId: "not-counted-yet" }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [] } }))).rejects.toThrow(/minimumScore/);
     // A collection's hold covers the papers its count says it has, not the whole range asked for.
     const uncounted = await t.run(async (ctx) => {
-      const userId = (await ctx.db.get("assistantThreads", threadId))!.ownerId;
-      const collectionId = await ctx.db.insert("collections", { userId, name: "Three papers", sortName: "three papers", itemCount: 3, createdAt: 1, updatedAt: 1 });
+      const userId = (await ctx.db.get("assistantThreads", threadId))!.createdBy;
+      const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Three papers", sortName: "three papers", itemCount: 3, createdAt: 1, updatedAt: 1 });
       for (const openalexId of ["W91", "W92", "W93"]) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId, title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
-        await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: 1 });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId, title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
+        await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: 1 });
       }
       return screeningHold(ctx, await ownActor(ctx, userId), { set: { kind: "collection", collectionId }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } });
     });
@@ -1002,7 +1003,7 @@ describe("the assistant's tools", () => {
     const { ada, asAda, say, steps } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
     await t.run(async (ctx) => {
-      await ctx.db.insert("libraryItems", { userId: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale", paperData: "{}", savedAt: 1, updatedAt: 1, searchableText: "tutoring at scale" });
+      await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, ada)), openalexId: "https://openalex.org/W7", title: "Tutoring at scale", paperData: "{}", savedAt: 1, updatedAt: 1, searchableText: "tutoring at scale" });
     });
     mockDoStream
       // The paper by its short ID, as results give it, and a collection of hers.
@@ -1041,9 +1042,9 @@ describe("the assistant's tools", () => {
     const { ada, threadId } = await chatOf(t);
     const { stepId, reply } = await t.run(async (ctx) => {
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
-      const reply = { attemptId: "carrying-on", senderId: ada, order: 0, startedAt: 1, scheduledId };
+      const reply = { attemptId: "carrying-on", senderId: ada, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, startedAt: 1, scheduledId };
       await ctx.db.patch("assistantThreads", threadId, { reply });
-      return { reply, stepId: await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: "call", tool: "run_action", prompt: "message", path: "assistant/threads:remove", input: "{}", status: "allowed", startedAt: 1 }) };
+      return { reply, stepId: await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "call", tool: "run_action", prompt: "message", path: "assistant/threads:remove", input: "{}", status: "allowed", startedAt: 1 }) };
     });
     // Another reply's attempt can't take it, and neither can this one once it's stopped.
     expect(await t.mutation(internal.assistant.steps.resume, { stepId, attemptId: "another" })).toBe(false);
@@ -1108,7 +1109,7 @@ describe("the assistant's tools", () => {
     const list = (id: string, read?: number) => ({ id, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } }, ...(read ? { read } : {}) });
     const chat = async (free: number) => {
       await t.run(async (ctx) => {
-        const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ben)).unique();
+        const account = await accountOf(ctx, ben);
         if (account) await ctx.db.delete("billingAccounts", account._id);
         await seedCreditsForTest(ctx, { userId: ben, free });
       });
@@ -1305,7 +1306,7 @@ describe("the assistant's tools", () => {
     const total = STEPS_SHOWN + 30;
     await t.run(async (ctx) => {
       for (let index = 0; index < total; index++) {
-        await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: `call${index}`, path: "library/mutations:saveToLibrary", input: "{}", subject: `Paper ${index}`, status: "done", undo: { path: "library/mutations:removeFromLibrary", args: "{}" }, startedAt: index, endedAt: index });
+        await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: `call${index}`, path: "library/mutations:saveToLibrary", input: "{}", subject: `Paper ${index}`, status: "done", undo: { path: "library/mutations:removeFromLibrary", args: "{}" }, startedAt: index, endedAt: index });
       }
     });
     const withMessages = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.flatMap((item) => (item.role === "step" ? [item] : []));
@@ -1330,7 +1331,7 @@ describe("the assistant's tools", () => {
     await t.run(async (ctx) => {
       // A reply that was summarized partway carried on in the two exchanges after its own.
       for (const [order, calls] of [[0, 2], [1, 3], [2, 1]] as const) {
-        for (let index = 0; index < calls; index++) await ctx.db.insert("assistantSteps", { threadId, order, userId: ada, toolCallId: `call${order}.${index}`, path: "library/mutations:saveToLibrary", input: "{}", subject: `Paper ${order}.${index}`, status: "done", startedAt: index, endedAt: index });
+        for (let index = 0; index < calls; index++) await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order, userId: ada, toolCallId: `call${order}.${index}`, path: "library/mutations:saveToLibrary", input: "{}", subject: `Paper ${order}.${index}`, status: "done", startedAt: index, endedAt: index });
       }
       // One of its requests said something and called an action.
       const prompt = (await listMessages(ctx, components.agent, { threadId: agentThreadId, paginationOpts: { cursor: null, numItems: 10 } })).page.find((doc) => doc.message?.role === "user")!;
@@ -1425,7 +1426,7 @@ describe("the assistant's tools", () => {
     await t.run(async (ctx) => {
       for (let n = 0; n < ASSISTANT_REPLIES_AT_ONCE; n++) {
         const scheduledId = await ctx.scheduler.runAfter(60_000, internal.assistant.replies.sweep, {});
-        await ctx.db.insert("assistantThreads", { ownerId: ada, workspaceId: lab, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, workspaceId: lab, order: 0, startedAt: 1, scheduledId } });
+        await ctx.db.insert("assistantThreads", { workspaceId: lab, createdBy: ada, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, workspaceId: lab, order: 0, startedAt: 1, scheduledId } });
       }
     });
     await expect(asAda.mutation(api.assistant.replies.send, { threadId, text: "Save W1" })).rejects.toThrow(/already writing/);
@@ -1500,7 +1501,7 @@ describe("the assistant's tools", () => {
       const workspaceId = await personalWorkspaceOf(ctx, ada);
       for (let n = 0; n < ASSISTANT_REPLIES_AT_ONCE; n++) {
         const scheduledId = await ctx.scheduler.runAfter(60_000, internal.assistant.replies.sweep, {});
-        await ctx.db.insert("assistantThreads", { ownerId: ada, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, workspaceId, order: 0, startedAt: 1, scheduledId } });
+        await ctx.db.insert("assistantThreads", { workspaceId, createdBy: ada, title: "Busy", agentThreadId: `busy${n}`, lastMessageAt: 1, createdAt: 1, updatedAt: 1, reply: { attemptId: `busy${n}`, senderId: ada, workspaceId, order: 0, startedAt: 1, scheduledId } });
       }
     });
     // Answering the question isn't agreeing to more credits: the reply waits to be carried on, with the answer kept.
@@ -1613,7 +1614,7 @@ describe("the assistant's tools", () => {
       const result = (id: string) => ({ role: "tool" as const, content: [{ type: "tool-result" as const, toolCallId: id, toolName: "library_collections_listCollections", output: { type: "json" as const, value: { page: [] } } }] });
       for (let round = 0; round < 30; round++) {
         await saveMessages(ctx, components.agent, { threadId: agentThreadId, promptMessageId: prompt._id, messages: [call(`c${round}`), result(`c${round}`)] });
-        await ctx.db.insert("assistantSteps", { threadId, order: 0, userId: ada, toolCallId: `c${round}`, path: "library/collections:listCollections", input: "{}", subject: `Read ${round}`, status: "done", startedAt: round, endedAt: round });
+        await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: `c${round}`, path: "library/collections:listCollections", input: "{}", subject: `Read ${round}`, status: "done", startedAt: round, endedAt: round });
       }
     });
     const read = (paginationOpts: { cursor: string | null; numItems: number }) => asAda.query(api.assistant.replies.messages, { threadId, stepsAhead: true, paginationOpts });
@@ -1658,7 +1659,7 @@ describe("the assistant's tools", () => {
     mockDoStream.mockImplementationOnce(finishingDoStream(["Rated."]));
     await say("Rate that paper");
     await t.run(async (ctx) => {
-      const step = { threadId, order: 0, userId: ada, toolCallId: "rate", path: "research/records:change", status: "done" as const, startedAt: 1, endedAt: 1 };
+      const step = { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "rate", path: "research/records:change", status: "done" as const, startedAt: 1, endedAt: 1 };
       await ctx.db.insert("assistantSteps", { ...step, input: JSON.stringify({ requestId: "r1", command: { kind: "rating", paperId: "W1", rating: 5 } }) });
       // Arguments too long to keep whole were cut, and don't parse: the step still shows, as the action alone.
       await ctx.db.insert("assistantSteps", { ...step, toolCallId: "cut", input: '{"requestId":"r2","command":{"kind":"createSea' });
@@ -1700,7 +1701,7 @@ describe("the assistant's tools", () => {
     const most = estimateCredits({ input: 1, output: 2 }, CALL_TOKENS.chatRequest);
     await t.run(async (ctx) => {
       fakeAutumn.setBalance(ada, { free: most - 100, paid: 0 });
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada)).unique();
+      const account = await accountOf(ctx, ada);
       await ctx.db.patch("billingAccounts", account!._id, { balance: most + 500 });
     });
     let held: number[] = [];

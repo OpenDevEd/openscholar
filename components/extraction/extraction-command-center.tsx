@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ItemPresence } from "@/components/workspaces/presence";
 import { useTranslations } from "next-intl";
 import { Database, Plus, ExtractionIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,7 @@ import type { Doc } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import {
   CommandCenterList,
   CommandCenterPagination,
@@ -26,14 +27,20 @@ import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { JobListItem } from "./job-list-item";
 import type { ViewMode } from "@/lib/types";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import type { FunctionReturnType } from "convex/server";
+import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { useRunBy } from "@/components/workspaces/run-by";
 
 function createExtractionJobListItem(viewMode: ViewMode) {
   return function ExtractionJobListItem({ item }: { item: ExtractionJob }) {
-    return <JobListItem job={item} viewMode={viewMode} />;
+    // In an organization, a member's job shows who ran it in its ring (#656).
+    const face = item.by && !item.by.you ? <IdentityAvatar name={item.by.name} imageUrl={item.by.imageUrl} className={viewMode === "list-detail" ? "size-9" : "size-6"} /> : undefined;
+    // Who has it open there, read for the row; only its own page joins its room.
+    return <JobListItem job={item} viewMode={viewMode} face={face} done={item.done} presence={<ItemPresence kind="extraction" id={item._id} join={false} />} />;
   };
 }
 
-type ExtractionJob = Doc<"extractionJobs">;
+type ExtractionJob = FunctionReturnType<typeof api.extraction.queries.listJobs>["page"][number];
 
 export function ExtractionCommandCenter() {
   const workspaceId = useWorkspace();
@@ -57,10 +64,12 @@ export function ExtractionCommandCenter() {
   } = useUIStore();
 
   // Read a page at a time, sorted and filtered on the server: the page number can't be jumped to, so it stays out of the URL.
-  const jobs = useCursorPage(api.extraction.queries.listJobs, inWorkspace(workspaceId, { sort: extractionSortBy, ...(text ? { text } : {}) }), COMMAND_CENTER_ITEMS_PER_PAGE);
-  // A search's matches aren't counted, so its pager shows the page alone.
+  // In an organization, everyone's extractions or one member's (#656).
+  const runBy = useRunBy("extractionJobs");
+  const jobs = useCursorPage(api.extraction.queries.listJobs, inWorkspace(workspaceId, { sort: extractionSortBy, ...(text ? { text } : {}), ...(runBy.by ? { by: runBy.by } : {}) }), COMMAND_CENTER_ITEMS_PER_PAGE);
+  // A search's matches aren't counted, so its pager shows the page alone; one member's are the count the filter knows.
   const { data: count } = useProtectedQuery(api.extraction.queries.countJobs, inWorkspace(workspaceId, {}));
-  const total = text ? undefined : count;
+  const total = text ? undefined : runBy.by ? runBy.countOf(runBy.by) : count;
   const step = (to: () => void) => () => {
     to();
     window.scrollTo({ top: 0 });
@@ -68,6 +77,7 @@ export function ExtractionCommandCenter() {
 
   return (
     <LibraryPageShell
+      intro={runBy.filter}
       icon={ExtractionIcon}
       title={tc("extraction")}
       tabs={<ViewModeSwitch value={extractionViewMode} onChange={setExtractionViewMode} />}

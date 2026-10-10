@@ -4,6 +4,7 @@ import { expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
+import { organizationOfLibrary } from "../../tests/helpers/evidence-library-setup-fixture";
 
 it("counts grants and fills members from before, once however often it runs", async () => {
   vi.useFakeTimers();
@@ -11,7 +12,7 @@ it("counts grants and fills members from before, once however often it runs", as
     const fixture = await createReadySetupFixture("team_backfill");
     const libraryId = fixture.created.libraryId;
     await runUntriggered(fixture.t, async (ctx) => {
-      const { organizationId } = (await ctx.db.get("evidenceLibraries", libraryId))!;
+      const organizationId = await organizationOfLibrary(ctx, libraryId);
       await ctx.db.insert("users", { clerkId: "user_old", email: "old@example.org", firstName: "Hedy", state: "active", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: "orgmem_old", clerkUserId: "user_old", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("evidenceLibraryMembers", { libraryId, clerkUserId: "user_granted", role: "editor", grantedBy: "owner", grantedAt: 1 });

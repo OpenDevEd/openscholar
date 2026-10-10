@@ -5,6 +5,9 @@ import type { Id } from "../_generated/dataModel";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { exportedTitles } from "../exports.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
+import { madeBy } from "../workspaces/actor.test-support";
+import { personalRatingRow } from "../ratings";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -26,7 +29,7 @@ async function seedUser(
       updatedAt: Date.now(),
       lastLoginAt: Date.now(),
     });
-    await ctx.db.insert("libraryCounts", { userId, count: overrides.libraryItemCount ?? 0 });
+    await ctx.db.insert("libraryCounts", { workspaceId: await personalWorkspaceOf(ctx, userId), count: overrides.libraryItemCount ?? 0 });
     return await ctx.db.get("users", userId);
   });
 }
@@ -970,7 +973,7 @@ describe("saving without a rating", () => {
     // 600 rows a deleted collection left behind, older than the live ones.
     const gone = (await asUser.mutation(api.library.collections.createCollection, { name: "Gone" })).id;
     await t.run(async (ctx) => {
-      for (let i = 0; i < 600; i++) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: gone, libraryItemId: itemId, assignedAt: i });
+      for (let i = 0; i < 600; i++) await ctx.db.insert("libraryItemCollections", { collectionId: gone, libraryItemId: itemId, assignedAt: i });
       await ctx.db.delete("collections", gone);
     });
     const live = [];
@@ -999,7 +1002,7 @@ describe("saving without a rating", () => {
     // More than one transaction deletes.
     for (let start = 0; start < 2_500; start += 500) {
       await t.run(async (ctx) => {
-        for (let i = start; i < start + 500; i++) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId, libraryItemId: itemId, assignedAt: i });
+        for (let i = start; i < start + 500; i++) await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId: itemId, assignedAt: i });
       });
     }
     await asUser.mutation(api.library.collections.deleteCollection, { collectionId });
@@ -1007,30 +1010,29 @@ describe("saving without a rating", () => {
     expect(await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).take(1))).toEqual([]);
   });
 
-  it("keeps the research rating search cards show in step with the library", async () => {
+  it("rates a saved paper with the person's own rating, the one search cards show, which stays when the paper leaves the library", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
-    const researchRating = async () =>
-      await t.run(async (ctx) =>
-        (await ctx.db
-          .query("paperRatings")
-          .withIndex("by_user_and_paperId", (q) => q.eq("userId", user!._id).eq("data.paperId", paper.openalexId))
-          .unique())?.data.rating ?? null,
-      );
+    const ratings = async () =>
+      await t.run(async (ctx) => {
+        const own = (await personalRatingRow(ctx, user!._id, paper.openalexId))?.rating ?? null;
+        const saved = (await ctx.db.query("libraryItems").collect()).find((item) => item.openalexId === paper.openalexId);
+        return { own, library: saved ? (saved.rating ?? null) : "not saved" };
+      });
 
     await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 3 });
-    expect(await researchRating()).toBe(3);
+    expect(await ratings()).toEqual({ own: 3, library: 3 });
 
     await asUser.mutation(api.library.mutations.setLibraryRating, { openalexId: paper.openalexId, rating: null });
-    expect(await researchRating()).toBeNull();
+    expect(await ratings()).toEqual({ own: null, library: null });
 
     await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 5 });
     const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
-    expect(await researchRating()).toBeNull();
+    expect(await ratings()).toEqual({ own: 5, library: "not saved" });
 
     await asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
-    expect(await researchRating()).toBe(5);
+    expect(await ratings()).toEqual({ own: 5, library: 5 });
   });
 
   it("adds an unsaved paper to a collection by saving it once, and takes it out without unsaving it", async () => {
@@ -1093,7 +1095,7 @@ describe("undoing a library change (#342)", () => {
       return (signedIn.mutation as (...args: unknown[]) => unknown)(...args);
     }) as unknown as typeof signedIn.mutation;
     const onCards = () =>
-      t.run(async (ctx) => (await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", (q) => q.eq("userId", user!._id).eq("data.paperId", paper.openalexId)).unique())?.data.rating ?? null);
+      t.run(async (ctx) => (await personalRatingRow(ctx, user!._id, paper.openalexId))?.rating ?? null);
     return {
       t, mutation, onCards,
       count: () => signedIn.query(api.library.queries.getLibraryCount, {}),
@@ -1150,7 +1152,7 @@ describe("undoing a library change (#342)", () => {
     expect([await count(), await items()]).toEqual([0, 0]);
   });
 
-  it("puts a rating back to what it was in the library and on search cards, and refuses once either has changed", async () => {
+  it("puts the person's rating back to what it was, and refuses once it has changed", async () => {
     const { mutation, rating, onCards, rateOnCards } = await library();
     await mutation(saveToLibrary, paper);
     const rated = await mutation(saveToLibrary, { ...paper, rating: 4 });
@@ -1163,12 +1165,10 @@ describe("undoing a library change (#342)", () => {
     expect((await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 4 })).undo).toBeUndefined();
     expect((await mutation(saveToLibrary, paper)).undo).toBeUndefined();
 
-    // Rated on a search card since: the undo would overwrite that, so it's refused and both stay.
+    // Rated on a search card since: it's the same rating, which the library follows, so the undo is refused.
     await rateOnCards(5);
+    expect([await rating(), await onCards()]).toEqual([5, 5]);
     await expect(mutation(setLibraryRating, through(rated.undo, RATE).args)).rejects.toThrow(/changed since/);
-    expect([await rating(), await onCards()]).toEqual([4, 5]);
-    // The two now differ, so a new rating has no undo: putting one back would lose the other.
-    expect((await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 1 })).undo).toBeUndefined();
 
     // A paper removed and saved afresh with the same rating isn't the paper the undo was for.
     const first = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 3 });
@@ -1178,16 +1178,21 @@ describe("undoing a library change (#342)", () => {
     await expect(mutation(setLibraryRating, { openalexId: "https://openalex.org/W9", rating: 1 })).rejects.toThrow(/isn't in the library/);
   });
 
-  it("keeps a rating a paper had on search cards before it was saved", async () => {
-    const { mutation, onCards, rateOnCards } = await library();
+  it("shows the rating a paper had on search cards once it's saved, and an undone save leaves the person's rating as it was", async () => {
+    const { mutation, rating, onCards, rateOnCards } = await library();
     await rateOnCards(4);
-    // Removing the paper would clear that rating, so this save has no undo.
-    expect((await mutation(saveToLibrary, paper)).undo).toBeUndefined();
-    expect((await mutation(saveToLibrary, { openalexId: "https://openalex.org/W2", title: "Paper 2" })).undo).toBeDefined();
-    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+    // Saved with no rating: the library shows the person's 4, and undoing the save leaves it.
+    const saved = await mutation(saveToLibrary, paper);
+    expect(await rating()).toBe(4);
+    await mutation(removeFromLibrary, through(saved.undo, REMOVE).args);
+    expect(await onCards()).toBe(4);
+    // Saved with another rating: undoing the save puts the 4 back.
+    const rerated = await mutation(saveToLibrary, { ...paper, rating: 2 });
+    expect(await onCards()).toBe(2);
+    await mutation(removeFromLibrary, through(rerated.undo, REMOVE).args);
+    expect(await onCards()).toBe(4);
 
-    // Not in the library: clearing its rating clears the one on search cards, and the undo puts that back.
-    await rateOnCards(4);
+    // Not in the library: clearing its rating clears the person's, and the undo puts it back.
     const cleared = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: null });
     expect(await onCards()).toBeNull();
     await mutation(api.research.records.change, { accountId: "clerk_user1", requestId: "undo-clear", ...through(cleared.undo, CHANGE).args });
@@ -1243,12 +1248,13 @@ describe("the library as the assistant reads it", () => {
     const collectionId = await t.run(async (ctx) => {
       // The second paper was saved without a rating.
       await ctx.db.patch("libraryItems", phones!._id, { rating: undefined });
-      const id = await ctx.db.insert("collections", { userId: user!._id, name: "Chapter 2", sortName: ("Chapter 2").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
-      for (const item of [tutoring!, phones!]) await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: id, libraryItemId: item._id, assignedAt: 1 });
+      const id = await ctx.db.insert("collections", { ...(await madeBy(ctx, user!._id)), name: "Chapter 2", sortName: ("Chapter 2").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
+      for (const item of [tutoring!, phones!]) await ctx.db.insert("libraryItemCollections", { collectionId: id, libraryItemId: item._id, assignedAt: 1 });
       // A place in a collection deleted since, not yet cleared away, isn't one.
-      const gone = await ctx.db.insert("collections", { userId: user!._id, name: "Deleted", sortName: ("Deleted").toLowerCase(), itemCount: 1, createdAt: 1, updatedAt: 1 });
-      const feeding = await ctx.db.query("libraryItems").withIndex("by_user_openalexId", (q) => q.eq("userId", user!._id).eq("openalexId", "https://openalex.org/W3")).unique();
-      await ctx.db.insert("libraryItemCollections", { userId: user!._id, collectionId: gone, libraryItemId: feeding!._id, assignedAt: 1 });
+      const gone = await ctx.db.insert("collections", { ...(await madeBy(ctx, user!._id)), name: "Deleted", sortName: ("Deleted").toLowerCase(), itemCount: 1, createdAt: 1, updatedAt: 1 });
+      const workspaceId = await personalWorkspaceOf(ctx, user!._id);
+      const feeding = await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W3")).unique();
+      await ctx.db.insert("libraryItemCollections", { collectionId: gone, libraryItemId: feeding!._id, assignedAt: 1 });
       await ctx.db.delete("collections", gone);
       return id;
     });
@@ -1284,7 +1290,8 @@ describe("the library as the assistant reads it", () => {
     // More than a page: the next one carries on where this stopped.
     for (let i = 0; i < 22; i++) await seedLibraryItem(t, user!._id, { title: `Paper ${i}`, savedAt: Date.UTC(2026, 9, 1) + i, openalexId: `https://openalex.org/W${100 + i}` });
     await t.run(async (ctx) => {
-      const row = await ctx.db.query("libraryCounts").withIndex("by_user", (q) => q.eq("userId", user!._id)).unique();
+      const workspaceId = await personalWorkspaceOf(ctx, user!._id);
+      const row = await ctx.db.query("libraryCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
       await ctx.db.patch("libraryCounts", row!._id, { count: 25 });
     });
     const first = await papers();

@@ -12,14 +12,17 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   query: vi.fn(),
   reserveAddress: vi.fn(),
+  workspace: { kind: "organization", name: "Climate Team", organizationId: "org_1" },
 }));
+vi.mock("@/components/workspaces/parts", () => ({ useCurrentWorkspace: () => mocks.workspace, WorkspaceTag: ({ workspace }: { workspace: { name: string } }) => <span>{workspace.name}</span> }));
 
 vi.mock("@clerk/nextjs", () => ({ useOrganization: () => mocks.organization() }));
 vi.mock("convex/react", () => ({
   useAction: (name: string) =>
     name === "checkAddress" ? mocks.checkAddress : mocks.reserveAddress,
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
+vi.mock("next/navigation", () => ({
+  useParams: () => ({}), useRouter: () => ({ push: mocks.push }) }));
 vi.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) =>
     namespace === "evidenceLibraries.gate" ? `gate.${key}` : key,
@@ -81,6 +84,18 @@ describe("<NewLibraryForm>", () => {
     mocks.query.mockReset();
     mocks.query.mockReturnValue({ data: { page: [{id: "org_1", name: "Climate Team"}], isDone: true, continueCursor: "" }, isReady: true });
     mocks.reserveAddress.mockReset();
+    mocks.workspace = { kind: "organization", name: "Climate Team", organizationId: "org_1" };
+  });
+
+  it("makes the library in the organization the page is in, not another the person runs", async () => {
+    const user = userEvent.setup();
+    mocks.organization.mockReturnValue(owner);
+    mocks.query.mockReturnValue({ data: { page: [{ id: "org_1", name: "Climate Team" }, { id: "org_2", name: "Health Team" }], isDone: true, continueCursor: "" }, isReady: true });
+    mocks.workspace = { kind: "organization", name: "Health Team", organizationId: "org_2" };
+    render(<NewLibraryForm />);
+    expect(screen.getByText("Health Team")).toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", { name: "nameLabel" }), "Climate Evidence");
+    await waitFor(() => expect(mocks.checkAddress).toHaveBeenCalledWith(expect.objectContaining({ organizationId: "org_2" })));
   });
 
   it("shows Checking…, then the address the server found, and reserves it", async () => {

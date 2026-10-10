@@ -310,7 +310,7 @@ describe("holding and charging", () => {
     await t.mutation(internal.billing.accounts.zeroBalance, { workspaceId });
     expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.purchased)).toBe(0);
     const snapshot = await t.run(async (ctx) => {
-      const { _id, _creationTime, userId: _user, workspaceId: _workspace, refreshedAt, refreshQueuedAt, ...rest } = (await ctx.db.query("billingAccounts").first())!;
+      const { _id, _creationTime, workspaceId: _workspace, refreshedAt, refreshQueuedAt, ...rest } = (await ctx.db.query("billingAccounts").first())!;
       return { ...rest, balance: 10 };
     });
 
@@ -551,7 +551,7 @@ describe("the usage ledger", () => {
       for (let i = 0; i < 400; i += 100) {
         await t.run(async (ctx) => {
           for (let k = i; k < i + 100; k++) {
-            await insertUsage(ctx, { userId, jobId, chargeId: `extraction:${k}`, credits: 1, kind: "extraction", description: "Extraction", createdAt: k });
+            await insertUsage(ctx, { userId, workspaceId: await personalWorkspaceOf(ctx, userId), jobId, chargeId: `extraction:${k}`, credits: 1, kind: "extraction", description: "Extraction", createdAt: k });
           }
         });
       }

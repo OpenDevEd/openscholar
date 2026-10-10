@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useMemo, useTransition } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { useRouter } from "next/navigation";
 import { parseAsInteger, useQueryState } from "nuqs";
 import { useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
@@ -38,7 +37,8 @@ import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
 import { useIsMobile } from "@/lib/hooks";
 import { readyBucketPaperCount } from "@/lib/bucket/paper-count";
-import { useWorkspaceMutation } from "@/lib/workspaces/url";
+import { useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 const stepVariants = {
   enter: (direction: number) => ({
@@ -59,7 +59,7 @@ const stepVariants = {
 };
 
 export function JobCreator({ paperLimit }: { paperLimit: number }) {
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const toast = useAppToast();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
@@ -130,17 +130,18 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
     [bucketOrder, bucketItemsMap],
   );
 
-  // The most the job costs, on the models the person's extractions run on, against their balance: the figure its start checks.
+  // The most the job costs, on the models the workspace's extractions run on, against its balance: the figure its start checks.
   const paperCount = readyBucketPaperCount(readyBucketItems);
+  const scope = useWorkspaceScope();
   const { data: preflightCredits } = useProtectedQuery(
     api.extraction.queries.costs.estimateJob,
-    paperCount > 0 && draftJob.questions.length > 0
-      ? { papers: paperCount, questions: draftJob.questions.map((question) => question.type), usePdfs: draftJob.usePdfs }
+    paperCount > 0 && draftJob.questions.length > 0 && scope !== "skip"
+      ? { ...scope, papers: paperCount, questions: draftJob.questions.map((question) => question.type), usePdfs: draftJob.usePdfs }
       : "skip",
   );
   const { data: preflightBalance } = useProtectedQuery(
     api.billing.accounts.checkBalance,
-    preflightCredits ? { requiredAmount: preflightCredits } : "skip",
+    preflightCredits && scope !== "skip" ? { ...scope, requiredAmount: preflightCredits } : "skip",
   );
   const preflightBlocked =
     !!preflightCredits &&
@@ -260,20 +261,6 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="text-center mb-8"
-                >
-                  <h2 className="text-2xl font-bold text-foreground mb-2">
-                    {t("jobDetails")}
-                  </h2>
-                  <p className="text-muted-foreground">
-                    {t("nameYourJob")}
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                   className="space-y-6"
                 >
@@ -311,12 +298,10 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
                   transition={{ delay: 0.1 }}
                   className="mb-6"
                 >
-                  <h2 className="text-2xl font-bold text-foreground mb-2">
-                    {t("selectPapers")}
-                  </h2>
-                 <p className="text-muted-foreground">
-                   {t("combineSources")}
-                 </p>
+                  {/* The step's name is in the bar above. */}
+                  <p className="text-sm text-muted-foreground">
+                    {t("combineSources")}
+                  </p>
                  <SourceSummary />
                 </motion.div>
 
@@ -332,10 +317,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
                   transition={{ delay: 0.1 }}
                   className="mb-6"
                 >
-                  <h2 className="text-2xl font-bold text-foreground mb-2">
-                    {t("defineQuestions")}
-                  </h2>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {t("whatDataPoints")}
                   </p>
                 </motion.div>

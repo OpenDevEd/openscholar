@@ -1,16 +1,18 @@
 "use client";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import {useTranslations} from "next-intl";
 import {parseAsString, useQueryState} from "nuqs";
 import {useState} from "react";
-import { ArrowUpRight, SearchX, TopicsIcon } from "@/components/icons";
+import { ArrowUpRight, HealthSciencesIcon, LifeSciencesIcon, PhysicalSciencesIcon, SearchX, SocialSciencesIcon, TopicsIcon, type AppIcon } from "@/components/icons";
 import {LibraryPageShell} from "@/components/evidence-libraries/library-page-shell";
 import {LIST_FILTER, LIST_TILE, ListEmpty, ListSearch} from "@/components/evidence-libraries/list-controls";
-import {catalogChildren, catalogNode, searchCatalogTopics} from "@/lib/topics/search";
+import {catalogAncestors, catalogChildren, catalogNode, searchCatalogTopics} from "@/lib/topics/search";
 import {cn} from "@/lib/utils";
 import {Button} from "@/components/ui/button";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 const PAGE = 30;
+/** Each row shows its domain, the one thing that tells topics apart at a glance. */
+const DOMAIN_ICONS: Record<string, AppIcon> = {"domains/1": LifeSciencesIcon, "domains/2": SocialSciencesIcon, "domains/3": PhysicalSciencesIcon, "domains/4": HealthSciencesIcon};
 /** Browses the catalog that ships with the app, so choosing and searching never wait on the server. */
 export function TopicList() {
   const t = useTranslations("topics");
@@ -39,11 +41,11 @@ export function TopicList() {
   </>}>
     {/* Appears when you filter, as the list changes anyway, so the bar never moves. */}
     {(search || ancestor) && <div className="fade-enter flex justify-end border-b border-border-subtle px-4 py-2"><Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clear}>{t("clearFilters")}</Button></div>}
-    {!!topics.length && <ul className="divide-y divide-border-subtle">{topics.map(topic => <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
-      <div className={cn(LIST_TILE, "mr-1 shrink-0")}><TopicsIcon className="size-5" /></div>
+    {!!topics.length && <ul className="divide-y divide-border-subtle">{topics.map(topic => {const Domain = DOMAIN_ICONS[catalogAncestors(topic.id)[0]?.id ?? ""] ?? TopicsIcon; return <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
+      <div className={cn(LIST_TILE, "mr-1 shrink-0")}><Domain aria-hidden className="size-5" /></div>
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{topic.name}</p><p className="truncate text-xs text-muted-foreground">{topic.path.slice(0, -1).join(" / ")}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-    </Link></li>)}</ul>}
+    </Link></li>;})}</ul>}
     {!topics.length && <ListEmpty icon={SearchX}>{t("noMatches")}</ListEmpty>}
     {more && <div className="flex justify-center p-3"><Button variant="ghost" size="sm" onClick={() => setShown({listing, count: count + PAGE})}>{t("showMore")}</Button></div>}
   </LibraryPageShell>;

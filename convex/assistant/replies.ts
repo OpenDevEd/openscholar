@@ -32,7 +32,8 @@ import { hasVariants, variantIn, viewOf as actionView } from "../../lib/assistan
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { planLimit } from "../billing/accounts";
-import { personName, replyWorkspace, requireThread, touchThread } from "./access";
+import { replyWorkspace, requireThread, touchThread } from "./access";
+import { personName } from "../lib/people";
 import { actorIn, personalWorkspaceOf } from "../workspaces/actor";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
@@ -95,9 +96,6 @@ export async function admit(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
       : `The assistant is already writing ${most} replies for you. Wait for one to finish.`);
   }
 }
-
-/** The workspace a reply, or one that waits, acts in. One from before replies named theirs ran in its sender's own (#650); slice 8 makes it required. */
-export const actingIn = async (ctx: Pick<QueryCtx, "db">, reply: { senderId: Id<"users">; workspaceId?: Id<"workspaces"> }) => reply.workspaceId ?? (await personalWorkspaceOf(ctx, reply.senderId));
 
 /** Clears the lock of a reply whose action died. What it had cost by then is still one of its sender's last replies. */
 async function endDead(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
@@ -242,7 +240,7 @@ export const answer = mutation({
     let left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
     // A yes to a call that holds more than the person has starts nothing: it waits while they add credits, as its card says.
     // The workspace the reply acts in pays for it.
-    const balance = allow && step.credits !== undefined ? await availableCredits(ctx, await actingIn(ctx, waiting)) : 0;
+    const balance = allow && step.credits !== undefined ? await availableCredits(ctx, waiting.workspaceId) : 0;
     if (allow && step.credits !== undefined && step.credits > balance) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
     const tool = TOOL_OF[step.path];
     // What else waits is allowed with it only while the balance covers this call and each one allowed before it.
@@ -265,7 +263,7 @@ export const answer = mutation({
     const paused = left.length ? null : pausedAt(waiting);
     // The answer that lets the reply carry on starts a reply, so it's held to how many a workspace has at once, before anything changes.
     // It carries on in the workspace it asked from; its actions are refused there if the sender has left it since.
-    const workspaceId = await actingIn(ctx, waiting);
+    const workspaceId = waiting.workspaceId;
     if (!left.length && !paused) await admit(ctx, workspaceId);
     if (allow) await ctx.db.patch("assistantSteps", stepId, { status: "allowed" });
     else await declineSteps(ctx, [step]);
@@ -318,7 +316,7 @@ export const carryOn = mutation({
     // It spends their credits, so carrying it on is theirs alone.
     if (waiting.senderId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can carry this on.");
     // Carrying it on starts a reply, so it's held to how many a workspace has at once.
-    const workspaceId = await actingIn(ctx, waiting);
+    const workspaceId = waiting.workspaceId;
     await admit(ctx, workspaceId);
     await goOnFrom(ctx, thread, waiting, workspaceId, carriedOn(waiting, await replyLimitOf(ctx, threadId, userId)));
     return null;
@@ -483,7 +481,7 @@ export const release = internalMutation({
     /** Schedules the reply's next request, under the same lock. One stopped meanwhile finds that out there, and shows as stopped. */
     const goOn = async ({ used, ...from }: Infer<typeof resumeValidator>, wait = 0) => {
       const { compacting: _compacting, ...lock } = current;
-      const workspaceId = await actingIn(ctx, current);
+      const workspaceId = current.workspaceId;
       const scheduledId = await ctx.scheduler.runAfter(wait, internal.assistant.run.reply, { threadId, attemptId, ...from, workspaceId, used });
       const { cap: _cap, ...held } = lock;
       return { ...held, workspaceId, scheduledId, spent: used.credits, ...(used.cap === undefined ? {} : { cap: used.cap }) };
@@ -497,7 +495,7 @@ export const release = internalMutation({
     /** The paused reply, as the chat keeps it until it's carried on: where it stands in `order`, and what it runs to. */
     const pausedFrom = ({ used, ...from }: Infer<typeof resumeValidator>, order: number, paused: NonNullable<ReturnType<typeof pauseBefore>>) => ({
       senderId: current.senderId,
-      ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}),
+      workspaceId: current.workspaceId,
       order,
       promptMessageId: from.promptMessageId,
       modelId: from.modelId,
@@ -550,11 +548,11 @@ export const release = internalMutation({
       // The chat takes no message until every call is answered, or the reply is stopped. Its summary, if one is due, waits for the reply to end.
       const now = Date.now();
       for (const call of asking.calls) {
-        await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}), ...call, prompt: asking.promptMessageId, status: "asking", startedAt: now });
+        await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, workspaceId: current.workspaceId, ...call, prompt: asking.promptMessageId, status: "asking", startedAt: now });
       }
       const waiting = {
         senderId: current.senderId,
-        ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}),
+        workspaceId: current.workspaceId,
         order: current.order,
         promptMessageId: asking.promptMessageId,
         modelId: ended.modelId,
@@ -586,7 +584,7 @@ export const release = internalMutation({
       // is asked about once the summary is written.
       // A request made again after failing added nothing to summarize, and keeps its wait: the next one that answers is summarized after.
       if (!current.stop && !next.retries && compactionDue({ ...ended, window })) {
-        const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: await actingIn(ctx, current), through: current.order, lastInputTokens, resume: from });
+        const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: current.workspaceId, through: current.order, lastInputTokens, resume: from });
         // Owed from here until a summary is kept, so one that is stopped, or whose action dies, is written by the next reply.
         // The lock holds what the reply has cost so far, for its sender's record if the compaction's action dies.
         await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true, spent: next.spent } });
@@ -609,7 +607,7 @@ export const release = internalMutation({
     // A stopped reply is left alone: whoever stopped it is waiting to write.
     if (ended && !current.stop && compactionDue({ ...ended, window })) {
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
-      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: await actingIn(ctx, current), through: current.order, lastInputTokens });
+      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: current.workspaceId, through: current.order, lastInputTokens });
       // Owed from here until a summary is kept, so one whose action dies is written by the next reply.
       // The reply's cost is recorded above: the lock holds none of it, so it isn't recorded again if this action dies.
       await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true, spent: 0 } });
@@ -656,7 +654,7 @@ const stepValidator = v.object({
   variant: v.optional(v.string()),
   /** What it was about: a title, a name or a query from its arguments, or the title or name of what it returned. */
   subject: v.optional(v.string()),
-  /** Where its subject leads, in the app: the results of a query it looked up, as a new search. */
+  /** Where it leads, in the app: the results of what it looked up, by a query or by filters alone, as a new search. */
   href: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
@@ -821,7 +819,7 @@ export const messagesAction = defineUserQuery({
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
     // They're named as the workspace the reply acts in calls them, while the reader can still act there.
-    const acting = thread.asking && reader ? await actingIn(ctx, thread.asking) : null;
+    const acting = thread.asking && reader ? thread.asking.workspaceId : null;
     const workspaceId = acting && reader && (await actorIn(ctx, reader, acting)) ? acting : null;
     const details = new Map(
       await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, workspaceId, step.shown ?? step.input), step) } : bulkWithoutVariant(await bulkOf(ctx, reader!, workspaceId, step), step)] as const)),
@@ -931,7 +929,7 @@ function hrefOf(step: Doc<"assistantSteps">) {
   try {
     const { query, ...rest } = JSON.parse(step.input) as Record<string, unknown>;
     const settings = Object.fromEntries(Object.entries(rest).filter(([key]) => key in searchSettings)) as Parameters<typeof searchHref>[1];
-    const href = searchHref(typeof query === "string" ? query : undefined, settings);
+    const href = searchHref(typeof query === "string" ? query : undefined, settings, new Date(step.startedAt).getFullYear());
     return href ? { href } : {};
   } catch {
     // Arguments too long to keep whole were cut, and don't parse.
@@ -952,7 +950,8 @@ function shownStep(
     ...(step.reads ? { reads: true as const } : {}),
     ...(step.request === undefined ? {} : { request: step.request }),
     ...variantOf(step),
-    ...(step.subject ? { subject: step.subject, ...hrefOf(step) } : {}),
+    ...(step.subject ? { subject: step.subject } : {}),
+    ...hrefOf(step),
     ...(step.count === undefined ? {} : { count: step.count }),
     ...(step.sources?.length ? { sources: step.sources } : {}),
     ...(step.credits === undefined ? {} : { credits: step.credits }),

@@ -5,12 +5,16 @@
 // This is the chat itself. The run map, the cards, the sheets and the spending controls
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
+import { bareWorkspacePath } from "@/lib/workspaces/paths";
+import { useRoomHeartbeat } from "@/lib/hooks/use-room-heartbeat";
+import { useWorkspaceSlug } from "@/lib/workspaces/href";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { Component, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { useSmoothText } from "@convex-dev/agent/react";
-import { insertAtTop, useAction, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { usePathname } from "next/navigation";
 import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, ExternalLink, Eye, FileSearch, Gauge, Globe, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus, X } from "@/components/icons";
 import { useTranslations } from "next-intl";
@@ -33,7 +37,6 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
-import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
 import { stillNamed, withTokens, type Mention } from "@/lib/assistant/mentions";
 import { MentionComposer, MessageText, RECORD_CHIP, recordChipStyle } from "./mentions";
@@ -55,12 +58,13 @@ import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
-import { panelPlace, panelSeed } from "@/lib/assistant/place";
+import { panelPlace, panelSeed, threadIn, withThread } from "@/lib/assistant/place";
 import { AddCredits, KIND, KindTile, Steps, type StepItem } from "./steps";
 import { DockedJobs, JobDock, JobFlight, type Flight } from "./job-cards";
 import { IconButton, WorkingText } from "./parts";
-import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
-import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { Dim, HistorySheet, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
+import { SHEET_SPRING } from "@/lib/motion";
+import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -111,7 +115,6 @@ type Drafts = {
 };
 
 const setOpen = (update: (open: boolean) => boolean) => panelPlace.set((now) => ({ ...now, open: update(now.open) }));
-const setThreadId = (threadId: ThreadId | null) => panelPlace.set((now) => ({ ...now, threadId }));
 
 export function AssistantPanel() {
   const enabled = useFeatureFlag("assistant.enabled");
@@ -119,6 +122,9 @@ export function AssistantPanel() {
   const { canRunProtectedQueries } = useAuthReadiness();
   // Open or folded, and on which chat: kept by the tab, so a reload comes back to the conversation, and a link to a chat (`?chat=`) opens the panel on it.
   const place = useSyncExternalStore(panelPlace.subscribe, panelPlace.get, panelPlace.onServer);
+  // Each workspace keeps the chat last open in it (#651); one in another workspace never shows here.
+  const key = useWorkspaceSlug() ?? "";
+  const setThreadId = (threadId: ThreadId | null) => panelPlace.set((now) => withThread(now, key, threadId));
   // Kept here, above the panel, so folding it away keeps what was typed.
   const [typed, setTyped] = useState<Record<string, string>>({});
   const [picked, setPicked] = useState<Record<string, Mention[]>>({});
@@ -156,7 +162,7 @@ export function AssistantPanel() {
     // Session replays show none of the conversation (instrumentation-client.ts).
     <div data-ph-mask className="contents">
       <Lost onLost={() => setThreadId(null)}>
-        <Overlay open={place.open} setOpen={setOpen} threadId={place.threadId as ThreadId | null} setThreadId={setThreadId} drafts={drafts} />
+        <Overlay open={place.open} setOpen={setOpen} threadId={threadIn(place, key) as ThreadId | null} setThreadId={setThreadId} drafts={drafts} />
       </Lost>
     </div>
   );
@@ -233,7 +239,8 @@ function Overlay({
   }
   // A purchase of credits belongs to the panel, not to the sheet that started it: the sheet can be closed and opened
   // again while the purchase is on its way, and a second one started then would charge the card twice.
-  const buyCredits = useAction(api.billing.actions.buyCredits);
+  // Bought for the workspace the panel is in: an organization's admins buy its credits.
+  const buyCredits = useWorkspaceAction(api.billing.actions.buyCredits);
   const toast = useAppToast();
   const [buying, setBuying] = useState<number | null>(null);
   const [bought, setBought] = useState<number | null>(null);
@@ -385,31 +392,9 @@ function Overlay({
 
 /** Keeps the person in the chat's room while the panel has it open, so the others in it see they're there. */
 function Here({ threadId }: { threadId: ThreadId }) {
-  const heartbeat = useMutation(api.assistant.presence.heartbeat);
-  const leave = useMutation(api.assistant.presence.leave);
-  // A timer is an outside system: a beat now, one every PRESENCE_HEARTBEAT_MS, and leaving when the chat closes.
-  // A tab that closes just stops beating, and the room drops it after 2.5 beats.
-  useEffect(() => {
-    const sessionId = crypto.randomUUID();
-    let token: string | null = null;
-    let left = false;
-    const beat = () =>
-      heartbeat({ threadId, sessionId }).then(
-        (sessionToken) => {
-          token = sessionToken;
-          // The chat closed while this beat was on its way.
-          if (left) leave({ sessionToken }).catch(() => {});
-        },
-        () => {},
-      );
-    void beat();
-    const timer = setInterval(beat, PRESENCE_HEARTBEAT_MS);
-    return () => {
-      left = true;
-      clearInterval(timer);
-      if (token) leave({ sessionToken: token }).catch(() => {});
-    };
-  }, [threadId, heartbeat, leave]);
+  const heartbeat = useMutation(api.presence.chatHeartbeat);
+  const leave = useMutation(api.presence.leave);
+  useRoomHeartbeat(threadId, (sessionId) => heartbeat({ threadId, sessionId }), (sessionToken) => leave({ sessionToken }));
   return null;
 }
 
@@ -442,8 +427,10 @@ function Chat({
   const t = useTranslations("assistant");
   const toast = useAppToast();
   const thread = useQuery(api.assistant.threads.get, inWorkspace(workspaceId, threadId ? { threadId } : "skip"));
-  // What a new chat starts on: the chat model of the person's AI settings.
-  const start = useQuery(api.assistant.threads.newChatModel, {});
+  // What a new chat starts on: the chat model of the workspace's AI settings, an organization's preset in one.
+  const start = useQuery(api.assistant.threads.newChatModel, inWorkspace(workspaceId, {}));
+  // An organization's chats run on its preset, which its admins change in AI settings (#651).
+  const inOrganization = useCurrentWorkspace()?.kind === "organization";
   // What the person lets a reply spend here: the meter's "allow more" is by it, and the Spending sheet opens with it in hand.
   const spending = useQuery(api.assistant.spending.get, threadId ? { threadId } : "skip");
   const carryOn = useMutation(api.assistant.replies.carryOn);
@@ -612,7 +599,7 @@ function Chat({
       going.current = up.done.length ? up.done.map((file) => file.shown) : undefined;
       setFirst((now) => (now && now.text === text ? { ...now, files: up.done.map((file) => file.shown) } : now));
       // Where it's sent from goes with it, so "this" and "here" mean the page the person is on.
-      await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search, ...(fileIds.length ? { files: fileIds } : {}) });
+      await sendMessage({ threadId: id, text, view: bareWorkspacePath(window.location.pathname) + window.location.search, ...(fileIds.length ? { files: fileIds } : {}) });
       return id;
     })();
     outgoing.current = sent.catch(() => null);
@@ -747,7 +734,7 @@ function Chat({
       </div>
       <Footer
         dock={threadId && running ? <JobDock key={threadId} threadId={threadId} jobs={running} open={stackOpen} onOpen={openStack} /> : null}
-        composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} picked={drafts.picks(threadId)} onPick={(mention) => drafts.pick(threadId, mention)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel}
+        composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} picked={drafts.picks(threadId)} onPick={(mention) => drafts.pick(threadId, mention)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel} modelFixed={inOrganization}
         meter={meter}
         allowance={spending?.allowance ?? null}
         allowed={{ web: spending?.web ?? false, files: spending?.files ?? false }}
@@ -1276,7 +1263,7 @@ function ModelPill({
 
 /** The page the person is on, as the composer names it. Each message carries its address (`send`). */
 function useViewName() {
-  const pathname = usePathname();
+  const pathname = bareWorkspacePath(usePathname());
   const t = useTranslations("assistant.views");
   const common = useTranslations("common");
   const topics = useTranslations("topics");
@@ -1312,6 +1299,7 @@ function Footer({
   model,
   onModel,
   presetModel,
+  modelFixed = false,
   meter,
   allowance,
   onStopAllowance,
@@ -1340,6 +1328,8 @@ function Footer({
   model: PickedModel | null;
   onModel: (model: PickedModel, effort: Effort | undefined) => void;
   presetModel: ReturnType<typeof usePresetModels>;
+  /** The chat runs on its organization's preset, which only its admins change, in AI settings (#651). */
+  modelFixed?: boolean;
   /** What the reply being written has cost the person reading, when it's theirs. */
   meter: Meter | null;
   /** What jobs that spend credits may hold in this chat without asking, when the person allowed them. The chip opens Spending, and its X turns the allowance off. */
@@ -1442,7 +1432,7 @@ function Footer({
           <span className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">
             <Eye className="size-3" /> {t("sees", { view })}
           </span>
-          <ModelPill model={model} onChange={onModel} presetModel={presetModel} readOnly={!canWrite} />
+          <ModelPill model={model} onChange={onModel} presetModel={presetModel} readOnly={!canWrite || modelFixed} />
           {/* The span keeps the hint reachable while the button is disabled. */}
           <TooltipHint label={!canWrite ? t("readOnly") : busy ? t("stop") : t("send")}>
             <span className="flex shrink-0" tabIndex={canWrite ? undefined : 0}>

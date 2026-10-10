@@ -14,6 +14,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { WorkspaceTag } from "@/components/workspaces/parts";
 
 const PER_PAGE = 8;
 const APP_TINTS = ["#a78bfa", "#60a5fa", "#34d399", "#f472b6", "#2dd4bf", "#d9a27c"];
@@ -83,6 +84,7 @@ export default function ConnectionsPage() {
                           ) : null}
                         </p>
                       </div>
+                      <WorkspaceTag workspace={key.workspace} size="sm" />
                       <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
                         {key.lastUsedAt
                           ? t("lastUsed", { time: format.relativeTime(key.lastUsedAt, now) })

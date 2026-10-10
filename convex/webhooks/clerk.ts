@@ -33,6 +33,7 @@ type ClerkWebhookMutationRefs = {
   markUserDeletedFromClerk: unknown;
   applyOrganizationEvent: unknown;
   applyOrganizationMembershipEvent: unknown;
+  applyOrganizationInvitationEvent: unknown;
 };
 
 export async function processClerkWebhookEvent(args: {
@@ -52,6 +53,8 @@ export async function processClerkWebhookEvent(args: {
     applyOrganizationEvent: internal.webhooks.projections.applyOrganizationEvent,
     applyOrganizationMembershipEvent:
       internal.webhooks.projections.applyOrganizationMembershipEvent,
+    applyOrganizationInvitationEvent:
+      internal.webhooks.projections.applyOrganizationInvitationEvent,
     ...args.mutationRefs,
   };
   const eventMetadata = {
@@ -97,12 +100,20 @@ export async function processClerkWebhookEvent(args: {
       case "organization.deleted":
       case "organizationMembership.created":
       case "organizationMembership.updated":
-      case "organizationMembership.deleted": {
+      case "organizationMembership.deleted":
+      case "organizationInvitation.created":
+      case "organizationInvitation.accepted":
+      case "organizationInvitation.revoked": {
         const projection = parseClerkProjectionEvent(eventType, data);
         if (!projection) {
           return { status: 400, body: "Invalid organization payload" };
         }
-        if (projection.kind === "organization") {
+        if (projection.kind === "invitation") {
+          await runMutation(mutationRefs.applyOrganizationInvitationEvent, {
+            ...eventMetadata,
+            invitation: projection.invitation,
+          });
+        } else if (projection.kind === "organization") {
           await runMutation(
             mutationRefs.applyOrganizationEvent,
             projection.action === "upsert"

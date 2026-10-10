@@ -9,7 +9,8 @@ import { findPlan } from "../../lib/billing/catalog";
 import { jobSpace, spendSpace, usageAgg, workspaceSpace } from "./usageLog";
 import { insertUsage } from "./ledger";
 import { availableCredits, readAccount } from "./accounts";
-import { isInWorkspace, type InWorkspace } from "../workspaces/actor";
+import { type InWorkspace } from "../workspaces/actor";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 /**
  * Claims a Stripe charge's refunded total for reversal, one caller at a time.
@@ -36,6 +37,8 @@ export const claimRefund = internalMutation({
     if (args.refundedCents <= previousCents) return null;
     await insertUsage(ctx, {
       userId: args.userId,
+      // Top-ups are bought on a person's own billing page (#652 brings organizations theirs).
+      workspaceId: await personalWorkspaceOf(ctx, args.userId),
       chargeId: `refund:${args.stripeChargeId}:${args.refundedCents}`,
       credits: 0,
       kind: "refund",
@@ -77,7 +80,7 @@ const MAX_PAGE_SIZE = 50;
 async function chargesOf(ctx: QueryCtx, { workspaceId }: InWorkspace, jobId: Id<"extractionJobs"> | undefined) {
   if (!jobId) return { namespace: workspaceSpace(workspaceId), rows: ctx.db.query("billingUsage").withIndex("by_workspace_and_createdAt", (q) => q.eq("workspaceId", workspaceId)) };
   const job = await ctx.db.get("extractionJobs", jobId);
-  if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
+  if (!job || !(job.workspaceId === workspaceId)) return null;
   return { namespace: jobSpace(jobId), rows: ctx.db.query("billingUsage").withIndex("by_job_and_createdAt", (q) => q.eq("jobId", jobId)) };
 }
 

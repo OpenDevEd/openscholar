@@ -26,7 +26,8 @@ import { SCREENING_POOL_SIZE } from "../workpool";
 import { jobModel, screeningRevision } from "./accounting";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
-import { actorOnRecord, isInWorkspace, workspaceOf } from "../workspaces/actor";
+import { actorIn, type InWorkspace } from "../workspaces/actor";
+import { makersIn, makerValidator } from "../workspaces/makers";
 import { availableCredits } from "../billing/accounts";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { pricingOf } from "../ai/serverModel";
@@ -51,6 +52,8 @@ async function readJobProgressSnapshot(
 
 /** What the screening page shows of a job beside its progress, in its list and on its own view. */
 const jobFacts = {
+  // Its own name, given as it started; without one the page names it after `label`.
+  name: v.optional(v.string()),
   // Where its papers came from, the set's name when it started, and which of its papers.
   set: v.optional(paperSetValidator),
   label: v.optional(v.string()),
@@ -83,6 +86,7 @@ async function factsOf(ctx: QueryCtx, job: Doc<"screeningJobs">) {
   ]);
   return {
     set: job.set,
+    ...(job.name ? { name: job.name } : {}),
     label: job.label,
     first: job.first,
     last: job.last,
@@ -134,7 +138,7 @@ export const readingJob = internalQuery({
     const job = await ctx.db.get("screeningJobs", jobId);
     if (!job?.reading || job.status !== "processing" || !job.set || job.first === undefined || job.last === undefined) return null;
     return {
-      userId: job.userId, workspaceId: await workspaceOf(ctx, job), set: job.set, first: job.first, last: job.last, read: job.readPlace?.read ?? 0,
+      userId: job.createdBy, workspaceId: job.workspaceId, set: job.set, first: job.first, last: job.last, read: job.readPlace?.read ?? 0,
       ...(job.resume ? { resume: job.resume } : {}),
       ...(job.snapshot ? { snapshot: job.snapshot } : {}),
     };
@@ -167,7 +171,7 @@ export const getScreeningProgress = query({
     if (!user) return null;
 
     const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job || !(await actorOnRecord(ctx, user, job))) return null;
+    if (!job || !(await actorIn(ctx, user, job.workspaceId))) return null;
     return await readJobProgressSnapshot(ctx, job);
   },
 });
@@ -220,7 +224,7 @@ export const getScreeningJobAction = defineUserQuery({
   ),
   run: async (ctx, { workspaceId }, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
+    if (!job || !(job.workspaceId === workspaceId)) return null;
     const progress = await readJobProgressSnapshot(ctx, job);
     const kept = await progressRow(ctx, job._id);
     const counts = await readScreeningProgressCounts(ctx, job);
@@ -242,7 +246,7 @@ export const getScreeningJobAction = defineUserQuery({
       revision: await screeningRevision(ctx, job),
       snapshot: job.snapshot,
       serverEffort: job.serverEffort,
-      userId: job.userId,
+      userId: job.createdBy,
       status: job.status,
       totalPapers: job.totalPapers,
       processedPapers: progress.processedPapers,
@@ -304,7 +308,8 @@ export const getActiveScreeningJobProgress = workspaceQuery({
   },
 });
 
-const jobListArgs = { paginationOpts: paginationOptsValidator, status: v.optional(screeningJobStatusValidator) };
+// `by`: only the jobs that member ran (#656).
+const jobListArgs = { paginationOpts: paginationOptsValidator, status: v.optional(screeningJobStatusValidator), by: v.optional(v.id("users")) };
 const jobListValidator = paginationResultValidator(
     v.object({
       revision: v.string(),
@@ -320,31 +325,40 @@ const jobListValidator = paginationResultValidator(
       targetCollectionId: v.optional(v.id("collections")),
       targetCollectionName: v.optional(v.string()),
       ...jobFacts,
+      // Who ran it, in an organization.
+      by: v.optional(makerValidator),
     }),
   );
 
-/** A page of a workspace's screening jobs, newest first, each with what it has done so far; with `status`, only the jobs in it. */
-async function jobsOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, args: { paginationOpts: PaginationOptions; status?: Doc<"screeningJobs">["status"] }) {
-    const { status } = args;
-    const jobs = await (status
-      ? ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status))
-      : ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
+/** A page of a workspace's screening jobs, newest first, each with what it has done so far; with `status`, only the jobs in it; with `by`, only that member's. */
+async function jobsOf(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, args: { paginationOpts: PaginationOptions; status?: Doc<"screeningJobs">["status"]; by?: Id<"users"> }) {
+    const { status, by } = args;
+    const jobs = await (by
+      ? status
+        ? ctx.db.query("screeningJobs").withIndex("by_workspace_and_createdBy_and_status", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", by).eq("status", status))
+        : ctx.db.query("screeningJobs").withIndex("by_workspace_and_createdBy", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+      : status
+        ? ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status))
+        : ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId))
     )
       .order("desc")
       .paginate({ ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, MAX_LISTED_SCREENING_JOBS) });
 
+    const makerOf = await makersIn(ctx, workspaceId, userId);
     const page = await Promise.all(
       jobs.page.map(async (job) => {
-        const [progress, targetCollection, facts] = await Promise.all([
+        const [progress, targetCollection, facts, maker] = await Promise.all([
           readJobProgressSnapshot(ctx, job),
           job.targetCollectionId
             ? ctx.db.get("collections", job.targetCollectionId)
             : Promise.resolve(null),
           factsOf(ctx, job),
+          makerOf(job.createdBy),
         ]);
 
         return {
           ...facts,
+          ...(maker ? { by: maker } : {}),
           revision: await screeningRevision(ctx, job),
           _id: job._id,
           _creationTime: job._creationTime,
@@ -368,7 +382,7 @@ export const listUserScreeningJobs = workspaceQuery({
   args: jobListArgs,
   returns: jobListValidator,
   signedOut: { page: [], isDone: true, continueCursor: "" },
-  handler: (ctx, { workspaceId }, args) => jobsOf(ctx, workspaceId, args),
+  handler: (ctx, actor, args) => jobsOf(ctx, actor, args),
 });
 
 export const listJobsAction = defineUserQuery({
@@ -378,7 +392,7 @@ export const listJobsAction = defineUserQuery({
     "With `status`, only the jobs in it. A job's papers are read with screening/papers:list.",
   args: jobListArgs,
   returns: jobListValidator,
-  run: async (ctx, { workspaceId }, args) => jobsOf(ctx, workspaceId, args),
+  run: async (ctx, actor, args) => jobsOf(ctx, actor, args),
 });
 export const listJobs = userQuery(listJobsAction);
 export const listJobsForAssistant = assistantQuery(listJobsAction);
@@ -465,7 +479,7 @@ export const listScreeningResultsAction = defineUserQuery({
   returns: paginationResultValidator(screeningResultRowValidator),
   run: async (ctx, { workspaceId }, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
-    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return { page: [], isDone: true, continueCursor: "" };
+    if (!job || !(job.workspaceId === workspaceId)) return { page: [], isDone: true, continueCursor: "" };
     await screeningRevision(ctx, job, args.revision);
     return await readScreeningResultsPage(ctx, job, args.paginationOpts);
   },
@@ -513,16 +527,16 @@ export const paperContext = internalQuery({
   handler: async (ctx, { jobId, resultId }) => {
     const [job, paper] = await Promise.all([ctx.db.get("screeningJobs", jobId), ctx.db.get("screeningResults", resultId)]);
     if (!job || !paper) return null;
-    const workspaceId = await workspaceOf(ctx, job);
+    const workspaceId = job.workspaceId;
     const [user, balance, model] = await Promise.all([
-      ctx.db.get("users", job.userId),
+      ctx.db.get("users", job.createdBy),
       availableCredits(ctx, workspaceId),
       job.serverModelId ? ctx.db.get("models", job.serverModelId) : null,
     ]);
     if (!user) return null;
     return {
       job: {
-        userId: job.userId,
+        userId: job.createdBy,
         workspaceId,
         status: job.status,
         totalPapers: job.totalPapers,
@@ -552,7 +566,7 @@ export const estimateAction = defineUserQuery({
   description: "Estimates the credits screening a number of papers holds, against the workspace's balance, and how many papers that balance covers.",
   args: { papers: v.number() },
   returns: v.object({ credits: v.number(), available: v.number(), affordablePapers: v.number() }),
-  run: async (ctx, { userId, workspaceId }, args) => estimateScreening(args.papers, await availableCredits(ctx, workspaceId), await screeningPaperCreditsFor(ctx, userId)),
+  run: async (ctx, { userId, workspaceId }, args) => estimateScreening(args.papers, await availableCredits(ctx, workspaceId), await screeningPaperCreditsFor(ctx, { userId, workspaceId })),
 });
 export const estimate = userQuery(estimateAction);
 export const estimateForAssistant = assistantQuery(estimateAction);

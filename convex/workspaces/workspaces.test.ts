@@ -77,16 +77,19 @@ describe("workspaces", () => {
       const mine = (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())!._id;
       // A bookmark, a saved paper in a collection and a finished screening job in each workspace.
       const records = async (workspaceId: typeof mine) => {
-        await ctx.db.insert("queryShortcuts", { userId, workspaceId, createdBy: userId, data: { shorthand: "rct", expansion: "randomized", createdAt: 1 } });
-        const libraryItemId = await ctx.db.insert("libraryItems", { userId, workspaceId, createdBy: userId, openalexId: "https://openalex.org/W1", title: "Trial", searchableText: "Trial", savedAt: 1, updatedAt: 1 });
-        const collectionId = await ctx.db.insert("collections", { userId, workspaceId, createdBy: userId, name: "Trials", sortName: "trials", itemCount: 1, createdAt: 1, updatedAt: 1 });
-        await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: 1 });
-        const screeningId = await ctx.db.insert("screenings", { userId, workspaceId, version: 0, createdAt: 1 });
-        const jobId = await ctx.db.insert("screeningJobs", { userId, workspaceId, createdBy: userId, screeningId, status: "completed", totalPapers: 1, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("queryShortcuts", { workspaceId, createdBy: userId, data: { shorthand: "rct", expansion: "randomized", createdAt: 1 } });
+        const libraryItemId = await ctx.db.insert("libraryItems", { workspaceId, createdBy: userId, openalexId: "https://openalex.org/W1", title: "Trial", searchableText: "Trial", savedAt: 1, updatedAt: 1 });
+        const collectionId = await ctx.db.insert("collections", { workspaceId, createdBy: userId, name: "Trials", sortName: "trials", itemCount: 1, createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: 1 });
+        const screeningId = await ctx.db.insert("screenings", { workspaceId, version: 0, createdAt: 1 });
+        const jobId = await ctx.db.insert("screeningJobs", { workspaceId, createdBy: userId, screeningId, status: "completed", totalPapers: 1, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
         await ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "Trial", status: "completed", createdAt: 1 });
       };
       await records(mine);
       await records(lab);
+      // Their ratings: their own, and one they gave in a collection.
+      await ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W1", rating: 4 });
+      await ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W1", collectionId: (await ctx.db.query("collections").first())!._id, rating: 5 });
       return {
         lab,
         own: await ctx.db.insert("extractionJobs", { ...job, workspaceId: mine, name: "Mine" }),
@@ -104,6 +107,7 @@ describe("workspaces", () => {
     expect(await workspacesOf({ userId })).toEqual([]);
     expect(await t.run((ctx) => ctx.db.get("extractionJobs", own))).toBeNull();
     expect(await t.run((ctx) => ctx.db.get("extractionJobs", theirs))).toMatchObject({ name: "The lab's", createdBy: userId });
+    expect(await t.run((ctx) => ctx.db.query("ratings").collect())).toEqual([]);
     // What was in their own workspace is gone; the organization's copies stay.
     expect(Object.values(await counts())).toEqual(tables.map(() => 1));
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => item.workspaceId))).toEqual([lab]);
@@ -168,6 +172,26 @@ describe("acting in a workspace", () => {
       await ctx.db.patch("organizations", organizationId, { state: "deleted" });
     });
     await expect(count(lab)).rejects.toThrow(/Workspace not found/);
+  });
+
+  it("finds an organization's pages by its slug, and an item's workspace by its address, for its members only", async () => {
+    const { t, asAlice, aliceOwn, bobOwn, lab } = await setup();
+    const asBob = t.withIdentity({ subject: "bob" });
+    // /o/org_lab is the lab's workspace for Alice, and no page at all for Bob.
+    expect(await asAlice.query(api.workspaces.queries.bySlug, { slug: "org_lab" })).toBe(lab);
+    expect(await asBob.query(api.workspaces.queries.bySlug, { slug: "org_lab" })).toBeNull();
+    // A collection of the lab's, opened from her own workspace, is the lab's: its pages are under /o/org_lab.
+    const collectionId = await t.run(async (ctx) => ctx.db.insert("collections", { workspaceId: lab, createdBy: (await ctx.db.query("users").first())!._id, name: "Shared", sortName: "shared", itemCount: 0, createdAt: 1, updatedAt: 1 }));
+    expect(await asAlice.query(api.workspaces.queries.homeOf, { kind: "collection", id: collectionId, here: aliceOwn })).toEqual({ slug: "org_lab" });
+    expect(await asBob.query(api.workspaces.queries.homeOf, { kind: "collection", id: collectionId, here: bobOwn })).toBeNull();
+    // A search's address carries its ID in its workspace; one both her workspaces have opens where the page is.
+    await t.run(async (ctx) => {
+      const at = "2026-10-01T00:00:00.000Z";
+      const data = { id: "s_same", query: "tutoring", field: "title" as const, count: 1, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: at, updatedAt: at };
+      for (const workspaceId of [aliceOwn, lab]) await ctx.db.insert("searches", { workspaceId, createdBy: (await ctx.db.query("users").first())!._id, localId: "s_same", revision: 1, data });
+    });
+    expect(await asAlice.query(api.workspaces.queries.homeOf, { kind: "search", id: "s_same", here: aliceOwn })).toEqual({});
+    expect(await asAlice.query(api.workspaces.queries.homeOf, { kind: "search", id: "s_same", here: lab })).toEqual({ slug: "org_lab" });
   });
 
   it("lets the assistant act only in a workspace of the person it acts for", async () => {

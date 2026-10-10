@@ -60,7 +60,8 @@ function buildJob(overrides: Partial<Doc<"extractionJobs">>): Doc<"extractionJob
   const base: Doc<"extractionJobs"> = {
     _id: "job_abc" as Id<"extractionJobs">,
     _creationTime: now,
-    userId: "user_abc" as Id<"users">,
+    workspaceId: "workspace_abc" as Id<"workspaces">,
+    createdBy: "user_abc" as Id<"users">,
     name: "Test Job",
     sourceType: "history",
     status: "extracting",

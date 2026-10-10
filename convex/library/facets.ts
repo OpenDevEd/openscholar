@@ -15,11 +15,15 @@ import { makeFunctionReference } from "convex/server";
 import { components } from "../_generated/api";
 import type { DataModel, Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { placeRating } from "../ratings";
 
-/** The fields of a saved paper its memberships copy. */
-export const facetsOf = (item: Doc<"libraryItems">) => ({
+/**
+ * The fields of a saved paper its memberships copy. In an organization a collection rates its
+ * papers itself (../ratings.ts), so `rated` false leaves the paper's rating out.
+ */
+export const facetsOf = (item: Doc<"libraryItems">, rated = true) => ({
   savedAt: item.savedAt,
-  rating: item.rating,
+  ...(rated ? { rating: item.rating } : {}),
   publicationYear: item.publicationYear,
   citedByCount: item.citedByCount,
   title: item.title,
@@ -27,7 +31,12 @@ export const facetsOf = (item: Doc<"libraryItems">) => ({
 type Facets = ReturnType<typeof facetsOf>;
 const sameFacets = (a: Facets, b: Facets) => (Object.keys(a) as (keyof Facets)[]).every((field) => a[field] === b[field]);
 /** Whether a membership already carries its paper's fields. */
-export const facetsMatch = (membership: Doc<"libraryItemCollections">, item: Doc<"libraryItems">) => sameFacets(facetsOf(item), { savedAt: membership.savedAt as number, rating: membership.rating, publicationYear: membership.publicationYear, citedByCount: membership.citedByCount, title: membership.title as string });
+export const facetsMatch = (membership: Doc<"libraryItemCollections">, item: Doc<"libraryItems">, rated = true) =>
+  sameFacets(facetsOf(item, rated), { savedAt: membership.savedAt as number, rating: membership.rating, publicationYear: membership.publicationYear, citedByCount: membership.citedByCount, title: membership.title as string });
+/** Whether a paper's places copy its rating: everywhere but an organization's collections. */
+const copiesRating = async (ctx: Pick<QueryCtx, "db">, item: Doc<"libraryItems">) => (await ctx.db.get("workspaces", item.workspaceId))?.kind !== "organization";
+/** A new place's fields: its paper's, and the rating the paper has in that collection. */
+export const placeFacets = async (ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, item: Doc<"libraryItems">) => ({ ...facetsOf(item), rating: await placeRating(ctx, collectionId, item) });
 
 /** Memberships one scheduled mutation gives a paper's new fields; a paper in more collections gets the rest in the batches it schedules. */
 export const FACET_COPY_BATCH = 500;
@@ -43,17 +52,20 @@ const copyFacets = makeFunctionReference<"mutation", { libraryItemId: Id<"librar
 export async function copyFacetBatch(ctx: MutationCtx, libraryItemId: Id<"libraryItems">, cursor: string | null) {
   const item = await ctx.db.get("libraryItems", libraryItemId);
   if (!item) return;
+  const rated = await copiesRating(ctx, item);
   const page = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", libraryItemId)).paginate({ cursor, numItems: FACET_COPY_BATCH });
-  for (const membership of page.page) if (!facetsMatch(membership, item)) await ctx.db.patch("libraryItemCollections", membership._id, facetsOf(item));
+  for (const membership of page.page) if (!facetsMatch(membership, item, rated)) await ctx.db.patch("libraryItemCollections", membership._id, facetsOf(item, rated));
   if (!page.isDone) await ctx.scheduler.runAfter(0, copyFacets, { libraryItemId, cursor: page.continueCursor });
 }
 
 /** A paper whose fields changed passes them to the memberships that copy them. */
 export async function copyChangedFacets(ctx: MutationCtx, change: Change<DataModel, "libraryItems">) {
   if (change.operation !== "update" || sameFacets(facetsOf(change.oldDoc), facetsOf(change.newDoc))) return;
+  const rated = await copiesRating(ctx, change.newDoc);
+  if (!rated && sameFacets(facetsOf(change.oldDoc, false), facetsOf(change.newDoc, false))) return;
   // `take`, not `paginate`: a mutation may paginate once, and it may change many papers.
   const memberships = await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", change.id)).take(FACET_COPY_INLINE + 1);
-  for (const membership of memberships.slice(0, FACET_COPY_INLINE)) await ctx.db.patch("libraryItemCollections", membership._id, facetsOf(change.newDoc));
+  for (const membership of memberships.slice(0, FACET_COPY_INLINE)) await ctx.db.patch("libraryItemCollections", membership._id, facetsOf(change.newDoc, rated));
   if (memberships.length > FACET_COPY_INLINE) await ctx.scheduler.runAfter(0, copyFacets, { libraryItemId: change.id, cursor: null });
 }
 
@@ -66,7 +78,7 @@ export type CountedField = (typeof COUNTED_FIELDS)[number];
  * A library is counted under its person and, once its papers have one, its workspace, until its reads go by workspace (#650).
  */
 export const facetCounts = new DirectAggregate<{ Namespace: string; Key: number | null; Id: string }>(components.libraryFacetCounts);
-type Scope = Id<"users"> | Id<"workspaces"> | Id<"collections">;
+type Scope = Id<"workspaces"> | Id<"collections">;
 const namespaceOf = (scope: Scope, field: CountedField) => `${scope}:${field}`;
 
 type Counted = { scopes: Scope[]; savedAt?: number; rating?: number; publicationYear?: number };
@@ -84,7 +96,7 @@ async function recount(ctx: QueueingCtx, id: string, before: Counted | null, aft
   await queueCounts(ctx, facetCounts, operations);
 }
 
-export const countedItem = (item: Doc<"libraryItems">): Counted => ({ ...item, scopes: item.workspaceId ? [item.userId, item.workspaceId] : [item.userId] });
+export const countedItem = (item: Doc<"libraryItems">): Counted => ({ ...item, scopes: [item.workspaceId] });
 export const countedMembership = (membership: Doc<"libraryItemCollections">): Counted => ({ ...membership, scopes: [membership.collectionId] });
 
 export const countItemChange = (ctx: MutationCtx, change: Change<DataModel, "libraryItems">) =>
@@ -97,7 +109,7 @@ export const countItemChange = (ctx: MutationCtx, change: Change<DataModel, "lib
 export async function fillAndCountMembership(ctx: MutationCtx, change: Change<DataModel, "libraryItemCollections">) {
   if (change.operation === "insert" && change.newDoc.savedAt === undefined) {
     const item = await ctx.db.get("libraryItems", change.newDoc.libraryItemId);
-    if (item) await ctx.db.patch("libraryItemCollections", change.id, facetsOf(item));
+    if (item) await ctx.db.patch("libraryItemCollections", change.id, await placeFacets(ctx, change.newDoc.collectionId, item));
     return;
   }
   const counted = (membership: Doc<"libraryItemCollections"> | null) => (membership && membership.savedAt !== undefined ? countedMembership(membership) : null);

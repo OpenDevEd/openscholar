@@ -7,6 +7,7 @@ import { getCurrentUser } from "../../lib/auth";
 import { extractionPricing, extractionStamp } from "../../ai/serverModel";
 import { extractionPaperCredits, extractionRetryCredits } from "../../../lib/pricing";
 import { resolveOwnedJob } from "../access";
+import { workingIn } from "../../workspaces/actor";
 import { creditsAgg } from "../aggregates";
 import { MAX_QUESTIONS_PER_JOB, questionTypeValidator } from "../validators";
 import { readResultCounts } from "../resultCounts";
@@ -37,12 +38,13 @@ export const getJobCost = query({
  * (../mutations/jobs.ts `startJobFor`). Null when signed out.
  */
 export const estimateJob = query({
-  args: { papers: v.number(), questions: v.array(questionTypeValidator), usePdfs: v.boolean() },
+  // The page's workspace, whose preset an organization's work runs on (#651); none, the person's own.
+  args: { papers: v.number(), questions: v.array(questionTypeValidator), usePdfs: v.boolean(), workspaceId: v.optional(v.id("workspaces")) },
   returns: v.union(v.number(), v.null()),
-  handler: async (ctx, { papers, questions, usePdfs }) => {
-    const user = await getCurrentUser(ctx);
-    if (!user) return null;
-    const pricing = await extractionPricing(ctx, await extractionStamp(ctx, user._id));
+  handler: async (ctx, { papers, questions, usePdfs, workspaceId }) => {
+    const working = await workingIn(ctx, await getCurrentUser(ctx), workspaceId);
+    if (!working) return null;
+    const pricing = await extractionPricing(ctx, await extractionStamp(ctx, working));
     return Math.max(0, papers) * extractionPaperCredits(pricing, questions.map((type) => ({ type })), usePdfs);
   },
 });

@@ -4,13 +4,20 @@ import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
+import { ensureWorkspace } from "../workspaces/create";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 type Test = ReturnType<typeof convexTest>;
 
 const seedUser = (t: Test, clerkId: string) =>
-  t.run((ctx) => ctx.db.insert("users", { clerkId, email: `${clerkId}@test.local`, state: "active" as const, createdAt: 1, updatedAt: 1 }));
-const addKey = (t: Test, userId: Id<"users">, appName: string) =>
-  t.mutation(internal.wallet.internal.insertKey, { userId, hashedKey: `hash_${appName}`, keyPrefix: `sk_${appName}`, appName, redirectOrigin: "manual" });
+  t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@test.local`, state: "active" as const, createdAt: 1, updatedAt: 1 });
+    await ensureWorkspace(ctx, { kind: "personal", userId });
+    return userId;
+  });
+const ownOf = (t: Test, userId: Id<"users">) => t.run((ctx) => personalWorkspaceOf(ctx, userId));
+const addKey = async (t: Test, userId: Id<"users">, appName: string) =>
+  t.mutation(internal.wallet.internal.insertKey, { userId, workspaceId: await ownOf(t, userId), hashedKey: `hash_${appName}`, keyPrefix: `sk_${appName}`, appName, redirectOrigin: "manual" });
 
 describe("wallet key list", () => {
   it("pages a person's active and revoked keys newest first, counts each, and leaves out a key still being made and other people's", async () => {
@@ -20,7 +27,7 @@ describe("wallet key list", () => {
     const keys: Id<"walletKeys">[] = [];
     for (const app of ["one", "two", "three"]) keys.push(await addKey(t, userId, app));
     // The consent page makes a key that waits for its hash; it's in neither list.
-    await me.mutation(api.wallet.mutations.approveConnection, { appName: "waiting", redirectOrigin: "manual" });
+    await me.mutation(api.wallet.mutations.approveConnection, { appName: "waiting", redirectOrigin: "manual", workspaceId: await ownOf(t, userId) });
     await addKey(t, await seedUser(t, "clerk_other"), "theirs");
 
     const names = async (active: boolean, cursor: string | null = null) => {

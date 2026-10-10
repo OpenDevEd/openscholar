@@ -59,9 +59,8 @@ export const libraryPapersValidator = v.object({
 
 /** What the library keeps of a saved paper. */
 export const libraryItemFields = {
-    userId: v.id("users"),
-    workspaceId: v.optional(v.id("workspaces")),
-    createdBy: v.optional(v.id("users")),
+    workspaceId: v.id("workspaces"),
+    createdBy: v.id("users"),
     openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
     rating: v.optional(v.number()), // 0-5; unset when the paper was saved without rating it
     title: v.string(),
@@ -85,6 +84,6 @@ export const libraryItemFields = {
     updatedAt: v.number(),
 };
 
-const { userId: _owner, workspaceId: _workspace, ...removedItemFields } = libraryItemFields;
-/** A removed paper as it was, apart from whose and which workspace's it was: the removal keeps those. */
+const { workspaceId: _workspace, ...removedItemFields } = libraryItemFields;
+/** A removed paper as it was, apart from which workspace's it was: the removal keeps that. */
 export const removedItemValidator = v.object(removedItemFields);

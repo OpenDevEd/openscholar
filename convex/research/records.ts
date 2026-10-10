@@ -1,5 +1,7 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { v } from "convex/values";
+import type { Note } from "../activity/validators";
+import { noteActivity } from "../activity/notes";
+import { v, type Infer } from "convex/values";
 import { mutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
@@ -13,13 +15,15 @@ import {
   type ResearchCommand, type SavedSearch, type StoredSearch, type UndoCommand,
 } from "../../lib/research/records";
 import { stream } from "convex-helpers/server/stream";
+import { makerValidator, makersIn } from "../workspaces/makers";
 import { internal } from "../_generated/api";
 import { internalMutation } from "../lib/functions";
 import schema from "../schema";
-import { countRecordPage, countRow } from "./recordCounts";
+import { byMakerValidator, countMakerPage, countRecordPage, countRow } from "./recordCounts";
 import { shortcutSortName } from "../../lib/query-shortcuts";
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
 import { personalWorkspaceOf, requireMakerOrAdmin, type Actor, type InWorkspace } from "../workspaces/actor";
+import { personalRatingRow, setPersonalRating } from "../ratings";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
@@ -38,24 +42,36 @@ const LISTED_BYTES = 8 * 1024 * 1024;
 export const listedSearchesAction = defineUserQuery({
   path: "research/records:listedSearches",
   description:
-    "Lists the person's saved searches without their screening answers, a page at a time: newest, oldest, most or fewest results first. Given `text`, those whose query or questions best match its words, best first; given `exclude`, all but the search with that ID. A page can come back short without being the last.",
-  args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()), exclude: v.optional(v.string()) },
-  returns: paginationResultValidator(listedSearchValidator),
-  run: async (ctx, { workspaceId }, { paginationOpts, sort, text, exclude }) => {
+    "Lists the saved searches in the workspace without their screening answers, a page at a time: newest, oldest, most or fewest results first. In an organization, each names who ran it (`by`). Given `text`, those whose query or questions best match its words, best first; given `exclude`, all but the search with that ID; given `by`, only the searches that member ran (their `userId` from workspaces/makers:counts). A page can come back short without being the last.",
+  args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()), exclude: v.optional(v.string()), by: v.optional(v.id("users")) },
+  returns: paginationResultValidator(v.object({ ...listedSearchValidator.fields, by: v.optional(makerValidator) })),
+  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text, exclude, by }) => {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LISTED_PAGE_MAX) };
-    const index = sort === "most" || sort === "least" ? "by_workspace_and_count" : "by_workspace_and_createdAt";
+    const byCount = sort === "most" || sort === "least";
     const order = sort === "oldest" || sort === "least" ? "asc" : "desc";
     const needle = searchTerms(text);
+    const index = byCount ? "by_workspace_and_count" : "by_workspace_and_createdAt";
+    // One member's, given `by`, read along their own index range.
+    const mine = byCount ? "by_workspace_and_createdBy_and_count" : "by_workspace_and_createdBy_and_createdAt";
     const read = await (needle
-      ? ctx.db.query("searches").withSearchIndex("search_text", q => q.search("searchText", needle).eq("workspaceId", workspaceId)).paginate({ ...opts, maximumBytesRead: LISTED_BYTES })
+      ? ctx.db.query("searches").withSearchIndex("search_text", q => (by === undefined ? q.search("searchText", needle).eq("workspaceId", workspaceId) : q.search("searchText", needle).eq("workspaceId", workspaceId).eq("createdBy", by))).paginate({ ...opts, maximumBytesRead: LISTED_BYTES })
       : exclude !== undefined
-        ? stream(ctx.db, schema).query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId)).order(order)
-            .filterWith(async row => row.localId !== exclude)
-            .paginate({ ...opts, maximumRowsRead: FILTER_ROWS, maximumBytesRead: LISTED_BYTES })
-        : ctx.db.query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId)).order(order).paginate({ ...opts, maximumBytesRead: LISTED_BYTES }));
+        ? (by === undefined
+            ? stream(ctx.db, schema).query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId))
+            : stream(ctx.db, schema).query("searches").withIndex(mine, q => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+          ).order(order).filterWith(async row => row.localId !== exclude).paginate({ ...opts, maximumRowsRead: FILTER_ROWS, maximumBytesRead: LISTED_BYTES })
+        : (by === undefined
+            ? ctx.db.query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId))
+            : ctx.db.query("searches").withIndex(mine, q => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+          ).order(order).paginate({ ...opts, maximumBytesRead: LISTED_BYTES }));
     // A search's matches leave the excluded one out of their page.
     const rows = needle && exclude !== undefined ? read.page.filter(row => row.localId !== exclude) : read.page;
-    return { ...read, page: rows.map(row => { const { screeningResponses: _answers, ...listed } = currentSearch(row.data); return listed; }) };
+    const makerOf = await makersIn(ctx, workspaceId, userId);
+    return { ...read, page: await Promise.all(rows.map(async row => {
+      const { screeningResponses: _answers, ...listed } = currentSearch(row.data);
+      const by = await makerOf(row.createdBy);
+      return by ? { ...listed, by } : listed;
+    })) };
   },
 });
 export const listedSearches = accountQuery(listedSearchesAction);
@@ -78,6 +94,16 @@ export const countRecordsPage = internalMutation({
   returns: v.null(),
   handler: async (ctx, { table, workspaceId }) => {
     await countRecordPage(ctx, table, workspaceId);
+    return null;
+  },
+});
+
+/** One step of the first count of what one person made of a table in an organization (./recordCounts.ts, #656). */
+export const countMakerRecordsPage = internalMutation({
+  args: { table: byMakerValidator, workspaceId: v.id("workspaces"), createdBy: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { table, workspaceId, createdBy }) => {
+    await countMakerPage(ctx, table, workspaceId, createdBy);
     return null;
   },
 });
@@ -152,8 +178,8 @@ export const ratingsAction = defineUserQuery({
   args: pageArgs,
   returns: paginationResultValidator(ratingValidator),
   run: async (ctx, { userId }, args) => {
-    const page = await ctx.db.query("paperRatings").withIndex("by_user", q => q.eq("userId", userId)).paginate(args.paginationOpts);
-    return { ...page, page: page.page.map(row => row.data) };
+    const page = await ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", q => q.eq("userId", userId).eq("collectionId", undefined)).paginate(args.paginationOpts);
+    return { ...page, page: page.page.map(({ paperId, rating }) => ({ paperId, rating })) };
   },
 });
 export const ratings = accountQuery(ratingsAction);
@@ -161,10 +187,9 @@ export const ratingsForAssistant = assistantQuery(ratingsAction);
 
 /** The person's ratings among `paperIds`. */
 export async function ratingsAmong(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperIds: string[]) {
-  const rows = await Promise.all(
-    paperIds.map(paperId => ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", paperId)).first()),
-  );
-  return rows.flatMap(row => (row ? [row.data] : []));
+  const rows = await Promise.all(paperIds.map(paperId => personalRatingRow(ctx, userId, paperId)));
+  // Each under the ID it was asked for: a rating is kept under the paper's whole address.
+  return paperIds.flatMap((paperId, at) => (rows[at] ? [{ paperId, rating: rows[at].rating }] : []));
 }
 
 export const ratingsOfAction = defineUserQuery({
@@ -351,6 +376,30 @@ async function copyHistory(ctx: MutationCtx, { userId, workspaceId }: InWorkspac
     for (const { text, field, timestamp, position } of rows) await ctx.db.insert("searchHistory", { searchId: search._id, kind, text, ...(field ? { field } : {}), timestamp, position });
   }
   return { queryHistoryCount, questionCount, latestQuestion, questionText };
+}
+
+/** Fields the page writes itself as it shows a search. */
+const KEPT_BY_THE_PAGE = new Set(["count", "page", "updatedAt"]);
+/** And what a search keeps of its own history, which a query run again adds to without changing it. */
+const HISTORY = new Set(["queryHistoryCount", "questionCount", "latestQuestion", "questionText"]);
+
+/** Whether a change left the search different, apart from what the page and its history keep. */
+function changedSearch(before: Doc<"searches">["data"], after: Doc<"searches">["data"]) {
+  const kept = (data: Doc<"searches">["data"]) => JSON.stringify(Object.entries(currentSearch(data)).filter(([field]) => !KEPT_BY_THE_PAGE.has(field) && !HISTORY.has(field)).sort(([a], [b]) => a.localeCompare(b)));
+  return kept(before) !== kept(after);
+}
+
+/** What a change from a search's page did to it, for its Activity (#656); a change to no one search, such as a shortcut, notes nothing. */
+export function searchNote(command: Infer<typeof commandValidator>): Note | null {
+  if (command.kind === "createSearch") return { kind: "search", id: command.search.id, happened: "created", ...(command.search.query ? { detail: command.search.query } : {}) };
+  if (command.kind !== "editSearch") return null;
+  const { id, edit } = command;
+  // The model's answers, which the page saves as they come, aren't a change anyone made.
+  if (edit.kind === "responses") return edit.by === "model" ? null : { kind: "search", id, happened: "answered", count: 1 };
+  if (edit.kind === "removeQueryHistoryEntry") return null;
+  // The page keeps a search's result count and page current as it shows it; that's not a change anyone made.
+  if (edit.kind === "patch" && [...Object.keys(edit.fields), ...edit.clear].every((field) => KEPT_BY_THE_PAGE.has(field))) return null;
+  return { kind: "search", id, happened: "edited", ...(edit.kind === "query" && edit.query ? { detail: edit.query } : {}) };
 }
 
 export function findSearch(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, localId: string) {
@@ -550,16 +599,11 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
 /** Sets or clears a person's rating of a paper, which is theirs whatever workspace they're in (#650). Returns what puts it back. */
 export async function applyRating(ctx: MutationCtx, userId: Id<"users">, command: Extract<ResearchCommand, { kind: "rating" }>): Promise<UndoCommand | undefined> {
   if (!command.paperId || (command.rating !== null && (!Number.isInteger(command.rating) || command.rating < 0 || command.rating > 5))) throw new Error("Rating must be an integer from 0 to 5.");
-  const row = await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique();
-  if (command.expect !== undefined && (row?.data.rating ?? null) !== command.expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
-  const before = row?.data.rating ?? null;
+  const before = (await personalRatingRow(ctx, userId, command.paperId))?.rating ?? null;
+  if (command.expect !== undefined && before !== command.expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
+  await setPersonalRating(ctx, userId, command.paperId, command.rating);
   // A rating set to what it already was has nothing to undo.
-  const undo: UndoCommand | undefined = before === command.rating ? undefined : { kind: "rating", paperId: command.paperId, rating: before, expect: command.rating };
-  if (command.rating === null) { if (row) await ctx.db.delete("paperRatings", row._id); return undo; }
-  const data = { paperId: command.paperId, rating: command.rating };
-  if (row) await ctx.db.patch("paperRatings", row._id, { data });
-  else await ctx.db.insert("paperRatings", { userId, data });
-  return undo;
+  return before === command.rating ? undefined : { kind: "rating", paperId: command.paperId, rating: before, expect: command.rating };
 }
 
 /**
@@ -641,8 +685,19 @@ export const changeAction = defineUserMutation({
     const key = `change:${args.requestId}`;
     const receipt = await received(ctx, userId, key);
     if (!receipt) await checkRemoval(ctx, actor, args.command);
+    // What the change did to its search, for its Activity (#656): noted here, not declared, so a
+    // retried request or a change that left the search as it was notes nothing.
+    const note = receipt ? null : searchNote(args.command);
+    const before = note ? await findSearch(ctx, workspaceId, note.id) : null;
     const undo = receipt ? receipt.undo : await applyCommand(ctx, { userId, workspaceId }, args.command, author);
     if (!receipt) await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
+    if (note) {
+      const after = await findSearch(ctx, workspaceId, note.id);
+      // Answers are kept apart from the search, so its revision doesn't move with them.
+      if (after && (note.happened === "answered" || !before || changedSearch(before.data, after.data))) {
+        await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, note);
+      }
+    }
     return undo ? { undo: { path: "research/records:change" as const, args: { command: undo } } } : {};
   },
 });
@@ -738,14 +793,14 @@ export const importBatch = accountWorkspaceMutation({
         continue;
       }
       if (receipt) throw new Error("This local bookmark or rating changed after import. Your local copy has been kept.");
+      // What the account holds already: the same bookmark or rating is fine, a different one keeps the local copy.
       const existing = command.kind === "shortcut"
-        ? await shortcut(ctx, workspaceId, command.shorthand)
+        ? (await shortcut(ctx, workspaceId, command.shorthand))?.data.expansion
         : command.kind === "rating"
-          ? await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique()
-          : null;
-      if (existing) {
-        const same = command.kind === "shortcut" ? existing.data && "expansion" in existing.data && existing.data.expansion === command.value?.expansion
-          : command.kind === "rating" && "rating" in existing.data && existing.data.rating === command.rating;
+          ? (await personalRatingRow(ctx, userId, command.paperId))?.rating
+          : undefined;
+      if (existing !== undefined) {
+        const same = command.kind === "shortcut" ? existing === command.value?.expansion : command.kind === "rating" && existing === command.rating;
         if (!same) throw new Error("This local bookmark or rating differs from your saved account record. Your local copy has been kept.");
       } else await applyCommand(ctx, { userId, workspaceId }, command, "user");
       await ctx.db.insert("researchReceipts", { userId, key: `import:${key}`, fingerprint });

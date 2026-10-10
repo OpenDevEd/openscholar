@@ -1,9 +1,9 @@
 "use client";
 
 import { useRef, useState, type ReactNode } from "react";
-import { useFormatter, useLocale, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { AiIcon, Ban, Check, CircleCheck, CircleHelp, Coins, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
+import { AiIcon, Ban, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { ModelPicker } from "@/components/models/model-picker";
-import { EASE, NodeCard } from "@/components/settings/model-map";
+import { EASE } from "@/components/settings/model-map";
 import { Enter, LIST, Segmented, Zone } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
@@ -31,8 +30,11 @@ import { getErrorMessage, useAppToast } from "@/lib/toast";
 import type { SearchResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
-import { ANSWER, AnimatedNumber, Chip, ClippedChip, Meter, SOURCE_ICON } from "./parts";
-import { inWorkspace, useWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
+import { ANSWER, Chip, ClippedChip, SOURCE_ICON } from "./parts";
+import { PaperScope, PickMark, SourceRow } from "./source-row";
+import { CreditCheck } from "@/components/workspaces/credit-check";
+import { ModelsInUse } from "@/components/models/models-in-use";
+import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceScope } from "@/lib/workspaces/url";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
 const TINT = {
@@ -59,7 +61,8 @@ type Source =
   | { kind: "search"; id: string; label: string; count: number; search: SearchResult }
   | { kind: "collection"; id: Id<"collections">; label: string; count: number }
   | { kind: "saved"; id: "saved"; label: string; count: number }
-  | { kind: "screening"; id: Id<"screeningJobs">; label: string; count: number };
+  // `called`: what the server names a screening of its included papers after (`insertJob`).
+  | { kind: "screening"; id: Id<"screeningJobs">; label: string; count: number; called?: string };
 
 const setOf = (source: Source): PaperSet =>
   source.kind === "search" ? { kind: "search", searchId: source.id } : source.kind === "collection" ? { kind: "collection", collectionId: source.id } : source.kind === "saved" ? { kind: "saved" } : { kind: "screening", jobId: source.id };
@@ -81,7 +84,9 @@ export function SetupView({
 }) {
   const workspaceId = useWorkspace();
   const t = useTranslations("screeningPage");
+  const tc = useTranslations("common");
   const format = useFormatter();
+  const now = useNow();
   const locale = useLocale();
   const toast = useAppToast();
 
@@ -102,14 +107,16 @@ export function SetupView({
       pager: { ...collections, pageCount: collectionCount === undefined ? undefined : Math.max(1, Math.ceil(collectionCount / SOURCE_PAGE)) },
     },
     saved: { rows: [{ kind: "saved", id: "saved", label: t("allSavedPapers"), count: savedCount ?? 0 }] },
-    screening: { rows: screenings.items.map((job: JobRow) => ({ kind: "screening", id: job._id, label: jobName(t, job, date), count: job.qualifiedPapers })), pager: screenings },
+    screening: { rows: screenings.items.map((job: JobRow) => ({ kind: "screening", id: job._id, label: jobName(t, job, date), count: job.qualifiedPapers, called: job.name ?? job.label })), pager: screenings },
   };
 
   const [kind, setKind] = useState<Kind>(again?.set?.kind ?? "search");
   // The set picked stays picked whatever page its list shows; until one is, a job run again starts on its own set, and otherwise the first listed.
   const [picked, setPicked] = useState<Source | null>(null);
   const againId = again?.set && (again.set.kind === "search" ? again.set.searchId : again.set.kind === "collection" ? again.set.collectionId : again.set.kind === "screening" ? again.set.jobId : "saved");
-  const source = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : (lists[kind].rows.find((row) => row.id === againId) ?? lists[kind].rows[0]);
+  const kept = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : lists[kind].rows.find((row) => row.id === againId);
+  // A set with no papers is never the one picked, even one a job ran on that has emptied since.
+  const source = kept && kept.count > 0 ? kept : lists[kind].rows.find((row) => row.count > 0);
   // Opened from a results page, it starts on the page the person was reading; run again, on the job's own papers.
   const [scope, setScope] = useState<"all" | "page" | "range">(again?.first ? "range" : fromSearchId && !again ? "page" : again?.set && again.set.kind !== "search" ? "all" : "range");
   const [range, setRange] = useState<[number, number]>(again?.first && again.last ? [again.first, again.through ?? again.last] : [1, 300]);
@@ -128,6 +135,8 @@ export function SetupView({
   const [starsSet, setStars] = useState<number[] | null>(again?.scoringConfig.starThresholds.length === 5 ? [...again.scoringConfig.starThresholds].sort((a, b) => a.stars - b.stars).map((threshold) => threshold.minScore) : null);
   // A job run again keeps its destination while that collection exists.
   const [dest, setDest] = useState<"none" | "new" | Id<"collections">>(again?.unsaved ? "none" : again?.targetCollectionId && again.targetCollectionName ? again.targetCollectionId : "new");
+  // Its own name; left empty, it's named after its papers. Run again, it keeps the one it had.
+  const [title, setTitle] = useState(again?.name ?? "");
   const [newName, setNewName] = useState<string | null>(null);
   const [prune, setPrune] = useState(again?.prune ?? false);
   const [busy, setBusy] = useState(false);
@@ -155,6 +164,8 @@ export function SetupView({
   const { data: earlier } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, source?.kind === "screening" ? { jobId: source.id } : "skip"));
   const fresh = earlier ? questionsOf(earlier).filter((q) => !questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase())) : [];
   const defaultName = !source ? "" : source.kind === "screening" ? source.label : t("includedIn", { name: source.label });
+  // What it's called left unnamed: its papers, named from what the server keeps of them, as the rail names a screening.
+  const unnamed = source ? jobName(t, { createdAt: now.getTime(), set: setOf(source), label: source.kind === "screening" ? source.called : source.label }, date) : t("newScreening");
 
   const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
@@ -162,7 +173,7 @@ export function SetupView({
 
   const models = useModelPicks();
   const model = models.modelOf("screenAll");
-  const { data: account } = useProtectedQuery(api.billing.accounts.mine, {});
+  const { data: account } = useProtectedQuery(api.billing.accounts.mine, useWorkspaceScope());
   const { data: slots } = useProtectedQuery(api.screening.queries.slots, inWorkspace(workspaceId, {}));
   const balance = account?.balance ?? 0;
   // The most these papers cost on the model Screen all runs on: what the job holds when it starts.
@@ -184,7 +195,7 @@ export function SetupView({
   };
   const pick = (next: Kind) => {
     setKind(next);
-    const firstOf = lists[next].rows[0];
+    const firstOf = lists[next].rows.find((row) => row.count > 0);
     if (firstOf) choose(firstOf);
     setScope(next === "search" ? "range" : "all");
   };
@@ -236,6 +247,7 @@ export function SetupView({
         ...scoringOf(questions, threshold, stars),
         saveTo: target === "none" ? { kind: "none" } : target === "new" ? { kind: "new", name } : { kind: "collection", collectionId: target },
         ...(source.kind === "collection" && prune ? { prune: true } : {}),
+        ...(title.trim() ? { name: title.trim() } : {}),
       });
       onStarted(jobId);
     } catch (error) {
@@ -251,13 +263,14 @@ export function SetupView({
   return (
     <Enter ready={ready}>
       <div className="space-y-8 pb-24">
+        {/* Its name heads the page, written where it shows. */}
         <div className="space-y-1">
-          <h2 className="text-xl font-semibold tracking-tight">{t("newScreening")}</h2>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={unnamed} aria-label={tc("name")} maxLength={200} className="w-full rounded-lg bg-transparent text-xl font-semibold tracking-tight outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-ring/40" />
           <p className="text-sm text-muted-foreground">{t("newScreeningHint")}</p>
         </div>
 
         <Zone label={t("papers")}>
-          <Segmented label={t("sourceKind")} value={kind} onChange={pick} fill options={KINDS.map((id) => ({ id, label: t(`kind.${id}`), icon: SOURCE_ICON[id] }))} />
+          <Segmented label={t("sourceKind")} value={kind} onChange={pick} fill="labels" options={KINDS.map((id) => ({ id, label: t(`kind.${id}`), icon: SOURCE_ICON[id] }))} />
           {/* While a kind has pages its list keeps a full page's height, so the pager stays put on a short last page. */}
           <div className="mt-3" style={list.pager?.hasPages ? { minHeight: SOURCE_PAGE * SOURCE_ROW + 1 } : undefined}>
             {list.rows.length === 0 ? (
@@ -266,88 +279,41 @@ export function SetupView({
               <div className={cn(LIST, list.pager?.isStale && "pointer-events-none opacity-60")} role="radiogroup" aria-label={t("papersToScreen")}>
                 {list.rows.map((s) => {
                   const on = s.id === source?.id;
-                  const Icon = SOURCE_ICON[s.kind];
                   return (
-                    <div key={s.id} className={cn("transition-colors", on && "bg-primary/5")}>
-                      <button type="button" role="radio" aria-checked={on} onClick={() => choose(s)} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors", !on && "hover:bg-muted")}>
-                        <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", on ? "text-primary" : "text-muted-foreground")}>
-                          <Icon className="size-4" />
-                        </span>
-                        <span className="min-w-0 flex-1 space-y-1.5">
-                          <span className="block truncate text-sm font-medium">{s.label}</span>
-                          {/* As on a search's history card: one row that scrolls sideways under a fading edge. */}
-                          {s.kind === "search" ? (
-                            <span className="block min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
-                              <FilterChips filters={{ ...s.search, field: undefined, sortBy: undefined }} size="compact" singleLine />
-                            </span>
-                          ) : null}
-                        </span>
-                        <Chip>{t("paperCount", { count: s.count })}</Chip>
-                        <PickMark on={on} />
-                      </button>
-                      <AnimatePresence initial={false}>
-                        {/* Every set is picked from the same way: a range of its papers, or all of them; a search also has the page being read. */}
-                        {on ? (
-                          <motion.div key="scope" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden">
-                            <div className="space-y-4 pb-4 pl-15 pr-4">
-                              <Segmented
-                                label={t("whichPapers")}
-                                value={scope}
-                                onChange={setScope}
-                                options={[
-                                  { id: "range" as const, label: t("scope.range") },
-                                  ...(s.kind === "search" ? [{ id: "page" as const, label: t("scope.page") }] : []),
-                                  { id: "all" as const, label: s.kind === "search" ? t("scope.allResults") : t("scope.allPapers") },
-                                ]}
-                              />
-                              {scope === "range" ? (
-                                <div className="space-y-3">
-                                  <Slider min={1} max={Math.max(1, top)} step={1} value={[first, last]} onValueChange={(v) => setRange([v[0]!, v[1]!])} aria-label={t("papersToScreen")} />
-                                  <div className="flex flex-wrap items-center justify-between gap-2">
-                                    {/* Typeable ends: over thousands of results a drag can't land on one paper. */}
-                                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                                      {t("rangeFrom")}
-                                      <Input
-                                        type="number"
-                                        min={1}
-                                        max={last}
-                                        value={first}
-                                        onChange={(e) => setRange([Math.min(last, Math.max(1, Math.round(Number(e.target.value)) || 1)), last])}
-                                        onFocus={(e) => e.target.select()}
-                                        aria-label={t("firstPaper")}
-                                        className="h-7 w-20 px-1 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                                      />
-                                      {t("rangeTo")}
-                                      <Input
-                                        type="number"
-                                        min={first}
-                                        max={top}
-                                        value={last}
-                                        onChange={(e) => setRange([first, Math.min(top, Math.max(first, Math.round(Number(e.target.value)) || first))])}
-                                        onFocus={(e) => e.target.select()}
-                                        aria-label={t("lastPaper")}
-                                        className="h-7 w-20 px-1 text-center text-sm tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                                      />
-                                      {t("rangeOf", { total: top })}
-                                    </span>
-                                  </div>
-                                </div>
-                              ) : scope === "all" ? (
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <Chip className="text-foreground"><span>{t.rich("papersBold", { count: papers, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
-                                  <Chip>{t("oneJob")}</Chip>
-                                </div>
-                              ) : (
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <Chip className="text-foreground"><span>{t.rich("papersBold", { count: papers, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
-                                  <Chip>{t("resultsPage", { page })}</Chip>
-                                </div>
-                              )}
-                            </div>
-                          </motion.div>
-                        ) : null}
-                      </AnimatePresence>
-                    </div>
+                    <SourceRow
+                      key={s.id}
+                      on={on}
+                      onToggle={() => choose(s)}
+                      disabled={s.count === 0}
+                      icon={SOURCE_ICON[s.kind]}
+                      label={s.label}
+                      detail={
+                        // As on a search's history card: one row that scrolls sideways under a fading edge.
+                        s.kind === "search" ? (
+                          <span className="block min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
+                            <FilterChips filters={{ ...s.search, field: undefined, sortBy: undefined }} size="compact" singleLine />
+                          </span>
+                        ) : null
+                      }
+                      count={<Chip>{t("paperCount", { count: s.count })}</Chip>}
+                    >
+                      {/* Every set is picked from the same way: a range of its papers, or all of them; a search also has the page being read. */}
+                      <PaperScope
+                        search={s.kind === "search"}
+                        scope={scope}
+                        onScope={setScope}
+                        range={[first, last]}
+                        onRange={setRange}
+                        total={top}
+                        label={t("papersToScreen")}
+                        summary={
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <Chip className="text-foreground"><span>{t.rich("papersBold", { count: papers, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
+                            <Chip>{scope === "all" ? t("oneJob") : t("resultsPage", { page })}</Chip>
+                          </div>
+                        }
+                      />
+                    </SourceRow>
                   );
                 })}
               </div>
@@ -364,13 +330,18 @@ export function SetupView({
             // What the papers come from decides the shortcuts: a search's questions are its own (one
             // screening per search) and it can write more from its research question; an earlier
             // screening has questions to reuse.
-            <span className="flex items-center gap-1">
+            <span className="flex min-w-0 items-center gap-1">
               {source?.kind === "search" ? <Chip icon={ListChecks}>{t("sharedWithResults")}</Chip> : null}
               {source?.kind === "screening" ? (
-                <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => adopt(fresh)} disabled={!fresh.length}>
-                  <ListChecks className="text-primary" />
-                  {fresh.length || !earlier ? t("importQuestions", { count: fresh.length, name: source.label }) : t("importedFrom", { name: source.label })}
-                </Button>
+                // The screening's name can be a whole query: it's cut to the room there is, and shown in full on hover.
+                <TooltipHint label={fresh.length || !earlier ? t("importQuestions", { count: fresh.length, name: source.label }) : t("importedFrom", { name: source.label })} onlyWhenClipped>
+                  <span className="flex min-w-0">
+                    <Button variant="ghost" size="sm" className="h-7 min-w-0 shrink text-xs" onClick={() => adopt(fresh)} disabled={!fresh.length}>
+                      <ListChecks className="text-primary" />
+                      <span className="truncate">{fresh.length || !earlier ? t("importQuestions", { count: fresh.length, name: source.label }) : t("importedFrom", { name: source.label })}</span>
+                    </Button>
+                  </span>
+                </TooltipHint>
               ) : null}
               {kind === "search" ? (
                 <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={generate} disabled={generating || !canGenerate || !source}>
@@ -518,11 +489,8 @@ export function SetupView({
           </div>
         </Zone>
 
-        {model ? (
-          <Zone label={t("model")}>
-            <ModelPicker align="start" tasks={["screenAll"]} current={model} onChange={(m, effort) => models.pickAll(["screenAll"], m, effort)} trigger={<NodeCard interactive paidBy="credits" model={model} />} />
-          </Zone>
-        ) : null}
+        {/* What it screens with, as AI settings set it: changed there, not here (#689). */}
+        {model ? <ModelsInUse label={t("model")} uses={[{ label: t("yesOrNo"), model }]} /> : null}
 
         <Zone label={t("collections")}>
           {source?.kind === "collection" ? (
@@ -575,15 +543,7 @@ export function SetupView({
         </Zone>
 
         <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
-          <div className="min-w-48 flex-1 space-y-1.5">
-            <p className="flex items-center justify-between text-xs">
-              <span className="flex items-center gap-1.5 font-medium"><Coins className="size-3.5 text-primary" /><span>{t.rich("upToCredits", { n: () => <AnimatedNumber value={credits} /> })}</span></span>
-              <span className={cn("tabular-nums transition-colors", enough ? "text-muted-foreground" : "text-destructive")}>
-                {t.rich("balanceLeft", { balance: Math.floor(balance), n: () => <AnimatedNumber value={Math.max(0, Math.floor(balance) - credits)} /> })}
-              </span>
-            </p>
-            <Meter value={Math.min(credits, balance)} max={balance} fill={enough ? "bg-primary" : "bg-destructive"} />
-          </div>
+          <CreditCheck credits={credits} balance={balance} enough={enough} />
           <div className="flex flex-wrap items-center gap-1.5">
             {slots ? <Chip icon={Gauge}>{t("atATime", { limit: slots.limit })}</Chip> : null}
             {waitingFor ? (
@@ -614,17 +574,3 @@ function DestinationRow({ on, onPick, icon: Icon, name, facts, children }: { on:
   );
 }
 
-/** The picked row's check, springing in as the chat's answer checks do. */
-function PickMark({ on }: { on: boolean }) {
-  return (
-    <span className="flex size-4 shrink-0 items-center justify-center">
-      <AnimatePresence initial={false}>
-        {on ? (
-          <motion.span key="on" initial={{ scale: 0.4, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.4, opacity: 0, transition: { duration: 0.12 } }} transition={{ type: "spring", stiffness: 500, damping: 28 }}>
-            <Check className="size-4 text-primary" />
-          </motion.span>
-        ) : null}
-      </AnimatePresence>
-    </span>
-  );
-}

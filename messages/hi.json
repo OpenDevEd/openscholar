@@ -197,7 +197,8 @@
       "fr": "फ्रेंच",
       "hi": "हिंदी",
       "ja": "जापानी"
-    }
+    },
+    "you": "आप"
   },
   "home": {
     "tagline": "लाखों अकादमिक पेपर और शोध लेख खोजें",
@@ -233,7 +234,6 @@
   },
   "pricing": {
     "chooseYourPlan": "अपना प्लान चुनें",
-    "subtitle": "पारदर्शी मूल्य निर्धारण के साथ मुफ़्त से एंटरप्राइज़ तक स्केल करें",
     "perMonth": "/महीना",
     "freePrice": "मुफ़्त",
     "enterprisePlanName": "एंटरप्राइज़",
@@ -435,10 +435,6 @@
       "cancelled": "पूरा होने से पहले इसे रद्द कर दिया गया।"
     }
   },
-  "sidebar": {
-    "expandSidebar": "साइडबार विस्तृत करें (Ctrl+B)",
-    "collapseSidebar": "साइडबार संक्षिप्त करें (Ctrl+B)"
-  },
   "downloads": {
     "downloadAll": "सब डाउनलोड करें",
     "downloadEssentialJSON": "ज़रूरी जानकारी JSON के रूप में डाउनलोड करें",
@@ -578,12 +574,6 @@
       "summary": "{total} में से {completed} प्रश्न पूर्ण हुए",
       "failedCount": "{count, plural, one {# विफल} other {# विफल}}",
       "retryingCount": "{count, plural, one {# पुनः प्रयास हो रहा है} other {# पुनः प्रयास हो रहे हैं}}"
-    },
-    "errorHistory": {
-      "trigger": "त्रुटि इतिहास · {count, plural, one {# प्रयास} other {# प्रयास}}",
-      "triggerLabel": "त्रुटि इतिहास दिखाएँ ({count, plural, one {# प्रयास} other {# प्रयास}})",
-      "attempt": "प्रयास {n}",
-      "loadMore": "पुराने प्रयास दिखाएँ"
     },
     "mixedSuccess": {
       "title": "आंशिक सफलता के साथ पूर्ण",
@@ -919,12 +909,8 @@
     "enableToggleToCustomize": "वर्ष सीमा कस्टमाइज़ करने के लिए ऊपर टॉगल सक्षम करें",
     "defaultAllYears": "डिफ़ॉल्ट रूप से, सभी वर्ष आपकी खोज में शामिल हैं",
     "yearRangeLabel": "वर्ष सीमा:",
-    "nStars": "{count, plural, one {# स्टार} other {# स्टार}}",
-    "zeroStars": "0 स्टार",
     "onlyShowRated": "केवल रेटेड पेपर दिखाएं",
     "hideUnrated": "उन पेपर छुपाएं जिन्हें आपने अभी तक रेट नहीं किया है",
-    "showingRange": "{range} दिखा रहे हैं",
-    "filterActive": "फ़िल्टर सक्रिय",
     "searchCountriesPlaceholder": "देश या क्षेत्र खोजें...",
     "filteringByCountries": "कुल {count} देशों से फ़िल्टर कर रहे हैं",
     "regionsGroup": "क्षेत्र",
@@ -1165,9 +1151,6 @@
     "bookmarkNotFound": "बुकमार्क \"{keyword}\" नहीं मिला"
   },
   "accessibility": {
-    "toggleTheme": "थीम टॉगल करें",
-    "switchToLightMode": "लाइट मोड पर स्विच करें",
-    "switchToDarkMode": "डार्क मोड पर स्विच करें",
     "closeDialog": "बंद करें",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "पेज नंबर",
@@ -1436,13 +1419,13 @@
     "removeFromLibrary": "लाइब्रेरी से हटाएँ",
     "addToCollection": "संग्रह में जोड़ें",
     "newCollection": "नया संग्रह",
-    "createAndAdd": "बनाएँ और जोड़ें",
     "removed": "लाइब्रेरी से हटाया गया",
     "undo": "पूर्ववत करें",
     "saveError": "पेपर सहेजा नहीं जा सका",
     "removeError": "पेपर हटाया नहीं जा सका",
     "restoreError": "पेपर वापस नहीं लाया जा सका",
-    "collectionError": "संग्रह बदला नहीं जा सका"
+    "collectionError": "संग्रह बदला नहीं जा सका",
+    "newCollectionWithPaper": "इस पेपर के साथ नया संग्रह"
   },
   "rating": {
     "noRating": "कोई रेटिंग नहीं",
@@ -1668,7 +1651,7 @@
     "filterCollection": "संग्रह",
     "allCollections": "सभी संग्रह",
     "manageCollections": "संग्रह प्रबंधित करें",
-    "createCollection": "संग्रह बनाएँ",
+    "createCollection": "बनाएँ",
     "createCollectionDescription": "अपने पत्रों को व्यवस्थित करने के लिए अपने संग्रह को एक नाम दें।",
     "collectionNamePlaceholder": "संग्रह का नाम",
     "createButton": "बनाएँ",
@@ -1694,7 +1677,23 @@
     "noCollectionsMatchSearch": "आपकी खोज से कोई संग्रह मेल नहीं खाता",
     "emptyCollectionsTitle": "अभी कोई संग्रह नहीं",
     "emptyCollectionsDescription": "अपने सहेजे गए लेखों को समूहों में व्यवस्थित करने के लिए अपना पहला संग्रह बनाएं।",
-    "newCollectionPlaceholder": "नए संग्रह का नाम..."
+    "newCollectionHint": "इसे नाम दें, देखें कि इसे कौन देखता है, और इसे बनाएँ।",
+    "collectionNameTaken": "इस नाम का एक संग्रह आपके पास पहले से है",
+    "collectionNameTakenIn": "{workspace} में इस नाम का एक संग्रह पहले से है",
+    "whoSeesIt": "इसे कौन देखता है",
+    "everyoneIn": "{workspace} में सभी",
+    "everyMemberEdits": "हर सदस्य इसे संपादित कर सकता है",
+    "onlyYou": "केवल आप",
+    "startWith": "इससे शुरू करें",
+    "startWithPaper": "इस पेपर से शुरू करें",
+    "collectionsMeter": "संग्रह",
+    "collectionsNoun": "संग्रह",
+    "collectionsOf": "{limit} में से {count}",
+    "collectionsCount": "{count, plural, one {# संग्रह} other {# संग्रह}}",
+    "noCollectionLimit": "{plan} पर कोई सीमा नहीं",
+    "planAllowsCollections": "{plan} में {limit, number} संग्रह तक की अनुमति है",
+    "nameTheCollection": "संग्रह को नाम दें",
+    "newName": "{name} के लिए नया नाम"
   },
   "sidebarLayout": {
     "expandFilters": "फ़िल्टर दिखाएं (Ctrl+Shift+F)",
@@ -1872,7 +1871,8 @@
     "screenPapers": "{count, plural, one {# लेख} other {# लेख}} स्क्रीन करें",
     "startFailed": "स्क्रीनिंग शुरू नहीं हो सकी",
     "showAnswers": "{title} के उत्तर दिखाएँ",
-    "hideAnswers": "{title} के उत्तर छिपाएँ"
+    "hideAnswers": "{title} के उत्तर छिपाएँ",
+    "yesOrNo": "हाँ या नहीं"
   },
   "connectionsPage": {
     "connectedApps": "कनेक्टेड ऐप्स",
@@ -3084,7 +3084,6 @@
   "settingsShell": {
     "groups": {
       "account": "खाता",
-      "research": "शोध",
       "admin": "एडमिन"
     },
     "items": {
@@ -3171,7 +3170,6 @@
       "title": "एडमिन",
       "admins": "एडमिन",
       "search": "नाम या ईमेल से खोजें",
-      "you": "आप",
       "invited": "आमंत्रित",
       "notDelivered": "आमंत्रण नहीं पहुँचा",
       "remove": "हटाएँ",
@@ -3257,7 +3255,9 @@
       "high": "ऊँचा",
       "xhigh": "बहुत ऊँचा",
       "max": "अधिकतम"
-    }
+    },
+    "organizationPresetAdmin": "इसमें सभी लोग यहाँ चुने गए प्रीसेट पर चलते हैं।",
+    "organizationPresetMember": "इसके एडमिन वह प्रीसेट चुनते हैं जिस पर सभी चलते हैं।"
   },
   "modelPicker": {
     "vendors": "प्रदाता",
@@ -3381,7 +3381,6 @@
       "failed": "जवाब जारी नहीं रखा जा सका"
     },
     "addPeople": "लोग या संगठन जोड़ें",
-    "you": "आप",
     "owner": "मालिक",
     "canChat": "चैट कर सकते हैं",
     "canView": "देख सकते हैं",
@@ -3801,6 +3800,109 @@
         "did": "शोधपत्र की PDF पढ़ी",
         "where": "OpenAlex",
         "ask": "शोधपत्र की PDF पढ़ें"
+      },
+      "workspaces": {
+        "doing": "वर्कस्पेस देख रहा है",
+        "did": "वर्कस्पेस देखे",
+        "where": "वर्कस्पेस"
+      },
+      "orgMembers": {
+        "doing": "संगठन के सदस्य देख रहा है",
+        "did": "संगठन के सदस्य देखे",
+        "where": "सदस्य"
+      },
+      "myInvites": {
+        "doing": "आमंत्रण देख रहा है",
+        "did": "आमंत्रण देखे",
+        "where": "वर्कस्पेस"
+      },
+      "newOrganization": {
+        "doing": "एक संगठन बना रहा है",
+        "did": "एक संगठन बनाया",
+        "where": "वर्कस्पेस",
+        "ask": "एक संगठन बनाएँ"
+      },
+      "inviteMembers": {
+        "doing": "लोगों को आमंत्रित कर रहा है",
+        "did": "लोगों को आमंत्रित किया",
+        "where": "सदस्य",
+        "ask": "लोगों को आमंत्रित करें"
+      },
+      "revokeInvite": {
+        "doing": "एक आमंत्रण वापस ले रहा है",
+        "did": "एक आमंत्रण वापस लिया",
+        "where": "सदस्य",
+        "ask": "एक आमंत्रण वापस लें"
+      },
+      "declineInvite": {
+        "doing": "एक आमंत्रण अस्वीकार कर रहा है",
+        "did": "एक आमंत्रण अस्वीकार किया",
+        "where": "वर्कस्पेस",
+        "ask": "एक आमंत्रण अस्वीकार करें"
+      },
+      "memberRole": {
+        "doing": "एक सदस्य की भूमिका बदल रहा है",
+        "did": "एक सदस्य की भूमिका बदली",
+        "where": "सदस्य",
+        "ask": "एक सदस्य की भूमिका बदलें"
+      },
+      "removeMember": {
+        "doing": "एक सदस्य को हटा रहा है",
+        "did": "एक सदस्य को हटाया",
+        "where": "सदस्य",
+        "ask": "एक सदस्य को हटाएँ"
+      },
+      "leaveOrganization": {
+        "doing": "संगठन छोड़ रहा है",
+        "did": "संगठन छोड़ा",
+        "where": "वर्कस्पेस",
+        "ask": "संगठन छोड़ें"
+      },
+      "renameOrganization": {
+        "doing": "संगठन का नाम बदल रहा है",
+        "did": "संगठन का नाम बदला",
+        "where": "वर्कस्पेस सेटिंग्स",
+        "ask": "संगठन का नाम बदलें"
+      },
+      "deleteOrganization": {
+        "doing": "संगठन हटा रहा है",
+        "did": "संगठन हटाया",
+        "where": "वर्कस्पेस सेटिंग्स",
+        "ask": "संगठन हटाएँ"
+      },
+      "workspaceSummary": {
+        "doing": "वर्कस्पेस की सामग्री गिन रहा है",
+        "did": "वर्कस्पेस की सामग्री गिनी",
+        "where": "वर्कस्पेस सेटिंग्स"
+      },
+      "workspaceColour": {
+        "doing": "संगठन का रंग बदल रहा है",
+        "did": "संगठन का रंग बदला",
+        "where": "वर्कस्पेस सेटिंग्स",
+        "ask": "संगठन का रंग बदलें"
+      },
+      "resendInvite": {
+        "doing": "आमंत्रण फिर से भेज रहा है",
+        "did": "आमंत्रण फिर से भेजा",
+        "where": "सदस्य",
+        "ask": "आमंत्रण फिर से भेजें"
+      },
+      "workspacePreset": {
+        "doing": "संगठन का AI प्रीसेट बदल रहा है",
+        "did": "संगठन का AI प्रीसेट बदला",
+        "where": "AI सेटिंग्स",
+        "ask": "संगठन का AI प्रीसेट बदलें"
+      },
+      "activity": {
+        "doing": "बदलाव पढ़े जा रहे हैं",
+        "did": "बदलाव पढ़े गए",
+        "where": "गतिविधि"
+      },
+      "memberCap": {
+        "doing": "किसी सदस्य की क्रेडिट सीमा बदली जा रही है",
+        "did": "किसी सदस्य की क्रेडिट सीमा बदली",
+        "where": "प्लान और क्रेडिट",
+        "ask": "किसी सदस्य की क्रेडिट सीमा बदलें"
       }
     },
     "asks": {
@@ -3856,7 +3958,8 @@
       "buy": "{price} में {credits, number} क्रेडिट जोड़ें",
       "plans": "प्लान देखें",
       "note": "असिस्टेंट इन्हें खर्च करने से पहले फिर भी पूछता है।",
-      "failed": "क्रेडिट नहीं जोड़े जा सके"
+      "failed": "क्रेडिट नहीं जोड़े जा सके",
+      "askAdmin": "{organization} में केवल एडमिन क्रेडिट जोड़ते हैं। उनमें से किसी से कहें।"
     },
     "allowance": {
       "any": "क्रेडिट की अनुमति है",
@@ -3958,5 +4061,188 @@
       "topic": "विषय",
       "chat": "चैट"
     }
+  },
+  "workspaces": {
+    "main": "मुख्य",
+    "screen": "छँटाई",
+    "extract": "निकालें",
+    "publish": "प्रकाशित करें",
+    "explore": "खोजें",
+    "workspacesCard": "वर्कस्पेस",
+    "account": "खाता",
+    "close": "बंद करें",
+    "switchFrom": "वर्कस्पेस: {name}। वर्कस्पेस बदलें",
+    "runningLabel": "{label}, {what}, {total} में से {done}",
+    "doneOf": "{total} में से {done}",
+    "planFor": "{workspace} के लिए {plan}",
+    "planAndCredits": "प्लान और क्रेडिट",
+    "theme": "थीम",
+    "light": "लाइट",
+    "dark": "डार्क",
+    "auto": "ऑटो",
+    "signOut": "साइन आउट करें",
+    "personal": "व्यक्तिगत",
+    "admin": "एडमिन",
+    "member": "सदस्य",
+    "members": "{count, plural, one {# सदस्य} other {# सदस्य}}",
+    "switchTo": "इसमें जाएँ",
+    "otherWorkspaces": "अन्य वर्कस्पेस",
+    "from": "भेजने वाले",
+    "decline": "अस्वीकार करें",
+    "join": "जुड़ें",
+    "newOrganization": "नया संगठन",
+    "workspaceSettings": "वर्कस्पेस सेटिंग्स",
+    "invitationGone": "यह आमंत्रण अब खुला नहीं है।",
+    "couldntJoin": "संगठन से नहीं जुड़ सके",
+    "couldntDecline": "आमंत्रण अस्वीकार नहीं कर सके",
+    "couldntCreate": "संगठन नहीं बना सके",
+    "newOrganizationShares": "इसके सदस्य इसकी लाइब्रेरी, खोजें, छँटाई और क्रेडिट साझा करते हैं।",
+    "name": "नाम",
+    "namePlaceholder": "Learning Lab",
+    "inviteMembers": "सदस्यों को आमंत्रित करें",
+    "removeEmail": "{email} हटाएँ",
+    "addAnother": "एक और जोड़ें",
+    "emailPlaceholder": "name@university.edu",
+    "emailToInvite": "आमंत्रित करने के लिए ईमेल",
+    "membersHeading": "सदस्य",
+    "seatsOf": "{plan} पर {limit} में से {seats}",
+    "createOrganization": "संगठन बनाएँ",
+    "invitationDeclined": "आमंत्रण अस्वीकार किया",
+    "goToSearch": "खोज पर जाएँ",
+    "youreIn": "आप {name} में हैं",
+    "joined": "जुड़ गए",
+    "open": "{name} खोलें",
+    "invitedYou": "{name} ने आपको आमंत्रित किया",
+    "joinName": "{name} से जुड़ें",
+    "planNamed": "{plan} प्लान",
+    "asAdmin": "एडमिन के रूप में",
+    "asMember": "सदस्य के रूप में",
+    "pointShared": "इसके संग्रह और खोजें",
+    "pointCredits": "इसके क्रेडिट पर चलने वाला काम",
+    "pointOwn": "आपका अपना वर्कस्पेस आपका ही रहता है",
+    "invitationGoneTitle": "यह आमंत्रण अब खुला नहीं है",
+    "invitationGoneDetail": "भेजने वाले से नया आमंत्रण माँगें",
+    "settings": {
+      "general": "सामान्य",
+      "collections": "संग्रह",
+      "searches": "खोजें",
+      "screenings": "स्क्रीनिंग",
+      "extractions": "एक्सट्रैक्शन",
+      "evidenceLibraries": "एविडेंस लाइब्रेरी",
+      "changeLogo": "लोगो बदलें",
+      "organizationName": "संगठन का नाम",
+      "saveName": "नाम सहेजें",
+      "rename": "संगठन का नाम बदलें",
+      "copyAddress": "{address} कॉपी करें",
+      "colour": "रंग",
+      "inName": "{name} में",
+      "leaveOrDelete": "छोड़ें या हटाएँ",
+      "leaveName": "{name} छोड़ें",
+      "leaveDetail": "यहाँ आपका काम संगठन के पास रहता है",
+      "makeAdminFirst": "पहले किसी और को एडमिन बनाएँ",
+      "leave": "छोड़ें",
+      "deleteName": "{name} हटाएँ",
+      "libraryIsLive": "{library} लाइव है। पहले उसे हटाएँ या कहीं और ले जाएँ।",
+      "deleteDetail": "यह इसे {count, plural, one {इसके # सदस्य} other {इसके सभी # सदस्यों}} के लिए हटा देता है",
+      "moveLibrariesFirst": "पहले इसकी एविडेंस लाइब्रेरी हटाएँ या कहीं और ले जाएँ",
+      "delete": "हटाएँ",
+      "deleteConfirm": "इसके संग्रह, खोजें, स्क्रीनिंग और एक्सट्रैक्शन भी {count, plural, one {इसके # सदस्य} other {इसके सभी # सदस्यों}} के लिए हट जाते हैं। इसे वापस नहीं लिया जा सकता।",
+      "leaveConfirm": "जब तक कोई एडमिन आपको फिर से आमंत्रित न करे, आप इसके काम तक नहीं पहुँच पाएँगे।",
+      "ofSeats": "{seats, number} में से",
+      "membersOnPlan": "{plan} पर सदस्य",
+      "invite": "आमंत्रित करें",
+      "emailAddress": "ईमेल पता",
+      "theirRole": "उनकी भूमिका",
+      "freeUpTo": "मुफ़्त संगठन में आमंत्रणों सहित अधिकतम {count, number} सदस्य होते हैं",
+      "membersLabel": "सदस्य",
+      "joined": "{when} जुड़े",
+      "roleOf": "{name} की भूमिका",
+      "removeName": "{name} को हटाएँ",
+      "invitations": "आमंत्रण",
+      "invited": "{when} आमंत्रित",
+      "sentAgain": "{email} को आमंत्रण फिर से भेजा",
+      "resend": "फिर से भेजें",
+      "cancelInvitation": "{email} का आमंत्रण रद्द करें",
+      "removeConfirm": "{name} की {organization} तक पहुँच खत्म हो जाती है। उनका काम वहीं रहता है।",
+      "remove": "हटाएँ",
+      "includedMembers": "{count, number} सदस्य",
+      "unlimitedCollections": "असीमित संग्रह",
+      "includedCollections": "{count, number} संग्रह",
+      "papersAtOnce": "एक साथ {count, number} पेपर",
+      "anyPapersAJob": "हर काम में कितने भी पेपर",
+      "papersAJob": "हर काम में {count, number} पेपर तक",
+      "sharedCredits": "साझा क्रेडिट",
+      "membersDraw": "{count, number} सदस्य इनका उपयोग करते हैं",
+      "refillOn": "{date} को {amount}",
+      "upToMembers": "{count, number} सदस्यों तक",
+      "included": "शामिल",
+      "spendingThisMonth": "इस महीने का ख़र्च",
+      "yourSpendingThisMonth": "इस महीने आपका ख़र्च",
+      "creditsCount": "{count, plural, one {# क्रेडिट} other {# क्रेडिट}}",
+      "spentOfCap": "{cap} में से {spent}",
+      "cap": "सीमा",
+      "capNone": "कोई नहीं",
+      "noCap": "कोई सीमा नहीं",
+      "capAMonth": "{amount} प्रति माह"
+    },
+    "couldntInvite": "संगठन बन गया, पर आमंत्रण नहीं भेजे जा सके। उन्हें इसकी सदस्य सेटिंग्स से भेजें।",
+    "fromCredits": "{name} के क्रेडिट से",
+    "workspace": "वर्कस्पेस",
+    "creditsLeft": "{credits} क्रेडिट बचे",
+    "drawsOn": "इससे खर्च",
+    "ratings": {
+      "collection": "संग्रह",
+      "yours": "इस संग्रह में आपकी रेटिंग",
+      "everyone": "इस संग्रह में सभी की रेटिंग",
+      "heading": "इस संग्रह की रेटिंग",
+      "none": "कोई रेटिंग नहीं",
+      "stars": "5 में से {value}"
+    },
+    "activity": {
+      "title": "गतिविधि",
+      "runBy": "चलाया",
+      "madeBy": "बनाया",
+      "created": "ने इसे बनाया",
+      "renamed": "ने इसका नाम बदला, पहले",
+      "edited": "ने इसे बदला",
+      "added": "ने {count, plural, one {# पेपर} other {# पेपर}} जोड़े",
+      "removed": "ने {count, plural, one {# पेपर} other {# पेपर}} हटाए",
+      "rated": "ने {count, plural, one {# पेपर} other {# पेपर}} को रेटिंग दी",
+      "answered": "ने {count, plural, one {# उत्तर} other {# उत्तर}} बदले",
+      "screened": "ने {count, plural, one {# पेपर} other {# पेपर}} स्क्रीन किए",
+      "extracted": "ने {count, plural, one {# पेपर} other {# पेपर}} से निकाला",
+      "paused": "ने इसे रोका",
+      "resumed": "ने इसे फिर शुरू किया",
+      "retried": "ने {count, plural, one {# विफल उत्तर} other {# विफल उत्तर}} फिर से चलाए",
+      "stopped": "ने इसे बंद किया",
+      "viaAssistant": "सहायक के माध्यम से",
+      "today": "आज",
+      "yesterday": "कल",
+      "thisWeek": "इस सप्ताह",
+      "earlier": "पहले",
+      "showEarlier": "पुरानी गतिविधि दिखाएँ",
+      "none": "अब से बदलाव यहाँ दिखेंगे।"
+    },
+    "runBy": {
+      "runBy": "चलाया",
+      "startedBy": "शुरू किया",
+      "everyone": "सभी",
+      "more": "{count, plural, one {# और व्यक्ति} other {# और लोग}}",
+      "find": "किसी को खोजें",
+      "noOne": "इस नाम का कोई नहीं",
+      "busiest": "{count} में से सबसे सक्रिय {listed}। किसी और को खोजने के लिए नाम लिखें।",
+      "searches": "{count, plural, one {# खोज} other {# खोजें}}",
+      "screenings": "{count, plural, one {# स्क्रीनिंग} other {# स्क्रीनिंग}}",
+      "extractions": "{count, plural, one {# निष्कर्षण} other {# निष्कर्षण}}",
+      "collections": "{count, plural, one {# संग्रह} other {# संग्रह}}",
+      "chats": "{count, plural, one {# चैट} other {# चैट}}",
+      "showMore": "और लोग दिखाएँ"
+    },
+    "presence": {
+      "hasOpen": "{names} ने इसे खोला है"
+    }
+  },
+  "models": {
+    "changeInSettings": "AI सेटिंग्स में बदलें"
   }
 }

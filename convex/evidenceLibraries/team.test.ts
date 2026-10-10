@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { applyUserDeleteProjection } from "../users/internal";
 import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { organizationOfLibrary } from "../../tests/helpers/evidence-library-setup-fixture";
 
 describe("listTeam", () => {
   beforeEach(() => {
@@ -19,7 +20,7 @@ describe("listTeam", () => {
     const fixture = await createActivatedSetupFixture("team");
     const libraryId = fixture.created.libraryId;
     await fixture.t.run(async (ctx) => {
-      const organizationId = (await ctx.db.get("evidenceLibraries", libraryId))!.organizationId;
+      const organizationId = await organizationOfLibrary(ctx, libraryId);
       const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
       await ctx.db.patch("users", await seedFeatureUser(ctx, "user_team"), {
         clerkId: "user_team",
@@ -109,9 +110,8 @@ describe("listTeam", () => {
     const fixture = await createActivatedSetupFixture("team_grants");
     const libraryId = fixture.created.libraryId;
     await fixture.t.run(async ctx => {
-      const library = (await ctx.db.get("evidenceLibraries", libraryId))!;
       await ctx.db.insert("organizationMemberships", {
-        organizationId: library.organizationId, clerkMembershipId: "orgmem_creator",
+        organizationId: await organizationOfLibrary(ctx, libraryId), clerkMembershipId: "orgmem_creator",
         clerkUserId: "user_creator", role: "org:member", state: "active",
         clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1,
       });
@@ -136,9 +136,8 @@ describe("listTeam", () => {
     const fixture = await createActivatedSetupFixture("deleted_team_user");
     const libraryId = fixture.created.libraryId;
     await fixture.t.run(async ctx => {
-      const library = (await ctx.db.get("evidenceLibraries", libraryId))!;
       await ctx.db.insert("users", {clerkId: "deleted_user", email: "deleted@example.org", state: "active", createdAt: 1, updatedAt: 1});
-      await ctx.db.insert("organizationMemberships", {organizationId: library.organizationId, clerkMembershipId: "deleted_membership", clerkUserId: "deleted_user", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
+      await ctx.db.insert("organizationMemberships", {organizationId: await organizationOfLibrary(ctx, libraryId), clerkMembershipId: "deleted_membership", clerkUserId: "deleted_user", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
       await ctx.db.insert("evidenceLibraryMembers", {libraryId, clerkUserId: "deleted_user", role: "creator", grantedBy: "owner", grantedAt: 1});
       await applyUserDeleteProjection(ctx, {entityId: "deleted_user", entityType: "user", clerkId: "deleted_user", eventId: "delete-user", eventType: "user.deleted", instanceId: "instance", occurredAt: 2, processedAt: 2, payloadSha256: "a".repeat(64)});
     });

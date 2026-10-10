@@ -2,6 +2,7 @@
 
 import { useAction, useMutation, type Preloaded } from "convex/react";
 import { OrganizationAvatar, useLibraryOrganizationChoice } from "./organization-picker";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -12,24 +13,21 @@ import { CommandCenterPagination } from "@/components/command-center/command-cen
 import { AdminAreaLink } from "./admin-area-link";
 import { useState } from "react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import {
-  Building2,
   Check,
-  Crown,
   ExternalLink,
   Layers,
   Mail,
-  PenLine,
   Plus,
   Settings2,
   MoreHorizontal,
-  ShieldCheck,
   RotateCcw,
   SearchX,
   EvidenceLibrariesIcon,
 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { RoleLabel } from "@/components/ui/identity";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -44,13 +42,6 @@ import {
 import { ButtonGroup } from "@/components/ui/button-group";
 import { LibraryAddressLink } from "./library-address-link";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -62,7 +53,7 @@ import {
 import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "./library-page-shell";
 import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
-import { LIST_FILTER, LIST_TILE, ListEmpty, ListLoading, ListSearch, ListViewTabs } from "./list-controls";
+import { LIST_TILE, ListEmpty, ListLoading, ListSearch, ListViewTabs } from "./list-controls";
 import { LibraryStatusChip, type LibraryOperation } from "./library-status-chip";
 import { LibraryImage } from "./library-image";
 
@@ -84,7 +75,7 @@ type Library = {
   /** The update or publish a live library is running. */
   operation?: LibraryOperation | null;
 };
-const roleIcons = { Owner: Crown, Editor: ShieldCheck, Creator: PenLine };
+const roleKinds = { Owner: "owner", Editor: "editor", Creator: "creator" } as const;
 function LibraryTile() {
   return (
     <div className={LIST_TILE}>
@@ -102,43 +93,38 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   preloadedOrganizations?: Preloaded<typeof api.organizationFeatures.listLibraryOrganizations>;
 }) {
   const owner = useLibraryOrganizationChoice(preloadedOrganizations);
-  const [view, setView] = useQueryState("view", parseAsStringLiteral(["libraries", "invitations"]).withDefault("libraries"));
-  const [organization, setOrganization] = useState("all");
+  const [tab, setView] = useQueryState("view", parseAsStringLiteral(["libraries", "invitations"]).withDefault("libraries"));
   const [search, setSearch] = useState("");
   const text = useDebouncedValue(search.trim(), 300);
-  // The libraries are read a page at a time, filtered on the server; the organizations they belong to name the filter.
-  const owners = useProtectedQuery(api.evidenceLibraries.queries.listLibraryOwners, pending ? "skip" : {});
+  // The workspace you're in is the list (#651): an organization lists its own libraries, your own
+  // workspace yours and the ones shared with you, with their invitations.
+  const workspace = useCurrentWorkspace();
+  const personal = workspace?.kind === "personal";
+  const organization = workspace?.organizationId;
+  const view = personal ? tab : "libraries";
+  // The libraries are read a page at a time, filtered on the server.
   const overviews = useCursorPage(
     api.evidenceLibraries.queries.listLibraries,
-    pending ? "skip" : { ...(text ? { search: text } : {}), ...(organization !== "all" ? { organization: organization as Id<"organizations"> } : {}) },
+    pending || !workspace ? "skip" : { ...(text ? { search: text } : {}), ...(organization ? { organization } : {}) },
     COMMAND_CENTER_ITEMS_PER_PAGE,
   );
-  const libraryCount = useProtectedQuery(api.evidenceLibraries.queries.countLibraries, pending ? "skip" : {});
   const invitations = useProtectedQuery(api.evidenceLibraries.invitations.listInvitations, pending ? "skip" : {});
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState<string | null>(null);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator" } as const;
-  // The filter offers the organizations of the libraries and of the invitations, each once.
-  // The filter names organizations: an invitation to a library in someone's own workspace has none.
-  const organizations = [...new Map([...(owners.data?.page ?? []), ...(invitations.data?.page ?? []).flatMap(({ organization: owner }) => (owner.id ? [{ ...owner, id: owner.id }] : []))].map((entry) => [entry.id, entry])).values()].sort((a, b) => a.name.localeCompare(b.name));
   // An address has at most a page of invitations waiting, so they are filtered here.
-  const invited = (invitations.data?.page ?? []).filter(
-    (invitation) =>
-      (organization === "all" || invitation.organization.id === organization) &&
-      `${invitation.name} ${invitation.organization.name}`.toLowerCase().includes(search.trim().toLowerCase()),
-  );
+  const invited = (invitations.data?.page ?? []).filter((invitation) => `${invitation.name} ${invitation.organization.name}`.toLowerCase().includes(search.trim().toLowerCase()));
   const visible: Library[] = view === "libraries"
     ? overviews.items.map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, faviconUrl: library.faviconUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) }))
     : invited.map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true }));
   const [notice, setNotice] = useState("");
   const [declining, setDeclining] = useState<Library | null>(null);
-  const filtered = Boolean(text) || organization !== "all";
-  const loading = overviews.isLoading || !invitations.data || !owners.data || libraryCount.data === undefined || !owner.isReady;
+  const loading = !workspace || overviews.isLoading || !invitations.data || !owner.isReady;
   return (
     <LibraryPageShell
       title="Evidence libraries"
-      actions={owner.organizations.length > 0 &&
+      actions={owner.organizations.some((org) => org.id === organization) &&
         <Button asChild size="sm" className={BAR_ACTION}>
           <Link href="/evidence-libraries/new">
             <Plus />
@@ -146,16 +132,17 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
           </Link>
         </Button>
       }
-      tabs={
+      // Invitations to a library are yours, so they're in your own workspace.
+      tabs={personal &&
         <ListViewTabs
           label="Library view"
           value={view}
           onChange={setView}
-          tabs={(["libraries", "invitations"] as const).map((tab) => ({
-            value: tab,
-            label: tab === "libraries" ? "Your libraries" : "Invitations",
-            icon: tab === "libraries" ? <Layers className="size-3.5" /> : <Mail className="size-3.5" />,
-            count: loading ? undefined : tab === "libraries" ? libraryCount.data : invitations.data?.page.length,
+          tabs={(["libraries", "invitations"] as const).map((each) => ({
+            value: each,
+            label: each === "libraries" ? "Shared with you" : "Invitations",
+            icon: each === "libraries" ? <Layers className="size-3.5" /> : <Mail className="size-3.5" />,
+            count: loading ? undefined : each === "libraries" ? (overviews.hasPages ? undefined : overviews.items.length) : invited.length,
           }))}
         />
       }
@@ -166,25 +153,6 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
-        <Select value={organization} onValueChange={setOrganization}>
-          <SelectTrigger
-            size="sm"
-            aria-label="Filter by owning organization"
-            className={cn("w-48", LIST_FILTER)}
-          >
-            {organization === "all" && <Building2 className="size-3.5" />}
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All organizations</SelectItem>
-            {organizations.map((org) => (
-              <SelectItem key={org.id} value={org.id}>
-                <OrganizationAvatar name={org.name} imageUrl={org.imageUrl} />
-                {org.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </>}
     >
       {notice && (
@@ -206,12 +174,14 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
         {loading ? (
           <ListLoading label="Loading libraries" />
         ) : !visible.length ? (
-          <ListEmpty icon={search || organization !== "all" ? SearchX : view === "invitations" ? Mail : Layers}>
-              {search || organization !== "all"
+          <ListEmpty icon={search ? SearchX : view === "invitations" ? Mail : Layers}>
+              {search
                 ? "No libraries match these filters."
                 : view === "invitations"
                   ? "No pending invitations."
-                  : "Your libraries will appear here when you receive access."}
+                  : personal
+                    ? "Libraries people share with you appear here."
+                    : `${workspace?.name} has no libraries yet.`}
           </ListEmpty>
         ) : (
           // The page shown stays up, dimmed and inert, while the one it steps or filters to loads.
@@ -222,7 +192,6 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
             data-library-list
           >
             {visible.map((library) => {
-              const RoleIcon = roleIcons[library.role];
               return (
                 <li
                   key={library.id}
@@ -241,7 +210,8 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                     ) : (
                       <LibraryTile />
                     )}
-                    <Tooltip>
+                    {/* In an organization every library is its own, so only your own workspace names the owner. */}
+                    {personal && <Tooltip>
                       <TooltipTrigger asChild>
                         <button
                           type="button"
@@ -252,7 +222,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>{library.organization}</TooltipContent>
-                    </Tooltip>
+                    </Tooltip>}
                   </div>
                   <div className="flex min-w-0 flex-1 flex-col gap-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -283,10 +253,9 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                       )}
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="ml-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <RoleIcon className="size-3.5" />
+                          <RoleLabel role={roleKinds[library.role]} className="ml-1">
                             {library.role}
-                          </span>
+                          </RoleLabel>
                         </TooltipTrigger>
                         <TooltipContent>
                           {library.role === "Owner"
@@ -406,9 +375,9 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                 onNext: overviews.next,
                 offset: overviews.offset,
                 shown: overviews.items.length,
-                // A search's or an organization's matches aren't counted, so its pager shows the page alone.
-                total: filtered ? undefined : libraryCount.data,
-                pageCount: filtered || libraryCount.data === undefined ? undefined : Math.max(1, Math.ceil(libraryCount.data / COMMAND_CENTER_ITEMS_PER_PAGE)),
+                // A workspace's libraries aren't counted, so its pager shows the page alone.
+                total: undefined,
+                pageCount: undefined,
               }}
             />
           </div>

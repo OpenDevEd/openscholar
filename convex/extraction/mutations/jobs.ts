@@ -15,6 +15,7 @@ import { requireFeature } from "../../featureFlags/guard";
 import { extractionPricing, extractionStamp } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
+import { noteActivity } from "../../activity/notes";
 import { assertBucketWithinLimits } from "../bucket/limits";
 import { availableCredits as readAvailableCredits, planLimit } from "../../billing/accounts";
 import { papersIn } from "../../screening/estimate";
@@ -34,7 +35,7 @@ import { refillWorkspace } from "../queue/dispatcher";
 import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
 import { checkScreeningSelection } from "../sources/screening";
 import { bucketItemFromRow } from "../jobSources";
-import { actorOnRecord, isInWorkspace, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../../workspaces/actor";
+import { actorIn, requireMakerOrAdmin, type InWorkspace } from "../../workspaces/actor";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -101,7 +102,7 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
   const sourceType = deriveSourceType(deduped);
 
   // Stamp what extraction runs on (credits path), read back at run by paperWorker.
-  const stamp = await extractionStamp(ctx, userId);
+  const stamp = await extractionStamp(ctx, { userId, workspaceId });
 
   // Question validation happens after bucket validation so an empty bucket throws first.
   const qs = args.questions ?? [];
@@ -135,7 +136,6 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
 
   const now = Date.now();
   const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
-    userId,
     workspaceId,
     createdBy: userId,
     name: args.name,
@@ -179,6 +179,7 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
 
 export const startJobAction = defineUserMutation({
   path: "extraction/mutations:startJob",
+  activity: ({ name }, { jobId }) => ({ kind: "extraction", id: jobId, happened: "created", detail: name }),
   description: "Start an extraction from the sources picked on the extraction page. From a chat, an extraction over a collection, saved papers, a search or a screening is extraction/start:extract. Screening sources use the owned job's current Included papers and require its decision revision. Extraction saves those papers unchanged by later screening edits. The person's plan sets how many papers one job takes.",
   spendsCredits: true,
   outsideEffect: false,
@@ -193,6 +194,7 @@ export const startJobForAssistant = assistantMutation(startJobAction);
 
 export const duplicateJobAction = defineUserMutation({
   path: "extraction/mutations:duplicateJob",
+  activity: (_args, { jobId }) => ({ kind: "extraction", id: jobId, happened: "created" }),
   description: "Duplicate a job's questions and sources. Screening sources must still have the saved decision revision; if decisions changed, select the screening again in a new extraction.",
   spendsCredits: true,
   outsideEffect: false,
@@ -204,7 +206,7 @@ export const duplicateJobAction = defineUserMutation({
 
     const oldJob = await ctx.db.get("extractionJobs", args.jobId);
     // The copy is made in the workspace the call acts in, which the original must be in.
-    if (!oldJob || !(await isInWorkspace(ctx, oldJob, workspaceId))) {
+    if (!oldJob || !(oldJob.workspaceId === workspaceId)) {
       throw createError("NOT_FOUND", "Job not found");
     }
 
@@ -234,9 +236,8 @@ export const duplicateJobAction = defineUserMutation({
       .order("asc")
       .take(MAX_QUESTIONS_PER_JOB);
 
-    const dupStamp = await extractionStamp(ctx, userId);
+    const dupStamp = await extractionStamp(ctx, { userId, workspaceId });
     const newJobId = await ctx.db.insert("extractionJobs", {
-      userId,
       workspaceId,
       createdBy: userId,
       name: `${oldJob.name} (Copy)`,
@@ -286,11 +287,11 @@ export const cancelExtraction = mutation({
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get("extractionJobs", args.jobId);
-    const actor = job && (await actorOnRecord(ctx, user, job));
+    const actor = job && (await actorIn(ctx, user, job.workspaceId));
     if (!job || !actor) {
       throw createError("NOT_FOUND", "Job not found");
     }
-    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
+    requireMakerOrAdmin(actor, job.createdBy);
 
     if (
       job.status &&
@@ -306,7 +307,8 @@ export const cancelExtraction = mutation({
     });
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
     // Its papers no longer count against the person's limit; their other jobs start in it.
-    await refillWorkspace(ctx, await workspaceOf(ctx, job));
+    await refillWorkspace(ctx, job.workspaceId);
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: args.jobId, happened: "stopped" });
 
     // Any in-flight paper action sees the cancelled job on its next
     // status check and returns without persisting.
@@ -321,16 +323,16 @@ export const deleteExtraction = mutation({
     const user = await requireAuth(ctx);
 
     const job = await ctx.db.get("extractionJobs", args.jobId);
-    const actor = job && (await actorOnRecord(ctx, user, job));
+    const actor = job && (await actorIn(ctx, user, job.workspaceId));
     if (!job || !actor) {
       throw createError("NOT_FOUND", "Job not found");
     }
-    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
+    requireMakerOrAdmin(actor, job.createdBy);
 
     await ctx.db.delete(args.jobId);
     // Its papers stop holding the person's capacity now, not when the cascade reaches them.
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
-    await refillWorkspace(ctx, await workspaceOf(ctx, job));
+    await refillWorkspace(ctx, job.workspaceId);
 
     // Schedule the cascade delete as an independent mutation to avoid
     // transaction limits on a large job's child tables.

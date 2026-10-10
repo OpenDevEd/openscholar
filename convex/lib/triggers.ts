@@ -12,8 +12,9 @@ import { noteEndedJob, tellIdleChat, trackChatJob } from "../assistant/jobEnds";
 import { countJobChange, countPaperChange, countPaperErrorChange, countResultChange, reviseQuestionChange } from "../extraction/counts";
 import { nameJob } from "../extraction/jobList";
 import { recordRevisionApprovedQueries } from "../evidenceLibraries/approvedQueries";
-import { countChange } from "../research/recordCounts";
+import { countChange, countMakerChange } from "../research/recordCounts";
 import { copyChangedFacets, countItemChange, fillAndCountMembership } from "../library/facets";
+import { rerateOnMembership } from "../ratings";
 import { countAnswerChange, countPaperChange as countPaperFacets } from "../extraction/facets";
 import { tallyAnswerChange } from "../extraction/tallies";
 import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchText, shortcutText } from "./searchText";
@@ -42,6 +43,8 @@ triggers.register("extractionJobs", noteEndedJob("extraction"));
 triggers.register("screeningJobs", trackChatJob("screening"));
 triggers.register("extractionJobs", trackChatJob("extraction"));
 triggers.register("assistantThreads", tellIdleChat);
+// Each maker's count, in an organization, for its lists' Run by (#656).
+for (const table of ["searches", "screeningJobs", "extractionJobs", "collections", "assistantThreads"] as const) triggers.register(table, countMakerChange(table));
 triggers.register("walletKeys", countList(walletKeyList));
 triggers.register("admins", countList(() => ADMIN_LIST));
 triggers.register("evidenceLibraryConfigOperations", countList(libraryVersionList));
@@ -60,6 +63,8 @@ triggers.register("queryShortcuts", keepSearchText("queryShortcuts", (_ctx, row)
 triggers.register("extractionJobs", keepSearchText("extractionJobs", (_ctx, row) => jobText(row)));
 triggers.register("admins", keepSearchText("admins", adminText));
 triggers.register("organizationMemberships", keepSearchText("organizationMemberships", memberText));
+// Someone joining or leaving an organization moves its papers' averages (convex/ratings.ts).
+triggers.register("organizationMemberships", rerateOnMembership);
 triggers.register("users", keepTextOfUser);
 // A library's people and a person's libraries, which granting another checks against its cap (convex/evidenceLibraries/members.ts).
 triggers.register("evidenceLibraryMembers", countList((grant) => libraryMembersOf(grant.libraryId)));

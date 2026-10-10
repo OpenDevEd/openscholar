@@ -207,7 +207,7 @@ const pagedSource = (item: BucketItemInput) => item.source === "screening" || it
  * papers are read up to the next of those.
  */
 /** Who a job reads its papers as: its person, in its workspace (or theirs, for a job its backfill hasn't reached). */
-const jobReader = async (ctx: ActionCtx, job: Doc<"extractionJobs">) => ({ userId: job.userId, workspaceId: job.workspaceId ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: job.userId })) });
+const jobReader = async (ctx: ActionCtx, job: Doc<"extractionJobs">) => ({ userId: job.createdBy, workspaceId: job.workspaceId });
 
 async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: string, place: SetupPlace): Promise<{ papers: SetupPaper[]; next: SetupPlace } | null> {
   // Typed here: the generated API's types depend on this module, so inference would loop.
@@ -290,7 +290,7 @@ export async function runSetupExtractionQueueJob(
   try {
     const runtime = setupRuntime(initialControl.pdfEnabled);
     // Typed here: the generated API's types depend on this module, so inference would loop.
-    const user: Doc<"users"> | null = await ctx.runQuery(internal.users.internal.getUserById, { userId: initialControl.job.userId });
+    const user: Doc<"users"> | null = await ctx.runQuery(internal.users.internal.getUserById, { userId: initialControl.job.createdBy });
     if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
     let place: SetupPlace = initialControl.job.setup ?? { position: 0, read: 0, papers: 0, processable: 0 };
     while (!place.done) {

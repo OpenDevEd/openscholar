@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { seedAccount } from "../lib/maxSize.test-support";
 import { countMismatches } from "./counts.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
 
 type Test = ReturnType<typeof convexTest>;
 const verify = async (t: Test) => ({ mismatches: await countMismatches(t) });
@@ -21,7 +22,7 @@ const completed = { status: "completed" as const, answer: "ok", citationStatus: 
 
 async function seedJob(t: Test, userId: Id<"users">) {
   return t.run(async (ctx) => {
-    const jobId = await ctx.db.insert("extractionJobs", { userId, sourceType: "history", status: "extracting", totalPapers: 3, runEpoch: 0, name: "Counted", createdAt: 1, updatedAt: 1 });
+    const jobId = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), sourceType: "history", status: "extracting", totalPapers: 3, runEpoch: 0, name: "Counted", createdAt: 1, updatedAt: 1 });
     const papers = [];
     for (const status of ["completed", "failed", "extracting"] as const) {
       papers.push(await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:${status}`, title: status, status }));
@@ -72,7 +73,7 @@ describe("extraction job counters", () => {
     const other = t.withIdentity({ tokenIdentifier: "https://test.clerk.local|clerk_someone_else", subject: "clerk_someone_else", issuer: "https://test.clerk.local" });
     expect(await other.query(api.extraction.queries.countJobFailures, { jobId })).toEqual(zeros);
 
-    const empty = await t.run((ctx) => ctx.db.insert("extractionJobs", { userId, name: "Nothing yet", totalPapers: 0, createdAt: 1, updatedAt: 1 }));
+    const empty = await t.run(async (ctx) => ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Nothing yet", totalPapers: 0, createdAt: 1, updatedAt: 1 }));
     expect(await as.query(api.extraction.queries.countJobFailures, { jobId: empty })).toEqual(zeros);
   });
 });

@@ -197,7 +197,8 @@
       "fr": "Français",
       "hi": "Hindi",
       "ja": "Japonais"
-    }
+    },
+    "you": "Vous"
   },
   "home": {
     "tagline": "Recherchez des millions d'articles académiques et de recherche",
@@ -233,7 +234,6 @@
   },
   "pricing": {
     "chooseYourPlan": "Choisissez votre forfait",
-    "subtitle": "Passez du gratuit à l'entreprise avec une tarification transparente",
     "perMonth": "/mois",
     "freePrice": "Gratuit",
     "enterprisePlanName": "Entreprise",
@@ -435,10 +435,6 @@
       "cancelled": "Cette opération a été annulée avant d'être terminée."
     }
   },
-  "sidebar": {
-    "expandSidebar": "Développer la barre latérale (Ctrl+B)",
-    "collapseSidebar": "Réduire la barre latérale (Ctrl+B)"
-  },
   "downloads": {
     "downloadAll": "Tout télécharger",
     "downloadEssentialJSON": "Télécharger les infos essentielles en JSON",
@@ -578,12 +574,6 @@
       "summary": "{completed} questions terminées sur {total}",
       "failedCount": "{count, plural, one {# échec} other {# échecs}}",
       "retryingCount": "{count, plural, one {# nouvelle tentative} other {# nouvelles tentatives}}"
-    },
-    "errorHistory": {
-      "trigger": "Historique des erreurs · {count, plural, one {# tentative} other {# tentatives}}",
-      "triggerLabel": "Afficher l'historique des erreurs ({count, plural, one {# tentative} other {# tentatives}})",
-      "attempt": "Tentative {n}",
-      "loadMore": "Afficher les tentatives plus anciennes"
     },
     "mixedSuccess": {
       "title": "Terminé avec succès partiel",
@@ -919,12 +909,8 @@
     "enableToggleToCustomize": "Activez le toggle ci-dessus pour personnaliser la plage d'années",
     "defaultAllYears": "Par défaut, toutes les années sont incluses dans votre recherche",
     "yearRangeLabel": "Plage d'années :",
-    "nStars": "{count, plural, one {# étoile} other {# étoiles}}",
-    "zeroStars": "0 étoiles",
     "onlyShowRated": "Afficher uniquement les articles notés",
     "hideUnrated": "Masquer les articles que vous n'avez pas encore notés",
-    "showingRange": "Affichage de {range}",
-    "filterActive": "Filtre actif",
     "searchCountriesPlaceholder": "Rechercher des pays ou régions...",
     "filteringByCountries": "Filtrage par {count} pays au total",
     "regionsGroup": "Régions",
@@ -1165,9 +1151,6 @@
     "bookmarkNotFound": "Favori \"{keyword}\" non trouvé"
   },
   "accessibility": {
-    "toggleTheme": "Basculer le thème",
-    "switchToLightMode": "Passer en mode clair",
-    "switchToDarkMode": "Passer en mode sombre",
     "closeDialog": "Fermer",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "Numéro de page",
@@ -1436,13 +1419,13 @@
     "removeFromLibrary": "Retirer de la bibliothèque",
     "addToCollection": "Ajouter à une collection",
     "newCollection": "Nouvelle collection",
-    "createAndAdd": "Créer et ajouter",
     "removed": "Retiré de la bibliothèque",
     "undo": "Annuler",
     "saveError": "Impossible d'enregistrer l'article",
     "removeError": "Impossible de retirer l'article",
     "restoreError": "Impossible de remettre l'article",
-    "collectionError": "Impossible de modifier la collection"
+    "collectionError": "Impossible de modifier la collection",
+    "newCollectionWithPaper": "Nouvelle collection avec cet article"
   },
   "rating": {
     "noRating": "Sans note",
@@ -1668,7 +1651,7 @@
     "filterCollection": "Collection",
     "allCollections": "Toutes les collections",
     "manageCollections": "Gérer les collections",
-    "createCollection": "Créer une collection",
+    "createCollection": "Créer",
     "createCollectionDescription": "Donnez un nom à votre collection pour organiser vos articles.",
     "collectionNamePlaceholder": "Nom de la collection",
     "createButton": "Créer",
@@ -1694,7 +1677,23 @@
     "noCollectionsMatchSearch": "Aucune collection ne correspond à votre recherche",
     "emptyCollectionsTitle": "Aucune collection",
     "emptyCollectionsDescription": "Créez votre première collection pour organiser vos articles sauvegardés.",
-    "newCollectionPlaceholder": "Nom de la nouvelle collection..."
+    "newCollectionHint": "Nommez-la, voyez qui la voit et créez-la.",
+    "collectionNameTaken": "Vous en avez déjà une avec ce nom",
+    "collectionNameTakenIn": "{workspace} en a déjà une avec ce nom",
+    "whoSeesIt": "Qui la voit",
+    "everyoneIn": "Tout le monde dans {workspace}",
+    "everyMemberEdits": "Chaque membre peut la modifier",
+    "onlyYou": "Vous seul",
+    "startWith": "Commencer avec",
+    "startWithPaper": "Commencer avec cet article",
+    "collectionsMeter": "Collections",
+    "collectionsNoun": "collections",
+    "collectionsOf": "{count} sur {limit}",
+    "collectionsCount": "{count, plural, one {# collection} other {# collections}}",
+    "noCollectionLimit": "Aucune limite avec {plan}",
+    "planAllowsCollections": "{plan} permet {limit, number} collections",
+    "nameTheCollection": "Nommez la collection",
+    "newName": "Nouveau nom pour {name}"
   },
   "sidebarLayout": {
     "expandFilters": "Afficher les filtres (Ctrl+Shift+F)",
@@ -1872,7 +1871,8 @@
     "screenPapers": "Cribler {count, plural, one {# article} other {# articles}}",
     "startFailed": "Impossible de démarrer le criblage",
     "showAnswers": "Afficher les réponses pour {title}",
-    "hideAnswers": "Masquer les réponses pour {title}"
+    "hideAnswers": "Masquer les réponses pour {title}",
+    "yesOrNo": "Oui ou non"
   },
   "connectionsPage": {
     "connectedApps": "Applications connectées",
@@ -3084,7 +3084,6 @@
   "settingsShell": {
     "groups": {
       "account": "Compte",
-      "research": "Recherche",
       "admin": "Administration"
     },
     "items": {
@@ -3171,7 +3170,6 @@
       "title": "Administrateurs",
       "admins": "administrateurs",
       "search": "Rechercher par nom ou e-mail",
-      "you": "Vous",
       "invited": "Invité",
       "notDelivered": "Invitation non remise",
       "remove": "Retirer",
@@ -3257,7 +3255,9 @@
       "high": "Élevé",
       "xhigh": "Très élevé",
       "max": "Max"
-    }
+    },
+    "organizationPresetAdmin": "Tout le monde y travaille avec le préréglage choisi ici.",
+    "organizationPresetMember": "Ses administrateurs choisissent le préréglage de tous ses membres."
   },
   "modelPicker": {
     "vendors": "Fournisseurs",
@@ -3381,7 +3381,6 @@
       "failed": "Impossible de reprendre la réponse"
     },
     "addPeople": "Ajouter des personnes ou une organisation",
-    "you": "Vous",
     "owner": "Propriétaire",
     "canChat": "Peut discuter",
     "canView": "Peut consulter",
@@ -3801,6 +3800,109 @@
         "did": "PDF d’un article lu",
         "where": "OpenAlex",
         "ask": "Lire le PDF d’un article"
+      },
+      "workspaces": {
+        "doing": "Consultation de vos espaces de travail",
+        "did": "Espaces de travail consultés",
+        "where": "Espaces de travail"
+      },
+      "orgMembers": {
+        "doing": "Consultation des membres de l'organisation",
+        "did": "Membres de l'organisation consultés",
+        "where": "Membres"
+      },
+      "myInvites": {
+        "doing": "Consultation de vos invitations",
+        "did": "Invitations consultées",
+        "where": "Espaces de travail"
+      },
+      "newOrganization": {
+        "doing": "Création d'une organisation",
+        "did": "Organisation créée",
+        "where": "Espaces de travail",
+        "ask": "Créer une organisation"
+      },
+      "inviteMembers": {
+        "doing": "Envoi d'invitations",
+        "did": "Invitations envoyées",
+        "where": "Membres",
+        "ask": "Inviter des personnes"
+      },
+      "revokeInvite": {
+        "doing": "Annulation d'une invitation",
+        "did": "Invitation annulée",
+        "where": "Membres",
+        "ask": "Annuler une invitation"
+      },
+      "declineInvite": {
+        "doing": "Refus d'une invitation",
+        "did": "Invitation refusée",
+        "where": "Espaces de travail",
+        "ask": "Refuser une invitation"
+      },
+      "memberRole": {
+        "doing": "Modification du rôle d'un membre",
+        "did": "Rôle d'un membre modifié",
+        "where": "Membres",
+        "ask": "Modifier le rôle d'un membre"
+      },
+      "removeMember": {
+        "doing": "Retrait d'un membre",
+        "did": "Membre retiré",
+        "where": "Membres",
+        "ask": "Retirer un membre"
+      },
+      "leaveOrganization": {
+        "doing": "Départ de l'organisation",
+        "did": "Organisation quittée",
+        "where": "Espaces de travail",
+        "ask": "Quitter l'organisation"
+      },
+      "renameOrganization": {
+        "doing": "Renommage de l'organisation",
+        "did": "Organisation renommée",
+        "where": "Paramètres de l'espace de travail",
+        "ask": "Renommer l'organisation"
+      },
+      "deleteOrganization": {
+        "doing": "Suppression de l'organisation",
+        "did": "Organisation supprimée",
+        "where": "Paramètres de l'espace de travail",
+        "ask": "Supprimer l'organisation"
+      },
+      "workspaceSummary": {
+        "doing": "Décompte du contenu de l'espace de travail",
+        "did": "Contenu de l'espace de travail compté",
+        "where": "Paramètres de l'espace de travail"
+      },
+      "workspaceColour": {
+        "doing": "Changement de la couleur de l'organisation",
+        "did": "Couleur de l'organisation changée",
+        "where": "Paramètres de l'espace de travail",
+        "ask": "Changer la couleur de l'organisation"
+      },
+      "resendInvite": {
+        "doing": "Renvoi de l'invitation",
+        "did": "Invitation renvoyée",
+        "where": "Membres",
+        "ask": "Renvoyer l'invitation"
+      },
+      "workspacePreset": {
+        "doing": "Changement du préréglage IA de l'organisation",
+        "did": "Préréglage IA de l'organisation changé",
+        "where": "Paramètres IA",
+        "ask": "Changer le préréglage IA de l'organisation"
+      },
+      "activity": {
+        "doing": "Lecture des modifications",
+        "did": "Modifications lues",
+        "where": "Activité"
+      },
+      "memberCap": {
+        "doing": "Modification du plafond de crédits d'un membre",
+        "did": "Plafond de crédits d'un membre modifié",
+        "where": "Forfait et crédits",
+        "ask": "Modifier le plafond de crédits d'un membre"
       }
     },
     "asks": {
@@ -3856,7 +3958,8 @@
       "buy": "Ajouter {credits, number} crédits pour {price}",
       "plans": "Voir les offres",
       "note": "L'assistant demande toujours avant de les dépenser.",
-      "failed": "Impossible d'ajouter des crédits"
+      "failed": "Impossible d'ajouter des crédits",
+      "askAdmin": "Seul un administrateur de {organization} y ajoute des crédits. Demandez à l'un d'eux."
     },
     "allowance": {
       "any": "Crédits autorisés",
@@ -3958,5 +4061,188 @@
       "topic": "Sujet",
       "chat": "Discussion"
     }
+  },
+  "workspaces": {
+    "main": "Principal",
+    "screen": "Trier",
+    "extract": "Extraire",
+    "publish": "Publier",
+    "explore": "Explorer",
+    "workspacesCard": "Espaces de travail",
+    "account": "Compte",
+    "close": "Fermer",
+    "switchFrom": "Espace de travail : {name}. Changer d'espace de travail",
+    "runningLabel": "{label}, {what}, {done} sur {total}",
+    "doneOf": "{done} sur {total}",
+    "planFor": "{plan} pour {workspace}",
+    "planAndCredits": "Forfait et crédits",
+    "theme": "Thème",
+    "light": "Clair",
+    "dark": "Sombre",
+    "auto": "Auto",
+    "signOut": "Se déconnecter",
+    "personal": "Personnel",
+    "admin": "Administrateur",
+    "member": "Membre",
+    "members": "{count, plural, one {# membre} other {# membres}}",
+    "switchTo": "Passer à",
+    "otherWorkspaces": "Autres espaces de travail",
+    "from": "De",
+    "decline": "Refuser",
+    "join": "Rejoindre",
+    "newOrganization": "Nouvelle organisation",
+    "workspaceSettings": "Paramètres de l'espace de travail",
+    "invitationGone": "Cette invitation n'est plus ouverte.",
+    "couldntJoin": "Impossible de rejoindre l'organisation",
+    "couldntDecline": "Impossible de refuser l'invitation",
+    "couldntCreate": "Impossible de créer l'organisation",
+    "newOrganizationShares": "Ses membres partagent sa bibliothèque, ses recherches, ses tris et ses crédits.",
+    "name": "Nom",
+    "namePlaceholder": "Learning Lab",
+    "inviteMembers": "Inviter des membres",
+    "removeEmail": "Retirer {email}",
+    "addAnother": "En ajouter un autre",
+    "emailPlaceholder": "nom@universite.edu",
+    "emailToInvite": "Adresse e-mail à inviter",
+    "membersHeading": "Membres",
+    "seatsOf": "{seats} sur {limit} avec {plan}",
+    "createOrganization": "Créer l'organisation",
+    "invitationDeclined": "Invitation refusée",
+    "goToSearch": "Aller à la recherche",
+    "youreIn": "Vous faites partie de {name}",
+    "joined": "Rejoint",
+    "open": "Ouvrir {name}",
+    "invitedYou": "{name} vous a invité",
+    "joinName": "Rejoindre {name}",
+    "planNamed": "Forfait {plan}",
+    "asAdmin": "En tant qu'administrateur",
+    "asMember": "En tant que membre",
+    "pointShared": "Ses collections et ses recherches",
+    "pointCredits": "Le travail qui utilise ses crédits",
+    "pointOwn": "Votre propre espace de travail reste le vôtre",
+    "invitationGoneTitle": "Cette invitation n'est plus ouverte",
+    "invitationGoneDetail": "Demandez-en une nouvelle à la personne qui l'a envoyée",
+    "settings": {
+      "general": "Général",
+      "collections": "Collections",
+      "searches": "Recherches",
+      "screenings": "Tris",
+      "extractions": "Extractions",
+      "evidenceLibraries": "Bibliothèques de données probantes",
+      "changeLogo": "Changer le logo",
+      "organizationName": "Nom de l'organisation",
+      "saveName": "Enregistrer le nom",
+      "rename": "Renommer l'organisation",
+      "copyAddress": "Copier {address}",
+      "colour": "Couleur",
+      "inName": "Dans {name}",
+      "leaveOrDelete": "Quitter ou supprimer",
+      "leaveName": "Quitter {name}",
+      "leaveDetail": "Votre travail ici reste à l'organisation",
+      "makeAdminFirst": "Nommez d'abord un autre administrateur",
+      "leave": "Quitter",
+      "deleteName": "Supprimer {name}",
+      "libraryIsLive": "{library} est en ligne. Déplacez-la ou supprimez-la d'abord.",
+      "deleteDetail": "La supprime pour {count, plural, one {son # membre} other {ses # membres}}",
+      "moveLibrariesFirst": "Déplacez ou supprimez d'abord ses bibliothèques de données probantes",
+      "delete": "Supprimer",
+      "deleteConfirm": "Ses collections, recherches, tris et extractions disparaissent avec elle, pour {count, plural, one {son # membre} other {ses # membres}}. C'est irréversible.",
+      "leaveConfirm": "Vous perdez l'accès à son travail jusqu'à ce qu'un administrateur vous invite de nouveau.",
+      "ofSeats": "sur {seats, number}",
+      "membersOnPlan": "Membres avec {plan}",
+      "invite": "Inviter",
+      "emailAddress": "Adresse e-mail",
+      "theirRole": "Son rôle",
+      "freeUpTo": "Une organisation gratuite compte au plus {count, number} membres, invitations comprises",
+      "membersLabel": "membres",
+      "joined": "Arrivé {when}",
+      "roleOf": "Rôle de {name}",
+      "removeName": "Retirer {name}",
+      "invitations": "Invitations",
+      "invited": "Invité {when}",
+      "sentAgain": "Invitation renvoyée à {email}",
+      "resend": "Renvoyer",
+      "cancelInvitation": "Annuler l'invitation à {email}",
+      "removeConfirm": "{name} perd l'accès à {organization}. Son travail y reste.",
+      "remove": "Retirer",
+      "includedMembers": "{count, number} membres",
+      "unlimitedCollections": "Collections illimitées",
+      "includedCollections": "{count, plural, one {# collection} other {# collections}}",
+      "papersAtOnce": "{count, plural, one {# article à la fois} other {# articles à la fois}}",
+      "anyPapersAJob": "Autant d'articles que voulu par tâche",
+      "papersAJob": "Jusqu'à {count, number} articles par tâche",
+      "sharedCredits": "Crédits partagés",
+      "membersDraw": "{count, plural, one {# membre y puise} other {# membres y puisent}}",
+      "refillOn": "{amount} le {date}",
+      "upToMembers": "Jusqu'à {count, number} membres",
+      "included": "Inclus",
+      "spendingThisMonth": "Dépenses ce mois-ci",
+      "yourSpendingThisMonth": "Vos dépenses ce mois-ci",
+      "creditsCount": "{count, plural, one {# crédit} other {# crédits}}",
+      "spentOfCap": "{spent} sur {cap}",
+      "cap": "Plafond",
+      "capNone": "Aucun",
+      "noCap": "Sans plafond",
+      "capAMonth": "{amount} par mois"
+    },
+    "couldntInvite": "L'organisation a été créée, mais les invitations ne sont pas parties. Envoyez-les depuis ses paramètres Membres.",
+    "fromCredits": "Sur les crédits de {name}",
+    "workspace": "Espace de travail",
+    "creditsLeft": "{credits} crédits restants",
+    "drawsOn": "Utilise",
+    "ratings": {
+      "collection": "Collection",
+      "yours": "Votre note dans cette collection",
+      "everyone": "Les notes de chacun dans cette collection",
+      "heading": "Notes dans cette collection",
+      "none": "Aucune note",
+      "stars": "{value} sur 5"
+    },
+    "activity": {
+      "title": "Activité",
+      "runBy": "Lancé par",
+      "madeBy": "Créé par",
+      "created": "l'a créé",
+      "renamed": "l'a renommé depuis",
+      "edited": "l'a modifié",
+      "added": "a ajouté {count, plural, one {# article} other {# articles}}",
+      "removed": "a retiré {count, plural, one {# article} other {# articles}}",
+      "rated": "a noté {count, plural, one {# article} other {# articles}}",
+      "answered": "a modifié {count, plural, one {# réponse} other {# réponses}}",
+      "screened": "a trié {count, plural, one {# article} other {# articles}}",
+      "extracted": "a extrait de {count, plural, one {# article} other {# articles}}",
+      "paused": "l'a mis en pause",
+      "resumed": "l'a repris",
+      "retried": "a relancé {count, plural, one {# réponse en échec} other {# réponses en échec}}",
+      "stopped": "l'a arrêté",
+      "viaAssistant": "Par l'assistant",
+      "today": "Aujourd'hui",
+      "yesterday": "Hier",
+      "thisWeek": "Cette semaine",
+      "earlier": "Plus tôt",
+      "showEarlier": "Afficher l'activité plus ancienne",
+      "none": "Les modifications s'afficheront ici désormais."
+    },
+    "runBy": {
+      "runBy": "Lancé par",
+      "startedBy": "Commencé par",
+      "everyone": "Tout le monde",
+      "more": "{count, plural, one {# autre personne} other {# autres personnes}}",
+      "find": "Trouver quelqu'un",
+      "noOne": "Personne de ce nom",
+      "busiest": "Les {listed} plus actifs sur {count}. Tapez un nom pour trouver quelqu'un d'autre.",
+      "searches": "{count, plural, one {# recherche} other {# recherches}}",
+      "screenings": "{count, plural, one {# tri} other {# tris}}",
+      "extractions": "{count, plural, one {# extraction} other {# extractions}}",
+      "collections": "{count, plural, one {# collection} other {# collections}}",
+      "chats": "{count, plural, one {# conversation} other {# conversations}}",
+      "showMore": "Afficher plus de personnes"
+    },
+    "presence": {
+      "hasOpen": "{count, plural, one {{names} l'a ouvert} other {{names} l'ont ouvert}}"
+    }
+  },
+  "models": {
+    "changeInSettings": "Modifier dans les paramètres IA"
   }
 }

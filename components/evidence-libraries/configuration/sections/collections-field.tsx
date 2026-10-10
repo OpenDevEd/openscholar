@@ -69,10 +69,9 @@ export function CollectionsField(props: {
     <Suspense
       fallback={
         <FieldGroup title={t("shownHeading")} hint={t("introHint")}>
-          <p className="flex items-center gap-2 text-sm text-muted-foreground" role="status">
-            <Spinner className="h-4 w-4" />
-            {t("loading")}
-          </p>
+          <div className="flex h-5 items-center">
+            <Spinner className="h-4 w-4" aria-label={t("loading")} />
+          </div>
         </FieldGroup>
       }
     >

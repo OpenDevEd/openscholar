@@ -2,12 +2,13 @@ import { convexTest } from "convex-test";
 import { expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
+import { madeBy } from "../workspaces/actor.test-support";
 
 it("repairs unsupported evidence labels without rewriting answers, and guards rollback", async () => {
   const t = convexTest(schema);
   const ids = await t.run(async ctx => {
     const userId = await ctx.db.insert("users", { clerkId: "evidence-repair", email: "repair@test", state: "active", createdAt: 1, updatedAt: 1 });
-    const jobId = await ctx.db.insert("extractionJobs", { userId, name: "Evidence repair", sourceType: "history", status: "completed", totalPapers: 1, createdAt: 1, updatedAt: 1 });
+    const jobId = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Evidence repair", sourceType: "history", status: "completed", totalPapers: 1, createdAt: 1, updatedAt: 1 });
     const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: "W1", title: "Trial", abstract: "The trial assigned 120 schools to tutoring.", status: "completed" });
     const citation = { evidenceId: "pdf-unit", page: 2, charRange: [10, 30], quote: "A saved PDF passage.", retrieval: {}, validated: true };
     await ctx.db.insert("extractionEvidenceUnits", { jobId, paperId, evidenceId: citation.evidenceId, page: citation.page, charRange: citation.charRange, text: citation.quote, tokens: [], anchorConfidence: 1, source: "pdfjs_chunks", createdAt: 1 });

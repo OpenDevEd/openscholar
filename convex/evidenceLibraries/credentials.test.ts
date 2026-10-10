@@ -8,6 +8,7 @@ import {
   resolveCredentialPath,
   storeEvidenceLibraryCredential,
 } from "./credentials";
+import { organizationWorkspaceOf } from "../workspaces/personal";
 
 describe("resolveCredentialPath", () => {
   it("derives generated write-only patterns and stable keys", () => {
@@ -61,7 +62,7 @@ describe("Evidence Library credential storage", () => {
         updatedAt: 1,
       });
       return await ctx.db.insert("evidenceLibraries", {
-        organizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, organizationId),
         name: "Credential Action Library",
         slug: "credential-action-library",
         state: "active",
@@ -116,7 +117,7 @@ describe("Evidence Library credential storage", () => {
         updatedAt: 1,
       });
       return await ctx.db.insert("evidenceLibraries", {
-        organizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, organizationId),
         name: "Credential Library",
         slug: "credential-library",
         state: "active",

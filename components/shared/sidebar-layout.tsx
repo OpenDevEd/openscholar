@@ -55,22 +55,19 @@ export function SidebarLayout({
           }
           className="flex flex-col flex-1 h-full gap-0"
         >
-          <TabsList className="w-full rounded-none border-b bg-background h-12 p-0">
-            <TabsTrigger
-              value="content"
-              className="flex-1 h-full rounded-none transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground"
-            >
-              <FileText className="h-4 w-4 mr-2" />
-              {contentTabLabel ?? tc("results")}
-            </TabsTrigger>
-            <TabsTrigger
-              value="sidebar"
-              className="flex-1 h-full rounded-none transition-colors data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:text-muted-foreground"
-            >
-              <ListFilter className="h-4 w-4 mr-2" />
-              {sidebarTabLabel ?? tc("filters")}
-            </TabsTrigger>
-          </TabsList>
+          {/* The app's segmented switch, not a filled bar. */}
+          <div className="border-b bg-background p-2">
+            <TabsList className="h-10 w-full">
+              <TabsTrigger value="content">
+                <FileText />
+                {contentTabLabel ?? tc("results")}
+              </TabsTrigger>
+              <TabsTrigger value="sidebar">
+                <ListFilter />
+                {sidebarTabLabel ?? tc("filters")}
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <div className="flex-1 relative overflow-hidden">
             <AnimatePresence

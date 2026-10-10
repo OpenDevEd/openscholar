@@ -17,7 +17,6 @@ import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./acc
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { moveResultAnswers } from "./drain";
 import { screeningJobPaperValidator, screeningOutcomeValidator } from "./validators";
-import { isInWorkspace } from "../workspaces/actor";
 
 /** Papers one page holds at most; each also reads its answers. */
 const PAGE_MAX = 50;
@@ -52,7 +51,7 @@ export const listAction = defineUserQuery({
   returns: paginationResultValidator(screeningJobPaperValidator),
   run: async (ctx, { workspaceId }, { jobId, outcome, text, paginationOpts }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return { page: [], isDone: true, continueCursor: "" };
+    if (!job || !(job.workspaceId === workspaceId)) return { page: [], isDone: true, continueCursor: "" };
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX), maximumBytesRead: PAGE_BYTES };
     const needle = searchTerms(text);
     const page = await (needle
@@ -78,7 +77,7 @@ export const getAction = defineUserQuery({
   returns: v.union(v.null(), screeningJobPaperValidator),
   run: async (ctx, { workspaceId }, { jobId, paperId }) => {
     const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
+    if (!job || !(job.workspaceId === workspaceId)) return null;
     const result = await screened(ctx, jobId, paperId);
     return result?.outcome ? await paperOf(ctx, job, result, result.outcome) : null;
   },
@@ -94,6 +93,7 @@ const answerAsLeft = v.object({ answer: v.union(v.boolean(), v.null()), by: answ
 
 export const answerAction = defineUserMutation({
   path: "screening/papers:answer",
+  activity: ({ jobId }) => ({ kind: "screening", id: jobId, happened: "answered", count: 1 }),
   description:
     "Changes one answer of a screened paper in one of the person's screening jobs: yes (true), no (false) or unclear (null), \"model\" to put back the model's own answer, or { asOf } to put it back as it was at that version of the screening's answers, with who set it. " +
     "The paper's score, stars and outcome follow, and a paper that becomes included is saved the way the job saves included papers. " +
@@ -107,7 +107,7 @@ export const answerAction = defineUserMutation({
   undoable: false,
   run: async (ctx, { userId, workspaceId, author }, { jobId, paperId: given, questionKey, answer, expect }) => {
     let job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
+    if (!job || !(job.workspaceId === workspaceId)) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
     const question = job.questions.find((q) => q.key === questionKey);
     if (!question) throw createError("VALIDATION_ERROR", "This screening doesn't ask that question");
     let result = await screened(ctx, jobId, given);

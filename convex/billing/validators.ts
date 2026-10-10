@@ -38,10 +38,8 @@ export type BillingAccountSnapshot = Infer<typeof billingAccountSnapshotValidato
 
 export const billingAccountFields = {
   ...billingAccountSnapshotValidator.fields,
-  /** A person's own workspace's account names them; an organization's names nobody. Slice 8 drops it. */
-  userId: v.optional(v.id("users")),
-  /** The workspace whose Autumn customer it caches (#650); slice 8 makes it required. */
-  workspaceId: v.optional(v.id("workspaces")),
+  /** The workspace whose Autumn customer it caches (#650). */
+  workspaceId: v.id("workspaces"),
   refreshedAt: v.number(),
   /** When the snapshot was read from Autumn: a refresh read before it is older, and is dropped. Unlike `refreshedAt`, zeroing the balance leaves it. */
   fetchedAt: v.optional(v.number()),
@@ -65,7 +63,7 @@ export type UsageKind = Infer<typeof usageKindValidator>;
 export const billingUsageFields = {
   /** Who spent it. */
   userId: v.id("users"),
-  /** The workspace that paid (#650); slice 8 makes it required. */
+  /** The workspace that paid (#650); absent on a charge of an account purged before workspaces, which left none. */
   workspaceId: v.optional(v.id("workspaces")),
   /** The Autumn lock or idempotency key this charge settled. */
   chargeId: v.string(),

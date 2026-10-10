@@ -151,9 +151,10 @@ export function ResultsTranslationControl({
       ) : (
         <TranslateIcon working={isTranslating} className="h-4 w-4" />
       )}
-      <span>{allTranslated ? t("translated") : t("translate")}</span>
+      {/* In the footer's strip its name hides on a phone, as its neighbours' do; the language stays. */}
+      <span className={cn(compactTrigger && "hidden sm:inline")}>{allTranslated ? t("translated") : t("translate")}</span>
       {compactTrigger ? (
-        <span className="text-3xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <span className="text-3xs font-semibold tracking-wide text-muted-foreground">
           {targetBadgeLabel}
         </span>
       ) : (
@@ -257,8 +258,8 @@ export function ResultsTranslationControl({
                             />
                             <span>{tl(language.code as never) || language.name}</span>
                           </span>
-                          <span className="text-3xs uppercase tracking-wide text-muted-foreground">
-                            {language.code}
+                          <span className="text-3xs tracking-wide text-muted-foreground">
+                            {language.code.toUpperCase()}
                           </span>
                         </span>
                       </SelectItem>

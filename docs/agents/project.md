@@ -47,10 +47,22 @@ supported process changed. Read the page back before claiming success.
   `transition-opacity`, or `transition-transform` on it. Put the animation on a
   wrapper, or transition only colors, borders, and shadows. Shared
   `components/ui` parts name the properties they transition.
-  `npm run check:animation-clash` enforces both, in CI.
 - The shared tooltip is `TooltipHint` or `Tooltip` from
   `components/ui/tooltip`. The only native `title` left is on the hidden
   `Z3988` spans, which carry citation data for Zotero.
+- `npm run check:ui-rules` runs in CI and enforces the UI rules agents kept
+  breaking. Each error names the fix. A line that needs an exception says why
+  on the line before it: `// ui-rules-allow: <rule> -- <reason>`.
+
+  | Rule | Enforced by |
+  |---|---|
+  | No animation that also transitions opacity or transform | `check:ui-rules` (`animation-clash`) |
+  | No uppercase labels | `check:ui-rules` (`uppercase`) |
+  | No native `title` tooltips | `check:ui-rules` (`native-title`) |
+  | No dot separators, in code or in `messages/` | `check:ui-rules` (`dot-separator`) |
+  | An avatar without a photo shows an icon, never initials | `check:ui-rules` (`initials`) |
+  | No "Loading" text; the shared Spinner or the final size | `check:ui-rules` (`loading-text`) |
+  | Nothing moves or flashes as data arrives | `npm run verify -- shift` |
 
 ## Research assistant
 

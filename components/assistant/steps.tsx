@@ -5,7 +5,7 @@
 // asks the person about first shows under the map as the mock's approval card.
 
 import { createContext, useContext, useState, type ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { SearchHoverCard } from "@/components/search-tooltip-content";
 import { FilterChips } from "@/components/ui/filter-display";
 import type { FilterParams } from "@/lib/filters";
@@ -33,7 +33,8 @@ import { runsOf, shownSteps } from "@/lib/assistant/step-cards";
 import { OrbitMark } from "./orbit-mark";
 import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
-import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceScope } from "@/lib/workspaces/url";
+import { useCurrentWorkspace, WorkspaceTile } from "@/components/workspaces/parts";
 
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 export type StepItem = Extract<Item, { role: "step" }>;
@@ -76,7 +77,7 @@ function searchOf(href: string) {
  * results in this tab, as a new search, and the panel stays up with its chat. Hovered, it
  * shows the search's card out to the left, over the page, as the sidebar's history does.
  */
-function Subject({ text, step, chips, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "count" | "at">; /** The settings that tell this search from the others on its card, as chips after its query. */ chips?: FilterParams; className?: string }) {
+function Subject({ text, step, chips, unqueried = false, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "count" | "at">; /** The settings that tell this search from the others on its card, as chips after its query. */ chips?: FilterParams; /** `text` stands in for a query the search didn't have: written as the search history writes it, and never cut to make room for its chips. */ unqueried?: boolean; className?: string }) {
   if (!step.href) return <span className={className}>{text}</span>;
   const search = searchOf(step.href);
   const at = new Date(step.at).toISOString();
@@ -85,9 +86,9 @@ function Subject({ text, step, chips, className = "truncate" }: { text: string; 
     <SearchHoverCard side="left" delay={300} id={step.id} query={search.query} count={step.count} filters={search} createdAt={at} updatedAt={at}>
       {chips ? (
         <Link href={step.href} className={cn(className, "group flex items-center gap-1.5")}>
-          {text ? <span className={cn("min-w-0 truncate", underlined)}>{text}</span> : null}
+          {text ? <span className={unqueried ? "shrink-0 italic" : cn("min-w-0 truncate", underlined)}>{text}</span> : null}
           {/* One row, faded where it runs on: the search's card shows them all. Beside a query it takes at most part of the line. */}
-          <FadeRow className={cn("shrink-0 transition-colors group-hover:[&_[data-slot=badge]]:text-foreground", text ? "max-w-[60%]" : "max-w-full")}>
+          <FadeRow className={cn("transition-colors group-hover:[&_[data-slot=badge]]:text-foreground", unqueried ? "max-w-full" : "shrink-0", !unqueried && (text ? "max-w-[60%]" : "max-w-full"))}>
             <FilterChips filters={chips} size="compact" singleLine valuesOnly />
           </FadeRow>
         </Link>
@@ -99,6 +100,15 @@ function Subject({ text, step, chips, className = "truncate" }: { text: string; 
     </SearchHoverCard>
   );
 }
+
+/** A search that ran on filters alone, with no query: it says so, and shows those filters. */
+function Unqueried({ step, chips, className }: { step: StepItem & { href: string }; /** Its filters the others on its card don't share; all of its own when it's alone. */ chips?: FilterParams; className?: string }) {
+  const tc = useTranslations("common");
+  return <Subject unqueried text={tc("noQuery")} chips={chips ?? searchOf(step.href)} step={step} className={className} />;
+}
+
+/** Whether a step is a search that ran with no query. */
+const unqueried = (step: StepItem): step is StepItem & { href: string } => !step.subject && step.href !== undefined;
 
 /** A tinted icon square; the tile of the model cards, one size down. */
 export function KindTile({ kind, size = "md", working }: { kind: Kind; size?: "sm" | "md"; working?: boolean }) {
@@ -321,7 +331,10 @@ const TYPICAL_COST = new Set(["research/papers:readPdf"]);
  */
 function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddCredits }: { credits: number; typical: boolean; sent: boolean; onAllow: () => void; onAlways: () => void; onDecline: () => void; onAddCredits: () => void }) {
   const t = useTranslations("assistant.asks");
-  const account = useQuery(api.billing.accounts.mine, {});
+  const account = useQuery(api.billing.accounts.mine, useWorkspaceScope());
+  // In an organization, its credits pay: its logo and name sit beside the balance (#651).
+  const workspace = useCurrentWorkspace();
+  const organization = workspace?.kind === "organization" ? workspace : undefined;
   // Until the balance is read, nothing is said about it, and the row keeps its room.
   const known = account !== undefined;
   const balance = Math.floor(account?.balance ?? 0);
@@ -334,7 +347,13 @@ function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddC
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Coins className="size-3.5 text-primary" />
           <span className="font-medium text-foreground">{t(typical ? "about" : "upTo", { credits })}</span>
-          <span className={cn("ml-auto flex items-center gap-1.5 transition-opacity duration-200", !known && "opacity-0")} aria-hidden={!known}>
+          <span className={cn("ml-auto flex min-w-0 items-center gap-1.5 transition-opacity duration-200", !known && "opacity-0")} aria-hidden={!known}>
+            {organization ? (
+              <>
+                <WorkspaceTile workspace={organization} size="xs" />
+                <span className="min-w-0 truncate">{organization.name}</span>
+              </>
+            ) : null}
             <AnimatedNumber value={balance} />
             <ArrowRight className="size-3" />
             {/* Both labels hold their place, so the row never reflows when the balance changes. */}
@@ -385,6 +404,7 @@ function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddC
 
 function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
   const t = useTranslations("assistant");
+  const tc = useTranslations("common");
   const format = useFormatter();
   // A count as the search history writes one: compact past a thousand, so a broad query's 329.5M fits its line.
   const counted = (count: number) => format.number(count, count >= 1000 ? { notation: "compact", maximumFractionDigits: 1 } : undefined);
@@ -395,7 +415,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   // The folded runs the person opened, each by a step of it: by its first when it was opened, which stays in the run when earlier steps load in front of it.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   /** Each step of a folded run as its line: what it was about, or where its card's action looks. */
-  const linesOf = (run: StepItem[]) => run.map((one) => one.subject ?? t(`steps.${viewOf(one.action, one.variant).words}.where`));
+  const linesOf = (run: StepItem[]) => run.map((one) => one.subject ?? (unqueried(one) ? tc("noQuery") : t(`steps.${viewOf(one.action, one.variant).words}.where`)));
   /** What tells a folded run of searches apart: each one's settings the others don't share. */
   const toldOf = (run: StepItem[]) => {
     const searches = run.length > 1 ? run.map((one) => (one.href ? searchOf(one.href) : null)) : [];
@@ -490,14 +510,14 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                         ) : folded ? (
                           <>
                             <Fact value={run.length}>{t("steps.times", { count: run.length })}</Fact>
-                            {step.subject ? <Subject text={step.subject} step={step} /> : <span className="truncate">{t(`steps.${words}.where`)}</span>}
+                            {step.subject ? <Subject text={step.subject} step={step} /> : unqueried(step) ? <Unqueried step={step} /> : <span className="truncate">{t(`steps.${words}.where`)}</span>}
                           </>
                         ) : (
                           <>
                             {/* A bulk change's title says how many it made. */}
                             {step.batch === undefined && step.count !== undefined ? <Fact value={counted(step.count)}>{t("steps.found")}</Fact> : null}
-                            {step.subject ? <Subject text={step.subject} step={step} /> : null}
-                            {(step.batch !== undefined || step.count === undefined) && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
+                            {step.subject ? <Subject text={step.subject} step={step} /> : unqueried(step) ? <Unqueried step={step} /> : null}
+                            {(step.batch !== undefined || step.count === undefined) && !step.subject && !unqueried(step) ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
                           </>
                         )}
                       </div>
@@ -534,7 +554,11 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                     <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
                       {run.map((one, at) => (
                         <li key={one.id} className="flex items-center gap-2" style={{ height: LINE }}>
-                          <Subject text={told?.sameQuery && told.filters[at] ? "" : lines[at]} chips={told?.filters[at]} step={one} className="mr-auto min-w-0 truncate" />
+                          {unqueried(one) ? (
+                            <Unqueried step={one} chips={told ? (told.filters[at] ?? {}) : undefined} className="mr-auto min-w-0 truncate" />
+                          ) : (
+                            <Subject text={told?.sameQuery && told.filters[at] ? "" : lines[at]} chips={told?.filters[at]} step={one} className="mr-auto min-w-0 truncate" />
+                          )}
                           {one.count !== undefined ? (
                             <span className="shrink-0 tabular-nums">
                               <span className="font-semibold text-foreground/90">{counted(one.count)}</span> {t("steps.found")}

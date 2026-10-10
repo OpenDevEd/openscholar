@@ -9,6 +9,7 @@ import {
   jobStatusValidator,
   questionInputValidator,
 } from "../validators";
+import { personalWorkspaceOf } from "../../workspaces/personal";
 
 /**
  * Consolidated fixture helpers for dev/CI-only extraction tests.
@@ -75,7 +76,8 @@ export const createTestJob = internalMutation({
 
     const now = Date.now();
     const jobId = await ctx.db.insert("extractionJobs", {
-      userId,
+      workspaceId: await personalWorkspaceOf(ctx, userId),
+      createdBy: userId,
       name: args.name ?? `PDF Test ${now}`,
       sourceType: "history",
       status: args.status ?? "pending",

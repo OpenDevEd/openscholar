@@ -24,6 +24,7 @@ import { applyCommand, checkRemoval, findSearch, revisionRow } from "./records";
 import { AUTHORS_SHOWN, changesValidator, COUNTRIES_SHOWN, LAST_PAGE, LAST_PAGE_FROM_START, pageValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 import type { Id } from "../_generated/dataModel";
 import { personalWorkspaceOf } from "../workspaces/actor";
+import { noteActivity } from "../activity/notes";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
@@ -54,17 +55,19 @@ const narrowed = (search: Partial<SavedSearch>) => Boolean(search.query?.trim())
 /**
  * The results page a query and settings open as a new search: a link with no search ID, which
  * the page makes a search of, as a shared link does. None for settings that make no search.
+ * `year` is the year the search ran, where a span of years left open ends: a link to a lookup
+ * made last year still opens what that lookup searched. This year when it's left out.
  */
-export function searchHref(query: string | undefined, settings: Settings): string | undefined {
+export function searchHref(query: string | undefined, settings: Settings, year?: number): string | undefined {
   try {
-    return buildShareableUrl("", searchResultToParams(restoreSearch(newSearch("link", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings))));
+    return buildShareableUrl("", searchResultToParams(restoreSearch(newSearch("link", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings, year))));
   } catch {
     return undefined;
   }
 }
 
 /** A search from a query and settings, as one is first saved. */
-function newSearch(id: string, query: string | undefined, settings: Settings): SavedSearch {
+function newSearch(id: string, query: string | undefined, settings: Settings, year?: number): SavedSearch {
   const now = new Date().toISOString();
   const search: SavedSearch = {
     id,
@@ -77,7 +80,7 @@ function newSearch(id: string, query: string | undefined, settings: Settings): S
     questionText: "",
     screeningQuestions: [],
     screeningResponses: [],
-    ...savedFields(settings).fields,
+    ...savedFields(settings, undefined, year).fields,
     createdAt: now,
     updatedAt: now,
   };
@@ -194,10 +197,9 @@ const LISTS = [
  * Plain settings as the saved search's own fields: what to set, and what to take off.
  * `current` is the search being changed, whose year range fills in a year left out.
  */
-function savedFields(settings: Settings, current?: SavedSearch) {
+function savedFields(settings: Settings, current?: SavedSearch, thisYear = new Date().getFullYear()) {
   const fields: Partial<SavedSearch> = {};
   const clear: string[] = [];
-  const thisYear = new Date().getFullYear();
   if (settings.field !== undefined) fields.field = settings.field;
   // Exact days and whole years are the page's two ways of giving a time span: it filters by the one last set.
   // A call gives one of them. The other's ends, taken off or left out, go with it, so the search moves across whole.
@@ -285,6 +287,7 @@ const madeHere = v.object({ created: v.number(), revision: v.number() });
 
 export const createAction = defineUserMutation({
   path: CREATE,
+  activity: (args, { id }) => ({ kind: "search", id, happened: "created", ...(args.query ? { detail: args.query } : {}) }),
   description:
     "Makes a saved search in the person's account from a query, filters, or both, which shows in their search history at once. For when they ask for a search to keep: to look papers up, use research/papers:search, which saves nothing. " +
     "It doesn't run the search: read its results with research/searches:results. The query is keywords, with AND, OR, NOT and quoted phrases. " +
@@ -399,6 +402,7 @@ export const updateAction = defineUserMutation({
     const kept = (value: unknown) => (value === undefined || value === false || value === "" || (Array.isArray(value) && !value.length) ? "off" : JSON.stringify(value));
     const refiltered = Object.entries(filters).some(([key, value]) => kept(current[key as keyof SavedSearch]) !== kept(value)) || clear.some((key) => current[key as keyof SavedSearch] !== undefined);
     if (!requeried && !refiltered) return {};
+    await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, { kind: "search", id, happened: "edited", ...(requeried && asked ? { detail: asked } : {}) });
     const edits: Array<UndoCommand | undefined> = [];
     if (requeried) edits.push(await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "query", query: asked, field } }, author));
     // Its results start again from their first page, as they do when the person changes the search on its page.
@@ -418,6 +422,7 @@ export const updateForAssistant = assistantMutation(updateAction);
 
 export const restoreAction = defineUserMutation({
   path: RESTORE,
+  activity: ({ id }) => ({ kind: "search", id, happened: "edited" }),
   description:
     "Puts a saved search's query and filters back as they were at one of its revisions, as a new revision. With `expect`, the revision whose query and filters the search should hold now, it is refused if the search changed since. " +
     "Returns `undo`, which puts back what this replaced.",

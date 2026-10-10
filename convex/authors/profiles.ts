@@ -33,10 +33,10 @@ export function cleanContent(content: { [K in keyof typeof authorContentFields]:
   return next;
 }
 
-/** A profile owned by `workspaceId`, made by `ownerId` (#650). */
-export async function createProfile(ctx: MutationCtx, ownerId: Id<"users">, workspaceId: Id<"workspaces">, name: string) {
+/** A profile owned by `workspaceId`, made by `createdBy` (#650). */
+export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, workspaceId: Id<"workspaces">, name: string) {
   const content = cleanContent({name, headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: ""});
-  return await ctx.db.insert("authorProfiles", {...content, ownerId, workspaceId, createdBy: ownerId, revision: 1, updatedAt: Date.now()});
+  return await ctx.db.insert("authorProfiles", {...content, workspaceId, createdBy, revision: 1, updatedAt: Date.now()});
 }
 
 /** A profile as pages show it, with its photo's URL. */

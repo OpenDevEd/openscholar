@@ -4,6 +4,7 @@ import { v } from "convex/values";
 export const insertKey = internalMutation({
   args: {
     userId: v.id("users"),
+    workspaceId: v.id("workspaces"),
     hashedKey: v.string(),
     keyPrefix: v.string(),
     appName: v.string(),
@@ -13,6 +14,7 @@ export const insertKey = internalMutation({
   handler: async (ctx, args) => {
     return await ctx.db.insert("walletKeys", {
       userId: args.userId,
+      workspaceId: args.workspaceId,
       hashedKey: args.hashedKey,
       keyPrefix: args.keyPrefix,
       appName: args.appName,
@@ -29,6 +31,7 @@ export const lookupKey = internalQuery({
     v.null(),
     v.object({
       userId: v.id("users"),
+      workspaceId: v.id("workspaces"),
       walletKeyId: v.id("walletKeys"),
       appName: v.string(),
       redirectOrigin: v.string(),
@@ -44,6 +47,7 @@ export const lookupKey = internalQuery({
 
     return {
       userId: key.userId,
+      workspaceId: key.workspaceId,
       walletKeyId: key._id,
       appName: key.appName,
       redirectOrigin: key.redirectOrigin,
@@ -70,12 +74,13 @@ export const lookupById = internalQuery({
     v.object({
       appName: v.string(),
       redirectOrigin: v.string(),
+      workspaceId: v.id("workspaces"),
     }),
   ),
   handler: async (ctx, args) => {
     const key = await ctx.db.get(args.walletKeyId);
     if (!key || key.userId !== args.userId) return null;
-    return { appName: key.appName, redirectOrigin: key.redirectOrigin };
+    return { appName: key.appName, redirectOrigin: key.redirectOrigin, workspaceId: key.workspaceId };
   },
 });
 

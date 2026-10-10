@@ -6,6 +6,7 @@ import {
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
 import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
+import { presetKeyValidator } from "../aiModelConfig/validators";
 import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
@@ -70,7 +71,45 @@ export const clerkEventEntityTypeValidator = v.union(
   v.literal("user"),
   v.literal("organization"),
   v.literal("organizationMembership"),
+  v.literal("organizationInvitation"),
 );
+
+export const organizationInvitationStateValidator = v.union(
+  v.literal("pending"),
+  v.literal("accepted"),
+  v.literal("revoked"),
+  v.literal("expired"),
+);
+
+/** An invitation to an organization as Clerk has it (#651). */
+export const clerkInvitationSnapshotFields = {
+  clerkInvitationId: v.string(),
+  clerkOrganizationId: v.string(),
+  /** Lowercase. */
+  email: v.string(),
+  role: organizationRoleValidator,
+  state: organizationInvitationStateValidator,
+  /** Who sent it, kept in the invitation's public metadata by convex/organizations/manage.ts. */
+  inviterClerkUserId: v.optional(v.string()),
+  /** When its link stops working; Clerk sends no event then (./read.ts in organizations marks it expired). */
+  expiresAt: v.optional(v.number()),
+  clerkCreatedAt: v.number(),
+  clerkUpdatedAt: v.number(),
+};
+
+export const organizationInvitationFields = {
+  organizationId: v.id("organizations"),
+  clerkInvitationId: v.string(),
+  email: v.string(),
+  role: organizationRoleValidator,
+  state: organizationInvitationStateValidator,
+  inviterClerkUserId: v.optional(v.string()),
+  expiresAt: v.optional(v.number()),
+  clerkCreatedAt: v.number(),
+  clerkUpdatedAt: v.number(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
 
 export const clerkEventLogFields = {
   instanceId: v.string(),
@@ -107,6 +146,12 @@ export const organizationFields = {
   authorsEnabled: v.optional(v.boolean()),
   extractionEnabled: v.optional(v.boolean()),
   state: organizationStateValidator,
+  /** Set while an admin's deletion runs (convex/organizations/manage.ts): nobody acts in its workspace meanwhile. */
+  deletingAt: v.optional(v.number()),
+  /** The AI preset its work runs on, which its admins pick (#651); absent, the default preset. */
+  aiPreset: v.optional(presetKeyValidator),
+  /** The colour its admins picked (#651), which tints the rail while someone is in it. Clerk doesn't keep it. */
+  colour: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
@@ -203,12 +248,8 @@ export const evidenceLibraryFields = {
   // Set once every approved OpenAlex query version in the library's revisions is in
   // evidenceLibraryApprovedQueries; until then a sources save reads the revisions (#357).
   approvedQueriesRecorded: v.optional(v.literal(true)),
-  organizationId: v.id("organizations"),
-  /**
-   * The workspace it belongs to (#650), which slice 8 makes required, dropping `organizationId`,
-   * and the account that made it, absent for one whose creator's account is gone.
-   */
-  workspaceId: v.optional(v.id("workspaces")),
+  /** The workspace it belongs to (#650), and the account that made it, absent for one whose creator's account is gone. */
+  workspaceId: v.id("workspaces"),
   createdBy: v.optional(v.id("users")),
   name: v.string(),
   slug: v.string(),

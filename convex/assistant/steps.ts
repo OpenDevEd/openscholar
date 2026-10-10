@@ -23,7 +23,6 @@ import { assistant } from "./agent";
 import { forgetLimits, noteReply } from "./spending";
 import { linked } from "./links";
 import { WEB_SOURCES_KEPT } from "./validators";
-import { personalWorkspaceOf } from "../workspaces/actor";
 
 /** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
 export const STEP_TEXT_MAX = 16_000;
@@ -208,22 +207,29 @@ export const begin = internalMutation({
     variant: v.optional(v.string()),
     reads: v.optional(v.literal(true)),
     request: v.optional(v.number()),
-    // The workspace the reply acts in, where a record the step names is looked up. One called before replies named theirs (#650) looks in the person's own, until slice 8.
-    workspaceId: v.optional(v.id("workspaces")),
+    // The workspace the reply acts in, where a record the step names is looked up (#650).
+    workspaceId: v.id("workspaces"),
   },
   returns: v.id("assistantSteps"),
   handler: async (ctx, args) => {
-    const subject = args.subject ?? (await aboutOf(ctx, args.workspaceId ?? (await personalWorkspaceOf(ctx, args.userId)), args.input));
+    const subject = args.subject ?? (await aboutOf(ctx, args.workspaceId, args.input));
     return ctx.db.insert("assistantSteps", { ...args, ...(subject ? { subject } : {}), status: "running", startedAt: Date.now() });
   },
+});
+
+/** The chat a step belongs to, for a tool that charges once a chat. */
+export const chatOf = internalQuery({
+  args: { stepId: v.id("assistantSteps") },
+  returns: v.union(v.id("assistantThreads"), v.null()),
+  handler: async (ctx, { stepId }) => (await ctx.db.get("assistantSteps", stepId))?.threadId ?? null,
 });
 
 /** What a call given these arguments is about (`aboutOf`), for a tool that names its step before it has one. */
 export const about = internalQuery({
   // `input` is the arguments, as JSON.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), input: v.string() },
+  args: { workspaceId: v.id("workspaces"), input: v.string() },
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, { userId, workspaceId, input }) => (await aboutOf(ctx, workspaceId ?? (await personalWorkspaceOf(ctx, userId)), input)) ?? null,
+  handler: async (ctx, { workspaceId, input }) => (await aboutOf(ctx, workspaceId, input)) ?? null,
 });
 
 /**
@@ -254,7 +260,7 @@ async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">,
   return collection && collection.workspaceId === workspaceId ? cut(collection.name, 200) : undefined;
 }
 
-/** A step that read something ends with its result. A change ends its own (`endStep`). */
+/** A step that read something ends with its result, as does a change an action made outside and kept (organizations/manage.ts). A change written here ends its own (`endStep`). */
 export const read = internalMutation({
   // `result` is what the action returned, as JSON.
   args: { stepId: v.id("assistantSteps"), result: v.string() },

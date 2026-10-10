@@ -5,7 +5,7 @@
 // (convex/assistant/jobs.ts) and keeps one size from its first frame, whatever arrives.
 
 import { createContext, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";

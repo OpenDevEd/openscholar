@@ -1,7 +1,7 @@
 "use client";
 
 import { ArrowLeft, Layers } from "@/components/icons";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { Button } from "@/components/ui/button";
