@@ -35,8 +35,11 @@ vi.mock("@/lib/search/search-results", () => ({
   },
 }));
 
-import { SearchProvider, useSearch } from "@/lib/search";
+import { SearchProvider, useSearch, type SearchParams } from "@/lib/search";
 import { useUpdateSearchFilter } from "@/lib/hooks";
+import { createSimilarSearch } from "@/lib/search/actions";
+import { DEFAULT_SEARCH_PARAMS } from "@/lib/search-params/parsers";
+import { useSearchHistoryStore } from "@/lib/store";
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <NuqsTestingAdapter searchParams="?like=OS64233829,OS14687712">
@@ -95,6 +98,21 @@ describe("the results page's search for the works nearest given papers", () => {
     act(() => result.current.updateFilter({ currentSearchField: "title" }));
     await waitFor(() => expect(result.current.search.params.field).toBe("title"));
     expect(result.current.search.params.like).toEqual([]);
+  });
+
+  it("drops the papers from the saved search too when a search edited in place turns to OQL", () => {
+    const { id } = createSimilarSearch(["OS64233829"]);
+    const params: SearchParams = { ...DEFAULT_SEARCH_PARAMS, like: ["OS64233829"] };
+    const onParamsChange = vi.fn();
+    const inPlace = ({ children }: { children: React.ReactNode }) => (
+      <NuqsTestingAdapter>
+        <SearchProvider local={{ searchId: id, params, onParamsChange }}>{children}</SearchProvider>
+      </NuqsTestingAdapter>
+    );
+    const { result } = renderHook(() => useUpdateSearchFilter(), { wrapper: inPlace });
+    act(() => result.current({ currentSearchField: "oql" }));
+    expect(onParamsChange).toHaveBeenCalledWith(expect.objectContaining({ field: "oql", like: [] }));
+    expect(useSearchHistoryStore.getState().getSearchResult(id)).toMatchObject({ field: "oql", similarTo: [] });
   });
 
   it("keeps the papers when the search's words turn to another field, which only filter what they find", async () => {

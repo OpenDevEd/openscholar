@@ -215,7 +215,12 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       const named = updates.like ?? shown.like;
       const unliked = named.length > 0 && (!takesLike(toField) || (updates.like === undefined && !takesLike(shown.field)));
       const changes = unliked ? { ...updates, like: [] } : updates;
+      // The saved search drops them too: it takes the caller's updates, which don't say the papers go.
+      const unlikeSaved = () => {
+        if (unliked && searchId) useSearchHistoryStore.getState().updateSearchResult(searchId, { similarTo: [] });
+      };
       if (onLocalParamsChange) {
+        unlikeSaved();
         return onLocalParamsChange(switching && changes.q === undefined ? { ...changes, q: '' } : changes);
       }
       // The entry this change leaves keeps the search as it was.
@@ -223,7 +228,7 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
       if (switching && updates.q === undefined && searchId) {
         useSearchHistoryStore.getState().updateSearchResult(searchId, { query: '' });
       }
-      if (unliked && searchId) useSearchHistoryStore.getState().updateSearchResult(searchId, { similarTo: [] });
+      unlikeSaved();
       const q = toOql ? '' : updates.q ?? (switching ? '' : undefined);
       void setRouteUrlParams(
         { ...changes, ...(q === undefined ? {} : { q }) } as Parameters<typeof setRouteUrlParams>[0],
