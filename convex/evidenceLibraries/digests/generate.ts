@@ -37,7 +37,7 @@ Shape
 
 Meta-analyses and reviews
 ${marked ? MARKED : UNMARKED}
-- When the period has any, the first section is headed "Meta-analyses and reviews", and they are written about there and under no other heading.
+- When the period has any, the first section is headed "Meta-analyses and reviews", put into the digest's language, and they are written about there and under no other heading.
 - Cite every meta-analysis you were given. For each, say what it pooled, as far as its record says: how many studies or participants, and which outcome. Then say what it found.
 - Then the reviews. Cite every one when there are six or fewer. When there are more, write about the six whose records report the most and leave the rest to the edition's list, which shows every one.
 - This section is at most a third of the body, unless the meta-analyses alone need more.

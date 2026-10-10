@@ -49,5 +49,8 @@ export async function readKinds(publications: Publication[]): Promise<Record<str
       }
     }
   }));
+  const read = Object.keys(kinds).length;
+  // The writer treats what was not read as a single study, so a short read is worth knowing about.
+  if (read < candidates.length) console.warn("Library digest likely reviews were not all read", {candidates: candidates.length, read, outOfTime: budget.aborted});
   return kinds;
 }

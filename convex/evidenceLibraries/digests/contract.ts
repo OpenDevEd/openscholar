@@ -19,7 +19,8 @@ export const digestRequestSchema = z.object({
     abstract: z.string().max(16000).nullable(),
     publicationType: z.string().max(100),
     doi: z.string().max(500).nullable(),
-    // The library takes this for a likely meta-analysis or review and wants it read.
+    // The library takes this for a likely meta-analysis or review and wants it read. A library that marks its likely
+    // reviews sends this for every publication, true or false: its presence is how the writer knows not to guess.
     candidate: z.boolean().optional(),
     // What an earlier read found, so it is not read again.
     kind: publicationKindSchema.optional(),
