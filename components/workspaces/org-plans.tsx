@@ -35,7 +35,7 @@ import { useWorkspaceAction } from "@/lib/workspaces/url";
 import { Guarded, useCurrentWorkspace } from "./parts";
 import { CreateOrganization } from "./switcher";
 
-/** The seats Team's price is shown for until the person picks, and the fewest it goes down to. */
+/** The seats Team's price is shown for outside an organization until the person picks, and the fewest the stepper goes down to. */
 const SEATS = 8;
 const FEWEST_SEATS = 2;
 
@@ -62,7 +62,7 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
   const [asking, setAsking] = useState<"team" | "free" | null>(null);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
-  const [seats, setSeats] = useState(SEATS);
+  const [picked, setSeats] = useState<number>();
 
   const free = catalog && findPlan(catalog, ORGANIZATION_PLAN);
   const team = catalog && findPlan(catalog, TEAM_PLAN);
@@ -73,6 +73,8 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
   const organization = workspace?.kind === "organization" ? workspace : undefined;
   const onTeam = organization?.plan === TEAM_PLAN;
   const members = counts?.members ?? organization?.members ?? 0;
+  // An organization's price is shown for its own members, which is what a move charges for, until the person steps away from them.
+  const seats = picked ?? (organization ? Math.max(1, members) : SEATS);
   const seatPrice = seat.price.amount;
   const seatCredits = seat.credits?.included ?? 0;
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: 0 });

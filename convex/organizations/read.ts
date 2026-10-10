@@ -2,8 +2,14 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { internalQuery, type QueryCtx } from "../_generated/server";
+import { readAccount } from "../billing/accounts";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
+import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
+import { FREE_MEMBERS, TEAM_PLAN } from "../../lib/billing/plans";
+
+/** Invitations past an organization's room that one read names, for whoever takes them back a few at a time. */
+export const PAST_ROOM_STEP = 10;
 
 /** The organization a workspace is, or why it's refused: a person's own workspace is no organization. */
 export async function organizationOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">): Promise<Doc<"organizations">> {
@@ -52,24 +58,47 @@ export const context = internalQuery({
 /**
  * Checks a change to someone's place in an organization before Clerk is asked: an admin
  * changes or removes anyone, a member only leaves, and nobody takes away its only admin.
- * Returns the Clerk ID of the person changed.
+ * One that takes an admin away holds its admins until `endMemberChange`, and is refused while
+ * another holds them: Clerk lets two made at the same moment each take the other's place.
+ * Returns the Clerk ID of the person changed, and the hold when it took one.
  */
-export const checkMemberChange = internalQuery({
-  args: { workspaceId: v.id("workspaces"), actorClerkUserId: v.string(), actorIsAdmin: v.boolean(), userId: v.id("users"), becomes: v.union(v.literal("org:admin"), v.literal("org:member"), v.literal("gone")) },
-  returns: v.string(),
-  handler: async (ctx, { workspaceId, actorClerkUserId, actorIsAdmin, userId, becomes }) => {
+export const beginMemberChange = internalMutation({
+  args: { workspaceId: v.id("workspaces"), actorClerkUserId: v.string(), userId: v.id("users"), becomes: v.union(v.literal("org:admin"), v.literal("org:member"), v.literal("gone")) },
+  returns: v.object({ target: v.string(), heldAt: v.optional(v.number()) }),
+  handler: async (ctx, { workspaceId, actorClerkUserId, userId, becomes }) => {
     const organization = await organizationOf(ctx, workspaceId);
     const user = await ctx.db.get("users", userId);
     const membership = user && (await membershipOf(ctx, organization._id, user.clerkId));
     if (!user || !membership) throw createError("NOT_FOUND", "This person isn't a member of the organization.");
     const self = user.clerkId === actorClerkUserId;
+    // Read with the change: the role the action started with may be one another change just took away.
+    const actorIsAdmin = self ? membership.role === "org:admin" : (await membershipOf(ctx, organization._id, actorClerkUserId))?.role === "org:admin";
     if (!actorIsAdmin && !(self && becomes === "gone")) throw createError("FORBIDDEN", "Only an admin of the organization changes its members.");
-    if (membership.role === "org:admin" && becomes !== "org:admin" && (await onlyAdmin(ctx, organization._id, user.clerkId))) {
+    if (membership.role !== "org:admin" || becomes === "org:admin") return { target: user.clerkId };
+    if (await onlyAdmin(ctx, organization._id, user.clerkId)) {
       throw createError("VALIDATION_ERROR", self ? "You're its only admin: make someone else an admin first." : "This is its only admin: make someone else an admin first.");
     }
-    return user.clerkId;
+    const heldAt = Date.now();
+    if (organization.adminChangeAt !== undefined && heldAt - organization.adminChangeAt < ADMIN_CHANGE_HOLD_MS) throw createError("CONFLICT", "Another change to its admins is under way. Try again in a moment.");
+    await ctx.db.patch("organizations", organization._id, { adminChangeAt: heldAt });
+    return { target: user.clerkId, heldAt };
   },
 });
+
+/** Lets the organization's admins be changed again, once the change that held them is kept or failed. */
+export const endMemberChange = internalMutation({
+  args: { workspaceId: v.id("workspaces"), heldAt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, heldAt }) => {
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
+    if (organization?.adminChangeAt === heldAt) await ctx.db.patch("organizations", organization._id, { adminChangeAt: undefined });
+    return null;
+  },
+});
+
+/** How long a change to its admins holds them, at most, should the action that started it never finish. */
+const ADMIN_CHANGE_HOLD_MS = 60_000;
 
 /** How long a deletion holds its organization, at most, should the action that started it never finish. */
 const DELETION_HOLD_MS = 5 * 60_000;
@@ -155,6 +184,26 @@ export const pendingInvitation = internalQuery({
     const invitation = await ctx.db.get("organizationInvitations", invitationId);
     if (!invitation || invitation.organizationId !== organizationId || invitation.state !== "pending") throw createError("NOT_FOUND", "This invitation is no longer open.");
     return { clerkInvitationId: invitation.clerkInvitationId, email: invitation.email, role: invitation.role };
+  },
+});
+
+/**
+ * Invitations past the room the organization's plan has for members, invitations included, by
+ * Clerk's ID: the open ones are counted oldest kept first, so the ones made last are the ones
+ * past it. Of `sent` when given, just made; else the first few of them all.
+ */
+export const pastRoom = internalQuery({
+  args: { workspaceId: v.id("workspaces"), sent: v.optional(v.array(v.string())) },
+  returns: v.array(v.string()),
+  handler: async (ctx, { workspaceId, sent }) => {
+    const organization = await organizationOf(ctx, workspaceId);
+    const limit = (await readAccount(ctx, workspaceId))?.plan === TEAM_PLAN ? MAX_ORGANIZATION_MEMBERS : FREE_MEMBERS;
+    const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS);
+    const room = Math.max(0, limit - members.length);
+    // The ones with room, and the first few past it: whatever of `sent` isn't among the first is past it too.
+    const open = await ctx.db.query("organizationInvitations").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "pending")).take(Math.min(MAX_ORGANIZATION_MEMBERS + PAST_ROOM_STEP, room + PAST_ROOM_STEP));
+    const within = new Set(open.slice(0, room).map((invitation) => invitation.clerkInvitationId));
+    return sent ? sent.filter((id) => !within.has(id)) : open.slice(room).map((invitation) => invitation.clerkInvitationId);
   },
 });
 

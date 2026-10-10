@@ -148,6 +148,8 @@ export const organizationFields = {
   state: organizationStateValidator,
   /** Set while an admin's deletion runs (convex/organizations/manage.ts): nobody acts in its workspace meanwhile. */
   deletingAt: v.optional(v.number()),
+  /** Set while a change that takes an admin away runs (convex/organizations/read.ts): the next one waits, so two made at once can't leave it with none. */
+  adminChangeAt: v.optional(v.number()),
   /** The AI preset its work runs on, which its admins pick (#651); absent, the default preset. */
   aiPreset: v.optional(presetKeyValidator),
   /** The colour its admins picked (#651), which tints the rail while someone is in it. Clerk doesn't keep it. */

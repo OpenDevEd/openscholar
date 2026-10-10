@@ -211,12 +211,14 @@ export const moveToFree = action({
   args: { workspaceId: v.id("workspaces") },
   returns: v.null(),
   handler: async (ctx, { workspaceId }): Promise<null> => {
-    await requireUser(ctx);
+    const user = await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
     const counted: { members: number; invitations: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
     if (!counted || counted.members + counted.invitations > FREE_MEMBERS) throw createError("VALIDATION_ERROR", `Free has up to ${FREE_MEMBERS} members, invitations included: remove members or cancel invitations down to ${FREE_MEMBERS} first.`);
     await ctx.runAction(internal.billing.seats.endTeam, { workspaceId });
     await refreshAccount(ctx, workspaceId, { card: true });
+    // An invitation sent while it moved passed Team's limit: on Free now, it's taken back.
+    await ctx.runAction(internal.organizations.manage.trimInvitations, { workspaceId, userId: user._id });
     return null;
   },
 });

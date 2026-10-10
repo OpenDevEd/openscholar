@@ -46,3 +46,21 @@ export function ItemHome() {
   }
   return null;
 }
+
+/**
+ * Leaves an organization's page once the person can't act in it any more: they were removed,
+ * they left in another tab, or it was deleted. They get the same page in their own workspace,
+ * in place of one that waits for data it won't be given.
+ */
+export function WorkspaceGone() {
+  const slug = useWorkspaceSlug();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  // Null once the server says they aren't in it; undefined while it's still being read.
+  const there = useProtectedQuery(api.workspaces.queries.bySlug, slug ? { slug } : "skip").data;
+  if (slug && there === null) {
+    const query = params.toString();
+    redirect(bareWorkspacePath(pathname) + (query ? `?${query}` : ""));
+  }
+  return null;
+}
