@@ -27,6 +27,12 @@ export type SeatMember = { clerkUserId: string; name: string };
 const ENTITIES_PAGE = 100;
 
 /**
+ * Most entities one sync reads: a seat for every member, with room for seats of members who left
+ * that are still to end. Past it the customer isn't one sync's to fix; it says so.
+ */
+const MAX_ENTITIES_READ = 2 * MAX_ORGANIZATION_MEMBERS;
+
+/**
  * What to change so each member holds one seat and nobody else does: the members to seat (with
  * whether their entity must be made first), and the entities to end.
  */
@@ -74,11 +80,13 @@ async function unlessAlready<T>(code: string, call: () => Promise<T>): Promise<T
   }
 }
 
+/** The customer's entities, or null when it has more than MAX_ENTITIES_READ. */
 async function entitiesOf(customerId: string) {
   const entities: AutumnEntity[] = [];
   for (let cursor: string | null = null; ;) {
     const page: { list: AutumnEntity[]; next_cursor: string | null } = await autumn.listEntities(customerId, cursor, ENTITIES_PAGE);
     entities.push(...page.list);
+    if (entities.length > MAX_ENTITIES_READ) return null;
     if (!page.next_cursor) return entities;
     cursor = page.next_cursor;
   }
@@ -94,6 +102,10 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
     return undefined;
   }
   const entities = await entitiesOf(customerId);
+  if (entities === null) {
+    console.error(`[seats] ${workspaceId}'s customer has more than ${MAX_ENTITIES_READ} entities; its seats are left as they are`);
+    return undefined;
+  }
   const { seat, end } = seatChanges(members, entities);
   // Departures first, so a missing card never keeps a seat that should end. Each is cancelled
   // whatever the listing said: a seat attached since must still be refunded before it goes.
