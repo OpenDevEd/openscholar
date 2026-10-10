@@ -59,6 +59,7 @@
     "app/actions/funders:searchFunders": "#327",
     "app/actions/openalex-count:countOpenAlexQueries": "#327",
     "app/actions/openalex-count:searchOpenAlexCount": "#327",
+    "app/actions/openalex:getClosenessOrder": "#327",
     "app/actions/openalex:getSearchResults": "#327",
     "app/actions/openalex:getSimilarWorks": "#327",
     "app/actions/topic-publications:readTopicPublications": "#327",

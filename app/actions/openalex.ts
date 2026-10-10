@@ -1,4 +1,5 @@
 "use server";
+import { z } from "zod";
 import { createSearchParameters } from "@/lib/utils";
 import type { Works } from "@sickrin/openalex-sdk/dist/src/types/work";
 import type { SearchFilters } from "@/lib/types";
@@ -8,6 +9,7 @@ import { fetchOqlWorks } from "@/lib/openalex/oql-works";
 import { fetchWorksPage } from "@/lib/openalex/works-page";
 import { spendOpenAlexRequests } from "@/lib/openalex/spend-requests";
 import { OpenAlexLimitedError } from "@/lib/openalex/limited";
+import { fetchClosenessOrder, type ClosenessResult } from "@/lib/openalex/closeness";
 
 /**
  * Result of a search action. We return a structured error instead of throwing:
@@ -48,4 +50,24 @@ export async function getSimilarWorks(paperId: string, perPage: number): Promise
   const limited = await spendOne();
   if (limited) return limited;
   return fetchWorksPage({ perPage, similar: paperId, filter: { is_retracted: false }, AbstractArrayToString: true });
+}
+
+/** What a page may ask to order: the results it loads, and up to 100 papers of each kind, by their ids. */
+const closenessAsked = z.object({
+  works: z.array(z.string().max(200)).min(1).max(200),
+  similarTo: z.array(z.string().max(200)).min(1).max(100),
+  dissimilarTo: z.array(z.string().max(200)).max(100),
+});
+
+/**
+ * The works shown, ordered by closeness by meaning to the papers rated as like what is sought, and
+ * away from those rated as not (the OpenScholar API's GET /works/closeness). Counted as one request;
+ * refused, uncounted, beyond what the API takes.
+ */
+export async function getClosenessOrder(works: string[], similarTo: string[], dissimilarTo: string[]): Promise<ClosenessResult> {
+  const asked = closenessAsked.safeParse({ works, similarTo, dissimilarTo });
+  if (!asked.success) return { ok: false, status: 400, message: "Order 1 to 200 works by 1 to 100 papers alike and up to 100 unlike" };
+  const limited = await spendOne();
+  if (limited) return limited;
+  return fetchClosenessOrder(asked.data.works, asked.data.similarTo, asked.data.dissimilarTo);
 }

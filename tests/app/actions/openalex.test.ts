@@ -6,7 +6,7 @@ vi.mock("@/lib/openalex/spend-requests", () => ({ spendOpenAlexRequests: async (
 // keeps the test off the network.
 vi.mock("@/lib/openalex", () => ({ default: { works: () => Promise.reject(new Error("the SDK was asked")) } }));
 
-import { getSearchResults, getSimilarWorks } from "@/app/actions/openalex";
+import { getClosenessOrder, getSearchResults, getSimilarWorks } from "@/app/actions/openalex";
 import type { SearchFilters } from "@/lib/types";
 
 const filters: SearchFilters = {
@@ -97,3 +97,28 @@ describe("getSimilarWorks", () => {
   });
 });
 
+
+describe("getClosenessOrder", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+  });
+
+  it("asks the OpenScholar API to order the works shown by the papers rated alike and unlike", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://search-api.example.org");
+    const fetchMock = answering(200, { meta: { count: 1 }, results: [{ id: "https://openscholar.ai/OS1", relevance_score: 0.2 }] });
+    expect(await getClosenessOrder(["OS1"], ["OS7"], ["OS8"])).toEqual({ ok: true, order: [{ id: "https://openscholar.ai/OS1", score: 0.2 }] });
+    const url = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    expect([url.pathname, url.searchParams.get("works"), url.searchParams.get("similar_to"), url.searchParams.get("dissimilar_to")]).toEqual(["/works/closeness", "OS1", "OS7", "OS8"]);
+  });
+
+  it("refuses, without asking, more than the API takes, or no paper to be like", async () => {
+    vi.stubEnv("OPENSCHOLAR_API_URL", "https://search-api.example.org");
+    const fetchMock = answering(200, { results: [] });
+    const many = Array.from({ length: 201 }, (_, at) => `OS${at + 1}`);
+    for (const [works, similarTo] of [[many, ["OS7"]], [["OS1"], []]] as const) {
+      expect(await getClosenessOrder([...works], [...similarTo], [])).toMatchObject({ ok: false, status: 400 });
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
