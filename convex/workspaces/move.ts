@@ -17,7 +17,10 @@ import { noteActivity } from "../activity/notes";
 import { itemKey } from "../activity/validators";
 import { planLimit } from "../billing/accounts";
 import { collectionCountRow } from "../library/counter";
-import { placeFacets } from "../library/facets";
+import { facetsOf } from "../library/facets";
+import { removeCollectionMembership } from "../library/collectionMembership";
+import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
+import { placeOf, placeRated } from "../ratings";
 import { libraryPaper, upsertLibraryItem } from "../library/mutations";
 import { actorIn } from "./actor";
 
@@ -35,8 +38,13 @@ const ACTIVITY_STEP = 200;
 /** Screenings of one search a move takes with it; a search with more stays where it is. */
 const SEARCH_SCREENINGS_MOVED = 200;
 
-/** A moved collection's papers one step saves to its new workspace's library. */
+/** A moved collection's papers one step saves to its new workspace's library, at most. */
 const PAPERS_STEP = 100;
+/**
+ * The queries one step may spend on its papers, under Convex's 4,096 a transaction: in an
+ * organization each paper reads every member's rating of it, for its library and its place.
+ */
+const PAPERS_STEP_QUERIES = 3_000;
 
 type Read = Pick<QueryCtx, "db">;
 
@@ -209,12 +217,21 @@ export const moveCollectionPapers = internalMutation({
   handler: async (ctx, { collectionId, by, cursor }) => {
     const collection = await ctx.db.get("collections", collectionId);
     if (!collection) return null;
-    const page = await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).paginate({ cursor, numItems: PAPERS_STEP });
+    const workspace = await ctx.db.get("workspaces", collection.workspaceId);
+    const members = workspace?.kind === "organization" ? (await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS)).length : 1;
+    const step = Math.max(1, Math.min(PAPERS_STEP, Math.floor(PAPERS_STEP_QUERIES / (4 * members + 10))));
+    const page = await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).paginate({ cursor, numItems: step });
     for (const place of page.page) {
       const item = await ctx.db.get("libraryItems", place.libraryItemId);
       if (!item || item.workspaceId === collection.workspaceId) continue;
       const saved = (await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId: by, workspaceId: collection.workspaceId }, paperOf(item))))!;
-      await ctx.db.patch("libraryItemCollections", place._id, { libraryItemId: saved._id, ...(await placeFacets(ctx, collectionId, saved)) });
+      // Put in here meanwhile: the place it has already stands for both.
+      if (await placeOf(ctx, collectionId, saved._id)) {
+        await removeCollectionMembership(ctx, place);
+        continue;
+      }
+      const { rating, count } = await placeRated(ctx, collectionId, saved);
+      await ctx.db.patch("libraryItemCollections", place._id, { libraryItemId: saved._id, ...facetsOf(saved, false), rating, ratingCount: count });
     }
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.workspaces.move.moveCollectionPapers, { collectionId, by, cursor: page.continueCursor });
     return null;

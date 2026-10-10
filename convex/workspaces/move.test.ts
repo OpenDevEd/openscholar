@@ -138,3 +138,16 @@ it("moves a screening that stopped when its credits ran out, which has finished"
   await alice.mutation(api.workspaces.move.move, { kind: "screening", id: job, to: labId });
   expect((await t.run((ctx) => ctx.db.get("screeningJobs", job)))?.workspaceId).toBe(labId);
 });
+
+it("keeps one place for a paper put in a moved collection before its papers have moved", async () => {
+  const { t, alice, lab: labId } = await lab();
+  const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { name: "Trials" });
+  for (const n of [1, 2]) await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: `https://openalex.org/W${n}`, title: `Paper ${n}`, collectionId });
+  await alice.mutation(api.workspaces.move.move, { kind: "collection", id: collectionId, to: labId });
+  // Saved into it in the lab while its papers are still on their way.
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: labId, openalexId: "https://openalex.org/W1", title: "Paper 1", collectionId });
+  await t.finishAllScheduledFunctions(() => {});
+  const places = await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).collect());
+  expect(places).toHaveLength(2);
+  expect((await t.run((ctx) => ctx.db.get("collections", collectionId)))?.itemCount).toBe(2);
+});

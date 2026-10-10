@@ -33,6 +33,8 @@ export async function addCollectionMembership(
     assignedAt?: number;
   },
 ) {
+  // A collection holds papers of its own workspace's library; a writer that read it before it moved (#654) adds nothing.
+  if (args.item.workspaceId !== args.collection.workspaceId) return null;
   const existing = await ctx.db
     .query("libraryItemCollections")
     .withIndex("by_collection_item", (q) =>
