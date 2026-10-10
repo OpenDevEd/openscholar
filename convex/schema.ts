@@ -646,7 +646,10 @@ export default defineSchema({
     // Set before a settle confirms the hold as it stands and charges the rest
     // separately, so a retry finishes that path instead of confirming again.
     rest: v.optional(v.literal(true)),
-  }).index("by_charge", ["chargeId"]),
+  })
+    .index("by_charge", ["chargeId"])
+    // What a member holds now, which their cap counts as it counts what they spent (./billing/memberCaps.ts).
+    .index("by_workspace_and_user", ["workspaceId", "userId"]),
   // A cap on what an organization's member spends of its credits each month, set by an admin on Team (#652).
   // Autumn enforces it, as the usage limit on the member's entity; this is the copy pages read.
   memberCaps: defineTable({

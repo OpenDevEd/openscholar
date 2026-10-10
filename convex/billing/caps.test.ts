@@ -57,18 +57,26 @@ it("caps a member on their seat in Autumn, makes their holds and charges as that
   await team({ seats: true });
   const { undo } = await as("ada").action(api.billing.caps.setCap, { workspaceId, memberId: users.ben, cap: 1_000 });
   expect(fakeAutumn.entitiesOf(workspaceId).get("user_ben")?.cap).toBe(1_000);
+  // What a reply of his holds is sized by: the cap, though the lab has more.
+  const spendable = (who: string) => t.query(internal.billing.caps.spendable, { workspaceId, userId: users[who]! });
+  const balance = async () => (await t.query(internal.billing.accounts.forWorkspace, { workspaceId }))!.balance;
+  expect([await spendable("ada"), await spendable("ben")]).toEqual([await balance(), 1_000]);
 
   expect(await t.mutation(internal.billing.charge.hold, { userId: users.ben, workspaceId, chargeId: "hold:ben", credits: 100, expiresAt: Date.now() + 60_000 })).toEqual({ customerId: workspaceId, entityId: "user_ben" });
+  // What he holds counts against his cap, as what he spent does.
+  expect(await spendable("ben")).toBe(900);
 
   // A charge past the cap is made as the seat, so Autumn stops it at the cap.
   await t.action(internal.billing.charge.retrySettle, { userId: users.ben, workspaceId, chargeId: "charge:ben", credits: 1_500, usage, attempt: 0 });
   expect(fakeAutumn.calls.find((call) => call.path === "balances.track")?.body.entity_id).toBe("user_ben");
   await t.finishAllScheduledFunctions(vi.runAllTimers);
   expect(await as("ben").query(api.billing.caps.allowance, { workspaceId, month: month() })).toEqual({ spent: 1_000, cap: 1_000, total: 1_000 });
+  expect(await spendable("ben")).toBe(0);
 
   await as("ada").action(api.billing.caps.setCap, { workspaceId, ...undo!.args });
   expect(fakeAutumn.entitiesOf(workspaceId).get("user_ben")?.cap).toBeUndefined();
   expect(await as("ben").query(api.billing.caps.allowance, { workspaceId, month: month() })).toEqual({ spent: 1_000, total: 1_000 });
+  expect(await spendable("ben")).toBe(await balance());
 });
 
 it("keeps caps to Team, to its admins, and to members holding a seat", async () => {
