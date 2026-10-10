@@ -48,6 +48,7 @@ import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { findPlan } from "@/lib/billing/catalog";
 import { useQueryShortcuts } from "@/lib/research/reads";
 import { useCurrentQueryStore, useKeywordExpansionStore } from "@/lib/store";
+import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -92,14 +93,16 @@ const LOOK_KEPT_S = 365 * 24 * 60 * 60;
  * How the rail looked last time in this browser, for the person and the address's workspace:
  * what the server drew the page with (`first`), then the cookie as the address changes. Nothing
  * once Clerk says no one's signed in. Clerk loads in the browser, after the server and the first
- * frame; until then the server's word on who's signed in stands.
+ * frame; until then the server's word on who's signed in stands. The browser's cookie isn't read
+ * until the rail has hydrated: it can change after the request went, when the page before or
+ * another tab writes it, and a first render that differs from the server's fails hydration.
  */
-function cachedRail(first: FirstWorkspace, slug: string | null, auth: { isLoaded: boolean; userId: string | null | undefined }): { me?: CachedMe; look?: CachedLook } {
+function cachedRail(first: FirstWorkspace, slug: string | null, auth: { isLoaded: boolean; userId: string | null | undefined }, hydrated: boolean): { me?: CachedMe; look?: CachedLook } {
   const user = auth.isLoaded ? auth.userId : first.user;
   if (!user) return {};
-  // On the server, and as the page hydrates, the cookie is the request's, which `first` already read for its account.
-  if (slug === first.slug && first.user === user && (first.look || typeof document === "undefined")) return first;
-  if (typeof document === "undefined") return {};
+  // On the server, and as the rail hydrates, the cookie is the request's, which `first` already read for its account.
+  if (slug === first.slug && first.user === user && (first.look || !hydrated)) return first;
+  if (!hydrated) return {};
   const { me, looks } = readCache(lookCookieIn(document.cookie), user);
   return { ...(me ? { me } : {}), ...(looks[lookKey(slug)] ? { look: looks[lookKey(slug)] } : {}) };
 }
@@ -128,7 +131,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   // Until the address's workspace is read, it's drawn as it looked last time; one never seen fades in once read.
   const auth = useAuth();
   const { userId } = auth;
-  const cached = cachedRail(firstWorkspace, slug, auth);
+  const cached = cachedRail(firstWorkspace, slug, auth, useHydrated());
   const current: WorkspaceLook | undefined = picked && (waiting || loading) ? picked.to : (loaded ?? cached.look);
   // The person as the account button shows them, and the sections their features open: as last time until Clerk and Convex load.
   const { user } = useUser();
