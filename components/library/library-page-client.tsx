@@ -574,7 +574,8 @@ export function LibraryPageClient() {
                             }
                             viewMode={effectiveViewMode}
                             extra={(() => {
-                              const rated = params.col ? collectionRatings.get(paper.id) : undefined;
+                              // Rating in a collection, and who did, are its members': a guest's page has neither.
+                              const rated = params.col && !guest ? collectionRatings.get(paper.id) : undefined;
                               return rated ? <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} compact={effectiveViewMode === "list-simple"} /> : undefined;
                             })()}
                           />

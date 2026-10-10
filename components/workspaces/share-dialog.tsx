@@ -124,7 +124,8 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
           query,
           onQuery: setQuery,
           // The ones asked for last stay while the next ones load, so the list under the box doesn't blink.
-          candidates: candidates.status === "LoadingFirstPage" && !candidates.results.length ? undefined : candidates.results.map((person) => ({
+          // Someone in two of your organizations comes once on each one's page: they're offered once.
+          candidates: candidates.status === "LoadingFirstPage" && !candidates.results.length ? undefined : [...new Map(candidates.results.map((person) => [person.userId, person])).values()].map((person) => ({
             key: person.userId,
             avatar: <IdentityAvatar name={person.name || person.email} imageUrl={person.imageUrl} className="size-9" />,
             name: person.name || person.email,

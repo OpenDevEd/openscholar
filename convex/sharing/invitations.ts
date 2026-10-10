@@ -4,6 +4,7 @@
  * old. Whoever accepts must have the invited address verified on their account, which Clerk
  * confirms (./mail.ts).
  */
+import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -17,7 +18,7 @@ import { actorIn } from "../workspaces/actor";
 import { workspaceFrom, workspaceName } from "../workspaces/personal";
 import { invitationTo, noteShared, requireRoom } from "./access";
 import { findShared, grantOf, kindWord, requireRole, sharedIn } from "./items";
-import { guestRoleValidator, sharedFromValidator, sharedKindValidator } from "./validators";
+import { guestRoleValidator, sharedFromValidator, sharedKindValidator, type SharedKind } from "./validators";
 
 const WEEK = 7 * 86_400_000;
 const actingValidator = { userId: v.id("users"), workspaceId: v.id("workspaces"), author: v.union(v.literal("user"), v.literal("assistant")) };
@@ -95,10 +96,12 @@ export const recordDelivery = internalMutation({
   },
 });
 
-/** Answers an invitation for `userId`, whose verified addresses Clerk gave as `emails`. */
+const opened = v.object({ kind: sharedKindValidator, id: v.string() });
+
+/** Answers an invitation for `userId`, whose verified addresses Clerk gave as `emails`. Accepted, it returns the item it was to. */
 export const respondVerified = internalMutation({
   args: { userId: v.id("users"), invitationId: v.id("itemInvitations"), emails: v.array(v.string()), accept: v.boolean() },
-  returns: v.null(),
+  returns: v.union(opened, v.null()),
   handler: async (ctx, { userId, invitationId, emails, accept }) => {
     const [invitation, person] = await Promise.all([ctx.db.get("itemInvitations", invitationId), ctx.db.get("users", userId)]);
     if (!invitation || person?.state !== "active" || !emails.includes(invitation.email)) throw createError("FORBIDDEN", "Sign in with the invited email address");
@@ -110,9 +113,12 @@ export const respondVerified = internalMutation({
       await ctx.db.insert("itemAccess", { kind: shared.kind, item: shared.id, name: shared.name, userId, role: invitation.role, grantedBy: invitation.invitedBy, grantedAt: Date.now() });
     }
     await ctx.db.patch("itemInvitations", invitationId, { state: accept ? "accepted" : "declined" });
-    return null;
+    return accept ? { kind: shared.kind, id: shared.id } : null;
   },
 });
+
+// By name: what the action below returns is this mutation's answer, and the generated API can't be read for it while this module is being typed.
+const respondVerifiedRef = makeFunctionReference<"mutation", { userId: Id<"users">; invitationId: Id<"itemInvitations">; emails: string[]; accept: boolean }, { kind: SharedKind; id: string } | null>("sharing/invitations:respondVerified");
 
 /** Who is answering, for Clerk to say which addresses are theirs. */
 export const responder = internalQuery({
@@ -148,17 +154,16 @@ export const inviteForAssistant = assistantAction(inviteAction);
 
 export const respondAction = defineChangingAction({
   path: "sharing/invitations:respond",
-  description: "Accepts or declines an invitation the person was sent to an item. Their account must have the invited address verified. Accepted, the item shows under their Shared with me.",
+  description: "Accepts or declines an invitation the person was sent to an item. Their account must have the invited address verified. Accepted, the item shows under their Shared with me, and its kind and ID are returned.",
   args: { invitationId: v.id("itemInvitations"), accept: v.boolean() },
-  returns: v.null(),
+  returns: v.union(opened, v.null()),
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
   run: async (ctx, { userId }, args) => {
     const clerkUserId: string = await ctx.runQuery(internal.sharing.invitations.responder, { userId });
     const emails: string[] = await ctx.runAction(internal.sharing.mail.verifiedEmails, { clerkUserId });
-    await ctx.runMutation(internal.sharing.invitations.respondVerified, { userId, ...args, emails });
-    return null;
+    return await ctx.runMutation(respondVerifiedRef, { userId, ...args, emails });
   },
 });
 export const respond = userAction(respondAction);
@@ -168,10 +173,12 @@ export const getAction = defineUserQuery({
   path: "sharing/invitations:get",
   description:
     "An invitation to an item by its ID, as its email links to it: the item's kind, ID and name, what the invitation lets them do, who sent it, the workspace the item is in and how much it holds. " +
-    "`state` is `pending` while it can be answered, and `accepted` once the person took it up. Null when it's gone, expired, or answered by someone else.",
+    "`state` is `pending` while it can be answered, and `accepted` once the person took it up. An account whose own address isn't the one it was sent to is told only that (`state` is `other`): " +
+    "it can still accept, if that address is verified on it too. Null when it's gone, expired, or answered by someone else.",
   args: { invitationId: v.string() },
   returns: v.union(
     v.null(),
+    v.object({ state: v.literal("other") }),
     v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.number(), state: v.union(v.literal("pending"), v.literal("accepted")) }),
   ),
   run: async (ctx, { userId }, { invitationId }) => {
@@ -182,6 +189,8 @@ export const getAction = defineUserQuery({
     // One that was accepted shows only to whoever holds the place it gave.
     const state = invitation.state === "pending" ? ("pending" as const) : invitation.state === "accepted" && (await grantOf(ctx, shared.id, userId)) ? ("accepted" as const) : null;
     if (!state) return null;
+    // The link alone says nothing of the item: it may have been passed on. The address it was sent to does.
+    if (state === "pending" && (await ctx.db.get("users", userId))?.email.toLowerCase() !== invitation.email) return { state: "other" as const };
     const inviter = await ctx.db.get("users", invitation.invitedBy);
     return {
       kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role,

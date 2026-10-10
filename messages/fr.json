@@ -4418,7 +4418,9 @@
       "open": "Ouvrir",
       "openFailed": "Impossible de l'ouvrir",
       "goneTitle": "Ce lien n'est plus ouvert",
-      "goneDetail": "Demandez à la personne qui l'a partagé de le partager à nouveau"
+      "goneDetail": "Demandez à la personne qui l'a partagé de le partager à nouveau",
+      "otherTitle": "Cette invitation a été envoyée à une autre adresse",
+      "otherDetail": "Ouvrez-la si ce compte a aussi cette adresse, ou connectez-vous avec celle qui l'a reçue"
     }
   },
   "models": {

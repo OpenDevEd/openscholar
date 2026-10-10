@@ -34,12 +34,16 @@ export function requireRole(kind: SharedKind, role: GuestRole) {
   if (!roles.includes(role)) throw createError("VALIDATION_ERROR", `A ${KINDS[kind].word} is shared to ${roles.map((one) => (one === "viewer" ? "view" : "edit")).join(" or ")} only.`);
 }
 
+/** The longest name sharing keeps of an item, in its guests' rows, its email and its lists: a name is shown in a row, not whole. */
+const NAME_MAX = 200;
+
 /** The item of `kind` with this ID, or null when there's none. */
 export async function findShared(ctx: Read, kind: SharedKind, id: string): Promise<Shared | null> {
   const { table, name, size } = KINDS[kind];
   const rowId = ctx.db.normalizeId(table, id);
   const row = rowId ? await ctx.db.get(table, rowId) : null;
-  return row ? { kind, id: row._id, workspaceId: row.workspaceId, name: name(row), size: size(row) } : null;
+  // Whole characters: an emoji cut in two is no character at all.
+  return row ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), size: size(row) } : null;
 }
 
 /** The item, for someone who acts in its workspace: only they share it, and anyone else learns nothing of it. */
@@ -69,8 +73,8 @@ export const itemGuestsOf = (item: string) => `itemGuests:${item}`;
 /** The lists that count what's shared with a person: all of it, and each kind. */
 export const sharedWithOf = (userId: Id<"users">, kind?: SharedKind) => `sharedWith:${userId}${kind ? `:${kind}` : ""}`;
 
-/** Guest rows one step brings in step with their item, or deletes with it. */
-export const FOLLOW_STEP = 100;
+/** Guest rows one step brings in step with their item, or deletes with it: each deletion also takes the row out of three counts. */
+export const FOLLOW_STEP = 50;
 const follow = makeFunctionReference<"mutation", { kind: SharedKind; item: string; cursor: string | null }, null>("sharing/upkeep:follow");
 
 /** Whether anyone was given the item or invited to it. */

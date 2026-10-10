@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { Building2, Coins, Folder, LogOut, SearchX, Share2, Unlink, UserRound, type AppIcon } from "@/components/icons";
+import { Building2, Coins, Folder, LogOut, Mail, SearchX, Share2, Unlink, UserRound, type AppIcon } from "@/components/icons";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { Entry, EntryAction, EntryAside, ENTRY_OPEN } from "@/components/command-center/entry";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -21,6 +21,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { showStyledToast } from "@/components/ui/sonner";
 import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import type { GuestRole, SharedKind } from "@/convex/sharing/validators";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { SHARED_PAGE } from "@/lib/sharing";
@@ -220,18 +221,28 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
       </Landing>
     );
   }
-  const kind = SHARED_KINDS[invitation.kind];
   const open = () => {
     setOpening(true);
-    // One taken up already opens as it is.
-    void (invitation.state === "pending" ? respond({ invitationId: invitationId as never, accept: true }) : Promise.resolve(null)).then(
-      () => router.push(kind.href(invitation.id)),
+    // One taken up already opens as it is; accepting one says what it was to.
+    void (invitation.state === "accepted" ? Promise.resolve({ kind: invitation.kind, id: invitation.id }) : respond({ invitationId: invitationId as Id<"itemInvitations">, accept: true })).then(
+      (item) => item && router.push(SHARED_KINDS[item.kind].href(item.id)),
       (error) => {
         setOpening(false);
         showStyledToast("error", getErrorMessage(error, t("openFailed")));
       },
     );
   };
+  // Sent to another address than this account's own: it says nothing of the item, and opens only if that address is this account's too.
+  if (invitation.state === "other") {
+    return (
+      <Landing hero={<Hero icon={Mail} />} title={t("otherTitle")} chips={<p className="text-sm text-muted-foreground">{t("otherDetail")}</p>}>
+        <Button className="w-full" disabled={opening} onClick={open}>
+          {t("open")}
+        </Button>
+      </Landing>
+    );
+  }
+  const kind = SHARED_KINDS[invitation.kind];
   return (
     <Landing
       hero={<Tile icon={kind.icon} tint={kind.tint} className="size-24 rounded-3xl [&>svg]:size-10" />}

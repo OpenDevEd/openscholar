@@ -308,14 +308,15 @@ export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces
 /**
  * Gives each paper on a page of `workspaceId`'s library the person's own rating of it, which in
  * their own workspace is the paper's, and in an organization's collection how its members
- * rated it there. A guest reading someone's own collection sees the rating it has there, and
- * beside it their own.
+ * rated it there. A guest sees the rating a paper has in the collection, and beside it their
+ * own.
  */
-async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, read: LibraryPage, collectionId?: Id<"collections">) {
+async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, read: LibraryPage, collectionId: Id<"collections"> | undefined, guest: boolean) {
   const workspace = await ctx.db.get("workspaces", workspaceId);
   const own = workspace?.kind === "personal" && workspace.userId === userId;
   const ratings = await Promise.all(read.page.map(async (item) => (own ? item.rating : (await personalRatingRow(ctx, userId, item.openalexId))?.rating)));
-  const inCollection = workspace?.kind === "organization" && collectionId ? await Promise.all(read.page.map(async (item) => {
+  // Who rated it in the collection, and rating it there, are its members'.
+  const inCollection = workspace?.kind === "organization" && collectionId && !guest ? await Promise.all(read.page.map(async (item) => {
     const [raters, place] = await Promise.all([collectionRaters(ctx, collectionId, item.openalexId, userId, RATERS_SHOWN), placeOf(ctx, collectionId, item._id)]);
     const mine = raters.find((rater) => rater.you)?.rating;
     return { ...(mine === undefined ? {} : { mine }), raters: raters.map(shownRater), count: place?.ratingCount ?? raters.length };
@@ -333,7 +334,7 @@ export const browseLibrary = workspaceQuery({
   returns: libraryPageValidator,
   handler: async (ctx, actor, { paginationOpts, ...view }) => {
     const workspaceId = await libraryOf(ctx, actor, view.collectionId);
-    return withOwnRatings(ctx, { userId: actor.userId, workspaceId }, await readLibraryPage(ctx, workspaceId, view, paginationOpts), view.collectionId);
+    return withOwnRatings(ctx, { userId: actor.userId, workspaceId }, await readLibraryPage(ctx, workspaceId, view, paginationOpts), view.collectionId, workspaceId !== actor.workspaceId);
   },
 });
 
@@ -348,7 +349,7 @@ export const searchLibrary = workspaceQuery({
   returns: libraryPageValidator,
   handler: async (ctx, actor, { paginationOpts, sortBy = "savedAt", sortOrder = "desc", ...view }) => {
     const workspaceId = await libraryOf(ctx, actor, view.collectionId);
-    return withOwnRatings(ctx, { userId: actor.userId, workspaceId }, await readLibraryPage(ctx, workspaceId, { ...view, sortBy, sortOrder }, paginationOpts), view.collectionId);
+    return withOwnRatings(ctx, { userId: actor.userId, workspaceId }, await readLibraryPage(ctx, workspaceId, { ...view, sortBy, sortOrder }, paginationOpts), view.collectionId, workspaceId !== actor.workspaceId);
   },
 });
 

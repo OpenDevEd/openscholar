@@ -4418,7 +4418,9 @@
       "open": "Open",
       "openFailed": "Couldn't open it",
       "goneTitle": "This link is no longer open",
-      "goneDetail": "Ask whoever shared it to share it again"
+      "goneDetail": "Ask whoever shared it to share it again",
+      "otherTitle": "This invitation was sent to another address",
+      "otherDetail": "Open it if this account has that address too, or sign in with the one it was sent to"
     }
   },
   "models": {

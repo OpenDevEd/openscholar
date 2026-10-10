@@ -35,12 +35,27 @@ export const follow = internalMutation({
   },
 });
 
-/** Places as a guest one cleanup run takes from a purged account. */
-const PURGE_GRANTS = 200;
+/** Places as a guest one step takes from a purged account: each deletion also takes the row out of three counts. */
+const PURGE_GRANTS = 25;
 
-/** Deletes a step of a purged account's places as a guest. Returns whether all are gone. */
+/** Takes a step of a purged account's places as a guest, and schedules the next while any are left. */
+export const purge = internalMutation({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    const rows = await ctx.db.query("itemAccess").withIndex("by_user_and_grantedAt", (q) => q.eq("userId", userId)).take(PURGE_GRANTS);
+    for (const row of rows) await ctx.db.delete("itemAccess", row._id);
+    if (rows.length === PURGE_GRANTS) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.purge, { userId });
+    return null;
+  },
+});
+
+/**
+ * Whether a purged account has no places as a guest left. While it has, they go in transactions
+ * of their own, apart from the cleanup run that asks, which takes many accounts at once.
+ */
 export async function purgeGrants(ctx: MutationCtx, userId: Id<"users">) {
-  const rows = await ctx.db.query("itemAccess").withIndex("by_user_and_grantedAt", (q) => q.eq("userId", userId)).take(PURGE_GRANTS);
-  for (const row of rows) await ctx.db.delete("itemAccess", row._id);
-  return rows.length < PURGE_GRANTS;
+  const left = await ctx.db.query("itemAccess").withIndex("by_user_and_grantedAt", (q) => q.eq("userId", userId)).first();
+  if (left) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.purge, { userId });
+  return !left;
 }

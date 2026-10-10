@@ -2,10 +2,11 @@
 // allows, what an emailed invitation takes to accept, and what's left once the item changes.
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { ensureWorkspace } from "../workspaces/create";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 const mail = vi.hoisted(() => ({ sendMail: vi.fn(), close: vi.fn() }));
 vi.mock("nodemailer", () => ({ default: { createTransport: () => mail } }));
@@ -101,17 +102,22 @@ it("holds an item to the guests its workspace's plan allows, invitations still w
 });
 
 it("makes an invitation the place of whoever accepts it with the invited address verified", async () => {
-  const { alice, dave, item, guestsOf, invitationsOf, users, t } = await lab(1);
+  const { alice, carol, dave, item, guestsOf, invitationsOf, users, t } = await lab(1);
   await alice.action(api.sharing.invitations.invite, { ...item, email: "dave@example.org", role: "viewer" });
   const invitationId = await t.run(async (ctx) => (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", item.id)).first())!._id);
 
-  // Clerk hasn't verified that address on Dave's account.
+  // The link says nothing of the item to an account it wasn't sent to, which can't take it up either.
+  verified = ["carol@example.org"];
+  expect(await carol.query(api.sharing.invitations.get, { invitationId })).toEqual({ state: "other" });
+  await expect(carol.action(api.sharing.invitations.respond, { invitationId, accept: true })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  // Nor can Dave while Clerk hasn't verified that address on his account.
   verified = ["someone@example.org"];
   await expect(dave.action(api.sharing.invitations.respond, { invitationId, accept: true })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
   expect(await guestsOf()).toEqual([]);
 
   verified = ["dave@example.org"];
-  await dave.action(api.sharing.invitations.respond, { invitationId, accept: true });
+  expect(await dave.query(api.sharing.invitations.get, { invitationId })).toMatchObject({ state: "pending", name: "Trials", role: "viewer" });
+  expect(await dave.action(api.sharing.invitations.respond, { invitationId, accept: true })).toEqual({ kind: "collection", id: item.id });
   expect(await guestsOf()).toEqual([{ userId: users.dave, role: "viewer", name: "Trials" }]);
   expect(await invitationsOf()).toEqual([{ email: "dave@example.org", role: "viewer", state: "accepted" }]);
   // It was the item's one place, and still is: nobody else fits.
@@ -134,7 +140,7 @@ it("keeps a guest's row to the item's name, and leaves none of an item that's de
 });
 
 it("opens a shared collection to its guest from their own workspace, and to nobody else", async () => {
-  const { alice, carol, dave, item, users, club } = await lab();
+  const { t, alice, carol, dave, item, users, club } = await lab();
   await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: item.workspaceId, openalexId: "https://openalex.org/W1", title: "One", collectionId: item.id });
   await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
   const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, collectionId: item.id };
@@ -150,6 +156,22 @@ it("opens a shared collection to its guest from their own workspace, and to nobo
   expect(await titles(dave)).toEqual([]);
   expect(await dave.query(api.library.collections.getCollection, { collectionId: item.id })).toBeNull();
 
+  // An export she started reads the collection again for each part, so it ends with her place.
+  const carolOwn = await t.run((ctx) => personalWorkspaceOf(ctx, users.carol));
+  const exported = () => t.query(internal.exports.page, { userId: users.carol, workspaceId: carolOwn, source: { kind: "library", view }, format: "json", cursor: null, written: 0 });
+  expect((await exported()).count).toBe(1);
+
   await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
   expect(await titles(carol)).toEqual([]);
+  expect((await exported()).count).toBe(0);
+});
+
+it("takes a deleted account's places as a guest in steps of their own", async () => {
+  const { t, users } = await lab();
+  await t.run(async (ctx) => {
+    for (let n = 0; n < 60; n++) await ctx.db.insert("itemAccess", { kind: "collection", item: `gone_${n}`, name: `Collection ${n}`, userId: users.carol, role: "viewer", grantedBy: users.alice, grantedAt: n });
+  });
+  await t.mutation(internal.sharing.upkeep.purge, { userId: users.carol });
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(await t.run((ctx) => ctx.db.query("itemAccess").withIndex("by_user_and_grantedAt", (q) => q.eq("userId", users.carol)).collect())).toEqual([]);
 });

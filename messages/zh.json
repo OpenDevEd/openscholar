@@ -4418,7 +4418,9 @@
       "open": "打开",
       "openFailed": "无法打开",
       "goneTitle": "此链接已失效",
-      "goneDetail": "请让共享的人重新共享"
+      "goneDetail": "请让共享的人重新共享",
+      "otherTitle": "此邀请发送到了另一个邮箱",
+      "otherDetail": "如果此账户也有该邮箱，可以直接打开；否则请用收到邀请的邮箱登录"
     }
   },
   "models": {
