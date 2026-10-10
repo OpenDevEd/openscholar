@@ -17,6 +17,7 @@ import { workspaceMutation } from "./lib/userActions";
 import { screeningExportFiles, screeningItems } from "../lib/screening/export";
 import { readScreeningProgressCounts } from "./screening/progress";
 import { readScreeningResultsPage } from "./screening/queries";
+import { readableJob } from "./screening/access";
 import { screeningRevision } from "./screening/accounting";
 import { paperSetValidator, screeningJobStatusValidator, screeningQuestionsValidator, screeningScoringConfigValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
@@ -46,8 +47,9 @@ export const start = workspaceMutation({
   handler: async (ctx, { userId, workspaceId }, args) => {
     if (!/^[0-9a-f]{64}$/.test(args.digest)) throw createError("VALIDATION_ERROR", "An export needs a SHA-256 digest.");
     const expiresAt = Date.now() + EXPORT_LINK_MS;
-    const job = args.source.kind === "screening" ? await ctx.db.get("screeningJobs", args.source.jobId) : null;
-    if (args.source.kind === "screening" && (!job || !(job.workspaceId === workspaceId))) throw createError("NOT_FOUND", "Screening job not found");
+    // A screening shared with the person from another workspace exports as their own does (#653), while it's still shared with them: each read checks.
+    const job = args.source.kind === "screening" ? await readableJob(ctx, { userId, workspaceId }, args.source.jobId) : null;
+    if (args.source.kind === "screening" && !job) throw createError("NOT_FOUND", "Screening job not found");
     const sourceRevision = job ? await screeningRevision(ctx, job) : undefined;
     const id = await ctx.db.insert("exports", { ...args, sourceRevision, userId, workspaceId, part: 1, cursor: null, serving: false, failed: false, expiresAt });
     await ctx.scheduler.runAfter(EXPORT_LINK_MS, internal.exports.expire, { id });
@@ -152,8 +154,8 @@ export const page = internalQuery({
       return write(await readLibraryPage(ctx, library, source.view, { cursor, numItems }), exportFiles.library[format].item);
     }
     if (source.kind === "screening") {
-      const job = await ctx.db.get("screeningJobs", source.jobId);
-      if (!job || !(job.workspaceId === workspaceId)) throw createError("NOT_FOUND", "Screening job not found");
+      const job = await readableJob(ctx, { userId, workspaceId }, source.jobId);
+      if (!job) throw createError("NOT_FOUND", "Screening job not found");
       await screeningRevision(ctx, job, sourceRevision);
       return write(await readScreeningResultsPage(ctx, job, { cursor, numItems: EXPORT_PAGE_SIZE }), screeningItems(job.questions, { ...job, revision: sourceRevision })[format]);
     }
@@ -174,9 +176,9 @@ export const page = internalQuery({
   },
 });
 
-/** What a screening job's export says about the job, or null when it isn't in the export's workspace. */
+/** What a screening job's export says about the job, or null when it isn't the exporting person's to read. */
 export const screeningJob = internalQuery({
-  args: { workspaceId: v.id("workspaces"), jobId: v.id("screeningJobs") },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), jobId: v.id("screeningJobs") },
   returns: v.union(v.null(), v.object({
     _id: v.id("screeningJobs"),
     revision: v.string(),
@@ -193,9 +195,9 @@ export const screeningJob = internalQuery({
     createdAt: v.number(),
     completedAt: v.optional(v.number()),
   })),
-  handler: async (ctx, { workspaceId, jobId }) => {
-    const job = await ctx.db.get("screeningJobs", jobId);
-    if (!job || !(job.workspaceId === workspaceId)) return null;
+  handler: async (ctx, { userId, workspaceId, jobId }) => {
+    const job = await readableJob(ctx, { userId, workspaceId }, jobId);
+    if (!job) return null;
     const { status, questions, scoringConfig, totalPapers, createdAt, completedAt } = job;
     return { _id: jobId, revision: await screeningRevision(ctx, job), set: job.set, snapshot: job.snapshot, serverEffort: job.serverEffort, first: job.first, last: job.last, status, questions, scoringConfig, totalPapers, qualifiedPapers: (await readScreeningProgressCounts(ctx, job)).qualifiedCount, createdAt, completedAt };
   },
@@ -218,7 +220,7 @@ export const download = httpAction(async (ctx, request) => {
 
   const { id, userId, workspaceId, source, format } = claimed;
   const at = new Date();
-  const job = source.kind === "screening" ? await ctx.runQuery(internal.exports.screeningJob, { workspaceId, jobId: source.jobId }) : null;
+  const job = source.kind === "screening" ? await ctx.runQuery(internal.exports.screeningJob, { userId, workspaceId, jobId: source.jobId }) : null;
   if (source.kind === "screening" && !job) {
     await ctx.runMutation(internal.exports.failPart, { id });
     return new Response("This screening job wasn't found.", { status: 404 });

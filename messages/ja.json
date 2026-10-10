@@ -4335,10 +4335,12 @@
     "share": {
       "share": "共有",
       "shareThis": {
-        "collection": "このコレクションを共有"
+        "collection": "このコレクションを共有",
+        "screening": "このスクリーニングを共有"
       },
       "title": {
-        "collection": "コレクションを共有"
+        "collection": "コレクションを共有",
+        "screening": "スクリーニングを共有"
       },
       "addPeople": "名前またはメールで追加",
       "inviteEmail": "{email} を招待",
@@ -4364,7 +4366,8 @@
       "usedOf": "{used} / {limit}",
       "moreGuests": "ゲストを増やす",
       "full": {
-        "collection": "{plan} ではコレクションごとに{count, plural, other {#人}}までゲストを追加できます"
+        "collection": "{plan} ではコレクションごとに{count, plural, other {#人}}までゲストを追加できます",
+        "screening": "{plan} ではスクリーニングごとに{count, plural, other {#人}}までゲストを追加できます"
       },
       "failed": "共有を変更できませんでした"
     },
@@ -4376,10 +4379,12 @@
       "search": "共有アイテムを検索",
       "all": "すべて",
       "kinds": {
-        "collection": "コレクション"
+        "collection": "コレクション",
+        "screening": "スクリーニング"
       },
       "size": {
-        "collection": "{count, plural, other {#件の論文}}"
+        "collection": "{count, plural, other {#件の論文}}",
+        "screening": "{count, plural, other {#件の論文}}"
       },
       "runUses": "ここで実行する処理に使われるのは",
       "yourCredits": "あなたのクレジット",
@@ -4392,7 +4397,8 @@
       "more": "さらに表示",
       "from": "{workspace} から",
       "sharedOne": {
-        "collection": "{name} がコレクションを共有しました"
+        "collection": "{name} がコレクションを共有しました",
+        "screening": "{name} がスクリーニングを共有しました"
       },
       "pointOwn": "あなた自身のワークスペースに表示されます",
       "pointCredits": "実行する処理にはあなたのクレジットが使われます",

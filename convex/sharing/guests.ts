@@ -28,7 +28,7 @@ const CANDIDATE_ROWS = 500;
 /** A guest as a change names them: someone given the item, or an address invited to it. */
 const guestValidator = v.union(v.object({ userId: v.id("users") }), v.object({ email: v.string() }));
 
-const ROLES = "to view it (`viewer`: open, read and export) or to edit it (`editor`: also put papers in a collection and take them out)";
+const ROLES = "to view it (`viewer`: open, read and export) or to edit it (`editor`: also put papers in a collection and take them out; a screening is shared to view only)";
 
 export const addAction = defineUserMutation({
   path: "sharing/guests:add",

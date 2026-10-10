@@ -8,8 +8,8 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
-import { FOLLOW_STEP, findShared } from "./items";
-import { sharedKindValidator } from "./validators";
+import { FOLLOW_STEP, findShared, hasGuests } from "./items";
+import { sharedKindValidator, sharedKinds } from "./validators";
 
 /**
  * Gives a step of an item's guests its name as it is now, from `cursor` on, or deletes a step
@@ -36,21 +36,28 @@ export const follow = internalMutation({
   },
 });
 
-/** Items one step of `close` hands to `follow`. */
+/** Items one step of `close` looks through for ones with guests. */
 const CLOSE_STEP = 50;
 
 /**
- * Ends every guest's place in a workspace's items, a page of items at a time. A deleted account's
- * workspace waits out its retention before it's purged, and nobody should read it meanwhile.
- * Collections are the one kind shared so far: each kind that's shared lists its items here.
+ * Ends every guest's place in a workspace's items, a page of one kind's items at a time, kind
+ * after kind. A deleted account's workspace waits out its retention before it's purged, and
+ * nobody should read it meanwhile. Each kind that's shared lists its items here.
  */
 export const close = internalMutation({
-  args: { workspaceId: v.id("workspaces"), cursor: v.union(v.string(), v.null()) },
+  args: { workspaceId: v.id("workspaces"), cursor: v.union(v.string(), v.null()), kind: v.optional(sharedKindValidator) },
   returns: v.null(),
-  handler: async (ctx, { workspaceId, cursor }) => {
-    const items = await ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId)).paginate({ cursor, numItems: CLOSE_STEP });
-    for (const item of items.page) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.follow, { kind: "collection", item: item._id, cursor: null, closed: true });
-    if (!items.isDone) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.close, { workspaceId, cursor: items.continueCursor });
+  handler: async (ctx, { workspaceId, cursor, kind = sharedKinds[0] }) => {
+    const page = { cursor, numItems: CLOSE_STEP };
+    const items =
+      kind === "collection"
+        ? await ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId)).paginate(page)
+        : await ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate(page);
+    for (const item of items.page) {
+      if (await hasGuests(ctx, item._id)) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.follow, { kind, item: item._id, cursor: null, closed: true });
+    }
+    const next = items.isDone ? sharedKinds[sharedKinds.indexOf(kind) + 1] : kind;
+    if (next) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.close, { workspaceId, cursor: items.isDone ? null : items.continueCursor, kind: next });
     return null;
   },
 });

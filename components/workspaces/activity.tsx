@@ -3,8 +3,9 @@
 // An item's Activity (#656): every change to it, by whom, newest first, a page at a time, and
 // the row that opens it at the top of an item's card, with who started the item in an organization.
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { ItemPresence } from "./presence";
+import { GuestChips, type From } from "./shared";
 import { MoveDialog, type Movable } from "./move-dialog";
 import { usePaginatedQuery, type UsePaginatedQueryReturnType } from "convex/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
@@ -16,6 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { api } from "@/convex/_generated/api";
 import type { FunctionReturnType } from "convex/server";
+import type { GuestRole } from "@/convex/sharing/validators";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -48,20 +50,29 @@ const DAY = 86_400_000;
 
 /**
  * The first row of an item's card: in an organization who started it (`started`, such as "Run by"),
- * then its Activity. `className` fits it to the card's edges.
+ * then who has it open, its Activity and Move, and its Share where the page gives one (`share`).
+ * For a guest of the item (`guest`, #653) the row says whose it is and what they may do with it:
+ * the rest is its workspace's. `className` fits it to the card's edges.
  */
-export function ItemBar({ kind, id, name, started, className }: { kind: ItemKind; id: string; name: string; started: "runBy" | "madeBy"; className?: string }) {
+export function ItemBar({ kind, id, name, started, className, share, guest }: { kind: ItemKind; id: string; name: string; started: "runBy" | "madeBy"; className?: string; share?: ReactNode; guest?: { from: From; role: GuestRole } }) {
   const t = useTranslations("workspaces.activity");
   const workspaceId = useWorkspace();
   // Null in your own workspace, where everything is yours.
-  const { data: by } = useProtectedQuery(api.activity.queries.startedBy, inWorkspace(workspaceId, { kind, id }));
+  const { data: by } = useProtectedQuery(api.activity.queries.startedBy, inWorkspace(workspaceId, guest ? "skip" : { kind, id }));
   return (
     <div className={cn("flex min-h-13 min-w-0 items-center gap-2 border-b border-border-subtle px-4 py-2.5", className)}>
-      {by ? <PersonTag name={by.name} imageUrl={by.imageUrl} you={by.you} before={t(started)} /> : null}
-      <span className="flex-1" />
-      <ItemPresence kind={kind} id={id} />
-      <ActivityButton kind={kind} id={id} name={name} />
-      <MoveButton kind={kind} id={id} name={name} />
+      {guest ? (
+        <GuestChips from={guest.from} role={guest.role} person />
+      ) : (
+        <>
+          {by ? <PersonTag name={by.name} imageUrl={by.imageUrl} you={by.you} before={t(started)} /> : null}
+          <span className="flex-1" />
+          <ItemPresence kind={kind} id={id} />
+          <ActivityButton kind={kind} id={id} name={name} />
+          <MoveButton kind={kind} id={id} name={name} />
+          {share}
+        </>
+      )}
     </div>
   );
 }

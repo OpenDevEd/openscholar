@@ -78,7 +78,9 @@ export function JobView({
   const convex = useConvex();
   const cancel = useMutation(api.screening.mutations.cancelScreeningJob);
   const [exporting, setExporting] = useState(false);
-  const { data: slots } = useProtectedQuery(api.screening.queries.slots, inWorkspace(workspaceId, phase === "running" ? {} : "skip"));
+  // Someone it's shared with reads it (#653): running, cancelling and changing it are its workspace's, and so are the slots it runs in.
+  const guest = Boolean(job.guest);
+  const { data: slots } = useProtectedQuery(api.screening.queries.slots, inWorkspace(workspaceId, phase === "running" && !guest ? {} : "skip"));
 
   // A search's filters come from the search itself, read while its job shows.
   const searchId = job.set?.kind === "search" ? job.set.searchId : undefined;
@@ -96,9 +98,10 @@ export function JobView({
   const SourceIcon = job.set ? SOURCE_ICON[job.set.kind] : undefined;
   const source = job.set?.kind === "saved" ? t("savedPapers") : job.label;
   // Where included papers went: a collection while it exists, the library alone for a job from the results page's old dialog.
-  const savedTo = job.unsaved ? undefined : (job.targetCollectionName ?? (job.targetCollectionId ? undefined : t("yourLibrary")));
-  const pruned = job.prune ? job.label : undefined;
-  const { spent, estimate } = job.credits;
+  // A guest is told neither: both are of a library that isn't theirs.
+  const savedTo = guest || job.unsaved ? undefined : (job.targetCollectionName ?? (job.targetCollectionId ? undefined : t("yourLibrary")));
+  const pruned = !guest && job.prune ? job.label : undefined;
+  const { spent, estimate } = job.credits ?? { spent: undefined, estimate: 0 };
 
   const exportAs = async (kind: "csv" | "json" | "xlsx") => {
     setExporting(true);
@@ -137,7 +140,7 @@ export function JobView({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {job.status === "processing" ? (
+          {guest ? null : job.status === "processing" ? (
             <Button variant="outline" size="sm" onClick={() => cancel({ jobId: job._id }).catch((error) => toast.error(t("cancelFailed"), getErrorMessage(error, t("cancelFailed"))))}>
               <Square className="fill-current" />{t("cancel")}
             </Button>
@@ -185,6 +188,8 @@ export function JobView({
               </span>
             ) : null}
           </div>
+          {/* What it waits on, runs in, changed and cost: a guest sees only that its papers are being got, or why it failed. */}
+          {guest && phase !== "reading" && !job.failure ? null : (
           <div className="grid gap-4 border-t border-border-subtle pt-4 sm:grid-cols-2">
             {phase === "waiting" && blocker ? (
               <div className="space-y-2">
@@ -235,6 +240,7 @@ export function JobView({
               </div>
             )}
           </div>
+          )}
           {active && (savedTo || pruned) ? (
             <div className="flex flex-wrap items-center gap-1.5 border-t border-border-subtle pt-4">
               {savedTo ? <ClippedChip icon={FolderPlus}>{t("savesTo", { name: savedTo })}</ClippedChip> : null}
@@ -410,7 +416,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
                     <AnimatePresence initial={false}>
                       {expanded ? (
                         <motion.div key="detail" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden">
-                          <PaperDetail paper={paper} questions={questions} max={max} minimum={minimum} onAnswer={(key, value) => change(paper, index, key, value)} />
+                          <PaperDetail paper={paper} questions={questions} max={max} minimum={minimum} onAnswer={job.guest ? undefined : (key, value) => change(paper, index, key, value)} />
                         </motion.div>
                       ) : null}
                     </AnimatePresence>
@@ -443,7 +449,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
  * the score that includes it, each question's answer on one line with what it added, and
  * the abstract underneath.
  */
-function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Paper; questions: Question[]; max: number; minimum: number; onAnswer: (questionKey: string, answer: Answer | null) => void }) {
+function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Paper; questions: Question[]; max: number; minimum: number; onAnswer?: (questionKey: string, answer: Answer | null) => void }) {
   const t = useTranslations("screeningPage");
   const score = paper.score ?? 0;
   const { icon: OutcomeIcon, text, bar } = OUTCOME[paper.outcome];
@@ -481,9 +487,10 @@ function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Pape
                         type="button"
                         role="radio"
                         aria-checked={on}
-                        disabled={paper.outcome === "failed"}
-                        onClick={() => onAnswer(q.key, option)}
-                        className={cn("inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-colors", on ? className : "text-muted-foreground hover:bg-muted")}
+                        // Without `onAnswer` the answers are read, not changed: someone the screening is shared with.
+                        disabled={paper.outcome === "failed" || !onAnswer}
+                        onClick={() => onAnswer?.(q.key, option)}
+                        className={cn("inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-colors disabled:pointer-events-none", on ? className : "text-muted-foreground hover:bg-muted")}
                       >
                         <Icon className="size-3.5" />{t(`answer.${option}`)}
                       </button>
@@ -492,9 +499,11 @@ function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Pape
                 </div>
                 <div className="flex justify-end">
                   {given?.changed ? (
-                    <TooltipHint label={t("putBack")}>
-                      <Button variant="ghost" size="icon" className="size-7" aria-label={t("putBack")} onClick={() => onAnswer(q.key, null)}><Undo2 /></Button>
-                    </TooltipHint>
+                    onAnswer ? (
+                      <TooltipHint label={t("putBack")}>
+                        <Button variant="ghost" size="icon" className="size-7" aria-label={t("putBack")} onClick={() => onAnswer(q.key, null)}><Undo2 /></Button>
+                      </TooltipHint>
+                    ) : null
                   ) : given?.confidence !== undefined ? (
                     <span className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground" aria-label={t("confidence", { percent: Math.round(given.confidence * 100) })}>
                       <Meter value={given.confidence} max={1} className="w-10" fill={a === "unclear" ? "bg-warning" : "bg-primary"} />

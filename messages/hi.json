@@ -4335,10 +4335,12 @@
     "share": {
       "share": "साझा करें",
       "shareThis": {
-        "collection": "यह संग्रह साझा करें"
+        "collection": "यह संग्रह साझा करें",
+        "screening": "यह स्क्रीनिंग साझा करें"
       },
       "title": {
-        "collection": "संग्रह साझा करें"
+        "collection": "संग्रह साझा करें",
+        "screening": "स्क्रीनिंग साझा करें"
       },
       "addPeople": "नाम या ईमेल से लोग जोड़ें",
       "inviteEmail": "{email} को आमंत्रित करें",
@@ -4364,7 +4366,8 @@
       "usedOf": "{limit} में से {used}",
       "moreGuests": "और अतिथि",
       "full": {
-        "collection": "{plan} हर संग्रह पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है"
+        "collection": "{plan} हर संग्रह पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है",
+        "screening": "{plan} हर स्क्रीनिंग पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है"
       },
       "failed": "साझाकरण नहीं बदल सका"
     },
@@ -4376,10 +4379,12 @@
       "search": "साझा की गई चीज़ें खोजें",
       "all": "सभी",
       "kinds": {
-        "collection": "संग्रह"
+        "collection": "संग्रह",
+        "screening": "स्क्रीनिंग"
       },
       "size": {
-        "collection": "{count, plural, one {# पेपर} other {# पेपर}}"
+        "collection": "{count, plural, one {# पेपर} other {# पेपर}}",
+        "screening": "{count, plural, one {# पेपर} other {# पेपर}}"
       },
       "runUses": "इन पर आप जो भी चलाते हैं, वह खर्च करता है",
       "yourCredits": "आपके क्रेडिट",
@@ -4392,7 +4397,8 @@
       "more": "और दिखाएँ",
       "from": "{workspace} से",
       "sharedOne": {
-        "collection": "{name} ने एक संग्रह साझा किया"
+        "collection": "{name} ने एक संग्रह साझा किया",
+        "screening": "{name} ने एक स्क्रीनिंग साझा की"
       },
       "pointOwn": "यह आपके अपने वर्कस्पेस में रहता है",
       "pointCredits": "इस पर आप जो चलाते हैं, वह आपके क्रेडिट खर्च करता है",

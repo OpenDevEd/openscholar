@@ -4335,10 +4335,12 @@
     "share": {
       "share": "共享",
       "shareThis": {
-        "collection": "共享此合集"
+        "collection": "共享此合集",
+        "screening": "共享此筛选"
       },
       "title": {
-        "collection": "共享合集"
+        "collection": "共享合集",
+        "screening": "共享筛选"
       },
       "addPeople": "按姓名或邮箱添加",
       "inviteEmail": "邀请 {email}",
@@ -4364,7 +4366,8 @@
       "usedOf": "{used} / {limit}",
       "moreGuests": "更多访客",
       "full": {
-        "collection": "{plan} 允许每个合集有 {count, plural, other {# 位访客}}"
+        "collection": "{plan} 允许每个合集有 {count, plural, other {# 位访客}}",
+        "screening": "{plan} 允许每个筛选有 {count, plural, other {# 位访客}}"
       },
       "failed": "无法更改共享对象"
     },
@@ -4376,10 +4379,12 @@
       "search": "搜索共享内容",
       "all": "全部",
       "kinds": {
-        "collection": "合集"
+        "collection": "合集",
+        "screening": "筛选任务"
       },
       "size": {
-        "collection": "{count, plural, other {# 篇论文}}"
+        "collection": "{count, plural, other {# 篇论文}}",
+        "screening": "{count, plural, other {# 篇论文}}"
       },
       "runUses": "你在这些内容上运行的任务使用",
       "yourCredits": "你的积分",
@@ -4392,7 +4397,8 @@
       "more": "显示更多",
       "from": "来自 {workspace}",
       "sharedOne": {
-        "collection": "{name} 共享了一个合集"
+        "collection": "{name} 共享了一个合集",
+        "screening": "{name} 共享了一个筛选"
       },
       "pointOwn": "它在你自己的工作区里",
       "pointCredits": "你在上面运行的任务使用你的积分",

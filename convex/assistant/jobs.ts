@@ -96,7 +96,7 @@ async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"scr
     unclear: sum((one) => one.outcomes.unclear),
     excluded: sum((one) => one.outcomes.excluded),
     failed: sum((one) => one.outcomes.failed),
-    credits: sum((one) => one.credits.spent ?? 0),
+    credits: sum((one) => one.credits?.spent ?? 0),
     // What the person approved is the first job's cap: each job after holds what was left of it.
     ...(jobs[0].spendCap === undefined ? {} : { cap: jobs[0].spendCap }),
     ...(jobs.some((one) => one.capped) ? { capped: true } : {}),
