@@ -11,14 +11,14 @@
 import { getStatusFilterOptionIds } from "../../../lib/extraction/status-filter-options";
 import type { QueryCtx } from "../../_generated/server";
 import { compareValues, getDocumentSize, v, type Infer } from "convex/values";
-import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
 import { JoinStream } from "../../lib/joinStream";
 import schema from "../../schema";
 import { searchTerms } from "../../lib/searchText";
 import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { ownJob } from "../access";
+import { jobToRead, rowFor } from "../access";
 import { exportRevision } from "../counts";
 import { requireFeature } from "../../featureFlags/guard";
 import { createError } from "../../lib/errors";
@@ -285,18 +285,8 @@ const FILTERS_HELP =
 
 const resultsViewArgs = { jobId: v.id("extractionJobs"), filters: resultsPageFiltersValidator, selectedPaperIds: v.optional(paperSelectionValidator(v.id("extractionPapers"))) };
 
-export const listJobResultsAction = defineUserQuery({
-  path: "extraction/queries:listJobResults",
-  description:
-    "Lists an extraction job's papers with their answers, a page at a time: in the order they were added, by title, or by confidence. " +
-    "Filters keep papers by search text, confidence range, status and the answer to a question. " +
-    FILTERS_HELP,
-  args: { ...resultsViewArgs, sortBy: resultsSortByValidator, paginationOpts: paginationOptsValidator },
-  returns: paginationResultValidator(paginatedPaperWithResultsValidator),
-  run: async (ctx, { userId, workspaceId }, args) => {
-    const job = await ownJob(ctx, workspaceId, args.jobId);
-    if (!job) return { page: [], isDone: true, continueCursor: "" };
-    await requireFeature(ctx, "extraction.enabled", userId);
+/** One page of a job's papers with their answers, in the order and under the filters asked for. */
+async function resultsPage(ctx: QueryCtx, job: Doc<"extractionJobs">, args: { filters: ResultsPageFilters; selectedPaperIds?: Id<"extractionPapers">[]; sortBy: ResultsSortBy; paginationOpts: PaginationOptions }) {
     const filters = await normalizeResultsFilters(args.filters);
     const numItems = normalizePageSize(args.paginationOpts.numItems);
     const { cursor } = args.paginationOpts;
@@ -340,6 +330,23 @@ export const listJobResultsAction = defineUserQuery({
     const kept = along().filterWith(async (paper) => matchesProjectionFilters(paper, filters));
     return await new JoinStream(kept, (paper) => loadPaperResults(ctx, paper), (item) => getDocumentSize({ results: item.results }))
       .paginate({ ...args.paginationOpts, numItems, maximumRowsRead: FILTERED_PAGE_ROWS, maximumBytesRead: RESULTS_PAGE_BYTES });
+  }
+
+export const listJobResultsAction = defineUserQuery({
+  path: "extraction/queries:listJobResults",
+  description:
+    "Lists an extraction job's papers with their answers, a page at a time: in the order they were added, by title, or by confidence. " +
+    "Filters keep papers by search text, confidence range, status and the answer to a question. " +
+    FILTERS_HELP,
+  args: { ...resultsViewArgs, sortBy: resultsSortByValidator, paginationOpts: paginationOptsValidator },
+  returns: paginationResultValidator(paginatedPaperWithResultsValidator),
+  run: async (ctx, actor, args) => {
+    const read = await jobToRead(ctx, actor, args.jobId);
+    if (!read) return { page: [], isDone: true, continueCursor: "" };
+    await requireFeature(ctx, "extraction.enabled", actor.userId);
+    const page = await resultsPage(ctx, read.job, args);
+    // What each paper and answer cost is its workspace's: a guest's rows go without it.
+    return read.guest ? { ...page, page: page.page.map((paper) => ({ ...rowFor(paper, true), results: paper.results.map((result) => rowFor(result, true)) })) } : page;
   },
 });
 export const listJobResults = userQuery(listJobResultsAction);
@@ -375,10 +382,10 @@ export const countJobResultsAction = defineUserQuery({
   description: `Counts an extraction job's papers, and how many of them a set of filters keeps. A count that stopped short of them all comes with \`atLeast\`, and with \`searchCapped\` when the search matched more papers than it returns. ${FILTERS_HELP}`,
   args: { ...resultsViewArgs, includeRevision: v.optional(v.boolean()) },
   returns: v.object({ all: v.number(), matching: v.number(), atLeast: v.optional(v.literal(true)), searchCapped: v.optional(v.literal(true)), revision: v.union(v.number(), v.null()) }),
-  run: async (ctx, { userId, workspaceId }, args) => {
-    const job = await ownJob(ctx, workspaceId, args.jobId);
+  run: async (ctx, actor, args) => {
+    const job = (await jobToRead(ctx, actor, args.jobId))?.job;
     if (!job) return { all: 0, matching: 0, revision: -1 };
-    await requireFeature(ctx, "extraction.enabled", userId);
+    await requireFeature(ctx, "extraction.enabled", actor.userId);
     const { all, matching, atLeast, searchCapped } = await countView(ctx, job, await normalizeResultsFilters(args.filters), args.selectedPaperIds);
     return { all, matching, ...(atLeast ? { atLeast: true as const } : {}), ...(searchCapped ? { searchCapped: true as const } : {}), revision: args.includeRevision ? await exportRevision(ctx, job._id) : null };
   },
@@ -406,10 +413,10 @@ export const summarizeJobResultsAction = defineUserQuery({
     "The filters listJobResults takes narrow it, by status, confidence and other questions' answers (a paper's answer to that question, as listJobResults shows it); its text search isn't one. Use it to compare, tally or describe a job's answers, never pages of its results. `questionKey` is the question's `key` in the job.",
   args: { jobId: v.id("extractionJobs"), questionKey: v.string(), filters: v.optional(resultsPageFiltersValidator) },
   returns: resultsSummaryValidator,
-  run: async (ctx, { userId, workspaceId }, { jobId, questionKey, filters }) => {
-    const job = await ownJob(ctx, workspaceId, jobId);
+  run: async (ctx, actor, { jobId, questionKey, filters }) => {
+    const job = (await jobToRead(ctx, actor, jobId))?.job;
     if (!job) throw createError("NOT_FOUND", "There's no extraction job of yours with that ID.");
-    await requireFeature(ctx, "extraction.enabled", userId);
+    await requireFeature(ctx, "extraction.enabled", actor.userId);
     if (filters?.searchQuery.trim()) throw createError("VALIDATION_ERROR", "A summary can't be narrowed by text search: narrow it by status, confidence or other questions' answers.");
     const question = await ctx.db.query("extractionQuestions").withIndex("by_job_key", (q) => q.eq("jobId", jobId).eq("key", questionKey)).unique();
     if (!question) throw createError("VALIDATION_ERROR", `This job has no question with the key ${questionKey}.`);

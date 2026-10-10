@@ -4338,11 +4338,13 @@
       "share": "Partager",
       "shareThis": {
         "collection": "Partager cette collection",
-        "screening": "Partager ce criblage"
+        "screening": "Partager ce criblage",
+        "extraction": "Partager cette extraction"
       },
       "title": {
         "collection": "Partager la collection",
-        "screening": "Partager le criblage"
+        "screening": "Partager le criblage",
+        "extraction": "Partager l'extraction"
       },
       "addPeople": "Ajouter des personnes par nom ou e-mail",
       "inviteEmail": "Inviter {email}",
@@ -4369,7 +4371,8 @@
       "moreGuests": "Plus d'invités",
       "full": {
         "collection": "{plan} permet {count, plural, one {# invité} other {# invités}} par collection",
-        "screening": "{plan} permet {count, plural, one {# invité} other {# invités}} par criblage"
+        "screening": "{plan} permet {count, plural, one {# invité} other {# invités}} par criblage",
+        "extraction": "{plan} permet {count, plural, one {# invité} other {# invités}} par extraction"
       },
       "failed": "Impossible de modifier le partage"
     },
@@ -4382,11 +4385,13 @@
       "all": "Tout",
       "kinds": {
         "collection": "Collections",
-        "screening": "Criblages"
+        "screening": "Criblages",
+        "extraction": "Extractions"
       },
       "size": {
         "collection": "{count, plural, one {# article} other {# articles}}",
-        "screening": "{count, plural, one {# article} other {# articles}}"
+        "screening": "{count, plural, one {# article} other {# articles}}",
+        "extraction": "{count, plural, one {# article} other {# articles}}"
       },
       "runUses": "Tout ce que vous lancez dessus utilise",
       "yourCredits": "vos crédits",
@@ -4400,7 +4405,8 @@
       "from": "De {workspace}",
       "sharedOne": {
         "collection": "{name} a partagé une collection",
-        "screening": "{name} a partagé un criblage"
+        "screening": "{name} a partagé un criblage",
+        "extraction": "{name} a partagé une extraction"
       },
       "pointOwn": "Elle se trouve dans votre propre espace de travail",
       "pointCredits": "Ce que vous lancez dessus utilise vos crédits",

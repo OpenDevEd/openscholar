@@ -4340,11 +4340,13 @@
       "share": "Share",
       "shareThis": {
         "collection": "Share this collection",
-        "screening": "Share this screening"
+        "screening": "Share this screening",
+        "extraction": "Share this extraction"
       },
       "title": {
         "collection": "Share collection",
-        "screening": "Share screening"
+        "screening": "Share screening",
+        "extraction": "Share extraction"
       },
       "addPeople": "Add people by name or email",
       "inviteEmail": "Invite {email}",
@@ -4371,7 +4373,8 @@
       "moreGuests": "More guests",
       "full": {
         "collection": "{plan} allows {count, plural, one {# guest} other {# guests}} on each collection",
-        "screening": "{plan} allows {count, plural, one {# guest} other {# guests}} on each screening"
+        "screening": "{plan} allows {count, plural, one {# guest} other {# guests}} on each screening",
+        "extraction": "{plan} allows {count, plural, one {# guest} other {# guests}} on each extraction"
       },
       "failed": "Couldn't change who this is shared with"
     },
@@ -4384,11 +4387,13 @@
       "all": "All",
       "kinds": {
         "collection": "Collections",
-        "screening": "Screenings"
+        "screening": "Screenings",
+        "extraction": "Extractions"
       },
       "size": {
         "collection": "{count, plural, one {# paper} other {# papers}}",
-        "screening": "{count, plural, one {# paper} other {# papers}}"
+        "screening": "{count, plural, one {# paper} other {# papers}}",
+        "extraction": "{count, plural, one {# paper} other {# papers}}"
       },
       "runUses": "Anything you run on these uses",
       "yourCredits": "your credits",
@@ -4402,7 +4407,8 @@
       "from": "From {workspace}",
       "sharedOne": {
         "collection": "{name} shared a collection",
-        "screening": "{name} shared a screening"
+        "screening": "{name} shared a screening",
+        "extraction": "{name} shared an extraction"
       },
       "pointOwn": "It sits in your own workspace",
       "pointCredits": "Work you run on it uses your credits",

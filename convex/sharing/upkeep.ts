@@ -52,7 +52,9 @@ export const close = internalMutation({
     const items =
       kind === "collection"
         ? await ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId)).paginate(page)
-        : await ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate(page);
+        : kind === "screening"
+          ? await ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate(page)
+          : await ctx.db.query("extractionJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate(page);
     for (const item of items.page) {
       if (await hasGuests(ctx, item._id)) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.follow, { kind, item: item._id, cursor: null, closed: true });
     }
