@@ -24,9 +24,8 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { showStyledToast } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
-import { bareWorkspacePath } from "@/lib/workspaces/paths";
+import { switchTarget } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
-import { pageItem } from "./item-home";
 import { Framed, Opening, PlanChip, settingsHref, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 import { FREE_MEMBERS } from "@/lib/billing/plans";
 
@@ -35,21 +34,6 @@ const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-left transiti
 /** The square at the head of a rail card that the workspace tile flies into from the rail. */
 const HEAD = 40;
 
-
-/**
- * Where a switch to another workspace lands: the same page there, or where its section starts
- * when the page shows an item, which is in one workspace only (Slack and Linear do the same).
- */
-export function switchTarget(slug: string | undefined, pathname: string, search: string) {
-  const path = bareWorkspacePath(pathname);
-  // An organization's own settings have no page in your own workspace: its settings start there.
-  if (!slug && (path === "/settings/workspace" || path.startsWith("/settings/workspace/"))) return "/settings";
-  const params = new URLSearchParams(search);
-  const item = pageItem(path, params);
-  if (!item) return workspaceHref(slug, path) + (search ? `?${params.toString()}` : "");
-  const section = { search: "/", screening: "/screening", extraction: "/extraction", collection: "/library", library: "/evidence-libraries", profile: "/authors" }[item.kind];
-  return workspaceHref(slug, section);
-}
 
 /** What you are in a workspace, as an icon and a word, so it reads apart from the plan beside it. */
 function RoleOf({ workspace }: { workspace: WorkspaceRow }) {

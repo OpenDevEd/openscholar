@@ -24,7 +24,7 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useCurrentWorkspace, useWorkspaces } from "./parts";
-import { switchTarget } from "./switcher";
+import { switchTarget } from "@/lib/workspaces/paths";
 import { WorkspacePicker } from "./workspace-picker";
 
 export type Movable = "collection" | "search" | "screening" | "extraction" | "chat" | "author";
