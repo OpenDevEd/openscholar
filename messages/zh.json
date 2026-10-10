@@ -3886,6 +3886,12 @@
         "doing": "正在查看变更",
         "did": "已查看变更",
         "where": "动态"
+      },
+      "memberCap": {
+        "doing": "正在更改成员的积分上限",
+        "did": "已更改成员的积分上限",
+        "where": "套餐和积分",
+        "ask": "更改成员的积分上限"
       }
     },
     "asks": {
@@ -4158,7 +4164,15 @@
       "membersDraw": "{count, number} 名成员使用",
       "refillOn": "{date} 补充 {amount}",
       "upToMembers": "最多 {count, number} 名成员",
-      "included": "包含"
+      "included": "包含",
+      "spendingThisMonth": "本月支出",
+      "yourSpendingThisMonth": "你本月的支出",
+      "creditsCount": "{count, plural, other {# 积分}}",
+      "spentOfCap": "{spent} / {cap}",
+      "cap": "上限",
+      "capNone": "无",
+      "noCap": "不设上限",
+      "capAMonth": "每月 {amount}"
     },
     "couldntInvite": "组织已创建，但邀请未能发出。请在其成员设置中发送。",
     "fromCredits": "使用 {name} 的积分",
