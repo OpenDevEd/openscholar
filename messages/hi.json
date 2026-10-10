@@ -1865,7 +1865,8 @@
     "startFailed": "स्क्रीनिंग शुरू नहीं हो सकी",
     "showAnswers": "{title} के उत्तर दिखाएँ",
     "hideAnswers": "{title} के उत्तर छिपाएँ",
-    "yesOrNo": "हाँ या नहीं"
+    "yesOrNo": "हाँ या नहीं",
+    "lost": "यह स्क्रीनिंग हटा दी गई है या अब आपके साथ साझा नहीं है"
   },
   "connectionsPage": {
     "connectedApps": "कनेक्टेड ऐप्स",

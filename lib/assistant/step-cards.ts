@@ -46,3 +46,11 @@ export function shownSteps<S extends CardStep & { reads?: true; request?: number
   const recovered = (step: S, later: S) => later.action === step.action && later.variant === step.variant && later.status === "done" && (later.request ?? -1) > (step.request ?? Infinity);
   return steps.filter((step, i) => !(step.reads && step.status === "failed" && steps.slice(i + 1).some((later) => recovered(step, later))));
 }
+
+/**
+ * Why a step asks first, as the sentence its card gives (messages `assistant.asks`): it changes
+ * many records at once; other people see a change that can be undone; other people see one
+ * that can't; or it can't be undone. `undoable` only says so beside `outside` (convex/assistant/tools.ts).
+ */
+export const whyAsked = (step: { batch?: number; outside?: true; undoable?: true }) =>
+  step.batch !== undefined ? "whyMany" : !step.outside ? "whyUndo" : step.undoable ? "whyShown" : "whyOutside";

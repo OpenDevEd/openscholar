@@ -1867,7 +1867,8 @@
     "startFailed": "Couldn't start the screening",
     "showAnswers": "Show the answers for {title}",
     "hideAnswers": "Hide the answers for {title}",
-    "yesOrNo": "Yes or no"
+    "yesOrNo": "Yes or no",
+    "lost": "This screening was deleted or is no longer shared with you"
   },
   "connectionsPage": {
     "connectedApps": "Connected apps",
