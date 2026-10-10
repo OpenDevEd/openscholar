@@ -51,12 +51,14 @@ const TONE: Record<Exclude<Phase, "processing">, StatusTone> = {
 type Translate = ReturnType<typeof useTranslations<"screeningPage">>;
 
 /** What a job is called: the name it was given as it started, else its papers' set, as it was named then. */
-export function jobName(t: Translate, job: Pick<JobRow, "createdAt"> & Partial<Pick<JobRow, "name" | "set" | "label">>, date: (at: number) => string) {
+export function jobName(t: Translate, job: Pick<JobRow, "createdAt"> & Partial<Pick<JobRow, "name" | "set" | "label"> & Pick<Job, "source">>, date: (at: number) => string) {
   if (job.name) return job.name;
-  if (job.set?.kind === "saved") return t("savedPapers");
+  // Someone it's shared with is told the kind of its papers' set, not which one (`source`).
+  const kind = job.set?.kind ?? job.source;
+  if (kind === "saved") return t("savedPapers");
   if (!job.label) return t("jobOn", { date: date(job.createdAt) });
   const name = job.label.charAt(0).toUpperCase() + job.label.slice(1);
-  return job.set?.kind === "screening" ? t("includedIn", { name }) : name;
+  return kind === "screening" ? t("includedIn", { name }) : name;
 }
 
 export function JobView({
@@ -95,8 +97,9 @@ export function JobView({
   const done = doneOf(job);
   const active = phase === "running" || phase === "waiting" || phase === "reading";
   const name = jobName(t, job, (at) => format.dateTime(new Date(at), { dateStyle: "medium" }));
-  const SourceIcon = job.set ? SOURCE_ICON[job.set.kind] : undefined;
-  const source = job.set?.kind === "saved" ? t("savedPapers") : job.label;
+  const sourceKind = job.set?.kind ?? job.source;
+  const SourceIcon = sourceKind ? SOURCE_ICON[sourceKind] : undefined;
+  const source = sourceKind === "saved" ? t("savedPapers") : job.label;
   // Where included papers went: a collection while it exists, the library alone for a job from the results page's old dialog.
   // A guest is told neither: both are of a library that isn't theirs.
   const savedTo = guest || job.unsaved ? undefined : (job.targetCollectionName ?? (job.targetCollectionId ? undefined : t("yourLibrary")));

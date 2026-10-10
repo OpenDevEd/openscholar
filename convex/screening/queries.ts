@@ -182,7 +182,7 @@ export const getScreeningJobAction = defineUserQuery({
   path: "screening/queries:getScreeningJob",
   description:
     "Read a screening job's source, questions, scoring rules, decision revision and outcome counts. Its workspace's members read it, with `guests`: how many people outside the workspace it's shared with, invitations still waiting included. " +
-    "Someone it's shared with reads it from their own workspace, with `guest`: what they may do with it and whose it is, and without what it cost or where its papers went, which are its workspace's.",
+    "Someone it's shared with reads it from their own workspace, with `guest`: what they may do with it and whose it is, and `source`, the kind of thing its papers came from. They get neither what it cost, where its papers went, nor which collection, search or screening they came from: those are its workspace's.",
   args: { jobId: v.id("screeningJobs") },
   returns: v.union(
     v.null(),
@@ -220,6 +220,8 @@ export const getScreeningJobAction = defineUserQuery({
       // How many people outside its workspace it's shared with, for its members; what a guest may do with it and whose it is, for a guest (#653).
       guests: v.optional(v.number()),
       guest: v.optional(v.object({ role: guestRoleValidator, from: sharedFromValidator })),
+      // For a guest, in place of `set`: the kind of thing its papers came from, and not which one. Its name is `label`, as the job itself goes by it.
+      source: v.optional(v.union(v.literal("search"), v.literal("collection"), v.literal("saved"), v.literal("screening"))),
     })
   ),
   run: async (ctx, actor, args) => {
@@ -232,11 +234,12 @@ export const getScreeningJobAction = defineUserQuery({
     const counts = await readScreeningProgressCounts(ctx, job);
     const unclear = kept?.unclear ?? 0;
     const target = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
-    const { spendCap, ...facts } = await factsOf(ctx, job);
-    // What it cost, the most it may spend and the collections its papers went to and came from are its workspace's.
+    const { spendCap, set, ...facts } = await factsOf(ctx, job);
+    // What it cost, the most it may spend, the collections its papers went to and which collection, search or screening they came from are its workspace's.
     const own = role
-      ? { guest: { role, from: await workspaceFrom(ctx, job.workspaceId) } }
+      ? { guest: { role, from: await workspaceFrom(ctx, job.workspaceId) }, ...(set ? { source: set.kind } : {}) }
       : {
+          set,
           ...(spendCap === undefined ? {} : { spendCap }),
           // A job still to get its papers names the collection it will make.
           ...(target ? { targetCollectionName: target.name } : job.newCollection ? { targetCollectionName: job.newCollection } : {}),

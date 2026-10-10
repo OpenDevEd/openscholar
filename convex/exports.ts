@@ -198,8 +198,10 @@ export const screeningJob = internalQuery({
   handler: async (ctx, { userId, workspaceId, jobId }) => {
     const job = await readableJob(ctx, { userId, workspaceId }, jobId);
     if (!job) return null;
+    // Which collection, search or screening its papers came from is its workspace's: a guest's export says nothing of it.
+    const set = job.workspaceId === workspaceId ? job.set : undefined;
     const { status, questions, scoringConfig, totalPapers, createdAt, completedAt } = job;
-    return { _id: jobId, revision: await screeningRevision(ctx, job), set: job.set, snapshot: job.snapshot, serverEffort: job.serverEffort, first: job.first, last: job.last, status, questions, scoringConfig, totalPapers, qualifiedPapers: (await readScreeningProgressCounts(ctx, job)).qualifiedCount, createdAt, completedAt };
+    return { _id: jobId, revision: await screeningRevision(ctx, job), set, snapshot: job.snapshot, serverEffort: job.serverEffort, first: job.first, last: job.last, status, questions, scoringConfig, totalPapers, qualifiedPapers: (await readScreeningProgressCounts(ctx, job)).qualifiedCount, createdAt, completedAt };
   },
 });
 

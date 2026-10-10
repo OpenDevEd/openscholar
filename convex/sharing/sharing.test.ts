@@ -243,10 +243,10 @@ it("opens a shared collection to its guest from their own workspace, and to nobo
 });
 
 it("opens a shared screening to its guest to read and export from their own workspace, and its answers to nobody outside its workspace", async () => {
-  const { t, alice, carol, dave, users, workspaceId, club } = await lab();
+  const { t, alice, carol, dave, users, workspaceId, club, item: trials } = await lab();
   const jobId = await t.run(async (ctx) => {
     const jobId = await insertJob(ctx, {
-      userId: users.alice, workspaceId, name: "Pilot", status: "completed", totalPapers: 1, questions: [{ key: "q1", question: "Randomized?" }],
+      userId: users.alice, workspaceId, name: "Pilot", set: { kind: "collection", collectionId: trials.id }, label: "Trials", status: "completed", totalPapers: 1, questions: [{ key: "q1", question: "Randomized?" }],
       scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }] },
       createdAt: 1, updatedAt: 1,
     });
@@ -264,6 +264,9 @@ it("opens a shared screening to its guest to read and export from their own work
   expect(hers).toMatchObject({ name: "Pilot", totalPapers: 1, guest: { role: "viewer", from: { name: "lab", organization: true } } });
   expect(hers).not.toHaveProperty("credits");
   expect(hers).not.toHaveProperty("guests");
+  // She's told its papers came from a collection, by the name the job goes by, and not which collection: that one isn't shared with her.
+  expect(hers).toMatchObject({ source: "collection", label: "Trials" });
+  expect(hers).not.toHaveProperty("set");
   const papers = (as: typeof carol, from?: Id<"workspaces">) => as.query(api.screening.papers.list, { jobId, outcome: "included", paginationOpts: { cursor: null, numItems: 10 }, ...(from ? { workspaceId: from } : {}) });
   expect((await papers(carol)).page.map((paper) => paper.title)).toEqual(["One"]);
   expect((await carol.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 10 } })).page).toHaveLength(1);
@@ -273,6 +276,8 @@ it("opens a shared screening to its guest to read and export from their own work
   const carolOwn = await t.run((ctx) => personalWorkspaceOf(ctx, users.carol));
   const exported = () => t.query(internal.exports.page, { userId: users.carol, workspaceId: carolOwn, source: { kind: "screening", jobId }, format: "json", cursor: null, written: 0 });
   expect((await exported()).count).toBe(1);
+  expect(await t.query(internal.exports.screeningJob, { userId: users.carol, workspaceId: carolOwn, jobId })).not.toHaveProperty("set");
+  expect(await t.query(internal.exports.screeningJob, { userId: users.alice, workspaceId, jobId })).toMatchObject({ set: { kind: "collection", collectionId: trials.id } });
   await expect(carol.mutation(api.screening.papers.answer, { jobId, paperId: "https://openalex.org/W1", questionKey: "q1", answer: false })).rejects.toMatchObject({ data: { code: "SCREENING_JOB_NOT_FOUND" } });
   // Not while she acts in the club, and Dave was given nothing.
   expect((await papers(carol, club)).page).toEqual([]);

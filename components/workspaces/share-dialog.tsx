@@ -6,7 +6,6 @@
 // emailed invitation.
 
 import { useDeferredValue, useState } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
 import { usePaginatedQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { useFormatter, useNow, useTranslations } from "next-intl";
@@ -24,7 +23,6 @@ import type { GuestRole, SharedKind } from "@/convex/sharing/validators";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { PlanChip, useCurrentWorkspace, usePlanOf, WorkspaceTile } from "./parts";
 import { SHARED_KINDS } from "./shared";
@@ -91,8 +89,6 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
   const workspaceId = useWorkspace();
   const workspace = useCurrentWorkspace();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
-  const pathname = usePathname();
-  const params = useSearchParams();
   const [query, setQuery] = useState("");
   const text = useDeferredValue(query.trim());
   const searched = usePaginatedQuery(api.sharing.guests.candidates, inWorkspace(workspaceId, text ? { kind, id, text } : "skip"), { initialNumItems: SUGGESTED });
@@ -178,7 +174,8 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
           </>
         }
         // The link without the organization in it opens for a member in the organization and for a guest in their own workspace.
-        onCopy={() => navigator.clipboard.writeText(`${window.location.origin}${bareWorkspacePath(pathname)}${params.size ? `?${params}` : ""}`)}
+        // The item's own address, without its workspace: a guest opens it in theirs, and a member is taken to the item's (item-home.tsx). The page's address may not name it, as /screening doesn't for the newest screening.
+        onCopy={() => navigator.clipboard.writeText(`${window.location.origin}${SHARED_KINDS[kind].href(id)}`)}
       />
     </>
   );
