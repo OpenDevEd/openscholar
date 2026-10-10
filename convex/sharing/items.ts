@@ -19,11 +19,11 @@ export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces
 
 /**
  * Each kind's table, what its row is called, how much it holds, the word for one in a sentence,
- * and the roles a guest of one can be given. A collection's guests view it: changing what's in
- * one from outside its workspace comes with the actions that let them.
+ * and the roles a guest of one can be given. A collection's editor puts papers in it and takes
+ * them out (../library/collectionMembership.ts `editableCollection`).
  */
 const KINDS = {
-  collection: { table: "collections", name: (row: Doc<"collections">) => row.name, size: (row: Doc<"collections">) => row.itemCount, word: "collection", roles: ["viewer"] },
+  collection: { table: "collections", name: (row: Doc<"collections">) => row.name, size: (row: Doc<"collections">) => row.itemCount, word: "collection", roles: ["viewer", "editor"] },
 } as const satisfies { [K in SharedKind]: { table: TableNames; name: (row: never) => string; size: (row: never) => number; word: string; roles: readonly GuestRole[] } };
 
 export const kindWord = (kind: SharedKind) => KINDS[kind].word;

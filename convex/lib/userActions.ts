@@ -102,7 +102,11 @@ type Shows<Args extends PropertyValidators> = { shown?(args: ObjectType<Args>): 
  * and what it returned. A change that left things as they were declares nothing. An action
  * notes what it did in the mutation that writes it (../activity/notes.ts).
  */
-type Records<Args extends PropertyValidators, Returns extends GenericValidator> = { activity?(args: ObjectType<Args>, result: Infer<Returns>): Note | Note[] | null | undefined };
+type Records<Args extends PropertyValidators, Returns extends GenericValidator> = {
+  activity?(args: ObjectType<Args>, result: Infer<Returns>): Note | Note[] | null | undefined;
+  /** The workspace whose item the change was to, where that can be another than the one the person acts in: a guest's change to an item shared with them (#653). */
+  activityIn?(ctx: QueryCtx, actor: Acting, args: ObjectType<Args>): Promise<Id<"workspaces">>;
+};
 
 export type UserMutation<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
   Labels<keyof Args & string> &
@@ -316,7 +320,10 @@ export function assistantQuery<Args extends PropertyValidators, Returns extends 
 /** Runs a change and writes what it did to its items' Activity, in the change's own transaction. */
 async function changed<Args extends PropertyValidators, Returns extends GenericValidator>(ctx: MutationCtx, entry: UserMutation<Args, Returns>, actor: Acting, args: ObjectType<Args>) {
   const result = await entry.run(ctx, actor, args);
-  if (entry.activity) await noteActivity(ctx, { workspaceId: actor.workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, entry.activity(args, result));
+  if (entry.activity) {
+    const workspaceId = entry.activityIn ? await entry.activityIn(ctx, actor, args) : actor.workspaceId;
+    await noteActivity(ctx, { workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, entry.activity(args, result));
+  }
   return result;
 }
 

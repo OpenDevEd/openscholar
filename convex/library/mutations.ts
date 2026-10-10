@@ -12,8 +12,8 @@ import { noteActivity } from "../activity/notes";
 import { undoCommandValidator } from "../../lib/research/records";
 import { canonical, findItem } from "./find";
 import { libraryCountRow } from "./counter";
-import { addCollectionMembership, livePlaces, removeCollectionMembership } from "./collectionMembership";
-import { followed, inFollowedCollection } from "./followed";
+import { addCollectionMembership, editableCollection, livePlaces, removeCollectionMembership } from "./collectionMembership";
+import { collectionHome, followed, inFollowedCollection, shownOutside } from "./followed";
 import { authorDisplay, mergePaperMetadata } from "../../lib/library/paper-metadata";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { personalRatingRow, rateItem, ratingOrNone, requireRating, rerate as rerateCopy, rerateMemberStep, setPersonalRating } from "../ratings";
@@ -125,13 +125,6 @@ export async function upsertLibraryItem(
 /** The person's own rating of a paper, the same everywhere (#655), or null. */
 async function ownRating(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) {
   return (await personalRatingRow(ctx, userId, paperId))?.rating ?? null;
-}
-
-async function ownedCollection(ctx: MutationCtx, workspaceId: Id<"workspaces">, collectionId: Id<"collections">) {
-  const collection = await ctx.db.get("collections", collectionId);
-  if (!collection) throw createError("NOT_FOUND", "This collection no longer exists.");
-  if (collection.workspaceId !== workspaceId) throw createError("FORBIDDEN", "Not your collection");
-  return collection;
 }
 
 /** What takes a paper out of a collection again, or puts it back: the undo of a change to its place there. */
@@ -515,8 +508,10 @@ export const restoreLibraryItemForAssistant = assistantMutation(restoreLibraryIt
 export const setPaperInCollectionAction = defineUserMutation({
   path: "library/mutations:setPaperInCollection",
   activity: ({ paper, collectionId, inCollection }, { undo }) => (undo ? { kind: "collection", id: collectionId, happened: inCollection ? "added" : "removed", count: 1, ...("title" in paper ? { detail: paper.title } : {}) } : null),
+  activityIn: collectionHome,
   description:
     "Adds a paper to one of the person's collections, saving it to their library first if needed, or takes it out of the collection. Taking it out keeps it in the library. " +
+    "A collection shared with the person to edit takes papers the same way: the paper is saved to that collection's own library, not the person's. " +
     "The paper is given whole, or by its ID alone when it's already in the library. " +
     "A change returns `undo`: the action to run and the arguments to run it with to put the collection back as it was. Undoing an add leaves the paper in the library.",
   // `assignedAt` is when the paper was put in the collection. Taking it out takes only that
@@ -526,9 +521,12 @@ export const setPaperInCollectionAction = defineUserMutation({
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, { userId, workspaceId }, { paper, collectionId, inCollection, assignedAt }) => {
-    const collection = await ownedCollection(ctx, workspaceId, collectionId);
+  asksFirst: shownOutside,
+  run: async (ctx, actor, { paper, collectionId, inCollection, assignedAt }) => {
+    const collection = await editableCollection(ctx, actor, collectionId);
+    // The collection's own library: for a guest who edits it, not the one they act in.
+    const { userId } = actor;
+    const { workspaceId } = collection;
     const whole = "title" in paper;
     const item = whole && inCollection ? await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId, workspaceId }, paper)) : await findItem(ctx, workspaceId, paper.openalexId);
     if (!whole && paper.savedAt !== undefined && item && item.savedAt !== paper.savedAt) throw createError("CONFLICT", "This paper was removed and saved again since then, so the collection was left as it is.");

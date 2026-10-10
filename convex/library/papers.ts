@@ -14,7 +14,8 @@ import { spender } from "../paperSets/search";
 import { trimPaperData, type WorkInput } from "../../lib/library/trim-paper-data";
 import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
 import { workUrl } from "../../lib/openalex/work-id";
-import { followed } from "./followed";
+import { collectionHome, followed, shownOutside } from "./followed";
+import { editableCollection } from "./collectionMembership";
 import { checkSave, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
 import { canonical, findItem } from "./find";
 
@@ -65,6 +66,7 @@ export const saveForAssistant = assistantAction(saveAction);
 export const collectAction = defineUserMutation({
   path: "library/papers:collect",
   activity: ({ collectionId, inCollection }, { undo }) => (undo ? { kind: "collection", id: collectionId, happened: inCollection ? "added" : "removed", count: 1 } : null),
+  activityIn: collectionHome,
   description:
     "Puts a paper that's in the person's library into one of their collections, or takes it out, by the paper's ID alone, as results give it. `inCollection` is true to put it in and false to take it out. " +
     "It takes a paper already in the library: to save one and put it in a collection, call library/papers:save with `collectionId` instead. Taking it out keeps it in the library. " +
@@ -75,10 +77,19 @@ export const collectAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   // A library may follow the collection, which shows the change outside the account.
-  asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
+  asksFirst: shownOutside,
   run: async (ctx, actor, { id, collectionId, inCollection }) => {
-    const item = await findItem(ctx, actor.workspaceId, id);
-    if (inCollection && !item) throw createError("NOT_FOUND", "This paper isn't in the library yet. Call library/papers:save with this collectionId: it saves the paper and puts it in the collection.");
+    // A collection's papers are its own workspace's library's: for one shared with the person to edit, not theirs.
+    const { workspaceId } = await editableCollection(ctx, actor, collectionId);
+    const item = await findItem(ctx, workspaceId, id);
+    if (inCollection && !item) {
+      throw createError(
+        "NOT_FOUND",
+        workspaceId === actor.workspaceId
+          ? "This paper isn't in the library yet. Call library/papers:save with this collectionId: it saves the paper and puts it in the collection."
+          : "This paper isn't in that collection's library yet. Put it there with library/mutations:setPaperInCollection, giving the paper whole.",
+      );
+    }
     // By the ID the paper is saved under: one saved before the library kept one form is under the ID it was given.
     return await setPaperInCollectionAction.run(ctx, actor, { paper: { openalexId: item?.openalexId ?? canonical(id) }, collectionId, inCollection });
   },

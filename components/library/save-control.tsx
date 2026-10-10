@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useAuth, useClerk } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { create } from "zustand";
-import { BookCheck, BookPlus, Folder, FolderCheck, Plus, Search } from "@/components/icons";
+import { BookCheck, BookPlus, Building2, Folder, FolderCheck, Plus, Search, UserRound } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { FunctionReturnType } from "convex/server";
@@ -32,7 +32,8 @@ import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspace
 
 /** A removal's ID: the server keeps what was removed for a day, for Undo. */
 type Removal = Id<"libraryRemovals">;
-type Pending = { value: boolean; token: number };
+/** `elsewhere`: a change to a collection of another workspace's, shared with the person to edit (#653), which leaves their own library as it is. */
+type Pending = { value: boolean; token: number; elsewhere?: true };
 
 let lastToken = 0;
 
@@ -47,7 +48,7 @@ const usePending = create<{
   collections: Record<string, Record<string, Pending>>;
   setSaved: (paperId: string, value: boolean) => number;
   settleSaved: (paperId: string, token: number) => void;
-  setCollection: (paperId: string, collectionId: string, value: boolean) => number;
+  setCollection: (paperId: string, collectionId: string, value: boolean, elsewhere?: boolean) => number;
   settleCollection: (paperId: string, collectionId: string, token: number) => void;
 }>((set) => ({
   saved: {},
@@ -63,10 +64,10 @@ const usePending = create<{
       const { [paperId]: _settled, ...rest } = state.saved;
       return { saved: rest };
     }),
-  setCollection: (paperId, collectionId, value) => {
+  setCollection: (paperId, collectionId, value, elsewhere) => {
     const token = ++lastToken;
     set((state) => ({
-      collections: { ...state.collections, [paperId]: { ...state.collections[paperId], [collectionId]: { value, token } } },
+      collections: { ...state.collections, [paperId]: { ...state.collections[paperId], [collectionId]: { value, token, ...(elsewhere ? { elsewhere: true as const } : {}) } } },
     }));
     return token;
   },
@@ -211,7 +212,7 @@ export function SaveControl({
   const pendingCollections =
     usePending((state) => state.collections[paper.id]) ?? NO_PENDING_COLLECTIONS;
   const inCollection =
-    Object.values(pendingCollections).some((pending) => pending.value) || Boolean(saved?.inCollection);
+    Object.values(pendingCollections).some((pending) => pending.value && !pending.elsewhere) || Boolean(saved?.inCollection);
   const label = isSaved ? t("removeFromLibrary") : t("saveToLibrary");
   const folderButton = (
     <Button
@@ -299,12 +300,13 @@ function useSetInCollection(paper: WorkInput) {
   const t = useTranslations("saveToLibrary");
   const { userId } = useAuth();
   const setInCollection = useWorkspaceMutation(api.library.mutations.setPaperInCollection);
-  return (collectionId: Id<"collections">, add: boolean) => {
+  // `elsewhere`: the collection is another workspace's, so the paper is saved to that one's library, not the person's.
+  return (collectionId: Id<"collections">, add: boolean, elsewhere = false) => {
     const { setCollection, settleCollection, setSaved, settleSaved } = usePending.getState();
-    const token = setCollection(paper.id, collectionId, add);
-    const savedToken = add ? setSaved(paper.id, true) : undefined;
+    const token = setCollection(paper.id, collectionId, add, elsewhere);
+    const savedToken = add && !elsewhere ? setSaved(paper.id, true) : undefined;
     // A paper added to a collection is saved again on its own terms, not restored.
-    if (add) forgetRemoval(userId, paper.id);
+    if (add && !elsewhere) forgetRemoval(userId, paper.id);
     return setInCollection({ paper: paperArgs(paper), collectionId, inCollection: add })
       .then(() => undefined)
       .catch((error) => {
@@ -327,7 +329,7 @@ function CollectionsPanel({
 }: {
   paperId: string;
   pending: Record<string, Pending>;
-  onToggle: (collectionId: Id<"collections">, add: boolean) => void;
+  onToggle: (collectionId: Id<"collections">, add: boolean, elsewhere: boolean) => void;
   onNew: () => void;
 }) {
   const t = useTranslations("saveToLibrary");
@@ -338,7 +340,7 @@ function CollectionsPanel({
   useCollectionDialogsReady();
 
   const loadingMembers = picker.isLoading;
-  const checkedIds = new Set<string>(picker.collections.filter((collection) => collection.containsItem).map((collection) => collection._id));
+  const checkedIds = new Set<string>([...picker.collections, ...picker.shared].filter((collection) => collection.containsItem).map((collection) => collection._id));
   for (const [collectionId, { value: checked }] of Object.entries(pending)) {
     if (checked) checkedIds.add(collectionId);
     else checkedIds.delete(collectionId);
@@ -366,10 +368,11 @@ function CollectionsPanel({
       </div>
       <CollectionChecklist
         collections={picker.isLoading ? undefined : picker.collections}
+        shared={picker.shared}
         searching={picker.search.length > 0}
         onScroll={picker.onScroll}
         checkedIds={checkedIds}
-        onToggle={(collectionId, checked) => onToggle(collectionId, !checked)}
+        onToggle={(collectionId, checked, elsewhere) => onToggle(collectionId, !checked, elsewhere)}
         // Kept still until the paper's collections arrive, so a tick can't land on stale state.
         className={cn(loadingMembers && "pointer-events-none opacity-50")}
       />
@@ -384,24 +387,30 @@ function CollectionsPanel({
   );
 }
 
+type Listed = { _id: Id<"collections">; name: string; itemCount: number; from?: { name: string; organization: boolean } };
+
 function CollectionChecklist({
   collections,
+  shared,
   searching,
   checkedIds,
   onToggle,
   onScroll,
   className,
 }: {
-  collections: Array<{ _id: Id<"collections">; name: string; itemCount: number }> | undefined;
+  collections: Listed[] | undefined;
+  /** The ones other workspaces shared with the person to edit (#653), under their own. */
+  shared: Listed[];
   searching: boolean;
   checkedIds: ReadonlySet<string>;
-  onToggle: (collectionId: Id<"collections">, isCurrentlyChecked: boolean) => void;
+  onToggle: (collectionId: Id<"collections">, isCurrentlyChecked: boolean, elsewhere: boolean) => void;
   onScroll: (event: UIEvent<HTMLElement>) => void;
   className?: string;
 }) {
   const t = useTranslations("libraryPage");
+  const ts = useTranslations("workspaces.shared");
 
-  if (!collections || collections.length === 0) {
+  if (!collections || collections.length + shared.length === 0) {
     return (
       // Held at its size, unseen, until the first page arrives.
       <p className={cn("text-sm text-muted-foreground text-center py-4", !collections && "invisible")}>
@@ -410,33 +419,47 @@ function CollectionChecklist({
     );
   }
 
+  const row = (collection: Listed) => {
+    const isChecked = checkedIds.has(collection._id);
+    const From = collection.from?.organization ? Building2 : UserRound;
+    return (
+      <label
+        key={collection._id}
+        className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted transition-colors cursor-pointer"
+      >
+        <Checkbox
+          checked={isChecked}
+          onCheckedChange={() => onToggle(collection._id, isChecked, collection.from !== undefined)}
+        />
+        <TooltipHint label={collection.name} onlyWhenClipped>
+          <span className="text-sm font-medium truncate flex-1">
+            {collection.name}
+          </span>
+        </TooltipHint>
+        {/* Whose it is: the paper goes into that workspace's library. */}
+        {collection.from ? (
+          <TooltipHint label={collection.from.name} onlyWhenClipped>
+            <span className="inline-flex h-5 max-w-24 shrink-0 items-center gap-1 rounded-full bg-muted px-2 text-2xs text-muted-foreground">
+              <From className="size-3 shrink-0" />
+              <span className="min-w-0 truncate">{collection.from.name}</span>
+            </span>
+          </TooltipHint>
+        ) : null}
+        <Badge
+          variant="secondary"
+          className="text-3xs h-4 px-1 shrink-0"
+        >
+          {collection.itemCount}
+        </Badge>
+      </label>
+    );
+  };
+
   return (
     <div className={cn("max-h-[280px] overflow-y-auto space-y-1", className)} onScroll={onScroll}>
-      {collections.map((collection) => {
-        const isChecked = checkedIds.has(collection._id);
-        return (
-          <label
-            key={collection._id}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted transition-colors cursor-pointer"
-          >
-            <Checkbox
-              checked={isChecked}
-              onCheckedChange={() => onToggle(collection._id, isChecked)}
-            />
-            <TooltipHint label={collection.name} onlyWhenClipped>
-              <span className="text-sm font-medium truncate flex-1">
-                {collection.name}
-              </span>
-            </TooltipHint>
-            <Badge
-              variant="secondary"
-              className="text-3xs h-4 px-1 shrink-0"
-            >
-              {collection.itemCount}
-            </Badge>
-          </label>
-        );
-      })}
+      {collections.map(row)}
+      {shared.length ? <p className="px-3 pb-0.5 pt-2 text-xs font-medium text-muted-foreground">{ts("title")}</p> : null}
+      {shared.map(row)}
     </div>
   );
 }

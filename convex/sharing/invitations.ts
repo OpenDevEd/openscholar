@@ -147,7 +147,7 @@ export const responder = internalQuery({
 export const inviteAction = defineChangingAction({
   path: "sharing/invitations:invite",
   description:
-    "Invites someone by email to one of the workspace's items, to view it (`viewer`: open, read and export). A collection is shared to view only: `editor` is refused for one. Any member of the item's workspace can. " +
+    "Invites someone by email to one of the workspace's items, to view it (`viewer`: open, read and export) or to edit it (`editor`: also put papers in a collection and take them out). Any member of the item's workspace can. " +
     "They get an email with a link, good for seven days, and accept it signed in with that address; the item then shows under their Shared with me, and what they run on it uses their own credits. " +
     "The invitation takes one of the guest places the workspace's plan allows on each item until it's answered. Inviting the same address again sends the email again.",
   args: invitationArgs,

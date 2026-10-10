@@ -12,9 +12,9 @@ import { v } from "convex/values";
 import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery, workspaceMutation } from "../lib/userActions";
-import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
+import { addCollectionMembership, editableCollection, removeCollectionMembership } from "./collectionMembership";
 import { asRaters, collectionRatingRow, collectionRatingsOf, everyRater, organizationOfCollection, placeOf, purgeCollectionRatings, raterValidator, ratingOrNone, requireRating, setCollectionRating as setRating, shownRater } from "../ratings";
-import { followed } from "./followed";
+import { collectionHome, followed, shownOutside } from "./followed";
 import { copyFacetBatch } from "./facets";
 import { collectionSortName } from "./sortName";
 import { countOf } from "../lib/listCounts";
@@ -328,17 +328,21 @@ const undone = { collectionId: v.id("collections"), libraryItemId: v.id("library
 export const addToCollectionAction = defineUserMutation({
   path: ADD,
   activity: (args, { undo }) => (undo ? { kind: "collection", id: args.collectionId, happened: "added", count: 1 } : null),
-  description: "Puts a paper that's in the person's library, by its library item ID, into one of their collections. Returns `undo`, which takes it out again, unless it was already there.",
+  activityIn: collectionHome,
+  description:
+    "Puts a paper that's in the person's library, by its library item ID, into one of their collections. Returns `undo`, which takes it out again, unless it was already there. " +
+    "A collection shared with the person to edit takes a paper of its own library the same way.",
   args: membership,
   returns: v.object({ undo: reversedBy(REMOVE, undone) }),
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, { userId, workspaceId }, args) => {
-    const collection = await ownCollection(ctx, workspaceId, args.collectionId);
+  asksFirst: shownOutside,
+  run: async (ctx, actor, args) => {
+    const collection = await editableCollection(ctx, actor, args.collectionId);
     const item = await ctx.db.get("libraryItems", args.libraryItemId);
-    if (!item || item.workspaceId !== workspaceId) {
+    // A collection holds papers of its own workspace's library.
+    if (!item || item.workspaceId !== collection.workspaceId) {
       throw createError("FORBIDDEN", "Not your library item");
     }
     const assignedAt = await addCollectionMembership(ctx, { collection, item, assignedAt: args.assignedAt });
@@ -352,15 +356,17 @@ export const removeFromCollectionAction = defineUserMutation({
   path: REMOVE,
   // Only a paper that was in it is taken out; its undo says so.
   activity: (args, { undo }) => (undo ? { kind: "collection", id: args.collectionId, happened: "removed", count: 1 } : null),
-  description: "Takes a paper, by its library item ID, out of one of the person's collections. It stays in the library. Returns `undo`, which puts it back, unless it wasn't there.",
+  activityIn: collectionHome,
+  description:
+    "Takes a paper, by its library item ID, out of one of the person's collections, or one shared with them to edit. It stays in the library. Returns `undo`, which puts it back, unless it wasn't there.",
   args: membership,
   returns: v.object({ undo: reversedBy(ADD, undone) }),
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  asksFirst: (ctx, _actor, { collectionId }) => followed(ctx, collectionId),
-  run: async (ctx, { workspaceId }, args) => {
-    await ownCollection(ctx, workspaceId, args.collectionId);
+  asksFirst: shownOutside,
+  run: async (ctx, actor, args) => {
+    await editableCollection(ctx, actor, args.collectionId);
     const existing = await ctx.db
       .query("libraryItemCollections")
       .withIndex("by_collection_item", (q) =>
