@@ -309,8 +309,7 @@ export const refreshMine = action({
     if (!user) return null;
     const workspaceId: Id<"workspaces"> = given ? (await ctx.runQuery(internal.workspaces.actor.signedInActor, { workspaceId: given })).workspaceId : await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: user._id });
     const account = await ctx.runQuery(internal.billing.accounts.forWorkspace, { workspaceId });
-    // Back from saving an organization's card, Autumn may have moved it a moment ago: it's always read then.
-    if (!given && account && Date.now() - account.refreshedAt < REFRESH_AFTER_MS) return null;
+    if (account && Date.now() - account.refreshedAt < REFRESH_AFTER_MS) return null;
     await refreshAccount(ctx, workspaceId, { card: true });
     return null;
   },

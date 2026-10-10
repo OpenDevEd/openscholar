@@ -285,7 +285,6 @@
       "moveTo": "{plan} に変更",
       "onlyAdmins": "{organization} のプランを変更できるのは管理者だけです",
       "organizationsOnly": "Team は組織向けです。先に組織を作成してください",
-      "tooManyForFree": "無料は最大 {count, number} 人です。先にメンバーを外してください",
       "seatsAt": "{count, number} 席 × {price}",
       "moveToFreeTitle": "{organization} を {plan} に変更しますか？",
       "moveToFreeDetail": "{count, number} 席は今すぐ終了します。その後は最大 {members, number} 人、毎月 {credits, number} の共有クレジットになります。"

@@ -184,22 +184,23 @@ async function organizationAdminOf(ctx: ActionCtx, workspaceId: Id<"workspaces">
 
 /**
  * Moves an organization to Team (#652): its limits and features from the Team plan, and a seat
- * for each member, charged to its saved card now, each adding its credits to the pool. Without a
- * saved card it returns a checkout that saves one, after which Autumn moves it, and its webhook
- * seats the members (autumnWebhook.ts).
+ * for each member, charged to its saved card now, each adding its credits to the pool. `seats` is
+ * what the admin was shown and agreed to: a different count of members now is refused, to be
+ * confirmed again. Without a saved card it returns a checkout that saves one, after which Autumn
+ * moves it, and its webhook seats the members (autumnWebhook.ts). A card that asks to confirm a
+ * seat's payment sends the admin to do that; the sync after it seats the rest.
  */
 export const moveToTeam = action({
-  args: { workspaceId: v.id("workspaces") },
+  args: { workspaceId: v.id("workspaces"), seats: v.number() },
   returns: checkoutResult,
-  handler: async (ctx, { workspaceId }): Promise<{ url: string | null }> => {
+  handler: async (ctx, { workspaceId, seats }): Promise<{ url: string | null }> => {
     await requireUser(ctx);
     const organization = await organizationAdminOf(ctx, workspaceId);
+    const counted: { members: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
+    if (counted?.members !== seats) throw createError("CONFLICT", `${organization.name} has ${counted?.members ?? 0} members now, not ${seats}. Check the new total and confirm again.`);
     const customer = await autumn.customer(workspaceId, { card: true });
     if (!customer.payment_method?.card) return { url: (await autumn.setupPayment(workspaceId, TEAM_PLAN, returnUrl("team", `/o/${organization.slug}/pricing`))).url };
-    await autumn.attach({ customerId: workspaceId, planId: TEAM_PLAN, idempotencyKey: `team-${workspaceId}-${crypto.randomUUID()}` });
-    // Its seats now, so the page it comes back to shows them; the same sync runs on each change after.
-    // A card that asks to confirm a seat's payment sends the admin to do that; the sync after it seats the rest.
-    const paymentUrl: string | null = await ctx.runAction(internal.billing.seats.sync, { workspaceId });
+    const paymentUrl: string | null = await ctx.runAction(internal.billing.seats.startTeam, { workspaceId });
     await refreshAccount(ctx, workspaceId, { card: true });
     return { url: paymentUrl };
   },
@@ -212,8 +213,8 @@ export const moveToFree = action({
   handler: async (ctx, { workspaceId }): Promise<null> => {
     await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
-    const members: Array<{ clerkUserId: string }> | null = await ctx.runQuery(internal.billing.seats.membersOf, { workspaceId });
-    if (members === null || members.length > FREE_MEMBERS) throw createError("VALIDATION_ERROR", `Free has up to ${FREE_MEMBERS} members: remove members down to ${FREE_MEMBERS} first.`);
+    const counted: { members: number; invitations: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
+    if (!counted || counted.members + counted.invitations > FREE_MEMBERS) throw createError("VALIDATION_ERROR", `Free has up to ${FREE_MEMBERS} members, invitations included: remove members or cancel invitations down to ${FREE_MEMBERS} first.`);
     await ctx.runAction(internal.billing.seats.endTeam, { workspaceId });
     await refreshAccount(ctx, workspaceId, { card: true });
     return null;
