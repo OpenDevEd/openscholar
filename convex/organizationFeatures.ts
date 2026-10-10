@@ -82,11 +82,32 @@ export async function requireLibraryOrganization(
 }
 
 /** What the workspace the page is in opens for the person. */
-export const get = workspaceQuery({
+export const opens = workspaceQuery({
   args: {},
   returns: v.object({ evidenceLibraries: v.boolean() }),
   signedOut: { evidenceLibraries: false },
   handler: async (ctx, actor) => ({ evidenceLibraries: await opensEvidenceLibraries(ctx, actor) }),
+});
+
+/**
+ * What a page loaded before 2026-10-10 is told: it asks without a workspace and reads three
+ * answers. A tab left open keeps what it showed, in place of failing when this deployed: Evidence
+ * Libraries and authors where any of the person's organizations has them, extraction always.
+ * `get` here and `list` in authors/profiles.ts go once those tabs are gone.
+ */
+export async function openedBefore(ctx: QueryCtx, user: Doc<"users">) {
+  for (const { organization } of await readMemberOrganizations(ctx, user)) if (await planGrants(ctx, organization._id)) return true;
+  return await hasDirectLibraryAccess(ctx, user);
+}
+
+export const get = query({
+  args: {},
+  returns: v.object({ evidenceLibraries: v.boolean(), authors: v.boolean(), extraction: v.boolean() }),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    const libraries = user !== null && (await openedBefore(ctx, user));
+    return { evidenceLibraries: libraries, authors: libraries, extraction: true };
+  },
 });
 
 const libraryOrganizationValidator = v.object({

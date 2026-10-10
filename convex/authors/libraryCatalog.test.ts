@@ -1,4 +1,3 @@
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
@@ -6,16 +5,16 @@ import { expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { organizationWorkspaceOf } from "../workspaces/personal";
-import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
+import { grantPlanFeaturesForTest, seedCreditsForTest } from "../billing/billing.test-support";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 const modules = import.meta.glob("/convex/**/*.ts");
 
 async function setupCatalog() {
   const t = convexTest(schema, modules);
   const libraryId = await t.run(async ctx => {
-    await seedOrganizationFeatures(ctx, ["profile-owner", "library-owner"], { evidenceLibraries: true });
     for (const clerkId of ["profile-owner", "library-owner"]) {
-      await ctx.db.insert("users", {clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1});
+      // Each one's own workspace's plan includes Evidence Libraries, which a profile is made with.
+      await seedCreditsForTest(ctx, {userId: await ctx.db.insert("users", {clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1}), features: [EVIDENCE_LIBRARIES_FEATURE]});
     }
     const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: "org_catalog", name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
     await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);

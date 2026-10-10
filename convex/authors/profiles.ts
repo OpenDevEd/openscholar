@@ -1,4 +1,4 @@
-import { opensEvidenceLibraries } from "../organizationFeatures";
+import { openedBefore, opensEvidenceLibraries } from "../organizationFeatures";
 import { hasPlanFeature } from "../billing/accounts";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 import { searchTerms } from "../lib/searchText";
@@ -8,6 +8,7 @@ import { v, type Infer } from "convex/values";
 import { query, internalQuery, internalMutation } from "../lib/functions";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
+import { getCurrentUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { authorContentFields } from "./validators";
 import { profileRole, requireProfileAccess } from "./access";
@@ -82,14 +83,31 @@ export function searchProfilePage(ctx: QueryCtx, term: string, paginationOpts: P
   return query.paginate({...paginationOpts, numItems: Math.max(1, Math.min(30, Math.floor(paginationOpts.numItems)))});
 }
 
+const directoryArgs = {search: v.string(), paginationOpts: paginationOptsValidator};
+const directoryPage = paginationResultValidator(v.object(profileWithPhoto));
+async function directoryOf(ctx: QueryCtx, args: {search: string; paginationOpts: PaginationOptions}) {
+  const rows = await searchProfilePage(ctx, args.search, args.paginationOpts);
+  return {...rows, page: await Promise.all(rows.page.map(async profile => ({...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null})))};
+}
+
 /** The directory of profiles, for someone the workspace they're in opens Evidence Libraries for. A profile's own page is public (`get`). */
-export const list = workspaceQuery({
-  args: {search: v.string(), paginationOpts: paginationOptsValidator},
-  returns: paginationResultValidator(v.object(profileWithPhoto)),
+export const directory = workspaceQuery({
+  args: directoryArgs,
+  returns: directoryPage,
   handler: async (ctx, actor, args) => {
     if (!(await opensEvidenceLibraries(ctx, actor))) throw createError("FORBIDDEN", "This workspace doesn't have Evidence Libraries, which the directory of authors comes with.");
-    const rows = await searchProfilePage(ctx, args.search, args.paginationOpts);
-    return {...rows, page: await Promise.all(rows.page.map(async profile => ({...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null})))};
+    return directoryOf(ctx, args);
+  },
+});
+
+/** The directory as a page loaded before 2026-10-10 asks for it, without a workspace: see organizationFeatures.ts `openedBefore`. Goes with it. */
+export const list = query({
+  args: directoryArgs,
+  returns: directoryPage,
+  handler: async (ctx, args) => {
+    const user = await getCurrentUser(ctx);
+    if (!user || !(await openedBefore(ctx, user))) throw createError("FORBIDDEN", "None of your organizations' plans includes Evidence Libraries.");
+    return directoryOf(ctx, args);
   },
 });
 

@@ -36,7 +36,7 @@ export function AuthorList({pending = false}: {pending?: boolean}) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const create = useWorkspaceMutation(api.authors.profiles.create);
-  const {results, status, loadMore} = usePaginatedQuery(api.authors.profiles.list, inWorkspace(useWorkspace(), pending ? "skip" : {search}), {initialNumItems: 20});
+  const {results, status, loadMore} = usePaginatedQuery(api.authors.profiles.directory, inWorkspace(useWorkspace(), pending ? "skip" : {search}), {initialNumItems: 20});
   // A profile is made in a workspace whose plan includes Evidence Libraries: someone a library was only shared with reads the directory and makes none.
   const {planFeatures} = useSubscriptionState();
   const noProfiles = planFeatures !== null && !planFeatures.includes(EVIDENCE_LIBRARIES_FEATURE) ? ta("organizationFeatureDescription") : undefined;

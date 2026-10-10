@@ -33,10 +33,10 @@ describe("what a workspace opens", () => {
     // The session's active organization claim changes nothing: the workspace asked about decides.
     for (const identity of [{ subject: "member" }, { subject: "member", o: { id: "unrelated", rol: "org:member" } }]) {
       const member = t.withIdentity(identity);
-      expect(await member.query(api.organizationFeatures.get, { workspaceId: withThem })).toEqual({ evidenceLibraries: true });
+      expect(await member.query(api.organizationFeatures.opens, { workspaceId: withThem })).toEqual({ evidenceLibraries: true });
       // Being in an organization that has them opens nothing in another, nor in the person's own workspace.
-      expect(await member.query(api.organizationFeatures.get, { workspaceId: without })).toEqual(off);
-      expect(await member.query(api.organizationFeatures.get, {})).toEqual(off);
+      expect(await member.query(api.organizationFeatures.opens, { workspaceId: without })).toEqual(off);
+      expect(await member.query(api.organizationFeatures.opens, {})).toEqual(off);
     }
     // An author profile is made where Evidence Libraries are: not in their own workspace, whatever their organizations have.
     const member = t.withIdentity({ subject: "member" });
@@ -53,7 +53,7 @@ describe("what a workspace opens", () => {
       return { id, workspaceId: await organizationWorkspaceOf(ctx, id) };
     });
     const member = t.withIdentity({ subject: "member" });
-    const opens = () => member.query(api.organizationFeatures.get, { workspaceId });
+    const opens = () => member.query(api.organizationFeatures.opens, { workspaceId });
     expect(await opens()).toEqual({ evidenceLibraries: true });
     await t.run((ctx) => planGrants(ctx, id, []));
     expect(await opens()).toEqual(off);
@@ -76,12 +76,12 @@ describe("what a workspace opens", () => {
       for (const clerkId of ["member", "outsider"]) await seedFeatureUser(ctx, clerkId);
       return organizationWorkspaceOf(ctx, await seedOrganizationFeatures(ctx, ["member"], { evidenceLibraries: true }));
     });
-    expect(await t.query(api.organizationFeatures.get, { workspaceId })).toEqual(off);
+    expect(await t.query(api.organizationFeatures.opens, { workspaceId })).toEqual(off);
     const outsider = t.withIdentity({ subject: "outsider", o: { id: "forged", rol: "org:admin" } });
-    await expect(outsider.query(api.organizationFeatures.get, { workspaceId })).rejects.toThrow();
-    expect(await outsider.query(api.organizationFeatures.get, {})).toEqual(off);
+    await expect(outsider.query(api.organizationFeatures.opens, { workspaceId })).rejects.toThrow();
+    expect(await outsider.query(api.organizationFeatures.opens, {})).toEqual(off);
     // The directory of authors comes with Evidence Libraries.
-    await expect(outsider.query(api.authors.profiles.list, { search: "", paginationOpts: { numItems: 10, cursor: null } })).rejects.toThrow(/FORBIDDEN/);
+    await expect(outsider.query(api.authors.profiles.directory, { search: "", paginationOpts: { numItems: 10, cursor: null } })).rejects.toThrow(/FORBIDDEN/);
   });
 });
 

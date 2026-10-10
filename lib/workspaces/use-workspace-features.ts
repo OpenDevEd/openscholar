@@ -9,5 +9,5 @@ import { inWorkspace, useWorkspace } from "./url";
  * includes them, or, in their own workspace, when a library of another's was shared with them.
  */
 export function useWorkspaceFeatures() {
-  return useProtectedQuery(api.organizationFeatures.get, inWorkspace(useWorkspace(), {}));
+  return useProtectedQuery(api.organizationFeatures.opens, inWorkspace(useWorkspace(), {}));
 }

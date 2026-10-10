@@ -1,4 +1,6 @@
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { seedCreditsForTest } from "../billing/billing.test-support";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { describe, expect, it, vi } from "vitest";
@@ -12,12 +14,14 @@ const content = {name: "Caitlin Mills", headline: "Learning scientist", affiliat
 async function setup() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async ctx => {
-    await seedOrganizationFeatures(ctx, ["owner", "editor"], { evidenceLibraries: true });
     const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
-    return {
+    const ids = {
       owner: await ctx.db.insert("users", {...fields, clerkId: "owner", email: "owner@example.org"}),
       editor: await ctx.db.insert("users", {...fields, clerkId: "editor", email: "editor@example.org"}),
     };
+    // A profile is made where the workspace's plan includes Evidence Libraries: here, each one's own.
+    for (const userId of Object.values(ids)) await seedCreditsForTest(ctx, {userId, features: [EVIDENCE_LIBRARIES_FEATURE]});
+    return ids;
   });
   const owner = t.withIdentity({subject: "owner"});
   const editor = t.withIdentity({subject: "editor"});
@@ -56,7 +60,7 @@ describe("author profiles", () => {
       const organizationId = await seedOrganizationFeatures(ctx, ["maker"], {});
       return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
     });
-    await expect(as("maker").mutation(api.authors.profiles.create, {workspaceId: plain, name: "Elsewhere"})).rejects.toThrow(/doesn't include author profiles/);
+    await expect(as("maker").mutation(api.authors.profiles.create, {workspaceId: plain, name: "Elsewhere"})).rejects.toThrow('"code":"FORBIDDEN"');
     // Its maker who leaves the lab no longer owns it.
     await t.run(async ctx => {
       for (const row of await ctx.db.query("organizationMemberships").collect()) if (row.clerkUserId === "maker") await ctx.db.patch("organizationMemberships", row._id, {state: "revoked"});
@@ -157,13 +161,12 @@ describe("author profiles", () => {
 
   it("allows profile members without an organization, requires the invited address and revokes editing immediately", async () => {
     const {t, owner, editor, ids, profileId} = await setup();
+    // A plan that no longer includes Evidence Libraries makes no more profiles and reads no directory; the profile it has is still its owner's to edit.
     await t.run(async ctx => {
-      for (const membership of await ctx.db.query("organizationMemberships").collect()) {
-        await ctx.db.delete("organizationMemberships", membership._id);
-      }
+      for (const account of await ctx.db.query("billingAccounts").collect()) await ctx.db.patch("billingAccounts", account._id, {features: []});
     });
     await expect(owner.mutation(api.authors.profiles.create, {name: "Another profile"})).rejects.toThrow('"code":"FORBIDDEN"');
-    await expect(owner.query(api.authors.profiles.list, {search: "", paginationOpts: {numItems: 10, cursor: null}})).rejects.toThrow('"code":"FORBIDDEN"');
+    await expect(owner.query(api.authors.profiles.directory, {search: "", paginationOpts: {numItems: 10, cursor: null}})).rejects.toThrow('"code":"FORBIDDEN"');
     await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content});
     const invitationId = await owner.mutation(internal.authors.invitations.prepare, {profileId, email: "Editor@example.org"});
     const waiting = async (person: typeof editor) => (await person.query(api.authors.invitations.listInvitations, {profileId})).page;

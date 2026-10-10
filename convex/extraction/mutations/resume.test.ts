@@ -47,6 +47,8 @@ async function seedUserAndCredits(
       paid: opts.paid ?? 100_000,
       now,
     });
+    // Carrying a job on asks extraction's master switch, like starting one.
+    await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: now });
     return userId;
   });
 }
