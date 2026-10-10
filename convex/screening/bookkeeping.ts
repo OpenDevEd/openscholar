@@ -22,7 +22,8 @@ import { upsertLibraryItem } from "../library/mutations";
 import { addCollectionMembership, removeCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
 import { account, FAILED, standing, withDeltas, type Delta, type Move } from "./accounting";
-import { startWaitingPapers } from "./slots";
+import { readStartFacts, startWaitingPapers } from "./slots";
+import { startFactsValidator } from "./validators";
 import { captureLater } from "../lib/analyticsEvents";
 import { noteActivity } from "../activity/notes";
 
@@ -30,7 +31,8 @@ import { noteActivity } from "../activity/notes";
 const BATCH = 50;
 
 const { vQueryArgs, vQueryReturns, vMutationArgs, vMutationReturns } = defineBatchWorkerValidators({
-  batch: { results: v.array(v.id("screeningResults")) },
+  // `facts` is what the pass that starts the next papers needs, read by the query (./slots.ts).
+  batch: { results: v.array(v.id("screeningResults")), facts: v.optional(startFactsValidator) },
 });
 
 /** When a waiting paper finished; a read value is always the resolved timestamp. */
@@ -62,7 +64,9 @@ export const nextFinished = internalQuery({
       .take(BATCH);
     const last = rows.length ? doneAtOf(rows.at(-1)!) : undefined;
     if (last === undefined) return { kind: "idle" as const };
-    return { kind: "work" as const, batch: { results: rows.map((row) => row._id) }, cursor: last };
+    const jobs = await Promise.all([...new Set(rows.map((row) => row.jobId))].map((jobId) => ctx.db.get("screeningJobs", jobId)));
+    const workspaces = [...new Set(jobs.flatMap((job) => (job ? [job.workspaceId] : [])))];
+    return { kind: "work" as const, batch: { results: rows.map((row) => row._id), facts: await readStartFacts(ctx, workspaces) }, cursor: last };
   },
 });
 
@@ -236,7 +240,7 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
 export const bookkeep = internalMutation({
   args: vMutationArgs,
   returns: vMutationReturns,
-  handler: async (ctx, { results: ids }) => {
+  handler: async (ctx, { results: ids, facts }) => {
     const results = (await Promise.all(ids.map((id) => ctx.db.get("screeningResults", id)))).filter(
       (result): result is Doc<"screeningResults"> => result !== null && result.doneAt !== undefined,
     );
@@ -279,7 +283,7 @@ export const bookkeep = internalMutation({
       // Bookkept, or its job is gone: out of the queue.
       for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
     }
-    for (const [workspaceId, finished] of freed) await startWaitingPapers(ctx, workspaceId, finished);
+    for (const [workspaceId, finished] of freed) await startWaitingPapers(ctx, workspaceId, finished, facts);
     return null;
   },
 });

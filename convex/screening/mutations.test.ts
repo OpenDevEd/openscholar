@@ -100,6 +100,8 @@ async function seedScreeningResult(
       openalexId: overrides.openalexId ?? `https://openalex.org/W${Date.now()}`,
       title: overrides.title ?? "Screening Result",
       status: overrides.status ?? "processing",
+      // A paper being read has its work in the pool, which is how its completion finds it.
+      ...((overrides.status ?? "processing") === "processing" ? { workId: crypto.randomUUID() } : {}),
       ...(overrides.answers !== undefined ? { answers: overrides.answers } : {}),
       ...(overrides.score !== undefined ? { score: overrides.score } : {}),
       ...(overrides.stars !== undefined ? { stars: overrides.stars } : {}),
@@ -381,8 +383,8 @@ describe("Screen all on a saved search", () => {
     const result = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique());
     vi.useFakeTimers();
     await t.mutation(internal.screening.mutations.handleScreeningComplete, {
-      workId: "work_search",
-      context: { jobId, resultId: result!._id },
+      workId: result!.workId!,
+      context: {},
       result: { kind: "success", returnValue: { responses: encodeQuestionResponseMap({ "Is this relevant?": true }), confidences: encodeQuestionResponseMap({ "Is this relevant?": 0.8 }), confidence: 0.8 } },
     });
 
@@ -475,8 +477,8 @@ describe("handleScreeningComplete", () => {
       });
 
       await t.mutation(internal.screening.mutations.handleScreeningComplete, {
-        workId: "work_success",
-        context: { jobId: job._id, resultId: result._id },
+        workId: result.workId!,
+        context: {},
         result: {
           kind: "success",
           returnValue: {
@@ -576,8 +578,8 @@ describe("handleScreeningComplete", () => {
       });
 
       await t.mutation(internal.screening.mutations.handleScreeningComplete, {
-        workId: "work_failed",
-        context: { jobId: job._id, resultId: result._id },
+        workId: result.workId!,
+        context: {},
         result: {
           kind: "failed",
           error: "screening exploded",
@@ -626,8 +628,8 @@ describe("handleScreeningComplete", () => {
         });
 
         await t.mutation(internal.screening.mutations.handleScreeningComplete, {
-          workId: `work_${status}`,
-          context: { jobId: job._id, resultId: result._id },
+          workId: result.workId!,
+          context: {},
           result: {
             kind: "success",
             returnValue: {

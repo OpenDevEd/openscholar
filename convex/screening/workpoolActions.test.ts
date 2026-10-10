@@ -28,7 +28,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
       scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] },
       createdAt: 1, updatedAt: 1,
     });
-    const paper = (i: number) => ctx.db.insert("screeningResults", { jobId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, abstract: "An abstract.", status: "processing", createdAt: 1 });
+    const paper = (i: number) => ctx.db.insert("screeningResults", { jobId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, abstract: "An abstract.", status: "processing", workId: `work_${i}`, createdAt: 1 });
     return { userId, jobId, first: await paper(1), second: await paper(2) };
   });
 }
@@ -72,7 +72,7 @@ describe("charging a Screen all paper", () => {
     await t.run(async (ctx) => ctx.db.patch("screeningJobs", jobId, { spendCap: 3 }));
     const counted = (credits: number) => t.run(async (ctx) => ctx.db.patch("screeningJobProgress", (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique())!._id, { credits }));
     const complete = (resultId: typeof first, returnValue: Record<string, unknown>) =>
-      t.mutation(internal.screening.mutations.handleScreeningComplete, { workId: "work", context: { jobId, resultId }, result: { kind: "success", returnValue } });
+      t.mutation(internal.screening.mutations.handleScreeningComplete, { workId: resultId === first ? "work_1" : "work_2", context: {}, result: { kind: "success", returnValue } });
 
     // Under it, a paper is read and charged as any other.
     await counted(2);
