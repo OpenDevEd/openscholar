@@ -7,7 +7,7 @@ import { stream, type QueryStream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { createError } from "../lib/errors";
 import { findItem } from "./find";
-import { collectionRaters, memberRatings, personalRatingRow, placeOf, raterValidator, shownRater } from "../ratings";
+import { collectionRaters, memberRatings, membersOf, personalRatingRow, placeOf, raterValidator, shownRater } from "../ratings";
 import type { InWorkspace } from "../workspaces/actor";
 import { guestRole } from "../sharing/items";
 import { authorDisplay } from "../../lib/library/paper-metadata";
@@ -326,9 +326,10 @@ async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspac
   })) : null;
   // Outside a collection only its members read an organization's library, so each sees what the others gave. A paper nobody rated has no list.
   const organizationId = workspace?.kind === "organization" && !collectionId ? workspace.organizationId : null;
+  const member = organizationId ? membersOf(ctx, organizationId) : undefined;
   const members = organizationId ? await Promise.all(read.page.map(async (item) => {
     if (item.rating === undefined) return undefined;
-    const { raters, count } = await memberRatings(ctx, organizationId, item.openalexId, userId, RATERS_SHOWN);
+    const { raters, count } = await memberRatings(ctx, organizationId, item.openalexId, userId, RATERS_SHOWN, member);
     return { raters: raters.map(shownRater), count };
   })) : null;
   return {

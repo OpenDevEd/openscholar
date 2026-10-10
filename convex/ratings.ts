@@ -111,6 +111,17 @@ async function isMember(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizat
   return membership !== null;
 }
 
+type IsMember = (userId: Id<"users">) => Promise<boolean>;
+/** Whether someone is a member of an organization now, read once for each person however often it's asked: a page of papers asks about the same few people for every paper. */
+export function membersOf(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">): IsMember {
+  const known = new Map<Id<"users">, Promise<boolean>>();
+  return (userId) => {
+    const answer = known.get(userId) ?? isMember(ctx, organizationId, userId);
+    known.set(userId, answer);
+    return answer;
+  };
+}
+
 /** Someone's rating of a paper in an organization's collection, with who they are; `id` is the rating's. */
 export type Rater = { id: Id<"ratings">; userId: Id<"users">; name: string; imageUrl?: string; you: boolean; rating: number };
 /** A rater as the people reading see them. */
@@ -149,8 +160,8 @@ export const personalRatingsOf = (ctx: Pick<QueryCtx, "db">, paperId: string) =>
  * ponytail: a paper more than PREVIEW_READ people rated is counted from the first of them, so the
  * count can fall short there; keep the count on the saved paper, as a collection's place does, if it does.
  */
-export async function memberRatings(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, paperId: string, viewer: Id<"users">, max: number): Promise<{ raters: Rater[]; count: number }> {
-  const rated = await asRaters(ctx, organizationId, await personalRatingsOf(ctx, paperId).take(PREVIEW_READ), viewer);
+export async function memberRatings(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, paperId: string, viewer: Id<"users">, max: number, member?: IsMember): Promise<{ raters: Rater[]; count: number }> {
+  const rated = await asRaters(ctx, organizationId, await personalRatingsOf(ctx, paperId).take(PREVIEW_READ), viewer, member);
   return { raters: [...rated.filter((rater) => rater.you), ...rated.filter((rater) => !rater.you)].slice(0, max), count: rated.length };
 }
 
@@ -166,8 +177,8 @@ export async function organizationOfCollection(ctx: Pick<QueryCtx, "db">, collec
 }
 
 /** Ratings with who gave them, those of the organization's members now. */
-export async function asRaters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, rows: Doc<"ratings">[], viewer: Id<"users">): Promise<Rater[]> {
-  const people = await Promise.all(rows.map(async (row) => ((await isMember(ctx, organizationId, row.userId)) ? { row, user: (await ctx.db.get("users", row.userId))! } : null)));
+export async function asRaters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, rows: Doc<"ratings">[], viewer: Id<"users">, member: IsMember = (userId) => isMember(ctx, organizationId, userId)): Promise<Rater[]> {
+  const people = await Promise.all(rows.map(async (row) => ((await member(row.userId)) ? { row, user: (await ctx.db.get("users", row.userId))! } : null)));
   return people.flatMap((person) => (person ? [{ id: person.row._id, userId: person.user._id, name: personName(person.user) || person.user.email, ...(person.user.avatarUrl ? { imageUrl: person.user.avatarUrl } : {}), you: person.user._id === viewer, rating: person.row.rating }] : []));
 }
 
