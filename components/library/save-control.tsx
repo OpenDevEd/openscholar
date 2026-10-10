@@ -431,20 +431,26 @@ function CollectionChecklist({
           checked={isChecked}
           onCheckedChange={() => onToggle(collection._id, isChecked, collection.from !== undefined)}
         />
-        <TooltipHint label={collection.name} onlyWhenClipped>
-          <span className="text-sm font-medium truncate flex-1">
-            {collection.name}
-          </span>
-        </TooltipHint>
-        {/* Whose it is: the paper goes into that workspace's library. */}
         {collection.from ? (
-          <TooltipHint label={collection.from.name} onlyWhenClipped>
-            <span className="inline-flex h-5 max-w-24 shrink-0 items-center gap-1 rounded-full bg-muted px-2 text-2xs text-muted-foreground">
-              <From className="size-3 shrink-0" />
-              <span className="min-w-0 truncate">{collection.from.name}</span>
+          // Whose it is, under its name: the paper goes into that workspace's library.
+          <span className="min-w-0 flex-1">
+            <TooltipHint label={collection.name} onlyWhenClipped>
+              <span className="block truncate text-sm font-medium">{collection.name}</span>
+            </TooltipHint>
+            <TooltipHint label={collection.from.name} onlyWhenClipped>
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <From className="size-3 shrink-0" />
+                <span className="min-w-0 truncate">{collection.from.name}</span>
+              </span>
+            </TooltipHint>
+          </span>
+        ) : (
+          <TooltipHint label={collection.name} onlyWhenClipped>
+            <span className="text-sm font-medium truncate flex-1">
+              {collection.name}
             </span>
           </TooltipHint>
-        ) : null}
+        )}
         <Badge
           variant="secondary"
           className="text-3xs h-4 px-1 shrink-0"
