@@ -141,6 +141,8 @@ export function WorkspaceMenu({ shown, all, onDone, onPick, onCreate }: { shown:
   const { data: invitations } = useProtectedQuery(api.organizations.queries.myInvitations, inWorkspace(current?.workspaceId, { paginationOpts: { cursor: null, numItems: 10 } }));
   const { answering, join, decline } = useAnswerInvitation();
   const others = (all.list ?? []).filter((workspace) => workspace.workspaceId !== current?.workspaceId);
+  // A list that is in the card as it opens is simply there; one read after opens its place.
+  const [listed] = useState(others.length > 0);
   const go = (slug: string | undefined) => {
     onDone();
     router.push(switchTarget(slug, window.location.pathname, window.location.search.slice(1)));
@@ -164,47 +166,45 @@ export function WorkspaceMenu({ shown, all, onDone, onPick, onCreate }: { shown:
         </span>
       </div>
 
-      <AnimatePresence initial={false}>
-        {others.length ? (
-          <Opening key="others">
-            <p className="flex h-6 items-center border-t border-border/60 px-2.5 pt-2 text-[11px] font-medium text-muted-foreground">{t("switchTo")}</p>
-            <ul role="listbox" aria-label={t("otherWorkspaces")} className="space-y-px pt-1">
-              {others.map((workspace) => (
-                <li key={workspace.workspaceId} role="option" aria-selected={false}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onPick(workspace);
-                      go(workspace.slug);
-                    }}
-                    className={cn(ROW, "h-11")}
-                  >
-                    <Framed>
-                      <WorkspaceTile workspace={workspace} size="md" home />
-                    </Framed>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[13px] font-semibold leading-tight">{workspace.name}</span>
-                      <span className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                        <span className="font-medium">
-                          <PlanName workspace={workspace} />
-                        </span>
-                        <RoleOf workspace={workspace} />
+      {others.length ? (
+        <Opening instant={listed}>
+          <p className="flex h-6 items-center border-t border-border/60 px-2.5 pt-2 text-[11px] font-medium text-muted-foreground">{t("switchTo")}</p>
+          <ul role="listbox" aria-label={t("otherWorkspaces")} className="space-y-px pt-1">
+            {others.map((workspace) => (
+              <li key={workspace.workspaceId} role="option" aria-selected={false}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onPick(workspace);
+                    go(workspace.slug);
+                  }}
+                  className={cn(ROW, "h-11")}
+                >
+                  <Framed>
+                    <WorkspaceTile workspace={workspace} size="md" home />
+                  </Framed>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-semibold leading-tight">{workspace.name}</span>
+                    <span className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="font-medium">
+                        <PlanName workspace={workspace} />
                       </span>
+                      <RoleOf workspace={workspace} />
                     </span>
-                  </button>
-                </li>
-              ))}
-              {all.more ? (
-                <li>
-                  <button type="button" disabled={all.loading} onClick={all.loadMore} className={cn(ROW, "h-9 justify-center text-xs font-medium text-muted-foreground disabled:opacity-60")}>
-                    {tc("showMore")}
-                  </button>
-                </li>
-              ) : null}
-            </ul>
-          </Opening>
-        ) : null}
-      </AnimatePresence>
+                  </span>
+                </button>
+              </li>
+            ))}
+            {all.more ? (
+              <li>
+                <button type="button" disabled={all.loading} onClick={all.loadMore} className={cn(ROW, "h-9 justify-center text-xs font-medium text-muted-foreground disabled:opacity-60")}>
+                  {tc("showMore")}
+                </button>
+              </li>
+            ) : null}
+          </ul>
+        </Opening>
+      ) : null}
 
       <AnimatePresence initial={false}>
         {(invitations?.page ?? []).map((invitation) => (

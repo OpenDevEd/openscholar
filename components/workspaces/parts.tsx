@@ -152,15 +152,16 @@ export function Framed({ children }: { children: React.ReactNode }) {
 
 /**
  * Something that opens its place as it comes, and closes it as it goes: a rail section, or a part
- * of a card that's read after the card has opened. Inside an `AnimatePresence` with
- * `initial={false}`, what's there from the first frame is simply there.
+ * of a card that's read after the card has opened. What is already there when its card opens is
+ * `instant`: simply there. That says so for this part only, where an `AnimatePresence` with
+ * `initial={false}` would also stop what's inside it from animating in.
  */
-export function Opening({ className, children }: { className?: string; children: ReactNode }) {
+export function Opening({ instant = false, className, children }: { instant?: boolean; className?: string; children: ReactNode }) {
   const reduceMotion = useReducedMotion();
   return (
     <motion.div
       className={cn("w-full overflow-hidden", className)}
-      initial={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+      initial={instant ? false : reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
       animate={{ height: "auto", opacity: 1 }}
       exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
       transition={{ duration: 0.3, ease: EASE }}
