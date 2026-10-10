@@ -26,12 +26,17 @@ export async function sendInvitationEmail(mail: ReturnType<typeof requireInvitat
 export async function verifiedInvitationEmails(ctx: ActionCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) throw createError("UNAUTHENTICATED", "Sign in to respond");
+  return verifiedEmailsOf(identity.subject);
+}
+
+/** The addresses Clerk has verified on an account, in lower case. */
+export async function verifiedEmailsOf(clerkUserId: string) {
   const key = requireRuntimeEnvironment("CLERK_SECRET_KEY", message => new Error(message));
-  const response = await fetch(`https://api.clerk.com/v1/users/${encodeURIComponent(identity.subject)}`, {
+  const response = await fetch(`https://api.clerk.com/v1/users/${encodeURIComponent(clerkUserId)}`, {
     headers: {Authorization: `Bearer ${key}`}, signal: AbortSignal.timeout(10_000),
   });
   if (!response.ok) {
-    console.error("Invitation account verification failed", {status: response.status, clerkUserId: identity.subject});
+    console.error("Invitation account verification failed", {status: response.status, clerkUserId});
     throw createError("VALIDATION_ERROR", "Unable to verify your account. Try again.");
   }
   const user = z.object({email_addresses: z.array(z.object({

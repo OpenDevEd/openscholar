@@ -3926,6 +3926,36 @@
         "did": "已移到另一个工作区",
         "where": "工作区",
         "ask": "移到另一个工作区"
+      },
+      "shareItem": {
+        "doing": "正在与他人共享",
+        "did": "已与他人共享",
+        "where": "共享",
+        "ask": "与他人共享"
+      },
+      "guestRole": {
+        "doing": "正在更改访客权限",
+        "did": "已更改访客权限",
+        "where": "共享",
+        "ask": "更改访客权限"
+      },
+      "unshareItem": {
+        "doing": "正在停止与他人共享",
+        "did": "已停止与他人共享",
+        "where": "共享",
+        "ask": "停止与他人共享"
+      },
+      "leaveShared": {
+        "doing": "正在退出与你共享的内容",
+        "did": "已退出与你共享的内容",
+        "where": "共享",
+        "ask": "退出与你共享的内容"
+      },
+      "answerShare": {
+        "doing": "正在回复邀请",
+        "did": "已回复邀请",
+        "where": "共享",
+        "ask": "回复邀请"
       }
     },
     "asks": {
@@ -4245,6 +4275,7 @@
       "retried": "重试了 {count} 个失败的回答",
       "stopped": "停止了它",
       "moved": "把它移到这里，来自",
+      "shared": "把它共享给了",
       "viaAssistant": "通过助手",
       "today": "今天",
       "yesterday": "昨天",

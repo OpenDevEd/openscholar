@@ -11,6 +11,7 @@ import {
 import { screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { activityFields } from "./activity/validators";
+import { itemAccessFields, itemInvitationFields } from "./sharing/validators";
 import {
   errorCodeValidator,
   extractionEvidenceUnitFields,
@@ -1299,6 +1300,17 @@ export default defineSchema({
   // What changed on each item and who changed it (#656), newest first by item.
   // By workspace first: a search's ID is only unique within its workspace.
   activity: defineTable(activityFields).index("by_workspace_and_item", ["workspaceId", "item"]),
+
+  // People outside an item's workspace who may open it (#653), and the invitations waiting for an answer.
+  itemAccess: defineTable(itemAccessFields)
+    .index("by_item_and_user", ["item", "userId"])
+    // A person's "Shared with me", newest first, in all or of one kind.
+    .index("by_user_and_grantedAt", ["userId", "grantedAt"])
+    .index("by_user_and_kind_and_grantedAt", ["userId", "kind", "grantedAt"]),
+  itemInvitations: defineTable(itemInvitationFields)
+    .index("by_item_and_email", ["item", "email"])
+    .index("by_item_and_state", ["item", "state"])
+    .index("by_email_and_state", ["email", "state"]),
 
   collections: defineTable({
     workspaceId: v.id("workspaces"),

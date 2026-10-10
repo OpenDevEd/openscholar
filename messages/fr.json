@@ -3926,6 +3926,36 @@
         "did": "Déplacé vers un autre espace de travail",
         "where": "Espaces de travail",
         "ask": "Le déplacer vers un autre espace de travail"
+      },
+      "shareItem": {
+        "doing": "Partage avec quelqu'un",
+        "did": "Partagé avec quelqu'un",
+        "where": "Partage",
+        "ask": "Le partager avec quelqu'un"
+      },
+      "guestRole": {
+        "doing": "Modification des droits d'un invité",
+        "did": "Droits d'un invité modifiés",
+        "where": "Partage",
+        "ask": "Modifier les droits d'un invité"
+      },
+      "unshareItem": {
+        "doing": "Arrêt du partage avec quelqu'un",
+        "did": "Partage arrêté avec quelqu'un",
+        "where": "Partage",
+        "ask": "Arrêter le partage avec quelqu'un"
+      },
+      "leaveShared": {
+        "doing": "Retrait d'un élément partagé avec vous",
+        "did": "Élément partagé quitté",
+        "where": "Partage",
+        "ask": "Quitter un élément partagé avec vous"
+      },
+      "answerShare": {
+        "doing": "Réponse à une invitation",
+        "did": "Invitation traitée",
+        "where": "Partage",
+        "ask": "Répondre à une invitation"
       }
     },
     "asks": {
@@ -4245,6 +4275,7 @@
       "retried": "a relancé {count, plural, one {# réponse en échec} other {# réponses en échec}}",
       "stopped": "l'a arrêté",
       "moved": "l'a déplacé ici depuis",
+      "shared": "l'a partagé avec",
       "viaAssistant": "Par l'assistant",
       "today": "Aujourd'hui",
       "yesterday": "Hier",

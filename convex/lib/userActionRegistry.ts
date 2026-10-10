@@ -22,6 +22,8 @@ import { countPapersAction as libraryCountPapersAction, papersAction as libraryP
 import { createAction as createOrganizationAction, declineInvitationAction, deleteOrganizationAction, inviteAction, leaveAction, removeMemberAction, renameAction as renameOrganizationAction, resendInvitationAction, revokeInvitationAction, setAiPresetAction, setColourAction, setRoleAction } from "../organizations/manage";
 import { invitationsAction as organizationInvitationsAction, membersAction as organizationMembersAction, myInvitationsAction, summaryAction as workspaceSummaryAction, workspaceAction, workspacesAction } from "../organizations/queries";
 import { heldAction as moveHeldAction, moveAction } from "../workspaces/move";
+import { addAction as guestAddAction, leaveAction as guestLeaveAction, removeAction as guestRemoveAction, setRoleAction as guestRoleAction } from "../sharing/guests";
+import { inviteAction as guestInviteAction, respondAction as guestRespondAction } from "../sharing/invitations";
 import { addToCollectionAction, countCollectionsAction, createCollectionAction, deleteCollectionAction, getCollectionAction, listCollectionsAction, ratersAction as collectionRatersAction, removeFromCollectionAction, renameCollectionAction, setCollectionRatingAction } from "../library/collections";
 import { estimateAction as screeningEstimateAction, listJobsAction as screeningJobsAction } from "../screening/queries";
 import { answerAction as screeningAnswerAction, getAction as screeningPaperAction, listAction as screeningPapersAction } from "../screening/papers";
@@ -147,6 +149,12 @@ export const USER_ACTIONS: readonly UserAction[] = [
   deleteOrganizationAction,
   moveHeldAction,
   moveAction,
+  guestAddAction,
+  guestInviteAction,
+  guestRoleAction,
+  guestRemoveAction,
+  guestLeaveAction,
+  guestRespondAction,
   listChargesAction,
   countChargesAction,
   spendingAction,

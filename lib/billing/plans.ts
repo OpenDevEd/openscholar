@@ -42,6 +42,7 @@ export const ORGANIZATION_PLANS: readonly string[] = [ORGANIZATION_PLAN, TEAM_PL
  * - assistant_replies: replies the assistant may be writing for a person at once.
  * - request_papers: papers one screening or extraction request may take.
  * - uploads_per_hour: files a person may attach to assistant chats in an hour (#647).
+ * - guests: people outside a workspace each of its items may be shared with, invitations still waiting included (#653).
  */
-export const PLAN_LIMITS = ["collections", "concurrency", "assistant_replies", "request_papers", "bulk_papers", "uploads_per_hour"] as const;
+export const PLAN_LIMITS = ["collections", "concurrency", "assistant_replies", "request_papers", "bulk_papers", "uploads_per_hour", "guests"] as const;
 export type PlanLimit = (typeof PLAN_LIMITS)[number];

@@ -3926,6 +3926,36 @@
         "did": "Moved it to another workspace",
         "where": "Workspaces",
         "ask": "Move it to another workspace"
+      },
+      "shareItem": {
+        "doing": "Sharing it with someone",
+        "did": "Shared it with someone",
+        "where": "Sharing",
+        "ask": "Share it with someone"
+      },
+      "guestRole": {
+        "doing": "Changing what a guest can do",
+        "did": "Changed what a guest can do",
+        "where": "Sharing",
+        "ask": "Change what a guest can do"
+      },
+      "unshareItem": {
+        "doing": "Ending someone's access to it",
+        "did": "Stopped sharing it with someone",
+        "where": "Sharing",
+        "ask": "Stop sharing it with someone"
+      },
+      "leaveShared": {
+        "doing": "Leaving something shared with you",
+        "did": "Left something shared with you",
+        "where": "Sharing",
+        "ask": "Leave something shared with you"
+      },
+      "answerShare": {
+        "doing": "Answering an invitation",
+        "did": "Answered an invitation",
+        "where": "Sharing",
+        "ask": "Answer an invitation"
       }
     },
     "asks": {
@@ -4245,6 +4275,7 @@
       "retried": "retried {count, plural, one {# failed answer} other {# failed answers}}",
       "stopped": "stopped it",
       "moved": "moved it here from",
+      "shared": "shared it with",
       "viaAssistant": "Through the assistant",
       "today": "Today",
       "yesterday": "Yesterday",
