@@ -44,6 +44,19 @@ describe("analyzePhase on a page load", () => {
     expect(analyzePhase(jump, load)).toHaveLength(1);
   });
 
+  it("reports a jump hidden among the steps of a slide, on the same side or another", () => {
+    const steps = (sizes: number[], extra: (index: number) => Partial<{ dx: number }> = () => ({})) =>
+      sizes.map((dh, index) => frame(500 + index * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh, ...extra(index) }] }));
+    // 120 px in two frames, then a settle.
+    expect(analyzePhase(steps([60, 60, 2, 2, 2]), load)).toHaveLength(1);
+    // One 110 px step in the middle of twenty-four of 10 px.
+    expect(analyzePhase(steps([...Array(12).fill(10), 110, ...Array(12).fill(10)]), load)).toHaveLength(1);
+    // A smooth resize with one sideways jump.
+    expect(analyzePhase(steps(Array(12).fill(10), (index) => (index === 5 ? { dx: 100 } : {})), load)).toHaveLength(1);
+    // A slide that starts fast and eases out is still a slide.
+    expect(analyzePhase(steps([15, 15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1]), load)).toEqual([]);
+  });
+
   it("still reports a jump that is followed by a few small settling steps", () => {
     const settle = Array.from({ length: 5 }, (_, step) => frame(516 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 2 }] }));
     const findings = analyzePhase([frame(500, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 110 }] }), ...settle], load);
