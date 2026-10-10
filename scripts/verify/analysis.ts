@@ -109,11 +109,14 @@ function slid(steps: { t: number; move: Move }[]): boolean {
 function shift(frames: Frame[]): Finding | null {
   const steps = new Map<number, { t: number; move: Move }[]>();
   for (const frame of frames) for (const move of frame.moved) steps.set(move.id, [...(steps.get(move.id) ?? []), { t: frame.t, move }]);
-  const jumped = [...steps].filter(([, own]) => !slid(own));
+  const whole = (id: number, own: { move: Move }[]) => own.reduce<Move>((total, { move }) => ({ id, dx: total.dx + move.dx, dy: total.dy + move.dy, dw: total.dw + move.dw, dh: total.dh + move.dh }), { id, dx: 0, dy: 0, dw: 0, dh: 0 });
+  const rest = [...steps].filter(([, own]) => !slid(own));
+  // A slide leaves a pixel or two of rounding on the parts it carries along.
+  const beside = rest.length < steps.size;
+  const jumped = rest.filter(([id, own]) => !(beside && SIDES.every((side) => Math.abs(whole(id, own)[side]) <= SLIDE_TAIL_PX)));
   if (jumped.length === 0) return null;
-  const moves = jumped.map(([id, own]) => own.reduce<Move>((total, { move }) => ({ id, dx: total.dx + move.dx, dy: total.dy + move.dy, dw: total.dw + move.dw, dh: total.dh + move.dh }), { id, dx: 0, dy: 0, dw: 0, dh: 0 }));
   const times = jumped.flatMap(([, own]) => own.map((step) => step.t));
-  return { kind: "shift", from: Math.min(...times), to: Math.max(...times), moves };
+  return { kind: "shift", from: Math.min(...times), to: Math.max(...times), moves: jumped.map(([id, own]) => whole(id, own)) };
 }
 
 /** Lines of text shown and hidden over the phase, oldest first, so each change pairs with the one before it. */

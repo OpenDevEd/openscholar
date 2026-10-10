@@ -69,6 +69,12 @@ describe("analyzePhase on a page load", () => {
     expect(analyzePhase([0, 100, 200, 300, 400].map((at) => frame(500 + at, { moved: [{ id: 1, dx: 0, dy: 20, dw: 0, dh: 0 }] })), load)).not.toEqual([]);
   });
 
+  it("drops the pixel or two a slide leaves on a part it carries, but not the same nudge by itself", () => {
+    const slide = Array.from({ length: 12 }, (_, step) => frame(500 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 10 }, ...(step === 3 ? [{ id: 2, dx: 0, dy: 2, dw: 0, dh: 0 }] : [])] }));
+    expect(analyzePhase(slide, load)).toEqual([]);
+    expect(analyzePhase([frame(500, { moved: [{ id: 2, dx: 0, dy: 2, dw: 0, dh: 0 }] })], load)).toHaveLength(1);
+  });
+
   it("still reports a jump that is followed by a few small settling steps", () => {
     const settle = Array.from({ length: 5 }, (_, step) => frame(516 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 2 }] }));
     const findings = analyzePhase([frame(500, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 110 }] }), ...settle], load);
