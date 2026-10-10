@@ -17,6 +17,9 @@ const AUTUMN_URL = "https://autumn.test";
 /** Credits the fake's signup add-on grants. */
 export const FAKE_SIGNUP_CREDITS = 500;
 
+/** Credits each Team seat adds to its organization's pool in the fake (#652). */
+export const FAKE_SEAT_CREDITS = 8000;
+
 /** `planId`: the main plan, Free until another is attached, as Autumn auto-enables it on every new customer. */
 type Customer = { plan: number; topUp: number; signup: boolean; planId: string };
 
@@ -24,15 +27,21 @@ export const fakeAutumn = {
   customers: new Map<string, Customer>(),
   locks: new Map<string, { customerId: string; credits: number }>(),
   idempotencyKeys: new Set<string>(),
+  /** Each customer's entities (#652), and whether each holds a Team seat. */
+  entities: new Map<string, Map<string, { seated: boolean }>>(),
   calls: [] as Array<{ path: string; body: Record<string, unknown> }>,
+  /** Set when the customer has no saved card: a seat's attach asks for checkout instead of charging. */
+  noCard: false,
   /** Makes the next call to this endpoint fail, as if Autumn were down. */
   failNext: null as string | null,
 
   reset() {
     this.failNext = null;
+    this.noCard = false;
     this.customers.clear();
     this.locks.clear();
     this.idempotencyKeys.clear();
+    this.entities.clear();
     this.calls = [];
   },
 
@@ -43,6 +52,15 @@ export const fakeAutumn = {
       this.customers.set(id, customer);
     }
     return customer;
+  },
+
+  entitiesOf(id: string) {
+    let entities = this.entities.get(id);
+    if (!entities) {
+      entities = new Map();
+      this.entities.set(id, entities);
+    }
+    return entities;
   },
 
   balance(id: string): number {
@@ -114,6 +132,16 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
       return respond(200, customerBody(customerId!));
     case "billing.attach": {
       const customer = fakeAutumn.customer(customerId!);
+      if (body.entity_id) {
+        // A Team seat on a member's entity adds its credits to the customer's pool, once.
+        const entity = fakeAutumn.entitiesOf(customerId!).get(body.entity_id as string);
+        if (!entity) return respond(404, { code: "entity_not_found" });
+        if (entity.seated) return respond(400, { code: "plan_already_attached" });
+        if (fakeAutumn.noCard) return respond(200, { customer_id: customerId, entity_id: body.entity_id, payment_url: "https://checkout.test" });
+        entity.seated = true;
+        customer.plan += FAKE_SEAT_CREDITS;
+        return respond(200, { customer_id: customerId, entity_id: body.entity_id, payment_url: null });
+      }
       if (body.plan_id === "signup_credits") {
         customer.signup = true;
         customer.plan += FAKE_SIGNUP_CREDITS;
@@ -123,6 +151,27 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
       }
       return respond(200, { customer_id: customerId, payment_url: null });
     }
+    case "billing.update": {
+      const entity = body.entity_id ? fakeAutumn.entitiesOf(customerId!).get(body.entity_id as string) : undefined;
+      if (body.cancel_action !== "cancel_immediately" || !entity?.seated) return respond(404, { code: "cus_product_not_found" });
+      entity.seated = false;
+      const customer = fakeAutumn.customer(customerId!);
+      customer.plan = Math.max(0, customer.plan - FAKE_SEAT_CREDITS);
+      return respond(200, { success: true });
+    }
+    case "entities.create": {
+      const entities = fakeAutumn.entitiesOf(customerId!);
+      if (entities.has(body.entity_id as string)) return respond(409, { code: "entity_already_exists" });
+      entities.set(body.entity_id as string, { seated: false });
+      return respond(200, { id: body.entity_id, subscriptions: [] });
+    }
+    case "entities.delete":
+      return fakeAutumn.entitiesOf(customerId!).delete(body.entity_id as string) ? respond(200, { success: true }) : respond(404, { code: "entity_not_found" });
+    case "entities.list":
+      return respond(200, {
+        list: [...fakeAutumn.entitiesOf(customerId!)].map(([id, { seated }]) => ({ id, subscriptions: seated ? [{ plan_id: "team_seat", status: "active" }] : [] })),
+        next_cursor: null,
+      });
     case "balances.check": {
       const customer = fakeAutumn.customer(customerId!);
       const credits = body.required_balance as number;

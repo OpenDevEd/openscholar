@@ -594,7 +594,20 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   billingAccounts: defineTable(billingAccountFields)
     .index("by_workspace", ["workspaceId"])
+    .index("by_plan", ["plan"])
     .index("by_stripe_customer", ["stripeCustomerId"]),
+  // Each organization's seat syncs (#652): one at a time, and how many seats the last one left.
+  seatSyncs: defineTable({
+    workspaceId: v.id("workspaces"),
+    /** Seats Autumn held after the last sync that finished; the daily check syncs while any are left. */
+    seats: v.number(),
+    /** Set while a sync runs: when it started. */
+    runningSince: v.optional(v.number()),
+    /** A sync asked for while one ran, which runs once that one ends. */
+    again: v.optional(v.literal(true)),
+  })
+    .index("by_workspace", ["workspaceId"])
+    .index("by_seats", ["seats"]),
   billingCatalog: defineTable({ ...billingCatalogValidator.fields, syncedAt: v.number() }),
   billingUsage: defineTable({
     ...billingUsageFields,

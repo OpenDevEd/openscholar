@@ -1,6 +1,12 @@
 /** Most people one Evidence Library grants access to directly, so its team reads in one query (#357). */
 export const MAX_LIBRARY_MEMBERS = 1_000;
 
+/**
+ * Most members one organization has, so its members read in one query: Clerk's member limit for
+ * each plan (#652) stays under it. Past it, seat changes stop and say so.
+ */
+export const MAX_ORGANIZATION_MEMBERS = 1_000;
+
 /** Most Evidence Libraries one organization can make, so its library list reads in one query. */
 export const MAX_LIBRARIES_PER_WORKSPACE = 200;
 

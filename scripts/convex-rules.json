@@ -61,7 +61,8 @@
       "DRAFT_ROWS_REPLACED": "reads one past it and refuses the restore over a draft with extra rows",
       "SUBSCRIPTIONS_READ": "reads one past it and stops the billing migration for that account",
       "SECTION_REGISTRY.length": "a draft or revision holds one row a section; reads one past it and throws on a different row",
-      "RECOVERY_LIMIT": "reads one past it and stops the recovery as unsafe, naming why"
+      "RECOVERY_LIMIT": "reads one past it and stops the recovery as unsafe, naming why",
+      "MAX_ORGANIZATION_MEMBERS": "reads one past it and leaves the organization's seats as they are, logging why: Clerk's webhooks write memberships, so no write here can"
     },
     "windows": {
       "PREVIEW_READ": "the first ratings of a paper a collection preview reads for the few raters it names; the count and the full list come from elsewhere",
