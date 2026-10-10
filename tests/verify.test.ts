@@ -252,6 +252,37 @@ describe("analyzePhase after an action", () => {
   });
 });
 
+describe("analyzePhase on a step taken while the page loads", () => {
+  const early = { name: "early click Workspace", kind: "early" as const, start: 0 };
+  const opening = frame(400, { opened: [10], added: [{ id: 10, box: [8, 8, 300, 120] }] });
+  // The page behind fills in: a list arrives and pushes the footer down.
+  const behind = frame(900, { moved: [{ id: 1, dx: 0, dy: 300, dw: 0, dh: 0 }], added: [{ id: 2, box: [100, 0, 600, 300] }] });
+
+  it("leaves the page behind the overlay to the load check", () => {
+    expect(analyzePhase([opening, behind], early)).toEqual([]);
+  });
+
+  it("reports rows that land in the open overlay in one frame, and the jump they give it", () => {
+    const rows = frame(1_400, { added: [{ id: 11, box: [16, 60, 284, 132], within: 10, entering: false }], moved: [{ id: 10, dx: 0, dy: 0, dw: 0, dh: 132, within: 10 }] });
+    expect(analyzePhase([opening, behind, rows], early)).toMatchObject([
+      { kind: "late-content", id: 11, from: 400, to: 1_400 },
+      { kind: "shift", moves: [{ id: 10, dh: 132 }] },
+    ]);
+  });
+
+  it("accepts rows that fade in while the overlay slides to their height", () => {
+    const slide = Array.from({ length: 12 }, (_, at) =>
+      frame(1_400 + at * 16, { moved: [{ id: 10, dx: 0, dy: 0, dw: 0, dh: 11, within: 10 }], added: at === 0 ? [{ id: 11, box: [16, 60, 284, 132], within: 10, entering: true }] : [] }),
+    );
+    expect(analyzePhase([opening, behind, ...slide], early)).toEqual([]);
+  });
+
+  it("takes what moves as the overlay opens as its opening", () => {
+    const settling = frame(480, { moved: [{ id: 12, dx: 0, dy: 6, dw: 0, dh: 0, within: 10 }] });
+    expect(analyzePhase([opening, settling], early)).toEqual([]);
+  });
+});
+
 describe("stopDecision", () => {
   const sessionStartMs = 1_000;
   const userFacing = /^((app|components)\/.+\.(tsx|css)|components\/.+\.ts)$/;

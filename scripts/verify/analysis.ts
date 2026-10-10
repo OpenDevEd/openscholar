@@ -8,7 +8,8 @@
 // OpenDevEd/openalex-count, tools/verify in OpenDevEd/new-el); keep them in step.
 
 export type Delta = { dx: number; dy: number; dw: number; dh: number };
-export type Move = Delta & { id: number };
+// `within` is the dialog, sheet, popover or menu the element is, or is inside.
+export type Move = Delta & { id: number; within?: number };
 
 // A layout box: x, y, width, height.
 export type Box = [number, number, number, number];
@@ -29,8 +30,10 @@ export type Frame = {
 
 // A load phase starts with navigation; everything after `baseline` (fonts
 // ready, document parsed) must hold still. A step phase starts with an action;
-// its first burst of change is the response to the action.
-export type Phase = { name: string; kind: "load" | "step"; start: number; baseline?: number };
+// its first burst of change is the response to the action. An early phase is
+// an action taken while the page is still loading: only what happens in the
+// dialog, sheet, popover or menu it opens is judged.
+export type Phase = { name: string; kind: "load" | "step" | "early"; start: number; baseline?: number };
 
 export type Finding =
   | { kind: "shift"; from: number; to: number; moves: Move[] }
@@ -253,8 +256,29 @@ function arrivals(frames: Frame[]): Finding[] {
   return findings;
 }
 
+/**
+ * The frames with only what happened inside a dialog, sheet, popover or menu
+ * once it had opened. The page behind an overlay opened early is still
+ * loading, which a load phase judges.
+ */
+function insideOverlays(frames: Frame[]): Frame[] {
+  const opened = new Map<number, number>();
+  return frames.map((frame) => {
+    for (const id of frame.opened ?? []) opened.set(id, frame.t);
+    const late = (within: number | undefined) => frame.t - (opened.get(within ?? -1) ?? Infinity) > OPENING_MS;
+    return { ...frame, moved: frame.moved.filter((move) => late(move.within)), added: frame.added.filter((element) => late(element.within)), removed: [], textAdded: [], textRemoved: [] };
+  });
+}
+
+/** An overlay opened while the page loads: what moved in it after it opened, and what popped into it. */
+function analyzeEarly(frames: Frame[]): Finding[] {
+  const shifts = bursts(insideOverlays(frames).filter(changed)).map(shift).filter((finding): finding is Finding => finding !== null);
+  return [...shifts, ...arrivals(frames)].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
+}
+
 /** The problems a person would see in one phase: movement after the page or the response settled, and blinks. */
 export function analyzePhase(frames: Frame[], phase: Phase): Finding[] {
+  if (phase.kind === "early") return analyzeEarly(frames.filter((frame) => frame.t >= phase.start));
   const since = phase.kind === "load" ? (phase.baseline ?? phase.start) : phase.start;
   const groups = bursts(frames.filter((frame) => frame.t >= since && changed(frame)));
   // After an action, the first burst is the response (a dialog opening, a row

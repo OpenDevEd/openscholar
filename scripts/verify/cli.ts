@@ -271,8 +271,11 @@ const signOut = (page: Page) => page.evaluate("window.Clerk && window.Clerk.sign
 
 async function optionsFor(values: Values, mode: string): Promise<RunOptions> {
   const shift = mode === "shift";
+  const steps = list(values.do).map(parseStep);
+  if (values.early === true && !["click", "hover", "press", "fill"].includes(steps[0]?.verb ?? "")) throw new Error("--early takes the first --do step early: give it one that clicks, hovers, presses or fills.");
   return {
-    steps: list(values.do).map(parseStep),
+    steps,
+    early: values.early === true,
     slow: number(values.slow, shift ? 600 : 0),
     quietMs: number(values.quiet, 1_500),
     viewport: { width: number(values.width, 1440), height: number(values.height, 900) },
@@ -362,7 +365,10 @@ Options for shift and shot:
   --anon                   Don't sign in.
   --full                   Full-page screenshots.
   --quiet <ms>             How long the page must hold still to count as settled (default 1500).
-  --base <url|none>        The site to compare with (default https://dev.openscholar.ai).`;
+  --base <url|none>        The site to compare with (default https://dev.openscholar.ai).
+  --early                  Take the first --do step as soon as its target answers clicks, before the
+                           page's data has arrived, and judge only what happens in the dialog, sheet,
+                           popover or menu it opens. For anything a person can open while the page loads.`;
 
 // Only one run at a time changes this worktree's server.
 const locked = <T,>(run: () => Promise<T>) => withLock(path.join(STATE, "lock"), "this worktree's other verify run", run);
@@ -391,6 +397,7 @@ const OPTIONS = {
   full: { type: "boolean" },
   quiet: { type: "string" },
   base: { type: "string" },
+  early: { type: "boolean" },
 } as const;
 
 async function main() {

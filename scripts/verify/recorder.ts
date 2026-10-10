@@ -106,7 +106,7 @@ export function recorder(config: { allow: string }) {
   }
 
   type Frame = {
-    moved: { id: number; dx: number; dy: number; dw: number; dh: number }[];
+    moved: { id: number; dx: number; dy: number; dw: number; dh: number; within?: number }[];
     added: { id: number; box: number[]; within?: number; entering?: boolean }[];
     opened: number[];
     fresh: Set<Element>;
@@ -162,14 +162,20 @@ export function recorder(config: { allow: string }) {
     return was || shown.get(id) === true;
   }
 
+  // A dialog, sheet, popover or menu: what opens over the page.
+  const OVERLAY = '[role="dialog"], [role="alertdialog"], [role="menu"]';
+
+  /** The overlay an element is, or is inside. */
+  function overlayOf(element: HTMLElement): { within?: number } {
+    const overlay = element.closest(OVERLAY);
+    return overlay && ids.has(overlay) ? { within: ids.get(overlay) } : {};
+  }
+
   function measureMoved(frame: Frame, element: HTMLElement, id: number, delta: number[]) {
     frame.deltas.set(id, delta);
     const own = visible(element, ownDelta(frame, element, delta));
-    if (seenNow(element, id) && !still(own) && !animating(element)) frame.moved.push({ id, dx: own[0], dy: own[1], dw: own[2], dh: own[3] });
+    if (seenNow(element, id) && !still(own) && !animating(element)) frame.moved.push({ id, dx: own[0], dy: own[1], dw: own[2], dh: own[3], ...overlayOf(element) });
   }
-
-  // A dialog, sheet, popover or menu: what opens over the page.
-  const OVERLAY = '[role="dialog"], [role="alertdialog"], [role="menu"]';
   // A frame that cuts off what is outside it; with `scrollers`, a scrolling list too.
   const clips = (element: Element, scrollers: boolean) => (scrollers ? /hidden|clip|auto|scroll/ : /hidden|clip/).test(getComputedStyle(element).overflowY);
 

@@ -39,6 +39,8 @@ export function parseStep(raw: string): Step {
 
 export type RunOptions = {
   steps: Step[];
+  /** The first step runs as soon as its target answers clicks, before the page's data is in. */
+  early: boolean;
   slow: number;
   quietMs: number;
   viewport: { width: number; height: number };
@@ -307,10 +309,44 @@ async function runStep(session: Session, step: Step) {
   );
 }
 
+/** Waits until React answers events on the step's target: until then a click does nothing. */
+const answers = (page: Page, step: Step, timeout: number) =>
+  page.locator(step.target).first().evaluate(
+    (element) =>
+      new Promise<void>((resolve) => {
+        const check = () => (Object.keys(element).some((key) => key.startsWith("__reactProps$")) ? resolve() : requestAnimationFrame(check));
+        check();
+      }),
+    undefined,
+    { timeout },
+  );
+
+/**
+ * Opens the page and takes the step at once, the way someone clicks a button
+ * before the page's data has arrived. The load isn't waited for or judged:
+ * only what the step opens is.
+ */
+async function earlyPhase(session: Session, step: Step) {
+  const timeout = session.tolerant ? 10_000 : 15_000;
+  session.run.stopped = step.label;
+  await runPhase(session, { name: `early ${step.label}`, kind: "early", start: 0 }, async () => {
+    const response = await withTimeout(open(session.page, session.origin + session.target), 90_000, `Opening ${session.origin}${session.target}`);
+    await answers(session.page, step, timeout)
+      .then(() => act(session.page, step, timeout))
+      .catch((error: Error) => {
+        throw new Error(`Step "${step.label}" failed early on ${session.origin}${session.target}: ${error.message.split("\n")[0]}`);
+      });
+    return response;
+  });
+}
+
 async function runAll(session: Session) {
+  const [first, ...rest] = session.options.steps;
+  const early = session.options.early && first !== undefined;
   session.run.stopped = `load ${session.target}`;
-  await loadPhase(session, `load ${session.target}`, session.target);
-  for (const step of session.options.steps) {
+  if (early) await earlyPhase(session, first);
+  else await loadPhase(session, `load ${session.target}`, session.target);
+  for (const step of early ? rest : session.options.steps) {
     session.run.stopped = step.label;
     await runStep(session, step);
   }
