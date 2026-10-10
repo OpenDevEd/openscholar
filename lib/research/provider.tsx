@@ -33,6 +33,8 @@ function workspaceSession(client: ConvexReactClient, accountId: string, slug: st
   const key = `${accountId}:${slug ?? ""}`;
   let session = accounts.get(key);
   if (!session) { session = new ResearchSession(client, accountId); accounts.set(key, session); }
+  // An organization whose address stops naming its workspace mid-visit (being deleted, or the person removed) is read no more; it carries on if it comes back.
+  if (!workspaceId && slug !== undefined && session.bound) return null;
   if (workspaceId) session.bind({ workspaceId, own: slug === undefined });
   return session;
 }

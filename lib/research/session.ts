@@ -238,6 +238,10 @@ export class ResearchSession {
    * Gives a session made before the page's workspace loaded its workspace, once (#651): the
    * reads and changes asked for meanwhile start then, so nothing done while it loaded is lost.
    */
+  /** Whether it has been given its workspace. */
+  get bound() {
+    return this.workspace !== undefined;
+  }
   bind(workspace: { workspaceId: Id<"workspaces">; own: boolean }) {
     if (this.workspace) return;
     this.workspace = workspace;
