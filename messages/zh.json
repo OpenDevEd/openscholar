@@ -3332,6 +3332,7 @@
     "earlier": "更早的消息",
     "model": "模型",
     "sendFailed": "无法发送你的消息",
+    "lost": "此对话已被删除，或不再与你共享",
     "modelFailed": "无法更改模型",
     "chats": "对话",
     "back": "返回",
