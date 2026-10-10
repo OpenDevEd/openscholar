@@ -221,9 +221,10 @@ const paperOf = (item: Doc<"libraryItems">) =>
  *
  * The ratings in it go with it. A person's own collection shows their own ratings, and an
  * organization's the ratings its members gave in it: so a paper's rating by the person whose
- * collection it was becomes theirs in the collection, and their rating in a collection that
- * comes to them becomes their own of the paper, unless they've one. Other members' ratings in
- * it stay with it, for an organization it moves to later.
+ * collection it was becomes theirs in the collection, unless they gave one in it before, and
+ * their rating in a collection that comes to them becomes their own of the paper, unless
+ * they've one. The ratings given in it stay with it, for an organization it moves to later, so
+ * one that goes out and comes back has the ratings it left with.
  */
 export const moveCollectionPapers = internalMutation({
   args: { collectionId: v.id("collections"), by: v.id("users"), from: v.number() },
@@ -233,7 +234,7 @@ export const moveCollectionPapers = internalMutation({
     const workspace = collection && (await ctx.db.get("workspaces", collection.workspaceId));
     if (!workspace) return null;
     const members = workspace.kind === "organization" ? (await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS)).length : 1;
-    const step = Math.min(PAPERS_STEP, Math.max(1, Math.floor(PAPERS_STEP_QUERIES / (4 * members + 12))));
+    const step = Math.min(PAPERS_STEP, Math.max(1, Math.floor(PAPERS_STEP_QUERIES / (4 * members + 13))));
     const left = new Map<Id<"workspaces">, Doc<"workspaces"> | null>();
     const places = await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId).gte("_creationTime", from)).take(step + 1);
     let read = 0;
@@ -252,7 +253,8 @@ export const moveCollectionPapers = internalMutation({
       if (!left.has(item.workspaceId)) left.set(item.workspaceId, await ctx.db.get("workspaces", item.workspaceId));
       const source = left.get(item.workspaceId);
       if (workspace.kind === "organization") {
-        if (source?.kind === "personal" && item.rating !== undefined) await writeRating(ctx, source.userId, collectionId, item.openalexId, item.rating);
+        // One they gave in it before, in an organization it has been in, stays theirs there.
+        if (source?.kind === "personal" && item.rating !== undefined && !(await collectionRatingRow(ctx, source.userId, collectionId, item.openalexId))) await writeRating(ctx, source.userId, collectionId, item.openalexId, item.rating);
       } else if (source?.kind === "organization") {
         const theirs = await collectionRatingRow(ctx, workspace.userId, collectionId, item.openalexId);
         // In a transaction of its own: it brings each of their organizations' copies of the paper in step.
