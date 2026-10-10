@@ -13,6 +13,7 @@ import type { FunctionReturnType } from "convex/server";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { trimPaperData, type WorkInput } from "@/lib/library/trim-paper-data";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup } from "@/components/ui/button-group";
@@ -340,7 +341,7 @@ function CollectionsPanel({
   useCollectionDialogsReady();
 
   const loadingMembers = picker.isLoading;
-  const checkedIds = new Set<string>([...picker.collections, ...picker.shared].filter((collection) => collection.containsItem).map((collection) => collection._id));
+  const checkedIds = new Set<string>([...(picker.collections ?? []), ...picker.shared].filter((collection) => collection.containsItem).map((collection) => collection._id));
   for (const [collectionId, { value: checked }] of Object.entries(pending)) {
     if (checked) checkedIds.add(collectionId);
     else checkedIds.delete(collectionId);
@@ -366,16 +367,19 @@ function CollectionsPanel({
           className="h-8 pl-8 text-sm"
         />
       </div>
-      <CollectionChecklist
-        collections={picker.isLoading ? undefined : picker.collections}
-        shared={picker.shared}
-        searching={picker.search.length > 0}
-        onScroll={picker.onScroll}
-        checkedIds={checkedIds}
-        onToggle={(collectionId, checked, elsewhere) => onToggle(collectionId, !checked, elsewhere)}
-        // Kept still until the paper's collections arrive, so a tick can't land on stale state.
-        className={cn(loadingMembers && "pointer-events-none opacity-50")}
-      />
+      {/* The list is read once the popover opens: the frame slides to its height and the rows fade in, in place of a jump. */}
+      <AutoHeight>
+        <CollectionChecklist
+          collections={picker.collections}
+          shared={picker.shared}
+          searching={picker.search.length > 0}
+          onScroll={picker.onScroll}
+          checkedIds={checkedIds}
+          onToggle={(collectionId, checked, elsewhere) => onToggle(collectionId, !checked, elsewhere)}
+          // Kept still until the paper's collections arrive, so a tick can't land on stale state.
+          className={cn(loadingMembers && "pointer-events-none opacity-50")}
+        />
+      </AutoHeight>
       <button
         type="button"
         onClick={onNew}
@@ -462,7 +466,7 @@ function CollectionChecklist({
   };
 
   return (
-    <div className={cn("max-h-[280px] overflow-y-auto space-y-1", className)} onScroll={onScroll}>
+    <div className={cn("fade-enter max-h-[280px] overflow-y-auto space-y-1", className)} onScroll={onScroll}>
       {collections.map(row)}
       {shared.length ? <p className="px-3 pb-0.5 pt-2 text-xs font-medium text-muted-foreground">{ts("title")}</p> : null}
       {shared.map(row)}
