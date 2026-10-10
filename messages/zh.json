@@ -4289,12 +4289,20 @@
         "pdfs": "PDF",
         "messages": "消息",
         "files": "文件",
-        "activity": "动态"
+        "activity": "动态",
+        "itsPapers": "其中的论文",
+        "ratingsInIt": "其中的评分",
+        "publications": "出版物",
+        "editors": "编辑"
       },
       "moveTo": "移到 {workspace}",
       "move": "移动",
       "toAnother": "移到另一个工作区",
-      "moveNamed": "将 {name} 移到另一个工作区"
+      "moveNamed": "将 {name} 移到另一个工作区",
+      "collection": "移动收藏集",
+      "author": "移动作者主页",
+      "libraryKeeps": "{workspace} 的文献库会保留已保存的论文。",
+      "yourLibraryKeeps": "你的文献库会保留已保存的论文。"
     }
   },
   "models": {

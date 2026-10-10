@@ -583,6 +583,34 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     expect(await as.query(api.models.admin.summary, { provider: "other", search: "", show: "all" })).toMatchObject({ total: Math.floor(MAX_CATALOG_MODELS / 6) * 2 + (MAX_CATALOG_MODELS % 6 > 4 ? MAX_CATALOG_MODELS % 6 - 4 : 0) });
   }, 300_000);
 
+  it("a 2,000-paper collection of long abstracts moves into an organization a step at a time (#654)", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      const { userId, as } = await seedAccount(t, "max_move_user");
+      // A step takes the same papers whatever the collection's size, so 2,000 show the steps following one another.
+      const items = 2_000;
+      const { collectionId } = await seedLibrary(t, userId, { items, abstractChars: 4_500 });
+      const lab = await t.run(async (ctx) => {
+        const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_move", name: "Lab", slug: "org_move", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+        await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: "orgmem_move", clerkUserId: "max_move_user", role: "org:admin", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+        return ensureWorkspace(ctx, { kind: "organization", organizationId });
+      });
+
+      await as.mutation(api.workspaces.move.move, { kind: "collection", id: collectionId, to: lab });
+      await t.finishAllScheduledFunctions(vi.runAllTimers, 1_000);
+
+      // Every paper is saved to the lab's library, and the collection's first and last places are there.
+      expect((await t.run((ctx) => ctx.db.query("libraryCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", lab)).unique()))?.count).toBe(items);
+      for (const order of ["asc", "desc"] as const) {
+        const home = await t.run(async (ctx) => (await ctx.db.get("libraryItems", (await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).order(order).first())!.libraryItemId))?.workspaceId);
+        expect(home).toBe(lab);
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  }, 900_000);
+
   it("an organization of 1,000 members re-averages a paper one of them rates, in a transaction of its own (#655)", async () => {
     vi.useFakeTimers();
     try {

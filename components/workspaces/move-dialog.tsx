@@ -6,6 +6,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { IconButton } from "@/components/assistant/parts";
 import { ArrowRight, Info, X } from "@/components/icons";
@@ -20,15 +21,17 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { panelPlace, withThread, workspaceKey } from "@/lib/assistant/place";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { workspaceHref } from "@/lib/workspaces/href";
-import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { useCurrentWorkspace, useWorkspaces } from "./parts";
 import { switchTarget } from "./switcher";
 import { WorkspacePicker } from "./workspace-picker";
 
-export type Movable = "search" | "screening" | "extraction" | "chat";
+export type Movable = "collection" | "search" | "screening" | "extraction" | "chat" | "author";
 
 /** What goes with each kind of item, as chips. */
 const GOES = {
+  collection: ["itsPapers", "ratingsInIt", "activity"],
+  author: ["publications", "editors"],
   search: ["resultsRatings", "screeningAnswers", "earlierQueries", "activity"],
   screening: ["answers", "questions", "activity"],
   extraction: ["answers", "questions", "pdfs", "activity"],
@@ -37,13 +40,18 @@ const GOES = {
 
 /** Where the item opens in the workspace it moved to. */
 const PAGE: Record<Exclude<Movable, "chat">, (id: string) => string> = {
+  collection: (id) => `/library?col=${id}`,
+  author: (id) => `/authors/${id}`,
   search: (id) => `/results/${id}`,
   screening: (id) => `/screening?job=${id}`,
   extraction: (id) => `/extraction/${id}`,
 };
 
-/** `onMoved` hears the move done, before the page goes to where the item went. */
-export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onOpenChange: (open: boolean) => void; kind: Movable; id: string; name: string; onMoved?: () => void }) {
+/**
+ * `from` is the workspace the item is in, when the page isn't (a profile opened by its public
+ * link); `onMoved` hears the move done, before the page goes to where the item went.
+ */
+export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onOpenChange: (open: boolean) => void; kind: Movable; id: string; name: string; from?: Id<"workspaces">; onMoved?: () => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} onOpenAutoFocus={focusContent} className="top-[max(1rem,12dvh)] flex max-h-[min(40rem,calc(88dvh-1rem))] max-w-lg translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0">
@@ -54,24 +62,26 @@ export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onO
   );
 }
 
-function Move({ close, kind, id, name, onMoved }: { close: () => void; kind: Movable; id: string; name: string; onMoved?: () => void }) {
+function Move({ close, kind, id, name, from: itemWorkspace, onMoved }: { close: () => void; kind: Movable; id: string; name: string; from?: Id<"workspaces">; onMoved?: () => void }) {
   const t = useTranslations("workspaces.move");
   const tc = useTranslations("common");
   const router = useRouter();
-  const workspaceId = useWorkspace();
-  const from = useCurrentWorkspace();
+  const page = useWorkspace();
+  const current = useCurrentWorkspace();
   const workspaces = useWorkspaces();
+  const workspaceId = itemWorkspace ?? page;
+  const from = itemWorkspace ? workspaces.list?.find((workspace) => workspace.workspaceId === itemWorkspace) : current;
   const { data: held } = useProtectedQuery(api.workspaces.move.held, inWorkspace(workspaceId, { kind, id }));
-  const move = useWorkspaceMutation(api.workspaces.move.move);
+  const run = useMutation(api.workspaces.move.move);
   const [to, setTo] = useState<Id<"workspaces">>();
   const [busy, setBusy] = useState(false);
   const target = workspaces.list?.find((workspace) => workspace.workspaceId === to);
 
   const go = async () => {
-    if (!target || held) return;
+    if (!target || held || !workspaceId) return;
     setBusy(true);
     try {
-      await move({ kind, id, to: target.workspaceId });
+      await run({ workspaceId, kind, id, to: target.workspaceId });
     } catch (error) {
       showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong")));
       setBusy(false);
@@ -120,6 +130,7 @@ function Move({ close, kind, id, name, onMoved }: { close: () => void; kind: Mov
               </Chip>
             ))}
           </div>
+          {kind === "collection" ? <p className="px-1 text-xs text-muted-foreground">{from?.kind === "organization" ? t("libraryKeeps", { workspace: from.name }) : t("yourLibraryKeeps")}</p> : null}
         </Zone>
       </div>
       <div className="flex items-center justify-end gap-2 border-t border-border/50 px-4 py-3">

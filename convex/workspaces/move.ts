@@ -1,9 +1,10 @@
-// Moving an item to another of the person's workspaces (#654): a search with its screening
-// answers, its screenings and its history, a finished screening of a collection, the library or
-// another screening, a finished extraction job, or a chat they started. Its activity goes with
-// it and records where it came from; the person goes with it too.
+// Moving an item to another of the person's workspaces (#654): a collection with its papers, a
+// search with its screening answers, its screenings and its history, a finished screening of a
+// collection, the library or another screening, a finished extraction job, a chat they started,
+// or an author profile. Its activity goes with it and records where it came from; the person
+// goes with it too.
 
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "../lib/functions";
@@ -14,9 +15,17 @@ import { findSearch } from "../research/records";
 import { screeningFor } from "../research/answers";
 import { noteActivity } from "../activity/notes";
 import { itemKey } from "../activity/validators";
+import { planLimit } from "../billing/accounts";
+import { collectionCountRow } from "../library/counter";
+import { facetsOf } from "../library/facets";
+import { removeCollectionMembership } from "../library/collectionMembership";
+import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
+import { collectionRatingRow, personalRatingRow, placeOf, placeRated, setPersonalRating, writeRating } from "../ratings";
+import { libraryPaper, upsertLibraryItem } from "../library/mutations";
+import { requireAuthorProfiles } from "../authors/profiles";
 import { actorIn } from "./actor";
 
-export const movableKinds = ["search", "screening", "extraction", "chat"] as const;
+export const movableKinds = ["collection", "search", "screening", "extraction", "chat", "author"] as const;
 export type Movable = (typeof movableKinds)[number];
 
 /** A job moves once it has finished: until then its credits are held by the workspace it runs in. */
@@ -29,6 +38,20 @@ const ACTIVITY_STEP = 200;
 
 /** Screenings of one search a move takes with it; a search with more stays where it is. */
 const SEARCH_SCREENINGS_MOVED = 200;
+
+/** A moved collection's papers one step saves to its new workspace's library, at most. */
+const PAPERS_STEP = 100;
+/**
+ * The queries one step may spend on its papers, under Convex's 4,096 a transaction: in an
+ * organization each paper reads every member's rating of it, for its library and its place.
+ */
+const PAPERS_STEP_QUERIES = 3_000;
+/**
+ * The characters of papers one step may read, which keeps it under Convex's 16 MiB a
+ * transaction: a paper is read where it was and twice where it goes, a character takes three
+ * bytes at most, and the step ends after the paper that passes this.
+ */
+const PAPERS_STEP_CHARS = 2_000_000;
 
 type Read = Pick<QueryCtx, "db">;
 
@@ -50,6 +73,15 @@ const screeningJobIn = async (ctx: Read, workspaceId: Id<"workspaces">, id: stri
 const extractionJobIn = async (ctx: Read, workspaceId: Id<"workspaces">, id: string) => {
   const jobId = ctx.db.normalizeId("extractionJobs", id);
   return inWorkspace(jobId ? await ctx.db.get("extractionJobs", jobId) : null, workspaceId);
+};
+const collectionIn = async (ctx: Read, workspaceId: Id<"workspaces">, id: string) => {
+  const collectionId = ctx.db.normalizeId("collections", id);
+  return inWorkspace(collectionId ? await ctx.db.get("collections", collectionId) : null, workspaceId);
+};
+const profileIn = async (ctx: Read, workspaceId: Id<"workspaces">, id: string) => {
+  const profileId = ctx.db.normalizeId("authorProfiles", id);
+  const profile = profileId ? await ctx.db.get("authorProfiles", profileId) : null;
+  return profile?.workspaceId === workspaceId ? profile : null;
 };
 const chatIn = async (ctx: Read, workspaceId: Id<"workspaces">, id: string) => {
   const threadId = ctx.db.normalizeId("assistantThreads", id);
@@ -84,7 +116,15 @@ export async function heldBack(ctx: Read, { workspaceId, role, userId }: Pick<Ac
   const workspace = await ctx.db.get("workspaces", workspaceId);
   if (workspace?.kind === "organization" && role !== "admin") return `Only ${await workspaceName(ctx, workspaceId)}'s admins move its work out of it.`;
   const gone = "It isn't in this workspace any more.";
-  if (kind === "search") {
+  if (kind === "collection") {
+    const collection = await collectionIn(ctx, workspaceId, id);
+    if (!collection) return gone;
+    // A library shows the papers of the collections it follows, from the workspace they're in.
+    const follower = await ctx.db.query("evidenceLibraryCollectionSources").withIndex("by_collectionId", (q) => q.eq("collectionId", collection._id)).first();
+    if (follower) return `${(await ctx.db.get("evidenceLibraries", follower.libraryId))?.name ?? "An Evidence Library"} follows this collection. Stop following it in the library's sources first.`;
+  } else if (kind === "author") {
+    if (!(await profileIn(ctx, workspaceId, id))) return gone;
+  } else if (kind === "search") {
     const search = await findSearch(ctx, workspaceId, id);
     if (!search) return gone;
     const { jobs } = await screeningsOf(ctx, search);
@@ -111,7 +151,30 @@ export async function heldBack(ctx: Read, { workspaceId, role, userId }: Pick<Ac
 }
 
 /** Puts the item, and what's stored with it by its workspace, in `to`; returns the row its activity follows. */
-async function rehome(ctx: MutationCtx, from: Id<"workspaces">, to: Id<"workspaces">, kind: Movable, id: string): Promise<{ table: "searches" | "screeningJobs" | "extractionJobs"; id: string } | null> {
+async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">, to: Id<"workspaces">, kind: Movable, id: string): Promise<{ table: Followed; id: string } | null> {
+  if (kind === "collection") {
+    const collection = await collectionIn(ctx, from, id);
+    if (!collection) throw createError("NOT_FOUND", "Collection not found");
+    const most = await planLimit(ctx, to, "collections");
+    const there = await collectionCountRow(ctx, to);
+    if (most !== undefined && (there?.count ?? 0) >= most) throw createError("VALIDATION_ERROR", `${await workspaceName(ctx, to)}'s plan allows ${most.toLocaleString("en")} collections, and it has them all.`);
+    await ctx.db.patch("collections", collection._id, { workspaceId: to });
+    const here = await collectionCountRow(ctx, from);
+    if (here) await ctx.db.patch("collectionCounts", here._id, { count: Math.max(0, here.count - 1) });
+    if (there) await ctx.db.patch("collectionCounts", there._id, { count: there.count + 1 });
+    else await ctx.db.insert("collectionCounts", { workspaceId: to, count: 1 });
+    // Its papers are saved to its new workspace's library a step at a time; the library it left keeps them.
+    await ctx.scheduler.runAfter(0, internal.workspaces.move.moveCollectionPapers, { collectionId: collection._id, by, from: 0 });
+    return { table: "collections", id: collection._id };
+  }
+  if (kind === "author") {
+    const profile = await profileIn(ctx, from, id);
+    if (!profile) throw createError("NOT_FOUND", "Author profile not found");
+    await requireAuthorProfiles(ctx, to, by);
+    // Its publications and editors are its own, by its ID.
+    await ctx.db.patch("authorProfiles", profile._id, { workspaceId: to });
+    return null;
+  }
   if (kind === "search") {
     const search = await findSearch(ctx, from, id);
     if (!search) throw createError("NOT_FOUND", "Search not found");
@@ -143,12 +206,84 @@ async function rehome(ctx: MutationCtx, from: Id<"workspaces">, to: Id<"workspac
   return null;
 }
 
+/** The rows whose workspace an item's activity follows. */
+type Followed = "collections" | "searches" | "screeningJobs" | "extractionJobs";
+const followedValidator = v.union(v.literal("collections"), v.literal("searches"), v.literal("screeningJobs"), v.literal("extractionJobs"));
+
+/** A library paper as saving it again takes it: its metadata, without whose library it's in. */
+const paperOf = (item: Doc<"libraryItems">) =>
+  Object.fromEntries(Object.keys(libraryPaper.fields).flatMap((key) => (item[key as keyof typeof item] === undefined ? [] : [[key, item[key as keyof typeof item]]]))) as Infer<typeof libraryPaper>;
+
+/**
+ * Saves a moved collection's papers to the library of the workspace it's in now, a step at a
+ * time from the place made at `from`, and points its places at them; the library it left keeps
+ * its own. A collection moved on again meanwhile takes the rest to where it is then.
+ *
+ * The ratings in it go with it. A person's own collection shows their own ratings, and an
+ * organization's the ratings its members gave in it: so a paper's rating by the person whose
+ * collection it was becomes theirs in the collection, and their rating in a collection that
+ * comes to them becomes their own of the paper, unless they've one. Other members' ratings in
+ * it stay with it, for an organization it moves to later.
+ */
+export const moveCollectionPapers = internalMutation({
+  args: { collectionId: v.id("collections"), by: v.id("users"), from: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { collectionId, by, from }) => {
+    const collection = await ctx.db.get("collections", collectionId);
+    const workspace = collection && (await ctx.db.get("workspaces", collection.workspaceId));
+    if (!workspace) return null;
+    const members = workspace.kind === "organization" ? (await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS)).length : 1;
+    const step = Math.min(PAPERS_STEP, Math.max(1, Math.floor(PAPERS_STEP_QUERIES / (4 * members + 12))));
+    const left = new Map<Id<"workspaces">, Doc<"workspaces"> | null>();
+    const places = await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId).gte("_creationTime", from)).take(step + 1);
+    let read = 0;
+    for (const [at, place] of places.entries()) {
+      // The next step starts at the place this one stops before. No two of a collection's places are made at the same instant: each is counted in it as it's made.
+      if (at > 0 && (at === step || read > PAPERS_STEP_CHARS)) {
+        await ctx.scheduler.runAfter(0, internal.workspaces.move.moveCollectionPapers, { collectionId, by, from: place._creationTime });
+        break;
+      }
+      const item = await ctx.db.get("libraryItems", place.libraryItemId);
+      if (!item) continue;
+      read += JSON.stringify(item).length;
+      if (item.workspaceId === workspace._id) continue;
+      const saved = (await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId: by, workspaceId: workspace._id }, paperOf(item))))!;
+      read += 2 * JSON.stringify(saved).length;
+      if (!left.has(item.workspaceId)) left.set(item.workspaceId, await ctx.db.get("workspaces", item.workspaceId));
+      const source = left.get(item.workspaceId);
+      if (workspace.kind === "organization") {
+        if (source?.kind === "personal" && item.rating !== undefined) await writeRating(ctx, source.userId, collectionId, item.openalexId, item.rating);
+      } else if (source?.kind === "organization") {
+        const theirs = await collectionRatingRow(ctx, workspace.userId, collectionId, item.openalexId);
+        // In a transaction of its own: it brings each of their organizations' copies of the paper in step.
+        if (theirs) await ctx.scheduler.runAfter(0, internal.workspaces.move.keepRating, { userId: workspace.userId, paperId: item.openalexId, rating: theirs.rating });
+      }
+      // Put in here meanwhile: the place it has already stands for both.
+      const there = await placeOf(ctx, collectionId, saved._id);
+      if (there) await removeCollectionMembership(ctx, place);
+      const { rating, count } = await placeRated(ctx, collectionId, saved);
+      await ctx.db.patch("libraryItemCollections", (there ?? place)._id, { libraryItemId: saved._id, ...facetsOf(saved, false), rating, ratingCount: count });
+    }
+    return null;
+  },
+});
+
+/** Makes a person's rating of a paper in a collection that came to their own workspace their own rating of it, unless they've one. */
+export const keepRating = internalMutation({
+  args: { userId: v.id("users"), paperId: v.string(), rating: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { userId, paperId, rating }) => {
+    if (!(await personalRatingRow(ctx, userId, paperId))) await setPersonalRating(ctx, userId, paperId, rating);
+    return null;
+  },
+});
+
 /**
  * Moves the rows of an item's activity left in `from` to the workspace the item is in now, a
  * step at a time; it stops once the item is back in `from`, so a move and a move back meet.
  */
 export const moveActivity = internalMutation({
-  args: { from: v.id("workspaces"), item: v.string(), table: v.union(v.literal("searches"), v.literal("screeningJobs"), v.literal("extractionJobs")), id: v.string() },
+  args: { from: v.id("workspaces"), item: v.string(), table: followedValidator, id: v.string() },
   returns: v.null(),
   handler: async (ctx, { from, item, table, id }) => {
     const rowId = ctx.db.normalizeId(table, id);
@@ -177,8 +312,8 @@ export const heldForAssistant = assistantQuery(heldAction);
 export const moveAction = defineUserMutation({
   path: "workspaces/move:move",
   description:
-    "Moves an item of the workspace the person is in to another workspace they belong to, and everyone in that workspace then sees it: a search (by its ID in the address) with its screening answers, its screenings and its earlier queries; a finished screening of a collection, the library or another screening; a finished extraction job; or a chat the person started. " +
-    "Only an organization's admins move its work out of it; a running job, or a chat whose reply hasn't finished, moves once it has; a search's screening moves with its search. Its activity goes with it. Returns the workspace it went to.",
+    "Moves an item of the workspace the person is in to another workspace they belong to, and everyone in that workspace then sees it: a collection with its papers, which are saved to that workspace's library while the library it left keeps them; a search (by its ID in the address) with its screening answers, its screenings and its earlier queries; a finished screening of a collection, the library or another screening; a finished extraction job; a chat the person started; or an author profile with its publications and editors. " +
+    "Only an organization's admins move its work out of it; a running job, or a chat whose reply hasn't finished, moves once it has; a search's screening moves with its search; a collection an Evidence Library follows stays until the library stops following it. Its activity goes with it. Returns the workspace it went to.",
   args: { kind: kindValidator, id: v.string(), to: v.id("workspaces") },
   returns: v.object({ to: v.id("workspaces") }),
   spendsCredits: false,
@@ -191,9 +326,9 @@ export const moveAction = defineUserMutation({
     if (!person || !(await actorIn(ctx, person, to))) throw createError("NOT_FOUND", "Workspace not found");
     const held = await heldBack(ctx, actor, kind, id);
     if (held) throw createError("VALIDATION_ERROR", held);
-    const followed = await rehome(ctx, actor.workspaceId, to, kind, id);
-    // Chats keep no activity.
-    if (followed && kind !== "chat") {
+    const followed = await rehome(ctx, actor.userId, actor.workspaceId, to, kind, id);
+    // Chats and author profiles keep no activity.
+    if (followed && kind !== "chat" && kind !== "author") {
       await ctx.scheduler.runAfter(0, internal.workspaces.move.moveActivity, { from: actor.workspaceId, item: itemKey(kind, id), ...followed });
       await noteActivity(ctx, { workspaceId: to, by: actor.userId, viaAssistant: actor.author === "assistant" }, { kind, id, happened: "moved", detail: await workspaceName(ctx, actor.workspaceId) });
     }

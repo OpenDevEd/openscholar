@@ -4291,12 +4291,20 @@
         "pdfs": "PDFs",
         "messages": "Messages",
         "files": "Files",
-        "activity": "Activity"
+        "activity": "Activity",
+        "itsPapers": "Its papers",
+        "ratingsInIt": "Ratings in it",
+        "publications": "Publications",
+        "editors": "Editors"
       },
       "moveTo": "Move to {workspace}",
       "move": "Move",
       "toAnother": "Move to another workspace",
-      "moveNamed": "Move {name} to another workspace"
+      "moveNamed": "Move {name} to another workspace",
+      "collection": "Move collection",
+      "author": "Move author profile",
+      "libraryKeeps": "{workspace}'s library keeps the papers it saved.",
+      "yourLibraryKeeps": "Your library keeps the papers it saved."
     }
   },
   "models": {

@@ -97,6 +97,91 @@ it("brings an item's activity to where it ends up when it moves back before its 
   expect(new Set(where)).toEqual(new Set([aliceOwn]));
 });
 
+it("moves a collection with its papers, saved to the library it goes to while the one it left keeps them", async () => {
+  const { t, alice, lab: labId, aliceOwn } = await lab();
+  const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { name: "Trials" });
+  for (const n of [1, 2]) await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: `https://openalex.org/W${n}`, title: `Paper ${n}`, collectionId });
+  const papers = (workspaceId: Id<"workspaces">) => t.run(async (ctx) => (await ctx.db.query("libraryItems").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).collect()).map((item) => item.openalexId).sort());
+  const collections = (workspaceId: Id<"workspaces">) => t.run(async (ctx) => (await ctx.db.query("collectionCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())?.count ?? 0);
+
+  await alice.mutation(api.workspaces.move.move, { kind: "collection", id: collectionId, to: labId });
+  await t.finishAllScheduledFunctions(() => {});
+
+  expect((await t.run((ctx) => ctx.db.get("collections", collectionId)))?.workspaceId).toBe(labId);
+  expect(await papers(labId)).toEqual(["https://openalex.org/W1", "https://openalex.org/W2"]);
+  expect(await papers(aliceOwn)).toEqual(["https://openalex.org/W1", "https://openalex.org/W2"]);
+  const places = await t.run(async (ctx) => Promise.all((await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).collect()).map(async (place) => (await ctx.db.get("libraryItems", place.libraryItemId))?.workspaceId)));
+  expect(places).toEqual([labId, labId]);
+  expect([await collections(aliceOwn), await collections(labId)]).toEqual([0, 1]);
+});
+
+it("keeps a collection where it is when the workspace it would go to has all its plan allows", async () => {
+  const { t, alice, lab: labId } = await lab();
+  const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { name: "Trials" });
+  await t.run((ctx) => ctx.db.insert("billingAccounts", { workspaceId: labId, plan: "free_organization", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, limits: { collections: 0 }, refreshedAt: Date.now() }));
+  await expect(alice.mutation(api.workspaces.move.move, { kind: "collection", id: collectionId, to: labId })).rejects.toThrow(/allows 0 collections/);
+});
+
+it("moves an author profile only to a workspace that has author profiles", async () => {
+  const { t, alice, lab: labId, aliceOwn, users } = await lab();
+  const profile = await t.run((ctx) => ctx.db.insert("authorProfiles", { name: "Ada", headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: "", workspaceId: aliceOwn, createdBy: users.alice, revision: 1, updatedAt: 1 }));
+  await expect(alice.mutation(api.workspaces.move.move, { kind: "author", id: profile, to: labId })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  expect((await t.run((ctx) => ctx.db.get("authorProfiles", profile)))?.workspaceId).toBe(aliceOwn);
+
+  await t.run(async (ctx) => ctx.db.patch("organizations", (await ctx.db.query("organizations").first())!._id, { authorsEnabled: true }));
+  await alice.mutation(api.workspaces.move.move, { kind: "author", id: profile, to: labId });
+  expect((await t.run((ctx) => ctx.db.get("authorProfiles", profile)))?.workspaceId).toBe(labId);
+});
+
+/** A collection's places, each with the rating it sorts by there and how many gave it. */
+const ratedPlaces = (t: Awaited<ReturnType<typeof lab>>["t"], collectionId: Id<"collections">) =>
+  t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).collect()).map(({ rating, ratingCount }) => ({ rating, ratingCount })));
+
+it("gives a person's ratings of their collection's papers to the collection when it moves into an organization", async () => {
+  const { t, alice, lab: labId } = await lab();
+  const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { name: "Trials" });
+  await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W1", title: "Rated", rating: 4, collectionId });
+  await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W2", title: "Unrated", collectionId });
+
+  await alice.mutation(api.workspaces.move.move, { kind: "collection", id: collectionId, to: labId });
+  await t.finishAllScheduledFunctions(() => {});
+
+  // In the lab a collection sorts by what its members gave in it: Alice's 4, hers alone.
+  expect(await ratedPlaces(t, collectionId)).toEqual([{ rating: 4, ratingCount: 1 }, { rating: undefined, ratingCount: undefined }]);
+});
+
+it("makes a person's ratings in an organization's collection their own when it moves to their workspace, where they've none", async () => {
+  const { t, alice, bob, lab: labId, aliceOwn, users } = await lab();
+  const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { workspaceId: labId, name: "Trials" });
+  const saved: Id<"libraryItems">[] = [];
+  for (const n of [1, 2]) saved.push((await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: labId, openalexId: `https://openalex.org/W${n}`, title: `Paper ${n}`, collectionId })).id);
+  for (const libraryItemId of saved) await alice.mutation(api.library.collections.setCollectionRating, { workspaceId: labId, collectionId, libraryItemId, rating: 5 });
+  await bob.mutation(api.library.collections.setCollectionRating, { workspaceId: labId, collectionId, libraryItemId: saved[0], rating: 1 });
+  // Her own rating of the second paper, which stays hers.
+  await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W2", title: "Paper 2", rating: 2 });
+
+  await alice.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "collection", id: collectionId, to: aliceOwn });
+  await t.finishAllScheduledFunctions(() => {});
+
+  expect(await ratedPlaces(t, collectionId)).toEqual([{ rating: 5, ratingCount: undefined }, { rating: 2, ratingCount: undefined }]);
+  // Bob's rating in it stays with it, for an organization it moves to later.
+  expect(await t.run((ctx) => ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", users.bob).eq("collectionId", collectionId)).collect())).toHaveLength(1);
+});
+
+it("moves a collection of papers near the largest Convex stores, in steps that each fit a transaction", async () => {
+  const { t, alice, lab: labId } = await lab();
+  const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { name: "Long reads" });
+  // About 0.8 MB a paper with its search text: nine read together pass the 16 MiB a transaction reads.
+  for (let n = 0; n < 9; n++) await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: `https://openalex.org/W${n}`, title: `Paper ${n}`, abstract: "a".repeat(400_000), collectionId });
+
+  await alice.mutation(api.workspaces.move.move, { kind: "collection", id: collectionId, to: labId });
+  await t.finishAllScheduledFunctions(() => {});
+
+  const places = await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).collect());
+  const homes = await Promise.all(places.map((place) => t.run(async (ctx) => (await ctx.db.get("libraryItems", place.libraryItemId))?.workspaceId)));
+  expect(homes).toEqual(Array(9).fill(labId));
+});
+
 it("moves a screening that stopped when its credits ran out, which has finished", async () => {
   const { t, alice, lab: labId, aliceOwn, users } = await lab();
   const job = await t.run(async (ctx) => {
@@ -105,4 +190,17 @@ it("moves a screening that stopped when its credits ran out, which has finished"
   });
   await alice.mutation(api.workspaces.move.move, { kind: "screening", id: job, to: labId });
   expect((await t.run((ctx) => ctx.db.get("screeningJobs", job)))?.workspaceId).toBe(labId);
+});
+
+it("keeps one place for a paper put in a moved collection before its papers have moved", async () => {
+  const { t, alice, lab: labId } = await lab();
+  const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { name: "Trials" });
+  for (const n of [1, 2]) await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: `https://openalex.org/W${n}`, title: `Paper ${n}`, collectionId });
+  await alice.mutation(api.workspaces.move.move, { kind: "collection", id: collectionId, to: labId });
+  // Saved into it in the lab while its papers are still on their way.
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: labId, openalexId: "https://openalex.org/W1", title: "Paper 1", collectionId });
+  await t.finishAllScheduledFunctions(() => {});
+  const places = await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).collect());
+  expect(places).toHaveLength(2);
+  expect((await t.run((ctx) => ctx.db.get("collections", collectionId)))?.itemCount).toBe(2);
 });

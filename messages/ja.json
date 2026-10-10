@@ -4289,12 +4289,20 @@
         "pdfs": "PDF",
         "messages": "メッセージ",
         "files": "ファイル",
-        "activity": "アクティビティ"
+        "activity": "アクティビティ",
+        "itsPapers": "論文",
+        "ratingsInIt": "その中の評価",
+        "publications": "出版物",
+        "editors": "編集者"
       },
       "moveTo": "{workspace} に移動",
       "move": "移動",
       "toAnother": "別のワークスペースに移動",
-      "moveNamed": "{name} を別のワークスペースに移動"
+      "moveNamed": "{name} を別のワークスペースに移動",
+      "collection": "コレクションを移動",
+      "author": "著者プロフィールを移動",
+      "libraryKeeps": "{workspace} のライブラリには保存済みの論文が残ります。",
+      "yourLibraryKeeps": "あなたのライブラリには保存済みの論文が残ります。"
     }
   },
   "models": {

@@ -4289,12 +4289,20 @@
         "pdfs": "PDF",
         "messages": "Messages",
         "files": "Fichiers",
-        "activity": "Activité"
+        "activity": "Activité",
+        "itsPapers": "Ses articles",
+        "ratingsInIt": "Ses notes",
+        "publications": "Publications",
+        "editors": "Éditeurs"
       },
       "moveTo": "Déplacer vers {workspace}",
       "move": "Déplacer",
       "toAnother": "Déplacer vers un autre espace de travail",
-      "moveNamed": "Déplacer {name} vers un autre espace de travail"
+      "moveNamed": "Déplacer {name} vers un autre espace de travail",
+      "collection": "Déplacer la collection",
+      "author": "Déplacer le profil d'auteur",
+      "libraryKeeps": "La bibliothèque de {workspace} garde les articles qu'elle a enregistrés.",
+      "yourLibraryKeeps": "Votre bibliothèque garde les articles qu'elle a enregistrés."
     }
   },
   "models": {

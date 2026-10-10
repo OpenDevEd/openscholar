@@ -48,7 +48,7 @@ import { Button } from "@/components/ui/button";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { cn } from "@/lib/utils";
 import { ManageCollectionsDialog, NewCollectionDialog, useCollectionDialogsReady, useManageCollections } from "./collection-dialogs";
-import { ActivityButton } from "@/components/workspaces/activity";
+import { ActivityButton, MoveButton } from "@/components/workspaces/activity";
 import { LibraryCommandCenter } from "./library-command-center";
 import { LibraryEmptyState } from "./library-empty-state";
 import { LibraryFilterSidebar } from "./library-filter-sidebar";
@@ -500,6 +500,7 @@ export function LibraryPageClient() {
                       <>
                         <ItemPresence kind="collection" id={selectedCollection._id} />
                         <ActivityButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
+                        <MoveButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
                       </>
                     ) : undefined
                   }

@@ -42,16 +42,22 @@ export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, wo
 /** A profile as pages show it, with its photo's URL. */
 const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union(v.string(), v.null())};
 
+/**
+ * Refuses unless `workspaceId` may hold author profiles: in an organization, its own switch; in
+ * `userId`'s own workspace, any of their organizations', until plans give features (#652).
+ */
+export async function requireAuthorProfiles(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  if (workspace?.kind !== "organization") return await requireOrganizationFeature(ctx, "authors", userId);
+  if ((await ctx.db.get("organizations", workspace.organizationId))?.authorsEnabled !== true) throw createError("FORBIDDEN", "This organization doesn't have author profiles enabled.");
+}
+
 /** Makes a profile owned by the page's workspace. */
 export const create = workspaceMutation({
   args: {name: v.string()},
   returns: v.id("authorProfiles"),
   handler: async (ctx, {userId, workspaceId}, args) => {
-    // In an organization, its own switch; in a person's own workspace, any of their organizations', until plans give features (#652).
-    const workspace = await ctx.db.get("workspaces", workspaceId);
-    const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
-    if (workspace?.kind === "organization" ? organization?.authorsEnabled !== true : false) throw createError("FORBIDDEN", "This organization doesn't have author profiles enabled.");
-    if (workspace?.kind !== "organization") await requireOrganizationFeature(ctx, "authors");
+    await requireAuthorProfiles(ctx, workspaceId, userId);
     return await createProfile(ctx, userId, workspaceId, args.name);
   },
 });

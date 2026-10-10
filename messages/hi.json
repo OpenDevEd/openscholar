@@ -4289,12 +4289,20 @@
         "pdfs": "PDF",
         "messages": "संदेश",
         "files": "फ़ाइलें",
-        "activity": "गतिविधि"
+        "activity": "गतिविधि",
+        "itsPapers": "इसके पेपर",
+        "ratingsInIt": "इसकी रेटिंग",
+        "publications": "प्रकाशन",
+        "editors": "संपादक"
       },
       "moveTo": "{workspace} में ले जाएँ",
       "move": "ले जाएँ",
       "toAnother": "दूसरे वर्कस्पेस में ले जाएँ",
-      "moveNamed": "{name} को दूसरे वर्कस्पेस में ले जाएँ"
+      "moveNamed": "{name} को दूसरे वर्कस्पेस में ले जाएँ",
+      "collection": "संग्रह ले जाएँ",
+      "author": "लेखक प्रोफ़ाइल ले जाएँ",
+      "libraryKeeps": "{workspace} की लाइब्रेरी इसके सहेजे पेपर रखती है।",
+      "yourLibraryKeeps": "आपकी लाइब्रेरी इसके सहेजे पेपर रखती है।"
     }
   },
   "models": {
