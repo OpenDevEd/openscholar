@@ -528,6 +528,10 @@ export type ConfigurationDraft = {
     digestCovers: "published" | "added";
     /** When digests were paused, or null while they go out. */
     pausedSince: string | null;
+    /** A written digest waits in the library's admin until an Editor or Owner publishes it. */
+    approval: boolean;
+    /** Readers are told who checked each digest. */
+    attribution: boolean;
     schedule: DigestScheduleDraft;
   };
   legal: LegalDraft;
@@ -822,6 +826,8 @@ function readNotifications(
     enabled: flag(value.enabled, false),
     digestCovers: value.digestCovers === "added" ? "added" : "published",
     pausedSince: text(value.pausedSince) || null,
+    approval: flag(value.approval, false),
+    attribution: flag(value.attribution, false),
     schedule:
       schedule.frequency === "monthly"
         ? {
