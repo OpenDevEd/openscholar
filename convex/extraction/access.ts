@@ -105,14 +105,17 @@ export function jobFor(job: Doc<"extractionJobs">, guest: boolean): Doc<"extract
 /** An error as a guest is sent it: what went wrong, without the diagnostics kept beside it. */
 const said = <Failure extends { context?: unknown }>({ context: _context, ...failure }: Failure) => failure as Failure;
 
+/** What a paper's or an answer's row says of its billing, and the ID of the record a paper came from: its workspace's alone. A new such field goes here. */
+const OWNERS_ALONE = ["creditsUsed", "admittedEstimateCredits", "indexingBilled", "questionsBilled", "billed", "sourceId"] as const;
+
 /**
- * A paper or an answer as its reader is sent it. What it cost, the ID of the record a paper
- * came from and its last error's diagnostics are its workspace's.
+ * A paper or an answer as its reader is sent it. A guest's goes without what it cost and how
+ * it was billed, the ID of the record a paper came from, and its last error's diagnostics.
  */
-export function rowFor<Row extends { creditsUsed?: number; sourceId?: string; lastError?: { context?: unknown } }>(row: Row, guest: boolean): Row {
+export function rowFor<Row extends { lastError?: { context?: unknown } }>(row: Row, guest: boolean): Row {
   if (!guest) return row;
-  const { creditsUsed: _credits, sourceId: _source, lastError, ...shown } = row;
-  return (lastError ? { ...shown, lastError: said(lastError) } : shown) as Row;
+  const shown = Object.fromEntries(Object.entries(row).filter(([field]) => !(OWNERS_ALONE as readonly string[]).includes(field))) as Row;
+  return shown.lastError ? { ...shown, lastError: said(shown.lastError) } : shown;
 }
 
 export type ReadableJobResolution =

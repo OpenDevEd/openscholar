@@ -302,7 +302,7 @@ it("opens a shared extraction to its guest to read from their own workspace, wit
       workspaceId, createdBy: users.alice, name: "Sample sizes", sourceType: "history", status: "creditsExhausted", totalPapers: 1, runEpoch: 0, spendCap: 500, spendHold: "hold_1", createdAt: 1, updatedAt: 1,
       error: { code: "insufficient_credits", message: "This extraction reached the 500 credits it was allowed. Resume it to carry on past them.", at: 1 },
     });
-    const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: "W1", title: "Trial", authors: [], processable: true, status: "completed", creditsUsed: 3, sourceId: trials.id });
+    const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: "W1", title: "Trial", authors: [], processable: true, status: "completed", creditsUsed: 3, admittedEstimateCredits: 5, questionsBilled: true, indexingBilled: true, sourceId: trials.id });
     return { jobId, paperId };
   });
   const item = { workspaceId, kind: "extraction" as const, id: jobId };
@@ -326,7 +326,7 @@ it("opens a shared extraction to its guest to read from their own workspace, wit
   const papers = async (as: typeof carol, from?: Id<"workspaces">) => (await as.query(api.extraction.queries.listJobResults, { ...view, ...(from ? { workspaceId: from } : {}) })).page;
   expect(await papers(alice, workspaceId)).toMatchObject([{ title: "Trial", creditsUsed: 3, sourceId: trials.id }]);
   expect(await papers(carol)).toMatchObject([{ title: "Trial" }]);
-  expect((await papers(carol))[0]).not.toHaveProperty("creditsUsed");
+  for (const billing of ["creditsUsed", "admittedEstimateCredits", "questionsBilled", "indexingBilled"]) expect((await papers(carol))[0]).not.toHaveProperty(billing);
   // The collection the paper came from isn't shared with her: its ID stays behind.
   expect((await papers(carol))[0]).not.toHaveProperty("sourceId");
   expect(await carol.query(api.extraction.queries.getJobDetails, { jobId })).toMatchObject({ status: "ok", guest: { role: "viewer" } });
