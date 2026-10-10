@@ -16,7 +16,12 @@ export type Box = [number, number, number, number];
 export type Frame = {
   t: number;
   moved: Move[];
-  added: { id: number; box: Box }[];
+  // `within` is the dialog, sheet, popover or menu an element arrived in after
+  // it opened, given to the outermost element of what arrived, with whether
+  // that is fading or sliding in.
+  added: { id: number; box: Box; within?: number; entering?: boolean }[];
+  // The dialogs, sheets, popovers and menus that opened in this frame.
+  opened?: number[];
   removed: { id: number; box: Box }[];
   textAdded: string[];
   textRemoved: string[];
@@ -31,7 +36,8 @@ export type Finding =
   | { kind: "shift"; from: number; to: number; moves: Move[] }
   | { kind: "text-flash"; text: string; from: number; to: number }
   | { kind: "brief-text"; text: string; from: number; to: number }
-  | { kind: "brief-element"; id: number; from: number; to: number };
+  | { kind: "brief-element"; id: number; from: number; to: number }
+  | { kind: "late-content"; id: number; from: number; to: number };
 
 // Frames closer than this belong to one burst, such as one animated resize.
 const BURST_GAP_MS = 120;
@@ -41,6 +47,9 @@ const FLASH_RETURN_MS = 2_000;
 const BRIEF_MS = 400;
 // Elements smaller than this (a 20×20 icon) are too small to read as a flash.
 const MIN_FLASH_AREA = 400;
+
+// The first moments after a dialog appears belong to its opening.
+const OPENING_MS = 150;
 
 const sameBox = (a: Box, b: Box) => a.every((value, index) => Math.abs(value - b[index]) <= 2);
 
@@ -57,15 +66,85 @@ function bursts(frames: Frame[]): Frame[][] {
   return groups;
 }
 
-function shift(frames: Frame[]): Finding | null {
-  const moves = new Map<number, Move>();
-  for (const move of frames.flatMap((frame) => frame.moved)) {
-    const total = moves.get(move.id) ?? { id: move.id, dx: 0, dy: 0, dw: 0, dh: 0 };
-    moves.set(move.id, { id: move.id, dx: total.dx + move.dx, dy: total.dy + move.dy, dw: total.dw + move.dw, dh: total.dh + move.dh });
+// An element that moves a little in each of several frames in a row is being
+// animated: a frame sliding open, and whatever it pushes along. One that covers
+// its distance in a frame or two jumped.
+const SLIDE_FRAMES = 5;
+// A busy browser drops a few frames in the middle of a slide.
+const SLIDE_GAP_MS = 80;
+// One step of a slide is never far from the step beside it; the slack covers the uneven frames it starts with.
+const SLIDE_STEP_RATIO = 3;
+const SLIDE_STEP_SLACK_PX = 8;
+// No one step of a slide covers much of the distance by itself.
+const SLIDE_STEP_SHARE = 1 / 3;
+// The slow end of a slide moves a pixel every few frames.
+const SLIDE_TAIL_PX = 2;
+const SIDES = ["dx", "dy", "dw", "dh"] as const;
+
+type Step = { t: number; move: Move; changed: boolean };
+const near = (size: number, other: number) => size <= SLIDE_STEP_RATIO * other + SLIDE_STEP_SLACK_PX;
+
+/**
+ * Whether one side's steps, each the time of its frame and how far it went,
+ * are one smooth slide: enough frames in a row, going one way, each step near
+ * the one beside it and none covering much of the distance. It may start on a
+ * short step, since a slide rarely begins on a frame.
+ */
+function smooth(steps: [number, number][]): boolean {
+  if (steps.length < SLIDE_FRAMES) return false;
+  const total = steps.reduce((sum, [, size]) => sum + Math.abs(size), 0);
+  // ponytail: a spring that overshoots and comes back reads as a shift; allow one decaying turn if a slide ever bounces.
+  const way = Math.sign(steps[0][1]);
+  return steps.every(([t, signed], index) => {
+    const size = Math.abs(signed);
+    if (Math.sign(signed) !== way || size > total * SLIDE_STEP_SHARE + SLIDE_TAIL_PX) return false;
+    if (index === 0) return true;
+    const [before, lastSigned] = steps[index - 1];
+    const last = Math.abs(lastSigned);
+    const unbroken = t - before <= SLIDE_GAP_MS || Math.max(size, last) <= SLIDE_TAIL_PX;
+    return unbroken && near(last, size) && (index === 1 || near(size, last));
+  });
+}
+
+/** How far a side went in all, whichever way. */
+const travelled = (steps: Step[], side: (typeof SIDES)[number]) => steps.reduce((sum, step) => sum + Math.abs(step.move[side]), 0);
+
+/**
+ * Whether an element slid: every side of its box that moved did so smoothly,
+ * bar a pixel or two of rounding on another side. Each side is judged by
+ * itself, so a frame growing smoothly can't hide a jump sideways. Being pushed
+ * along by rows that keep arriving or leaving is not a slide: a slide's
+ * content changes as it starts, and most of its frames add and remove nothing.
+ */
+function slid(steps: Step[]): boolean {
+  if (steps.filter((step) => step.changed).length * 2 > steps.length) return false;
+  const sides = SIDES.filter((side) => travelled(steps, side) > SLIDE_TAIL_PX);
+  return sides.length > 0 && sides.every((side) => smooth(steps.filter((step) => Math.abs(step.move[side]) >= 1).map((step): [number, number] => [step.t, step.move[side]])));
+}
+
+/** The furthest each side got from where it started. A jump out and back ends where it began, and is still that jump. */
+function furthest(id: number, steps: Step[]): Move {
+  const at: Delta = { dx: 0, dy: 0, dw: 0, dh: 0 };
+  const peak: Move = { id, dx: 0, dy: 0, dw: 0, dh: 0 };
+  for (const { move } of steps) {
+    for (const side of SIDES) {
+      at[side] += move[side];
+      if (Math.abs(at[side]) > Math.abs(peak[side])) peak[side] = at[side];
+    }
   }
-  const moving = frames.filter((frame) => frame.moved.length > 0);
-  if (moving.length === 0) return null;
-  return { kind: "shift", from: moving[0].t, to: moving.at(-1)!.t, moves: [...moves.values()] };
+  return peak;
+}
+
+function shift(frames: Frame[]): Finding | null {
+  const steps = new Map<number, Step[]>();
+  for (const frame of frames) for (const move of frame.moved) steps.set(move.id, [...(steps.get(move.id) ?? []), { t: frame.t, move, changed: frame.added.length + frame.removed.length > 0 }]);
+  const rest = [...steps].filter(([, own]) => !slid(own));
+  // A slide leaves a pixel or two of rounding on the parts it carries along.
+  const beside = rest.length < steps.size;
+  const jumped = rest.filter(([, own]) => !(beside && SIDES.every((side) => travelled(own, side) <= SLIDE_TAIL_PX)));
+  if (jumped.length === 0) return null;
+  const times = jumped.flatMap(([, own]) => own.map((step) => step.t));
+  return { kind: "shift", from: Math.min(...times), to: Math.max(...times), moves: jumped.map(([id, own]) => furthest(id, own)) };
 }
 
 /** Lines of text shown and hidden over the phase, oldest first, so each change pairs with the one before it. */
@@ -152,6 +231,28 @@ function elementBlinks(frames: Frame[], since: number): Finding[] {
   return findings;
 }
 
+/**
+ * Content that shows up inside a dialog, sheet, popover or menu after it has
+ * opened, without fading or sliding in: it read its data only once it was
+ * open, and the data popped in. One finding per overlay and frame, for the
+ * largest thing that arrived.
+ */
+function arrivals(frames: Frame[]): Finding[] {
+  const opened = new Map<number, number>();
+  const findings: Finding[] = [];
+  const area = (box: Box) => box[2] * box[3];
+  for (const frame of frames) {
+    for (const id of frame.opened ?? []) opened.set(id, frame.t);
+    for (const { id } of frame.removed) opened.delete(id);
+    const popped = frame.added.filter((element) => !element.entering && area(element.box) >= MIN_FLASH_AREA && frame.t - (opened.get(element.within ?? -1) ?? Infinity) > OPENING_MS);
+    for (const overlay of new Set(popped.map((element) => element.within!))) {
+      const largest = popped.filter((element) => element.within === overlay).sort((a, b) => area(b.box) - area(a.box))[0];
+      findings.push({ kind: "late-content", id: largest.id, from: opened.get(overlay)!, to: frame.t });
+    }
+  }
+  return findings;
+}
+
 /** The problems a person would see in one phase: movement after the page or the response settled, and blinks. */
 export function analyzePhase(frames: Frame[], phase: Phase): Finding[] {
   const since = phase.kind === "load" ? (phase.baseline ?? phase.start) : phase.start;
@@ -160,7 +261,9 @@ export function analyzePhase(frames: Frame[], phase: Phase): Finding[] {
   // growing as it animates). Anything that moves after it moved on its own.
   const late = phase.kind === "step" ? groups.slice(1) : groups;
   const shifts = late.map(shift).filter((finding): finding is Finding => finding !== null);
-  return [...shifts, ...textBlinks(frames, since), ...elementBlinks(frames, since)].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
+  // Only what an action opened is judged for late content: a page still loading fills in by design.
+  const popped = phase.kind === "step" ? arrivals(frames.filter((frame) => frame.t >= since)) : [];
+  return [...shifts, ...textBlinks(frames, since), ...elementBlinks(frames, since), ...popped].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
 }
 
 /**
@@ -172,13 +275,19 @@ export function stopDecision(input: {
   stopHookActive: boolean;
   sessionStartMs: number;
   lastPassMs: number | null;
-  changed: { path: string; mtimeMs: number }[];
+  /** How many dialogs, sheets, popovers or menus the last passing check opened. Absent for a recorded skip. */
+  lastPassOpened?: number;
+  changed: { path: string; mtimeMs: number; overlay?: boolean }[];
   userFacing: RegExp;
-}): { block: false } | { block: true; files: string[] } {
+}): { block: false } | { block: true; files: string[]; unopened?: true } {
   if (input.stopHookActive) return { block: false };
   const since = Math.max(input.sessionStartMs, input.lastPassMs ?? 0);
-  const files = input.changed.filter((file) => input.userFacing.test(file.path) && file.mtimeMs > since).map((file) => file.path);
-  return files.length > 0 ? { block: true, files } : { block: false };
+  const seen = input.changed.filter((file) => input.userFacing.test(file.path));
+  const files = seen.filter((file) => file.mtimeMs > since).map((file) => file.path);
+  if (files.length > 0) return { block: true, files };
+  // A check that opened nothing says nothing about a dialog this session changed.
+  const overlays = seen.filter((file) => file.overlay && file.mtimeMs > input.sessionStartMs).map((file) => file.path);
+  return overlays.length > 0 && input.lastPassOpened === 0 ? { block: true, files: overlays, unopened: true } : { block: false };
 }
 
 // One thing to report: its kind, what identifies it on another site (element

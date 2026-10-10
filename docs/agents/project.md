@@ -57,6 +57,7 @@ supported process changed. Read the page back before claiming success.
   | A dialog, popover or picker comes from `components/ui`, never a raw primitive | `check:ui-rules` (`raw-primitive`) |
   | No "Coolify" in text people read | `check:ui-rules` (`coolify`) |
   | Nothing moves or flashes as data arrives | `npm run verify -- shift` |
+  | A dialog, sheet, popover or menu opens with its data in it | `npm run verify -- shift` with a `--do` step that opens it |
 
 ## Research assistant
 

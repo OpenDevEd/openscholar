@@ -16,7 +16,7 @@ import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
-import { STEPS_SHOWN } from "../../lib/assistant/steps";
+import { DONE, STEP_TEXT_MAX, STEPS_SHOWN } from "../../lib/assistant/steps";
 import { workUrl } from "../../lib/openalex/work-id";
 import { ABORT_ERROR_STRING } from "../../lib/ai/abort-signal";
 import { assistant } from "./agent";
@@ -24,11 +24,10 @@ import { forgetLimits, noteReply } from "./spending";
 import { linked } from "./links";
 import { WEB_SOURCES_KEPT } from "./validators";
 
-/** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
-export const STEP_TEXT_MAX = 16_000;
 /** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
-export { STEPS_SHOWN };
+// Defined where modules outside the assistant read them without loading this one, which holds the agent (scripts/check-module-weight.mjs).
+export { DONE, STEP_TEXT_MAX, STEPS_SHOWN };
 
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
@@ -86,13 +85,6 @@ const shallow = (value: unknown, levels: number): unknown =>
       : Array.isArray(value)
         ? value.map((inner) => shallow(inner, levels - 1))
         : Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, shallow(inner, levels - 1)]));
-
-/**
- * What a change that returns nothing tells the model. Nothing at all read, to a weaker model,
- * as not done yet: after the person allowed a deletion and it ran, the reply said it was
- * still waiting for them.
- */
-export const DONE = { done: true } as const;
 
 /**
  * What the model reads of anything a tool returns, and what's saved with the reply: all of

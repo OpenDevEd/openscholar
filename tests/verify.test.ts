@@ -37,6 +37,82 @@ describe("analyzePhase on a page load", () => {
     ]);
   });
 
+  it("accepts a frame that slides open over many frames, with what it pushes, but not the same distance in one", () => {
+    const slide = Array.from({ length: 12 }, (_, step) => frame(500 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 10 }, { id: 2, dx: 0, dy: 10, dw: 0, dh: 0 }] }));
+    expect(analyzePhase(slide, load)).toEqual([]);
+    const jump = [frame(500, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 120 }, { id: 2, dx: 0, dy: 120, dw: 0, dh: 0 }] })];
+    expect(analyzePhase(jump, load)).toHaveLength(1);
+  });
+
+  it("reports a jump hidden among the steps of a slide, on the same side or another", () => {
+    const steps = (sizes: number[], extra: (index: number) => Partial<{ dx: number }> = () => ({})) =>
+      sizes.map((dh, index) => frame(500 + index * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh, ...extra(index) }] }));
+    // 120 px in two frames, then a settle.
+    expect(analyzePhase(steps([60, 60, 2, 2, 2]), load)).toHaveLength(1);
+    // One 110 px step in the middle of twenty-four of 10 px.
+    expect(analyzePhase(steps([...Array(12).fill(10), 110, ...Array(12).fill(10)]), load)).toHaveLength(1);
+    // A smooth resize with one sideways jump.
+    expect(analyzePhase(steps(Array(12).fill(10), (index) => (index === 5 ? { dx: 100 } : {})), load)).toHaveLength(1);
+    // A slide that starts fast and eases out is still a slide.
+    expect(analyzePhase(steps([15, 15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1]), load)).toEqual([]);
+  });
+
+  it("accepts real slides: an uneven start, and a slow end that moves a pixel every few frames", () => {
+    // The rail's sections sliding down 68 px, as recorded at 120 frames a second.
+    const rail = [2, 12, 7, 5, 8, 7, 6, 5, 3, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1];
+    const railAt = [0, 11, 19, 28, 36, 44, 53, 61, 69, 78, 86, 94, 103, 111, 119, 136, 153, 178, 219];
+    expect(analyzePhase(rail.map((dy, index) => frame(500 + railAt[index], { moved: [{ id: 1, dx: 0, dy, dw: 0, dh: 0 }] })), load)).toEqual([]);
+    // A dialog growing 10 px, a pixel at a time, with its last pixels far apart.
+    const tailAt = [0, 9, 16, 25, 33, 41, 50, 58, 83, 138];
+    expect(analyzePhase(tailAt.map((at) => frame(500 + at, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 1 }] })), load)).toEqual([]);
+    // The same sections in a busy Firefox: what pushes them arrives over the first two frames, and a frame is dropped near the end.
+    const busy = [2, 14, 12, 15, 6, 11, 2, 2, 3, 1];
+    const busyAt = [0, 16, 31, 40, 73, 86, 108, 117, 172, 213];
+    expect(analyzePhase(busy.map((dy, index) => frame(500 + busyAt[index], { moved: [{ id: 1, dx: 0, dy, dw: 0, dh: 0 }], added: index < 2 ? [{ id: 50 + index, box: [0, 0, 300, 20] }] : [] })), load)).toEqual([]);
+    // Five rows popping in one after another are not a slide.
+    expect(analyzePhase([0, 100, 200, 300, 400].map((at) => frame(500 + at, { moved: [{ id: 1, dx: 0, dy: 20, dw: 0, dh: 0 }] })), load)).not.toEqual([]);
+  });
+
+  it("drops the pixel or two a slide leaves on a part it carries, but not the same nudge by itself", () => {
+    const slide = Array.from({ length: 12 }, (_, step) => frame(500 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 10 }, ...(step === 3 ? [{ id: 2, dx: 0, dy: 2, dw: 0, dh: 0 }] : [])] }));
+    expect(analyzePhase(slide, load)).toEqual([]);
+    expect(analyzePhase([frame(500, { moved: [{ id: 2, dx: 0, dy: 2, dw: 0, dh: 0 }] })], load)).toHaveLength(1);
+  });
+
+  it("reports what only looks like a slide: a long one with one big step, a wobble, and rows arriving one after another", () => {
+    const moves = (sizes: number[], added: (index: number) => boolean = () => false) =>
+      sizes.map((dy, index) => frame(500 + index * 16, { moved: [{ id: 1, dx: 0, dy, dw: 0, dh: 0 }], added: added(index) ? [{ id: 50 + index, box: [0, 0, 300, 20] as [number, number, number, number] }] : [] }));
+    // Fifty-nine steps of 10 px and one of 60: a long slide doesn't buy a bigger jump.
+    expect(analyzePhase(moves([...Array(30).fill(10), 60, ...Array(29).fill(10)]), load)).toHaveLength(1);
+    // Back and forth, frame after frame.
+    expect(analyzePhase(moves([10, -10, 10, -10, 10, -10]), load)).toHaveLength(1);
+    // A footer pushed 20 px by a new row in each of six frames in a row.
+    expect(analyzePhase(moves(Array(6).fill(20), () => true), load)).toHaveLength(1);
+    // The same footer pulled up as a row leaves in each frame.
+    expect(analyzePhase(Array.from({ length: 6 }, (_, index) => frame(500 + index * 16, { moved: [{ id: 1, dx: 0, dy: -20, dw: 0, dh: 0 }], removed: [{ id: 50 + index, box: [0, 0, 300, 20] }] })), load)).toHaveLength(1);
+    // Out 60 px in one frame, then back past where it started.
+    expect(analyzePhase(moves([60, -20, -20, -20, -20]), load)).toHaveLength(1);
+    // Two thirds of the way in one frame, then settling.
+    expect(analyzePhase(moves([60, 20, 7, 3, 1]), load)).toHaveLength(1);
+  });
+
+  it("accepts a slide whose other side was corrected by 2 px of rounding", () => {
+    const slide = Array.from({ length: 12 }, (_, step) => frame(500 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: step === 3 ? 2 : 0, dh: 10 }] }));
+    expect(analyzePhase(slide, load)).toEqual([]);
+  });
+
+  it("keeps a jump out and back that happens beside a slide", () => {
+    const slide = Array.from({ length: 12 }, (_, step) => frame(500 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 10 }, ...(step === 3 ? [{ id: 2, dx: 0, dy: 100, dw: 0, dh: 0 }] : step === 4 ? [{ id: 2, dx: 0, dy: -100, dw: 0, dh: 0 }] : [])] }));
+    // The finding says how far it went, though it ended where it began.
+    expect(analyzePhase(slide, load)).toMatchObject([{ kind: "shift", moves: [{ id: 2, dy: 100 }] }]);
+  });
+
+  it("still reports a jump that is followed by a few small settling steps", () => {
+    const settle = Array.from({ length: 5 }, (_, step) => frame(516 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 2 }] }));
+    const findings = analyzePhase([frame(500, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 110 }] }), ...settle], load);
+    expect(findings).toEqual([{ kind: "shift", from: 500, to: 580, moves: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 120 }] }]);
+  });
+
   it("reports text that disappears and comes back, and text shown only for a moment", () => {
     const findings = analyzePhase(
       [
@@ -151,6 +227,25 @@ describe("analyzePhase after an action", () => {
     expect(findings).toEqual([]);
   });
 
+  // A dialog (id 30) opens with a spinner; its list (id 31) arrives later.
+  const opens = { opened: [30] };
+  const list = { id: 31, box: [416, 160, 448, 240] as [number, number, number, number], within: 30 };
+
+  it("reports content that pops into a dialog after it opened, as read on open", () => {
+    const findings = analyzePhase([frame(1_040, opens), frame(1_700, { added: [list] })], step);
+    expect(findings).toEqual([{ kind: "late-content", id: 31, from: 1_040, to: 1_700 }]);
+  });
+
+  it("accepts late content that fades or slides in, and what mounts as the dialog opens", () => {
+    expect(analyzePhase([frame(1_040, opens), frame(1_700, { added: [{ ...list, entering: true }] })], step)).toEqual([]);
+    expect(analyzePhase([frame(1_040, opens), frame(1_100, { added: [list] })], step)).toEqual([]);
+  });
+
+  it("judges late content only in the step that opened the dialog, never while a page loads", () => {
+    expect(analyzePhase([frame(1_700, { added: [list] })], step)).toEqual([]);
+    expect(analyzePhase([frame(140, opens), frame(900, { added: [list] })], { name: "load", kind: "load", start: 0, baseline: 100 })).toEqual([]);
+  });
+
   it("ignores frames recorded before the action started", () => {
     const findings = analyzePhase([frame(900, { moved: [{ id: 1, dx: 0, dy: 50, dw: 0, dh: 0 }] })], step);
     expect(findings).toEqual([]);
@@ -183,6 +278,14 @@ describe("stopDecision", () => {
     expect(
       stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "components/search/bar.tsx", mtimeMs: 500 }] }),
     ).toEqual({ block: false });
+  });
+
+  it("blocks when a changed file holds a dialog and the passing check opened none", () => {
+    const changed = [{ path: "components/workspaces/share-dialog.tsx", mtimeMs: 5_000, overlay: true }];
+    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 9_000, lastPassOpened: 0, changed })).toEqual({ block: true, files: ["components/workspaces/share-dialog.tsx"], unopened: true });
+    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 9_000, lastPassOpened: 1, changed })).toEqual({ block: false });
+    // A recorded skip opened nothing and says so by leaving the count out.
+    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 9_000, changed })).toEqual({ block: false });
   });
 
   it("lets the agent stop once a verify pass is newer than every change", () => {

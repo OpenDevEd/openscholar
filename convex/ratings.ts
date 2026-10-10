@@ -138,6 +138,22 @@ export async function collectionRaters(ctx: Pick<QueryCtx, "db">, collectionId: 
 /** Ratings of a paper a preview of its raters reads at most, past former members' to the members' it names. */
 const PREVIEW_READ = 50;
 
+/** People's own ratings of a paper, a query to read them from: everyone's who rated it, whatever workspace they're in. */
+export const personalRatingsOf = (ctx: Pick<QueryCtx, "db">, paperId: string) =>
+  ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", undefined).eq("paperId", ratedPaper(paperId)));
+
+/**
+ * How an organization's members rated a paper themselves (#801): up to `max` of them, the person
+ * reading first, and how many did. These are the ratings its library's average is made of. Other
+ * people's ratings of the paper are passed over.
+ * ponytail: a paper more than PREVIEW_READ people rated is counted from the first of them, so the
+ * count can fall short there; keep the count on the saved paper, as a collection's place does, if it does.
+ */
+export async function memberRatings(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, paperId: string, viewer: Id<"users">, max: number): Promise<{ raters: Rater[]; count: number }> {
+  const rated = await asRaters(ctx, organizationId, await personalRatingsOf(ctx, paperId).take(PREVIEW_READ), viewer);
+  return { raters: [...rated.filter((rater) => rater.you), ...rated.filter((rater) => !rater.you)].slice(0, max), count: rated.length };
+}
+
 /** A paper's ratings in a collection, a query to read them from. */
 export const collectionRatingsOf = (ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, paperId: string) =>
   ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", ratedPaper(paperId)));

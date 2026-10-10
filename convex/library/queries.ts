@@ -7,7 +7,7 @@ import { stream, type QueryStream } from "convex-helpers/server/stream";
 import schema from "../schema";
 import { createError } from "../lib/errors";
 import { findItem } from "./find";
-import { collectionRaters, personalRatingRow, placeOf, raterValidator, shownRater } from "../ratings";
+import { collectionRaters, memberRatings, personalRatingRow, placeOf, raterValidator, shownRater } from "../ratings";
 import type { InWorkspace } from "../workspaces/actor";
 import { guestRole } from "../sharing/items";
 import { authorDisplay } from "../../lib/library/paper-metadata";
@@ -34,18 +34,20 @@ const FILTERED_COUNT_ROWS = 16_000;
 /** Bytes one filtered page or count reads at most: half a query's 16 MiB. */
 const FILTERED_BYTES = 8 * 1024 * 1024;
 
-/** People named beside a paper's ratings in an organization's collection; the rest open from them. */
+/** People named beside a paper's ratings in an organization; the rest open from them. */
 const RATERS_SHOWN = 3;
 
 /**
  * A page of the library view, each paper with `myRating`: the person's own rating of it, where `rating` is its people's average (#655).
  * In an organization's collection, `collection` is how its members rated it there: the person's own, the first few who did, and how many did.
+ * In an organization's library outside a collection, `members` is how they rated it themselves (#801): the first few and how many, the ratings `rating` averages.
  */
 export const libraryPageValidator = paginationResultValidator(schema.tables.libraryItems.validator.extend({
   _id: v.id("libraryItems"),
   _creationTime: v.number(),
   myRating: v.optional(v.number()),
   collection: v.optional(v.object({ mine: v.optional(v.number()), raters: v.array(raterValidator), count: v.number() })),
+  members: v.optional(v.object({ raters: v.array(raterValidator), count: v.number() })),
 }));
 
 type LibraryItem = Doc<"libraryItems">;
@@ -309,7 +311,8 @@ export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces
  * Gives each paper on a page of `workspaceId`'s library the person's own rating of it, which in
  * their own workspace is the paper's, and in an organization's collection how its members
  * rated it there. A guest sees the rating a paper has in the collection, and beside it their
- * own.
+ * own. In an organization's library outside a collection, a rated paper comes with how its
+ * members rated it themselves.
  */
 async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, read: LibraryPage, collectionId: Id<"collections"> | undefined, guest: boolean) {
   const workspace = await ctx.db.get("workspaces", workspaceId);
@@ -321,7 +324,22 @@ async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspac
     const mine = guest ? undefined : raters.find((rater) => rater.you)?.rating;
     return { ...(mine === undefined ? {} : { mine }), raters: raters.map(shownRater), count: place?.ratingCount ?? raters.length };
   })) : null;
-  return { ...read, page: read.page.map((item, at) => ({ ...item, ...(ratings[at] === undefined ? {} : { myRating: ratings[at] }), ...(inCollection ? { collection: inCollection[at] } : {}) })) };
+  // Outside a collection only its members read an organization's library, so each sees what the others gave. A paper nobody rated has no list.
+  const organizationId = workspace?.kind === "organization" && !collectionId ? workspace.organizationId : null;
+  const members = organizationId ? await Promise.all(read.page.map(async (item) => {
+    if (item.rating === undefined) return undefined;
+    const { raters, count } = await memberRatings(ctx, organizationId, item.openalexId, userId, RATERS_SHOWN);
+    return { raters: raters.map(shownRater), count };
+  })) : null;
+  return {
+    ...read,
+    page: read.page.map((item, at) => ({
+      ...item,
+      ...(ratings[at] === undefined ? {} : { myRating: ratings[at] }),
+      ...(inCollection ? { collection: inCollection[at] } : {}),
+      ...(members?.[at] ? { members: members[at] } : {}),
+    })),
+  };
 }
 
 export const browseLibrary = workspaceQuery({

@@ -226,8 +226,11 @@ export function LibraryPageClient() {
     [pageItems],
   );
 
-  // Each paper's rating in the library: in an organization's, its members' average of their own ratings.
-  const averages = useMemo(() => new Map(pageItems.flatMap((item) => (item.rating === undefined ? [] : [[item.openalexId, item.rating] as const]))), [pageItems]);
+  // In an organization's library outside a collection, how its members rated each paper themselves (#801): their average and who gave what.
+  const memberRatings = useMemo(
+    () => new Map(pageItems.flatMap((item) => (item.members && item.rating !== undefined ? [[item.openalexId, { libraryItemId: item._id, average: item.rating, ratings: item.members }] as const] : []))),
+    [pageItems],
+  );
 
   // The person's own ratings, from the server, for the cards and FocusMode; null marks a paper they haven't rated
   const serverRatingsMap = useMemo(
@@ -604,8 +607,8 @@ export function LibraryPageClient() {
                               const rated = params.col ? collectionRatings.get(paper.id) : undefined;
                               if (rated) return <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} />;
                               // Outside a collection, an organization's library shows its members' average of their own ratings, beside yours.
-                              const average = !params.col && workspace?.kind === "organization" ? averages.get(paper.id) : undefined;
-                              return average === undefined ? undefined : <MembersAverage workspace={workspace!} average={average} mine={serverRatingsMap.get(paper.id) ?? null} />;
+                              const members = workspace ? memberRatings.get(paper.id) : undefined;
+                              return members ? <MembersAverage workspace={workspace!} libraryItemId={members.libraryItemId} average={members.average} ratings={members.ratings} /> : undefined;
                             })()}
                           />
                         );
