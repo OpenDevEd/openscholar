@@ -17,9 +17,30 @@ describe("analyzePhase on a page load", () => {
     expect(findings).toEqual([{ kind: "shift", from: 800, to: 800, moves: [{ id: 7, dx: 0, dy: 240, dw: 0, dh: 0 }] }]);
   });
 
-  it("ignores layout that settles before the baseline, such as a font swap", () => {
-    const findings = analyzePhase([frame(40, { moved: [{ id: 3, dx: 2, dy: 0, dw: 4, dh: 0 }] })], load);
-    expect(findings).toEqual([]);
+  const fontSwap = { moved: [{ id: 3, dx: -11, dy: 0, dw: 6, dh: 0 }] };
+
+  it("reports text that its web font moves after the first paint, before the page has finished loading", () => {
+    const findings = analyzePhase([frame(70, fontSwap)], { ...load, painted: 60 });
+    expect(findings).toEqual([{ kind: "reflow", from: 70, to: 70, moves: fontSwap.moved }]);
+  });
+
+  it("keeps that early reflow apart from a shift that follows the baseline closely, so both look the same on every run", () => {
+    const pushed = { moved: [{ id: 3, dx: 0, dy: 40, dw: 0, dh: 0 }] };
+    const findings = analyzePhase([frame(70, fontSwap), frame(110, pushed)], { ...load, painted: 60 });
+    expect(findings).toEqual([
+      { kind: "reflow", from: 70, to: 70, moves: fontSwap.moved },
+      { kind: "shift", from: 110, to: 110, moves: pushed.moved },
+    ]);
+  });
+
+  it("ignores layout before the first paint, which nobody saw", () => {
+    expect(analyzePhase([frame(40, fontSwap)], { ...load, painted: 60 })).toEqual([]);
+    expect(analyzePhase([frame(40, fontSwap)], load)).toEqual([]);
+  });
+
+  it("ignores what moves before the baseline as new content arrives, since the page is still filling in", () => {
+    const arriving = { moved: [{ id: 9, dx: 0, dy: 6301, dw: 0, dh: 0 }], added: [{ id: 12, box: [0, 80, 1440, 6301] as [number, number, number, number] }] };
+    expect(analyzePhase([frame(70, arriving)], { ...load, painted: 60 })).toEqual([]);
   });
 
   it("joins the frames of one growing container into a single shift with the largest change", () => {
@@ -50,6 +71,18 @@ describe("analyzePhase on a page load", () => {
       { kind: "brief-text", text: "Loading", from: 400, to: 600 },
       { kind: "text-flash", text: "12 papers", from: 400, to: 600 },
     ]);
+  });
+
+  it("accepts a number that counts up in place, since the line keeps its words", () => {
+    const findings = analyzePhase(
+      [
+        frame(400, { textAdded: ["Up to 4 credits"] }),
+        frame(416, { textRemoved: ["Up to 4 credits"], textAdded: ["Up to 126 credits"] }),
+        frame(432, { textRemoved: ["Up to 126 credits"], textAdded: ["Up to 1,250 credits"] }),
+      ],
+      load,
+    );
+    expect(findings).toEqual([]);
   });
 
   it("reports a large element that is removed moments after it appears, but not a small one", () => {
@@ -165,6 +198,13 @@ describe("stopDecision", () => {
 
 describe("matchKnown", () => {
   const item = (kind: string, keys: string[]): Item => ({ kind, keys, line: kind });
+
+  it("never lets an early reflow there vouch for a shift here: one move there is not two here", () => {
+    const local = [item("reflow", ["nav"]), item("shift", ["nav"])];
+    const base = [item("shift", ["nav"]), item("reflow", ["nav"])];
+    expect(matchKnown(local, base)).toEqual([true, true]);
+    expect(matchKnown([item("shift", ["nav"]), item("shift", ["nav"])], base)).toEqual([true, false]);
+  });
 
   it("matches a shift that dev also has, even when dev lists more of the elements it moves", () => {
     const local = [item("shift", ["filter", "sort"])];

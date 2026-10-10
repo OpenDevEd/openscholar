@@ -23,12 +23,15 @@ export type Frame = {
 };
 
 // A load phase starts with navigation; everything after `baseline` (fonts
-// ready, document parsed) must hold still. A step phase starts with an action;
-// its first burst of change is the response to the action.
-export type Phase = { name: string; kind: "load" | "step"; start: number; baseline?: number };
+// ready, document parsed) must hold still. Between `painted` (the first frame
+// a person sees) and the baseline the page is still arriving, so only what
+// moves with nothing new arriving counts, as a `reflow`: text its web font
+// moves, never content pushed down by the content above it. A step phase
+// starts with an action; its first burst of change is the response to it.
+export type Phase = { name: string; kind: "load" | "step"; start: number; baseline?: number; painted?: number };
 
 export type Finding =
-  | { kind: "shift"; from: number; to: number; moves: Move[] }
+  | { kind: "shift" | "reflow"; from: number; to: number; moves: Move[] }
   | { kind: "text-flash"; text: string; from: number; to: number }
   | { kind: "brief-text"; text: string; from: number; to: number }
   | { kind: "brief-element"; id: number; from: number; to: number };
@@ -57,7 +60,7 @@ function bursts(frames: Frame[]): Frame[][] {
   return groups;
 }
 
-function shift(frames: Frame[]): Finding | null {
+function shift(frames: Frame[], kind: "shift" | "reflow" = "shift"): Finding | null {
   const moves = new Map<number, Move>();
   for (const move of frames.flatMap((frame) => frame.moved)) {
     const total = moves.get(move.id) ?? { id: move.id, dx: 0, dy: 0, dw: 0, dh: 0 };
@@ -65,7 +68,7 @@ function shift(frames: Frame[]): Finding | null {
   }
   const moving = frames.filter((frame) => frame.moved.length > 0);
   if (moving.length === 0) return null;
-  return { kind: "shift", from: moving[0].t, to: moving.at(-1)!.t, moves: [...moves.values()] };
+  return { kind, from: moving[0].t, to: moving.at(-1)!.t, moves: [...moves.values()] };
 }
 
 /** Lines of text shown and hidden over the phase, oldest first, so each change pairs with the one before it. */
@@ -83,11 +86,20 @@ function textShown(history: TextHistory, text: string, t: number): Finding[] {
   return gone !== undefined && t - gone <= FLASH_RETURN_MS ? [{ kind: "text-flash", text, from: gone, to: t }] : [];
 }
 
+// A line with its numbers blanked. A number counting up or down changes its
+// line every frame: the same words with new numbers is one line changing its
+// value, not text blinking.
+const words = (text: string) => text.replace(/\d+(?:[.,]\d+)*/g, "0");
+const besides = (lines: string[], others: string[]) => {
+  const counting = new Set(others.map(words));
+  return lines.filter((text) => !counting.has(words(text)));
+};
+
 function textBlinks(frames: Frame[], since: number): Finding[] {
   const history: TextHistory = { shownAt: new Map(), goneAt: new Map() };
   const findings = frames.flatMap((frame) => [
-    ...frame.textRemoved.flatMap((text) => textGone(history, text, frame.t, since)),
-    ...frame.textAdded.flatMap((text) => textShown(history, text, frame.t)),
+    ...besides(frame.textRemoved, frame.textAdded).flatMap((text) => textGone(history, text, frame.t, since)),
+    ...besides(frame.textAdded, frame.textRemoved).flatMap((text) => textShown(history, text, frame.t)),
   ]);
   // Text hidden and then shown again is one flash, not also a blink.
   const flashes = findings.filter((finding) => finding.kind === "text-flash");
@@ -111,6 +123,19 @@ function elementBlinks(frames: Frame[], since: number): Finding[] {
   return findings;
 }
 
+/**
+ * What moved between the first paint and the baseline with nothing new
+ * arriving. These are grouped by themselves and kept as their own kind, so
+ * they are compared only with the same on the other server and on a second
+ * run, never with what the page does as it fills in.
+ */
+function reflows(frames: Frame[], phase: Phase, since: number): (Finding | null)[] {
+  const painted = phase.kind === "load" ? phase.painted : undefined;
+  if (painted === undefined) return [];
+  const still = (frame: Frame) => frame.moved.length > 0 && frame.added.length + frame.removed.length === 0;
+  return bursts(frames.filter((frame) => frame.t >= painted && frame.t < since && still(frame))).map((group) => shift(group, "reflow"));
+}
+
 /** The problems a person would see in one phase: movement after the page or the response settled, and blinks. */
 export function analyzePhase(frames: Frame[], phase: Phase): Finding[] {
   const since = phase.kind === "load" ? (phase.baseline ?? phase.start) : phase.start;
@@ -118,7 +143,7 @@ export function analyzePhase(frames: Frame[], phase: Phase): Finding[] {
   // After an action, the first burst is the response (a dialog opening, a row
   // growing as it animates). Anything that moves after it moved on its own.
   const late = phase.kind === "step" ? groups.slice(1) : groups;
-  const shifts = late.map(shift).filter((finding): finding is Finding => finding !== null);
+  const shifts = [...reflows(frames, phase, since), ...late.map((group) => shift(group))].filter((finding): finding is Finding => finding !== null);
   return [...shifts, ...textBlinks(frames, since), ...elementBlinks(frames, since)].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
 }
 

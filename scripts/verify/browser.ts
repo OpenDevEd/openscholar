@@ -45,6 +45,12 @@ export type RunOptions = {
   allow: string;
   full: boolean;
   analyze: boolean;
+  /**
+   * Whether text that moves before the page has settled is checked. That needs
+   * both servers on this machine: a remote site paints and loads its fonts at
+   * other moments, so what reflows there can't be compared with a local build.
+   */
+  reflows: boolean;
   /** Gets the page ready before recording starts: signs in, answers a consent dialog. */
   prepare: (context: BrowserContext, page: Page, origin: string) => Promise<void>;
   /** Cleans up after the run, such as signing out, so sessions don't pile up. */
@@ -96,7 +102,9 @@ function describeMove(move: Delta): string {
 
 const visible = (move: Delta) => Math.max(Math.abs(move.dx), Math.abs(move.dy), Math.abs(move.dw), Math.abs(move.dh)) > 2;
 
-async function shiftItem(page: Page, finding: Extract<Finding, { kind: "shift" }>, when: string): Promise<Item> {
+const SHIFT_LINES = { shift: "layout shift", reflow: "layout shift before the page settled" };
+
+async function shiftItem(page: Page, finding: Extract<Finding, { kind: "shift" | "reflow" }>, when: string): Promise<Item> {
   // Compare by what moved visibly: a 1 or 2px nudge, such as a scrollbar
   // appearing, lands in a different frame on each site.
   const big = finding.moves.filter(visible);
@@ -105,7 +113,7 @@ async function shiftItem(page: Page, finding: Extract<Finding, { kind: "shift" }
   const shown = await Promise.all(finding.moves.slice(0, 5).map(async (move) => `${await read<string>(page, `window.__verify.describe(${move.id})`)} ${describeMove(move)}`));
   const more = finding.moves.length > 5 ? `; and ${finding.moves.length - 5} more` : "";
   const deltas = named.map(({ dx, dy, dw, dh }) => ({ dx, dy, dw, dh }));
-  return { kind: "shift", keys, deltas, line: `${when} layout shift: ${shown.join("; ")}${more}` };
+  return { kind: finding.kind, keys, deltas, line: `${when} ${SHIFT_LINES[finding.kind]}: ${shown.join("; ")}${more}` };
 }
 
 const TEXT_LINES: Record<string, (text: string, lasted: number) => string> = {
@@ -116,7 +124,7 @@ const TEXT_LINES: Record<string, (text: string, lasted: number) => string> = {
 async function itemFor(page: Page, finding: Finding, start: number): Promise<Item> {
   const when = `+${Math.round(finding.from - start)}ms`;
   const lasted = Math.round(finding.to - finding.from);
-  if (finding.kind === "shift") return shiftItem(page, finding, when);
+  if ("moves" in finding) return shiftItem(page, finding, when);
   if (finding.kind === "brief-element") {
     const [key, name] = await Promise.all([read<string>(page, `window.__verify.key(${finding.id})`), read<string>(page, `window.__verify.describe(${finding.id})`)]);
     return { kind: finding.kind, keys: [key], line: `${when} element showed for only ${lasted}ms: ${name}` };
@@ -241,23 +249,29 @@ function pageStatus(response: unknown): number {
   return response && typeof (response as Response).status === "function" ? (response as Response).status() : 200;
 }
 
-type Recording = { frames: Frame[]; baseline: number | null };
+type Recording = { frames: Frame[]; baseline: number | null; painted: number | null };
 
 /**
  * Where a load phase starts watching: this branch from the baseline (document
- * parsed, fonts loaded), the comparison server from navigation. Hydration can
+ * parsed, fonts loaded), and from its first paint for text a font moves; the
+ * comparison server from navigation. Hydration can
  * land either side of the baseline, so the comparison counts everything this
  * branch might report.
  */
-function watchedFrom(phase: Phase, recording: Recording, tolerant: boolean): Phase {
+function watchedFrom(phase: Phase, recording: Recording, session: Session, tolerant: boolean): Phase {
   if (phase.kind !== "load" || tolerant) return phase;
-  return { ...phase, baseline: recording.baseline ?? phase.start };
+  const painted = session.options.reflows ? (recording.painted ?? undefined) : undefined;
+  return { ...phase, baseline: recording.baseline ?? phase.start, painted };
 }
 
 async function findings(session: Session, phase: Phase): Promise<Item[]> {
   const recording = await read<Recording>(session.page, "window.__verify.take()");
   if (!session.options.analyze) return [];
-  const found = analyzePhase(recording.frames, watchedFrom(phase, recording, session.tolerant));
+  const found = analyzePhase(recording.frames, watchedFrom(phase, recording, session, session.tolerant));
+  // Watched from navigation, text a font reflows is lost in the page arriving
+  // around it. The comparison reports those reflows by themselves too, as this
+  // branch does; being their own kind, they vouch for nothing else.
+  if (session.tolerant) found.push(...analyzePhase(recording.frames, watchedFrom(phase, recording, session, false)).filter((finding) => finding.kind === "reflow"));
   return Promise.all(found.map((finding) => itemFor(session.page, finding, phase.start)));
 }
 
