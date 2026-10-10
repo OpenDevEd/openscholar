@@ -81,5 +81,8 @@ export default defineConfig({
     // test that takes a second or two alone, such as rendering 950 bucket
     // rows, then ran past Vitest's default of five seconds.
     testTimeout: 15_000,
+    // The size tag gives a test ten minutes, but a tag can't set a hook's limit. A size run gives
+    // hooks the same, so the cleanup after a big case isn't cut off at Vitest's ten seconds.
+    hookTimeout: process.argv.includes("--tags-filter=size") ? 600_000 : undefined,
   },
 });
