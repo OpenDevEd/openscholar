@@ -121,8 +121,11 @@ export function recorder(config: { allow: string }) {
     if (!(element instanceof HTMLElement)) return [0, 0];
     let at = frame.positions.get(element);
     if (!at) {
+      // offsetLeft counts from inside the offset parent's border. Leaving the border out would move
+      // everything in a bordered card by its width when the card stops being the offset parent, as
+      // one does when its opening transform ends.
       const parent = position(frame, element.offsetParent);
-      at = [parent[0] + element.offsetLeft, parent[1] + element.offsetTop];
+      at = [parent[0] + (element.offsetParent?.clientLeft ?? 0) + element.offsetLeft, parent[1] + (element.offsetParent?.clientTop ?? 0) + element.offsetTop];
       frame.positions.set(element, at);
     }
     return at;
@@ -130,23 +133,31 @@ export function recorder(config: { allow: string }) {
 
   const tracked = (element: Element) => ids.has(element) && last.has(ids.get(element)!);
 
-  /** The nearest ancestor measured before, whose movement this frame a child may share. */
-  function trackedParent(element: HTMLElement): Element | null {
+  /**
+   * The nearest ancestor measured before this frame, whose movement a child may
+   * share. One first measured now, a wrapper that has just opened, has no
+   * movement of its own yet, so the child shares the next one's.
+   */
+  function trackedParent(frame: Frame, element: HTMLElement): Element | null {
     let parent = element.parentElement;
-    while (parent && !tracked(parent)) parent = parent.parentElement;
+    while (parent && (!tracked(parent) || frame.fresh.has(parent))) parent = parent.parentElement;
     return parent;
   }
 
+  // The smaller of how far something moved on screen and how far within its parent.
+  const least = (onScreen: number, inParent: number) => (Math.abs(inParent) < Math.abs(onScreen) ? inParent : onScreen);
+
   /**
-   * How an element moved within its nearest measured parent this frame. A
-   * child carried along by a moving parent hasn't moved at all, and one that
-   * moved with its parent and also grew has only grown, whichever frames the
-   * two changes land in.
+   * How an element moved by itself this frame. A child carried along by a
+   * moving parent hasn't moved at all, and one that moved with its parent and
+   * also grew has only grown, whichever frames the two changes land in. One
+   * that holds still on screen while its parent's edge moves away, a row under
+   * the part of a card that grows upward, hasn't moved either.
    */
   function ownDelta(frame: Frame, element: HTMLElement, delta: number[]): number[] {
-    const parent = trackedParent(element);
+    const parent = trackedParent(frame, element);
     const moved = parent && frame.deltas.get(ids.get(parent)!);
-    return moved ? [delta[0] - moved[0], delta[1] - moved[1], delta[2], delta[3]] : delta;
+    return moved ? [least(delta[0], delta[0] - moved[0]), least(delta[1], delta[1] - moved[1]), delta[2], delta[3]] : delta;
   }
 
   const still = (delta: number[]) => delta.every((value) => Math.abs(value) < 1);

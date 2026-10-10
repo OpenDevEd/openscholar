@@ -79,6 +79,13 @@ describe("analyzePhase on a page load", () => {
     expect(analyzePhase([frame(500, { moved: [{ id: 2, dx: 0, dy: 2, dw: 0, dh: 0 }] })], load)).toHaveLength(1);
   });
 
+  it("drops a part nudged a pixel at a time while a slide passes it, but not one nudged further", () => {
+    const beside = (nudge: number) =>
+      Array.from({ length: 12 }, (_, step) => frame(500 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 10 }, ...([2, 6, 9].includes(step) ? [{ id: 2, dx: 0, dy: nudge, dw: 0, dh: 0 }] : [])] }));
+    expect(analyzePhase(beside(1), load)).toEqual([]);
+    expect(analyzePhase(beside(2), load)).toMatchObject([{ kind: "shift", moves: [{ id: 2, dy: 6 }] }]);
+  });
+
   it("reports what only looks like a slide: a long one with one big step, a wobble, and rows arriving one after another", () => {
     const moves = (sizes: number[], added: (index: number) => boolean = () => false) =>
       sizes.map((dy, index) => frame(500 + index * 16, { moved: [{ id: 1, dx: 0, dy, dw: 0, dh: 0 }], added: added(index) ? [{ id: 50 + index, box: [0, 0, 300, 20] as [number, number, number, number] }] : [] }));
