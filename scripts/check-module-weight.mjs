@@ -39,7 +39,8 @@ const MAY_LOAD = [
 
 const modules = readdirSync(path.join(root, "convex"), { recursive: true })
   .map((file) => path.posix.join("convex", file.split(path.sep).join("/")))
-  .filter((file) => file.endsWith(".ts") && !file.endsWith(".d.ts") && !file.includes("/_generated/") && !/\.test(-support)?\.ts$/.test(file) && !file.endsWith("convex.config.ts"))
+  // Every extension Convex deploys as a module.
+  .filter((file) => /\.[cm]?[jt]sx?$/.test(file) && !/\.d\.[cm]?ts$/.test(file) && !file.includes("/_generated/") && !/\.test(-support)?\.[cm]?[jt]sx?$/.test(file) && !/convex\.config\.[cm]?[jt]s$/.test(file))
   .filter((file) => !/^\s*["']use node["']/m.test(readFileSync(path.join(root, file), "utf8").slice(0, 400)));
 
 const { metafile } = await build({
@@ -50,6 +51,8 @@ const { metafile } = await build({
   format: "esm",
   platform: "browser",
   conditions: ["convex", "module"],
+  // As Convex bundles for a deployment: an import behind a production check counts.
+  define: { "process.env.NODE_ENV": '"production"' },
   // Test helpers a few modules import read files; nothing here runs.
   external: ["node:*"],
   outdir: "out",
