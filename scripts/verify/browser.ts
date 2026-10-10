@@ -37,10 +37,10 @@ export function parseStep(raw: string): Step {
   return { verb, target, text, label: raw };
 }
 
-/** With --early the first step is taken while the page loads, so it has to be one that acts on the page. */
+/** With --early the first step is taken while the page loads, as soon as its target answers, so it has to have one. */
 export function earlyStep(steps: Step[]): Step {
   const [first] = steps;
-  if (!first || first.verb === "goto" || first.verb === "wait") throw new Error("--early takes the first --do step early: give it one that clicks, hovers, presses or fills.");
+  if (!first || !["click", "hover", "fill"].includes(first.verb)) throw new Error("--early takes the first --do step early: give it one that clicks, hovers or fills.");
   return first;
 }
 
@@ -138,14 +138,14 @@ async function itemFor(page: Page, finding: Finding, start: number): Promise<Ite
 const INTERRUPTED = /NS_BINDING_ABORTED|interrupted by another navigation|frame was detached/i;
 
 /** Opens a URL, starting again if the page's own navigation (a reload after signing in) interrupts it. */
-export async function open(page: Page, url: string, attempt = 1): Promise<Response | null> {
+export async function open(page: Page, url: string, attempt = 1, until: "load" | "commit" = "load"): Promise<Response | null> {
   try {
-    return await page.goto(url);
+    return await page.goto(url, { waitUntil: until });
   } catch (error) {
     if (attempt === 3 || !INTERRUPTED.test((error as Error).message)) throw error;
     await page.waitForLoadState("load").catch(() => {});
     await sleep(500);
-    return open(page, url, attempt + 1);
+    return open(page, url, attempt + 1, until);
   }
 }
 
@@ -316,17 +316,21 @@ async function runStep(session: Session, step: Step) {
   );
 }
 
-/** Waits until React answers events on the step's target: until then a click does nothing. */
-const answers = (page: Page, step: Step, timeout: number) =>
-  page.locator(step.target).first().evaluate(
-    (element) =>
-      new Promise<void>((resolve) => {
-        const check = () => (Object.keys(element).some((key) => key.startsWith("__reactProps$")) ? resolve() : requestAnimationFrame(check));
-        check();
-      }),
-    undefined,
-    { timeout },
-  );
+/**
+ * Waits until React answers events on the step's target: until then a click
+ * does nothing. The target is looked up again each time, since hydration can
+ * replace it.
+ */
+async function answers(page: Page, step: Step, timeout: number) {
+  const deadline = Date.now() + timeout;
+  const hydrated = (element: Element) => Object.keys(element).some((key) => key.startsWith("__reactProps$"));
+  while (Date.now() < deadline) {
+    const ready = await page.locator(step.target).first().evaluate(hydrated, undefined, { timeout: Math.max(1, deadline - Date.now()) }).catch(() => false);
+    if (ready) return;
+    await sleep(20);
+  }
+  throw new Error(`its target didn't answer within ${timeout}ms`);
+}
 
 /**
  * Opens the page and takes the step at once, the way someone clicks a button
@@ -337,7 +341,8 @@ async function earlyPhase(session: Session, step: Step) {
   const timeout = session.tolerant ? 10_000 : 15_000;
   session.run.stopped = step.label;
   await runPhase(session, { name: `early ${step.label}`, kind: "early", start: 0 }, async () => {
-    const response = await withTimeout(open(session.page, session.origin + session.target), 90_000, `Opening ${session.origin}${session.target}`);
+    // Not waiting for the page's images and scripts to finish: the step is taken as soon as its target answers.
+    const response = await withTimeout(open(session.page, session.origin + session.target, 1, "commit"), 90_000, `Opening ${session.origin}${session.target}`);
     await answers(session.page, step, timeout)
       .then(() => act(session.page, step, timeout))
       .catch((error: Error) => {

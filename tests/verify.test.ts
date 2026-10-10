@@ -84,6 +84,9 @@ describe("analyzePhase on a page load", () => {
       Array.from({ length: 12 }, (_, step) => frame(500 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 10 }, ...([2, 6, 9].includes(step) ? [{ id: 2, dx: 0, dy: nudge, dw: 0, dh: 0 }] : [])] }));
     expect(analyzePhase(beside(1), load)).toEqual([]);
     expect(analyzePhase(beside(2), load)).toMatchObject([{ kind: "shift", moves: [{ id: 2, dy: 6 }] }]);
+    // A pixel a frame for twenty frames down and twenty back is a wobble, not rounding.
+    const wobble = Array.from({ length: 40 }, (_, step) => frame(500 + step * 16, { moved: [...(step < 12 ? [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 10 }] : []), { id: 2, dx: 0, dy: step < 20 ? 1 : -1, dw: 0, dh: 0 }] }));
+    expect(analyzePhase(wobble, load)).toMatchObject([{ kind: "shift", moves: [{ id: 2, dy: 20 }] }]);
   });
 
   it("reports what only looks like a slide: a long one with one big step, a wobble, and rows arriving one after another", () => {
@@ -288,6 +291,18 @@ describe("analyzePhase on a step taken while the page loads", () => {
     const settling = frame(480, { moved: [{ id: 12, dx: 0, dy: 6, dw: 0, dh: 0, within: 10 }] });
     expect(analyzePhase([opening, settling], early)).toEqual([]);
   });
+
+  it("accepts a slide that starts as the overlay opens and runs on after", () => {
+    const growing = Array.from({ length: 12 }, (_, at) => frame(416 + at * 16, { moved: [{ id: 10, dx: 0, dy: 0, dw: 0, dh: 10, within: 10 }] }));
+    expect(analyzePhase([opening, ...growing], early)).toEqual([]);
+  });
+
+  it("reports rows that leave the open overlay one after another", () => {
+    const leaving = Array.from({ length: 6 }, (_, at) =>
+      frame(1_400 + at * 16, { moved: [{ id: 12, dx: 0, dy: -20, dw: 0, dh: 0, within: 10 }], removed: [{ id: 20 + at, box: [16, 60, 284, 20], within: 10 }] }),
+    );
+    expect(analyzePhase([opening, ...leaving], early)).toMatchObject([{ kind: "shift", moves: [{ id: 12, dy: -120 }] }]);
+  });
 });
 
 describe("stopDecision", () => {
@@ -458,6 +473,8 @@ describe("parseStep", () => {
     expect(() => earlyStep([])).toThrow("--early");
     expect(() => earlyStep([parseStep("wait 500")])).toThrow("--early");
     expect(() => earlyStep([parseStep("goto /library")])).toThrow("--early");
+    // A key has no target to wait for.
+    expect(() => earlyStep([parseStep("press Control+k")])).toThrow("--early");
   });
 
   it("types the text after => into a selector that holds spaces", () => {

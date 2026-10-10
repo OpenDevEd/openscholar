@@ -110,7 +110,7 @@ export function recorder(config: { allow: string }) {
     added: { id: number; box: number[]; within?: number; entering?: boolean }[];
     opened: number[];
     fresh: Set<Element>;
-    removed: { id: number; box: number[] }[];
+    removed: { id: number; box: number[]; within?: number }[];
     textAdded: string[];
     textRemoved: string[];
     deltas: Map<number, number[]>;
@@ -152,8 +152,9 @@ export function recorder(config: { allow: string }) {
    */
   function ownDelta(frame: Frame, element: HTMLElement, delta: number[]): number[] {
     const parent = trackedParent(element);
-    // A parent measured for the first time this frame is a wrapper opening around the element: it has moved with that, not by itself.
-    if (parent && frame.fresh.has(parent)) return [0, 0, delta[2], delta[3]];
+    // A parent that clips, measured for the first time this frame, is a wrapper opening around the
+    // element: it was cut off until now and has moved with the wrapper, not by itself.
+    if (parent && frame.fresh.has(parent) && clips(parent, false)) return [0, 0, delta[2], delta[3]];
     const moved = parent && frame.deltas.get(ids.get(parent)!);
     return moved ? [least(delta[0], delta[0] - moved[0]), least(delta[1], delta[1] - moved[1]), delta[2], delta[3]] : delta;
   }
@@ -174,16 +175,19 @@ export function recorder(config: { allow: string }) {
   // A dialog, sheet, popover or menu: what opens over the page.
   const OVERLAY = '[role="dialog"], [role="alertdialog"], [role="menu"]';
 
-  /** The overlay an element is, or is inside. */
-  function overlayOf(element: HTMLElement): { within?: number } {
+  // The overlay each element is, or is inside, noted when it is first measured: one that has gone can't say.
+  const overlays = new Map<number, number>();
+  const within = (id: number): { within?: number } => (overlays.has(id) ? { within: overlays.get(id) } : {});
+
+  function noteOverlay(element: HTMLElement, id: number) {
     const overlay = element.closest(OVERLAY);
-    return overlay && ids.has(overlay) ? { within: ids.get(overlay) } : {};
+    if (overlay && ids.has(overlay)) overlays.set(id, ids.get(overlay)!);
   }
 
   function measureMoved(frame: Frame, element: HTMLElement, id: number, delta: number[]) {
     frame.deltas.set(id, delta);
     const own = visible(element, ownDelta(frame, element, delta));
-    if (seenNow(element, id) && !still(own) && !animating(element)) frame.moved.push({ id, dx: own[0], dy: own[1], dw: own[2], dh: own[3], ...overlayOf(element) });
+    if (seenNow(element, id) && !still(own) && !animating(element)) frame.moved.push({ id, dx: own[0], dy: own[1], dw: own[2], dh: own[3], ...within(id) });
   }
   // A frame that cuts off what is outside it; with `scrollers`, a scrolling list too.
   const clips = (element: Element, scrollers: boolean) => (scrollers ? /hidden|clip|auto|scroll/ : /hidden|clip/).test(getComputedStyle(element).overflowY);
@@ -244,6 +248,7 @@ export function recorder(config: { allow: string }) {
     const previous = last.get(id);
     last.set(id, box);
     if (!previous) {
+      noteOverlay(element, id);
       shown.set(id, onScreen(element));
       if (shown.get(id)) frame.added.push({ id, box, ...arrival(frame, element) });
       // A sheet starts off screen and slides in, so an overlay opening is noted wherever it is.
@@ -259,8 +264,9 @@ export function recorder(config: { allow: string }) {
     for (const [id, box] of last) {
       if (seen.has(id)) continue;
       last.delete(id);
-      if (shown.get(id)) frame.removed.push({ id, box });
+      if (shown.get(id)) frame.removed.push({ id, box, ...within(id) });
       shown.delete(id);
+      overlays.delete(id);
     }
   }
 
