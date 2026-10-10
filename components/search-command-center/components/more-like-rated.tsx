@@ -13,9 +13,7 @@ import { useSearchOptional } from "@/lib/search";
 import { createSimilarSearch, MAX_SIMILAR_PAPERS } from "@/lib/search/actions";
 import { useRatingsStore } from "@/lib/store";
 import { ratingFilterKeeps } from "@/lib/utils";
-
-/** The least rating that marks a paper as one to find more like. */
-export const LIKED_RATING = 4;
+import { LIKED_RATING } from "@/lib/search/likely-order";
 
 export function MoreLikeRated() {
   const t = useTranslations("searchCommand");
