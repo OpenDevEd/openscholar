@@ -29,7 +29,7 @@ import { STEPS_SHOWN } from "@/lib/assistant/steps";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { viewOf, type Kind } from "@/lib/assistant/actions";
-import { runsOf, shownSteps } from "@/lib/assistant/step-cards";
+import { runsOf, shownSteps, whyAsked } from "@/lib/assistant/step-cards";
 import { OrbitMark } from "./orbit-mark";
 import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
@@ -303,7 +303,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
       </div>
       {step.credits === undefined ? (
         <>
-          <p className="px-4 pb-4 text-xs text-muted-foreground">{t(step.batch !== undefined ? "asks.whyMany" : step.outside ? "asks.whyOutside" : step.undoable ? "asks.whyShown" : "asks.whyUndo")}</p>
+          <p className="px-4 pb-4 text-xs text-muted-foreground">{t(`asks.${whyAsked(step)}`)}</p>
           <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-primary/15 p-3">
             <Button className="h-9" disabled={sent} onClick={() => say(true)}>
               {t("asks.allow")}

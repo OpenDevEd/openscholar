@@ -1865,7 +1865,8 @@
     "startFailed": "スクリーニングを開始できませんでした",
     "showAnswers": "{title} の回答を表示",
     "hideAnswers": "{title} の回答を隠す",
-    "yesOrNo": "はい／いいえ"
+    "yesOrNo": "はい／いいえ",
+    "lost": "このスクリーニングは削除されたか、共有が解除されました"
   },
   "connectionsPage": {
     "connectedApps": "接続済みアプリ",
