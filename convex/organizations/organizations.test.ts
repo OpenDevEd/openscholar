@@ -315,6 +315,19 @@ describe("an organization", () => {
     expect((await members()).page.filter((member) => member.role === "admin")).toHaveLength(2);
   });
 
+  it("invites the new addresses of a list that also names a member or someone already invited", async () => {
+    const { aliceAs } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const invite = (...emails: string[]) => aliceAs.action(api.organizations.manage.invite, { workspaceId: lab.workspaceId, emails, role: "member" });
+    const open = () => [...clerk.invitations.values()].filter((row) => row.status === "pending").map((row) => row.email_address);
+    await invite("carol@example.org");
+    // Alice is a member, with her address in another case, and Carol is invited: Dan alone is new.
+    expect(await invite("Alice@Example.org", "carol@example.org", "dan@example.org")).toEqual({ invited: 1 });
+    expect(open()).toEqual(["carol@example.org", "dan@example.org"]);
+    // A list with nobody new is refused, as one address is.
+    await expect(invite("alice@example.org", "dan@example.org")).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+  });
+
   it("takes back the invitations Clerk let past its room, as it lets requests made at the same moment", async () => {
     const { aliceAs } = await people();
     const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });

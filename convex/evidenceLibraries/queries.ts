@@ -21,6 +21,7 @@ import { createError } from "../lib/errors";
 import { getCurrentUser } from "../lib/auth";
 import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
 import { searchTerms } from "../lib/searchText";
+import { memberWithEmail } from "../organizations/read";
 import {
   draftSectionsValidator,
   evidenceLibraryTeardownStepValidator,
@@ -859,9 +860,6 @@ async function readLibraryPeople(ctx: QueryCtx, library: Doc<"evidenceLibraries"
   }));
 }
 
-/** Members an email's words match that the invite form compares with it. */
-const MEMBERS_MATCHED = 20;
-
 /** Most people one page of the team picker holds. */
 const PEOPLE_PAGE_MAX = 50;
 
@@ -900,16 +898,7 @@ export const isOrganizationPerson = query({
   returns: v.boolean(),
   handler: async (ctx, { libraryId, email }) => {
     const { organization } = await requireEvidenceLibraryAccess(ctx, libraryId, "manage");
-    // Clerk keeps an email in the case it was given: the organization's members are searched by its words, and compared whatever the case.
-    const wanted = email.trim().toLowerCase();
-    const terms = searchTerms(wanted);
-    if (!terms || !organization) return false;
-    const found = await ctx.db.query("organizationMemberships").withSearchIndex("search_member_text", q => q.search("searchText", terms).eq("organizationId", organization._id).eq("state", "active")).take(MEMBERS_MATCHED);
-    for (const membership of found) {
-      const user = await userOf(ctx, membership.clerkUserId);
-      if (user && user.state !== "deleted" && user.email.toLowerCase() === wanted) return true;
-    }
-    return false;
+    return !!organization && (await memberWithEmail(ctx, organization._id, email));
   },
 });
 

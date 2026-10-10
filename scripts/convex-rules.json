@@ -81,6 +81,7 @@
       "MEMBERS_COUNTED": "an organization's members are counted up to one past it and shown as more than it",
       "LIBRARIES_COUNTED": "a workspace's Evidence Libraries are counted up to one past it in its summary",
       "MEMBERS_MATCHED": "the best search matches of an email the invite check compares; an exact email is among the first",
+      "INVITATIONS_MATCHED": "the invitations waiting for one address that an invite looks through for this organization's; past it Clerk still refuses a duplicate",
       "SINGLE_ROW_CLEANUP": "rows meant to be one per key: a duplicate or two a race left are cleared, and more wait for the next write",
       "MAX_API_KEYS_PER_USER": "a person has one key per provider, since saving one replaces the provider's, so this many is all of them",
       "MAX_RATERS": "the members of an organization its averages read, and the ratings of a paper in one collection; Clerk lets a free organization have 5 members",
