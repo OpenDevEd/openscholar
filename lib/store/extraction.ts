@@ -43,7 +43,8 @@ interface ExtractionStore {
   addQuestion: (question: Omit<ExtractionQuestion, "key">) => void;
   removeQuestion: (key: string) => void;
   updateQuestion: (key: string, updates: Partial<ExtractionQuestion>) => void;
-  reorderQuestions: (startIndex: number, endIndex: number) => void;
+  /** Puts the questions in the order given, the same questions moved. */
+  setQuestionOrder: (questions: ExtractionQuestion[]) => void;
   /** Adds a source to the workspace's papers, or changes the one with its key in place. */
   setSource: (workspaceId: string, source: PickedSource) => void;
   removeSources: (workspaceId: string, keys: string[]) => void;
@@ -107,15 +108,7 @@ export const useExtractionStore = create<ExtractionStore>()(
             ),
           },
         })),
-      reorderQuestions: (startIndex, endIndex) =>
-        set((state) => {
-          const questions = [...state.draftJob.questions];
-          const [removed] = questions.splice(startIndex, 1);
-          questions.splice(endIndex, 0, removed);
-          return {
-            draftJob: { ...state.draftJob, questions },
-          };
-        }),
+      setQuestionOrder: (questions) => set((state) => ({ draftJob: { ...state.draftJob, questions } })),
       setSource: (workspaceId, source) =>
         set((state) =>
           withPapers(state.draftJob, workspaceId, ({ sources, uploads }) => {

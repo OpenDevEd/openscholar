@@ -83,7 +83,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
   const router = useWorkspaceRouter();
   const workspaceId = useWorkspace();
 
-  const { draftJob, setDraftJobName, setUsePdfs, addQuestion, removeQuestion, updateQuestion, reorderQuestions, setSource, removeSources, removeUpload, clearPapers, clearDraftJob } = useExtractionStore();
+  const { draftJob, setDraftJobName, setUsePdfs, addQuestion, removeQuestion, updateQuestion, setQuestionOrder, setSource, removeSources, removeUpload, clearPapers, clearDraftJob } = useExtractionStore();
   const { sources, uploads } = usePickedPapers(workspaceId);
   const total = sources.reduce((sum, source) => sum + papersOf(source), 0) + uploads.length;
   const room = Math.max(0, paperLimit - total);
@@ -183,13 +183,6 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
     } finally {
       setGenerating(false);
     }
-  };
-  /** Moves the questions into `next`'s order, one step of the store's at a time. */
-  const reorder = (next: ExtractionQuestion[]) => {
-    const now = draftJob.questions;
-    const at = now.findIndex((q, i) => q.key !== next[i]?.key);
-    if (at === -1) return;
-    reorderQuestions(at, next.findIndex((q) => q.key === now[at]!.key));
   };
 
   // ── Cost and start ─────────────────────────────────────────────────────────
@@ -361,7 +354,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
           }
         >
           <div className={LIST}>
-            <Reorder.Group axis="y" values={draftJob.questions} onReorder={reorder} as="div" className="divide-y divide-border-subtle empty:hidden">
+            <Reorder.Group axis="y" values={draftJob.questions} onReorder={setQuestionOrder} as="div" className="divide-y divide-border-subtle empty:hidden">
               <AnimatePresence initial={false}>
                 {draftJob.questions.map((q, i) => (
                   <QuestionRow key={q.key} question={q} number={i + 1} onChange={(change) => updateQuestion(q.key, change)} onRemove={() => removeQuestion(q.key)} />
