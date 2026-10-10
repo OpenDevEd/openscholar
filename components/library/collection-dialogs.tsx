@@ -58,7 +58,7 @@ export function NewCollectionDialog({ open, onOpenChange, paper, onCreated, retu
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} className={DIALOG} onCloseAutoFocus={restoreFocus(returnFocus)}>
-        {/* Inside the content, so it starts blank each time the dialog opens and reads nothing while it's shut. */}
+        {/* Inside the content, so the form starts blank each time the dialog opens. Its reads stay up while it's shut (useCollectionDialogsReady). */}
         <NewCollection paper={paper} close={() => onOpenChange(false)} onCreated={onCreated} />
       </DialogContent>
     </Dialog>

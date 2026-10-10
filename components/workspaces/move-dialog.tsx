@@ -52,10 +52,13 @@ const PAGE: Record<Exclude<Movable, "chat">, (id: string) => string> = {
  * link); `onMoved` hears the move done, before the page goes to where the item went.
  */
 export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onOpenChange: (open: boolean) => void; kind: Movable; id: string; name: string; from?: Id<"workspaces">; onMoved?: () => void }) {
+  const page = useWorkspace();
+  // Read here, while the dialog is shut, so it opens knowing whether the item can move. The same read inside shares it.
+  useProtectedQuery(api.workspaces.move.held, inWorkspace(item.from ?? page, { kind: item.kind, id: item.id }));
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} onOpenAutoFocus={focusContent} className="top-[max(1rem,12dvh)] flex max-h-[min(40rem,calc(88dvh-1rem))] max-w-lg translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0">
-        {/* Inside the content, so it starts blank each time and reads nothing while it's shut. */}
+        {/* Inside the content, so what was picked starts blank each time. */}
         <Move close={() => onOpenChange(false)} {...item} />
       </DialogContent>
     </Dialog>

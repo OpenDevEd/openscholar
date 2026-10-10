@@ -274,7 +274,7 @@ export function CreateOrganization({ open, onOpenChange }: { open: boolean; onOp
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md rounded-2xl">
-        {/* Inside the content, so it starts blank each time and reads nothing while it's shut. */}
+        {/* Inside the content, so the form starts blank each time. */}
         <NewOrganization close={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
