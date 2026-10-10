@@ -39,7 +39,8 @@ import {
   ScreeningContext,
   ServerRatingsContext,
 } from "@/components/results-contexts";
-import { CollectionRatings } from "@/components/workspaces/collection-ratings";
+import { CollectionRatings, MembersAverage } from "@/components/workspaces/collection-ratings";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
 import { SidebarLayout } from "@/components/shared/sidebar-layout";
@@ -224,6 +225,9 @@ export function LibraryPageClient() {
     [pageItems],
   );
 
+  // Each paper's rating in the library: in an organization's, its members' average of their own ratings.
+  const averages = useMemo(() => new Map(pageItems.flatMap((item) => (item.rating === undefined ? [] : [[item.openalexId, item.rating] as const]))), [pageItems]);
+
   // The person's own ratings, from the server, for the cards and FocusMode; null marks a paper they haven't rated
   const serverRatingsMap = useMemo(
     () =>
@@ -307,6 +311,7 @@ export function LibraryPageClient() {
   );
 
   const guest = selectedCollection?.guest;
+  const workspace = useCurrentWorkspace();
 
   // The heading as last settled: an opened collection's name once it's read, so a switch keeps the last one meanwhile and a cold visit shows none.
   const settledHeading = params.col ? (selectedCollection === undefined ? undefined : (selectedCollection?.name ?? t("title"))) : t("title");
@@ -575,7 +580,10 @@ export function LibraryPageClient() {
                             extra={(() => {
                               // Who rated in a collection is for anyone who reads it; rating in it is its members', so a guest's is read only.
                               const rated = params.col ? collectionRatings.get(paper.id) : undefined;
-                              return rated ? <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} compact={effectiveViewMode === "list-simple"} readOnly={!!guest} /> : undefined;
+                              if (rated) return <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} compact={effectiveViewMode === "list-simple"} readOnly={!!guest} />;
+                              // Outside a collection, an organization's library shows its members' average of their own ratings, beside yours.
+                              const average = !params.col && workspace?.kind === "organization" ? averages.get(paper.id) : undefined;
+                              return average === undefined ? undefined : <MembersAverage workspace={workspace!} average={average} />;
                             })()}
                           />
                         );

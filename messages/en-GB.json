@@ -4272,6 +4272,7 @@
     "drawsOn": "Draws on",
     "ratings": {
       "collection": "Collection",
+      "average": "{organization}'s average rating: {average} of 5",
       "yours": "Your rating in this collection",
       "everyone": "Everyone's ratings in this collection",
       "heading": "Ratings in this collection",

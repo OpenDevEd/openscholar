@@ -4270,6 +4270,7 @@
     "drawsOn": "Utilise",
     "ratings": {
       "collection": "Collection",
+      "average": "Note moyenne de {organization} : {average} sur 5",
       "yours": "Votre note dans cette collection",
       "everyone": "Les notes de chacun dans cette collection",
       "heading": "Notes dans cette collection",

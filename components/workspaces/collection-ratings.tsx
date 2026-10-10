@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { Star } from "@/components/icons";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { WorkspaceTile, type WorkspaceLook } from "@/components/workspaces/parts";
 import { PersonName } from "@/components/ui/identity";
 import { showStyledToast } from "@/components/ui/sonner";
 import { api } from "@/convex/_generated/api";
@@ -45,6 +46,24 @@ export function CollectionRatings({ collectionId, libraryItemId, average, rating
       {compact ? null : <span className="text-xs font-medium text-muted-foreground">{t("collection")}</span>}
       {compact || readOnly ? null : <StarPicker value={ratings.mine ?? null} onChange={choose} label={t("yours")} disabled={busy} />}
       <Raters collectionId={collectionId} libraryItemId={libraryItemId} average={average} ratings={ratings} />
+    </span>
+  );
+}
+
+/**
+ * In an organization's library outside a collection: its members' average of their own ratings of a
+ * paper, under the organization's mark. Who gave which rating stays theirs; the library sorts and
+ * filters by this number.
+ */
+export function MembersAverage({ workspace, average }: { workspace: WorkspaceLook; average: number }) {
+  const t = useTranslations("workspaces.ratings");
+  return (
+    <span role="img" aria-label={t("average", { organization: workspace.name, average: average.toFixed(1) })} className="flex h-8 items-center gap-2 rounded-xl bg-inset pl-1.5 pr-2.5">
+      <WorkspaceTile workspace={workspace} size="xs" />
+      <span className="flex items-center gap-1 text-xs font-semibold tabular-nums">
+        <Star className="size-3.5 fill-rating text-rating" />
+        {average.toFixed(1)}
+      </span>
     </span>
   );
 }

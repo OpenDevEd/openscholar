@@ -4270,6 +4270,7 @@
     "drawsOn": "इससे खर्च",
     "ratings": {
       "collection": "संग्रह",
+      "average": "{organization} की औसत रेटिंग: 5 में से {average}",
       "yours": "इस संग्रह में आपकी रेटिंग",
       "everyone": "इस संग्रह में सभी की रेटिंग",
       "heading": "इस संग्रह की रेटिंग",
