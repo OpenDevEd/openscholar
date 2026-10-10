@@ -75,18 +75,13 @@ export const editableCollectionsAction = defineUserQuery({
     if (!(await inOwn(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
     const needle = search?.trim().toLowerCase() ?? "";
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHARED_PAGE_MAX) };
-    // Read by the index alone, so its pages keep their places as grants change; only a search looks through rows for a name.
-    const read = needle
-      ? await stream(ctx.db, schema)
-          .query("itemAccess")
-          .withIndex("by_user_and_kind_and_role_and_name", (q) => q.eq("userId", actor.userId).eq("kind", "collection").eq("role", "editor"))
-          .order("asc")
-          .filterWith(async (row) => row.name.toLowerCase().includes(needle))
-          .paginate({ ...opts, maximumRowsRead: SHARED_FILTER_ROWS })
-      : await ctx.db
-          .query("itemAccess")
-          .withIndex("by_user_and_kind_and_role_and_name", (q) => q.eq("userId", actor.userId).eq("kind", "collection").eq("role", "editor"))
-          .paginate(opts);
+    // The index holds only the ones they may edit, by name. A search reads on until a page is full or the list ends,
+    // so no page comes back empty with more behind it: the picker has no scroll to ask for the next from.
+    const editable = stream(ctx.db, schema)
+      .query("itemAccess")
+      .withIndex("by_user_and_kind_and_role_and_name", (q) => q.eq("userId", actor.userId).eq("kind", "collection").eq("role", "editor"))
+      .order("asc");
+    const read = await (needle ? editable.filterWith(async (row) => row.name.toLowerCase().includes(needle)) : editable).paginate(opts);
     const page = await Promise.all(read.page.map(async (row) => {
       const collectionId = ctx.db.normalizeId("collections", row.item);
       const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;

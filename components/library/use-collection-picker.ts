@@ -2,7 +2,7 @@
 
 import { useState, type UIEvent } from "react";
 import { api } from "@/convex/_generated/api";
-import { useProtectedPaginatedQuery } from "@/lib/auth/use-auth-query";
+import { useProtectedPaginatedQuery, useProtectedStreamPaginatedQuery } from "@/lib/auth/use-auth-query";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
@@ -23,7 +23,8 @@ export function useCollectionPicker({ enabled = true, openalexId }: { enabled?: 
   const search = useDebouncedValue(query.trim(), 300);
   const args = inWorkspace(workspaceId, enabled ? { search: search || undefined, openalexId } : "skip");
   const list = useProtectedPaginatedQuery(api.library.collections.listCollections, args, { initialNumItems: PICKER_PAGE_SIZE });
-  const shared = useProtectedPaginatedQuery(api.sharing.shared.editableCollections, args, { initialNumItems: PICKER_PAGE_SIZE });
+  // Paged with a stream on the server, whose pages hold their place only under this hook.
+  const shared = useProtectedStreamPaginatedQuery(api.sharing.shared.editableCollections, args, { initialNumItems: PICKER_PAGE_SIZE });
   const onScroll = (event: UIEvent<HTMLElement>) => {
     const { scrollHeight, scrollTop, clientHeight } = event.currentTarget;
     if (scrollHeight - scrollTop - clientHeight >= LOAD_AHEAD_PX) return;
