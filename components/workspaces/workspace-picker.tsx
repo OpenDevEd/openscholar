@@ -8,16 +8,17 @@ import { Check } from "@/components/icons";
 import { LIST } from "@/components/settings/parts";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
-import { useWorkspaces, WorkspaceTile } from "./parts";
+import { useWorkspaces, WorkspaceTile, type WorkspaceRow } from "./parts";
 
-export function WorkspacePicker({ value, onChange, disabled = false }: { value: Id<"workspaces"> | undefined; onChange: (workspaceId: Id<"workspaces">) => void; disabled?: boolean }) {
+/** `except` leaves one out, such as the one an item is moving from; `detail` says what each line under its name says, its credits unless given. */
+export function WorkspacePicker({ value, onChange, disabled = false, except, detail }: { value: Id<"workspaces"> | undefined; onChange: (workspaceId: Id<"workspaces">) => void; disabled?: boolean; except?: Id<"workspaces">; detail?: (workspace: WorkspaceRow) => string }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
   const format = useFormatter();
   const workspaces = useWorkspaces();
   return (
     <div role="radiogroup" aria-label={t("workspace")} className={LIST}>
-      {(workspaces.list ?? []).map((workspace) => {
+      {(workspaces.list ?? []).filter((workspace) => workspace.workspaceId !== except).map((workspace) => {
         const on = workspace.workspaceId === value;
         return (
           <button
@@ -32,7 +33,7 @@ export function WorkspacePicker({ value, onChange, disabled = false }: { value: 
             <WorkspaceTile workspace={workspace} />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium">{workspace.name}</span>
-              <span className="block text-xs tabular-nums text-muted-foreground">{t("creditsLeft", { credits: format.number(Math.floor(workspace.credits ?? 0)) })}</span>
+              <span className="block text-xs tabular-nums text-muted-foreground">{detail ? detail(workspace) : t("creditsLeft", { credits: format.number(Math.floor(workspace.credits ?? 0)) })}</span>
             </span>
             <span className={cn("flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>
               {on ? <Check className="size-3" /> : null}

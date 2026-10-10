@@ -4,8 +4,9 @@ import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import { ItemPresence } from "@/components/workspaces/presence";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Share2, Check, Download, History, MoreHorizontal } from "@/components/icons";
+import { Share2, Check, Download, History, MoreHorizontal, Move } from "@/components/icons";
 import { ActivitySheet } from "@/components/workspaces/activity";
+import { MoveDialog } from "@/components/workspaces/move-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -61,7 +62,9 @@ export function SearchCommandHeader({
   const tsc = useTranslations("searchCommand");
   const [isCopied, setIsCopied] = useState(false);
   const [activityOpen, setActivityOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const ta = useTranslations("workspaces.activity");
+  const tm = useTranslations("workspaces.move");
   // A search's Activity (#656), where the bar shows one.
   const hasActivity = !queryOnly && Boolean(searchId);
   const search = useSearchOptional();
@@ -137,6 +140,12 @@ export function SearchCommandHeader({
                   {ta("title")}
                 </DropdownMenuItem>
               ) : null}
+              {hasActivity ? (
+                <DropdownMenuItem onSelect={() => setMoveOpen(true)}>
+                  <Move className="size-4" />
+                  {tm("toAnother")}
+                </DropdownMenuItem>
+              ) : null}
               <DropdownMenuItem onSelect={() => handleCopyShareLink({ fromMenu: true })}>
                 <Share2 className="size-4" />
                 {tsc("copyShareLink")}
@@ -190,6 +199,14 @@ export function SearchCommandHeader({
           </TooltipHint>
         ) : null}
         {hasActivity && searchId ? <ActivitySheet open={activityOpen} onOpenChange={setActivityOpen} kind="search" id={searchId} name={search?.params.q || tsc("currentQuery")} /> : null}
+        {hasActivity ? (
+          <TooltipHint label={tm("toAnother")}>
+            <Button variant="ghost" size="icon" aria-label={tm("toAnother")} onClick={() => setMoveOpen(true)} className="hidden h-8 w-8 text-muted-foreground hover:text-foreground md:inline-flex">
+              <Move className="h-4 w-4" />
+            </Button>
+          </TooltipHint>
+        ) : null}
+        {hasActivity && searchId ? <MoveDialog open={moveOpen} onOpenChange={setMoveOpen} kind="search" id={searchId} name={search?.params.q || tsc("currentQuery")} /> : null}
 
         {/* Share button */}
         {!queryOnly && (

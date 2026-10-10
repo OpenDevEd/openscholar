@@ -1122,7 +1122,9 @@ export default defineSchema({
     .index("by_workspace_status", ["workspaceId", "status"])
     // One person's screenings (#656): counted, and listed newest first, in a state or all.
     .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
-    .index("by_workspace_and_createdBy_and_status", ["workspaceId", "createdBy", "status"]),
+    .index("by_workspace_and_createdBy_and_status", ["workspaceId", "createdBy", "status"])
+    // A search's screenings, which share its answers and move with it (#654).
+    .index("by_screening", ["screeningId"]),
 
   // ═══════════════════════════════════════════════════════════════
   // SCREENING RESULTS - individual paper screening outcomes
@@ -1209,6 +1211,8 @@ export default defineSchema({
     .index("by_job_and_status_and_waitingWorkspace", ["jobId", "status", "waitingWorkspace"])
     .index("by_waitingWorkspace_and_waitingSince", ["waitingWorkspace", "waitingSince"])
     .index("by_doneAt", ["doneAt"])
+    // A job's papers waiting for that bookkeeping, which a move waits for (#654).
+    .index("by_job_and_doneAt", ["jobId", "doneAt"])
     .searchIndex("search_text", { searchField: "searchText", filterFields: ["jobId", "outcome"] }),
   // How many of a person's Screen all papers are running (#335). Written by job creation and
   // the bookkeeping worker, which start a person's waiting papers while this is under their

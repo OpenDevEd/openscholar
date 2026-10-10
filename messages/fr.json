@@ -3915,6 +3915,17 @@
         "did": "Plafond de crédits d'un membre modifié",
         "where": "Forfait et crédits",
         "ask": "Modifier le plafond de crédits d'un membre"
+      },
+      "moveCheck": {
+        "doing": "Vérification du déplacement possible",
+        "did": "Déplacement possible vérifié",
+        "where": "Espaces de travail"
+      },
+      "moveItem": {
+        "doing": "Déplacement vers un autre espace de travail",
+        "did": "Déplacé vers un autre espace de travail",
+        "where": "Espaces de travail",
+        "ask": "Le déplacer vers un autre espace de travail"
       }
     },
     "asks": {
@@ -4233,6 +4244,7 @@
       "resumed": "l'a repris",
       "retried": "a relancé {count, plural, one {# réponse en échec} other {# réponses en échec}}",
       "stopped": "l'a arrêté",
+      "moved": "l'a déplacé ici depuis",
       "viaAssistant": "Par l'assistant",
       "today": "Aujourd'hui",
       "yesterday": "Hier",
@@ -4258,6 +4270,31 @@
     },
     "presence": {
       "hasOpen": "{count, plural, one {{names} l'a ouvert} other {{names} l'ont ouvert}}"
+    },
+    "move": {
+      "search": "Déplacer la recherche",
+      "screening": "Déplacer le tri",
+      "extraction": "Déplacer l'extraction",
+      "chat": "Déplacer la discussion",
+      "fromTo": "De {workspace} vers",
+      "onlyYou": "Vous seul",
+      "membersSee": "{count, plural, one {# membre la voit} other {# membres la voient}}",
+      "goesWithIt": "Ce qui l'accompagne",
+      "goes": {
+        "resultsRatings": "Résultats et leurs notes",
+        "screeningAnswers": "Réponses de tri",
+        "earlierQueries": "Requêtes précédentes",
+        "answers": "Réponses",
+        "questions": "Questions",
+        "pdfs": "PDF",
+        "messages": "Messages",
+        "files": "Fichiers",
+        "activity": "Activité"
+      },
+      "moveTo": "Déplacer vers {workspace}",
+      "move": "Déplacer",
+      "toAnother": "Déplacer vers un autre espace de travail",
+      "moveNamed": "Déplacer {name} vers un autre espace de travail"
     }
   },
   "models": {

@@ -8,7 +8,7 @@ import { useDeferredValue, useRef, useState, type ReactNode } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Link2, Loader2, Lock, MessageSquare, Radio, Search, Share2, ShieldCheck, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
+import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Link2, Loader2, Lock, MessageSquare, Move, Radio, Search, Share2, ShieldCheck, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
 import { Pills } from "@/components/ui/pills";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
@@ -35,6 +35,7 @@ import { KIND, KindTile, type Waiting } from "./steps";
 import { inWorkspace, useWorkspace, useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
+import { MoveDialog } from "@/components/workspaces/move-dialog";
 import { useRunBy } from "@/components/workspaces/run-by";
 import { PresentAvatar as Avatar } from "@/components/ui/identity";
 
@@ -163,8 +164,9 @@ function Status({ chat }: { chat: Chat }) {
   return <span className="truncate text-xs text-muted-foreground">{chat.preview}</span>;
 }
 
-function ChatRow({ chat, index, current, when, onOpen, onShare }: { chat: Chat; index: number; current: boolean; when: string; onOpen: () => void; onShare: () => void }) {
+function ChatRow({ chat, index, current, when, onOpen, onShare, onMove }: { chat: Chat; index: number; current: boolean; when: string; onOpen: () => void; onShare: () => void; onMove?: () => void }) {
   const t = useTranslations("assistant");
+  const tm = useTranslations("workspaces.move");
   return (
     <motion.div
       initial={{ opacity: 0, x: 12 }}
@@ -194,7 +196,20 @@ function ChatRow({ chat, index, current, when, onOpen, onShare }: { chat: Chat; 
         ) : null}
       </button>
       {/* Out of the flow, so the hover action never adds height to the row. */}
-      <div className="absolute right-2 top-2 hidden group-focus-within:block group-hover:block">
+      <div className="absolute right-2 top-2 hidden gap-1 group-focus-within:flex group-hover:flex">
+        {/* A chat you started moves to another of your workspaces (#654). */}
+        {onMove ? (
+          <TooltipHint label={tm("toAnother")}>
+            <button
+              type="button"
+              aria-label={tm("moveNamed", { name: chat.title })}
+              onClick={onMove}
+              className="flex size-7 items-center justify-center rounded-full bg-card text-muted-foreground shadow-xs hover:text-foreground"
+            >
+              <Move className="size-3.5" />
+            </button>
+          </TooltipHint>
+        ) : null}
         <TooltipHint label={t("share")}>
           <button
             type="button"
@@ -230,6 +245,7 @@ export function HistorySheet({
   const format = useFormatter();
   const now = useNow().getTime();
   const [query, setQuery] = useState("");
+  const [moving, setMoving] = useState<{ id: string; title: string } | null>(null);
   const [scope, setScope] = useState<Scope>("all");
   // The list follows the typing a beat behind, so every keystroke doesn't ask for a new one.
   const text = useDeferredValue(query.trim());
@@ -303,6 +319,7 @@ export function HistorySheet({
                     when={when(chat.lastMessageAt)}
                     onOpen={() => onOpen(chat._id)}
                     onShare={() => onShare(chat._id, chat.title, chat.role)}
+                    onMove={chat.role === "owner" ? () => setMoving({ id: chat._id, title: chat.title }) : undefined}
                   />
                 ))}
               </section>
@@ -322,6 +339,8 @@ export function HistorySheet({
           </motion.div>
         </div>
       </ScrollArea>
+      {/* Moved, the chat is open in the panel, out from under the list. */}
+      {moving ? <MoveDialog open onOpenChange={(open) => !open && setMoving(null)} kind="chat" id={moving.id} name={moving.title} onMoved={onBack} /> : null}
     </>
   );
 }
