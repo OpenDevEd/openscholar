@@ -37,13 +37,29 @@ vi.mock("@/lib/store", () => ({
 }));
 
 import { LikelyFirst } from "@/components/search-command-center/components/likely-first";
-import { useLikelyOrderStore } from "@/lib/search/likely-order";
+import { useLikelyOrdered, useLikelyOrderStore } from "@/lib/search/likely-order";
+
+/** The button beside the results, shown in the order the results list shows them. */
+function Page() {
+  const shown = useLikelyOrdered("search-1", results.current, results.current);
+  return (
+    <>
+      <LikelyFirst />
+      <ol>
+        {shown.map((one) => (
+          <li key={one.id}>{one.id}</li>
+        ))}
+      </ol>
+    </>
+  );
+}
 
 beforeEach(() => {
   results.current = RESULTS;
   useLikelyOrderStore.setState({ orders: {} });
   ratings.current = { [paper(1).id]: 5, [paper(3).id]: 1 };
-  ordered.mockResolvedValue({ ok: true, order: [paper(2), paper(4), paper(1), paper(3)].map(({ id }) => ({ id, score: 0.1 })) });
+  // The API's order, closest first, rated and not mixed: paper 1, rated 5, first, and paper 3, rated 1, among the others.
+  ordered.mockResolvedValue({ ok: true, order: [paper(1), paper(2), paper(3), paper(4)].map(({ id }) => ({ id, score: 0.1 })) });
 });
 
 afterEach(() => {
@@ -77,7 +93,7 @@ describe("likely relevant first", () => {
     fireEvent.click(screen.getByRole("button", { name: "likelyFirst" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "likelyFirst" })).toHaveAttribute("aria-pressed", "true"));
     expect(ordered).toHaveBeenCalledWith(["OS1", "OS2", "OS3", "OS4"], ["OS1"], ["OS3"]);
-    // The API's order is 2, 4, 1, 3: the papers not rated yet, 2 and 4, come before 1 and 3, rated.
+    // Of the API's order, 1, 2, 3, 4, the papers not rated yet, 2 and 4, come before 1 and 3, rated.
     expect(useLikelyOrderStore.getState().orders["search-1"]?.ids).toEqual([2, 4, 1, 3].map((n) => paper(n).id));
     expect(setPage).toHaveBeenCalledWith(1);
   });
@@ -99,6 +115,19 @@ describe("likely relevant first", () => {
       fireEvent.click(screen.getByRole("button", { name: "likelyFirst" }));
     });
     expect(useLikelyOrderStore.getState().orders["search-1"]).toBeUndefined();
+  });
+
+  it("keeps the papers shown in place as the person rates them, until they order again", async () => {
+    const { rerender } = render(<Page />);
+    fireEvent.click(screen.getByRole("button", { name: "likelyFirst" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "likelyFirst" })).toHaveAttribute("aria-pressed", "true"));
+    const shown = () => screen.getAllByRole("listitem").map((item) => item.textContent);
+    const before = shown();
+    expect(before).toEqual([2, 4, 1, 3].map((n) => paper(n).id));
+    // Paper 2, the first shown, is rated: it stays first.
+    ratings.current = { ...ratings.current, [paper(2).id]: 4 };
+    rerender(<Page />);
+    expect(shown()).toEqual(before);
   });
 
   it("offers to order again when a paper is rated 3, or its rating taken off, which moves it among the rated", async () => {
