@@ -121,6 +121,27 @@ it("has the likely reviews a library marks read once, tells the writer what each
   expect((await response.json() as {digest: {kinds: unknown}}).digest.kinds).toEqual({BBBB2345: "review", DDDD2345: "study"});
 });
 
+it("hands back what was read when the writer fails, so the next attempt has nothing read again", async () => {
+  vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
+  const {request, finishGeneration} = await setup();
+  const publication = (marks: object) => ({key: "BBBB2345", title: "Drought: a systematic review", creators: ["Ada Mills"], date: "2026", abstract: null, publicationType: "journalArticle", doi: null, ...marks});
+  let read = 0;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async url => {
+    if (String(url) !== "https://openrouter.ai/api/alpha/decisions") return new Response(JSON.stringify({error: {message: "Model unavailable", code: 503}}), {status: 503, headers: {"Content-Type": "application/json"}});
+    read++;
+    return Response.json({answers: {k: {choice: "review"}}});
+  });
+  expect((await request({publications: [publication({candidate: true})]})).status).toBe(202);
+  await finishGeneration();
+  const failed = await request({publications: [publication({candidate: true})]});
+  expect(failed.status).toBe(503);
+  expect(await failed.json()).toEqual({error: "digest_generation_failed", kinds: {BBBB2345: "review"}});
+  // The library keeps the answer and sends it with its next attempt.
+  expect((await request({publications: [publication({candidate: true, kind: "review"})]})).status).toBe(202);
+  await finishGeneration();
+  expect(read).toBe(1);
+});
+
 it("repairs a mistyped citation, straightens curly quotes and levels headings instead of rejecting the digest", async () => {
   vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
   const {request, finishGeneration} = await setup();

@@ -3,7 +3,7 @@ import { getProviderModel } from "../../../lib/ai/server/providers";
 import { callOptions } from "../../../lib/ai/core/call-options";
 import { DIGEST_MODEL, DIGEST_REASONING, digestResultSchema, type DigestRequest } from "./contract";
 import { repairCitations } from "./citations";
-import { readKinds } from "./kinds";
+import type { PublicationKind } from "./kinds";
 import { citedKeys, reviewDigest, reviseDigest, withoutSentences } from "./review";
 import { UNSLOP_RULES } from "./unslop";
 
@@ -40,7 +40,7 @@ ${marked ? MARKED : UNMARKED}
 - When the period has any, the first section is headed "Meta-analyses and reviews", and they are written about there and under no other heading.
 - Cite every meta-analysis you were given. For each, say what it pooled, as far as its record says: how many studies or participants, and which outcome. Then say what it found.
 - Then the reviews. Cite every one when there are six or fewer. When there are more, write about the six whose records report the most and leave the rest to the edition's list, which shows every one.
-- This section is at most a third of the body.
+- This section is at most a third of the body, unless the meta-analyses alone need more.
 - Cite with a normal Markdown link such as [Author, year](/lib/ABCDEFGH), using only supplied item keys. Use no other links and no images.
 - Cite a publication where a paragraph first draws on it. Do not repeat the same citation after each sentence about that publication.
 - The body ends with its last theme. Do not add a closing section or paragraph of any kind: no limits of the records, no note on missing abstracts or thin metadata, no gaps in the evidence, no suggestions for future research, no conclusion.
@@ -87,11 +87,10 @@ async function reviewed(digest: {summary: string; markdown: string}, request: Di
   }
 }
 
-export async function generateLibraryDigest(request: DigestRequest, signal?: AbortSignal) {
+/** Writes the digest. `kinds` is what the library's likely reviews were read as before the writer started; the writer is told what each one is. */
+export async function generateLibraryDigest(request: DigestRequest, kinds: Record<string, PublicationKind>, signal?: AbortSignal) {
   const started = Date.now();
   const model = await getProviderModel("openrouter", undefined, DIGEST_MODEL);
-  // A library that marks its likely reviews has them read first, and the writer is told what each one is.
-  const kinds = await readKinds(request.publications, signal);
   const marked = request.publications.some(publication => publication.candidate !== undefined || publication.kind !== undefined);
   const supplied = {...request, publications: request.publications.map(({candidate: _candidate, kind, ...publication}) => {
     const known = kind ?? kinds[publication.key];
