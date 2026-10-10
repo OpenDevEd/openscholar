@@ -1,4 +1,6 @@
 import { requireOrganizationFeature } from "../organizationFeatures";
+import { hasPlanFeature } from "../billing/accounts";
+import { PLAN_FEATURES } from "../../lib/billing/plans";
 import { searchTerms } from "../lib/searchText";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import schema from "../schema";
@@ -43,13 +45,13 @@ export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, wo
 const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union(v.string(), v.null())};
 
 /**
- * Refuses unless `workspaceId` may hold author profiles: in an organization, its own switch; in
- * `userId`'s own workspace, any of their organizations', until plans give features (#652).
+ * Refuses unless `workspaceId` may hold author profiles: in an organization, its own plan grants
+ * them; in `userId`'s own workspace, the plan of any of their organizations (#652).
  */
 export async function requireAuthorProfiles(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) {
   const workspace = await ctx.db.get("workspaces", workspaceId);
   if (workspace?.kind !== "organization") return await requireOrganizationFeature(ctx, "authors", userId);
-  if ((await ctx.db.get("organizations", workspace.organizationId))?.authorsEnabled !== true) throw createError("FORBIDDEN", "This organization doesn't have author profiles enabled.");
+  if (!(await hasPlanFeature(ctx, workspaceId, PLAN_FEATURES.authors))) throw createError("FORBIDDEN", "This organization's plan doesn't include author profiles.");
 }
 
 /** Makes a profile owned by the page's workspace. */

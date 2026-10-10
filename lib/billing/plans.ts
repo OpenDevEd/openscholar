@@ -31,6 +31,12 @@ export const SEAT_PLAN = "team_seat";
 /** The Autumn feature a member's entity is made for. */
 export const SEATS_FEATURE = "seats";
 
+/**
+ * What a plan turns on, each a boolean feature in Autumn (#652). All three come with Team; which
+ * plans grant them is set in Autumn's dashboard, not here.
+ */
+export const PLAN_FEATURES = { evidenceLibraries: "evidence_libraries", authors: "authors", extraction: "extraction" } as const;
+
 /** The plans only an organization is on; a person's own workspace never picks them. */
 export const ORGANIZATION_PLANS: readonly string[] = [ORGANIZATION_PLAN, TEAM_PLAN, SEAT_PLAN];
 

@@ -316,6 +316,19 @@ export async function seedCreditsForTest(
   });
 }
 
+/**
+ * Puts an organization on a plan that grants `features` (#652): its workspace, made if it has
+ * none yet, and the cached account that says what its plan includes.
+ */
+export async function grantPlanFeaturesForTest(ctx: MutationCtx, organizationId: Id<"organizations">, features: readonly string[]) {
+  const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
+  const workspaceId = workspace?._id ?? (await ctx.db.insert("workspaces", { kind: "organization", organizationId }));
+  const account = await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
+  if (account) await ctx.db.patch("billingAccounts", account._id, { features: [...new Set([...(account.features ?? []), ...features])] });
+  else await ctx.db.insert("billingAccounts", { workspaceId, plan: "team", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: Date.now(), features: [...features] });
+  return workspaceId;
+}
+
 /** The cached billing account of a person's own workspace. */
 export async function accountOf(ctx: Pick<MutationCtx, "db">, userId: Id<"users">) {
   const workspaceId = await personalWorkspaceOf(ctx, userId);
