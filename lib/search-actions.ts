@@ -15,6 +15,8 @@ export type DownloadSearchState = {
   searchId?: string;
   /** An OQL search's full request, filters included, as it ran. */
   oql?: string | null;
+  /** The papers a search for the works nearest them is like, which say what it searched by. */
+  similarTo?: string[];
 };
 
 type ItemScreeningResults = Record<string, boolean | null>;
@@ -67,6 +69,7 @@ export const createSearchMetadata = (
   dateRange?: DateRange,
   yearRange?: [number, number],
   oql?: string | null,
+  similarTo?: string[],
 ) => {
   // Create unified filters object for metadata
   const filters: SearchFilters = {
@@ -83,6 +86,7 @@ export const createSearchMetadata = (
     citesItemId: '',
     citedByItemId: '',
     relatedToItemId: '',
+    similarTo,
     reviewFilter: false,
     researchAreas: [],
     sdgs: [],
@@ -112,6 +116,7 @@ export const createSearchMetadata = (
         from: yearRange[0],
         to: yearRange[1]
       } : null,
+      ...(similarTo?.length ? { similar_to: similarTo } : {}),
       timestamp: new Date().toISOString(),
       sdk_version: "1.1.6",
       // An OQL search is one query, not the SDK's search and filter.
@@ -189,7 +194,7 @@ export const downloadItem = async (
       screeningResponses,
       format
     );
-    const metadata = createSearchMetadata(query, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
+    const metadata = createSearchMetadata(query, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql, searchState.similarTo);
     await downloadWithMetadata(itemWithRating, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading item:', error);
@@ -218,7 +223,7 @@ export const downloadEssentialItem = async (
     
     const essentialInfo = getEssentialInfo(item, ratings, screeningResponses, format);
     const filename = generateFilename(item.title || '', 'essential', format);
-    const metadata = createSearchMetadata(query, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
+    const metadata = createSearchMetadata(query, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql, searchState.similarTo);
     await downloadWithMetadata(essentialInfo, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading essential item:', error);
@@ -261,7 +266,7 @@ export const downloadAll = async (
           )
         );
     
-    const metadata = createSearchMetadata(query, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql);
+    const metadata = createSearchMetadata(query, searchState.field, searchState.dateRange, searchState.yearRange, searchState.oql, searchState.similarTo);
     await downloadWithMetadata(dataToDownload, filename, format, metadata as unknown as Parameters<typeof downloadWithMetadata>[3]);
   } catch (error) {
     console.error('Error downloading all results:', error);

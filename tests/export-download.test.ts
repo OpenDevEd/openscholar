@@ -57,6 +57,7 @@ vi.mock("date-fns", () => ({
 }));
 
 import { downloadAll, downloadEssentialItem, downloadItem } from "../lib/search-actions";
+import { createSearchParameters } from "../lib/utils";
 import type { DownloadSearchState, ToastApi } from "../lib/search-actions";
 import type { SearchField, PaperResult } from "../lib/types/search.types";
 
@@ -164,6 +165,32 @@ describe("exporting a search by meaning", () => {
     for (const [, , , metadata] of mockDownloadWithMetadata.mock.calls) {
       expect(metadata.search).toMatchObject({ query: byMeaning.query, field: "semantic" });
     }
+  });
+});
+
+// A search for the works nearest given papers has no words: the papers say what it searched by.
+describe("exporting a search for the works nearest given papers", () => {
+  const like: DownloadSearchState = { query: "", field: "title_and_abstract", searchId: "search_3", similarTo: ["OS64233829", "OS14687712"] };
+
+  it("records the papers, in every kind of download, and asks for them in its parameters", async () => {
+    await downloadAll("json", mockToast, false, like, mockResults);
+    await downloadItem(mockItem, "json", mockToast, like);
+    await downloadEssentialItem(mockItem, "csv", mockToast, like);
+    expect(mockDownloadWithMetadata).toHaveBeenCalledTimes(3);
+    for (const [, , , metadata] of mockDownloadWithMetadata.mock.calls) {
+      expect(metadata.search.similar_to).toEqual(["OS64233829", "OS14687712"]);
+    }
+    // Its parameters are built with them, as the results page's request was.
+    expect(vi.mocked(createSearchParameters)).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ similarTo: ["OS64233829", "OS14687712"] }),
+    );
+  });
+
+  it("records none for a search without them", async () => {
+    await downloadAll("json", mockToast, false, mockSearchState, mockResults);
+    const [, , , metadata] = mockDownloadWithMetadata.mock.calls[0];
+    expect(metadata.search.similar_to).toBeUndefined();
   });
 });
 

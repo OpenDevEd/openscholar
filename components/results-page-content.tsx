@@ -54,6 +54,7 @@ export default function ResultsPageContent({
       yearRange: filters.yearRange,
       searchId,
       oql,
+      similarTo: filters.similarTo,
     };
   }, [query, searchId, toSearchFilters, oql]);
 
