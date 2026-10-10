@@ -114,6 +114,8 @@ export const MAX_BATCH_PAPERS = 200;
 export const MAX_STARS = 5;
 /** OpenAlex lists at most 100 authorships for a work; longer author lists are cut to these. */
 export const MAX_AUTHORS = 100;
+/** Members a saved paper keeps as having rated it, with what each gave (#801): what its list shows before it scrolls, and one more. */
+export const MAX_RATERS_KEPT = 8;
 /**
  * Legacy lists that nothing adds to any more: the history arrays on searches saved before
  * #354 (dropped by #373) and the answer chunks moved out by #334. Shared dev holds 40 at most.

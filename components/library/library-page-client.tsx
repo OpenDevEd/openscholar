@@ -37,9 +37,11 @@ import type { ViewMode } from "@/lib/types";
 import {
   TranslationContext,
   ScreeningContext,
+  CollectionRatingContext,
   ServerRatingsContext,
 } from "@/components/results-contexts";
-import { CollectionRatings } from "@/components/workspaces/collection-ratings";
+import { CollectionRatings, MembersAverage, useRateInCollection } from "@/components/workspaces/collection-ratings";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
 import { SidebarLayout } from "@/components/shared/sidebar-layout";
@@ -224,6 +226,12 @@ export function LibraryPageClient() {
     [pageItems],
   );
 
+  // In an organization's library outside a collection, how its members rated each paper themselves (#801): their average and who gave what.
+  const memberRatings = useMemo(
+    () => new Map(pageItems.flatMap((item) => (item.members && item.rating !== undefined ? [[item.openalexId, { libraryItemId: item._id, average: item.rating, ratings: item.members }] as const] : []))),
+    [pageItems],
+  );
+
   // The person's own ratings, from the server, for the cards and FocusMode; null marks a paper they haven't rated
   const serverRatingsMap = useMemo(
     () =>
@@ -307,6 +315,27 @@ export function LibraryPageClient() {
   );
 
   const guest = selectedCollection?.guest;
+  const workspace = useCurrentWorkspace();
+  // In an open collection whose members rate in it, the cards' rating control is the person's rating there (#655).
+  // A guest gives none in it, so theirs stays their own rating of the paper.
+  const rateInCollection = useRateInCollection(params.col ? (params.col as Id<"collections">) : undefined);
+  const collectionName = selectedCollection?.name;
+  const ratesInCollection = !selectedCollection?.guest && collectionRatings.size > 0 && collectionName !== undefined;
+  const collectionScope = useMemo(
+    () =>
+      ratesInCollection
+        ? {
+            name: collectionName,
+            ratings: new Map([...collectionRatings].map(([paperId, rated]) => [paperId, rated.ratings.mine ?? null] as const)),
+            rate: (paperId: string, rating: number | null) => {
+              const rated = collectionRatings.get(paperId);
+              if (rated) rateInCollection(rated.libraryItemId, rating);
+            },
+          }
+        : undefined,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `rateInCollection` is a new function each render over the same mutation.
+    [ratesInCollection, collectionName, collectionRatings],
+  );
 
   // The heading as last settled: an opened collection's name once it's read, so a switch keeps the last one meanwhile and a cold visit shows none.
   const settledHeading = params.col ? (selectedCollection === undefined ? undefined : (selectedCollection?.name ?? t("title"))) : t("title");
@@ -559,6 +588,8 @@ export function LibraryPageClient() {
                 {!isLoading && (pageResults.length > 0 || paged.hasPages) && (
                   <>
                     {/* The page shown stays, dimmed and still, until the one it steps to arrives. */}
+                    {/* Only the cards rate in the open collection. Focus mode keeps the person's own rating, on its stars, its shortcuts and its phone control alike. */}
+                    <CollectionRatingContext.Provider value={collectionScope}>
                     <div className={cn(GRID_CLASSES[effectiveViewMode], paged.isStale && "pointer-events-none opacity-60")}>
                       {pageResults.map((paper, index) => {
                         const globalIndex = pageStart + index;
@@ -573,14 +604,18 @@ export function LibraryPageClient() {
                             }
                             viewMode={effectiveViewMode}
                             extra={(() => {
-                              // Who rated in a collection is for anyone who reads it; rating in it is its members', so a guest's is read only.
+                              // Who rated in a collection is for anyone who reads it. Rating in it is its members', through the card's own rating control.
                               const rated = params.col ? collectionRatings.get(paper.id) : undefined;
-                              return rated ? <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} compact={effectiveViewMode === "list-simple"} readOnly={!!guest} /> : undefined;
+                              if (rated) return <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} />;
+                              // Outside a collection, an organization's library shows its members' average of their own ratings, beside yours.
+                              const members = workspace ? memberRatings.get(paper.id) : undefined;
+                              return members ? <MembersAverage workspace={workspace!} libraryItemId={members.libraryItemId} average={members.average} ratings={members.ratings} /> : undefined;
                             })()}
                           />
                         );
                       })}
                     </div>
+                    </CollectionRatingContext.Provider>
 
                     <CommandCenterContainer>
                       <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">

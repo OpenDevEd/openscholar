@@ -20,6 +20,7 @@ type LibraryQueryState = {
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     exports: { start: "exports:start" },
+    organizations: { queries: { workspace: "organizations:workspace" } },
     library: {
       collections: {
         getCollection: "library:getCollection",
@@ -185,6 +186,16 @@ vi.mock("@/components/results-contexts", () => ({
   ServerRatingsContext: {
     Provider: ({ children }: { children: ReactNode }) => <>{children}</>,
   },
+  CollectionRatingContext: {
+    Provider: ({ children }: { children: ReactNode }) => <>{children}</>,
+  },
+}));
+
+// The pills beside a card and the collection's rating are the cards' business, which this file mocks.
+vi.mock("@/components/workspaces/collection-ratings", () => ({
+  CollectionRatings: () => null,
+  MembersAverage: () => null,
+  useRateInCollection: () => vi.fn(),
 }));
 
 vi.mock("@/components/paper-card", () => ({
@@ -362,7 +373,8 @@ function setPagedRows(queryRef: unknown, rows: Rows | ((args: unknown) => Rows))
 }
 
 function resetQueryFixtures() {
-  queryFixtureStore.protected = {};
+  // The page is in the person's own workspace.
+  queryFixtureStore.protected = { [String(api.organizations.queries.workspace)]: { kind: "personal", name: "Ada", workspaceId: "workspace_1" } };
   queryFixtureStore.rows = {};
   queryFixtureStore.reads = new Map();
 

@@ -3,6 +3,7 @@ import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { workUrl } from "../lib/openalex/work-id";
 import { findItem } from "./library/find";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
+import { MAX_RATERS_KEPT } from "./lib/listCaps";
 import { createError } from "./lib/errors";
 import type { Change } from "convex-helpers/server/triggers";
 import { makeFunctionReference } from "convex/server";
@@ -80,25 +81,37 @@ async function ratingWorkspaces(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) 
 }
 
 /** The people whose ratings count in an organization's averages: its active members. */
-async function raters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">) {
+async function members(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">) {
   const memberships = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organizationId).eq("state", "active")).take(MAX_RATERS);
   const users = await Promise.all(memberships.map((membership) => ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique()));
-  return users.flatMap((user) => (user?.state === "active" ? [user._id] : []));
+  return users.flatMap((user) => (user?.state === "active" ? [user] : []));
 }
 
 const average = (ratings: number[]) => (ratings.length ? ratings.reduce((total, rating) => total + rating, 0) / ratings.length : undefined);
 
+/** A member's own rating of a paper, as a saved paper keeps the first of them: the rating row, whose it is, and what they gave. */
+type Given = { id: Id<"ratings">; userId: Id<"users">; rating: number };
+
 /**
- * A saved paper's rating in a workspace: the average of its people's own ratings of it, or none
- * when none of them rated it. In a person's own workspace that's their rating.
+ * How a workspace's people rated a saved paper themselves: the average of their own ratings of it,
+ * or none when none of them rated it. In a person's own workspace that's their rating. In an
+ * organization's, also how many members gave one and the first of them (#801), which its library
+ * lists beside the average.
  */
-export async function workspaceRating(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, paperId: string): Promise<number | undefined> {
+export async function workspaceRated(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, paperId: string): Promise<{ rating?: number; count?: number; by?: Given[] }> {
   const workspace = await ctx.db.get("workspaces", workspaceId);
-  if (!workspace) return undefined;
-  if (workspace.kind === "personal") return (await personalRatingRow(ctx, workspace.userId, paperId))?.rating;
-  const rows = await Promise.all((await raters(ctx, workspace.organizationId)).map((userId) => personalRatingRow(ctx, userId, paperId)));
-  return average(rows.flatMap((row) => (row ? [row.rating] : [])));
+  if (!workspace) return {};
+  if (workspace.kind === "personal") {
+    const rating = (await personalRatingRow(ctx, workspace.userId, paperId))?.rating;
+    return rating === undefined ? {} : { rating };
+  }
+  const rows = await Promise.all((await members(ctx, workspace.organizationId)).map((user) => personalRatingRow(ctx, user._id, paperId)));
+  const given = rows.flatMap((row) => (row ? [{ id: row._id, userId: row.userId, rating: row.rating }] : []));
+  return given.length ? { rating: average(given.map((one) => one.rating)), count: given.length, by: given.slice(0, MAX_RATERS_KEPT) } : {};
 }
+
+/** A saved paper's rating in a workspace (`workspaceRated`). */
+export const workspaceRating = async (ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, paperId: string) => (await workspaceRated(ctx, workspaceId, paperId)).rating;
 
 /** Whether someone is an active member of an organization now. */
 async function isMember(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, userId: Id<"users">) {
@@ -116,6 +129,7 @@ export type Rater = { id: Id<"ratings">; userId: Id<"users">; name: string; imag
 /** A rater as the people reading see them. */
 export const raterValidator = v.object({ id: v.id("ratings"), name: v.string(), imageUrl: v.optional(v.string()), you: v.boolean(), rating: v.number() });
 export const shownRater = ({ userId: _userId, ...rater }: Rater) => rater;
+const raterOf = (given: Given, user: Doc<"users">, viewer: Id<"users">): Rater => ({ ...given, name: personName(user) || user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), you: user._id === viewer });
 
 /**
  * Up to `max` of the ratings a paper has in an organization's collection from its members now,
@@ -138,6 +152,31 @@ export async function collectionRaters(ctx: Pick<QueryCtx, "db">, collectionId: 
 /** Ratings of a paper a preview of its raters reads at most, past former members' to the members' it names. */
 const PREVIEW_READ = 50;
 
+/**
+ * The members a saved paper keeps as having rated it, as the organization's library lists them
+ * (#801): the person reading first, by their own rating row `mine`, then the others it keeps.
+ * `person` reads someone once however many papers ask.
+ */
+export async function keptRaters(item: Doc<"libraryItems">, viewer: Id<"users">, mine: Doc<"ratings"> | null, person: (userId: Id<"users">) => Promise<Doc<"users"> | null>): Promise<Rater[]> {
+  const own = mine ? [{ id: mine._id, userId: viewer, rating: mine.rating }] : [];
+  const given = [...own, ...(item.ratedBy ?? []).filter((one) => one.userId !== viewer)].slice(0, MAX_RATERS_KEPT);
+  const people = await Promise.all(given.map((one) => person(one.userId)));
+  // Someone whose account was deleted since the paper was last rated is passed over: their row stays a while, and they're nobody's to name.
+  return given.flatMap((one, at) => (people[at]?.state === "active" ? [raterOf(one, people[at], viewer)] : []));
+}
+
+/**
+ * Every member's own rating of a paper, as an organization's library lists them in full (#801),
+ * the person reading first. Its members are read, not everyone who rated the paper, so other
+ * people's ratings of it cost nothing however many there are.
+ */
+export async function everyRater(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, paperId: string, viewer: Id<"users">): Promise<Rater[]> {
+  const people = await members(ctx, organizationId);
+  const rows = await Promise.all(people.map((user) => personalRatingRow(ctx, user._id, paperId)));
+  const rated = people.flatMap((user, at) => (rows[at] ? [raterOf({ id: rows[at]._id, userId: user._id, rating: rows[at].rating }, user, viewer)] : []));
+  return [...rated.filter((rater) => rater.you), ...rated.filter((rater) => !rater.you)];
+}
+
 /** A paper's ratings in a collection, a query to read them from. */
 export const collectionRatingsOf = (ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, paperId: string) =>
   ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", ratedPaper(paperId)));
@@ -152,7 +191,7 @@ export async function organizationOfCollection(ctx: Pick<QueryCtx, "db">, collec
 /** Ratings with who gave them, those of the organization's members now. */
 export async function asRaters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, rows: Doc<"ratings">[], viewer: Id<"users">): Promise<Rater[]> {
   const people = await Promise.all(rows.map(async (row) => ((await isMember(ctx, organizationId, row.userId)) ? { row, user: (await ctx.db.get("users", row.userId))! } : null)));
-  return people.flatMap((person) => (person ? [{ id: person.row._id, userId: person.user._id, name: personName(person.user) || person.user.email, ...(person.user.avatarUrl ? { imageUrl: person.user.avatarUrl } : {}), you: person.user._id === viewer, rating: person.row.rating }] : []));
+  return people.flatMap((person) => (person ? [raterOf({ id: person.row._id, userId: person.user._id, rating: person.row.rating }, person.user, viewer)] : []));
 }
 
 /**
@@ -199,10 +238,11 @@ export async function purgeCollectionRatings(ctx: MutationCtx, collectionId: Id<
   return rows.length < step;
 }
 
-/** Brings a saved paper's rating in step with its workspace's people's ratings of it. */
+/** Brings a saved paper's rating in step with its workspace's people's ratings of it, and in an organization who gave it. */
 export async function rateItem(ctx: MutationCtx, item: Doc<"libraryItems">) {
-  const rating = await workspaceRating(ctx, item.workspaceId, item.openalexId);
-  if (rating !== item.rating) await ctx.db.patch("libraryItems", item._id, { rating });
+  const { rating, count, by } = await workspaceRated(ctx, item.workspaceId, item.openalexId);
+  const same = rating === item.rating && count === item.ratingCount && JSON.stringify(by ?? null) === JSON.stringify(item.ratedBy ?? null);
+  if (!same) await ctx.db.patch("libraryItems", item._id, { rating, ratingCount: count, ratedBy: by });
 }
 
 /** How many of a person's ratings one step re-rates in an organization they joined or left. */

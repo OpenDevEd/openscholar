@@ -13,7 +13,7 @@ import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery, workspaceMutation } from "../lib/userActions";
 import { addCollectionMembership, removeCollectionMembership } from "./collectionMembership";
-import { asRaters, collectionRatingRow, collectionRatingsOf, organizationOfCollection, placeOf, purgeCollectionRatings, raterValidator, ratingOrNone, requireRating, setCollectionRating as setRating, shownRater } from "../ratings";
+import { asRaters, collectionRatingRow, collectionRatingsOf, everyRater, organizationOfCollection, placeOf, purgeCollectionRatings, raterValidator, ratingOrNone, requireRating, setCollectionRating as setRating, shownRater } from "../ratings";
 import { followed } from "./followed";
 import { copyFacetBatch } from "./facets";
 import { collectionSortName } from "./sortName";
@@ -202,12 +202,22 @@ export const setCollectionRatingForAssistant = assistantMutation(setCollectionRa
 export const ratersAction = defineUserQuery({
   path: "library/collections:raters",
   description:
-    "Lists how the members of the organization the person is in rated a paper in one of its collections, by its library item ID: each rating from 0 to 5 with who gave it, the person's own first. " +
-    "A guest of the collection reads them too. A collection in the person's own workspace has no ratings of its own.",
-  args: { collectionId: v.id("collections"), libraryItemId: v.id("libraryItems"), paginationOpts: paginationOptsValidator },
+    "Lists how the members of the organization the person is in rated a paper, by its library item ID: each rating from 0 to 5 with who gave it. " +
+    "With a collection of the organization's, their ratings of it there, which a guest of the collection reads too. With none, their own ratings of it, which its library's average is made of and only its members read, all in one page. " +
+    "A collection in the person's own workspace has no ratings of its own.",
+  args: { collectionId: v.optional(v.id("collections")), libraryItemId: v.id("libraryItems"), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(raterValidator),
   run: async (ctx, actor, { collectionId, libraryItemId, paginationOpts }) => {
     const { userId, workspaceId } = actor;
+    if (!collectionId) {
+      // The members' own ratings of a paper in the organization's library (#801), for its members alone.
+      const item = await ctx.db.get("libraryItems", libraryItemId);
+      if (!item || item.workspaceId !== workspaceId) throw createError("NOT_FOUND", "This paper isn't in the library.");
+      const workspace = await ctx.db.get("workspaces", workspaceId);
+      // Every member's rating comes in the first page, read from the members and not from everyone who rated the paper: asked for past it, there is no more.
+      if (workspace?.kind !== "organization" || paginationOpts.cursor !== null) return { page: [], isDone: true, continueCursor: "" };
+      return { page: (await everyRater(ctx, workspace.organizationId, item.openalexId, userId)).map(shownRater), isDone: true, continueCursor: "" };
+    }
     const collection = await ctx.db.get("collections", collectionId);
     // Its workspace's members read them, and so does a guest of it, from their own workspace.
     if (!collection || (collection.workspaceId !== workspaceId && !(await guestRole(ctx, actor, collection)))) throw createError("NOT_FOUND", "Collection not found.");
