@@ -10,9 +10,7 @@ import { action, type ActionCtx } from "../_generated/server";
 import { ClerkApiError, clerkRequest, clerkSecretKey, isRecord } from "../lib/clerk";
 import { requireAppUrl } from "../lib/env";
 import { createError } from "../lib/errors";
-import type { GenericValidator, PropertyValidators } from "convex/values";
-import { DONE } from "../assistant/steps";
-import { assistantAction, assistantMutation, defineUserAction, defineUserMutation, reversedBy, userAction, userMutation, type Acting, type UserActionEntry } from "../lib/userActions";
+import { assistantAction, assistantMutation, defineChangingAction, defineUserMutation, reversedBy, userAction, userMutation, type Acting } from "../lib/userActions";
 import { processClerkWebhookEvent } from "../webhooks/clerk";
 import { ORGANIZATION_COLOURS, type OrganizationColour } from "../../lib/workspaces/colours";
 import { deletable, organizationOf } from "./read";
@@ -26,21 +24,6 @@ type Context = { clerkUserId: string; email: string; organization: { clerkOrgani
 const ROLE = v.union(v.literal("admin"), v.literal("member"));
 type Role = "admin" | "member";
 type Pending = { clerkInvitationId: string; email: string; role: "org:admin" | "org:member" };
-/**
- * An action that changes the organization in Clerk and keeps the change here: the assistant's
- * step for it ends once the change is kept, with what the action returned, or that it was made.
- */
-const changing = <Args extends PropertyValidators, Returns extends GenericValidator>(entry: Omit<UserActionEntry<Args, Returns>, "kind" | "changes">) =>
-  defineUserAction<Args, Returns>({
-    ...entry,
-    changes: true,
-    run: async (ctx, actor, args, call) => {
-      const result = await entry.run(ctx, actor, args, call);
-      if (call?.stepId) await ctx.runMutation(internal.assistant.steps.read, { stepId: call.stepId, result: JSON.stringify(result ?? DONE) });
-      return result;
-    },
-  });
-
 const clerkRole = (role: Role) => (role === "admin" ? "org:admin" : "org:member");
 
 /** The most people one call invites: Clerk's bulk invitation takes 10. */
@@ -114,7 +97,7 @@ function requireName(name: string) {
   return trimmed;
 }
 
-export const createAction = changing({
+export const createAction = defineChangingAction({
   path: "organizations/manage:create",
   description:
     "Creates an organization with the person as its admin: a workspace of its own, which its members share, on the free organization plan with its own credits. " +
@@ -164,7 +147,7 @@ async function createInClerk(key: string, name: string, clerkUserId: string) {
 }
 export const createForAssistant = assistantAction(createAction);
 
-export const inviteAction = changing({
+export const inviteAction = defineChangingAction({
   path: "organizations/manage:invite",
   description:
     `Invites people to the organization the person is in, by email, as admins or members; an admin of it does this. Clerk emails each a link to join. At most ${INVITES_AT_ONCE} at once. ` +
@@ -205,7 +188,7 @@ async function sendInvitations(ctx: ActionCtx, key: string, clerkUserId: string,
 export const invite = userAction(inviteAction);
 export const inviteForAssistant = assistantAction(inviteAction);
 
-export const revokeInvitationAction = changing({
+export const revokeInvitationAction = defineChangingAction({
   path: "organizations/manage:revokeInvitation",
   description: "Takes back an invitation to the organization the person is in that hasn't been answered; an admin of it does this. Its link stops working.",
   args: { invitationId: v.id("organizationInvitations") },
@@ -225,7 +208,7 @@ export const revokeInvitationAction = changing({
 export const revokeInvitation = userAction(revokeInvitationAction);
 export const revokeInvitationForAssistant = assistantAction(revokeInvitationAction);
 
-export const declineInvitationAction = changing({
+export const declineInvitationAction = defineChangingAction({
   path: "organizations/manage:declineInvitation",
   description: "Declines an invitation the person was sent to join an organization (from organizations/queries:myInvitations). Its link stops working.",
   args: { invitationId: v.id("organizationInvitations") },
@@ -247,7 +230,7 @@ export const declineInvitationForAssistant = assistantAction(declineInvitationAc
 
 const SET_ROLE = "organizations/manage:setRole" as const;
 
-export const setRoleAction = changing({
+export const setRoleAction = defineChangingAction({
   path: SET_ROLE,
   description:
     "Makes a member of the organization the person is in an admin or a member; an admin of it does this. Admins invite and remove members, change roles, and change the organization's settings. " +
@@ -290,7 +273,7 @@ async function endMembership(ctx: ActionCtx, actor: Acting, userId: Id<"users">)
   await keep(ctx, key, "organizationMembership.deleted", membership, sentAt);
 }
 
-export const removeMemberAction = changing({
+export const removeMemberAction = defineChangingAction({
   path: "organizations/manage:removeMember",
   description:
     "Removes someone from the organization the person is in; an admin of it does this. What they made stays the organization's. An organization always keeps one admin. " +
@@ -309,7 +292,7 @@ export const removeMemberAction = changing({
 export const removeMember = userAction(removeMemberAction);
 export const removeMemberForAssistant = assistantAction(removeMemberAction);
 
-export const leaveAction = changing({
+export const leaveAction = defineChangingAction({
   path: "organizations/manage:leave",
   description: "The person leaves the organization they're in. What they made stays the organization's. Its only admin can't leave: they make someone else an admin first.",
   args: {},
@@ -325,7 +308,7 @@ export const leaveAction = changing({
 export const leave = userAction(leaveAction);
 export const leaveForAssistant = assistantAction(leaveAction);
 
-export const renameAction = changing({
+export const renameAction = defineChangingAction({
   path: "organizations/manage:rename",
   description: "Renames the organization the person is in; an admin of it does this. Returns `undo`, which puts the name back.",
   args: { name: nameArg },
@@ -347,7 +330,7 @@ export const renameAction = changing({
 export const rename = userAction(renameAction);
 export const renameForAssistant = assistantAction(renameAction);
 
-export const deleteOrganizationAction = changing({
+export const deleteOrganizationAction = defineChangingAction({
   path: "organizations/manage:deleteOrganization",
   description:
     "Deletes the organization the person is in, and with it every member's access to its workspace; an admin of it does this, and it can't be undone. " +
@@ -455,7 +438,7 @@ export const setAiPresetForAssistant = assistantMutation(setAiPresetAction);
 
 const RESEND = "organizations/manage:resendInvitation" as const;
 
-export const resendInvitationAction = changing({
+export const resendInvitationAction = defineChangingAction({
   path: RESEND,
   description: "Sends an invitation to the organization the person is in again, as a new email with a new link; an admin of it does this. The one before stops working.",
   args: { invitationId: v.id("organizationInvitations") },

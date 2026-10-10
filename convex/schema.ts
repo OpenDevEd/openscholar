@@ -596,6 +596,11 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_plan", ["plan"])
     .index("by_stripe_customer", ["stripeCustomerId"]),
+  // The members of a Team organization whose seat Autumn holds (#652): their charges are made as their entity, which their cap limits.
+  memberSeats: defineTable({
+    workspaceId: v.id("workspaces"),
+    clerkUserId: v.string(),
+  }).index("by_workspace_and_member", ["workspaceId", "clerkUserId"]),
   // Each organization's seat syncs (#652): one at a time, and how many seats the last one left.
   seatSyncs: defineTable({
     workspaceId: v.id("workspaces"),
@@ -636,6 +641,15 @@ export default defineSchema({
     // separately, so a retry finishes that path instead of confirming again.
     rest: v.optional(v.literal(true)),
   }).index("by_charge", ["chargeId"]),
+  // A cap on what an organization's member spends of its credits each month, set by an admin on Team (#652).
+  // Autumn enforces it, as the usage limit on the member's entity; this is the copy pages read.
+  memberCaps: defineTable({
+    workspaceId: v.id("workspaces"),
+    userId: v.id("users"),
+    cap: v.number(),
+    setBy: v.id("users"),
+    updatedAt: v.number(),
+  }).index("by_workspace_and_user", ["workspaceId", "userId"]),
   // What each item of an approved job cost, kept beside the job's hold until the hold is confirmed with their
   // sum (convex/billing/charge.ts). Its own table, so the usage ledger needs no index for it.
   billingHoldItems: defineTable({ under: v.string(), chargeId: v.string(), credits: v.number() }).index("by_under", ["under"]),

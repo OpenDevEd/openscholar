@@ -19,9 +19,11 @@ import { personName } from "../lib/people";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
 import { SEAT_PLAN, SEATS_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
 import { refreshAccount } from "./accounts";
+import { capRow } from "./memberCaps";
 import { autumn, AutumnError, type AutumnEntity } from "./autumn";
 
-export type SeatMember = { clerkUserId: string; name: string };
+/** A member as a seat is made for them: the cap an admin set on them goes on their new entity. */
+export type SeatMember = { clerkUserId: string; name: string; cap?: number };
 
 /** Entities read from Autumn in one call. */
 const ENTITIES_PAGE = 100;
@@ -49,10 +51,10 @@ export function seatChanges(members: SeatMember[], entities: AutumnEntity[]) {
   };
 }
 
-/** The organization's active members, or null when it has more than one read takes: then no seat changes. */
+/** The organization's active members, each with their cap, or null when it has more than one read takes: then no seat changes. */
 export const membersOf = internalQuery({
   args: { workspaceId: v.id("workspaces") },
-  returns: v.union(v.array(v.object({ clerkUserId: v.string(), name: v.string() })), v.null()),
+  returns: v.union(v.array(v.object({ clerkUserId: v.string(), name: v.string(), cap: v.optional(v.number()) })), v.null()),
   handler: async (ctx, { workspaceId }) => {
     const workspace = await ctx.db.get("workspaces", workspaceId);
     if (workspace?.kind !== "organization") return [];
@@ -64,7 +66,8 @@ export const membersOf = internalQuery({
     return await Promise.all(
       memberships.map(async ({ clerkUserId }) => {
         const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique();
-        return { clerkUserId, name: (user && (personName(user) || user.email)) || clerkUserId };
+        const cap = user ? (await capRow(ctx, workspaceId, user._id))?.cap : undefined;
+        return { clerkUserId, name: (user && (personName(user) || user.email)) || clerkUserId, ...(cap === undefined ? {} : { cap }) };
       }),
     );
   },
@@ -115,7 +118,7 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
   }
   let added = 0;
   for (const member of seat) {
-    if (member.make) await unlessAlready("entity_already_exists", () => autumn.createEntity({ customerId, entityId: member.clerkUserId, featureId: SEATS_FEATURE, name: member.name }));
+    if (member.make) await unlessAlready("entity_already_exists", () => autumn.createEntity({ customerId, entityId: member.clerkUserId, featureId: SEATS_FEATURE, name: member.name, ...(member.cap === undefined ? {} : { cap: member.cap }) }));
     const attached = await unlessAlready("plan_already_attached", () => autumn.attach({ customerId, entityId: member.clerkUserId, planId: SEAT_PLAN }));
     // Seats are charged to the organization's saved card; without one, Autumn asks for checkout instead.
     if (attached?.payment_url) {
@@ -124,12 +127,29 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
     }
     added++;
   }
+  // Charges are made as a member's entity from now on, and no longer as one whose seat ended.
+  const waiting = new Set(seat.slice(added).map((member) => member.clerkUserId));
+  await ctx.runMutation(internal.billing.seats.recordSeats, { workspaceId, seated: members.flatMap((member) => (waiting.has(member.clerkUserId) ? [] : [member.clerkUserId])) });
   if (seat.length || end.length) {
     await refreshAccount(ctx, workspaceId);
     console.log(`[seats] ${workspaceId} on ${account.plan}: ${members.length} members; seated ${added}, ended ${end.length}`);
   }
-  return members.length - (seat.length - added);
+  return members.length - waiting.size;
 }
+
+/** Keeps which members hold a seat (`memberSeats`): exactly `seated`, at most MAX_ORGANIZATION_MEMBERS. */
+export const recordSeats = internalMutation({
+  args: { workspaceId: v.id("workspaces"), seated: v.array(v.string()) },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, seated }) => {
+    if (seated.length > MAX_ORGANIZATION_MEMBERS) throw new Error(`${seated.length} seats is more than an organization's ${MAX_ORGANIZATION_MEMBERS} members`);
+    const keep = new Set(seated);
+    const rows = await ctx.db.query("memberSeats").withIndex("by_workspace_and_member", (q) => q.eq("workspaceId", workspaceId)).take(MAX_ORGANIZATION_MEMBERS + 1);
+    for (const row of rows) if (!keep.delete(row.clerkUserId)) await ctx.db.delete("memberSeats", row._id);
+    for (const clerkUserId of keep) await ctx.db.insert("memberSeats", { workspaceId, clerkUserId });
+    return null;
+  },
+});
 
 /** How long a sync holds its organization before another may start: longer than an action runs. */
 const SYNC_LEASE_MS = 15 * 60_000;

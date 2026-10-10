@@ -3899,6 +3899,12 @@
         "doing": "Reading what changed",
         "did": "Read what changed",
         "where": "Activity"
+      },
+      "memberCap": {
+        "doing": "Changing a member's credit cap",
+        "did": "Changed a member's credit cap",
+        "where": "Plan and credits",
+        "ask": "Change a member's credit cap"
       }
     },
     "asks": {
@@ -4171,7 +4177,15 @@
       "membersDraw": "{count, plural, one {# member draws} other {# members draw}} from them",
       "refillOn": "{amount} on {date}",
       "upToMembers": "Up to {count, number} members",
-      "included": "Included"
+      "included": "Included",
+      "spendingThisMonth": "Spending this month",
+      "yourSpendingThisMonth": "Your spending this month",
+      "creditsCount": "{count, plural, one {# credit} other {# credits}}",
+      "spentOfCap": "{spent} of {cap}",
+      "cap": "Cap",
+      "capNone": "None",
+      "noCap": "No cap",
+      "capAMonth": "{amount} a month"
     },
     "couldntInvite": "The organisation was made, but the invitations didn't go out. Send them from its Members settings.",
     "fromCredits": "From {name}'s credits",

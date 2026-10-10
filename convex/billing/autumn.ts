@@ -74,6 +74,11 @@ export type AutumnFeature = {
   archived: boolean;
 };
 
+/** A member's monthly credit cap as Autumn's usage limit on their entity, which every lock and track as the entity counts against. */
+const capControls = (cap: number | null) => ({
+  usage_limits: cap === null ? [] : [{ feature_id: "credits", limit: cap, interval: "month", anchor: "utc" }],
+});
+
 export class AutumnError extends Error {
   constructor(
     readonly path: string,
@@ -148,9 +153,13 @@ export const autumn = {
     });
   },
 
-  /** Holds `credits` until the lock is finalized. `allowed: false` holds nothing. */
+  /**
+   * Holds `credits` until the lock is finalized. `allowed: false` holds nothing. With
+   * `entityId`, a member's entity (#652): its monthly usage limit, the member's cap, counts too.
+   */
   lock(args: {
     customerId: string;
+    entityId?: string;
     credits: number;
     lockId: string;
     expiresAt: number;
@@ -159,6 +168,7 @@ export const autumn = {
       "balances.check",
       {
         customer_id: args.customerId,
+        ...(args.entityId ? { entity_id: args.entityId } : {}),
         feature_id: "credits",
         required_balance: args.credits,
         lock: { enabled: true, lock_id: args.lockId, expires_at: args.expiresAt },
@@ -174,9 +184,10 @@ export const autumn = {
     });
   },
 
-  /** Charges up to `credits`; stops at a zero balance. */
+  /** Charges up to `credits`; stops at a zero balance, or at the cap of the member's entity it names. */
   track(args: {
     customerId: string;
+    entityId?: string;
     credits: number;
     idempotencyKey: string;
     properties?: Record<string, string>;
@@ -185,6 +196,7 @@ export const autumn = {
       "balances.track",
       {
         customer_id: args.customerId,
+        ...(args.entityId ? { entity_id: args.entityId } : {}),
         feature_id: "credits",
         value: args.credits,
         overage_behavior: "cap",
@@ -254,13 +266,20 @@ export const autumn = {
     });
   },
 
-  createEntity(args: { customerId: string; entityId: string; featureId: string; name: string }) {
+  /** `cap` sets the credits the entity may spend each calendar month (UTC), as `setCap` does. */
+  createEntity(args: { customerId: string; entityId: string; featureId: string; name: string; cap?: number }) {
     return call<AutumnEntity>("entities.create", {
       customer_id: args.customerId,
       entity_id: args.entityId,
       feature_id: args.featureId,
       name: args.name,
+      ...(args.cap === undefined ? {} : { billing_controls: capControls(args.cap) }),
     });
+  },
+
+  /** Caps the credits a member's entity spends each calendar month (UTC); null takes the cap off. */
+  setCap(customerId: string, entityId: string, cap: number | null) {
+    return call<AutumnEntity>("entities.update", { customer_id: customerId, entity_id: entityId, billing_controls: capControls(cap) });
   },
 
   deleteEntity(customerId: string, entityId: string) {

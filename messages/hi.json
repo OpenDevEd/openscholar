@@ -3897,6 +3897,12 @@
         "doing": "बदलाव पढ़े जा रहे हैं",
         "did": "बदलाव पढ़े गए",
         "where": "गतिविधि"
+      },
+      "memberCap": {
+        "doing": "किसी सदस्य की क्रेडिट सीमा बदली जा रही है",
+        "did": "किसी सदस्य की क्रेडिट सीमा बदली",
+        "where": "प्लान और क्रेडिट",
+        "ask": "किसी सदस्य की क्रेडिट सीमा बदलें"
       }
     },
     "asks": {
@@ -4169,7 +4175,15 @@
       "membersDraw": "{count, number} सदस्य इनका उपयोग करते हैं",
       "refillOn": "{date} को {amount}",
       "upToMembers": "{count, number} सदस्यों तक",
-      "included": "शामिल"
+      "included": "शामिल",
+      "spendingThisMonth": "इस महीने का ख़र्च",
+      "yourSpendingThisMonth": "इस महीने आपका ख़र्च",
+      "creditsCount": "{count, plural, one {# क्रेडिट} other {# क्रेडिट}}",
+      "spentOfCap": "{cap} में से {spent}",
+      "cap": "सीमा",
+      "capNone": "कोई नहीं",
+      "noCap": "कोई सीमा नहीं",
+      "capAMonth": "{amount} प्रति माह"
     },
     "couldntInvite": "संगठन बन गया, पर आमंत्रण नहीं भेजे जा सके। उन्हें इसकी सदस्य सेटिंग्स से भेजें।",
     "fromCredits": "{name} के क्रेडिट से",
