@@ -264,6 +264,32 @@ describe("deleteCollection", () => {
     expect(deleted).toBeNull();
   });
 
+  it("deletes one the Library held for its Undo with no page left to ask, and keeps one Undo took back", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      const user = await seedUser(t, "clerk_user1", "user1@test.com");
+      const asUser = t.withIdentity({ subject: "clerk_user1" });
+      const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, user!._id));
+      const gone = await seedCollection(t, user!._id, "Gone");
+      const kept = await seedCollection(t, user!._id, "Kept");
+
+      await asUser.mutation(api.library.collections.deleteSoon, { workspaceId, collectionId: gone!._id });
+      const deletingAt = await asUser.mutation(api.library.collections.deleteSoon, { workspaceId, collectionId: kept!._id });
+      await asUser.mutation(api.library.collections.keepCollection, { workspaceId, collectionId: kept!._id, deletingAt });
+      // An Undo of an earlier deletion than the one standing leaves that one be.
+      await asUser.mutation(api.library.collections.keepCollection, { workspaceId, collectionId: gone!._id, deletingAt: 1 });
+      // Held, not gone: Undo is still open.
+      expect(await t.run((ctx) => ctx.db.get("collections", gone!._id))).not.toBeNull();
+
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await t.run((ctx) => ctx.db.get("collections", gone!._id))).toBeNull();
+      expect(await t.run((ctx) => ctx.db.get("collections", kept!._id))).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("cascade-deletes all junction rows for the collection", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");

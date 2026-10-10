@@ -3334,6 +3334,7 @@
     "earlier": "Earlier messages",
     "model": "Model",
     "sendFailed": "Couldn't send your message",
+    "lost": "This chat was deleted or is no longer shared with you",
     "modelFailed": "Couldn't change the model",
     "chats": "Chats",
     "back": "Back",
