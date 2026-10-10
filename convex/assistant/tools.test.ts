@@ -961,7 +961,7 @@ describe("the assistant's tools", () => {
     expect(await limits()).toEqual({ replyLimit: null, allowance: null });
     requests.length = 0;
     mockDoStream
-      .mockImplementationOnce(calling({ id: "extract", name: "run_action", input: { name: "extraction/mutations:startJob", arguments: { name: "Sizes", bucketItems: [], questions: [] } } }))
+      .mockImplementationOnce(calling({ id: "extract", name: "run_action", input: { name: "extraction/mutations:startJob", arguments: { name: "Sizes", sources: [], questions: [] } } }))
       .mockImplementationOnce(finishingDoStream(["I can't start that here."]));
     await say("Extract the sample sizes");
     expect(told(1, "extract")).toEqual({ error: NO_ESTIMATE });

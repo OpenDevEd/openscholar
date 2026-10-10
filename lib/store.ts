@@ -1122,14 +1122,6 @@ function createSidebarDimensions(expandedWidth: number, collapsedWidth: number) 
 export const useLibrarySidebarStore = createSidebarStore('openalex-library-sidebar');
 export const getLibrarySidebarDimensions = createSidebarDimensions(320, 48);
 
-// Bucket sidebar store — staged-papers sidebar on job-creator
-export const useBucketSidebarStore = createSidebarStore('openalex-bucket-sidebar');
-export const getBucketSidebarDimensions = createSidebarDimensions(360, 48);
-
-// Extraction source sidebar — collection picker inside the Library tab
-export const useExtractionSourceSidebarStore = createSidebarStore('openalex-extraction-source-sidebar');
-export const getExtractionSourceSidebarDimensions = createSidebarDimensions(240, 48);
-
 // Extraction citation panel store
 const EXTRACTION_CITATION_PANEL_WIDTH_EXPANDED = 460;
 const EXTRACTION_CITATION_PANEL_WIDTH_COLLAPSED = 48;

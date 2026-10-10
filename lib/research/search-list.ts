@@ -12,7 +12,7 @@ import type { SearchResult } from "@/lib/types";
 import type { Maker } from "@/convex/workspaces/makers";
 import type { ListedSort } from "./records";
 import { restoreSearch } from "./records";
-import { useResearchScope, useResearchSession } from "./reads";
+import { useResearchPhase, useResearchScope, useResearchSession } from "./reads";
 import { usePagedRecords } from "./paged-records";
 
 /** One search in this browser matching the history page's search text: its query or a question asked of it. */
@@ -43,6 +43,7 @@ const LOCAL_ORDER: Record<ListedSort, (a: SearchResult, b: SearchResult) => numb
 /** `by`: in an organization, one member's searches only (#656). */
 export function useSearchList({ sort, text = "", pageSize, excludeId, by }: { sort: ListedSort; text?: string; pageSize: number; excludeId?: string; by?: Id<"users"> }) {
   const accountId = useResearchSession()?.accountId;
+  const phase = useResearchPhase();
   const scope = useResearchScope();
   const match = useDebouncedValue(text.trim(), 300);
   const remote = useCursorPage(api.research.records.listedSearches, scope ? { ...scope, sort, text: match || undefined, exclude: excludeId, ...(by ? { by } : {}) } : "skip", pageSize);
@@ -57,7 +58,7 @@ export function useSearchList({ sort, text = "", pageSize, excludeId, by }: { so
   // In an organization, each names who ran it.
   const remoteItems = useMemo(() => remote.items.map(({ by, ...item }): SearchResult & { by?: Maker } => ({ ...restoreSearch({ ...item, screeningResponses: [] }), ...(by ? { by } : {}) })), [remote.items]);
 
-  return usePagedRecords({
+  const records = usePagedRecords({
     remote: accountId ? { ...remote, items: remoteItems } : null,
     count: count === undefined ? undefined : Math.max(0, count - (excludeId ? 1 : 0)),
     counted: !match && !by,
@@ -66,4 +67,6 @@ export function useSearchList({ sort, text = "", pageSize, excludeId, by }: { so
     localKey: JSON.stringify([sort, text.trim().toLowerCase(), excludeId]),
     pageSize,
   });
+  // Until a signed-in person's session and workspace are there, the list is loading: this browser's own (empty) list isn't theirs.
+  return phase !== "anonymous" && (!accountId || !scope) ? { ...records, isLoading: true } : records;
 }

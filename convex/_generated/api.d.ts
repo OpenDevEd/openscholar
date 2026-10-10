@@ -210,6 +210,7 @@ import type * as extraction_mutations_retry from "../extraction/mutations/retry.
 import type * as extraction_paperLifecycle from "../extraction/paperLifecycle.js";
 import type * as extraction_paperWorker from "../extraction/paperWorker.js";
 import type * as extraction_pdfjs_extract from "../extraction/pdfjs_extract.js";
+import type * as extraction_picks from "../extraction/picks.js";
 import type * as extraction_prompts from "../extraction/prompts.js";
 import type * as extraction_queries from "../extraction/queries.js";
 import type * as extraction_queries__shared from "../extraction/queries/_shared.js";
@@ -625,6 +626,7 @@ declare const fullApi: ApiFromModules<{
   "extraction/paperLifecycle": typeof extraction_paperLifecycle;
   "extraction/paperWorker": typeof extraction_paperWorker;
   "extraction/pdfjs_extract": typeof extraction_pdfjs_extract;
+  "extraction/picks": typeof extraction_picks;
   "extraction/prompts": typeof extraction_prompts;
   "extraction/queries": typeof extraction_queries;
   "extraction/queries/_shared": typeof extraction_queries__shared;
