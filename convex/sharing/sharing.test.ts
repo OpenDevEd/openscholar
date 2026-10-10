@@ -144,7 +144,8 @@ it("keeps a guest's row to the item's name, and leaves none of an item that's de
 
 it("opens a shared collection to its guest from their own workspace, and to nobody else", async () => {
   const { t, alice, carol, dave, item, users, club } = await lab();
-  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: item.workspaceId, openalexId: "https://openalex.org/W1", title: "One", collectionId: item.id });
+  const { id: saved } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: item.workspaceId, openalexId: "https://openalex.org/W1", title: "One", collectionId: item.id });
+  await alice.mutation(api.library.collections.setCollectionRating, { workspaceId: item.workspaceId, collectionId: item.id, libraryItemId: saved, rating: 4, expect: null });
   await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
   const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, collectionId: item.id };
   const titles = async (as: typeof carol, workspaceId?: Id<"workspaces">) => (await as.query(api.library.queries.browseLibrary, { ...view, ...(workspaceId ? { workspaceId } : {}), paginationOpts: { cursor: null, numItems: 10 } })).page.map((paper) => paper.title);
@@ -153,6 +154,13 @@ it("opens a shared collection to its guest from their own workspace, and to nobo
   expect(await titles(carol)).toEqual(["One"]);
   expect((await carol.query(api.library.queries.getLibraryFilteredCount, view)).count).toBe(1);
   expect(await carol.query(api.library.collections.getCollection, { collectionId: item.id })).toEqual({ _id: item.id, name: "Trials", itemCount: 1, guest: { role: "viewer", from: { name: "lab", organization: true } } });
+  // She reads how its members rated each paper in it, and has no rating there herself.
+  const [paper] = (await carol.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { cursor: null, numItems: 10 } })).page;
+  expect(paper.collection).toMatchObject({ count: 1, raters: [{ name: "Alice", rating: 4 }] });
+  expect(paper.collection).not.toHaveProperty("mine");
+  const raters = (as: typeof carol) => as.query(api.library.collections.raters, { collectionId: item.id, libraryItemId: saved, paginationOpts: { cursor: null, numItems: 10 } });
+  expect((await raters(carol)).page).toMatchObject([{ name: "Alice", rating: 4 }]);
+  await expect(raters(dave)).rejects.toThrow();
   // Not while she acts in the club, whose credits aren't hers to spend on it.
   expect(await titles(carol, club)).toEqual([]);
   // Dave was given nothing.

@@ -202,13 +202,16 @@ export const ratersAction = defineUserQuery({
   path: "library/collections:raters",
   description:
     "Lists how the members of the organization the person is in rated a paper in one of its collections, by its library item ID: each rating from 0 to 5 with who gave it, the person's own first. " +
-    "A collection in the person's own workspace has no ratings of its own.",
+    "A guest of the collection reads them too. A collection in the person's own workspace has no ratings of its own.",
   args: { collectionId: v.id("collections"), libraryItemId: v.id("libraryItems"), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(raterValidator),
-  run: async (ctx, { userId, workspaceId }, { collectionId, libraryItemId, paginationOpts }) => {
-    if ((await ctx.db.get("collections", collectionId))?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found.");
+  run: async (ctx, actor, { collectionId, libraryItemId, paginationOpts }) => {
+    const { userId, workspaceId } = actor;
+    const collection = await ctx.db.get("collections", collectionId);
+    // Its workspace's members read them, and so does a guest of it, from their own workspace.
+    if (!collection || (collection.workspaceId !== workspaceId && !(await guestRole(ctx, actor, collection._id)))) throw createError("NOT_FOUND", "Collection not found.");
     const item = await ctx.db.get("libraryItems", libraryItemId);
-    if (!item || item.workspaceId !== workspaceId) throw createError("NOT_FOUND", "This paper isn't in the library.");
+    if (!item || item.workspaceId !== collection.workspaceId) throw createError("NOT_FOUND", "This paper isn't in the library.");
     const organizationId = await organizationOfCollection(ctx, collectionId);
     if (!organizationId) return { page: [], isDone: true, continueCursor: "" };
     const read = await collectionRatingsOf(ctx, collectionId, item.openalexId).paginate(paginationOpts);

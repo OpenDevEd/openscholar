@@ -315,10 +315,10 @@ async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspac
   const workspace = await ctx.db.get("workspaces", workspaceId);
   const own = workspace?.kind === "personal" && workspace.userId === userId;
   const ratings = await Promise.all(read.page.map(async (item) => (own ? item.rating : (await personalRatingRow(ctx, userId, item.openalexId))?.rating)));
-  // Who rated it in the collection, and rating it there, are its members'.
-  const inCollection = workspace?.kind === "organization" && collectionId && !guest ? await Promise.all(read.page.map(async (item) => {
+  // Who rated it in the collection is for anyone who reads it, a guest too. Rating it there is its members': a guest has no rating in it.
+  const inCollection = workspace?.kind === "organization" && collectionId ? await Promise.all(read.page.map(async (item) => {
     const [raters, place] = await Promise.all([collectionRaters(ctx, collectionId, item.openalexId, userId, RATERS_SHOWN), placeOf(ctx, collectionId, item._id)]);
-    const mine = raters.find((rater) => rater.you)?.rating;
+    const mine = guest ? undefined : raters.find((rater) => rater.you)?.rating;
     return { ...(mine === undefined ? {} : { mine }), raters: raters.map(shownRater), count: place?.ratingCount ?? raters.length };
   })) : null;
   return { ...read, page: read.page.map((item, at) => ({ ...item, ...(ratings[at] === undefined ? {} : { myRating: ratings[at] }), ...(inCollection ? { collection: inCollection[at] } : {}) })) };
