@@ -56,9 +56,9 @@ export function WorkspaceGone() {
   const slug = useWorkspaceSlug();
   const pathname = usePathname();
   const params = useSearchParams();
-  // Null once the server says they aren't in it; undefined while it's still being read.
-  const there = useProtectedQuery(api.workspaces.queries.bySlug, slug ? { slug } : "skip").data;
-  if (slug && there === null) {
+  // False once the server says they aren't in it; undefined while it's still being read. One being deleted is still theirs: the deletion may fail.
+  const member = useProtectedQuery(api.workspaces.queries.memberAt, slug ? { slug } : "skip").data;
+  if (slug && member === false) {
     const query = params.toString();
     redirect(bareWorkspacePath(pathname) + (query ? `?${query}` : ""));
   }

@@ -24,11 +24,12 @@ function InitializeResults({ children }: { children: React.ReactNode }) {
   const home = useItemHome(unknown ? { kind: "search", id: searchId } : null);
   const slug = useWorkspaceSlug();
   const elsewhere = unknown && (home === undefined || (home !== null && home.slug !== slug));
-  // The search this tab has shown. Once it's gone, deleted in another tab or moved where the person
-  // can't follow, the tab leaves for search: a new one is made only at an address never opened here.
-  const [shown, setShown] = useState<string>();
-  if (saved && shown !== searchId) setShown(searchId);
-  const gone = account !== null && searchId !== undefined && !saved && shown === searchId;
+  // The searches this tab has shown. Once one is gone, deleted in another tab or moved where the person
+  // can't follow, the tab leaves for search, at once or when Back returns to it: a new one is made only
+  // at an address never opened here.
+  const [shown, setShown] = useState<ReadonlySet<string>>(new Set());
+  if (saved && searchId !== undefined && !shown.has(searchId)) setShown(new Set(shown).add(searchId));
+  const gone = account !== null && searchId !== undefined && !saved && shown.has(searchId);
   if (gone && unknown && home === null) redirect(workspaceHref(slug, "/"));
   // An existing account record owns its state. A stale URL must not overwrite it, so the
   // page waits to learn whether the account has this search.

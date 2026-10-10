@@ -218,6 +218,20 @@ async function followPlan(ctx: ActionCtx, workspaceId: Id<"workspaces">, { clerk
   }
 }
 
+/**
+ * Sets Clerk's limit on the organization's members to Team's or Free's ahead of its plan: a move
+ * to Free lowers it before the members are counted, so nobody joins past Free's while it moves.
+ */
+export const limitMembers = internalAction({
+  args: { workspaceId: v.id("workspaces"), team: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, team }): Promise<null> => {
+    const organization: { clerkOrganizationId: string; memberLimit?: number } | null = await ctx.runQuery(internal.billing.seats.organizationFor, { workspaceId });
+    if (organization) await followPlan(ctx, workspaceId, organization, team);
+    return null;
+  },
+});
+
 /** Keeps which members hold a seat (`memberSeats`): exactly `seated`, at most MAX_ORGANIZATION_MEMBERS. */
 export const recordSeats = internalMutation({
   args: { workspaceId: v.id("workspaces"), seated: v.array(v.string()) },
