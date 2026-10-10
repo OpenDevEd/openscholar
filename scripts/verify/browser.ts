@@ -343,6 +343,7 @@ async function answers(page: Page, step: Step, timeout: number) {
  */
 async function earlyPhase(session: Session, step: Step) {
   const timeout = session.tolerant ? 10_000 : 15_000;
+  const opened = session.run.opened;
   session.run.stopped = step.label;
   await runPhase(session, { name: `early ${step.label}`, kind: "early", start: 0 }, async () => {
     // Not waiting for the page's images and scripts to finish: the step is taken as soon as its target answers.
@@ -354,6 +355,8 @@ async function earlyPhase(session: Session, step: Step) {
       });
     return response;
   });
+  // Only what the step opens is judged, so one that opened nothing checked nothing.
+  if (session.run.opened === opened && !session.tolerant) throw new Error(`Step "${step.label}" opened no dialog, sheet, popover or menu on ${session.origin}${session.target}, so --early had nothing to check.`);
 }
 
 async function runAll(session: Session) {
