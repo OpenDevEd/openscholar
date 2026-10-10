@@ -7,7 +7,8 @@
 import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
@@ -17,7 +18,7 @@ import { actingAs, assistantAction, assistantQuery, defineChangingAction, define
 import { actorIn } from "../workspaces/actor";
 import { workspaceFrom, workspaceName } from "../workspaces/personal";
 import { invitationTo, noteShared, requireRoom } from "./access";
-import { findShared, grantOf, kindWord, requireRole, sharedIn } from "./items";
+import { findShared, grantOf, kindWord, open, requireRole, sharedIn } from "./items";
 import { guestRoleValidator, sharedFromValidator, sharedKindValidator, type SharedKind } from "./validators";
 
 const WEEK = 7 * 86_400_000;
@@ -79,7 +80,7 @@ export const readDelivery = internalQuery({
   handler: async (ctx, { invitationId }) => {
     const invitation = await ctx.db.get("itemInvitations", invitationId);
     if (!invitation || invitation.state !== "pending" || invitation.expiresAt <= Date.now()) return null;
-    const shared = await findShared(ctx, invitation.kind, invitation.item);
+    const shared = await invitedTo(ctx, invitation);
     const inviter = await ctx.db.get("users", invitation.invitedBy);
     if (!shared || !inviter) return null;
     return { email: invitation.email, kind: kindWord(shared.kind), name: shared.name, role: invitation.role, inviter: personName(inviter) || inviter.email, workspace: await workspaceName(ctx, shared.workspaceId) };
@@ -96,6 +97,16 @@ export const recordDelivery = internalMutation({
   },
 });
 
+/**
+ * What an invitation is to, while it's there to take up: its item, in a workspace that's still
+ * someone's. One whose owner's account was deleted is gone to whoever was invited, in the email, on
+ * its page and on accepting, though its row waits a moment to be removed (./upkeep.ts `close`).
+ */
+async function invitedTo(ctx: Pick<QueryCtx, "db">, invitation: Pick<Doc<"itemInvitations">, "kind" | "item">) {
+  const shared = await findShared(ctx, invitation.kind, invitation.item);
+  return shared && (await open(ctx, shared.workspaceId)) ? shared : null;
+}
+
 const opened = v.object({ kind: sharedKindValidator, id: v.string() });
 
 /** Answers an invitation for `userId`, whose verified addresses Clerk gave as `emails`. Accepted, it returns the item it was to. */
@@ -105,8 +116,10 @@ export const respondVerified = internalMutation({
   handler: async (ctx, { userId, invitationId, emails, accept }) => {
     const [invitation, person] = await Promise.all([ctx.db.get("itemInvitations", invitationId), ctx.db.get("users", userId)]);
     if (!invitation || person?.state !== "active" || !emails.includes(invitation.email)) throw createError("FORBIDDEN", "Sign in with the invited email address");
+    const shared = await invitedTo(ctx, invitation);
+    // Accepting again what they already accepted, as a second tab does, opens it again: theirs by their place, or by having joined its workspace since.
+    if (accept && shared && invitation.state === "accepted" && ((await grantOf(ctx, shared.id, userId)) || (await actorIn(ctx, person, shared.workspaceId)))) return { kind: shared.kind, id: shared.id };
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
-    const shared = await findShared(ctx, invitation.kind, invitation.item);
     if (!shared) throw createError("NOT_FOUND", "What you were invited to is no longer there.");
     // Its place becomes theirs. Someone who joined its workspace since has it without one.
     if (accept && !(await actorIn(ctx, person, shared.workspaceId)) && !(await grantOf(ctx, shared.id, userId))) {
@@ -184,7 +197,7 @@ export const getAction = defineUserQuery({
   run: async (ctx, { userId }, { invitationId }) => {
     const id = ctx.db.normalizeId("itemInvitations", invitationId);
     const invitation = id ? await ctx.db.get("itemInvitations", id) : null;
-    const shared = invitation ? await findShared(ctx, invitation.kind, invitation.item) : null;
+    const shared = invitation ? await invitedTo(ctx, invitation) : null;
     if (!invitation || !shared) return null;
     // One that was accepted shows only to whoever holds the place it gave.
     const state = invitation.state === "pending" ? ("pending" as const) : invitation.state === "accepted" && (await grantOf(ctx, shared.id, userId)) ? ("accepted" as const) : null;

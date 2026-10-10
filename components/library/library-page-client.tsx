@@ -573,9 +573,9 @@ export function LibraryPageClient() {
                             }
                             viewMode={effectiveViewMode}
                             extra={(() => {
-                              // Rating in a collection, and who did, are its members': a guest's page has neither.
-                              const rated = params.col && !guest ? collectionRatings.get(paper.id) : undefined;
-                              return rated ? <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} compact={effectiveViewMode === "list-simple"} /> : undefined;
+                              // Who rated in a collection is for anyone who reads it; rating in it is its members', so a guest's is read only.
+                              const rated = params.col ? collectionRatings.get(paper.id) : undefined;
+                              return rated ? <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} compact={effectiveViewMode === "list-simple"} readOnly={!!guest} /> : undefined;
                             })()}
                           />
                         );

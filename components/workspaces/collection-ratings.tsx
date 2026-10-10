@@ -28,7 +28,8 @@ const RATERS_LISTED = 25;
 const ROWS_SHOWN = 7;
 const ROW_PX = 38;
 
-export function CollectionRatings({ collectionId, libraryItemId, average, ratings, compact = false }: { collectionId: Id<"collections">; libraryItemId: Id<"libraryItems">; average: number | undefined; ratings: CollectionRatingsOf; compact?: boolean }) {
+/** `readOnly` is a guest's: they read the collection's ratings and give none in it. */
+export function CollectionRatings({ collectionId, libraryItemId, average, ratings, compact = false, readOnly = false }: { collectionId: Id<"collections">; libraryItemId: Id<"libraryItems">; average: number | undefined; ratings: CollectionRatingsOf; compact?: boolean; readOnly?: boolean }) {
   const t = useTranslations("workspaces.ratings");
   const tc = useTranslations("common");
   const rate = useWorkspaceMutation(api.library.collections.setCollectionRating);
@@ -42,7 +43,7 @@ export function CollectionRatings({ collectionId, libraryItemId, average, rating
   return (
     <span className="flex items-center gap-2 rounded-xl bg-inset py-0.5 pl-2.5 pr-1">
       {compact ? null : <span className="text-xs font-medium text-muted-foreground">{t("collection")}</span>}
-      {compact ? null : <StarPicker value={ratings.mine ?? null} onChange={choose} label={t("yours")} disabled={busy} />}
+      {compact || readOnly ? null : <StarPicker value={ratings.mine ?? null} onChange={choose} label={t("yours")} disabled={busy} />}
       <Raters collectionId={collectionId} libraryItemId={libraryItemId} average={average} ratings={ratings} />
     </span>
   );

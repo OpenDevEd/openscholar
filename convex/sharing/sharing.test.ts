@@ -120,6 +120,9 @@ it("makes an invitation the place of whoever accepts it with the invited address
   expect(await dave.action(api.sharing.invitations.respond, { invitationId, accept: true })).toEqual({ kind: "collection", id: item.id });
   expect(await guestsOf()).toEqual([{ userId: users.dave, role: "viewer", name: "Trials" }]);
   expect(await invitationsOf()).toEqual([{ email: "dave@example.org", role: "viewer", state: "accepted" }]);
+  // A second tab that accepts it too opens the same item.
+  expect(await dave.action(api.sharing.invitations.respond, { invitationId, accept: true })).toEqual({ kind: "collection", id: item.id });
+  expect(await guestsOf()).toHaveLength(1);
   // It was the item's one place, and still is: nobody else fits.
   await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" })).rejects.toThrow(/allows 1 guest /);
 });
@@ -141,7 +144,8 @@ it("keeps a guest's row to the item's name, and leaves none of an item that's de
 
 it("opens a shared collection to its guest from their own workspace, and to nobody else", async () => {
   const { t, alice, carol, dave, item, users, club } = await lab();
-  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: item.workspaceId, openalexId: "https://openalex.org/W1", title: "One", collectionId: item.id });
+  const { id: saved } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: item.workspaceId, openalexId: "https://openalex.org/W1", title: "One", collectionId: item.id });
+  await alice.mutation(api.library.collections.setCollectionRating, { workspaceId: item.workspaceId, collectionId: item.id, libraryItemId: saved, rating: 4, expect: null });
   await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
   const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, collectionId: item.id };
   const titles = async (as: typeof carol, workspaceId?: Id<"workspaces">) => (await as.query(api.library.queries.browseLibrary, { ...view, ...(workspaceId ? { workspaceId } : {}), paginationOpts: { cursor: null, numItems: 10 } })).page.map((paper) => paper.title);
@@ -150,6 +154,13 @@ it("opens a shared collection to its guest from their own workspace, and to nobo
   expect(await titles(carol)).toEqual(["One"]);
   expect((await carol.query(api.library.queries.getLibraryFilteredCount, view)).count).toBe(1);
   expect(await carol.query(api.library.collections.getCollection, { collectionId: item.id })).toEqual({ _id: item.id, name: "Trials", itemCount: 1, guest: { role: "viewer", from: { name: "lab", organization: true } } });
+  // She reads how its members rated each paper in it, and has no rating there herself.
+  const [paper] = (await carol.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { cursor: null, numItems: 10 } })).page;
+  expect(paper.collection).toMatchObject({ count: 1, raters: [{ name: "Alice", rating: 4 }] });
+  expect(paper.collection).not.toHaveProperty("mine");
+  const raters = (as: typeof carol) => as.query(api.library.collections.raters, { collectionId: item.id, libraryItemId: saved, paginationOpts: { cursor: null, numItems: 10 } });
+  expect((await raters(carol)).page).toMatchObject([{ name: "Alice", rating: 4 }]);
+  await expect(raters(dave)).rejects.toThrow();
   // Not while she acts in the club, whose credits aren't hers to spend on it.
   expect(await titles(carol, club)).toEqual([]);
   // Dave was given nothing.
@@ -167,9 +178,39 @@ it("opens a shared collection to its guest from their own workspace, and to nobo
   const exported = () => t.query(internal.exports.page, { userId: users.carol, workspaceId: carolOwn, source: { kind: "library", view }, format: "json", cursor: null, written: 0 });
   expect((await exported()).count).toBe(1);
 
+  // A paper taken out of the collection takes its ratings there out of her reach.
+  await alice.mutation(api.library.collections.removeFromCollection, { workspaceId: item.workspaceId, collectionId: item.id, libraryItemId: saved });
+  await expect(raters(carol)).rejects.toThrow();
+  await alice.mutation(api.library.collections.addToCollection, { workspaceId: item.workspaceId, collectionId: item.id, libraryItemId: saved });
+
   await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
   expect(await titles(carol)).toEqual([]);
   expect((await exported()).count).toBe(0);
+});
+
+it("closes what a deleted account shared from its own workspace, though its data waits to be purged", async () => {
+  const { t, alice, carol, dave, users } = await lab();
+  const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, users.alice));
+  const { id } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Mine" });
+  await alice.mutation(api.sharing.guests.add, { workspaceId, kind: "collection", id, userId: users.carol, role: "viewer" });
+  await alice.action(api.sharing.invitations.invite, { workspaceId, kind: "collection", id, email: "dave@example.org", role: "viewer" });
+  const shared = { kind: undefined, text: "", sort: "recent" as const, paginationOpts: { cursor: null, numItems: 10 } };
+  expect((await carol.query(api.sharing.shared.list, shared)).page.map((row) => row.name)).toEqual(["Mine"]);
+
+  await t.mutation(internal.users.internal.markUserDeletedFromClerk, { eventId: "evt_gone", eventType: "user.deleted", instanceId: "ins_test", occurredAt: Date.now(), payloadSha256: "sha_gone", clerkId: "alice" });
+  // Closed from that moment, before the cleanup has taken a row: nobody opens it or accepts an invitation to it.
+  expect(await carol.query(api.library.collections.getCollection, { collectionId: id as Id<"collections"> })).toBeNull();
+  const waiting = await t.run(async (ctx) => (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", id)).first())!._id);
+  verified = ["dave@example.org"];
+  await expect(dave.action(api.sharing.invitations.respond, { invitationId: waiting, accept: true })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+  expect(await dave.query(api.sharing.invitations.get, { invitationId: waiting })).toBeNull();
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+  // The collection is still there, for its retention, and nobody is its guest or invited to it.
+  expect(await t.run((ctx) => ctx.db.get("collections", id as Id<"collections">))).not.toBeNull();
+  expect(await t.run((ctx) => ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", id)).collect())).toEqual([]);
+  expect(await t.run((ctx) => ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", id)).collect())).toEqual([]);
+  expect((await carol.query(api.sharing.shared.list, shared)).page).toEqual([]);
 });
 
 it("takes a deleted account's places as a guest in steps of their own", async () => {

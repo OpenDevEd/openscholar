@@ -39,7 +39,10 @@ function ScrollArea({
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
-      className={cn("relative", className)}
+      // A column, so the viewport takes the root's height by flex: a percentage height doesn't resolve
+      // when the root is itself sized by a container with only a maximum height, and the list then
+      // runs over what's under it without scrolling.
+      className={cn("relative flex flex-col", className)}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
@@ -54,7 +57,7 @@ function ScrollArea({
             : undefined
         }
         className={cn(
-          "focus-visible:ring-ring/50 size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1",
+          "focus-visible:ring-ring/50 size-full min-h-0 flex-1 rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:outline-1",
           // Radix lays its content out as a table, which lets long text grow instead of truncating.
           shades && "[&>div]:!block"
         )}

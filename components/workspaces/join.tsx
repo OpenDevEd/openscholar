@@ -104,9 +104,9 @@ export function Landing({ hero, lead, title, chips, children }: { hero?: ReactNo
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: EASE }} className="w-full max-w-md space-y-8">
             <div className="flex flex-col items-center gap-5 text-center">
               {hero}
-              <div className="space-y-3">
+              <div className="w-full min-w-0 space-y-3">
                 {lead ? <div className="flex justify-center">{lead}</div> : null}
-                <h1 className="text-balance text-2xl font-semibold tracking-tight">{title}</h1>
+                <h1 className="text-balance text-2xl font-semibold tracking-tight [overflow-wrap:anywhere]">{title}</h1>
                 {chips ? <div className="flex flex-wrap justify-center gap-1.5">{chips}</div> : null}
               </div>
             </div>

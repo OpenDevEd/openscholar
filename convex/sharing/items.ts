@@ -58,14 +58,28 @@ export const grantOf = (ctx: Read, item: string, userId: Id<"users">) =>
   ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", item).eq("userId", userId)).unique();
 
 /**
+ * Whether a workspace's items are still anyone's to open: its owner's account is active, or its
+ * organization is and isn't being deleted. One that's gone keeps its rows until they're purged,
+ * and its guests' places until `upkeep.close` has taken them, which is a moment after it goes.
+ */
+export async function open(ctx: Read, workspaceId: Id<"workspaces">) {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  if (!workspace) return false;
+  if (workspace.kind === "personal") return (await ctx.db.get("users", workspace.userId))?.state === "active";
+  const organization = await ctx.db.get("organizations", workspace.organizationId);
+  return organization?.state === "active" && organization.deletingAt === undefined;
+}
+
+/**
  * A person's role as a guest of an item, while they act in their own workspace: what's shared
  * with someone is theirs to open there and nowhere else, so what they run on it spends their
- * own credits. Null when they aren't its guest.
+ * own credits. Null when they aren't its guest, or its workspace is gone.
  */
-export async function guestRole(ctx: Read, { userId, workspaceId }: InWorkspace, item: string): Promise<GuestRole | null> {
+export async function guestRole(ctx: Read, { userId, workspaceId }: InWorkspace, item: { _id: string; workspaceId: Id<"workspaces"> }): Promise<GuestRole | null> {
   const workspace = await ctx.db.get("workspaces", workspaceId);
   if (workspace?.kind !== "personal" || workspace.userId !== userId) return null;
-  return (await grantOf(ctx, item, userId))?.role ?? null;
+  const role = (await grantOf(ctx, item._id, userId))?.role;
+  return role && (await open(ctx, item.workspaceId)) ? role : null;
 }
 
 /** The list that counts an item's guests: the people given it, and the invitations to it still waiting. */

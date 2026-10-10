@@ -16,10 +16,11 @@ import { sharedKindValidator } from "./validators";
  * of its guests and then of its invitations once it's gone.
  */
 export const follow = internalMutation({
-  args: { kind: sharedKindValidator, item: v.string(), cursor: v.union(v.string(), v.null()) },
+  args: { kind: sharedKindValidator, item: v.string(), cursor: v.union(v.string(), v.null()), closed: v.optional(v.literal(true)) },
   returns: v.null(),
-  handler: async (ctx, { kind, item, cursor }) => {
-    const shared = await findShared(ctx, kind, item);
+  handler: async (ctx, { kind, item, cursor, closed }) => {
+    // One closed with its workspace (`close`) is gone to its guests, though its row waits out its retention.
+    const shared = closed ? null : await findShared(ctx, kind, item);
     if (shared) {
       const guests = await ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", item)).paginate({ cursor, numItems: FOLLOW_STEP });
       for (const row of guests.page) if (row.name !== shared.name) await ctx.db.patch("itemAccess", row._id, { name: shared.name });
@@ -30,7 +31,26 @@ export const follow = internalMutation({
     for (const row of guests) await ctx.db.delete("itemAccess", row._id);
     const invitations = guests.length < FOLLOW_STEP ? await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", item)).take(FOLLOW_STEP) : [];
     for (const row of invitations) await ctx.db.delete("itemInvitations", row._id);
-    if (guests.length === FOLLOW_STEP || invitations.length === FOLLOW_STEP) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.follow, { kind, item, cursor: null });
+    if (guests.length === FOLLOW_STEP || invitations.length === FOLLOW_STEP) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.follow, { kind, item, cursor: null, ...(closed ? { closed } : {}) });
+    return null;
+  },
+});
+
+/** Items one step of `close` hands to `follow`. */
+const CLOSE_STEP = 50;
+
+/**
+ * Ends every guest's place in a workspace's items, a page of items at a time. A deleted account's
+ * workspace waits out its retention before it's purged, and nobody should read it meanwhile.
+ * Collections are the one kind shared so far: each kind that's shared lists its items here.
+ */
+export const close = internalMutation({
+  args: { workspaceId: v.id("workspaces"), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, cursor }) => {
+    const items = await ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId)).paginate({ cursor, numItems: CLOSE_STEP });
+    for (const item of items.page) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.follow, { kind: "collection", item: item._id, cursor: null, closed: true });
+    if (!items.isDone) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.close, { workspaceId, cursor: items.continueCursor });
     return null;
   },
 });
