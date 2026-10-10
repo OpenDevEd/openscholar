@@ -3909,6 +3909,12 @@
         "doing": "Reading what changed",
         "did": "Read what changed",
         "where": "Activity"
+      },
+      "memberCap": {
+        "doing": "Changing a member's credit cap",
+        "did": "Changed a member's credit cap",
+        "where": "Plan and credits",
+        "ask": "Change a member's credit cap"
       }
     },
     "asks": {

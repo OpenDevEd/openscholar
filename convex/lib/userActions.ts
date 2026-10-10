@@ -158,6 +158,22 @@ export const defineUserAction = <Args extends PropertyValidators, Returns extend
   entry: Omit<UserActionEntry<Args, Returns>, "kind">,
 ): UserActionEntry<Args, Returns> => ({ kind: "action", ...entry });
 
+/**
+ * An action that changes something outside, such as Clerk or Autumn, and keeps the change here:
+ * the assistant's step for it ends once the change is kept, with what the action returned, or
+ * that it was made.
+ */
+export const defineChangingAction = <Args extends PropertyValidators, Returns extends GenericValidator>(entry: Omit<UserActionEntry<Args, Returns>, "kind" | "changes">) =>
+  defineUserAction<Args, Returns>({
+    ...entry,
+    changes: true,
+    run: async (ctx, actor, args, call) => {
+      const result = await entry.run(ctx, actor, args, call);
+      if (call?.stepId) await ctx.runMutation(internal.assistant.steps.read, { stepId: call.stepId, result: JSON.stringify(result ?? DONE) });
+      return result;
+    },
+  });
+
 /** The internal twin of a public function, which the assistant's tools call with the sender's user ID. */
 export const assistantPath = (path: string) => `${path}ForAssistant`;
 

@@ -6,7 +6,7 @@
 
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useNow, useTranslations } from "next-intl";
 import { Check } from "@/components/icons";
 import { EASE } from "@/components/settings/model-map";
 import { LIST, Paged, Zone } from "@/components/settings/parts";
@@ -20,7 +20,8 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { inWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { monthStart } from "@/lib/billing/month";
+import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 
 const PER_PAGE = 10;
 const ROW_HEIGHT = 61;
@@ -29,8 +30,10 @@ const CAPS = [null, 1_000, 2_000, 5_000, 10_000] as const;
 
 /** The spending list and the month's total, read with the rest of the billing page so they show with it. */
 export function useMemberSpending(workspaceId: Id<"workspaces"> | undefined) {
-  const list = useCursorPage(api.billing.caps.spending, inWorkspace(workspaceId, {}), PER_PAGE);
-  const { data: allowance } = useProtectedQuery(api.billing.caps.allowance, inWorkspace(workspaceId, {}));
+  // This month's, which moves on to the next when a page left open reaches it.
+  const month = monthStart(useNow({ updateInterval: 60_000 }).getTime());
+  const list = useCursorPage(api.billing.caps.spending, inWorkspace(workspaceId, { month }), PER_PAGE);
+  const { data: allowance } = useProtectedQuery(api.billing.caps.allowance, inWorkspace(workspaceId, { month }));
   return { list, allowance, ready: !list.isLoading && allowance !== undefined };
 }
 
@@ -85,12 +88,12 @@ function CapPicker({ userId, cap }: { userId: Id<"users">; cap: number | undefin
   const t = useTranslations("workspaces.settings");
   const tc = useTranslations("common");
   const format = useFormatter();
-  const setCap = useWorkspaceMutation(api.billing.caps.setCap);
+  const setCap = useWorkspaceAction(api.billing.caps.setCap);
   const [open, setOpen] = useState(false);
   const pick = async (next: number | null) => {
     setOpen(false);
     try {
-      await setCap({ userId, cap: next });
+      await setCap({ memberId: userId, cap: next });
     } catch (error) {
       showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong")));
     }

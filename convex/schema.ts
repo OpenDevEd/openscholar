@@ -596,6 +596,11 @@ export default defineSchema({
     .index("by_workspace", ["workspaceId"])
     .index("by_plan", ["plan"])
     .index("by_stripe_customer", ["stripeCustomerId"]),
+  // The members of a Team organization whose seat Autumn holds (#652): their charges are made as their entity, which their cap limits.
+  memberSeats: defineTable({
+    workspaceId: v.id("workspaces"),
+    clerkUserId: v.string(),
+  }).index("by_workspace_and_member", ["workspaceId", "clerkUserId"]),
   // Each organization's seat syncs (#652): one at a time, and how many seats the last one left.
   seatSyncs: defineTable({
     workspaceId: v.id("workspaces"),
@@ -635,10 +640,9 @@ export default defineSchema({
     // Set before a settle confirms the hold as it stands and charges the rest
     // separately, so a retry finishes that path instead of confirming again.
     rest: v.optional(v.literal(true)),
-  })
-    .index("by_charge", ["chargeId"])
-    .index("by_workspace_and_user", ["workspaceId", "userId"]),
+  }).index("by_charge", ["chargeId"]),
   // A cap on what an organization's member spends of its credits each month, set by an admin on Team (#652).
+  // Autumn enforces it, as the usage limit on the member's entity; this is the copy pages read.
   memberCaps: defineTable({
     workspaceId: v.id("workspaces"),
     userId: v.id("users"),
