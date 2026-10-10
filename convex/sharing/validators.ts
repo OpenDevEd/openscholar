@@ -3,7 +3,7 @@
 import { v, type Infer } from "convex/values";
 
 /** The kinds of item a guest can be given; each has an entry in ./items.ts. */
-export const sharedKinds = ["collection", "screening"] as const;
+export const sharedKinds = ["collection", "screening", "extraction"] as const;
 export const sharedKindValidator = v.union(...sharedKinds.map((kind) => v.literal(kind)));
 export type SharedKind = Infer<typeof sharedKindValidator>;
 

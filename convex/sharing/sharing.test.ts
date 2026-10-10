@@ -294,6 +294,52 @@ it("opens a shared screening to its guest to read and export from their own work
   await expect(exported()).rejects.toThrow(/not found/i);
 });
 
+it("opens a shared extraction to its guest to read from their own workspace, without what it cost, and to nobody else", async () => {
+  const { t, alice, carol, dave, users, workspaceId, club } = await lab();
+  const { jobId, paperId } = await t.run(async (ctx) => {
+    await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
+    const jobId = await ctx.db.insert("extractionJobs", { workspaceId, createdBy: users.alice, name: "Sample sizes", sourceType: "history", status: "completed", totalPapers: 1, runEpoch: 0, spendCap: 500, spendHold: "hold_1", createdAt: 1, updatedAt: 1 });
+    const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: "W1", title: "Trial", authors: [], processable: true, status: "completed", creditsUsed: 3 });
+    return { jobId, paperId };
+  });
+  const item = { workspaceId, kind: "extraction" as const, id: jobId };
+  // An extraction is shared to view only.
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "editor" })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
+  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+
+  // Its page's first read tells a member how many guests it has, and Carol whose it is. Hers leaves out what the job holds and may spend.
+  expect(await alice.query(api.extraction.queries.getJobShell, { jobId })).toMatchObject({ status: "ok", guests: 1, job: { spendCap: 500, spendHold: "hold_1" } });
+  const hers = await carol.query(api.extraction.queries.getJobShell, { jobId });
+  expect(hers).toMatchObject({ status: "ok", job: { name: "Sample sizes", totalPapers: 1 }, guest: { role: "viewer", from: { name: "lab", organization: true } } });
+  expect(hers).not.toHaveProperty("guests");
+  expect(hers).not.toHaveProperty("job.spendCap");
+  expect(hers).not.toHaveProperty("job.spendHold");
+
+  // Its papers and their answers, from her own workspace, without what each cost.
+  const view = { jobId, filters: { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] }, sortBy: "default" as const, paginationOpts: { cursor: null, numItems: 10 } };
+  const papers = async (as: typeof carol, from?: Id<"workspaces">) => (await as.query(api.extraction.queries.listJobResults, { ...view, ...(from ? { workspaceId: from } : {}) })).page;
+  expect(await papers(alice, workspaceId)).toMatchObject([{ title: "Trial", creditsUsed: 3 }]);
+  expect(await papers(carol)).toMatchObject([{ title: "Trial" }]);
+  expect((await papers(carol))[0]).not.toHaveProperty("creditsUsed");
+  expect(await carol.query(api.extraction.queries.getJobDetails, { jobId })).toMatchObject({ status: "ok", guest: { role: "viewer" } });
+  const paper = await carol.query(api.extraction.queries.papers.results, { paperId });
+  expect(paper).toMatchObject({ status: "ok", paper: { title: "Trial" } });
+  expect(paper).not.toHaveProperty("paper.creditsUsed");
+  expect((await carol.query(api.sharing.shared.list, { sort: "recent", paginationOpts: { cursor: null, numItems: 10 } })).page).toMatchObject([{ kind: "extraction", id: jobId, name: "Sample sizes", role: "viewer", size: 1 }]);
+
+  // Every change to it is its workspace's.
+  await expect(carol.mutation(api.extraction.mutations.deleteExtraction, { jobId })).rejects.toThrow();
+  // Not while she acts in the club, and Dave was given nothing.
+  expect(await papers(carol, club)).toEqual([]);
+  expect(await dave.query(api.extraction.queries.getJobShell, { jobId })).toMatchObject({ status: "no_access" });
+  expect(await papers(dave)).toEqual([]);
+  expect(await dave.query(api.extraction.queries.papers.results, { paperId })).toMatchObject({ status: "no_access" });
+
+  await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
+  expect(await carol.query(api.extraction.queries.getJobShell, { jobId })).toMatchObject({ status: "no_access" });
+  expect(await papers(carol)).toEqual([]);
+});
+
 it("closes what a deleted account shared from its own workspace, though its data waits to be purged", async () => {
   const { t, alice, carol, dave, users } = await lab();
   const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, users.alice));

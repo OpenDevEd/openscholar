@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { Building2, Coins, Folder, ListFilter, LogOut, Mail, SearchX, Share2, Unlink, UserRound, type AppIcon } from "@/components/icons";
+import { Building2, Coins, FileSearch, Folder, ListFilter, LogOut, Mail, SearchX, Share2, Unlink, UserRound, type AppIcon } from "@/components/icons";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { Entry, EntryAction, EntryAside, ENTRY_OPEN } from "@/components/command-center/entry";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -35,6 +35,7 @@ import { useCurrentWorkspace, WorkspaceTag, WorkspaceTile } from "./parts";
 export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; href: (id: string) => string; roles: readonly GuestRole[] }> = {
   collection: { icon: Folder, tint: "#e8890c", href: (id) => `/library?col=${id}`, roles: ["viewer", "editor"] },
   screening: { icon: ListFilter, tint: "#34d399", href: (id) => `/screening?job=${id}`, roles: ["viewer"] },
+  extraction: { icon: FileSearch, tint: "#818cf8", href: (id) => `/extraction/${id}`, roles: ["viewer"] },
 };
 
 type Sort = "recent" | "name";

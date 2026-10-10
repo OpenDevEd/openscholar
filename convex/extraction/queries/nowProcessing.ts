@@ -23,7 +23,7 @@
 
 import { query } from "../../_generated/server";
 import { v } from "convex/values";
-import { resolveOwnedJob } from "../access";
+import { resolveJobToRead } from "../access";
 import { RUNNING_JOB_STATUSES } from "../stateMachine";
 
 const nowProcessingResultValidator = v.union(
@@ -39,7 +39,7 @@ export const getNowProcessing = query({
   args: { jobId: v.id("extractionJobs") },
   returns: nowProcessingResultValidator,
   handler: async (ctx, { jobId }) => {
-    const owned = await resolveOwnedJob(ctx, jobId);
+    const owned = await resolveJobToRead(ctx, jobId);
     if (owned.status !== "ok") return null;
 
     if (!owned.job.status || !RUNNING_JOB_STATUSES.has(owned.job.status)) {

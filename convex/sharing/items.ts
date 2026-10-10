@@ -27,6 +27,7 @@ export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces
 const KINDS = {
   collection: { table: "collections", name: (row: Doc<"collections">) => row.name, size: (row: Doc<"collections">) => row.itemCount, word: "collection", roles: ["viewer", "editor"] },
   screening: { table: "screeningJobs", name: (row: Doc<"screeningJobs">) => row.name ?? row.label ?? (row.set?.kind === "saved" ? "Saved papers" : "Screening"), size: (row: Doc<"screeningJobs">) => row.totalPapers, word: "screening", roles: ["viewer"] },
+  extraction: { table: "extractionJobs", name: (row: Doc<"extractionJobs">) => row.name, size: (row: Doc<"extractionJobs">) => row.totalPapers ?? 0, word: "extraction", roles: ["viewer"] },
 } as const satisfies { [K in SharedKind]: { table: TableNames; name: (row: never) => string; size: (row: never) => number; word: string; roles: readonly GuestRole[] } };
 
 export const kindWord = (kind: SharedKind) => KINDS[kind].word;

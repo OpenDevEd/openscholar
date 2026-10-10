@@ -7,7 +7,7 @@
 import { v, type VFloat64, type VOptional } from "convex/values";
 import { ERROR_CODES, type ErrorCode } from "../../../lib/errors/taxonomy";
 import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
-import { ownJob } from "../access";
+import { jobToRead } from "../access";
 import { readPaperErrorCounts, readResultCounts } from "../resultCounts";
 
 type PerCode = Partial<Record<ErrorCode, number>>;
@@ -20,8 +20,8 @@ export const countJobFailuresAction = defineUserQuery({
     "with how many answers the job asked for and how many it has.",
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ asked: v.number(), answered: v.number(), retryable: v.number(), permanent: perCode, paperErrors: perCode }),
-  run: async (ctx, { workspaceId }, { jobId }) => {
-    if (!(await ownJob(ctx, workspaceId, jobId))) return { asked: 0, answered: 0, retryable: 0, permanent: {}, paperErrors: {} };
+  run: async (ctx, actor, { jobId }) => {
+    if (!(await jobToRead(ctx, actor, jobId))) return { asked: 0, answered: 0, retryable: 0, permanent: {}, paperErrors: {} };
     const [counts, paperErrors] = await Promise.all([readResultCounts(ctx, jobId), readPaperErrorCounts(ctx, jobId)]);
     return { asked: counts.total, answered: counts.completed, retryable: counts.retryable, permanent: counts.permanent as PerCode, paperErrors: paperErrors as PerCode };
   },

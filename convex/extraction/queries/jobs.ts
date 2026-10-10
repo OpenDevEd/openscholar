@@ -17,7 +17,7 @@ import schema from "../../schema";
 import { searchTerms } from "../../lib/searchText";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { noAccess, ok, statusResultValidator, unauthenticated } from "../../lib/query_states";
-import { ownJob, resolveOwnedJob, type OwnedJobResolution } from "../access";
+import { jobToRead, resolveJobToRead, sharingOf, sharingValidators, type ReadableJobResolution } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../../lib/userActions";
 import { countRow } from "../../research/recordCounts";
@@ -33,8 +33,8 @@ import { MAX_QUESTIONS_PER_JOB } from "../validators";
 async function resolveReadableJob(
   ctx: QueryCtx,
   jobId: Id<"extractionJobs">,
-): Promise<OwnedJobResolution> {
-  const access = await resolveOwnedJob(ctx, jobId);
+): Promise<ReadableJobResolution> {
+  const access = await resolveJobToRead(ctx, jobId);
   if (access.status !== "ok") return access;
   await requireFeature(ctx, "extraction.enabled");
   return access;
@@ -130,37 +130,43 @@ export const countJobsForAssistant = assistantQuery(countJobsAction);
 export const getJobDetailsAction = defineUserQuery({
   path: "extraction/queries:getJobDetails",
   description:
-    "Reads one of the person's extraction jobs with its questions, in order: each question's `key`, text, `type` and `description`. " +
-    "Use it to say what an extraction asks, and for a question's `key` to summarize or filter its answers by.",
+    "Reads an extraction job the person may read (one of their workspace's, or one shared with them) with its questions, in order: each question's `key`, text, `type` and `description`. " +
+    "Use it to say what an extraction asks, and for a question's `key` to summarize or filter its answers by. " +
+    "One of the workspace's comes with `guests`: how many people outside the workspace it's shared with, invitations still waiting included. " +
+    "A shared one comes with `guest`: what they may do with it and whose it is, and without what it holds or may spend, which are its workspace's.",
   args: { jobId: v.id("extractionJobs") },
   returns: statusResultValidator({
     job: extractionJobValidator,
     questions: jobQuestionsValidator,
+    ...sharingValidators,
   }),
-  run: async (ctx, { userId, workspaceId }, { jobId }) => {
-    const job = await ownJob(ctx, workspaceId, jobId);
-    if (!job) return noAccess();
-    await requireFeature(ctx, "extraction.enabled", userId);
+  run: async (ctx, actor, { jobId }) => {
+    const read = await jobToRead(ctx, actor, jobId);
+    if (!read) return noAccess();
+    const { job } = read;
+    await requireFeature(ctx, "extraction.enabled", actor.userId);
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .order("asc")
       .take(MAX_QUESTIONS_PER_JOB);
-    return ok({ job, questions });
+    return ok({ job, questions, ...(await sharingOf(ctx, job, read.guest)) });
   },
 });
 export const getJobDetails = userQuery(getJobDetailsAction, { signedOut: unauthenticated() });
 export const getJobDetailsForAssistant = assistantQuery(getJobDetailsAction);
 
+/** The job as its page opens with it: the job, and how it's shared, so the page knows from its first read what its reader may do. */
 export const getJobShell = query({
   args: { jobId: v.id("extractionJobs") },
   returns: statusResultValidator({
     job: extractionJobValidator,
+    ...sharingValidators,
   }),
   handler: async (ctx, args) => {
     const access = await resolveReadableJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
-    return ok({ job: access.job });
+    return ok({ job: access.job, ...(await sharingOf(ctx, access.job, access.guest)) });
   },
 });
 

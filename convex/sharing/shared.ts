@@ -103,7 +103,7 @@ export const countsAction = defineUserQuery({
   description: "How many items are shared with the person from other workspaces: in all (`total`), and of each kind, under its name.",
   args: {},
   // A count for each of ./validators.ts `sharedKinds`.
-  returns: v.object({ total: v.number(), collection: v.number(), screening: v.number() }),
+  returns: v.object({ total: v.number(), collection: v.number(), screening: v.number(), extraction: v.number() }),
   run: async (ctx, { userId }) => {
     const [total, ...each] = await Promise.all([countOf(ctx, sharedWithOf(userId)), ...sharedKinds.map((kind) => countOf(ctx, sharedWithOf(userId, kind)))]);
     return { total, ...(Object.fromEntries(sharedKinds.map((kind, at) => [kind, each[at]])) as Record<SharedKind, number>) };
