@@ -4243,15 +4243,19 @@
       "hasOpen": "{names} ने इसे खोला है"
     },
     "move": {
+      "collection": "संग्रह ले जाएँ",
       "search": "खोज ले जाएँ",
       "screening": "स्क्रीनिंग ले जाएँ",
       "extraction": "एक्सट्रैक्शन ले जाएँ",
       "chat": "चैट ले जाएँ",
+      "author": "लेखक प्रोफ़ाइल ले जाएँ",
       "fromTo": "{workspace} से यहाँ",
       "onlyYou": "केवल आप",
       "membersSee": "{count, plural, one {# सदस्य इसे देखता है} other {# सदस्य इसे देखते हैं}}",
       "goesWithIt": "साथ जाएगा",
       "goes": {
+        "itsPapers": "इसके पेपर",
+        "ratingsInIt": "इसकी रेटिंग",
         "resultsRatings": "नतीजे और उनकी रेटिंग",
         "screeningAnswers": "स्क्रीनिंग के जवाब",
         "earlierQueries": "पिछली क्वेरी",
@@ -4260,12 +4264,16 @@
         "pdfs": "PDF",
         "messages": "संदेश",
         "files": "फ़ाइलें",
-        "activity": "गतिविधि"
+        "activity": "गतिविधि",
+        "publications": "प्रकाशन",
+        "editors": "संपादक"
       },
       "moveTo": "{workspace} में ले जाएँ",
       "move": "ले जाएँ",
       "toAnother": "दूसरे वर्कस्पेस में ले जाएँ",
-      "moveNamed": "{name} को दूसरे वर्कस्पेस में ले जाएँ"
+      "moveNamed": "{name} को दूसरे वर्कस्पेस में ले जाएँ",
+      "libraryKeeps": "{workspace} की लाइब्रेरी इसके सहेजे पेपर रखती है।",
+      "yourLibraryKeeps": "आपकी लाइब्रेरी इसके सहेजे पेपर रखती है।"
     }
   },
   "models": {

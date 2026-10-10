@@ -4243,15 +4243,19 @@
       "hasOpen": "{count, plural, one {{names} has it open} other {{names} have it open}}"
     },
     "move": {
+      "collection": "Move collection",
       "search": "Move search",
       "screening": "Move screening",
       "extraction": "Move extraction",
       "chat": "Move chat",
+      "author": "Move author profile",
       "fromTo": "From {workspace} to",
       "onlyYou": "Only you",
       "membersSee": "{count, plural, one {# member sees it} other {# members see it}}",
       "goesWithIt": "Goes with it",
       "goes": {
+        "itsPapers": "Its papers",
+        "ratingsInIt": "Ratings in it",
         "resultsRatings": "Results and their ratings",
         "screeningAnswers": "Screening answers",
         "earlierQueries": "Earlier queries",
@@ -4260,12 +4264,16 @@
         "pdfs": "PDFs",
         "messages": "Messages",
         "files": "Files",
-        "activity": "Activity"
+        "activity": "Activity",
+        "publications": "Publications",
+        "editors": "Editors"
       },
       "moveTo": "Move to {workspace}",
       "move": "Move",
       "toAnother": "Move to another workspace",
-      "moveNamed": "Move {name} to another workspace"
+      "moveNamed": "Move {name} to another workspace",
+      "libraryKeeps": "{workspace}'s library keeps the papers it saved.",
+      "yourLibraryKeeps": "Your library keeps the papers it saved."
     }
   },
   "models": {

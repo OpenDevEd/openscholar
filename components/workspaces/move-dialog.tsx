@@ -25,10 +25,12 @@ import { useCurrentWorkspace, useWorkspaces } from "./parts";
 import { switchTarget } from "./switcher";
 import { WorkspacePicker } from "./workspace-picker";
 
-export type Movable = "search" | "screening" | "extraction" | "chat";
+export type Movable = "collection" | "search" | "screening" | "extraction" | "chat" | "author";
 
 /** What goes with each kind of item, as chips. */
 const GOES = {
+  collection: ["itsPapers", "ratingsInIt", "activity"],
+  author: ["publications", "editors"],
   search: ["resultsRatings", "screeningAnswers", "earlierQueries", "activity"],
   screening: ["answers", "questions", "activity"],
   extraction: ["answers", "questions", "pdfs", "activity"],
@@ -37,6 +39,8 @@ const GOES = {
 
 /** Where the item opens in the workspace it moved to. */
 const PAGE: Record<Exclude<Movable, "chat">, (id: string) => string> = {
+  collection: (id) => `/library?col=${id}`,
+  author: (id) => `/authors/${id}`,
   search: (id) => `/results/${id}`,
   screening: (id) => `/screening?job=${id}`,
   extraction: (id) => `/extraction/${id}`,
@@ -120,6 +124,7 @@ function Move({ close, kind, id, name, onMoved }: { close: () => void; kind: Mov
               </Chip>
             ))}
           </div>
+          {kind === "collection" ? <p className="px-1 text-xs text-muted-foreground">{from?.kind === "organization" ? t("libraryKeeps", { workspace: from.name }) : t("yourLibraryKeeps")}</p> : null}
         </Zone>
       </div>
       <div className="flex items-center justify-end gap-2 border-t border-border/50 px-4 py-3">

@@ -74,7 +74,7 @@ function AuthorProfileBody({profileId, record, references, initialFeatures, conf
   };
   return <AuthorPage key={`${record._id}:${configuration}`} profile={profile} configuration={configuration}
     invitationSection={invitation && !record.role ? <AuthorInvitations profileId={profileId} showEmpty /> : undefined}
-    canBrowseAuthors={features?.authors === true} canEdit={Boolean(record.role)} accessSection={configuration && record.role === "owner" ? <ProfileAccess profileId={profileId} /> : null}
+    canBrowseAuthors={features?.authors === true} canEdit={Boolean(record.role)} canMove={record.role === "owner"} accessSection={configuration && record.role === "owner" ? <ProfileAccess profileId={profileId} /> : null}
     papers={publications.data?.papers ?? []} loadingPublications={publications.isLoading} loadingAuthors={authors.isValidating || search !== debouncedSearch} publicationStatus={publications.error ? "Publications could not be loaded. Try again shortly." : publications.data?.unavailableCount ? "Some publications could not be loaded. Try again shortly." : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
     openAlexError={[authors.error, match.error, works.error].find((error) => error instanceof OpenAlexLimitedError)?.message ?? (authors.error || match.error || works.error ? "OpenAlex is unavailable. Try again." : null)}
     onSearchAuthors={value => { setSearch(value); if (value === search) void authors.mutate(); }}

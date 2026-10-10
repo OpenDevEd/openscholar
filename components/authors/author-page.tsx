@@ -38,7 +38,10 @@ import {
   PersonIcon,
   LinkIcon,
   BookIcon,
+  Move,
 } from "@/components/icons";
+import { useTranslations } from "next-intl";
+import { MoveDialog } from "@/components/workspaces/move-dialog";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
 import { useUIStore } from "@/lib/store";
@@ -89,13 +92,15 @@ const safeUrl = (value?: string) => {
 };
 
 export default function AuthorPage({
-  profile, configuration, canEdit, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
+  profile, configuration, canEdit, canMove = false, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
   openAlexAuthors, openAlexPapers: works, onSearchAuthors, openAlexError,
   hasMoreWorks, workCount, loadingWorks: fetchingWorks, onLoadMoreWorks, invitationSection,
 }: {
   profile: AuthorProfile;
   configuration: boolean;
   canEdit: boolean;
+  /** Its owners move it to another of their workspaces (#654). */
+  canMove?: boolean;
   canBrowseAuthors?: boolean;
   onSave: (profile: AuthorProfile, previous: AuthorProfile) => Promise<AuthorProfile>;
   accessSection: ReactNode;
@@ -111,6 +116,8 @@ export default function AuthorPage({
   hasMoreWorks: boolean; workCount: number; loadingWorks: boolean; onLoadMoreWorks: () => void;
 }) {
   const profileId = profile.id;
+  const tm = useTranslations("workspaces.move");
+  const [moving, setMoving] = useState(false);
   // A paper is shown once its rating is read, so its card opens at its final size.
   const rated = useRatedPapers(works);
   const openAlexPapers = rated.papers;
@@ -561,6 +568,12 @@ export default function AuthorPage({
           backHref={canBrowseAuthors ? "/authors" : undefined}
           backLabel="Back to authors"
           actions={<>
+            {canMove ? (
+              <Button variant="outline" size="sm" className={BAR_ACTION} onClick={() => setMoving(true)}>
+                <Move />
+                <span className={BAR_LABEL}>{tm("move")}</span>
+              </Button>
+            ) : null}
             <Button
               variant="outline"
               size="sm"
@@ -975,6 +988,7 @@ export default function AuthorPage({
           </Dialog>
         </>
       )}
+      {canMove ? <MoveDialog open={moving} onOpenChange={setMoving} kind="author" id={profileId} name={profile.name} /> : null}
     </main>
   );
 }

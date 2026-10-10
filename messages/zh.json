@@ -4243,15 +4243,19 @@
       "hasOpen": "{names} 正在查看"
     },
     "move": {
+      "collection": "移动收藏集",
       "search": "移动搜索",
       "screening": "移动筛选",
       "extraction": "移动提取",
       "chat": "移动对话",
+      "author": "移动作者主页",
       "fromTo": "从 {workspace} 移到",
       "onlyYou": "仅你自己",
       "membersSee": "{count, number} 名成员可见",
       "goesWithIt": "一同移动",
       "goes": {
+        "itsPapers": "其中的论文",
+        "ratingsInIt": "其中的评分",
         "resultsRatings": "结果及其评分",
         "screeningAnswers": "筛选答案",
         "earlierQueries": "之前的查询",
@@ -4260,12 +4264,16 @@
         "pdfs": "PDF",
         "messages": "消息",
         "files": "文件",
-        "activity": "动态"
+        "activity": "动态",
+        "publications": "出版物",
+        "editors": "编辑"
       },
       "moveTo": "移到 {workspace}",
       "move": "移动",
       "toAnother": "移到另一个工作区",
-      "moveNamed": "将 {name} 移到另一个工作区"
+      "moveNamed": "将 {name} 移到另一个工作区",
+      "libraryKeeps": "{workspace} 的文献库会保留已保存的论文。",
+      "yourLibraryKeeps": "你的文献库会保留已保存的论文。"
     }
   },
   "models": {

@@ -4243,15 +4243,19 @@
       "hasOpen": "{count, plural, one {{names} l'a ouvert} other {{names} l'ont ouvert}}"
     },
     "move": {
+      "collection": "Déplacer la collection",
       "search": "Déplacer la recherche",
       "screening": "Déplacer le tri",
       "extraction": "Déplacer l'extraction",
       "chat": "Déplacer la discussion",
+      "author": "Déplacer le profil d'auteur",
       "fromTo": "De {workspace} vers",
       "onlyYou": "Vous seul",
       "membersSee": "{count, plural, one {# membre la voit} other {# membres la voient}}",
       "goesWithIt": "Ce qui l'accompagne",
       "goes": {
+        "itsPapers": "Ses articles",
+        "ratingsInIt": "Ses notes",
         "resultsRatings": "Résultats et leurs notes",
         "screeningAnswers": "Réponses de tri",
         "earlierQueries": "Requêtes précédentes",
@@ -4260,12 +4264,16 @@
         "pdfs": "PDF",
         "messages": "Messages",
         "files": "Fichiers",
-        "activity": "Activité"
+        "activity": "Activité",
+        "publications": "Publications",
+        "editors": "Éditeurs"
       },
       "moveTo": "Déplacer vers {workspace}",
       "move": "Déplacer",
       "toAnother": "Déplacer vers un autre espace de travail",
-      "moveNamed": "Déplacer {name} vers un autre espace de travail"
+      "moveNamed": "Déplacer {name} vers un autre espace de travail",
+      "libraryKeeps": "La bibliothèque de {workspace} garde les articles qu'elle a enregistrés.",
+      "yourLibraryKeeps": "Votre bibliothèque garde les articles qu'elle a enregistrés."
     }
   },
   "models": {

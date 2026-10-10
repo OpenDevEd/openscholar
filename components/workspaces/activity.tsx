@@ -60,7 +60,7 @@ export function ItemBar({ kind, id, name, started, className }: { kind: ItemKind
       <span className="flex-1" />
       <ItemPresence kind={kind} id={id} />
       <ActivityButton kind={kind} id={id} name={name} />
-      {kind === "collection" ? null : <MoveButton kind={kind} id={id} name={name} />}
+      <MoveButton kind={kind} id={id} name={name} />
     </div>
   );
 }
