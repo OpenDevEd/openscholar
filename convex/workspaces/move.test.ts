@@ -150,7 +150,7 @@ it("gives a person's ratings of their collection's papers to the collection when
   expect(await ratedPlaces(t, collectionId)).toEqual([{ rating: 4, ratingCount: 1 }, { rating: undefined, ratingCount: undefined }]);
 });
 
-it("makes a person's ratings in an organization's collection their own when it moves to their workspace, where they've none", async () => {
+it("makes a person's ratings in an organization's collection their own when it moves to their workspace, where they've none, and has them back when it returns", async () => {
   const { t, alice, bob, lab: labId, aliceOwn, users } = await lab();
   const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { workspaceId: labId, name: "Trials" });
   const saved: Id<"libraryItems">[] = [];
@@ -166,6 +166,11 @@ it("makes a person's ratings in an organization's collection their own when it m
   expect(await ratedPlaces(t, collectionId)).toEqual([{ rating: 5, ratingCount: undefined }, { rating: 2, ratingCount: undefined }]);
   // Bob's rating in it stays with it, for an organization it moves to later.
   expect(await t.run((ctx) => ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", users.bob).eq("collectionId", collectionId)).collect())).toHaveLength(1);
+
+  // Back in the lab it has the ratings it left with: hers of the second paper is the 5 she gave in it, not her own 2.
+  await alice.mutation(api.workspaces.move.move, { kind: "collection", id: collectionId, to: labId });
+  await t.finishAllScheduledFunctions(() => {});
+  expect(await ratedPlaces(t, collectionId)).toEqual([{ rating: 3, ratingCount: 2 }, { rating: 5, ratingCount: 1 }]);
 });
 
 it("moves a collection of papers near the largest Convex stores, in steps that each fit a transaction", async () => {
