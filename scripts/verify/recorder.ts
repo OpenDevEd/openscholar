@@ -187,15 +187,22 @@ export function recorder(config: { allow: string }) {
     return rect.height > 0 ? Math.max(0, bottom - top) / rect.height : 0;
   }
 
-  /** Fading or sliding in, by itself or with something it is inside. The overlay's own opening doesn't count: what lands while it opens still pops. */
+  const fades = (animation: Animation) => animation.playState === "running" && animatedProperties(animation).includes("opacity");
+
+  /**
+   * Fading in, by itself or with something it is inside: still clear, or with
+   * its opacity on the move. A spinner turning or a colour changing is not a
+   * fade, and neither is something that is always half clear. The overlay's
+   * own opening doesn't count: what lands while it opens still pops.
+   */
   function fading(element: HTMLElement, overlay: Element): boolean {
     for (let node: HTMLElement | null = element; node && node !== overlay; node = node.parentElement) {
-      if (Number(getComputedStyle(node).opacity) < 1 || node.getAnimations().some((animation) => animation.playState === "running")) return true;
+      if (Number(getComputedStyle(node).opacity) === 0 || node.getAnimations().some(fades)) return true;
     }
     return false;
   }
 
-  // Not a pop: fading or sliding in, being uncovered by a frame that grows around it, or scrolled out of sight.
+  // Not a pop: fading in, being uncovered by a frame that grows around it, or scrolled out of sight.
   const entering = (element: HTMLElement, overlay: Element) => fading(element, overlay) || showing(element, overlay, false) < 0.5 || showing(element, overlay, true) === 0;
 
   /**
