@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/tooltip";
 import { AnimatedCount } from "./components/animated-count";
 import { MoreLikeRated } from "./components/more-like-rated";
+import { LikelyFirst } from "./components/likely-first";
 import { useSearchOptional } from "@/lib/search";
 import { useCurrentQuestionStore, useSearchHistoryStore } from "@/lib/store";
 import { useAppToast, getErrorMessage } from "@/lib/toast";
@@ -383,6 +384,7 @@ Return a more targeted version of this query.`;
           </span>
         </div>
         <MoreLikeRated />
+        <LikelyFirst />
       </div>
 
       <div className="self-end sm:self-auto">
