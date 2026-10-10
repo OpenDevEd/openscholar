@@ -37,6 +37,19 @@ describe("analyzePhase on a page load", () => {
     ]);
   });
 
+  it("accepts a frame that slides open over many frames, with what it pushes, but not the same distance in one", () => {
+    const slide = Array.from({ length: 12 }, (_, step) => frame(500 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 10 }, { id: 2, dx: 0, dy: 10, dw: 0, dh: 0 }] }));
+    expect(analyzePhase(slide, load)).toEqual([]);
+    const jump = [frame(500, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 120 }, { id: 2, dx: 0, dy: 120, dw: 0, dh: 0 }] })];
+    expect(analyzePhase(jump, load)).toHaveLength(1);
+  });
+
+  it("still reports a jump that is followed by a few small settling steps", () => {
+    const settle = Array.from({ length: 5 }, (_, step) => frame(516 + step * 16, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 2 }] }));
+    const findings = analyzePhase([frame(500, { moved: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 110 }] }), ...settle], load);
+    expect(findings).toEqual([{ kind: "shift", from: 500, to: 580, moves: [{ id: 1, dx: 0, dy: 0, dw: 0, dh: 120 }] }]);
+  });
+
   it("reports text that disappears and comes back, and text shown only for a moment", () => {
     const findings = analyzePhase(
       [

@@ -66,15 +66,29 @@ function bursts(frames: Frame[]): Frame[][] {
   return groups;
 }
 
+// An element that moves a little in each of several frames in a row is being
+// animated: a frame sliding open, and whatever it pushes along. One that covers
+// its distance in a frame or two jumped.
+const SLIDE_FRAMES = 5;
+const SLIDE_GAP_MS = 50;
+const travel = (move: Move) => Math.abs(move.dx) + Math.abs(move.dy) + Math.abs(move.dw) + Math.abs(move.dh);
+
+/** Whether an element's steps, each with the time of its frame, are one smooth slide. */
+function slid(steps: { t: number; move: Move }[]): boolean {
+  if (steps.length < SLIDE_FRAMES) return false;
+  const total = steps.reduce((sum, step) => sum + travel(step.move), 0);
+  // No pause between steps, and no single step that is most of the way: a jump followed by a settle is a jump.
+  return steps.every((step, index) => travel(step.move) <= total / 2 && (index === 0 || step.t - steps[index - 1].t <= SLIDE_GAP_MS));
+}
+
 function shift(frames: Frame[]): Finding | null {
-  const moves = new Map<number, Move>();
-  for (const move of frames.flatMap((frame) => frame.moved)) {
-    const total = moves.get(move.id) ?? { id: move.id, dx: 0, dy: 0, dw: 0, dh: 0 };
-    moves.set(move.id, { id: move.id, dx: total.dx + move.dx, dy: total.dy + move.dy, dw: total.dw + move.dw, dh: total.dh + move.dh });
-  }
-  const moving = frames.filter((frame) => frame.moved.length > 0);
-  if (moving.length === 0) return null;
-  return { kind: "shift", from: moving[0].t, to: moving.at(-1)!.t, moves: [...moves.values()] };
+  const steps = new Map<number, { t: number; move: Move }[]>();
+  for (const frame of frames) for (const move of frame.moved) steps.set(move.id, [...(steps.get(move.id) ?? []), { t: frame.t, move }]);
+  const jumped = [...steps].filter(([, own]) => !slid(own));
+  if (jumped.length === 0) return null;
+  const moves = jumped.map(([id, own]) => own.reduce<Move>((total, { move }) => ({ id, dx: total.dx + move.dx, dy: total.dy + move.dy, dw: total.dw + move.dw, dh: total.dh + move.dh }), { id, dx: 0, dy: 0, dw: 0, dh: 0 }));
+  const times = jumped.flatMap(([, own]) => own.map((step) => step.t));
+  return { kind: "shift", from: Math.min(...times), to: Math.max(...times), moves };
 }
 
 /** Lines of text shown and hidden over the phase, oldest first, so each change pairs with the one before it. */
