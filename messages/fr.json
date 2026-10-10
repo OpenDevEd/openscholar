@@ -285,7 +285,6 @@
       "moveTo": "Passer à {plan}",
       "onlyAdmins": "Seuls les administrateurs de {organization} changent son offre",
       "organizationsOnly": "Team est réservé aux organisations : créez-en une d'abord",
-      "tooManyForFree": "Gratuit compte au plus {count, number} membres : retirez des membres d'abord",
       "seatsAt": "{count, plural, one {# place} other {# places}} à {price}",
       "moveToFreeTitle": "Passer {organization} à {plan} ?",
       "moveToFreeDetail": "{count, plural, one {Sa place prend fin} other {Ses # places prennent fin}} maintenant. Elle compte ensuite au plus {members, number} membres et {credits, number} crédits partagés par mois."

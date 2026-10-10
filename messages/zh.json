@@ -285,7 +285,6 @@
       "moveTo": "改为{plan}",
       "onlyAdmins": "只有 {organization} 的管理员可以更改其方案",
       "organizationsOnly": "Team 仅适用于组织：请先创建一个",
-      "tooManyForFree": "免费方案最多 {count, number} 名成员：请先移除成员",
       "seatsAt": "{count, number} 个席位，每个 {price}",
       "moveToFreeTitle": "将 {organization} 改为{plan}？",
       "moveToFreeDetail": "{count, number} 个席位将立即结束。之后最多 {members, number} 名成员，每月 {credits, number} 共享积分。"

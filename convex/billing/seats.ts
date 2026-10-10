@@ -20,6 +20,7 @@ import { actorIn } from "../workspaces/actor";
 import { personName } from "../lib/people";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
 import { SEAT_PLAN, SEATS_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
+import { createError } from "../lib/errors";
 import { refreshAccount } from "./accounts";
 import { capRow } from "./memberCaps";
 import { autumn, AutumnError, type AutumnEntity } from "./autumn";
@@ -235,21 +236,60 @@ export const sync = internalAction({
 });
 
 /**
- * An organization's members and the seats it holds (#652), counted in full, for what Team costs it:
- * moving to Team charges a seat for each member, and its bill is a seat for each one it holds. Null
- * outside an organization and for someone not in it.
+ * Starts an organization's Team seats (#652) once its saved card is known: Team attached and a seat
+ * for each member, holding the organization's sync while it does, so the sync Autumn's webhook
+ * asks for runs after and the page that confirms a seat's payment comes back here. Refuses while
+ * another sync runs.
+ */
+export const startTeam = internalAction({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { workspaceId }): Promise<string | null> => {
+    if (!(await ctx.runMutation(internal.billing.seats.claim, { workspaceId }))) throw createError("CONFLICT", "Its seats are being updated. Try again in a minute.");
+    let synced: { seats: number; paymentUrl?: string } | undefined;
+    try {
+      const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
+      await autumn.attach({ customerId, planId: TEAM_PLAN, idempotencyKey: `team-${workspaceId}-${crypto.randomUUID()}` });
+      synced = await syncSeats(ctx, workspaceId);
+    } finally {
+      await ctx.runMutation(internal.billing.seats.release, { workspaceId, ...(synced === undefined ? {} : { seats: synced.seats }) });
+    }
+    return synced?.paymentUrl ?? null;
+  },
+});
+
+const countsValidator = v.object({ members: v.number(), invitations: v.number(), seats: v.number() });
+
+/** An organization's members, pending invitations and the seats it holds, each counted in full up to MAX_ORGANIZATION_MEMBERS. */
+async function countsOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, organizationId: Id<"organizations">) {
+  const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organizationId).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS);
+  const invitations = await ctx.db.query("organizationInvitations").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organizationId).eq("state", "pending")).take(MAX_ORGANIZATION_MEMBERS);
+  return { members: members.length, invitations: invitations.length, seats: (await syncRow(ctx, workspaceId))?.seats ?? 0 };
+}
+
+/**
+ * An organization's members, pending invitations and the seats it holds (#652), counted in full,
+ * for what Team costs it and whether Free takes it: moving to Team charges a seat for each member,
+ * its bill is a seat for each one it holds, and Free has room for FREE_MEMBERS, invitations
+ * included. Null outside an organization and for someone not in it.
  */
 export const counts = query({
   args: { workspaceId: v.id("workspaces") },
-  returns: v.union(v.object({ members: v.number(), seats: v.number() }), v.null()),
+  returns: v.union(countsValidator, v.null()),
   handler: async (ctx, { workspaceId }) => {
     const user = await getCurrentUser(ctx);
     const workspace = await ctx.db.get("workspaces", workspaceId);
     if (!user || workspace?.kind !== "organization" || !(await actorIn(ctx, user, workspaceId))) return null;
-    const members = await ctx.db
-      .query("organizationMemberships")
-      .withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active"))
-      .take(MAX_ORGANIZATION_MEMBERS);
-    return { members: members.length, seats: (await syncRow(ctx, workspaceId))?.seats ?? 0 };
+    return await countsOf(ctx, workspaceId, workspace.organizationId);
+  },
+});
+
+/** The same counts, for an action. */
+export const countsFor = internalQuery({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.union(countsValidator, v.null()),
+  handler: async (ctx, { workspaceId }) => {
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    return workspace?.kind === "organization" ? await countsOf(ctx, workspaceId, workspace.organizationId) : null;
   },
 });

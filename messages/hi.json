@@ -285,7 +285,6 @@
       "moveTo": "{plan} पर जाएँ",
       "onlyAdmins": "केवल {organization} के एडमिन इसका प्लान बदलते हैं",
       "organizationsOnly": "Team संगठनों के लिए है: पहले एक बनाएँ",
-      "tooManyForFree": "मुफ़्त में अधिकतम {count, number} सदस्य होते हैं: पहले सदस्य हटाएँ",
       "seatsAt": "{price} पर {count, plural, one {# सीट} other {# सीटें}}",
       "moveToFreeTitle": "{organization} को {plan} पर ले जाएँ?",
       "moveToFreeDetail": "{count, plural, one {इसकी सीट} other {इसकी # सीटें}} अभी समाप्त होंगी। इसके बाद इसमें अधिकतम {members, number} सदस्य और प्रति माह {credits, number} साझा क्रेडिट होंगे।"

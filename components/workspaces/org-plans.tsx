@@ -137,7 +137,7 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
               ? action(t("createOrganization"), () => setCreating(true), null)
               : !onTeam
                 ? current
-                : action(t("moveTo", { plan: free.name }), () => setAsking("free"), notAdmin ?? (members > FREE_MEMBERS ? t("tooManyForFree", { count: FREE_MEMBERS }) : null))}
+                : action(t("moveTo", { plan: free.name }), () => setAsking("free"), notAdmin ?? (members + (counts?.invitations ?? 0) > FREE_MEMBERS ? ts("freeUpTo", { count: FREE_MEMBERS }) : null))}
         </PlanCard>
 
         <PlanCard
@@ -177,7 +177,7 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
       <UpgradeConfirmationDialog
         open={asking === "team" && !!organization && !onTeam && !notAdmin && !!counts}
         onOpenChange={(open) => !busy && !open && setAsking(null)}
-        onConfirm={() => void move(() => moveToTeam({}))}
+        onConfirm={() => void move(() => moveToTeam({ seats: members }))}
         isConfirming={busy}
         preview={{
           currency: "usd",

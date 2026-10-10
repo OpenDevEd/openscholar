@@ -42,22 +42,30 @@ it("moves an organization to Team for its admin, saving a card or confirming a p
   await membership("ada", true, "org:admin");
   await membership("ben", true);
 
-  await expect(t.withIdentity({ subject: "user_ben" }).action(api.billing.actions.moveToTeam, { workspaceId: lab })).rejects.toThrow();
+  await expect(t.withIdentity({ subject: "user_ben" }).action(api.billing.actions.moveToTeam, { workspaceId: lab, seats: 2 })).rejects.toThrow();
+  // The admin agreed to a charge for the members they were shown; a different count now is asked again.
+  await expect(ada.action(api.billing.actions.moveToTeam, { workspaceId: lab, seats: 3 })).rejects.toThrow(/confirm again/);
   fakeAutumn.noCard = true;
-  expect(await ada.action(api.billing.actions.moveToTeam, { workspaceId: lab })).toEqual({ url: "https://setup.test" });
+  expect(await ada.action(api.billing.actions.moveToTeam, { workspaceId: lab, seats: 2 })).toEqual({ url: "https://setup.test" });
   // Autumn moves it once the card is saved; nothing is attached before.
   expect(fakeAutumn.calls.find((call) => call.path === "billing.setup_payment")?.body).toMatchObject({ customer_id: lab, plan_id: TEAM_PLAN });
   expect(moves()).toBe(0);
 
-  // A card that asks to confirm a seat's payment sends the admin to its page; once paid, the next sync seats everyone.
+  // While another sync of it runs, the move waits for it, so a payment page never goes to a sync nobody's watching.
   fakeAutumn.noCard = false;
+  expect(await t.mutation(internal.billing.seats.claim, { workspaceId: lab })).toBe(true);
+  await expect(ada.action(api.billing.actions.moveToTeam, { workspaceId: lab, seats: 2 })).rejects.toThrow(/being updated/);
+  expect(fakeAutumn.customer(lab).planId).toBe(ORGANIZATION_PLAN);
+  await t.mutation(internal.billing.seats.release, { workspaceId: lab });
+
+  // A card that asks to confirm a seat's payment sends the admin to its page; once paid, the next sync seats everyone.
   fakeAutumn.confirmPayments = true;
-  expect(await ada.action(api.billing.actions.moveToTeam, { workspaceId: lab })).toEqual({ url: "https://checkout.test" });
+  expect(await ada.action(api.billing.actions.moveToTeam, { workspaceId: lab, seats: 2 })).toEqual({ url: "https://checkout.test" });
   expect(fakeAutumn.customer(lab).planId).toBe(TEAM_PLAN);
   fakeAutumn.confirmPayments = false;
   await t.action(internal.billing.seats.sync, { workspaceId: lab });
   expect(fakeAutumn.balance(lab)).toBe(2 * FAKE_SEAT_CREDITS);
-  expect(await ada.query(api.billing.seats.counts, { workspaceId: lab })).toEqual({ members: 2, seats: 2 });
+  expect(await ada.query(api.billing.seats.counts, { workspaceId: lab })).toEqual({ members: 2, invitations: 0, seats: 2 });
   expect(await t.run((ctx) => ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", lab)).unique())).toMatchObject({ plan: TEAM_PLAN, card: { last4: "4242" } });
 
   for (const who of people.slice(2)) await membership(who, true);
@@ -66,6 +74,10 @@ it("moves an organization to Team for its admin, saving a card or confirming a p
   expect(fakeAutumn.customer(lab).planId).toBe(TEAM_PLAN);
 
   await membership("fy", false);
+  // Free has room for FREE_MEMBERS, invitations included.
+  const invitation = await t.run(async (ctx) => ctx.db.insert("organizationInvitations", { clerkInvitationId: "inv_1", organizationId: (await ctx.db.query("organizations").first())!._id, email: "gus@lab.test", role: "org:member", state: "pending", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 }));
+  await expect(ada.action(api.billing.actions.moveToFree, { workspaceId: lab })).rejects.toThrow(/invitations included/);
+  await t.run((ctx) => ctx.db.delete("organizationInvitations", invitation));
   await ada.action(api.billing.actions.moveToFree, { workspaceId: lab });
   expect(fakeAutumn.customer(lab).planId).toBe(ORGANIZATION_PLAN);
   expect([...fakeAutumn.entitiesOf(lab).values()].filter((entity) => entity.seated)).toEqual([]);
