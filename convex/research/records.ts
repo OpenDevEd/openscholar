@@ -6,7 +6,7 @@ import { mutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { STEP_TEXT_MAX } from "../assistant/steps";
+import { STEP_TEXT_MAX } from "../../lib/assistant/steps";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { type Author, accountMutation, accountQuery, accountWorkspaceMutation, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy } from "../lib/userActions";
 import { answersAmong, clearPaperAnswers, removeAnswers, screeningFor, seedAnswers, setPaperAnswers, sweepAnswers, type AnswerSource } from "./answers";

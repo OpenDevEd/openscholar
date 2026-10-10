@@ -8,7 +8,6 @@ import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { ASKS_FIRST, actingAs, assistantMutation, defineUserMutation, reversal, reversedBy, userMutation, type Acting, type Author } from "../lib/userActions";
 import { requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
-import { endStep } from "../assistant/steps";
 import { noteActivity } from "../activity/notes";
 import { undoCommandValidator } from "../../lib/research/records";
 import { canonical, findItem } from "./find";
@@ -227,7 +226,7 @@ export const saveRead = internalMutation({
     // Noted here, with the save: library/papers:save is an action, whose writes are this mutation's.
     if (collectionId && undo) await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, { kind: "collection", id: collectionId, happened: "added", count: 1, detail: paper.title });
     const result = { libraryItemId: id, title: paper.title, ...(undo ? { undo } : {}) };
-    if (stepId) await endStep(ctx, stepId, result);
+    if (stepId) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result) });
     return result;
   },
 });
