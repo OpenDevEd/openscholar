@@ -37,10 +37,14 @@ export function parseStep(raw: string): Step {
   return { verb, target, text, label: raw };
 }
 
-/** With --early the first step is taken while the page loads, as soon as its target answers, so it has to have one. */
+/**
+ * With --early the first step is taken while the page loads, as soon as its
+ * target answers, so it has to have one. A click or a hover: what typing into
+ * a field opens is a list of suggestions, which isn't followed as an overlay.
+ */
 export function earlyStep(steps: Step[]): Step {
   const [first] = steps;
-  if (!first || !["click", "hover", "fill"].includes(first.verb)) throw new Error("--early takes the first --do step early: give it one that clicks, hovers or fills.");
+  if (!first || !["click", "hover"].includes(first.verb)) throw new Error("--early takes the first --do step early: give it one that clicks or hovers.");
   return first;
 }
 

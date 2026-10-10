@@ -8,8 +8,8 @@
 // OpenDevEd/openalex-count, tools/verify in OpenDevEd/new-el); keep them in step.
 
 export type Delta = { dx: number; dy: number; dw: number; dh: number };
-// `within` is the dialog, sheet, popover or menu the element is, or is inside.
-export type Move = Delta & { id: number; within?: number };
+// `inside` is the dialog, sheet, popover or menu an element is, or is in.
+export type Move = Delta & { id: number; inside?: number };
 
 // A layout box: x, y, width, height.
 export type Box = [number, number, number, number];
@@ -20,12 +20,15 @@ export type Frame = {
   // `within` is the dialog, sheet, popover or menu an element arrived in after
   // it opened, given to the outermost element of what arrived, with whether
   // that is fading or sliding in.
-  added: { id: number; box: Box; within?: number; entering?: boolean }[];
+  added: { id: number; box: Box; inside?: number; within?: number; entering?: boolean }[];
   // The dialogs, sheets, popovers and menus that opened in this frame.
   opened?: number[];
-  removed: { id: number; box: Box; within?: number }[];
+  removed: { id: number; box: Box; inside?: number }[];
   textAdded: string[];
   textRemoved: string[];
+  // The same lines, counted only in what the open dialogs, sheets, popovers and menus show.
+  overlayTextAdded?: string[];
+  overlayTextRemoved?: string[];
 };
 
 // A load phase starts with navigation; everything after `baseline` (fonts
@@ -82,7 +85,8 @@ const SLIDE_STEP_SLACK_PX = 8;
 const SLIDE_STEP_SHARE = 1 / 3;
 // The slow end of a slide moves a pixel every few frames.
 const SLIDE_TAIL_PX = 2;
-const SLIDE_ROUNDING = 1 / 10;
+// A part a slide passes is nudged a pixel at a time by rounding, a few times at most.
+const SLIDE_NUDGES_PX = 4;
 const SIDES = ["dx", "dy", "dw", "dh"] as const;
 
 // `counted` is false for movement that belongs to an overlay's own opening: it still says whether the element slid.
@@ -143,13 +147,11 @@ function furthest(id: number, steps: Step[]): Move {
 function shift(frames: Frame[], counted: (frame: Frame, move: Move) => boolean = () => true): Finding | null {
   const steps = new Map<number, Step[]>();
   for (const frame of frames) for (const move of frame.moved) steps.set(move.id, [...(steps.get(move.id) ?? []), { t: frame.t, move, changed: frame.added.length + frame.removed.length > 0, counted: counted(frame, move) }]);
-  const slides = [...steps].filter(([, own]) => slid(own));
-  // A slide leaves rounding on the parts it carries along: a pixel or two in all, or a pixel at a
-  // time for up to a tenth of how far it went.
-  const reach = Math.max(0, ...slides.flatMap(([, own]) => SIDES.map((side) => travelled(own, side))));
-  const rounding = (own: Step[]) => SIDES.every((side) => travelled(own, side) <= SLIDE_TAIL_PX || (travelled(own, side) <= reach * SLIDE_ROUNDING && own.every((step) => Math.abs(step.move[side]) <= 1)));
+  // A slide leaves rounding on the parts it carries along: a pixel or two at once, or a pixel at a time a few times.
+  const beside = [...steps.values()].some(slid);
+  const rounding = (own: Step[]) => SIDES.every((side) => travelled(own, side) <= SLIDE_TAIL_PX || (travelled(own, side) <= SLIDE_NUDGES_PX && own.every((step) => Math.abs(step.move[side]) <= 1)));
   const jumped = [...steps]
-    .filter(([, own]) => !slid(own) && !(slides.length > 0 && rounding(own)))
+    .filter(([, own]) => !slid(own) && !(beside && rounding(own)))
     .map(([id, own]): [number, Step[]] => [id, own.filter((step) => step.counted)])
     .filter(([, own]) => own.length > 0);
   if (jumped.length === 0) return null;
@@ -265,24 +267,24 @@ function arrivals(frames: Frame[]): Finding[] {
 
 /**
  * An overlay opened while the page loads: what moved in it after it opened,
- * and what popped into it. The page behind is still loading, which a load
- * phase judges, so only what is inside a dialog, sheet, popover or menu is
- * looked at. What moves as it opens is its opening, but still says whether
- * what follows is one slide.
+ * what blinked in it, and what popped into it. The page behind is still
+ * loading, which a load phase judges, so only what is inside a dialog, sheet,
+ * popover or menu is looked at. What moves as it opens is its opening, but
+ * still says whether what follows is one slide.
  */
-function analyzeEarly(frames: Frame[]): Finding[] {
+function analyzeEarly(frames: Frame[], since: number): Finding[] {
   const opened = new Map<number, number>();
   for (const frame of frames) for (const id of frame.opened ?? []) opened.set(id, frame.t);
-  const inside = (entry: { within?: number }) => opened.has(entry.within ?? -1);
-  const overlays = frames.map((frame): Frame => ({ ...frame, moved: frame.moved.filter(inside), added: frame.added.filter(inside), removed: frame.removed.filter(inside), textAdded: [], textRemoved: [] }));
-  const late = (frame: Frame, move: Move) => frame.t - opened.get(move.within!)! > OPENING_MS;
+  const inside = (entry: { inside?: number }) => opened.has(entry.inside ?? -1);
+  const overlays = frames.map((frame): Frame => ({ ...frame, moved: frame.moved.filter(inside), added: frame.added.filter(inside), removed: frame.removed.filter(inside), textAdded: frame.overlayTextAdded ?? [], textRemoved: frame.overlayTextRemoved ?? [] }));
+  const late = (frame: Frame, move: Move) => frame.t - opened.get(move.inside!)! > OPENING_MS;
   const shifts = bursts(overlays.filter(changed)).map((burst) => shift(burst, late)).filter((finding): finding is Finding => finding !== null);
-  return [...shifts, ...arrivals(frames)].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
+  return [...shifts, ...textBlinks(overlays, since), ...elementBlinks(overlays, since), ...arrivals(frames)].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
 }
 
 /** The problems a person would see in one phase: movement after the page or the response settled, and blinks. */
 export function analyzePhase(frames: Frame[], phase: Phase): Finding[] {
-  if (phase.kind === "early") return analyzeEarly(frames.filter((frame) => frame.t >= phase.start));
+  if (phase.kind === "early") return analyzeEarly(frames.filter((frame) => frame.t >= phase.start), phase.start);
   const since = phase.kind === "load" ? (phase.baseline ?? phase.start) : phase.start;
   const groups = bursts(frames.filter((frame) => frame.t >= since && changed(frame)));
   // After an action, the first burst is the response (a dialog opening, a row
