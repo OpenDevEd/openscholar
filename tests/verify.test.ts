@@ -151,6 +151,25 @@ describe("analyzePhase after an action", () => {
     expect(findings).toEqual([]);
   });
 
+  // A dialog (id 30) opens with a spinner; its list (id 31) arrives later.
+  const opens = { opened: [30] };
+  const list = { id: 31, box: [416, 160, 448, 240] as [number, number, number, number], within: 30 };
+
+  it("reports content that pops into a dialog after it opened, as read on open", () => {
+    const findings = analyzePhase([frame(1_040, opens), frame(1_700, { added: [list] })], step);
+    expect(findings).toEqual([{ kind: "late-content", id: 31, from: 1_040, to: 1_700 }]);
+  });
+
+  it("accepts late content that fades or slides in, and what mounts as the dialog opens", () => {
+    expect(analyzePhase([frame(1_040, opens), frame(1_700, { added: [{ ...list, entering: true }] })], step)).toEqual([]);
+    expect(analyzePhase([frame(1_040, opens), frame(1_100, { added: [list] })], step)).toEqual([]);
+  });
+
+  it("judges late content only in the step that opened the dialog, never while a page loads", () => {
+    expect(analyzePhase([frame(1_700, { added: [list] })], step)).toEqual([]);
+    expect(analyzePhase([frame(140, opens), frame(900, { added: [list] })], { name: "load", kind: "load", start: 0, baseline: 100 })).toEqual([]);
+  });
+
   it("ignores frames recorded before the action started", () => {
     const findings = analyzePhase([frame(900, { moved: [{ id: 1, dx: 0, dy: 50, dw: 0, dh: 0 }] })], step);
     expect(findings).toEqual([]);
@@ -183,6 +202,14 @@ describe("stopDecision", () => {
     expect(
       stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: null, changed: [{ path: "components/search/bar.tsx", mtimeMs: 500 }] }),
     ).toEqual({ block: false });
+  });
+
+  it("blocks when a changed file holds a dialog and the passing check opened none", () => {
+    const changed = [{ path: "components/workspaces/share-dialog.tsx", mtimeMs: 5_000, overlay: true }];
+    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 9_000, lastPassOpened: 0, changed })).toEqual({ block: true, files: ["components/workspaces/share-dialog.tsx"], unopened: true });
+    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 9_000, lastPassOpened: 1, changed })).toEqual({ block: false });
+    // A recorded skip opened nothing and says so by leaving the count out.
+    expect(stopDecision({ userFacing, stopHookActive: false, sessionStartMs, lastPassMs: 9_000, changed })).toEqual({ block: false });
   });
 
   it("lets the agent stop once a verify pass is newer than every change", () => {

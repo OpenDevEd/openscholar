@@ -2,14 +2,14 @@
 // stop event and sends it back while a page it changed has no passing check.
 // OpenScholar and the Evidence Library run the same file; keep them in step.
 
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 import { stopDecision } from "./analysis.ts";
 import { git, readJson } from "./util.ts";
 
-/** The files this branch changed against its base branch, committed or not, with when they last changed. */
-function changedFiles(root: string, baseBranch: string): { path: string; mtimeMs: number }[] {
+/** The files this branch changed against its base branch, committed or not, with when they last changed and whether they hold a dialog, sheet, popover or menu. */
+function changedFiles(root: string, baseBranch: string, overlay: RegExp): { path: string; mtimeMs: number; overlay: boolean }[] {
   let base = "HEAD";
   try {
     base = git(["merge-base", "HEAD", baseBranch], root);
@@ -23,7 +23,8 @@ function changedFiles(root: string, baseBranch: string): { path: string; mtimeMs
     while (!existsSync(target)) target = path.dirname(target);
     return statSync(target).mtimeMs;
   };
-  return [...names].filter(Boolean).map((name) => ({ path: name, mtimeMs: changedAt(name) }));
+  const holdsOverlay = (name: string) => /\.tsx$/.test(name) && existsSync(path.join(root, name)) && overlay.test(readFileSync(path.join(root, name), "utf8"));
+  return [...names].filter(Boolean).map((name) => ({ path: name, mtimeMs: changedAt(name), overlay: holdsOverlay(name) }));
 }
 
 async function readInput(): Promise<{ stop_hook_active?: boolean; transcript_path?: string | null }> {
@@ -34,23 +35,31 @@ async function readInput(): Promise<{ stop_hook_active?: boolean; transcript_pat
 
 const sessionStart = (transcript: string | null | undefined) => (transcript && existsSync(transcript) ? statSync(transcript).birthtimeMs : 0);
 
-const lastPass = (file: string) => readJson<{ at: number }>(file)?.at ?? null;
-
-export async function hookStop(options: { root: string; baseBranch: string; userFacing: RegExp; lastPassFile: string; start: string }) {
+export async function hookStop(options: { root: string; baseBranch: string; userFacing: RegExp; overlay: RegExp; lastPassFile: string; start: string }) {
   const input = await readInput();
+  const pass = readJson<{ at: number; opened?: number }>(options.lastPassFile);
   const decision = stopDecision({
     stopHookActive: input.stop_hook_active === true,
     sessionStartMs: sessionStart(input.transcript_path),
-    lastPassMs: lastPass(options.lastPassFile),
-    changed: changedFiles(options.root, options.baseBranch),
+    lastPassMs: pass?.at ?? null,
+    lastPassOpened: pass?.opened,
+    changed: changedFiles(options.root, options.baseBranch, options.overlay),
     userFacing: options.userFacing,
   });
-  if (decision.block) process.stdout.write(JSON.stringify({ decision: "block", reason: reason(decision.files, options.start) }));
+  if (decision.block) process.stdout.write(JSON.stringify({ decision: "block", reason: decision.unopened ? unopened(decision.files) : reason(decision.files, options.start) }));
 }
 
 function listed(files: string[]): string {
   const more = files.length > 8 ? `, and ${files.length - 8} more` : "";
   return files.slice(0, 8).join(", ") + more;
+}
+
+function unopened(files: string[]): string {
+  return [
+    `You changed files that hold a dialog, sheet, popover or menu (${listed(files)}), and the last passing \`npm run verify -- shift\` opened none.`,
+    'Run it again with a --do step that opens each one you changed, such as --do \'click role=button[name="Share"]\'. With the data slowed, anything that pops in after it opens is reported: have it there when it opens by reading it where the trigger is, or fade it in.',
+    'If nothing in them changed for a person, record why with `npm run verify -- skip "<reason>"`.',
+  ].join(" ");
 }
 
 function reason(files: string[], start: string): string {

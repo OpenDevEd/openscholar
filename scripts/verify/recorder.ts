@@ -107,7 +107,9 @@ export function recorder(config: { allow: string }) {
 
   type Frame = {
     moved: { id: number; dx: number; dy: number; dw: number; dh: number }[];
-    added: { id: number; box: number[] }[];
+    added: { id: number; box: number[]; within?: number; entering?: boolean }[];
+    opened: number[];
+    fresh: Set<Element>;
     removed: { id: number; box: number[] }[];
     textAdded: string[];
     textRemoved: string[];
@@ -166,6 +168,44 @@ export function recorder(config: { allow: string }) {
     if (seenNow(element, id) && !still(own) && !animating(element)) frame.moved.push({ id, dx: own[0], dy: own[1], dw: own[2], dh: own[3] });
   }
 
+  // A dialog, sheet, popover or menu: what opens over the page.
+  const OVERLAY = '[role="dialog"], [role="alertdialog"], [role="menu"]';
+  const clips = (element: Element) => /hidden|clip/.test(getComputedStyle(element).overflowY);
+
+  /** How much of a new element shows inside the ancestors that clip it, as a share of its height. */
+  function showing(element: HTMLElement, overlay: Element): number {
+    const rect = element.getBoundingClientRect();
+    let top = rect.top;
+    let bottom = rect.bottom;
+    for (let parent = element.parentElement; parent && parent !== overlay.parentElement; parent = parent.parentElement) {
+      if (!clips(parent)) continue;
+      const clip = parent.getBoundingClientRect();
+      top = Math.max(top, clip.top);
+      bottom = Math.min(bottom, clip.bottom);
+    }
+    return rect.height > 0 ? Math.max(0, bottom - top) / rect.height : 0;
+  }
+
+  // Fading or sliding in, or being uncovered by a frame that grows around it.
+  const entering = (element: HTMLElement, overlay: Element) =>
+    Number(getComputedStyle(element).opacity) < 1 || element.getAnimations().some((animation) => animation.playState === "running") || showing(element, overlay) < 0.5;
+
+  /**
+   * For what opens over the page: the overlay a new element arrives in. Only
+   * the outermost element of what arrives says so, and whether it is entering,
+   * so a list that arrives is one arrival and not one per row. What comes with
+   * the overlay says nothing.
+   */
+  function arrival(frame: Frame, element: HTMLElement): { within?: number; entering?: boolean } {
+    const overlay = element.closest(OVERLAY);
+    if (!overlay || overlay === element || !ids.has(overlay)) return {};
+    for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+      if (frame.fresh.has(parent)) return {};
+      if (parent === overlay) break;
+    }
+    return { within: ids.get(overlay), entering: entering(element, overlay) };
+  }
+
   function measure(frame: Frame, element: HTMLElement, seen: Set<number>) {
     const id = idFor(element);
     seen.add(id);
@@ -175,7 +215,10 @@ export function recorder(config: { allow: string }) {
     last.set(id, box);
     if (!previous) {
       shown.set(id, onScreen(element));
-      if (shown.get(id)) frame.added.push({ id, box });
+      if (shown.get(id)) frame.added.push({ id, box, ...arrival(frame, element) });
+      // A sheet starts off screen and slides in, so an overlay opening is noted wherever it is.
+      if (element.matches(OVERLAY)) frame.opened.push(id);
+      frame.fresh.add(element);
       return;
     }
     const delta = box.map((value, index) => value - previous[index]);
@@ -228,11 +271,11 @@ export function recorder(config: { allow: string }) {
 
   function tick() {
     const t = performance.now();
-    const frame: Frame = { moved: [], added: [], removed: [], textAdded: [], textRemoved: [], deltas: new Map(), positions: new Map() };
+    const frame: Frame = { moved: [], added: [], opened: [], fresh: new Set(), removed: [], textAdded: [], textRemoved: [], deltas: new Map(), positions: new Map() };
     if (document.body) record(frame);
-    const { moved, added, removed, textAdded, textRemoved } = frame;
-    if ([moved, added, removed, textAdded, textRemoved].some((list) => list.length > 0)) {
-      state.frames.push({ t, moved, added, removed, textAdded, textRemoved });
+    const { moved, added, opened, removed, textAdded, textRemoved } = frame;
+    if ([moved, added, opened, removed, textAdded, textRemoved].some((list) => list.length > 0)) {
+      state.frames.push({ t, moved, added, opened, removed, textAdded, textRemoved });
       state.lastChange = t;
     }
     requestAnimationFrame(tick);
