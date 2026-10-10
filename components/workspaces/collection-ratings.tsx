@@ -37,9 +37,10 @@ const ROW_PX = 38;
 export function useRateInCollection(collectionId: Id<"collections"> | undefined) {
   const tc = useTranslations("common");
   const rate = useWorkspaceMutation(api.library.collections.setCollectionRating);
-  return (libraryItemId: Id<"libraryItems">, rating: number | null, expect: number | null) => {
+  // No `expect`: a second choice made before the first one is back is the one that stands.
+  return (libraryItemId: Id<"libraryItems">, rating: number | null) => {
     if (!collectionId) return;
-    rate({ collectionId, libraryItemId, rating, expect }).catch((error) => showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong"))));
+    rate({ collectionId, libraryItemId, rating }).catch((error) => showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong"))));
   };
 }
 

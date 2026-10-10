@@ -329,7 +329,7 @@ export function LibraryPageClient() {
             ratings: new Map([...collectionRatings].map(([paperId, rated]) => [paperId, rated.ratings.mine ?? null] as const)),
             rate: (paperId: string, rating: number | null) => {
               const rated = collectionRatings.get(paperId);
-              if (rated) rateInCollection(rated.libraryItemId, rating, rated.ratings.mine ?? null);
+              if (rated) rateInCollection(rated.libraryItemId, rating);
             },
           }
         : undefined,

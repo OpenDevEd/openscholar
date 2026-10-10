@@ -149,9 +149,18 @@ it("shows each paper in an organization's library with how its members rated it 
   expect(inCollection).not.toHaveProperty("ratedBy");
 
   const everyone = (as: typeof alice) => as.query(api.library.collections.raters, { workspaceId, libraryItemId: one, paginationOpts: { cursor: null, numItems: 10 } });
-  expect((await everyone(alice)).page.map((rater) => [rater.you, rater.rating]).sort()).toEqual([[false, 2], [true, 4]]);
+  // The full list is the lab's members' too, the person reading first, whoever else rated the paper.
+  expect((await everyone(alice)).page.map((rater) => [rater.you, rater.rating])).toEqual([[true, 4], [false, 2]]);
+  expect((await everyone(bob)).page.map((rater) => [rater.you, rater.rating])).toEqual([[true, 2], [false, 4]]);
   // Someone outside the lab doesn't read its members' ratings.
   await expect(everyone(carol)).rejects.toThrow();
+
+  // Someone whose account was deleted isn't named, even before the paper is rated again.
+  const bobId = await t.run(async (ctx) => (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "bob")).unique())!._id);
+  await t.run((ctx) => ctx.db.patch("users", bobId, { state: "deleted" }));
+  expect((await shown(alice))[0]!.members!.raters.map((rater) => [rater.you, rater.rating])).toEqual([[true, 4]]);
+  expect((await everyone(alice)).page.map((rater) => [rater.you, rater.rating])).toEqual([[true, 4]]);
+  await t.run((ctx) => ctx.db.patch("users", bobId, { state: "active" }));
 
   // Someone who left isn't one of them.
   await bobIs("revoked");
