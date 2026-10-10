@@ -15,6 +15,7 @@ export async function requireFeature(
   ctx: QueryCtx | MutationCtx,
   flagKey: string,
   userId?: Id<"users">,
+  workspaceId?: Id<"workspaces">,
 ): Promise<void> {
   const flag = await ctx.db
     .query("featureFlags")
@@ -31,9 +32,12 @@ export async function requireFeature(
     if (!userId) {
       throw createError("UNAUTHENTICATED", "Authentication required for this feature");
     }
-    // The person's own workspace's plan, until features come from the acting workspace's plan (#652).
+    // The plan of the workspace they act in grants it, as Team does for an organization's members (#652),
+    // or their own workspace's plan, as before: features come from the acting workspace's plan alone once
+    // the organizations whose features were switched on by hand have moved to plans.
     const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
-    if (!own || !(await hasPlanFeature(ctx, own._id, flag.planFeature))) {
+    const granted = (workspaceId !== undefined && (await hasPlanFeature(ctx, workspaceId, flag.planFeature))) || (own !== null && (await hasPlanFeature(ctx, own._id, flag.planFeature)));
+    if (!granted) {
       throw createError(
         "FEATURE_PLAN_REQUIRED",
         `${flag.description || flagKey} isn't included in your plan. Upgrade to continue.`,

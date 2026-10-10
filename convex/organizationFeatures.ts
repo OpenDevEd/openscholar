@@ -2,6 +2,7 @@ import { paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { query, type QueryCtx, type MutationCtx } from "./_generated/server";
+import { hasPlanFeature } from "./billing/accounts";
 import { getCurrentUser } from "./lib/auth";
 import { createError } from "./lib/errors";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
@@ -43,6 +44,12 @@ export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, perso
   );
 }
 
+/** Whether the plan of an organization's workspace grants `feature`. */
+async function planGrants(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">, feature: string) {
+  const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
+  return workspace !== null && (await hasPlanFeature(ctx, workspace._id, feature));
+}
+
 export async function readOrganizationFeatures(
   ctx: QueryCtx | MutationCtx,
   person?: Doc<"users"> | null,
@@ -55,7 +62,8 @@ export async function readOrganizationFeatures(
   for (const { organization } of await readMemberOrganizations(ctx, person)) {
     access.evidenceLibraries ||= organization.evidenceLibrariesEnabled === true;
     access.authors ||= organization.authorsEnabled === true;
-    access.extraction ||= organization.extractionEnabled === true;
+    // Its plan grants extraction on Team (#652); the switch set by hand stays until the organizations that have it move to plans.
+    access.extraction ||= organization.extractionEnabled === true || (await planGrants(ctx, organization._id, "extraction"));
   }
   if (!access.evidenceLibraries) {
     const user = person ?? (await getCurrentUser(ctx));

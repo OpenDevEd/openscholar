@@ -154,7 +154,7 @@ export const retryFailedQuestions = mutation({
 
     const { job } = await assertJobAccess(ctx, user, jobId);
 
-    await requireFeature(ctx, "extraction.start", user._id);
+    await requireFeature(ctx, "extraction.start", user._id, job.workspaceId);
     await rateLimit(ctx, {
       name: "start-extraction",
       key: user._id,
