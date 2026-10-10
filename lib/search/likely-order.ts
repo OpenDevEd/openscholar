@@ -6,6 +6,7 @@
  * and the ratings it was made from, so that it shows only for those results, and can say when the
  * ratings have changed since.
  */
+import { useMemo } from "react";
 import { create } from "zustand";
 import { shortWorkId } from "@/lib/openalex/work-id";
 
@@ -80,3 +81,18 @@ export const useLikelyOrderStore = create<LikelyOrderState>()((set) => ({
       return { orders };
     }),
 }));
+
+/**
+ * `kept`, the results a list keeps, in the order made for `searchId` when it was made for `results`,
+ * the search's results as they are now; as they are, when no order was, or it was for other results.
+ */
+export function useLikelyOrdered<Paper extends { id: string }>(
+  searchId: string | undefined,
+  results: readonly { id: string }[],
+  kept: Paper[],
+  ratings: Readonly<Record<string, number>>,
+): Paper[] {
+  const order = useLikelyOrderStore((state) => (searchId ? state.orders[searchId] : undefined));
+  const key = resultsKey(results);
+  return useMemo(() => (order?.key === key ? inLikelyOrder(kept, order.ids, ratings) : kept), [order, key, kept, ratings]);
+}

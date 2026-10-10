@@ -18,6 +18,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { cn, ratingFilterKeeps, getEffectiveSearchId } from "@/lib/utils";
+import { useLikelyOrdered } from "@/lib/search/likely-order";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
 import {
   useRatingsStore,
@@ -341,7 +342,9 @@ export function ResultsList({
   const urlQuery = search.params.q;
 
   // Filter results based on rating filter
-  const filteredResults = results.filter((result) => preview || ratingFilterKeeps(ratings[result.id], ratingRange, onlyRatedPapers));
+  const keptResults = results.filter((result) => preview || ratingFilterKeeps(ratings[result.id], ratingRange, onlyRatedPapers));
+  // In their likely order when one was made for these results (Likely relevant first, beside the counter).
+  const filteredResults = useLikelyOrdered(searchId ?? undefined, search.results, keptResults, ratings);
 
   const totalPages = useMemo(
     () => Math.ceil(filteredResults.length / ITEMS_PER_PAGE),
