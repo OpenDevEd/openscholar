@@ -5,8 +5,9 @@
 
 import type { FunctionReturnType } from "convex/server";
 import { createContext, use, type ReactElement, type ReactNode } from "react";
-import { AnimatePresence, motion } from "motion/react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Home } from "@/components/icons";
+import { EASE } from "@/components/settings/model-map";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
@@ -147,6 +148,26 @@ export const useMemberFaces = (workspaceId: Id<"workspaces"> | undefined) => use
 /** A workspace's tile with the hairline the switcher gives it. */
 export function Framed({ children }: { children: React.ReactNode }) {
   return <span className="flex shrink-0 rounded-lg shadow-[0_1px_2px_rgb(0_0_0/0.08),inset_0_0_0_1px_rgb(0_0_0/0.06)]">{children}</span>;
+}
+
+/**
+ * Something that opens its place as it comes, and closes it as it goes: a rail section, or a part
+ * of a card that's read after the card has opened. Inside an `AnimatePresence` with
+ * `initial={false}`, what's there from the first frame is simply there.
+ */
+export function Opening({ className, children }: { className?: string; children: ReactNode }) {
+  const reduceMotion = useReducedMotion();
+  return (
+    <motion.div
+      className={cn("w-full overflow-hidden", className)}
+      initial={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+      animate={{ height: "auto", opacity: 1 }}
+      exit={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+      transition={{ duration: 0.3, ease: EASE }}
+    >
+      {children}
+    </motion.div>
+  );
 }
 
 /** A workspace's plan: its name, and whether it's one that's paid for. Empty while the catalog loads. */
