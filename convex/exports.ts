@@ -10,7 +10,7 @@ import { validateAndExpandKeywordsSilently } from "../lib/keyword-validation";
 import { LIBRARY_SEARCH_RESULTS_MAX } from "../lib/library/limits";
 import { expandShortcuts, shortcutNames } from "../lib/query-shortcuts";
 import { exportFormatValidator, exportSourceValidator } from "./exportValidators";
-import { readLibraryPage } from "./library/queries";
+import { libraryOf, readLibraryPage } from "./library/queries";
 import { shortcutExpansions } from "./research/records";
 
 import { workspaceMutation } from "./lib/userActions";
@@ -49,7 +49,9 @@ export const start = workspaceMutation({
     const job = args.source.kind === "screening" ? await ctx.db.get("screeningJobs", args.source.jobId) : null;
     if (args.source.kind === "screening" && (!job || !(job.workspaceId === workspaceId))) throw createError("NOT_FOUND", "Screening job not found");
     const sourceRevision = job ? await screeningRevision(ctx, job) : undefined;
-    const id = await ctx.db.insert("exports", { ...args, sourceRevision, userId, workspaceId, part: 1, cursor: null, serving: false, failed: false, expiresAt });
+    // A collection shared with the person from another workspace is read where it is (#653).
+    const reads = args.source.kind === "library" ? await libraryOf(ctx, { userId, workspaceId }, args.source.view.collectionId) : workspaceId;
+    const id = await ctx.db.insert("exports", { ...args, sourceRevision, userId, workspaceId: reads, part: 1, cursor: null, serving: false, failed: false, expiresAt });
     await ctx.scheduler.runAfter(EXPORT_LINK_MS, internal.exports.expire, { id });
     return null;
   },

@@ -45,9 +45,9 @@ async function lab(guests?: number) {
       return ensureWorkspace(ctx, { kind: "organization", organizationId });
     };
     const workspaceId = await organization("lab", ["alice", "bob"]);
-    await organization("club", ["alice", "carol"]);
+    const club = await organization("club", ["alice", "carol"]);
     if (guests !== undefined) await ctx.db.insert("billingAccounts", { workspaceId, plan: "free_organization", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, limits: { guests }, refreshedAt: Date.now() });
-    return { users, workspaceId };
+    return { users, workspaceId, club };
   });
   const [alice, bob, carol, dave] = ["alice", "bob", "carol", "dave"].map((subject) => t.withIdentity({ subject }));
   const { workspaceId } = seeded;
@@ -129,4 +129,25 @@ it("keeps a guest's row to the item's name, and leaves none of an item that's de
   await t.finishAllScheduledFunctions(vi.runAllTimers);
   expect(await guestsOf()).toEqual([]);
   expect(await invitationsOf()).toEqual([]);
+});
+
+it("opens a shared collection to its guest from their own workspace, and to nobody else", async () => {
+  const { alice, carol, dave, item, users, club } = await lab();
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: item.workspaceId, openalexId: "https://openalex.org/W1", title: "One", collectionId: item.id });
+  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, collectionId: item.id };
+  const titles = async (as: typeof carol, workspaceId?: Id<"workspaces">) => (await as.query(api.library.queries.browseLibrary, { ...view, ...(workspaceId ? { workspaceId } : {}), paginationOpts: { cursor: null, numItems: 10 } })).page.map((paper) => paper.title);
+
+  // Carol reads it in her own workspace: its papers, its count and whose it is.
+  expect(await titles(carol)).toEqual(["One"]);
+  expect((await carol.query(api.library.queries.getLibraryFilteredCount, view)).count).toBe(1);
+  expect(await carol.query(api.library.collections.getCollection, { collectionId: item.id })).toEqual({ _id: item.id, name: "Trials", itemCount: 1, guest: { role: "viewer", from: "lab" } });
+  // Not while she acts in the club, whose credits aren't hers to spend on it.
+  expect(await titles(carol, club)).toEqual([]);
+  // Dave was given nothing.
+  expect(await titles(dave)).toEqual([]);
+  expect(await dave.query(api.library.collections.getCollection, { collectionId: item.id })).toBeNull();
+
+  await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
+  expect(await titles(carol)).toEqual([]);
 });

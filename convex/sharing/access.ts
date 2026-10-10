@@ -3,7 +3,7 @@
  * an invitation to an address is one row until it's answered. Nothing here is a Convex
  * function, so queries and mutations can import it.
  */
-import type { Doc, Id } from "../_generated/dataModel";
+import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { noteActivity } from "../activity/notes";
 import { planLimit } from "../billing/accounts";
@@ -11,14 +11,10 @@ import { createError } from "../lib/errors";
 import { countOf } from "../lib/listCounts";
 import { personName } from "../lib/people";
 import type { Acting } from "../lib/userActions";
-import { itemGuestsOf, kindWord, type Shared } from "./items";
+import { grantOf, itemGuestsOf, kindWord, type Shared } from "./items";
 import type { GuestRole } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
-
-/** A person's place as a guest of an item, if they have one. */
-export const grantOf = (ctx: Read, item: string, userId: Id<"users">) =>
-  ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", item).eq("userId", userId)).unique();
 
 /** The invitation to an item sent to an address, answered or not: an item keeps one an address. */
 export const invitationTo = (ctx: Read, item: string, email: string) =>

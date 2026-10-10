@@ -15,8 +15,8 @@ import { rateLimit } from "../lib/rateLimit";
 import { actingAs, assistantAction, defineChangingAction, userAction } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
 import { workspaceName } from "../workspaces/personal";
-import { grantOf, invitationTo, noteShared, requireRoom } from "./access";
-import { findShared, kindWord, sharedIn } from "./items";
+import { invitationTo, noteShared, requireRoom } from "./access";
+import { findShared, grantOf, kindWord, sharedIn } from "./items";
 import { guestRoleValidator, sharedKindValidator } from "./validators";
 
 const WEEK = 7 * 86_400_000;

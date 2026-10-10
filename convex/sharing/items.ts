@@ -10,7 +10,7 @@ import type { DataModel, Doc, Id, TableNames } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import type { InWorkspace } from "../workspaces/actor";
-import type { SharedKind } from "./validators";
+import type { GuestRole, SharedKind } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
 
@@ -37,6 +37,21 @@ export async function sharedIn(ctx: Read, { workspaceId }: InWorkspace, kind: Sh
   const shared = await findShared(ctx, kind, id);
   if (shared?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "It isn't in this workspace.");
   return shared;
+}
+
+/** A person's place as a guest of an item, if they have one. */
+export const grantOf = (ctx: Read, item: string, userId: Id<"users">) =>
+  ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", item).eq("userId", userId)).unique();
+
+/**
+ * A person's role as a guest of an item, while they act in their own workspace: what's shared
+ * with someone is theirs to open there and nowhere else, so what they run on it spends their
+ * own credits. Null when they aren't its guest.
+ */
+export async function guestRole(ctx: Read, { userId, workspaceId }: InWorkspace, item: string): Promise<GuestRole | null> {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  if (workspace?.kind !== "personal" || workspace.userId !== userId) return null;
+  return (await grantOf(ctx, item, userId))?.role ?? null;
 }
 
 /** The list that counts an item's guests: the people given it, and the invitations to it still waiting. */

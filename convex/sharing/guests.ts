@@ -8,8 +8,8 @@ import { createError } from "../lib/errors";
 import { assistantMutation, defineUserMutation, userMutation } from "../lib/userActions";
 import { readMemberOrganizations } from "../organizationFeatures";
 import { actorIn } from "../workspaces/actor";
-import { give, grantOf, invitationTo } from "./access";
-import { sharedIn } from "./items";
+import { give, invitationTo } from "./access";
+import { grantOf, sharedIn } from "./items";
 import { guestRoleValidator, sharedKindValidator } from "./validators";
 
 /** A guest as a change names them: someone given the item, or an address invited to it. */
