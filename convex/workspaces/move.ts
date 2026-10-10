@@ -20,8 +20,9 @@ import { collectionCountRow } from "../library/counter";
 import { facetsOf } from "../library/facets";
 import { removeCollectionMembership } from "../library/collectionMembership";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
-import { placeOf, placeRated } from "../ratings";
+import { collectionRatingRow, personalRatingRow, placeOf, placeRated, setPersonalRating, writeRating } from "../ratings";
 import { libraryPaper, upsertLibraryItem } from "../library/mutations";
+import { requireAuthorProfiles } from "../authors/profiles";
 import { actorIn } from "./actor";
 
 export const movableKinds = ["collection", "search", "screening", "extraction", "chat", "author"] as const;
@@ -45,6 +46,12 @@ const PAPERS_STEP = 100;
  * organization each paper reads every member's rating of it, for its library and its place.
  */
 const PAPERS_STEP_QUERIES = 3_000;
+/**
+ * The characters of papers one step may read, which keeps it under Convex's 16 MiB a
+ * transaction: a paper is read where it was and twice where it goes, a character takes three
+ * bytes at most, and the step ends after the paper that passes this.
+ */
+const PAPERS_STEP_CHARS = 2_000_000;
 
 type Read = Pick<QueryCtx, "db">;
 
@@ -157,12 +164,13 @@ async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">,
     if (there) await ctx.db.patch("collectionCounts", there._id, { count: there.count + 1 });
     else await ctx.db.insert("collectionCounts", { workspaceId: to, count: 1 });
     // Its papers are saved to its new workspace's library a step at a time; the library it left keeps them.
-    await ctx.scheduler.runAfter(0, internal.workspaces.move.moveCollectionPapers, { collectionId: collection._id, by, cursor: null });
+    await ctx.scheduler.runAfter(0, internal.workspaces.move.moveCollectionPapers, { collectionId: collection._id, by, from: 0 });
     return { table: "collections", id: collection._id };
   }
   if (kind === "author") {
     const profile = await profileIn(ctx, from, id);
     if (!profile) throw createError("NOT_FOUND", "Author profile not found");
+    await requireAuthorProfiles(ctx, to, by);
     // Its publications and editors are its own, by its ID.
     await ctx.db.patch("authorProfiles", profile._id, { workspaceId: to });
     return null;
@@ -208,32 +216,64 @@ const paperOf = (item: Doc<"libraryItems">) =>
 
 /**
  * Saves a moved collection's papers to the library of the workspace it's in now, a step at a
- * time, and points its places at them; the library it left keeps its own. A collection moved on
- * again meanwhile takes the rest to where it is then.
+ * time from the place made at `from`, and points its places at them; the library it left keeps
+ * its own. A collection moved on again meanwhile takes the rest to where it is then.
+ *
+ * The ratings in it go with it. A person's own collection shows their own ratings, and an
+ * organization's the ratings its members gave in it: so a paper's rating by the person whose
+ * collection it was becomes theirs in the collection, and their rating in a collection that
+ * comes to them becomes their own of the paper, unless they've one. Other members' ratings in
+ * it stay with it, for an organization it moves to later.
  */
 export const moveCollectionPapers = internalMutation({
-  args: { collectionId: v.id("collections"), by: v.id("users"), cursor: v.union(v.string(), v.null()) },
+  args: { collectionId: v.id("collections"), by: v.id("users"), from: v.number() },
   returns: v.null(),
-  handler: async (ctx, { collectionId, by, cursor }) => {
+  handler: async (ctx, { collectionId, by, from }) => {
     const collection = await ctx.db.get("collections", collectionId);
-    if (!collection) return null;
-    const workspace = await ctx.db.get("workspaces", collection.workspaceId);
-    const members = workspace?.kind === "organization" ? (await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS)).length : 1;
-    const step = Math.max(1, Math.min(PAPERS_STEP, Math.floor(PAPERS_STEP_QUERIES / (4 * members + 10))));
-    const page = await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).paginate({ cursor, numItems: step });
-    for (const place of page.page) {
-      const item = await ctx.db.get("libraryItems", place.libraryItemId);
-      if (!item || item.workspaceId === collection.workspaceId) continue;
-      const saved = (await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId: by, workspaceId: collection.workspaceId }, paperOf(item))))!;
-      // Put in here meanwhile: the place it has already stands for both.
-      if (await placeOf(ctx, collectionId, saved._id)) {
-        await removeCollectionMembership(ctx, place);
-        continue;
+    const workspace = collection && (await ctx.db.get("workspaces", collection.workspaceId));
+    if (!workspace) return null;
+    const members = workspace.kind === "organization" ? (await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS)).length : 1;
+    const step = Math.min(PAPERS_STEP, Math.max(1, Math.floor(PAPERS_STEP_QUERIES / (4 * members + 12))));
+    const left = new Map<Id<"workspaces">, Doc<"workspaces"> | null>();
+    const places = await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId).gte("_creationTime", from)).take(step + 1);
+    let read = 0;
+    for (const [at, place] of places.entries()) {
+      // The next step starts at the place this one stops before. No two of a collection's places are made at the same instant: each is counted in it as it's made.
+      if (at > 0 && (at === step || read > PAPERS_STEP_CHARS)) {
+        await ctx.scheduler.runAfter(0, internal.workspaces.move.moveCollectionPapers, { collectionId, by, from: place._creationTime });
+        break;
       }
+      const item = await ctx.db.get("libraryItems", place.libraryItemId);
+      if (!item) continue;
+      read += JSON.stringify(item).length;
+      if (item.workspaceId === workspace._id) continue;
+      const saved = (await ctx.db.get("libraryItems", await upsertLibraryItem(ctx, { userId: by, workspaceId: workspace._id }, paperOf(item))))!;
+      read += 2 * JSON.stringify(saved).length;
+      if (!left.has(item.workspaceId)) left.set(item.workspaceId, await ctx.db.get("workspaces", item.workspaceId));
+      const source = left.get(item.workspaceId);
+      if (workspace.kind === "organization") {
+        if (source?.kind === "personal" && item.rating !== undefined) await writeRating(ctx, source.userId, collectionId, item.openalexId, item.rating);
+      } else if (source?.kind === "organization") {
+        const theirs = await collectionRatingRow(ctx, workspace.userId, collectionId, item.openalexId);
+        // In a transaction of its own: it brings each of their organizations' copies of the paper in step.
+        if (theirs) await ctx.scheduler.runAfter(0, internal.workspaces.move.keepRating, { userId: workspace.userId, paperId: item.openalexId, rating: theirs.rating });
+      }
+      // Put in here meanwhile: the place it has already stands for both.
+      const there = await placeOf(ctx, collectionId, saved._id);
+      if (there) await removeCollectionMembership(ctx, place);
       const { rating, count } = await placeRated(ctx, collectionId, saved);
-      await ctx.db.patch("libraryItemCollections", place._id, { libraryItemId: saved._id, ...facetsOf(saved, false), rating, ratingCount: count });
+      await ctx.db.patch("libraryItemCollections", (there ?? place)._id, { libraryItemId: saved._id, ...facetsOf(saved, false), rating, ratingCount: count });
     }
-    if (!page.isDone) await ctx.scheduler.runAfter(0, internal.workspaces.move.moveCollectionPapers, { collectionId, by, cursor: page.continueCursor });
+    return null;
+  },
+});
+
+/** Makes a person's rating of a paper in a collection that came to their own workspace their own rating of it, unless they've one. */
+export const keepRating = internalMutation({
+  args: { userId: v.id("users"), paperId: v.string(), rating: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { userId, paperId, rating }) => {
+    if (!(await personalRatingRow(ctx, userId, paperId))) await setPersonalRating(ctx, userId, paperId, rating);
     return null;
   },
 });

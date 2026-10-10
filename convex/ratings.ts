@@ -28,6 +28,20 @@ const ratingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, collectionId:
 /** A person's own rating of a paper, the same everywhere. */
 export const personalRatingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) => ratingRow(ctx, userId, undefined, paperId);
 
+/**
+ * Writes a person's rating of a paper, in a collection or with none their own, or clears it
+ * with null, and returns whether that changed it. What shows the rating is the caller's to bring
+ * in step.
+ */
+export async function writeRating(ctx: MutationCtx, userId: Id<"users">, collectionId: Id<"collections"> | undefined, paperId: string, rating: number | null) {
+  const row = await ratingRow(ctx, userId, collectionId, paperId);
+  if ((row?.rating ?? null) === rating) return false;
+  if (rating === null) await ctx.db.delete("ratings", row!._id);
+  else if (!row) await ctx.db.insert("ratings", { userId, paperId: ratedPaper(paperId), ...(collectionId ? { collectionId } : {}), rating });
+  else await ctx.db.patch("ratings", row._id, { rating });
+  return true;
+}
+
 const rerateRef = makeFunctionReference<"mutation", { workspaceId: Id<"workspaces">; paperId: string; collectionId?: Id<"collections"> }, null>("library/mutations:rerate");
 
 /**
@@ -36,11 +50,7 @@ const rerateRef = makeFunctionReference<"mutation", { workspaceId: Id<"workspace
  * organization's in a transaction of its own, since one reads all its members' ratings.
  */
 export async function setPersonalRating(ctx: MutationCtx, userId: Id<"users">, paperId: string, rating: number | null) {
-  const row = await personalRatingRow(ctx, userId, paperId);
-  if ((row?.rating ?? null) === rating) return;
-  if (rating === null) await ctx.db.delete("ratings", row!._id);
-  else if (!row) await ctx.db.insert("ratings", { userId, paperId: ratedPaper(paperId), rating });
-  else await ctx.db.patch("ratings", row._id, { rating });
+  if (!(await writeRating(ctx, userId, undefined, paperId, rating))) return;
   for (const workspace of await ratingWorkspaces(ctx, userId)) {
     if (workspace.kind === "organization") await ctx.scheduler.runAfter(0, rerateRef, { workspaceId: workspace._id, paperId });
     else await rerate(ctx, workspace._id, paperId);
@@ -179,12 +189,7 @@ export const collectionRatingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users
 
 /** Sets a person's rating of a paper in a collection, or clears it with null, and the collection's average of it. */
 export async function setCollectionRating(ctx: MutationCtx, userId: Id<"users">, place: Doc<"libraryItemCollections">, item: Doc<"libraryItems">, rating: number | null) {
-  const row = await collectionRatingRow(ctx, userId, place.collectionId, item.openalexId);
-  if ((row?.rating ?? null) === rating) return;
-  if (rating === null) await ctx.db.delete("ratings", row!._id);
-  else if (!row) await ctx.db.insert("ratings", { userId, paperId: ratedPaper(item.openalexId), collectionId: place.collectionId, rating });
-  else await ctx.db.patch("ratings", row._id, { rating });
-  await ratePlace(ctx, place, item);
+  if (await writeRating(ctx, userId, place.collectionId, item.openalexId, rating)) await ratePlace(ctx, place, item);
 }
 
 /** Deletes a step of a deleted collection's ratings. Returns whether all are gone. */
