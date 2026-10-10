@@ -70,8 +70,8 @@ const TYPES: Array<{ id: ExtractionQuestionType; icon: AppIcon }> = [
 /** One source in the tray: what it is, its name, and its papers. Your PDFs are one source. */
 type Group = { key: string; kind: Kind; label: ReactNode; text: string; papers: number };
 
-/** The papers a source takes: a screening all its included papers, any other its range. */
-const papersOf = (source: PickedSource) => (source.set.kind === "screening" ? source.total : source.last - source.first + 1);
+/** The papers a source takes: its range. */
+const papersOf = (source: PickedSource) => source.last - source.first + 1;
 
 export function SetupView({ paperLimit }: { paperLimit: number }) {
   const t = useTranslations("extraction");
@@ -110,7 +110,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
   const toggle = (key: string, make: () => PickedSource) => {
     if (!workspaceId) return;
     // Past the plan's papers it still goes in: the tray says by how many, where a pick that vanished wouldn't.
-    if (picked(key)) removeSources([key]);
+    if (picked(key)) removeSources(workspaceId, [key]);
     else setSource(workspaceId, make());
   };
   /** Where a picked source starts: all of it when the plan has room, as screening starts, else as much as there is room for. A search starts on its first 300. */
@@ -120,13 +120,14 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
   };
   /** Reads papers `first` to `last` of a ranged source, changed in place; none takes it out. */
   const setRange = (key: string, first: number, last: number, scope: "range" | "all") => {
-    const source = useExtractionStore.getState().draftJob.sources.find((s) => s.key === key);
-    if (!source || !workspaceId) return;
-    if (last < first) return removeSources([key]);
+    if (!workspaceId) return;
+    const source = useExtractionStore.getState().draftJob.papers[workspaceId]?.sources.find((s) => s.key === key);
+    if (!source) return;
+    if (last < first) return removeSources(workspaceId, [key]);
     setSource(workspaceId, { ...source, first, last, scope });
   };
-  /** A source's papers as screening asks for them: a range, or all; set where its row is picked. */
-  const scopeOf = (source: PickedSource) => (
+  /** A source's papers as screening asks for them: a range, or all, which `summary` says; set where its row is picked. */
+  const scopeOf = (source: PickedSource, summary?: ReactNode) => (
     <PaperScope
       search={source.set.kind === "search"}
       page={false}
@@ -135,7 +136,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
       range={[source.first, source.last]}
       onRange={(update) => {
         // Worked out from the range as it stands now, as the fields expect.
-        const now = useExtractionStore.getState().draftJob.sources.find((s) => s.key === source.key);
+        const now = workspaceId ? useExtractionStore.getState().draftJob.papers[workspaceId]?.sources.find((s) => s.key === source.key) : undefined;
         if (!now) return;
         const [first, last] = typeof update === "function" ? update([now.first, now.last]) : update;
         setRange(source.key, first, last, "range");
@@ -144,9 +145,11 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
       most={source.last + room}
       label={ts("papers")}
       summary={
-        <Chip className="text-foreground">
-          <span>{ts.rich("papersBold", { count: papersOf(source), n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span>
-        </Chip>
+        summary ?? (
+          <Chip className="text-foreground">
+            <span>{ts.rich("papersBold", { count: papersOf(source), n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span>
+          </Chip>
+        )
       }
     />
   );
@@ -211,7 +214,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
       try {
         const { jobId } = await startJob({ name, sources: sources.map(({ set, first, last }) => ({ set, first, last })), uploads: uploads.map(({ storageId, title }) => ({ storageId, title })), questions, usePdfs: draftJob.usePdfs });
         router.push(`/extraction/${jobId}`);
-        clearDraftJob();
+        if (workspaceId) clearDraftJob(workspaceId);
       } catch (error) {
         toast.job.createFailed(error);
       }
@@ -237,13 +240,13 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
           label={ts("papers")}
           aside={
             groups.length ? (
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearPapers}>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => workspaceId && clearPapers(workspaceId)}>
                 <X /> {tc("clearAll")}
               </Button>
             ) : null
           }
         >
-          <Tray groups={groups} total={total} limit={paperLimit} onRemove={(group) => (group.kind === "pdf" ? uploads.forEach((file) => removeUpload(file.storageId)) : removeSources([group.key]))} />
+          <Tray groups={groups} total={total} limit={paperLimit} onRemove={(group) => workspaceId && (group.kind === "pdf" ? uploads.forEach((file) => removeUpload(workspaceId, file.storageId)) : removeSources(workspaceId, [group.key]))} />
           <Segmented
             className="mt-3"
             label={t("selectPapers")}
@@ -315,22 +318,28 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
                 {screenings.items.map((job) => {
                   const key = `screening:${job._id}`;
                   const label = jobName(ts, job, date);
+                  const source = picked(key);
                   return (
                     <SourceRow
                       key={job._id}
                       many
-                      on={Boolean(picked(key))}
+                      on={Boolean(source)}
                       disabled={!job.qualifiedPapers}
-                      onToggle={() => toggle(key, () => ({ key, set: { kind: "screening", jobId: job._id }, label, total: job.qualifiedPapers, first: 1, last: job.qualifiedPapers, scope: "all" }))}
+                      onToggle={() => toggle(key, () => ranged(key, { kind: "screening", jobId: job._id }, label, job.qualifiedPapers, false))}
                       icon={KIND.screening.icon}
                       label={label}
                       count={<Chip>{ts("paperCount", { count: job.qualifiedPapers })}</Chip>}
                     >
                       {/* Its included papers as they stand when the job starts: later changes to the screening leave the extraction as it is. */}
-                      <span className="flex flex-wrap gap-1.5">
-                        <Chip className="text-foreground">{t("includedPapers", { count: job.qualifiedPapers })}</Chip>
-                        <Chip>{t("asTheyStand")}</Chip>
-                      </span>
+                      {source
+                        ? scopeOf(
+                            source,
+                            <span className="flex flex-wrap gap-1.5">
+                              <Chip className="text-foreground">{t("includedPapers", { count: papersOf(source) })}</Chip>
+                              <Chip>{t("asTheyStand")}</Chip>
+                            </span>,
+                          )
+                        : null}
                     </SourceRow>
                   );
                 })}

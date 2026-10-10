@@ -359,7 +359,12 @@ export const extractionJobValidator = v.object({
 const _check_extractionJobValidator: AssertExactDoc<"extractionJobs", typeof extractionJobValidator> = true;
 void _check_extractionJobValidator;
 
-export const screeningSelectionValidator = v.object({ jobId: v.id("screeningJobs"), revision: v.string(), count: v.number() });
+/**
+ * A screening's Included papers as one source, at the revision of its decisions they were taken
+ * at: papers `first` to `last` of them (#690), all when left out. `count` is how many the job
+ * reads, as the server counted them.
+ */
+export const screeningSelectionValidator = v.object({ jobId: v.id("screeningJobs"), revision: v.string(), count: v.number(), first: v.optional(v.number()), last: v.optional(v.number()) });
 
 /**
  * Papers `first` to `last` of a collection, or of the whole library without one, as one

@@ -57,14 +57,17 @@ export async function screeningPicked(ctx: QueryCtx, workspaceId: Id<"workspaces
 
 /** One pick as the source the job stores. */
 async function sourceOf(ctx: QueryCtx, { workspaceId }: InWorkspace, { set, first, last }: PaperPick): Promise<Source> {
+  checkRange(first, last);
   if (set.kind === "screening") {
     const picked = await screeningPicked(ctx, workspaceId, set.jobId);
-    return { bucketKey: `screening:${set.jobId}`, source: "screening", sourceRefId: set.jobId, title: picked.label, authors: [], screeningSelection: { jobId: set.jobId, revision: picked.revision, count: picked.count } };
+    // A range short of all its Included papers is kept; the start counts what it holds.
+    const range = first > 1 || last < picked.count ? { first, last } : {};
+    return { bucketKey: `screening:${set.jobId}:${first}-${last}`, source: "screening", sourceRefId: set.jobId, title: picked.label, authors: [], screeningSelection: { jobId: set.jobId, revision: picked.revision, count: picked.count, ...range } };
   }
-  checkRange(first, last);
   if (set.kind === "search") {
     const filters = await searchFilters(ctx, workspaceId, set.searchId);
-    return { bucketKey: `history:${set.searchId}`, source: "history", sourceRefId: set.searchId, title: filters.query, authors: [], searchFilters: { ...filters, ...(first > 1 ? { first } : {}), limit: last } };
+    // Each range of a search is a source of its own.
+    return { bucketKey: `history:${set.searchId}:${first}-${last}`, source: "history", sourceRefId: set.searchId, title: filters.query, authors: [], searchFilters: { ...filters, ...(first > 1 ? { first } : {}), limit: last } };
   }
   // One source for the whole range: the job reads its papers a page at a time when it's set up.
   const collection = set.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : null;

@@ -86,6 +86,15 @@ describe("extraction from Included screening papers", () => {
     expect(sources[0].screeningSelection?.count).toBe(600);
   });
 
+  it("reads a range of a screening's Included papers, counted by the server (#690)", async () => {
+    const { t, jobId, start, snapshot, papers } = await screeningInputs(5);
+    const created = await start([{ set: { kind: "screening", jobId }, first: 2, last: 3 }]);
+    const sources = await t.run(ctx => ctx.db.query("extractionJobSources").withIndex("by_job_and_position", q => q.eq("jobId", created.jobId)).take(2));
+    expect(sources[0].screeningSelection).toMatchObject({ first: 2, last: 3, count: 2 });
+    expect(await snapshot(created.jobId)).toMatchObject({ totalPapers: 2 });
+    expect((await papers(created.jobId)).map(p => p.openalexId)).toEqual(["https://openalex.org/W1", "https://openalex.org/W2"]);
+  });
+
   it("refuses capture while a screening is processing", async () => {
     const { t, jobId, start } = await screeningInputs();
     await t.run(ctx => ctx.db.patch("screeningJobs", jobId, { status: "processing" }));

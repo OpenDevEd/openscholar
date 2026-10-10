@@ -243,10 +243,12 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
   if (item.source === "screening") {
     const selection = item.screeningSelection;
     if (!selection) throw createError("VALIDATION_ERROR", "Screening selection is missing.");
-    const { papers: held, resume } = await heldPapers(ctx, await jobReader(ctx, job), { kind: "screening", jobId: selection.jobId }, { first: place.read + 1, last: place.read + SETUP_STEP }, place.resume, selection.revision);
+    // From the first paper of its range, as many as the start counted.
+    const from = (selection.first ?? 1) + place.read;
+    const { papers: held, resume } = await heldPapers(ctx, await jobReader(ctx, job), { kind: "screening", jobId: selection.jobId }, { first: from, last: Math.min((selection.first ?? 1) + selection.count - 1, from + SETUP_STEP - 1) }, place.resume, selection.revision);
     const papers = held.map(({ venue, ...paper }): SetupPaper => ({ ...paper, venueName: venue, sourceType: "screening", sourceId: selection.jobId, screeningRevision: selection.revision }));
     const read = place.read + papers.length;
-    if (resume) return { papers, next: { ...place, read, resume } };
+    if (resume && read < selection.count) return { papers, next: { ...place, read, resume } };
     if (read !== selection.count) throw createError("CONFLICT", "Screening inputs changed. Select the screening again before starting extraction.");
     return { papers, next: onTo(position + 1) };
   }

@@ -2,8 +2,8 @@
  * The new extraction being set up (#690): its name, questions, whether it reads PDFs, and the
  * papers it takes. Papers are sources picked from the workspace, each a paper set and the range
  * of it to read, as screening reads them, and PDFs the person uploaded. Kept in the browser, so
- * leaving the page and coming back finds it as it was; sources are a workspace's own, so another
- * workspace starts with none.
+ * leaving the page and coming back finds it as it was. Papers are kept for each workspace, since
+ * a workspace's sources are its own.
  */
 
 import { create } from "zustand";
@@ -12,7 +12,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import type { PaperSet } from "@/lib/screening/setup";
 import type { ExtractionQuestion } from "@/lib/types";
 
-/** A source picked: its set, papers `first` to `last` of the `total` it holds, and its name in the tray. A screening is all its included papers. */
+/** A source picked: its set, papers `first` to `last` of the `total` it holds, and its name in the tray. */
 export type PickedSource = {
   key: string;
   set: PaperSet;
@@ -26,15 +26,17 @@ export type PickedSource = {
 /** A PDF the person uploaded, one paper. */
 export type PickedUpload = { storageId: Id<"_storage">; title: string };
 
+/** A workspace's papers in the draft. */
+type Papers = { sources: PickedSource[]; uploads: PickedUpload[] };
+const NONE: Papers = { sources: [], uploads: [] };
+
 interface ExtractionStore {
   draftJob: {
     name: string;
     questions: ExtractionQuestion[];
     usePdfs: boolean;
-    /** The workspace the sources and uploads were picked in. */
-    workspaceId?: string;
-    sources: PickedSource[];
-    uploads: PickedUpload[];
+    /** Each workspace's papers, by its ID. */
+    papers: Record<string, Papers>;
   };
   setDraftJobName: (name: string) => void;
   setUsePdfs: (usePdfs: boolean) => void;
@@ -42,26 +44,27 @@ interface ExtractionStore {
   removeQuestion: (key: string) => void;
   updateQuestion: (key: string, updates: Partial<ExtractionQuestion>) => void;
   reorderQuestions: (startIndex: number, endIndex: number) => void;
-  /** Adds a source, or changes the one with its key in place; picked in another workspace, the others go. */
+  /** Adds a source to the workspace's papers, or changes the one with its key in place. */
   setSource: (workspaceId: string, source: PickedSource) => void;
-  removeSources: (keys: string[]) => void;
+  removeSources: (workspaceId: string, keys: string[]) => void;
   addUpload: (workspaceId: string, upload: PickedUpload) => void;
-  removeUpload: (storageId: Id<"_storage">) => void;
-  clearPapers: () => void;
-  clearDraftJob: () => void;
+  removeUpload: (workspaceId: string, storageId: Id<"_storage">) => void;
+  clearPapers: (workspaceId: string) => void;
+  /** Starts afresh after a job started in `workspaceId`: its papers go, other workspaces' stay. */
+  clearDraftJob: (workspaceId: string) => void;
 }
 
 const emptyDraft: ExtractionStore["draftJob"] = {
   name: "",
   questions: [],
   usePdfs: false,
-  sources: [],
-  uploads: [],
+  papers: {},
 };
 
-/** The draft's papers, as picked in `workspaceId`: none when they were picked in another. */
-const papersIn = (draft: ExtractionStore["draftJob"], workspaceId: string) =>
-  draft.workspaceId === workspaceId ? { sources: draft.sources, uploads: draft.uploads } : { sources: [], uploads: [] };
+/** The draft with `workspaceId`'s papers changed by `change`. */
+const withPapers = (draft: ExtractionStore["draftJob"], workspaceId: string, change: (papers: Papers) => Papers) => ({
+  draftJob: { ...draft, papers: { ...draft.papers, [workspaceId]: change(draft.papers[workspaceId] ?? NONE) } },
+});
 
 export const useExtractionStore = create<ExtractionStore>()(
   persist(
@@ -114,33 +117,29 @@ export const useExtractionStore = create<ExtractionStore>()(
           };
         }),
       setSource: (workspaceId, source) =>
+        set((state) =>
+          withPapers(state.draftJob, workspaceId, ({ sources, uploads }) => {
+            const at = sources.findIndex((s) => s.key === source.key);
+            return { uploads, sources: at === -1 ? [...sources, source] : sources.map((s, i) => (i === at ? source : s)) };
+          }),
+        ),
+      removeSources: (workspaceId, keys) => set((state) => withPapers(state.draftJob, workspaceId, ({ sources, uploads }) => ({ uploads, sources: sources.filter((s) => !keys.includes(s.key)) }))),
+      // A workspace's own: an upload that finishes after the page moved to another lands in the one it was made in.
+      addUpload: (workspaceId, upload) => set((state) => withPapers(state.draftJob, workspaceId, ({ sources, uploads }) => ({ sources, uploads: [...uploads.filter((u) => u.storageId !== upload.storageId), upload] }))),
+      removeUpload: (workspaceId, storageId) => set((state) => withPapers(state.draftJob, workspaceId, ({ sources, uploads }) => ({ sources, uploads: uploads.filter((u) => u.storageId !== storageId) }))),
+      clearPapers: (workspaceId) => set((state) => withPapers(state.draftJob, workspaceId, () => NONE)),
+      clearDraftJob: (workspaceId) =>
         set((state) => {
-          const { sources, uploads } = papersIn(state.draftJob, workspaceId);
-          const at = sources.findIndex((s) => s.key === source.key);
-          return { draftJob: { ...state.draftJob, workspaceId, uploads, sources: at === -1 ? [...sources, source] : sources.map((s, i) => (i === at ? source : s)) } };
-        }),
-      removeSources: (keys) =>
-        set((state) => ({ draftJob: { ...state.draftJob, sources: state.draftJob.sources.filter((s) => !keys.includes(s.key)) } })),
-      addUpload: (workspaceId, upload) =>
-        set((state) => {
-          const { sources, uploads } = papersIn(state.draftJob, workspaceId);
-          return { draftJob: { ...state.draftJob, workspaceId, sources, uploads: [...uploads.filter((u) => u.storageId !== upload.storageId), upload] } };
-        }),
-      removeUpload: (storageId) =>
-        set((state) => ({ draftJob: { ...state.draftJob, uploads: state.draftJob.uploads.filter((u) => u.storageId !== storageId) } })),
-      clearPapers: () =>
-        set((state) => ({ draftJob: { ...state.draftJob, sources: [], uploads: [] } })),
-      clearDraftJob: () =>
-        set({
-          draftJob: { ...emptyDraft },
+          const { [workspaceId]: _started, ...papers } = state.draftJob.papers;
+          return { draftJob: { ...emptyDraft, papers } };
         }),
     }),
     {
       name: "extraction-draft-job",
-      version: 5,
+      version: 6,
       migrate: (persistedState) => {
-        // Before v5 papers were picked into a separate bucket, which has gone (#690): a draft keeps
-        // its name, questions and PDF choice, and starts with no papers.
+        // Before v5 papers were picked into a separate bucket, which has gone (#690), and v5 kept one
+        // workspace's: a draft keeps its name, questions and PDF choice, and starts with no papers.
         const state = persistedState as { draftJob?: Record<string, unknown> };
         const dj = state?.draftJob ?? {};
         return {
@@ -157,7 +156,4 @@ export const useExtractionStore = create<ExtractionStore>()(
 );
 
 /** The draft's papers in the workspace the page is in. */
-export const usePickedPapers = (workspaceId: string | undefined) => {
-  const draft = useExtractionStore((s) => s.draftJob);
-  return workspaceId ? papersIn(draft, workspaceId) : { sources: [], uploads: [] };
-};
+export const usePickedPapers = (workspaceId: string | undefined) => useExtractionStore((s) => (workspaceId && s.draftJob.papers[workspaceId]) || NONE);

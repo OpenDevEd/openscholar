@@ -141,7 +141,7 @@ export function PdfUpload() {
 
       {uploads.length || rows.length ? (
         <div className={LIST}>
-          {uploads.map((file) => fileRow(file.storageId, file.title, { done: true, busy: false }, null, () => removeUpload(file.storageId)))}
+          {uploads.map((file) => fileRow(file.storageId, file.title, { done: true, busy: false }, null, () => workspaceId && removeUpload(workspaceId, file.storageId)))}
           {rows.map((row) =>
             fileRow(row.uploadId, row.file.name, { done: false, busy: row.status === "uploading", error: row.error, size: row.file.size }, row.status === "failed" ? () => void schedule([row]) : null, () => setRows((prev) => prev.filter((r) => r.uploadId !== row.uploadId))),
           )}

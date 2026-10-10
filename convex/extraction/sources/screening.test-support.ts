@@ -34,8 +34,8 @@ export async function screeningInputs(count = 2) {
     const progress = (await ctx.db.query("screeningJobProgress").withIndex("by_job", q => q.eq("jobId", jobId)).unique())!;
     await ctx.db.patch("screeningJobProgress", progress._id, { completed: count, qualified: count });
   });
-  // The screening as an extraction's pick: its included papers as they are when the job starts.
-  const selection = (): Pick => ({ set: { kind: "screening", jobId }, first: 1, last: 1 });
+  // The screening as an extraction's pick: all its included papers as they are when the job starts.
+  const selection = (): Pick => ({ set: { kind: "screening", jobId }, first: 1, last: 1_000_000 });
   /** The screening's decisions as they stand, which a job started now reads. */
   const revision = async () => (await as.query(api.screening.queries.getScreeningJob, { jobId }))!.revision;
   const start = async (picks?: Pick[], uploads?: Upload[]) => as.mutation(api.extraction.mutations.startJob, { name: "Included snapshot", sources: picks ?? [selection()], ...(uploads ? { uploads } : {}), questions: [{ key: "answer", question: "What was measured?", type: "string" }], usePdfs: false });

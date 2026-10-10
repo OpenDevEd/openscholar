@@ -78,8 +78,9 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
   });
 
   // Shared: bucket validation + source persistence.
+  // One screening's same papers count once, whatever key a caller gave them.
   const deduped = dedupeBucketItems(args.bucketItems.map(item => item.source === "screening" && item.screeningSelection
-    ? { ...item, bucketKey: `screening:${item.screeningSelection.jobId}` }
+    ? { ...item, bucketKey: `screening:${item.screeningSelection.jobId}:${item.screeningSelection.first ?? 1}-${item.screeningSelection.last ?? "all"}` }
     : item));
   for (const item of deduped) {
     if (item.source !== "screening") continue;
@@ -87,7 +88,9 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
       throw createError("VALIDATION_ERROR", "Select a screening job and its decision revision for extraction.");
     }
     const selection = item.screeningSelection;
-    selection.count = await checkScreeningSelection(ctx, workspaceId, selection.jobId, selection.revision);
+    const included = await checkScreeningSelection(ctx, workspaceId, selection.jobId, selection.revision);
+    // The papers its range holds of the Included ones now; all of them without a range.
+    selection.count = Math.max(0, Math.min(selection.last ?? included, included) - (selection.first ?? 1) + 1);
     item.sourceRefId = selection.jobId;
   }
   // A range of a collection or the library holds what the server counts in it now, never what it was sent.

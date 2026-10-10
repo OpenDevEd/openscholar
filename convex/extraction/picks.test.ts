@@ -40,6 +40,8 @@ describe("an extraction's picks", () => {
       { source: "upload", title: "Report.pdf", first: undefined, limit: undefined, librarySet: undefined },
     ]);
     expect(made[4]).toMatchObject({ storageId: pdf, bucketKey: `upload:${pdf}` });
+    // Two ranges of one search are two sources, which the start keeps apart.
+    expect(new Set(made.slice(0, 2).map((source) => source.bucketKey)).size).toBe(2);
   });
 
   it("refuses a range that runs backwards or starts before the first paper, and a collection of another workspace", async () => {
