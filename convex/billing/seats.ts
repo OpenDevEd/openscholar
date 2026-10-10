@@ -3,7 +3,9 @@
  * member: an Autumn entity named by the member's Clerk user ID, holding the seat plan, which bills
  * per seat and adds its credits to the organization's one pool. A member who joins gets one; a
  * member who leaves has theirs ended at once, which refunds the rest of its period and takes its
- * credits back out of the pool; an organization off Team has none.
+ * credits back out of the pool; an organization off Team has none, and one that's gone has neither
+ * seats nor Team. Clerk's limit on its members follows its plan too: none on Team, FREE_MEMBERS
+ * otherwise.
  *
  * `sync` brings Autumn to that from what Convex holds, so running it again changes nothing: it
  * runs on each membership change, on each Autumn event for the organization, and daily for every
@@ -19,8 +21,10 @@ import { getCurrentUser } from "../lib/auth";
 import { actorIn } from "../workspaces/actor";
 import { personName } from "../lib/people";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
-import { SEAT_PLAN, SEATS_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
-import { refreshAccount } from "./accounts";
+import { FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, SEATS_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
+import { clerkRequest, clerkSecretKey } from "../lib/clerk";
+import { createError } from "../lib/errors";
+import { refreshAccount, snapshotFromCustomer } from "./accounts";
 import { capRow } from "./memberCaps";
 import { autumn, AutumnError, type AutumnEntity } from "./autumn";
 
@@ -36,12 +40,14 @@ const ENTITIES_PAGE = 100;
  */
 const MAX_ENTITIES_READ = 2 * MAX_ORGANIZATION_MEMBERS;
 
+/** Whether an entity holds a seat. */
+const seated = (entity: AutumnEntity) => entity.subscriptions.some((s) => s.plan_id === SEAT_PLAN && s.status === "active");
+
 /**
  * What to change so each member holds one seat and nobody else does: the members to seat (with
  * whether their entity must be made first), and the entities to end.
  */
 export function seatChanges(members: SeatMember[], entities: AutumnEntity[]) {
-  const seated = (entity: AutumnEntity) => entity.subscriptions.some((s) => s.plan_id === SEAT_PLAN && s.status === "active");
   const byId = new Map(entities.map((entity) => [entity.id, entity]));
   const memberIds = new Set(members.map((member) => member.clerkUserId));
   return {
@@ -75,6 +81,30 @@ export const membersOf = internalQuery({
   },
 });
 
+/** The organization a workspace is, for its sync: its Clerk ID and the member limit last set on it, or null once it's gone. */
+export const organizationFor = internalQuery({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.union(v.object({ clerkOrganizationId: v.string(), memberLimit: v.optional(v.number()) }), v.null()),
+  handler: async (ctx, { workspaceId }) => {
+    const workspace = await ctx.db.get("workspaces", workspaceId);
+    const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
+    if (organization?.state !== "active") return null;
+    const memberLimit = (await syncRow(ctx, workspaceId))?.memberLimit;
+    return { clerkOrganizationId: organization.clerkOrganizationId, ...(memberLimit === undefined ? {} : { memberLimit }) };
+  },
+});
+
+/** Keeps the member limit a sync set on the organization in Clerk. */
+export const noteMemberLimit = internalMutation({
+  args: { workspaceId: v.id("workspaces"), memberLimit: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, memberLimit }) => {
+    const row = await syncRow(ctx, workspaceId);
+    if (row) await ctx.db.patch("seatSyncs", row._id, { memberLimit });
+    return null;
+  },
+});
+
 /** Runs an Autumn call whose `code` failure means it's already done, such as making an entity that exists. */
 async function unlessAlready<T>(code: string, call: () => Promise<T>): Promise<T | undefined> {
   try {
@@ -103,9 +133,11 @@ async function entitiesOf(customerId: string) {
  * it changed nothing.
  */
 async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise<{ seats: number; paymentUrl?: string } | undefined> {
-  const account = await refreshAccount(ctx, workspaceId);
-  const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
-  const members: SeatMember[] | null = account.plan === TEAM_PLAN ? await ctx.runQuery(internal.billing.seats.membersOf, { workspaceId }) : [];
+  const organization: { clerkOrganizationId: string; memberLimit?: number } | null = await ctx.runQuery(internal.billing.seats.organizationFor, { workspaceId });
+  // One that's gone keeps no account here, and its workspace may be purged; its customer is still its workspace's ID.
+  const plan = organization ? (await refreshAccount(ctx, workspaceId)).plan : undefined;
+  const customerId: string = organization ? await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId }) : workspaceId;
+  const members: SeatMember[] | null = plan === TEAM_PLAN ? await ctx.runQuery(internal.billing.seats.membersOf, { workspaceId }) : [];
   if (members === null) {
     console.error(`[seats] ${workspaceId} has more than ${MAX_ORGANIZATION_MEMBERS} members; its seats are left as they are`);
     return undefined;
@@ -139,10 +171,26 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
   const waiting = new Set(seat.slice(added).map((member) => member.clerkUserId));
   await ctx.runMutation(internal.billing.seats.recordSeats, { workspaceId, seated: members.flatMap((member) => (waiting.has(member.clerkUserId) ? [] : [member.clerkUserId])) });
   if (seat.length || end.length) {
-    await refreshAccount(ctx, workspaceId);
-    console.log(`[seats] ${workspaceId} on ${account.plan}: ${members.length} members; seated ${added}, ended ${end.length}`);
+    if (organization) await refreshAccount(ctx, workspaceId);
+    console.log(`[seats] ${workspaceId} ${organization ? `on ${plan}` : "is gone"}: ${members.length} members; seated ${added}, ended ${end.length}`);
   }
+  if (organization) await followPlan(ctx, workspaceId, organization, plan === TEAM_PLAN);
+  // The daily check cancels the Team plan of an organization that's gone (#652).
+  else if (snapshotFromCustomer(await autumn.customer(customerId)).plan === TEAM_PLAN) await autumn.attach({ customerId, planId: ORGANIZATION_PLAN });
   return { seats: members.length - waiting.size, ...(paymentUrl ? { paymentUrl } : {}) };
+}
+
+/** Sets Clerk's limit on the organization's members to its plan's, when it isn't already: none on Team, FREE_MEMBERS otherwise. */
+async function followPlan(ctx: ActionCtx, workspaceId: Id<"workspaces">, { clerkOrganizationId, memberLimit }: { clerkOrganizationId: string; memberLimit?: number }, team: boolean) {
+  const limit = team ? 0 : FREE_MEMBERS;
+  if (memberLimit === limit) return;
+  try {
+    await clerkRequest(clerkSecretKey(), "PATCH", `/organizations/${clerkOrganizationId}`, { max_allowed_memberships: limit });
+    await ctx.runMutation(internal.billing.seats.noteMemberLimit, { workspaceId, memberLimit: limit });
+  } catch (error) {
+    // The seats it changed stand; the next sync sets the limit again.
+    console.error(`[seats] couldn't set ${workspaceId}'s member limit to ${limit} in Clerk`, error);
+  }
 }
 
 /** Keeps which members hold a seat (`memberSeats`): exactly `seated`, at most MAX_ORGANIZATION_MEMBERS. */
@@ -231,6 +279,24 @@ export const sync = internalAction({
       await ctx.runMutation(internal.billing.seats.release, { workspaceId, ...(synced === undefined ? {} : { seats: synced.seats }) });
     }
     return synced?.paymentUrl ?? null;
+  },
+});
+
+/**
+ * Ends an organization's Team plan and its seats (#652), as moving it to Free and deleting it do.
+ * Refuses while Autumn still shows either, such as a seat a sync running meanwhile hasn't ended
+ * yet: a deletion goes ahead only once nothing of Team is left to bill.
+ */
+export const endTeam = internalAction({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId }): Promise<null> => {
+    const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
+    if ((await refreshAccount(ctx, workspaceId)).plan === TEAM_PLAN) await autumn.attach({ customerId, planId: ORGANIZATION_PLAN });
+    await ctx.runAction(internal.billing.seats.sync, { workspaceId });
+    const entities = await entitiesOf(customerId);
+    if (entities === null || entities.some(seated) || (await refreshAccount(ctx, workspaceId)).plan === TEAM_PLAN) throw createError("CONFLICT", "Its Team plan is still ending. Try again in a minute.");
+    return null;
   },
 });
 

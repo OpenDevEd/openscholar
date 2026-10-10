@@ -4179,6 +4179,7 @@
       "theirRole": "उनकी भूमिका",
       "freeUpTo": "मुफ़्त संगठन में आमंत्रणों सहित अधिकतम {count, number} सदस्य होते हैं",
       "membersLabel": "सदस्य",
+      "invitationsLabel": "आमंत्रण",
       "joined": "{when} जुड़े",
       "roleOf": "{name} की भूमिका",
       "removeName": "{name} को हटाएँ",

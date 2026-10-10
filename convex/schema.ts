@@ -610,6 +610,8 @@ export default defineSchema({
     runningSince: v.optional(v.number()),
     /** A sync asked for while one ran, which runs once that one ends. */
     again: v.optional(v.literal(true)),
+    /** The member limit a sync last set on the organization in Clerk: 0 for none. */
+    memberLimit: v.optional(v.number()),
   })
     .index("by_workspace", ["workspaceId"])
     .index("by_seats", ["seats"]),

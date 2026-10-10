@@ -4179,6 +4179,7 @@
       "theirRole": "Son rôle",
       "freeUpTo": "Une organisation gratuite compte au plus {count, number} membres, invitations comprises",
       "membersLabel": "membres",
+      "invitationsLabel": "invitations",
       "joined": "Arrivé {when}",
       "roleOf": "Rôle de {name}",
       "removeName": "Retirer {name}",
