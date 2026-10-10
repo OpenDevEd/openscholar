@@ -158,6 +158,8 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   if (!job.prune || job.set?.kind !== "collection" || !(becameIncluded || left)) return moved;
   const collectionId = job.set.collectionId;
   const workspaceId = job.workspaceId;
+  // A screening moved to another workspace (#654) leaves the collection it read alone.
+  if ((await ctx.db.get("collections", collectionId))?.workspaceId !== workspaceId) return moved;
   const item = await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", result.openalexId)).first();
   if (!item) return moved;
   const membership = await ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collectionId).eq("libraryItemId", item._id)).unique();

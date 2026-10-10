@@ -47,8 +47,9 @@ export const countChange = (table: Counted) => async (ctx: MutationCtx, change: 
   const row = await countRow(ctx, table, record.workspaceId);
   // The first count reads the records as this change leaves them.
   if (!row) return await startCount(ctx, table, record);
+  // While a first count runs, it reaches a new record itself, but not one moved in from another workspace behind where it has read to.
   if (change.operation === "insert") {
-    if (row.countedTo === undefined) await ctx.db.patch("recordCounts", row._id, { count: row.count + 1 });
+    if (row.countedTo === undefined || record._creationTime <= row.countedTo) await ctx.db.patch("recordCounts", row._id, { count: row.count + 1 });
   } else if (row.countedTo === undefined || change.oldDoc._creationTime <= row.countedTo) {
     await ctx.db.patch("recordCounts", row._id, { count: Math.max(0, row.count - 1) });
   }
@@ -108,7 +109,7 @@ export const countMakerChange = (table: ByMaker) => async (ctx: MutationCtx, cha
   // workspace being emptied would only count again what it's deleting.
   if (!row) return change.operation === "insert" ? await startMakerCount(ctx, table, record) : undefined;
   if (change.operation === "insert") {
-    if (row.countedTo === undefined) await ctx.db.patch("recordCounts", row._id, { count: row.count + 1 });
+    if (row.countedTo === undefined || record._creationTime <= row.countedTo) await ctx.db.patch("recordCounts", row._id, { count: row.count + 1 });
   } else if (row.countedTo === undefined || record._creationTime <= row.countedTo) {
     await ctx.db.patch("recordCounts", row._id, { count: Math.max(0, row.count - 1) });
   }

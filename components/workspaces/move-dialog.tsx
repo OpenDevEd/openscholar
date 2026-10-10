@@ -42,7 +42,8 @@ const PAGE: Record<Exclude<Movable, "chat">, (id: string) => string> = {
   extraction: (id) => `/extraction/${id}`,
 };
 
-export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onOpenChange: (open: boolean) => void; kind: Movable; id: string; name: string }) {
+/** `onMoved` hears the move done, before the page goes to where the item went. */
+export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onOpenChange: (open: boolean) => void; kind: Movable; id: string; name: string; onMoved?: () => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false} onOpenAutoFocus={focusContent} className="top-[max(1rem,12dvh)] flex max-h-[min(40rem,calc(88dvh-1rem))] max-w-lg translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0">
@@ -53,7 +54,7 @@ export function MoveDialog({ open, onOpenChange, ...item }: { open: boolean; onO
   );
 }
 
-function Move({ close, kind, id, name }: { close: () => void; kind: Movable; id: string; name: string }) {
+function Move({ close, kind, id, name, onMoved }: { close: () => void; kind: Movable; id: string; name: string; onMoved?: () => void }) {
   const t = useTranslations("workspaces.move");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -76,6 +77,7 @@ function Move({ close, kind, id, name }: { close: () => void; kind: Movable; id:
       setBusy(false);
       return;
     }
+    onMoved?.();
     // You go with it: in the workspace it moved to, it's the item open, a chat in the panel included.
     const slug = target.kind === "organization" ? target.slug : undefined;
     if (kind === "chat") {

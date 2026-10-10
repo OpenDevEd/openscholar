@@ -339,7 +339,8 @@ export function HistorySheet({
           </motion.div>
         </div>
       </ScrollArea>
-      {moving ? <MoveDialog open onOpenChange={(open) => !open && setMoving(null)} kind="chat" id={moving.id} name={moving.title} /> : null}
+      {/* Moved, the chat is open in the panel, out from under the list. */}
+      {moving ? <MoveDialog open onOpenChange={(open) => !open && setMoving(null)} kind="chat" id={moving.id} name={moving.title} onMoved={onBack} /> : null}
     </>
   );
 }

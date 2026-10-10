@@ -60,6 +60,7 @@
       "COPY_HISTORY_MAX": "reads one past it and refuses the copy",
       "DRAFT_ROWS_REPLACED": "reads one past it and refuses the restore over a draft with extra rows",
       "SUBSCRIPTIONS_READ": "reads one past it and stops the billing migration for that account",
+      "SEARCH_SCREENINGS_MOVED": "a search with more screenings than a move takes stays where it is, and the dialog says so",
       "SECTION_REGISTRY.length": "a draft or revision holds one row a section; reads one past it and throws on a different row",
       "RECOVERY_LIMIT": "reads one past it and stops the recovery as unsafe, naming why",
       "MAX_ORGANIZATION_MEMBERS": "reads one past it and leaves the organization's seats as they are, logging why: Clerk's webhooks write memberships, so no write here can"

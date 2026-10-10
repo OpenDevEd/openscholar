@@ -64,3 +64,35 @@ it("leaves an organization's work where it is for a member, and a running job un
   await alice.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "screening", id: job, to: aliceOwn });
   expect((await t.run((ctx) => ctx.db.get("screeningJobs", job)))?.workspaceId).toBe(aliceOwn);
 });
+
+it("takes a search's screenings with it, and leaves a search's screening to move with its search", async () => {
+  const { t, alice, lab: labId, aliceOwn, users } = await lab();
+  const { id } = await alice.mutation(api.research.searches.create, { query: "teacher coaching" });
+  const job = await t.run(async (ctx) => {
+    const search = (await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", aliceOwn).eq("localId", id)).unique())!;
+    const screeningId = await ctx.db.insert("screenings", { workspaceId: aliceOwn, searchId: search._id, version: 0, createdAt: 1 });
+    return ctx.db.insert("screeningJobs", { workspaceId: aliceOwn, createdBy: users.alice, screeningId, status: "completed", totalPapers: 4, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
+  });
+  expect(await alice.query(api.workspaces.move.held, { kind: "screening", id: job })).toMatch(/Move the search/);
+
+  // One of its papers still being read holds the search back too.
+  const paper = await t.run((ctx) => ctx.db.insert("screeningResults", { jobId: job, openalexId: "https://openalex.org/W1", title: "W1", authors: [], citedByCount: 0, status: "processing", createdAt: 1 }));
+  expect(await alice.query(api.workspaces.move.held, { kind: "search", id })).toMatch(/still running/);
+  await t.run((ctx) => ctx.db.patch("screeningResults", paper, { status: "completed" }));
+
+  await alice.mutation(api.workspaces.move.move, { kind: "search", id, to: labId });
+  expect((await t.run((ctx) => ctx.db.get("screeningJobs", job)))?.workspaceId).toBe(labId);
+});
+
+it("brings an item's activity to where it ends up when it moves back before its activity has", async () => {
+  const { t, alice, lab: labId, aliceOwn } = await lab();
+  const { id } = await alice.mutation(api.research.searches.create, { query: "teacher coaching" });
+  await t.run(async (ctx) => {
+    for (let n = 0; n < 450; n++) await ctx.db.insert("activity", { workspaceId: aliceOwn, item: `search:${id}`, by: (await ctx.db.query("users").first())!._id, happened: "rated", count: 1 });
+  });
+  await alice.mutation(api.workspaces.move.move, { kind: "search", id, to: labId });
+  await alice.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "search", id, to: aliceOwn });
+  await t.finishAllScheduledFunctions(() => {});
+  const where = await t.run(async (ctx) => (await ctx.db.query("activity").collect()).filter((row) => row.item === `search:${id}`).map((row) => row.workspaceId));
+  expect(new Set(where)).toEqual(new Set([aliceOwn]));
+});
