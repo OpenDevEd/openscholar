@@ -16,7 +16,12 @@ export type Box = [number, number, number, number];
 export type Frame = {
   t: number;
   moved: Move[];
-  added: { id: number; box: Box }[];
+  // `within` is the dialog, sheet, popover or menu an element arrived in after
+  // it opened, given to the outermost element of what arrived, with whether
+  // that is fading or sliding in.
+  added: { id: number; box: Box; within?: number; entering?: boolean }[];
+  // The dialogs, sheets, popovers and menus that opened in this frame.
+  opened?: number[];
   removed: { id: number; box: Box }[];
   textAdded: string[];
   textRemoved: string[];
@@ -31,7 +36,8 @@ export type Finding =
   | { kind: "shift"; from: number; to: number; moves: Move[] }
   | { kind: "text-flash"; text: string; from: number; to: number }
   | { kind: "brief-text"; text: string; from: number; to: number }
-  | { kind: "brief-element"; id: number; from: number; to: number };
+  | { kind: "brief-element"; id: number; from: number; to: number }
+  | { kind: "late-content"; id: number; from: number; to: number };
 
 // Frames closer than this belong to one burst, such as one animated resize.
 const BURST_GAP_MS = 120;
@@ -41,6 +47,9 @@ const FLASH_RETURN_MS = 2_000;
 const BRIEF_MS = 400;
 // Elements smaller than this (a 20×20 icon) are too small to read as a flash.
 const MIN_FLASH_AREA = 400;
+
+// The first moments after a dialog appears belong to its opening.
+const OPENING_MS = 150;
 
 const sameBox = (a: Box, b: Box) => a.every((value, index) => Math.abs(value - b[index]) <= 2);
 
@@ -152,6 +161,28 @@ function elementBlinks(frames: Frame[], since: number): Finding[] {
   return findings;
 }
 
+/**
+ * Content that shows up inside a dialog, sheet, popover or menu after it has
+ * opened, without fading or sliding in: it read its data only once it was
+ * open, and the data popped in. One finding per overlay and frame, for the
+ * largest thing that arrived.
+ */
+function arrivals(frames: Frame[]): Finding[] {
+  const opened = new Map<number, number>();
+  const findings: Finding[] = [];
+  const area = (box: Box) => box[2] * box[3];
+  for (const frame of frames) {
+    for (const id of frame.opened ?? []) opened.set(id, frame.t);
+    for (const { id } of frame.removed) opened.delete(id);
+    const popped = frame.added.filter((element) => !element.entering && area(element.box) >= MIN_FLASH_AREA && frame.t - (opened.get(element.within ?? -1) ?? Infinity) > OPENING_MS);
+    for (const overlay of new Set(popped.map((element) => element.within!))) {
+      const largest = popped.filter((element) => element.within === overlay).sort((a, b) => area(b.box) - area(a.box))[0];
+      findings.push({ kind: "late-content", id: largest.id, from: opened.get(overlay)!, to: frame.t });
+    }
+  }
+  return findings;
+}
+
 /** The problems a person would see in one phase: movement after the page or the response settled, and blinks. */
 export function analyzePhase(frames: Frame[], phase: Phase): Finding[] {
   const since = phase.kind === "load" ? (phase.baseline ?? phase.start) : phase.start;
@@ -160,7 +191,9 @@ export function analyzePhase(frames: Frame[], phase: Phase): Finding[] {
   // growing as it animates). Anything that moves after it moved on its own.
   const late = phase.kind === "step" ? groups.slice(1) : groups;
   const shifts = late.map(shift).filter((finding): finding is Finding => finding !== null);
-  return [...shifts, ...textBlinks(frames, since), ...elementBlinks(frames, since)].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
+  // Only what an action opened is judged for late content: a page still loading fills in by design.
+  const popped = phase.kind === "step" ? arrivals(frames.filter((frame) => frame.t >= since)) : [];
+  return [...shifts, ...textBlinks(frames, since), ...elementBlinks(frames, since), ...popped].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
 }
 
 /**
@@ -172,13 +205,19 @@ export function stopDecision(input: {
   stopHookActive: boolean;
   sessionStartMs: number;
   lastPassMs: number | null;
-  changed: { path: string; mtimeMs: number }[];
+  /** How many dialogs, sheets, popovers or menus the last passing check opened. Absent for a recorded skip. */
+  lastPassOpened?: number;
+  changed: { path: string; mtimeMs: number; overlay?: boolean }[];
   userFacing: RegExp;
-}): { block: false } | { block: true; files: string[] } {
+}): { block: false } | { block: true; files: string[]; unopened?: true } {
   if (input.stopHookActive) return { block: false };
   const since = Math.max(input.sessionStartMs, input.lastPassMs ?? 0);
-  const files = input.changed.filter((file) => input.userFacing.test(file.path) && file.mtimeMs > since).map((file) => file.path);
-  return files.length > 0 ? { block: true, files } : { block: false };
+  const seen = input.changed.filter((file) => input.userFacing.test(file.path));
+  const files = seen.filter((file) => file.mtimeMs > since).map((file) => file.path);
+  if (files.length > 0) return { block: true, files };
+  // A check that opened nothing says nothing about a dialog this session changed.
+  const overlays = seen.filter((file) => file.overlay && file.mtimeMs > input.sessionStartMs).map((file) => file.path);
+  return overlays.length > 0 && input.lastPassOpened === 0 ? { block: true, files: overlays, unopened: true } : { block: false };
 }
 
 // One thing to report: its kind, what identifies it on another site (element

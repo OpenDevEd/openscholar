@@ -52,7 +52,8 @@ export type RunOptions = {
 };
 
 export type PhaseResult = { name: string; items: Item[] };
-export type SiteRun = { phases: PhaseResult[]; shots: string[]; stopped: string | null };
+// `opened` counts the dialogs, sheets, popovers and menus that opened during the run.
+export type SiteRun = { phases: PhaseResult[]; shots: string[]; stopped: string | null; opened: number };
 
 // Requests and socket messages the page is still waiting for. Next's hot
 // reload socket and analytics calls never carry the page's data.
@@ -117,9 +118,10 @@ async function itemFor(page: Page, finding: Finding, start: number): Promise<Ite
   const when = `+${Math.round(finding.from - start)}ms`;
   const lasted = Math.round(finding.to - finding.from);
   if (finding.kind === "shift") return shiftItem(page, finding, when);
-  if (finding.kind === "brief-element") {
+  if (finding.kind === "brief-element" || finding.kind === "late-content") {
     const [key, name] = await Promise.all([read<string>(page, `window.__verify.key(${finding.id})`), read<string>(page, `window.__verify.describe(${finding.id})`)]);
-    return { kind: finding.kind, keys: [key], line: `${when} element showed for only ${lasted}ms: ${name}` };
+    const line = finding.kind === "brief-element" ? `${when} element showed for only ${lasted}ms: ${name}` : `+${Math.round(finding.to - start)}ms popped in ${lasted}ms after its dialog opened, without fading in: ${name}`;
+    return { kind: finding.kind, keys: [key], line };
   }
   return { kind: finding.kind, keys: [finding.text], line: `${when} ${TEXT_LINES[finding.kind](finding.text, lasted)}` };
 }
@@ -256,6 +258,7 @@ function watchedFrom(phase: Phase, recording: Recording, tolerant: boolean): Pha
 
 async function findings(session: Session, phase: Phase): Promise<Item[]> {
   const recording = await read<Recording>(session.page, "window.__verify.take()");
+  session.run.opened += recording.frames.reduce((count, frame) => count + (frame.opened?.length ?? 0), 0);
   if (!session.options.analyze) return [];
   const found = analyzePhase(recording.frames, watchedFrom(phase, recording, session.tolerant));
   return Promise.all(found.map((finding) => itemFor(session.page, finding, phase.start)));
@@ -349,7 +352,7 @@ async function work(browser: Browser, session: Omit<Session, "page">): Promise<v
 /** Loads the target on one server in one browser, runs the steps, and reports what each phase showed. */
 export async function runSite(browserName: string, origin: string, target: string, options: RunOptions, shotDir: string | null, tolerant: boolean): Promise<SiteRun> {
   const browser = await launch(browserName);
-  const run: SiteRun = { phases: [], shots: [], stopped: null };
+  const run: SiteRun = { phases: [], shots: [], stopped: null, opened: 0 };
   const what = `Checking ${target} in ${browserName} on ${origin}`;
   console.error(what);
   try {
