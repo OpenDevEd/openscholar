@@ -93,19 +93,26 @@ const givenTo = async (ctx: QueryCtx, user: Doc<"users">, job: Doc<"extractionJo
 
 /**
  * A job as its reader is sent it. A guest isn't told what it holds and may spend, which chat
- * started it or where its setup stands: those are its workspace's.
+ * started it or where its setup stands: those are its workspace's. Nor why it ran out of
+ * credits, whose words give the figure it was allowed (./paperWorker.ts): its status says it did.
  */
 export function jobFor(job: Doc<"extractionJobs">, guest: boolean): Doc<"extractionJobs"> {
   if (!guest) return job;
-  const { spendHold: _hold, spendCap: _cap, chatStep: _chat, setup: _setup, ...shown } = job;
-  return shown;
+  const { spendHold: _hold, spendCap: _cap, chatStep: _chat, setup: _setup, error, ...shown } = job;
+  return error && error.code !== "insufficient_credits" ? { ...shown, error: said(error) } : shown;
 }
 
-/** A paper or an answer as its reader is sent it: what it cost is its workspace's. */
-export function rowFor<Row extends { creditsUsed?: number }>(row: Row, guest: boolean): Row {
+/** An error as a guest is sent it: what went wrong, without the diagnostics kept beside it. */
+const said = <Failure extends { context?: unknown }>({ context: _context, ...failure }: Failure) => failure as Failure;
+
+/**
+ * A paper or an answer as its reader is sent it. What it cost, the ID of the record a paper
+ * came from and its last error's diagnostics are its workspace's.
+ */
+export function rowFor<Row extends { creditsUsed?: number; sourceId?: string; lastError?: { context?: unknown } }>(row: Row, guest: boolean): Row {
   if (!guest) return row;
-  const { creditsUsed: _credits, ...shown } = row;
-  return shown as Row;
+  const { creditsUsed: _credits, sourceId: _source, lastError, ...shown } = row;
+  return (lastError ? { ...shown, lastError: said(lastError) } : shown) as Row;
 }
 
 export type ReadableJobResolution =

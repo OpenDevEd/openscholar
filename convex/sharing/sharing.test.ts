@@ -295,11 +295,14 @@ it("opens a shared screening to its guest to read and export from their own work
 });
 
 it("opens a shared extraction to its guest to read from their own workspace, without what it cost, and to nobody else", async () => {
-  const { t, alice, carol, dave, users, workspaceId, club } = await lab();
+  const { t, alice, carol, dave, users, workspaceId, club, item: trials } = await lab();
   const { jobId, paperId } = await t.run(async (ctx) => {
     await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
-    const jobId = await ctx.db.insert("extractionJobs", { workspaceId, createdBy: users.alice, name: "Sample sizes", sourceType: "history", status: "completed", totalPapers: 1, runEpoch: 0, spendCap: 500, spendHold: "hold_1", createdAt: 1, updatedAt: 1 });
-    const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: "W1", title: "Trial", authors: [], processable: true, status: "completed", creditsUsed: 3 });
+    const jobId = await ctx.db.insert("extractionJobs", {
+      workspaceId, createdBy: users.alice, name: "Sample sizes", sourceType: "history", status: "creditsExhausted", totalPapers: 1, runEpoch: 0, spendCap: 500, spendHold: "hold_1", createdAt: 1, updatedAt: 1,
+      error: { code: "insufficient_credits", message: "This extraction reached the 500 credits it was allowed. Resume it to carry on past them.", at: 1 },
+    });
+    const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: "W1", title: "Trial", authors: [], processable: true, status: "completed", creditsUsed: 3, sourceId: trials.id });
     return { jobId, paperId };
   });
   const item = { workspaceId, kind: "extraction" as const, id: jobId };
@@ -308,23 +311,29 @@ it("opens a shared extraction to its guest to read from their own workspace, wit
   await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
 
   // Its page's first read tells a member how many guests it has, and Carol whose it is. Hers leaves out what the job holds and may spend.
-  expect(await alice.query(api.extraction.queries.getJobShell, { jobId })).toMatchObject({ status: "ok", guests: 1, job: { spendCap: 500, spendHold: "hold_1" } });
+  expect(await alice.query(api.extraction.queries.getJobShell, { jobId })).toMatchObject({ status: "ok", guests: 1, job: { spendCap: 500, spendHold: "hold_1", error: { code: "insufficient_credits" } } });
   const hers = await carol.query(api.extraction.queries.getJobShell, { jobId });
   expect(hers).toMatchObject({ status: "ok", job: { name: "Sample sizes", totalPapers: 1 }, guest: { role: "viewer", from: { name: "lab", organization: true } } });
   expect(hers).not.toHaveProperty("guests");
   expect(hers).not.toHaveProperty("job.spendCap");
   expect(hers).not.toHaveProperty("job.spendHold");
+  // Nor why it ran out of credits, which names the figure: its status says it did.
+  expect(hers).toMatchObject({ job: { status: "creditsExhausted" } });
+  expect(hers).not.toHaveProperty("job.error");
 
   // Its papers and their answers, from her own workspace, without what each cost.
   const view = { jobId, filters: { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] }, sortBy: "default" as const, paginationOpts: { cursor: null, numItems: 10 } };
   const papers = async (as: typeof carol, from?: Id<"workspaces">) => (await as.query(api.extraction.queries.listJobResults, { ...view, ...(from ? { workspaceId: from } : {}) })).page;
-  expect(await papers(alice, workspaceId)).toMatchObject([{ title: "Trial", creditsUsed: 3 }]);
+  expect(await papers(alice, workspaceId)).toMatchObject([{ title: "Trial", creditsUsed: 3, sourceId: trials.id }]);
   expect(await papers(carol)).toMatchObject([{ title: "Trial" }]);
   expect((await papers(carol))[0]).not.toHaveProperty("creditsUsed");
+  // The collection the paper came from isn't shared with her: its ID stays behind.
+  expect((await papers(carol))[0]).not.toHaveProperty("sourceId");
   expect(await carol.query(api.extraction.queries.getJobDetails, { jobId })).toMatchObject({ status: "ok", guest: { role: "viewer" } });
   const paper = await carol.query(api.extraction.queries.papers.results, { paperId });
   expect(paper).toMatchObject({ status: "ok", paper: { title: "Trial" } });
   expect(paper).not.toHaveProperty("paper.creditsUsed");
+  expect(paper).not.toHaveProperty("paper.sourceId");
   expect((await carol.query(api.sharing.shared.list, { sort: "recent", paginationOpts: { cursor: null, numItems: 10 } })).page).toMatchObject([{ kind: "extraction", id: jobId, name: "Sample sizes", role: "viewer", size: 1 }]);
 
   // Every change to it is its workspace's.
