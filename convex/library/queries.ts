@@ -489,6 +489,25 @@ export const getLibraryCount = workspaceQuery({
   handler: (ctx, { workspaceId }) => libraryCount(ctx, workspaceId),
 });
 
+const sinceValidator = v.object({ week: v.number(), month: v.number(), year: v.number() });
+
+/**
+ * How many papers Date saved's quick picks each keep, saved since the start of their first day,
+ * out of the whole library or collection: the count and bar beside each pick. The facet counts
+ * answer each, so the size of the library doesn't matter.
+ */
+export const getSavedSinceCounts = workspaceQuery({
+  args: { collectionId: v.optional(v.id("collections")), since: sinceValidator },
+  returns: v.object({ total: v.number(), kept: sinceValidator }),
+  handler: async (ctx, { workspaceId }, { collectionId, since }) => {
+    const collection = await ownCollection(ctx, workspaceId, collectionId);
+    if (collectionId && !collection) return { total: 0, kept: { week: 0, month: 0, year: 0 } };
+    const scope = collection?._id ?? workspaceId;
+    const [week, month, year] = await Promise.all([since.week, since.month, since.year].map((lower) => countInRange(ctx, scope, "savedAt", { lower })));
+    return { total: collection ? collection.itemCount : await libraryCount(ctx, workspaceId), kept: { week, month, year } };
+  },
+});
+
 export const savedPaperAction = defineUserQuery({
   path: "library/queries:savedPaper",
   description: "Whether a paper is in the person's library, and whether it's in any of their collections.",

@@ -873,11 +873,6 @@ export const useAIConfigStore = create<AIConfigState>()(
 );
 
 // UI Component States
-interface ThemeToggleState {
-  mounted: boolean
-  setMounted: (mounted: boolean) => void
-}
-
 interface CurrentQueryState {
   currentQuery: string
   setCurrentQuery: (query: string) => void
@@ -902,25 +897,6 @@ interface KeywordExpansionDialogState {
   resetForm: () => void
 }
 
-// Removed NavbarState - using currentQuery from ResultsStore as single source of truth
-// Removed PageContentState - using currentQuery from ResultsStore as single source of truth
-
-interface AIConfigDialogState {
-  isEnhancing: boolean
-  enhancedPreview: {
-    enhancedQuery: string
-    explanation: string
-  } | null
-  setIsEnhancing: (enhancing: boolean) => void
-  setEnhancedPreview: (preview: { enhancedQuery: string; explanation: string } | null) => void
-}
-
-
-export const useThemeToggleStore = create<ThemeToggleState>((set) => ({
-  mounted: false,
-  setMounted: (mounted) => set({ mounted }),
-}))
-
 export const useCurrentQueryStore = create<CurrentQueryState>((set) => ({
   currentQuery: '',
   setCurrentQuery: (query) => set({ currentQuery: query }),
@@ -943,13 +919,6 @@ export const useKeywordExpansionDialogStore = create<KeywordExpansionDialogState
   setCurrentKeyword: (keyword) => set({ currentKeyword: keyword }),
   setSuggestedQuery: (query) => set({ suggestedQuery: query }),
   resetForm: () => set({ newShorthand: '', newExpansion: '', currentKeyword: '', suggestedQuery: '' }),
-}))
-
-export const useAIConfigDialogStore = create<AIConfigDialogState>((set) => ({
-  isEnhancing: false,
-  enhancedPreview: null,
-  setIsEnhancing: (enhancing) => set({ isEnhancing: enhancing }),
-  setEnhancedPreview: (preview) => set({ enhancedPreview: preview }),
 }))
 
 // Translation Store - for storing translation data by paper ID
@@ -1115,7 +1084,7 @@ export const getFilterSidebarDimensions = (isCollapsed: boolean) => ({
  * Each page gets its own store instance with separate localStorage persistence.
  * Usage: const useMyStore = createSidebarStore('my-persist-key');
  */
-export function createSidebarStore(persistKey: string) {
+function createSidebarStore(persistKey: string) {
   return create<FilterSidebarState>()(
     persist(
       (set) => ({
@@ -1141,7 +1110,7 @@ export function createSidebarStore(persistKey: string) {
  * Factory for creating sidebar dimension calculators.
  * Returns a function that computes current dimensions based on collapse state.
  */
-export function createSidebarDimensions(expandedWidth: number, collapsedWidth: number) {
+function createSidebarDimensions(expandedWidth: number, collapsedWidth: number) {
   return (isCollapsed: boolean) => ({
     expandedWidth,
     collapsedWidth,
@@ -1156,12 +1125,6 @@ export const getLibrarySidebarDimensions = createSidebarDimensions(320, 48);
 // Bucket sidebar store — staged-papers sidebar on job-creator
 export const useBucketSidebarStore = createSidebarStore('openalex-bucket-sidebar');
 export const getBucketSidebarDimensions = createSidebarDimensions(360, 48);
-
-// Chat papers-in-context sidebar — same visual shell as bucket, read-only,
-// independent collapse persistence so users can prefer it open in chat
-// even if they collapsed bucket on the creator.
-export const useChatPapersSidebarStore = createSidebarStore('openalex-chat-papers-sidebar');
-export const getChatPapersSidebarDimensions = createSidebarDimensions(320, 48);
 
 // Extraction source sidebar — collection picker inside the Library tab
 export const useExtractionSourceSidebarStore = createSidebarStore('openalex-extraction-source-sidebar');

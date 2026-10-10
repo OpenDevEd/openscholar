@@ -234,7 +234,6 @@
   },
   "pricing": {
     "chooseYourPlan": "अपना प्लान चुनें",
-    "subtitle": "पारदर्शी मूल्य निर्धारण के साथ मुफ़्त से एंटरप्राइज़ तक स्केल करें",
     "perMonth": "/महीना",
     "freePrice": "मुफ़्त",
     "enterprisePlanName": "एंटरप्राइज़",
@@ -435,10 +434,6 @@
       "schema_validation": "मॉडल का उत्तर अपेक्षित संरचना से मेल नहीं खाया।",
       "cancelled": "पूरा होने से पहले इसे रद्द कर दिया गया।"
     }
-  },
-  "sidebar": {
-    "expandSidebar": "साइडबार विस्तृत करें (Ctrl+B)",
-    "collapseSidebar": "साइडबार संक्षिप्त करें (Ctrl+B)"
   },
   "downloads": {
     "downloadAll": "सब डाउनलोड करें",
@@ -914,12 +909,8 @@
     "enableToggleToCustomize": "वर्ष सीमा कस्टमाइज़ करने के लिए ऊपर टॉगल सक्षम करें",
     "defaultAllYears": "डिफ़ॉल्ट रूप से, सभी वर्ष आपकी खोज में शामिल हैं",
     "yearRangeLabel": "वर्ष सीमा:",
-    "nStars": "{count, plural, one {# स्टार} other {# स्टार}}",
-    "zeroStars": "0 स्टार",
     "onlyShowRated": "केवल रेटेड पेपर दिखाएं",
     "hideUnrated": "उन पेपर छुपाएं जिन्हें आपने अभी तक रेट नहीं किया है",
-    "showingRange": "{range} दिखा रहे हैं",
-    "filterActive": "फ़िल्टर सक्रिय",
     "searchCountriesPlaceholder": "देश या क्षेत्र खोजें...",
     "filteringByCountries": "कुल {count} देशों से फ़िल्टर कर रहे हैं",
     "regionsGroup": "क्षेत्र",
@@ -1160,9 +1151,6 @@
     "bookmarkNotFound": "बुकमार्क \"{keyword}\" नहीं मिला"
   },
   "accessibility": {
-    "toggleTheme": "थीम टॉगल करें",
-    "switchToLightMode": "लाइट मोड पर स्विच करें",
-    "switchToDarkMode": "डार्क मोड पर स्विच करें",
     "closeDialog": "बंद करें",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "पेज नंबर",

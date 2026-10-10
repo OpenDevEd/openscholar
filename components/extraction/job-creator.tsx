@@ -261,20 +261,6 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="text-center mb-8"
-                >
-                  <h2 className="text-2xl font-bold text-foreground mb-2">
-                    {t("jobDetails")}
-                  </h2>
-                  <p className="text-muted-foreground">
-                    {t("nameYourJob")}
-                  </p>
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2 }}
                   className="space-y-6"
                 >
@@ -312,12 +298,10 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
                   transition={{ delay: 0.1 }}
                   className="mb-6"
                 >
-                  <h2 className="text-2xl font-bold text-foreground mb-2">
-                    {t("selectPapers")}
-                  </h2>
-                 <p className="text-muted-foreground">
-                   {t("combineSources")}
-                 </p>
+                  {/* The step's name is in the bar above. */}
+                  <p className="text-sm text-muted-foreground">
+                    {t("combineSources")}
+                  </p>
                  <SourceSummary />
                 </motion.div>
 
@@ -333,10 +317,7 @@ export function JobCreator({ paperLimit }: { paperLimit: number }) {
                   transition={{ delay: 0.1 }}
                   className="mb-6"
                 >
-                  <h2 className="text-2xl font-bold text-foreground mb-2">
-                    {t("defineQuestions")}
-                  </h2>
-                  <p className="text-muted-foreground">
+                  <p className="text-sm text-muted-foreground">
                     {t("whatDataPoints")}
                   </p>
                 </motion.div>

@@ -180,6 +180,7 @@
     "library/queries:browseLibrary": "#327",
     "library/queries:getLibraryCount": "#327",
     "library/queries:getLibraryFilteredCount": "#327",
+    "library/queries:getSavedSinceCounts": "#685",
     "library/queries:searchLibrary": "#327",
     "models/admin:setOffered": "#323",
     "models/queries:getCatalogOption": "#323",

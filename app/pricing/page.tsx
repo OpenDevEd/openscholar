@@ -10,9 +10,7 @@ export const metadata: Metadata = {
 export default function PricingPage() {
   return (
     <PageWrapper>
-      <div className="container mx-auto p-4 sm:p-6 max-w-6xl">
-        <Pricing />
-      </div>
+      <Pricing />
     </PageWrapper>
   );
 }

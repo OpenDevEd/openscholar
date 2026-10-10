@@ -244,7 +244,7 @@ Return a more targeted version of this query.`;
             value={totalCount}
             className="text-lg font-semibold text-foreground"
           />
-          <span className="text-muted-foreground">{t("common.results")}</span>
+          <span className="text-muted-foreground">{t("common.results").toLowerCase()}</span>
         </div>
       </div>
 

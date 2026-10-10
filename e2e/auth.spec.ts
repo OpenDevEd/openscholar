@@ -46,7 +46,7 @@ test("library year filtering can be enabled, edited, reopened and reset", async 
   await page.getByRole("button", { name: "Reset", exact: true }).click();
   await expect(toggle).not.toBeChecked();
   await expect(page).toHaveURL(url => !url.searchParams.has("yf") && !url.searchParams.has("yt"));
-  await page.getByRole("button", { name: "This Year", exact: true }).click();
+  await page.getByRole("radio", { name: "This year", exact: true }).click();
   await expect(toggle).toBeChecked();
   await expect(inputs.nth(0)).toHaveValue(String(currentYear));
   await expect(inputs.nth(1)).toHaveValue(String(currentYear));

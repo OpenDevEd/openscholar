@@ -80,7 +80,6 @@
     "convex": "^1.46.0",
     "convex-helpers": "^0.1.124",
     "date-fns": "^4.1.0",
-    "embla-carousel-react": "^8.6.0",
     "exceljs": "^4.4.0",
     "html-react-parser": "^6.1.8",
     "jsonrepair": "^3.13.2",

@@ -234,7 +234,6 @@
   },
   "pricing": {
     "chooseYourPlan": "プランを選択",
-    "subtitle": "透明な料金で無料からエンタープライズまで",
     "perMonth": "/月",
     "freePrice": "無料",
     "enterprisePlanName": "エンタープライズ",
@@ -435,10 +434,6 @@
       "schema_validation": "モデルの回答が想定された構造と一致しませんでした。",
       "cancelled": "完了する前にキャンセルされました。"
     }
-  },
-  "sidebar": {
-    "expandSidebar": "サイドバーを展開（Ctrl+B）",
-    "collapseSidebar": "サイドバーを折りたたむ（Ctrl+B）"
   },
   "downloads": {
     "downloadAll": "すべてダウンロード",
@@ -914,12 +909,8 @@
     "enableToggleToCustomize": "上のトグルを有効にして年範囲をカスタマイズ",
     "defaultAllYears": "デフォルトでは、すべての年が検索に含まれます",
     "yearRangeLabel": "年範囲：",
-    "nStars": "{count, plural, one {# つ星} other {# つ星}}",
-    "zeroStars": "0つ星",
     "onlyShowRated": "評価済み論文のみ表示",
     "hideUnrated": "まだ評価していない論文を非表示",
-    "showingRange": "{range} を表示",
-    "filterActive": "フィルター有効",
     "searchCountriesPlaceholder": "国または地域を検索...",
     "filteringByCountries": "合計 {count} か国でフィルター中",
     "regionsGroup": "地域",
@@ -1160,9 +1151,6 @@
     "bookmarkNotFound": "ブックマーク「{keyword}」が見つかりません"
   },
   "accessibility": {
-    "toggleTheme": "テーマを切り替え",
-    "switchToLightMode": "ライトモードに切り替え",
-    "switchToDarkMode": "ダークモードに切り替え",
     "closeDialog": "閉じる",
     "logoAlt": "OpenScholar",
     "pageNumberInput": "ページ番号",
