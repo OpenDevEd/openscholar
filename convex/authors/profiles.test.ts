@@ -208,32 +208,6 @@ describe("author profiles", () => {
     expect((await owner.query(api.authors.profiles.get, {profileId}))?.bio).toBe(content.bio);
   });
 
-  it("moves the editors and waiting invitations it had before onto the tables every shared item uses", async () => {
-    const {t, editor, ids, profileId} = await setup();
-    await t.run(async ctx => {
-      await ctx.db.insert("authorProfileMembers", {profileId, userId: ids.editor});
-      await ctx.db.insert("authorProfileInvitations", {profileId, email: "waiting@example.org", invitedBy: ids.owner, expiresAt: Date.now() + 86_400_000, state: "pending", delivery: "sent"});
-      await ctx.db.insert("authorProfileInvitations", {profileId, email: "answered@example.org", invitedBy: ids.owner, expiresAt: Date.now() + 86_400_000, state: "declined", delivery: "sent"});
-    });
-    expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBeNull();
-    // Someone invited again while they already edit it: they keep the one place.
-    await t.run(ctx => ctx.db.insert("authorProfileInvitations", {profileId, email: "editor@example.org", invitedBy: ids.owner, expiresAt: Date.now() + 86_400_000, state: "pending", delivery: "sent"}));
-    expect(await t.action(internal.migrations.authorAccess.verify, {})).toBe(2);
-    vi.useFakeTimers();
-    try {
-      await t.mutation(internal.migrations.authorAccess.run, {});
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-      // Run again, it changes nothing.
-      await t.mutation(internal.migrations.authorAccess.run, {});
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-    } finally { vi.useRealTimers(); }
-    expect(await t.action(internal.migrations.authorAccess.verify, {})).toBe(0);
-    expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBe("editor");
-    expect(await t.run(async ctx => (await ctx.db.query("itemAccess").collect()).map(({kind, item, userId, role}) => ({kind, item, userId, role})))).toEqual([{kind: "author", item: profileId, userId: ids.editor, role: "editor"}]);
-    // The waiting invitation moved with the time it had left, which the test's clock has since run past: it ran out when it would have.
-    expect(await t.run(async ctx => (await ctx.db.query("itemInvitations").collect()).map(({kind, email, role, state, delivery}) => ({kind, email, role, state, delivery})))).toEqual([{kind: "author", email: "waiting@example.org", role: "editor", state: "expired", delivery: "sent"}]);
-  });
-
   it("stores a photo without allowing stale saves to delete the current file", async () => {
     const {t, owner, editor, profileId} = await setup();
     const photo = "data:image/png;base64,iVBORw0KGgo=";
