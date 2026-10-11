@@ -537,6 +537,7 @@ export function LibraryPageClient() {
                   // A collection shared with you from another workspace says whose it is and what you may do with it (#653).
                   meta={guest ? <GuestChips from={guest.from} role={guest.role} person /> : undefined}
                   // An open collection's Activity (#656), Move and Share, at the end of its heading: they are its workspace's, not a guest's.
+                  // With no collection open, who else has the whole library open.
                   actions={
                     selectedCollection && !guest ? (
                       <>
@@ -545,6 +546,8 @@ export function LibraryPageClient() {
                         <MoveButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
                         <ShareButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} guests={selectedCollection.guests ?? 0} />
                       </>
+                    ) : !params.col && workspaceId ? (
+                      <ItemPresence kind="library" id={workspaceId} />
                     ) : undefined
                   }
                   rawSearch={rawSearch}
