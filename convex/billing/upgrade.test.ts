@@ -56,9 +56,11 @@ it("keeps the payment that failed on a past-due account, to pay before the plan 
   const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "user_ada", email: "ada@test.local", state: "active", createdAt: 1, updatedAt: 1 }));
   const customer = fakeAutumn.customer(userId);
   Object.assign(customer, { planId: "pro", pastDue: true, invoices: [
-    { status: "paid", total: 20, currency: "usd", created_at: 1_000 },
-    { status: "open", total: 20, currency: "usd", created_at: 3_000, hosted_invoice_url: "https://pay.test/in_2" },
-    { status: "void", total: 15, currency: "usd", created_at: 2_000 },
+    { plan_ids: ["pro"], status: "paid", total: 20, currency: "usd", created_at: 1_000 },
+    { plan_ids: ["pro"], status: "open", total: 20, currency: "usd", created_at: 3_000, hosted_invoice_url: "https://pay.test/in_2" },
+    { plan_ids: ["pro"], status: "void", total: 15, currency: "usd", created_at: 2_000 },
+    // A top-up declined since, not yet voided, isn't the payment that put the plan past due.
+    { plan_ids: ["top_up"], status: "open", total: 5, currency: "usd", created_at: 4_000, hosted_invoice_url: "https://pay.test/in_3" },
   ] });
   const ada = t.withIdentity({ subject: "user_ada" });
   const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, userId));

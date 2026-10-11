@@ -62,8 +62,11 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
   // main plan was chosen and is paid for.
   const onPaidPlan = Boolean(current && !current.auto_enable);
   const periodEnd = current?.current_period_end ?? undefined;
-  // The payment that failed, while the plan is past due (#40): its newest invoice still open.
-  const unpaid = current?.past_due ? (customer.invoices ?? []).filter((invoice) => invoice.status === "open").sort((a, b) => b.created_at - a.created_at)[0] : undefined;
+  // The payment that failed, while the plan is past due (#40): the oldest of its plan's invoices still open, whose failure started
+  // Stripe's retries. A top-up declined meanwhile has an open invoice too, which Autumn voids within minutes: it isn't this.
+  const unpaid = current?.past_due
+    ? (customer.invoices ?? []).filter((invoice) => invoice.status === "open" && !invoice.plan_ids?.includes(TOPUP_PLAN)).sort((a, b) => a.created_at - b.created_at)[0]
+    : undefined;
   return {
     ...(current ? { plan: current.plan_id } : {}),
     pastDue: current?.past_due ?? false,
@@ -348,22 +351,30 @@ const myAccountKeys = Object.keys(myAccountFields) as (keyof typeof myAccountFie
  * in it, their own when it's left out (a page outside /o/<slug>, or one rendered on the server).
  */
 async function pageWorkspace(ctx: QueryCtx, workspaceId: Id<"workspaces"> | undefined) {
+  return (await pageActor(ctx, workspaceId))?.workspaceId;
+}
+
+/** The person reading a page and their role in its workspace: their own, where they're its admin, when it names none. */
+async function pageActor(ctx: QueryCtx, workspaceId: Id<"workspaces"> | undefined) {
   const user = await getCurrentUser(ctx);
   if (!user) return undefined;
-  if (!workspaceId) return await ownWorkspaceOf(ctx, user._id);
-  return (await actorIn(ctx, user, workspaceId)) ? workspaceId : undefined;
+  if (!workspaceId) return { workspaceId: await ownWorkspaceOf(ctx, user._id), role: "admin" as const };
+  return (await actorIn(ctx, user, workspaceId)) ?? undefined;
 }
 
 export const mine = query({
   args: { workspaceId: v.optional(v.id("workspaces")) },
   returns: v.union(v.object(myAccountFields), v.null()),
   handler: async (ctx, args) => {
-    const workspaceId = await pageWorkspace(ctx, args.workspaceId);
-    if (!workspaceId) return null;
-    const row = await readAccount(ctx, workspaceId);
+    const actor = await pageActor(ctx, args.workspaceId);
+    if (!actor?.workspaceId) return null;
+    const row = await readAccount(ctx, actor.workspaceId);
     if (!row) return null;
     // Copy only the fields the validator declares, so internal columns stay private.
-    return pick(row, myAccountKeys);
+    const account = pick(row, myAccountKeys);
+    // The page that pays a failed invoice is the payer's own: an organization's members see that it failed, not where to pay (#40).
+    if (account.unpaid && actor.role !== "admin") account.unpaid = { amount: account.unpaid.amount, currency: account.unpaid.currency, since: account.unpaid.since };
+    return account;
   },
 });
 
