@@ -7,8 +7,8 @@ import { internalMutation, type ActionCtx } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { autumn, type AutumnCustomer } from "./autumn";
 
-/** How long a purchase holds its workspace's lock when its action ends without letting go. */
-const PURCHASE_LEASE_MS = 2 * 60_000;
+/** How long a purchase holds its workspace's lock: as long as an action can run, so a live one is never taken over. */
+const PURCHASE_LEASE_MS = 10 * 60_000;
 
 /**
  * Refuses anything bought while a payment is still open, a renewal or a charge that was declined: Autumn
@@ -28,37 +28,38 @@ export function unlessPaymentOpen(customer: AutumnCustomer) {
  * declined. `buy` gets the customer, read with `plans` when asked.
  */
 export async function purchasing<T>(ctx: ActionCtx, workspaceId: Id<"workspaces">, customerId: string, read: { plans?: true }, buy: (customer: AutumnCustomer) => Promise<T>): Promise<T> {
-  if (!(await ctx.runMutation(internal.billing.purchases.claim, { workspaceId }))) throw createError("BILLING_PLAN_CHANGE_CONFLICT", "Another billing change is under way. Try again in a moment.");
+  const since: number | null = await ctx.runMutation(internal.billing.purchases.claim, { workspaceId });
+  if (since === null) throw createError("BILLING_PLAN_CHANGE_CONFLICT", "Another billing change is under way. Try again in a moment.");
   try {
     const customer = await autumn.customer(customerId, { ...read, invoices: true });
     unlessPaymentOpen(customer);
     return await buy(customer);
   } finally {
-    await ctx.runMutation(internal.billing.purchases.release, { workspaceId });
+    await ctx.runMutation(internal.billing.purchases.release, { workspaceId, since });
   }
 }
 
-/** Takes the workspace's purchase lock: false while another purchase holds it. */
+/** Takes the workspace's purchase lock: when it was taken, which lets go of it, or null while another purchase holds it. */
 export const claim = internalMutation({
   args: { workspaceId: v.id("workspaces") },
-  returns: v.boolean(),
+  returns: v.union(v.number(), v.null()),
   handler: async (ctx, { workspaceId }) => {
     const row = await ctx.db.query("purchaseLocks").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
     const now = Date.now();
-    if (row && now - row.since < PURCHASE_LEASE_MS) return false;
+    if (row && now - row.since < PURCHASE_LEASE_MS) return null;
     if (row) await ctx.db.patch("purchaseLocks", row._id, { since: now });
     else await ctx.db.insert("purchaseLocks", { workspaceId, since: now });
-    return true;
+    return now;
   },
 });
 
-/** Lets go of the workspace's purchase lock. */
+/** Lets go of the workspace's purchase lock taken at `since`, and of no other. */
 export const release = internalMutation({
-  args: { workspaceId: v.id("workspaces") },
+  args: { workspaceId: v.id("workspaces"), since: v.number() },
   returns: v.null(),
-  handler: async (ctx, { workspaceId }) => {
+  handler: async (ctx, { workspaceId, since }) => {
     const row = await ctx.db.query("purchaseLocks").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique();
-    if (row) await ctx.db.delete("purchaseLocks", row._id);
+    if (row?.since === since) await ctx.db.delete("purchaseLocks", row._id);
     return null;
   },
 });

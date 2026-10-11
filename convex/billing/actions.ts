@@ -161,9 +161,11 @@ export const previewPlan = action({
   handler: async (ctx, { plan }): Promise<PreviewResult> => {
     const user = await requireUser(ctx);
     const catalog = await requireChoosablePlan(ctx, plan);
-    const customer = await autumn.customer(user._id, { card: true, plans: true, invoices: true });
-    unlessPaymentOpen(customer);
-    return previewOf(await autumn.previewAttach(user._id, plan, startsNewMonth(catalog, customer, plan)), plan, customer);
+    const customer = await autumn.customer(user._id, { card: true, plans: true });
+    const preview = await autumn.previewAttach(user._id, plan, startsNewMonth(catalog, customer, plan));
+    // Read after the quote: a charge declined meanwhile in another tab, which leaves Autumn quoting nothing, is caught (#858).
+    unlessPaymentOpen(await autumn.customer(user._id, { invoices: true }));
+    return previewOf(preview, plan, customer);
   },
 });
 
@@ -216,9 +218,11 @@ export const previewTeam = action({
   handler: async (ctx, { workspaceId, seats }): Promise<PreviewResult> => {
     await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
+    const preview = await autumn.previewAttach(workspaceId, TEAM_PLAN, false, teamSeats(seats));
+    // Read after the quote, as previewPlan's is.
     const customer = await autumn.customer(workspaceId, { card: true, invoices: true });
     unlessPaymentOpen(customer);
-    return previewOf(await autumn.previewAttach(workspaceId, TEAM_PLAN, false, teamSeats(seats)), SEAT_PLAN, customer);
+    return previewOf(preview, SEAT_PLAN, customer);
   },
 });
 
@@ -253,9 +257,11 @@ export const previewSeats = action({
   handler: async (ctx, { workspaceId, seats }): Promise<PreviewResult> => {
     await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
+    const preview = await autumn.previewUpdate(workspaceId, TEAM_PLAN, teamSeats(seats));
+    // Read after the quote, as previewPlan's is.
     const customer = await autumn.customer(workspaceId, { card: true, invoices: true });
     unlessPaymentOpen(customer);
-    return previewOf(await autumn.previewUpdate(workspaceId, TEAM_PLAN, teamSeats(seats)), SEAT_PLAN, customer);
+    return previewOf(preview, SEAT_PLAN, customer);
   },
 });
 
@@ -289,20 +295,24 @@ export const moveToFree = action({
       if (library) throw createError("VALIDATION_ERROR", `${library} is an Evidence Library of this organization, and Free has none. Move or delete its Evidence Libraries first.`);
     };
     await refuseWithLibrary();
-    // Clerk holds it to Free's members before they're counted, so nobody joins past them while it moves.
-    await ctx.runAction(internal.billing.seats.limitToFree, { workspaceId });
-    try {
-      const counted: { members: number; invitations: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
-      if (!counted || counted.members + counted.invitations > FREE_MEMBERS) throw createError("VALIDATION_ERROR", `Free has up to ${FREE_MEMBERS} members, invitations included: remove members or cancel invitations down to ${FREE_MEMBERS} first.`);
-      // Again, now that Clerk has answered: another admin may have made a library meanwhile.
-      // ponytail: one made while Autumn ends the plan still lands on Free; its owners delete it from the organization's settings. Hold new libraries during a move if that ever matters.
-      await refuseWithLibrary();
-      await autumn.attach({ customerId: await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId }), planId: ORGANIZATION_PLAN });
-    } catch (error) {
-      // It may still be on Team: a sync gives its members the limit of the plan it's on.
-      await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId });
-      throw error;
-    }
+    // A plan change like any other: alone among the organization's purchases, and not while a payment is open (#858).
+    const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
+    await purchasing(ctx, workspaceId, customerId, {}, async () => {
+      // Clerk holds it to Free's members before they're counted, so nobody joins past them while it moves.
+      await ctx.runAction(internal.billing.seats.limitToFree, { workspaceId });
+      try {
+        const counted: { members: number; invitations: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
+        if (!counted || counted.members + counted.invitations > FREE_MEMBERS) throw createError("VALIDATION_ERROR", `Free has up to ${FREE_MEMBERS} members, invitations included: remove members or cancel invitations down to ${FREE_MEMBERS} first.`);
+        // Again, now that Clerk has answered: another admin may have made a library meanwhile.
+        // ponytail: one made while Autumn ends the plan still lands on Free; its owners delete it from the organization's settings. Hold new libraries during a move if that ever matters.
+        await refuseWithLibrary();
+        await autumn.attach({ customerId, planId: ORGANIZATION_PLAN });
+      } catch (error) {
+        // It may still be on Team: a sync gives its members the limit of the plan it's on.
+        await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId });
+        throw error;
+      }
+    });
     await refreshAccount(ctx, workspaceId, { card: true });
     // An invitation sent while it moved passed Free's limit: it's taken back.
     await ctx.runAction(internal.organizations.manage.trimInvitations, { workspaceId, userId: user._id });

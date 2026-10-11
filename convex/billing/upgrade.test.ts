@@ -64,7 +64,7 @@ it("quotes and changes no plan while a payment is still open, and says where to 
   const before = fakeAutumn.calls.length;
   await expect(ada.action(api.billing.actions.previewPlan, { plan: "pro" })).rejects.toThrow(/BILLING_PAYMENT_OPEN[^]*pay\.test\/in_pro/);
   await expect(ada.action(api.billing.actions.choosePlan, { plan: "pro" })).rejects.toThrow(/BILLING_PAYMENT_OPEN/);
-  expect(fakeAutumn.calls.slice(before).filter((call) => call.path.startsWith("billing."))).toEqual([]);
+  expect(fakeAutumn.calls.slice(before).filter((call) => call.path === "billing.attach")).toEqual([]);
   expect(fakeAutumn.customer(userId).planId).toBe("go");
 });
 

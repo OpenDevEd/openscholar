@@ -130,11 +130,15 @@ it("makes one purchase of a workspace at a time, and lets go when it ends", asyn
   await membership("ada", true, "org:admin");
   await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 1 });
   // Another purchase of the lab's is under way (#858): this one is refused and buys nothing.
-  expect(await t.mutation(internal.billing.purchases.claim, { workspaceId })).toBe(true);
+  const since = await t.mutation(internal.billing.purchases.claim, { workspaceId });
+  expect(since).toEqual(expect.any(Number));
   const before = fakeAutumn.calls.length;
   await expect(ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 2 })).rejects.toThrow(/BILLING_PLAN_CHANGE_CONFLICT/);
   expect(fakeAutumn.calls.slice(before).filter((call) => call.path.startsWith("billing."))).toEqual([]);
-  await t.mutation(internal.billing.purchases.release, { workspaceId });
+  // Only the purchase that took the lock lets go of it.
+  await t.mutation(internal.billing.purchases.release, { workspaceId, since: since! - 1 });
+  await expect(ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 2 })).rejects.toThrow(/BILLING_PLAN_CHANGE_CONFLICT/);
+  await t.mutation(internal.billing.purchases.release, { workspaceId, since: since! });
   await ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 2 });
   expect((await ada.query(api.billing.seats.counts, { workspaceId }))?.seats).toBe(2);
   fakeAutumn.declineCard = true;
@@ -149,13 +153,14 @@ it("buys nothing for an organization while a payment is still open, and says whe
   await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 1 });
   // A seat bought a moment ago was declined (#858): its invoice stays open until Autumn voids it, and Autumn would give a seat asked for meanwhile for nothing.
   fakeAutumn.customer(workspaceId).invoices = [{ plan_ids: [TEAM_PLAN], status: "open", total: 24, currency: "usd", created_at: 1, hosted_invoice_url: "https://pay.test/in_seat" }];
-  const charges = () => fakeAutumn.calls.filter((call) => ["billing.attach", "billing.update", "billing.preview_update"].includes(call.path)).length;
+  const charges = () => fakeAutumn.calls.filter((call) => ["billing.attach", "billing.update"].includes(call.path)).length;
   const before = charges();
   for (const attempt of [
     () => ada.action(api.billing.actions.previewSeats, { workspaceId, seats: 2 }),
     () => ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 2 }),
     () => ada.action(api.organizations.manage.invite, { workspaceId, emails: ["gus@lab.test"], role: "member", addSeat: true }),
     () => ada.action(api.billing.actions.buyCredits, { workspaceId, credits: 10_000 }),
+    () => ada.action(api.billing.actions.moveToFree, { workspaceId }),
   ]) await expect(attempt()).rejects.toThrow(/BILLING_PAYMENT_OPEN[^]*pay\.test\/in_seat/);
   expect(charges()).toBe(before);
   expect((await ada.query(api.billing.seats.counts, { workspaceId }))?.seats).toBe(1);

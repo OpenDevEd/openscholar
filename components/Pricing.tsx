@@ -107,6 +107,11 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
   const isAnonymous = subscriptionState.isAnonymous;
   const hasResolvedSubscription = subscriptionState.isReady;
   const resolvedPlan = subscriptionState.resolvedPlan;
+  // A plan another tab moved to meanwhile is current: there's nothing left to confirm, now or later (#858).
+  if (upgradePreview && upgradePreview.targetPlanId === resolvedPlan && !isConfirmingUpgrade) {
+    setIsUpgradeDialogOpen(false);
+    setUpgradePreview(null);
+  }
 
   const featureName = useCallback(
     (id: string) =>
@@ -573,8 +578,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
         </div>
 
         <UpgradeConfirmationDialog
-          // A plan another tab moved to meanwhile is current: there's nothing left to confirm (#858).
-          open={isUpgradeDialogOpen && upgradePreview?.targetPlanId !== resolvedPlan}
+          open={isUpgradeDialogOpen}
           onOpenChange={(open) => {
             if (!isConfirmingUpgrade) {
               setIsUpgradeDialogOpen(open);
