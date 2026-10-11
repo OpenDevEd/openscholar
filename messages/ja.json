@@ -358,7 +358,6 @@
     "upgradeDescription": "プランをアップグレードして、より多くのクレジットと機能を利用",
     "failedToLoadDetails": "詳細の読み込みに失敗しました",
     "paymentFailedNotice": "お支払いに失敗しました。サブスクリプションを維持するには、お支払い方法を更新してください。",
-    "updatePaymentMethod": "お支払い方法を更新",
     "perInterval": "/ {interval}",
     "intervalMonth": "月",
     "intervalYear": "年",
@@ -395,7 +394,9 @@
     "renewsOnDate": "{date} に更新",
     "charges": "使用履歴",
     "jobCharges": "このジョブの使用履歴",
-    "chargesLabel": "件"
+    "chargesLabel": "件",
+    "paymentFailedEnds": "{amount}の支払いに失敗しました。支払われない場合、{plan}は{date}に終了します。",
+    "fixPayment": "支払いを修正"
   },
   "errors": {
     "unexpectedIssue": "予期しない問題が発生しました。再試行するか、安定したページに戻ってください。",
@@ -3964,7 +3965,9 @@
       "seatsAfter": "変更後",
       "seatToConfirm": "銀行がこの支払いの確認を求めています。確認してから、もう一度招待してください。",
       "confirmPayment": "支払いを確認",
-      "seatHeldUndated": "この請求期間にクレジットを使ったため、更新日までシートは使用中のままです。"
+      "seatHeldUndated": "この請求期間にクレジットを使ったため、更新日までシートは使用中のままです。",
+      "paymentFailedEnds": "{amount}の支払いに失敗しました。支払われない場合、{plan}は{date}に終了します。",
+      "paymentFailed": "前回の支払いに失敗しました。"
     },
     "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。",
     "fromCredits": "{name} のクレジットから",

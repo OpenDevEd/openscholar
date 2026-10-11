@@ -358,7 +358,6 @@
     "upgradeDescription": "升级套餐以解锁更多积分和功能。",
     "failedToLoadDetails": "加载详情失败",
     "paymentFailedNotice": "支付失败。请更新支付方式以保持订阅有效。",
-    "updatePaymentMethod": "更新支付方式",
     "perInterval": "/ {interval}",
     "intervalMonth": "月",
     "intervalYear": "年",
@@ -395,7 +394,9 @@
     "renewsOnDate": "{date} 续订",
     "charges": "扣费记录",
     "jobCharges": "此任务的扣费",
-    "chargesLabel": "条扣费"
+    "chargesLabel": "条扣费",
+    "paymentFailedEnds": "{amount} 的付款失败。如未付款，{plan} 将于 {date} 结束。",
+    "fixPayment": "处理付款"
   },
   "errors": {
     "unexpectedIssue": "我们遇到了意外问题。请重试或返回稳定的页面。",
@@ -3964,7 +3965,9 @@
       "seatsAfter": "之后",
       "seatToConfirm": "银行要求确认这笔付款。请确认后再重新邀请。",
       "confirmPayment": "确认付款",
-      "seatHeldUndated": "此成员在本计费周期使用了积分，因此其席位保留至续订。"
+      "seatHeldUndated": "此成员在本计费周期使用了积分，因此其席位保留至续订。",
+      "paymentFailedEnds": "{amount} 的付款失败。如未付款，{plan} 将于 {date} 结束。",
+      "paymentFailed": "上次付款失败。"
     },
     "couldntInvite": "组织已创建，但邀请未能发出。请在其成员设置中发送。",
     "fromCredits": "使用 {name} 的积分",

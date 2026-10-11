@@ -49,7 +49,7 @@ import { ORGANIZATION_COLOURS } from "@/lib/workspaces/colours";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { Guarded, MemberFaces, Opening, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
 import { MemberSpending, useMemberSpending } from "./spending";
-import { FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
+import { DAYS_TO_PAY, FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
 
 /** Rows a page of members holds. */
 const PER_PAGE = 10;
@@ -706,6 +706,26 @@ export function WorkspaceBilling() {
   return (
     <Enter ready>
       <div className="space-y-8">
+        {account.pastDue ? (
+          // A failed payment, the day the plan ends if it isn't paid, and where to pay it (#40), as a person's billing page has it.
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
+            <span className="flex items-center gap-2">
+              <AlertCircle className="size-4 shrink-0" />
+              {account.unpaid ? t("paymentFailedEnds", { amount: money(account.unpaid.amount), plan: plan?.name ?? "", date: date(account.unpaid.since + DAYS_TO_PAY * 86_400_000) }) : t("paymentFailed")}
+            </span>
+            {admin ? (
+              account.unpaid?.url ? (
+                <Button asChild variant="outline" size="sm">
+                  <a href={account.unpaid.url}>{t("fixPayment")}</a>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" disabled={busy === "portal"} onClick={() => void attempt("portal", async () => window.location.assign(await openPortal({})))}>
+                  {t("fixPayment")}
+                </Button>
+              )
+            ) : null}
+          </div>
+        ) : null}
         <section className="grid overflow-hidden rounded-2xl border border-border-subtle @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
           <div className="space-y-5 p-5">
             <div>

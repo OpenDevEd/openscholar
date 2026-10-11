@@ -62,6 +62,8 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
   // main plan was chosen and is paid for.
   const onPaidPlan = Boolean(current && !current.auto_enable);
   const periodEnd = current?.current_period_end ?? undefined;
+  // The payment that failed, while the plan is past due (#40): its newest invoice still open.
+  const unpaid = current?.past_due ? (customer.invoices ?? []).filter((invoice) => invoice.status === "open").sort((a, b) => b.created_at - a.created_at)[0] : undefined;
   return {
     ...(current ? { plan: current.plan_id } : {}),
     pastDue: current?.past_due ?? false,
@@ -85,6 +87,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
     signupGranted: customer.subscriptions.some((s) => s.plan_id === SIGNUP_PLAN),
     hasPaid: onPaidPlan || (customer.purchases ?? []).length > 0,
     stripeCustomerId: customer.stripe_id ?? undefined,
+    ...(unpaid ? { unpaid: { amount: unpaid.total, currency: unpaid.currency, since: unpaid.created_at, ...(unpaid.hosted_invoice_url ? { url: unpaid.hosted_invoice_url } : {}) } } : {}),
   };
 }
 
@@ -202,7 +205,10 @@ export async function refreshAccount(
 ): Promise<BillingAccountSnapshot> {
   const fetchedAt = Date.now();
   const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
-  const snapshot = snapshotFromCustomer(await autumn.customer(customerId, options));
+  let customer = await autumn.customer(customerId, options);
+  // A failed payment's invoice is read only while one is due, which is rare.
+  if (customer.subscriptions.some((subscription) => subscription.past_due)) customer = await autumn.customer(customerId, { ...options, invoices: true });
+  const snapshot = snapshotFromCustomer(customer);
   await ctx.runMutation(internal.billing.accounts.writeSnapshot, { workspaceId, snapshot, withCard: options.card ?? false, fetchedAt });
   return snapshot;
 }

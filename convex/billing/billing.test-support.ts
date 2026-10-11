@@ -27,7 +27,7 @@ const DAY = 86_400_000;
  * `planId`: the main plan, Free until another is attached, as Autumn auto-enables it on every new customer. `flags`: the boolean features its plan grants.
  * `seats`: Team seats bought (#862). `next`: the plan it moves to at the renewal. `periodStart`: when its billing period began.
  */
-type Customer = { plan: number; topUp: number; signup: boolean; planId: string; flags?: readonly string[]; seats: number; next?: string; periodStart: number };
+type Customer = { plan: number; topUp: number; signup: boolean; planId: string; flags?: readonly string[]; seats: number; next?: string; periodStart: number; pastDue?: boolean; invoices?: Array<{ status: string; total: number; currency: string; created_at: number; hosted_invoice_url?: string }> };
 
 export const fakeAutumn = {
   customers: new Map<string, Customer>(),
@@ -147,7 +147,7 @@ function customerBody(id: string) {
     flags: Object.fromEntries((customer.flags ?? []).map((feature) => [feature, {}])),
     subscriptions: [
       {
-        plan_id: customer.planId, status: "active", past_due: false, canceled_at: customer.next ? Date.now() : null, add_on: false, auto_enable: customer.planId === "free", plan: { id: customer.planId, price: fakeAutumn.prices.get(customer.planId) ?? null },
+        plan_id: customer.planId, status: "active", past_due: customer.pastDue ?? false, canceled_at: customer.next ? Date.now() : null, add_on: false, auto_enable: customer.planId === "free", plan: { id: customer.planId, price: fakeAutumn.prices.get(customer.planId) ?? null },
         current_period_start: customer.planId === TEAM ? customer.periodStart : null, current_period_end: customer.planId === TEAM ? customer.periodStart + 30 * DAY : null,
       },
       ...(customer.next ? [{ plan_id: customer.next, status: "scheduled", past_due: false, canceled_at: null, current_period_end: null, add_on: false, auto_enable: false }] : []),
@@ -202,7 +202,11 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
   switch (path) {
     case "customers.get_or_create":
       // The saved card, when the call asks for it and the customer has one.
-      return respond(200, { ...customerBody(customerId!), ...((body.expand as string[] | undefined)?.includes("payment_method") && !fakeAutumn.noCard ? { payment_method: { card: { brand: "visa", last4: "4242" } } } : {}) });
+      return respond(200, {
+        ...customerBody(customerId!),
+        ...((body.expand as string[] | undefined)?.includes("payment_method") && !fakeAutumn.noCard ? { payment_method: { card: { brand: "visa", last4: "4242" } } } : {}),
+        ...((body.expand as string[] | undefined)?.includes("invoices") ? { invoices: fakeAutumn.customer(customerId!).invoices ?? [] } : {}),
+      });
     case "billing.attach": {
       const customer = fakeAutumn.customer(customerId!);
       if (body.plan_id === TEAM) {
@@ -216,6 +220,10 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
       if (body.plan_id === ORGANIZATION && customer.planId === TEAM) {
         customer.next = ORGANIZATION;
         return respond(200, { customer_id: customerId, payment_url: null });
+      }
+      if (body.plan_id !== "signup_credits" && body.plan_id !== ORGANIZATION) {
+        const unpaidNow = fakeAutumn.declineCard ? unpaid(customerId!) : null;
+        if (unpaidNow) return respond(200, unpaidNow);
       }
       if (body.plan_id === "signup_credits") {
         customer.signup = true;

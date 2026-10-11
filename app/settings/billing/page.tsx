@@ -36,6 +36,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { defaultPlanId, findPlan, planCreditCap, topUpBundles } from "@/lib/billing/catalog";
+import { DAYS_TO_PAY } from "@/lib/billing/plans";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
@@ -364,12 +365,19 @@ export default function BillingPage() {
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
                   <span className="flex items-center gap-2">
                     <AlertCircle className="size-4 shrink-0" />
-                    {t("paymentFailedNotice")}
+                    {/* The payment that failed, and the day Stripe stops retrying and the plan ends (#40). */}
+                    {account.unpaid ? t("paymentFailedEnds", { amount: money(account.unpaid.amount), plan: planName(plan), date: date(account.unpaid.since + DAYS_TO_PAY * 86_400_000) }) : t("paymentFailedNotice")}
                   </span>
-                  <Button variant="outline" size="sm" onClick={updatePayment} disabled={openingPortal}>
-                    {openingPortal && <Loader2 className="animate-spin" />}
-                    {t("updatePaymentMethod")}
-                  </Button>
+                  {account.unpaid?.url ? (
+                    <Button asChild variant="outline" size="sm">
+                      <a href={account.unpaid.url}>{t("fixPayment")}</a>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={updatePayment} disabled={openingPortal}>
+                      {openingPortal && <Loader2 className="animate-spin" />}
+                      {t("fixPayment")}
+                    </Button>
+                  )}
                 </div>
               ) : null}
               {periodEnd !== undefined && periodStart !== undefined ? (

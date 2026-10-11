@@ -134,6 +134,21 @@ it("moves an organization on Team to Free at its renewal once it has few enough 
   expect(limits().at(-1)?.limit).toBe(6);
 });
 
+it("moves an organization whose Team payment Stripe gave up on to the free organization plan", async () => {
+  const { t, workspaceId, membership, seated, ada } = await lab(["ada", "ben"]);
+  await membership("ada", true, "org:admin");
+  await membership("ben", true);
+  await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 });
+  // Stripe cancels the unpaid subscription; Autumn ends Team and its seats, and gives the customer its default plan back.
+  Object.assign(fakeAutumn.customer(workspaceId), { planId: "free", seats: 0 });
+  for (const entity of fakeAutumn.entitiesOf(workspaceId).values()) entity.seated = false;
+  await t.action(internal.billing.seats.sync, { workspaceId });
+  expect(fakeAutumn.customer(workspaceId).planId).toBe(ORGANIZATION_PLAN);
+  expect(seated()).toEqual([]);
+  expect(fakeAutumn.entitiesOf(workspaceId).size).toBe(0);
+  expect(limits().at(-1)?.limit).toBe(FREE_MEMBERS);
+});
+
 it("ends the seats and Team of an organization deleted in Clerk, after its workspace is gone and whatever its seats were last counted as", async () => {
   const { t, workspaceId, membership, deleted, seated, ada } = await lab(["ada", "ben"]);
   await membership("ada", true, "org:admin");

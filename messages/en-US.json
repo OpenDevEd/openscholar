@@ -358,7 +358,6 @@
     "upgradeDescription": "Upgrade your plan to unlock more credits and features.",
     "failedToLoadDetails": "Failed to load details",
     "paymentFailedNotice": "Payment failed. Update your payment method to keep your subscription active.",
-    "updatePaymentMethod": "Update payment method",
     "perInterval": "/ {interval}",
     "intervalMonth": "month",
     "intervalYear": "year",
@@ -395,7 +394,9 @@
     "renewsOnDate": "Renews {date}",
     "charges": "Charges",
     "jobCharges": "This job's charges",
-    "chargesLabel": "charges"
+    "chargesLabel": "charges",
+    "paymentFailedEnds": "The payment of {amount} failed. {plan} ends on {date} unless it's paid.",
+    "fixPayment": "Fix payment"
   },
   "errors": {
     "unexpectedIssue": "We hit an unexpected issue. Please retry, or return to a stable page.",
@@ -3964,7 +3965,9 @@
       "seatsAfter": "After",
       "seatToConfirm": "The bank asks to confirm this charge. Confirm it, then invite again.",
       "confirmPayment": "Confirm payment",
-      "seatHeldUndated": "They spent credits this billing period, so their seat stays taken until the renewal."
+      "seatHeldUndated": "They spent credits this billing period, so their seat stays taken until the renewal.",
+      "paymentFailedEnds": "The payment of {amount} failed. {plan} ends on {date} unless it's paid.",
+      "paymentFailed": "The last payment failed."
     },
     "couldntInvite": "The organization was made, but the invitations didn't go out. Send them from its Members settings.",
     "fromCredits": "From {name}'s credits",
