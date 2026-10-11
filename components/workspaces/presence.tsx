@@ -23,8 +23,11 @@ const SHOWN = 3;
 /** People the room read names, for the tooltip. */
 const NAMED = 8;
 
-/** `join`: the item's own page, which puts the person in its room; a list leaves it off and only reads. */
-export function ItemPresence({ kind, id, join = true }: { kind: ItemKind; id: string; join?: boolean }) {
+/**
+ * `join`: the item's own page, which puts the person in its room; a list leaves it off and only reads.
+ * `kind` "library", with the workspace's ID, is its library's page with no collection open.
+ */
+export function ItemPresence({ kind, id, join = true }: { kind: ItemKind | "library"; id: string; join?: boolean }) {
   const t = useTranslations("workspaces.presence");
   const format = useFormatter();
   const workspaceId = useWorkspace();

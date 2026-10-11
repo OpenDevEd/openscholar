@@ -52,3 +52,13 @@ it("keeps an extraction's room shut to someone without the extraction feature", 
   await expect(alice.mutation(api.presence.heartbeat, { ...item, sessionId: "alice-tab" })).rejects.toThrow(/isn't in this workspace/);
   expect((await bob.query(api.presence.here, { ...item, ...page })).page).toEqual([]);
 });
+
+it("shows who else has a workspace's whole library open, and keeps out anyone outside it", async () => {
+  const { alice, bob, carol, workspaceId, carolOwn } = await lab();
+  const library = { workspaceId, kind: "library" as const, id: workspaceId };
+  await alice.mutation(api.presence.heartbeat, { ...library, sessionId: "alice-tab" });
+  expect((await bob.query(api.presence.here, { ...library, ...page })).page.map((person) => person.name)).toEqual(["Alice"]);
+  // Carol isn't in the lab, and a library named from another workspace has no room there.
+  await expect(carol.mutation(api.presence.heartbeat, { ...library, sessionId: "carol-tab" })).rejects.toThrow();
+  await expect(carol.mutation(api.presence.heartbeat, { workspaceId: carolOwn, kind: "library", id: workspaceId, sessionId: "carol-tab" })).rejects.toThrow(/isn't in this workspace/);
+});
