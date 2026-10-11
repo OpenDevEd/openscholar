@@ -1050,3 +1050,24 @@ describe("searchLibrary with collectionId filter", () => {
     expect(result.page.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe("an ID from the page's address that is no ID (#826)", () => {
+  it("reads as a collection, or a screening, that is gone: a link cut short, and another kind's ID", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_address", "address@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_address" });
+    const real = (await asUser.mutation(api.library.collections.createCollection, { name: "Real one" })).id;
+    await seedLibraryItem(t, user!._id, { title: "A saved paper", openalexId: "https://openalex.org/W1" });
+    const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, paginationOpts: { numItems: 10, cursor: null } };
+    // A user's ID is well formed, and no collection's or screening's.
+    for (const broken of ["abc", user!._id as string]) {
+      expect(await asUser.query(api.library.collections.getCollection, { collectionId: broken })).toBeNull();
+      expect((await asUser.query(api.library.queries.browseLibrary, { ...view, collectionId: broken })).page).toEqual([]);
+      expect(await asUser.query(api.library.queries.getLibraryFilteredCount, { sortBy: view.sortBy, sortOrder: view.sortOrder, collectionId: broken })).toMatchObject({ count: 0 });
+      expect(await asUser.query(api.screening.queries.getScreeningJob, { jobId: broken })).toBeNull();
+    }
+    // A real one still opens.
+    expect(await asUser.query(api.library.collections.getCollection, { collectionId: real })).toMatchObject({ name: "Real one" });
+    expect((await asUser.query(api.library.queries.browseLibrary, view)).page).toHaveLength(1);
+  });
+});

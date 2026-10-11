@@ -17,7 +17,8 @@ export const libraryFilterFields = {
   savedBefore: v.optional(v.number()),
   yearFrom: v.optional(v.number()),
   yearTo: v.optional(v.number()),
-  collectionId: v.optional(v.id("collections")),
+  // Read from the page's address, so it can be anything: one that is no collection's ID reads as a collection that is gone (#826).
+  collectionId: v.optional(v.string()),
 };
 
 /** A view of the library: its sort, its filters, and an optional text search. */

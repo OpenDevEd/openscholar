@@ -3,7 +3,6 @@
 // The Screen all page, in the settings shell: a form that starts a screening on the left
 // rail's first entry, and each of the person's screenings under it.
 import { useState } from "react";
-import { RefusedId } from "@/components/refused-id";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
@@ -45,19 +44,7 @@ const ICON: Record<Exclude<Phase, "processing">, AppIcon> = {
   running: RunningScreeningIcon, waiting: Hourglass, reading: FileSearch, completed: CircleCheck, cancelled: Square, failed: CircleX, creditsExhausted: CircleX,
 };
 
-/** The Screening page. A screening the address names with something that is no screening's ID reads as one that isn't there (#826). */
 export function ScreeningPage() {
-  const [picked] = useQueryState("job");
-  const [refused, setRefused] = useState<string | null>(null);
-  const isRefused = refused !== null && refused === picked;
-  return (
-    <RefusedId id={isRefused ? null : picked} onRefused={() => setRefused(picked)}>
-      <Screenings refused={isRefused} />
-    </RefusedId>
-  );
-}
-
-function Screenings({ refused }: { refused: boolean }) {
   const workspaceId = useWorkspace();
   const t = useTranslations("screeningPage");
   const format = useFormatter();
@@ -76,15 +63,15 @@ function Screenings({ refused }: { refused: boolean }) {
   // Until the person's screenings arrive, nothing says whether the form or the newest of them shows.
   const waiting = picked === null && !searchId && jobs.isLoading;
   const jobId = picked === "new" || waiting ? null : (picked ?? (searchId ? null : (jobs.items[0]?._id ?? null)));
-  const { data: read } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, jobId && !refused ? { jobId: jobId as Id<"screeningJobs"> } : "skip"));
+  const { data: read } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, jobId ? { jobId: jobId as Id<"screeningJobs"> } : "skip"));
   // The screening last shown stays up while the next one is read.
   const [shown, setShown] = useState<Job | null>(null);
   if (read && read !== shown) setShown(read);
-  const job = !jobId || refused || read === null ? null : (read ?? shown);
+  const job = !jobId || read === null ? null : (read ?? shown);
   // Shown while the one picked is read: it stays dimmed and inert until then.
   const stale = Boolean(job && jobId && job._id !== jobId);
   // The address names a screening that isn't there to read: deleted, or shared with the person no longer. It says so, where it showed the form.
-  const lost = picked !== null && picked !== "new" && (refused || read === null);
+  const lost = picked !== null && picked !== "new" && read === null;
   const showsForm = !job && !waiting && !lost && !(jobId && read === undefined);
   // Whether something has shown yet. The first screening to arrive only fades in, since the page is
   // still rising under it; what replaces it rises as well. The form, when the page opens on it, is there from the start.
