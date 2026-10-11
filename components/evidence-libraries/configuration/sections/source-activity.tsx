@@ -43,7 +43,7 @@ const RUNNING_CHIP = { import: "chip.importing", search: "chip.searching", pdfs:
  * The row's chip: the state in one word, so a long list scans quickly.
  * `null` is a source the library has not seen yet: it imports after Activate.
  */
-export function useSourceStatusChip() {
+function useSourceStatusChip() {
   const t = useTranslations("evidenceLibraryConfiguration.sources.status");
   return (status: SourceStatus | null, paused: boolean): { label: string; tone: StatusTone } => {
     if (paused) return { label: t("chip.paused"), tone: "neutral" };

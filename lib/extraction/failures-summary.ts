@@ -5,7 +5,7 @@
 
 import { isRetryable } from "@/lib/errors/taxonomy";
 
-export type FailureByCode = {
+type FailureByCode = {
   code: string;
   count: number;
   retryable: boolean;

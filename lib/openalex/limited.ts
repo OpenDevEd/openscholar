@@ -15,7 +15,7 @@ export class OpenAlexLimitedError extends Error {
   }
 }
 
-export function isOpenAlexLimited(value: unknown): value is OpenAlexLimited {
+function isOpenAlexLimited(value: unknown): value is OpenAlexLimited {
   return typeof value === "object" && value !== null && (value as OpenAlexLimited).openAlexLimited === true;
 }
 

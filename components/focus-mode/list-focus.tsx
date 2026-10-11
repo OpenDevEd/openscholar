@@ -27,7 +27,7 @@ export type StoredPaper = {
 };
 
 /** A stored paper as focus mode reads one, so a paper from Zotero or an upload opens the same way as one from OpenAlex. */
-export function storedPaperResult(paper: StoredPaper): PaperResult {
+function storedPaperResult(paper: StoredPaper): PaperResult {
   const access = {
     ...(paper.isOpenAccess !== undefined ? { is_oa: paper.isOpenAccess } : {}),
     ...(paper.oaStatus ? { oa_status: paper.oaStatus as NonNullable<PaperResult["open_access"]>["oa_status"] } : {}),

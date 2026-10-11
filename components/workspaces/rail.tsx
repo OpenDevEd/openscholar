@@ -518,7 +518,7 @@ const AccountButton = React.forwardRef<HTMLButtonElement, { me: CachedMe | undef
   if (!signedIn) {
     return (
       <div className="pt-2">
-        <AuthButton isCollapsed />
+        <AuthButton />
       </div>
     );
   }

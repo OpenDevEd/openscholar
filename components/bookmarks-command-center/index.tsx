@@ -63,8 +63,6 @@ import { BookmarksGuide } from "./bookmarks-guide";
 import posthog from "posthog-js";
 import type { BookmarkEntry } from "./types";
 
-export type { BookmarkEntry } from "./types";
-
 export function BookmarksCommandCenter() {
   const workspaceId = useWorkspace();
   const toast = useAppToast();
@@ -200,7 +198,6 @@ export function BookmarksCommandCenter() {
       </>}
     >
 
-
       <div>
         {!ready ? error ? <AuthStatePanel variant="sync_error_retry" onRetry={retry} /> : <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={bookmarks.items}
@@ -248,7 +245,7 @@ export function BookmarksCommandCenter() {
 }
 
 /** The bookmarks page's frame, shared with its loading state so nothing moves when it loads. */
-export function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
+function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
   const tc = useTranslations("common");
   return <LibraryPageShell icon={BookmarksIcon} title={tc("bookmarks")} {...controls}>{children}</LibraryPageShell>;
 }

@@ -10,8 +10,6 @@ import {
   getScreeningQuestionsConfig,
   getExtractionQuestionsConfig,
   getTranslateQueryConfig,
-  getTranslatePaperContentConfig,
-  getScreeningResponsesConfig,
   type OperationConfig
 } from '../core/configs'
 import { toExtractionQuestions } from '../core/schemas'
@@ -23,14 +21,6 @@ import {
   extractErrorCode,
   type AITrackingEntry,
 } from '@/lib/posthog-ai-shared'
-import type {
-  EnhanceSearchQueryInput,
-  GenerateScreeningQuestionsInput,
-  GenerateExtractionQuestionsInput,
-  TranslateQueryInput,
-  TranslatePaperContentInput,
-  GenerateScreeningResponsesInput,
-} from '../core/types'
 import type {
   BatchPaper,
   BatchScreeningResult,
@@ -44,7 +34,7 @@ export interface AIConfig {
   effort?: Effort
 }
 
-export function createClientExecutor<TParams, TOutput, TResult>(
+function createClientExecutor<TParams, TOutput, TResult>(
   configFactory: (params: TParams) => OperationConfig<TParams, TOutput>,
   formatOutput: (output: TOutput, params: TParams) => TResult,
   feature: string
@@ -136,17 +126,6 @@ export const translateQuery = createClientExecutor(
   }),
   'translate_query'
 )
-
-export const translatePaperContent = createClientExecutor(
-  getTranslatePaperContentConfig,
-  (output) => ({
-    translatedTitle: output.translatedTitle,
-    translatedAbstract: output.translatedAbstract,
-    noTranslationNeeded: false,
-  }),
-  'translate_paper_content'
-)
-
 
 // ═══════════════════════════════════════════════════════════════
 // BATCH OPERATIONS

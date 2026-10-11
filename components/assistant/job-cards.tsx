@@ -28,7 +28,7 @@ type Extraction = Extract<Read["card"], { kind: "extraction" }>;
 export const JOB_STARTS = new Set(["screening/start:screen", "extraction/start:extract"]);
 
 /** A job card's height, held from its first frame so the chat around it never moves. */
-export const JOB_CARD_H = 118;
+const JOB_CARD_H = 118;
 const RUNNING = new Set(["processing", "pending", "downloading_pdfs", "indexing", "extracting"]);
 
 /** A job's card, by the step that started it: its frame until the job is read. */

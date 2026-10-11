@@ -2,8 +2,7 @@ import * as React from "react"
 import { useTranslations } from "next-intl"
 import {
   ChevronLeftIcon,
-  ChevronRightIcon,
-  MoreHorizontalIcon,
+  ChevronRightIcon
 } from "@/components/icons"
 
 import { cn } from "@/lib/utils"
@@ -104,30 +103,4 @@ function PaginationNext({
   )
 }
 
-function PaginationEllipsis({
-  className,
-  ...props
-}: React.ComponentProps<"span">) {
-  const t = useTranslations("accessibility")
-  return (
-    <span
-      aria-hidden
-      data-slot="pagination-ellipsis"
-      className={cn("flex size-9 items-center justify-center", className)}
-      {...props}
-    >
-      <MoreHorizontalIcon className="size-4" />
-      <span className="sr-only">{t("morePages")}</span>
-    </span>
-  )
-}
-
-export {
-  Pagination,
-  PaginationContent,
-  PaginationLink,
-  PaginationItem,
-  PaginationPrevious,
-  PaginationNext,
-  PaginationEllipsis,
-}
+export { Pagination, PaginationContent, PaginationLink, PaginationItem, PaginationPrevious, PaginationNext };

@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import type { QueryErrorDetail } from "@/lib/search/search-error";
 import { OQL_REFERENCE_URL } from "@/lib/openalex/oql";
 
-export type NoResultsVariant = "search" | "filter";
+type NoResultsVariant = "search" | "filter";
 
 interface NoResultsProps {
   query?: string;
@@ -148,7 +148,7 @@ export function QueryErrorState({ detail, oql }: { detail: QueryErrorDetail; oql
   );
 }
 
-export type LoadingResultsVariant = "full" | "banner";
+type LoadingResultsVariant = "full" | "banner";
 
 interface LoadingResultsProps {
   variant?: LoadingResultsVariant;

@@ -1,12 +1,12 @@
 "use client";
 
-import { createContext, useEffect, useState } from "react";
+import { createContext, useState } from "react";
 
 interface ConfigProviderContextType {
   isLoadingConfig: boolean;
 }
 
-export const ConfigProviderContext = createContext<ConfigProviderContextType>({
+const ConfigProviderContext = createContext<ConfigProviderContextType>({
   isLoadingConfig: false,
 });
 

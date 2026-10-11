@@ -42,7 +42,7 @@ export const RECORD_CHIP =
  * A record named in the chat: one picked with @, or one a reply links to. Inline, not a box,
  * so a long name wraps with the sentence and each line keeps its tint.
  */
-export function RecordChip({ kind, children }: { kind: keyof typeof KIND; children: ReactNode }) {
+function RecordChip({ kind, children }: { kind: keyof typeof KIND; children: ReactNode }) {
   const { icon: Icon, tint } = KIND[kind];
   return (
     <span className={RECORD_CHIP} style={recordChipStyle(tint)}>

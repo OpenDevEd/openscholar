@@ -1,4 +1,4 @@
-export const PUBLIC_UNAUTHENTICATED_PATHS = [
+const PUBLIC_UNAUTHENTICATED_PATHS = [
   "/",
   "/pricing",
   "/topics/:path*",

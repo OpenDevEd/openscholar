@@ -343,7 +343,7 @@ const FEATURE_DEFAULTS = Object.fromEntries(
     (node as { default?: boolean }).default === true,
   ]),
 ) as Record<FeatureKey, boolean>;
-export const FEATURE_KEYS = Object.keys(FEATURE_DEFAULTS) as FeatureKey[];
+const FEATURE_KEYS = Object.keys(FEATURE_DEFAULTS) as FeatureKey[];
 
 export const HOME_STEP_TYPES = schemaEnum<
   "arrival" | "check" | "publication" | "search" | "sync" | "duplicates" | "fulltext" | "text"
@@ -396,7 +396,7 @@ export type FunderDraft = {
   logoUrl: string;
   href: string;
 };
-export type FooterDraft = {
+type FooterDraft = {
   sections: FooterSectionDraft[];
   social: Partial<Record<SocialProvider, string>>;
   funders: FunderDraft[];
@@ -423,7 +423,7 @@ export type LegalSource =
   | { kind: "url"; url: string };
 export const LEGAL_KEYS = ["privacy", "cookie", "terms"] as const;
 export type LegalKey = (typeof LEGAL_KEYS)[number];
-export type LegalDraft = Record<LegalKey, LegalSource>;
+type LegalDraft = Record<LegalKey, LegalSource>;
 
 export type SearchDraft = {
   fullText: boolean;
@@ -463,7 +463,7 @@ export type AnalyticsDraft = {
  * `keySaved` says whether the credential store holds an OpenRouter key for
  * this library, so the card can ask for one. It is in no saved row.
  */
-export type AiDraft = {
+type AiDraft = {
   keySaved: boolean;
   models: string[];
   defaultModel: string;
@@ -508,7 +508,7 @@ export type HomeDraft = {
   headings: Record<HomeHeadingKey, string>;
 };
 
-export type DigestScheduleDraft = { time: string; timezone: string } & (
+type DigestScheduleDraft = { time: string; timezone: string } & (
   | { frequency: "weekly"; weekday: number }
   | { frequency: "monthly"; dayOfMonth: number }
 );

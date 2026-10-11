@@ -55,7 +55,7 @@ export interface RatingsState {
 }
 
 /** The search a copy takes its history from, as a list shows it. */
-export type CopySource = Pick<SearchResult, 'id' | 'updatedAt' | 'queryHistoryCount' | 'questionCount' | 'latestQuestion' | 'questionText'>;
+type CopySource = Pick<SearchResult, 'id' | 'updatedAt' | 'queryHistoryCount' | 'questionCount' | 'latestQuestion' | 'questionText'>;
 
 export interface SearchHistoryState {
   searchHistory: SearchResult[]

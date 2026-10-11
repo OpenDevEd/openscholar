@@ -3,7 +3,7 @@
  * five are the build steps; "active" is the result row and only completes
  * when the operation succeeded.
  */
-export const SETUP_STEP_KEYS = [
+const SETUP_STEP_KEYS = [
   "database",
   "storage",
   "application",
@@ -12,8 +12,8 @@ export const SETUP_STEP_KEYS = [
   "active",
 ] as const;
 
-export type SetupStepKey = (typeof SETUP_STEP_KEYS)[number];
-export type SetupStepStatus = "waiting" | "running" | "done" | "failed";
+type SetupStepKey = (typeof SETUP_STEP_KEYS)[number];
+type SetupStepStatus = "waiting" | "running" | "done" | "failed";
 export type SetupStep = { key: SetupStepKey; status: SetupStepStatus; at: number | null };
 
 /** The operation stage each build step corresponds to. */

@@ -24,7 +24,7 @@ export type PickedSource = {
 };
 
 /** A PDF the person uploaded, one paper. */
-export type PickedUpload = { storageId: Id<"_storage">; title: string };
+type PickedUpload = { storageId: Id<"_storage">; title: string };
 
 /** A workspace's papers in the draft. */
 type Papers = { sources: PickedSource[]; uploads: PickedUpload[] };

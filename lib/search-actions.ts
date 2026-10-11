@@ -60,7 +60,7 @@ function withScreeningResults<T extends Record<string, unknown>>(
   };
 }
 
-export const createSearchMetadata = (
+const createSearchMetadata = (
   query: string,
   searchField: SearchField,
   dateRange?: DateRange,
@@ -124,7 +124,7 @@ export const createSearchMetadata = (
   };
 };
 
-export const getEssentialInfo = (
+const getEssentialInfo = (
   item: PaperResult,
   ratings: Record<string, number>,
   screeningResponses: ScreeningResponses,

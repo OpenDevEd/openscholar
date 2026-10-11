@@ -9,7 +9,7 @@ import { StatusChip, type StatusTone } from "./configuration/status-chip";
 
 export type LibraryStatus = LibraryOverviewStatus;
 
-export const LIBRARY_TONE: Record<LibraryStatus, StatusTone> = {
+const LIBRARY_TONE: Record<LibraryStatus, StatusTone> = {
   draft: "neutral",
   setting_up: "running",
   active: "success",

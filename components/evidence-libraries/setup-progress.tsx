@@ -46,12 +46,12 @@ export function SetupProgress({ libraryId }: { libraryId: string }) {
   return <SetupProgressView setup={setupQuery.data} retrySetup={retrySetup} />;
 }
 
-export type SetupProgressData = NonNullable<
+type SetupProgressData = NonNullable<
   FunctionReturnType<typeof api.evidenceLibraries.queries.getSetupDraftSelection>
 >;
 
 /** The page itself, given the setup data. Kept separate so it can render without a query. */
-export function SetupProgressView({
+function SetupProgressView({
   setup,
   retrySetup,
 }: {

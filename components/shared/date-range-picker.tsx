@@ -24,7 +24,7 @@ export interface DatePreset {
 }
 
 /** How many of `total` items each preset keeps, by its key. */
-export type PresetCounts = { total: number; kept: Record<string, number> };
+type PresetCounts = { total: number; kept: Record<string, number> };
 
 interface DateRangePickerProps {
   value: DateRange | undefined;

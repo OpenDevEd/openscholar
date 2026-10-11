@@ -54,12 +54,6 @@ export type EvidenceSourceEntry =
 /** Sources whose records are OpenAlex works, read with the library's OpenAlex key. */
 export type OpenAlexWorksSourceEntry = OpenAlexSourceEntry | OpenScholarCollectionSourceEntry;
 
-export function isOpenAlexSource(
-  source: EvidenceSourceEntry,
-): source is OpenAlexSourceEntry {
-  return source.provider === "openalex";
-}
-
 export function readsOpenAlexWorks(
   source: EvidenceSourceEntry,
 ): source is OpenAlexWorksSourceEntry {
@@ -93,7 +87,7 @@ export function collectionSourceEntry(
   };
 }
 
-export function newOpenAlexQueryVersion(): string {
+function newOpenAlexQueryVersion(): string {
   return crypto.randomUUID();
 }
 

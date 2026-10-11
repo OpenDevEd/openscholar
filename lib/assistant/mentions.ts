@@ -5,7 +5,7 @@
  */
 
 export const MENTION_KINDS = ["search", "collection", "paper"] as const;
-export type MentionKind = (typeof MENTION_KINDS)[number];
+type MentionKind = (typeof MENTION_KINDS)[number];
 /** `id` is what the tools take: a search's ID, a collection's ID, a paper's OpenAlex ID. */
 export type Mention = { kind: MentionKind; id: string; label: string };
 
@@ -14,7 +14,7 @@ const TOKEN = new RegExp(String.raw`@\[([^\]\n]+)\]\((${MENTION_KINDS.join("|")}
 /** A name as it can sit between the token's brackets, on one line. */
 const bracketSafe = (label: string) => label.replace(/\s+/g, " ").replace(/\[/g, "(").replace(/\]/g, ")").trim();
 
-export const mentionToken = ({ kind, id, label }: Mention) => `@[${bracketSafe(label)}](${kind}:${id})`;
+const mentionToken = ({ kind, id, label }: Mention) => `@[${bracketSafe(label)}](${kind}:${id})`;
 
 /** Splits a sent message into plain runs and the records it points at. */
 export function mentionSegments(text: string): Array<string | Mention> {

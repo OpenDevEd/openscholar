@@ -13,7 +13,7 @@ import {
 } from "nuqs";
 
 // Combined sort values: "field:direction"
-export const librarySortCombinedValues = [
+const librarySortCombinedValues = [
   "savedAt:desc",
   "savedAt:asc",
   "rating:desc",
@@ -27,7 +27,7 @@ export const librarySortCombinedValues = [
 ] as const;
 export type LibrarySortCombined = (typeof librarySortCombinedValues)[number];
 
-export const libraryViewModes = ["list-simple", "list-detail", "grid-2", "grid-3"] as const;
+const libraryViewModes = ["list-simple", "list-detail", "grid-2", "grid-3"] as const;
 export type LibraryViewMode = (typeof libraryViewModes)[number];
 
 /**
