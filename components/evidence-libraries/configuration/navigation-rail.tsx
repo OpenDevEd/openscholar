@@ -2,6 +2,7 @@
 import type { ReactNode } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useWorkspaceHref } from "@/lib/workspaces/href";
 export function RailGroup({
   label,
   children,
@@ -36,9 +37,11 @@ export function RailLink({
   className?: string;
   children: ReactNode;
 }) {
+  // The click is the page's own navigation; the address is what a new tab or a copied link opens, so it names the workspace too.
+  const inWorkspace = useWorkspaceHref();
   return (
     <a
-      href={href}
+      href={inWorkspace(href)}
       aria-current={active ? "location" : undefined}
       onClick={(e) => {
         e.preventDefault();
