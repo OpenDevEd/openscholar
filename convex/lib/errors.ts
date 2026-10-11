@@ -41,11 +41,14 @@ export type ErrorCode =
   | "BILLING_NO_ACTIVE_SUBSCRIPTION"
   | "BILLING_SUBSCRIPTION_ITEM_NOT_FOUND"
   | "BILLING_PERIOD_END_UNAVAILABLE"
+  // Autumn is still making another change to the same customer, and refused this one.
   | "BILLING_PLAN_CHANGE_CONFLICT"
   // A card was declined for a charge made in the page, which then changed nothing.
   | "BILLING_PAYMENT_DECLINED"
   // The bank asks the person to confirm a charge made in the page (3-D Secure): `url` is where.
   | "BILLING_PAYMENT_ACTION_REQUIRED"
+  // A payment is still open, a renewal or a charge that was declined: nothing new is bought until it's paid. `url` is where to pay it.
+  | "BILLING_PAYMENT_OPEN"
   | "BILLING_UNAVAILABLE"
   | "BILLING_PLAN_INVALID"
   // Screening

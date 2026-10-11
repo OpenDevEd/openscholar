@@ -51,6 +51,23 @@ it("starts a new month only on an upgrade from a paid plan, archived or not, and
   expect(preview.renewsAt).toBeGreaterThan(Date.now() + 29 * 86_400_000);
 });
 
+it("quotes and changes no plan while a payment is still open, and says where to pay it", async () => {
+  const t = convexTest(schema);
+  const userId = await t.run(async (ctx) => {
+    await ctx.db.insert("billingCatalog", { plans: [plan("free"), plan("go", 5), plan("pro", 20)], features: [], syncedAt: 1 });
+    return await ctx.db.insert("users", { clerkId: "user_ada", email: "ada@test.local", state: "active", createdAt: 1, updatedAt: 1 });
+  });
+  const ada = t.withIdentity({ subject: "user_ada" });
+  await ada.action(api.billing.actions.choosePlan, { plan: "go" });
+  // Go to Pro was declined a moment ago (#858): its invoice is open, and paying it finishes that upgrade.
+  fakeAutumn.customer(userId).invoices = [{ plan_ids: ["pro"], status: "open", total: 15, currency: "usd", created_at: 1, hosted_invoice_url: "https://pay.test/in_pro" }];
+  const before = fakeAutumn.calls.length;
+  await expect(ada.action(api.billing.actions.previewPlan, { plan: "pro" })).rejects.toThrow(/BILLING_PAYMENT_OPEN[^]*pay\.test\/in_pro/);
+  await expect(ada.action(api.billing.actions.choosePlan, { plan: "pro" })).rejects.toThrow(/BILLING_PAYMENT_OPEN/);
+  expect(fakeAutumn.calls.slice(before).filter((call) => call.path.startsWith("billing."))).toEqual([]);
+  expect(fakeAutumn.customer(userId).planId).toBe("go");
+});
+
 it("keeps the payment that failed on a past-due account, to pay before the plan ends, and drops it once paid", async () => {
   const t = convexTest(schema);
   const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "user_ada", email: "ada@test.local", state: "active", createdAt: 1, updatedAt: 1 }));

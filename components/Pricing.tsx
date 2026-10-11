@@ -573,7 +573,8 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
         </div>
 
         <UpgradeConfirmationDialog
-          open={isUpgradeDialogOpen}
+          // A plan another tab moved to meanwhile is current: there's nothing left to confirm (#858).
+          open={isUpgradeDialogOpen && upgradePreview?.targetPlanId !== resolvedPlan}
           onOpenChange={(open) => {
             if (!isConfirmingUpgrade) {
               setIsUpgradeDialogOpen(open);

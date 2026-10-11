@@ -135,10 +135,11 @@ export function UpgradeConfirmationDialog({
               <>
                 {preview.lineItems.map((item, index) => (
                   <div key={index} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground truncate mr-2">
+                    {/* A long line wraps on a phone rather than pushing the amounts past the dialog's edge (#858). */}
+                    <span className="min-w-0 mr-2 text-muted-foreground">
                       {item.description}
                     </span>
-                    <span className={item.amountCents < 0 ? "ink-success" : ""}>
+                    <span className={item.amountCents < 0 ? "shrink-0 ink-success" : "shrink-0"}>
                       {format.number(item.amountCents / 100, {
                         style: "currency",
                         currency: item.currency,

@@ -108,6 +108,59 @@ it("changes an organization's seats down to those in use, and a declined card ch
   await expect(t.withIdentity({ subject: "user_ben" }).action(api.billing.actions.changeSeats, { workspaceId, seats: 4 })).rejects.toThrow();
 });
 
+it("counts an invitation Clerk took that hasn't reached the projections yet when an organization's seats go down", async () => {
+  const { t, workspaceId, membership, ada } = await lab(["ada", "ben"]);
+  await membership("ada", true, "org:admin");
+  await membership("ben", true);
+  await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 4 });
+  // Another admin invited two people a moment ago: Clerk has them, the projections don't yet (#858).
+  fakeAutumn.clerkCounts.set("org_lab", { members: 2, invitations: 2 });
+  await expect(ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 3 })).rejects.toThrow(/4 seats are in use/);
+  expect((await ada.query(api.billing.seats.counts, { workspaceId }))?.seats).toBe(4);
+  expect(limits().at(-1)?.limit).toBe(4);
+  // One of them has just accepted: a member to Clerk, still an invitation here. They're counted once.
+  await invite(t, "gus@lab.test");
+  fakeAutumn.clerkCounts.set("org_lab", { members: 3, invitations: 0 });
+  await ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 3 });
+  expect((await ada.query(api.billing.seats.counts, { workspaceId }))?.seats).toBe(3);
+});
+
+it("makes one purchase of a workspace at a time, and lets go when it ends", async () => {
+  const { t, workspaceId, membership, ada } = await lab(["ada"]);
+  await membership("ada", true, "org:admin");
+  await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 1 });
+  // Another purchase of the lab's is under way (#858): this one is refused and buys nothing.
+  expect(await t.mutation(internal.billing.purchases.claim, { workspaceId })).toBe(true);
+  const before = fakeAutumn.calls.length;
+  await expect(ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 2 })).rejects.toThrow(/BILLING_PLAN_CHANGE_CONFLICT/);
+  expect(fakeAutumn.calls.slice(before).filter((call) => call.path.startsWith("billing."))).toEqual([]);
+  await t.mutation(internal.billing.purchases.release, { workspaceId });
+  await ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 2 });
+  expect((await ada.query(api.billing.seats.counts, { workspaceId }))?.seats).toBe(2);
+  fakeAutumn.declineCard = true;
+  await expect(ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 3 })).rejects.toThrow(/declined/);
+  expect(await t.run((ctx) => ctx.db.query("purchaseLocks").collect())).toEqual([]);
+});
+
+it("buys nothing for an organization while a payment is still open, and says where to pay it", async () => {
+  const { t, workspaceId, membership, ada } = await lab(["ada"]);
+  await membership("ada", true, "org:admin");
+  await t.run((ctx) => ctx.db.insert("billingCatalog", { plans: [{ id: "top_up", name: "Credit top-up", addOn: true, autoEnable: false, credits: { included: 0, interval: "one_off", unitPrice: { amount: 1, billingUnits: 10_000 } }, features: [], popular: false }], features: [], syncedAt: Date.now() }));
+  await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 1 });
+  // A seat bought a moment ago was declined (#858): its invoice stays open until Autumn voids it, and Autumn would give a seat asked for meanwhile for nothing.
+  fakeAutumn.customer(workspaceId).invoices = [{ plan_ids: [TEAM_PLAN], status: "open", total: 24, currency: "usd", created_at: 1, hosted_invoice_url: "https://pay.test/in_seat" }];
+  const charges = () => fakeAutumn.calls.filter((call) => ["billing.attach", "billing.update", "billing.preview_update"].includes(call.path)).length;
+  const before = charges();
+  for (const attempt of [
+    () => ada.action(api.billing.actions.previewSeats, { workspaceId, seats: 2 }),
+    () => ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 2 }),
+    () => ada.action(api.organizations.manage.invite, { workspaceId, emails: ["gus@lab.test"], role: "member", addSeat: true }),
+    () => ada.action(api.billing.actions.buyCredits, { workspaceId, credits: 10_000 }),
+  ]) await expect(attempt()).rejects.toThrow(/BILLING_PAYMENT_OPEN[^]*pay\.test\/in_seat/);
+  expect(charges()).toBe(before);
+  expect((await ada.query(api.billing.seats.counts, { workspaceId }))?.seats).toBe(1);
+});
+
 it("moves an organization on Team to Free at its renewal once it has few enough members, and its admin can keep Team instead", async () => {
   const people = ["ada", "ben", "cy", "di", "ed", "fy"];
   const { t, workspaceId, membership, ada } = await lab(people);

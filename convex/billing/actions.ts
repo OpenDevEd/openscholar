@@ -12,6 +12,7 @@ import { MAX_PLAN_DETAILS } from "../lib/listCaps";
 import { FREE_MEMBERS, ORGANIZATION_PLAN, ORGANIZATION_PLANS, SEAT_PLAN, TEAM_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
 import { setSeats, teamSeats, unlessDeclined } from "./seats";
+import { purchasing, unlessPaymentOpen } from "./purchases";
 import { costsMore, findPlan, topUpBundles } from "../../lib/billing/catalog";
 
 async function requireUser(ctx: ActionCtx): Promise<Doc<"users">> {
@@ -93,14 +94,15 @@ export const choosePlan = action({
   handler: async (ctx, { plan }): Promise<{ url: string | null }> => {
     const user = await requireUser(ctx);
     const catalog = await requireChoosablePlan(ctx, plan);
+    const workspaceId = await ownWorkspace(ctx, user);
     // A declined card changes nothing and says why; Autumn voids the invoice it left (#40).
-    const result = unlessDeclined(await autumn.attach({
+    const result = await purchasing(ctx, workspaceId, user._id, { plans: true }, async (customer) => unlessDeclined(await autumn.attach({
       customerId: user._id,
       planId: plan,
       successUrl: returnUrl("checkout"),
-      newMonth: startsNewMonth(catalog, await autumn.customer(user._id, { plans: true }), plan),
-    }));
-    await refreshAccount(ctx, await ownWorkspace(ctx, user), { card: true });
+      newMonth: startsNewMonth(catalog, customer, plan),
+    })));
+    await refreshAccount(ctx, workspaceId, { card: true });
     return { url: result.payment_url };
   },
 });
@@ -159,7 +161,8 @@ export const previewPlan = action({
   handler: async (ctx, { plan }): Promise<PreviewResult> => {
     const user = await requireUser(ctx);
     const catalog = await requireChoosablePlan(ctx, plan);
-    const customer = await autumn.customer(user._id, { card: true, plans: true });
+    const customer = await autumn.customer(user._id, { card: true, plans: true, invoices: true });
+    unlessPaymentOpen(customer);
     return previewOf(await autumn.previewAttach(user._id, plan, startsNewMonth(catalog, customer, plan)), plan, customer);
   },
 });
@@ -174,12 +177,12 @@ export const buyCredits = action({
     if (!bundles.some((bundle) => bundle.credits === credits)) {
       throw createError("CREDITS_TOPUP_BUNDLE_INVALID", `No top-up of ${credits} credits`);
     }
-    const result = unlessDeclined(await autumn.attach({
+    const result = await purchasing(ctx, payer.workspaceId, payer.customerId, {}, async () => unlessDeclined(await autumn.attach({
       customerId: payer.customerId,
       planId: TOPUP_PLAN,
       credits,
       successUrl: returnUrl("topup", payer.page),
-    }));
+    })));
     await refreshAccount(ctx, payer.workspaceId, { card: true });
     return { url: result.payment_url };
   },
@@ -213,7 +216,8 @@ export const previewTeam = action({
   handler: async (ctx, { workspaceId, seats }): Promise<PreviewResult> => {
     await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
-    const customer = await autumn.customer(workspaceId, { card: true });
+    const customer = await autumn.customer(workspaceId, { card: true, invoices: true });
+    unlessPaymentOpen(customer);
     return previewOf(await autumn.previewAttach(workspaceId, TEAM_PLAN, false, teamSeats(seats)), SEAT_PLAN, customer);
   },
 });
@@ -235,7 +239,7 @@ export const moveToTeam = action({
     const inUse = (counted?.members ?? 0) + (counted?.invitations ?? 0);
     if (!Number.isInteger(seats) || seats < inUse || seats > MAX_ORGANIZATION_MEMBERS)
       throw createError("CONFLICT", `${organization.name} has ${inUse} members and invitations now, each taking a seat. Choose ${inUse} to ${MAX_ORGANIZATION_MEMBERS.toLocaleString("en")} seats and confirm again.`);
-    const moved = unlessDeclined(await autumn.attach({ customerId: workspaceId, planId: TEAM_PLAN, seats: teamSeats(seats), successUrl: returnUrl("team", `/o/${organization.slug}/pricing`) }));
+    const moved = await purchasing(ctx, workspaceId, workspaceId, {}, async () => unlessDeclined(await autumn.attach({ customerId: workspaceId, planId: TEAM_PLAN, seats: teamSeats(seats), successUrl: returnUrl("team", `/o/${organization.slug}/pricing`) })));
     if (!moved.payment_url) await ctx.runAction(internal.billing.seats.sync, { workspaceId });
     await refreshAccount(ctx, workspaceId, { card: true });
     return { url: moved.payment_url };
@@ -249,7 +253,8 @@ export const previewSeats = action({
   handler: async (ctx, { workspaceId, seats }): Promise<PreviewResult> => {
     await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
-    const customer = await autumn.customer(workspaceId, { card: true });
+    const customer = await autumn.customer(workspaceId, { card: true, invoices: true });
+    unlessPaymentOpen(customer);
     return previewOf(await autumn.previewUpdate(workspaceId, TEAM_PLAN, teamSeats(seats)), SEAT_PLAN, customer);
   },
 });

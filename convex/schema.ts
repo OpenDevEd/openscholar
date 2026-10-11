@@ -567,6 +567,12 @@ export default defineSchema({
     workspaceId: v.id("workspaces"),
     clerkUserId: v.string(),
   }).index("by_workspace_and_member", ["workspaceId", "clerkUserId"]),
+  // A purchase under way for a workspace (#858): one at a time, so two can't both find no payment open. Deleted when it ends.
+  purchaseLocks: defineTable({
+    workspaceId: v.id("workspaces"),
+    /** When it began: a lock its action didn't let go of lapses after a while. */
+    since: v.number(),
+  }).index("by_workspace", ["workspaceId"]),
   // Each organization's seat syncs (#652): one at a time, and how many seats the last one left.
   seatSyncs: defineTable({
     workspaceId: v.id("workspaces"),

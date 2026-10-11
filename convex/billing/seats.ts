@@ -33,6 +33,7 @@ import { readAccount, refreshAccount, snapshotFromCustomer } from "./accounts";
 import { seatSyncRow } from "./seatSyncs";
 import { capRow, spentThisPeriod } from "./memberCaps";
 import { autumn, AutumnError, type AutumnEntity } from "./autumn";
+import { purchasing } from "./purchases";
 
 /** A member as a seat is given to them: the cap an admin set on them goes on their entity. */
 export type SeatMember = { clerkUserId: string; name: string; cap?: number };
@@ -222,6 +223,16 @@ async function setMemberLimit(ctx: ActionCtx, workspaceId: Id<"workspaces">, cle
   await ctx.runMutation(internal.billing.seats.noteMemberLimit, { workspaceId, memberLimit: limit });
 }
 
+/** The organization's members and pending invitations as Clerk counts them now. */
+async function clerkCounts(clerkOrganizationId: string) {
+  const key = clerkSecretKey();
+  const [organization, invitations] = await Promise.all([
+    clerkRequest(key, "GET", `/organizations/${clerkOrganizationId}?include_members_count=true`),
+    clerkRequest(key, "GET", `/organizations/${clerkOrganizationId}/invitations?status=pending&limit=1`),
+  ]);
+  return { members: (organization.body as { members_count?: number }).members_count ?? 0, invitations: (invitations.body as { total_count?: number }).total_count ?? 0 };
+}
+
 /**
  * Sets Clerk's limit on the organization's members to its plan's: the seats free of held ones on
  * Team (#863), FREE_MEMBERS otherwise. One Clerk refuses is tried again later.
@@ -402,35 +413,40 @@ export const noteSeats = internalMutation({
  * stand when it returns, so an invitation sent next has its seat. Fewer seats lower Clerk's limit
  * first, so nobody is invited past them while they're counted. Returns the page to pay on when the
  * card asks to confirm the charge, which changes nothing until it's confirmed; a declined card
- * changes nothing.
+ * changes nothing, and nothing changes while a payment is still open.
  */
 export async function setSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">, seats: number): Promise<string | null> {
   const account = await refreshAccount(ctx, workspaceId);
   if (account.plan !== TEAM_PLAN) throw createError("VALIDATION_ERROR", "Seats are bought on the Team plan.");
   if (account.changesAt !== undefined) throw createError("VALIDATION_ERROR", "Its Team ends at the renewal. Keep Team to change its seats.");
   if (!Number.isInteger(seats) || seats < 1 || seats > MAX_ORGANIZATION_MEMBERS) throw createError("VALIDATION_ERROR", `An organization holds 1 to ${MAX_ORGANIZATION_MEMBERS.toLocaleString("en")} seats.`);
-  const organization: { clerkOrganizationId: string; memberLimit?: number } | null = await ctx.runQuery(internal.billing.seats.organizationFor, { workspaceId });
-  const count = async () => (await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId }))!;
-  const before = await count();
-  const fewer = seats < before.seats && organization !== null;
-  // Clerk must hold it to the fewer seats before they're counted: refused, nothing changes.
-  if (fewer) await setMemberLimit(ctx, workspaceId, organization.clerkOrganizationId, Math.max(1, seats - before.held));
-  try {
-    const counted = await count();
-    const inUse = counted.members + counted.invitations + counted.held;
-    if (seats < inUse) throw createError("VALIDATION_ERROR", `${inUse} seats are in use by members, invitations and seats held to the renewal. Remove members or cancel invitations first.`);
-    const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
-    const changed = unlessDeclined(await autumn.update({ customerId, planId: TEAM_PLAN, seats: teamSeats(seats) }));
-    if (changed.payment_url) return changed.payment_url;
-    await ctx.runMutation(internal.billing.seats.noteSeats, { workspaceId, seats });
-    if (organization && !fewer) await followPlan(ctx, workspaceId, organization, seats - counted.held);
-  } catch (error) {
-    // Nothing changed: Clerk's limit goes back to the seats held.
-    if (fewer) await followPlan(ctx, workspaceId, { clerkOrganizationId: organization.clerkOrganizationId }, before.seats - before.held);
-    throw error;
-  }
-  await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId });
-  return null;
+  const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
+  return await purchasing(ctx, workspaceId, customerId, {}, async () => {
+    const organization: { clerkOrganizationId: string; memberLimit?: number } | null = await ctx.runQuery(internal.billing.seats.organizationFor, { workspaceId });
+    const count = async () => (await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId }))!;
+    const before = await count();
+    const fewer = seats < before.seats && organization !== null;
+    // Clerk must hold it to the fewer seats before they're counted: refused, nothing changes.
+    if (fewer) await setMemberLimit(ctx, workspaceId, organization.clerkOrganizationId, Math.max(1, seats - before.held));
+    try {
+      const counted = await count();
+      // An invitation Clerk took a moment ago may not have reached the projections yet (#858): counting fewer seats asks Clerk
+      // too. Members and invitations are compared together, since one accepted between the two counts moves from one to the other.
+      const clerk = fewer ? await clerkCounts(organization.clerkOrganizationId) : null;
+      const inUse = Math.max(counted.members + counted.invitations, clerk ? clerk.members + clerk.invitations : 0) + counted.held;
+      if (seats < inUse) throw createError("VALIDATION_ERROR", `${inUse} seats are in use by members, invitations and seats held to the renewal. Remove members or cancel invitations first.`);
+      const changed = unlessDeclined(await autumn.update({ customerId, planId: TEAM_PLAN, seats: teamSeats(seats) }));
+      if (changed.payment_url) return changed.payment_url;
+      await ctx.runMutation(internal.billing.seats.noteSeats, { workspaceId, seats });
+      if (organization && !fewer) await followPlan(ctx, workspaceId, organization, seats - counted.held);
+    } catch (error) {
+      // Nothing changed: Clerk's limit goes back to the seats held.
+      if (fewer) await followPlan(ctx, workspaceId, { clerkOrganizationId: organization.clerkOrganizationId }, before.seats - before.held);
+      throw error;
+    }
+    await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId });
+    return null;
+  });
 }
 
 const countsValidator = v.object({ members: v.number(), invitations: v.number(), seats: v.number(), held: v.number() });

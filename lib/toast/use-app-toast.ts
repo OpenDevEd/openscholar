@@ -7,6 +7,7 @@ import { resolveToastActionRoute } from "./action-routing";
 import {
   getToastMessageKeyForErrorCode,
   resolveToastError,
+  openPaymentUrl,
 } from "./error-resolver";
 import { classifySearchError } from "@/lib/search/search-error";
 import type { ToastAction } from "./core";
@@ -94,6 +95,12 @@ export type AppToastApi = {
   };
   error: (title: string, description?: string, action?: ToastAction) => void;
 };
+
+/** A toast's button to pay the payment still open that a purchase was refused for (#858), when `error` is that refusal. */
+export function payOpenAction(error: unknown, label: string): ToastAction | undefined {
+  const url = openPaymentUrl(error);
+  return url ? { label, onClick: () => window.location.assign(url), icon: "arrow-right" } : undefined;
+}
 
 export function getErrorMessage(error: unknown, fallback: string): string {
   const resolved = resolveToastError(error, fallback);
@@ -241,7 +248,7 @@ export function useAppToast(): AppToastApi {
         const resolved = resolveErrorDetails(error, t("billingCheckoutFailed"));
         showStyledToast("error", t("billingCheckoutFailed"), {
           description: resolved.message,
-          action: getActionFromCode(resolved.code),
+          action: payOpenAction(error, tc("payNow")) ?? getActionFromCode(resolved.code),
         });
       },
     },
