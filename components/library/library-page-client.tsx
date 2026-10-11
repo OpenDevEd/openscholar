@@ -462,8 +462,12 @@ export function LibraryPageClient() {
     pageItems.length === 0 &&
     !hasNarrowingCriteria &&
     totalCount === 0;
+  // A collection that was deleted, or isn't shared with the person, isn't a filter that found nothing: the page says which.
+  // Until its read says which it is, an empty list says neither.
+  const lostCollection = params.col !== null && selectedCollection === null;
+  const readingCollection = params.col !== null && selectedCollection === undefined;
   const isNoResults =
-    !isLoading && pageItems.length === 0 && hasNarrowingCriteria && !paged.hasPages;
+    !isLoading && pageItems.length === 0 && hasNarrowingCriteria && !paged.hasPages && !lostCollection && !readingCollection;
 
   return (
     <TranslationContext.Provider value={{}}>
@@ -586,6 +590,8 @@ export function LibraryPageClient() {
                     onClearFilters={resetAllNarrowing}
                   />
                 )}
+
+                {lostCollection && !isLoading && <LibraryEmptyState variant="lost" onClearFilters={resetAllNarrowing} />}
 
                 {/* A sparse filter can leave a page empty with more after it: the pager stays to reach them. */}
                 {!isLoading && (pageResults.length > 0 || paged.hasPages) && (
