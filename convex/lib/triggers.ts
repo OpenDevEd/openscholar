@@ -73,7 +73,7 @@ triggers.register("evidenceLibraryMembers", countList((grant) => personGrantsOf(
 // Guests (#653): an item's count is the people given it and the invitations still waiting, and a person's is what's shared with them, in all and of each kind.
 triggers.register("itemAccess", countList((grant) => itemGuestsOf(grant.item)));
 triggers.register("itemInvitations", countList((invitation) => (invitation.state === "pending" ? itemGuestsOf(invitation.item) : null)));
-triggers.register("itemAccess", countList((grant) => sharedWithOf(grant.userId)));
+triggers.register("itemAccess", countList((grant) => (grant.kind === "library" ? null : sharedWithOf(grant.userId))));
 triggers.register("itemAccess", countList((grant) => sharedWithOf(grant.userId, grant.kind)));
 triggers.register("collections", followShared("collection"));
 triggers.register("screeningJobs", followShared("screening"));
@@ -81,3 +81,4 @@ triggers.register("extractionJobs", followShared("extraction"));
 triggers.register("searches", followShared("search"));
 triggers.register("authorProfiles", followShared("author"));
 triggers.register("assistantThreads", followShared("chat"));
+triggers.register("evidenceLibraries", followShared("library"));

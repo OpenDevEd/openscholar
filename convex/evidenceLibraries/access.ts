@@ -1,4 +1,4 @@
-import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
+import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
@@ -50,20 +50,38 @@ export async function ownerName(ctx: Pick<QueryCtx, "db">, owner: LibraryOwner) 
 /** Whether the library's owner is still there: an active organization, or the active account whose own workspace it's in. */
 export const ownerActive = (owner: LibraryOwner | null) => owner !== null && (owner.workspace.kind === "personal" ? owner.person?.state === "active" : owner.organization?.state === "active");
 
+/**
+ * A library's people with a role of their own are rows of the tables every shared item's guests
+ * are in (#653, ../sharing/validators.ts), under the library's two roles. Its owners have no row:
+ * they are its organization's admins, or the person whose own workspace it's in.
+ */
+export const libraryGrant = (ctx: Pick<QueryCtx, "db">, libraryId: Id<"evidenceLibraries">, userId: Id<"users">) =>
+  ctx.db.query("itemAccess").withIndex("by_item_and_user", q => q.eq("item", libraryId).eq("userId", userId)).unique();
+
+/** The role a library's row gives: a creator's, or else an editor's. */
+export const grantedRole = (row: Pick<Doc<"itemAccess">, "role">) => (row.role === "creator" ? "creator" as const : "editor" as const);
+
+/** The library a row of those tables is of, or null for a row of anything else. */
+export const libraryOf = async (ctx: Pick<QueryCtx, "db">, row: Pick<Doc<"itemAccess">, "kind" | "item">) => {
+  const libraryId = row.kind === "library" ? ctx.db.normalizeId("evidenceLibraries", row.item) : null;
+  return libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
+};
+
 /** Pending invitations open the library list, but do not grant a library role. */
 export async function readPendingLibraryInvitations(
   ctx: Pick<QueryCtx | MutationCtx, "db">,
   user: Doc<"users">,
 ) {
   if (user.state !== "active") return [];
-  const invitations = await ctx.db.query("evidenceLibraryInvitations")
-    .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_EMAIL);
+  // An address has at most MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL invitations waiting, to anything.
+  const invitations = await ctx.db.query("itemInvitations")
+    .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
   const rows = await Promise.all(invitations.map(async invitation => {
-    const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
+    const library = await libraryOf(ctx, invitation);
     if (!library || library.state === "disabled") return null;
     const owner = await libraryOwner(ctx, library);
     if (!owner || !ownerActive(owner)) return null;
-    return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: invitation.role, organization: { id: owner.organization?._id ?? null, ...(await ownerName(ctx, owner)) } };
+    return { invitationId: invitation._id, libraryId: library._id, name: library.name, role: grantedRole(invitation), organization: { id: owner.organization?._id ?? null, ...(await ownerName(ctx, owner)) } };
   }));
   return rows.filter(row => row !== null);
 }
@@ -74,9 +92,9 @@ export async function hasDirectLibraryAccess(
 ) {
   if (user.state !== "active") return false;
   // A person has at most MAX_LIBRARY_GRANTS_PER_PERSON grants (./members.ts).
-  for (const assignment of await ctx.db.query("evidenceLibraryMembers")
-    .withIndex("by_clerkUserId", q => q.eq("clerkUserId", user.clerkId)).take(MAX_LIBRARY_GRANTS_PER_PERSON)) {
-    const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
+  for (const assignment of await ctx.db.query("itemAccess")
+    .withIndex("by_user_and_kind_and_grantedAt", q => q.eq("userId", user._id).eq("kind", "library")).take(MAX_LIBRARY_GRANTS_PER_PERSON)) {
+    const library = await libraryOf(ctx, assignment);
     if (library && await readLibraryRole(ctx, library, user.clerkId)) return true;
   }
   return (await readPendingLibraryInvitations(ctx, user)).length > 0;
@@ -105,9 +123,7 @@ export async function readLibraryRole(
   const owner = await libraryOwner(ctx, library);
   if (!owner || !ownerActive(owner)) return null;
   const membership = owner.organization ? await readActiveOrganizationMembership(ctx, owner.organization._id, clerkUserId) : null;
-  const assignment = await ctx.db.query("evidenceLibraryMembers")
-    .withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id).eq("clerkUserId", clerkUserId))
-    .unique();
+  const assignment = user ? await libraryGrant(ctx, library._id, user._id) : null;
   return libraryRoleFrom(library, owner, { user, membership, assignment });
 }
 
@@ -120,13 +136,13 @@ export async function readLibraryRole(
 export function libraryRoleFrom(
   library: Doc<"evidenceLibraries">,
   owner: LibraryOwner | null,
-  rows: { user: Doc<"users"> | null; membership: Pick<Doc<"organizationMemberships">, "role"> | null; assignment: Pick<Doc<"evidenceLibraryMembers">, "role"> | null },
+  rows: { user: Doc<"users"> | null; membership: Pick<Doc<"organizationMemberships">, "role"> | null; assignment: Pick<Doc<"itemAccess">, "role"> | null },
 ): EvidenceLibraryAdminRole | null {
   if (rows.user?.state === "deleted") return null;
   if (!owner || !ownerActive(owner)) return null;
   if (owner.organization ? rows.membership?.role === "org:admin" : owner.workspace.kind === "personal" && rows.user?._id === owner.workspace.userId) return "owner";
   if (library.state === "disabled") return null;
-  return rows.assignment?.role ?? null;
+  return rows.assignment ? grantedRole(rows.assignment) : null;
 }
 
 export async function readEvidenceLibraryAccess(

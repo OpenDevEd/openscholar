@@ -32,16 +32,16 @@ export const invite = action({
       });
     } catch (error) {
       console.error("Library invitation email failed", { invitationId, error });
-      await ctx.runMutation(internal.evidenceLibraries.invitations.recordDelivery, { invitationId, delivery: "failed" });
+      await ctx.runMutation(internal.sharing.invitations.recordDelivery, { invitationId, delivery: "failed" });
       throw createError("VALIDATION_ERROR", "The invitation email could not be sent. Try again.");
     }
-    await ctx.runMutation(internal.evidenceLibraries.invitations.recordDelivery, { invitationId, delivery: "sent" });
+    await ctx.runMutation(internal.sharing.invitations.recordDelivery, { invitationId, delivery: "sent" });
     return null;
   },
 });
 
 export const respond = action({
-  args: { invitationId: v.id("evidenceLibraryInvitations"), accept: v.boolean() },
+  args: { invitationId: v.id("itemInvitations"), accept: v.boolean() },
   returns: v.null(),
   handler: async (ctx, args): Promise<null> => {
     const emails = await verifiedInvitationEmails(ctx);

@@ -14,7 +14,7 @@ import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery,
 import { readMemberOrganizations } from "../organizationFeatures";
 import schema from "../schema";
 import { give, holds, invitationTo, roomFor } from "./access";
-import { grantOf, itemGuestsOf, requireRole, sharedIn } from "./items";
+import { grantOf, itemGuestsOf, requireRole, sharedIn, shares } from "./items";
 import { guestRoleValidator, sharedKindValidator } from "./validators";
 
 /** Most guests or invitations one page of the share dialog holds. */
@@ -147,7 +147,7 @@ export const listAction = defineUserQuery({
   run: async (ctx, actor, { kind, id, paginationOpts }) => {
     const shared = await sharedIn(ctx, actor, kind, id);
     const read = await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", (q) => q.eq("item", shared.id)).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, GUESTS_PAGE_MAX) });
-    const page = await Promise.all(read.page.map(async ({ userId, role }) => {
+    const page = await Promise.all(read.page.filter(shares).map(async ({ userId, role }) => {
       const person = await ctx.db.get("users", userId);
       return person ? [{ userId, name: personName(person), email: person.email, ...(person.avatarUrl ? { imageUrl: person.avatarUrl } : {}), role }] : [];
     }));
@@ -165,7 +165,7 @@ export const invitedAction = defineUserQuery({
   run: async (ctx, actor, { kind, id, paginationOpts }) => {
     const shared = await sharedIn(ctx, actor, kind, id);
     const read = await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", shared.id).eq("state", "pending")).paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, GUESTS_PAGE_MAX) });
-    return { ...read, page: read.page.map(({ email, role, expiresAt, delivery }) => ({ email, role, expiresAt, delivery })) };
+    return { ...read, page: read.page.filter(shares).map(({ email, role, expiresAt, delivery }) => ({ email, role, expiresAt, delivery })) };
   },
 });
 export const invited = userQuery(invitedAction);
