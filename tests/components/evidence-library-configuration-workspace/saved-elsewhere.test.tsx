@@ -60,6 +60,27 @@ describe("<ConfigurationWorkspace> when the draft is saved somewhere else", () =
     expect(identityCard().queryByRole("status")).not.toBeInTheDocument();
   });
 
+  it("keeps what is typed between a save's answer and the rows that follow it", async () => {
+    const user = userEvent.setup();
+    const { reread } = await renderWorkspace();
+    const name = identityCard().getByLabelText("identity.nameLabel");
+    await user.clear(name);
+    await fillField(user, name, "My name");
+    // The save is answered, and the page still holds the rows from before it.
+    await user.click(screen.getByRole("button", { name: "save" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "save" })).toBeEnabled());
+    const disclaimer = footerCard().getByRole("textbox", { name: /disclaimer/ });
+    await fillField(user, disclaimer, "Typed since");
+
+    queryMock.mockReturnValue(draftResult({ editVersion: 5, sections: rowsWith("identity", { ...savedIdentity, name: "My name" }) }));
+    await reread();
+
+    expect(footerCard().getByDisplayValue("Typed since")).toBeInTheDocument();
+    expect(identityCard().getByLabelText("identity.nameLabel")).toHaveValue("My name");
+    expect(document.getElementById("sec-identity")).toHaveAttribute("data-section-state", "complete");
+    expect(document.querySelector("[data-saved-elsewhere]")).not.toBeInTheDocument();
+  });
+
   it("takes this page's own save without a word, whatever the platform made of it", async () => {
     const user = userEvent.setup();
     mutationMock.mockImplementation((reference: unknown) => {

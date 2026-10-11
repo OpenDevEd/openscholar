@@ -106,7 +106,7 @@ export function SectionShell({
           {refused}
         </InlineNotice>
       ) : null}
-      {changed && elsewhere.includes(sectionKey) ? (
+      {elsewhere.includes(sectionKey) ? (
         // The card's own gap is inside the row, so the fields below move down with it instead of jumping.
         <div className="row-open mb-0">
           <div className="min-h-0 overflow-hidden pb-4">

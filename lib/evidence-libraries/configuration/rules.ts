@@ -2052,8 +2052,7 @@ function takeSection(
       };
       break;
   }
-  // A reset can take away what a feature needs (an export, a second language, a search option).
-  return settleFeatures(next);
+  return next;
 }
 
 /** Copies one card's values back from the saved rows. */
@@ -2061,29 +2060,38 @@ export const resetSection = (
   draft: ConfigurationDraft,
   rows: readonly SectionRow[],
   sectionKey: PageSectionKey,
-) => takeSection(draft, readDraft(rows), sectionKey);
+  // A reset can take away what a feature needs (an export, a second language, a search option).
+) => settleFeatures(takeSection(draft, readDraft(rows), sectionKey));
 
 /**
- * The draft once the saved rows have changed under an open page. With `keep`, a card whose values differ from the
- * rows it was edited from holds on to them and every other card takes the new rows; without it, every card does.
- * `elsewhere` names the kept cards whose saved values changed too, to something other than what the page holds.
+ * The draft once the saved rows have changed under an open page. `was` is the draft the page's values were last in
+ * step with: the rows it was edited from, or what its own save sent. A card whose values differ from it holds on to
+ * them, and every other card takes the new rows.
+ * `elsewhere` names the kept cards whose saved values changed too, to something other than what the page holds;
+ * a card already in `named` stays named for as long as it is kept.
+ * `replaced` names the cards that no longer show what they did.
  */
 export function carryUnsaved(
   draft: ConfigurationDraft,
-  before: readonly SectionRow[],
+  was: ConfigurationDraft,
   after: readonly SectionRow[],
-  keep: boolean,
+  named: readonly PageSectionKey[],
 ) {
-  const was = readDraft(before);
   const now = readDraft(after);
   const differs = (a: ConfigurationDraft, b: ConfigurationDraft, key: PageSectionKey) =>
     !same(cardSlice(a, key), cardSlice(b, key));
   // A new library's cards count as changed until their rows are written. Nobody typed those values, so what
   // counts here is a difference from the values the card started with.
-  const kept = keep ? PAGE_SECTION_KEYS.filter((key) => differs(draft, was, key)) : [];
-  const next = kept.reduce((merged, key) => takeSection(merged, draft, key), now);
+  const kept = PAGE_SECTION_KEYS.filter((key) => differs(draft, was, key));
+  // Features settle once every kept card is in: a feature kept on one card can need what another kept card holds.
+  const next = kept.length
+    ? settleFeatures(kept.reduce((merged, key) => takeSection(merged, draft, key), now))
+    : now;
   return {
     draft: next,
-    elsewhere: kept.filter((key) => differs(was, now, key) && differs(next, now, key)),
+    elsewhere: kept.filter(
+      (key) => differs(next, now, key) && (named.includes(key) || differs(was, now, key)),
+    ),
+    replaced: PAGE_SECTION_KEYS.filter((key) => differs(draft, next, key)),
   };
 }

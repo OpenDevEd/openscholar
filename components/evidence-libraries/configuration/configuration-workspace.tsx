@@ -75,6 +75,7 @@ import {
   resetSection,
   type SaveRefusal,
   saveRefusal,
+  sectionChanged,
   type SectionRow,
   sectionState,
   staleUploads,
@@ -291,21 +292,30 @@ function Workspace({
   const [refusal, setRefusal] = useState<SaveRefusal | null>(null);
   const [saving, setSaving] = useState(false);
   const [activating, setActivating] = useState(false);
-  // The saved rows the page took last, the draft edited on top of them, and the cards whose unsaved values were
-  // also saved somewhere else in the meantime.
+  // The saved rows the page took last, the draft edited on top of them, the cards whose unsaved values were also
+  // saved somewhere else in the meantime, and for each card the edit version whose rows last replaced its values.
   const [work, setWork] = useState(() => ({
     ...latest,
     edited: readDraft(latest.rows),
     elsewhere: [] as readonly PageSectionKey[],
+    drawn: {} as Partial<Record<PageSectionKey, number>>,
   }));
-  // This page's own save has landed, so the next rows it takes hold everything it had changed.
-  const [savedHere, setSavedHere] = useState(false);
+  // The draft this page's own save sent, once the platform has taken it. The rows that follow hold all of it.
+  const [sent, setSent] = useState<ConfigurationDraft | null>(null);
   // Newer rows can come from a save made in another tab or by someone else. A card with unsaved values keeps them.
   // The rows wait while this page's own save or activation is on its way: what it sent was edited from the rows it holds.
   if (work.editVersion !== latest.editVersion && !saving && !activating) {
-    const carried = carryUnsaved(work.edited, work.rows, latest.rows, !savedHere);
-    setWork({ ...latest, edited: carried.draft, elsewhere: carried.elsewhere });
-    setSavedHere(false);
+    // After the page's own save, only what was typed since it was sent is unsaved.
+    const carried = sent
+      ? carryUnsaved(work.edited, sent, latest.rows, [])
+      : carryUnsaved(work.edited, readDraft(work.rows), latest.rows, work.elsewhere);
+    setWork({
+      ...latest,
+      edited: carried.draft,
+      elsewhere: carried.elsewhere,
+      drawn: { ...work.drawn, ...Object.fromEntries(carried.replaced.map((key) => [key, latest.editVersion])) },
+    });
+    setSent(null);
   }
   const { editVersion, rows: saved, edited } = work;
   // Whether an OpenRouter key is stored is not a saved row; it comes from the
@@ -356,7 +366,11 @@ function Workspace({
   // Editing, resetting or moving on answers the last refusal, so it goes away.
   const patch: SectionProps["patch"] = (update) => {
     setRefusal(null);
-    setWork((current) => ({ ...current, edited: update(cloneDraft(current.edited)) }));
+    setWork((current) => {
+      const next = update(cloneDraft(current.edited));
+      // A card edited back to the saved values has nothing left to settle.
+      return { ...current, edited: next, elsewhere: current.elsewhere.filter((key) => sectionChanged(next, current.rows, key)) };
+    });
   };
   const reset: SectionProps["reset"] = (sectionKey) => {
     setRefusal(null);
@@ -382,7 +396,7 @@ function Workspace({
       expectedEditVersion: editVersion,
       sections,
     });
-    setSavedHere(true);
+    setSent(edited);
     // Only now do the saved rows stop pointing at the replaced files. Best effort.
     for (const url of stale) {
       void removeUpload({ libraryId, url }).catch(() => undefined);
@@ -648,7 +662,8 @@ function Workspace({
                       const Section = SECTION_COMPONENTS[key];
                       return (
                         <Section
-                          key={key}
+                          // A card whose values were replaced by saved rows starts again, as it would on a fresh page.
+                          key={`${key}:${work.drawn[key] ?? 0}`}
                           libraryId={libraryId}
                           draft={draft}
                           saved={saved}

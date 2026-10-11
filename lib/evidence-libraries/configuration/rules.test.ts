@@ -360,33 +360,41 @@ describe("sectionState and reset", () => {
 });
 
 describe("a save made elsewhere while the page is open", () => {
-  const savedElsewhere = (sectionKey: string, payload: unknown) =>
-    savedRows.map((row) => (row.sectionKey === sectionKey ? { sectionKey, payload } : row));
+  const savedElsewhere = (sectionKey: string, payload: unknown, rows: readonly { sectionKey: string; payload: unknown }[] = savedRows) =>
+    rows.map((row) => (row.sectionKey === sectionKey ? { sectionKey, payload } : row));
   const renamedElsewhere = savedElsewhere("identity", { ...brandRows[0].payload, name: "Their name" });
 
   it("keeps a section's unsaved values and takes the saved values for the others", () => {
     const draft = savedDraft();
     draft.footer.disclaimer = "Mine, not saved yet";
-    const carried = carryUnsaved(draft, savedRows, renamedElsewhere, true);
+    const carried = carryUnsaved(draft, savedDraft(), renamedElsewhere, []);
     expect(carried.draft.footer.disclaimer).toBe("Mine, not saved yet");
     expect(carried.draft.identity.name).toBe("Their name");
     expect(sectionState(carried.draft, renamedElsewhere, "footer")).toBe("edited");
     expect(sectionState(carried.draft, renamedElsewhere, "identity")).toBe("complete");
     expect(carried.elsewhere).toEqual([]);
+    // Only the section that took new values is drawn again; the one being edited is left alone.
+    expect(carried.replaced).toEqual(["identity"]);
   });
 
-  it("names a section that was changed here and saved elsewhere", () => {
+  it("names a section that was changed here and saved elsewhere, until it is saved or reset", () => {
     const draft = savedDraft();
     draft.identity.name = "My name";
-    const carried = carryUnsaved(draft, savedRows, renamedElsewhere, true);
+    const carried = carryUnsaved(draft, savedDraft(), renamedElsewhere, []);
     expect(carried.draft.identity.name).toBe("My name");
     expect(carried.elsewhere).toEqual(["identity"]);
+    expect(carried.replaced).toEqual([]);
+    // A later save of another section leaves the name unresolved, so the section stays named.
+    const footerToo = savedElsewhere("footer", { disclaimer: "Theirs" }, renamedElsewhere);
+    const later = carryUnsaved(carried.draft, readDraft(renamedElsewhere), footerToo, carried.elsewhere);
+    expect(later.draft.identity.name).toBe("My name");
+    expect(later.elsewhere).toEqual(["identity"]);
   });
 
   it("has nothing to say when the saved value is the one already on the page", () => {
     const draft = savedDraft();
     draft.identity.name = "Their name";
-    const carried = carryUnsaved(draft, savedRows, renamedElsewhere, true);
+    const carried = carryUnsaved(draft, savedDraft(), renamedElsewhere, []);
     expect(carried.elsewhere).toEqual([]);
     expect(isDirty(carried.draft, renamedElsewhere)).toBe(false);
   });
@@ -394,17 +402,37 @@ describe("a save made elsewhere while the page is open", () => {
   it("does not hold on to values a library has no row for yet", () => {
     // Every section of a new library counts as changed until its rows are written; nobody typed those values.
     const draft = readDraft(brandRows);
-    const carried = carryUnsaved(draft, brandRows, renamedElsewhere, true);
+    const carried = carryUnsaved(draft, readDraft(brandRows), renamedElsewhere, []);
     expect(carried.draft.identity.name).toBe("Their name");
     expect(carried.elsewhere).toEqual([]);
   });
 
-  it("starts again from the saved rows after this page's own save", () => {
-    const draft = savedDraft();
-    draft.footer.disclaimer = "Sent with the save";
-    const carried = carryUnsaved(draft, savedRows, renamedElsewhere, false);
-    expect(carried.draft).toEqual(readDraft(renamedElsewhere));
-    expect(carried.elsewhere).toEqual([]);
+  it("keeps a feature that needs what another kept section holds", () => {
+    const oneLanguage = savedElsewhere("localization", { locales: ["en-GB"], defaultLocale: "en-GB" }, platformRows);
+    const draft = readDraft(oneLanguage);
+    draft.localization.locales = ["en-GB", "fr"];
+    draft.features.languageSwitcher = true;
+    const carried = carryUnsaved(draft, readDraft(oneLanguage), savedElsewhere("footer", { disclaimer: "Theirs" }, oneLanguage), []);
+    expect(carried.draft.localization.locales).toEqual(["en-GB", "fr"]);
+    expect(carried.draft.features.languageSwitcher).toBe(true);
+    expect(carried.draft.footer.disclaimer).toBe("Theirs");
+  });
+
+  it("starts again from the saved rows after this page's own save, keeping only what was typed since", () => {
+    const sent = savedDraft();
+    sent.footer.disclaimer = "Sent with the save";
+    // The rows that follow the page's own save: whatever the platform made of what was sent.
+    const own = carryUnsaved(sent, sent, renamedElsewhere, []);
+    expect(own.draft).toEqual(readDraft(renamedElsewhere));
+    expect(own.elsewhere).toEqual([]);
+    expect(own.replaced).toEqual(["identity", "footer"]);
+    // The answer came before the rows, and a tagline was typed in between.
+    const typedSince = structuredClone(sent);
+    typedSince.contact.email = "typed-since@example.org";
+    const late = carryUnsaved(typedSince, sent, savedElsewhere("footer", { disclaimer: "Sent with the save" }), []);
+    expect(late.draft.contact.email).toBe("typed-since@example.org");
+    expect(late.draft.footer.disclaimer).toBe("Sent with the save");
+    expect(late.elsewhere).toEqual([]);
   });
 });
 
