@@ -183,10 +183,11 @@ export function UpgradeConfirmationDialog({
             {t("cancel")}
           </Button>
           <Button data-testid="upgrade-confirm-button" onClick={onConfirm} disabled={isConfirming}>
+            {/* An action the caller names, such as removing seats, keeps its name while it runs (#858). */}
             {isConfirming ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t("upgrading")}
+                {confirmLabel ?? t("upgrading")}
               </>
             ) : (
               confirmLabel ?? t("confirmUpgrade")

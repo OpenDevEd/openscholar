@@ -19,7 +19,7 @@ export function unlessPaymentOpen(customer: AutumnCustomer) {
   const open = customer.invoices?.find((invoice) => invoice.status === "open" && invoice.total > 0);
   if (!open) return;
   const amount = new Intl.NumberFormat("en-US", { style: "currency", currency: open.currency.toUpperCase() }).format(open.total);
-  throw createError("BILLING_PAYMENT_OPEN", `A payment of ${amount} is still open. Pay it first.`, open.hosted_invoice_url ? { url: open.hosted_invoice_url } : undefined);
+  throw createError("BILLING_PAYMENT_OPEN", `A payment of ${amount} is still open. Pay it first.`, { amount: open.total, currency: open.currency, ...(open.hosted_invoice_url ? { url: open.hosted_invoice_url } : {}) });
 }
 
 /**
