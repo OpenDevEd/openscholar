@@ -9,14 +9,14 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { FOLLOW_STEP, findShared, hasGuests } from "./items";
-import { sharedKindValidator, sharedKinds } from "./validators";
+import { accessKindValidator, sharedKindValidator, sharedKinds } from "./validators";
 
 /**
  * Gives a step of an item's guests its name as it is now, from `cursor` on, or deletes a step
  * of its guests and then of its invitations once it's gone.
  */
 export const follow = internalMutation({
-  args: { kind: sharedKindValidator, item: v.string(), cursor: v.union(v.string(), v.null()), closed: v.optional(v.literal(true)) },
+  args: { kind: accessKindValidator, item: v.string(), cursor: v.union(v.string(), v.null()), closed: v.optional(v.literal(true)) },
   returns: v.null(),
   handler: async (ctx, { kind, item, cursor, closed }) => {
     // One closed with its workspace (`close`) is gone to its guests, though its row waits out its retention.

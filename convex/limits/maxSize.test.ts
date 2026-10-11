@@ -286,7 +286,9 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
       await insertMany(fixture.t, "users", people.map((clerkId) => ({ clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 })), 100);
       await insertMany(fixture.t, "organizationMemberships", people.map((clerkUserId, i) => ({ organizationId, clerkMembershipId: `orgmem_max_${i}`, clerkUserId, role: "org:member", state: "active", ...stamp })), 100);
-      await insertMany(fixture.t, "evidenceLibraryMembers", people.map((clerkUserId) => ({ libraryId, clerkUserId, role: "editor", grantedBy: "user_max_admin", grantedAt: 1 })), 100);
+      // Each with a role in the library: a row of the table every shared item's guests are in.
+      const accounts = await fixture.t.run(async (ctx) => (await ctx.db.query("users").collect()).filter((user) => user.clerkId.startsWith("user_max_")).map((user) => user._id));
+      await insertMany(fixture.t, "itemAccess", accounts.map((userId) => ({ kind: "library", item: libraryId, name: "Library", userId, role: "editor", grantedBy: userId, grantedAt: 1 })), 100);
       // The library is recorded, as every library is once migrations/recordApprovedQueries has run.
       await fixture.t.run((ctx) => ctx.db.patch("evidenceLibraries", libraryId, { approvedQueriesRecorded: true }));
 

@@ -59,6 +59,8 @@ export const evidenceLibraryAdminRoleValidator = v.union(
   v.literal("editor"),
   v.literal("creator"),
 );
+/** What the list of libraries says of each: a role in it, or a viewer's, which every other member of its organization has (#653). A viewer has no role in the library's own admin. */
+export const libraryListRoleValidator = v.union(evidenceLibraryAdminRoleValidator, v.literal("viewer"));
 
 export const clerkEventOutcomeValidator = v.union(
   v.literal("applied"),
@@ -1141,6 +1143,6 @@ export const teamPersonValidator = v.object({
 export const grantedPeopleValidator = capped(v.array(teamPersonValidator), MAX_LIBRARY_MEMBERS);
 /** A library's invitations waiting: inviting another past this is refused. */
 export const teamInvitationsValidator = capped(
-  v.array(v.object({ invitationId: v.id("evidenceLibraryInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
+  v.array(v.object({ invitationId: v.id("itemInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
   MAX_PENDING_INVITATIONS_PER_LIBRARY,
 );

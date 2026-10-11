@@ -56,10 +56,11 @@ import { LIST_TILE, ListEmpty, ListLoading, ListSearch, ListViewTabs } from "./l
 import { LibraryStatusChip, type LibraryOperation } from "./library-status-chip";
 import { LibraryImage } from "./library-image";
 
-type Role = "Owner" | "Editor" | "Creator";
+/** A viewer is any other member of the library's organization (#653): they see it here, and have no role in its admin. */
+type Role = "Owner" | "Editor" | "Creator" | "Viewer";
 type Library = {
   id: string;
-  invitationId?: Id<"evidenceLibraryInvitations">;
+  invitationId?: Id<"itemInvitations">;
   organizationImageUrl?: string | null;
   faviconUrl?: string | null;
   status?: "draft" | "setting_up" | "setup_failed" | "active" | "deleting";
@@ -74,7 +75,7 @@ type Library = {
   /** The update or publish a live library is running. */
   operation?: LibraryOperation | null;
 };
-const roleKinds = { Owner: "owner", Editor: "editor", Creator: "creator" } as const;
+const roleKinds = { Owner: "owner", Editor: "editor", Creator: "creator", Viewer: "view" } as const;
 /** A library with no icon of its own shows OpenScholar's, as its page's header does. */
 function LibraryTile() {
   return (
@@ -112,7 +113,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState<string | null>(null);
-  const roles = { owner: "Owner", editor: "Editor", creator: "Creator" } as const;
+  const roles = { owner: "Owner", editor: "Editor", creator: "Creator", viewer: "Viewer" } as const;
   // An address has at most a page of invitations waiting, so they are filtered here.
   const invited = (invitations.data?.page ?? []).filter((invitation) => `${invitation.name} ${invitation.organization.name}`.toLowerCase().includes(search.trim().toLowerCase()));
   const visible: Library[] = view === "libraries"
@@ -237,6 +238,10 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         >
                           {library.name}
                         </Link>
+                      ) : library.role === "Viewer" ? (
+                        <a href={`https://${library.address}`} target="_blank" rel="noopener noreferrer" className="truncate text-sm font-medium hover:underline">
+                          {library.name}
+                        </a>
                       ) : (
                         <AdminAreaLink
                           address={`https://${library.address}`}
@@ -260,7 +265,9 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         <TooltipContent>
                           {library.role === "Owner"
                             ? "Inherited from organization ownership"
-                            : "Assigned to this library"}
+                            : library.role === "Viewer"
+                              ? "Everyone in the organization views its libraries"
+                              : "Assigned to this library"}
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -316,6 +323,14 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                           </Link>
                         </Button>
                       )
+                    ) : library.role === "Viewer" ? (
+                      // A viewer has no role in the library's admin: its public address is theirs to open.
+                      <Button asChild size="sm" variant="outline">
+                        <a href={`https://${library.address}`} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink />
+                          View public library
+                        </a>
+                      </Button>
                     ) : (
                       <ButtonGroup aria-label={`Actions for ${library.name}`}>
                         {library.configuration && (

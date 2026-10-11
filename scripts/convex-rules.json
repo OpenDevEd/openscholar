@@ -35,7 +35,6 @@
       "MAX_LIBRARY_MEMBERS": "convex/evidenceLibraries/members.ts:assertLibraryHasRoom",
       "MAX_LIBRARY_GRANTS_PER_PERSON": "convex/evidenceLibraries/members.ts:assertPersonHasRoom",
       "MAX_FEATURE_FLAGS": "convex/featureFlags/internal.ts",
-      "MAX_PENDING_INVITATIONS_PER_EMAIL": "convex/evidenceLibraries/invitations.ts",
       "MAX_PENDING_INVITATIONS_PER_LIBRARY": "convex/evidenceLibraries/invitations.ts",
       "MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL": "convex/sharing/invitations.ts",
       "MAX_ZOTERO_GROUPS_PER_LIBRARY": "convex/zotero/libraryGroups.ts",

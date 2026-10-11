@@ -13,7 +13,7 @@ import schema from "../schema";
 import { actorIn, type InWorkspace } from "../workspaces/actor";
 import { workspaceFrom } from "../workspaces/personal";
 import { findItem } from "../library/find";
-import { findShared, open, sharedWithOf } from "./items";
+import { findShared, open, sharedWithOf, shares } from "./items";
 import { guestRoleValidator, sharedFromValidator, sharedKindValidator, sharedKinds, type SharedKind } from "./validators";
 
 /** Most shared items one page holds. */
@@ -47,9 +47,10 @@ export const listAction = defineUserQuery({
         ? (kind ? rows.withIndex("by_user_and_kind_and_name", (q) => q.eq("userId", userId).eq("kind", kind)) : rows.withIndex("by_user_and_name", (q) => q.eq("userId", userId))).order("asc")
         : (kind ? rows.withIndex("by_user_and_kind_and_grantedAt", (q) => q.eq("userId", userId).eq("kind", kind)) : rows.withIndex("by_user_and_grantedAt", (q) => q.eq("userId", userId))).order("desc");
     const read = await ordered
-      .filterWith(async (row) => !needle || row.name.toLowerCase().includes(needle))
+      // A role in an Evidence Library is listed with the libraries, not here.
+      .filterWith(async (row) => shares(row) && (!needle || row.name.toLowerCase().includes(needle)))
       .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHARED_PAGE_MAX), maximumRowsRead: SHARED_FILTER_ROWS });
-    const page = await Promise.all(read.page.map(async (row) => {
+    const page = await Promise.all(read.page.filter(shares).map(async (row) => {
       const [shared, sharer] = await Promise.all([findShared(ctx, row.kind, row.item), ctx.db.get("users", row.grantedBy)]);
       // One whose item was just deleted goes with it in a moment (./upkeep.ts). One whose workspace has closed, as a suspended account's has, isn't theirs to open.
       // One moved since into a workspace they act in is theirs there, as its members' are, and not among what's shared with them.

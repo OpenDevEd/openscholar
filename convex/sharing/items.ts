@@ -11,12 +11,12 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { MAX_ASSISTANT_THREAD_GRANTS, MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
 import type { Actor, InWorkspace } from "../workspaces/actor";
-import type { GuestRole, SharedKind } from "./validators";
+import type { AccessKind, AccessRole, GuestRole, SharedKind } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
 
 /** An item as sharing sees it: where it is, what it's called, and how much it holds where that's kept (a collection's papers, a screening's). A search's Activity is kept under the ID its page shows in its workspace (`pageId`); its guests' rows name its document. */
-export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size?: number; pageId?: string; createdBy?: Id<"users">; lastMessageAt?: number };
+export type Shared<Kind extends AccessKind = SharedKind> = { kind: Kind; id: string; workspaceId: Id<"workspaces">; name: string; size?: number; pageId?: string; createdBy?: Id<"users">; lastMessageAt?: number };
 
 /**
  * Each kind's table, what its row is called, how much it holds, the word for one in a sentence,
@@ -29,6 +29,8 @@ export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces
  * edit only (../authors/access.ts); one whose owner's account was purged is in no workspace,
  * and isn't shared. A chat's viewer reads it and its editor writes in it too
  * (../assistant/access.ts); every member of its workspace has it, and its maker and admins share it.
+ * An Evidence Library is here for its name and its rows' upkeep alone: its people are given
+ * their roles in its settings (../evidenceLibraries/team.ts).
  */
 const KINDS = {
   collection: { table: "collections", name: (row: Doc<"collections">) => row.name, size: (row: Doc<"collections">) => row.itemCount, word: "collection", roles: ["viewer", "editor"] },
@@ -37,9 +39,10 @@ const KINDS = {
   search: { table: "searches", name: (row: Doc<"searches">) => row.data.query || "Search", size: (row: Doc<"searches">) => row.data.count ?? 0, word: "search", roles: ["viewer", "editor"] },
   author: { table: "authorProfiles", name: (row: Doc<"authorProfiles">) => row.name, word: "author profile", roles: ["editor"], ownersShare: true, ownersHold: true, most: MAX_PROFILE_MEMBERS },
   chat: { table: "assistantThreads", name: (row: Doc<"assistantThreads">) => row.title, word: "chat", roles: ["viewer", "editor"], ownersShare: true, most: MAX_ASSISTANT_THREAD_GRANTS },
+  library: { table: "evidenceLibraries", name: (row: Doc<"evidenceLibraries">) => row.name, word: "Evidence Library", roles: ["editor", "creator"] },
 } as const satisfies {
-  [K in SharedKind]: {
-    table: TableNames; name: (row: never) => string; size?: (row: never) => number; word: string; roles: readonly GuestRole[];
+  [K in AccessKind]: {
+    table: TableNames; name: (row: never) => string; size?: (row: never) => number; word: string; roles: readonly AccessRole[];
     /** Shared only by whoever made it and its workspace's admins, not by every member. */
     ownersShare?: true;
     /** Held only by them too: its workspace's other members have it only with a place of their own. */
@@ -65,9 +68,9 @@ export function requireRole(kind: SharedKind, role: GuestRole) {
 const NAME_MAX = 200;
 
 /** The item of `kind` with this ID, or null when there's none. */
-export async function findShared(ctx: Read, kind: SharedKind, id: string): Promise<Shared | null> {
+export async function findShared<Kind extends AccessKind>(ctx: Read, kind: Kind, id: string): Promise<Shared<Kind> | null> {
   // The row is the kind's own table's, which the type of a table picked by a value doesn't say.
-  const { table, name, size } = KINDS[kind] as { table: (typeof KINDS)[SharedKind]["table"]; name: (row: unknown) => string; size?: (row: unknown) => number };
+  const { table, name, size } = KINDS[kind] as { table: (typeof KINDS)[AccessKind]["table"]; name: (row: unknown) => string; size?: (row: unknown) => number };
   const rowId = ctx.db.normalizeId(table, id);
   const row = rowId ? await ctx.db.get(table, rowId) : null;
   // Whole characters: an emoji cut in two is no character at all.
@@ -85,9 +88,14 @@ export async function sharedIn(ctx: Read, actor: Pick<Actor, "userId" | "workspa
   return shared;
 }
 
+/** Whether a row is a guest's, of an item that's shared: an Evidence Library's rows are its own functions' to read (../evidenceLibraries/access.ts). */
+export const shares = <Row extends { kind: AccessKind; role: AccessRole }>(row: Row): row is Row & { kind: SharedKind; role: GuestRole } => row.kind !== "library";
+
 /** A person's place as a guest of an item, if they have one. */
-export const grantOf = (ctx: Read, item: string, userId: Id<"users">) =>
-  ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", item).eq("userId", userId)).unique();
+export async function grantOf(ctx: Read, item: string, userId: Id<"users">) {
+  const row = await ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", item).eq("userId", userId)).unique();
+  return row && shares(row) ? row : null;
+}
 
 /**
  * Whether a workspace's items are still anyone's to open: its owner's account is active, or its
@@ -116,12 +124,12 @@ export async function guestRole(ctx: Read, { userId, workspaceId }: InWorkspace,
 
 /** The list that counts an item's guests: the people given it, and the invitations to it still waiting. */
 export const itemGuestsOf = (item: string) => `itemGuests:${item}`;
-/** The lists that count what's shared with a person: all of it, and each kind. */
-export const sharedWithOf = (userId: Id<"users">, kind?: SharedKind) => `sharedWith:${userId}${kind ? `:${kind}` : ""}`;
+/** The lists that count what's shared with a person: all of it, and each kind. A person's roles in Evidence Libraries are counted as a kind, and not among what's shared with them. */
+export const sharedWithOf = (userId: Id<"users">, kind?: AccessKind) => `sharedWith:${userId}${kind ? `:${kind}` : ""}`;
 
 /** Guest rows one step brings in step with their item, or deletes with it: each deletion also takes the row out of three counts. */
 export const FOLLOW_STEP = 50;
-const follow = makeFunctionReference<"mutation", { kind: SharedKind; item: string; cursor: string | null }, null>("sharing/upkeep:follow");
+const follow = makeFunctionReference<"mutation", { kind: AccessKind; item: string; cursor: string | null }, null>("sharing/upkeep:follow");
 
 /** Whether anyone was given the item or invited to it. */
 export async function hasGuests(ctx: Read, item: string) {
@@ -136,7 +144,7 @@ export async function hasGuests(ctx: Read, item: string) {
  * workspace, its guest rows follow, a step at a time in transactions of their own.
  */
 export const followShared =
-  <K extends SharedKind>(kind: K) =>
+  <K extends AccessKind>(kind: K) =>
   async (ctx: MutationCtx, change: Change<DataModel, (typeof KINDS)[K]["table"]>) => {
     if (change.operation === "insert") return;
     // The table is the kind's own, which the type of a table picked by a type parameter doesn't say.

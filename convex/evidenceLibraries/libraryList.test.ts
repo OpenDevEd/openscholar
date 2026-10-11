@@ -9,6 +9,7 @@ import schema from "../schema";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
 import { countOf, workspaceLibrariesOf } from "../lib/listCounts";
 import { organizationWorkspaceOf } from "../workspaces/personal";
+import { grantLibraryRole } from "./team.test-support";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
@@ -16,7 +17,7 @@ const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1
 async function setup() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async (ctx) => {
-    for (const clerkId of ["me", "someone"]) await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
+    for (const clerkId of ["me", "someone", "member"]) await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
     const organization = (name: string) => ctx.db.insert("organizations", { clerkOrganizationId: `org_${name}`, name, slug: name.toLowerCase(), state: "active", ...stamp });
     const [beta, alpha, partner] = [await organization("Beta"), await organization("Alpha"), await organization("Partner")];
     for (const organizationId of [beta, alpha]) await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `membership-${organizationId}`, clerkUserId: "me", role: "org:admin", state: "active", ...stamp });
@@ -26,11 +27,14 @@ async function setup() {
     for (const name of ["Alpha one", "Alpha two", "Alpha three"]) await library(alpha, name);
     const shared = await library(partner, "Shared reading");
     await library(partner, "Not mine");
-    await ctx.db.insert("evidenceLibraryMembers", { libraryId: shared, clerkUserId: "me", role: "editor", grantedBy: "someone", grantedAt: 1 });
+    await grantLibraryRole(ctx, shared, "me", "editor");
     // A grant inside an organization the person owns lists once, as its owner.
     const alphaWorkspace = await organizationWorkspaceOf(ctx, alpha);
     const owned = (await ctx.db.query("evidenceLibraries").collect()).find((library) => library.workspaceId === alphaWorkspace)!;
-    await ctx.db.insert("evidenceLibraryMembers", { libraryId: owned._id, clerkUserId: "me", role: "creator", grantedBy: "someone", grantedAt: 1 });
+    await grantLibraryRole(ctx, owned._id, "me", "creator");
+    // A member of Alpha who isn't one of its admins, with a role in one of its libraries.
+    await ctx.db.insert("organizationMemberships", { organizationId: alpha, clerkMembershipId: "membership-member", clerkUserId: "member", role: "org:member", state: "active", ...stamp });
+    await grantLibraryRole(ctx, owned._id, "member", "editor");
     return { alpha, beta, partner };
   });
   return { t, me: t.withIdentity({ subject: "me" }), ...ids };
@@ -51,9 +55,11 @@ async function names(me: Me, filters: { search?: string; organization?: Id<"orga
 
 describe("the library list", () => {
   it("lists the libraries of the workspace it's in, a page at a time, without repeating one", async () => {
-    const { me, alpha, partner } = await setup();
+    const { t, me, alpha, partner } = await setup();
     // An organization the person owns: its own libraries. Their grant to one of them lists it once, as its owner.
     expect(await names(me, { organization: alpha })).toEqual([["Alpha one (owner)", "Alpha two (owner)"], ["Alpha three (owner)"]]);
+    // A member who isn't one of its admins views them all, each once, with the role they were given in one (#653).
+    expect((await names(t.withIdentity({ subject: "member" }), { organization: alpha })).flat()).toEqual(["Alpha one (editor)", "Alpha two (viewer)", "Alpha three (viewer)"]);
     // One they're given a role in a library of: that library.
     expect((await names(me, { organization: partner })).flat()).toEqual(["Shared reading (editor)"]);
     // Their own workspace: theirs, and what was shared with them from organizations they don't own.

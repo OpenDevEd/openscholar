@@ -45,8 +45,10 @@ describe("library invitations", () => {
     expect(await features()).toEqual({ evidenceLibraries: true, authors: false });
     expect((await fixture.outside.query(api.organizationFeatures.listLibraryOrganizations, {})).page).toEqual([]);
     await fixture.t.run(async ctx => {
-      const assignment = await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", fixture.libraryId).eq("clerkUserId", "outside")).unique();
-      await ctx.db.delete("evidenceLibraryMembers", assignment!._id);
+      const assignment = await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", q => q.eq("item", fixture.libraryId)).unique();
+      // Its role is a row of the table every shared item's guests are in, under the library's own kind.
+      expect(assignment).toMatchObject({ kind: "library", role: "creator" });
+      await ctx.db.delete("itemAccess", assignment!._id);
     });
     expect(await features()).toEqual({ evidenceLibraries: false, authors: false });
     expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ from: {name: "Climate Evidence", address: "libraries@example.test"}, to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-libraries?view=invitations") });
@@ -57,8 +59,8 @@ describe("library invitations", () => {
     await fixture.invite();
     const [invitation] = (await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page;
     await fixture.t.run(async ctx => {
-      if (reason === "expired") await ctx.db.patch("evidenceLibraryInvitations", invitation.invitationId, { expiresAt: Date.now() - 1 });
-      if (reason === "cancelled") await ctx.db.patch("evidenceLibraryInvitations", invitation.invitationId, { state: "cancelled" });
+      if (reason === "expired") await ctx.db.patch("itemInvitations", invitation.invitationId, { expiresAt: Date.now() - 1 });
+      if (reason === "cancelled") await ctx.db.patch("itemInvitations", invitation.invitationId, { state: "cancelled" });
       if (reason === "disabled-library") await ctx.db.patch("evidenceLibraries", fixture.libraryId, { state: "disabled" });
       if (reason === "deleted-organization") {
         await ctx.db.patch("organizations", await organizationOfLibrary(ctx, fixture.libraryId), { state: "deleted" });
@@ -68,7 +70,7 @@ describe("library invitations", () => {
         await ctx.db.patch("users", user!._id, { state: "suspended" });
       }
     });
-    if (reason === "expired") await fixture.t.mutation(internal.evidenceLibraries.invitations.expire, { invitationId: invitation.invitationId });
+    if (reason === "expired") await fixture.t.mutation(internal.sharing.invitations.expire, { invitationId: invitation.invitationId });
     expect(await fixture.outside.query(api.organizationFeatures.opens, {})).toEqual({ evidenceLibraries: false, authors: false });
     expect((await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page).toEqual([]);
   });
@@ -89,7 +91,7 @@ describe("library invitations", () => {
       vi.advanceTimersByTime(3 * day);
       await fixture.t.finishInProgressScheduledFunctions();
       expect(await listed()).toBe(0);
-      const [invitation] = await fixture.t.run(ctx => ctx.db.query("evidenceLibraryInvitations").collect());
+      const [invitation] = await fixture.t.run(ctx => ctx.db.query("itemInvitations").collect());
       expect(invitation.state).toBe("expired");
     } finally { vi.useRealTimers(); }
   });
