@@ -10,7 +10,7 @@ import { countOf } from "../lib/listCounts";
 import { personName } from "../lib/people";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import schema from "../schema";
-import type { InWorkspace } from "../workspaces/actor";
+import { actorIn, type InWorkspace } from "../workspaces/actor";
 import { workspaceFrom } from "../workspaces/personal";
 import { findItem } from "../library/find";
 import { findShared, open, sharedWithOf } from "./items";
@@ -39,6 +39,7 @@ export const listAction = defineUserQuery({
   run: async (ctx, actor, { kind, text, sort, paginationOpts }) => {
     if (!(await inOwn(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
     const { userId } = actor;
+    const person = await ctx.db.get("users", userId);
     const needle = text?.trim().toLowerCase() ?? "";
     const rows = stream(ctx.db, schema).query("itemAccess");
     const ordered =
@@ -51,7 +52,8 @@ export const listAction = defineUserQuery({
     const page = await Promise.all(read.page.map(async (row) => {
       const [shared, sharer] = await Promise.all([findShared(ctx, row.kind, row.item), ctx.db.get("users", row.grantedBy)]);
       // One whose item was just deleted goes with it in a moment (./upkeep.ts). One whose workspace has closed, as a suspended account's has, isn't theirs to open.
-      if (!shared || !(await open(ctx, shared.workspaceId))) return [];
+      // One moved since into a workspace they act in is theirs there, as its members' are, and not among what's shared with them.
+      if (!shared || !(await open(ctx, shared.workspaceId)) || (person && (await actorIn(ctx, person, shared.workspaceId)))) return [];
       return [{
         kind: row.kind, id: shared.id, name: shared.name, role: row.role, at: row.grantedAt,
         by: { name: sharer ? personName(sharer) || sharer.email : "", ...(sharer?.avatarUrl ? { imageUrl: sharer.avatarUrl } : {}) },

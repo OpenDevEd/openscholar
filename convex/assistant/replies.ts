@@ -413,8 +413,9 @@ export const stop = mutation({
 /**
  * Where a reply's lock stands: still its own (`writing`), to be stopped (`stop`), or gone with its
  * chat or to another reply (`gone`). It is stopped by someone, or because its sender can no longer
- * write in the chat: it was taken back from them, or its workspace closed (./access.ts). They
- * couldn't stop it themselves by then, and it runs on their credits.
+ * write in the chat: their account isn't active, the chat was taken back from them, or its
+ * workspace closed (./access.ts). They couldn't stop it themselves by then, and it runs on their
+ * credits.
  */
 export const lockState = internalQuery({
   args: lockArgs,
@@ -425,7 +426,7 @@ export const lockState = internalQuery({
     if (!thread || current?.attemptId !== attemptId) return "gone" as const;
     if (current.stop) return "stop" as const;
     const sender = await ctx.db.get("users", current.senderId);
-    const role = sender ? await roleIn(ctx, sender, thread) : null;
+    const role = sender?.state === "active" ? await roleIn(ctx, sender, thread) : null;
     return role === "owner" || role === "write" ? ("writing" as const) : ("stop" as const);
   },
 });
