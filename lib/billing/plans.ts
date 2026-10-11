@@ -26,6 +26,8 @@ export const FREE_MEMBERS = 5;
  * Days after a renewal fails that Stripe stops retrying and cancels the plan (#40), measured on
  * the sandbox's settings: nine tries, cancelled 14 days after the first.
  * shortcut: Stripe's retry settings can't be read through its API; change this with them.
+ * Counted from the invoice's creation, the only time Autumn gives: Stripe first tries about an hour
+ * later, so the day shown can be one early near midnight, never late.
  */
 export const DAYS_TO_PAY = 14;
 

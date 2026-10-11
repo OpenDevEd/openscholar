@@ -63,9 +63,9 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
   const onPaidPlan = Boolean(current && !current.auto_enable);
   const periodEnd = current?.current_period_end ?? undefined;
   // The payment that failed, while the plan is past due (#40): the oldest of its plan's invoices still open, whose failure started
-  // Stripe's retries. A top-up declined meanwhile has an open invoice too, which Autumn voids within minutes: it isn't this.
+  // Stripe's retries. A top-up or another plan's change declined meanwhile has an open invoice too, which Autumn voids within minutes.
   const unpaid = current?.past_due
-    ? (customer.invoices ?? []).filter((invoice) => invoice.status === "open" && !invoice.plan_ids?.includes(TOPUP_PLAN)).sort((a, b) => a.created_at - b.created_at)[0]
+    ? (customer.invoices ?? []).filter((invoice) => invoice.status === "open" && invoice.plan_ids?.includes(current.plan_id)).sort((a, b) => a.created_at - b.created_at)[0]
     : undefined;
   return {
     ...(current ? { plan: current.plan_id } : {}),

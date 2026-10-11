@@ -59,8 +59,9 @@ it("keeps the payment that failed on a past-due account, to pay before the plan 
     { plan_ids: ["pro"], status: "paid", total: 20, currency: "usd", created_at: 1_000 },
     { plan_ids: ["pro"], status: "open", total: 20, currency: "usd", created_at: 3_000, hosted_invoice_url: "https://pay.test/in_2" },
     { plan_ids: ["pro"], status: "void", total: 15, currency: "usd", created_at: 2_000 },
-    // A top-up declined since, not yet voided, isn't the payment that put the plan past due.
-    { plan_ids: ["top_up"], status: "open", total: 5, currency: "usd", created_at: 4_000, hosted_invoice_url: "https://pay.test/in_3" },
+    // A top-up or another plan's change declined, not yet voided, isn't the payment that put the plan past due.
+    { plan_ids: ["top_up"], status: "open", total: 5, currency: "usd", created_at: 2_500, hosted_invoice_url: "https://pay.test/in_3" },
+    { plan_ids: ["go"], status: "open", total: 5, currency: "usd", created_at: 2_600, hosted_invoice_url: "https://pay.test/in_4" },
   ] });
   const ada = t.withIdentity({ subject: "user_ada" });
   const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
