@@ -36,7 +36,7 @@ import {
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations } from "next-intl";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, type RefObject, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -233,6 +233,12 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   // A refused save outlives the form below: saving first and then failing to
   // activate raises the edit version, which restarts the form from scratch.
   const [refusal, setRefusal] = useState<SaveRefusal | null>(null);
+  // So does a save or an activation on its way: the form below restarts when the save lands, and must stay
+  // locked until the whole step is back.
+  const [saving, setSaving] = useState(false);
+  const [activating, setActivating] = useState(false);
+  // And so does the section the address asked for, once the page has scrolled to it.
+  const restoredSection = useRef<string | null>(null);
   if (draftQuery.data === undefined) {
     return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
@@ -259,6 +265,11 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
       operation={operation}
       refusal={refusal}
       setRefusal={setRefusal}
+      saving={saving}
+      setSaving={setSaving}
+      activating={activating}
+      setActivating={setActivating}
+      restoredSection={restoredSection}
     />
   );
 }
@@ -274,6 +285,11 @@ function Workspace({
   operation,
   refusal,
   setRefusal,
+  saving,
+  setSaving,
+  activating,
+  setActivating,
+  restoredSection,
 }: {
   libraryId: Id<"evidenceLibraries">;
   libraryName: string;
@@ -285,6 +301,11 @@ function Workspace({
   operation: Operation;
   refusal: SaveRefusal | null;
   setRefusal: (refusal: SaveRefusal | null) => void;
+  saving: boolean;
+  setSaving: (saving: boolean) => void;
+  activating: boolean;
+  setActivating: (activating: boolean) => void;
+  restoredSection: RefObject<string | null>;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const tList = useTranslations("evidenceLibraries.list");
@@ -314,8 +335,8 @@ function Workspace({
       (credential) => credential.credentialKey === AI_PROVIDER_CREDENTIAL_KEY,
     ),
   );
-  const [saving, setSaving] = useState(false);
-  const [activating, setActivating] = useState(false);
+  // A file still uploading puts its address in the draft when it lands: saving waits for it.
+  const [uploading, setUploading] = useState(0);
   const [activateOpen, setActivateOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -323,7 +344,7 @@ function Workspace({
     "section",
     parseAsStringLiteral(RAIL_KEYS).withDefault("identity"),
   );
-  const { active: spied, jumpTo: scrollToSection } = useScrollSpy(RAIL_KEYS, section);
+  const { active: spied, jumpTo: scrollToSection } = useScrollSpy(RAIL_KEYS, section, restoredSection);
   const current = spied ?? section;
 
   const dirty = isDirty(draft, saved);
@@ -343,6 +364,7 @@ function Workspace({
     (isDraftLibrary || dirty || hasUnpublishedChanges) &&
     !activating &&
     !saving &&
+    uploading === 0 &&
     !problems &&
     !operationRunning;
 
@@ -458,7 +480,7 @@ function Workspace({
   );
 
   return (
-    <FileUploadsProvider libraryId={libraryId}>
+    <FileUploadsProvider libraryId={libraryId} onInFlight={(change) => setUploading((count) => count + change)}>
       <ConfigurationLayout
         header={<>
             <PanelHeader
@@ -486,7 +508,7 @@ function Workspace({
                 variant="outline"
                 size="sm"
                 className={BAR_ACTION}
-                disabled={!dirty || saving || activating}
+                disabled={!dirty || saving || activating || uploading > 0}
                 onClick={handleSave}
               >
                 {saving ? <Spinner /> : <Save />}
@@ -624,14 +646,14 @@ function Workspace({
                   {refusal.message}
                 </InlineNotice>
               ) : null}
-              <CollectionFactsProvider
-                libraryId={libraryId}
-                ids={draft.collections.map((collection) => collection.id)}
-              >
-                <SaveRefusalProvider refusal={refusal}>
-                  {/* A save ends by drawing the form again from what was saved. A change made while one is on its
-                      way would be lost without a word, so the settings cannot be changed until it is back. */}
-                  <div className="contents" inert={saving || activating} aria-busy={saving || activating || undefined}>
+              {/* A save ends by drawing the page again from what was saved. A change made while one is on its way
+                  would be lost without a word, so no section can be changed until the save or activation is back. */}
+              <div className="contents" inert={saving || activating} aria-busy={saving || activating || undefined}>
+                <CollectionFactsProvider
+                  libraryId={libraryId}
+                  ids={draft.collections.map((collection) => collection.id)}
+                >
+                  <SaveRefusalProvider refusal={refusal}>
                     {PAGE_SECTION_KEYS.map((key) => {
                       const Section = SECTION_COMPONENTS[key];
                       return (
@@ -645,19 +667,19 @@ function Workspace({
                         />
                       );
                     })}
-                  </div>
-                </SaveRefusalProvider>
-              </CollectionFactsProvider>
-              <PublicationSection libraryId={libraryId} operationRunning={operationRunning} />
-              <DomainSection libraryId={libraryId} />
-              <VersionsSection
-                libraryId={libraryId}
-                live={libraryState === "active"}
-                operationRunning={operationRunning}
-                refreshKey={runtimeRefreshKey}
-              />
-              <TeamSection libraryId={libraryId} />
-              <DangerSection onDelete={() => setDeleteOpen(true)} />
+                  </SaveRefusalProvider>
+                </CollectionFactsProvider>
+                <PublicationSection libraryId={libraryId} operationRunning={operationRunning} />
+                <DomainSection libraryId={libraryId} />
+                <VersionsSection
+                  libraryId={libraryId}
+                  live={libraryState === "active"}
+                  operationRunning={operationRunning}
+                  refreshKey={runtimeRefreshKey}
+                />
+                <TeamSection libraryId={libraryId} />
+                <DangerSection onDelete={() => setDeleteOpen(true)} />
+              </div>
       </ConfigurationLayout>
     </FileUploadsProvider>
   );
