@@ -15,7 +15,6 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { readProfileAuthor, readProfileAuthorWorks, searchProfileAuthors } from "@/app/actions/authors";
 import AuthorPage from "./author-page";
 import { ProfileAccess } from "./profile-access";
-import { AuthorInvitations } from "./author-invitations";
 import type { AuthorProfile } from "./types";
 import { useWorkspace } from "@/lib/workspaces/url";
 import { readConvexErrorData } from "@/convex/lib/errors";
@@ -24,10 +23,10 @@ import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 type ProfileRecord = FunctionReturnType<typeof api.authors.profiles.get>;
 type ProfileReferences = FunctionReturnType<typeof api.authors.publications.list>;
 
-export function AuthorProfileView({profileId, configuration = false, invitation = false}: {profileId: Id<"authorProfiles">; configuration?: boolean; invitation?: boolean}) {
+export function AuthorProfileView({profileId, configuration = false}: {profileId: Id<"authorProfiles">; configuration?: boolean}) {
   const record = useQuery(api.authors.profiles.get, {profileId});
   const references = useQuery(api.authors.publications.list, {profileId});
-  return <AuthorProfileBody profileId={profileId} record={record} references={references} configuration={configuration} invitation={invitation} />;
+  return <AuthorProfileBody profileId={profileId} record={record} references={references} configuration={configuration} />;
 }
 
 /** The public profile, drawn from queries the server already ran so it renders with the page. */
@@ -46,14 +45,13 @@ export function PreloadedAuthorProfile({profileId, preloadedRecord, preloadedRef
   return <AuthorProfileBody profileId={profileId} record={record} references={references} browsedBefore={browsedBefore} />;
 }
 
-function AuthorProfileBody({profileId, record, references, browsedBefore = false, configuration = false, invitation = false}: {
+function AuthorProfileBody({profileId, record, references, browsedBefore = false, configuration = false}: {
   profileId: Id<"authorProfiles">;
   record: ProfileRecord | undefined;
   references: ProfileReferences | undefined;
   /** How the workspace looked last time, so the back link to Authors is there from the first frame, until its features are read. */
   browsedBefore?: boolean;
   configuration?: boolean;
-  invitation?: boolean;
 }) {
   const { isLoading: authLoading } = useConvexAuth();
   // The directory of authors comes with Evidence Libraries, which the plan of the workspace the page is in has or hasn't.
@@ -69,7 +67,7 @@ function AuthorProfileBody({profileId, record, references, browsedBefore = false
     if (!record?.openalex || (previous && previous.results.length < 10)) return null;
     return ["author-profile-works", record.openalex, page + 1] as const;
   }, ([, id, page]) => unlessLimited(readProfileAuthorWorks(id, page)));
-  if (((configuration || invitation) && authLoading) || record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title="Loading author profile" /></PageWrapper>;
+  if ((configuration && authLoading) || record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title="Loading author profile" /></PageWrapper>;
   if (!record) return <p className="p-6">Author profile not found.</p>;
   if (configuration && !record.role) return <PageWrapper><AuthStatePanel layout="fullscreen" variant="no_access" /></PageWrapper>;
   const profile: AuthorProfile = {
@@ -77,8 +75,7 @@ function AuthorProfileBody({profileId, record, references, browsedBefore = false
     match: match.data ?? (record.openalex ? {id: record.openalex, name: record.name, affiliation: "", topics: "", works: []} : undefined),
   };
   return <AuthorPage key={`${record._id}:${configuration}`} profile={profile} configuration={configuration}
-    invitationSection={invitation && !record.role ? <AuthorInvitations profileId={profileId} showEmpty /> : undefined}
-    canBrowseAuthors={browses} canEdit={Boolean(record.role)} member={record.member} atHome={record.workspaceId !== undefined && record.workspaceId === workspaceId} moveFrom={record.role === "owner" ? record.workspaceId : undefined} accessSection={configuration && record.role === "owner" ? <ProfileAccess profileId={profileId} /> : null}
+    canBrowseAuthors={browses} canEdit={Boolean(record.role)} member={record.member} atHome={record.workspaceId !== undefined && record.workspaceId === workspaceId} moveFrom={record.role === "owner" ? record.workspaceId : undefined} accessSection={configuration && record.role === "owner" && record.workspaceId ? <ProfileAccess profileId={profileId} workspaceId={record.workspaceId} /> : null}
     papers={publications.data?.papers ?? []} loadingPublications={publications.isLoading} loadingAuthors={authors.isValidating || search !== debouncedSearch} publicationStatus={publications.error ? "Publications could not be loaded. Try again shortly." : publications.data?.unavailableCount ? "Some publications could not be loaded. Try again shortly." : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
     openAlexError={[authors.error, match.error, works.error].find((error) => error instanceof OpenAlexLimitedError)?.message ?? (authors.error || match.error || works.error ? "OpenAlex is unavailable. Try again." : null)}
     onSearchAuthors={value => { setSearch(value); if (value === search) void authors.mutate(); }}

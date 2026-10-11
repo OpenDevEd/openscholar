@@ -37,10 +37,7 @@
       "MAX_FEATURE_FLAGS": "convex/featureFlags/internal.ts",
       "MAX_PENDING_INVITATIONS_PER_EMAIL": "convex/evidenceLibraries/invitations.ts",
       "MAX_PENDING_INVITATIONS_PER_LIBRARY": "convex/evidenceLibraries/invitations.ts",
-      "MAX_PENDING_INVITATIONS_PER_PROFILE": "convex/authors/invitations.ts",
-      "MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL": "convex/authors/invitations.ts",
       "MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL": "convex/sharing/invitations.ts",
-      "MAX_PROFILE_MEMBERS": "convex/authors/invitations.ts",
       "MAX_ZOTERO_GROUPS_PER_LIBRARY": "convex/zotero/libraryGroups.ts",
       "MAX_EVIDENCE_LIBRARY_DOMAINS": "convex/evidenceLibraries/domains.ts",
       "MAX_CATALOG_MODELS": "convex/models/mutations.ts",
@@ -51,7 +48,8 @@
       "MAX_EVIDENCE_UNITS_PER_PAPER": "convex/extraction/mutations/evidence.ts:replacePaperEvidenceUnits",
       "MAX_JOB_SOURCES": "convex/extraction/jobSources.ts:writeJobSources",
       "MAX_PENDING_FILES": "convex/assistant/files.ts:startUpload",
-      "MAX_FILES_PER_MESSAGE": "convex/assistant/files.ts:partsFor"
+      "MAX_FILES_PER_MESSAGE": "convex/assistant/files.ts:partsFor",
+      "MAX_PROFILE_MEMBERS": "convex/sharing/items.ts"
     },
     "refused": {
       "MAX_ACCOUNTS_PER_EMAIL": "reads one past it and refuses the invitation, naming why",

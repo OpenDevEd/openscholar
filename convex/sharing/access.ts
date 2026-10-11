@@ -11,7 +11,8 @@ import { createError } from "../lib/errors";
 import { countOf } from "../lib/listCounts";
 import { personName } from "../lib/people";
 import type { Acting } from "../lib/userActions";
-import { grantOf, itemGuestsOf, kindWord, type Shared } from "./items";
+import { actorIn } from "../workspaces/actor";
+import { grantOf, guestCap, itemGuestsOf, kindWord, ownersHold, type Shared } from "./items";
 import type { GuestRole } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
@@ -20,11 +21,25 @@ type Read = Pick<QueryCtx, "db">;
 export const invitationTo = (ctx: Read, item: string, email: string) =>
   ctx.db.query("itemInvitations").withIndex("by_item_and_email", (q) => q.eq("item", item).eq("email", email)).unique();
 
-/** Refuses another guest once the item has all its workspace's plan allows: the people given it, and the invitations to it still waiting. */
+/** The most guests the item has: what its workspace's plan allows, or its kind's own most where that's fewer; undefined for no limit. */
+export async function roomFor(ctx: QueryCtx, shared: Shared) {
+  const [plan, kind] = [await planLimit(ctx, shared.workspaceId, "guests"), guestCap(shared.kind)];
+  return plan === undefined ? kind : kind === undefined ? plan : Math.min(plan, kind);
+}
+
+/** Refuses another guest once the item has all it may: what its workspace's plan allows, or its kind's own most where that's fewer. The people given it count, and the invitations to it still waiting. */
 export async function requireRoom(ctx: QueryCtx, shared: Shared) {
-  const most = await planLimit(ctx, shared.workspaceId, "guests");
+  const plan = await planLimit(ctx, shared.workspaceId, "guests");
+  const most = await roomFor(ctx, shared);
   if (most === undefined || (await countOf(ctx, itemGuestsOf(shared.id))) < most) return;
-  throw createError("VALIDATION_ERROR", `This workspace's plan allows ${most.toLocaleString("en")} ${most === 1 ? "guest" : "guests"} on each ${kindWord(shared.kind)}. Remove one, or change plan for more.`);
+  const guests = `${most.toLocaleString("en")} ${most === 1 ? "guest" : "guests"}`;
+  throw createError("VALIDATION_ERROR", most === plan ? `This workspace's plan allows ${guests} on each ${kindWord(shared.kind)}. Remove one, or change plan for more.` : `One ${kindWord(shared.kind)} has up to ${guests}. Remove one to add another.`);
+}
+
+/** Whether a person has the item already, with no guest's place: they act in its workspace, and for a kind only its owners hold, an author profile, they are one of them. */
+export async function holds(ctx: Read, shared: Shared, person: Doc<"users">) {
+  const actor = await actorIn(ctx, person, shared.workspaceId);
+  return actor !== null && (!ownersHold(shared.kind) || actor.role === "admin" || shared.createdBy === person._id);
 }
 
 /** Writes to an item's Activity that `by` shared it with someone, named as given. */

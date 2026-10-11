@@ -7,15 +7,13 @@ import { paginationOptsValidator, paginationResultValidator } from "convex/serve
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
-import { planLimit } from "../billing/accounts";
 import { createError } from "../lib/errors";
 import { countOf } from "../lib/listCounts";
 import { personName } from "../lib/people";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { readMemberOrganizations } from "../organizationFeatures";
 import schema from "../schema";
-import { actorIn } from "../workspaces/actor";
-import { give, invitationTo } from "./access";
+import { give, holds, invitationTo, roomFor } from "./access";
 import { grantOf, itemGuestsOf, requireRole, sharedIn } from "./items";
 import { guestRoleValidator, sharedKindValidator } from "./validators";
 
@@ -28,7 +26,7 @@ const CANDIDATE_ROWS = 500;
 /** A guest as a change names them: someone given the item, or an address invited to it. */
 const guestValidator = v.union(v.object({ userId: v.id("users") }), v.object({ email: v.string() }));
 
-const ROLES = "to view it (`viewer`: open, read and export) or to edit it (`editor`: also put papers in a collection and take them out, or change a search's query, filters, questions and answers; a screening or an extraction is shared to view only). A search is named by the ID its page shows";
+const ROLES = "to view it (`viewer`: open, read and export) or to edit it (`editor`: also put papers in a collection and take them out, or change a search's query, filters, questions and answers; a screening or an extraction is shared to view only, and an author profile, which is public, to edit only). A search is named by the ID its page shows";
 
 export const addAction = defineUserMutation({
   path: "sharing/guests:add",
@@ -47,7 +45,7 @@ export const addAction = defineUserMutation({
     const shared = await sharedIn(ctx, actor, kind, id);
     const [sharer, person] = await Promise.all([ctx.db.get("users", actor.userId), ctx.db.get("users", userId)]);
     if (!sharer || person?.state !== "active") throw createError("NOT_FOUND", "Person not found");
-    if (await actorIn(ctx, person, shared.workspaceId)) throw createError("CONFLICT", "They're in this workspace, so they have it already.");
+    if (await holds(ctx, shared, person)) throw createError("CONFLICT", "They're in this workspace, so they have it already.");
     // Never a stranger by ID: someone in one of the sharer's organizations.
     const mine = new Set((await readMemberOrganizations(ctx, sharer)).map(({ organization }) => organization._id));
     if (!(await readMemberOrganizations(ctx, person)).some(({ organization }) => mine.has(organization._id))) throw createError("FORBIDDEN", "Invite people outside your organizations by email.");
@@ -135,7 +133,7 @@ export const roomAction = defineUserQuery({
   returns: v.object({ used: v.number(), limit: v.union(v.number(), v.null()) }),
   run: async (ctx, actor, { kind, id }) => {
     const shared = await sharedIn(ctx, actor, kind, id);
-    return { used: await countOf(ctx, itemGuestsOf(shared.id)), limit: (await planLimit(ctx, shared.workspaceId, "guests")) ?? null };
+    return { used: await countOf(ctx, itemGuestsOf(shared.id)), limit: (await roomFor(ctx, shared)) ?? null };
   },
 });
 export const room = userQuery(roomAction);
@@ -198,7 +196,7 @@ export const candidatesAction = defineUserQuery({
         seen.add(membership.clerkUserId);
         const person = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
         if (person?.state !== "active" || (needle && !`${personName(person)}\n${person.email}`.toLowerCase().includes(needle))) return false;
-        if ((await actorIn(ctx, person, shared.workspaceId)) || (await grantOf(ctx, shared.id, person._id))) return false;
+        if ((await holds(ctx, shared, person)) || (await grantOf(ctx, shared.id, person._id))) return false;
         found.set(membership.clerkUserId, person);
         return true;
       })

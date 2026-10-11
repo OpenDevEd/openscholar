@@ -17,7 +17,7 @@ const within = (path: string, section: string) => path === section || path.start
  * Pages inside those sections that are no organization's: the deployment's own settings, and an
  * invitation to an author profile, which is the invitee's to answer. Their paths take no prefix.
  */
-const ownOnly = (path: string) => within(path, "/settings/admin") || /^\/authors\/[^/]+\/invitation(\/|$)/.test(path);
+const ownOnly = (path: string) => within(path, "/settings/admin");
 /** An organization's own settings, which a person's own workspace has no page for. */
 const ORGANIZATION_ONLY = "/settings/workspace";
 
@@ -37,8 +37,7 @@ export function pageItem(path: string, params: URLSearchParams): Item | null {
   if (section === "results" && id) return { kind: "search", id: decodeURIComponent(id) };
   if (section === "extraction" && id && id !== "new") return { kind: "extraction", id };
   if (section === "evidence-libraries" && id && id !== "new") return { kind: "library", id };
-  // An invitation to a profile is the invitee's own to answer, outside any workspace.
-  if (section === "authors" && id && page !== "invitation") return { kind: "profile", id };
+  if (section === "authors" && id) return { kind: "profile", id };
   const job = path === "/screening" ? params.get("job") : null;
   if (job && job !== "new") return { kind: "screening", id: job };
   const collection = path === "/library" ? params.get("col") : null;
