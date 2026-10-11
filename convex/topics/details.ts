@@ -11,7 +11,9 @@ import { openAlexUrl } from "../../lib/openalex/request-url";
 import { MAX_TOPIC_KEYWORDS } from "../lib/listCaps";
 import { topicKeywordsValidator, topicPathValidator } from "./validators";
 
-const provider = z.object({id: z.string(), description: z.string().max(100000), keywords: z.array(z.string().max(1000)).max(1000), works_count: z.number().int().nonnegative()});
+// OpenAlex sends each keyword as {id, display_name, score}; it once sent the name alone, which an old cached reply may still hold.
+const keyword = z.union([z.string().max(1000), z.object({display_name: z.string().max(1000)}).transform(k => k.display_name)]);
+const provider = z.object({id: z.string(), description: z.string().max(100000), keywords: z.array(keyword).max(1000), works_count: z.number().int().nonnegative()});
 const DAY = 86_400_000;
 /** A stale topic is fetched again at most this often, however many people read it. */
 const REFRESH_EVERY_MS = 60 * 60 * 1000;

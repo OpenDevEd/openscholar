@@ -606,7 +606,9 @@ export function workToCoins(work: Omit<Work, "open_access"> & { open_access?: { 
 
   // Keywords/Topics
   if (work.keywords && work.keywords.length > 0) {
-    params['rft.subject'] = work.keywords.map(k => k.keyword || '').filter(Boolean).join('; ')
+    // OpenAlex names a work's keyword `display_name` now; the SDK's type still has the older `keyword`.
+    const keywords = work.keywords as Array<{ display_name?: string; keyword?: string }>
+    params['rft.subject'] = keywords.map(k => k.display_name || k.keyword || '').filter(Boolean).join('; ')
   }
 
   // Convert params to URL-encoded string
