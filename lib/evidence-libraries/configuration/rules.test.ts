@@ -3,6 +3,7 @@ import { TEST_AI_MODELS } from "./test-models";
 import {
   AI_PROVIDER,
   cardForRow,
+  carryUnsaved,
   collectionOptions,
   featureBlock,
   settleFeatures,
@@ -347,6 +348,63 @@ describe("sectionState and reset", () => {
     expect(reset.theme.colors.accent).toBe("#e68124");
     expect(sectionState(reset, savedRows, "theme")).toBe("complete");
     expect(sectionState(reset, savedRows, "identity")).toBe("edited");
+  });
+
+  it("takes the topics switch back with the rest of the search section", () => {
+    const draft = savedDraft();
+    draft.topics.enabled = true;
+    const reset = resetSection(draft, savedRows, "search");
+    expect(reset.topics.enabled).toBe(false);
+    expect(sectionState(reset, savedRows, "search")).toBe("complete");
+  });
+});
+
+describe("a save made elsewhere while the page is open", () => {
+  const savedElsewhere = (sectionKey: string, payload: unknown) =>
+    savedRows.map((row) => (row.sectionKey === sectionKey ? { sectionKey, payload } : row));
+  const renamedElsewhere = savedElsewhere("identity", { ...brandRows[0].payload, name: "Their name" });
+
+  it("keeps a section's unsaved values and takes the saved values for the others", () => {
+    const draft = savedDraft();
+    draft.footer.disclaimer = "Mine, not saved yet";
+    const carried = carryUnsaved(draft, savedRows, renamedElsewhere, true);
+    expect(carried.draft.footer.disclaimer).toBe("Mine, not saved yet");
+    expect(carried.draft.identity.name).toBe("Their name");
+    expect(sectionState(carried.draft, renamedElsewhere, "footer")).toBe("edited");
+    expect(sectionState(carried.draft, renamedElsewhere, "identity")).toBe("complete");
+    expect(carried.elsewhere).toEqual([]);
+  });
+
+  it("names a section that was changed here and saved elsewhere", () => {
+    const draft = savedDraft();
+    draft.identity.name = "My name";
+    const carried = carryUnsaved(draft, savedRows, renamedElsewhere, true);
+    expect(carried.draft.identity.name).toBe("My name");
+    expect(carried.elsewhere).toEqual(["identity"]);
+  });
+
+  it("has nothing to say when the saved value is the one already on the page", () => {
+    const draft = savedDraft();
+    draft.identity.name = "Their name";
+    const carried = carryUnsaved(draft, savedRows, renamedElsewhere, true);
+    expect(carried.elsewhere).toEqual([]);
+    expect(isDirty(carried.draft, renamedElsewhere)).toBe(false);
+  });
+
+  it("does not hold on to values a library has no row for yet", () => {
+    // Every section of a new library counts as changed until its rows are written; nobody typed those values.
+    const draft = readDraft(brandRows);
+    const carried = carryUnsaved(draft, brandRows, renamedElsewhere, true);
+    expect(carried.draft.identity.name).toBe("Their name");
+    expect(carried.elsewhere).toEqual([]);
+  });
+
+  it("starts again from the saved rows after this page's own save", () => {
+    const draft = savedDraft();
+    draft.footer.disclaimer = "Sent with the save";
+    const carried = carryUnsaved(draft, savedRows, renamedElsewhere, false);
+    expect(carried.draft).toEqual(readDraft(renamedElsewhere));
+    expect(carried.elsewhere).toEqual([]);
   });
 });
 

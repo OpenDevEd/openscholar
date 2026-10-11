@@ -29,20 +29,24 @@ export type SectionProps = {
   reset: (sectionKey: PageSectionKey) => void;
 };
 
-const SaveRefusalContext = createContext<SaveRefusal | null>(null);
-
-/** Lets every card show a save the platform refused because of its own values. */
-export function SaveRefusalProvider({
-  refusal,
-  children,
-}: {
+type SaveNotices = {
+  /** A save the platform refused, shown in the card that owns the value. */
   refusal: SaveRefusal | null;
-  children: ReactNode;
-}) {
+  /** Cards holding unsaved values whose saved values were changed somewhere else meanwhile. */
+  elsewhere: readonly PageSectionKey[];
+};
+const SaveNoticesContext = createContext<SaveNotices>({ refusal: null, elsewhere: [] });
+
+/** Lets every card say what happened to a save of its own values. */
+export function SaveNoticesProvider({
+  refusal,
+  elsewhere,
+  children,
+}: SaveNotices & { children: ReactNode }) {
   return (
-    <SaveRefusalContext.Provider value={refusal}>
+    <SaveNoticesContext.Provider value={{ refusal, elsewhere }}>
       {children}
-    </SaveRefusalContext.Provider>
+    </SaveNoticesContext.Provider>
   );
 }
 
@@ -74,7 +78,7 @@ export function SectionShell({
   const state = sectionState(draft, saved, sectionKey);
   const problems = sectionProblems(draft, sectionKey);
   const changed = sectionChanged(draft, saved, sectionKey);
-  const refusal = useContext(SaveRefusalContext);
+  const { refusal, elsewhere } = useContext(SaveNoticesContext);
   const refused = refusal?.card === sectionKey ? refusal.message : null;
   return (
     <SectionCard
@@ -101,6 +105,21 @@ export function SectionShell({
         >
           {refused}
         </InlineNotice>
+      ) : null}
+      {changed && elsewhere.includes(sectionKey) ? (
+        // The card's own gap is inside the row, so the fields below move down with it instead of jumping.
+        <div className="row-open mb-0">
+          <div className="min-h-0 overflow-hidden pb-4">
+            <InlineNotice
+              tone="warning"
+              role="status"
+              title={t("savedElsewhere")}
+              data-saved-elsewhere
+            >
+              {t("savedElsewhereBody")}
+            </InlineNotice>
+          </div>
+        </div>
       ) : null}
       {problems.length > 0 ? (
         <InlineNotice tone="danger" data-problems>

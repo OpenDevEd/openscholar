@@ -1974,14 +1974,13 @@ export function sectionState(
 export const hasProblems = (draft: ConfigurationDraft) =>
   PAGE_SECTION_KEYS.some((key) => sectionProblems(draft, key).length > 0);
 
-/** Copies one card's values back from the saved rows. */
-export function resetSection(
+/** Copies one card's values into a draft from another draft. */
+function takeSection(
   draft: ConfigurationDraft,
-  rows: readonly SectionRow[],
+  saved: ConfigurationDraft,
   sectionKey: PageSectionKey,
 ): ConfigurationDraft {
   const next = cloneDraft(draft);
-  const saved = readDraft(rows);
   switch (sectionKey) {
     case "identity":
       next.identity = {
@@ -2024,6 +2023,7 @@ export function resetSection(
     case "search":
       next.search = saved.search;
       next.filters = saved.filters;
+      next.topics = saved.topics;
       break;
     case "sources":
       next.sources = saved.sources;
@@ -2054,4 +2054,36 @@ export function resetSection(
   }
   // A reset can take away what a feature needs (an export, a second language, a search option).
   return settleFeatures(next);
+}
+
+/** Copies one card's values back from the saved rows. */
+export const resetSection = (
+  draft: ConfigurationDraft,
+  rows: readonly SectionRow[],
+  sectionKey: PageSectionKey,
+) => takeSection(draft, readDraft(rows), sectionKey);
+
+/**
+ * The draft once the saved rows have changed under an open page. With `keep`, a card whose values differ from the
+ * rows it was edited from holds on to them and every other card takes the new rows; without it, every card does.
+ * `elsewhere` names the kept cards whose saved values changed too, to something other than what the page holds.
+ */
+export function carryUnsaved(
+  draft: ConfigurationDraft,
+  before: readonly SectionRow[],
+  after: readonly SectionRow[],
+  keep: boolean,
+) {
+  const was = readDraft(before);
+  const now = readDraft(after);
+  const differs = (a: ConfigurationDraft, b: ConfigurationDraft, key: PageSectionKey) =>
+    !same(cardSlice(a, key), cardSlice(b, key));
+  // A new library's cards count as changed until their rows are written. Nobody typed those values, so what
+  // counts here is a difference from the values the card started with.
+  const kept = keep ? PAGE_SECTION_KEYS.filter((key) => differs(draft, was, key)) : [];
+  const next = kept.reduce((merged, key) => takeSection(merged, draft, key), now);
+  return {
+    draft: next,
+    elsewhere: kept.filter((key) => differs(was, now, key) && differs(next, now, key)),
+  };
 }
