@@ -6,6 +6,7 @@
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
+import { useKeyboardViewport } from "@/lib/hooks/use-keyboard-viewport";
 import { useRoomHeartbeat } from "@/lib/hooks/use-room-heartbeat";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { useSpendable } from "@/components/workspaces/credit-check";
@@ -236,6 +237,7 @@ function Overlay({
   const [sendingFor, setSendingFor] = useState<Sending | null>(null);
   const sending = sendingFor !== null && sendingFor.threadId === threadId;
   const [focused, setFocused] = useState(false);
+  const keyboard = useKeyboardViewport();
   const clock = useRef<OrbitClock>(null);
   const working = sending || (live !== null && !live.asking && !live.stopping);
   const resting: OrbitMotion = focused ? "listening" : "idle";
@@ -317,8 +319,12 @@ function Overlay({
             layoutDependency={open}
             transition={SHELL_SPRING}
             // On a phone it starts under the app's top bar, which sits above it.
-            className="fixed bottom-3 right-3 top-[4.25rem] z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:right-4 md:top-4"
-            style={{ width: PANEL_W, borderRadius: 18 }}
+            // While an on-screen keyboard is up, it fits the part of the page still visible above it, and still clears the top bar when that is in view.
+            className={cn(
+              "fixed bottom-3 right-3 z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:right-4",
+              keyboard ? "top-[max(calc(var(--keyboard-top)+0.75rem),4.25rem)] md:top-[max(calc(var(--keyboard-top)+0.75rem),1rem)]" : "top-[4.25rem] md:top-4",
+            )}
+            style={{ width: PANEL_W, borderRadius: 18, ...(keyboard ? { "--keyboard-top": `${keyboard.top}px`, bottom: keyboard.bottom + 12 } : {}) }}
             aria-label={t("label")}
           >
             {threadId ? <Here threadId={threadId} /> : null}
@@ -811,6 +817,8 @@ function Launcher({ orbit, clock, onComplete, onOpen }: { orbit: OrbitMotion; cl
         layoutDependency={false}
         onClick={onOpen}
         aria-label={t("open")}
+        // Buttons pinned to the same corner, such as Back to top, step aside while it is on the page.
+        data-assistant-launcher
         transition={SHELL_SPRING}
         className="fixed bottom-6 right-6 z-40 flex size-14 items-center justify-center border border-border/60 bg-card shadow-lg transition-colors hover:bg-muted"
         style={{ borderRadius: 18 }}
@@ -1570,13 +1578,14 @@ function EdgeGlow({ open, working }: { open: boolean; working: boolean }) {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.8, ease: EASE }}
         >
+          {/* Each blob on its own layer: Safari blurs it once and moves it, instead of blurring it again on every frame. */}
           <motion.div
-            className="absolute -right-40 top-[-10%] h-[70%] w-[420px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-bright)_32%,transparent),transparent)] blur-3xl"
+            className="absolute -right-40 top-[-10%] h-[70%] w-[420px] rounded-full will-change-transform bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-bright)_32%,transparent),transparent)] blur-3xl"
             animate={{ y: ["0%", "45%", "0%"], x: [0, -40, 0] }}
             transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
           />
           <motion.div
-            className="absolute -right-48 bottom-[-15%] h-[70%] w-[440px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-deep)_28%,transparent),transparent)] blur-3xl"
+            className="absolute -right-48 bottom-[-15%] h-[70%] w-[440px] rounded-full will-change-transform bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-deep)_28%,transparent),transparent)] blur-3xl"
             animate={{ y: ["0%", "-40%", "0%"], x: [0, -30, 0] }}
             transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
           />

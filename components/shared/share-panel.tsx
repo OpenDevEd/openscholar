@@ -118,7 +118,7 @@ export function SharePanel<R extends string>({ adding, roles, entries, foot, onC
                       aria-controls="share-suggestions"
                       placeholder={adding.full ?? t("addPeople")}
                       aria-label={t("addPeople")}
-                      className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+                      className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed md:pointer-fine:text-sm"
                     />
                   </label>
                 </PopoverAnchor>
