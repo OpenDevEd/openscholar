@@ -1814,7 +1814,6 @@
     "firstPaper": "Premier article",
     "lastPaper": "Dernier article",
     "papersBold": "{count, plural, one {<n>#</n> article} other {<n>#</n> articles}}",
-    "oneJob": "Une tâche",
     "resultsPage": "Page de résultats {page}",
     "sharedWithResults": "Partagées avec la page de résultats de cette recherche",
     "importQuestions": "Importer {count, plural, one {# question} other {# questions}} de {name}",

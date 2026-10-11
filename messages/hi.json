@@ -1814,7 +1814,6 @@
     "firstPaper": "पहला लेख",
     "lastPaper": "आखिरी लेख",
     "papersBold": "{count, plural, one {<n>#</n> लेख} other {<n>#</n> लेख}}",
-    "oneJob": "एक कार्य",
     "resultsPage": "परिणाम पृष्ठ {page}",
     "sharedWithResults": "इस खोज के परिणाम पृष्ठ के साथ साझा",
     "importQuestions": "{name} से {count, plural, one {# प्रश्न} other {# प्रश्न}} आयात करें",

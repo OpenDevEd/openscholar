@@ -1814,7 +1814,6 @@
     "firstPaper": "最初の論文",
     "lastPaper": "最後の論文",
     "papersBold": "{count, plural, other {<n>#</n> 件}}",
-    "oneJob": "1 ジョブ",
     "resultsPage": "結果ページ {page}",
     "sharedWithResults": "この検索の結果ページと共有",
     "importQuestions": "{name} から {count, plural, other {# 件の質問}}を取り込む",
