@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type RefObject, useCallback, useEffect, useRef, useState } from "react";
 
 // Async cards can grow above the destination after either a click or a reload.
 // Follow that layout growth until the person next interacts with the page.
@@ -33,7 +33,15 @@ function followSectionLayout(target: HTMLElement) {
  * `ids` must be a stable array (a module constant) so the listener attaches once.
  * The active line follows each section's actual scroll margin.
  */
-export function useScrollSpy(ids: readonly string[], requestedSection?: string) {
+export function useScrollSpy(
+  ids: readonly string[],
+  requestedSection?: string,
+  /**
+   * The destination already restored, kept by a caller whose form mounts more than once on one visit: a form drawn
+   * again after a save must not scroll back to where the address pointed when the page opened.
+   */
+  restored?: RefObject<string | null>,
+) {
   const [active, setActive] = useState<string | null>(null);
   const locked = useRef<string | null>(null);
   const lastJump = useRef<string | null>(null);
@@ -74,9 +82,10 @@ export function useScrollSpy(ids: readonly string[], requestedSection?: string) 
   // smoothly, so consuming their URL update must not start a second scroll.
   useEffect(() => {
     if (!requestedSection || !ids.includes(requestedSection)) return;
-    if (requestedSection !== lastJump.current) scrollTo(requestedSection, "instant");
+    if (requestedSection !== lastJump.current && requestedSection !== restored?.current) scrollTo(requestedSection, "instant");
     lastJump.current = null;
-  }, [ids, requestedSection, scrollTo]);
+    if (restored) restored.current = requestedSection;
+  }, [ids, requestedSection, restored, scrollTo]);
 
   useEffect(() => {
     let frame = 0;

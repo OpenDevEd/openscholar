@@ -15,15 +15,25 @@ const FileUploadsContext = createContext<FileUploads | null>(null);
 /** Gives every upload control on the page the library it uploads for. */
 export function FileUploadsProvider({
   libraryId,
+  onInFlight,
   children,
 }: {
   libraryId: Id<"evidenceLibraries">;
+  /** Told 1 when an upload starts and -1 when it ends, so the page can wait for uploads before it saves. */
+  onInFlight: (change: 1 | -1) => void;
   children: ReactNode;
 }) {
   const generateUploadUrl = useMutation(api.evidenceLibraries.uploads.generateUploadUrl);
   const upload = useAction(api.evidenceLibraries.uploadActions.upload);
   const value: FileUploads = {
-    uploadFile: (kind, file) => uploadFile({ generateUploadUrl, upload }, libraryId, kind, file),
+    uploadFile: async (kind, file) => {
+      onInFlight(1);
+      try {
+        return await uploadFile({ generateUploadUrl, upload }, libraryId, kind, file);
+      } finally {
+        onInFlight(-1);
+      }
+    },
   };
   return (
     <FileUploadsContext.Provider value={value}>{children}</FileUploadsContext.Provider>
