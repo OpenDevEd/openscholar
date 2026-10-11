@@ -197,6 +197,9 @@ describe("assistant chats", () => {
     });
     expect(titles(await list("shared"))).toEqual(["Teacher coaching"]);
     expect((await asBen.query(api.sharing.shared.list, { sort: "recent", paginationOpts: firstPage })).page.map((row) => row.name)).toEqual(["Teacher coaching"]);
+    // His place as its guest goes a moment later, and what's shared with him counts it no more.
+    await waitFor(async () => (await asBen.query(api.sharing.shared.counts, {})).chat === 1);
+    expect(await asBen.query(api.sharing.shared.counts, {})).toMatchObject({ chat: 1, total: 1 });
     expect(titles(await asBen.query(api.assistant.threads.list, { workspaceId: lab, scope: "all", paginationOpts: firstPage }))).toEqual(["Reading trials"]);
   });
 

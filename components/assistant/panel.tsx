@@ -654,7 +654,10 @@ function Chat({
     setThreadId(null);
     composer.current?.focus();
   };
-  // Sharing a chat that hasn't started makes it first, so there's something to share.
+  // Sharing a chat that hasn't started makes it first, so there's something to share: it is the person's own.
+  // One that's still being read says nothing yet of who may share it, so its card waits for that:
+  // opened as an owner's for a guest, it would ask for what only an owner is given.
+  const shareable = threadId === null || threadId === born || thread !== undefined;
   const share = () =>
     started().then(
       (id) => onShare(id, thread?.title ?? t("newChat"), thread?.role ?? "owner"),
@@ -712,7 +715,7 @@ function Chat({
       }}
     >
       {/* A chat that has just been made is named by its first message until its record arrives, as the server names it, so "New chat" changes once. */}
-      <Header title={threadId ? (thread?.title ?? (threadId === born && first?.threadId === threadId ? first.title : "")) : t("newChat")} detail={organizationSlug ? (inOrganization && workspace ? <span className="fade-enter flex min-w-0 items-center gap-1.5"><WorkspaceTile workspace={workspace} size="xs" /><span className="truncate text-2xs text-muted-foreground">{workspace.name}</span></span> : null) : undefined} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
+      <Header title={threadId ? (thread?.title ?? (threadId === born && first?.threadId === threadId ? first.title : "")) : t("newChat")} detail={organizationSlug ? (inOrganization && workspace ? <span className="fade-enter flex min-w-0 items-center gap-1.5"><WorkspaceTile workspace={workspace} size="xs" /><span className="truncate text-2xs text-muted-foreground">{workspace.name}</span></span> : null) : undefined} onHistory={onHistory} onShare={shareable ? share : undefined} onSpending={spend} onRestart={restart} onFold={onFold} />
       <DockedJobs.Provider value={jobsShown}>
         <div className="relative flex min-h-0 flex-1 flex-col">
           {/* Under the dock's opened list, the chat takes no keyboard focus or clicks; the layer over it folds the list. */}
@@ -1183,7 +1186,7 @@ function Empty({ arrives }: { arrives: boolean }) {
   );
 }
 
-function Header({ title, detail, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; /** A line under the title: the organization a chat is in. Null keeps the line while it's read. */ detail?: ReactNode | null; onHistory: () => void; onShare: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
+function Header({ title, detail, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; /** A line under the title: the organization a chat is in. Null keeps the line while it's read. */ detail?: ReactNode | null; onHistory: () => void; /** Absent while the chat is still being read: who may share it comes with it. The button looks the same meanwhile, and a press does nothing. */ onShare?: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
   const t = useTranslations("assistant");
   return (
     <div className="border-b border-border/50 px-4 pb-3 pt-3.5">

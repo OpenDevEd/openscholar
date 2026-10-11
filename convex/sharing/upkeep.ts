@@ -8,12 +8,14 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
-import { FOLLOW_STEP, findShared, hasGuests } from "./items";
+import { holds } from "./access";
+import { FOLLOW_STEP, findShared, hasGuests, shares } from "./items";
 import { accessKindValidator, sharedKindValidator, sharedKinds } from "./validators";
 
 /**
- * Gives a step of an item's guests its name as it is now, from `cursor` on, or deletes a step
- * of its guests and then of its invitations once it's gone.
+ * Gives a step of an item's guests its name as it is now, from `cursor` on, and takes the place of
+ * any who act in the workspace it's in now; or deletes a step of its guests and then of its
+ * invitations once it's gone.
  */
 export const follow = internalMutation({
   args: { kind: accessKindValidator, item: v.string(), cursor: v.union(v.string(), v.null()), closed: v.optional(v.literal(true)) },
@@ -23,7 +25,12 @@ export const follow = internalMutation({
     const shared = closed ? null : await findShared(ctx, kind, item);
     if (shared) {
       const guests = await ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", item)).paginate({ cursor, numItems: FOLLOW_STEP });
-      for (const row of guests.page) if (row.name !== shared.name) await ctx.db.patch("itemAccess", row._id, { name: shared.name });
+      for (const row of guests.page) {
+        // Moved into a workspace its guest acts in, it is theirs there as its members' are: their place as a guest goes, and what's shared with them counts it no more.
+        const person = shares(row) ? await ctx.db.get("users", row.userId) : null;
+        if (person && shares(row) && (await holds(ctx, { ...shared, kind: row.kind }, person))) await ctx.db.delete("itemAccess", row._id);
+        else if (row.name !== shared.name) await ctx.db.patch("itemAccess", row._id, { name: shared.name });
+      }
       if (!guests.isDone) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.follow, { kind, item, cursor: guests.continueCursor });
       return null;
     }

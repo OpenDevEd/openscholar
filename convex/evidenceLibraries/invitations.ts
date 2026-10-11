@@ -123,6 +123,8 @@ export const respondVerified = internalMutation({
     const library = invitation ? await libraryOf(ctx, invitation) : null;
     // One to anything else is answered where it was sent from (../sharing/invitations.ts).
     if (!invitation || invitation.kind !== "library" || !args.emails.includes(invitation.email)) throw createError("FORBIDDEN", "Sign in with the invited email address");
+    // Accepting again what they accepted already, as a second press or a second tab does, changes nothing.
+    if (args.accept && invitation.state === "accepted" && library && (await libraryGrant(ctx, library._id, user._id))) return null;
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     if (!library || library.state === "disabled" || !ownerActive(await libraryOwner(ctx, library))) throw createError("FORBIDDEN", "Library unavailable");
     // An outstanding invitation cannot overwrite a role granted since it was sent. Its place in the library becomes the person's.

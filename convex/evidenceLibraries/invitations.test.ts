@@ -39,6 +39,8 @@ describe("library invitations", () => {
     expect(invitations).toEqual([expect.objectContaining({ libraryId: fixture.libraryId, role: "creator" })]);
     expect((await fixture.outside.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
     await fixture.outside.action(api.evidenceLibraries.invitationActions.respond, { invitationId: invitations[0].invitationId, accept: true });
+    // A second press of Accept, or a second tab's, changes nothing.
+    await fixture.outside.action(api.evidenceLibraries.invitationActions.respond, { invitationId: invitations[0].invitationId, accept: true });
     expect((await fixture.outside.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([expect.objectContaining({ _id: fixture.libraryId, role: "creator" })]);
     expect(await fixture.t.run(ctx => ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", q => q.eq("clerkUserId", "outside").eq("state", "active")).collect())).toEqual([]);
     expect((await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page).toEqual([]);
