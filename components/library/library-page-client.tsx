@@ -40,7 +40,7 @@ import {
   CollectionRatingContext,
   ServerRatingsContext,
 } from "@/components/results-contexts";
-import { CollectionRatings, MembersAverage, useRateInCollection } from "@/components/workspaces/collection-ratings";
+import { AddedBy, CollectionRatings, MembersAverage, useRateInCollection } from "@/components/workspaces/collection-ratings";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
@@ -225,6 +225,9 @@ export function LibraryPageClient() {
     () => new Map(pageItems.flatMap((item) => (item.collection ? [[item.openalexId, { libraryItemId: item._id, average: item.rating, ratings: item.collection }] as const] : []))),
     [pageItems],
   );
+
+  // In an organization's library, who saved each paper (#656), by the paper.
+  const addedBy = useMemo(() => new Map(pageItems.flatMap((item) => (item.by ? [[item.openalexId, item.by] as const] : []))), [pageItems]);
 
   // In an organization's library outside a collection, how its members rated each paper themselves (#801): their average and who gave what.
   const memberRatings = useMemo(
@@ -604,12 +607,16 @@ export function LibraryPageClient() {
                             }
                             viewMode={effectiveViewMode}
                             extra={(() => {
+                              const by = addedBy.get(paper.id);
+                              const who = by ? <AddedBy {...by} compact={effectiveViewMode === "list-simple"} /> : null;
                               // Who rated in a collection is for anyone who reads it. Rating in it is its members', through the card's own rating control.
                               const rated = params.col ? collectionRatings.get(paper.id) : undefined;
-                              if (rated) return <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} />;
                               // Outside a collection, an organization's library shows its members' average of their own ratings, beside yours.
-                              const members = workspace ? memberRatings.get(paper.id) : undefined;
-                              return members ? <MembersAverage workspace={workspace!} libraryItemId={members.libraryItemId} average={members.average} ratings={members.ratings} /> : undefined;
+                              const members = !rated && workspace ? memberRatings.get(paper.id) : undefined;
+                              const ratings = rated ? <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} />
+                                : members ? <MembersAverage workspace={workspace!} libraryItemId={members.libraryItemId} average={members.average} ratings={members.ratings} /> : null;
+                              if (!who) return ratings ?? undefined;
+                              return <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">{who}{ratings}</span>;
                             })()}
                           />
                         );

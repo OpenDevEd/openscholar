@@ -164,7 +164,7 @@ async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">,
     await requireAuthorProfiles(ctx, to);
     // Its publications and editors are its own, by its ID.
     await ctx.db.patch("authorProfiles", profile._id, { workspaceId: to });
-    return null;
+    return { table: "authorProfiles", id: profile._id };
   }
   if (kind === "search") {
     const search = await findSearch(ctx, from, id);
@@ -198,8 +198,8 @@ async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">,
 }
 
 /** The rows whose workspace an item's activity follows. */
-type Followed = "collections" | "searches" | "screeningJobs" | "extractionJobs";
-const followedValidator = v.union(v.literal("collections"), v.literal("searches"), v.literal("screeningJobs"), v.literal("extractionJobs"));
+type Followed = "collections" | "searches" | "screeningJobs" | "extractionJobs" | "authorProfiles";
+const followedValidator = v.union(v.literal("collections"), v.literal("searches"), v.literal("screeningJobs"), v.literal("extractionJobs"), v.literal("authorProfiles"));
 
 /** A library paper as saving it again takes it: its metadata, without whose library it's in. */
 const paperOf = (item: Doc<"libraryItems">) =>
@@ -320,8 +320,8 @@ export const moveAction = defineUserMutation({
     const held = await heldBack(ctx, actor, kind, id);
     if (held) throw createError("VALIDATION_ERROR", held);
     const followed = await rehome(ctx, actor.userId, actor.workspaceId, to, kind, id);
-    // Chats and author profiles keep no activity.
-    if (followed && kind !== "chat" && kind !== "author") {
+    // Chats keep no activity.
+    if (followed && kind !== "chat") {
       await ctx.scheduler.runAfter(0, internal.workspaces.move.moveActivity, { from: actor.workspaceId, item: itemKey(kind, id), ...followed });
       await noteActivity(ctx, { workspaceId: to, by: actor.userId, viaAssistant: actor.author === "assistant" }, { kind, id, happened: "moved", detail: await workspaceName(ctx, actor.workspaceId) });
     }

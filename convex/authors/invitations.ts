@@ -10,11 +10,12 @@ import { MAX_PENDING_INVITATIONS_PER_PROFILE, MAX_PENDING_PROFILE_INVITATIONS_PE
 import { rateLimit } from "../lib/rateLimit";
 import { requireProfileAccess } from "./access";
 import { profileRoleForUser } from "./access";
+import { noteActivity } from "../activity/notes";
 
 export const prepare = internalMutation({
   args: {profileId: v.id("authorProfiles"), email: v.string()},
   handler: async (ctx, args) => {
-    const {user} = await requireProfileAccess(ctx, args.profileId, true);
+    const {profile, user} = await requireProfileAccess(ctx, args.profileId, true);
     await rateLimit(ctx, {name: "profile-invitation", key: String(user._id), throws: true});
     const email = args.email.trim().toLowerCase();
     if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw createError("VALIDATION_ERROR", "Enter a valid email address");
@@ -33,6 +34,8 @@ export const prepare = internalMutation({
     const values = {profileId: args.profileId, email, invitedBy: user._id, expiresAt: Date.now() + 7 * 86400000, state: "pending" as const, delivery: "queued" as const};
     const invitationId = pending?._id ?? await ctx.db.insert("authorProfileInvitations", values);
     if (pending) await ctx.db.replace("authorProfileInvitations", pending._id, values);
+    // Sending one again is no new change to the profile.
+    if (pending?.state !== "pending" && profile.workspaceId) await noteActivity(ctx, {workspaceId: profile.workspaceId, by: user._id, viaAssistant: false}, {kind: "author", id: args.profileId, happened: "shared", detail: email});
     await ctx.scheduler.runAt(values.expiresAt, internal.authors.invitations.expire, {invitationId});
     return invitationId;
   },
