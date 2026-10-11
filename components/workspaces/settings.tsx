@@ -32,9 +32,11 @@ import { showStyledToast } from "@/components/ui/sonner";
 import { TooltipHint } from "@/components/ui/tooltip";
 import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
+import type { FunctionReturnType } from "convex/server";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { useHydrated } from "@/lib/use-hydrated";
 import { findPlan, planCreditCap } from "@/lib/billing/catalog";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
@@ -83,13 +85,23 @@ function useAttempt() {
 
 // ─── General ─────────────────────────────────────────────────────────────
 
-export function WorkspaceGeneral() {
+/** What General shows, read on the server with the page, so it stands at its full height from the first frame. */
+export type GeneralInitial = { organization: FunctionReturnType<typeof api.organizations.queries.workspace>; summary: FunctionReturnType<typeof api.organizations.queries.summary> };
+
+export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
   const t = useTranslations("workspaces.settings");
   const tw = useTranslations("workspaces");
   const tc = useTranslations("common");
   const router = useRouter();
-  const { workspaceId, organization, admin } = useOrganization();
-  const { data: summary } = useProtectedQuery(api.organizations.queries.summary, inWorkspace(workspaceId, {}));
+  const live = useOrganization();
+  const { workspaceId } = live;
+  const organization = live.organization ?? (initial?.organization.kind === "organization" ? initial.organization : undefined);
+  const admin = organization?.role === "admin";
+  const summary = useProtectedQuery(api.organizations.queries.summary, inWorkspace(workspaceId, {})).data ?? initial?.summary;
+  // The page shows with what the server read, a moment before the browser knows the workspace its changes go to. What
+  // changes it at a click waits for that; the rest asks or opens a form first, and the workspace is known by then.
+  const ready = workspaceId !== undefined;
+  const hydrated = useHydrated();
   const rename = useWorkspaceAction(api.organizations.manage.rename);
   const setColour = useWorkspaceMutation(api.organizations.manage.setColour);
   const setLogo = useWorkspaceAction(api.organizations.manage.setLogo);
@@ -106,7 +118,8 @@ export function WorkspaceGeneral() {
   if (!organization || !summary) return <Enter ready={false}>{null}</Enter>;
 
   const { name, slug } = organization;
-  const address = `${window.location.host}/o/${slug}`;
+  // The page can be drawn on the server now that its data comes with it, where there is no window to ask.
+  const address = `${hydrated ? window.location.host : ""}/o/${slug}`;
   const tint = workspaceTint(organization);
   const lastAdmin = admin && summary.admins === 1;
   const contents = [
@@ -150,7 +163,7 @@ export function WorkspaceGeneral() {
                   <Camera className="size-5" />
                   {t("changeLogo")}
                 </span>
-                <input type="file" accept="image/*" className="sr-only" aria-label={t("changeLogo")} disabled={busy === "logo"} onChange={(e) => pickLogo(e.target.files?.[0])} />
+                <input type="file" accept="image/*" className="sr-only" aria-label={t("changeLogo")} disabled={!ready || busy === "logo"} onChange={(e) => pickLogo(e.target.files?.[0])} />
               </>
             ) : null}
           </label>
@@ -215,7 +228,7 @@ export function WorkspaceGeneral() {
                     role="radio"
                     aria-checked={on}
                     aria-label={swatch}
-                    onClick={() => void attempt("colour", () => setColour({ colour: swatch }))}
+                    onClick={ready ? () => void attempt("colour", () => setColour({ colour: swatch })) : undefined}
                     className="relative flex size-9 items-center justify-center rounded-full"
                     style={{ backgroundColor: `color-mix(in oklab, ${swatch} 22%, var(--background))` }}
                   >
@@ -273,7 +286,7 @@ export function WorkspaceGeneral() {
                   </Button>
                 ) : summary.removable?.state === "failed" ? (
                   // A deletion that stopped part-way is tried again here: the libraries' own list, where it is otherwise, is shut with the plan.
-                  <Button variant="outline" size="sm" disabled={busy === "library"} onClick={() => void attempt("library", () => restartTeardown({ libraryId: summary.removable!._id }))}>
+                  <Button variant="outline" size="sm" disabled={!ready || busy === "library"} onClick={() => void attempt("library", () => restartTeardown({ libraryId: summary.removable!._id }))}>
                     <RotateCcw /> {tc("retry")}
                   </Button>
                 ) : null}
