@@ -710,6 +710,7 @@
     "billingNetworkError": "Network error while contacting billing. Please retry.",
     "billingRateLimited": "Billing is busy right now. Please try again shortly.",
     "billingStripeError": "Billing is temporarily unavailable. Please try again.",
+    "billingPaymentDeclined": "The card was declined. Nothing was charged.",
     "billingPlanChangeConflict": "Your plan could not be updated due to a billing conflict.",
     "billingInvalidPrice": "That plan is no longer available. Please refresh and retry.",
     "billingCancelRequiresPortal": "Use the billing portal to switch to the free plan.",

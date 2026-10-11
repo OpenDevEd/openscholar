@@ -710,6 +710,7 @@
     "billingNetworkError": "Erreur réseau lors du contact avec la facturation. Réessayez.",
     "billingRateLimited": "Le service de facturation est occupé. Réessayez bientôt.",
     "billingStripeError": "La facturation est temporairement indisponible. Réessayez.",
+    "billingPaymentDeclined": "La carte a été refusée. Rien n'a été facturé.",
     "billingPlanChangeConflict": "Votre plan n'a pas pu être mis à jour à cause d'un conflit de facturation.",
     "billingInvalidPrice": "Cette offre n'est plus disponible. Actualisez puis réessayez.",
     "billingCancelRequiresPortal": "Utilisez le portail de facturation pour passer au plan gratuit.",
