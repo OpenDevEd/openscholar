@@ -22,8 +22,8 @@ async function setup() {
   });
   const body = {libraryId, editionId: "5e9558ce-ed55-4dc4-a44b-d1cbd3f9af64", locale: "en-GB", periodStart: "2026-09-01T09:00:00Z", periodEnd: "2026-09-08T09:00:00Z", publicationCount: 40, publications: [{key: "ABCD2345", title: "Attention in classrooms", creators: ["Caitlin Mills"], date: "2026", abstract: "A framework for examining attention in learning.", publicationType: "Report", doi: null}]};
   const request = (patch: Record<string, unknown> = {}, credential = token) => t.fetch("/api/v1/evidence-libraries/digests/generate", {method: "POST", headers: {Authorization: `Bearer ${credential}`, "Content-Type": "application/json"}, body: JSON.stringify({...body, ...patch})});
-  // Runs the job that was just queued, leaving its one-day expiry pending.
-  const finishGeneration = async () => { vi.advanceTimersByTime(1); await t.finishInProgressScheduledFunctions(); };
+  // Runs the job that was just queued and the review it queues, leaving its one-day expiry pending.
+  const finishGeneration = async () => { for (let stage = 0; stage < 2; stage++) { vi.advanceTimersByTime(1); await t.finishInProgressScheduledFunctions(); } };
   const saved = () => t.run(async ctx => ({jobs: await ctx.db.query("evidenceLibraryDigestJobs").collect(), files: await ctx.db.system.query("_storage").collect()}));
   return {t, libraryId, request, finishGeneration, saved};
 }

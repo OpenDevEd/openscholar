@@ -1,6 +1,7 @@
 import { ConvexError } from "convex/values";
 import { v } from "convex/values";
 import { internalAction, internalMutation, internalQuery, httpAction, type MutationCtx } from "../../lib/functions";
+import type { ActionCtx } from "../../_generated/server";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { authenticateLibraryServiceCredential } from "../credentials";
@@ -10,13 +11,16 @@ import { createError, readConvexErrorData } from "../../lib/errors";
 import { jsonResponse, readBearerCredential } from "../../lib/libraryServiceHttp";
 import { digestOpaqueToken } from "../../lib/opaqueTokenDigest";
 import { digestRequestSchema } from "./contract";
-import { generateLibraryDigest } from "./generate";
+import { reviewLibraryDigest, writeLibraryDigest } from "./generate";
 import { readKinds } from "./kinds";
 
 // Writing runs in the background, so a proxy timeout in front of this route
 // cannot cut it off. A job still pending after STALE_AFTER_MS lost its action.
-// The writer's time starts once the library's likely reviews are read.
-const GENERATION_TIMEOUT_MS = 480_000;
+// An action may run for ten minutes. Reading the library's likely reviews and
+// writing share one, and the writer has what the read leaves of it: on a list of
+// 700 publications with 500 reviews it took 488 seconds. The review that follows
+// runs in an action of its own.
+const WRITING_ACTION_MS = 585_000;
 const STALE_AFTER_MS = 900_000;
 // Every job, collected or not, is removed after a day.
 const EXPIRE_AFTER_MS = 86_400_000;
@@ -118,24 +122,47 @@ export const finish = internalMutation({
   },
 });
 
+async function storedRequest(ctx: ActionCtx, requestId: Id<"_storage">) {
+  const blob = await ctx.storage.get(requestId);
+  if (!blob) throw new Error("The stored digest request is missing");
+  return digestRequestSchema.parse(JSON.parse(await blob.text()));
+}
+
 export const run = internalAction({
   args: {jobId: v.id("evidenceLibraryDigestJobs")},
   returns: v.null(),
   handler: async (ctx, {jobId}) => {
+    const started = Date.now();
     const job = await ctx.runQuery(internal.evidenceLibraries.digests.service.readJob, {jobId});
     if (!job?.requestId) return null;
-    let result = null;
     let kinds: Awaited<ReturnType<typeof readKinds>> | undefined;
     try {
-      const blob = await ctx.storage.get(job.requestId);
-      if (!blob) throw new Error("The stored digest request is missing");
-      const request = digestRequestSchema.parse(JSON.parse(await blob.text()));
+      const request = await storedRequest(ctx, job.requestId);
       kinds = await readKinds(request.publications);
-      result = await generateLibraryDigest(request, kinds, AbortSignal.timeout(GENERATION_TIMEOUT_MS));
+      const written = await writeLibraryDigest(request, kinds, AbortSignal.timeout(WRITING_ACTION_MS - (Date.now() - started)));
+      await ctx.scheduler.runAfter(0, internal.evidenceLibraries.digests.service.check, {jobId, written});
     } catch (error) {
       console.error("Library digest generation failed", {libraryId: job.libraryId, editionId: job.editionId, error});
+      await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: null, kinds});
     }
-    await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result, kinds: result ? undefined : kinds});
+    return null;
+  },
+});
+
+/** Has what the writer wrote reviewed, then finishes the job. A review that cannot run never costs the digest. */
+export const check = internalAction({
+  args: {jobId: v.id("evidenceLibraryDigestJobs"), written: evidenceLibraryDigestResultValidator},
+  returns: v.null(),
+  handler: async (ctx, {jobId, written}) => {
+    const job = await ctx.runQuery(internal.evidenceLibraries.digests.service.readJob, {jobId});
+    if (!job?.requestId) return null;
+    let result = written;
+    try {
+      result = {...written, ...await reviewLibraryDigest({summary: written.summary, markdown: written.markdown}, await storedRequest(ctx, job.requestId))};
+    } catch (error) {
+      console.error("Library digest review did not start; keeping the digest as written", {libraryId: job.libraryId, editionId: job.editionId, error});
+    }
+    await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result, kinds: undefined});
     return null;
   },
 });
