@@ -134,6 +134,32 @@ it("moves an organization on Team to Free at its renewal once it has few enough 
   expect(limits().at(-1)?.limit).toBe(6);
 });
 
+it("moves an organization whose Team payment Stripe gave up on to the free organization plan", async () => {
+  const { t, workspaceId, membership, seated, ada } = await lab(["ada", "ben"]);
+  await membership("ada", true, "org:admin");
+  await membership("ben", true);
+  await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 });
+  // Stripe cancels the unpaid subscription; Autumn ends Team and its seats, and gives the customer its default plan back.
+  Object.assign(fakeAutumn.customer(workspaceId), { planId: "free", seats: 0 });
+  for (const entity of fakeAutumn.entitiesOf(workspaceId).values()) entity.seated = false;
+  await t.action(internal.billing.seats.sync, { workspaceId });
+  expect(fakeAutumn.customer(workspaceId).planId).toBe(ORGANIZATION_PLAN);
+  expect(seated()).toEqual([]);
+  expect(fakeAutumn.entitiesOf(workspaceId).size).toBe(0);
+  expect(limits().at(-1)?.limit).toBe(FREE_MEMBERS);
+});
+
+it("shows an organization's failed payment to its members, and where to pay it to its admins", async () => {
+  const { t, workspaceId, membership, ada } = await lab(["ada", "ben"]);
+  await membership("ada", true, "org:admin");
+  await membership("ben", true);
+  await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 });
+  Object.assign(fakeAutumn.customer(workspaceId), { pastDue: true, invoices: [{ plan_ids: [TEAM_PLAN], status: "open", total: 48, currency: "usd", created_at: 5_000, hosted_invoice_url: "https://pay.test/in_team" }] });
+  await t.action(internal.billing.accounts.refresh, { workspaceId });
+  expect((await ada.query(api.billing.accounts.mine, { workspaceId }))?.unpaid).toEqual({ amount: 48, currency: "usd", since: 5_000, url: "https://pay.test/in_team" });
+  expect((await t.withIdentity({ subject: "user_ben" }).query(api.billing.accounts.mine, { workspaceId }))?.unpaid).toEqual({ amount: 48, currency: "usd", since: 5_000 });
+});
+
 it("ends the seats and Team of an organization deleted in Clerk, after its workspace is gone and whatever its seats were last counted as", async () => {
   const { t, workspaceId, membership, deleted, seated, ada } = await lab(["ada", "ben"]);
   await membership("ada", true, "org:admin");

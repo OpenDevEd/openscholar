@@ -62,6 +62,11 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
   // main plan was chosen and is paid for.
   const onPaidPlan = Boolean(current && !current.auto_enable);
   const periodEnd = current?.current_period_end ?? undefined;
+  // The payment that failed, while the plan is past due (#40): the oldest of its plan's invoices still open, whose failure started
+  // Stripe's retries. A top-up or another plan's change declined meanwhile has an open invoice too, which Autumn voids within minutes.
+  const unpaid = current?.past_due
+    ? (customer.invoices ?? []).filter((invoice) => invoice.status === "open" && invoice.plan_ids?.includes(current.plan_id)).sort((a, b) => a.created_at - b.created_at)[0]
+    : undefined;
   return {
     ...(current ? { plan: current.plan_id } : {}),
     pastDue: current?.past_due ?? false,
@@ -85,6 +90,7 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
     signupGranted: customer.subscriptions.some((s) => s.plan_id === SIGNUP_PLAN),
     hasPaid: onPaidPlan || (customer.purchases ?? []).length > 0,
     stripeCustomerId: customer.stripe_id ?? undefined,
+    ...(unpaid ? { unpaid: { amount: unpaid.total, currency: unpaid.currency, since: unpaid.created_at, ...(unpaid.hosted_invoice_url ? { url: unpaid.hosted_invoice_url } : {}) } } : {}),
   };
 }
 
@@ -202,7 +208,10 @@ export async function refreshAccount(
 ): Promise<BillingAccountSnapshot> {
   const fetchedAt = Date.now();
   const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
-  const snapshot = snapshotFromCustomer(await autumn.customer(customerId, options));
+  let customer = await autumn.customer(customerId, options);
+  // A failed payment's invoice is read only while one is due, which is rare.
+  if (customer.subscriptions.some((subscription) => subscription.past_due)) customer = await autumn.customer(customerId, { ...options, invoices: true });
+  const snapshot = snapshotFromCustomer(customer);
   await ctx.runMutation(internal.billing.accounts.writeSnapshot, { workspaceId, snapshot, withCard: options.card ?? false, fetchedAt });
   return snapshot;
 }
@@ -342,22 +351,30 @@ const myAccountKeys = Object.keys(myAccountFields) as (keyof typeof myAccountFie
  * in it, their own when it's left out (a page outside /o/<slug>, or one rendered on the server).
  */
 async function pageWorkspace(ctx: QueryCtx, workspaceId: Id<"workspaces"> | undefined) {
+  return (await pageActor(ctx, workspaceId))?.workspaceId;
+}
+
+/** The person reading a page and their role in its workspace: their own, where they're its admin, when it names none. */
+async function pageActor(ctx: QueryCtx, workspaceId: Id<"workspaces"> | undefined) {
   const user = await getCurrentUser(ctx);
   if (!user) return undefined;
-  if (!workspaceId) return await ownWorkspaceOf(ctx, user._id);
-  return (await actorIn(ctx, user, workspaceId)) ? workspaceId : undefined;
+  if (!workspaceId) return { workspaceId: await ownWorkspaceOf(ctx, user._id), role: "admin" as const };
+  return (await actorIn(ctx, user, workspaceId)) ?? undefined;
 }
 
 export const mine = query({
   args: { workspaceId: v.optional(v.id("workspaces")) },
   returns: v.union(v.object(myAccountFields), v.null()),
   handler: async (ctx, args) => {
-    const workspaceId = await pageWorkspace(ctx, args.workspaceId);
-    if (!workspaceId) return null;
-    const row = await readAccount(ctx, workspaceId);
+    const actor = await pageActor(ctx, args.workspaceId);
+    if (!actor?.workspaceId) return null;
+    const row = await readAccount(ctx, actor.workspaceId);
     if (!row) return null;
     // Copy only the fields the validator declares, so internal columns stay private.
-    return pick(row, myAccountKeys);
+    const account = pick(row, myAccountKeys);
+    // The page that pays a failed invoice is the payer's own: an organization's members see that it failed, not where to pay (#40).
+    if (account.unpaid && actor.role !== "admin") account.unpaid = { amount: account.unpaid.amount, currency: account.unpaid.currency, since: account.unpaid.since };
+    return account;
   },
 });
 

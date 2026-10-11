@@ -33,6 +33,8 @@ export const billingAccountSnapshotValidator = v.object({
   /** Has paid for a plan or credits, so Stripe holds invoices for them. */
   hasPaid: v.boolean(),
   stripeCustomerId: v.optional(v.string()),
+  /** While past due, the payment that failed (#40): how much, when its invoice was raised, and the page that pays it. */
+  unpaid: v.optional(v.object({ amount: v.number(), currency: v.string(), since: v.number(), url: v.optional(v.string()) })),
 });
 export type BillingAccountSnapshot = Infer<typeof billingAccountSnapshotValidator>;
 

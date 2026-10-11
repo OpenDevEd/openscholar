@@ -93,12 +93,13 @@ export const choosePlan = action({
   handler: async (ctx, { plan }): Promise<{ url: string | null }> => {
     const user = await requireUser(ctx);
     const catalog = await requireChoosablePlan(ctx, plan);
-    const result = await autumn.attach({
+    // A declined card changes nothing and says why; Autumn voids the invoice it left (#40).
+    const result = unlessDeclined(await autumn.attach({
       customerId: user._id,
       planId: plan,
       successUrl: returnUrl("checkout"),
       newMonth: startsNewMonth(catalog, await autumn.customer(user._id, { plans: true }), plan),
-    });
+    }));
     await refreshAccount(ctx, await ownWorkspace(ctx, user), { card: true });
     return { url: result.payment_url };
   },
@@ -173,12 +174,12 @@ export const buyCredits = action({
     if (!bundles.some((bundle) => bundle.credits === credits)) {
       throw createError("CREDITS_TOPUP_BUNDLE_INVALID", `No top-up of ${credits} credits`);
     }
-    const result = await autumn.attach({
+    const result = unlessDeclined(await autumn.attach({
       customerId: payer.customerId,
       planId: TOPUP_PLAN,
       credits,
       successUrl: returnUrl("topup", payer.page),
-    });
+    }));
     await refreshAccount(ctx, payer.workspaceId, { card: true });
     return { url: result.payment_url };
   },

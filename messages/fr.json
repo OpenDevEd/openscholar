@@ -358,7 +358,6 @@
     "upgradeDescription": "Changez de plan pour débloquer plus de crédits et de fonctionnalités.",
     "failedToLoadDetails": "Échec du chargement des détails",
     "paymentFailedNotice": "Le paiement a échoué. Mettez à jour votre moyen de paiement pour continuer à utiliser les fonctionnalités premium.",
-    "updatePaymentMethod": "Mettre à jour le moyen de paiement",
     "perInterval": "/ {interval}",
     "intervalMonth": "mois",
     "intervalYear": "an",
@@ -395,7 +394,9 @@
     "renewsOnDate": "Renouvelé le {date}",
     "charges": "Débits",
     "jobCharges": "Débits de cette tâche",
-    "chargesLabel": "débits"
+    "chargesLabel": "débits",
+    "paymentFailedEnds": "Le paiement de {amount} a échoué. {plan} prend fin le {date} s'il n'est pas réglé.",
+    "fixPayment": "Régler le paiement"
   },
   "errors": {
     "unexpectedIssue": "Nous avons rencontré un problème inattendu. Veuillez réessayer ou revenir à une page stable.",
@@ -3964,7 +3965,9 @@
       "seatsAfter": "Après",
       "seatToConfirm": "La banque demande de confirmer ce paiement. Confirmez-le, puis invitez à nouveau.",
       "confirmPayment": "Confirmer le paiement",
-      "seatHeldUndated": "Cette personne a dépensé des crédits sur cette période, sa place reste donc occupée jusqu'au renouvellement."
+      "seatHeldUndated": "Cette personne a dépensé des crédits sur cette période, sa place reste donc occupée jusqu'au renouvellement.",
+      "paymentFailedEnds": "Le paiement de {amount} a échoué. {plan} prend fin le {date} s'il n'est pas réglé.",
+      "paymentFailed": "Le dernier paiement a échoué."
     },
     "couldntInvite": "L'organisation a été créée, mais les invitations ne sont pas parties. Envoyez-les depuis ses paramètres Membres.",
     "fromCredits": "Sur les crédits de {name}",

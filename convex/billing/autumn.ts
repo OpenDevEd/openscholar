@@ -38,6 +38,8 @@ export type AutumnCustomer = {
   balances: Partial<Record<string, AutumnBalance>>;
   /** Boolean features the customer has, keyed by feature id. */
   flags?: Record<string, unknown>;
+  /** Its invoices, newest first, only when the customer is read with `invoices`: `hosted_invoice_url` is where one is paid. */
+  invoices?: Array<{ plan_ids?: string[]; status: string; total: number; currency: string; created_at: number; hosted_invoice_url?: string | null }>;
   payment_method?: { card?: { brand: string; last4: string } | null } | null;
 };
 
@@ -166,10 +168,10 @@ export const autumn = {
     return call<{ list: AutumnFeature[] }>("features.list", {});
   },
 
-  /** The customer, with its card only when `card` is set (Autumn asks Stripe for it), and each subscription's plan when `plans` is. */
-  customer(customerId: string, data: { email?: string; name?: string; card?: boolean; plans?: boolean } = {}) {
-    const { card, plans, ...profile } = data;
-    const expand = [...(card ? ["payment_method"] : []), ...(plans ? ["subscriptions.plan"] : [])];
+  /** The customer, with its card only when `card` is set (Autumn asks Stripe for it), each subscription's plan when `plans` is, and its invoices when `invoices` is. */
+  customer(customerId: string, data: { email?: string; name?: string; card?: boolean; plans?: boolean; invoices?: boolean } = {}) {
+    const { card, plans, invoices, ...profile } = data;
+    const expand = [...(card ? ["payment_method"] : []), ...(plans ? ["subscriptions.plan"] : []), ...(invoices ? ["invoices"] : [])];
     return call<AutumnCustomer>("customers.get_or_create", {
       customer_id: customerId,
       ...(expand.length > 0 ? { expand } : {}),
