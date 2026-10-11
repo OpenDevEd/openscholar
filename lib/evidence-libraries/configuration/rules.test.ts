@@ -434,6 +434,28 @@ describe("a save made elsewhere while the page is open", () => {
     expect(carried.draft.footer.disclaimer).toBe("Theirs");
   });
 
+  it("keeps a feature switched on here when a save elsewhere takes away what it needs, and flags it", () => {
+    const withoutDownloads = savedElsewhere("features", { collections: true, collectionNotes: true, downloads: false }, platformRows);
+    const page = readDraft(withoutDownloads);
+    const draft = structuredClone(page);
+    draft.features.downloads = true;
+    const noExports = savedElsewhere("exports", { ris: false, bibtex: false, atom: false }, withoutDownloads);
+    const carried = carryUnsaved(draft, page, withoutDownloads, noExports, []);
+    expect(carried.draft.features.downloads).toBe(true);
+    expect(carried.draft.exports.ris).toBe(false);
+    expect(sectionState(carried.draft, noExports, "features")).toBe("attention");
+    expect(sectionProblems(carried.draft, "features")).toEqual(["featureDependency"]);
+    // The other way round: the formats were switched off here, which had switched downloads off with them.
+    const withDownloads = readDraft(platformRows);
+    const formatsOff = structuredClone(withDownloads);
+    formatsOff.exports.ris = false;
+    settleFeatures(formatsOff);
+    const other = carryUnsaved(formatsOff, withDownloads, platformRows, savedElsewhere("footer", { disclaimer: "Theirs" }, platformRows), []);
+    expect(other.draft.exports.ris).toBe(false);
+    expect(other.draft.features.downloads).toBe(false);
+    expect(sectionProblems(other.draft, "features")).toEqual([]);
+  });
+
   it("starts again from the saved rows after this page's own save, keeping only what was typed since", () => {
     const sent = savedDraft();
     sent.footer.disclaimer = "Sent with the save";

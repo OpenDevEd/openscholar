@@ -2092,6 +2092,13 @@ export function carryUnsaved(
   const next = kept.length
     ? settleFeatures(kept.reduce((merged, key) => takeSection(merged, draft, key), now))
     : now;
+  // A feature switched on here and not saved yet stays on when the new rows take away what it needs. Its card then
+  // says so and cannot be saved as it is, where settling it would drop the choice without a word.
+  if (kept.includes("features")) {
+    for (const feature of SHOWN_FEATURES) {
+      if (draft.features[feature] && !was.features[feature]) next.features[feature] = true;
+    }
+  }
   return {
     draft: next,
     base: now,
