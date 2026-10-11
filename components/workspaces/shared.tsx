@@ -24,6 +24,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { GuestRole, SharedKind } from "@/convex/sharing/validators";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { openChat } from "@/lib/assistant/place";
 import { SHARED_PAGE } from "@/lib/sharing";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
@@ -31,8 +32,8 @@ import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } f
 import { Chip, Hero, Landing, Point } from "./join";
 import { useCurrentWorkspace, WorkspaceTag, WorkspaceTile } from "./parts";
 
-/** Each kind's look, where one opens in your own workspace, and the roles its guests can be given (convex/sharing/items.ts). */
-export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; href: (id: string) => string; roles: readonly GuestRole[] }> = {
+/** Each kind's look, where one opens in your own workspace, and the roles its guests can be given (convex/sharing/items.ts). `open` is what following its address inside the app does besides, where the address alone opens nothing. */
+export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; href: (id: string) => string; open?: (id: string) => void; roles: readonly GuestRole[] }> = {
   collection: { icon: Folder, tint: "#e8890c", href: (id) => `/library?col=${id}`, roles: ["viewer", "editor"] },
   screening: { icon: ListFilter, tint: "#34d399", href: (id) => `/screening?job=${id}`, roles: ["viewer"] },
   extraction: { icon: FileSearch, tint: "#818cf8", href: (id) => `/extraction/${id}`, roles: ["viewer"] },
@@ -40,8 +41,8 @@ export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; hre
   search: { icon: Search, tint: "#60a5fa", href: (id) => `/results/${id}`, roles: ["viewer", "editor"] },
   // An author profile is public: what's shared is editing it, from its own page.
   author: { icon: UserRound, tint: "#f472b6", href: (id) => `/authors/${id}`, roles: ["editor"] },
-  // A chat opens in the assistant's panel, over the search page.
-  chat: { icon: MessageSquare, tint: "#a78bfa", href: (id) => `/?chat=${id}`, roles: ["viewer", "editor"] },
+  // A chat opens in the assistant's panel, over the search page. The panel reads the address once a page load, so a link followed inside the app opens it too.
+  chat: { icon: MessageSquare, tint: "#a78bfa", href: (id) => `/?chat=${id}`, open: openChat, roles: ["viewer", "editor"] },
 };
 
 type Sort = "recent" | "name";
@@ -192,7 +193,7 @@ function Row({ item }: { item: SharedItem }) {
     <Entry viewMode="list-detail">
       <Tile icon={kind.icon} tint={kind.tint} className="size-10 rounded-xl" />
       <div className="min-w-0 flex-1 space-y-2">
-        <Link href={kind.href(item.id)} className={cn(ENTRY_OPEN, "line-clamp-2")}>
+        <Link href={kind.href(item.id)} onClick={() => kind.open?.(item.id)} className={cn(ENTRY_OPEN, "line-clamp-2")}>
           {item.name}
         </Link>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -234,7 +235,11 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
     setOpening(true);
     // One taken up already opens as it is; accepting one says what it was to.
     void (invitation.state === "accepted" ? Promise.resolve({ kind: invitation.kind, id: invitation.id }) : respond({ invitationId: invitationId as Id<"itemInvitations">, accept: true })).then(
-      (item) => item && router.push(SHARED_KINDS[item.kind].href(item.id)),
+      (item) => {
+        if (!item) return;
+        SHARED_KINDS[item.kind].open?.(item.id);
+        router.push(SHARED_KINDS[item.kind].href(item.id));
+      },
       (error) => {
         setOpening(false);
         showStyledToast("error", getErrorMessage(error, t("openFailed")));

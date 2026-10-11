@@ -24,8 +24,9 @@ export const members = migrations.define({
   table: "authorProfileMembers",
   migrateOne: async (ctx, member) => {
     const profile = await ctx.db.get("authorProfiles", member.profileId);
-    // A deleted account's place would count against the profile's guests with nobody to show for it.
-    if (!profile?.workspaceId || (await ctx.db.get("users", member.userId))?.state !== "active" || (await grantOf(ctx, profile._id, member.userId))) return;
+    // A deleted account's place would count against the profile's guests with nobody to show for it. A suspended one keeps its place for when it's back.
+    const person = await ctx.db.get("users", member.userId);
+    if (!profile?.workspaceId || !person || person.state === "deleted" || (await grantOf(ctx, profile._id, member.userId))) return;
     await ctx.db.insert("itemAccess", { kind: "author", item: profile._id, name: profile.name, userId: member.userId, role: "editor", grantedBy: profile.createdBy ?? member.userId, grantedAt: member._creationTime });
   },
 });

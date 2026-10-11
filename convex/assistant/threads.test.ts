@@ -158,7 +158,7 @@ describe("assistant chats", () => {
 
   it("list newest first, their own and the ones shared with them as one list, by scope and by title", async () => {
     const t = convexTest(schema);
-    const { home, asAda, asBen, ben } = await people(t);
+    const { home, asAda, asBen, ben, team } = await people(t);
     const make = async (as: typeof asAda, title: string) => as.mutation(api.assistant.threads.create, { title });
     const coaching = await make(asAda, "Teacher coaching");
     const reading = await make(asAda, "Reading trials");
@@ -188,6 +188,15 @@ describe("assistant chats", () => {
       cursor = page.continueCursor;
     }
     expect(seen).toEqual(["Reading trials", "Ben's own notes", "Teacher coaching"]);
+
+    // Moved into an organization Ben is in, it's the organization's: it lists there, and no longer as shared with him.
+    const lab = await t.run(async (ctx) => {
+      const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId: team });
+      await ctx.db.patch("assistantThreads", reading, { workspaceId: lab });
+      return lab;
+    });
+    expect(titles(await list("shared"))).toEqual(["Teacher coaching"]);
+    expect(titles(await asBen.query(api.assistant.threads.list, { workspaceId: lab, scope: "all", paginationOpts: firstPage }))).toEqual(["Reading trials"]);
   });
 
   it("lists within Convex's limits when hundreds of chats are shared with someone and none match", async () => {

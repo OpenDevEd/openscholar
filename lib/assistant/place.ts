@@ -115,3 +115,8 @@ export function chatAbout(mention: Mention) {
   // A new chat in the workspace the page is in.
   panelPlace.set((now) => ({ ...withThread(now, workspaceKey(window.location.pathname), null), open: true }));
 }
+
+/** Opens the assistant on a chat, in the workspace the page is in: what a link to one does when it's followed inside the app, where no page loads to read its address. */
+export function openChat(threadId: string) {
+  panelPlace.set((now) => ({ ...withThread(now, workspaceKey(window.location.pathname), threadId), open: true }));
+}
