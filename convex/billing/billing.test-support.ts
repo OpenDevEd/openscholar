@@ -49,11 +49,14 @@ export const fakeAutumn = {
   /** The member limits set on organizations in Clerk (#652), in order, and how many more Clerk refuses first. */
   memberLimits: [] as Array<{ organization: string; limit: number }>,
   refuseLimits: 0,
+  /** What Clerk counts in an organization when asked, ahead of the projections; none when not set. */
+  clerkCounts: new Map<string, { members: number; invitations: number }>(),
 
   reset() {
     this.failNext = null;
     this.memberLimits = [];
     this.refuseLimits = 0;
+    this.clerkCounts.clear();
     this.noCard = false;
     this.confirmPayments = false;
     this.declineCard = false;
@@ -377,6 +380,12 @@ export function fakeAutumnFetch(
   process.env.AUTUMN_SECRET_KEY = "am_sk_test_fake";
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    // Clerk counting an organization's members, or its pending invitations.
+    const counted = url.match(/^https:\/\/api\.clerk\.com\/v1\/organizations\/([^/?]+)(\/invitations)?\?/);
+    if (counted && (init?.method ?? "GET") === "GET") {
+      const clerk = fakeAutumn.clerkCounts.get(counted[1]!) ?? { members: 0, invitations: 0 };
+      return respond(200, counted[2] ? { data: [], total_count: clerk.invitations } : { id: counted[1], members_count: clerk.members });
+    }
     // A seat sync setting an organization's member limit in Clerk.
     const organization = url.match(/^https:\/\/api\.clerk\.com\/v1\/organizations\/([^/]+)$/)?.[1];
     const limit = init?.method === "PATCH" && organization ? (JSON.parse(String(init.body ?? "{}")) as { max_allowed_memberships?: number }).max_allowed_memberships : undefined;

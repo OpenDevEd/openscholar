@@ -43,7 +43,8 @@ import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useHydrated } from "@/lib/use-hydrated";
 import { findPlan, planCreditCap } from "@/lib/billing/catalog";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
-import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { getErrorMessage, payOpenAction } from "@/lib/toast/use-app-toast";
+import { resolveToastError } from "@/lib/toast/error-resolver";
 import { cn } from "@/lib/utils";
 import { ORGANIZATION_COLOURS } from "@/lib/workspaces/colours";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
@@ -95,7 +96,7 @@ function useAttempt() {
       await work();
       return true;
     } catch (error) {
-      showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong")));
+      showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong")), { action: payOpenAction(error, tc("payNow")) });
       return false;
     } finally {
       setBusy(null);
@@ -363,7 +364,7 @@ export function WorkspaceMembers() {
   const invite = useWorkspaceAction(api.organizations.manage.invite);
   const previewSeats = useWorkspaceAction(api.billing.actions.previewSeats);
   // An invitation waiting for the seat it needs (#863): who, as what, and Autumn's figure for one more seat; and what the card said.
-  const [adding, setAdding] = useState<{ email: string; role: Role; preview: SeatPreview } | null>(null);
+  const [wanted, setAdding] = useState<{ email: string; role: Role; preview: SeatPreview } | null>(null);
   const [refused, setRefused] = useState<ReturnType<typeof chargeRefusal>>(null);
   const setRole = useWorkspaceAction(api.organizations.manage.setRole);
   const removeMember = useWorkspaceAction(api.organizations.manage.removeMember);
@@ -398,6 +399,12 @@ export function WorkspaceMembers() {
   // The renewal, or while Team is on its way to Free the day it ends: held seats are freed then either way.
   const renewal = account?.renewsAt ?? account?.changesAt;
   const money = (amount: number, cents = false) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: cents ? 2 : 0 });
+  // An invitation another admin sent the same address meanwhile closes the step that would buy its seat (#858), for good.
+  const invitedMeanwhile = wanted !== null && invitations.items.some((invitation) => invitation.email === wanted.email.toLowerCase());
+  if (invitedMeanwhile) setAdding(null);
+  const adding = invitedMeanwhile ? null : wanted;
+  // Whether the member being removed keeps their seat to the renewal, read live: one who starts spending while the dialog is open does (#858).
+  const removingKeepsSeat = removing !== null && Boolean((members.items.find((member) => member.userId === removing.userId) ?? removing).keepsSeat);
   const segment = (i: number) => (i < memberCount ? "bg-primary" : i < memberCount + held ? "bg-warning/70" : i < used ? "bg-primary/40" : "bg-muted");
   /** Sends the invitation, buying the seat it needs first when `addSeat`; the address that went is cleared, and one typed since stays. */
   const send = (sent: string, as: Role, addSeat?: true) =>
@@ -406,6 +413,8 @@ export function WorkspaceMembers() {
         await invite({ emails: [sent.trim()], role: as, ...(addSeat ? { addSeat } : {}) });
       } catch (error) {
         const refusal = chargeRefusal(error);
+        // Invited or joined meanwhile, on a page of them not shown here: there's no seat to buy for them (#858).
+        if (addSeat && resolveToastError(error, "").code === "CONFLICT") setAdding(null);
         if (!refusal) throw error;
         setRefused(refusal);
         return;
@@ -630,7 +639,7 @@ export function WorkspaceMembers() {
             <AlertDialogTitle>{t("removeName", { name: removing?.name ?? "" })}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("removeConfirm", { name: removing?.name ?? "", organization: organization.name })}
-              {team && removing ? ` ${removing.keepsSeat ? (renewal ? t("seatHeld", { date: date(renewal) }) : t("seatHeldUndated")) : t("seatFreed")}` : null}
+              {team && removing ? ` ${removingKeepsSeat ? (renewal ? t("seatHeld", { date: date(renewal) }) : t("seatHeldUndated")) : t("seatFreed")}` : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

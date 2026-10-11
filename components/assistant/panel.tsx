@@ -56,7 +56,7 @@ import { FocusMode } from "@/components/ui/focus-mode";
 import { downloadLibraryEssentialItem, downloadLibraryItem } from "@/lib/library/download-handlers";
 import type { PaperResult } from "@/lib/types";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
-import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
+import { getErrorMessage, payOpenAction, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
@@ -224,6 +224,7 @@ function Overlay({
   drafts: Drafts;
 }) {
   const t = useTranslations("assistant");
+  const tc = useTranslations("common");
   // Read here, not in the chat, so the launcher shows a reply being written while the panel is folded.
   const live = useQuery(api.assistant.replies.live, threadId ? { threadId } : "skip") ?? null;
   // What the mark shows: what the reply at work is doing, or how the chat's last one ended.
@@ -275,7 +276,7 @@ function Overlay({
           if (url) window.location.href = url;
           else setBought(credits);
         })
-        .catch((error) => toast.error(t("topUp.failed"), getErrorMessage(error, "")))
+        .catch((error) => toast.error(t("topUp.failed"), getErrorMessage(error, ""), payOpenAction(error, tc("payNow"))))
         .finally(() => setBuying(null));
     },
   };

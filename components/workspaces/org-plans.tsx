@@ -33,7 +33,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { findPlan } from "@/lib/billing/catalog";
 import { FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
-import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { getErrorMessage, payOpenAction } from "@/lib/toast/use-app-toast";
 import { useWorkspaceAction } from "@/lib/workspaces/url";
 import { Guarded, useCurrentWorkspace } from "./parts";
 import { CreateOrganization } from "./switcher";
@@ -107,7 +107,7 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
       if (result?.url) return void window.location.assign(result.url);
       setAsking(null);
     } catch (error) {
-      showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong")));
+      showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong")), { action: payOpenAction(error, tc("payNow")) });
     }
     setBusy(false);
   };
@@ -132,7 +132,7 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
       setPreview({ ...(await previewTeam({ seats })), seats });
       setAsking("team");
     } catch (error) {
-      showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong")));
+      showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong")), { action: payOpenAction(error, tc("payNow")) });
     }
     setBusy(false);
   };

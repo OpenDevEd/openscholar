@@ -33,6 +33,7 @@ export type ToastErrorMessageKey =
   | "billingRateLimited"
   | "billingStripeError"
   | "billingPaymentDeclined"
+  | "billingPaymentOpen"
   | "billingPlanChangeConflict"
   | "billingInvalidPrice"
   | "billingCancelRequiresPortal"
@@ -116,6 +117,7 @@ const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   BILLING_RATE_LIMITED: "billingRateLimited",
   BILLING_STRIPE_ERROR: "billingStripeError",
   BILLING_PAYMENT_DECLINED: "billingPaymentDeclined",
+  BILLING_PAYMENT_OPEN: "billingPaymentOpen",
   BILLING_PLAN_CHANGE_CONFLICT: "billingPlanChangeConflict",
   BILLING_INVALID_PRICE_ID: "billingInvalidPrice",
   BILLING_CANCEL_TO_FREE_REQUIRES_PORTAL: "billingCancelRequiresPortal",
@@ -218,6 +220,20 @@ function inferLegacyCode(...messages: Array<string | undefined>): string | undef
     }
   }
   return undefined;
+}
+
+/** Where to pay the payment still open that a purchase was refused for (#858), when `error` is that refusal. */
+export function openPaymentUrl(error: unknown): string | undefined {
+  let data = readErrorData(error);
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch {
+      return undefined;
+    }
+  }
+  const record = asRecord(data);
+  return record?.code === "BILLING_PAYMENT_OPEN" ? trimToString(record.url) : undefined;
 }
 
 export function getToastMessageKeyForErrorCode(

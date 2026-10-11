@@ -3,6 +3,8 @@
  * Every failed call logs the endpoint, status, and Autumn's response body.
  */
 
+import { createError } from "../lib/errors";
+
 export type AutumnBalance = {
   remaining: number;
   /** What the customer's plans grant of the feature. */
@@ -154,6 +156,8 @@ async function call<T>(
   if (!response.ok) {
     const error = new AutumnError(path, response.status, data);
     console.error(`[autumn] ${error.message}`);
+    // Autumn locks a customer while it changes their plan: a second purchase, plan or seat change made then is refused, and the person is told so.
+    if (response.status === 423 && path.startsWith("billing.")) throw createError("BILLING_PLAN_CHANGE_CONFLICT", "Another billing change is under way. Try again in a moment.");
     throw error;
   }
   return data as T;
