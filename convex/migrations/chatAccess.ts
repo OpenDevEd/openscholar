@@ -27,7 +27,8 @@ export const people = migrations.define({
     const userId = kind === "user" ? ctx.db.normalizeId("users", id) : null;
     if (!userId || row.role === "owner") return;
     const thread = await ctx.db.get("assistantThreads", row.threadId);
-    if (!thread || !(await ctx.db.get("users", userId)) || (await grantOf(ctx, thread._id, userId))) return;
+    // A deleted account's place would count against the chat's guests with nobody to show for it.
+    if (!thread || (await ctx.db.get("users", userId))?.state !== "active" || (await grantOf(ctx, thread._id, userId))) return;
     await ctx.db.insert("itemAccess", { kind: "chat", item: thread._id, name: thread.title, userId, role: row.role === "write" ? "editor" : "viewer", grantedBy: thread.createdBy, grantedAt: row.createdAt, lastMessageAt: thread.lastMessageAt });
   },
 });

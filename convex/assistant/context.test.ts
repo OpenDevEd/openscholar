@@ -96,7 +96,7 @@ describe("what the assistant's model is sent", () => {
 
   it("is told the page a message was sent from when that changes, which the chat itself doesn't show", async () => {
     const t = convexTest(schema);
-    const { asAda, asBen, ben, threadId, say, thread } = await chatOf(t);
+    const { home, asAda, asBen, ben, threadId, say, thread } = await chatOf(t);
     const asked = (request: Sent) => noted(request).filter((line) => line.startsWith("user: "));
     mockDoStream.mockImplementation(finishingDoStream(["Answer"]));
     // Of an address, only what says what its page shows is kept: a ticket in it never reaches the chat.
@@ -128,7 +128,7 @@ describe("what the assistant's model is sent", () => {
     expect(page.flatMap((message) => (message.role === "user" ? [message.text] : [])).reverse()).toEqual(["What is this?", "And this one?", "Now here", "And these?", "And those?", "And that?", "And from elsewhere"]);
 
     // In a shared chat each person's message says their own place, even when it's where the last one was sent from.
-    await asAda.mutation(api.sharing.guests.add, { kind: "chat", id: threadId, userId: ben, role: "editor" });
+    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: ben, role: "editor" });
     await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: ben, free: 100_000 }));
     await say("Back to this", "/library?col=collection-9");
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "I'm here too", view: "/library?col=collection-9" });
