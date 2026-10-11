@@ -56,17 +56,19 @@ const restoreFocus = (returnFocus: ReturnFocus | undefined) => (event: Event) =>
 };
 
 export function NewCollectionDialog({ open, onOpenChange, paper, onCreated, returnFocus }: { open: boolean; onOpenChange: (open: boolean) => void; paper?: StartingPaper; onCreated?: (collectionId: Id<"collections">) => void; returnFocus?: ReturnFocus }) {
+  // Held here, above the form: while the collection is being made and its invitations sent the dialog stays, so what's on its way can't close one opened after it.
+  const [creating, setCreating] = useState(false);
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => (creating ? undefined : onOpenChange(next))}>
       <DialogContent showCloseButton={false} className={DIALOG} onCloseAutoFocus={restoreFocus(returnFocus)}>
         {/* Inside the content, so the form starts blank each time the dialog opens. Its reads stay up while it's shut (useCollectionDialogsReady). */}
-        <NewCollection paper={paper} close={() => onOpenChange(false)} onCreated={onCreated} />
+        <NewCollection paper={paper} close={() => onOpenChange(false)} onCreated={onCreated} creating={creating} setCreating={setCreating} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; close: () => void; onCreated?: (collectionId: Id<"collections">) => void }) {
+function NewCollection({ paper, close, onCreated, creating, setCreating }: { paper?: StartingPaper; close: () => void; onCreated?: (collectionId: Id<"collections">) => void; creating: boolean; setCreating: (creating: boolean) => void }) {
   const t = useTranslations("libraryPage");
   const ts = useTranslations("saveToLibrary");
   const tc = useTranslations("common");
@@ -74,6 +76,7 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
   const workspace = useCurrentWorkspace();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
   const tsh = useTranslations("workspaces.share");
+  const format = useFormatter();
   const createCollection = useWorkspaceMutation(api.library.collections.createCollection);
   const invite = useWorkspaceAction(api.sharing.invitations.invite);
   const { count, limit, guests: guestLimit } = useCollectionCount();
@@ -84,7 +87,6 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"viewer" | "editor">("viewer");
   const [invited, setInvited] = useState<Array<{ email: string; role: "viewer" | "editor" }>>([]);
-  const [creating, setCreating] = useState(false);
   const trimmed = name.trim();
   // Names aren't unique, so one already taken is pointed out, not refused.
   const search = useDebouncedValue(trimmed, 300);
@@ -107,11 +109,13 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
     setCreating(true);
     createCollection({ name: trimmed })
       .then(async ({ id }) => {
+        // The collection is made whatever comes of its invitations: the ones that didn't go are named, to send again from Share.
+        const sent = await Promise.allSettled(invited.map((one) => invite({ kind: "collection", id, email: one.email, role: one.role })));
+        const failed = invited.filter((_, at) => sent[at]?.status === "rejected").map((one) => one.email);
+        if (failed.length) toast.error(t("inviteFailed", { count: failed.length, emails: format.list(failed, { type: "conjunction" }) }));
         // The dialog stays until the paper is in it too, or its own error says it isn't.
         if (paper && withPaper) await paper.add(id);
-        // The collection is made whatever comes of its invitations: one that didn't go can be sent again from Share.
-        const sent = await Promise.allSettled(invited.map((one) => invite({ kind: "collection", id, email: one.email, role: one.role })));
-        if (sent.some((one) => one.status === "rejected")) toast.error(tsh("failed"));
+        setCreating(false);
         close();
         onCreated?.(id);
       })
@@ -129,7 +133,7 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
           <DialogTitle className="text-base">{ts("newCollection")}</DialogTitle>
           <DialogDescription className="sr-only">{t("newCollectionHint")}</DialogDescription>
         </div>
-        <IconButton label={tc("close")} icon={<X className="size-4" />} onClick={close} />
+        <IconButton label={tc("close")} icon={<X className="size-4" />} onClick={creating ? undefined : close} />
       </div>
       <ScrollArea shades className="min-h-0 flex-1">
         <form
@@ -274,7 +278,7 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
           </AnimatePresence>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="ghost" onClick={close}>
+          <Button variant="ghost" disabled={creating} onClick={close}>
             {tc("cancel")}
           </Button>
           {reason && (full || trimmed) ? (

@@ -1439,6 +1439,7 @@
     "theirAccess": "对方的权限",
     "removeGuest": "移除 {email}",
     "guestsOfOn": "{plan} 的 {limit} 位访客中已有 {used} 位",
+    "inviteFailed": "发给 {emails} 的邀请未能发送。请从“共享”中重新发送。",
     "startWith": "首先加入",
     "startWithPaper": "从这篇论文开始",
     "collectionsMeter": "集合",

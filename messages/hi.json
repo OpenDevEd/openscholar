@@ -1439,6 +1439,7 @@
     "theirAccess": "उनकी पहुँच",
     "removeGuest": "{email} हटाएँ",
     "guestsOfOn": "{plan} पर {limit} में से {used} अतिथि",
+    "inviteFailed": "{count, plural, one {{emails} को आमंत्रण नहीं भेजा गया।} other {{emails} को आमंत्रण नहीं भेजे गए।}} साझा करें से दोबारा भेजें।",
     "startWith": "इससे शुरू करें",
     "startWithPaper": "इस पेपर से शुरू करें",
     "collectionsMeter": "संग्रह",

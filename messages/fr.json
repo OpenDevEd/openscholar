@@ -1439,6 +1439,7 @@
     "theirAccess": "Leur accès",
     "removeGuest": "Retirer {email}",
     "guestsOfOn": "{used} sur {limit} invités avec {plan}",
+    "inviteFailed": "{count, plural, one {L'invitation à {emails} n'a pas été envoyée.} other {Les invitations à {emails} n'ont pas été envoyées.}} Renvoyez-les depuis Partager.",
     "startWith": "Commencer avec",
     "startWithPaper": "Commencer avec cet article",
     "collectionsMeter": "Collections",

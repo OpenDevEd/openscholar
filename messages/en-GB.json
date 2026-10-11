@@ -1439,6 +1439,7 @@
     "theirAccess": "Their access",
     "removeGuest": "Remove {email}",
     "guestsOfOn": "{used} of {limit} guests on {plan}",
+    "inviteFailed": "{count, plural, one {The invitation to {emails} wasn't sent.} other {The invitations to {emails} weren't sent.}} Send again from Share.",
     "startWith": "Start with",
     "startWithPaper": "Start with this paper",
     "collectionsMeter": "Collections",
