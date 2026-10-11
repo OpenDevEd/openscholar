@@ -20,13 +20,13 @@ const rowValidator = v.object({
   viaAssistant: v.optional(v.literal(true)),
 });
 
-/** The item, when the workspace has it; a search goes by the ID its page shows. */
+/** The item, when the workspace has it; a search goes by the ID its page shows. An author profile nobody owns is in no workspace. */
 export async function itemIn(ctx: QueryCtx, workspaceId: Id<"workspaces">, kind: ItemKind, id: string): Promise<{ createdBy: Id<"users"> } | null> {
   if (kind === "search") return await findSearch(ctx, workspaceId, id);
-  const table = ({ collection: "collections", screening: "screeningJobs", extraction: "extractionJobs" } as const)[kind];
+  const table = ({ collection: "collections", screening: "screeningJobs", extraction: "extractionJobs", author: "authorProfiles" } as const)[kind];
   const rowId = ctx.db.normalizeId(table, id);
   const row = rowId ? await ctx.db.get(rowId) : null;
-  return row?.workspaceId === workspaceId ? row : null;
+  return row?.workspaceId === workspaceId && row.createdBy ? { createdBy: row.createdBy } : null;
 }
 
 

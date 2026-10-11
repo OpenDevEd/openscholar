@@ -11,8 +11,9 @@ import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { authorContentFields } from "./validators";
-import { profileRole, requireProfileAccess } from "./access";
+import { profileViewer, requireProfileAccess } from "./access";
 import { workspaceMutation, workspaceQuery } from "../lib/userActions";
+import { noteActivity } from "../activity/notes";
 
 export function cleanContent(content: { [K in keyof typeof authorContentFields]: string }) {
   const next = {...content};
@@ -39,7 +40,9 @@ export function cleanContent(content: { [K in keyof typeof authorContentFields]:
 /** A profile owned by `workspaceId`, made by `createdBy` (#650). */
 export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, workspaceId: Id<"workspaces">, name: string) {
   const content = cleanContent({name, headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: ""});
-  return await ctx.db.insert("authorProfiles", {...content, workspaceId, createdBy, revision: 1, updatedAt: Date.now()});
+  const id = await ctx.db.insert("authorProfiles", {...content, workspaceId, createdBy, revision: 1, updatedAt: Date.now()});
+  await noteActivity(ctx, {workspaceId, by: createdBy, viaAssistant: false}, {kind: "author", id, happened: "created", detail: content.name});
+  return id;
 }
 
 /** A profile as pages show it, with its photo's URL. */
@@ -66,13 +69,13 @@ export const create = workspaceMutation({
 
 export const get = query({
   args: {profileId: v.string()},
-  returns: v.union(v.null(), v.object({...profileWithPhoto, role: v.union(v.literal("owner"), v.literal("editor"), v.null())})),
+  returns: v.union(v.null(), v.object({...profileWithPhoto, role: v.union(v.literal("owner"), v.literal("editor"), v.null()), member: v.boolean()})),
   handler: async (ctx, {profileId}) => {
     const id = ctx.db.normalizeId("authorProfiles", profileId);
     if (!id) return null;
     const profile = await ctx.db.get("authorProfiles", id);
     if (!profile) return null;
-    return {...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null, role: await profileRole(ctx, profile)};
+    return {...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null, ...(await profileViewer(ctx, profile))};
   },
 });
 
@@ -114,7 +117,7 @@ export const list = query({
 
 const contentValidator = v.object(authorContentFields);
 async function saveContent(ctx: MutationCtx, args: {profileId: Id<"authorProfiles">; expectedRevision: number; content: Infer<typeof contentValidator>; photo?: {storageId?: Id<"_storage">}; featured?: Id<"authorPublications">[]}) {
-  const {profile} = await requireProfileAccess(ctx, args.profileId);
+  const {profile, user} = await requireProfileAccess(ctx, args.profileId);
   if (profile.revision !== args.expectedRevision) throw createError("CONFLICT", "This profile changed while you were editing. Reload it before saving.");
   if (args.featured) {
     if (args.featured.length > 1000 || new Set(args.featured).size !== args.featured.length) throw createError("VALIDATION_ERROR", "Invalid publication selection");
@@ -131,6 +134,8 @@ async function saveContent(ctx: MutationCtx, args: {profileId: Id<"authorProfile
   const revision = profile.revision + 1;
   const content = cleanContent(args.content);
   await ctx.db.patch("authorProfiles", args.profileId, {...content, revision, updatedAt: Date.now(), ...(args.photo ? {photoId: args.photo.storageId} : {})});
+  // Its Activity (#656), kept by the workspace that owns it: a new name says the one it had.
+  if (profile.workspaceId) await noteActivity(ctx, {workspaceId: profile.workspaceId, by: user._id, viaAssistant: false}, {kind: "author", id: args.profileId, ...(content.name === profile.name ? {happened: "edited"} : {happened: "renamed", detail: profile.name})});
   return {...content, revision};
 }
 

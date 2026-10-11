@@ -2,6 +2,7 @@ import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 /// <reference types="vite/client" />
+import { register as registerPresence } from "@convex-dev/presence/test";
 import { convexTest } from "convex-test";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
@@ -30,6 +31,38 @@ async function setup() {
 }
 
 describe("author profiles", () => {
+  it("keep their Activity for the workspace that owns them, where its members see who has one open", async () => {
+    const t = convexTest(schema, modules);
+    registerPresence(t);
+    const lab = await t.run(async ctx => {
+      const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
+      for (const clerkId of ["maker", "member", "outsider"]) await ctx.db.insert("users", {...fields, clerkId, firstName: clerkId, email: `${clerkId}@example.org`});
+      const organizationId = await seedOrganizationFeatures(ctx, ["maker", "member"], { evidenceLibraries: true });
+      return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
+    });
+    const as = (subject: string) => t.withIdentity({subject});
+    const profileId = await as("maker").mutation(api.authors.profiles.create, {workspaceId: lab, name: "Lab author"});
+    const saved = await as("maker").mutation(internal.authors.profiles.saveWithPhoto, {profileId, expectedRevision: 1, content: {...content, name: "Lab author"}});
+    await as("maker").mutation(internal.authors.profiles.saveWithPhoto, {profileId, expectedRevision: saved.revision, content});
+    await as("maker").mutation(internal.authors.invitations.prepare, {profileId, email: "outsider@example.org"});
+    // Sending the invitation again is no new change.
+    await as("maker").mutation(internal.authors.invitations.prepare, {profileId, email: "outsider@example.org"});
+    const item = {workspaceId: lab, kind: "author" as const, id: profileId};
+    const page = {paginationOpts: {cursor: null, numItems: 10}};
+    expect((await as("member").query(api.activity.queries.list, {...item, ...page})).page.map(({by, happened, detail}) => ({by: by.name, happened, detail}))).toEqual([
+      {by: "maker", happened: "shared", detail: "outsider@example.org"},
+      {by: "maker", happened: "renamed", detail: "Lab author"},
+      {by: "maker", happened: "edited", detail: undefined},
+      {by: "maker", happened: "created", detail: "Lab author"},
+    ]);
+    // The profile's read says who is of the workspace that owns it: they are shown its Activity.
+    expect(await Promise.all(["maker", "member", "outsider"].map(async subject => (await as(subject).query(api.authors.profiles.get, {profileId}))?.member))).toEqual([true, true, false]);
+    // A member with it open is named to the others, and nobody outside the lab joins its room.
+    await as("member").mutation(api.presence.heartbeat, {...item, sessionId: "member-tab"});
+    expect((await as("maker").query(api.presence.here, {...item, ...page})).page.map(person => person.name)).toEqual(["member"]);
+    await expect(as("outsider").mutation(api.presence.heartbeat, {...item, sessionId: "outsider-tab"})).rejects.toThrow();
+  });
+
   it("are owned by the workspace they were made in: by their maker and its admins, and edited by others only when invited", async () => {
     const t = convexTest(schema, modules);
     const lab = await t.run(async ctx => {

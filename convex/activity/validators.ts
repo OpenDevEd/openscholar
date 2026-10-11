@@ -3,7 +3,7 @@
 import { v, type Infer } from "convex/values";
 
 /** The kinds of item that keep activity. */
-export const itemKinds = ["collection", "search", "screening", "extraction"] as const;
+export const itemKinds = ["collection", "search", "screening", "extraction", "author"] as const;
 export const itemKindValidator = v.union(...itemKinds.map((kind) => v.literal(kind)));
 export type ItemKind = Infer<typeof itemKindValidator>;
 

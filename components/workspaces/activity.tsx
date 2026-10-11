@@ -22,7 +22,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
-export type ItemKind = "collection" | "search" | "screening" | "extraction";
+export type ItemKind = "collection" | "search" | "screening" | "extraction" | "author";
 type Row = FunctionReturnType<typeof api.activity.queries.list>["page"][number];
 type Happened = Row["happened"];
 

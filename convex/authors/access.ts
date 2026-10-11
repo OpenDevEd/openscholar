@@ -5,10 +5,11 @@ import { createError } from "../lib/errors";
 import { MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
 import { actorIn } from "../workspaces/actor";
 
-export async function profileRole(ctx: QueryCtx | MutationCtx, profile: Doc<"authorProfiles">) {
+/** What the person reading a profile is to it: their role, and whether they act in the workspace that owns it, whose members see its Activity and who has it open (#656, #657). */
+export async function profileViewer(ctx: QueryCtx | MutationCtx, profile: Doc<"authorProfiles">) {
   const user = await getCurrentUser(ctx);
-  if (!user) return null;
-  return profileRoleForUser(ctx, profile, user._id);
+  if (!user) return {role: null, member: false};
+  return {role: await profileRoleForUser(ctx, profile, user._id), member: Boolean(profile.workspaceId && (await actorIn(ctx, user, profile.workspaceId)))};
 }
 
 /**
