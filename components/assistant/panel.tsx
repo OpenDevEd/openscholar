@@ -890,7 +890,7 @@ function Thread({
       }}
     >
       <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: EDGE_FADE + 8 }}>
-        {fresh ? <Empty /> : null}
+        {fresh ? <Empty arrives={threadId !== null} /> : null}
         {typeof older === "function" || loading ? (
           <button
             type="button"
@@ -1169,10 +1169,11 @@ function Thinking({ wordless }: { wordless: boolean }) {
   );
 }
 
-function Empty() {
+/** The intro of a chat with nothing said in it. One found empty once its messages were read fades in. */
+function Empty({ arrives }: { arrives: boolean }) {
   const t = useTranslations("assistant");
   return (
-    <div className="space-y-1 pt-2">
+    <div className={cn("space-y-1 pt-2", arrives && "fade-enter")}>
       <p className="text-base font-semibold">{t("emptyTitle")}</p>
       <p className="text-sm leading-relaxed text-muted-foreground">{t("emptyBody")}</p>
     </div>

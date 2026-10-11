@@ -172,8 +172,10 @@ export function WorkspaceMenu({ shown, all, shared, onDone, onSwitch, onCreate }
                   {workspace.kind === "personal" && shared ? (
                     <TooltipHint label={t("sharedWithYou", { count: shared })}>
                       <span className="fade-enter flex shrink-0 items-center gap-1 pr-1 text-[11px] tabular-nums text-muted-foreground">
-                        <Share2 className="size-3" />
-                        {shared}
+                        <Share2 aria-hidden className="size-3" />
+                        <span aria-hidden>{shared}</span>
+                        {/* The row is one button: its name says the count, which the tooltip only shows on hover. */}
+                        <span className="sr-only">{t("sharedWithYou", { count: shared })}</span>
                       </span>
                     </TooltipHint>
                   ) : null}

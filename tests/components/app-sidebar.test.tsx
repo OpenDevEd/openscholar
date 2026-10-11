@@ -33,6 +33,7 @@ vi.mock("@/convex/_generated/api", () => ({
     extraction: { queries: { jobs: { runningJob: "extraction:runningJob" } } },
     organizations: { queries: { workspaces: "organizations:workspaces", myInvitations: "organizations:myInvitations" }, manage: { create: "create", invite: "invite", declineInvitation: "decline", confirmJoin: "confirmJoin" } },
     workspaces: { queries: { personal: "workspaces:personal", bySlug: "workspaces:bySlug" } },
+    sharing: { shared: { counts: "sharing:counts" } },
   },
 }));
 vi.mock("@/lib/auth/use-auth-query", () => ({
