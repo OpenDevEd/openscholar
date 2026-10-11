@@ -596,7 +596,7 @@ function Workspace({
         <Button
           variant="outline"
           size="sm"
-          className="fixed bottom-6 right-6 z-20 shadow-lg"
+          className="fixed bottom-6 right-6 z-20 shadow-lg [body:has([data-assistant-launcher])_&]:right-24"
           onClick={() => jumpTo("identity")}
         >
           <ArrowUp />
