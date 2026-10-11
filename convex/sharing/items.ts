@@ -9,14 +9,14 @@ import { makeFunctionReference } from "convex/server";
 import type { DataModel, Doc, Id, TableNames } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import { MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
+import { MAX_ASSISTANT_THREAD_GRANTS, MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
 import type { Actor, InWorkspace } from "../workspaces/actor";
 import type { GuestRole, SharedKind } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
 
 /** An item as sharing sees it: where it is, what it's called, and how much it holds where that's kept (a collection's papers, a screening's). A search's Activity is kept under the ID its page shows in its workspace (`pageId`); its guests' rows name its document. */
-export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size?: number; pageId?: string; createdBy?: Id<"users"> };
+export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size?: number; pageId?: string; createdBy?: Id<"users">; lastMessageAt?: number };
 
 /**
  * Each kind's table, what its row is called, how much it holds, the word for one in a sentence,
@@ -27,7 +27,8 @@ export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces
  * goes by its query, and its editor changes its query, filters, questions and answers
  * (../research/records.ts `readableSearch`). An author profile is public, so it's shared to
  * edit only (../authors/access.ts); one whose owner's account was purged is in no workspace,
- * and isn't shared.
+ * and isn't shared. A chat's viewer reads it and its editor writes in it too
+ * (../assistant/access.ts); every member of its workspace has it, and its maker and admins share it.
  */
 const KINDS = {
   collection: { table: "collections", name: (row: Doc<"collections">) => row.name, size: (row: Doc<"collections">) => row.itemCount, word: "collection", roles: ["viewer", "editor"] },
@@ -35,6 +36,7 @@ const KINDS = {
   extraction: { table: "extractionJobs", name: (row: Doc<"extractionJobs">) => row.name, size: (row: Doc<"extractionJobs">) => row.totalPapers ?? 0, word: "extraction", roles: ["viewer"] },
   search: { table: "searches", name: (row: Doc<"searches">) => row.data.query || "Search", size: (row: Doc<"searches">) => row.data.count ?? 0, word: "search", roles: ["viewer", "editor"] },
   author: { table: "authorProfiles", name: (row: Doc<"authorProfiles">) => row.name, word: "author profile", roles: ["editor"], ownersShare: true, ownersHold: true, most: MAX_PROFILE_MEMBERS },
+  chat: { table: "assistantThreads", name: (row: Doc<"assistantThreads">) => row.title, word: "chat", roles: ["viewer", "editor"], ownersShare: true, most: MAX_ASSISTANT_THREAD_GRANTS },
 } as const satisfies {
   [K in SharedKind]: {
     table: TableNames; name: (row: never) => string; size?: (row: never) => number; word: string; roles: readonly GuestRole[];
@@ -69,7 +71,7 @@ export async function findShared(ctx: Read, kind: SharedKind, id: string): Promi
   const rowId = ctx.db.normalizeId(table, id);
   const row = rowId ? await ctx.db.get(table, rowId) : null;
   // Whole characters: an emoji cut in two is no character at all.
-  return row?.workspaceId ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), ...(size ? { size: size(row) } : {}), ...("localId" in row ? { pageId: row.localId } : {}), ...(row.createdBy ? { createdBy: row.createdBy } : {}) } : null;
+  return row?.workspaceId ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), ...(size ? { size: size(row) } : {}), ...("localId" in row ? { pageId: row.localId } : {}), ...(row.createdBy ? { createdBy: row.createdBy } : {}), ...("lastMessageAt" in row ? { lastMessageAt: row.lastMessageAt } : {}) } : null;
 }
 
 /** The item, for someone who acts in its workspace: only they share it, and anyone else learns nothing of it. A kind its owners alone share (an author profile) refuses its workspace's other members. */

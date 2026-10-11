@@ -3290,18 +3290,6 @@
         "where": "Collections",
         "ask": "Supprimer une collection"
       },
-      "shareChat": {
-        "doing": "Partage d'une conversation",
-        "did": "Conversation partagée",
-        "where": "Conversations",
-        "ask": "Partager une conversation"
-      },
-      "unshareChat": {
-        "doing": "Arrêt du partage d'une conversation",
-        "did": "Partage arrêté",
-        "where": "Conversations",
-        "ask": "Arrêter le partage d'une conversation"
-      },
       "deleteChat": {
         "doing": "Suppression d'une conversation",
         "did": "Conversation supprimée",
@@ -4056,14 +4044,16 @@
         "screening": "Partager ce criblage",
         "extraction": "Partager cette extraction",
         "search": "Partager cette recherche",
-        "author": "Partager ce profil d'auteur"
+        "author": "Partager ce profil d'auteur",
+        "chat": "Partager cette discussion"
       },
       "title": {
         "collection": "Partager la collection",
         "screening": "Partager le criblage",
         "extraction": "Partager l'extraction",
         "search": "Partager la recherche",
-        "author": "Partager le profil d'auteur"
+        "author": "Partager le profil d'auteur",
+        "chat": "Partager la discussion"
       },
       "addPeople": "Ajouter des personnes par nom ou e-mail",
       "inviteEmail": "Inviter {email}",
@@ -4093,7 +4083,8 @@
         "screening": "{plan} permet {count, plural, one {# invité} other {# invités}} par criblage",
         "extraction": "{plan} permet {count, plural, one {# invité} other {# invités}} par extraction",
         "search": "{plan} permet {count, plural, one {# invité} other {# invités}} par recherche",
-        "author": "{plan} permet {count, plural, one {# invité} other {# invités}} par profil d'auteur"
+        "author": "{plan} permet {count, plural, one {# invité} other {# invités}} par profil d'auteur",
+        "chat": "{plan} permet {count, plural, one {# invité} other {# invités}} par discussion"
       },
       "failed": "Impossible de modifier le partage"
     },
@@ -4109,14 +4100,16 @@
         "screening": "Criblages",
         "extraction": "Extractions",
         "search": "Recherches",
-        "author": "Profils d'auteur"
+        "author": "Profils d'auteur",
+        "chat": "Discussions"
       },
       "size": {
         "collection": "{count, plural, one {# article} other {# articles}}",
         "screening": "{count, plural, one {# article} other {# articles}}",
         "extraction": "{count, plural, one {# article} other {# articles}}",
         "search": "{count, plural, one {# résultat} other {# résultats}}",
-        "author": "{count, plural, one {# publication} other {# publications}}"
+        "author": "{count, plural, one {# publication} other {# publications}}",
+        "chat": "{count, plural, one {# message} other {# messages}}"
       },
       "runUses": "Tout ce que vous lancez dessus utilise",
       "yourCredits": "vos crédits",
@@ -4132,7 +4125,8 @@
         "screening": "{name} a partagé un criblage",
         "extraction": "{name} a partagé une extraction",
         "search": "{name} a partagé une recherche",
-        "author": "{name} a partagé un profil d'auteur"
+        "author": "{name} a partagé un profil d'auteur",
+        "chat": "{name} a partagé une discussion"
       },
       "pointOwn": "Elle se trouve dans votre propre espace de travail",
       "pointCredits": "Ce que vous lancez dessus utilise vos crédits",

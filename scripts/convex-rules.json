@@ -41,7 +41,7 @@
       "MAX_ZOTERO_GROUPS_PER_LIBRARY": "convex/zotero/libraryGroups.ts",
       "MAX_EVIDENCE_LIBRARY_DOMAINS": "convex/evidenceLibraries/domains.ts",
       "MAX_CATALOG_MODELS": "convex/models/mutations.ts",
-      "MAX_ASSISTANT_THREAD_GRANTS": "convex/assistant/sharing.ts",
+      "MAX_ASSISTANT_THREAD_GRANTS": "convex/sharing/items.ts",
       "MAX_CREDENTIALS_PER_LIBRARY": "convex/evidenceLibraries/credentials.ts",
       "MAX_QUESTIONS_PER_JOB": "convex/extraction/mutations/jobs.ts",
       "MAX_AUTHORS_PER_PUBLICATION": "convex/authors/publications.ts",

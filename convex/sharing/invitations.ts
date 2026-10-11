@@ -16,7 +16,7 @@ import { MAX_ACCOUNTS_PER_EMAIL, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "
 import { rateLimit } from "../lib/rateLimit";
 import { actingAs, assistantAction, assistantQuery, defineChangingAction, defineUserQuery, userAction, userQuery } from "../lib/userActions";
 import { workspaceFrom, workspaceName } from "../workspaces/personal";
-import { holds, invitationTo, noteShared, requireRoom } from "./access";
+import { holds, invitationTo, listedBy, noteShared, requireRoom } from "./access";
 import { findShared, grantOf, kindWord, open, requireRole, sharedIn } from "./items";
 import { guestRoleValidator, sharedFromValidator, sharedKindValidator, type SharedKind } from "./validators";
 
@@ -122,7 +122,7 @@ export const respondVerified = internalMutation({
     if (!shared) throw createError("NOT_FOUND", "What you were invited to is no longer there.");
     // Its place becomes theirs. Someone who joined its workspace since has it without one.
     if (accept && !(await holds(ctx, shared, person)) && !(await grantOf(ctx, shared.id, userId))) {
-      await ctx.db.insert("itemAccess", { kind: shared.kind, item: shared.id, name: shared.name, userId, role: invitation.role, grantedBy: invitation.invitedBy, grantedAt: Date.now() });
+      await ctx.db.insert("itemAccess", { kind: shared.kind, item: shared.id, name: shared.name, userId, role: invitation.role, grantedBy: invitation.invitedBy, grantedAt: Date.now(), ...listedBy(shared) });
     }
     await ctx.db.patch("itemInvitations", invitationId, { state: accept ? "accepted" : "declined" });
     return accept ? { kind: shared.kind, id: shared.id } : null;

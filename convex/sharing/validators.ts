@@ -3,7 +3,7 @@
 import { v, type Infer } from "convex/values";
 
 /** The kinds of item a guest can be given; each has an entry in ./items.ts. */
-export const sharedKinds = ["collection", "screening", "extraction", "search", "author"] as const;
+export const sharedKinds = ["collection", "screening", "extraction", "search", "author", "chat"] as const;
 export const sharedKindValidator = v.union(...sharedKinds.map((kind) => v.literal(kind)));
 export type SharedKind = Infer<typeof sharedKindValidator>;
 
@@ -25,6 +25,8 @@ export const itemAccessFields = {
   role: guestRoleValidator,
   grantedBy: v.id("users"),
   grantedAt: v.number(),
+  /** On a chat: when its newest message was sent, kept as it changes, which the person's list of chats orders by. */
+  lastMessageAt: v.optional(v.number()),
 };
 
 /** An invitation to an item, sent to an address that may have no account yet. */

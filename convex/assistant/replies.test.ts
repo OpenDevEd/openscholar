@@ -81,7 +81,7 @@ async function sharedChat(t: Test) {
     for (const userId of [who.ada, who.ben]) await seedCreditsForTest(ctx, { userId, free: 100_000 });
   });
   const threadId = await who.asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
-  await who.asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: who.ben }, role: "write" });
+  await who.asAda.mutation(api.sharing.guests.add, { kind: "chat", id: threadId, userId: who.ben, role: "editor" });
   return { ...who, threadId };
 }
 
@@ -194,7 +194,7 @@ describe("assistant replies", () => {
   it("can't be asked for by someone who only reads the chat", async () => {
     const t = convexTest(schema);
     const { asAda, asBen, ben, threadId } = await sharedChat(t);
-    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "read" });
+    await asAda.mutation(api.sharing.guests.add, { kind: "chat", id: threadId, userId: ben, role: "viewer" });
 
     await expect(asBen.mutation(api.assistant.replies.send, { threadId, text: "Hi" })).rejects.toThrow(/not write/);
     await expect(asBen.mutation(api.assistant.threads.setModel, { threadId, modelId: await mockModel(t) })).rejects.toThrow(/not write/);

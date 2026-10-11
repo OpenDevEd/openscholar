@@ -3290,18 +3290,6 @@
         "where": "संग्रह",
         "ask": "एक संग्रह हटाएँ"
       },
-      "shareChat": {
-        "doing": "एक चैट साझा कर रहा है",
-        "did": "एक चैट साझा की",
-        "where": "चैट",
-        "ask": "एक चैट साझा करें"
-      },
-      "unshareChat": {
-        "doing": "एक चैट का साझाकरण बंद कर रहा है",
-        "did": "एक चैट का साझाकरण बंद किया",
-        "where": "चैट",
-        "ask": "एक चैट का साझाकरण बंद करें"
-      },
       "deleteChat": {
         "doing": "एक चैट हटा रहा है",
         "did": "एक चैट हटाई",
@@ -4056,14 +4044,16 @@
         "screening": "यह स्क्रीनिंग साझा करें",
         "extraction": "यह एक्सट्रैक्शन साझा करें",
         "search": "यह खोज साझा करें",
-        "author": "यह लेखक प्रोफ़ाइल साझा करें"
+        "author": "यह लेखक प्रोफ़ाइल साझा करें",
+        "chat": "यह चैट साझा करें"
       },
       "title": {
         "collection": "संग्रह साझा करें",
         "screening": "स्क्रीनिंग साझा करें",
         "extraction": "एक्सट्रैक्शन साझा करें",
         "search": "खोज साझा करें",
-        "author": "लेखक प्रोफ़ाइल साझा करें"
+        "author": "लेखक प्रोफ़ाइल साझा करें",
+        "chat": "चैट साझा करें"
       },
       "addPeople": "नाम या ईमेल से लोग जोड़ें",
       "inviteEmail": "{email} को आमंत्रित करें",
@@ -4093,7 +4083,8 @@
         "screening": "{plan} हर स्क्रीनिंग पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है",
         "extraction": "{plan} हर एक्सट्रैक्शन पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है",
         "search": "{plan} हर खोज पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है",
-        "author": "{plan} हर लेखक प्रोफ़ाइल पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है"
+        "author": "{plan} हर लेखक प्रोफ़ाइल पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है",
+        "chat": "{plan} हर चैट पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है"
       },
       "failed": "साझाकरण नहीं बदल सका"
     },
@@ -4109,14 +4100,16 @@
         "screening": "स्क्रीनिंग",
         "extraction": "एक्सट्रैक्शन",
         "search": "खोजें",
-        "author": "लेखक प्रोफ़ाइल"
+        "author": "लेखक प्रोफ़ाइल",
+        "chat": "चैट"
       },
       "size": {
         "collection": "{count, plural, one {# पेपर} other {# पेपर}}",
         "screening": "{count, plural, one {# पेपर} other {# पेपर}}",
         "extraction": "{count, plural, one {# पेपर} other {# पेपर}}",
         "search": "{count, plural, one {# परिणाम} other {# परिणाम}}",
-        "author": "{count, plural, one {# प्रकाशन} other {# प्रकाशन}}"
+        "author": "{count, plural, one {# प्रकाशन} other {# प्रकाशन}}",
+        "chat": "{count, plural, one {# संदेश} other {# संदेश}}"
       },
       "runUses": "इन पर आप जो भी चलाते हैं, वह खर्च करता है",
       "yourCredits": "आपके क्रेडिट",
@@ -4132,7 +4125,8 @@
         "screening": "{name} ने एक स्क्रीनिंग साझा की",
         "extraction": "{name} ने एक एक्सट्रैक्शन साझा किया",
         "search": "{name} ने एक खोज साझा की",
-        "author": "{name} ने एक लेखक प्रोफ़ाइल साझा की"
+        "author": "{name} ने एक लेखक प्रोफ़ाइल साझा की",
+        "chat": "{name} ने एक चैट साझा की"
       },
       "pointOwn": "यह आपके अपने वर्कस्पेस में रहता है",
       "pointCredits": "इस पर आप जो चलाते हैं, वह आपके क्रेडिट खर्च करता है",
