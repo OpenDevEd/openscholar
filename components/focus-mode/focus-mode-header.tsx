@@ -65,6 +65,7 @@ export function FocusModeHeader({
   const effectiveRating = useEffectiveRating(currentPaper.id);
   // A paper with no OpenAlex record, such as one an extraction read from Zotero, has nothing to rate, save or open there.
   const onOpenAlex = workUrl(currentPaper.id) !== null;
+  const hasTranslation = !!translatedContent && !translatedContent.noTranslationNeeded;
   const previous = (
     <Button variant="outline" size="icon-sm" onClick={onGoToPrevious} disabled={currentIndex === 0}>
       <ChevronLeft className="h-3 w-3" />
@@ -200,30 +201,32 @@ export function FocusModeHeader({
           {/* The tools stay together, so a row too narrow for them moves them to a line of their own. */}
           <div className="ml-auto flex items-center gap-1 md:ml-0">
             <div className="flex items-center gap-1">
-              <Button
-                variant={showTranslated ? "outline-primary" : "outline"}
-                size="sm"
-                className="max-sm:w-8 max-sm:px-0"
-                onClick={onToggleTranslation}
-                aria-label={
-                  showTranslated
-                    ? tFocus("showOriginal")
-                    : tFocus("showTranslation")
-                }
-                disabled={
-                  !translatedContent ||
-                  translatedContent.noTranslationNeeded
-                }
-              >
-                <TranslateIcon working={isTranslating} size={12} className="h-3 w-3 md:mr-1" />
-                <span className="hidden sm:inline">
-                  {showTranslated ? tFocus("original") : tFocus("translation")}
-                </span>
-              </Button>
-              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                T
-              </span>
-              <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+              {/* Shown while the paper is translating or once it has a translation; a paper already in the reader's language has nothing to switch. */}
+              {hasTranslation || isTranslating ? (
+                <>
+                  <Button
+                    variant={showTranslated ? "outline-primary" : "outline"}
+                    size="sm"
+                    className="max-sm:w-8 max-sm:px-0"
+                    onClick={onToggleTranslation}
+                    aria-label={
+                      showTranslated
+                        ? tFocus("showOriginal")
+                        : tFocus("showTranslation")
+                    }
+                    disabled={!hasTranslation}
+                  >
+                    <TranslateIcon working={isTranslating} size={12} className="h-3 w-3 md:mr-1" />
+                    <span className="hidden sm:inline">
+                      {showTranslated ? tFocus("original") : tFocus("translation")}
+                    </span>
+                  </Button>
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    T
+                  </span>
+                  <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+                </>
+              ) : null}
               <Button
                 variant={showSettings ? "outline-primary" : "outline"}
                 size="icon-sm"
