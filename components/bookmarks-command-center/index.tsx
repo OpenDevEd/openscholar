@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
@@ -208,7 +209,8 @@ export function BookmarksCommandCenter() {
       </>}
     >
 
-      <div>
+      {/* A page kept from before the filter, sort or search changed is dimmed and takes no clicks until its own arrives. */}
+      <div className={cn(bookmarks.isStale && "opacity-60")} inert={bookmarks.isStale || undefined}>
         {!ready ? error ? <AuthStatePanel variant="sync_error_retry" onRetry={retry} /> : <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={bookmarks.items}
           viewMode={bookmarkViewMode}
