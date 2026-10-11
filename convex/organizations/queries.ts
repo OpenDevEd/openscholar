@@ -7,7 +7,9 @@ import type { QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
 import { hasPlanFeature, readAccount } from "../billing/accounts";
 import { readEvidenceLibraryAccess } from "../evidenceLibraries/access";
-import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
+import { EVIDENCE_LIBRARIES_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
+import { spentThisPeriod } from "../billing/memberCaps";
+import { seatSyncRow } from "../billing/seatSyncs";
 import { collectionCountRow } from "../library/counter";
 import { countRow } from "../research/recordCounts";
 import { query } from "../lib/functions";
@@ -38,6 +40,8 @@ const workspaceValidator = v.object({
   role: ROLE,
   /** An organization's active members, up to one past MEMBERS_COUNTED. */
   members: v.optional(v.number()),
+  /** On Team, the seats it bought (#862), so a page has the count from its first frame. */
+  seats: v.optional(v.number()),
   /** Its plan's ID in Autumn, which the catalog names; absent until its account is read. */
   plan: v.optional(v.string()),
   /** The colour an organization's admins picked. */
@@ -53,7 +57,8 @@ async function organizationRow(ctx: QueryCtx, organization: Doc<"organizations">
   const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MEMBERS_COUNTED + 1);
   const account = await readAccount(ctx, workspaceId);
   const plan = account?.plan;
-  return { ...(account ? { credits: account.balance } : {}), workspaceId, kind: "organization" as const, name: organization.name, slug: organization.slug, organizationId: organization._id, aiPreset: organization.aiPreset ?? DEFAULT_PRESET, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role, members: members.length, ...(plan ? { plan } : {}), ...(organization.colour ? { colour: organization.colour } : {}) };
+  const seats = plan === TEAM_PLAN ? (await seatSyncRow(ctx, workspaceId))?.seats : undefined;
+  return { ...(account ? { credits: account.balance } : {}), ...(seats === undefined ? {} : { seats }), workspaceId, kind: "organization" as const, name: organization.name, slug: organization.slug, organizationId: organization._id, aiPreset: organization.aiPreset ?? DEFAULT_PRESET, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role, members: members.length, ...(plan ? { plan } : {}), ...(organization.colour ? { colour: organization.colour } : {}) };
 }
 
 /** The person's own workspace as the switcher lists it: named for them, with their photo. */
@@ -114,24 +119,31 @@ const memberValidator = v.object({
   role: ROLE,
   you: v.boolean(),
   joinedAt: v.number(),
+  /** On Team, set when they spent its credits this billing period: their seat stays taken to the renewal if they leave (#863). */
+  keepsSeat: v.optional(v.literal(true)),
 });
 
-/** A member as the list shows them; one whose account isn't projected yet is left out until it is. */
-async function memberRow(ctx: QueryCtx, membership: Doc<"organizationMemberships">, you: Id<"users">) {
+/** A member as the list shows them; one whose account isn't projected yet is left out until it is. `since` is the start of Team's billing period. */
+async function memberRow(ctx: QueryCtx, membership: Doc<"organizationMemberships">, you: Id<"users">, workspaceId: Id<"workspaces">, since: number | undefined) {
   const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
   if (!user || user.state !== "active") return null;
-  return { userId: user._id, name: personName(user) || user.email, email: user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), role: roleOf(membership.role), you: user._id === you, joinedAt: membership.clerkCreatedAt };
+  const keepsSeat = since !== undefined && (await spentThisPeriod(ctx, workspaceId, user._id, since));
+  return { userId: user._id, name: personName(user) || user.email, email: user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), role: roleOf(membership.role), you: user._id === you, joinedAt: membership.clerkCreatedAt, ...(keepsSeat ? { keepsSeat: true as const } : {}) };
 }
 
 export const membersAction = defineUserQuery({
   path: "organizations/queries:members",
-  description: "Lists the members of the organization the person is in, a page at a time, each with their name, email and role (admin or member), and which is the person. `cursor` is `continueCursor` from the page before.",
+  description:
+    "Lists the members of the organization the person is in, a page at a time, each with their name, email and role (admin or member), and which is the person. " +
+    "On Team, `keepsSeat` marks someone who spent its credits this billing period: removed, their seat stays taken until the renewal. `cursor` is `continueCursor` from the page before.",
   args: { paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(memberValidator),
   run: async (ctx, { userId, workspaceId }, { paginationOpts }) => {
     const organization = await organizationOf(ctx, workspaceId);
     const page = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).paginate(paginationOpts);
-    const rows = await Promise.all(page.page.map((membership) => memberRow(ctx, membership, userId)));
+    const account = await readAccount(ctx, workspaceId);
+    const since = account?.plan === TEAM_PLAN ? account.periodStart : undefined;
+    const rows = await Promise.all(page.page.map((membership) => memberRow(ctx, membership, userId, workspaceId, since)));
     return { ...page, page: rows.flatMap((row) => (row ? [row] : [])) };
   },
 });

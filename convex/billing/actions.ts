@@ -1,15 +1,17 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { action, type ActionCtx } from "../_generated/server";
 import { api, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
 import type { Actor } from "../workspaces/actor";
-import { autumn, type AutumnCustomer } from "./autumn";
+import { autumn, type AutumnCustomer, type AutumnPreview } from "./autumn";
 import { refreshAccount } from "./accounts";
 import { previewLineItemsValidator, type BillingCatalog } from "./validators";
 import { MAX_PLAN_DETAILS } from "../lib/listCaps";
-import { FREE_MEMBERS, ORGANIZATION_PLANS, TEAM_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
+import { FREE_MEMBERS, ORGANIZATION_PLAN, ORGANIZATION_PLANS, SEAT_PLAN, TEAM_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
+import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
+import { setSeats, teamSeats, unlessDeclined } from "./seats";
 import { costsMore, findPlan, topUpBundles } from "../../lib/billing/catalog";
 
 async function requireUser(ctx: ActionCtx): Promise<Doc<"users">> {
@@ -102,61 +104,62 @@ export const choosePlan = action({
   },
 });
 
-/** Undoes a scheduled cancellation or downgrade. */
+/** Undoes a scheduled cancellation or downgrade: the person's own, or in `workspaceId` its organization's, which its admins keep (#862). */
 export const keepPlan = action({
-  args: {},
+  args: { workspaceId: v.optional(v.id("workspaces")) },
   returns: v.null(),
-  handler: async (ctx): Promise<null> => {
+  handler: async (ctx, { workspaceId }): Promise<null> => {
     const user = await requireUser(ctx);
-    const account = await refreshAccount(ctx, await ownWorkspace(ctx, user), { card: true });
+    if (workspaceId) await organizationAdminOf(ctx, workspaceId);
+    const workspace = workspaceId ?? (await ownWorkspace(ctx, user));
+    const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId: workspace });
+    const account = await refreshAccount(ctx, workspace, { card: true });
     if (account.plan && account.changesAt) {
-      await autumn.update({ customerId: user._id, planId: account.plan, cancelAction: "uncancel" });
-      await refreshAccount(ctx, await ownWorkspace(ctx, user), { card: true });
+      await autumn.update({ customerId, planId: account.plan, cancelAction: "uncancel" });
+      await refreshAccount(ctx, workspace, { card: true });
+      // An organization kept on Team takes members up to its seats again.
+      if (workspaceId) await ctx.runAction(internal.billing.seats.sync, { workspaceId });
     }
     return null;
   },
 });
 
+const previewResult = v.object({
+  dueNow: v.number(),
+  currency: v.string(),
+  lineItems: previewLineItemsValidator,
+  renewsAt: v.optional(v.number()),
+  card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
+});
+type PreviewResult = Infer<typeof previewResult>;
+
 /**
- * What changing to `plan` charges now, in the currency's main unit, when it
- * then renews, and the saved card Autumn would charge. No card means the
- * change goes to Checkout. The card is read live, since the cached snapshot
- * can lag the Stripe portal.
+ * What a change charges now in the currency's main unit (negative: a credit on the next bill), its
+ * lines, when `planId` then renews, from its line (a change scheduled for the renewal has none), and
+ * the saved card Autumn would charge. No card means the change goes to Checkout.
  */
+function previewOf(preview: AutumnPreview, planId: string, customer: AutumnCustomer): PreviewResult {
+  const card = customer.payment_method?.card;
+  const renewsAt = preview.line_items.find((item) => item.plan_id === planId)?.period?.end;
+  return {
+    dueNow: preview.total,
+    currency: preview.currency,
+    // Autumn sends a line per charge and credit of the change, a handful; the cap is what the dialog lists.
+    lineItems: preview.line_items.slice(0, MAX_PLAN_DETAILS).map((item) => ({ description: item.description, amount: item.total })),
+    ...(renewsAt ? { renewsAt } : {}),
+    ...(card ? { card: { brand: card.brand, last4: card.last4 } } : {}),
+  };
+}
+
+/** What changing to `plan` charges now. The card is read live, since the cached snapshot can lag the Stripe portal. */
 export const previewPlan = action({
   args: { plan: v.string() },
-  returns: v.object({
-    dueNow: v.number(),
-    currency: v.string(),
-    lineItems: previewLineItemsValidator,
-    renewsAt: v.optional(v.number()),
-    card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
-  }),
-  handler: async (ctx, { plan }): Promise<{
-    dueNow: number;
-    currency: string;
-    lineItems: Array<{ description: string; amount: number }>;
-    renewsAt?: number;
-    card?: { brand: string; last4: string };
-  }> => {
+  returns: previewResult,
+  handler: async (ctx, { plan }): Promise<PreviewResult> => {
     const user = await requireUser(ctx);
     const catalog = await requireChoosablePlan(ctx, plan);
     const customer = await autumn.customer(user._id, { card: true, plans: true });
-    const preview = await autumn.previewAttach(user._id, plan, startsNewMonth(catalog, customer, plan));
-    const card = customer.payment_method?.card;
-    // The new plan's line pays up to its renewal; a change scheduled for the renewal has none.
-    const renewsAt = preview.line_items.find((item) => item.plan_id === plan)?.period?.end;
-    return {
-      dueNow: preview.total,
-      currency: preview.currency,
-      // Autumn sends a line per charge and credit of the change, a handful; the cap is what the dialog lists.
-      lineItems: preview.line_items.slice(0, MAX_PLAN_DETAILS).map((item) => ({
-        description: item.description,
-        amount: item.total,
-      })),
-      ...(renewsAt ? { renewsAt } : {}),
-      ...(card ? { card: { brand: card.brand, last4: card.last4 } } : {}),
-    };
+    return previewOf(await autumn.previewAttach(user._id, plan, startsNewMonth(catalog, customer, plan)), plan, customer);
   },
 });
 
@@ -202,13 +205,24 @@ async function organizationAdminOf(ctx: ActionCtx, workspaceId: Id<"workspaces">
   return organization;
 }
 
+/** What moving an organization to Team with `seats` seats charges now (#862), as Autumn previews it: one charge for them all. */
+export const previewTeam = action({
+  args: { workspaceId: v.id("workspaces"), seats: v.number() },
+  returns: previewResult,
+  handler: async (ctx, { workspaceId, seats }): Promise<PreviewResult> => {
+    await requireUser(ctx);
+    await organizationAdminOf(ctx, workspaceId);
+    const customer = await autumn.customer(workspaceId, { card: true });
+    return previewOf(await autumn.previewAttach(workspaceId, TEAM_PLAN, false, teamSeats(seats)), SEAT_PLAN, customer);
+  },
+});
+
 /**
- * Moves an organization to Team (#652): its limits and features from the Team plan, and a seat
- * for each member, charged to its saved card now, each adding its credits to the pool. `seats` is
- * what the admin was shown and agreed to: a different count of members now is refused, to be
- * confirmed again. Without a saved card it returns a checkout that saves one, after which Autumn
- * moves it, and its webhook seats the members (autumnWebhook.ts). A card that asks to confirm a
- * seat's payment sends the admin to do that; the sync after it seats the rest.
+ * Moves an organization to Team with `seats` seats (#862), charged together to its saved card,
+ * each seat adding its credits to the pool; there must be one for each member and pending
+ * invitation. Without a saved card, or when the card asks to confirm the charge, it returns
+ * Stripe's page for that, after which Autumn moves it and its webhook gives the members their seats
+ * (autumnWebhook.ts). A declined card changes nothing.
  */
 export const moveToTeam = action({
   args: { workspaceId: v.id("workspaces"), seats: v.number() },
@@ -216,17 +230,47 @@ export const moveToTeam = action({
   handler: async (ctx, { workspaceId, seats }): Promise<{ url: string | null }> => {
     await requireUser(ctx);
     const organization = await organizationAdminOf(ctx, workspaceId);
-    const counted: { members: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
-    if (counted?.members !== seats) throw createError("CONFLICT", `${organization.name} has ${counted?.members ?? 0} members now, not ${seats}. Check the new total and confirm again.`);
-    const customer = await autumn.customer(workspaceId, { card: true });
-    if (!customer.payment_method?.card) return { url: (await autumn.setupPayment(workspaceId, TEAM_PLAN, returnUrl("team", `/o/${organization.slug}/pricing`))).url };
-    const paymentUrl: string | null = await ctx.runAction(internal.billing.seats.startTeam, { workspaceId });
+    const counted: { members: number; invitations: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
+    const inUse = (counted?.members ?? 0) + (counted?.invitations ?? 0);
+    if (!Number.isInteger(seats) || seats < inUse || seats > MAX_ORGANIZATION_MEMBERS)
+      throw createError("CONFLICT", `${organization.name} has ${inUse} members and invitations now, each taking a seat. Choose ${inUse} to ${MAX_ORGANIZATION_MEMBERS.toLocaleString("en")} seats and confirm again.`);
+    const moved = unlessDeclined(await autumn.attach({ customerId: workspaceId, planId: TEAM_PLAN, seats: teamSeats(seats), successUrl: returnUrl("team", `/o/${organization.slug}/pricing`) }));
+    if (!moved.payment_url) await ctx.runAction(internal.billing.seats.sync, { workspaceId });
     await refreshAccount(ctx, workspaceId, { card: true });
-    return { url: paymentUrl };
+    return { url: moved.payment_url };
   },
 });
 
-/** Moves an organization back to the free plan (#652), which has up to FREE_MEMBERS members: its seats end at once. */
+/** What changing an organization's Team to `seats` seats charges now (#862): an added seat its days left to the renewal, a removed one a credit on the next bill. */
+export const previewSeats = action({
+  args: { workspaceId: v.id("workspaces"), seats: v.number() },
+  returns: previewResult,
+  handler: async (ctx, { workspaceId, seats }): Promise<PreviewResult> => {
+    await requireUser(ctx);
+    await organizationAdminOf(ctx, workspaceId);
+    const customer = await autumn.customer(workspaceId, { card: true });
+    return previewOf(await autumn.previewUpdate(workspaceId, TEAM_PLAN, teamSeats(seats)), SEAT_PLAN, customer);
+  },
+});
+
+/** Sets how many seats an organization on Team holds (#862), down to those in use; see `setSeats`. */
+export const changeSeats = action({
+  args: { workspaceId: v.id("workspaces"), seats: v.number() },
+  returns: checkoutResult,
+  handler: async (ctx, { workspaceId, seats }): Promise<{ url: string | null }> => {
+    await requireUser(ctx);
+    await organizationAdminOf(ctx, workspaceId);
+    const url = await setSeats(ctx, workspaceId, seats);
+    await refreshAccount(ctx, workspaceId, { card: true });
+    return { url };
+  },
+});
+
+/**
+ * Moves an organization back to the free plan (#652) at its Team's renewal, as a person's plan moves
+ * down; until then it keeps Team and its seats, and `keepPlan` takes the move back. Free has up to
+ * FREE_MEMBERS members, invitations included: Clerk holds it there from now.
+ */
 export const moveToFree = action({
   args: { workspaceId: v.id("workspaces") },
   returns: v.null(),
@@ -240,21 +284,21 @@ export const moveToFree = action({
     };
     await refuseWithLibrary();
     // Clerk holds it to Free's members before they're counted, so nobody joins past them while it moves.
-    await ctx.runAction(internal.billing.seats.limitMembers, { workspaceId, team: false });
+    await ctx.runAction(internal.billing.seats.limitToFree, { workspaceId });
     try {
       const counted: { members: number; invitations: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
       if (!counted || counted.members + counted.invitations > FREE_MEMBERS) throw createError("VALIDATION_ERROR", `Free has up to ${FREE_MEMBERS} members, invitations included: remove members or cancel invitations down to ${FREE_MEMBERS} first.`);
       // Again, now that Clerk has answered: another admin may have made a library meanwhile.
       // ponytail: one made while Autumn ends the plan still lands on Free; its owners delete it from the organization's settings. Hold new libraries during a move if that ever matters.
       await refuseWithLibrary();
-      await ctx.runAction(internal.billing.seats.endTeam, { workspaceId });
+      await autumn.attach({ customerId: await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId }), planId: ORGANIZATION_PLAN });
     } catch (error) {
       // It may still be on Team: a sync gives its members the limit of the plan it's on.
       await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId });
       throw error;
     }
     await refreshAccount(ctx, workspaceId, { card: true });
-    // An invitation sent while it moved passed Team's limit: on Free now, it's taken back.
+    // An invitation sent while it moved passed Free's limit: it's taken back.
     await ctx.runAction(internal.organizations.manage.trimInvitations, { workspaceId, userId: user._id });
     return null;
   },

@@ -12,6 +12,7 @@ import { ClerkApiError, clerkRequest, clerkSecretKey, isRecord } from "../lib/cl
 import { requireAppUrl } from "../lib/env";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
 import { FREE_MEMBERS } from "../../lib/billing/plans";
+import { setSeats } from "../billing/seats";
 import { createError } from "../lib/errors";
 import { assistantAction, assistantMutation, defineChangingAction, defineUserMutation, reversedBy, userAction, userMutation, type Acting } from "../lib/userActions";
 import { processClerkWebhookEvent } from "../webhooks/clerk";
@@ -156,13 +157,14 @@ export const inviteAction = defineChangingAction({
   path: "organizations/manage:invite",
   description:
     `Invites people to the organization the person is in, by email, as admins or members; an admin of it does this. Clerk emails each a link to join. At most ${INVITES_AT_ONCE} at once. ` +
-    `A free organization has up to ${FREE_MEMBERS} members, invitations included; one on Team up to ${MAX_ORGANIZATION_MEMBERS.toLocaleString("en")}. Returns how many were invited.`,
-  args: { emails: v.array(v.string()), role: ROLE },
+    `A free organization has up to ${FREE_MEMBERS} members, invitations included. On Team members, invitations and seats held to the renewal fill the seats bought (billing/seats:counts): ` +
+    "with too few free, `addSeat` buys the seats missing first, charged to the organization's card for the days left to the renewal, and nothing is sent if the card is declined. Returns how many were invited.",
+  args: { emails: v.array(v.string()), role: ROLE, addSeat: v.optional(v.boolean()) },
   returns: v.object({ invited: v.number() }),
   spendsCredits: false,
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, actor, { emails, role }) => {
+  run: async (ctx, actor, { emails, role, addSeat }) => {
     const wanted = [...new Set(emails.map((email) => email.trim().toLowerCase()).filter(Boolean))];
     if (wanted.length === 0 || wanted.length > INVITES_AT_ONCE) throw createError("VALIDATION_ERROR", `Invite 1 to ${INVITES_AT_ONCE} people at once.`);
     if (wanted.some((email) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw createError("VALIDATION_ERROR", "One of these isn't an email address.");
@@ -172,6 +174,13 @@ export const inviteAction = defineChangingAction({
     const known: string[] = await ctx.runQuery(internal.organizations.read.alreadyIn, { workspaceId: actor.workspaceId, emails: wanted });
     const fresh = wanted.filter((email) => !known.includes(email));
     if (fresh.length === 0) throw createError("CONFLICT", wanted.length === 1 ? "That person is already a member or invited." : "These people are already members or invited.");
+    // On Team, each invitation takes a seat (#863): the ones missing are bought first when asked for, and a declined card sends nothing.
+    const counted: { members: number; invitations: number; seats: number; held: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId: actor.workspaceId });
+    const short = counted && counted.seats > 0 ? counted.members + counted.invitations + counted.held + fresh.length - counted.seats : 0;
+    if (short > 0 && addSeat) {
+      const confirm = await setSeats(ctx, actor.workspaceId, counted!.seats + short);
+      if (confirm) throw createError("BILLING_PAYMENT_ACTION_REQUIRED", "The bank asks to confirm this charge. Confirm it, then send the invitation again.", { url: confirm });
+    }
     return { invited: await sendInvitations(ctx, key, actor.workspaceId, clerkUserId, organization, fresh, clerkRole(role)) };
   },
 });

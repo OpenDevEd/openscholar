@@ -201,7 +201,7 @@ One place owns each rule, and nothing else implements it again.
 | Every public function names its workspace and is checked | the wrappers, enforced by `npm run check:user-actions` |
 | Who may open an item, and with which role | `convex/sharing/access.ts` (`requireItem`), replacing the role reads in `convex/assistant/access.ts`, `convex/authors/access.ts` and `convex/evidenceLibraries/access.ts` |
 | Who pays | `convex/billing/charge.ts`. Reserve, settle and release take a payer: the workspace's Autumn customer and, in an organization, the member's entity |
-| Which members are billed as seats | `convex/billing/seats.ts`, from the Clerk webhook's memberships, with a daily reconcile |
+| Which members hold the seats bought | `convex/billing/seats.ts`, from the Clerk webhook's memberships, with a daily reconcile (seats bought since 2026-10-11, #862) |
 | What a plan allows | `planLimit` and `hasPlanFeature` in `convex/billing/accounts.ts`, keyed by workspace. `convex/organizationFeatures.ts` goes. 2026-10-10 (#652): its switch readers went; the module stays to read a person's organizations, where they may make a library, and what the workspace they act in opens (`get`) |
 | What changed on an item | the wrappers, which write activity from each entry's `activity` declaration (`convex/activity/`) |
 | Who has an item open | `convex/presence.ts`, rooms keyed by item, moved from `convex/assistant/presence.ts` |
@@ -467,6 +467,15 @@ extraction (OS-14).
      paid organization's active memberships with its Autumn entities and fixes
      any difference, and #652's migration makes entities for the memberships
      that came before it.
+   - Changed 2026-10-11 (#862, #863): seats are bought, not made by
+     membership. Team holds a count of seats on Autumn's Licenses, bought in
+     one charge; members, pending invitations and seats held to the renewal
+     fill it, and Clerk's member limit is the seats free of held ones. A
+     member who leaves after spending credits that billing period keeps their
+     seat to the renewal. Why: a seat per member charged the card each time
+     someone joined, with nobody confirming, one charge per member on the move
+     to Team, and the pricing card's seat count changed nothing. Proof: the
+     sandbox runs in `_scratch/autumn-coolify/billing-review-2026-10-11/`.
    - Deleting a paid organization cancels its Team plan in Autumn first, as a
      step of the deletion that is safe to repeat. The organization is deleted
      in Clerk only once Autumn shows no active plan, and the daily reconcile

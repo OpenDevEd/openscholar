@@ -31,6 +31,12 @@ export type UpgradePreview = {
 };
 
 type UpgradeConfirmationDialogProps = {
+  /** In place of the upgrade's title, line under it, confirm button, total's label and "Current plan" and "New plan": a change of seats (#862). */
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
+  totalLabel?: string;
+  labels?: { from: string; to: string };
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
@@ -41,6 +47,11 @@ type UpgradeConfirmationDialogProps = {
 };
 
 export function UpgradeConfirmationDialog({
+  title,
+  description,
+  confirmLabel,
+  totalLabel,
+  labels,
   open,
   onOpenChange,
   onConfirm,
@@ -63,7 +74,7 @@ export function UpgradeConfirmationDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-          {...(preview.renewsAt ? {} : { "aria-describedby": undefined })}
+          {...(preview.renewsAt || description ? {} : { "aria-describedby": undefined })}
           onEscapeKeyDown={(e) => {
             if (isConfirming) e.preventDefault();
           }}
@@ -77,9 +88,10 @@ export function UpgradeConfirmationDialog({
         >
         <DialogHeader>
           <DialogTitle>
-            {t("title", { plan: preview.targetPlan.charAt(0).toUpperCase() + preview.targetPlan.slice(1) })}
+            {title ?? t("title", { plan: preview.targetPlan.charAt(0).toUpperCase() + preview.targetPlan.slice(1) })}
           </DialogTitle>
-          {preview.renewsAt && (
+          {description ? <DialogDescription>{description}</DialogDescription> : null}
+          {!description && preview.renewsAt && (
             <DialogDescription>
               {t("startsToday", { plan: preview.targetPlan, date: format.dateTime(new Date(preview.renewsAt), { year: "numeric", month: "short", day: "numeric" }) })}
             </DialogDescription>
@@ -107,13 +119,13 @@ export function UpgradeConfirmationDialog({
           {/* Plan change */}
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div className="text-sm">
-              <span className="text-muted-foreground">{t("currentPlan")}: </span>
-              <span className="font-medium capitalize">{preview.currentPlan}</span>
+              <span className="text-muted-foreground">{labels?.from ?? t("currentPlan")}: </span>
+              <span className="font-medium">{preview.currentPlan}</span>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
             <div className="text-sm">
-              <span className="text-muted-foreground">{t("newPlan")}: </span>
-              <span className="font-semibold capitalize">{preview.targetPlan}</span>
+              <span className="text-muted-foreground">{labels?.to ?? t("newPlan")}: </span>
+              <span className="font-semibold">{preview.targetPlan}</span>
             </div>
           </div>
 
@@ -139,7 +151,7 @@ export function UpgradeConfirmationDialog({
             )}
             <div className={(preview.lineItems ?? []).length > 0 ? "border-t pt-2 flex items-center justify-between" : "flex items-center justify-between"}>
               <span className={(preview.lineItems ?? []).length > 0 ? "text-sm font-medium" : "text-sm text-muted-foreground"}>
-                {(preview.lineItems ?? []).length > 0 ? t("totalCharge") : t("prorationCharge")}
+                {totalLabel ?? ((preview.lineItems ?? []).length > 0 ? t("totalCharge") : t("prorationCharge"))}
               </span>
               <span data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</span>
             </div>
@@ -176,7 +188,7 @@ export function UpgradeConfirmationDialog({
                 {t("upgrading")}
               </>
             ) : (
-              t("confirmUpgrade")
+              confirmLabel ?? t("confirmUpgrade")
             )}
           </Button>
         </DialogFooter>

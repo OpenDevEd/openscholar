@@ -64,6 +64,7 @@
       "MAX_ORGANIZATION_MEMBERS": "reads one past it and leaves the organization's seats as they are, logging why: Clerk's webhooks write memberships, so no write here can"
     },
     "windows": {
+      "RECENT_CHARGES_READ": "a leaver's newest charges, read for one the ledger worker hasn't counted yet; it counts within seconds, so older ones are in the aggregate",
       "PREVIEW_READ": "the first ratings of a paper a collection preview reads for the few raters it names; the count and the full list come from elsewhere",
       "JOBS_DOCKED": "the few jobs a chat docks at once; older ones are on the jobs page",
       "STEPS_SHOWN": "the newest steps a reply shows; the rest are paged in the chat",

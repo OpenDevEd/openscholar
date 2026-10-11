@@ -570,8 +570,12 @@ export default defineSchema({
   // Each organization's seat syncs (#652): one at a time, and how many seats the last one left.
   seatSyncs: defineTable({
     workspaceId: v.id("workspaces"),
-    /** Seats Autumn held after the last sync that finished; the daily check syncs while any are left. */
+    /** Seats bought on Team after the last sync that finished (#862); the daily check syncs while any are left. */
     seats: v.number(),
+    /** Of them, the seats held to the renewal by members who left after spending credits (#863). */
+    held: v.optional(v.number()),
+    /** Set while a member waits for a seat, having joined past them in a race (#863): they spend nothing until they have one. */
+    overflow: v.optional(v.literal(true)),
     /** Set while a sync runs: when it started. */
     runningSince: v.optional(v.number()),
     /** A sync asked for while one ran, which runs once that one ends. */

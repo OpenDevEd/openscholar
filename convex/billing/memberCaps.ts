@@ -11,6 +11,7 @@ import { createError } from "../lib/errors";
 import { monthStart } from "../../lib/billing/month";
 import { TEAM_PLAN } from "../../lib/billing/plans";
 import { readAccount } from "./accounts";
+import { seatSyncRow } from "./seatSyncs";
 import { memberSpace, spendSpace, usageAgg } from "./usageLog";
 import { usageKindValidator } from "./validators";
 
@@ -27,6 +28,21 @@ const OPEN_HOLDS_READ = 200;
 /** Credits the organization was charged for the member's work since `month`; it can be a moment behind the newest charge. */
 export async function spentSince(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">, month: number) {
   return await usageAgg.sum(ctx, { namespace: memberSpace(workspaceId, userId), bounds: { lower: { key: month, id: "", inclusive: true } }, stale: true });
+}
+
+/** A person's newest charges one read checks for any the ledger worker hasn't counted yet (convex/billing/ledger.ts): it counts within seconds. */
+const RECENT_CHARGES_READ = 20;
+
+/**
+ * Whether the person spent the organization's credits since `since`, or holds some now: then
+ * their seat stays theirs until the renewal if they leave (#863). What the ledger counted, a hold,
+ * or a charge it hasn't counted yet each say so.
+ */
+export async function spentThisPeriod(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">, since: number) {
+  if ((await spentSince(ctx, workspaceId, userId, since)) > 0) return true;
+  if (await ctx.db.query("billingHolds").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).first()) return true;
+  const recent = await ctx.db.query("billingUsage").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId).gte("createdAt", since)).order("desc").take(RECENT_CHARGES_READ);
+  return recent.some((charge) => charge.workspaceId === workspaceId && charge.kind !== "refund" && charge.credits > 0);
 }
 
 /** Credits the workspace was charged since `month`, for everyone's work. Refunds aren't counted, as on the spending chart. */
@@ -89,6 +105,23 @@ export async function spendingRoom(ctx: QueryCtx, workspaceId: Id<"workspaces">,
   const balance = (await readAccount(ctx, workspaceId))?.balance ?? 0;
   const left = await capLeft(ctx, workspaceId, userId, monthStart(Date.now()));
   return left !== undefined && left < balance ? { available: left, capped: true } : { available: balance, capped: false };
+}
+
+/** The refusal a member sees who joined past the seats bought, in a race, until an admin adds one (#863). */
+export const noSeat = () => createError("FORBIDDEN", "The organization has no free seat for you yet. Ask an admin to add one.");
+
+/**
+ * Whether the person is a member of the organization waiting for a seat: one joined past the
+ * seats bought, in a race, and spends nothing until they have one. A member the sync hasn't
+ * reached yet isn't kept waiting.
+ */
+export async function waitsForSeat(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) {
+  if (!(await seatSyncRow(ctx, workspaceId))?.overflow) return false;
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  const user = await ctx.db.get("users", userId);
+  if (workspace?.kind !== "organization" || !user || (await seatOf(ctx, workspaceId, user.clerkId))) return false;
+  const membership = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("clerkUserId", user.clerkId).eq("state", "active")).first();
+  return membership !== null;
 }
 
 /** A member's seat in the organization, by their Clerk ID: the Autumn entity their charges are made as. */

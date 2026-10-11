@@ -6,9 +6,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
-import { motion } from "motion/react";
+import { ConvexError } from "convex/values";
+import { AnimatePresence, motion } from "motion/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { ArrowRight, Camera, Check, ChevronRight, Coins, Copy, EvidenceLibrariesIcon, FileSearch, Folder, ListFilter, LogOut, Mail, Pencil, Repeat, RotateCcw, Search, Trash2, Users, X } from "@/components/icons";
+import { AlertCircle, ArrowRight, CalendarClock, Camera, Check, ChevronRight, Coins, Copy, CreditCard, EvidenceLibrariesIcon, FileSearch, Folder, Hourglass, ListFilter, LogOut, Mail, Pencil, Repeat, RotateCcw, Search, Trash2, Users, X } from "@/components/icons";
 import { IconButton } from "@/components/assistant/parts";
 import { EASE } from "@/components/settings/model-map";
 import { Enter, LIST, Paged, Segmented, Tile, Zone } from "@/components/settings/parts";
@@ -23,6 +24,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { SeatStepper } from "@/components/billing/seat-stepper";
+import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
+import { AnimatedNumber } from "@/components/screening/parts";
 import { DeleteLibraryDialog } from "@/components/evidence-libraries/configuration/delete-library-dialog";
 import { EmailAvatar, IdentityRow, ROLE_ICONS, RoleLabel } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -43,9 +47,9 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { ORGANIZATION_COLOURS } from "@/lib/workspaces/colours";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { Guarded, MemberFaces, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
+import { Guarded, MemberFaces, Opening, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
 import { MemberSpending, useMemberSpending } from "./spending";
-import { FREE_MEMBERS, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
+import { FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
 
 /** Rows a page of members holds. */
 const PER_PAGE = 10;
@@ -62,6 +66,23 @@ function useOrganization() {
   const current = useCurrentWorkspace();
   const organization = current?.kind === "organization" ? current : undefined;
   return { workspaceId, organization, admin: organization?.role === "admin" };
+}
+
+/** Autumn's figure for a change of seats, as the billing actions return it. */
+type SeatPreview = FunctionReturnType<typeof api.billing.actions.previewSeats>;
+
+/** What a failed charge says: a declined card, or a bank asking to confirm it at `url`, which the page answers in place. */
+function chargeRefusal(error: unknown): { code: "declined" } | { code: "confirm"; url: string } | null {
+  if (!(error instanceof ConvexError)) return null;
+  let data: unknown = error.data;
+  try {
+    if (typeof data === "string") data = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  const { code, url } = (data ?? {}) as { code?: string; url?: string };
+  if (code === "BILLING_PAYMENT_DECLINED") return { code: "declined" };
+  return code === "BILLING_PAYMENT_ACTION_REQUIRED" && url ? { code: "confirm", url } : null;
 }
 
 /** Runs `work`, and says what went wrong in a toast when it fails. */
@@ -335,10 +356,15 @@ export function WorkspaceMembers() {
   const { workspaceId, organization, admin } = useOrganization();
   const members = useCursorPage(api.organizations.queries.members, inWorkspace(workspaceId, {}), PER_PAGE);
   const invitations = useCursorPage(api.organizations.queries.invitations, inWorkspace(workspaceId, {}), PER_PAGE);
-  // Team's seats are its members, counted in full: the switcher's count stops at a hundred and one.
+  // Members, invitations and seats counted in full: the switcher's count stops at a hundred and one.
   const team = organization?.plan === TEAM_PLAN;
-  const counts = useProtectedQuery(api.billing.seats.counts, team && workspaceId ? { workspaceId } : "skip").data;
+  const counts = useProtectedQuery(api.billing.seats.counts, workspaceId ? { workspaceId } : "skip").data;
+  const { account, catalog } = useSharedSubscriptionState();
   const invite = useWorkspaceAction(api.organizations.manage.invite);
+  const previewSeats = useWorkspaceAction(api.billing.actions.previewSeats);
+  // An invitation waiting for the seat it needs (#863): who, as what, and Autumn's figure for one more seat; and what the card said.
+  const [adding, setAdding] = useState<{ email: string; role: Role; preview: SeatPreview } | null>(null);
+  const [refused, setRefused] = useState<ReturnType<typeof chargeRefusal>>(null);
   const setRole = useWorkspaceAction(api.organizations.manage.setRole);
   const removeMember = useWorkspaceAction(api.organizations.manage.removeMember);
   const resend = useWorkspaceAction(api.organizations.manage.resendInvitation);
@@ -346,59 +372,115 @@ export function WorkspaceMembers() {
   const { busy, attempt } = useAttempt();
   const [email, setEmail] = useState("");
   const [role, setInviteRole] = useState<Role>("member");
-  const [removing, setRemoving] = useState<{ userId: Id<"users">; name: string } | null>(null);
+  const [removing, setRemoving] = useState<{ userId: Id<"users">; name: string; keepsSeat?: true } | null>(null);
   const tc = useTranslations("common");
   // A time Clerk set a moment after the clock last ticked reads as now, not as in a few seconds.
   const ago = (at: number) => format.relativeTime(at, Math.max(now.getTime(), at));
   const { name: planName } = usePlanOf(organization ?? { kind: "organization", name: "" });
-  if (!organization || members.isLoading || invitations.isLoading || (team && !counts)) return <Enter ready={false}>{null}</Enter>;
+  if (!organization || members.isLoading || invitations.isLoading || !counts) return <Enter ready={false}>{null}</Enter>;
 
   const roleOptions = [
     { id: "member" as const, label: tw("member"), icon: ROLE_ICONS.member },
     { id: "admin" as const, label: tw("admin"), icon: ROLE_ICONS.admin },
   ];
-  const memberCount = counts?.members ?? organization.members ?? 0;
-  // Team has a seat for each member, so it's never full; a free organization has FREE_MEMBERS, invitations included, which one page holds (#652).
-  const used = memberCount + (team ? 0 : invitations.items.length);
-  const seats = team ? used : FREE_MEMBERS;
-  const full = !team && used >= seats;
+  const memberCount = counts.members;
+  // Team's seats are bought (#862) and filled by members, invitations and seats held to the renewal (#863); Free has FREE_MEMBERS, invitations included,
+  // which is the room a Team on its way to Free at the renewal has already.
+  const toFree = team && account?.changesAt !== undefined;
+  const held = counts.held;
+  const used = memberCount + counts.invitations + held;
+  const seats = team && !toFree ? counts.seats : FREE_MEMBERS;
+  const free = Math.max(0, seats - used);
+  const full = used >= seats;
+  const teamName = (catalog && findPlan(catalog, TEAM_PLAN)?.name) || TEAM_PLAN;
+  const seatPrice = (catalog && findPlan(catalog, SEAT_PLAN)?.price?.amount) ?? 0;
+  const date = (ms: number) => format.dateTime(new Date(ms), { month: "short", day: "numeric" });
+  // The renewal, or while Team is on its way to Free the day it ends: held seats are freed then either way.
+  const renewal = account?.renewsAt ?? account?.changesAt;
+  const money = (amount: number, cents = false) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: cents ? 2 : 0 });
+  const segment = (i: number) => (i < memberCount ? "bg-primary" : i < memberCount + held ? "bg-warning/70" : i < used ? "bg-primary/40" : "bg-muted");
+  /** Sends the invitation, buying the seat it needs first when `addSeat`; the address that went is cleared, and one typed since stays. */
+  const send = (sent: string, as: Role, addSeat?: true) =>
+    attempt("invite", async () => {
+      try {
+        await invite({ emails: [sent.trim()], role: as, ...(addSeat ? { addSeat } : {}) });
+      } catch (error) {
+        const refusal = chargeRefusal(error);
+        if (!refusal) throw error;
+        setRefused(refusal);
+        return;
+      }
+      setAdding(null);
+      setEmail((now) => (now === sent ? "" : now));
+    });
 
   return (
     <Enter ready>
       <div className="space-y-8">
         <section className="space-y-3 rounded-2xl border border-border-subtle p-5">
-          <div>
-            <p className="text-3xl font-semibold tabular-nums tracking-tight">
-              {used} <span className="text-lg font-normal text-muted-foreground">{t("ofSeats", { seats })}</span>
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("membersOnPlan", { plan: planName })}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-3xl font-semibold tabular-nums tracking-tight">
+                {used} <span className="text-lg font-normal text-muted-foreground">{t("ofSeats", { seats })}</span>
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("membersOnPlan", { plan: planName })}</p>
+            </div>
+            {admin && team ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/settings/billing">{t("changeSeats")}</Link>
+              </Button>
+            ) : null}
           </div>
-          {/* A segment a seat while they're few enough to count, members then invitations waiting for an answer; past that, one bar. */}
+          {/* A segment a seat while they're few enough to count: members, held seats, invitations waiting for an answer, then free ones; past that, one bar. */}
           {seats <= SEAT_SEGMENTS ? (
             <div className="flex gap-1" aria-hidden>
               {Array.from({ length: seats }, (_, i) => (
-                <span key={i} className={cn("h-2 flex-1 rounded-full", i < memberCount ? "bg-primary" : i < used ? "bg-primary/40" : "bg-muted")} />
+                <span key={i} className={cn("h-2 flex-1 rounded-full", segment(i))} />
               ))}
             </div>
           ) : (
             <div className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-muted" aria-hidden>
               <span className="h-full rounded-full bg-primary" style={{ width: `${(memberCount / seats) * 100}%` }} />
-              {used > memberCount ? <span className="h-full rounded-full bg-primary/40" style={{ width: `${((used - memberCount) / seats) * 100}%` }} /> : null}
+              {held > 0 ? <span className="h-full rounded-full bg-warning/70" style={{ width: `${(held / seats) * 100}%` }} /> : null}
+              {counts.invitations > 0 ? <span className="h-full rounded-full bg-primary/40" style={{ width: `${(counts.invitations / seats) * 100}%` }} /> : null}
             </div>
           )}
+          {/* What fills the seats, each tinted as its segments are. */}
+          <div className="flex flex-wrap gap-1.5 text-xs tabular-nums">
+            <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-primary/12 px-2.5 text-primary">
+              <Users className="size-3.5" /> {t("membersCount", { count: memberCount })}
+            </span>
+            {held > 0 ? (
+              <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-warning/15 px-2.5 ink-warning">
+                <Hourglass className="size-3.5" /> {renewal ? t("heldUntil", { count: held, date: date(renewal) }) : t("heldCount", { count: held })}
+              </span>
+            ) : null}
+            {counts.invitations > 0 ? (
+              <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-primary/8 px-2.5 text-primary/80">
+                <Mail className="size-3.5" /> {t("invitedCount", { count: counts.invitations })}
+              </span>
+            ) : null}
+            <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-muted px-2.5 text-muted-foreground">{t("freeCount", { count: free })}</span>
+          </div>
         </section>
 
         {admin ? (
           <Zone label={t("invite")}>
+            {/* One child of the zone, so its spacing doesn't jump when a step opens or closes under the form: each step's gap is inside it. */}
+            <div>
             <form
               className="flex flex-wrap items-center gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
-                // Enter submits whatever the button looks like: a full organization, or an invitation still going, sends nothing.
-                if (full || busy === "invite" || !EMAIL.test(email.trim())) return;
+                // Enter submits whatever the button looks like: a full free organization, or an invitation still going, sends nothing.
+                if ((full && (!team || toFree)) || busy !== null || adding || !EMAIL.test(email.trim())) return;
                 const sent = email;
-                // The address that went is cleared; one typed since stays.
-                void attempt("invite", () => invite({ emails: [sent.trim()], role })).then((done) => done && setEmail((now) => (now === sent ? "" : now)));
+                if (!full) return void send(sent, role);
+                // Team with no free seat: Autumn's figure for one more, then the step that buys it and invites (#863).
+                void attempt("invite", async () => {
+                  setRefused(null);
+                  setAdding({ email: sent.trim(), role, preview: await previewSeats({ seats: seats + 1 }) });
+                });
               }}
             >
               <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
@@ -406,12 +488,73 @@ export function WorkspaceMembers() {
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("emailAddress")} aria-label={tw("emailToInvite")} className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
               </label>
               <Segmented label={t("theirRole")} value={role} onChange={setInviteRole} options={roleOptions} size="md" />
-              <Guarded reason={full ? t("freeUpTo", { count: FREE_MEMBERS }) : null}>
-                <Button type="submit" className="h-10 rounded-xl" disabled={!EMAIL.test(email.trim()) || busy === "invite"}>
-                  {t("invite")}
-                </Button>
-              </Guarded>
+              <Button type="submit" className="h-10 rounded-xl" disabled={!EMAIL.test(email.trim()) || busy === "invite" || (full && (!team || toFree)) || adding !== null}>
+                {t("invite")}
+              </Button>
             </form>
+            <AnimatePresence initial={false}>
+              {full && !team ? (
+                // A free organization at its limit is offered Team where it invites (#863).
+                <Opening key="team">
+                  <div className="pt-2.5">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border-subtle bg-inset py-2.5 pl-4 pr-2.5 text-sm">
+                      <span className="text-muted-foreground">{t("freeUpTo", { count: FREE_MEMBERS })}</span>
+                      <Button asChild size="sm">
+                        <Link href="/pricing">
+                          {t("moveTo", { plan: teamName })} <ArrowRight />
+                        </Link>
+                      </Button>
+                    </div>
+                  </div>
+                </Opening>
+              ) : null}
+              {adding ? (
+                <Opening key="seat">
+                  <div className="pt-2.5">
+                    <div className="space-y-3 rounded-2xl border border-border-subtle p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="min-w-0 space-y-1.5">
+                          <p className="text-sm font-medium">{t("noFreeSeat")}</p>
+                          <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                            <span className="inline-flex h-6 min-w-0 items-center gap-1.5 rounded-full bg-muted px-2.5">
+                              <Mail className="size-3.5 shrink-0" /> <span className="truncate">{adding.email}</span>
+                            </span>
+                            {adding.preview.card ? (
+                              <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-muted px-2.5 capitalize">
+                                <CreditCard className="size-3.5" /> {adding.preview.card.brand} {adding.preview.card.last4}
+                              </span>
+                            ) : null}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-semibold tabular-nums tracking-tight">{money(adding.preview.dueNow, true)}</p>
+                          {renewal ? <p className="text-xs tabular-nums text-muted-foreground">{t("thenAMonthFrom", { amount: money((seats + 1) * seatPrice), date: date(renewal) })}</p> : null}
+                        </div>
+                      </div>
+                      {refused ? (
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
+                          <span className="flex items-center gap-2">
+                            <AlertCircle className="size-4 shrink-0" /> {refused.code === "confirm" ? t("seatToConfirm") : t("seatDeclined")}
+                          </span>
+                          <Button asChild variant="outline" size="sm">
+                            {refused.code === "confirm" ? <a href={refused.url}>{t("confirmPayment")}</a> : <Link href="/settings/billing">{t("fixPayment")}</Link>}
+                          </Button>
+                        </div>
+                      ) : null}
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="sm" disabled={busy === "invite"} onClick={() => setAdding(null)}>
+                          {tc("cancel")}
+                        </Button>
+                        <Button size="sm" disabled={busy === "invite"} onClick={() => void send(adding.email, adding.role, true)}>
+                          {t("addSeatAndInvite")}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Opening>
+              ) : null}
+            </AnimatePresence>
+            </div>
           </Zone>
         ) : null}
 
@@ -430,7 +573,7 @@ export function WorkspaceMembers() {
                           onChange={(next) => void attempt(`role:${member.userId}`, () => setRole({ userId: member.userId, role: next }))}
                           options={roleOptions}
                         />
-                        <IconButton small label={t("removeName", { name: member.name })} icon={<X className="size-3.5" />} onClick={() => setRemoving({ userId: member.userId, name: member.name })} />
+                        <IconButton small label={t("removeName", { name: member.name })} icon={<X className="size-3.5" />} onClick={() => setRemoving({ userId: member.userId, name: member.name, ...(member.keepsSeat ? { keepsSeat: true as const } : {}) })} />
                       </>
                     ) : (
                       <RoleLabel role={member.role} className="w-[9.5rem] justify-end pr-2">
@@ -485,7 +628,10 @@ export function WorkspaceMembers() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("removeName", { name: removing?.name ?? "" })}</AlertDialogTitle>
-            <AlertDialogDescription>{t("removeConfirm", { name: removing?.name ?? "", organization: organization.name })}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {t("removeConfirm", { name: removing?.name ?? "", organization: organization.name })}
+              {team && removing ? ` ${removing.keepsSeat ? (renewal ? t("seatHeld", { date: date(renewal) }) : t("seatHeldUndated")) : t("seatFreed")}` : null}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
@@ -514,10 +660,16 @@ export function WorkspaceBilling() {
   const { workspaceId, organization, admin } = useOrganization();
   const { account, catalog } = useSharedSubscriptionState();
   const spending = useMemberSpending(workspaceId);
-  // The seats it pays for, counted in full.
+  // The seats it bought and what fills them, counted in full.
   const counts = useProtectedQuery(api.billing.seats.counts, workspaceId ? { workspaceId } : "skip").data;
   const openPortal = useWorkspaceAction(api.billing.actions.openPortal);
+  const previewSeats = useWorkspaceAction(api.billing.actions.previewSeats);
+  const changeSeats = useWorkspaceAction(api.billing.actions.changeSeats);
+  const keepPlan = useWorkspaceAction(api.billing.actions.keepPlan);
   const { busy, attempt } = useAttempt();
+  const [picked, setPicked] = useState<number>();
+  // Autumn's figure for the seats picked, read before the confirmation opens; the change is for the seats it was read for.
+  const [review, setReview] = useState<(SeatPreview & { seats: number }) | null>(null);
   if (!organization || !account || !catalog || !spending.ready || counts === undefined) return <Enter ready={false}>{null}</Enter>;
 
   const planId = account.plan ?? organization.plan ?? "";
@@ -528,8 +680,15 @@ export function WorkspaceBilling() {
   const teamPlan = findPlan(catalog, TEAM_PLAN);
   const seat = findPlan(catalog, SEAT_PLAN);
   const seatPrice = seat?.price?.amount;
-  // Team's credits are its seats'.
+  // Team's credits are its seats' (#862): bought, down to those in use by members, invitations and seats held to the renewal.
   const seats = counts?.seats ?? 0;
+  const inUse = (counts?.members ?? 0) + (counts?.invitations ?? 0) + (counts?.held ?? 0);
+  const next = Math.max(inUse, picked ?? seats);
+  const added = next - seats;
+  const reviewed = (review?.seats ?? next) - seats;
+  // Moving to Free waits for the renewal; until then Keep Team takes it back.
+  const toFree = team && account.changesAt !== undefined ? account.changesAt : undefined;
+  const short = (ms: number) => format.dateTime(new Date(ms), { year: "numeric", month: "short", day: "numeric" });
   const monthly = team ? seats * (seat?.credits?.included ?? 0) : plan?.credits?.interval === "month" ? plan.credits.included : 0;
   const cap = team ? monthly : planCreditCap(catalog, planId);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: 0 });
@@ -586,13 +745,26 @@ export function WorkspaceBilling() {
                 {team && seatPrice !== undefined ? <span className="text-sm font-normal text-muted-foreground">{t("aSeat", { price: money(seatPrice) })}</span> : null}
               </p>
               {team ? (
-                // A seat for each member (#652).
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted px-2.5 text-xs tabular-nums text-muted-foreground">
-                    <Users className="size-3.5" />
-                    {t("seats", { count: seats })}
-                  </span>
-                  {seatPrice !== undefined ? <span className="inline-flex h-6 items-center whitespace-nowrap rounded-full bg-muted px-2.5 text-xs font-medium tabular-nums text-foreground">{t("amountAMonth", { amount: money(seatPrice * seats) })}</span> : null}
+                // The seats bought (#862): an admin changes how many, down to those in use.
+                <div className="space-y-2 pt-1">
+                  {admin && toFree === undefined ? (
+                    <SeatStepper seats={next} fewest={inUse} why={t("seatsInUse", { count: inUse })} onChange={(count) => busy === null && setPicked(count)} />
+                  ) : (
+                    <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted px-2.5 text-xs tabular-nums text-muted-foreground">
+                      <Users className="size-3.5" />
+                      {t("seats", { count: seats })}
+                    </span>
+                  )}
+                  {seatPrice !== undefined ? (
+                    <p className="text-xs tabular-nums text-muted-foreground">
+                      $<AnimatedNumber value={seatPrice * next} /> {t("aMonthShort")}
+                    </p>
+                  ) : null}
+                  {toFree !== undefined ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs ink-info">
+                      <CalendarClock className="size-3.5" /> {t("changesOn", { plan: findPlan(catalog, ORGANIZATION_PLAN)?.name ?? "", date: date(toFree) })}
+                    </span>
+                  ) : null}
                 </div>
               ) : (
                 <p className="text-sm tabular-nums text-muted-foreground">{t("upToMembers", { count: FREE_MEMBERS })}</p>
@@ -600,9 +772,30 @@ export function WorkspaceBilling() {
             </div>
             {admin ? (
               team ? (
-                <Button variant="outline" size="sm" disabled={busy === "portal"} onClick={() => void attempt("portal", async () => window.location.assign(await openPortal({})))}>
-                  {t("manageBilling")}
-                </Button>
+                // The gap under each button is inside it, so it opens and closes with the button.
+                <div className="flex flex-col">
+                  <AnimatePresence initial={false}>
+                    {added !== 0 ? (
+                      <Opening key="review">
+                        <div className="pb-2">
+                          <Button size="sm" className="w-full" disabled={busy !== null} onClick={() => void attempt("review", async () => setReview({ ...(await previewSeats({ seats: next })), seats: next }))}>
+                            {added > 0 ? t("addSeats", { count: added }) : t("removeSeats", { count: -added })}
+                          </Button>
+                        </div>
+                      </Opening>
+                    ) : null}
+                  </AnimatePresence>
+                  {toFree !== undefined ? (
+                    <div className="pb-2">
+                      <Button size="sm" className="w-full" disabled={busy !== null} onClick={() => void attempt("keep", () => keepPlan({}))}>
+                        {t("keepPlan", { plan: plan?.name ?? "" })}
+                      </Button>
+                    </div>
+                  ) : null}
+                  <Button variant="outline" size="sm" disabled={busy === "portal"} onClick={() => void attempt("portal", async () => window.location.assign(await openPortal({})))}>
+                    {t("manageBilling")}
+                  </Button>
+                </div>
               ) : (
                 <Button asChild size="sm">
                   <Link href="/pricing">
@@ -615,6 +808,38 @@ export function WorkspaceBilling() {
         </section>
 
         <MemberSpending spending={spending} admin={admin} team={team} members={memberCount} />
+
+        <UpgradeConfirmationDialog
+          open={review !== null && review.seats !== seats}
+          onOpenChange={(open) => busy === null && !open && setReview(null)}
+          title={reviewed > 0 ? t("addSeats", { count: reviewed }) : t("removeSeats", { count: -reviewed })}
+          description={account.renewsAt && review ? t("thenAMonthFrom", { amount: money((seatPrice ?? 0) * review.seats), date: date(account.renewsAt) }) : undefined}
+          confirmLabel={reviewed > 0 ? t("addSeats", { count: reviewed }) : t("removeSeats", { count: -reviewed })}
+          totalLabel={reviewed > 0 ? t("dueNow") : t("offNextBill")}
+          labels={{ from: t("seatsNow"), to: t("seatsAfter") }}
+          isConfirming={busy === "seats"}
+          onConfirm={() =>
+            void attempt("seats", async () => {
+              if (!review) return;
+              const { url } = await changeSeats({ seats: review.seats });
+              if (url) return window.location.assign(url);
+              setPicked(undefined);
+              setReview(null);
+            })
+          }
+          preview={
+            review && {
+              currency: review.currency,
+              immediateChargeCents: Math.round(Math.abs(review.dueNow) * 100),
+              currentPlan: t("seats", { count: seats }),
+              targetPlan: t("seats", { count: review.seats }),
+              targetPlanCreditsPerMonth: 0,
+              lineItems: review.lineItems.map((item) => ({ description: item.description, amountCents: Math.round(item.amount * 100), currency: review.currency })),
+            }
+          }
+          cardBrand={review?.card?.brand}
+          cardLast4={review?.card?.last4}
+        />
 
         <Zone label={t("included")}>
           <div className="flex flex-wrap gap-1.5">
