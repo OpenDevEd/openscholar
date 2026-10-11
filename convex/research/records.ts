@@ -224,7 +224,7 @@ const listed = (search: SavedSearch) => { const { screeningResponses: _answers, 
 export const getSearchAction = defineUserQuery({
   path: "research/records:getSearch",
   description:
-    "Reads one saved search by ID: its query, filters, sort, page and screening questions. Its screening answers are read by paper with answersOf. In an organization it names who ran it (`by`) and how many people outside it were given it (`guests`). " +
+    "Reads one saved search by ID: its query, filters, sort, page and screening questions. Its screening answers are read by paper with answersOf. In an organization it names who ran it (`by`); `guests` is how many people outside its workspace were given it, when any were. " +
     "One shared with the person from another workspace reads the same in their own workspace, with `guest`: what they may do with it (`viewer`: read and export; `editor`: also change it) and the workspace it's in.",
   args: { id: v.string() },
   returns: v.union(v.object({ ...listedSearchValidator.fields, by: v.optional(makerValidator), guest: v.optional(v.object({ role: guestRoleValidator, from: sharedFromValidator })), guests: v.optional(v.number()) }), v.null()),
@@ -238,7 +238,8 @@ export const getSearchAction = defineUserQuery({
       return { ...fields, ...(maker ? { by: { name: personName(maker) || maker.email, ...(maker.avatarUrl ? { imageUrl: maker.avatarUrl } : {}), you: false } } : {}), guest: { role: guest, from: await workspaceFrom(ctx, search.workspaceId) } };
     }
     const by = await (await makersIn(ctx, actor.workspaceId, actor.userId))(search.createdBy);
-    return { ...fields, ...(by ? { by } : {}), guests: await countOf(ctx, itemGuestsOf(search._id)) };
+    const guests = await countOf(ctx, itemGuestsOf(search._id));
+    return { ...fields, ...(by ? { by } : {}), ...(guests ? { guests } : {}) };
   },
 });
 export const getSearch = accountQuery(getSearchAction);

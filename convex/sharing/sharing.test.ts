@@ -349,6 +349,43 @@ it("opens a shared extraction to its guest to read from their own workspace, wit
   expect(await papers(carol)).toEqual([]);
 });
 
+it("opens a shared search to its guest from their own workspace by the ID its page shows: a viewer reads it, an editor's changes are made where it is, and nobody else finds it", async () => {
+  const { t, alice, carol, dave, users, workspaceId } = await lab();
+  const { id } = await alice.mutation(api.research.searches.create, { workspaceId, query: "school feeding" });
+  const item = { workspaceId, kind: "search" as const, id };
+  const [carolOwn, daveOwn] = await t.run(async (ctx) => [await personalWorkspaceOf(ctx, users.carol), await personalWorkspaceOf(ctx, users.dave)]);
+  const read = (as: typeof alice, accountId: string, own: Id<"workspaces">) => as.query(api.research.records.getSearch, { accountId, workspaceId: own, id });
+  const requery = (as: typeof alice, accountId: string, own: Id<"workspaces">, query: string) =>
+    as.mutation(api.research.records.change, { accountId, workspaceId: own, requestId: `${accountId}-${query}`, command: { kind: "editSearch", id, edit: { kind: "query", query, field: "title_and_abstract" } } });
+  expect(await read(carol, "carol", carolOwn)).toBeNull();
+
+  // To view: she reads it as it is, with who ran it and whose it is, and changes nothing.
+  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  expect(await read(carol, "carol", carolOwn)).toMatchObject({ id, query: "school feeding", by: { name: "Alice", you: false }, guest: { role: "viewer", from: { name: "lab", organization: true } } });
+  expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school feeding", guests: 1 });
+  await expect(requery(carol, "carol", carolOwn, "changed")).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  // What's shared with her lists it with the ID its page goes by.
+  expect((await carol.query(api.sharing.shared.list, { workspaceId: carolOwn, sort: "recent", paginationOpts: { cursor: null, numItems: 10 } })).page).toMatchObject([{ kind: "search", address: id, name: "school feeding", role: "viewer" }]);
+
+  // To edit: her change is made in the lab, where the search is, and its Activity there says it was hers.
+  await alice.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" });
+  await requery(carol, "carol", carolOwn, "school meals");
+  expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school meals" });
+  expect(await t.run((ctx) => ctx.db.query("searches").withIndex("by_workspace", (q) => q.eq("workspaceId", carolOwn)).collect())).toEqual([]);
+  expect((await alice.query(api.activity.queries.list, { ...item, paginationOpts: { cursor: null, numItems: 10 } })).page[0]).toMatchObject({ by: { name: "Carol" }, happened: "edited", detail: "school meals" });
+  // Her place follows the search's name.
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(await t.run(async (ctx) => (await ctx.db.query("itemAccess").withIndex("by_user_and_grantedAt", (q) => q.eq("userId", users.carol)).collect()).map(({ kind, name }) => ({ kind, name })))).toEqual([{ kind: "search", name: "school meals" }]);
+
+  // Dave was given nothing: he finds no search by that ID, and a change of his to it finds none either.
+  expect(await read(dave, "dave", daveOwn)).toBeNull();
+  await expect(requery(dave, "dave", daveOwn, "his own")).rejects.toThrow(/Search not found/);
+  expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school meals" });
+  // Taken away, it's gone for Carol.
+  await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
+  expect(await read(carol, "carol", carolOwn)).toBeNull();
+});
+
 it("closes what a deleted account shared from its own workspace, though its data waits to be purged", async () => {
   const { t, alice, carol, dave, users } = await lab();
   const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, users.alice));

@@ -1,6 +1,7 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
+import { useSearchAccess } from "@/lib/research/reads";
 import React, { useState } from "react";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations, useLocale, useFormatter } from "next-intl";
@@ -82,6 +83,8 @@ export function SearchCommandFooter({
   const [isBroadening, setIsBroadening] = useState(false);
   const [isNarrowing, setIsNarrowing] = useState(false);
   const assistantEnabled = useFeatureFlag("assistant.enabled");
+  // A search shared with the person from another workspace: a screening of all its papers is its workspace's to run, so a guest saves a copy and screens that.
+  const guest = useSearchAccess(queryOnly ? undefined : searchId)?.guest !== undefined;
 
   // Use the new router hook
   const { execute: enhanceQuery, isConfigured } = useEnhanceSearchQuery();
@@ -328,7 +331,7 @@ Return a more targeted version of this query.`;
 
               {/* AI-actions sub-group: Start Chat + Screen All grouped together; trailing coin glyph signals credit-bearing actions */}
               <div
-                className="inline-flex items-center gap-0.5 rounded-xl bg-accent pr-1.5"
+                className={cn("items-center gap-0.5 rounded-xl bg-accent pr-1.5", assistantEnabled || !guest ? "inline-flex" : "hidden")}
                 data-group="ai-actions"
               >
                 {assistantEnabled && (
@@ -345,6 +348,8 @@ Return a more targeted version of this query.`;
                   </Button>
                 )}
 
+                {guest ? null : (
+                <>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -375,6 +380,8 @@ Return a more targeted version of this query.`;
                     <p className="text-xs opacity-90">{tsc("creditsTooltip")}</p>
                   </TooltipContent>
                 </Tooltip>
+                </>
+                )}
               </div>
 
               <div className="mx-0.5 h-6 w-px bg-border/70 max-[359px]:hidden sm:mx-1" />
