@@ -51,9 +51,8 @@ Writing rules
 ${UNSLOP_RULES}`;
 
 const CITES = /\]\(\/lib\/[A-Z0-9]{8}\)/;
-// The review runs after the writer, inside the nine minutes a job may take, and for three minutes at most.
+// The review is an action of its own, so the writer has its action's whole time. It runs for three minutes at most.
 const REVIEW_BUDGET_MS = 180_000;
-const REVIEW_DEADLINE_MS = 540_000;
 
 // The writing rules ask for straight quotes and second-level headings; the model still sends some of the others.
 const tidy = (text: string) => text.replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"');
@@ -65,8 +64,8 @@ const levelled = (markdown: string) => tidy(markdown).replace(/^ {0,3}#{1,6}(?=[
  * costs the digest: the text that passed the citation check is kept, without the sentences already known to be
  * wrong. So is a correction that dropped a flagged sentence's citation, since its claim could no longer be checked.
  */
-async function reviewed(digest: {summary: string; markdown: string}, request: DigestRequest, started: number) {
-  const signal = AbortSignal.timeout(Math.max(1_000, Math.min(REVIEW_BUDGET_MS, REVIEW_DEADLINE_MS - (Date.now() - started))));
+export async function reviewLibraryDigest(digest: {summary: string; markdown: string}, request: DigestRequest) {
+  const signal = AbortSignal.timeout(REVIEW_BUDGET_MS);
   const job = {libraryId: request.libraryId, editionId: request.editionId};
   let checked = digest;
   try {
@@ -87,9 +86,11 @@ async function reviewed(digest: {summary: string; markdown: string}, request: Di
   }
 }
 
-/** Writes the digest. `kinds` is what the library's likely reviews were read as before the writer started; the writer is told what each one is. */
-export async function generateLibraryDigest(request: DigestRequest, kinds: Record<string, PublicationKind>, signal?: AbortSignal) {
-  const started = Date.now();
+/**
+ * Writes the digest, before its review. `kinds` is what the library's likely reviews were read as before the writer
+ * started; the writer is told what each one is.
+ */
+export async function writeLibraryDigest(request: DigestRequest, kinds: Record<string, PublicationKind>, signal?: AbortSignal) {
   const model = await getProviderModel("openrouter", undefined, DIGEST_MODEL);
   const marked = request.publications.some(publication => publication.candidate !== undefined || publication.kind !== undefined);
   const supplied = {...request, publications: request.publications.map(({candidate: _candidate, kind, ...publication}) => {
@@ -116,6 +117,5 @@ export async function generateLibraryDigest(request: DigestRequest, kinds: Recor
   const {markdown: cited, repairs} = await repairCitations(levelled(written.markdown), request.publications, signal);
   if (repairs.length) console.info("Library digest citations repaired", {libraryId: request.libraryId, editionId: request.editionId, repairs});
   if (!CITES.test(cited)) throw new Error("Digest output cites no supplied publication");
-  const {summary, markdown} = await reviewed({summary: tidy(written.summary), markdown: cited}, request, started);
-  return {title: tidy(written.title), summary, markdown, model: DIGEST_MODEL, reasoning: DIGEST_REASONING, kinds};
+  return {title: tidy(written.title), summary: tidy(written.summary), markdown: cited, model: DIGEST_MODEL, reasoning: DIGEST_REASONING, kinds};
 }
