@@ -32,6 +32,7 @@ export type ToastErrorMessageKey =
   | "billingNetworkError"
   | "billingRateLimited"
   | "billingStripeError"
+  | "billingPaymentDeclined"
   | "billingPlanChangeConflict"
   | "billingInvalidPrice"
   | "billingCancelRequiresPortal"
@@ -114,6 +115,7 @@ const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   BILLING_NETWORK_ERROR: "billingNetworkError",
   BILLING_RATE_LIMITED: "billingRateLimited",
   BILLING_STRIPE_ERROR: "billingStripeError",
+  BILLING_PAYMENT_DECLINED: "billingPaymentDeclined",
   BILLING_PLAN_CHANGE_CONFLICT: "billingPlanChangeConflict",
   BILLING_INVALID_PRICE_ID: "billingInvalidPrice",
   BILLING_CANCEL_TO_FREE_REQUIRES_PORTAL: "billingCancelRequiresPortal",

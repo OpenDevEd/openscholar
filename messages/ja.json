@@ -710,6 +710,7 @@
     "billingNetworkError": "請求システムへの接続でネットワークエラーが発生しました。再試行してください。",
     "billingRateLimited": "請求システムが混み合っています。しばらくして再試行してください。",
     "billingStripeError": "請求システムは一時的に利用できません。再試行してください。",
+    "billingPaymentDeclined": "カードが拒否されました。請求はありません。",
     "billingPlanChangeConflict": "請求の競合によりプランを更新できませんでした。",
     "billingInvalidPrice": "このプランは現在利用できません。更新して再試行してください。",
     "billingCancelRequiresPortal": "無料プランへの変更は請求ポータルから行ってください。",
