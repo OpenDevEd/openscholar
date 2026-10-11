@@ -9,13 +9,13 @@ import { makeFunctionReference } from "convex/server";
 import type { DataModel, Doc, Id, TableNames } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import type { InWorkspace } from "../workspaces/actor";
+import type { Actor, InWorkspace } from "../workspaces/actor";
 import type { GuestRole, SharedKind } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
 
 /** An item as sharing sees it: where it is, what it's called, and how much it holds where that's kept (a collection's papers, a screening's). A search's Activity is kept under the ID its page shows in its workspace (`pageId`); its guests' rows name its document. */
-export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size?: number; pageId?: string };
+export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size?: number; pageId?: string; createdBy?: Id<"users"> };
 
 /**
  * Each kind's table, what its row is called, how much it holds, the word for one in a sentence,
@@ -33,8 +33,8 @@ const KINDS = {
   screening: { table: "screeningJobs", name: (row: Doc<"screeningJobs">) => row.name ?? row.label ?? (row.set?.kind === "saved" ? "Saved papers" : "Screening"), size: (row: Doc<"screeningJobs">) => row.totalPapers, word: "screening", roles: ["viewer"] },
   extraction: { table: "extractionJobs", name: (row: Doc<"extractionJobs">) => row.name, size: (row: Doc<"extractionJobs">) => row.totalPapers ?? 0, word: "extraction", roles: ["viewer"] },
   search: { table: "searches", name: (row: Doc<"searches">) => row.data.query || "Search", size: (row: Doc<"searches">) => row.data.count ?? 0, word: "search", roles: ["viewer", "editor"] },
-  author: { table: "authorProfiles", name: (row: Doc<"authorProfiles">) => row.name, word: "author profile", roles: ["editor"] },
-} as const satisfies { [K in SharedKind]: { table: TableNames; name: (row: never) => string; size?: (row: never) => number; word: string; roles: readonly GuestRole[] } };
+  author: { table: "authorProfiles", name: (row: Doc<"authorProfiles">) => row.name, word: "author profile", roles: ["editor"], owners: true },
+} as const satisfies { [K in SharedKind]: { table: TableNames; name: (row: never) => string; size?: (row: never) => number; word: string; roles: readonly GuestRole[]; /** Shared only by whoever made it and its workspace's admins, not by every member. */ owners?: true } };
 
 export const kindWord = (kind: SharedKind) => KINDS[kind].word;
 
@@ -54,15 +54,17 @@ export async function findShared(ctx: Read, kind: SharedKind, id: string): Promi
   const rowId = ctx.db.normalizeId(table, id);
   const row = rowId ? await ctx.db.get(table, rowId) : null;
   // Whole characters: an emoji cut in two is no character at all.
-  return row?.workspaceId ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), ...(size ? { size: size(row) } : {}), ...("localId" in row ? { pageId: row.localId } : {}) } : null;
+  return row?.workspaceId ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), ...(size ? { size: size(row) } : {}), ...("localId" in row ? { pageId: row.localId } : {}), ...(row.createdBy ? { createdBy: row.createdBy } : {}) } : null;
 }
 
-/** The item, for someone who acts in its workspace: only they share it, and anyone else learns nothing of it. */
-export async function sharedIn(ctx: Read, { workspaceId }: InWorkspace, kind: SharedKind, id: string) {
+/** The item, for someone who acts in its workspace: only they share it, and anyone else learns nothing of it. A kind its owners alone share (an author profile) refuses its workspace's other members. */
+export async function sharedIn(ctx: Read, actor: Pick<Actor, "userId" | "workspaceId" | "role">, kind: SharedKind, id: string) {
+  const { workspaceId } = actor;
   // A member names a search by the ID its page shows, which is its own within the workspace; its guests' rows name its document.
   const search = kind === "search" ? await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", workspaceId).eq("localId", id)).unique() : null;
   const shared = await findShared(ctx, kind, search?._id ?? id);
   if (shared?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "It isn't in this workspace.");
+  if ("owners" in KINDS[kind] && !(actor.role === "admin" || shared.createdBy === actor.userId)) throw createError("FORBIDDEN", `Only whoever made this ${KINDS[kind].word}, or an admin of its workspace, shares it.`);
   return shared;
 }
 

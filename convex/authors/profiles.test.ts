@@ -88,6 +88,9 @@ describe("author profiles", () => {
     // The one reading it is marked, for their You chip.
     expect(members.members.map(member => [member.email, member.role, member.you])).toEqual([["maker@example.org", "owner", true], ["admin@example.org", "owner", false]]);
     const adminId = members.members.find(member => member.email === "admin@example.org")!.userId;
+    // Sharing it is its owners' alone: another member of the lab, who is nothing to the profile, invites nobody to it.
+    const memberId = (await t.run(ctx => ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", "member")).unique()))!._id;
+    await expect(t.mutation(internal.sharing.invitations.prepare, {userId: memberId, workspaceId: lab, author: "user", kind: "author", id: profileId, email: "friend@example.org", role: "editor"})).rejects.toThrow(/Only whoever made this author profile/);
     // Someone outside the lab can't make one there.
     await expect(as("outsider").mutation(api.authors.profiles.create, {workspaceId: lab, name: "Not mine"})).rejects.toThrow(/Workspace not found/);
     // An organization without author profiles takes none, whatever another of its members' organizations has.
