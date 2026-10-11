@@ -261,7 +261,10 @@ export function TextUploadField({
           filled={Boolean(value)}
           dropzone={{ getRootProps, getInputProps, isDragActive }}
         >
-          {value ? (
+          {value && readOnly ? (
+            // Read-only, the text is the setting: shown whole, where the View button would have opened it (#653).
+            <pre className="max-h-72 overflow-auto whitespace-pre-wrap p-3 font-sans text-xs">{value}</pre>
+          ) : value ? (
             <div className="flex items-center gap-3 p-3">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-inset">
                 <FileText className="h-5 w-5 text-muted-foreground" />

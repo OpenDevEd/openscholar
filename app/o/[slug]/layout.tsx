@@ -4,7 +4,7 @@ import { fetchQuery } from "convex/nextjs";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { api } from "@/convex/_generated/api";
-import { ADDRESS_HEADER, bareWorkspacePath } from "@/lib/workspaces/paths";
+import { ADDRESS_HEADER, outsiderTarget } from "@/lib/workspaces/paths";
 
 /**
  * An organization's pages (#651): each one under /o/<slug> is the page of the same path outside
@@ -18,7 +18,7 @@ export default async function OrganizationLayout({ children, params }: { childre
   if (!token) notFound();
   if (!(await fetchQuery(api.workspaces.queries.bySlug, { slug }, { token }))) {
     const address = new URL((await headers()).get(ADDRESS_HEADER) ?? "/", "http://address");
-    redirect(bareWorkspacePath(address.pathname) + address.search);
+    redirect(outsiderTarget(address.pathname, address.search));
   }
   return children;
 }

@@ -4,7 +4,7 @@
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { expect, it } from "vitest";
-import { bareWorkspacePath, SECTIONS, switchTarget } from "./paths";
+import { bareWorkspacePath, outsiderTarget, SECTIONS, switchTarget } from "./paths";
 
 const APP = path.resolve(__dirname, "../../app");
 const ORGANIZATION = path.join(APP, "o/[slug]");
@@ -70,4 +70,11 @@ it("keeps the page where the workspace picked has it, opens the section where th
   expect(switchTarget("lab", "/settings/admin/models", "")).toBe("/o/lab");
   // An organization's own settings are no person's.
   expect(switchTarget(undefined, "/o/lab/settings/workspace/members", "")).toBe("/settings");
+});
+
+it("sends someone outside an organization to the same page and item in their own workspace, and its own settings to theirs (#653)", () => {
+  expect(outsiderTarget("/o/lab/library", "?chat=abc")).toBe("/library?chat=abc");
+  expect(outsiderTarget("/o/lab/results/abc", "")).toBe("/results/abc");
+  expect(outsiderTarget("/o/lab", "?chat=abc")).toBe("/?chat=abc");
+  expect(outsiderTarget("/o/lab/settings/workspace/members", "?tab=x")).toBe("/settings");
 });

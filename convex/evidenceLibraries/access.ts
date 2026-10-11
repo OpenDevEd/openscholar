@@ -113,14 +113,11 @@ export async function readActiveOrganizationMembership(
     .unique();
 }
 
-/** "viewer" for a member of a library's organization who has no role in it (#653), or null. */
+/** "viewer" for a member of a library's organization who has no role in it (#653), or null. Its caller has checked the account is active. */
 async function viewerOf(ctx: Pick<QueryCtx | MutationCtx, "db">, library: Doc<"evidenceLibraries">, clerkUserId: string) {
   if (library.state === "disabled") return null;
   const owner = await libraryOwner(ctx, library);
   if (!owner?.organization || !ownerActive(owner)) return null;
-  // A suspended account views nothing, whatever membership outlives it.
-  const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
-  if (user?.state !== "active") return null;
   return (await readActiveOrganizationMembership(ctx, owner.organization._id, clerkUserId)) ? "viewer" as const : null;
 }
 
@@ -166,6 +163,9 @@ export async function readEvidenceLibraryAccess(
   if (!identity) return null;
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   if (!library) return null;
+  // Viewing reaches settings no role reached before (#653): a suspended account views nothing, whatever it was given.
+  const account = action === "view" ? await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique() : null;
+  if (account && account.state !== "active") return null;
   const role = (await readLibraryRole(ctx, library, identity.subject)) ?? (action === "view" ? await viewerOf(ctx, library, identity.subject) : null);
   if (!role || ((action === "manage" || action === "remove") && role !== "owner")) return null;
   const owner = await libraryOwner(ctx, library);

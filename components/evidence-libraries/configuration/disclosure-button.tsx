@@ -10,6 +10,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { useReadOnly } from "./read-only";
 
 /**
  * The one way the configuration page shows and hides extra detail: a small
@@ -18,6 +19,8 @@ import { cn } from "@/lib/utils";
  * `Disclosure`) so the content slides open to its height.
  */
 export function DisclosureButton({ className, children, ...props }: ComponentProps<typeof Button>) {
+  // Read-only, what it would show is shown: nothing is held back from a reader who can't press it (#653).
+  if (useReadOnly()) return null;
   return (
     <Button
       type="button"
@@ -40,6 +43,7 @@ export function DisclosureButton({ className, children, ...props }: ComponentPro
  */
 export function useFullText<T extends HTMLElement>(watch?: unknown) {
   const ref = useRef<T>(null);
+  const readOnly = useReadOnly();
   const [expanded, setExpanded] = useState(false);
   const [clipped, setClipped] = useState(false);
   const [watched, setWatched] = useState(watch);
@@ -67,7 +71,7 @@ export function useFullText<T extends HTMLElement>(watch?: unknown) {
       observer.disconnect();
     };
   }, [expanded, watch]);
-  return { ref, expanded, clipped, toggle: () => setExpanded((value) => !value) };
+  return { ref, expanded: expanded || readOnly, clipped, toggle: () => setExpanded((value) => !value) };
 }
 
 export function DisclosureTrigger({
@@ -105,8 +109,9 @@ export function Disclosure({
   className?: string;
   children: ReactNode;
 }) {
+  const readOnly = useReadOnly();
   return (
-    <Collapsible open={open} onOpenChange={onOpenChange} className={className}>
+    <Collapsible open={open || readOnly} onOpenChange={onOpenChange} className={className}>
       <DisclosureTrigger>{label}</DisclosureTrigger>
       <DisclosureContent>{children}</DisclosureContent>
     </Collapsible>

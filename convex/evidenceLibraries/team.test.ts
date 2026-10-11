@@ -186,6 +186,9 @@ describe("listTeam", () => {
     expect(await fixture.t.withIdentity({ subject: "user_stranger" }).query(api.evidenceLibraries.queries.getDraft, { libraryId })).toBeNull();
     await fixture.t.run(async ctx => ctx.db.patch("users", (await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", "user_member")).unique())!._id, { state: "suspended" }));
     expect(await member.query(api.evidenceLibraries.queries.getDraft, { libraryId })).toBeNull();
+    // A role in the library given before the suspension doesn't open it either.
+    await fixture.t.run(ctx => grantLibraryRole(ctx, libraryId, "user_member", "creator"));
+    expect(await member.query(api.evidenceLibraries.queries.getDraft, { libraryId })).toBeNull();
   });
 
   it("removes deleted users' grants and never offers them as organization candidates", async () => {
