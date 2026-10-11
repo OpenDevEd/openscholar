@@ -189,7 +189,6 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
           currentPlan: free.name,
           targetPlan: team.name,
           targetPlanCreditsPerMonth: members * seatCredits,
-          remainingDays: 0,
           lineItems: [{ description: t("seatsAt", { count: members, price: money(seatPrice) }), amountCents: Math.round(charge * 100), currency: "usd" }],
         }}
         cardBrand={account?.card?.brand}

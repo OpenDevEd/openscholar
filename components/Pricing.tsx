@@ -254,9 +254,6 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
       // yearly plan is charged at once even when it's cheaper per month.
       const preview = resolvedPlan ? await previewPlan({ plan: planType }) : null;
       if (resolvedPlan && preview?.card && preview.dueNow > 0) {
-        const remainingDays = account?.renewsAt
-          ? Math.max(0, Math.ceil((account.renewsAt - Date.now()) / 86_400_000))
-          : 0;
         setUpgradePreview({
           currency: preview.currency,
           immediateChargeCents: Math.round(preview.dueNow * 100),
@@ -264,7 +261,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
           targetPlan: planName(planType),
           targetPlanId: planType,
           targetPlanCreditsPerMonth: monthlyCredits(planType),
-          remainingDays,
+          renewsAt: preview.renewsAt,
           card: preview.card,
           lineItems: preview.lineItems.map((item) => ({
             description: item.description,

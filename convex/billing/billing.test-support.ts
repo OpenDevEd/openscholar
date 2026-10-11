@@ -30,6 +30,8 @@ export const fakeAutumn = {
   /** Each customer's entities (#652): whether each holds a Team seat, its monthly cap, and what it used of it. */
   entities: new Map<string, Map<string, { seated: boolean; cap?: number; used: number }>>(),
   calls: [] as Array<{ path: string; body: Record<string, unknown> }>,
+  /** Each priced plan's price, as a subscription's expanded plan gives it; a plan not here is free. */
+  prices: new Map<string, { amount: number; interval: string }>(),
   /** Set when the customer has no saved card: a seat's attach asks for checkout instead of charging, and the customer shows no card. */
   noCard: false,
   /** Set when the saved card asks to confirm each payment (3-D Secure): a seat's attach sends a page to pay on. */
@@ -50,6 +52,7 @@ export const fakeAutumn = {
     this.locks.clear();
     this.idempotencyKeys.clear();
     this.entities.clear();
+    this.prices.clear();
     this.calls = [];
   },
 
@@ -99,7 +102,7 @@ function customerBody(id: string) {
     stripe_id: null,
     flags: Object.fromEntries((customer.flags ?? []).map((feature) => [feature, {}])),
     subscriptions: [
-      { plan_id: customer.planId, status: "active", past_due: false, canceled_at: null, current_period_end: null, add_on: false, auto_enable: customer.planId === "free" },
+      { plan_id: customer.planId, status: "active", past_due: false, canceled_at: null, current_period_end: null, add_on: false, auto_enable: customer.planId === "free", plan: { id: customer.planId, price: fakeAutumn.prices.get(customer.planId) ?? null } },
       ...(customer.signup
         ? [{ plan_id: "signup_credits", status: "active", past_due: false, canceled_at: null, current_period_end: null, add_on: true, auto_enable: false }]
         : []),
@@ -175,6 +178,9 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
       }
       return respond(200, { customer_id: customerId, payment_url: null });
     }
+    case "billing.preview_attach":
+      // The new plan's line pays a month from now, as an immediate change's does.
+      return respond(200, { customer_id: customerId, total: 0, currency: "usd", redirect_to_checkout: false, line_items: [{ description: `${body.plan_id}`, total: 0, plan_id: body.plan_id, period: { start: Date.now(), end: Date.now() + 30 * 86_400_000 } }] });
     case "billing.update": {
       const entity = body.entity_id ? fakeAutumn.entitiesOf(customerId!).get(body.entity_id as string) : undefined;
       if (body.cancel_action !== "cancel_immediately" || !entity?.seated) return respond(404, { code: "cus_product_not_found" });

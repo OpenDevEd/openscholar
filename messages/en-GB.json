@@ -1365,7 +1365,7 @@
     "currentPlan": "Current plan",
     "newPlan": "New plan",
     "prorationCharge": "Prorated charge",
-    "prorationExplanation": "for the {days} remaining days in your billing cycle",
+    "startsToday": "{plan} starts today and renews on {date}.",
     "creditsGranted": "{credits} credits granted immediately",
     "monthlyCreditsAfter": "Then {credits}/month going forward",
     "confirmUpgrade": "Confirm upgrade",

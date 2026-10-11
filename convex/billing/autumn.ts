@@ -26,6 +26,8 @@ export type AutumnSubscription = {
   current_period_start?: number | null;
   current_period_end: number | null;
   add_on: boolean;
+  /** The plan as subscribed, archived or not: only when the customer is read with `plans`. */
+  plan?: Pick<AutumnPlan, "id" | "price">;
 };
 
 export type AutumnCustomer = {
@@ -143,12 +145,13 @@ export const autumn = {
     return call<{ list: AutumnFeature[] }>("features.list", {});
   },
 
-  /** The customer, with its card only when `card` is set: Autumn asks Stripe for it. */
-  customer(customerId: string, data: { email?: string; name?: string; card?: boolean } = {}) {
-    const { card, ...profile } = data;
+  /** The customer, with its card only when `card` is set (Autumn asks Stripe for it), and each subscription's plan when `plans` is. */
+  customer(customerId: string, data: { email?: string; name?: string; card?: boolean; plans?: boolean } = {}) {
+    const { card, plans, ...profile } = data;
+    const expand = [...(card ? ["payment_method"] : []), ...(plans ? ["subscriptions.plan"] : [])];
     return call<AutumnCustomer>("customers.get_or_create", {
       customer_id: customerId,
-      ...(card ? { expand: ["payment_method"] } : {}),
+      ...(expand.length > 0 ? { expand } : {}),
       ...profile,
     });
   },
@@ -216,7 +219,10 @@ export const autumn = {
     });
   },
 
-  /** `entityId` attaches the plan to one of the customer's entities, as a Team seat is (#652). */
+  /**
+   * `entityId` attaches the plan to one of the customer's entities, as a Team seat is (#652). `newMonth`
+   * starts the billing month over at the new plan (#860); Autumn refuses it on a change it schedules for the renewal.
+   */
   attach(args: {
     customerId: string;
     entityId?: string;
@@ -224,6 +230,7 @@ export const autumn = {
     credits?: number;
     successUrl?: string;
     idempotencyKey?: string;
+    newMonth?: boolean;
   }) {
     return call<{ payment_url: string | null; invoice?: { status: string } | null }>(
       "billing.attach",
@@ -236,19 +243,21 @@ export const autumn = {
           ? { feature_quantities: [{ feature_id: "credits", quantity: args.credits }] }
           : {}),
         ...(args.successUrl ? { success_url: args.successUrl } : {}),
+        ...(args.newMonth ? { billing_cycle_anchor: "now" } : {}),
       },
       args.idempotencyKey,
     );
   },
 
-  previewAttach(customerId: string, planId: string) {
+  /** What `attach` would charge now, with the same `newMonth`. A line's `period` is what it pays for, in ms. */
+  previewAttach(customerId: string, planId: string, newMonth: boolean) {
     return call<{
       total: number;
       currency: string;
-      line_items: Array<{ description: string; total: number }>;
+      line_items: Array<{ description: string; total: number; plan_id?: string | null; period?: { start: number; end: number } | null }>;
       next_cycle?: { starts_at: number; total: number } | null;
       redirect_to_checkout: boolean;
-    }>("billing.preview_attach", { customer_id: customerId, plan_id: planId });
+    }>("billing.preview_attach", { customer_id: customerId, plan_id: planId, ...(newMonth ? { billing_cycle_anchor: "now" } : {}) });
   },
 
   /** Cancelling an entity's plan at once refunds the rest of its period and takes back what it granted. */

@@ -1365,7 +1365,7 @@
     "currentPlan": "現在のプラン",
     "newPlan": "新しいプラン",
     "prorationCharge": "日割り料金",
-    "prorationExplanation": "請求サイクルの残り{days}日分",
+    "startsToday": "{plan}は本日開始し、{date}に更新されます。",
     "creditsGranted": "{credits}クレジットを即時付与",
     "monthlyCreditsAfter": "以降は毎月{credits}クレジット",
     "confirmUpgrade": "アップグレードを確認",

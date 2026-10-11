@@ -5,12 +5,12 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { requireAppUrl } from "../lib/env";
 import type { Actor } from "../workspaces/actor";
-import { autumn } from "./autumn";
+import { autumn, type AutumnCustomer } from "./autumn";
 import { refreshAccount } from "./accounts";
 import { previewLineItemsValidator, type BillingCatalog } from "./validators";
 import { MAX_PLAN_DETAILS } from "../lib/listCaps";
 import { FREE_MEMBERS, ORGANIZATION_PLANS, TEAM_PLAN, TOPUP_PLAN } from "../../lib/billing/plans";
-import { findPlan, topUpBundles } from "../../lib/billing/catalog";
+import { costsMore, findPlan, topUpBundles } from "../../lib/billing/catalog";
 
 async function requireUser(ctx: ActionCtx): Promise<Doc<"users">> {
   const user = await ctx.runQuery(internal.users.internal.getCurrentUser);
@@ -31,11 +31,26 @@ async function requireCatalog(ctx: ActionCtx): Promise<BillingCatalog> {
  * The plans a customer can choose here: main plans other than the one Autumn
  * gives everyone. Moving back to that one is a cancellation, in the portal.
  */
-async function requireChoosablePlan(ctx: ActionCtx, planId: string): Promise<void> {
-  const plan = findPlan(await requireCatalog(ctx), planId);
+async function requireChoosablePlan(ctx: ActionCtx, planId: string): Promise<BillingCatalog> {
+  const catalog = await requireCatalog(ctx);
+  const plan = findPlan(catalog, planId);
   if (!plan || plan.addOn || plan.autoEnable || ORGANIZATION_PLANS.includes(plan.id)) {
     throw createError("BILLING_PLAN_INVALID", `No plan "${planId}" to choose`);
   }
+  return catalog;
+}
+
+/**
+ * An upgrade from one paid plan to another starts a new month (#860), as Claude's Pro to Max does: the new
+ * plan's full price less the old one's unused days, renewing a month on. Kept in the old month, a prorated
+ * price bought a full month of the new plan's credits for cents. A first plan starts its month anyway, and
+ * a downgrade waits for the renewal, where Autumn refuses a new month.
+ */
+function startsNewMonth(catalog: BillingCatalog, customer: AutumnCustomer, planId: string): boolean {
+  // The price as subscribed, since a plan taken off the catalog still has subscribers.
+  const price = customer.subscriptions.find((sub) => sub.status === "active" && !sub.add_on && !sub.auto_enable)?.plan?.price;
+  const next = findPlan(catalog, planId);
+  return Boolean(price && next && costsMore({ price }, next));
 }
 
 const billingUrl = () => `${requireAppUrl()}/settings/billing`;
@@ -75,11 +90,12 @@ export const choosePlan = action({
   returns: checkoutResult,
   handler: async (ctx, { plan }): Promise<{ url: string | null }> => {
     const user = await requireUser(ctx);
-    await requireChoosablePlan(ctx, plan);
+    const catalog = await requireChoosablePlan(ctx, plan);
     const result = await autumn.attach({
       customerId: user._id,
       planId: plan,
       successUrl: returnUrl("checkout"),
+      newMonth: startsNewMonth(catalog, await autumn.customer(user._id, { plans: true }), plan),
     });
     await refreshAccount(ctx, await ownWorkspace(ctx, user), { card: true });
     return { url: result.payment_url };
@@ -102,9 +118,10 @@ export const keepPlan = action({
 });
 
 /**
- * What changing to `plan` charges now, in the currency's main unit, and the
- * saved card Autumn would charge. No card means the change goes to Checkout.
- * The card is read live, since the cached snapshot can lag the Stripe portal.
+ * What changing to `plan` charges now, in the currency's main unit, when it
+ * then renews, and the saved card Autumn would charge. No card means the
+ * change goes to Checkout. The card is read live, since the cached snapshot
+ * can lag the Stripe portal.
  */
 export const previewPlan = action({
   args: { plan: v.string() },
@@ -112,21 +129,23 @@ export const previewPlan = action({
     dueNow: v.number(),
     currency: v.string(),
     lineItems: previewLineItemsValidator,
+    renewsAt: v.optional(v.number()),
     card: v.optional(v.object({ brand: v.string(), last4: v.string() })),
   }),
   handler: async (ctx, { plan }): Promise<{
     dueNow: number;
     currency: string;
     lineItems: Array<{ description: string; amount: number }>;
+    renewsAt?: number;
     card?: { brand: string; last4: string };
   }> => {
     const user = await requireUser(ctx);
-    await requireChoosablePlan(ctx, plan);
-    const [preview, customer] = await Promise.all([
-      autumn.previewAttach(user._id, plan),
-      autumn.customer(user._id, { card: true }),
-    ]);
+    const catalog = await requireChoosablePlan(ctx, plan);
+    const customer = await autumn.customer(user._id, { card: true, plans: true });
+    const preview = await autumn.previewAttach(user._id, plan, startsNewMonth(catalog, customer, plan));
     const card = customer.payment_method?.card;
+    // The new plan's line pays up to its renewal; a change scheduled for the renewal has none.
+    const renewsAt = preview.line_items.find((item) => item.plan_id === plan)?.period?.end;
     return {
       dueNow: preview.total,
       currency: preview.currency,
@@ -135,6 +154,7 @@ export const previewPlan = action({
         description: item.description,
         amount: item.total,
       })),
+      ...(renewsAt ? { renewsAt } : {}),
       ...(card ? { card: { brand: card.brand, last4: card.last4 } } : {}),
     };
   },

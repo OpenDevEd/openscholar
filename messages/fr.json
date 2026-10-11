@@ -1365,7 +1365,7 @@
     "currentPlan": "Plan actuel",
     "newPlan": "Nouveau plan",
     "prorationCharge": "Montant au prorata",
-    "prorationExplanation": "pour les {days} jours restants de votre cycle de facturation",
+    "startsToday": "{plan} commence aujourd'hui et se renouvelle le {date}.",
     "creditsGranted": "{credits} crédits accordés immédiatement",
     "monthlyCreditsAfter": "Puis {credits}/mois par la suite",
     "confirmUpgrade": "Confirmer la mise à niveau",

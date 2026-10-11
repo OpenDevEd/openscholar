@@ -19,7 +19,8 @@ export type UpgradePreview = {
   targetPlan: string;
   /** Granted in full as soon as the upgrade is paid. */
   targetPlanCreditsPerMonth: number;
-  remainingDays: number;
+  /** When the new plan renews, in ms: a month from the upgrade (#860). */
+  renewsAt?: number;
   /** The saved card the upgrade charges. */
   card?: { brand: string; last4: string };
   lineItems: Array<{
@@ -62,7 +63,7 @@ export function UpgradeConfirmationDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-          {...(preview.remainingDays > 0 ? {} : { "aria-describedby": undefined })}
+          {...(preview.renewsAt ? {} : { "aria-describedby": undefined })}
           onEscapeKeyDown={(e) => {
             if (isConfirming) e.preventDefault();
           }}
@@ -78,9 +79,9 @@ export function UpgradeConfirmationDialog({
           <DialogTitle>
             {t("title", { plan: preview.targetPlan.charAt(0).toUpperCase() + preview.targetPlan.slice(1) })}
           </DialogTitle>
-          {preview.remainingDays > 0 && (
+          {preview.renewsAt && (
             <DialogDescription>
-              {t("prorationExplanation", { days: preview.remainingDays })}
+              {t("startsToday", { plan: preview.targetPlan, date: format.dateTime(new Date(preview.renewsAt), { year: "numeric", month: "short", day: "numeric" }) })}
             </DialogDescription>
           )}
         </DialogHeader>
