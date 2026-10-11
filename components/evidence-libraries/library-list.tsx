@@ -114,7 +114,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState<string | null>(null);
-  // The invitation being answered: a second press while its answer is on its way does nothing.
+  // The invitation being answered: while its answer is on its way, no invitation takes another.
   const [answering, setAnswering] = useState<string | null>(null);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator", viewer: "Viewer" } as const;
   // An address has at most a page of invitations waiting, so they are filtered here.
@@ -290,14 +290,14 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={answering === library.invitationId}
+                          disabled={answering !== null}
                           onClick={() => setDeclining(library)}
                         >
                           Decline
                         </Button>
                         <Button
                           size="sm"
-                          disabled={answering === library.invitationId}
+                          disabled={answering !== null}
                           onClick={async () => {
                             if (!library.invitationId) return;
                             setAnswering(library.invitationId);
@@ -425,7 +425,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
             </DialogClose>
             <Button
               variant="destructive"
-              disabled={answering === declining?.invitationId}
+              disabled={answering !== null}
               onClick={async () => {
                 if (!declining?.invitationId) return;
                 setAnswering(declining.invitationId);
