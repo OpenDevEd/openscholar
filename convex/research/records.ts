@@ -114,18 +114,26 @@ const SHORTCUT_PAGE_MAX = 50;
 export const listedShortcutsAction = defineUserQuery({
   path: "research/records:listedShortcuts",
   description:
-    "Lists the person's query shortcuts (the Bookmarks page), each a short name that expands to a longer query, a page at a time: newest or oldest first, or by name. Given `text`, those whose name or expansion best match its words, best first.",
-  args: { ...pageArgs, sort: shortcutSortValidator, text: v.optional(v.string()) },
-  returns: paginationResultValidator(shortcutValidator),
-  run: async (ctx, { workspaceId }, { paginationOpts, sort, text }) => {
+    "Lists the person's query shortcuts (the Bookmarks page), each a short name that expands to a longer query, a page at a time: newest or oldest first, or by name. Given `text`, those whose name or expansion best match its words, best first. " +
+    "In an organization the shortcuts are its members', each with `by`, who added it; `by` as an argument (a member's `userId`, from workspaces/makers:counts) lists that member's alone.",
+  args: { ...pageArgs, sort: shortcutSortValidator, text: v.optional(v.string()), by: v.optional(v.id("users")) },
+  returns: paginationResultValidator(v.object({ ...shortcutValidator.fields, by: v.optional(makerValidator) })),
+  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text, by }) => {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHORTCUT_PAGE_MAX), maximumBytesRead: LISTED_BYTES };
-    const index = sort === "alpha" || sort === "alpha-desc" ? "by_workspace_and_sortName" : "by_workspace_and_createdAt";
+    const named = sort === "alpha" || sort === "alpha-desc";
     const order = sort === "oldest" || sort === "alpha" ? "asc" : "desc";
     const needle = searchTerms(text);
     const page = await (needle
-      ? ctx.db.query("queryShortcuts").withSearchIndex("search_text", q => q.search("searchText", needle).eq("workspaceId", workspaceId)).paginate(opts)
-      : ctx.db.query("queryShortcuts").withIndex(index, q => q.eq("workspaceId", workspaceId)).order(order).paginate(opts));
-    return { ...page, page: page.page.map(row => row.data) };
+      ? ctx.db.query("queryShortcuts").withSearchIndex("search_text", q => (by === undefined ? q.search("searchText", needle).eq("workspaceId", workspaceId) : q.search("searchText", needle).eq("workspaceId", workspaceId).eq("createdBy", by))).paginate(opts)
+      : (by === undefined
+          ? ctx.db.query("queryShortcuts").withIndex(named ? "by_workspace_and_sortName" : "by_workspace_and_createdAt", q => q.eq("workspaceId", workspaceId))
+          : ctx.db.query("queryShortcuts").withIndex(named ? "by_workspace_and_createdBy_and_sortName" : "by_workspace_and_createdBy_and_createdAt", q => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+        ).order(order).paginate(opts));
+    const makerOf = await makersIn(ctx, workspaceId, userId);
+    return { ...page, page: await Promise.all(page.page.map(async row => {
+      const maker = await makerOf(row.createdBy);
+      return maker ? { ...row.data, by: maker } : row.data;
+    })) };
   },
 });
 export const listedShortcuts = accountQuery(listedShortcutsAction);
@@ -607,9 +615,9 @@ export async function applyRating(ctx: MutationCtx, userId: Id<"users">, command
 }
 
 /**
- * Refuses taking away a search or bookmark someone else made, unless the person is an admin of
- * the workspace, and Clear all in an organization, which has none (#650). In their own
- * workspace a person is its admin, so nothing is refused there.
+ * Refuses taking away a search someone else made, and changing or taking away a bookmark someone
+ * else added, unless the person is an admin of the workspace; and Clear all in an organization,
+ * which has none (#650). In their own workspace a person is its admin, so nothing is refused there.
  */
 export async function checkRemoval(ctx: QueryCtx, actor: Actor, command: ResearchCommand) {
   if (command.kind === "clearSearches" || command.kind === "clearShortcuts") {
@@ -618,7 +626,7 @@ export async function checkRemoval(ctx: QueryCtx, actor: Actor, command: Researc
   }
   if (actor.role === "admin") return;
   const row = command.kind === "deleteSearch" ? await findSearch(ctx, actor.workspaceId, command.id)
-    : command.kind === "shortcut" && command.value === null ? await shortcut(ctx, actor.workspaceId, command.shorthand)
+    : command.kind === "shortcut" ? await shortcut(ctx, actor.workspaceId, command.shorthand)
       : null;
   if (row) requireMakerOrAdmin(actor, row.createdBy);
 }

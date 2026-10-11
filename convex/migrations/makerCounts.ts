@@ -16,15 +16,17 @@ import { startMakerCount, type ByMaker } from "../research/recordCounts";
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
-const start = (table: ByMaker) =>
+// A search holds its whole query and history: 25 of the largest stay well within a transaction's reads.
+const start = (table: ByMaker, batchSize = 25) =>
   migrations.define({
     table,
-    // A search holds its whole query and history: 25 of the largest stay well within a transaction's reads.
-    batchSize: 25,
+    batchSize,
     migrateOne: async (ctx, record) => startMakerCount(ctx, table, record),
   });
 
 export const searches = start("searches");
+// A bookmark's expansion is as long as a document may be, a megabyte: eight of those stay within the reads.
+export const queryShortcuts = start("queryShortcuts", 8);
 export const screeningJobs = start("screeningJobs");
 export const extractionJobs = start("extractionJobs");
 export const collections = start("collections");
@@ -32,6 +34,7 @@ export const assistantThreads = start("assistantThreads");
 
 export const run = migrations.runner([
   internal.migrations.makerCounts.searches,
+  internal.migrations.makerCounts.queryShortcuts,
   internal.migrations.makerCounts.screeningJobs,
   internal.migrations.makerCounts.extractionJobs,
   internal.migrations.makerCounts.collections,
@@ -56,7 +59,7 @@ export const verify = internalAction({
   args: {},
   returns: v.number(),
   handler: async (ctx): Promise<number> => {
-    const statuses = await migrations.getStatus(ctx, { migrations: [internal.migrations.makerCounts.searches, internal.migrations.makerCounts.screeningJobs, internal.migrations.makerCounts.extractionJobs, internal.migrations.makerCounts.collections, internal.migrations.makerCounts.assistantThreads] });
+    const statuses = await migrations.getStatus(ctx, { migrations: [internal.migrations.makerCounts.searches, internal.migrations.makerCounts.queryShortcuts, internal.migrations.makerCounts.screeningJobs, internal.migrations.makerCounts.extractionJobs, internal.migrations.makerCounts.collections, internal.migrations.makerCounts.assistantThreads] });
     let left = statuses.filter((status) => !status.isDone).length;
     for (let cursor: string | null = null; ;) {
       const page: { counting: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.makerCounts.countingPage, { cursor });

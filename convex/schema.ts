@@ -119,7 +119,11 @@ export default defineSchema({
     .index("by_workspace_and_sortName", ["workspaceId", "sortName"])
     .index("by_workspace", ["workspaceId"])
     .index("by_workspace_and_shorthand", ["workspaceId", "data.shorthand"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["workspaceId"] }),
+    // One member's in an organization (#656), in each of the list's orders, and for their count.
+    .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
+    .index("by_workspace_and_createdBy_and_createdAt", ["workspaceId", "createdBy", "data.createdAt"])
+    .index("by_workspace_and_createdBy_and_sortName", ["workspaceId", "createdBy", "sortName"])
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["workspaceId", "createdBy"] }),
   // A person's rating of a paper, from 0 to 5 (#655): their own, the same everywhere, or theirs within a
   // collection, which its people see.
   ratings: defineTable({ userId: v.id("users"), paperId: v.string(), collectionId: v.optional(v.id("collections")), rating: v.number() })

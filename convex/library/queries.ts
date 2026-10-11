@@ -1,3 +1,4 @@
+import { makerValidator, makersIn } from "../workspaces/makers";
 import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { searchTerms } from "../lib/searchText";
@@ -48,6 +49,8 @@ export const libraryPageValidator = paginationResultValidator(schema.tables.libr
   myRating: v.optional(v.number()),
   collection: v.optional(v.object({ mine: v.optional(v.number()), raters: v.array(raterValidator), count: v.number() })),
   members: v.optional(v.object({ raters: v.array(raterValidator), count: v.number() })),
+  /** In an organization, who saved it there: for its members, not a collection's guests. */
+  by: v.optional(makerValidator),
 }));
 
 type LibraryItem = Doc<"libraryItems">;
@@ -343,6 +346,9 @@ async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspac
   const members = workspace?.kind === "organization" && !collectionId && !guest ? await Promise.all(read.page.map(async (item, at) =>
     item.ratingCount ? { raters: (await keptRaters(item, userId, mine?.[at] ?? null, person)).map(shownRater), count: item.ratingCount } : undefined,
   )) : null;
+  // Who saved each paper, in an organization's library (#656): a person's own is all theirs, and a guest is told of no one.
+  const makerOf = guest ? null : await makersIn(ctx, workspaceId, userId);
+  const added = makerOf ? await Promise.all(read.page.map((item) => makerOf(item.createdBy))) : null;
   return {
     ...read,
     // Who gave a paper's rating goes out as `members`, to the organization's members alone, never as the paper keeps it.
@@ -350,6 +356,7 @@ async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspac
       const myRating = own ? item.rating : mine?.[at]?.rating;
       return {
         ...item,
+        ...(added?.[at] ? { by: added[at] } : {}),
         ...(myRating === undefined ? {} : { myRating }),
         ...(inCollection ? { collection: inCollection[at] } : {}),
         ...(members?.[at] ? { members: members[at] } : {}),

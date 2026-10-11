@@ -69,3 +69,34 @@ it("lists you first, and keeps a member who left, last, and in the organization'
   expect(await names(alice)).toEqual(["Alice", "Bob"]);
   expect(await alice.query(api.workspaces.makers.total, { workspaceId, table: "collections" })).toBe(2);
 });
+
+it("an organization's bookmarks name who added each, list one member's, and are changed by that member alone", async () => {
+  const { alice, bob, settled, users, workspaceId } = await lab();
+  const people = { alice, bob };
+  const set = (accountId: "alice" | "bob", shorthand: string, expansion: string | null) =>
+    people[accountId].mutation(api.research.records.change, { accountId, workspaceId, requestId: `${accountId}-${shorthand}-${expansion}`, command: { kind: "shortcut", shorthand, value: expansion === null ? null : { expansion, createdAt: 1 } } });
+  await set("alice", "ai", "artificial intelligence");
+  await set("bob", "edu", "education OR schooling");
+  await settled();
+  const listed = async (by?: Id<"users">) => (await alice.query(api.research.records.listedShortcuts, { accountId: "alice", workspaceId, sort: "alpha", ...(by ? { by } : {}), ...page })).page.map((row) => [row.shorthand, row.by?.name, row.by?.you]);
+  expect(await listed()).toEqual([["ai", "Alice", true], ["edu", "Bob", false]]);
+  expect(await listed(users.bob)).toEqual([["edu", "Bob", false]]);
+  expect(Object.fromEntries((await alice.query(api.workspaces.makers.counts, { workspaceId, table: "queryShortcuts", ...page })).page.map((row) => [row.name, row.count]))).toEqual({ Alice: 1, Bob: 1 });
+
+  // Bob, a member, uses Alice's bookmark but neither rewrites nor removes it.
+  await expect(set("bob", "ai", "something else")).rejects.toThrow(/Only an admin/);
+  await expect(set("bob", "ai", null)).rejects.toThrow(/Only an admin/);
+  await set("alice", "ai", 'AI OR "machine learning"');
+  expect((await bob.query(api.research.records.listedShortcuts, { accountId: "bob", workspaceId, sort: "alpha", ...page })).page[0]).toMatchObject({ shorthand: "ai", expansion: 'AI OR "machine learning"' });
+});
+
+it("an organization's library says who saved each paper, and a person's own names no one", async () => {
+  const { alice, bob, workspaceId, aliceOwn } = await lab();
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "One" });
+  await bob.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W2", title: "Two" });
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: aliceOwn, openalexId: "https://openalex.org/W3", title: "Three" });
+  const view = { sortBy: "savedAt" as const, sortOrder: "asc" as const, paginationOpts: { cursor: null, numItems: 20 } };
+  const lab_ = (await alice.query(api.library.queries.browseLibrary, { workspaceId, ...view })).page;
+  expect(lab_.map((paper) => [paper.title, paper.by?.name, paper.by?.you])).toEqual([["One", "Alice", true], ["Two", "Bob", false]]);
+  expect((await alice.query(api.library.queries.browseLibrary, { workspaceId: aliceOwn, ...view })).page[0]).not.toHaveProperty("by");
+});
