@@ -29,7 +29,7 @@ export async function requireRoom(ctx: QueryCtx, shared: Shared) {
 
 /** Writes to an item's Activity that `by` shared it with someone, named as given. */
 export const noteShared = (ctx: Pick<MutationCtx, "db">, shared: Shared, by: Pick<Acting, "userId" | "author">, withWhom: string) =>
-  noteActivity(ctx, { workspaceId: shared.workspaceId, by: by.userId, viaAssistant: by.author === "assistant" }, { kind: shared.kind, id: shared.id, happened: "shared", detail: withWhom });
+  noteActivity(ctx, { workspaceId: shared.workspaceId, by: by.userId, viaAssistant: by.author === "assistant" }, { kind: shared.kind, id: shared.pageId ?? shared.id, happened: "shared", detail: withWhom });
 
 /**
  * Gives a person the item, or changes what they may do with it. An invitation to their address

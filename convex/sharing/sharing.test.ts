@@ -387,6 +387,8 @@ it("opens a shared search to its guest from their own workspace by its document'
   await expect(edit(carol, "carol", carolOwn, shared, { kind: "restore", revision: 1 })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
   // The assistant asks her before it changes someone else's search, as the page's own change doesn't put it back.
   expect(await t.run((ctx) => changeAction.asksFirst!(ctx, { userId: users.carol, workspaceId: carolOwn, role: "admin", author: "assistant" }, { requestId: "ask", command: { kind: "editSearch", id: shared, edit: { kind: "patch", fields: {}, clear: ["screeningQuestions"] } } }))).toBe(true);
+  // Sharing it is in its Activity too, under the ID its page shows.
+  expect((await alice.query(api.activity.queries.list, { ...item, paginationOpts: { cursor: null, numItems: 10 } })).page.map((row) => row.happened)).toContain("shared");
   // Her place follows the search's name.
   await t.finishAllScheduledFunctions(vi.runAllTimers);
   expect(await t.run(async (ctx) => (await ctx.db.query("itemAccess").withIndex("by_user_and_grantedAt", (q) => q.eq("userId", users.carol)).collect()).map(({ kind, name }) => ({ kind, name })))).toEqual([{ kind: "search", name: "school meals" }]);

@@ -23,7 +23,7 @@ import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
 import type { GuestRole, SharedKind } from "@/convex/sharing/validators";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { PlanChip, useCurrentWorkspace, usePlanOf, WorkspaceTile } from "./parts";
@@ -109,6 +109,8 @@ function Share({ close, access, kind, id, name, link, note }: Item & Linked & { 
   const setRole = useWorkspaceMutation(api.sharing.guests.setRole);
   const remove = useWorkspaceMutation(api.sharing.guests.remove);
   const failed = (error: unknown) => showStyledToast("error", getErrorMessage(error, t("failed")));
+  const toast = useAppToast();
+  const tl = useTranslations("searchCommand");
 
   const { room, guests, invited } = access;
   const used = room?.used ?? guests.results.length + invited.results.length;
@@ -187,7 +189,15 @@ function Share({ close, access, kind, id, name, link, note }: Item & Linked & { 
         }
         // The link without the organization in it opens for a member in the organization and for a guest in their own workspace.
         // The item's own address, without its workspace: a guest opens it in theirs, and a member is taken to the item's (item-home.tsx). The page's address may not name it, as /screening doesn't for the newest screening.
-        onCopy={async () => navigator.clipboard.writeText(link ? await link() : `${window.location.origin}${SHARED_KINDS[kind].href(id)}`)}
+        // A link that couldn't be made or copied says so: the panel only knows a copy that worked.
+        onCopy={async () => {
+          try {
+            await navigator.clipboard.writeText(link ? await link() : `${window.location.origin}${SHARED_KINDS[kind].href(id)}`);
+          } catch (error) {
+            toast.clipboard.copyFailed(tl("link"));
+            throw error;
+          }
+        }}
       />
     </>
   );

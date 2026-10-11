@@ -14,8 +14,8 @@ import type { GuestRole, SharedKind } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
 
-/** An item as sharing sees it: where it is, what it's called, and how much it holds (a collection's papers, a screening's). */
-export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size: number };
+/** An item as sharing sees it: where it is, what it's called, and how much it holds (a collection's papers, a screening's). A search's Activity is kept under the ID its page shows in its workspace (`pageId`); its guests' rows name its document. */
+export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size: number; pageId?: string };
 
 /**
  * Each kind's table, what its row is called, how much it holds, the word for one in a sentence,
@@ -51,7 +51,7 @@ export async function findShared(ctx: Read, kind: SharedKind, id: string): Promi
   const rowId = ctx.db.normalizeId(table, id);
   const row = rowId ? await ctx.db.get(table, rowId) : null;
   // Whole characters: an emoji cut in two is no character at all.
-  return row ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), size: size(row) } : null;
+  return row ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), size: size(row), ...("localId" in row ? { pageId: row.localId } : {}) } : null;
 }
 
 /** The item, for someone who acts in its workspace: only they share it, and anyone else learns nothing of it. */
