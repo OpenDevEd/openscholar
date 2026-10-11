@@ -50,10 +50,16 @@ export async function capOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId
 /**
  * What's left of the member's cap this month, or undefined with no cap. It counts what they hold
  * as well as what they spent: a job of theirs running beside a reply holds its papers' credits.
+ * A cap holds only while the member has the seat their work is charged as: once they've left,
+ * what's left of their jobs is charged to the organization, with no cap on it.
+ *
+ * ponytail: an approved job's hold counts in full beside what's already recorded under it, so
+ * while one is part way through this reads less than Autumn would allow, never more. Summing
+ * each open hold's items (billingHoldItems) would make it exact, at a read per item.
  */
 export async function capLeft(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) {
   const cap = await capOf(ctx, workspaceId, userId);
-  if (cap === undefined) return undefined;
+  if (cap === undefined || !(await chargedAs(ctx, workspaceId, userId))) return undefined;
   const holds = await ctx.db.query("billingHolds").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).take(OPEN_HOLDS_READ);
   const held = holds.reduce((sum, hold) => sum + hold.credits, 0);
   return Math.max(0, cap - held - (await spentSince(ctx, workspaceId, userId, monthStart(Date.now()))));

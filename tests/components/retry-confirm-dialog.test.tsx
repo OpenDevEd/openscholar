@@ -27,6 +27,12 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
   useProtectedQuery: (ref: string) => (ref === "estimateRetry" ? { data: 90 } : balanceStore),
 }));
 
+// What's left of the cap an admin set on the person in an organization; undefined with no cap.
+const capStore = { left: undefined as number | undefined };
+vi.mock("@/components/workspaces/credit-check", () => ({
+  useSpendable: () => ({ loaded: true, balance: 0, pool: 0, cap: capStore.left, left: capStore.left }),
+}));
+
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     billing: {
@@ -50,6 +56,15 @@ function setBalance(total: number, hasEnough: boolean, required: number) {
 describe("<RetryConfirmDialog>", () => {
   beforeEach(() => {
     balanceStore.data = undefined;
+    capStore.left = undefined;
+  });
+
+  it("Continue is disabled when the retry takes more than is left of the person's cap, though the workspace has the credits", () => {
+    setBalance(1_000_000, true, 90);
+    capStore.left = 50;
+    render(<RetryConfirmDialog open={true} onOpenChange={() => {}} retryableCount={3} jobId={"job" as never} onConfirm={() => {}} />);
+    expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+    expect(screen.getByText("member_cap")).toBeInTheDocument();
   });
 
   it("renders the dialog with the count-aware title when open", () => {

@@ -684,6 +684,7 @@
     "convexNotFound": "The requested resource could not be found.",
     "convexInvalidInput": "Please review your input and try again.",
     "convexInsufficientCredits": "You do not have enough credits to continue.",
+    "memberCapReached": "This needs more credits than your cap has free right now. Other work of yours may be holding some of it: try again when that finishes, or ask an admin to raise your cap.",
     "aiUnauthenticated": "Please sign in to use AI features.",
     "aiInsufficientCredits": "You do not have enough AI credits.",
     "aiPlanEntitlement": "This AI feature requires a higher plan.",

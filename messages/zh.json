@@ -684,6 +684,7 @@
     "convexNotFound": "未找到请求的资源。",
     "convexInvalidInput": "请检查输入后重试。",
     "convexInsufficientCredits": "积分不足，无法继续。",
+    "memberCapReached": "所需积分超过了你的上限当前可用的额度。你正在进行的其他任务可能占用了一部分：等它完成后再试，或请管理员提高上限。",
     "aiUnauthenticated": "使用 AI 功能前请先登录。",
     "aiInsufficientCredits": "AI 积分不足。",
     "aiPlanEntitlement": "此 AI 功能需要更高套餐。",

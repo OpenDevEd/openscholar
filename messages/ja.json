@@ -684,6 +684,7 @@
     "convexNotFound": "要求されたリソースが見つかりません。",
     "convexInvalidInput": "入力内容を確認して再試行してください。",
     "convexInsufficientCredits": "続行するためのクレジットが不足しています。",
+    "memberCapReached": "現在の上限の空きを超えるクレジットが必要です。実行中のほかの作業が一部を確保している可能性があります。その完了後にもう一度試すか、管理者に上限の引き上げを依頼してください。",
     "aiUnauthenticated": "AI機能を使うにはサインインしてください。",
     "aiInsufficientCredits": "AIクレジットが不足しています。",
     "aiPlanEntitlement": "このAI機能には上位プランが必要です。",

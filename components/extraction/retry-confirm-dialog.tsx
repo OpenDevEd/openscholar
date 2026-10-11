@@ -17,6 +17,7 @@ import { api } from "@/convex/_generated/api";
 import { useWorkspaceScope } from "@/lib/workspaces/url";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ExtractionPreflightBanner } from "@/components/extraction/preflight-banner";
+import { useSpendable } from "@/components/workspaces/credit-check";
 
 export interface RetryConfirmDialogProps {
   open: boolean;
@@ -56,9 +57,15 @@ export function RetryConfirmDialog({
     open && credits && balanceScope !== "skip" ? { ...balanceScope, requiredAmount: credits } : "skip",
   );
 
+  // The organization can have the credits while the cap an admin set on the person doesn't (#652).
+  const spend = useSpendable();
+  const overCap = spend.left !== undefined && credits !== undefined && credits > spend.left;
+  const te = useTranslations("errors.body");
+
   const [submitting, setSubmitting] = useState(false);
   const canConfirm =
     !submitting &&
+    !overCap &&
     (balance === null || balance === undefined
       ? false
       : balance.hasEnough);
@@ -88,6 +95,7 @@ export function RetryConfirmDialog({
           balance={balance}
           onBeforeNavigate={() => onOpenChange(false)}
         />
+        {overCap ? <p role="status" className="rounded-md bg-destructive/10 px-3 py-2 text-xs">{te("member_cap")}</p> : null}
         <AlertDialogFooter>
           <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
           <AlertDialogAction

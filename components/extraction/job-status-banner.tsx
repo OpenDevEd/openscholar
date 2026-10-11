@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 import { useWorkspaceScope } from "@/lib/workspaces/url";
+import { useSpendable } from "@/components/workspaces/credit-check";
 
 type CommonProps = {
   onResume?: () => void;
@@ -60,6 +61,9 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
       ? { ...balanceScope, requiredAmount: props.minCreditsToResume ?? 1 }
       : "skip",
   );
+
+  const spend = useSpendable();
+  const te = useTranslations("errors.body");
 
   if (props.variant === "paused") {
     return (
@@ -105,7 +109,9 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
 
   const hasEnough = balance?.hasEnough ?? false;
   const total = balance?.total ?? 0;
-  const canResume = Boolean(props.onResume) && hasEnough;
+  // The organization can have the credits while the cap an admin set on the person doesn't (#652).
+  const overCap = spend.left !== undefined && (props.minCreditsToResume ?? 1) > spend.left;
+  const canResume = Boolean(props.onResume) && hasEnough && !overCap;
 
   return (
     <Alert
@@ -126,6 +132,7 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
             {total.toLocaleString()} {tc("credits").toLowerCase()}
           </span>
         </div>
+        {overCap ? <p className="text-xs">{te("member_cap")}</p> : null}
         <div className="flex flex-wrap items-center gap-2">
           {/* A job stopped at its own figure usually has the balance to go on, so Resume leads there. */}
           <Button

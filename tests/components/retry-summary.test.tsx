@@ -47,6 +47,10 @@ vi.mock("convex/react", () => ({
   useMutation: () => retryMock,
 }));
 
+vi.mock("@/components/workspaces/credit-check", () => ({
+  useSpendable: () => ({ loaded: true, balance: 0, pool: 0, cap: undefined, left: undefined }),
+}));
+
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     extraction: {

@@ -259,8 +259,6 @@ function Overlay({
   // again while the purchase is on its way, and a second one started then would charge the card twice.
   // Bought for the workspace the panel is in: an organization's admins buy its credits.
   const buyCredits = useWorkspaceAction(api.billing.actions.buyCredits);
-  // Read with the panel, so an approval card has what a call draws on, credits and cap, on its first frame.
-  useSpendable();
   const toast = useAppToast();
   const [buying, setBuying] = useState<number | null>(null);
   const [bought, setBought] = useState<number | null>(null);
@@ -505,8 +503,10 @@ function Chat({
   const [stack, setStack] = useState<{ threadId: ThreadId | null; open: boolean }>({ threadId: null, open: false });
   const stackOpen = stack.open && stack.threadId === threadId && (running?.length ?? 0) > 1;
   const openStack = (open: boolean) => setStack({ threadId, open });
+  // Read with the chat, which shows once it is: an approval card in it has what a call draws on, credits and cap, from its first frame, and keeps its height.
+  const spendable = useSpendable();
   // Which of its jobs are docked is known; a chat its first message just started has none yet.
-  const jobsKnown = running !== undefined || threadId === born;
+  const jobsKnown = (running !== undefined && spendable.loaded) || threadId === born;
   // The chat being made, so sending and sharing a chat that hasn't started both end up in the same one.
   const making = useRef<Promise<ThreadId> | null>(null);
   // The message on its way to the server, and the chat it's for: Stop pressed before its reply shows waits for it.
