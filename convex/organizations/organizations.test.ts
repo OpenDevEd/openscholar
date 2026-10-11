@@ -354,6 +354,10 @@ describe("an organization", () => {
     fakeAutumn.declineCard = true;
     await expect(invite(["carol@example.org"], true)).rejects.toThrow(/declined/);
     fakeAutumn.declineCard = false;
+    // A bank that asks to confirm the charge gets its page; nothing is sent meanwhile.
+    fakeAutumn.confirmPayments = true;
+    await expect(invite(["carol@example.org"], true)).rejects.toMatchObject({ data: { code: "BILLING_PAYMENT_ACTION_REQUIRED", url: "https://checkout.test" } });
+    fakeAutumn.confirmPayments = false;
     expect(open()).toEqual(["bob@example.org"]);
     expect(await invite(["carol@example.org", "dan@example.org"], true)).toEqual({ invited: 2 });
     expect(await aliceAs.query(api.billing.seats.counts, inLab)).toEqual({ members: 1, invitations: 3, seats: 4, held: 0 });

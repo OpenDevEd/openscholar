@@ -3961,7 +3961,10 @@
       "dueNow": "À payer maintenant",
       "offNextBill": "Déduit de la prochaine facture",
       "seatsNow": "Maintenant",
-      "seatsAfter": "Après"
+      "seatsAfter": "Après",
+      "seatToConfirm": "La banque demande de confirmer ce paiement. Confirmez-le, puis invitez à nouveau.",
+      "confirmPayment": "Confirmer le paiement",
+      "seatHeldUndated": "Cette personne a dépensé des crédits sur cette période, sa place reste donc occupée jusqu'au renouvellement."
     },
     "couldntInvite": "L'organisation a été créée, mais les invitations ne sont pas parties. Envoyez-les depuis ses paramètres Membres.",
     "fromCredits": "Sur les crédits de {name}",

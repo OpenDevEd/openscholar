@@ -179,7 +179,7 @@ export const inviteAction = defineChangingAction({
     const short = counted && counted.seats > 0 ? counted.members + counted.invitations + counted.held + fresh.length - counted.seats : 0;
     if (short > 0 && addSeat) {
       const confirm = await setSeats(ctx, actor.workspaceId, counted!.seats + short);
-      if (confirm) throw createError("BILLING_PAYMENT_DECLINED", "The card asks to confirm this charge, so no seat was added and nothing was sent. Confirm it from the organization's billing page.");
+      if (confirm) throw createError("BILLING_PAYMENT_ACTION_REQUIRED", "The bank asks to confirm this charge. Confirm it, then send the invitation again.", { url: confirm });
     }
     return { invited: await sendInvitations(ctx, key, actor.workspaceId, clerkUserId, organization, fresh, clerkRole(role)) };
   },

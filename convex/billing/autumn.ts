@@ -326,6 +326,17 @@ export const autumn = {
     return call<{ list: Array<{ entity_id: string; license_plan_id: string }> }>("licenses.list_assignments", { customer_id: customerId, active: true });
   },
 
+  /** Makes a member's entity with its monthly cap (null for none) before it's given a seat, so the cap is there from its first charge. */
+  createEntity(args: { customerId: string; entityId: string; featureId: string; name: string; cap: number | null }) {
+    return call<AutumnEntity>("entities.create", {
+      customer_id: args.customerId,
+      entity_id: args.entityId,
+      feature_id: args.featureId,
+      name: args.name,
+      billing_controls: capControls(args.cap),
+    });
+  },
+
   /** Caps the credits a member's entity spends each calendar month (UTC); null takes the cap off. */
   setCap(customerId: string, entityId: string, cap: number | null) {
     return call<AutumnEntity>("entities.update", { customer_id: customerId, entity_id: entityId, billing_controls: capControls(cap) });

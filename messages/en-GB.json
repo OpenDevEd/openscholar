@@ -3961,7 +3961,10 @@
       "dueNow": "Due now",
       "offNextBill": "Off the next bill",
       "seatsNow": "Now",
-      "seatsAfter": "After"
+      "seatsAfter": "After",
+      "seatToConfirm": "The bank asks to confirm this charge. Confirm it, then invite again.",
+      "confirmPayment": "Confirm payment",
+      "seatHeldUndated": "They spent credits this billing period, so their seat stays taken until the renewal."
     },
     "couldntInvite": "The organisation was made, but the invitations didn't go out. Send them from its Members settings.",
     "fromCredits": "From {name}'s credits",

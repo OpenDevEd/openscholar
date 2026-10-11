@@ -282,6 +282,12 @@ function handle(path: string, body: Record<string, unknown>, idempotencyKey: str
     }
     case "licenses.list_assignments":
       return respond(200, { list: fakeAutumn.seated(customerId!).map((id) => ({ entity_id: id, license_plan_id: SEAT })) });
+    case "entities.create": {
+      const entities = fakeAutumn.entitiesOf(customerId!);
+      if (entities.has(body.entity_id as string)) return respond(409, { code: "entity_already_exists" });
+      entities.set(body.entity_id as string, { seated: false, used: 0, ...capOf(body) });
+      return respond(200, { id: body.entity_id, subscriptions: [] });
+    }
     case "entities.update": {
       const entity = fakeAutumn.entitiesOf(customerId!).get(body.entity_id as string);
       if (!entity) return respond(404, { code: "entity_not_found" });

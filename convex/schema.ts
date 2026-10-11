@@ -574,6 +574,8 @@ export default defineSchema({
     seats: v.number(),
     /** Of them, the seats held to the renewal by members who left after spending credits (#863). */
     held: v.optional(v.number()),
+    /** Set while a member waits for a seat, having joined past them in a race (#863): they spend nothing until they have one. */
+    overflow: v.optional(v.literal(true)),
     /** Set while a sync runs: when it started. */
     runningSince: v.optional(v.number()),
     /** A sync asked for while one ran, which runs once that one ends. */

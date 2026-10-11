@@ -65,8 +65,8 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
   const moveToFree = useWorkspaceAction(api.billing.actions.moveToFree);
   const keepPlan = useWorkspaceAction(api.billing.actions.keepPlan);
   const [asking, setAsking] = useState<"team" | "free" | null>(null);
-  // Autumn's own figure for the seats picked, read before the confirmation opens.
-  const [preview, setPreview] = useState<FunctionReturnType<typeof api.billing.actions.previewTeam> | null>(null);
+  // Autumn's own figure for the seats picked, read before the confirmation opens; the move is for the seats it was read for.
+  const [preview, setPreview] = useState<(FunctionReturnType<typeof api.billing.actions.previewTeam> & { seats: number }) | null>(null);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [picked, setSeats] = useState<number>();
@@ -128,7 +128,7 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
   const askTeam = async () => {
     setBusy(true);
     try {
-      setPreview(await previewTeam({ seats }));
+      setPreview({ ...(await previewTeam({ seats })), seats });
       setAsking("team");
     } catch (error) {
       showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong")));
@@ -187,7 +187,7 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
                     {t("seats", { count: seats })}
                   </span>
                 ) : (
-                  <SeatStepper seats={seats} fewest={fewest} why={organization ? t("seatsInUse", { members, invitations }) : null} onChange={setSeats} />
+                  <SeatStepper seats={seats} fewest={fewest} why={organization ? t("seatsInUse", { members, invitations }) : null} onChange={(next) => !busy && setSeats(next)} />
                 )}
                 <span className="text-xs text-muted-foreground">{t("aSeat", { price: money(seatPrice) })}</span>
               </div>
@@ -215,7 +215,7 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
       <UpgradeConfirmationDialog
         open={asking === "team" && !!organization && !onTeam && !notAdmin && preview !== null}
         onOpenChange={(open) => !busy && !open && setAsking(null)}
-        onConfirm={() => void move(() => moveToTeam({ seats }))}
+        onConfirm={() => preview && void move(() => moveToTeam({ seats: preview.seats }))}
         isConfirming={busy}
         preview={
           preview && {
@@ -223,7 +223,7 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
             immediateChargeCents: Math.round(preview.dueNow * 100),
             currentPlan: free.name,
             targetPlan: team.name,
-            targetPlanCreditsPerMonth: seats * seatCredits,
+            targetPlanCreditsPerMonth: preview.seats * seatCredits,
             renewsAt: preview.renewsAt,
             lineItems: preview.lineItems.map((item) => ({ description: item.description, amountCents: Math.round(item.amount * 100), currency: preview.currency })),
           }

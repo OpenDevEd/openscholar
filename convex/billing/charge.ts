@@ -30,7 +30,7 @@ import { autumn, AutumnError } from "./autumn";
 import { customerOf, requestRefresh, zeroCachedBalance } from "./accounts";
 import { billingUsageFields, usageKindValidator } from "./validators";
 import { insertUsage } from "./ledger";
-import { capReached, chargedAs } from "./memberCaps";
+import { capReached, chargedAs, noSeat, waitsForSeat } from "./memberCaps";
 import { createError } from "../lib/errors";
 import type { Usage } from "../../lib/ai/core/types";
 
@@ -115,6 +115,7 @@ export const hold = internalMutation({
   returns: v.object(payerValidator),
   handler: async (ctx, { userId, workspaceId, chargeId, credits, expiresAt, spend }) => {
     const { customerId, entityId } = await payerOf(ctx, { workspaceId, userId });
+    if (!entityId && (await waitsForSeat(ctx, workspaceId, userId))) throw noSeat();
     // A job's hold has charges recorded under it: left standing, it is settled with them, never given back whole.
     const release = spend
       ? await ctx.scheduler.runAt(expiresAt, internal.billing.charge.settleSpent, { chargeId, attempt: 0 })

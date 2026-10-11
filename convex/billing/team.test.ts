@@ -117,9 +117,12 @@ it("moves an organization on Team to Free at its renewal once it has few enough 
 
   await membership("fy", false);
   await ada.action(api.billing.actions.moveToFree, { workspaceId });
-  // It keeps Team and its seats to the renewal; Clerk holds it to Free's members from now.
+  // It keeps Team and its seats to the renewal; Clerk holds it to Free's members from now, through the syncs before it.
   expect(fakeAutumn.customer(workspaceId)).toMatchObject({ planId: TEAM_PLAN, next: ORGANIZATION_PLAN });
   expect(limits().at(-1)?.limit).toBe(FREE_MEMBERS);
+  await t.action(internal.billing.seats.sync, { workspaceId });
+  expect(limits().at(-1)?.limit).toBe(FREE_MEMBERS);
+  await expect(ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 7 })).rejects.toThrow(/Keep Team/);
   expect(await t.run((ctx) => ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())).toMatchObject({ plan: TEAM_PLAN, changesAt: expect.any(Number), nextPlan: ORGANIZATION_PLAN });
 
   await ada.action(api.billing.actions.keepPlan, { workspaceId });

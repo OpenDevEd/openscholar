@@ -3961,7 +3961,10 @@
       "dueNow": "现在应付",
       "offNextBill": "从下一张账单中扣除",
       "seatsNow": "现在",
-      "seatsAfter": "之后"
+      "seatsAfter": "之后",
+      "seatToConfirm": "银行要求确认这笔付款。请确认后再重新邀请。",
+      "confirmPayment": "确认付款",
+      "seatHeldUndated": "此成员在本计费周期使用了积分，因此其席位保留至续订。"
     },
     "couldntInvite": "组织已创建，但邀请未能发出。请在其成员设置中发送。",
     "fromCredits": "使用 {name} 的积分",

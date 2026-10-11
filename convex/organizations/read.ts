@@ -243,7 +243,9 @@ export const pastRoom = internalQuery({
   handler: async (ctx, { workspaceId, sent }) => {
     const organization = await organizationOf(ctx, workspaceId);
     const seats = await seatSyncRow(ctx, workspaceId);
-    const limit = (await readAccount(ctx, workspaceId))?.plan === TEAM_PLAN ? (seats?.seats ?? 0) - (seats?.held ?? 0) : FREE_MEMBERS;
+    const account = await readAccount(ctx, workspaceId);
+    // On its way to Free at the renewal, it has Free's room already.
+    const limit = account?.plan === TEAM_PLAN && account.changesAt === undefined ? (seats?.seats ?? 0) - (seats?.held ?? 0) : FREE_MEMBERS;
     const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS);
     const room = Math.max(0, limit - members.length);
     // The ones with room, and the first few past it: whatever of `sent` isn't among the first is past it too.

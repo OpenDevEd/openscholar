@@ -3961,7 +3961,10 @@
       "dueNow": "今回のお支払い",
       "offNextBill": "次回の請求から差し引き",
       "seatsNow": "現在",
-      "seatsAfter": "変更後"
+      "seatsAfter": "変更後",
+      "seatToConfirm": "銀行がこの支払いの確認を求めています。確認してから、もう一度招待してください。",
+      "confirmPayment": "支払いを確認",
+      "seatHeldUndated": "この請求期間にクレジットを使ったため、更新日までシートは使用中のままです。"
     },
     "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。",
     "fromCredits": "{name} のクレジットから",

@@ -67,6 +67,8 @@ it("gives members the seats bought, holds a leaver's seat to the renewal when th
   await membership("di", true);
   expect(fakeAutumn.seated(lab)).toEqual(["user_ada", "user_ben", "user_cy"]);
   expect(await t.run((ctx) => ctx.db.query("memberSeats").withIndex("by_workspace_and_member", (q) => q.eq("workspaceId", lab).eq("clerkUserId", "user_di")).unique())).toBeNull();
+  // Di spends nothing until she has a seat.
+  await expect(t.mutation(internal.billing.charge.hold, { userId: users.di!, workspaceId: lab, chargeId: "hold:di", credits: 10, expiresAt: Date.now() + 60_000 })).rejects.toThrow(/no free seat for you/);
 
   // Run again, nothing changes.
   const before = writes();
@@ -111,4 +113,21 @@ it("runs one sync of an organization at a time, and the one asked for meanwhile 
   const scheduled = await t.run((ctx) => ctx.db.system.query("_scheduled_functions").collect());
   expect(scheduled.filter((job) => job.name.includes("seats:sync"))).toHaveLength(1);
   expect(await t.mutation(internal.billing.seats.claim, { workspaceId })).toBe(true);
+});
+
+it("counts a member's charge the ledger hasn't counted yet, and a hold, as spending that keeps their seat", async () => {
+  const t = convexTest(schema);
+  const { lab, users } = await t.run(async (ctx) => {
+    const organizationId = await ctx.db.insert("organizations", { ...ORGANIZATION, state: "active", createdAt: 1, updatedAt: 1 });
+    const users: Record<string, Id<"users">> = {};
+    for (const who of ["ada", "ben", "cy"]) users[who] = await ctx.db.insert("users", { clerkId: `user_${who}`, email: `${who}@lab.test`, firstName: who, state: "active", createdAt: 1, updatedAt: 1 });
+    return { lab: (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id, users };
+  });
+  const since = Date.now() - 1_000;
+  await t.run(async (ctx) => {
+    // Ben's charge is recorded and waits for the ledger worker; Cy holds credits for a reply under way.
+    await ctx.db.insert("billingUsage", { userId: users.ben!, workspaceId: lab, chargeId: "charge:ben", credits: 40, kind: "chat", description: "A reply", createdAt: Date.now() });
+    await ctx.db.insert("billingHolds", { userId: users.cy!, workspaceId: lab, chargeId: "hold:cy", credits: 100, release: await ctx.scheduler.runAfter(60_000, internal.billing.seats.sync, { workspaceId: lab }) });
+  });
+  expect(await t.query(internal.billing.seats.spentFrom, { workspaceId: lab, clerkUserIds: ["user_ada", "user_ben", "user_cy"], since })).toEqual(["user_ben", "user_cy"]);
 });

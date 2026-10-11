@@ -71,8 +71,19 @@ function useOrganization() {
 /** Autumn's figure for a change of seats, as the billing actions return it. */
 type SeatPreview = FunctionReturnType<typeof api.billing.actions.previewSeats>;
 
-/** Whether a failed charge was a declined card, which the page answers with where to fix it. */
-const declined = (error: unknown) => error instanceof ConvexError && (error.data as { code?: string } | undefined)?.code === "BILLING_PAYMENT_DECLINED";
+/** What a failed charge says: a declined card, or a bank asking to confirm it at `url`, which the page answers in place. */
+function chargeRefusal(error: unknown): { code: "declined" } | { code: "confirm"; url: string } | null {
+  if (!(error instanceof ConvexError)) return null;
+  let data: unknown = error.data;
+  try {
+    if (typeof data === "string") data = JSON.parse(data);
+  } catch {
+    return null;
+  }
+  const { code, url } = (data ?? {}) as { code?: string; url?: string };
+  if (code === "BILLING_PAYMENT_DECLINED") return { code: "declined" };
+  return code === "BILLING_PAYMENT_ACTION_REQUIRED" && url ? { code: "confirm", url } : null;
+}
 
 /** Runs `work`, and says what went wrong in a toast when it fails. */
 function useAttempt() {
@@ -351,9 +362,9 @@ export function WorkspaceMembers() {
   const { account, catalog } = useSharedSubscriptionState();
   const invite = useWorkspaceAction(api.organizations.manage.invite);
   const previewSeats = useWorkspaceAction(api.billing.actions.previewSeats);
-  // An invitation waiting for the seat it needs (#863): who, as what, and Autumn's figure for one more seat; and whether the card was declined.
+  // An invitation waiting for the seat it needs (#863): who, as what, and Autumn's figure for one more seat; and what the card said.
   const [adding, setAdding] = useState<{ email: string; role: Role; preview: SeatPreview } | null>(null);
-  const [refused, setRefused] = useState(false);
+  const [refused, setRefused] = useState<ReturnType<typeof chargeRefusal>>(null);
   const setRole = useWorkspaceAction(api.organizations.manage.setRole);
   const removeMember = useWorkspaceAction(api.organizations.manage.removeMember);
   const resend = useWorkspaceAction(api.organizations.manage.resendInvitation);
@@ -382,6 +393,8 @@ export function WorkspaceMembers() {
   const teamName = (catalog && findPlan(catalog, TEAM_PLAN)?.name) || TEAM_PLAN;
   const seatPrice = (catalog && findPlan(catalog, SEAT_PLAN)?.price?.amount) ?? 0;
   const date = (ms: number) => format.dateTime(new Date(ms), { month: "short", day: "numeric" });
+  // The renewal, or while Team is on its way to Free the day it ends: held seats are freed then either way.
+  const renewal = account?.renewsAt ?? account?.changesAt;
   const money = (amount: number, cents = false) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: cents ? 2 : 0 });
   const segment = (i: number) => (i < memberCount ? "bg-primary" : i < memberCount + held ? "bg-warning/70" : i < used ? "bg-primary/40" : "bg-muted");
   /** Sends the invitation, buying the seat it needs first when `addSeat`; the address that went is cleared, and one typed since stays. */
@@ -390,8 +403,9 @@ export function WorkspaceMembers() {
       try {
         await invite({ emails: [sent.trim()], role: as, ...(addSeat ? { addSeat } : {}) });
       } catch (error) {
-        if (!declined(error)) throw error;
-        setRefused(true);
+        const refusal = chargeRefusal(error);
+        if (!refusal) throw error;
+        setRefused(refusal);
         return;
       }
       setAdding(null);
@@ -436,7 +450,7 @@ export function WorkspaceMembers() {
             </span>
             {held > 0 ? (
               <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-warning/15 px-2.5 ink-warning">
-                <Hourglass className="size-3.5" /> {account?.renewsAt ? t("heldUntil", { count: held, date: date(account.renewsAt) }) : t("heldCount", { count: held })}
+                <Hourglass className="size-3.5" /> {renewal ? t("heldUntil", { count: held, date: date(renewal) }) : t("heldCount", { count: held })}
               </span>
             ) : null}
             {counts.invitations > 0 ? (
@@ -462,7 +476,7 @@ export function WorkspaceMembers() {
                 if (!full) return void send(sent, role);
                 // Team with no free seat: Autumn's figure for one more, then the step that buys it and invites (#863).
                 void attempt("invite", async () => {
-                  setRefused(false);
+                  setRefused(null);
                   setAdding({ email: sent.trim(), role, preview: await previewSeats({ seats: seats + 1 }) });
                 });
               }}
@@ -512,16 +526,16 @@ export function WorkspaceMembers() {
                         </div>
                         <div className="text-right">
                           <p className="text-2xl font-semibold tabular-nums tracking-tight">{money(adding.preview.dueNow, true)}</p>
-                          {account?.renewsAt ? <p className="text-xs tabular-nums text-muted-foreground">{t("thenAMonthFrom", { amount: money((seats + 1) * seatPrice), date: date(account.renewsAt) })}</p> : null}
+                          {renewal ? <p className="text-xs tabular-nums text-muted-foreground">{t("thenAMonthFrom", { amount: money((seats + 1) * seatPrice), date: date(renewal) })}</p> : null}
                         </div>
                       </div>
                       {refused ? (
                         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
                           <span className="flex items-center gap-2">
-                            <AlertCircle className="size-4 shrink-0" /> {t("seatDeclined")}
+                            <AlertCircle className="size-4 shrink-0" /> {refused.code === "confirm" ? t("seatToConfirm") : t("seatDeclined")}
                           </span>
                           <Button asChild variant="outline" size="sm">
-                            <Link href="/settings/billing">{t("fixPayment")}</Link>
+                            {refused.code === "confirm" ? <a href={refused.url}>{t("confirmPayment")}</a> : <Link href="/settings/billing">{t("fixPayment")}</Link>}
                           </Button>
                         </div>
                       ) : null}
@@ -614,7 +628,7 @@ export function WorkspaceMembers() {
             <AlertDialogTitle>{t("removeName", { name: removing?.name ?? "" })}</AlertDialogTitle>
             <AlertDialogDescription>
               {t("removeConfirm", { name: removing?.name ?? "", organization: organization.name })}
-              {team && removing ? ` ${removing.keepsSeat && account?.renewsAt ? t("seatHeld", { date: date(account.renewsAt) }) : t("seatFreed")}` : null}
+              {team && removing ? ` ${removing.keepsSeat ? (renewal ? t("seatHeld", { date: date(renewal) }) : t("seatHeldUndated")) : t("seatFreed")}` : null}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -652,8 +666,8 @@ export function WorkspaceBilling() {
   const keepPlan = useWorkspaceAction(api.billing.actions.keepPlan);
   const { busy, attempt } = useAttempt();
   const [picked, setPicked] = useState<number>();
-  // Autumn's figure for the seats picked, read before the confirmation opens.
-  const [review, setReview] = useState<SeatPreview | null>(null);
+  // Autumn's figure for the seats picked, read before the confirmation opens; the change is for the seats it was read for.
+  const [review, setReview] = useState<(SeatPreview & { seats: number }) | null>(null);
   if (!organization || !account || !catalog || !spending.ready || counts === undefined) return <Enter ready={false}>{null}</Enter>;
 
   const planId = account.plan ?? organization.plan ?? "";
@@ -669,6 +683,7 @@ export function WorkspaceBilling() {
   const inUse = (counts?.members ?? 0) + (counts?.invitations ?? 0) + (counts?.held ?? 0);
   const next = Math.max(inUse, picked ?? seats);
   const added = next - seats;
+  const reviewed = (review?.seats ?? next) - seats;
   // Moving to Free waits for the renewal; until then Keep Team takes it back.
   const toFree = team && account.changesAt !== undefined ? account.changesAt : undefined;
   const short = (ms: number) => format.dateTime(new Date(ms), { year: "numeric", month: "short", day: "numeric" });
@@ -731,7 +746,7 @@ export function WorkspaceBilling() {
                 // The seats bought (#862): an admin changes how many, down to those in use.
                 <div className="space-y-2 pt-1">
                   {admin && toFree === undefined ? (
-                    <SeatStepper seats={next} fewest={inUse} why={t("seatsInUse", { count: inUse })} onChange={setPicked} />
+                    <SeatStepper seats={next} fewest={inUse} why={t("seatsInUse", { count: inUse })} onChange={(count) => busy === null && setPicked(count)} />
                   ) : (
                     <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted px-2.5 text-xs tabular-nums text-muted-foreground">
                       <Users className="size-3.5" />
@@ -761,7 +776,7 @@ export function WorkspaceBilling() {
                     {added !== 0 ? (
                       <Opening key="review">
                         <div className="pb-2">
-                          <Button size="sm" className="w-full" disabled={busy !== null} onClick={() => void attempt("review", async () => setReview(await previewSeats({ seats: next })))}>
+                          <Button size="sm" className="w-full" disabled={busy !== null} onClick={() => void attempt("review", async () => setReview({ ...(await previewSeats({ seats: next })), seats: next }))}>
                             {added > 0 ? t("addSeats", { count: added }) : t("removeSeats", { count: -added })}
                           </Button>
                         </div>
@@ -793,17 +808,18 @@ export function WorkspaceBilling() {
         <MemberSpending spending={spending} admin={admin} team={team} members={memberCount} />
 
         <UpgradeConfirmationDialog
-          open={review !== null && added !== 0}
+          open={review !== null && review.seats !== seats}
           onOpenChange={(open) => busy === null && !open && setReview(null)}
-          title={added > 0 ? t("addSeats", { count: added }) : t("removeSeats", { count: -added })}
-          description={account.renewsAt ? t("thenAMonthFrom", { amount: money((seatPrice ?? 0) * next), date: date(account.renewsAt) }) : undefined}
-          confirmLabel={added > 0 ? t("addSeats", { count: added }) : t("removeSeats", { count: -added })}
-          totalLabel={added > 0 ? t("dueNow") : t("offNextBill")}
+          title={reviewed > 0 ? t("addSeats", { count: reviewed }) : t("removeSeats", { count: -reviewed })}
+          description={account.renewsAt && review ? t("thenAMonthFrom", { amount: money((seatPrice ?? 0) * review.seats), date: date(account.renewsAt) }) : undefined}
+          confirmLabel={reviewed > 0 ? t("addSeats", { count: reviewed }) : t("removeSeats", { count: -reviewed })}
+          totalLabel={reviewed > 0 ? t("dueNow") : t("offNextBill")}
           labels={{ from: t("seatsNow"), to: t("seatsAfter") }}
           isConfirming={busy === "seats"}
           onConfirm={() =>
             void attempt("seats", async () => {
-              const { url } = await changeSeats({ seats: next });
+              if (!review) return;
+              const { url } = await changeSeats({ seats: review.seats });
               if (url) return window.location.assign(url);
               setPicked(undefined);
               setReview(null);
@@ -814,7 +830,7 @@ export function WorkspaceBilling() {
               currency: review.currency,
               immediateChargeCents: Math.round(Math.abs(review.dueNow) * 100),
               currentPlan: t("seats", { count: seats }),
-              targetPlan: t("seats", { count: next }),
+              targetPlan: t("seats", { count: review.seats }),
               targetPlanCreditsPerMonth: 0,
               lineItems: review.lineItems.map((item) => ({ description: item.description, amountCents: Math.round(item.amount * 100), currency: review.currency })),
             }

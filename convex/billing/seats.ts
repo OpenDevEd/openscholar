@@ -71,7 +71,14 @@ export const membersOf = internalQuery({
 /** The start of the organization's billing period: its Team's, or the calendar month's when Autumn gives none. */
 const periodStartOf = (account: { periodStart?: number } | undefined, now: number) => account?.periodStart ?? monthStart(now);
 
-/** Of `clerkUserIds`, the people who spent the organization's credits since `since`: their seats stay theirs until the renewal. */
+/** A person's newest charges one read checks for any the ledger worker hasn't counted yet (convex/billing/ledger.ts): it counts within seconds. */
+const RECENT_CHARGES_READ = 20;
+
+/**
+ * Of `clerkUserIds`, the people who spent the organization's credits since `since`, or hold some
+ * now: their seats stay theirs until the renewal. What the ledger counted, a hold, or a charge it
+ * hasn't counted yet each say so.
+ */
 export const spentFrom = internalQuery({
   args: { workspaceId: v.id("workspaces"), clerkUserIds: v.array(v.string()), since: v.number() },
   returns: v.array(v.string()),
@@ -79,7 +86,11 @@ export const spentFrom = internalQuery({
     const spent: string[] = [];
     for (const clerkUserId of clerkUserIds.slice(0, MAX_ORGANIZATION_MEMBERS)) {
       const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique();
-      if (user && (await spentSince(ctx, workspaceId, user._id, since)) > 0) spent.push(clerkUserId);
+      if (!user) continue;
+      const counted = (await spentSince(ctx, workspaceId, user._id, since)) > 0;
+      const holding = counted || (await ctx.db.query("billingHolds").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", user._id)).first()) !== null;
+      const recent = holding ? [] : await ctx.db.query("billingUsage").withIndex("by_user_and_createdAt", (q) => q.eq("userId", user._id).gte("createdAt", since)).order("desc").take(RECENT_CHARGES_READ);
+      if (holding || recent.some((charge) => charge.workspaceId === workspaceId && charge.kind !== "refund" && charge.credits > 0)) spent.push(clerkUserId);
     }
     return spent;
   },
@@ -148,8 +159,8 @@ async function seatPool(customerId: string) {
   return { seats: pool?.granted ?? 0, remaining: pool?.remaining ?? 0 };
 }
 
-/** What a sync leaves: the seats bought, how many of them are held by members who left, and whether nothing of Team is left. */
-type Synced = { seats: number; held: number; ended?: true };
+/** What a sync leaves: the seats bought, how many of them are held by members who left, whether a member waits for a seat, and whether nothing of Team is left. */
+type Synced = { seats: number; held: number; overflow?: boolean; ended?: true };
 
 /** Brings the organization's seats to its members; undefined when it changed nothing. */
 async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise<Synced | undefined> {
@@ -183,8 +194,13 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
   const waiting = members.filter((member) => !holders.has(member.clerkUserId));
   // Members and invitations can't outnumber the seats, so there's room for everyone who joined; past it, someone joined in a race and waits for a seat.
   const seating = waiting.slice(0, pool.remaining);
+  // Each entity carries its cap before it holds a seat, so a cap never goes missing when a later step fails: the next sync seats them again.
+  const kept = new Set(entities.map((entity) => entity.id));
+  for (const member of seating) {
+    if (!kept.has(member.clerkUserId)) await unlessAlready("entity_already_exists", () => autumn.createEntity({ customerId, entityId: member.clerkUserId, featureId: SEATS_FEATURE, name: member.name, cap: member.cap ?? null }));
+    else await autumn.setCap(customerId, member.clerkUserId, member.cap ?? null);
+  }
   if (seating.length) await autumn.assignSeats({ customerId, licensePlanId: SEAT_PLAN, featureId: SEATS_FEATURE, members: seating.map((member) => ({ entityId: member.clerkUserId, name: member.name })) });
-  for (const member of seating) if (member.cap !== undefined) await autumn.setCap(customerId, member.clerkUserId, member.cap);
   if (waiting.length > seating.length) console.error(`[seats] ${workspaceId} has ${waiting.length - seating.length} members without a seat: none is left`);
   // Charges are made as a member's entity once they hold a seat, and no longer once they've left.
   const unseated = new Set(waiting.slice(seating.length).map((member) => member.clerkUserId));
@@ -199,12 +215,13 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
       await autumn.attach({ customerId, planId: ORGANIZATION_PLAN });
       await refreshAccount(ctx, workspaceId);
     }
-    await followPlan(ctx, workspaceId, organization, team ? pool.seats - held.length : FREE_MEMBERS);
-    return { seats: pool.seats, held: held.length, ...(team ? {} : { ended: true as const }) };
+    // On its way to Free at the renewal, Clerk holds it to Free's members already (billing/actions.ts `moveToFree`).
+    await followPlan(ctx, workspaceId, organization, team && account?.changesAt === undefined ? pool.seats - held.length : FREE_MEMBERS);
+    return { seats: pool.seats, held: held.length, overflow: waiting.length > seating.length, ...(team ? {} : { ended: true as const }) };
   }
   // An organization that's gone has its Team plan cancelled too, and then nothing of it is left to end (#652).
   if (snapshotFromCustomer(await autumn.customer(customerId)).plan === TEAM_PLAN) await autumn.update({ customerId, planId: TEAM_PLAN, cancelAction: "cancel_immediately" });
-  return { seats: 0, held: 0, ended: true };
+  return { seats: 0, held: 0, overflow: false, ended: true };
 }
 
 /** How long a sync waits before trying again to set a member limit Clerk refused. */
@@ -274,12 +291,12 @@ export const claim = internalMutation({
 
 /** Ends a sync, keeping the seats it left, and runs the one asked for meanwhile. */
 export const release = internalMutation({
-  args: { workspaceId: v.id("workspaces"), seats: v.optional(v.number()), held: v.optional(v.number()), ended: v.optional(v.literal(true)) },
+  args: { workspaceId: v.id("workspaces"), seats: v.optional(v.number()), held: v.optional(v.number()), overflow: v.optional(v.boolean()), ended: v.optional(v.literal(true)) },
   returns: v.null(),
-  handler: async (ctx, { workspaceId, seats, held, ended }) => {
+  handler: async (ctx, { workspaceId, seats, held, overflow, ended }) => {
     const row = await seatSyncRow(ctx, workspaceId);
     if (!row) return null;
-    await ctx.db.patch("seatSyncs", row._id, { runningSince: undefined, again: undefined, ...(seats === undefined ? {} : { seats, held }), ...(ended ? { ending: undefined } : {}) });
+    await ctx.db.patch("seatSyncs", row._id, { runningSince: undefined, again: undefined, ...(seats === undefined ? {} : { seats, held, overflow: overflow || undefined }), ...(ended ? { ending: undefined } : {}) });
     if (row.again) await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId });
     return null;
   },
@@ -292,7 +309,7 @@ async function holdingSync(ctx: ActionCtx, workspaceId: Id<"workspaces">, work: 
   try {
     synced = await work();
   } finally {
-    await ctx.runMutation(internal.billing.seats.release, { workspaceId, ...(synced === undefined ? {} : { seats: synced.seats, held: synced.held }), ...(synced?.ended ? { ended: true as const } : {}) });
+    await ctx.runMutation(internal.billing.seats.release, { workspaceId, ...(synced === undefined ? {} : { seats: synced.seats, held: synced.held, overflow: synced.overflow }), ...(synced?.ended ? { ended: true as const } : {}) });
   }
 }
 
@@ -334,7 +351,7 @@ export const sync = internalAction({
     try {
       synced = await syncSeats(ctx, workspaceId);
     } finally {
-      await ctx.runMutation(internal.billing.seats.release, { workspaceId, ...(synced === undefined ? {} : { seats: synced.seats, held: synced.held }), ...(synced?.ended ? { ended: true as const } : {}) });
+      await ctx.runMutation(internal.billing.seats.release, { workspaceId, ...(synced === undefined ? {} : { seats: synced.seats, held: synced.held, overflow: synced.overflow }), ...(synced?.ended ? { ended: true as const } : {}) });
     }
     return null;
   },
@@ -372,22 +389,53 @@ export function unlessDeclined<T extends { required_action?: { code: string; rea
   return result;
 }
 
+/** Keeps the seats an organization bought, as a change of them is made. */
+export const noteSeats = internalMutation({
+  args: { workspaceId: v.id("workspaces"), seats: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, seats }) => {
+    const row = await seatSyncRow(ctx, workspaceId);
+    if (row) await ctx.db.patch("seatSyncs", row._id, { seats });
+    else await ctx.db.insert("seatSyncs", { workspaceId, seats });
+    return null;
+  },
+});
+
 /**
  * Sets how many seats an organization on Team holds (#862), down to those in use: its members,
  * pending invitations and seats held to the renewal. An added seat is charged for the days left
- * to the renewal; a removed one is credited to the next bill. Returns the page to pay on when the
- * card asks to confirm the charge; a declined card changes nothing.
+ * to the renewal; a removed one is credited to the next bill. The new count and Clerk's limit
+ * stand when it returns, so an invitation sent next has its seat. Fewer seats lower Clerk's limit
+ * first, so nobody is invited past them while they're counted. Returns the page to pay on when the
+ * card asks to confirm the charge, which changes nothing until it's confirmed; a declined card
+ * changes nothing.
  */
 export async function setSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">, seats: number): Promise<string | null> {
-  const counted: { members: number; invitations: number; held: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
-  if ((await refreshAccount(ctx, workspaceId)).plan !== TEAM_PLAN || !counted) throw createError("VALIDATION_ERROR", "Seats are bought on the Team plan.");
-  const inUse = counted.members + counted.invitations + counted.held;
-  if (!Number.isInteger(seats) || seats < inUse || seats > MAX_ORGANIZATION_MEMBERS)
-    throw createError("VALIDATION_ERROR", `${inUse} seats are in use by members, invitations and seats held to the renewal; it can hold ${inUse} to ${MAX_ORGANIZATION_MEMBERS.toLocaleString("en")}.`);
-  const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
-  const changed = unlessDeclined(await autumn.update({ customerId, planId: TEAM_PLAN, seats: teamSeats(seats) }));
-  await ctx.runAction(internal.billing.seats.sync, { workspaceId });
-  return changed.payment_url;
+  const account = await refreshAccount(ctx, workspaceId);
+  if (account.plan !== TEAM_PLAN) throw createError("VALIDATION_ERROR", "Seats are bought on the Team plan.");
+  if (account.changesAt !== undefined) throw createError("VALIDATION_ERROR", "Its Team ends at the renewal. Keep Team to change its seats.");
+  if (!Number.isInteger(seats) || seats < 1 || seats > MAX_ORGANIZATION_MEMBERS) throw createError("VALIDATION_ERROR", `An organization holds 1 to ${MAX_ORGANIZATION_MEMBERS.toLocaleString("en")} seats.`);
+  const organization: { clerkOrganizationId: string; memberLimit?: number } | null = await ctx.runQuery(internal.billing.seats.organizationFor, { workspaceId });
+  const count = async () => (await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId }))!;
+  const before = await count();
+  const fewer = seats < before.seats && organization !== null;
+  if (fewer) await followPlan(ctx, workspaceId, organization, seats - before.held);
+  try {
+    const counted = await count();
+    const inUse = counted.members + counted.invitations + counted.held;
+    if (seats < inUse) throw createError("VALIDATION_ERROR", `${inUse} seats are in use by members, invitations and seats held to the renewal. Remove members or cancel invitations first.`);
+    const customerId: string = await ctx.runQuery(internal.billing.accounts.customerFor, { workspaceId });
+    const changed = unlessDeclined(await autumn.update({ customerId, planId: TEAM_PLAN, seats: teamSeats(seats) }));
+    if (changed.payment_url) return changed.payment_url;
+    await ctx.runMutation(internal.billing.seats.noteSeats, { workspaceId, seats });
+    if (organization && !fewer) await followPlan(ctx, workspaceId, organization, seats - counted.held);
+  } catch (error) {
+    // Nothing changed: Clerk's limit goes back to the seats held.
+    if (fewer) await followPlan(ctx, workspaceId, { clerkOrganizationId: organization.clerkOrganizationId }, before.seats - before.held);
+    throw error;
+  }
+  await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId });
+  return null;
 }
 
 const countsValidator = v.object({ members: v.number(), invitations: v.number(), seats: v.number(), held: v.number() });

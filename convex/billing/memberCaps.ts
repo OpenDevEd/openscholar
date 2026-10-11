@@ -11,6 +11,7 @@ import { createError } from "../lib/errors";
 import { monthStart } from "../../lib/billing/month";
 import { TEAM_PLAN } from "../../lib/billing/plans";
 import { readAccount } from "./accounts";
+import { seatSyncRow } from "./seatSyncs";
 import { memberSpace, spendSpace, usageAgg } from "./usageLog";
 import { usageKindValidator } from "./validators";
 
@@ -89,6 +90,23 @@ export async function spendingRoom(ctx: QueryCtx, workspaceId: Id<"workspaces">,
   const balance = (await readAccount(ctx, workspaceId))?.balance ?? 0;
   const left = await capLeft(ctx, workspaceId, userId, monthStart(Date.now()));
   return left !== undefined && left < balance ? { available: left, capped: true } : { available: balance, capped: false };
+}
+
+/** The refusal a member sees who joined past the seats bought, in a race, until an admin adds one (#863). */
+export const noSeat = () => createError("FORBIDDEN", "The organization has no free seat for you yet. Ask an admin to add one.");
+
+/**
+ * Whether the person is a member of the organization waiting for a seat: one joined past the
+ * seats bought, in a race, and spends nothing until they have one. A member the sync hasn't
+ * reached yet isn't kept waiting.
+ */
+export async function waitsForSeat(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) {
+  if (!(await seatSyncRow(ctx, workspaceId))?.overflow) return false;
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  const user = await ctx.db.get("users", userId);
+  if (workspace?.kind !== "organization" || !user || (await seatOf(ctx, workspaceId, user.clerkId))) return false;
+  const membership = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", workspace.organizationId).eq("clerkUserId", user.clerkId).eq("state", "active")).first();
+  return membership !== null;
 }
 
 /** A member's seat in the organization, by their Clerk ID: the Autumn entity their charges are made as. */
