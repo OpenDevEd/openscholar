@@ -83,6 +83,7 @@ const platformMail = {
 
 const platformBrand = {
   logoUrl: "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-logo.svg",
+  logoDarkUrl: "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-logo-dark.svg",
   faviconUrl: "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-favicon.ico",
   iconUrls: [
     "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-icon.svg",
@@ -930,7 +931,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     expect(validateLibraryConfigStructure(filled).valid).toBe(true);
     expect(filled.identity).toMatchObject({
       assets: {
-        logoDark: platformBrand.logoUrl,
+        logoLight: platformBrand.logoUrl,
+        logoDark: platformBrand.logoDarkUrl,
         favicon: platformBrand.faviconUrl,
         icons: platformBrand.iconUrls,
       },
@@ -948,7 +950,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     });
     expect(partial.identity).toMatchObject({
       assets: {
-        logoDark: platformBrand.logoUrl,
+        logoLight: platformBrand.logoUrl,
+        logoDark: platformBrand.logoDarkUrl,
         favicon: "https://assets.example.test/own-favicon.svg",
       },
     });
@@ -972,6 +975,14 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         logoDark: "https://assets.example.test/own-logo.svg",
       },
     });
+
+    // Without a dark version set, dark mode shows the light logo.
+    const { logoDarkUrl: _dark, ...lightBrandOnly } = platformBrand;
+    const oneLogo = assembleEvidenceLibraryConfiguration({
+      sections: { ...ownerSections, identity: identityWithoutAssets },
+      managed: { ...managedConfiguration, brand: lightBrandOnly },
+    });
+    expect(oneLogo.identity).toMatchObject({ assets: { logoLight: platformBrand.logoUrl, logoDark: platformBrand.logoUrl } });
 
     const own = assembleEvidenceLibraryConfiguration({
       sections: ownerSections,

@@ -4,7 +4,7 @@
  * bucket so libraries without their own uploads can use the full icon set.
  *
  * Run from the integration checkout after generating the icons, then set the
- * three values it prints
+ * four values it prints
  * on every Convex deployment that creates or updates libraries:
  *
  *   EL_STORAGE_URL=... EL_STORAGE_SERVICE_KEY=... node scripts/upload-platform-brand-assets.mjs
@@ -25,25 +25,32 @@ const ASSETS = [
   {
     env: "EL_DEFAULT_LOGO_URL",
     file: "public/icon.svg",
-    key: "platform/openscholar-logo.svg",
+    // The files are cached as immutable, so a new version of the brand takes new names.
+    key: "platform/openscholar-logo-2026-light.svg",
+    contentType: "image/svg+xml",
+  },
+  {
+    env: "EL_DEFAULT_LOGO_DARK_URL",
+    file: "public/icon-black.svg",
+    key: "platform/openscholar-logo-2026-dark.svg",
     contentType: "image/svg+xml",
   },
   {
     env: "EL_DEFAULT_FAVICON_URL",
     file: "app/favicon.ico",
-    key: "platform/openscholar-favicon.ico",
+    key: "platform/openscholar-favicon-2026.ico",
     contentType: "image/x-icon",
   },
   {
     runtimeIcon: true,
     file: "app/icon0.svg",
-    key: "platform/openscholar-icon.svg",
+    key: "platform/openscholar-icon-2026.svg",
     contentType: "image/svg+xml",
   },
   {
     runtimeIcon: true,
     file: "app/icon1.png",
-    key: "platform/openscholar-icon-96.png",
+    key: "platform/openscholar-icon-2026-96.png",
     contentType: "image/png",
   },
 ];
