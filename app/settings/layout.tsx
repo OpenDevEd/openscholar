@@ -138,10 +138,13 @@ function Shell({ children }: { children: ReactNode }) {
             { href: "/settings/admin/ai", title: t("items.aiModels"), icon: AiIcon },
             { href: "/settings/admin/models", title: t("items.modelList"), icon: ModelsIcon },
             { href: "/settings/admin/admins", title: t("items.admins"), icon: AdminsIcon },
-            ...(links?.autumn ? [{ href: links.autumn, title: t("items.plans"), icon: AutumnIcon, external: "Autumn" }] : []),
             { href: "https://dashboard.clerk.com", title: t("items.users"), icon: ClerkIcon, external: "Clerk" },
+            // Its address is read after the page shows, so it comes last: nothing under it to push down.
+            ...(links?.autumn ? [{ href: links.autumn, title: t("items.plans"), icon: AutumnIcon, external: "Autumn" }] : []),
           ]
         : [],
+      // The row Plans takes is kept while its address is read, so the list is its full height from the first frame.
+      keeps: isAdmin && links === undefined,
     },
   ].filter((g) => g.items.length > 0);
 
@@ -207,6 +210,7 @@ function Shell({ children }: { children: ReactNode }) {
                     ) : null}
                   </RailLink>
                 ))}
+                {"keeps" in group && group.keeps ? <div aria-hidden className="h-8" /> : null}
               </RailGroup>
             ))}
           </ConfigurationNavigation>
