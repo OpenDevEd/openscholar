@@ -36,7 +36,7 @@ import {
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations } from "next-intl";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { type ReactNode, type RefObject, useRef, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -64,6 +64,7 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import {
   type ConfigurationDraft,
   cardForPointer,
+  carryUnsaved,
   changedSectionRows,
   cloneDraft,
   hasProblems,
@@ -74,6 +75,7 @@ import {
   resetSection,
   type SaveRefusal,
   saveRefusal,
+  sectionChanged,
   type SectionRow,
   sectionState,
   staleUploads,
@@ -110,7 +112,7 @@ import { ThemeSection } from "./sections/theme-section";
 import { VersionsSection } from "./sections/versions-section";
 import { InlineNotice } from "./section-card";
 import {
-  SaveRefusalProvider,
+  SaveNoticesProvider,
   STATE_TONE,
   type SectionProps,
 } from "./section-shell";
@@ -230,15 +232,6 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   const draftQuery = useProtectedQuery(api.evidenceLibraries.queries.getDraft, {
     libraryId: libraryId as Id<"evidenceLibraries">,
   });
-  // A refused save outlives the form below: saving first and then failing to
-  // activate raises the edit version, which restarts the form from scratch.
-  const [refusal, setRefusal] = useState<SaveRefusal | null>(null);
-  // So does a save or an activation on its way: the form below restarts when the save lands, and must stay
-  // locked until the whole step is back.
-  const [saving, setSaving] = useState(false);
-  const [activating, setActivating] = useState(false);
-  // And so does the section the address asked for, once the page has scrolled to it.
-  const restoredSection = useRef<string | null>(null);
   if (draftQuery.data === undefined) {
     return <AuthStatePanel variant="loading" layout="fullscreen" loadingStyle="spinner" />;
   }
@@ -251,25 +244,16 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
     operation,
     sections,
   } = draftQuery.data;
-  // A new edit version means the platform has newer rows; the draft restarts from them.
   return (
     <Workspace
-      key={`${draft._id}:${draft.editVersion}`}
+      key={draft._id}
       libraryId={draft.libraryId}
       libraryName={library.name}
       libraryState={library.state}
       liveAddress={liveAddress}
-      editVersion={draft.editVersion}
-      saved={sections}
+      latest={{ editVersion: draft.editVersion, rows: sections }}
       hasUnpublishedChanges={hasUnpublishedChanges}
       operation={operation}
-      refusal={refusal}
-      setRefusal={setRefusal}
-      saving={saving}
-      setSaving={setSaving}
-      activating={activating}
-      setActivating={setActivating}
-      restoredSection={restoredSection}
     />
   );
 }
@@ -279,33 +263,18 @@ function Workspace({
   libraryName,
   libraryState,
   liveAddress,
-  editVersion,
-  saved,
+  latest,
   hasUnpublishedChanges,
   operation,
-  refusal,
-  setRefusal,
-  saving,
-  setSaving,
-  activating,
-  setActivating,
-  restoredSection,
 }: {
   libraryId: Id<"evidenceLibraries">;
   libraryName: string;
   libraryState: DraftResult["library"]["state"];
   liveAddress: string | null;
-  editVersion: number;
-  saved: readonly SectionRow[];
+  /** The rows the platform holds now, and the edit version they belong to. */
+  latest: { editVersion: number; rows: readonly SectionRow[] };
   hasUnpublishedChanges: boolean;
   operation: Operation;
-  refusal: SaveRefusal | null;
-  setRefusal: (refusal: SaveRefusal | null) => void;
-  saving: boolean;
-  setSaving: (saving: boolean) => void;
-  activating: boolean;
-  setActivating: (activating: boolean) => void;
-  restoredSection: RefObject<string | null>;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration");
   const tList = useTranslations("evidenceLibraries.list");
@@ -320,9 +289,39 @@ function Workspace({
   const removeUpload = useAction(api.evidenceLibraries.uploadActions.remove);
   const checkSoftware = useAction(api.evidenceLibraries.updates.check);
 
-  const [edited, setEdited] = useState<ConfigurationDraft>(() =>
-    readDraft(saved),
-  );
+  const [refusal, setRefusal] = useState<SaveRefusal | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [activating, setActivating] = useState(false);
+  // The saved rows the page took last and the draft read from them, the draft edited on top of that, the cards
+  // whose unsaved values were also saved somewhere else in the meantime, and for each card the edit version whose
+  // rows last replaced its values.
+  const [work, setWork] = useState(() => {
+    const base = readDraft(latest.rows);
+    return {
+      ...latest,
+      base,
+      edited: base,
+      elsewhere: [] as readonly PageSectionKey[],
+      drawn: {} as Partial<Record<PageSectionKey, number>>,
+    };
+  });
+  // The draft this page's own save sent, once the platform has taken it. The rows that follow hold all of it.
+  const [sent, setSent] = useState<ConfigurationDraft | null>(null);
+  // Newer rows can come from a save made in another tab or by someone else. A card with unsaved values keeps them.
+  // The rows wait while this page's own save or activation is on its way: what it sent was edited from the rows it holds.
+  if (work.editVersion !== latest.editVersion && !saving && !activating) {
+    // After the page's own save, only what was typed since it was sent is unsaved.
+    const carried = carryUnsaved(work.edited, sent ?? work.base, work.rows, latest.rows, sent ? [] : work.elsewhere);
+    setWork({
+      ...latest,
+      base: carried.base,
+      edited: carried.draft,
+      elsewhere: carried.elsewhere,
+      drawn: { ...work.drawn, ...Object.fromEntries(carried.replaced.map((key) => [key, latest.editVersion])) },
+    });
+    setSent(null);
+  }
+  const { editVersion, rows: saved, edited } = work;
   // Whether an OpenRouter key is stored is not a saved row; it comes from the
   // credential store and is folded into the draft while the page renders.
   const credentials = useProtectedQuery(
@@ -344,7 +343,7 @@ function Workspace({
     "section",
     parseAsStringLiteral(RAIL_KEYS).withDefault("identity"),
   );
-  const { active: spied, jumpTo: scrollToSection } = useScrollSpy(RAIL_KEYS, section, restoredSection);
+  const { active: spied, jumpTo: scrollToSection } = useScrollSpy(RAIL_KEYS, section);
   const current = spied ?? section;
 
   const dirty = isDirty(draft, saved);
@@ -371,11 +370,19 @@ function Workspace({
   // Editing, resetting or moving on answers the last refusal, so it goes away.
   const patch: SectionProps["patch"] = (update) => {
     setRefusal(null);
-    setEdited((current) => update(cloneDraft(current)));
+    setWork((current) => {
+      const next = update(cloneDraft(current.edited));
+      // A card edited back to the saved values has nothing left to settle.
+      return { ...current, edited: next, elsewhere: current.elsewhere.filter((key) => sectionChanged(next, current.rows, key)) };
+    });
   };
   const reset: SectionProps["reset"] = (sectionKey) => {
     setRefusal(null);
-    setEdited((current) => resetSection(current, saved, sectionKey));
+    setWork((current) => ({
+      ...current,
+      edited: resetSection(current.edited, current.rows, sectionKey),
+      elsewhere: current.elsewhere.filter((key) => key !== sectionKey),
+    }));
   };
 
   function jumpTo(key: RailKey) {
@@ -393,6 +400,7 @@ function Workspace({
       expectedEditVersion: editVersion,
       sections,
     });
+    setSent(edited);
     // Only now do the saved rows stop pointing at the replaced files. Best effort.
     for (const url of stale) {
       void removeUpload({ libraryId, url }).catch(() => undefined);
@@ -427,8 +435,7 @@ function Workspace({
     setRefusal(null);
     // The publish reads what the last update check found about the software.
     // Usually the page's own check has answered; this covers an owner who
-    // activates before it does, and a failed check never blocks. It runs
-    // before the save, because saving remounts the form.
+    // activates before it does, and a failed check never blocks.
     void (isDraftLibrary
       ? Promise.resolve()
       : checkSoftware({ libraryId }).catch(() => null))
@@ -646,7 +653,7 @@ function Workspace({
                   {refusal.message}
                 </InlineNotice>
               ) : null}
-              {/* A save ends by drawing the page again from what was saved. A change made while one is on its way
+              {/* A save ends by taking the saved rows for everything it sent. A change made while one is on its way
                   would be lost without a word, so no section can be changed until the save or activation is back. */}
               {/* The column spaces its children; the sections are this box's children now, so it spaces them the same. */}
               <div className="space-y-4" inert={saving || activating} aria-busy={saving || activating || undefined}>
@@ -654,12 +661,13 @@ function Workspace({
                   libraryId={libraryId}
                   ids={draft.collections.map((collection) => collection.id)}
                 >
-                  <SaveRefusalProvider refusal={refusal}>
+                  <SaveNoticesProvider refusal={refusal} elsewhere={work.elsewhere}>
                     {PAGE_SECTION_KEYS.map((key) => {
                       const Section = SECTION_COMPONENTS[key];
                       return (
                         <Section
-                          key={key}
+                          // A card whose values were replaced by saved rows starts again, as it would on a fresh page.
+                          key={`${key}:${work.drawn[key] ?? 0}`}
                           libraryId={libraryId}
                           draft={draft}
                           saved={saved}
@@ -668,7 +676,7 @@ function Workspace({
                         />
                       );
                     })}
-                  </SaveRefusalProvider>
+                  </SaveNoticesProvider>
                 </CollectionFactsProvider>
                 <PublicationSection libraryId={libraryId} operationRunning={operationRunning} />
                 <DomainSection libraryId={libraryId} />

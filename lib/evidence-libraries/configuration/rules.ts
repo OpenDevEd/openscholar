@@ -1974,14 +1974,13 @@ export function sectionState(
 export const hasProblems = (draft: ConfigurationDraft) =>
   PAGE_SECTION_KEYS.some((key) => sectionProblems(draft, key).length > 0);
 
-/** Copies one card's values back from the saved rows. */
-export function resetSection(
+/** Copies one card's values into a draft from another draft. */
+function takeSection(
   draft: ConfigurationDraft,
-  rows: readonly SectionRow[],
+  saved: ConfigurationDraft,
   sectionKey: PageSectionKey,
 ): ConfigurationDraft {
   const next = cloneDraft(draft);
-  const saved = readDraft(rows);
   switch (sectionKey) {
     case "identity":
       next.identity = {
@@ -2024,6 +2023,7 @@ export function resetSection(
     case "search":
       next.search = saved.search;
       next.filters = saved.filters;
+      next.topics = saved.topics;
       break;
     case "sources":
       next.sources = saved.sources;
@@ -2052,6 +2052,57 @@ export function resetSection(
       };
       break;
   }
+  return next;
+}
+
+/** Copies one card's values back from the saved rows. */
+export const resetSection = (
+  draft: ConfigurationDraft,
+  rows: readonly SectionRow[],
+  sectionKey: PageSectionKey,
   // A reset can take away what a feature needs (an export, a second language, a search option).
-  return settleFeatures(next);
+) => settleFeatures(takeSection(draft, readDraft(rows), sectionKey));
+
+/**
+ * The draft once the saved rows have changed under an open page, from `before` to `after`. `was` is the draft the
+ * page's values were last in step with: the one read from the rows it was edited from, or what its own save sent.
+ * It is that same reading, never a fresh one, because a row saved without ids gets new ones on every read. A card
+ * whose values differ from it holds on to them, and every other card takes the new rows.
+ * `base` is the reading of the new rows that those cards now hold.
+ * `elsewhere` names the kept cards whose saved values changed too, to something other than what the page holds;
+ * a card already in `named` stays named for as long as it is kept.
+ * `replaced` names the cards that no longer show what they did.
+ */
+export function carryUnsaved(
+  draft: ConfigurationDraft,
+  was: ConfigurationDraft,
+  before: readonly SectionRow[],
+  after: readonly SectionRow[],
+  named: readonly PageSectionKey[],
+) {
+  const now = readDraft(after);
+  const differs = (a: ConfigurationDraft, b: ConfigurationDraft, key: PageSectionKey) =>
+    !same(cardSlice(a, key), cardSlice(b, key));
+  // Two readings of a row without ids never match, so a card's saved values changed only if one of its rows did.
+  const savedAgain = (key: PageSectionKey) =>
+    ROWS_FOR_CARD[key].some((rowKey) => !same(payloadOf(before, rowKey), payloadOf(after, rowKey))) &&
+    differs(was, now, key);
+  const kept = PAGE_SECTION_KEYS.filter((key) => differs(draft, was, key));
+  // Features settle once every kept card is in: a feature kept on one card can need what another kept card holds.
+  const next = kept.length
+    ? settleFeatures(kept.reduce((merged, key) => takeSection(merged, draft, key), now))
+    : now;
+  // A feature switched on here and not saved yet stays on when the new rows take away what it needs. Its card then
+  // says so and cannot be saved as it is, where settling it would drop the choice without a word.
+  if (kept.includes("features")) {
+    for (const feature of SHOWN_FEATURES) {
+      if (draft.features[feature] && !was.features[feature]) next.features[feature] = true;
+    }
+  }
+  return {
+    draft: next,
+    base: now,
+    elsewhere: kept.filter((key) => differs(next, now, key) && (named.includes(key) || savedAgain(key))),
+    replaced: PAGE_SECTION_KEYS.filter((key) => differs(draft, next, key)),
+  };
 }

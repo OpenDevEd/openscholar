@@ -90,8 +90,8 @@ describe("<ConfigurationWorkspace>", () => {
 
   it("keeps a refused activation on screen after the save that came first", async () => {
     const user = userEvent.setup();
-    // Activate saves first. That save raises the edit version, which restarts
-    // the form from the newer rows. The refusal that follows must survive it.
+    // Activate saves first. That save raises the edit version, and the page takes
+    // the newer rows once the activation is back. The refusal must survive that.
     let editVersion = 4;
     let releaseActivate = () => {};
     const activateReached = new Promise<void>((resolve) => {
@@ -127,10 +127,10 @@ describe("<ConfigurationWorkspace>", () => {
     await user.click(screen.getByRole("button", { name: "activateConfirm" }));
     await waitFor(() => expect(saved).toHaveLength(1));
 
-    // The platform now has the newer draft, so the form starts again.
+    // The platform now has the newer draft. The form holds what it sent until the activation answers.
     await reread();
     expect(identityCard().getByLabelText("identity.nameLabel")).toHaveValue(
-      "Saved Library",
+      "Renamed Library",
     );
 
     releaseActivate();

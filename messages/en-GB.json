@@ -1673,6 +1673,8 @@
     "saveError": "The changes could not be saved. Try again.",
     "saveRefused": "This section was not saved.",
     "saveRefusedAll": "The changes were not saved.",
+    "savedElsewhere": "Also changed somewhere else",
+    "savedElsewhereBody": "This section was saved from another tab, or by someone else, while your changes here were not saved yet. Save keeps yours. Reset changes shows what was saved.",
     "activate": "Activate",
     "setUpAndActivate": "Set up and activate",
     "fixFirst": "Fix the highlighted fields first",

@@ -534,6 +534,29 @@
   }
 }
 
+/* A block that opens in place. Its grid row grows from nothing, so what follows
+   slides down instead of jumping. The block inside needs `min-h-0` and
+   `overflow-hidden`. */
+.row-open {
+  display: grid;
+  animation: row-open-in 200ms ease-out;
+}
+
+@keyframes row-open-in {
+  from {
+    grid-template-rows: 0fr;
+  }
+  to {
+    grid-template-rows: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-open {
+    animation: none;
+  }
+}
+
 /* Evidence Library setup: the live hero. Aurora drifts, the check lands with a
    burst of dots and one light sweep, then the text rises in three beats. */
 .el-hero {
