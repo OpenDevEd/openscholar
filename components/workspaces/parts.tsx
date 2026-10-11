@@ -125,11 +125,20 @@ export function WorkspaceTag({ workspace, size = "md", strong = false, children 
   );
 }
 
-/** An organization's first members' faces; `ring` is the colour behind them, which each face is cut from. */
-export function MemberFaces({ workspaceId, label, ring = "ring-card" }: { workspaceId: Id<"workspaces"> | undefined; label: string; ring?: string }) {
+/** How many of an organization's members MemberFaces draws. */
+const FACES = 4;
+
+/**
+ * An organization's first members' faces; `ring` is the colour behind them, which each face is cut from.
+ * With `count`, how many members it has, the faces' room is kept from the first frame, so what stands
+ * beside them doesn't move when they're read.
+ */
+export function MemberFaces({ workspaceId, label, ring = "ring-card", count }: { workspaceId: Id<"workspaces"> | undefined; label: string; ring?: string; count?: number }) {
   const { data } = useMemberFaces(workspaceId);
+  const kept = Math.min(count ?? 0, FACES);
   return (
-    <span className="flex -space-x-1.5" aria-label={label}>
+    // A face is 1.25rem wide and each one after the first overlaps it by 0.375rem.
+    <span className="flex shrink-0 -space-x-1.5" aria-label={label} style={kept ? { minWidth: `${1.25 + 0.875 * (kept - 1)}rem` } : undefined}>
       {/* Faces read after the first frame fade in. */}
       <AnimatePresence initial={false}>
         {(data?.page ?? []).map((member) => (
@@ -143,7 +152,7 @@ export function MemberFaces({ workspaceId, label, ring = "ring-card" }: { worksp
 }
 
 /** The members MemberFaces shows: a page can read them before it shows them, to have them in place. */
-export const useMemberFaces = (workspaceId: Id<"workspaces"> | undefined) => useProtectedQuery(api.organizations.queries.members, inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: 4 } }));
+export const useMemberFaces = (workspaceId: Id<"workspaces"> | undefined) => useProtectedQuery(api.organizations.queries.members, inWorkspace(workspaceId, { paginationOpts: { cursor: null, numItems: FACES } }));
 
 /** A workspace's tile with the hairline the switcher gives it. */
 export function Framed({ children }: { children: React.ReactNode }) {

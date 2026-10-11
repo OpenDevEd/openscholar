@@ -35,6 +35,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 import { findPlan, planCreditCap } from "@/lib/billing/catalog";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
@@ -103,7 +104,9 @@ export function WorkspaceGeneral() {
   // The organization's plan no longer includes Evidence Libraries, so the library's own pages are shut: it's deleted from here (#652).
   const [removing, setRemoving] = useState(false);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
-  if (!organization || !summary) return <Enter ready={false}>{null}</Enter>;
+  const catalog = useBillingCatalog();
+  // The plan's name comes from the catalog: shown before it, the plan chip is an empty pill that widens and pushes the row.
+  if (!organization || !summary || !catalog) return <Enter ready={false}>{null}</Enter>;
 
   const { name, slug } = organization;
   const address = `${window.location.host}/o/${slug}`;
@@ -183,7 +186,7 @@ export function WorkspaceGeneral() {
             <div className="flex flex-wrap items-center gap-2">
               <PlanChip workspace={organization} />
               <Link href="/settings/workspace/members" className="flex h-7 items-center gap-2 rounded-full pl-1 pr-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                <MemberFaces workspaceId={workspaceId} label={tw("members", { count: organization.members ?? 0 })} />
+                <MemberFaces workspaceId={workspaceId} label={tw("members", { count: organization.members ?? 0 })} count={organization.members} />
                 <span className="tabular-nums">{tw("members", { count: organization.members ?? 0 })}</span>
               </Link>
               <button
@@ -542,7 +545,7 @@ export function WorkspaceBilling() {
                 <Coins className="size-4" /> {t("sharedCredits")}
                 <TooltipHint label={t("membersDraw", { count: memberCount })}>
                   <span>
-                    <MemberFaces workspaceId={workspaceId} label={t("membersDraw", { count: memberCount })} />
+                    <MemberFaces workspaceId={workspaceId} label={t("membersDraw", { count: memberCount })} count={memberCount} />
                   </span>
                 </TooltipHint>
               </div>
