@@ -3661,6 +3661,10 @@
       "about": "लगभग {credits, number} क्रेडिट",
       "short": "{credits, number} कम",
       "left": "<n></n> बचेंगे",
+      "creditsOf": "{name} के क्रेडिट",
+      "yourCap": "इस महीने आपकी सीमा",
+      "raiseCap": "अपनी सीमा बढ़ाएँ",
+      "overCap": "आपकी सीमा से {credits, number} अधिक। किसी व्यवस्थापक से इसे बढ़ाने को कहें।",
       "always": "इस चैट में हमेशा अनुमति दें",
       "addCredits": "क्रेडिट जोड़ें",
       "names": {
@@ -3938,6 +3942,7 @@
     },
     "couldntInvite": "संगठन बन गया, पर आमंत्रण नहीं भेजे जा सके। उन्हें इसकी सदस्य सेटिंग्स से भेजें।",
     "fromCredits": "{name} के क्रेडिट से",
+    "fromCreditsCapped": "{name} के क्रेडिट से, व्यवस्थापक द्वारा आपके लिए तय किए गए {cap, number} प्रति माह तक",
     "workspace": "वर्कस्पेस",
     "creditsLeft": "{credits} क्रेडिट बचे",
     "drawsOn": "इससे खर्च",

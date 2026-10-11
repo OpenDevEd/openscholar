@@ -3661,6 +3661,10 @@
       "about": "約 {credits, number} クレジット",
       "short": "{credits, number} 不足",
       "left": "残り <n></n>",
+      "creditsOf": "{name} のクレジット",
+      "yourCap": "今月の上限",
+      "raiseCap": "上限を引き上げる",
+      "overCap": "上限を {credits, number} 超えています。管理者に引き上げを依頼してください。",
       "always": "このチャットでは常に許可",
       "addCredits": "クレジットを追加",
       "names": {
@@ -3938,6 +3942,7 @@
     },
     "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。",
     "fromCredits": "{name} のクレジットから",
+    "fromCreditsCapped": "{name} のクレジットから。管理者が設定した月 {cap, number} まで",
     "workspace": "ワークスペース",
     "creditsLeft": "残り {credits} クレジット",
     "drawsOn": "使用するワークスペース",

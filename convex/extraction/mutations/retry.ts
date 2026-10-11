@@ -48,7 +48,7 @@ import {
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { retryCredits } from "../queries/costs";
 import { approvalLeft } from "../../billing/spend";
-import { availableCredits as readAvailableCredits } from "../../billing/accounts";
+import { capReached, spendingRoom } from "../../billing/memberCaps";
 
 import { isResultRetryableFailure } from "../../../lib/extraction/retry-summary";
 import { readResultCounts } from "../resultCounts";
@@ -179,9 +179,10 @@ export const retryFailedQuestions = mutation({
     }
 
     const credits = await retryCredits(ctx, job, retryableCount);
-    // Its workspace pays for it (#650).
-    const totalAvailable = await readAvailableCredits(ctx, job.workspaceId);
+    // Its workspace pays for it (#650), within the cap of the member whose job it is.
+    const { available: totalAvailable, capped } = await spendingRoom(ctx, job.workspaceId, job.createdBy);
     if (totalAvailable < credits) {
+      if (capped) throw capReached(credits);
       throw createError(
         "INSUFFICIENT_CREDITS",
         `Retry needs up to ${credits} credits for ${retryableCount} questions but only have ${totalAvailable}`,

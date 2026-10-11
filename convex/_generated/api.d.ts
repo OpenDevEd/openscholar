@@ -113,6 +113,7 @@ import type * as evidenceLibraries_deploymentSetupActions from "../evidenceLibra
 import type * as evidenceLibraries_digests_citations from "../evidenceLibraries/digests/citations.js";
 import type * as evidenceLibraries_digests_contract from "../evidenceLibraries/digests/contract.js";
 import type * as evidenceLibraries_digests_generate from "../evidenceLibraries/digests/generate.js";
+import type * as evidenceLibraries_digests_kinds from "../evidenceLibraries/digests/kinds.js";
 import type * as evidenceLibraries_digests_manual from "../evidenceLibraries/digests/manual.js";
 import type * as evidenceLibraries_digests_manualActions from "../evidenceLibraries/digests/manualActions.js";
 import type * as evidenceLibraries_digests_review from "../evidenceLibraries/digests/review.js";
@@ -358,6 +359,7 @@ import type * as research_searchValidators from "../research/searchValidators.js
 import type * as research_searches from "../research/searches.js";
 import type * as research_topicCatalog from "../research/topicCatalog.js";
 import type * as research_web from "../research/web.js";
+import type * as screening_access from "../screening/access.js";
 import type * as screening_accounting from "../screening/accounting.js";
 import type * as screening_bookkeeping from "../screening/bookkeeping.js";
 import type * as screening_completion from "../screening/completion.js";
@@ -543,6 +545,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/digests/citations": typeof evidenceLibraries_digests_citations;
   "evidenceLibraries/digests/contract": typeof evidenceLibraries_digests_contract;
   "evidenceLibraries/digests/generate": typeof evidenceLibraries_digests_generate;
+  "evidenceLibraries/digests/kinds": typeof evidenceLibraries_digests_kinds;
   "evidenceLibraries/digests/manual": typeof evidenceLibraries_digests_manual;
   "evidenceLibraries/digests/manualActions": typeof evidenceLibraries_digests_manualActions;
   "evidenceLibraries/digests/review": typeof evidenceLibraries_digests_review;
@@ -788,6 +791,7 @@ declare const fullApi: ApiFromModules<{
   "research/searches": typeof research_searches;
   "research/topicCatalog": typeof research_topicCatalog;
   "research/web": typeof research_web;
+  "screening/access": typeof screening_access;
   "screening/accounting": typeof screening_accounting;
   "screening/bookkeeping": typeof screening_bookkeeping;
   "screening/completion": typeof screening_completion;

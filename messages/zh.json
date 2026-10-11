@@ -3661,6 +3661,10 @@
       "about": "约 {credits, number} 积分",
       "short": "还差 {credits, number}",
       "left": "剩余 <n></n>",
+      "creditsOf": "{name} 的额度",
+      "yourCap": "你本月的上限",
+      "raiseCap": "提高你的上限",
+      "overCap": "超出你的上限 {credits, number}。请让管理员提高上限。",
       "always": "在此对话中始终允许",
       "addCredits": "添加积分",
       "names": {
@@ -3938,6 +3942,7 @@
     },
     "couldntInvite": "组织已创建，但邀请未能发出。请在其成员设置中发送。",
     "fromCredits": "使用 {name} 的积分",
+    "fromCreditsCapped": "来自 {name} 的额度，管理员为你设定的每月上限为 {cap, number}",
     "workspace": "工作区",
     "creditsLeft": "剩余 {credits} 积分",
     "drawsOn": "使用",

@@ -33,6 +33,7 @@ import { guestRoleValidator, sharedFromValidator } from "../sharing/validators";
 import { readableJob } from "./access";
 import { makersIn, makerValidator } from "../workspaces/makers";
 import { availableCredits } from "../billing/accounts";
+import { spendingRoom } from "../billing/memberCaps";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { pricingOf } from "../ai/serverModel";
 import { screeningPaperCredits } from "../../lib/pricing";
@@ -580,10 +581,10 @@ export const paperContext = internalQuery({
 
 export const estimateAction = defineUserQuery({
   path: "screening/queries:estimate",
-  description: "Estimates the credits screening a number of papers holds, against the workspace's balance, and how many papers that balance covers.",
+  description: "Estimates the credits screening a number of papers holds, against what the person can spend in the workspace (its balance, or what's left of the monthly cap an admin set on them when that's less), and how many papers that covers.",
   args: { papers: v.number() },
   returns: v.object({ credits: v.number(), available: v.number(), affordablePapers: v.number() }),
-  run: async (ctx, { userId, workspaceId }, args) => estimateScreening(args.papers, await availableCredits(ctx, workspaceId), await screeningPaperCreditsFor(ctx, { userId, workspaceId })),
+  run: async (ctx, { userId, workspaceId }, args) => estimateScreening(args.papers, (await spendingRoom(ctx, workspaceId, userId)).available, await screeningPaperCreditsFor(ctx, { userId, workspaceId })),
 });
 export const estimate = userQuery(estimateAction);
 export const estimateForAssistant = assistantQuery(estimateAction);

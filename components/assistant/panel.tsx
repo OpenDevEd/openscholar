@@ -8,6 +8,7 @@
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useRoomHeartbeat } from "@/lib/hooks/use-room-heartbeat";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
+import { useSpendable } from "@/components/workspaces/credit-check";
 import { useCurrentWorkspace, WorkspaceTile } from "@/components/workspaces/parts";
 import { Component, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { ConvexError } from "convex/values";
@@ -258,6 +259,8 @@ function Overlay({
   // again while the purchase is on its way, and a second one started then would charge the card twice.
   // Bought for the workspace the panel is in: an organization's admins buy its credits.
   const buyCredits = useWorkspaceAction(api.billing.actions.buyCredits);
+  // Read with the panel, so an approval card has what a call draws on, credits and cap, on its first frame.
+  useSpendable();
   const toast = useAppToast();
   const [buying, setBuying] = useState<number | null>(null);
   const [bought, setBought] = useState<number | null>(null);

@@ -3661,6 +3661,10 @@
       "about": "Environ {credits, plural, one {# crédit} other {# crédits}}",
       "short": "il manque {credits, number}",
       "left": "reste <n></n>",
+      "creditsOf": "Crédits de {name}",
+      "yourCap": "Votre plafond ce mois-ci",
+      "raiseCap": "Relever votre plafond",
+      "overCap": "Plafond dépassé de {credits, number}. Demandez à un administrateur de le relever.",
       "always": "Toujours autoriser dans cette conversation",
       "addCredits": "Ajouter des crédits",
       "names": {
@@ -3938,6 +3942,7 @@
     },
     "couldntInvite": "L'organisation a été créée, mais les invitations ne sont pas parties. Envoyez-les depuis ses paramètres Membres.",
     "fromCredits": "Sur les crédits de {name}",
+    "fromCreditsCapped": "Sur les crédits de {name}, jusqu'aux {cap, number} par mois fixés pour vous par un administrateur",
     "workspace": "Espace de travail",
     "creditsLeft": "{credits} crédits restants",
     "drawsOn": "Utilise",

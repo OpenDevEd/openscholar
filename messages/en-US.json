@@ -3661,6 +3661,10 @@
       "about": "About {credits, plural, one {# credit} other {# credits}}",
       "short": "{credits, number} short",
       "left": "<n></n> left",
+      "creditsOf": "{name}'s credits",
+      "yourCap": "Your cap this month",
+      "raiseCap": "Raise your cap",
+      "overCap": "Over your cap by {credits, number}. Ask an admin to raise it.",
       "always": "Always allow in this chat",
       "addCredits": "Add credits",
       "names": {
@@ -3938,6 +3942,7 @@
     },
     "couldntInvite": "The organization was made, but the invitations didn't go out. Send them from its Members settings.",
     "fromCredits": "From {name}'s credits",
+    "fromCreditsCapped": "From {name}'s credits, up to the {cap, number} a month an admin set for you",
     "workspace": "Workspace",
     "creditsLeft": "{credits} credits left",
     "drawsOn": "Draws on",
