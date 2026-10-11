@@ -15,7 +15,7 @@ import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validat
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { workingIn } from "../workspaces/actor";
+import { actorIn, workingIn } from "../workspaces/actor";
 import { query } from "../lib/functions";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
@@ -263,8 +263,9 @@ export const listAction = defineUserQuery({
           const threadId = threadOf(row);
           const thread = "item" in row ? (threadId ? await ctx.db.get("assistantThreads", threadId) : null) : row;
           if (!thread || !matches(thread)) return false;
-          // One shared from a workspace that's gone waits to be taken off the list (../sharing/upkeep.ts).
-          if ("item" in row && !(await open(ctx, thread.workspaceId))) return false;
+          // One shared from a workspace that's gone waits to be taken off the list (../sharing/upkeep.ts). One moved since
+          // into a workspace the person acts in is listed there, as its members' are.
+          if ("item" in row && (!(await open(ctx, thread.workspaceId)) || (await actorIn(ctx, user, thread.workspaceId)))) return false;
           kept.set(thread._id, "item" in row ? (row.role === "editor" ? "write" : "read") : "owner");
           return true;
         })

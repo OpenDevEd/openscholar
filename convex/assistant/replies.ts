@@ -32,7 +32,7 @@ import { hasVariants, variantIn, viewOf as actionView } from "../../lib/assistan
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { planLimit } from "../billing/accounts";
-import { replyWorkspace, requireThread, touchThread } from "./access";
+import { replyWorkspace, requireThread, roleIn, touchThread } from "./access";
 import { personName } from "../lib/people";
 import { actorIn, personalWorkspaceOf } from "../workspaces/actor";
 import { assistant } from "./agent";
@@ -410,14 +410,23 @@ export const stop = mutation({
   },
 });
 
-/** Where a reply's lock stands: still its own (`writing`), stopped by someone (`stop`), or gone with its chat or to another reply (`gone`). */
+/**
+ * Where a reply's lock stands: still its own (`writing`), to be stopped (`stop`), or gone with its
+ * chat or to another reply (`gone`). It is stopped by someone, or because its sender can no longer
+ * write in the chat: it was taken back from them, or its workspace closed (./access.ts). They
+ * couldn't stop it themselves by then, and it runs on their credits.
+ */
 export const lockState = internalQuery({
   args: lockArgs,
   returns: v.union(v.literal("writing"), v.literal("stop"), v.literal("gone")),
   handler: async (ctx, { threadId, attemptId }) => {
-    const current = (await ctx.db.get("assistantThreads", threadId))?.reply;
-    if (current?.attemptId !== attemptId) return "gone" as const;
-    return current.stop ? ("stop" as const) : ("writing" as const);
+    const thread = await ctx.db.get("assistantThreads", threadId);
+    const current = thread?.reply;
+    if (!thread || current?.attemptId !== attemptId) return "gone" as const;
+    if (current.stop) return "stop" as const;
+    const sender = await ctx.db.get("users", current.senderId);
+    const role = sender ? await roleIn(ctx, sender, thread) : null;
+    return role === "owner" || role === "write" ? ("writing" as const) : ("stop" as const);
   },
 });
 

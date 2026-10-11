@@ -191,6 +191,26 @@ describe("assistant replies", () => {
     expect("error" in late ? late.error : undefined).toBeUndefined();
   });
 
+  it("stop once the person who asked can no longer write in the chat, since they couldn't stop one themselves", async () => {
+    const t = convexTest(schema);
+    const { home, asAda, asBen, ada, ben, threadId } = await sharedChat(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Hello"]));
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Hi there" });
+    const lock = { threadId, attemptId: (await chat(t, threadId))!.reply!.attemptId };
+    const state = () => t.query(internal.assistant.replies.lockState, lock);
+    expect(await state()).toBe("writing");
+    // Ada's account is suspended: what she shared from her own workspace is closed to its guests.
+    await t.run((ctx) => ctx.db.patch("users", ada, { state: "suspended" }));
+    expect(await state()).toBe("stop");
+    await t.run((ctx) => ctx.db.patch("users", ada, { state: "active" }));
+    expect(await state()).toBe("writing");
+    // She takes the chat back from Ben.
+    await asAda.mutation(api.sharing.guests.remove, { workspaceId: home.ada, kind: "chat", id: threadId, guest: { userId: ben } });
+    expect(await state()).toBe("stop");
+    await ended(t, threadId);
+    expect(await charges(t)).toEqual([]);
+  });
+
   it("can't be asked for by someone who only reads the chat", async () => {
     const t = convexTest(schema);
     const { home, asAda, asBen, ben, threadId } = await sharedChat(t);

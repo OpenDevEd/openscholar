@@ -50,8 +50,8 @@ export const listAction = defineUserQuery({
       .paginate({ ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHARED_PAGE_MAX), maximumRowsRead: SHARED_FILTER_ROWS });
     const page = await Promise.all(read.page.map(async (row) => {
       const [shared, sharer] = await Promise.all([findShared(ctx, row.kind, row.item), ctx.db.get("users", row.grantedBy)]);
-      // One whose item was just deleted goes with it in a moment (./upkeep.ts).
-      if (!shared) return [];
+      // One whose item was just deleted goes with it in a moment (./upkeep.ts). One whose workspace has closed, as a suspended account's has, isn't theirs to open.
+      if (!shared || !(await open(ctx, shared.workspaceId))) return [];
       return [{
         kind: row.kind, id: shared.id, name: shared.name, role: row.role, at: row.grantedAt,
         by: { name: sharer ? personName(sharer) || sharer.email : "", ...(sharer?.avatarUrl ? { imageUrl: sharer.avatarUrl } : {}) },

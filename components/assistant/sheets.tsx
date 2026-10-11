@@ -372,8 +372,12 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
   // The chat's owner shares it. The role came with the chat, so the sheet has its final layout from its first frame.
   const owner = role === "owner";
   // Whoever started it, then the people it's shared with: they are its guests, as any shared item's are.
-  const people = useProtectedQuery(api.assistant.threads.people, inWorkspace(workspaceId, { threadId })).data?.page ?? [];
-  const invited = usePaginatedQuery(api.sharing.guests.invited, inWorkspace(workspaceId, owner ? item : "skip"), { initialNumItems: INVITED_PER_PAGE }).results;
+  const inIt = useProtectedQuery(api.assistant.threads.people, inWorkspace(workspaceId, { threadId })).data;
+  const waiting = usePaginatedQuery(api.sharing.guests.invited, inWorkspace(workspaceId, owner ? item : "skip"), { initialNumItems: INVITED_PER_PAGE });
+  // The people and the invitations come in together, in their order, so neither pushes the other down as it arrives.
+  const ready = inIt !== undefined && (!owner || waiting.status !== "LoadingFirstPage");
+  const people = ready ? inIt.page : [];
+  const invited = ready ? waiting.results : [];
   const room = useProtectedQuery(api.sharing.guests.room, inWorkspace(workspaceId, owner ? item : "skip")).data;
   const [query, setQuery] = useState("");
   const text = useDeferredValue(query.trim());
