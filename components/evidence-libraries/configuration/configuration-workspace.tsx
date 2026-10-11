@@ -648,7 +648,8 @@ function Workspace({
               ) : null}
               {/* A save ends by drawing the page again from what was saved. A change made while one is on its way
                   would be lost without a word, so no section can be changed until the save or activation is back. */}
-              <div className="contents" inert={saving || activating} aria-busy={saving || activating || undefined}>
+              {/* The column spaces its children; the sections are this box's children now, so it spaces them the same. */}
+              <div className="space-y-4" inert={saving || activating} aria-busy={saving || activating || undefined}>
                 <CollectionFactsProvider
                   libraryId={libraryId}
                   ids={draft.collections.map((collection) => collection.id)}
