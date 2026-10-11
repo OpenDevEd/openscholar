@@ -8,7 +8,7 @@ interface LibraryItemSkeletonProps {
   viewMode?: ViewMode;
 }
 
-function SkeletonBar({ className }: { className?: string }) {
+export function SkeletonBar({ className }: { className?: string }) {
   return (
     <div
       data-slot="skeleton-bar"

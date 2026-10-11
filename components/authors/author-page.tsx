@@ -47,7 +47,6 @@ import { MoveDialog } from "@/components/workspaces/move-dialog";
 import { ItemPresence } from "@/components/workspaces/presence";
 import type { Id } from "@/convex/_generated/dataModel";
 import { buildShareableUrl } from "@/lib/search-params";
-import { useTranslations } from "next-intl";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
 import { useUIStore } from "@/lib/store";
