@@ -8,7 +8,7 @@ import { useDeferredValue, useRef, useState, type ReactNode } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Building2, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Link2, Loader2, Lock, MessageSquare, Move, Radio, Search, Share2, ShieldCheck, SquarePen, UserPlus, UserRound, X } from "@/components/icons";
+import { ArrowRight, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Loader2, Lock, MessageSquare, Move, Radio, Search, Share2, ShieldCheck, SquarePen, UserRound } from "@/components/icons";
 import { Pills } from "@/components/ui/pills";
 import { useFormatter, useNow, useTranslations } from "next-intl";
 import { api } from "@/convex/_generated/api";
@@ -20,21 +20,23 @@ import { LIST, Segmented, Zone } from "@/components/settings/parts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
-import { IdentityRow, ROLE_ICONS, RoleLabel } from "@/components/ui/identity";
+import { EmailAvatar } from "@/components/ui/identity";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ASSISTANT_JOB_CAPS } from "@/convex/lib/constants";
 import { viewOf } from "@/lib/assistant/actions";
 import { topUpBundles } from "@/lib/billing/catalog";
 import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
+import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { OrbitMark } from "./orbit-mark";
-import { IconButton, WorkingText } from "./parts";
+import { WorkingText } from "./parts";
 import { KIND, KindTile, type Waiting } from "./steps";
-import { inWorkspace, useWorkspace, useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { useCurrentWorkspace } from "@/components/workspaces/parts";
+import { SharePanel } from "@/components/shared/share-panel";
+import { useCurrentWorkspace, usePlanOf, WorkspaceTile } from "@/components/workspaces/parts";
 import { MoveDialog } from "@/components/workspaces/move-dialog";
 import { useRunBy } from "@/components/workspaces/run-by";
 import { PresentAvatar as Avatar } from "@/components/ui/identity";
@@ -111,18 +113,10 @@ type Scope = "all" | "mine" | "shared";
 
 const CHATS_PER_PAGE = 20;
 
-function Members({ members, organization }: { members: Member[]; organization?: string }) {
-  const t = useTranslations("assistant");
-  if (!members.length && !organization) return null;
+function Members({ members }: { members: Member[] }) {
+  if (!members.length) return null;
   return (
     <span className="flex shrink-0 items-center -space-x-1.5">
-      {organization ? (
-        <TooltipHint label={t("everyoneIn", { organization })}>
-          <span className="relative flex size-6 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--info)_22%,var(--card))] text-info ring-2 ring-card">
-            <Building2 className="size-3" />
-          </span>
-        </TooltipHint>
-      ) : null}
       {members.map((member) => (
         <Avatar key={member.userId} member={member} />
       ))}
@@ -183,7 +177,7 @@ function ChatRow({ chat, index, current, when, onOpen, onShare, onMove }: { chat
           <span className="flex min-w-0 flex-1 items-center">
             <Status chat={chat} />
           </span>
-          <Members members={chat.members} organization={chat.organization} />
+          <Members members={chat.members} />
         </span>
         {/* Its running jobs, one line each, and how many more: the server names the first few. */}
         {chat.jobs.length ? (
@@ -355,207 +349,115 @@ function LiveIcon() {
   );
 }
 
-type Access = FunctionReturnType<typeof api.assistant.sharing.listAccess>["page"][number];
-type Principal = Access["principal"];
-/** A chat is shared with at most 50 people and organizations, so one page holds them all with its owner. */
-const ACCESS_ROWS = 51;
 const CANDIDATES_PER_PAGE = 8;
-/** An organization's members are counted to here; past it the sheet says "100+". */
-const MEMBERS_COUNTED = 100;
-const keyOf = (principal: Principal) => (principal.kind === "user" ? principal.userId : principal.organizationId);
+/** A chat's waiting invitations fit one read: they are among its guests, which a chat has 50 of at most. */
+const INVITED_PER_PAGE = 50;
+const WEEK = 7 * 86_400_000;
 
-/** A person's photo or an organization's logo, with an icon while it loads or when there's none. */
-function Tile({ principal, name, imageUrl }: { principal: Principal; name: string; imageUrl?: string }) {
-  return <IdentityAvatar name={name} imageUrl={imageUrl} kind={principal.kind === "organization" ? "organization" : "person"} className="size-9" />;
-}
-
+/**
+ * Who a chat is shared with (#653), through the app's one share panel. Its owner adds people: someone
+ * in one of their organizations at once, anyone else by an emailed invitation. An organization's
+ * chat is every member's, so it lists the organization, then the chat's guests.
+ */
 export function ShareSheet({ threadId, title, role, onBack }: { threadId: ThreadId; title: string; role: Role; onBack: () => void }) {
   const workspaceId = useWorkspace();
+  const workspace = useCurrentWorkspace();
+  const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
   const t = useTranslations("assistant");
+  const ts = useTranslations("workspaces.share");
+  const format = useFormatter();
+  const now = useNow();
   const toast = useAppToast();
-  const { results } = usePaginatedQuery(api.assistant.sharing.listAccess, inWorkspace(workspaceId, { threadId }), { initialNumItems: ACCESS_ROWS });
-  // The owner first, then organizations, then people.
-  const rank = (person: Access) => (person.role === "owner" ? 0 : person.principal.kind === "organization" ? 1 : 2);
-  const people = [...results].sort((a, b) => rank(a) - rank(b));
+  const item = { kind: "chat" as const, id: threadId };
   // The chat's owner shares it. The role came with the chat, so the sheet has its final layout from its first frame.
   const owner = role === "owner";
+  // Whoever started it, then the people it's shared with: they are its guests, as any shared item's are.
+  const inIt = useProtectedQuery(api.assistant.threads.people, inWorkspace(workspaceId, { threadId })).data;
+  const waiting = usePaginatedQuery(api.sharing.guests.invited, inWorkspace(workspaceId, owner ? item : "skip"), { initialNumItems: INVITED_PER_PAGE });
+  // The people and the invitations come in together, in their order, so neither pushes the other down as it arrives.
+  const ready = inIt !== undefined && (!owner || waiting.status !== "LoadingFirstPage");
+  const people = ready ? inIt.page : [];
+  const invited = ready ? waiting.results : [];
+  const room = useProtectedQuery(api.sharing.guests.room, inWorkspace(workspaceId, owner ? item : "skip")).data;
   const [query, setQuery] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [active, setActive] = useState(0);
-  const [copied, setCopied] = useState(false);
   const text = useDeferredValue(query.trim());
-  const found = usePaginatedQuery(api.assistant.sharing.candidates, inWorkspace(workspaceId, owner && adding ? (text ? { text } : {}) : "skip"), { initialNumItems: CANDIDATES_PER_PAGE });
-  const grant = useWorkspaceMutation(api.assistant.sharing.grant);
-  const revoke = useWorkspaceMutation(api.assistant.sharing.revoke);
+  const found = usePaginatedQuery(api.sharing.guests.candidates, inWorkspace(workspaceId, owner ? { ...item, ...(text ? { text } : {}) } : "skip"), { initialNumItems: CANDIDATES_PER_PAGE });
+  const add = useWorkspaceMutation(api.sharing.guests.add);
+  const invite = useWorkspaceAction(api.sharing.invitations.invite);
+  const setRole = useWorkspaceMutation(api.sharing.guests.setRole);
+  const remove = useWorkspaceMutation(api.sharing.guests.remove);
   const failed = (error: unknown) => toast.error(t("shareFailed"), getErrorMessage(error, ""));
-
-  // Whoever is in the chat already is left out, and someone in several organizations shows once.
-  const has = new Set(people.map((person) => keyOf(person.principal)));
-  const suggestions = found.results.filter((candidate) => !has.has(keyOf(candidate.principal)) && has.add(keyOf(candidate.principal)));
-  const loaded = found.status !== "LoadingFirstPage";
-  const shownName = (person: { principal: Principal; name: string; email?: string }) =>
-    person.principal.kind === "organization" ? t("everyoneIn", { organization: person.name }) : person.name || person.email || t("someone");
-  const add = (principal: Principal) => {
-    setQuery("");
-    setActive(0);
-    grant({ threadId, principal, role: "read" }).catch(failed);
-  };
-  const copy = () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set("chat", threadId);
-    navigator.clipboard.writeText(url.toString()).then(() => setCopied(true), failed);
-  };
+  const shownName = (person: { name: string; email?: string }) => person.name || person.email || t("someone");
+  // A guest who views reads the chat, and one who edits writes in it.
+  const given = (to: "read" | "write") => (to === "write" ? ("editor" as const) : ("viewer" as const));
+  // What the owner can do to a guest: someone given the chat, or an address invited to it.
+  const managing = (guest: { userId: Id<"users"> } | { email: string }) =>
+    owner ? { onRole: (to: "read" | "write") => void setRole({ ...item, guest, role: given(to) }).catch(failed), onRemove: () => void remove({ ...item, guest }).catch(failed) } : {};
 
   return (
     <>
       <SheetHeader title={t("shareChat")} detail={title} onBack={onBack} />
-      <ScrollArea shades className="min-h-0 flex-1">
-        <div className="space-y-4 px-3 py-3">
-          {owner ? (
-            // The suggestions open over the list below, at the box's width, so nothing under them moves.
-            // They stay open while focus is anywhere in here, so Tab reaches them too.
-            <div
-              className="relative"
-              onFocus={() => setAdding(true)}
-              onBlur={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget)) setAdding(false);
-              }}
-            >
-              <label className="flex h-10 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
-                <UserPlus className="size-4 text-muted-foreground" />
-                <input
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value);
-                    setActive(0);
-                  }}
-                  onKeyDown={(e) => {
-                    if (!suggestions.length) return;
-                    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-                      e.preventDefault();
-                      setActive((i) => (i + (e.key === "ArrowDown" ? 1 : suggestions.length - 1)) % suggestions.length);
-                    }
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      add(suggestions[Math.min(active, suggestions.length - 1)]!.principal);
-                    }
-                  }}
-                  role="combobox"
-                  aria-expanded={adding && loaded}
-                  aria-controls="assistant-share-suggestions"
-                  placeholder={t("addPeople")}
-                  aria-label={t("addPeople")}
-                  className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
-                />
-              </label>
-              {adding && loaded ? (
-                <ul
-                  id="assistant-share-suggestions"
-                  role="listbox"
-                  className="absolute inset-x-0 top-full z-20 mt-1 rounded-2xl border border-border/60 bg-popover p-1.5 shadow-[0_18px_50px_-18px_rgb(0_0_0/0.45)]"
-                >
-                  {suggestions.map((candidate, i) => (
-                    <li key={keyOf(candidate.principal)} role="option" aria-selected={i === active}>
-                      <button
-                        type="button"
-                        // Keeps focus in the box, so the list stays open for the next pick.
-                        onMouseDown={(e) => e.preventDefault()}
-                        onMouseEnter={() => setActive(i)}
-                        onClick={() => add(candidate.principal)}
-                        className={cn("flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left", i === active && "bg-muted")}
-                      >
-                        <Tile principal={candidate.principal} name={candidate.name} imageUrl={candidate.imageUrl} />
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium">{shownName(candidate)}</span>
-                          <span className="block truncate text-xs text-muted-foreground">{candidate.principal.kind === "organization" ? t("organization") : candidate.name ? candidate.email : ""}</span>
-                        </span>
-                      </button>
-                    </li>
-                  ))}
-                  {suggestions.length === 0 && found.status === "Exhausted" ? <li className="px-2.5 py-2 text-sm text-muted-foreground">{t("noCandidates")}</li> : null}
-                  {/* A page looks through only so many members, so more may follow even after an empty one. */}
-                  {found.status === "CanLoadMore" || found.status === "LoadingMore" ? (
-                    <li>
-                      <button
-                        type="button"
-                        disabled={found.status === "LoadingMore"}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={() => found.loadMore(CANDIDATES_PER_PAGE)}
-                        className="flex h-8 w-full items-center rounded-xl px-2.5 text-xs font-medium text-foreground/80 hover:bg-muted hover:text-foreground disabled:opacity-50"
-                      >
-                        {t("morePeople")}
-                      </button>
-                    </li>
-                  ) : null}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
-          <ul className="space-y-1">
-            {people.map((person, i) => {
-              const name = shownName(person);
-              const detail =
-                person.role === "owner"
-                  ? t("owner")
-                  : person.principal.kind === "organization"
-                    ? (person.members ?? 0) > MEMBERS_COUNTED
-                      ? t("membersMany", { count: MEMBERS_COUNTED })
-                      : t("members", { count: person.members ?? 0 })
-                    : person.name
-                      ? (person.email ?? "")
-                      : "";
-              return (
-                <motion.li
-                  key={keyOf(person.principal)}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, ease: EASE, delay: 0.12 + Math.min(i, 8) * 0.05 }}
-                >
-                  <IdentityRow className="rounded-xl px-2 py-2" avatar={<Tile principal={person.principal} name={person.name} imageUrl={person.imageUrl} />} name={name} you={person.role === "owner" && owner} detail={detail}>
-                  {person.role === "owner" ? (
-                    <RoleLabel role="chat" className="px-2">{t("canChat")}</RoleLabel>
-                  ) : owner ? (
-                    <>
-                      <Segmented
-                        label={t("accessOf", { name })}
-                        value={person.role}
-                        onChange={(role) => grant({ threadId, principal: person.principal, role }).catch(failed)}
-                        options={[
-                          { id: "read", label: t("view"), icon: ROLE_ICONS.view },
-                          { id: "write", label: t("chat"), icon: ROLE_ICONS.chat },
-                        ]}
-                      />
-                      <IconButton small label={t("remove")} icon={<X className="size-3.5" />} onClick={() => revoke({ threadId, principal: person.principal }).catch(failed)} />
-                    </>
-                  ) : (
-                    <RoleLabel role={person.role === "write" ? "chat" : "view"} className="px-2">{person.role === "write" ? t("canChat") : t("canView")}</RoleLabel>
-                  )}
-                  </IdentityRow>
-                </motion.li>
-              );
-            })}
-          </ul>
-        </div>
-      </ScrollArea>
-      {/* What sharing gives stays in sight over the button, however long the list. */}
-      <div className="space-y-3 border-t border-border/50 p-3">
-        <p className="px-1 text-xs leading-relaxed text-muted-foreground">{t("shareNote")}</p>
-        <button type="button" onClick={copy} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-muted/60 text-sm font-medium hover:bg-muted">
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.span
-              key={copied ? "copied" : "copy"}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.2, ease: EASE }}
-              className="flex items-center gap-2"
-            >
-              {copied ? <Check className="size-4 text-success" /> : <Link2 className="size-4" />}
-              {copied ? t("linkCopied") : t("copyLink")}
-            </motion.span>
-          </AnimatePresence>
-        </button>
-      </div>
+      <SharePanel<"read" | "write">
+        adding={
+          owner
+            ? {
+                query,
+                onQuery: setQuery,
+                // Someone in two of the owner's organizations comes once on each one's page: they're offered once.
+                candidates:
+                  found.status === "LoadingFirstPage"
+                    ? undefined
+                    : [...new Map(found.results.map((person) => [person.userId, person])).values()].map((person) => ({
+                        key: person.userId,
+                        avatar: <IdentityAvatar name={shownName(person)} imageUrl={person.imageUrl} className="size-9" />,
+                        name: shownName(person),
+                        detail: person.name ? person.email : undefined,
+                        pick: () => void add({ ...item, userId: person.userId, role: "viewer" }).catch(failed),
+                      })),
+                more: found.status === "CanLoadMore" || found.status === "LoadingMore" ? { loading: found.status === "LoadingMore", load: () => found.loadMore(CANDIDATES_PER_PAGE) } : undefined,
+                invite: (email) => void invite({ ...item, email, role: "viewer" }).catch(failed),
+                has: (email) => invited.some((invitation) => invitation.email === email) || people.some((person) => person.email?.toLowerCase() === email),
+                full: room && room.limit !== null && room.used >= room.limit ? ts("full.chat", { plan: plan.name, count: room.limit }) : undefined,
+              }
+            : undefined
+        }
+        roles={[
+          { id: "read", kind: "view", label: t("view"), can: t("canView") },
+          { id: "write", kind: "chat", label: t("chat"), can: t("canChat") },
+        ]}
+        entries={[
+          ...(workspace?.kind === "organization"
+            ? [{ key: "everyone", avatar: <WorkspaceTile workspace={workspace} size="row" />, name: ts("everyone", { workspace: workspace.name }), detail: ts("members", { count: workspace.members ?? 0 }), role: { kind: "chat" as const, label: t("canChat") } }]
+            : []),
+          // Whoever started an organization's chat has it as its members do.
+          ...people.filter((person) => workspace?.kind !== "organization" || person.role !== "owner").map((person) => ({
+            key: person.userId,
+            avatar: <IdentityAvatar name={shownName(person)} imageUrl={person.imageUrl} className="size-9" />,
+            name: shownName(person),
+            you: person.you,
+            detail: person.name ? person.email : undefined,
+            ...(person.role === "owner" ? { role: { kind: "owner" as const, label: t("owner") } } : { role: person.role, ...managing({ userId: person.userId }) }),
+          })),
+          ...invited.map((invitation) => ({
+            key: invitation.email,
+            avatar: <EmailAvatar />,
+            name: invitation.email,
+            // Sent a week before it expires, by the server's clock: never later than now by this one's.
+            detail: invitation.delivery === "failed" ? ts("notSent") : ts("invited", { when: format.relativeTime(Math.min(invitation.expiresAt - WEEK, now.getTime()), now) }),
+            role: invitation.role === "editor" ? ("write" as const) : ("read" as const),
+            ...managing({ email: invitation.email }),
+          })),
+        ]}
+        foot={<p className="px-1 text-xs leading-relaxed text-muted-foreground">{t("shareNote")}</p>}
+        onCopy={() => {
+          const url = new URL(window.location.href);
+          url.searchParams.set("chat", threadId);
+          return navigator.clipboard.writeText(url.toString()).catch((error: unknown) => {
+            failed(error);
+            throw error;
+          });
+        }}
+      />
     </>
   );
 }

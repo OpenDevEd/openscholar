@@ -77,7 +77,7 @@ export const MAX_LOCATIONS_READ_PER_GROUP = 100;
  */
 export const MAX_ACTIVE_OPERATIONS_READ = 50;
 
-/** People and organizations one assistant chat can be shared with (`assistant/sharing:grant`); reads of a chat's access rows take this many and its owner's. */
+/** Most people one assistant chat is shared with, whatever its workspace's plan allows (../sharing/items.ts); another is refused, and reads of a chat's guests take this many. */
 export const MAX_ASSISTANT_THREAD_GRANTS = 50;
 
 /** Most invitations to items waiting for one address (`sharing/invitations:invite`); another is refused until some are answered or expire. */

@@ -3031,7 +3031,6 @@
     "openNow": "当前打开",
     "here": "{names}在这里",
     "someone": "有人",
-    "everyoneIn": "{organization} 的所有人",
     "writingReply": "正在撰写回复",
     "noChatsMatch": "没有匹配的对话。",
     "noChats": "你的对话会显示在这里。",
@@ -3079,23 +3078,15 @@
       "change": "更改上限",
       "failed": "无法继续回复"
     },
-    "addPeople": "添加人员或组织",
     "owner": "所有者",
     "canChat": "可对话",
     "canView": "可查看",
     "view": "查看",
     "chat": "对话",
-    "accessOf": "{name} 的权限",
-    "members": "{count} 位成员",
-    "membersMany": "{count}+ 位成员",
     "remove": "移除",
     "organization": "组织",
-    "noCandidates": "你的组织中没有匹配的人。",
     "shareNote": "他们可以看到此对话。其中的搜索、合集和文库仍保留各自的访问权限。可对话的人以自己的身份发送消息，助手以他们自己的权限和额度为他们执行操作。",
-    "copyLink": "复制链接（仅限有权限的人）",
-    "linkCopied": "链接已复制",
     "shareFailed": "无法更改此对话的共享设置",
-    "morePeople": "更多人员",
     "steps": {
       "undo": "撤销",
       "done": "完成",
@@ -3289,18 +3280,6 @@
         "did": "已删除合集",
         "where": "合集",
         "ask": "删除合集"
-      },
-      "shareChat": {
-        "doing": "正在共享对话",
-        "did": "已共享对话",
-        "where": "对话",
-        "ask": "共享对话"
-      },
-      "unshareChat": {
-        "doing": "正在停止共享对话",
-        "did": "已停止共享对话",
-        "where": "对话",
-        "ask": "停止共享对话"
       },
       "deleteChat": {
         "doing": "正在删除对话",
@@ -4056,14 +4035,16 @@
         "screening": "共享此筛选",
         "extraction": "共享此提取",
         "search": "共享此搜索",
-        "author": "共享此作者档案"
+        "author": "共享此作者档案",
+        "chat": "共享此对话"
       },
       "title": {
         "collection": "共享合集",
         "screening": "共享筛选",
         "extraction": "共享提取",
         "search": "共享搜索",
-        "author": "共享作者档案"
+        "author": "共享作者档案",
+        "chat": "共享对话"
       },
       "addPeople": "按姓名或邮箱添加",
       "inviteEmail": "邀请 {email}",
@@ -4093,7 +4074,8 @@
         "screening": "{plan} 允许每个筛选有 {count, plural, other {# 位访客}}",
         "extraction": "{plan} 允许每个提取有 {count, plural, other {# 位访客}}",
         "search": "{plan} 允许每个搜索有 {count, plural, other {# 位访客}}",
-        "author": "{plan} 允许每个作者档案有 {count, plural, other {# 位访客}}"
+        "author": "{plan} 允许每个作者档案有 {count, plural, other {# 位访客}}",
+        "chat": "{plan} 允许每个对话有 {count, plural, other {# 位访客}}"
       },
       "failed": "无法更改共享对象"
     },
@@ -4109,14 +4091,16 @@
         "screening": "筛选任务",
         "extraction": "提取任务",
         "search": "搜索",
-        "author": "作者档案"
+        "author": "作者档案",
+        "chat": "对话"
       },
       "size": {
         "collection": "{count, plural, other {# 篇论文}}",
         "screening": "{count, plural, other {# 篇论文}}",
         "extraction": "{count, plural, other {# 篇论文}}",
         "search": "{count, plural, other {# 条结果}}",
-        "author": "{count, plural, other {# 篇出版物}}"
+        "author": "{count, plural, other {# 篇出版物}}",
+        "chat": "{count, plural, other {# 条消息}}"
       },
       "runUses": "你在这些内容上运行的任务使用",
       "yourCredits": "你的积分",
@@ -4132,7 +4116,8 @@
         "screening": "{name} 共享了一个筛选",
         "extraction": "{name} 共享了一个提取",
         "search": "{name} 共享了一个搜索",
-        "author": "{name} 共享了一个作者档案"
+        "author": "{name} 共享了一个作者档案",
+        "chat": "{name} 共享了一个对话"
       },
       "pointOwn": "它在你自己的工作区里",
       "pointCredits": "你在上面运行的任务使用你的积分",

@@ -48,7 +48,6 @@ import type * as assistant_paperChanges from "../assistant/paperChanges.js";
 import type * as assistant_pdf from "../assistant/pdf.js";
 import type * as assistant_replies from "../assistant/replies.js";
 import type * as assistant_run from "../assistant/run.js";
-import type * as assistant_sharing from "../assistant/sharing.js";
 import type * as assistant_spending from "../assistant/spending.js";
 import type * as assistant_steps from "../assistant/steps.js";
 import type * as assistant_threads from "../assistant/threads.js";
@@ -306,6 +305,7 @@ import type * as migrations_adoptLibraryRatings from "../migrations/adoptLibrary
 import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
 import type * as migrations_authorAccess from "../migrations/authorAccess.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
+import type * as migrations_chatAccess from "../migrations/chatAccess.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
 import type * as migrations_expireInvitations from "../migrations/expireInvitations.js";
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
@@ -480,7 +480,6 @@ declare const fullApi: ApiFromModules<{
   "assistant/pdf": typeof assistant_pdf;
   "assistant/replies": typeof assistant_replies;
   "assistant/run": typeof assistant_run;
-  "assistant/sharing": typeof assistant_sharing;
   "assistant/spending": typeof assistant_spending;
   "assistant/steps": typeof assistant_steps;
   "assistant/threads": typeof assistant_threads;
@@ -738,6 +737,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/assistantJobs": typeof migrations_assistantJobs;
   "migrations/authorAccess": typeof migrations_authorAccess;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
+  "migrations/chatAccess": typeof migrations_chatAccess;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
   "migrations/expireInvitations": typeof migrations_expireInvitations;
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;

@@ -59,7 +59,9 @@ export const close = internalMutation({
             : kind === "search"
               ? // A search holds its whole query: a page of them stops at these bytes and goes on from its cursor.
                 await ctx.db.query("searches").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate({ ...page, maximumBytesRead: 4 * 1024 * 1024 })
-              : await ctx.db.query("authorProfiles").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate(page);
+              : kind === "author"
+                ? await ctx.db.query("authorProfiles").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate(page)
+                : await ctx.db.query("assistantThreads").withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspaceId)).paginate(page);
     for (const item of items.page) {
       if (await hasGuests(ctx, item._id)) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.follow, { kind, item: item._id, cursor: null, closed: true });
     }

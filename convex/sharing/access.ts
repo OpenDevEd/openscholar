@@ -42,9 +42,15 @@ export async function holds(ctx: Read, shared: Shared, person: Doc<"users">) {
   return actor !== null && (!ownersHold(shared.kind) || actor.role === "admin" || shared.createdBy === person._id);
 }
 
+/** What a guest's place keeps of the item for a list that orders by it: a chat's newest message time. */
+export const listedBy = (shared: Shared) => (shared.lastMessageAt === undefined ? {} : { lastMessageAt: shared.lastMessageAt });
+
 /** Writes to an item's Activity that `by` shared it with someone, named as given. */
-export const noteShared = (ctx: Pick<MutationCtx, "db">, shared: Shared, by: Pick<Acting, "userId" | "author">, withWhom: string) =>
-  noteActivity(ctx, { workspaceId: shared.workspaceId, by: by.userId, viaAssistant: by.author === "assistant" }, { kind: shared.kind, id: shared.pageId ?? shared.id, happened: "shared", detail: withWhom });
+export const noteShared = async (ctx: Pick<MutationCtx, "db">, shared: Shared, by: Pick<Acting, "userId" | "author">, withWhom: string) => {
+  // A chat keeps no activity.
+  if (shared.kind === "chat") return;
+  await noteActivity(ctx, { workspaceId: shared.workspaceId, by: by.userId, viaAssistant: by.author === "assistant" }, { kind: shared.kind, id: shared.pageId ?? shared.id, happened: "shared", detail: withWhom });
+};
 
 /**
  * Gives a person the item, or changes what they may do with it. An invitation to their address
@@ -59,6 +65,6 @@ export async function give(ctx: MutationCtx, shared: Shared, person: Doc<"users"
   const waiting = await invitationTo(ctx, shared.id, person.email.toLowerCase());
   if (waiting?.state === "pending") await ctx.db.patch("itemInvitations", waiting._id, { state: "accepted" });
   else await requireRoom(ctx, shared);
-  await ctx.db.insert("itemAccess", { kind: shared.kind, item: shared.id, name: shared.name, userId: person._id, role, grantedBy: by.userId, grantedAt: Date.now() });
+  await ctx.db.insert("itemAccess", { kind: shared.kind, item: shared.id, name: shared.name, userId: person._id, role, grantedBy: by.userId, grantedAt: Date.now(), ...listedBy(shared) });
   await noteShared(ctx, shared, by, personName(person) || person.email);
 }

@@ -3031,7 +3031,6 @@
     "openNow": "表示中",
     "here": "{names}が参加中",
     "someone": "だれか",
-    "everyoneIn": "{organization} の全員",
     "writingReply": "返信を作成中",
     "noChatsMatch": "一致するチャットはありません。",
     "noChats": "チャットはここに表示されます。",
@@ -3079,23 +3078,15 @@
       "change": "上限を変更",
       "failed": "返信を再開できませんでした"
     },
-    "addPeople": "ユーザーまたは組織を追加",
     "owner": "所有者",
     "canChat": "チャット可能",
     "canView": "閲覧可能",
     "view": "閲覧",
     "chat": "チャット",
-    "accessOf": "{name}のアクセス権",
-    "members": "{count} 人のメンバー",
-    "membersMany": "{count} 人以上のメンバー",
     "remove": "削除",
     "organization": "組織",
-    "noCandidates": "組織内に一致する人がいません。",
     "shareNote": "共有相手はこの会話を見ることができます。会話内の検索、コレクション、ライブラリのアクセス権はそれぞれのままです。チャットできる人は自分の名前でメッセージを送り、アシスタントはその人自身のアクセス権とクレジットで動作します。",
-    "copyLink": "アクセス権のある人向けのリンクをコピー",
-    "linkCopied": "リンクをコピーしました",
     "shareFailed": "このチャットの共有設定を変更できませんでした",
-    "morePeople": "さらに表示",
     "steps": {
       "undo": "元に戻す",
       "done": "完了",
@@ -3289,18 +3280,6 @@
         "did": "コレクションを削除しました",
         "where": "コレクション",
         "ask": "コレクションを削除"
-      },
-      "shareChat": {
-        "doing": "チャットを共有しています",
-        "did": "チャットを共有しました",
-        "where": "チャット",
-        "ask": "チャットを共有"
-      },
-      "unshareChat": {
-        "doing": "チャットの共有を解除しています",
-        "did": "チャットの共有を解除しました",
-        "where": "チャット",
-        "ask": "チャットの共有を解除"
       },
       "deleteChat": {
         "doing": "チャットを削除しています",
@@ -4056,14 +4035,16 @@
         "screening": "このスクリーニングを共有",
         "extraction": "この抽出を共有",
         "search": "この検索を共有",
-        "author": "この著者プロフィールを共有"
+        "author": "この著者プロフィールを共有",
+        "chat": "このチャットを共有"
       },
       "title": {
         "collection": "コレクションを共有",
         "screening": "スクリーニングを共有",
         "extraction": "抽出を共有",
         "search": "検索を共有",
-        "author": "著者プロフィールを共有"
+        "author": "著者プロフィールを共有",
+        "chat": "チャットを共有"
       },
       "addPeople": "名前またはメールで追加",
       "inviteEmail": "{email} を招待",
@@ -4093,7 +4074,8 @@
         "screening": "{plan} ではスクリーニングごとに{count, plural, other {#人}}までゲストを追加できます",
         "extraction": "{plan} では抽出ごとに{count, plural, other {#人}}までゲストを追加できます",
         "search": "{plan} では検索ごとに{count, plural, other {#人}}までゲストを追加できます",
-        "author": "{plan} では著者プロフィールごとに{count, plural, other {#人}}までゲストを追加できます"
+        "author": "{plan} では著者プロフィールごとに{count, plural, other {#人}}までゲストを追加できます",
+        "chat": "{plan} ではチャットごとに{count, plural, other {#人}}までゲストを追加できます"
       },
       "failed": "共有を変更できませんでした"
     },
@@ -4109,14 +4091,16 @@
         "screening": "スクリーニング",
         "extraction": "抽出",
         "search": "検索",
-        "author": "著者プロフィール"
+        "author": "著者プロフィール",
+        "chat": "チャット"
       },
       "size": {
         "collection": "{count, plural, other {#件の論文}}",
         "screening": "{count, plural, other {#件の論文}}",
         "extraction": "{count, plural, other {#件の論文}}",
         "search": "{count, plural, other {#件の結果}}",
-        "author": "{count, plural, other {#件の出版物}}"
+        "author": "{count, plural, other {#件の出版物}}",
+        "chat": "{count, plural, other {#件のメッセージ}}"
       },
       "runUses": "ここで実行する処理に使われるのは",
       "yourCredits": "あなたのクレジット",
@@ -4132,7 +4116,8 @@
         "screening": "{name} がスクリーニングを共有しました",
         "extraction": "{name} が抽出を共有しました",
         "search": "{name} が検索を共有しました",
-        "author": "{name} が著者プロフィールを共有しました"
+        "author": "{name} が著者プロフィールを共有しました",
+        "chat": "{name} がチャットを共有しました"
       },
       "pointOwn": "あなた自身のワークスペースに表示されます",
       "pointCredits": "実行する処理にはあなたのクレジットが使われます",

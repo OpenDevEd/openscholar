@@ -3031,7 +3031,6 @@
     "openNow": "Open now",
     "here": "{count, plural, one {{names} is here} other {{names} are here}}",
     "someone": "Someone",
-    "everyoneIn": "Everyone in {organization}",
     "writingReply": "Writing a reply",
     "noChatsMatch": "No chats match.",
     "noChats": "Your chats will be listed here.",
@@ -3079,23 +3078,15 @@
       "change": "Change the limit",
       "failed": "Couldn't carry the reply on"
     },
-    "addPeople": "Add people or an organization",
     "owner": "Owner",
     "canChat": "Can chat",
     "canView": "Can view",
     "view": "View",
     "chat": "Chat",
-    "accessOf": "{name}'s access",
-    "members": "{count, plural, one {# member} other {# members}}",
-    "membersMany": "{count}+ members",
     "remove": "Remove",
     "organization": "Organization",
-    "noCandidates": "Nobody in your organizations matches.",
     "shareNote": "They see this conversation. Searches, collections and libraries in it keep their own access. People who can chat send messages as themselves, and the assistant acts for them with their own access and credits.",
-    "copyLink": "Copy link for people with access",
-    "linkCopied": "Link copied",
     "shareFailed": "Couldn't change who this chat is shared with",
-    "morePeople": "More people",
     "steps": {
       "undo": "Undo",
       "done": "Done",
@@ -3289,18 +3280,6 @@
         "did": "Deleted a collection",
         "where": "Collections",
         "ask": "Delete a collection"
-      },
-      "shareChat": {
-        "doing": "Sharing a chat",
-        "did": "Shared a chat",
-        "where": "Chats",
-        "ask": "Share a chat"
-      },
-      "unshareChat": {
-        "doing": "Ending a chat's sharing",
-        "did": "Stopped sharing a chat",
-        "where": "Chats",
-        "ask": "Stop sharing a chat"
       },
       "deleteChat": {
         "doing": "Deleting a chat",
@@ -4056,14 +4035,16 @@
         "screening": "Share this screening",
         "extraction": "Share this extraction",
         "search": "Share this search",
-        "author": "Share this author profile"
+        "author": "Share this author profile",
+        "chat": "Share this chat"
       },
       "title": {
         "collection": "Share collection",
         "screening": "Share screening",
         "extraction": "Share extraction",
         "search": "Share search",
-        "author": "Share author profile"
+        "author": "Share author profile",
+        "chat": "Share chat"
       },
       "addPeople": "Add people by name or email",
       "inviteEmail": "Invite {email}",
@@ -4093,7 +4074,8 @@
         "screening": "{plan} allows {count, plural, one {# guest} other {# guests}} on each screening",
         "extraction": "{plan} allows {count, plural, one {# guest} other {# guests}} on each extraction",
         "search": "{plan} allows {count, plural, one {# guest} other {# guests}} on each search",
-        "author": "{plan} allows {count, plural, one {# guest} other {# guests}} on each author profile"
+        "author": "{plan} allows {count, plural, one {# guest} other {# guests}} on each author profile",
+        "chat": "{plan} allows {count, plural, one {# guest} other {# guests}} on each chat"
       },
       "failed": "Couldn't change who this is shared with"
     },
@@ -4109,14 +4091,16 @@
         "screening": "Screenings",
         "extraction": "Extractions",
         "search": "Searches",
-        "author": "Author profiles"
+        "author": "Author profiles",
+        "chat": "Chats"
       },
       "size": {
         "collection": "{count, plural, one {# paper} other {# papers}}",
         "screening": "{count, plural, one {# paper} other {# papers}}",
         "extraction": "{count, plural, one {# paper} other {# papers}}",
         "search": "{count, plural, one {# result} other {# results}}",
-        "author": "{count, plural, one {# publication} other {# publications}}"
+        "author": "{count, plural, one {# publication} other {# publications}}",
+        "chat": "{count, plural, one {# message} other {# messages}}"
       },
       "runUses": "Anything you run on these uses",
       "yourCredits": "your credits",
@@ -4132,7 +4116,8 @@
         "screening": "{name} shared a screening",
         "extraction": "{name} shared an extraction",
         "search": "{name} shared a search",
-        "author": "{name} shared an author profile"
+        "author": "{name} shared an author profile",
+        "chat": "{name} shared a chat"
       },
       "pointOwn": "It sits in your own workspace",
       "pointCredits": "Work you run on it uses your credits",

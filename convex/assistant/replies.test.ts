@@ -81,7 +81,7 @@ async function sharedChat(t: Test) {
     for (const userId of [who.ada, who.ben]) await seedCreditsForTest(ctx, { userId, free: 100_000 });
   });
   const threadId = await who.asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
-  await who.asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: who.ben }, role: "write" });
+  await who.asAda.mutation(api.sharing.guests.add, { workspaceId: who.home.ada, kind: "chat", id: threadId, userId: who.ben, role: "editor" });
   return { ...who, threadId };
 }
 
@@ -191,10 +191,34 @@ describe("assistant replies", () => {
     expect("error" in late ? late.error : undefined).toBeUndefined();
   });
 
+  it("stop once the person who asked can no longer write in the chat, since they couldn't stop one themselves", async () => {
+    const t = convexTest(schema);
+    const { home, asAda, asBen, ada, ben, threadId } = await sharedChat(t);
+    mockDoStream.mockImplementation(finishingDoStream(["Hello"]));
+    await asBen.mutation(api.assistant.replies.send, { threadId, text: "Hi there" });
+    const lock = { threadId, attemptId: (await chat(t, threadId))!.reply!.attemptId };
+    const state = () => t.query(internal.assistant.replies.lockState, lock);
+    expect(await state()).toBe("writing");
+    // Ada's account is suspended: what she shared from her own workspace is closed to its guests.
+    await t.run((ctx) => ctx.db.patch("users", ada, { state: "suspended" }));
+    expect(await state()).toBe("stop");
+    await t.run((ctx) => ctx.db.patch("users", ada, { state: "active" }));
+    expect(await state()).toBe("writing");
+    // Ben's own account is suspended.
+    await t.run((ctx) => ctx.db.patch("users", ben, { state: "suspended" }));
+    expect(await state()).toBe("stop");
+    await t.run((ctx) => ctx.db.patch("users", ben, { state: "active" }));
+    // She takes the chat back from Ben.
+    await asAda.mutation(api.sharing.guests.remove, { workspaceId: home.ada, kind: "chat", id: threadId, guest: { userId: ben } });
+    expect(await state()).toBe("stop");
+    await ended(t, threadId);
+    expect(await charges(t)).toEqual([]);
+  });
+
   it("can't be asked for by someone who only reads the chat", async () => {
     const t = convexTest(schema);
-    const { asAda, asBen, ben, threadId } = await sharedChat(t);
-    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "read" });
+    const { home, asAda, asBen, ben, threadId } = await sharedChat(t);
+    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: ben, role: "viewer" });
 
     await expect(asBen.mutation(api.assistant.replies.send, { threadId, text: "Hi" })).rejects.toThrow(/not write/);
     await expect(asBen.mutation(api.assistant.threads.setModel, { threadId, modelId: await mockModel(t) })).rejects.toThrow(/not write/);
@@ -760,26 +784,27 @@ describe("a job a reply started", () => {
 
   it("docks in its chat and shows on the chat's row while it runs, from its start until it ends, and again when it's carried on", async () => {
     const t = convexTest(schema);
-    const { asAda, asBen, ada, threadId } = await sharedChat(t);
+    const { asAda, ada, ben, threadId } = await sharedChat(t);
+    // Ben, who the chat is shared with, starts the job; Ada reads it.
     // The job is written while the step that starts it is still running: its card is read from the job's row until the step ends.
     const { jobId, stepId } = await t.run(async (ctx) => {
-      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ada, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId: ben, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
       const jobId = await insertJob(ctx, {
-        userId: ada, status: "processing", totalPapers: 2, chatStep: stepId,
+        userId: ben, status: "processing", totalPapers: 2, chatStep: stepId,
         questions: [{ key: "q1", question: "Is this a trial?" }],
         scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], minimumScore: 1, starThresholds: [{ minScore: 0, stars: 1 }] },
         createdAt: 1, updatedAt: 1,
       });
       return { jobId, stepId };
     });
-    const running = () => asBen.query(api.assistant.jobs.running, { threadId });
-    const row = async () => (await asBen.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page.find((listed) => listed._id === threadId);
+    const running = () => asAda.query(api.assistant.jobs.running, { threadId });
+    const row = async () => (await asAda.query(api.assistant.threads.list, { scope: "all", paginationOpts: firstPage })).page.find((listed) => listed._id === threadId);
     expect(await running()).toEqual([{ stepId, kind: "screening" }]);
-    expect(await asBen.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ card: { kind: "screening", jobId, total: 2 }, mine: false });
+    expect(await asAda.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ card: { kind: "screening", jobId, total: 2 }, mine: false });
     // Its starter suspended, the others in the chat still see its card.
-    await t.run((ctx) => ctx.db.patch("users", ada, { state: "suspended" }));
-    expect(await asBen.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ card: { kind: "screening", jobId, total: 2 }, mine: false });
-    await t.run((ctx) => ctx.db.patch("users", ada, { state: "active" }));
+    await t.run((ctx) => ctx.db.patch("users", ben, { state: "suspended" }));
+    expect(await asAda.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ card: { kind: "screening", jobId, total: 2 }, mine: false });
+    await t.run((ctx) => ctx.db.patch("users", ben, { state: "active" }));
     expect(await row()).toMatchObject({ jobs: [{ id: jobId, kind: "screening", done: 0, total: 2 }], moreJobs: 0 });
 
     // It ends: the chat's dock and row let it go.

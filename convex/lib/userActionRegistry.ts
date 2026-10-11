@@ -14,10 +14,9 @@ import { collectAction as libraryCollectAction, saveAction as librarySaveAction 
 import { countJobsAction as extractionJobCountAction, getJobDetailsAction as extractionJobAction, listJobsAction as extractionJobsAction } from "../extraction/queries/jobs";
 import { countJobFailuresAction as extractionFailureCountAction } from "../extraction/queries/failures";
 import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction, summarizeJobResultsAction as extractionSummaryAction } from "../extraction/queries/results";
-import { candidatesAction as chatCandidatesAction, grantAction as chatGrantAction, listAccessAction as chatAccessAction, revokeAction as chatRevokeAction } from "../assistant/sharing";
 import { undoAction as bulkUndoAction } from "../assistant/batches";
 import { messagesAction as chatMessagesAction, stepsAction as chatStepsAction } from "../assistant/replies";
-import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
+import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, peopleAction as chatAccessAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
 import { countPapersAction as libraryCountPapersAction, papersAction as libraryPapersAction, savedPaperAction } from "../library/queries";
 import { createAction as createOrganizationAction, declineInvitationAction, deleteOrganizationAction, inviteAction, leaveAction, removeMemberAction, renameAction as renameOrganizationAction, resendInvitationAction, revokeInvitationAction, setAiPresetAction, setColourAction, setRoleAction } from "../organizations/manage";
 import { invitationsAction as organizationInvitationsAction, membersAction as organizationMembersAction, myInvitationsAction, summaryAction as workspaceSummaryAction, workspaceAction, workspacesAction } from "../organizations/queries";
@@ -47,6 +46,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   extractionDuplicateAction,
   chatsAction,
   chatAction,
+  chatAccessAction,
   chatCreateAction,
   chatRenameAction,
   chatModelAction,
@@ -58,10 +58,6 @@ export const USER_ACTIONS: readonly UserAction[] = [
   fileReadAction,
   paperPdfAction,
   bulkUndoAction,
-  chatAccessAction,
-  chatCandidatesAction,
-  chatGrantAction,
-  chatRevokeAction,
   extractionJobsAction,
   extractionJobCountAction,
   extractionJobAction,

@@ -15,14 +15,15 @@ import { effortValidator, modelSummaryValidator } from "../aiModelConfig/validat
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { workingIn } from "../workspaces/actor";
+import { actorIn, workingIn } from "../workspaces/actor";
 import { query } from "../lib/functions";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
 import schema from "../schema";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { NEW_CHAT_TITLE } from "../../lib/assistant/title";
-import { accessRows, best, deleteThread, principalOf, principalsOf, requireThreadIn, userPrincipal, type AssistantRole } from "./access";
+import { deleteThread, guestsOf, requireThreadIn, type AssistantRole } from "./access";
+import { open } from "../sharing/items";
 import { personName } from "../lib/people";
 import { chatViewers } from "../presence";
 import { startWith } from "./spending";
@@ -97,10 +98,8 @@ const listedValidator = v.object({
   /** The first of the jobs its replies started that are still running, newest first, with how far each has got; `moreJobs` counts the rest. */
   jobs: listedJobsValidator,
   moreJobs: v.number(),
-  /** The first few people in it besides the reader, those who have it open now first, then its owner. */
+  /** The first few people in it besides the reader, those who have it open now first, then whoever started it. */
   members: assistantMembersValidator,
-  /** The first organization it's shared with, by name. */
-  organization: v.optional(v.string()),
 });
 
 /**
@@ -186,10 +185,6 @@ export const createAction = defineUserMutation({
       createdAt: now,
       updatedAt: now,
     });
-    // A chat in your own workspace lists through your own principal; one in an organization through the organization's workspace.
-    if ((await ctx.db.get("workspaces", workspaceId))?.kind === "personal") {
-      await ctx.db.insert("assistantThreadAccess", { threadId, principal: userPrincipal(userId), role: "owner", lastMessageAt: now, createdAt: now });
-    }
     await startWith(ctx, threadId, userId, workspaceId);
     return threadId;
   },
@@ -197,10 +192,33 @@ export const createAction = defineUserMutation({
 export const create = userMutation(createAction);
 export const createForAssistant = assistantMutation(createAction);
 
+export const peopleAction = defineUserQuery({
+  path: "assistant/threads:people",
+  description:
+    "Lists who is in an assistant chat and what each may do: whoever started it (`owner`), then the people it's shared with, to write in it (`write`) or to read it (`read`), in the order they were given it. " +
+    "Its workspace's members aren't listed: they all have it. Emails are for whoever shares it. It is shared, and their roles changed, with sharing/guests:add, setRole and remove (`kind` \"chat\").",
+  args: { threadId: v.id("assistantThreads") },
+  returns: paginationResultValidator(v.object({ userId: v.id("users"), role: assistantRoleValidator, you: v.boolean(), name: v.string(), email: v.optional(v.string()), imageUrl: v.optional(v.string()) })),
+  run: async (ctx, actor, { threadId }) => {
+    await requireFeature(ctx, FLAG, actor.userId);
+    const { thread, role } = await requireThreadIn(ctx, actor, threadId);
+    // Its guests are at most MAX_ASSISTANT_THREAD_GRANTS, so with whoever started it they are one page.
+    const people = [{ userId: thread.createdBy, role: "owner" as const }, ...(await guestsOf(ctx, threadId)).map((guest) => ({ userId: guest.userId, role: guest.role === "editor" ? ("write" as const) : ("read" as const) }))];
+    const page = await Promise.all(people.map(async (one) => {
+      const person = await ctx.db.get("users", one.userId);
+      return person ? [{ ...one, you: one.userId === actor.userId, name: personName(person), ...(role === "owner" ? { email: person.email } : {}), ...(person.avatarUrl ? { imageUrl: person.avatarUrl } : {}) }] : [];
+    }));
+    return { page: page.flat(), isDone: true, continueCursor: "" };
+  },
+});
+export const people = userQuery(peopleAction);
+export const peopleForAssistant = assistantQuery(peopleAction);
+
+
 export const listAction = defineUserQuery({
   path: "assistant/threads:list",
   description:
-    "Lists the assistant chats in the workspace the person can open, newest first, a page at a time: all of them, only the ones they made, or only the ones shared with them. " +
+    "Lists the assistant chats the person can open in the workspace, newest first, a page at a time: all of them, only the ones they made, or only the ones shared with them from other workspaces, which are in their own. " +
     "Given `text`, only chats whose title, or the start of whose newest message, contains it. Each comes with the start of its newest message, whether a reply is being written in it, " +
     "the first few people in it and who of them has it open now. In an organization, `by` keeps only the chats that member started (their `userId` from workspaces/makers:counts).",
   args: { scope: v.union(v.literal("all"), v.literal("mine"), v.literal("shared")), text: v.optional(v.string()), by: v.optional(v.id("users")), paginationOpts: paginationOptsValidator },
@@ -212,8 +230,8 @@ export const listAction = defineUserQuery({
     const needle = text?.trim().toLowerCase();
     const matches = (thread: Doc<"assistantThreads"> | null) => !!thread && (!needle || `${thread.title}\n${thread.preview ?? ""}`.toLowerCase().includes(needle));
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LIST_PAGE_MAX), maximumRowsRead: LIST_FILTER_ROWS, maximumBytesRead: LIST_PAGE_BYTES };
-    // Each chat the filter keeps: its access rows and what they let the person do, for the page built below.
-    const kept = new Map<string, { role: AssistantRole; access: Doc<"assistantThreadAccess">[] }>();
+    // Each chat the filter keeps, with what the person may do in it, for the page built below.
+    const kept = new Map<string, AssistantRole>();
     let read: { page: Id<"assistantThreads">[]; isDone: boolean; continueCursor: string };
     if ((await ctx.db.get("workspaces", workspaceId))?.kind === "organization") {
       // An organization's chats are all its members' (#650): none of them are shared with them, and each is its maker's and its admins' to manage.
@@ -226,37 +244,33 @@ export const listAction = defineUserQuery({
         .order("desc")
         .filterWith(async (thread) => {
           if (!matches(thread)) return false;
-          kept.set(thread._id, { role: role === "admin" || thread.createdBy === userId ? "owner" : "write", access: await accessRows(ctx, thread._id) });
+          kept.set(thread._id, role === "admin" || thread.createdBy === userId ? "owner" : "write");
           return true;
         })
         .paginate(opts);
       read = { ...chats, page: chats.page.map((thread) => thread._id) };
     } else {
-      const principals = await principalsOf(ctx, user);
-      const mine = new Set(principals);
-      // Their own chats are all under their own principal.
-      const through = scope === "mine" ? principals.slice(0, 1) : principals;
-      const rows = mergedStream(
-        through.map((principal) =>
-          stream(ctx.db, schema).query("assistantThreadAccess").withIndex("by_principal_and_lastMessageAt", (q) => q.eq("principal", principal)).order("desc"),
-        ),
-        ["lastMessageAt"],
-      );
-      const access = await rows
-        .filterWith(async (row) => {
-          if (scope !== "all" && (row.role === "owner") !== (scope === "mine")) return false;
-          // One read of the chat's access rows says both which of the person's principals reach
-          // it and the most they may do. A chat that reaches them several ways lists once,
-          // through the first of those principals.
-          const rowsOf = await accessRows(ctx, row.threadId);
-          const reaching = rowsOf.filter((other) => mine.has(other.principal));
-          if (principals.find((principal) => reaching.some((other) => other.principal === principal)) !== row.principal) return false;
-          if (needle && !matches(await ctx.db.get("assistantThreads", row.threadId))) return false;
-          kept.set(row.threadId, { role: best(reaching.map((other) => other.role)), access: rowsOf });
+      // A person's own workspace lists its chats, which are theirs, and the chats shared with them (#653): two lists read as one, newest message first.
+      const own = stream(ctx.db, schema).query("assistantThreads").withIndex("by_workspace_and_lastMessageAt", (q) => q.eq("workspaceId", workspaceId)).order("desc");
+      const shared = stream(ctx.db, schema).query("itemAccess").withIndex("by_user_and_kind_and_lastMessageAt", (q) => q.eq("userId", userId).eq("kind", "chat")).order("desc");
+      type Row = Doc<"assistantThreads"> | Doc<"itemAccess">;
+      // The merge reads each by its `lastMessageAt`, which both kinds of row keep; its types take one table.
+      const rows = (scope === "mine" ? own : scope === "shared" ? shared : mergedStream([own, shared as unknown as typeof own], ["lastMessageAt"])) as unknown as typeof own;
+      const threadOf = (row: Row) => ("item" in row ? ctx.db.normalizeId("assistantThreads", row.item) : row._id);
+      const chats = await rows
+        .filterWith(async (given) => {
+          const row = given as Row;
+          const threadId = threadOf(row);
+          const thread = "item" in row ? (threadId ? await ctx.db.get("assistantThreads", threadId) : null) : row;
+          if (!thread || !matches(thread)) return false;
+          // One shared from a workspace that's gone waits to be taken off the list (../sharing/upkeep.ts). One moved since
+          // into a workspace the person acts in is listed there, as its members' are.
+          if ("item" in row && (!(await open(ctx, thread.workspaceId)) || (await actorIn(ctx, user, thread.workspaceId)))) return false;
+          kept.set(thread._id, "item" in row ? (row.role === "editor" ? "write" : "read") : "owner");
           return true;
         })
         .paginate(opts);
-      read = { ...access, page: access.page.map((row) => row.threadId) };
+      read = { ...chats, page: chats.page.flatMap((row) => threadOf(row as Row) ?? []) };
     }
     const page = await Promise.all(
       read.page.map(async (threadId) => {
@@ -264,17 +278,10 @@ export const listAction = defineUserQuery({
         const found = kept.get(threadId);
         if (!thread || !found) return [];
         // One more than the row shows, since the reader may be among them. Anyone in the room
-        // could open the chat when they joined it, through a grant of their own or an organization's.
+        // could open the chat when they joined it, as a member of its workspace or as its guest.
         const here = (await chatViewers(ctx, thread._id, ASSISTANT_MEMBERS_SHOWN + 1)).filter((viewer) => viewer !== userId);
-        const others = found.access.flatMap((other) => {
-          const principal = principalOf(ctx, other.principal);
-          return principal && !(principal.kind === "user" && principal.userId === userId) ? [{ principal, owner: other.role === "owner" }] : [];
-        });
-        // The people there now, then the chat's owner, then the people it's shared with by name.
-        const granted = others
-          .flatMap(({ principal, owner }) => (principal.kind === "user" ? [{ userId: principal.userId, owner }] : []))
-          .sort((a, b) => Number(b.owner) - Number(a.owner))
-          .map((person) => person.userId);
+        // The people there now, then whoever started it, then the people it's shared with, in the order they were given it.
+        const granted = [thread.createdBy, ...(await guestsOf(ctx, thread._id)).map((guest) => guest.userId)].filter((person) => person !== userId);
         const people = [...new Set([...here, ...granted])].slice(0, ASSISTANT_MEMBERS_SHOWN);
         const members = await Promise.all(
           people.map(async (memberId) => {
@@ -282,16 +289,13 @@ export const listAction = defineUserQuery({
             return person ? [{ userId: memberId, name: personName(person), here: here.includes(memberId), ...(person.avatarUrl ? { imageUrl: person.avatarUrl } : {}) }] : [];
           }),
         );
-        const sharedWith = others.flatMap(({ principal }) => (principal.kind === "organization" ? [principal.organizationId] : []))[0];
-        const organization = sharedWith ? await ctx.db.get("organizations", sharedWith) : null;
         return [
           {
-            ...shown(thread, found.role),
+            ...shown(thread, found),
             preview: thread.preview ?? "",
             writing: await writing(ctx, thread.reply),
             ...(await runningJobs(ctx, thread._id)),
             members: members.flat(),
-            ...(organization ? { organization: organization.name } : {}),
           },
         ];
       }),

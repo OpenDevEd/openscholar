@@ -1319,7 +1319,9 @@ export default defineSchema({
     .index("by_user_and_name", ["userId", "name"])
     .index("by_user_and_kind_and_name", ["userId", "kind", "name"])
     // The ones of a kind a person may edit, by name: what their collection picker offers beside their own.
-    .index("by_user_and_kind_and_role_and_name", ["userId", "kind", "role", "name"]),
+    .index("by_user_and_kind_and_role_and_name", ["userId", "kind", "role", "name"])
+    // The chats shared with a person, newest message first, beside their own in one list (../assistant/threads.ts).
+    .index("by_user_and_kind_and_lastMessageAt", ["userId", "kind", "lastMessageAt"]),
   itemInvitations: defineTable(itemInvitationFields)
     .index("by_item_and_email", ["item", "email"])
     .index("by_item_and_state", ["item", "state"])
