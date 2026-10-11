@@ -312,6 +312,13 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
   const { data: current } = useProtectedQuery(api.screening.papers.get, inWorkspace(workspaceId, held ? { jobId: job._id, paperId: held.paper.openalexId } : "skip"));
   const answer = useWorkspaceMutation(api.screening.papers.answer);
 
+  // The list the papers on screen belong to: it moves on to the one asked for once its papers have arrived.
+  const asked = `${tab}\n${text}\n${list.page}`;
+  const [shownList, setShownList] = useState(list.isLoading ? "" : asked);
+  if (!list.isLoading && !list.isStale && shownList !== asked) setShownList(asked);
+  // What it was asked with, which an empty list's message names until the next one arrives.
+  const [shownTab, shownText] = (shownList || asked).split("\n") as [Outcome, string];
+
   const heldPaper = held ? (current ?? held.paper) : undefined;
   const rows =
     held && heldPaper && !list.items.some((paper) => paper.openalexId === heldPaper.openalexId)
@@ -358,16 +365,18 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
       {/* The list keeps a full page's height while its outcome has pages, and its papers' height while they load, so nothing under it moves. */}
       <div style={{ minHeight: hasPages ? listPx(PAGE_SIZE) : list.isLoading && !text && count ? listPx(count) : undefined }}>
         <motion.div
-          // One list per outcome, search and page, and per arrival of its papers: rows only animate for changes inside the list shown.
-          key={`${tab}\n${text}\n${list.page}\n${list.isStale}`}
+          // One list per outcome, search and page, mounted when its papers arrive, so it fades in once. While the
+          // next ones load, the papers shown stay and dim: keyed on the list asked for instead, the stale papers
+          // faded in again first, then the arrived ones did.
+          key={shownList}
           initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ opacity: list.isStale ? 0.6 : 1, y: 0 }}
           transition={{ duration: 0.25, ease: EASE }}
-          className={cn(LIST, "mt-3", list.isStale && "pointer-events-none opacity-60", list.isLoading && "invisible")}
+          className={cn(LIST, "mt-3", list.isStale && "pointer-events-none", list.isLoading && "invisible")}
         >
           {rows.length === 0 ? (
             <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-              {done === 0 ? t("papersShowHere") : text ? t("noPaperMatches") : t(`noPapers.${tab}`)}
+              {done === 0 ? t("papersShowHere") : shownText ? t("noPaperMatches") : t(`noPapers.${shownTab}`)}
             </p>
           ) : (
             <AnimatePresence initial={false}>

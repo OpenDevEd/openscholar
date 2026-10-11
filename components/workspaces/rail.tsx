@@ -122,6 +122,9 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   // as the navigation to it runs, and once the page is the picked one's, until it loads. However
   // that navigation ends (it arrives, another click replaces it, Back), the rail is the address's again.
   const slug = useWorkspaceSlug() ?? null;
+  // What others shared with you lives in your own workspace: from an organization, its row in the card says how much there is.
+  const own = slug === null ? undefined : workspaces.list?.find((workspace) => workspace.kind === "personal");
+  const sharedWithYou = useProtectedQuery(api.sharing.shared.counts, own ? { workspaceId: own.workspaceId } : "skip").data?.total;
   const router = useRouter();
   const [picked, setPicked] = useState<WorkspaceRow | null>(null);
   const [switching, startSwitch] = useTransition();
@@ -293,6 +296,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
         <WorkspaceMenu
           shown={current}
           all={workspaces}
+          shared={sharedWithYou}
           onDone={close}
           onSwitch={(slug, to) => {
             close();

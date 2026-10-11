@@ -8,7 +8,7 @@
 import { bareWorkspacePath } from "@/lib/workspaces/paths";
 import { useRoomHeartbeat } from "@/lib/hooks/use-room-heartbeat";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
-import { useCurrentWorkspace } from "@/components/workspaces/parts";
+import { useCurrentWorkspace, WorkspaceTile } from "@/components/workspaces/parts";
 import { Component, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { ConvexError } from "convex/values";
 import { useSmoothText } from "@convex-dev/agent/react";
@@ -447,7 +447,10 @@ function Chat({
   // What a new chat starts on: the chat model of the workspace's AI settings, an organization's preset in one.
   const start = useQuery(api.assistant.threads.newChatModel, inWorkspace(workspaceId, {}));
   // An organization's chats run on its preset, which its admins change in AI settings (#651).
-  const inOrganization = useCurrentWorkspace()?.kind === "organization";
+  const workspace = useCurrentWorkspace();
+  const inOrganization = workspace?.kind === "organization";
+  // The address says a chat is an organization's before the organization is read, so its line under the title is there from the first frame.
+  const organizationSlug = useWorkspaceSlug();
   // What the person lets a reply spend here: the meter's "allow more" is by it, and the Spending sheet opens with it in hand.
   const spending = useQuery(api.assistant.spending.get, threadId ? { threadId } : "skip");
   const carryOn = useMutation(api.assistant.replies.carryOn);
@@ -706,7 +709,7 @@ function Chat({
       }}
     >
       {/* A chat that has just been made is named by its first message until its record arrives, as the server names it, so "New chat" changes once. */}
-      <Header title={threadId ? (thread?.title ?? (threadId === born && first?.threadId === threadId ? first.title : "")) : t("newChat")} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
+      <Header title={threadId ? (thread?.title ?? (threadId === born && first?.threadId === threadId ? first.title : "")) : t("newChat")} detail={organizationSlug ? (inOrganization && workspace ? <span className="fade-enter flex min-w-0 items-center gap-1.5"><WorkspaceTile workspace={workspace} size="xs" /><span className="truncate text-2xs text-muted-foreground">{workspace.name}</span></span> : null) : undefined} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
       <DockedJobs.Provider value={jobsShown}>
         <div className="relative flex min-h-0 flex-1 flex-col">
           {/* Under the dock's opened list, the chat takes no keyboard focus or clicks; the layer over it folds the list. */}
@@ -719,7 +722,8 @@ function Chat({
             // An open chat shows once it's known which of its jobs are docked, so no job's card moves out of it after it shows.
             messages={threadId && !jobsKnown ? sent : [...messages, ...sent]}
             live={live}
-            fresh={threadId === null && sent.length === 0}
+            // A chat with nothing said in it keeps its intro: a new one, and one that sharing or a move made before its first message.
+            fresh={sent.length === 0 && messages.length === 0 && live === null && (threadId === null || threadId === born || status === "Exhausted")}
             // An open chat's first page is still on its way, unless it's the chat this message just started.
             older={threadId && (status === "LoadingFirstPage" || !jobsKnown) && !sent.length ? "first" : status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
           />
@@ -886,7 +890,7 @@ function Thread({
       }}
     >
       <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: EDGE_FADE + 8 }}>
-        {fresh ? <Empty /> : null}
+        {fresh ? <Empty arrives={threadId !== null} /> : null}
         {typeof older === "function" || loading ? (
           <button
             type="button"
@@ -1165,17 +1169,18 @@ function Thinking({ wordless }: { wordless: boolean }) {
   );
 }
 
-function Empty() {
+/** The intro of a chat with nothing said in it. One found empty once its messages were read fades in. */
+function Empty({ arrives }: { arrives: boolean }) {
   const t = useTranslations("assistant");
   return (
-    <div className="space-y-1 pt-2">
+    <div className={cn("space-y-1 pt-2", arrives && "fade-enter")}>
       <p className="text-base font-semibold">{t("emptyTitle")}</p>
       <p className="text-sm leading-relaxed text-muted-foreground">{t("emptyBody")}</p>
     </div>
   );
 }
 
-function Header({ title, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; onHistory: () => void; onShare: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
+function Header({ title, detail, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; /** A line under the title: the organization a chat is in. Null keeps the line while it's read. */ detail?: ReactNode | null; onHistory: () => void; onShare: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
   const t = useTranslations("assistant");
   return (
     <div className="border-b border-border/50 px-4 pb-3 pt-3.5">
@@ -1196,6 +1201,7 @@ function Header({ title, onHistory, onShare, onSpending, onRestart, onFold }: { 
               {title}
             </motion.p>
           </AnimatePresence>
+          {detail !== undefined ? <div className="mt-0.5 flex h-5 min-w-0 items-center gap-1.5">{detail}</div> : null}
         </div>
         <div className="flex items-center">
           <IconButton label={t("chats")} icon={<MessagesSquare className="size-4" />} onClick={onHistory} />

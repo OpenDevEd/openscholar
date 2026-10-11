@@ -535,10 +535,11 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
               );
             })}
           </ul>
-          <p className="px-2 text-xs leading-relaxed text-muted-foreground">{t("shareNote")}</p>
         </div>
       </ScrollArea>
-      <div className="border-t border-border/50 p-3">
+      {/* What sharing gives stays in sight over the button, however long the list. */}
+      <div className="space-y-3 border-t border-border/50 p-3">
+        <p className="px-1 text-xs leading-relaxed text-muted-foreground">{t("shareNote")}</p>
         <button type="button" onClick={copy} className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-muted/60 text-sm font-medium hover:bg-muted">
           <AnimatePresence mode="wait" initial={false}>
             <motion.span

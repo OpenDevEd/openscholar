@@ -10,12 +10,13 @@ import { useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "motion/react";
 import { useTranslations } from "next-intl";
-import { Home, Loader2, Plus, Settings, Users, X } from "@/components/icons";
+import { Home, Loader2, Plus, Settings, Share2, Users, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { RoleLabel } from "@/components/ui/identity";
 import { Input } from "@/components/ui/input";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -116,7 +117,7 @@ export function useAnswerInvitation() {
  * opened while the page is still loading: it then has the name the rail shows (`shown`), and what
  * is read after opens its place.
  */
-export function WorkspaceMenu({ shown, all, onDone, onSwitch, onCreate }: { shown: WorkspaceLook | undefined; all: ReturnType<typeof useWorkspaces>; onDone: () => void; onSwitch: (slug: string | undefined, picked?: WorkspaceRow) => void; onCreate: () => void }) {
+export function WorkspaceMenu({ shown, all, shared, onDone, onSwitch, onCreate }: { shown: WorkspaceLook | undefined; all: ReturnType<typeof useWorkspaces>; /** How many items others shared with you, shown on your own workspace's row. */ shared?: number; onDone: () => void; onSwitch: (slug: string | undefined, picked?: WorkspaceRow) => void; onCreate: () => void }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
   const router = useRouter();
@@ -168,6 +169,16 @@ export function WorkspaceMenu({ shown, all, onDone, onSwitch, onCreate }: { show
                       <RoleOf workspace={workspace} />
                     </span>
                   </span>
+                  {workspace.kind === "personal" && shared ? (
+                    <TooltipHint label={t("sharedWithYou", { count: shared })}>
+                      <span className="fade-enter flex shrink-0 items-center gap-1 pr-1 text-[11px] tabular-nums text-muted-foreground">
+                        <Share2 aria-hidden className="size-3" />
+                        <span aria-hidden>{shared}</span>
+                        {/* The row is one button: its name says the count, which the tooltip only shows on hover. */}
+                        <span className="sr-only">{t("sharedWithYou", { count: shared })}</span>
+                      </span>
+                    </TooltipHint>
+                  ) : null}
                 </button>
               </li>
             ))}
