@@ -119,7 +119,9 @@ export function useAppToast(): AppToastApi {
     return {
       code: resolved.code,
       message: open
-        ? t("billingPaymentOpen", { amount: format.number(open.amount, { style: "currency", currency: open.currency.toUpperCase() }) })
+        ? open.amount !== undefined && open.currency
+          ? t("billingPaymentOpen", { amount: format.number(open.amount, { style: "currency", currency: open.currency.toUpperCase() }) })
+          : resolved.message
         : mappedKey
         ? t(mappedKey)
         : resolved.isConvex

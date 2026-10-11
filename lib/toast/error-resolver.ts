@@ -221,7 +221,7 @@ function inferLegacyCode(...messages: Array<string | undefined>): string | undef
 }
 
 /** The payment still open that a purchase was refused for (#858), when `error` is that refusal: how much, and where to pay it. */
-export function openPayment(error: unknown): { amount: number; currency: string; url?: string } | undefined {
+export function openPayment(error: unknown): { amount?: number; currency?: string; url?: string } | undefined {
   let data = readErrorData(error);
   if (typeof data === "string") {
     try {
@@ -231,9 +231,11 @@ export function openPayment(error: unknown): { amount: number; currency: string;
     }
   }
   const record = asRecord(data);
-  if (record?.code !== "BILLING_PAYMENT_OPEN" || typeof record.amount !== "number" || typeof record.currency !== "string") return undefined;
+  if (record?.code !== "BILLING_PAYMENT_OPEN") return undefined;
+  // A refusal from a backend a moment older than the page, as a deploy lands, has its url and message but no amount.
   const url = trimToString(record.url);
-  return { amount: record.amount, currency: record.currency, ...(url ? { url } : {}) };
+  const amount = typeof record.amount === "number" && typeof record.currency === "string" ? { amount: record.amount, currency: record.currency } : {};
+  return { ...amount, ...(url ? { url } : {}) };
 }
 
 export function getToastMessageKeyForErrorCode(
