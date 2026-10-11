@@ -341,6 +341,24 @@ describe("an organization", () => {
     expect((await aliceAs.query(api.billing.seats.counts, { workspaceId: lab.workspaceId }))?.invitations).toBe(4);
   });
 
+  it("on Team, fills the seats bought with members and invitations, and buys the ones missing when asked, sending nothing on a declined card", async () => {
+    const { aliceAs } = await people();
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const inLab = { workspaceId: lab.workspaceId };
+    await aliceAs.action(api.billing.actions.moveToTeam, { ...inLab, seats: 2 });
+    const invite = (emails: string[], addSeat?: true) => aliceAs.action(api.organizations.manage.invite, { ...inLab, emails, role: "member", ...(addSeat ? { addSeat } : {}) });
+    const open = () => [...clerk.invitations.values()].filter((row) => row.status === "pending").map((row) => row.email_address);
+    // Alice and Bob's invitation fill both seats.
+    expect(await invite(["bob@example.org"])).toEqual({ invited: 1 });
+    await expect(invite(["carol@example.org"])).rejects.toThrow(/as many members as its plan allows/);
+    fakeAutumn.declineCard = true;
+    await expect(invite(["carol@example.org"], true)).rejects.toThrow(/declined/);
+    fakeAutumn.declineCard = false;
+    expect(open()).toEqual(["bob@example.org"]);
+    expect(await invite(["carol@example.org", "dan@example.org"], true)).toEqual({ invited: 2 });
+    expect(await aliceAs.query(api.billing.seats.counts, inLab)).toEqual({ members: 1, invitations: 3, seats: 4, held: 0 });
+  });
+
   it("lets someone decline an invitation sent to them", async () => {
     const { aliceAs, bobAs } = await people();
     const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });

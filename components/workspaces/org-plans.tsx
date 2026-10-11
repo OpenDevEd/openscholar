@@ -1,13 +1,15 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-// Organization plans on the Pricing page (#652): a free organization has up to FREE_MEMBERS
-// members, and Team a seat for each member, their credits in one pool.
+// Organization plans on the Pricing page (#652, #862): a free organization has up to FREE_MEMBERS
+// members, and Team the seats it buys, at least one for each member and invitation, their credits in one pool.
 
 import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
-import { Building2, Minus, Plus, Users } from "@/components/icons";
+import { Building2, Users } from "@/components/icons";
 import { PlanCard } from "@/components/billing/plan-card";
+import { SeatStepper } from "@/components/billing/seat-stepper";
+import Link from "@/components/workspace-link";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { AnimatedNumber } from "@/components/screening/parts";
@@ -25,6 +27,7 @@ import { Button } from "@/components/ui/button";
 import { showStyledToast } from "@/components/ui/sonner";
 import { api } from "@/convex/_generated/api";
 import type { CatalogPlan } from "@/convex/billing/validators";
+import type { FunctionReturnType } from "convex/server";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
@@ -35,9 +38,8 @@ import { useWorkspaceAction } from "@/lib/workspaces/url";
 import { Guarded, useCurrentWorkspace } from "./parts";
 import { CreateOrganization } from "./switcher";
 
-/** The seats Team's price is shown for outside an organization until the person picks, and the fewest the stepper goes down to. */
+/** The seats Team's price is shown for outside an organization until the person picks. */
 const SEATS = 8;
-const FEWEST_SEATS = 2;
 
 /** The workspace the page is in, as the server read it for the first paint. */
 export type CurrentWorkspace = NonNullable<ReturnType<typeof useCurrentWorkspace>>;
@@ -47,21 +49,24 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
   const tp = useTranslations("pricing");
   const ts = useTranslations("workspaces.settings");
   const tc = useTranslations("common");
-  const tu = useTranslations("upgradeDialog");
   const format = useFormatter();
   const { phase } = useAuthReadiness();
   const signIn = useSignInRedirect();
   // Under an organization's address the server read it, so the cards are drawn as they'll stay.
   const workspace = useCurrentWorkspace() ?? initial;
   const organizationId = workspace?.kind === "organization" ? workspace.workspaceId : undefined;
-  // In full: the switcher's count stops at a hundred and one, and a move charges for every member.
+  // In full: the switcher's count stops at a hundred and one, and every member and invitation takes a seat.
   const counts = useProtectedQuery(api.billing.seats.counts, organizationId ? { workspaceId: organizationId } : "skip").data;
   // Free has no Evidence Libraries: the move waits on them, as deleting the organization does (workspaces/settings.tsx).
   const holdsLibrary = useProtectedQuery(api.organizations.queries.summary, organizationId ? { workspaceId: organizationId } : "skip").data?.library !== undefined;
   const { account, catalog } = useSubscriptionState();
   const moveToTeam = useWorkspaceAction(api.billing.actions.moveToTeam);
+  const previewTeam = useWorkspaceAction(api.billing.actions.previewTeam);
   const moveToFree = useWorkspaceAction(api.billing.actions.moveToFree);
+  const keepPlan = useWorkspaceAction(api.billing.actions.keepPlan);
   const [asking, setAsking] = useState<"team" | "free" | null>(null);
+  // Autumn's own figure for the seats picked, read before the confirmation opens.
+  const [preview, setPreview] = useState<FunctionReturnType<typeof api.billing.actions.previewTeam> | null>(null);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const [picked, setSeats] = useState<number>();
@@ -75,8 +80,13 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
   const organization = workspace?.kind === "organization" ? workspace : undefined;
   const onTeam = organization?.plan === TEAM_PLAN;
   const members = counts?.members ?? organization?.members ?? 0;
-  // An organization's price is shown for its own members, which is what a move charges for, until the person steps away from them.
-  const seats = picked ?? (organization ? Math.max(1, members) : SEATS);
+  const invitations = counts?.invitations ?? 0;
+  // Each member and pending invitation takes a seat (#863): an organization buys at least that many, and is shown that many until the person picks.
+  const fewest = organization ? Math.max(1, members + invitations) : 1;
+  const seats = onTeam ? (counts?.seats ?? 0) : Math.max(fewest, picked ?? (organization ? fewest : SEATS));
+  // Team waits for its renewal to become Free (#862).
+  const toFree = onTeam && account?.changesAt !== undefined ? account.changesAt : undefined;
+  const date = (at: number) => format.dateTime(new Date(at), { year: "numeric", month: "short", day: "numeric" });
   const seatPrice = seat.price.amount;
   const seatCredits = seat.credits?.included ?? 0;
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: 0 });
@@ -114,7 +124,17 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
     </Button>
   );
   const signInButton = action(tc("signInToSubscribe"), signIn, null, true);
-  const charge = members * seatPrice;
+  /** Reads Autumn's figure for the seats picked, then asks to confirm it. */
+  const askTeam = async () => {
+    setBusy(true);
+    try {
+      setPreview(await previewTeam({ seats }));
+      setAsking("team");
+    } catch (error) {
+      showStyledToast("error", getErrorMessage(error, tc("somethingWentWrong")));
+    }
+    setBusy(false);
+  };
 
   return (
     <>
@@ -141,7 +161,9 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
               ? action(t("createOrganization"), () => setCreating(true), null)
               : !onTeam
                 ? current
-                : action(t("moveTo", { plan: free.name }), () => setAsking("free"), notAdmin ?? (members + (counts?.invitations ?? 0) > FREE_MEMBERS ? ts("freeUpTo", { count: FREE_MEMBERS }) : holdsLibrary ? ts("moveLibrariesFirst") : null))}
+                : toFree !== undefined
+                  ? action(t("movesOn", { date: date(toFree) }), () => {}, notAdmin ?? t("movesOn", { date: date(toFree) }))
+                  : action(t("moveTo", { plan: free.name }), () => setAsking("free"), notAdmin ?? (members + invitations > FREE_MEMBERS ? ts("freeUpTo", { count: FREE_MEMBERS }) : holdsLibrary ? ts("moveLibrariesFirst") : null))}
         </PlanCard>
 
         <PlanCard
@@ -158,15 +180,15 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
                 <span className="text-lg font-normal text-muted-foreground"> {t("aMonth")}</span>
               </div>
               <div className="flex items-center gap-3">
-                <div className="flex items-center rounded-full bg-inset p-1">
-                  <button type="button" aria-label={t("oneSeatFewer")} disabled={seats <= FEWEST_SEATS} onClick={() => setSeats(seats - 1)} className="flex size-7 items-center justify-center rounded-full hover:bg-muted disabled:opacity-40">
-                    <Minus className="size-3.5" />
-                  </button>
-                  <span className="min-w-16 whitespace-nowrap px-1 text-center text-sm font-semibold tabular-nums">{t("seats", { count: seats })}</span>
-                  <button type="button" aria-label={t("oneSeatMore")} onClick={() => setSeats(seats + 1)} className="flex size-7 items-center justify-center rounded-full hover:bg-muted">
-                    <Plus className="size-3.5" />
-                  </button>
-                </div>
+                {onTeam ? (
+                  // Bought: the count changes on the billing page.
+                  <span className="inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full bg-inset px-3 text-sm font-semibold tabular-nums">
+                    <Users className="size-3.5 text-muted-foreground" />
+                    {t("seats", { count: seats })}
+                  </span>
+                ) : (
+                  <SeatStepper seats={seats} fewest={fewest} why={organization ? t("seatsInUse", { members, invitations }) : null} onChange={setSeats} />
+                )}
                 <span className="text-xs text-muted-foreground">{t("aSeat", { price: money(seatPrice) })}</span>
               </div>
             </div>
@@ -174,32 +196,47 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
           description={t("teamDescription")}
           features={[t("sharedCreditsAMonth", { credits: seatCredits * seats }), t("capsForEachMember"), ...collections(team), ...atOnce(team), ...perJob(team), ...team.features.map(featureName)]}
         >
-          {!signedIn ? signInButton : onTeam ? current : action(t("moveTo", { plan: team.name }), () => setAsking("team"), organization ? notAdmin : t("organizationsOnly"), true)}
+          {!signedIn ? (
+            signInButton
+          ) : !onTeam ? (
+            action(t("moveTo", { plan: team.name }), () => void askTeam(), organization ? notAdmin : t("organizationsOnly"), true)
+          ) : notAdmin ? (
+            current
+          ) : toFree !== undefined ? (
+            action(t("keepTeam", { plan: team.name }), () => void move(() => keepPlan({}).then(() => null)), null)
+          ) : (
+            <Button asChild variant="outline" className="w-full">
+              <Link href="/settings/billing">{t("changeSeats")}</Link>
+            </Button>
+          )}
         </PlanCard>
       </div>
 
       <UpgradeConfirmationDialog
-        open={asking === "team" && !!organization && !onTeam && !notAdmin && !!counts}
+        open={asking === "team" && !!organization && !onTeam && !notAdmin && preview !== null}
         onOpenChange={(open) => !busy && !open && setAsking(null)}
-        onConfirm={() => void move(() => moveToTeam({ seats: members }))}
+        onConfirm={() => void move(() => moveToTeam({ seats }))}
         isConfirming={busy}
-        preview={{
-          currency: "usd",
-          immediateChargeCents: Math.round(charge * 100),
-          currentPlan: free.name,
-          targetPlan: team.name,
-          targetPlanCreditsPerMonth: members * seatCredits,
-          lineItems: [{ description: t("seatsAt", { count: members, price: money(seatPrice) }), amountCents: Math.round(charge * 100), currency: "usd" }],
-        }}
-        cardBrand={account?.card?.brand}
-        cardLast4={account?.card?.last4}
+        preview={
+          preview && {
+            currency: preview.currency,
+            immediateChargeCents: Math.round(preview.dueNow * 100),
+            currentPlan: free.name,
+            targetPlan: team.name,
+            targetPlanCreditsPerMonth: seats * seatCredits,
+            renewsAt: preview.renewsAt,
+            lineItems: preview.lineItems.map((item) => ({ description: item.description, amountCents: Math.round(item.amount * 100), currency: preview.currency })),
+          }
+        }
+        cardBrand={preview?.card?.brand}
+        cardLast4={preview?.card?.last4}
       />
 
       <AlertDialog open={asking === "free"} onOpenChange={(open) => !busy && !open && setAsking(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("moveToFreeTitle", { organization: organization?.name ?? "", plan: free.name })}</AlertDialogTitle>
-            <AlertDialogDescription>{t("moveToFreeDetail", { count: members, members: FREE_MEMBERS, credits: free.credits?.included ?? 0 })}</AlertDialogDescription>
+            <AlertDialogDescription>{t("moveToFreeAtRenewal", { organization: organization?.name ?? "", date: account?.renewsAt ? date(account.renewsAt) : "", plan: free.name, members: FREE_MEMBERS, credits: free.credits?.included ?? 0 })}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={busy}>{tc("cancel")}</AlertDialogCancel>

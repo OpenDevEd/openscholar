@@ -76,6 +76,27 @@ export type AutumnFeature = {
   archived: boolean;
 };
 
+/** Seats of a license plan bought on its parent plan, as Autumn's Licenses hold them (#862): `quantity` is all of them. */
+export type SeatQuantity = { licensePlanId: string; quantity: number };
+
+const licenseQuantities = (seats?: SeatQuantity) => (seats ? { license_quantities: [{ license_plan_id: seats.licensePlanId, quantity: seats.quantity }] } : {});
+
+/** What a change would charge now, as Autumn previews it. A line's `period` is what it pays for, in ms. */
+export type AutumnPreview = {
+  total: number;
+  currency: string;
+  line_items: Array<{ description: string; total: number; plan_id?: string | null; period?: { start: number; end: number } | null }>;
+  next_cycle?: { starts_at: number; total: number } | null;
+  redirect_to_checkout: boolean;
+};
+
+/** What a change Autumn bills answers: a page to pay on when the card can't be charged without one, and why a charge failed. */
+export type AutumnCharge = {
+  payment_url: string | null;
+  invoice?: { status: string } | null;
+  required_action?: { code: string; reason?: string } | null;
+};
+
 /** A member's monthly credit cap as Autumn's usage limit on their entity, which every lock and track as the entity counts against. */
 const capControls = (cap: number | null) => ({
   usage_limits: cap === null ? [] : [{ feature_id: "credits", limit: cap, interval: "month", anchor: "utc" }],
@@ -220,25 +241,25 @@ export const autumn = {
   },
 
   /**
-   * `entityId` attaches the plan to one of the customer's entities, as a Team seat is (#652). `newMonth`
-   * starts the billing month over at the new plan (#860); Autumn refuses it on a change it schedules for the renewal.
+   * `newMonth` starts the billing month over at the new plan (#860); Autumn refuses it on a change it
+   * schedules for the renewal. `seats` buys that many of a license plan with it (#862).
    */
   attach(args: {
     customerId: string;
-    entityId?: string;
     planId: string;
     credits?: number;
     successUrl?: string;
     idempotencyKey?: string;
     newMonth?: boolean;
+    seats?: SeatQuantity;
   }) {
-    return call<{ payment_url: string | null; invoice?: { status: string } | null }>(
+    return call<AutumnCharge>(
       "billing.attach",
       {
         customer_id: args.customerId,
-        ...(args.entityId ? { entity_id: args.entityId } : {}),
         plan_id: args.planId,
         redirect_mode: "if_required",
+        ...licenseQuantities(args.seats),
         ...(args.credits
           ? { feature_quantities: [{ feature_id: "credits", quantity: args.credits }] }
           : {}),
@@ -249,41 +270,60 @@ export const autumn = {
     );
   },
 
-  /** What `attach` would charge now, with the same `newMonth`. A line's `period` is what it pays for, in ms. */
-  previewAttach(customerId: string, planId: string, newMonth: boolean) {
-    return call<{
-      total: number;
-      currency: string;
-      line_items: Array<{ description: string; total: number; plan_id?: string | null; period?: { start: number; end: number } | null }>;
-      next_cycle?: { starts_at: number; total: number } | null;
-      redirect_to_checkout: boolean;
-    }>("billing.preview_attach", { customer_id: customerId, plan_id: planId, ...(newMonth ? { billing_cycle_anchor: "now" } : {}) });
+  /** What `attach` would charge now, with the same `newMonth` and `seats`. */
+  previewAttach(customerId: string, planId: string, newMonth: boolean, seats?: SeatQuantity) {
+    return call<AutumnPreview>("billing.preview_attach", { customer_id: customerId, plan_id: planId, ...(newMonth ? { billing_cycle_anchor: "now" } : {}), ...licenseQuantities(seats) });
   },
 
-  /** Cancelling an entity's plan at once refunds the rest of its period and takes back what it granted. */
+  /**
+   * Changes the customer's subscription to `planId`: cancels it (at once, refunding the rest of its
+   * period, or at the renewal), takes back a cancellation, or sets how many seats it holds, each
+   * added seat charged for the days left and each removed one credited to the next bill (#862).
+   */
   update(args: {
     customerId: string;
     entityId?: string;
     planId: string;
-    cancelAction: "cancel_end_of_cycle" | "cancel_immediately" | "uncancel";
+    cancelAction?: "cancel_end_of_cycle" | "cancel_immediately" | "uncancel";
+    seats?: SeatQuantity;
   }) {
-    return call<unknown>("billing.update", {
+    return call<AutumnCharge>("billing.update", {
       customer_id: args.customerId,
       ...(args.entityId ? { entity_id: args.entityId } : {}),
       plan_id: args.planId,
-      cancel_action: args.cancelAction,
+      redirect_mode: "if_required",
+      ...(args.cancelAction ? { cancel_action: args.cancelAction } : {}),
+      ...licenseQuantities(args.seats),
     });
   },
 
-  /** `cap` sets the credits the entity may spend each calendar month (UTC), as `setCap` does. */
-  createEntity(args: { customerId: string; entityId: string; featureId: string; name: string; cap?: number }) {
-    return call<AutumnEntity>("entities.create", {
+  /** What `update` would charge now for `seats`: negative when it's a credit on the next bill. */
+  previewUpdate(customerId: string, planId: string, seats: SeatQuantity) {
+    return call<AutumnPreview>("billing.preview_update", { customer_id: customerId, plan_id: planId, ...licenseQuantities(seats) });
+  },
+
+  /** Gives each entity a seat from the pool bought (#863), making the entity when it's new; one that has a seat keeps it. */
+  assignSeats(args: { customerId: string; licensePlanId: string; featureId: string; members: Array<{ entityId: string; name: string }> }) {
+    return call<{ success: boolean }>("licenses.attach", {
       customer_id: args.customerId,
-      entity_id: args.entityId,
-      feature_id: args.featureId,
-      name: args.name,
-      ...(args.cap === undefined ? {} : { billing_controls: capControls(args.cap) }),
+      plan_id: args.licensePlanId,
+      entities: args.members.map((member) => ({ entity_id: member.entityId, name: member.name, feature_id: args.featureId })),
     });
+  },
+
+  /** Returns the entities' seats to the pool; what the customer pays doesn't change. */
+  releaseSeats(customerId: string, licensePlanId: string, entityIds: string[]) {
+    return call<{ success: boolean }>("licenses.release", { customer_id: customerId, license_plan_id: licensePlanId, entity_ids: entityIds });
+  },
+
+  /** The customer's pools of seats: how many it has, how many are given out and how many are left. */
+  seatPools(customerId: string) {
+    return call<{ list: Array<{ license_plan_id: string; granted: number; usage: number; remaining: number }> }>("licenses.list", { customer_id: customerId });
+  },
+
+  /** The entities that hold a seat now. */
+  seatHolders(customerId: string) {
+    return call<{ list: Array<{ entity_id: string; license_plan_id: string }> }>("licenses.list_assignments", { customer_id: customerId, active: true });
   },
 
   /** Caps the credits a member's entity spends each calendar month (UTC); null takes the cap off. */
@@ -302,11 +342,6 @@ export const autumn = {
       limit,
       ...(cursor ? { start_cursor: cursor } : {}),
     });
-  },
-
-  /** A Stripe checkout that saves a card for the customer, charging nothing, after which Autumn attaches `planId`: an organization moving to Team, whose seats are charged to the card (#652). */
-  setupPayment(customerId: string, planId: string, successUrl: string) {
-    return call<{ url: string }>("billing.setup_payment", { customer_id: customerId, plan_id: planId, success_url: successUrl });
   },
 
   portal(customerId: string, returnUrl: string) {

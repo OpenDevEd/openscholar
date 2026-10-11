@@ -1,11 +1,11 @@
-// An organization on Team and off it (#652): only its admins move it, Team first saves a card when it has none, Free takes up to
-// FREE_MEMBERS members, Clerk's member limit follows the plan, and an organization that's gone keeps neither seats nor Team.
+// An organization on Team and off it (#652, #862): only its admins move it and change its seats, Team is bought with a seat for at least
+// each member and invitation, Free takes up to FREE_MEMBERS members at the renewal, Clerk's member limit follows the seats, and an
+// organization that's gone keeps neither seats nor Team.
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
-import { FREE_MEMBERS, ORGANIZATION_PLAN, TEAM_PLAN } from "../../lib/billing/plans";
-import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
+import { FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, TEAM_PLAN } from "../../lib/billing/plans";
 import { FAKE_SEAT_CREDITS, fakeAutumn, installFakeAutumn } from "./billing.test-support";
 
 beforeEach(() => {
@@ -49,56 +49,82 @@ async function lab(people: string[]) {
   return { t, workspaceId, membership, deleted, seated, ada: t.withIdentity({ subject: "user_ada" }) };
 }
 
-it("moves an organization to Team for its admin, saving a card or confirming a payment first, and back to Free once it has few enough members", async () => {
-  const people = ["ada", "ben", "cy", "di", "ed", "fy"];
-  const { t, workspaceId, membership, seated, ada } = await lab(people);
-  const moves = () => fakeAutumn.calls.filter((call) => call.path === "billing.attach" && !call.body.entity_id).length;
+/** An invitation to the lab waiting for an answer. */
+const invite = (t: Awaited<ReturnType<typeof lab>>["t"], email: string) =>
+  t.run(async (ctx) => ctx.db.insert("organizationInvitations", { clerkInvitationId: `inv_${email}`, organizationId: (await ctx.db.query("organizations").first())!._id, email, role: "org:member", state: "pending", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 }));
+
+it("moves an organization to Team for its admin with the seats they pick, in one charge, at least one for each member and invitation", async () => {
+  const { t, workspaceId, membership, seated, ada } = await lab(["ada", "ben"]);
+  const moves = () => fakeAutumn.calls.filter((call) => call.path === "billing.attach" && call.body.plan_id === TEAM_PLAN);
   await membership("ada", true, "org:admin");
   await membership("ben", true);
+  await invite(t, "gus@lab.test");
 
-  await expect(t.withIdentity({ subject: "user_ben" }).action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 })).rejects.toThrow();
-  // The admin agreed to a charge for the members they were shown; a different count now is asked again.
-  await expect(ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 3 })).rejects.toThrow(/confirm again/);
+  await expect(t.withIdentity({ subject: "user_ben" }).action(api.billing.actions.moveToTeam, { workspaceId, seats: 4 })).rejects.toThrow();
+  // Two members and an invitation take three seats.
+  await expect(ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 })).rejects.toThrow(/confirm again/);
+  expect(await ada.action(api.billing.actions.previewTeam, { workspaceId, seats: 4 })).toMatchObject({ dueNow: 96, renewsAt: expect.any(Number) });
+
+  // Without a saved card, Stripe's page takes the payment, after which Autumn moves it; a declined card changes nothing.
   fakeAutumn.noCard = true;
-  expect(await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 })).toEqual({ url: "https://setup.test" });
-  // Autumn moves it once the card is saved; nothing is attached before.
-  expect(fakeAutumn.calls.find((call) => call.path === "billing.setup_payment")?.body).toMatchObject({ customer_id: workspaceId, plan_id: TEAM_PLAN });
-  expect(moves()).toBe(0);
-
-  // While another sync of it runs, the move waits for it, so a payment page never goes to a sync nobody's watching.
+  expect(await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 4 })).toEqual({ url: "https://checkout.test" });
   fakeAutumn.noCard = false;
-  expect(await t.mutation(internal.billing.seats.claim, { workspaceId })).toBe(true);
-  await expect(ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 })).rejects.toThrow(/being updated/);
+  fakeAutumn.declineCard = true;
+  await expect(ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 4 })).rejects.toThrow(/declined/);
+  fakeAutumn.declineCard = false;
   expect(fakeAutumn.customer(workspaceId).planId).toBe(ORGANIZATION_PLAN);
-  await t.mutation(internal.billing.seats.release, { workspaceId });
 
-  // A card that asks to confirm a seat's payment sends the admin to its page; once paid, the next sync seats everyone.
-  fakeAutumn.confirmPayments = true;
-  expect(await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 })).toEqual({ url: "https://checkout.test" });
-  expect(fakeAutumn.customer(workspaceId).planId).toBe(TEAM_PLAN);
-  fakeAutumn.confirmPayments = false;
-  await t.action(internal.billing.seats.sync, { workspaceId });
-  expect(fakeAutumn.balance(workspaceId)).toBe(2 * FAKE_SEAT_CREDITS);
-  expect(await ada.query(api.billing.seats.counts, { workspaceId })).toEqual({ members: 2, invitations: 0, seats: 2 });
-  expect(await t.run((ctx) => ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())).toMatchObject({ plan: TEAM_PLAN, card: { last4: "4242" } });
-  // Team's member limit in Clerk is the most a sync seats, set once however often its seats sync.
-  expect(limits()).toEqual([{ organization: "org_lab", limit: MAX_ORGANIZATION_MEMBERS }]);
+  expect(await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 4 })).toEqual({ url: null });
+  expect(moves().at(-1)?.body.license_quantities).toEqual([{ license_plan_id: SEAT_PLAN, quantity: 4 }]);
+  expect(seated()).toEqual(["user_ada", "user_ben"]);
+  expect(fakeAutumn.balance(workspaceId)).toBe(4 * FAKE_SEAT_CREDITS);
+  expect(await ada.query(api.billing.seats.counts, { workspaceId })).toEqual({ members: 2, invitations: 1, seats: 4, held: 0 });
+  expect(limits().at(-1)).toEqual({ organization: "org_lab", limit: 4 });
+});
 
-  for (const who of people.slice(2)) await membership(who, true);
-  expect(limits()).toHaveLength(1);
-  expect(people.length).toBeGreaterThan(FREE_MEMBERS);
-  await expect(ada.action(api.billing.actions.moveToFree, { workspaceId })).rejects.toThrow();
-  expect(fakeAutumn.customer(workspaceId).planId).toBe(TEAM_PLAN);
+it("changes an organization's seats down to those in use, and a declined card changes nothing", async () => {
+  const { t, workspaceId, membership, ada } = await lab(["ada", "ben"]);
+  await membership("ada", true, "org:admin");
+  await membership("ben", true);
+  await invite(t, "gus@lab.test");
+  await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 3 });
+  const seats = async () => (await ada.query(api.billing.seats.counts, { workspaceId }))?.seats;
+
+  expect(await ada.action(api.billing.actions.previewSeats, { workspaceId, seats: 5 })).toMatchObject({ dueNow: 48 });
+  await ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 5 });
+  expect(await seats()).toBe(5);
+  expect(limits().at(-1)?.limit).toBe(5);
+  // Two members and an invitation are three seats in use.
+  await expect(ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 2 })).rejects.toThrow(/in use/);
+  await ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 3 });
+  expect(await seats()).toBe(3);
+  fakeAutumn.declineCard = true;
+  await expect(ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 4 })).rejects.toThrow(/declined/);
+  expect(await seats()).toBe(3);
+  await expect(t.withIdentity({ subject: "user_ben" }).action(api.billing.actions.changeSeats, { workspaceId, seats: 4 })).rejects.toThrow();
+});
+
+it("moves an organization on Team to Free at its renewal once it has few enough members, and its admin can keep Team instead", async () => {
+  const people = ["ada", "ben", "cy", "di", "ed", "fy"];
+  const { t, workspaceId, membership, ada } = await lab(people);
+  for (const [i, who] of people.entries()) await membership(who, true, i === 0 ? "org:admin" : "org:member");
+  await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 6 });
+  await expect(ada.action(api.billing.actions.moveToFree, { workspaceId })).rejects.toThrow(/invitations included/);
+  expect(fakeAutumn.customer(workspaceId).next).toBeUndefined();
+  // Back to Team's seats once the move is refused.
+  await t.finishAllScheduledFunctions(() => {});
+  expect(limits().at(-1)?.limit).toBe(6);
 
   await membership("fy", false);
-  // Free has room for FREE_MEMBERS, invitations included.
-  const invitation = await t.run(async (ctx) => ctx.db.insert("organizationInvitations", { clerkInvitationId: "inv_1", organizationId: (await ctx.db.query("organizations").first())!._id, email: "gus@lab.test", role: "org:member", state: "pending", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 }));
-  await expect(ada.action(api.billing.actions.moveToFree, { workspaceId })).rejects.toThrow(/invitations included/);
-  await t.run((ctx) => ctx.db.delete("organizationInvitations", invitation));
   await ada.action(api.billing.actions.moveToFree, { workspaceId });
-  expect(fakeAutumn.customer(workspaceId).planId).toBe(ORGANIZATION_PLAN);
-  expect(seated()).toEqual([]);
-  expect(limits().at(-1)).toEqual({ organization: "org_lab", limit: FREE_MEMBERS });
+  // It keeps Team and its seats to the renewal; Clerk holds it to Free's members from now.
+  expect(fakeAutumn.customer(workspaceId)).toMatchObject({ planId: TEAM_PLAN, next: ORGANIZATION_PLAN });
+  expect(limits().at(-1)?.limit).toBe(FREE_MEMBERS);
+  expect(await t.run((ctx) => ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())).toMatchObject({ plan: TEAM_PLAN, changesAt: expect.any(Number), nextPlan: ORGANIZATION_PLAN });
+
+  await ada.action(api.billing.actions.keepPlan, { workspaceId });
+  expect(fakeAutumn.customer(workspaceId).next).toBeUndefined();
+  expect(limits().at(-1)?.limit).toBe(6);
 });
 
 it("ends the seats and Team of an organization deleted in Clerk, after its workspace is gone and whatever its seats were last counted as", async () => {
@@ -111,33 +137,21 @@ it("ends the seats and Team of an organization deleted in Clerk, after its works
   await t.run(async (ctx) => ctx.db.patch("seatSyncs", (await ctx.db.query("seatSyncs").first())!._id, { seats: 0 }));
 
   // Deleted in Clerk's dashboard rather than here, while Autumn is down: its webhook closes it, and its workspace is purged, account and all.
-  fakeAutumn.failNext = "entities.list";
+  fakeAutumn.failNext = "licenses.list_assignments";
   await deleted();
   expect(await t.run((ctx) => ctx.db.get("workspaces", workspaceId))).toBeNull();
   expect(seated()).toEqual(["user_ada", "user_ben"]);
 
-  // The daily check still finds it, ends its seats, cancels its Team plan, and lets it go.
+  // The daily check still finds it, cancels its Team plan at once, removes its entities, and lets it go.
   await t.mutation(internal.billing.seats.syncTeams, {});
   await t.finishAllScheduledFunctions(() => {});
   expect(seated()).toEqual([]);
-  expect(fakeAutumn.customer(workspaceId).planId).toBe(ORGANIZATION_PLAN);
+  expect(fakeAutumn.customer(workspaceId).planId).not.toBe(TEAM_PLAN);
+  await t.mutation(internal.billing.seats.syncTeams, {});
+  await t.finishAllScheduledFunctions(() => {});
+  expect(fakeAutumn.entitiesOf(workspaceId).size).toBe(0);
   expect(await t.run((ctx) => ctx.db.query("seatSyncs").withIndex("by_ending", (q) => q.eq("ending", true)).collect())).toEqual([]);
   expect(await t.run((ctx) => ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())).toBeNull();
-});
-
-it("ends Team only while no other sync of the organization runs", async () => {
-  const { t, workspaceId, membership, seated, ada } = await lab(["ada", "ben"]);
-  await membership("ada", true, "org:admin");
-  await membership("ben", true);
-  await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 });
-  // A sync that read Team a moment ago could still seat someone: moving off Team waits for it.
-  expect(await t.mutation(internal.billing.seats.claim, { workspaceId })).toBe(true);
-  await expect(ada.action(api.billing.actions.moveToFree, { workspaceId })).rejects.toThrow(/being updated/);
-  expect(fakeAutumn.customer(workspaceId).planId).toBe(TEAM_PLAN);
-  await t.mutation(internal.billing.seats.release, { workspaceId });
-  await t.finishAllScheduledFunctions(() => {});
-  await ada.action(api.billing.actions.moveToFree, { workspaceId });
-  expect(seated()).toEqual([]);
 });
 
 it("tries again later to set a member limit Clerk refused", async () => {
@@ -146,29 +160,11 @@ it("tries again later to set a member limit Clerk refused", async () => {
     const { t, workspaceId, membership, ada } = await lab(["ada"]);
     await membership("ada", true, "org:admin");
     fakeAutumn.refuseLimits = 1;
-    await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 1 });
+    await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 });
     expect(limits()).toEqual([]);
     await t.finishAllScheduledFunctions(vi.runAllTimers);
-    expect(limits()).toEqual([{ organization: "org_lab", limit: MAX_ORGANIZATION_MEMBERS }]);
+    expect(limits()).toEqual([{ organization: "org_lab", limit: 2 }]);
   } finally {
     vi.useRealTimers();
   }
-});
-
-it("finishes ending Team on the daily check when Autumn fails partway through a move to Free", async () => {
-  const { t, workspaceId, membership, seated, ada } = await lab(["ada", "ben"]);
-  await membership("ada", true, "org:admin");
-  await membership("ben", true);
-  await ada.action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 });
-  // A sync that failed partway left its row counting none.
-  await t.run(async (ctx) => ctx.db.patch("seatSyncs", (await ctx.db.query("seatSyncs").first())!._id, { seats: 0 }));
-  fakeAutumn.failNext = "billing.update";
-  await expect(ada.action(api.billing.actions.moveToFree, { workspaceId })).rejects.toThrow();
-  expect(fakeAutumn.customer(workspaceId).planId).toBe(ORGANIZATION_PLAN);
-  expect(seated()).not.toEqual([]);
-
-  await t.mutation(internal.billing.seats.syncTeams, {});
-  await t.finishAllScheduledFunctions(() => {});
-  expect(seated()).toEqual([]);
-  expect(await t.run((ctx) => ctx.db.query("seatSyncs").withIndex("by_ending", (q) => q.eq("ending", true)).collect())).toEqual([]);
 });

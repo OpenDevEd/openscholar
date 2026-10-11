@@ -39,9 +39,9 @@ async function lab(people: string[] = ["ada", "ben"]) {
     });
   }
   const { workspaceId } = ids;
-  /** Puts the lab on Team, in Autumn and in its cached account; `seats` also gives every member a seat. */
+  /** Puts the lab on Team with a seat bought for each person, in Autumn and in its cached account; `seats` also gives every member theirs. */
   const team = async ({ seats }: { seats: boolean }) => {
-    fakeAutumn.customer(workspaceId).planId = TEAM_PLAN;
+    Object.assign(fakeAutumn.customer(workspaceId), { planId: TEAM_PLAN, seats: people.length });
     await t.run(async (ctx) => {
       const account = (await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())!;
       await ctx.db.patch("billingAccounts", account._id, { plan: TEAM_PLAN });

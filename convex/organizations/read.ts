@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { internalQuery, type QueryCtx } from "../_generated/server";
+import { seatSyncRow } from "../billing/seatSyncs";
 import { readAccount } from "../billing/accounts";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
@@ -231,7 +232,8 @@ export const pendingInvitation = internalQuery({
 });
 
 /**
- * Invitations past the room the organization's plan has for members, invitations included, by
+ * Invitations past the room the organization's plan has for members, invitations included (on
+ * Team its seats bought, less those held to the renewal: #863), by
  * Clerk's ID: the open ones are counted oldest kept first, so the ones made last are the ones
  * past it. Of `sent` when given, just made; else the first few of them all.
  */
@@ -240,7 +242,8 @@ export const pastRoom = internalQuery({
   returns: v.array(v.string()),
   handler: async (ctx, { workspaceId, sent }) => {
     const organization = await organizationOf(ctx, workspaceId);
-    const limit = (await readAccount(ctx, workspaceId))?.plan === TEAM_PLAN ? MAX_ORGANIZATION_MEMBERS : FREE_MEMBERS;
+    const seats = await seatSyncRow(ctx, workspaceId);
+    const limit = (await readAccount(ctx, workspaceId))?.plan === TEAM_PLAN ? (seats?.seats ?? 0) - (seats?.held ?? 0) : FREE_MEMBERS;
     const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS);
     const room = Math.max(0, limit - members.length);
     // The ones with room, and the first few past it: whatever of `sent` isn't among the first is past it too.
