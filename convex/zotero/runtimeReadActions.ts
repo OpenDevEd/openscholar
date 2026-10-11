@@ -87,13 +87,13 @@ const pageOf = <Item>(
         continueCursor: result.nextCursor ?? "",
       };
 
-async function readTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">) {
+async function readTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">, action: RuntimeAccess) {
   const target: {
     targetBaseUrl: string;
     encryptedMachineCredential: string;
   } | null = await ctx.runQuery(
     internal.zotero.runtimeReads.readRuntimeReadTarget,
-    { libraryId },
+    { libraryId, action },
   );
   if (!target) return null;
   const encryptionKey = process.env.ENCRYPTION_KEY;
@@ -109,12 +109,16 @@ async function readTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">) {
   };
 }
 
+/** What a call asks of the library: to view what it holds, which its settings page shows everyone who views it (#653), or to change it. */
+type RuntimeAccess = "view" | "manage";
+
 async function readRuntime<T>(
   ctx: ActionCtx,
   libraryId: Id<"evidenceLibraries">,
+  action: RuntimeAccess,
   read: (target: { baseUrl: string; credential: string }) => Promise<T>,
 ): Promise<T | NotSetUp> {
-  const target = await readTarget(ctx, libraryId);
+  const target = await readTarget(ctx, libraryId, action);
   if (!target) return { reason: "not-set-up" };
   try {
     return await read(target);
@@ -136,7 +140,7 @@ export const listCollections = action({
   returns: runtimePage(collectionValidator),
   handler: async (ctx, args): Promise<RuntimePage<RuntimeCollection>> =>
     pageOf(
-      await readRuntime<RuntimeCollectionsPage>(ctx, args.libraryId, (target) =>
+      await readRuntime<RuntimeCollectionsPage>(ctx, args.libraryId, "view", (target) =>
         readRuntimeCollections(fetch, {
           ...target,
           query: args.query,
@@ -158,7 +162,7 @@ export const listInstitutions = action({
   returns: runtimePage(institutionValidator),
   handler: async (ctx, args): Promise<RuntimePage<RuntimeInstitution>> =>
     pageOf(
-      await readRuntime<RuntimeInstitutionsPage>(ctx, args.libraryId, (target) =>
+      await readRuntime<RuntimeInstitutionsPage>(ctx, args.libraryId, "view", (target) =>
         readRuntimeInstitutions(fetch, {
           ...target,
           query: args.query,
@@ -186,6 +190,7 @@ export const resolveLibraryCollections = action({
     args,
   ): Promise<{ items: RuntimeCollectionFacts[]; reason?: "not-set-up" }> => {
     await ctx.runQuery(internal.zotero.runtimeReads.requireRuntimeReadAccess, {
+      action: "view",
       libraryId: args.libraryId,
     });
     const ids = [...new Set(args.ids)];
@@ -196,7 +201,7 @@ export const resolveLibraryCollections = action({
         `A site shows at most ${RUNTIME_RESOLVE_MAX_TOTAL_IDS} collections`,
       );
     }
-    const result = await readRuntime(ctx, args.libraryId, async (target) => {
+    const result = await readRuntime(ctx, args.libraryId, "view", async (target) => {
       // A site may show more collections than the library answers at once, so
       // the list is asked for in batches and put back together here.
       const found = new Map<string, RuntimeCollectionFacts>();
@@ -237,7 +242,7 @@ export const listPublications = action({
     pageOf(
       await readRuntime<RuntimeReviewedPublicationsPage>(
         ctx,
-        args.libraryId,
+        args.libraryId, "view",
         (target) =>
           readRuntimeReviewedPublications(fetch, {
             ...target,
@@ -255,7 +260,7 @@ export const readPublication = action({
   handler: async (ctx, args): Promise<RuntimeReviewedPublication | null> => {
     const result = await readRuntime<RuntimeReviewedPublicationsPage>(
       ctx,
-      args.libraryId,
+      args.libraryId, "view",
       (target) =>
         readRuntimeReviewedPublications(fetch, { ...target, ids: [args.key] }),
     );
@@ -276,7 +281,7 @@ export const readHomeQuestions = action({
     ctx,
     args,
   ): Promise<{ questions: (string | null)[]; reason?: "not-set-up" }> => {
-    const result = await readRuntime(ctx, args.libraryId, async (target) => ({
+    const result = await readRuntime(ctx, args.libraryId, "view", async (target) => ({
       questions: await readRuntimeHomeQuestions(fetch, target),
     }));
     return "reason" in result ? { reason: "not-set-up", questions: [] } : result;
@@ -288,7 +293,7 @@ export const requestSourceRun = action({
   args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string() },
   returns: v.object({ reason: notSetUpValidator }),
   handler: async (ctx, args): Promise<{ reason?: "not-set-up" }> => {
-    const result = await readRuntime(ctx, args.libraryId, async (target) => {
+    const result = await readRuntime(ctx, args.libraryId, "manage", async (target) => {
       await requestRuntimeSourceRun(fetch, target, args.sourceKey);
       return {};
     });

@@ -86,12 +86,12 @@ const libraryZoteroGroups = (ctx: ReadCtx, libraryId: Id<"evidenceLibraries">) =
     .withIndex("by_libraryId", (q) => q.eq("libraryId", libraryId))
     .take(MAX_ZOTERO_GROUPS_PER_LIBRARY);
 
-/** A library's Zotero groups, as one page: a library holds no more than one page of them. */
+/** A library's Zotero groups, as one page: a library holds no more than one page of them. Everyone who views the library reads them (#653). */
 export const listZoteroGroups = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: paginationResultValidator(evidenceLibraryZoteroGroupValidator),
   handler: async (ctx, args) => {
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "view");
     return { page: await libraryZoteroGroups(ctx, args.libraryId), isDone: true, continueCursor: "" };
   },
 });

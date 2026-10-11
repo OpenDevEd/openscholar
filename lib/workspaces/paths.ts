@@ -5,6 +5,9 @@
 /** A page's path without its organization's prefix (/o/<slug>): the page each section reads itself as. */
 export const bareWorkspacePath = (pathname: string) => pathname.replace(/^\/o\/[^/]+(?=\/|$)/, "") || "/";
 
+/** The request header the proxy gives a page its own address in, path and query, which a layout isn't given. */
+export const ADDRESS_HEADER = "x-page-address";
+
 /**
  * The sections whose pages are a workspace's: their paths take an organization's prefix. Each is
  * a folder under app/o/[slug] and under app, and nothing else is: paths.test.ts fails when a

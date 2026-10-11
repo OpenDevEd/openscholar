@@ -188,4 +188,14 @@ describe("<ConfigurationWorkspace>", () => {
     await renderWorkspace();
     expect(screen.getByRole("button", { name: "activate" })).toBeEnabled();
   });
+
+  it("shows a member without a role the settings read-only, with none of the owners' controls (#653)", async () => {
+    queryMock.mockReturnValue(draftResult({ role: "viewer", editable: false }));
+    await renderWorkspace();
+    expect(screen.getByText("viewOnly")).toBeInTheDocument();
+    expect(identityCard().getByLabelText("identity.nameLabel")).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "save" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "activate" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /sections.danger/ })).toBeNull();
+  });
 });

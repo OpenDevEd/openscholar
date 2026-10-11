@@ -684,10 +684,11 @@ export async function readEvidenceLibraryDraft(
   ctx: QueryCtx,
   args: { libraryId: Id<"evidenceLibraries"> },
 ) {
+  // Its settings are everyone's who views the library, read-only to all but owners whose plan has Evidence Libraries (#653).
   const access = await readEvidenceLibraryAccess(
     ctx,
     args.libraryId,
-    "manage",
+    "view",
   );
   if (!access) return null;
   const draft = await ctx.db
@@ -743,6 +744,8 @@ export async function readEvidenceLibraryDraft(
     ? await ctx.db.get("evidenceLibraryRuntimeBindings", access.library.runtimeBindingId)
     : null;
   return {
+    role: access.role,
+    editable: access.role === "owner" && (await readEvidenceLibraryAccess(ctx, args.libraryId, "manage")) !== null,
     draft: {
       ...draft,
       ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION,
@@ -826,6 +829,10 @@ export const getDraft = query({
     /** Where the library answers now, or null before it first runs. */
     liveAddress: v.union(v.string(), v.null()),
     sections: draftSectionsValidator,
+    /** The reader's role in the library, a viewer's for any other member of its organization (#653). */
+    role: libraryListRoleValidator,
+    /** Whether the reader can change its settings: an owner whose plan has Evidence Libraries. */
+    editable: v.boolean(),
   })),
   handler: async (ctx, args) => {
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
@@ -940,7 +947,7 @@ export const isOrganizationPerson = query({
   },
 });
 
-/** Owners manage explicit library grants and inherited organization owners. */
+/** A library's people by role, which everyone who views it reads; its invitations are for its owners, who manage them (#653). */
 export const listTeam = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.object({
@@ -951,16 +958,19 @@ export const listTeam = query({
     invitations: teamInvitationsValidator,
   }),
   handler: async (ctx, args) => {
-    const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "view");
     const people = await readLibraryPeople(ctx, access.library);
     people.sort((a, b) => (a.person.name || a.person.email).localeCompare(b.person.name || b.person.email));
+    const owner = access.role === "owner";
+    const invitations = owner ? await ctx.db.query("itemInvitations").withIndex("by_item_and_state", q => q.eq("item", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY) : [];
+    // Everyone else is told names, photos and roles: an email is the owners', who manage the team.
+    const shown = (role: "owner" | "editor" | "creator") => people.filter(p => p.role === role).map(p => (owner ? p.person : { ...p.person, email: "" }));
     return {
-      invitations: (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", q => q.eq("item", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY))
-        .map(i => ({ invitationId: i._id, email: i.email, role: grantedRole(i), delivery: i.delivery })),
+      invitations: invitations.map(i => ({ invitationId: i._id, email: i.email, role: grantedRole(i), delivery: i.delivery })),
       organizationName: (await ownerName(ctx, access.owner)).name,
-      owners: people.filter(p => p.role === "owner").map(p => p.person),
-      editors: people.filter(p => p.role === "editor").map(p => p.person),
-      creators: people.filter(p => p.role === "creator").map(p => p.person),
+      owners: shown("owner"),
+      editors: shown("editor"),
+      creators: shown("creator"),
     };
   },
 });

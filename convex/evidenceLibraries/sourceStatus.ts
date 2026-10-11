@@ -66,12 +66,12 @@ export const record = internalMutation({
   },
 });
 
-/** The runtime's latest report, for the owner's configuration page. */
+/** The runtime's latest report, for the configuration page, which everyone who views the library sees (#653). */
 export const listForLibrary = query({
   args: { libraryId: v.id("evidenceLibraries") },
   returns: v.union(v.null(), v.object({ observedAt: v.number(), sources: evidenceLibrarySourceStatusFields.sources })),
   handler: async (ctx, args) => {
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "view");
     const snapshot = await ctx.db
       .query("evidenceLibrarySourceStatus")
       .withIndex("by_libraryId", (q) => q.eq("libraryId", args.libraryId))
