@@ -49,6 +49,7 @@ import {
   DialogTitle,
   DialogClose,
 } from "@/components/ui/dialog";
+import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { LibraryPageShell } from "./library-page-shell";
 import { BAR_ACTION, BAR_LABEL } from "./configuration/panel-header";
@@ -113,6 +114,8 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   const respond = useAction(api.evidenceLibraries.invitationActions.respond);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
   const [retrying, setRetrying] = useState<string | null>(null);
+  // The invitation being answered: a second press while its answer is on its way does nothing.
+  const [answering, setAnswering] = useState<string | null>(null);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator", viewer: "Viewer" } as const;
   // An address has at most a page of invitations waiting, so they are filtered here.
   const invited = (invitations.data?.page ?? []).filter((invitation) => `${invitation.name} ${invitation.organization.name}`.toLowerCase().includes(search.trim().toLowerCase()));
@@ -287,19 +290,23 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         <Button
                           size="sm"
                           variant="outline"
+                          disabled={answering === library.invitationId}
                           onClick={() => setDeclining(library)}
                         >
                           Decline
                         </Button>
                         <Button
                           size="sm"
+                          disabled={answering === library.invitationId}
                           onClick={async () => {
                             if (!library.invitationId) return;
+                            setAnswering(library.invitationId);
                             try {
                               await respond({ invitationId: library.invitationId, accept: true });
                               setNotice(`Accepted ${library.name}.`);
                               setView("libraries");
-                            } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to accept invitation"); }
+                            } catch (error) { setNotice(getErrorMessage(error, "Unable to accept invitation")); }
+                            finally { setAnswering(null); }
                           }}
                         >
                           <Check />
@@ -313,7 +320,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         <Button size="sm" variant="outline" disabled={retrying === library.id} onClick={async () => {
                           setRetrying(library.id);
                           try { await restartTeardown({libraryId: library.id as Id<"evidenceLibraries">}); setNotice(`Deletion restarted for ${library.name}.`); }
-                          catch (error) { setNotice(error instanceof Error ? error.message : "Could not restart deletion"); }
+                          catch (error) { setNotice(getErrorMessage(error, "Could not restart deletion")); }
                           finally { setRetrying(null); }
                         }}><RotateCcw />Retry deletion</Button>
                       ) : (
@@ -418,13 +425,16 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
             </DialogClose>
             <Button
               variant="destructive"
+              disabled={answering === declining?.invitationId}
               onClick={async () => {
                 if (!declining?.invitationId) return;
+                setAnswering(declining.invitationId);
                 try {
                   await respond({ invitationId: declining.invitationId, accept: false });
                   setDeclining(null);
                   setNotice("Invitation declined.");
-                } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to decline invitation"); }
+                } catch (error) { setNotice(getErrorMessage(error, "Unable to decline invitation")); }
+                finally { setAnswering(null); }
               }}
             >
               Decline invitation
