@@ -136,14 +136,21 @@ export const run = internalAction({
     const job = await ctx.runQuery(internal.evidenceLibraries.digests.service.readJob, {jobId});
     if (!job?.requestId) return null;
     let kinds: Awaited<ReturnType<typeof readKinds>> | undefined;
+    let written: Awaited<ReturnType<typeof writeLibraryDigest>>;
     try {
       const request = await storedRequest(ctx, job.requestId);
       kinds = await readKinds(request.publications);
-      const written = await writeLibraryDigest(request, kinds, AbortSignal.timeout(WRITING_ACTION_MS - (Date.now() - started)));
-      await ctx.scheduler.runAfter(0, internal.evidenceLibraries.digests.service.check, {jobId, written});
+      written = await writeLibraryDigest(request, kinds, AbortSignal.timeout(WRITING_ACTION_MS - (Date.now() - started)));
     } catch (error) {
       console.error("Library digest generation failed", {libraryId: job.libraryId, editionId: job.editionId, error});
       await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: null, kinds});
+      return null;
+    }
+    try {
+      await ctx.scheduler.runAfter(0, internal.evidenceLibraries.digests.service.check, {jobId, written});
+    } catch (error) {
+      console.error("Library digest review could not be queued; keeping the digest as written", {libraryId: job.libraryId, editionId: job.editionId, error});
+      await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: written, kinds: undefined});
     }
     return null;
   },
