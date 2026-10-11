@@ -116,7 +116,7 @@ describe("account research records", () => {
     const { alice, t } = await setup();
     await alice.mutation(api.research.records.importBatch, batch);
     await alice.mutation(api.research.records.importBatch, batch);
-    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toEqual(listedRecord);
+    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toEqual({ ...listedRecord, shareId: expect.any(String) });
     expect((await alice.query(api.research.records.listedShortcuts, { accountId: "alice", sort: "recent", paginationOpts })).page).toEqual(batch.shortcuts);
     expect((await alice.query(api.research.records.ratings, { accountId: "alice", paginationOpts })).page).toEqual(batch.ratings);
     await alice.mutation(api.research.records.change, { accountId: "alice", requestId: "edit-query", command: { kind: "editSearch", id: record.id, edit: { kind: "query", query: "updated", field: "abstract" } } });
@@ -644,7 +644,7 @@ describe("research actions as assistant tools", () => {
     expect(await t.run(ctx => ctx.db.query("searches").collect())).toHaveLength(1);
     const history = await alice.query(api.research.records.revisions, { accountId: "alice", id: record.id, paginationOpts });
     expect(history.page.map(row => row.author)).toEqual(["assistant"]);
-    expect(await tools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: "call-2" })).toEqual({ ...listedRecord, questionCount: 0, questionText: "", latestQuestion: undefined });
+    expect(await tools.research_records_getSearch.execute!({ id: record.id }, { ...call, toolCallId: "call-2" })).toEqual({ ...listedRecord, questionCount: 0, questionText: "", latestQuestion: undefined, shareId: expect.any(String) });
     // It reads the search's answers as a page does: by paper.
     expect(await tools.research_records_answersOf.execute!({ id: record.id, paperIds: record.screeningResponses.map(row => row.paperId) }, { ...call, toolCallId: "call-2b" })).toMatchObject({ page: record.screeningResponses });
   });
@@ -657,7 +657,7 @@ describe("research actions as assistant tools", () => {
     // Deleting a search outright asks the person first. Allowed by Bob, it still deletes nothing of Alice's.
     await expect(bobTools.research_records_change.execute!({ command: { kind: "deleteSearch", id: record.id } }, { ...call, toolCallId: "call-4" })).rejects.toThrow(/person's say first/);
     await t.mutation(internal.research.records.changeForAssistant, { userId: ids.bob, requestId: "call-4", command: { kind: "deleteSearch", id: record.id }, approved: true });
-    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toEqual(listedRecord);
+    expect(await alice.query(api.research.records.getSearch, { accountId: "alice", id: record.id })).toEqual({ ...listedRecord, shareId: expect.any(String) });
   });
 
   it("ask the person before a change nothing puts back, and not before one that returns an undo", async () => {

@@ -369,18 +369,25 @@ it("opens a shared search to its guest from their own workspace by its document'
   expect(shared).not.toBe(id);
   // She reads it as it is, with who ran it and whose it is, its workspace's shortcut written out, and changes nothing.
   expect(await read(carol, "carol", carolOwn, shared)).toMatchObject({ id: shared, query: 'school feeding "machine learning"', by: { name: "Alice", you: false }, guest: { role: "viewer", from: { name: "lab", organization: true } } });
-  expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school feeding ml...", guests: 1 });
+  expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school feeding ml...", guests: 1, shareId: shared });
   await expect(edit(carol, "carol", carolOwn, shared, requery("changed"))).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
-  // The ID a member's page shows is no way in for her: a search of her own could have it.
+  // The ID a member's page shows is no way in for her: a search of her own could have it. And no search of hers can take the document's ID as its own.
   expect(await read(carol, "carol", carolOwn)).toBeNull();
-  // A link carries the member's ID: for her it opens under the document's, in her own workspace, and a member given hers is sent back to theirs.
-  expect(await carol.query(api.workspaces.queries.homeOf, { kind: "search", id, here: carolOwn })).toEqual({ id: shared });
+  await expect(carol.mutation(api.research.records.change, { accountId: "carol", workspaceId: carolOwn, requestId: "squat", command: { kind: "createSearch", search: { id: shared, query: "hers", field: "title_and_abstract", count: 0, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-10-01T00:00:00.000Z", updatedAt: "2026-10-01T00:00:00.000Z" } } })).rejects.toThrow(/Invalid saved search identity/);
+  // Its link carries the document's ID: it opens for her in her own workspace, and sends a member to the search's, under the ID it has there.
   expect(await carol.query(api.workspaces.queries.homeOf, { kind: "search", id: shared, here: carolOwn })).toEqual({});
   expect(await alice.query(api.workspaces.queries.homeOf, { kind: "search", id: shared, here: aliceOwn })).toEqual({ slug: "lab", id });
+  // Its earlier versions and queries reach her the same way: by the ID she reads it by, shortcuts written out.
+  expect((await carol.query(api.research.records.revisions, { accountId: "carol", workspaceId: carolOwn, id: shared, paginationOpts: { cursor: null, numItems: 5 } })).page[0]?.data).toMatchObject({ id: shared, query: 'school feeding "machine learning"' });
+  expect((await carol.query(api.research.records.searchHistory, { accountId: "carol", workspaceId: carolOwn, id: shared, kind: "query", paginationOpts: { cursor: null, numItems: 5 } })).page.map((entry) => entry.text)).toEqual(['school feeding "machine learning"']);
 
   // To edit: her change is made in the lab, where the search is, and its Activity there says it was hers. It gives her nothing to take it back with, and she restores no earlier version.
   await alice.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" });
   expect(await edit(carol, "carol", carolOwn, shared, requery("school meals"))).toEqual({});
+  // The same request sent again, as a page does when it lost the answer, is answered as it was, whatever she may do by then.
+  await alice.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "viewer" });
+  expect(await edit(carol, "carol", carolOwn, shared, requery("school meals"))).toEqual({});
+  await alice.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" });
   expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school meals" });
   expect(await t.run((ctx) => ctx.db.query("searches").withIndex("by_workspace", (q) => q.eq("workspaceId", carolOwn)).collect())).toEqual([]);
   expect((await alice.query(api.activity.queries.list, { ...item, paginationOpts: { cursor: null, numItems: 10 } })).page[0]).toMatchObject({ by: { name: "Carol" }, happened: "edited", detail: "school meals" });

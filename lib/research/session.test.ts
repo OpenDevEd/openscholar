@@ -225,9 +225,10 @@ describe("research save recovery", () => {
     const unwatch = session.watchSearch("shared", () => {});
     const history = () => session.stores.history.getState();
 
-    // To view: her new query shows on her page and is never sent.
+    // To view: her new query shows on her page and is never sent, however many pages she turns after it.
     history().addQueryToHistory("shared", "tutoring at scale", "title");
-    expect(history().getSearchResult("shared")).toMatchObject({ query: "tutoring at scale" });
+    for (let page = 2; page <= 400; page++) history().updateSearchResult("shared", { page });
+    expect(history().getSearchResult("shared")).toMatchObject({ query: "tutoring at scale", page: 400 });
     expect([sent, session.getSnapshot().pending]).toEqual([[], 0]);
 
     // Made an editor: her page shows the search as it is, and what she changes now is saved.

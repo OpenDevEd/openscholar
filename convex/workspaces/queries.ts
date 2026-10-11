@@ -60,26 +60,17 @@ async function workspacesOf(ctx: QueryCtx, user: Doc<"users">) {
   return [await personalWorkspaceOf(ctx, user._id), ...organizations.flatMap((workspace) => (workspace ? [workspace._id] : []))];
 }
 
-/** Searches shared with a person that a member's link to one is looked for among. */
-const GUEST_SEARCHES_READ = 100;
-
 /**
- * The search a page's address names, and the workspace it's in. A member's address carries its ID
- * within its workspace, which two workspaces may share: the one the page is in comes first. A
- * guest's carries its document's ID (#653), and a member's link reaches a guest with the member's:
- * that one is looked for among the searches shared with them.
+ * The search a page's address names. A link carries its document's ID (#653), which no other
+ * search has, and a guest's page of it goes by that. A member's page goes by its ID within its
+ * workspace, which two workspaces may share: the one the page is in comes first.
  */
 async function searchAt(ctx: QueryCtx, user: Doc<"users">, id: string, here: Id<"workspaces">) {
+  const docId = ctx.db.normalizeId("searches", id);
+  if (docId) return await ctx.db.get("searches", docId);
   for (const workspaceId of [here, ...(await workspacesOf(ctx, user)).filter((workspace) => workspace !== here)]) {
     const search = await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", workspaceId).eq("localId", id)).first();
     if (search) return search;
-  }
-  const docId = ctx.db.normalizeId("searches", id);
-  if (docId) return await ctx.db.get("searches", docId);
-  for (const grant of await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", (q) => q.eq("userId", user._id).eq("kind", "search")).order("desc").take(GUEST_SEARCHES_READ)) {
-    const searchId = ctx.db.normalizeId("searches", grant.item);
-    const search = searchId ? await ctx.db.get("searches", searchId) : null;
-    if (search?.localId === id) return search;
   }
   return null;
 }

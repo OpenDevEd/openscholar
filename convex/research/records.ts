@@ -225,9 +225,10 @@ export const getSearchAction = defineUserQuery({
   path: "research/records:getSearch",
   description:
     "Reads one saved search by ID: its query, filters, sort, page and screening questions. Its screening answers are read by paper with answersOf. In an organization it names who ran it (`by`); `guests` is how many people outside its workspace were given it, when any were. " +
+    "`shareId` is the ID its link carries, which opens it for its workspace's members and its guests. " +
     "One shared with the person from another workspace reads the same in their own workspace, by the ID sharing/shared:list gives, with `guest`: what they may do with it (`viewer`: read and export; `editor`: also change it) and the workspace it's in. Its query comes with that workspace's shortcuts written out.",
   args: { id: v.string() },
-  returns: v.union(v.object({ ...listedSearchValidator.fields, by: v.optional(makerValidator), guest: v.optional(v.object({ role: guestRoleValidator, from: sharedFromValidator })), guests: v.optional(v.number()) }), v.null()),
+  returns: v.union(v.object({ ...listedSearchValidator.fields, shareId: v.optional(v.string()), by: v.optional(makerValidator), guest: v.optional(v.object({ role: guestRoleValidator, from: sharedFromValidator })), guests: v.optional(v.number()) }), v.null()),
   run: async (ctx, actor, args) => {
     const found = await readableSearch(ctx, actor, args.id);
     if (!found) return null;
@@ -235,14 +236,11 @@ export const getSearchAction = defineUserQuery({
     const fields = listed(currentSearch(search.data));
     if (guest) {
       const maker = await ctx.db.get("users", search.createdBy);
-      // A shortcut in its query is its workspace's, which the guest's own workspace doesn't have, or has as something else: it's read written out.
-      const names = shortcutNames(fields.query).slice(0, SHORTCUT_NAMES_MAX);
-      const query = names.length ? expandShortcuts(fields.query, await shortcutExpansions(ctx, search.workspaceId, names)).expandedQuery : fields.query;
-      return { ...fields, id: args.id, query, ...(maker ? { by: { name: personName(maker) || maker.email, ...(maker.avatarUrl ? { imageUrl: maker.avatarUrl } : {}), you: false } } : {}), guest: { role: guest, from: await workspaceFrom(ctx, search.workspaceId) } };
+      return { ...fields, id: args.id, query: await writtenOut(ctx, search, fields.query), ...(maker ? { by: { name: personName(maker) || maker.email, ...(maker.avatarUrl ? { imageUrl: maker.avatarUrl } : {}), you: false } } : {}), guest: { role: guest, from: await workspaceFrom(ctx, search.workspaceId) } };
     }
     const by = await (await makersIn(ctx, actor.workspaceId, actor.userId))(search.createdBy);
     const guests = await countOf(ctx, itemGuestsOf(search._id));
-    return { ...fields, ...(by ? { by } : {}), ...(guests ? { guests } : {}) };
+    return { ...fields, shareId: search._id, ...(by ? { by } : {}), ...(guests ? { guests } : {}) };
   },
 });
 export const getSearch = accountQuery(getSearchAction);
@@ -269,13 +267,16 @@ export const revisionsAction = defineUserQuery({
   args: { ...pageArgs, id: v.string() },
   returns: paginationResultValidator(v.object({ revision: v.number(), author: v.union(v.literal("user"), v.literal("assistant")), data: listedSearchValidator, answersVersion: v.optional(v.number()), deleted: v.boolean(), createdAt: v.number() })),
   run: async (ctx, actor, args) => {
-    const search = (await readableSearch(ctx, actor, args.id))?.search;
-    if (!search) return { page: [], isDone: true, continueCursor: "" };
+    const found = await readableSearch(ctx, actor, args.id);
+    if (!found) return { page: [], isDone: true, continueCursor: "" };
+    const { search, guest } = found;
     const page = await ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", search._id)).order("desc")
       // Revisions saved before #354 hold their search's whole history; a page of them stops at
       // this many bytes and goes on from its cursor.
       .paginate({ ...args.paginationOpts, maximumBytesRead: REVISION_PAGE_BYTES });
-    return { ...page, page: page.page.map(row => ({ revision: row.revision, author: row.author, data: listed(currentSearch(row.data)), ...(row.answersVersion === undefined ? {} : { answersVersion: row.answersVersion }), deleted: row.deleted, createdAt: row.createdAt })) };
+    // A guest reads each as they read the search: by the ID they asked with, its shortcuts written out.
+    const data = async (row: Doc<"searchRevisions">) => { const fields = listed(currentSearch(row.data)); return guest ? { ...fields, id: args.id, query: await writtenOut(ctx, search, fields.query) } : fields; };
+    return { ...page, page: await Promise.all(page.page.map(async row => ({ revision: row.revision, author: row.author, data: await data(row), ...(row.answersVersion === undefined ? {} : { answersVersion: row.answersVersion }), deleted: row.deleted, createdAt: row.createdAt }))) };
   },
 });
 /** Bytes one page of revisions reads at most. */
@@ -292,17 +293,20 @@ export const searchHistoryAction = defineUserQuery({
   args: { ...pageArgs, id: v.string(), kind: historyKind },
   returns: paginationResultValidator(historyEntryValidator),
   run: async (ctx, actor, args) => {
-    const search = (await readableSearch(ctx, actor, args.id))?.search;
-    if (!search) return { page: [], isDone: true, continueCursor: "" };
+    const found = await readableSearch(ctx, actor, args.id);
+    if (!found) return { page: [], isDone: true, continueCursor: "" };
+    const { search } = found;
+    // A guest reads an earlier query as they read the search's: its workspace's shortcuts written out.
+    const said = async <Entry extends { text: string }>(entry: Entry) => (found.guest && args.kind === "query" ? { ...entry, text: await writtenOut(ctx, search, entry.text) } : entry);
     // A search not moved yet still holds its history: all of it, as one page.
     const legacy = args.kind === "query" ? search.data.queryHistory : search.data.questionHistory;
     if (legacy) {
       const entries = legacy.map((entry) => ("query" in entry ? { text: entry.query, field: entry.field, timestamp: entry.timestamp } : { text: entry.question, timestamp: entry.timestamp }));
-      return { page: entries.reverse(), isDone: true, continueCursor: "" };
+      return { page: await Promise.all(entries.reverse().map(said)), isDone: true, continueCursor: "" };
     }
     const page = await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_position", q => q.eq("searchId", search._id).eq("kind", args.kind)).order("desc")
       .paginate({ ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, HISTORY_PAGE_MAX) });
-    return { ...page, page: page.page.map(({ text, field, timestamp }) => ({ text, ...(field ? { field } : {}), timestamp })) };
+    return { ...page, page: await Promise.all(page.page.map(({ text, field, timestamp }) => said({ text, ...(field ? { field } : {}), timestamp }))) };
   },
 });
 export const searchHistory = accountQuery(searchHistoryAction);
@@ -316,17 +320,19 @@ export const searchHistoryEntryAction = defineUserQuery({
   // skipping as many entries as one read allows.
   returns: v.union(v.object({ entry: v.union(historyEntryValidator, v.null()) }), v.object({ skipped: v.number(), cursor: v.string() })),
   run: async (ctx, actor, args) => {
-    const search = (await readableSearch(ctx, actor, args.id))?.search;
-    if (!search || !Number.isInteger(args.stepsBack) || args.stepsBack < 0) return { entry: null };
+    const found = await readableSearch(ctx, actor, args.id);
+    if (!found || !Number.isInteger(args.stepsBack) || args.stepsBack < 0) return { entry: null };
+    const { search } = found;
+    const said = async <Entry extends { text: string }>(entry: Entry) => (found.guest && args.kind === "query" ? { ...entry, text: await writtenOut(ctx, search, entry.text) } : entry);
     const legacy = args.kind === "query" ? search.data.queryHistory : search.data.questionHistory;
     if (legacy) {
       const entry = legacy[legacy.length - 1 - args.stepsBack];
-      return { entry: entry ? ("query" in entry ? { text: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp } : { text: entry.question, timestamp: entry.timestamp }) : null };
+      return { entry: entry ? await said("query" in entry ? { text: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp } : { text: entry.question, timestamp: entry.timestamp }) : null };
     }
     const page = await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_position", q => q.eq("searchId", search._id).eq("kind", args.kind)).order("desc")
       .paginate({ cursor: args.cursor ?? null, numItems: args.stepsBack + 1, maximumRowsRead: HISTORY_SKIP_ROWS, maximumBytesRead: HISTORY_SKIP_BYTES });
     const row = page.page[args.stepsBack];
-    if (row) return { entry: { text: row.text, ...(row.field ? { field: row.field } : {}), timestamp: row.timestamp } };
+    if (row) return { entry: await said({ text: row.text, ...(row.field ? { field: row.field } : {}), timestamp: row.timestamp }) };
     return page.isDone ? { entry: null } : { skipped: page.page.length, cursor: page.continueCursor };
   },
 });
@@ -439,13 +445,28 @@ export function findSearch(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspace
  * document's ID, which is what their own workspace's page of it goes by and no other search has.
  * `guest` is their role on that one.
  */
-export async function readableSearch(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, id: string): Promise<{ search: Doc<"searches">; guest: GuestRole | null } | null> {
-  const own = await findSearch(ctx, actor.workspaceId, id);
-  if (own) return { search: own, guest: null };
+async function readableSearch(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, id: string): Promise<{ search: Doc<"searches">; guest: GuestRole | null } | null> {
+  // The two kinds of ID never stand for each other: no search is made with a document's ID as its own (applyCommand).
   const searchId = ctx.db.normalizeId("searches", id);
-  const search = searchId ? await ctx.db.get("searches", searchId) : null;
+  if (!searchId) {
+    const own = await findSearch(ctx, actor.workspaceId, id);
+    return own ? { search: own, guest: null } : null;
+  }
+  const search = await ctx.db.get("searches", searchId);
   const guest = search ? await guestRole(ctx, actor, search) : null;
   return search && guest ? { search, guest } : null;
+}
+
+/**
+ * A query of a search as its guest reads it: with its workspace's shortcuts written out, since the
+ * guest's own workspace doesn't have them, or has them as something else.
+ *
+ * ponytail: one pass, as the person's own shortcuts get; an expansion that itself names a shortcut
+ * the guest also has is expanded again by their page. Marking the query as written out would stop that.
+ */
+async function writtenOut(ctx: Pick<QueryCtx, "db">, search: Doc<"searches">, query: string) {
+  const names = shortcutNames(query);
+  return names.length ? expandShortcuts(query, await shortcutExpansions(ctx, search.workspaceId, names)).expandedQuery : query;
 }
 
 /** Who a change to answers is recorded as: the assistant, or the person and what the page said. */
@@ -502,6 +523,8 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
   switch (command.kind) {
     case "createSearch": {
       validateSearch(command.search);
+      // A search's own ID is never one of the table's document IDs, which is what a guest's page of a shared search goes by (readableSearch).
+      if (ctx.db.normalizeId("searches", command.search.id)) throw new Error("Invalid saved search identity or timestamp.");
       if (await findSearch(ctx, workspaceId, command.search.id)) {
         if (command.ifExists === "keep") return;
         throw new Error("Search already exists.");
@@ -730,7 +753,9 @@ export const changeAction = defineUserMutation({
     const { userId, author } = actor;
     const key = `change:${args.requestId}`;
     const receipt = await received(ctx, userId, key);
-    if (!receipt) await checkRemoval(ctx, actor, args.command);
+    // A request already applied answers as it did then, whatever the person may do now.
+    if (receipt) return receipt.undo ? { undo: { path: "research/records:change" as const, args: { command: receipt.undo } } } : {};
+    await checkRemoval(ctx, actor, args.command);
     // A change to a search shared with the person to edit (#653) is made where the search is, under the ID it has there,
     // and noted in its Activity there. One shared to view isn't theirs to change. A guest's change is theirs to make, not
     // to take back: it returns no undo, and they restore no revision and copy no other search's history into it.
@@ -744,11 +769,11 @@ export const changeAction = defineUserMutation({
     const workspaceId = guest ? guest.workspaceId : actor.workspaceId;
     // What the change did to its search, for its Activity (#656): noted here, not declared, so a
     // retried request or a change that left the search as it was notes nothing.
-    const note = receipt ? null : searchNote(command);
+    const note = searchNote(command);
     const before = note ? await findSearch(ctx, workspaceId, note.id) : null;
-    const applied = receipt ? receipt.undo : await applyCommand(ctx, { userId, workspaceId }, command, author);
+    const applied = await applyCommand(ctx, { userId, workspaceId }, command, author);
     const undo = guest ? undefined : applied;
-    if (!receipt) await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
+    await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
     if (note) {
       const after = await findSearch(ctx, workspaceId, note.id);
       // Answers are kept apart from the search, so its revision doesn't move with them.

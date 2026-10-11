@@ -56,7 +56,7 @@ export function buildResultsUrl(searchId: string, params: Partial<ParsedSearchPa
 }
 
 /**
- * Build a SHAREABLE results URL: the query and filters, and the search's id when it's an account's.
+ * Build a SHAREABLE results URL: the query and filters, and the search's document id when it's an account's.
  *
  * With the id (#653), whoever can open the search opens the search itself: a member of its
  * workspace, or a guest it was shared with. Anyone else doesn't have it, and their

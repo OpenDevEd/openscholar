@@ -18,8 +18,8 @@ export function useItemHome(item: Item | null) {
 /**
  * Opens a link to an item in the workspace it's in (#651), when that's another of the person's
  * workspaces than the address names: a search shared in an organization opens there, whichever
- * workspace the link was opened from. A search shared with the person from outside (#653) opens
- * in their own workspace under its document's ID, which is what a member's link to it becomes.
+ * workspace the link was opened from. A search's link carries its document's ID (#653): a
+ * guest's page goes by that, in their own workspace, and a member's by the ID it has in its.
  */
 export function ItemHome() {
   const slug = useWorkspaceSlug();
@@ -30,7 +30,8 @@ export function ItemHome() {
   const home = useItemHome(item);
   if (home && item && (home.slug !== slug || home.id !== undefined)) {
     const query = params.toString();
-    redirect(workspaceHref(home.slug, home.id === undefined ? path : path.replace(item.id, home.id)) + (query ? `?${query}` : ""));
+    // Only a search goes by another ID, and its address is its results page.
+    redirect(workspaceHref(home.slug, home.id === undefined ? path : `/results/${encodeURIComponent(home.id)}`) + (query ? `?${query}` : ""));
   }
   return null;
 }

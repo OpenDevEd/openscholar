@@ -12,14 +12,12 @@ import { migrateLocalResearch, ResearchImportError } from "./migrate";
 
 type Page<T> = { page: T[]; isDone: boolean; continueCursor: string };
 /** A search as its read gives it: with who ran it in an organization, how many guests it has, and for one shared with the person their role and where it's from (#653). */
-export type WatchedSearch = NonNullable<FunctionReturnType<typeof api.research.records.getSearch>>;
+type WatchedSearch = NonNullable<FunctionReturnType<typeof api.research.records.getSearch>>;
 type Shortcut = { shorthand: string; expansion: string; createdAt: number };
 type Rating = { paperId: string; rating: number };
 type PaperResponses = SavedSearch["screeningResponses"][number];
 /** A set of reads by ID: each read under the IDs it takes, and which read has each ID. */
 type ReadsById<T> = { reads: Map<string, Watch<Page<T>>>; by: Map<string, string> };
-/** A Viewer's unsaved changes kept for one search. */
-const DRAFTS_KEPT = 200;
 /** How long shortcuts read for a single action stay read, for the code after it to expand with. */
 const ENSURE_MS = 10_000;
 type Subscription<T> = { localQueryResult: () => T | undefined; onUpdate: (callback: () => void) => () => void };
@@ -417,8 +415,15 @@ export class ResearchSession {
   private dispatch(command: ResearchCommand) {
     if (!this.listeners.size) throw new ResearchAccountChangedError();
     if (command.kind === "editSearch" && this.watched.get(command.id)?.value?.guest?.role === "viewer") {
-      // The newest of them: a page turned a thousand times keeps the last few hundred changes, which hold where it is.
-      this.drafts.set(command.id, [...(this.drafts.get(command.id) ?? []), command].slice(-DRAFTS_KEPT));
+      // A change to its fields folds into the one before it, so a page turned a thousand times is one draft, and nothing made earlier is dropped.
+      const drafts = this.drafts.get(command.id) ?? [];
+      const last = drafts.at(-1)?.edit;
+      const edit = command.edit;
+      if (last?.kind === "patch" && edit.kind === "patch") {
+        const fields = { ...Object.fromEntries(Object.entries(last.fields).filter(([field]) => !edit.clear.includes(field))), ...edit.fields };
+        drafts[drafts.length - 1] = { ...command, edit: { kind: "patch", fields, clear: [...last.clear.filter((field) => !(field in edit.fields)), ...edit.clear] } };
+      } else drafts.push(command);
+      this.drafts.set(command.id, drafts);
     } else this.pending.push({ requestId: crypto.randomUUID(), command });
     this.render(); this.notify(); void this.pump();
   }
