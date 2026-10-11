@@ -319,9 +319,12 @@ function Overlay({
             layoutDependency={open}
             transition={SHELL_SPRING}
             // On a phone it starts under the app's top bar, which sits above it.
-            // While an on-screen keyboard is up, it fits the part of the page still visible above it.
-            className="fixed bottom-3 right-3 top-[4.25rem] z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:right-4 md:top-4"
-            style={{ width: PANEL_W, borderRadius: 18, ...(keyboard ? { top: keyboard.top + 12, bottom: "auto", height: keyboard.height - 24 } : {}) }}
+            // While an on-screen keyboard is up, it fits the part of the page still visible above it, and still clears the top bar when that is in view.
+            className={cn(
+              "fixed bottom-3 right-3 z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:right-4",
+              keyboard ? "top-[max(calc(var(--keyboard-top)+0.75rem),4.25rem)] md:top-[max(calc(var(--keyboard-top)+0.75rem),1rem)]" : "top-[4.25rem] md:top-4",
+            )}
+            style={{ width: PANEL_W, borderRadius: 18, ...(keyboard ? { "--keyboard-top": `${keyboard.top}px`, bottom: keyboard.bottom + 12 } : {}) }}
             aria-label={t("label")}
           >
             {threadId ? <Here threadId={threadId} /> : null}

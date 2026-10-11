@@ -272,7 +272,7 @@ export function HistorySheet({
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("searchChats")}
               aria-label={t("searchChats")}
-              className="min-w-0 flex-1 bg-transparent outline-none text-base md:text-sm placeholder:text-muted-foreground"
+              className="min-w-0 flex-1 bg-transparent outline-none text-base md:pointer-fine:text-sm placeholder:text-muted-foreground"
             />
           </label>
           <TooltipHint label={t("newChat")}>
@@ -540,7 +540,7 @@ function LimitPicker({ label, listed, value, onChange }: { label: string; listed
             // Left, it shows the number in force: what was typed if it saved, the limit as it was if it didn't.
             onBlur={() => setTyped(null)}
             aria-label={t("own", { label })}
-            className="min-w-0 flex-1 bg-transparent text-base tabular-nums outline-none md:text-sm"
+            className="min-w-0 flex-1 bg-transparent text-base tabular-nums outline-none md:pointer-fine:text-sm"
           />
           <span className="shrink-0 text-xs text-muted-foreground">{t("credits", { count: number })}</span>
         </label>

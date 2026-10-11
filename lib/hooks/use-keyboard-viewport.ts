@@ -2,8 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 
-/** The part of the page still visible above an on-screen keyboard, in page pixels. */
-export type KeyboardViewport = { top: number; height: number };
+/** The part of the page still visible above an on-screen keyboard: its top, and its bottom measured up from the foot of the screen, in CSS pixels as `position: fixed` reads them. */
+export type KeyboardViewport = { top: number; bottom: number };
 
 let last: KeyboardViewport | null = null;
 
@@ -12,9 +12,12 @@ const KEYBOARD_MIN = 150;
 
 function read(): KeyboardViewport | null {
   const view = window.visualViewport;
+  // Safari's innerHeight shrinks with the keyboard; the layout viewport's height doesn't.
+  const layout = document.documentElement.clientHeight;
   // A pinch zoom shrinks the visible part too; only a keyboard shrinks it at scale 1.
-  if (!view || view.scale > 1.01 || document.documentElement.clientHeight - view.height < KEYBOARD_MIN) return (last = null);
-  if (last?.top !== view.offsetTop || last.height !== view.height) last = { top: view.offsetTop, height: view.height };
+  if (!view || view.scale > 1.01 || layout - view.height < KEYBOARD_MIN) return (last = null);
+  const bottom = layout - view.offsetTop - view.height;
+  if (last?.top !== view.offsetTop || last.bottom !== bottom) last = { top: view.offsetTop, bottom };
   return last;
 }
 
