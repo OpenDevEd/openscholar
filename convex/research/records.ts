@@ -458,13 +458,14 @@ async function readableSearch(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, id:
 }
 
 /**
- * A query of a search as its guest reads it: with its workspace's shortcuts written out, since the
- * guest's own workspace doesn't have them, or has them as something else.
+ * A query of a search as its guest reads it, or as it leaves for another workspace: with its
+ * workspace's shortcuts written out, since the other workspace doesn't have them, or has them as
+ * something else.
  *
  * ponytail: one pass, as the person's own shortcuts get; an expansion that itself names a shortcut
  * the guest also has is expanded again by their page. Marking the query as written out would stop that.
  */
-async function writtenOut(ctx: Pick<QueryCtx, "db">, search: Doc<"searches">, query: string) {
+export async function writtenOut(ctx: Pick<QueryCtx, "db">, search: Doc<"searches">, query: string) {
   const names = shortcutNames(query);
   return names.length ? expandShortcuts(query, await shortcutExpansions(ctx, search.workspaceId, names)).expandedQuery : query;
 }

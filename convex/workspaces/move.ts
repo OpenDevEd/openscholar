@@ -10,7 +10,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery, type Acting } from "../lib/userActions";
-import { findSearch } from "../research/records";
+import { findSearch, writtenOut } from "../research/records";
 import { screeningFor } from "../research/answers";
 import { noteActivity } from "../activity/notes";
 import { itemKey } from "../activity/validators";
@@ -170,7 +170,9 @@ async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">,
     const search = await findSearch(ctx, from, id);
     if (!search) throw createError("NOT_FOUND", "Search not found");
     if (await findSearch(ctx, to, id)) throw createError("CONFLICT", "That workspace has this search already.");
-    await ctx.db.patch("searches", search._id, { workspaceId: to });
+    // The bookmarks its query names are the workspace's it leaves: written out, it goes on searching for what it did.
+    const query = await writtenOut(ctx, search, search.data.query);
+    await ctx.db.patch("searches", search._id, { workspaceId: to, ...(query === search.data.query ? {} : { data: { ...search.data, query } }) });
     // Its answers and the screenings that wrote them go with it; the papers they saved stay in the library they went to.
     const { screening, jobs } = await screeningsOf(ctx, search);
     if (screening) await ctx.db.patch("screenings", screening._id, { workspaceId: to });

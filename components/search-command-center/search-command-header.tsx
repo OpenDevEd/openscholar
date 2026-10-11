@@ -2,7 +2,7 @@
 
 import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import { ItemPresence } from "@/components/workspaces/presence";
-import React, { useState } from "react";
+import React, { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Share2, Check, Copy, Download, History, MoreHorizontal, Move } from "@/components/icons";
 import { ActivitySheet } from "@/components/workspaces/activity";
@@ -87,11 +87,14 @@ export function SearchCommandHeader({
   const workspace = useCurrentWorkspace();
   const shares = useResearchSession() !== null && hasActivity && access !== undefined;
   // Someone else's search, a member's or one shared with you: as it shows now, saved as your own in the workspace you're in.
+  const [copying, startCopy] = useTransition();
   const saveCopy = access && (guest || (access.by && !access.by.you)) && search
     ? () => {
+        // A second press while the copy opens makes no second copy.
+        if (copying) return;
         const entry = paramsToSearchResult(search.params);
         const id = useSearchHistoryStore.getState().addSearchResult(entry);
-        router.push(buildResultsUrl(id, searchResultToParams({ ...entry, id } as SearchResult)));
+        startCopy(() => router.push(buildResultsUrl(id, searchResultToParams({ ...entry, id } as SearchResult))));
       }
     : null;
   const getShareableUrl = search?.getShareableUrl ?? (() => "");
