@@ -13,15 +13,6 @@ export const authorContentFields = {
   openalex: v.string(),
 };
 
-export const authorProfileInvitationFields = {
-  profileId: v.id("authorProfiles"),
-  email: v.string(),
-  invitedBy: v.id("users"),
-  expiresAt: v.number(),
-  state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
-  delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
-};
-
 export const profileRoleValidator = v.union(v.literal("owner"), v.literal("editor"));
 
 /** Its editors, who are its guests (#653), and its owners through its workspace: its maker, the person whose own workspace it is, and an organization's admins (./access.ts `profileOwners`). */

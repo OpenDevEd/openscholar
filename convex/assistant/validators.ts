@@ -268,19 +268,6 @@ export const assistantJobFields = {
   jobId: v.string(),
 };
 
-export const assistantThreadAccessFields = {
-  threadId: v.id("assistantThreads"),
-  /**
-   * Who this row lets in: `user:<id>` or `organization:<id>` (./access.ts). A chat has one
-   * row per principal, its owner's included, so each person's chats list through one index.
-   */
-  principal: v.string(),
-  role: assistantRoleValidator,
-  /** The chat's `lastMessageAt`, copied on every message, which is what the lists order by. */
-  lastMessageAt: v.number(),
-  createdAt: v.number(),
-};
-
 /** People a chat's row in the list of chats names. */
 export const ASSISTANT_MEMBERS_SHOWN = 3;
 /** The first few people in a chat besides the reader, those who have it open now first. */

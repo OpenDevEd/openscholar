@@ -303,9 +303,7 @@ import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
 import type * as migrations_adoptLibraryRatings from "../migrations/adoptLibraryRatings.js";
 import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
-import type * as migrations_authorAccess from "../migrations/authorAccess.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
-import type * as migrations_chatAccess from "../migrations/chatAccess.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
 import type * as migrations_extractionAnswers from "../migrations/extractionAnswers.js";
 import type * as migrations_extractionEvidence from "../migrations/extractionEvidence.js";
@@ -313,7 +311,6 @@ import type * as migrations_extractionFacets from "../migrations/extractionFacet
 import type * as migrations_extractionSearch from "../migrations/extractionSearch.js";
 import type * as migrations_forgetPersonCounts from "../migrations/forgetPersonCounts.js";
 import type * as migrations_itemRaters from "../migrations/itemRaters.js";
-import type * as migrations_libraryAccess from "../migrations/libraryAccess.js";
 import type * as migrations_makerCounts from "../migrations/makerCounts.js";
 import type * as migrations_memberSpending from "../migrations/memberSpending.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
@@ -326,7 +323,6 @@ import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibrar
 import type * as migrations_paperMetadata from "../migrations/paperMetadata.js";
 import type * as migrations_placeRatings from "../migrations/placeRatings.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
-import type * as migrations_removeOrphanLibraryAccess from "../migrations/removeOrphanLibraryAccess.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
 import type * as migrations_screeningSearch from "../migrations/screeningSearch.js";
@@ -735,9 +731,7 @@ declare const fullApi: ApiFromModules<{
   "maintenance/mutations": typeof maintenance_mutations;
   "migrations/adoptLibraryRatings": typeof migrations_adoptLibraryRatings;
   "migrations/assistantJobs": typeof migrations_assistantJobs;
-  "migrations/authorAccess": typeof migrations_authorAccess;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
-  "migrations/chatAccess": typeof migrations_chatAccess;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
   "migrations/extractionAnswers": typeof migrations_extractionAnswers;
   "migrations/extractionEvidence": typeof migrations_extractionEvidence;
@@ -745,7 +739,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/extractionSearch": typeof migrations_extractionSearch;
   "migrations/forgetPersonCounts": typeof migrations_forgetPersonCounts;
   "migrations/itemRaters": typeof migrations_itemRaters;
-  "migrations/libraryAccess": typeof migrations_libraryAccess;
   "migrations/makerCounts": typeof migrations_makerCounts;
   "migrations/memberSpending": typeof migrations_memberSpending;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
@@ -758,7 +751,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/paperMetadata": typeof migrations_paperMetadata;
   "migrations/placeRatings": typeof migrations_placeRatings;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
-  "migrations/removeOrphanLibraryAccess": typeof migrations_removeOrphanLibraryAccess;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
   "migrations/screeningSearch": typeof migrations_screeningSearch;

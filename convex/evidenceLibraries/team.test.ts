@@ -5,7 +5,6 @@ import { api, internal } from "../_generated/api";
 import { applyUserDeleteProjection } from "../users/internal";
 import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
 import { organizationOfLibrary } from "../../tests/helpers/evidence-library-setup-fixture";
-import { readLibraryRole } from "./access";
 import { grantLibraryRole } from "./team.test-support";
 
 describe("listTeam", () => {
@@ -172,47 +171,6 @@ describe("listTeam", () => {
     const candidates = await fixture.admin.query(api.evidenceLibraries.queries.listOrganizationPeople, {libraryId, paginationOpts: {cursor: null, numItems: 50}});
     expect([...team.creators, ...candidates.page].map(person => person.clerkUserId)).not.toContain("deleted_user");
     expect(await fixture.t.run(ctx => ctx.db.query("itemAccess").collect())).toEqual([]);
-  });
-
-  it("keeps the roles and the waiting invitations a library had before, on the tables every shared item uses", async () => {
-    const fixture = await createActivatedSetupFixture("team_move");
-    const libraryId = fixture.created.libraryId;
-    const library = (await fixture.t.run(ctx => ctx.db.get("evidenceLibraries", libraryId)))!;
-    await fixture.t.run(async ctx => {
-      for (const clerkId of ["old_editor", "old_creator", "old_gone"]) await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: clerkId === "old_gone" ? "deleted" : "active", createdAt: 1, updatedAt: 1 });
-      const role = (clerkUserId: string, role: "editor" | "creator") => ctx.db.insert("evidenceLibraryMembers", { libraryId, clerkUserId, role, grantedBy: library.createdByClerkUserId, grantedAt: 5 });
-      await role("old_editor", "editor");
-      await role("old_creator", "creator");
-      // A deleted account, and one that never reached us: neither has anyone to give a role to.
-      await role("old_gone", "editor");
-      await role("never_seen", "creator");
-      const invitation = (email: string, state: "pending" | "declined") => ctx.db.insert("evidenceLibraryInvitations", { libraryId, email, role: "creator", invitedBy: library.createdByClerkUserId, expiresAt: Date.now() + 86_400_000, state, delivery: "sent" });
-      await invitation("waiting@example.org", "pending");
-      await invitation("answered@example.org", "declined");
-    });
-    const roles = () => fixture.t.run(async ctx => Promise.all(["old_editor", "old_creator", "old_gone"].map(clerkId => readLibraryRole(ctx, library, clerkId))));
-    expect(await roles()).toEqual([null, null, null]);
-    expect(await fixture.t.action(internal.migrations.libraryAccess.verify, {})).toBe(2);
-    // The two moves run one after the other, each in steps of its own. The invitation's seven days stay ahead of it.
-    const moved = async () => {
-      await fixture.t.mutation(internal.migrations.libraryAccess.run, {});
-      for (let step = 0; step < 20; step++) {
-        await new Promise((resolve) => setTimeout(resolve, 5));
-        await fixture.t.finishInProgressScheduledFunctions();
-      }
-    };
-    await moved();
-    // Run again, it changes nothing.
-    await moved();
-    expect(await fixture.t.action(internal.migrations.libraryAccess.verify, {})).toBe(0);
-    // Each keeps the role they had: an editor still reviews and publishes, and a creator still can't.
-    expect(await roles()).toEqual(["editor", "creator", null]);
-    expect(await fixture.t.run(async ctx => (await ctx.db.query("itemAccess").collect()).map(({ kind, item, role, grantedAt }) => ({ kind, item, role, grantedAt })))).toEqual([
-      { kind: "library", item: libraryId, role: "editor", grantedAt: 5 },
-      { kind: "library", item: libraryId, role: "creator", grantedAt: 5 },
-    ]);
-    expect(await fixture.t.run(async ctx => (await ctx.db.query("itemInvitations").collect()).map(({ kind, email, role, state, delivery }) => ({ kind, email, role, state, delivery })))).toEqual([{ kind: "library", email: "waiting@example.org", role: "creator", state: "pending", delivery: "sent" }]);
-    expect((await fixture.admin.query(api.evidenceLibraries.queries.listTeam, { libraryId })).invitations.map(({ email, role }) => ({ email, role }))).toEqual([{ email: "waiting@example.org", role: "creator" }]);
   });
 
   it("refuses a library from another organisation", async () => {

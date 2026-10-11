@@ -55,11 +55,11 @@ import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidator
 import { evidenceLibraryCollectionSourceFields } from "./evidenceLibraries/collectionSourceValidators";
 import { evidenceLibrarySourceStatusFields } from "./evidenceLibraries/sourceStatusValidators";
 
-import { authorContentFields, authorProfileInvitationFields } from "./authors/validators";
+import { authorContentFields } from "./authors/validators";
 
 import { topicNodeFields, metadataValidator, recordTopicIdsValidator } from "./topics/validators";
 import { billingAccountFields, billingCatalogValidator, billingUsageFields } from "./billing/validators";
-import { assistantLimitFields, assistantSpenderFields, assistantThreadAccessFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields, assistantFileFields } from "./assistant/validators";
+import { assistantLimitFields, assistantSpenderFields, assistantThreadFields, assistantStepFields, assistantStepResultFields, assistantJobEndFields, assistantJobFields, assistantStepUndoFields, assistantFileFields } from "./assistant/validators";
 import { customPicksValidator, effortValidator, modelChoiceValidator, modelEffortsValidator, modelModalitiesValidator, modelParametersValidator } from "./aiModelConfig/validators";
 import { fieldValidator, paperAnswersValidator, removalsValidator, shortcutValidator, storedSearchValidator, undoCommandValidator } from "../lib/research/records";
 
@@ -181,17 +181,6 @@ export default defineSchema({
   }).index("by_workspace", ["workspaceId"])
     .searchIndex("search_name", {searchField: "name"}),
 
-  authorProfileMembers: defineTable({
-    profileId: v.id("authorProfiles"),
-    userId: v.id("users"),
-  }).index("by_profileId_and_userId", ["profileId", "userId"])
-    .index("by_userId", ["userId"]),
-
-  authorProfileInvitations: defineTable(authorProfileInvitationFields)
-    .index("by_profileId_and_email", ["profileId", "email"])
-    .index("by_profileId_and_state", ["profileId", "state"])
-    .index("by_email_and_state", ["email", "state"]),
-
   clerkEventLogs: defineTable(clerkEventLogFields)
     .index("by_instanceId_and_eventId", ["instanceId", "eventId"])
     .index("by_entity_outcome_time_and_eventId", [
@@ -270,10 +259,6 @@ export default defineSchema({
     .index("by_state_and_usedAt", ["state", "usedAt"])
     .index("by_parent_and_range", ["parentId", "range"])
     .index("by_thread_and_name", ["threadId", "name"]),
-  assistantThreadAccess: defineTable(assistantThreadAccessFields)
-    // A person's chats, newest first, through each of their principals.
-    .index("by_principal_and_lastMessageAt", ["principal", "lastMessageAt"])
-    .index("by_thread_and_principal", ["threadId", "principal"]),
 
   // Each approved OpenAlex query version a library has published, with its query's
   // fingerprint, so a sources save checks versions without reading every revision (#357).
@@ -285,28 +270,6 @@ export default defineSchema({
     .index("by_workspace_and_state", ["workspaceId", "state"])
     .index("by_workspace_and_name_and_state", ["workspaceId", "name", "state"])
     .index("by_workspace_and_slug", ["workspaceId", "slug"]),
-
-  evidenceLibraryInvitations: defineTable({
-    libraryId: v.id("evidenceLibraries"),
-    email: v.string(),
-    role: v.union(v.literal("editor"), v.literal("creator")),
-    invitedBy: v.string(),
-    expiresAt: v.number(),
-    state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
-    delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
-  }).index("by_libraryId_and_email_and_state", ["libraryId", "email", "state"])
-    .index("by_libraryId_and_state", ["libraryId", "state"])
-    .index("by_email_and_state", ["email", "state"]),
-
-  evidenceLibraryMembers: defineTable({
-    libraryId: v.id("evidenceLibraries"),
-    clerkUserId: v.string(),
-    role: v.union(v.literal("editor"), v.literal("creator")),
-    grantedBy: v.string(),
-    grantedAt: v.number(),
-  })
-    .index("by_libraryId_and_clerkUserId", ["libraryId", "clerkUserId"])
-    .index("by_clerkUserId", ["clerkUserId"]),
 
   evidenceLibraryConfigDrafts: defineTable(evidenceLibraryConfigDraftFields)
     .index("by_libraryId", ["libraryId"])

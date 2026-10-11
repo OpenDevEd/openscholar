@@ -1,6 +1,6 @@
 // Assistant chats (#324): who can open, change and share one, and how a person's chats list.
 import { convexTest } from "convex-test";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { api, components, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
@@ -263,37 +263,6 @@ describe("assistant chats", () => {
     await waitFor(async () => (await t.run((ctx) => ctx.db.query("itemAccess").take(5))).length === 0);
     // The lab's chat stays the lab's.
     expect(await asBen.query(api.assistant.threads.get, { workspaceId: lab, threadId: labs })).toMatchObject({ title: "Ada's lab chat" });
-  });
-
-  it("keep the people they were shared with before, as guests who view or edit", async () => {
-    const t = convexTest(schema);
-    const { asAda, asBen, asCy, ada, ben, cy, team } = await people(t);
-    const threadId = await asAda.mutation(api.assistant.threads.create, { title: "Reading trials" });
-    await t.run(async (ctx) => {
-      const row = (principal: string, role: "owner" | "write" | "read") => ctx.db.insert("assistantThreadAccess", { threadId, principal, role, lastMessageAt: 5, createdAt: 3 });
-      await row(`user:${ada}`, "owner");
-      await row(`user:${ben}`, "write");
-      await row(`user:${cy}`, "read");
-      // Shared with a whole organization, which a chat no longer is: left where it was, and counted.
-      await row(`organization:${team}`, "read");
-    });
-    expect(await t.action(internal.migrations.chatAccess.verify, {})).toBe(1);
-    vi.useFakeTimers();
-    try {
-      await t.mutation(internal.migrations.chatAccess.run, {});
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-      // Run again, it changes nothing.
-      await t.mutation(internal.migrations.chatAccess.run, {});
-      await t.finishAllScheduledFunctions(vi.runAllTimers);
-    } finally { vi.useRealTimers(); }
-    expect(await t.action(internal.migrations.chatAccess.verify, {})).toBe(0);
-    expect(await asBen.query(api.assistant.threads.get, { threadId })).toMatchObject({ role: "write" });
-    expect(await asCy.query(api.assistant.threads.get, { threadId })).toMatchObject({ role: "read" });
-    expect(await t.run(async (ctx) => (await ctx.db.query("itemAccess").collect()).map(({ userId, role, name }) => ({ userId, role, name })))).toEqual([
-      { userId: ben, role: "editor", name: "Reading trials" },
-      { userId: cy, role: "viewer", name: "Reading trials" },
-    ]);
-    expect(await t.query(internal.migrations.chatAccess.organizations, { cursor: null })).toMatchObject({ found: 1, isDone: true });
   });
 
   it("are refused while the assistant is switched off", async () => {
