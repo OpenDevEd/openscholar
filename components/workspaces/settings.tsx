@@ -32,6 +32,7 @@ import { showStyledToast } from "@/components/ui/sonner";
 import { TooltipHint } from "@/components/ui/tooltip";
 import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
+import type { FunctionReturnType } from "convex/server";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
@@ -83,13 +84,19 @@ function useAttempt() {
 
 // ─── General ─────────────────────────────────────────────────────────────
 
-export function WorkspaceGeneral() {
+/** What General shows, read on the server with the page, so it stands at its full height from the first frame. */
+export type GeneralInitial = { organization: FunctionReturnType<typeof api.organizations.queries.workspace>; summary: FunctionReturnType<typeof api.organizations.queries.summary> };
+
+export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
   const t = useTranslations("workspaces.settings");
   const tw = useTranslations("workspaces");
   const tc = useTranslations("common");
   const router = useRouter();
-  const { workspaceId, organization, admin } = useOrganization();
-  const { data: summary } = useProtectedQuery(api.organizations.queries.summary, inWorkspace(workspaceId, {}));
+  const live = useOrganization();
+  const { workspaceId } = live;
+  const organization = live.organization ?? (initial?.organization.kind === "organization" ? initial.organization : undefined);
+  const admin = organization?.role === "admin";
+  const summary = useProtectedQuery(api.organizations.queries.summary, inWorkspace(workspaceId, {})).data ?? initial?.summary;
   const rename = useWorkspaceAction(api.organizations.manage.rename);
   const setColour = useWorkspaceMutation(api.organizations.manage.setColour);
   const setLogo = useWorkspaceAction(api.organizations.manage.setLogo);
@@ -103,19 +110,18 @@ export function WorkspaceGeneral() {
   // The organization's plan no longer includes Evidence Libraries, so the library's own pages are shut: it's deleted from here (#652).
   const [removing, setRemoving] = useState(false);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
-  // The organization is in hand from the rail, so the page is its full height at once; what it counts fills in where it goes.
-  if (!organization) return <Enter ready={false}>{null}</Enter>;
+  if (!organization || !summary) return <Enter ready={false}>{null}</Enter>;
 
   const { name, slug } = organization;
   const address = `${window.location.host}/o/${slug}`;
   const tint = workspaceTint(organization);
-  const lastAdmin = admin && summary?.admins === 1;
+  const lastAdmin = admin && summary.admins === 1;
   const contents = [
-    { icon: Folder, tint: "#e8890c", label: t("collections"), n: summary?.collections, href: "/library" },
-    { icon: Search, tint: "#60a5fa", label: t("searches"), n: summary?.searches, href: "/history" },
-    { icon: ListFilter, tint: "#34d399", label: t("screenings"), n: summary?.screenings, href: "/screening" },
-    { icon: FileSearch, tint: "#818cf8", label: t("extractions"), n: summary?.extractions, href: "/extraction" },
-    { icon: EvidenceLibrariesIcon, tint: "#2dd4bf", label: t("evidenceLibraries"), n: summary?.libraries, href: "/evidence-libraries" },
+    { icon: Folder, tint: "#e8890c", label: t("collections"), n: summary.collections, href: "/library" },
+    { icon: Search, tint: "#60a5fa", label: t("searches"), n: summary.searches, href: "/history" },
+    { icon: ListFilter, tint: "#34d399", label: t("screenings"), n: summary.screenings, href: "/screening" },
+    { icon: FileSearch, tint: "#818cf8", label: t("extractions"), n: summary.extractions, href: "/extraction" },
+    { icon: EvidenceLibrariesIcon, tint: "#2dd4bf", label: t("evidenceLibraries"), n: summary.libraries, href: "/evidence-libraries" },
   ];
   const saveName = () => {
     const next = draft?.trim();
@@ -236,7 +242,7 @@ export function WorkspaceGeneral() {
                 <Link href={c.href} className="flex items-center gap-3 p-3 transition-colors hover:bg-muted">
                   <Tile icon={c.icon} tint={c.tint} />
                   <span className="flex-1 text-sm font-medium">{c.label}</span>
-                  {c.n === undefined ? null : <span className="fade-enter text-sm tabular-nums text-muted-foreground">{c.n}</span>}
+                  <span className="text-sm tabular-nums text-muted-foreground">{c.n}</span>
                   <ChevronRight className="size-4 text-muted-foreground" />
                 </Link>
               </li>
@@ -252,8 +258,7 @@ export function WorkspaceGeneral() {
                 <p className="text-xs text-muted-foreground">{t("leaveDetail")}</p>
               </div>
               <Guarded reason={lastAdmin ? t("makeAdminFirst") : null}>
-                {/* Off until it's known whether you're its only admin. */}
-                <Button variant="outline" size="sm" disabled={!summary} onClick={() => setConfirm("leave")}>
+                <Button variant="outline" size="sm" onClick={() => setConfirm("leave")}>
                   <LogOut /> {t("leave")}
                 </Button>
               </Guarded>
@@ -262,30 +267,25 @@ export function WorkspaceGeneral() {
               <li className="flex items-center gap-3 p-3 pl-4">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{t("deleteName", { name })}</p>
-                  {/* The line keeps its height until what stands in the way of deleting is read, and says nothing before. */}
-                  <p className="min-h-4 text-xs text-muted-foreground">
-                    {!summary ? null : (
-                      <span className="fade-enter">
-                        {summary.removable?.state === "deleting" ? t("libraryBeingDeleted", { library: summary.removable.name })
-                          : summary.removable?.state === "failed" ? t("libraryDeleteFailed", { library: summary.removable.name })
-                          : summary.library ? t("stillHasLibrary", { library: summary.library })
-                          : t("deleteDetail", { count: organization.members ?? 0 })}
-                      </span>
-                    )}
+                  <p className="text-xs text-muted-foreground">
+                    {summary.removable?.state === "deleting" ? t("libraryBeingDeleted", { library: summary.removable.name })
+                      : summary.removable?.state === "failed" ? t("libraryDeleteFailed", { library: summary.removable.name })
+                      : summary.library ? t("stillHasLibrary", { library: summary.library })
+                      : t("deleteDetail", { count: organization.members ?? 0 })}
                   </p>
                 </div>
-                {summary?.removable?.state === "held" ? (
+                {summary.removable?.state === "held" ? (
                   <Button variant="outline" size="sm" onClick={() => setRemoving(true)}>
                     <Trash2 /> {t("deleteLibrary")}
                   </Button>
-                ) : summary?.removable?.state === "failed" ? (
+                ) : summary.removable?.state === "failed" ? (
                   // A deletion that stopped part-way is tried again here: the libraries' own list, where it is otherwise, is shut with the plan.
-                  <Button variant="outline" size="sm" disabled={busy === "library"} onClick={() => void attempt("library", () => restartTeardown({ libraryId: summary!.removable!._id }))}>
+                  <Button variant="outline" size="sm" disabled={busy === "library"} onClick={() => void attempt("library", () => restartTeardown({ libraryId: summary.removable!._id }))}>
                     <RotateCcw /> {tc("retry")}
                   </Button>
                 ) : null}
-                <Guarded reason={summary?.library ? t("moveLibrariesFirst") : null}>
-                  <Button variant="outline" size="sm" disabled={!summary} className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirm("delete")}>
+                <Guarded reason={summary.library ? t("moveLibrariesFirst") : null}>
+                  <Button variant="outline" size="sm" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setConfirm("delete")}>
                     <Trash2 /> {t("delete")}
                   </Button>
                 </Guarded>
@@ -295,7 +295,7 @@ export function WorkspaceGeneral() {
         </Zone>
       </div>
 
-      {summary?.removable ? (
+      {summary.removable ? (
         <DeleteLibraryDialog libraryId={summary.removable._id} name={summary.removable.name} address={summary.removable.publicAddress} open={removing} onOpenChange={setRemoving} />
       ) : null}
       <AlertDialog open={confirm !== null} onOpenChange={(open) => !open && setConfirm(null)}>
