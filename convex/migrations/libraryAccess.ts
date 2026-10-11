@@ -2,7 +2,7 @@ import { Migrations } from "@convex-dev/migrations";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
 import type { DataModel } from "../_generated/dataModel";
-import { internalAction, type QueryCtx } from "../_generated/server";
+import { internalAction, internalQuery, type QueryCtx } from "../_generated/server";
 import { libraryGrant } from "../evidenceLibraries/access";
 import { internalMutation } from "../lib/functions";
 import { invitationTo } from "../sharing/access";
@@ -14,6 +14,7 @@ import { invitationTo } from "../sharing/access";
  * deleted or was never made stays behind, as does an invitation that's answered, cancelled or
  * past its time. Safe to run again: a role or an invitation already there is left as it is.
  *
+ *   npx convex run migrations/libraryAccess:audit '{"cursor": null}'
  *   npx convex run migrations/libraryAccess:run
  *   npx convex run migrations/libraryAccess:verify
  */
@@ -45,6 +46,28 @@ export const invitations = migrations.define({
 });
 
 export const run = migrations.runner([internal.migrations.libraryAccess.members, internal.migrations.libraryAccess.invitations]);
+
+/**
+ * A page of the old roles and what became of each: moved, or left behind because its library is
+ * gone, its account was deleted, or its account never reached us. The last is the one to look
+ * into before the old table is dropped: a role is an account's, and theirs would be lost.
+ */
+export const audit = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()) },
+  returns: v.object({ moved: v.number(), libraryGone: v.number(), accountDeleted: v.number(), noAccount: v.array(v.string()), isDone: v.boolean(), continueCursor: v.string() }),
+  handler: async (ctx, { cursor }) => {
+    const page = await ctx.db.query("evidenceLibraryMembers").paginate({ cursor, numItems: 200 });
+    const found = { moved: 0, libraryGone: 0, accountDeleted: 0, noAccount: [] as string[] };
+    for (const member of page.page) {
+      const [library, person] = await Promise.all([ctx.db.get("evidenceLibraries", member.libraryId), account(ctx, member.clerkUserId)]);
+      if (!library) found.libraryGone++;
+      else if (!person) found.noAccount.push(member.clerkUserId);
+      else if (person.state === "deleted") found.accountDeleted++;
+      else if (await libraryGrant(ctx, library._id, person._id)) found.moved++;
+    }
+    return { ...found, isDone: page.isDone, continueCursor: page.continueCursor };
+  },
+});
 
 /** How many of the two moves haven't run to the end of their table; 0 when both have. */
 export const verify = internalAction({

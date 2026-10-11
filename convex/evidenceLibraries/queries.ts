@@ -360,8 +360,9 @@ async function ownWorkspace(ctx: QueryCtx) {
 
 /** The organization a page is in, for a member who isn't one of its admins: they view its libraries (#653). Null for anyone else. */
 async function viewedOrganization(ctx: QueryCtx, clerkUserId: string, organizationId: Id<"organizations">) {
-  const organization = await ctx.db.get("organizations", organizationId);
-  if (organization?.state !== "active" || !(await readActiveOrganizationMembership(ctx, organizationId, clerkUserId))) return null;
+  const [organization, person] = await Promise.all([ctx.db.get("organizations", organizationId), userOf(ctx, clerkUserId)]);
+  // A membership outlives a suspended or deleted account for a while: it views nothing.
+  if (organization?.state !== "active" || person?.state !== "active" || !(await readActiveOrganizationMembership(ctx, organizationId, clerkUserId))) return null;
   return { name: organization.name, imageUrl: organization.imageUrl ?? null, workspaceId: await organizationWorkspaceOf(ctx, organizationId) };
 }
 
@@ -374,11 +375,16 @@ async function grantedLibrary(ctx: QueryCtx, clerkUserId: string, owned: Set<Id<
   return role && owner ? { library, role, owner, shown: await ownerName(ctx, owner) } : null;
 }
 
-const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, role: Infer<typeof libraryListRoleValidator>, owner: { name: string; imageUrl: string | null }) => ({
-  ...(await readLibraryOverview(ctx, library)),
-  role,
-  organization: owner,
-});
+/**
+ * A library as its list shows it. A viewer's row keeps its name, address and state: how it is being
+ * set up, updated or taken down is for the people with a role in it, and so is the look of one
+ * that isn't live yet.
+ */
+const overviewRow = async (ctx: QueryCtx, library: Doc<"evidenceLibraries">, role: Infer<typeof libraryListRoleValidator>, owner: { name: string; imageUrl: string | null }) => {
+  const { teardownFailedStep, ...overview } = await readLibraryOverview(ctx, library);
+  if (role !== "viewer") return { ...overview, ...(teardownFailedStep ? { teardownFailedStep } : {}), role, organization: owner };
+  return { ...overview, setupStage: null, teardownStage: null, operation: null, lastActivatedAt: null, ...(overview.status === "active" ? {} : { accentColor: null, faviconUrl: null }), role, organization: owner };
+};
 
 /**
  * One page of the libraries a person can open: those in their own workspace, then those of

@@ -135,7 +135,15 @@ describe("listTeam", () => {
     expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
     // With no role in it, a member of its organization views it there, and has nothing to do with its admin.
     expect(await inOrganization()).toEqual([{ _id: libraryId, role: "viewer" }]);
+    // Their account suspended, the membership that outlives it views nothing.
+    const account = (state: "active" | "suspended") => fixture.t.run(async ctx => ctx.db.patch("users", (await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", "user_creator")).unique())!._id, { state }));
+    await account("suspended");
+    expect(await inOrganization()).toEqual([]);
+    await account("active");
+    // Invited by email before they were picked from the organization: the role they're given answers the invitation, and holds its place.
+    await fixture.admin.mutation(internal.evidenceLibraries.invitations.prepare, { libraryId, email: "creator@example.org", role: "editor" });
     await fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_creator", role: "creator" });
+    expect(await fixture.t.run(async ctx => (await ctx.db.query("itemInvitations").collect()).map(({ email, state }) => ({ email, state })))).toEqual([{ email: "creator@example.org", state: "accepted" }]);
     expect(await inOrganization()).toEqual([{ _id: libraryId, role: "creator" }]);
     expect((await creator.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([
       expect.objectContaining({ _id: libraryId, role: "creator" }),

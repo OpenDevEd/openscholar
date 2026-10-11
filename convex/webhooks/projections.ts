@@ -84,7 +84,7 @@ async function upsertOrganizationSnapshot(
  * schedules the next until every grant made up to `before`, their newest when they left, has been
  * looked at: no grant outlives the membership, however many the person holds.
  */
-async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizationId: Id<"organizations">, cursor: string | null, before: number) {
+async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizationId: Id<"organizations">, cursor: string | null, before: number, made: number) {
   const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
   if (!user) return;
   // Their roles in libraries are rows of the table every shared item's guests are in (../evidenceLibraries/access.ts).
@@ -95,11 +95,11 @@ async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizat
   const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique();
   if (!workspace) return;
   for (const assignment of page.page) {
-    // A grant made since they left, by a later invitation, is theirs to keep.
-    if (assignment.grantedAt > before) continue;
+    // A grant made since they left, by a later invitation, is theirs to keep: given later, or in the same millisecond and made after.
+    if (assignment.grantedAt > before || (assignment.grantedAt === before && assignment._creationTime > made)) continue;
     if ((await libraryOf(ctx, assignment))?.workspaceId === workspace._id) await ctx.db.delete("itemAccess", assignment._id);
   }
-  if (!page.isDone) await ctx.scheduler.runAfter(0, internal.webhooks.projections.revokeGrants, { clerkUserId, organizationId, cursor: page.continueCursor, before });
+  if (!page.isDone) await ctx.scheduler.runAfter(0, internal.webhooks.projections.revokeGrants, { clerkUserId, organizationId, cursor: page.continueCursor, before, made });
 }
 
 /**
@@ -126,10 +126,10 @@ export const revokeMemberships = internalMutation({
 });
 
 export const revokeGrants = internalMutation({
-  args: { clerkUserId: v.string(), organizationId: v.id("organizations"), cursor: v.string(), before: v.number() },
+  args: { clerkUserId: v.string(), organizationId: v.id("organizations"), cursor: v.string(), before: v.number(), made: v.number() },
   returns: v.null(),
-  handler: async (ctx, { clerkUserId, organizationId, cursor, before }) => {
-    await revokeGrantsPage(ctx, clerkUserId, organizationId, cursor, before);
+  handler: async (ctx, { clerkUserId, organizationId, cursor, before, made }) => {
+    await revokeGrantsPage(ctx, clerkUserId, organizationId, cursor, before, made);
     return null;
   },
 });
@@ -253,11 +253,12 @@ export async function applyMembershipProjection(
         }
       }
       if (args.membership.state === "revoked") {
-        // The sweep takes the grants up to the newest they hold now, by when each was given: the
-        // event's own clock can't draw that line, and one given after they left is later than it.
+        // The sweep takes the grants up to the newest they hold now, as their list orders them: by when each
+        // was given, then by when its row was made. A clock can't draw that line: a grant given a moment
+        // later can carry the same millisecond.
         const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.membership.clerkUserId)).unique();
         const newest = user ? await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", q => q.eq("userId", user._id).eq("kind", "library")).order("desc").first() : null;
-        if (newest) await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null, newest.grantedAt);
+        if (newest) await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null, newest.grantedAt, newest._creationTime);
         // Read, not made: a deleted organization's workspace is purged, and a late event mustn't bring it back.
         const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique();
         if (user && workspace) {

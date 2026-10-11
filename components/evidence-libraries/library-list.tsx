@@ -238,6 +238,10 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         >
                           {library.name}
                         </Link>
+                      ) : library.role === "Viewer" ? (
+                        <a href={`https://${library.address}`} target="_blank" rel="noopener noreferrer" className="truncate text-sm font-medium hover:underline">
+                          {library.name}
+                        </a>
                       ) : (
                         <AdminAreaLink
                           address={`https://${library.address}`}

@@ -5,6 +5,7 @@ import { mutation } from "../lib/functions";
 import { libraryGrant, requireEvidenceLibraryAccess, readLibraryRole } from "./access";
 import { createError } from "../lib/errors";
 import { assertLibraryHasRoom, assertPersonHasRoom } from "./members";
+import { invitationTo } from "../sharing/access";
 
 const collaboratorRole = v.union(v.literal("editor"), v.literal("creator"));
 
@@ -34,7 +35,10 @@ export const addOrganizationMember = mutation({
     if (await readLibraryRole(ctx, access.library, args.clerkUserId) || await libraryGrant(ctx, args.libraryId, person._id)) {
       throw createError("CONFLICT", "This person already has access");
     }
-    await assertLibraryHasRoom(ctx, args.libraryId);
+    // An invitation to their address that still waits is answered by this: its place in the library becomes theirs.
+    const waiting = await invitationTo(ctx, args.libraryId, person.email.toLowerCase());
+    if (waiting?.state === "pending") await ctx.db.patch("itemInvitations", waiting._id, { state: "accepted" });
+    else await assertLibraryHasRoom(ctx, args.libraryId);
     await assertPersonHasRoom(ctx, person._id);
     await ctx.db.insert("itemAccess", { kind: "library", item: args.libraryId, name: access.library.name, userId: person._id, role: args.role, grantedBy: by._id, grantedAt: Date.now() });
     return null;
