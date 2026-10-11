@@ -3828,6 +3828,7 @@
     "members": "{count, plural, one {# member} other {# members}}",
     "switchTo": "Switch to",
     "otherWorkspaces": "Other workspaces",
+    "sharedWithYou": "{count, plural, one {# item shared with you} other {# items shared with you}}",
     "from": "From",
     "decline": "Decline",
     "join": "Join",

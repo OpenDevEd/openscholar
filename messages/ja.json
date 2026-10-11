@@ -3828,6 +3828,7 @@
     "members": "{count, plural, other {メンバー # 人}}",
     "switchTo": "切り替え先",
     "otherWorkspaces": "ほかのワークスペース",
+    "sharedWithYou": "あなたと共有されたアイテム {count, number} 件",
     "from": "送信者",
     "decline": "辞退",
     "join": "参加",

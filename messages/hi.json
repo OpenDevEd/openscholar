@@ -3828,6 +3828,7 @@
     "members": "{count, plural, one {# सदस्य} other {# सदस्य}}",
     "switchTo": "इसमें जाएँ",
     "otherWorkspaces": "अन्य वर्कस्पेस",
+    "sharedWithYou": "आपके साथ साझा किए गए {count, number} आइटम",
     "from": "भेजने वाले",
     "decline": "अस्वीकार करें",
     "join": "जुड़ें",

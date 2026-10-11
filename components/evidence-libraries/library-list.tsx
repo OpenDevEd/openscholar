@@ -24,7 +24,6 @@ import {
   MoreHorizontal,
   RotateCcw,
   SearchX,
-  EvidenceLibrariesIcon,
 } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { RoleLabel } from "@/components/ui/identity";
@@ -76,10 +75,11 @@ type Library = {
   operation?: LibraryOperation | null;
 };
 const roleKinds = { Owner: "owner", Editor: "editor", Creator: "creator" } as const;
+/** A library with no icon of its own shows OpenScholar's, as its page's header does. */
 function LibraryTile() {
   return (
     <div className={LIST_TILE}>
-      <EvidenceLibrariesIcon className="size-5" />
+      <img src="/icon.svg" alt="" className="size-5 object-contain" />
     </div>
   );
 }
