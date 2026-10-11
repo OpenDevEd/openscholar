@@ -712,7 +712,7 @@
     "billingRateLimited": "Le service de facturation est occupé. Réessayez bientôt.",
     "billingStripeError": "La facturation est temporairement indisponible. Réessayez.",
     "billingPaymentDeclined": "La carte a été refusée. Rien n'a été facturé.",
-    "billingPaymentOpen": "Un paiement est encore en attente. Réglez-le d'abord.",
+    "billingPaymentOpen": "Un paiement de {amount} est encore en attente. Réglez-le d'abord.",
     "billingPlanChangeConflict": "Une autre modification de facturation est en cours. Réessayez dans un instant.",
     "billingInvalidPrice": "Cette offre n'est plus disponible. Actualisez puis réessayez.",
     "billingCancelRequiresPortal": "Utilisez le portail de facturation pour passer au plan gratuit.",

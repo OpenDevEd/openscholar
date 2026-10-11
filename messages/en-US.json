@@ -712,7 +712,7 @@
     "billingRateLimited": "Billing is busy right now. Please try again shortly.",
     "billingStripeError": "Billing is temporarily unavailable. Please try again.",
     "billingPaymentDeclined": "The card was declined. Nothing was charged.",
-    "billingPaymentOpen": "A payment is still open. Pay it first.",
+    "billingPaymentOpen": "A payment of {amount} is still open. Pay it first.",
     "billingPlanChangeConflict": "Another billing change is under way. Try again in a moment.",
     "billingInvalidPrice": "That plan is no longer available. Please refresh and retry.",
     "billingCancelRequiresPortal": "Use the billing portal to switch to the free plan.",

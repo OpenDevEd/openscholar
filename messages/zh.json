@@ -712,7 +712,7 @@
     "billingRateLimited": "账单服务繁忙，请稍后再试。",
     "billingStripeError": "账单服务暂时不可用，请重试。",
     "billingPaymentDeclined": "卡被拒绝。未收取任何费用。",
-    "billingPaymentOpen": "还有一笔待付款项。请先支付。",
+    "billingPaymentOpen": "还有一笔 {amount} 的待付款项。请先支付。",
     "billingPlanChangeConflict": "另一项账单更改正在进行中。请稍后再试。",
     "billingInvalidPrice": "该套餐当前不可用，请刷新后重试。",
     "billingCancelRequiresPortal": "请在账单门户中切换到免费套餐。",

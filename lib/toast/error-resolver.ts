@@ -33,7 +33,6 @@ export type ToastErrorMessageKey =
   | "billingRateLimited"
   | "billingStripeError"
   | "billingPaymentDeclined"
-  | "billingPaymentOpen"
   | "billingPlanChangeConflict"
   | "billingInvalidPrice"
   | "billingCancelRequiresPortal"
@@ -117,7 +116,6 @@ const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   BILLING_RATE_LIMITED: "billingRateLimited",
   BILLING_STRIPE_ERROR: "billingStripeError",
   BILLING_PAYMENT_DECLINED: "billingPaymentDeclined",
-  BILLING_PAYMENT_OPEN: "billingPaymentOpen",
   BILLING_PLAN_CHANGE_CONFLICT: "billingPlanChangeConflict",
   BILLING_INVALID_PRICE_ID: "billingInvalidPrice",
   BILLING_CANCEL_TO_FREE_REQUIRES_PORTAL: "billingCancelRequiresPortal",
@@ -222,8 +220,8 @@ function inferLegacyCode(...messages: Array<string | undefined>): string | undef
   return undefined;
 }
 
-/** Where to pay the payment still open that a purchase was refused for (#858), when `error` is that refusal. */
-export function openPaymentUrl(error: unknown): string | undefined {
+/** The payment still open that a purchase was refused for (#858), when `error` is that refusal: how much, and where to pay it. */
+export function openPayment(error: unknown): { amount?: number; currency?: string; url?: string } | undefined {
   let data = readErrorData(error);
   if (typeof data === "string") {
     try {
@@ -233,7 +231,11 @@ export function openPaymentUrl(error: unknown): string | undefined {
     }
   }
   const record = asRecord(data);
-  return record?.code === "BILLING_PAYMENT_OPEN" ? trimToString(record.url) : undefined;
+  if (record?.code !== "BILLING_PAYMENT_OPEN") return undefined;
+  // A refusal from a backend a moment older than the page, as a deploy lands, has its url and message but no amount.
+  const url = trimToString(record.url);
+  const amount = typeof record.amount === "number" && typeof record.currency === "string" ? { amount: record.amount, currency: record.currency } : {};
+  return { ...amount, ...(url ? { url } : {}) };
 }
 
 export function getToastMessageKeyForErrorCode(

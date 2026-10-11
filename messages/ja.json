@@ -712,7 +712,7 @@
     "billingRateLimited": "請求システムが混み合っています。しばらくして再試行してください。",
     "billingStripeError": "請求システムは一時的に利用できません。再試行してください。",
     "billingPaymentDeclined": "カードが拒否されました。請求はありません。",
-    "billingPaymentOpen": "未払いの支払いがあります。先にお支払いください。",
+    "billingPaymentOpen": "{amount} の未払いの支払いがあります。先にお支払いください。",
     "billingPlanChangeConflict": "別の請求変更が処理中です。しばらくしてからもう一度お試しください。",
     "billingInvalidPrice": "このプランは現在利用できません。更新して再試行してください。",
     "billingCancelRequiresPortal": "無料プランへの変更は請求ポータルから行ってください。",
