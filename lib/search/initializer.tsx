@@ -72,8 +72,8 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
       case 'create': {
         setStatus('redirecting');
         const newId = addSearchResult(decision.entry);
-        // A link that named a search this person can't open made them their own copy of it, and its page says so.
-        if (searchId) useCopiedSearches.setState((state) => ({ ids: [...state.ids, newId] }));
+        // A link that named a search this person can't open made them their own copy of it, and its page says so. An address that names one and carries nothing of it copied nothing.
+        if (searchId && hasExplicitParams) useCopiedSearches.setState((state) => ({ ids: [...state.ids, newId] }));
         const url = buildResultsUrl(
           newId,
           searchResultToParams({ ...decision.entry, id: newId } as SearchResult),

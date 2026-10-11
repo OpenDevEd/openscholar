@@ -44,6 +44,12 @@ it("moves a search into an organization with its answers, counts and activity, a
     { happened: "moved", detail: "Alice" },
     { happened: "created", detail: "teacher coaching" },
   ]);
+
+  // One that names a bookmark of her own workspace, which the lab doesn't have, goes on searching for what it did.
+  await t.run((ctx) => ctx.db.insert("queryShortcuts", { workspaceId: aliceOwn, createdBy: users.alice, data: { shorthand: "feeding", expansion: "school feeding", createdAt: 1 } }));
+  const { id: bookmarked } = await alice.mutation(api.research.searches.create, { query: "feeding... AND trial" });
+  await alice.mutation(api.workspaces.move.move, { kind: "search", id: bookmarked, to: labId });
+  expect((await t.run((ctx) => ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", labId).eq("localId", bookmarked)).unique()))?.data.query).toBe("school feeding AND trial");
 });
 
 it("leaves an organization's work where it is for a member, and a running job until it has finished", async () => {
