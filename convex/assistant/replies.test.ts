@@ -204,6 +204,10 @@ describe("assistant replies", () => {
     expect(await state()).toBe("stop");
     await t.run((ctx) => ctx.db.patch("users", ada, { state: "active" }));
     expect(await state()).toBe("writing");
+    // Ben's own account is suspended.
+    await t.run((ctx) => ctx.db.patch("users", ben, { state: "suspended" }));
+    expect(await state()).toBe("stop");
+    await t.run((ctx) => ctx.db.patch("users", ben, { state: "active" }));
     // She takes the chat back from Ben.
     await asAda.mutation(api.sharing.guests.remove, { workspaceId: home.ada, kind: "chat", id: threadId, guest: { userId: ben } });
     expect(await state()).toBe("stop");

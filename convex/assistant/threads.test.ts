@@ -196,6 +196,7 @@ describe("assistant chats", () => {
       return lab;
     });
     expect(titles(await list("shared"))).toEqual(["Teacher coaching"]);
+    expect((await asBen.query(api.sharing.shared.list, { sort: "recent", paginationOpts: firstPage })).page.map((row) => row.name)).toEqual(["Teacher coaching"]);
     expect(titles(await asBen.query(api.assistant.threads.list, { workspaceId: lab, scope: "all", paginationOpts: firstPage }))).toEqual(["Reading trials"]);
   });
 
