@@ -247,7 +247,8 @@ function Overlay({
   // Sheets stacked over the panel, bottom first.
   const [sheets, setSheets] = useState<OpenSheet[]>([]);
   const depth = sheets.length;
-  const push = (sheet: OpenSheet) => setSheets((all) => [...all, sheet]);
+  // A second press of what opened a card, before the card is there to cover it, opens no second one.
+  const push = (sheet: OpenSheet) => setSheets((all) => (all.at(-1)?.kind === sheet.kind ? all : [...all, sheet]));
   // A chat started about a record elsewhere opens on its message box, over any sheet left open.
   const seed = useSyncExternalStore(panelSeed.subscribe, panelSeed.get, panelSeed.onServer);
   const [seenSeed, setSeenSeed] = useState(seed?.id ?? 0);
@@ -351,7 +352,7 @@ function Overlay({
                   value={(waiting) => {
                     // What an earlier visit to the sheet bought has landed by now.
                     if (buying === null) setBought(null);
-                    setSheets((all) => (all.at(-1)?.kind === "topUp" ? all : [...all, { kind: "topUp", waiting }]));
+                    push({ kind: "topUp", waiting });
                   }}
                 >
                 <Chat
