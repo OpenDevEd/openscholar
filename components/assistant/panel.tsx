@@ -1186,7 +1186,7 @@ function Empty({ arrives }: { arrives: boolean }) {
   );
 }
 
-function Header({ title, detail, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; /** A line under the title: the organization a chat is in. Null keeps the line while it's read. */ detail?: ReactNode | null; onHistory: () => void; /** Absent while the chat is still being read: who may share it comes with it. */ onShare?: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
+function Header({ title, detail, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; /** A line under the title: the organization a chat is in. Null keeps the line while it's read. */ detail?: ReactNode | null; onHistory: () => void; /** Absent while the chat is still being read: who may share it comes with it. The button looks the same meanwhile, and a press does nothing. */ onShare?: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
   const t = useTranslations("assistant");
   return (
     <div className="border-b border-border/50 px-4 pb-3 pt-3.5">
@@ -1211,7 +1211,7 @@ function Header({ title, detail, onHistory, onShare, onSpending, onRestart, onFo
         </div>
         <div className="flex items-center">
           <IconButton label={t("chats")} icon={<MessagesSquare className="size-4" />} onClick={onHistory} />
-          <IconButton label={t("shareChat")} icon={<UserPlus className="size-4" />} onClick={onShare} disabled={!onShare} />
+          <IconButton label={t("shareChat")} icon={<UserPlus className="size-4" />} onClick={onShare} />
           <IconButton label={t("spending")} icon={<Gauge className="size-4" />} onClick={onSpending} />
           <IconButton label={t("newChat")} icon={<SquarePen className="size-4" />} onClick={onRestart} />
           <IconButton label={t("foldIntoBubble")} shortcut="⌘J" icon={<PictureInPicture2 className="size-4" />} onClick={onFold} />

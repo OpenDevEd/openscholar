@@ -22,15 +22,14 @@ export function WorkingText({ children }: { children: string }) {
   );
 }
 
-export function IconButton({ label, shortcut, icon, onClick, small, disabled }: { label: string; shortcut?: string; icon: ReactNode; onClick?: () => void; small?: boolean; disabled?: boolean }) {
+export function IconButton({ label, shortcut, icon, onClick, small }: { label: string; shortcut?: string; icon: ReactNode; onClick?: () => void; small?: boolean }) {
   return (
     <TooltipHint label={shortcut ? `${label}  ${shortcut}` : label}>
       <button
         type="button"
         aria-label={label}
         onClick={onClick}
-        disabled={disabled}
-        className={cn("flex shrink-0 items-center justify-center rounded-full text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50", small ? "size-7" : "size-8")}
+        className={cn("flex shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground", small ? "size-7" : "size-8")}
       >
         {icon}
       </button>
