@@ -6,16 +6,13 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { JobStatusBanner } from "@/components/extraction/job-status-banner";
 
 const pushMock = vi.fn();
-vi.mock("@/components/workspaces/credit-check", () => ({
-  useSpendable: () => ({ loaded: true, balance: 0, pool: 0, cap: undefined, left: undefined }),
-}));
-
 vi.mock("next/navigation", () => ({
   useParams: () => ({}),
   useRouter: () => ({ push: pushMock }),
 }));
 
 vi.mock("next-intl", () => ({
+  useNow: () => new Date("2026-10-11T00:00:00Z"),
   useTranslations: () => (key: string) => key,
 }));
 

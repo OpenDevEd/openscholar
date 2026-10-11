@@ -80,7 +80,7 @@ export const spendingForAssistant = assistantQuery(spendingAction);
 export const allowanceAction = defineUserQuery({
   path: "billing/caps:allowance",
   description:
-    "Says what the person spent of the organization's credits since `month` (the first moment of a month in UTC), and their cap if an admin set one on the Team plan, with `left`, what remains of it now once what their running work holds is taken off; with no cap they draw on its credits freely. " +
+    "Says what the person spent of the organization's credits since `month` (the first moment of a month in UTC), and their cap if an admin set one on the Team plan, with `left`, what remains of it for that month once what their running work holds is taken off; with no cap they draw on its credits freely. " +
     "`total` is what everyone spent for an admin, and the person's own for anyone else. In their own workspace it's what they spent of their own credits.",
   args: monthArg,
   returns: v.object({ spent: v.number(), cap: v.optional(v.number()), left: v.optional(v.number()), total: v.number() }),
@@ -88,7 +88,7 @@ export const allowanceAction = defineUserQuery({
     checkMonth(month);
     const cap = await capOf(ctx, workspaceId, userId);
     const spent = await spentSince(ctx, workspaceId, userId, month);
-    const left = await capLeft(ctx, workspaceId, userId);
+    const left = await capLeft(ctx, workspaceId, userId, month);
     return { spent, ...(cap === undefined ? {} : { cap }), ...(left === undefined ? {} : { left }), total: role === "admin" ? await workspaceSpentSince(ctx, workspaceId, month) : spent };
   },
 });

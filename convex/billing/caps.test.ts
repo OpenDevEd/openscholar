@@ -66,9 +66,8 @@ it("caps a member on their seat in Autumn, makes their holds and charges as that
   // What he holds counts against his cap, as what he spent does.
   expect(await spendable("ben")).toBe(900);
 
-  // A screening's estimate is checked against the same figure before it starts: his cap's remainder, not the lab's balance.
-  const available = async (who: string) => (await as(who).query(api.screening.queries.estimate, { workspaceId, papers: 10 })).available;
-  expect([await available("ada"), await available("ben")]).toEqual([await balance(), 900]);
+  // His page reads the same figure, for what a job is checked against before it starts.
+  expect(await as("ben").query(api.billing.caps.allowance, { workspaceId, month: month() })).toMatchObject({ cap: 1_000, left: 900 });
 
   // A charge past the cap is made as the seat, so Autumn stops it at the cap.
   await t.action(internal.billing.charge.retrySettle, { userId: users.ben, workspaceId, chargeId: "charge:ben", credits: 1_500, usage, attempt: 0 });

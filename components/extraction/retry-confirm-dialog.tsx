@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useNow, useTranslations } from "next-intl";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +17,7 @@ import { api } from "@/convex/_generated/api";
 import { useWorkspaceScope } from "@/lib/workspaces/url";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ExtractionPreflightBanner } from "@/components/extraction/preflight-banner";
-import { useSpendable } from "@/components/workspaces/credit-check";
+import { monthStart } from "@/lib/billing/month";
 
 export interface RetryConfirmDialogProps {
   open: boolean;
@@ -57,14 +57,16 @@ export function RetryConfirmDialog({
     open && credits && balanceScope !== "skip" ? { ...balanceScope, requiredAmount: credits } : "skip",
   );
 
-  // The organization can have the credits while the cap an admin set on the person doesn't (#652).
-  const spend = useSpendable();
-  const overCap = spend.left !== undefined && credits !== undefined && credits > spend.left;
+  // The organization can have the credits while the cap an admin set on the member whose job it is doesn't (#652): the retry is charged as theirs.
+  const month = monthStart(useNow({ updateInterval: 60_000 }).getTime());
+  const { data: capLeft } = useProtectedQuery(api.extraction.queries.costs.capLeftOf, open ? { jobId, month } : "skip");
+  const overCap = typeof capLeft === "number" && credits !== undefined && credits > capLeft;
   const te = useTranslations("errors.body");
 
   const [submitting, setSubmitting] = useState(false);
   const canConfirm =
     !submitting &&
+    capLeft !== undefined &&
     !overCap &&
     (balance === null || balance === undefined
       ? false

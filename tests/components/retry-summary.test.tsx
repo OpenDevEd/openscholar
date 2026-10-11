@@ -13,6 +13,7 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { RetrySummary } from "@/components/extraction/retry-summary";
 
 vi.mock("next-intl", () => ({
+  useNow: () => new Date("2026-10-11T00:00:00Z"),
   useTranslations: () => (key: string, params?: Record<string, number>) =>
     params ? `${key}:${JSON.stringify(params)}` : key,
 }));
@@ -47,14 +48,10 @@ vi.mock("convex/react", () => ({
   useMutation: () => retryMock,
 }));
 
-vi.mock("@/components/workspaces/credit-check", () => ({
-  useSpendable: () => ({ loaded: true, balance: 0, pool: 0, cap: undefined, left: undefined }),
-}));
-
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     extraction: {
-      queries: { countJobFailures: "countJobFailures", costs: { estimateRetry: "estimateRetry" } },
+      queries: { countJobFailures: "countJobFailures", costs: { estimateRetry: "estimateRetry", capLeftOf: "capLeftOf" } },
       mutations: { retryFailedQuestions: "retryFailedQuestions" },
     },
     billing: {

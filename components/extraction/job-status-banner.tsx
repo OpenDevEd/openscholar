@@ -16,14 +16,15 @@
  */
 
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { useTranslations } from "next-intl";
+import { useNow, useTranslations } from "next-intl";
 import { AlertTriangle, Coins, Pause } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
 import { useWorkspaceScope } from "@/lib/workspaces/url";
-import { useSpendable } from "@/components/workspaces/credit-check";
+import { monthStart } from "@/lib/billing/month";
+import type { Id } from "@/convex/_generated/dataModel";
 
 type CommonProps = {
   onResume?: () => void;
@@ -39,6 +40,8 @@ export type JobStatusBannerProps =
     })
   | (CommonProps & {
       variant: "creditsExhausted";
+      /** The job, whose member's cap its Resume is checked against (#652). */
+      jobId?: Id<"extractionJobs">;
       /** Required balance floor before the Resume CTA is enabled. */
       minCreditsToResume?: number;
       /** Set when the job stopped at the credits it was allowed from a chat, not at an empty balance: that figure. */
@@ -62,7 +65,9 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
       : "skip",
   );
 
-  const spend = useSpendable();
+  // The organization can have the credits while the cap an admin set on the member whose job it is doesn't (#652): the job is charged as theirs.
+  const month = monthStart(useNow({ updateInterval: 60_000 }).getTime());
+  const { data: capLeft } = useProtectedQuery(api.extraction.queries.costs.capLeftOf, props.variant === "creditsExhausted" && props.jobId ? { jobId: props.jobId, month } : "skip");
   const te = useTranslations("errors.body");
 
   if (props.variant === "paused") {
@@ -109,8 +114,7 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
 
   const hasEnough = balance?.hasEnough ?? false;
   const total = balance?.total ?? 0;
-  // The organization can have the credits while the cap an admin set on the person doesn't (#652).
-  const overCap = spend.left !== undefined && (props.minCreditsToResume ?? 1) > spend.left;
+  const overCap = typeof capLeft === "number" && (props.minCreditsToResume ?? 1) > capLeft;
   const canResume = Boolean(props.onResume) && hasEnough && !overCap;
 
   return (
