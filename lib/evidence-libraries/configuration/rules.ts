@@ -2064,9 +2064,11 @@ export const resetSection = (
 ) => settleFeatures(takeSection(draft, readDraft(rows), sectionKey));
 
 /**
- * The draft once the saved rows have changed under an open page. `was` is the draft the page's values were last in
- * step with: the rows it was edited from, or what its own save sent. A card whose values differ from it holds on to
- * them, and every other card takes the new rows.
+ * The draft once the saved rows have changed under an open page, from `before` to `after`. `was` is the draft the
+ * page's values were last in step with: the one read from the rows it was edited from, or what its own save sent.
+ * It is that same reading, never a fresh one, because a row saved without ids gets new ones on every read. A card
+ * whose values differ from it holds on to them, and every other card takes the new rows.
+ * `base` is the reading of the new rows that those cards now hold.
  * `elsewhere` names the kept cards whose saved values changed too, to something other than what the page holds;
  * a card already in `named` stays named for as long as it is kept.
  * `replaced` names the cards that no longer show what they did.
@@ -2074,14 +2076,17 @@ export const resetSection = (
 export function carryUnsaved(
   draft: ConfigurationDraft,
   was: ConfigurationDraft,
+  before: readonly SectionRow[],
   after: readonly SectionRow[],
   named: readonly PageSectionKey[],
 ) {
   const now = readDraft(after);
   const differs = (a: ConfigurationDraft, b: ConfigurationDraft, key: PageSectionKey) =>
     !same(cardSlice(a, key), cardSlice(b, key));
-  // A new library's cards count as changed until their rows are written. Nobody typed those values, so what
-  // counts here is a difference from the values the card started with.
+  // Two readings of a row without ids never match, so a card's saved values changed only if one of its rows did.
+  const savedAgain = (key: PageSectionKey) =>
+    ROWS_FOR_CARD[key].some((rowKey) => !same(payloadOf(before, rowKey), payloadOf(after, rowKey))) &&
+    differs(was, now, key);
   const kept = PAGE_SECTION_KEYS.filter((key) => differs(draft, was, key));
   // Features settle once every kept card is in: a feature kept on one card can need what another kept card holds.
   const next = kept.length
@@ -2089,9 +2094,8 @@ export function carryUnsaved(
     : now;
   return {
     draft: next,
-    elsewhere: kept.filter(
-      (key) => differs(next, now, key) && (named.includes(key) || differs(was, now, key)),
-    ),
+    base: now,
+    elsewhere: kept.filter((key) => differs(next, now, key) && (named.includes(key) || savedAgain(key))),
     replaced: PAGE_SECTION_KEYS.filter((key) => differs(draft, next, key)),
   };
 }

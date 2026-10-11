@@ -367,7 +367,7 @@ describe("a save made elsewhere while the page is open", () => {
   it("keeps a section's unsaved values and takes the saved values for the others", () => {
     const draft = savedDraft();
     draft.footer.disclaimer = "Mine, not saved yet";
-    const carried = carryUnsaved(draft, savedDraft(), renamedElsewhere, []);
+    const carried = carryUnsaved(draft, savedDraft(), savedRows, renamedElsewhere, []);
     expect(carried.draft.footer.disclaimer).toBe("Mine, not saved yet");
     expect(carried.draft.identity.name).toBe("Their name");
     expect(sectionState(carried.draft, renamedElsewhere, "footer")).toBe("edited");
@@ -380,13 +380,13 @@ describe("a save made elsewhere while the page is open", () => {
   it("names a section that was changed here and saved elsewhere, until it is saved or reset", () => {
     const draft = savedDraft();
     draft.identity.name = "My name";
-    const carried = carryUnsaved(draft, savedDraft(), renamedElsewhere, []);
+    const carried = carryUnsaved(draft, savedDraft(), savedRows, renamedElsewhere, []);
     expect(carried.draft.identity.name).toBe("My name");
     expect(carried.elsewhere).toEqual(["identity"]);
     expect(carried.replaced).toEqual([]);
     // A later save of another section leaves the name unresolved, so the section stays named.
     const footerToo = savedElsewhere("footer", { disclaimer: "Theirs" }, renamedElsewhere);
-    const later = carryUnsaved(carried.draft, readDraft(renamedElsewhere), footerToo, carried.elsewhere);
+    const later = carryUnsaved(carried.draft, carried.base, renamedElsewhere, footerToo, carried.elsewhere);
     expect(later.draft.identity.name).toBe("My name");
     expect(later.elsewhere).toEqual(["identity"]);
   });
@@ -394,7 +394,7 @@ describe("a save made elsewhere while the page is open", () => {
   it("has nothing to say when the saved value is the one already on the page", () => {
     const draft = savedDraft();
     draft.identity.name = "Their name";
-    const carried = carryUnsaved(draft, savedDraft(), renamedElsewhere, []);
+    const carried = carryUnsaved(draft, savedDraft(), savedRows, renamedElsewhere, []);
     expect(carried.elsewhere).toEqual([]);
     expect(isDirty(carried.draft, renamedElsewhere)).toBe(false);
   });
@@ -402,9 +402,25 @@ describe("a save made elsewhere while the page is open", () => {
   it("does not hold on to values a library has no row for yet", () => {
     // Every section of a new library counts as changed until its rows are written; nobody typed those values.
     const draft = readDraft(brandRows);
-    const carried = carryUnsaved(draft, readDraft(brandRows), renamedElsewhere, []);
+    const carried = carryUnsaved(draft, readDraft(brandRows), brandRows, renamedElsewhere, []);
     expect(carried.draft.identity.name).toBe("Their name");
     expect(carried.elsewhere).toEqual([]);
+  });
+
+  it("does not take a row saved without ids for an edit of its own", () => {
+    // Such a row is given new ids on every read, so two readings of it never match.
+    const withoutIds = savedElsewhere("institutions", [{ name: "Saved institute", logoUrl: "" }]);
+    const page = readDraft(withoutIds);
+    const theirs = savedElsewhere("institutions", [{ name: "Their institute", logoUrl: "" }]);
+    const untouched = carryUnsaved(page, page, withoutIds, theirs, []);
+    expect(untouched.draft.institutions[0].name).toBe("Their institute");
+    expect(untouched.elsewhere).toEqual([]);
+    // Edited here, with a save elsewhere that left its row alone: kept, and nothing to say.
+    const edited = structuredClone(page);
+    edited.institutions[0].name = "My institute";
+    const kept = carryUnsaved(edited, page, withoutIds, savedElsewhere("footer", { disclaimer: "Theirs" }, withoutIds), []);
+    expect(kept.draft.institutions[0].name).toBe("My institute");
+    expect(kept.elsewhere).toEqual([]);
   });
 
   it("keeps a feature that needs what another kept section holds", () => {
@@ -412,7 +428,7 @@ describe("a save made elsewhere while the page is open", () => {
     const draft = readDraft(oneLanguage);
     draft.localization.locales = ["en-GB", "fr"];
     draft.features.languageSwitcher = true;
-    const carried = carryUnsaved(draft, readDraft(oneLanguage), savedElsewhere("footer", { disclaimer: "Theirs" }, oneLanguage), []);
+    const carried = carryUnsaved(draft, readDraft(oneLanguage), oneLanguage, savedElsewhere("footer", { disclaimer: "Theirs" }, oneLanguage), []);
     expect(carried.draft.localization.locales).toEqual(["en-GB", "fr"]);
     expect(carried.draft.features.languageSwitcher).toBe(true);
     expect(carried.draft.footer.disclaimer).toBe("Theirs");
@@ -422,14 +438,14 @@ describe("a save made elsewhere while the page is open", () => {
     const sent = savedDraft();
     sent.footer.disclaimer = "Sent with the save";
     // The rows that follow the page's own save: whatever the platform made of what was sent.
-    const own = carryUnsaved(sent, sent, renamedElsewhere, []);
+    const own = carryUnsaved(sent, sent, savedRows, renamedElsewhere, []);
     expect(own.draft).toEqual(readDraft(renamedElsewhere));
     expect(own.elsewhere).toEqual([]);
     expect(own.replaced).toEqual(["identity", "footer"]);
     // The answer came before the rows, and a tagline was typed in between.
     const typedSince = structuredClone(sent);
     typedSince.contact.email = "typed-since@example.org";
-    const late = carryUnsaved(typedSince, sent, savedElsewhere("footer", { disclaimer: "Sent with the save" }), []);
+    const late = carryUnsaved(typedSince, sent, savedRows, savedElsewhere("footer", { disclaimer: "Sent with the save" }), []);
     expect(late.draft.contact.email).toBe("typed-since@example.org");
     expect(late.draft.footer.disclaimer).toBe("Sent with the save");
     expect(late.elsewhere).toEqual([]);

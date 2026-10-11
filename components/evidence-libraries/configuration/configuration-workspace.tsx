@@ -292,25 +292,29 @@ function Workspace({
   const [refusal, setRefusal] = useState<SaveRefusal | null>(null);
   const [saving, setSaving] = useState(false);
   const [activating, setActivating] = useState(false);
-  // The saved rows the page took last, the draft edited on top of them, the cards whose unsaved values were also
-  // saved somewhere else in the meantime, and for each card the edit version whose rows last replaced its values.
-  const [work, setWork] = useState(() => ({
-    ...latest,
-    edited: readDraft(latest.rows),
-    elsewhere: [] as readonly PageSectionKey[],
-    drawn: {} as Partial<Record<PageSectionKey, number>>,
-  }));
+  // The saved rows the page took last and the draft read from them, the draft edited on top of that, the cards
+  // whose unsaved values were also saved somewhere else in the meantime, and for each card the edit version whose
+  // rows last replaced its values.
+  const [work, setWork] = useState(() => {
+    const base = readDraft(latest.rows);
+    return {
+      ...latest,
+      base,
+      edited: base,
+      elsewhere: [] as readonly PageSectionKey[],
+      drawn: {} as Partial<Record<PageSectionKey, number>>,
+    };
+  });
   // The draft this page's own save sent, once the platform has taken it. The rows that follow hold all of it.
   const [sent, setSent] = useState<ConfigurationDraft | null>(null);
   // Newer rows can come from a save made in another tab or by someone else. A card with unsaved values keeps them.
   // The rows wait while this page's own save or activation is on its way: what it sent was edited from the rows it holds.
   if (work.editVersion !== latest.editVersion && !saving && !activating) {
     // After the page's own save, only what was typed since it was sent is unsaved.
-    const carried = sent
-      ? carryUnsaved(work.edited, sent, latest.rows, [])
-      : carryUnsaved(work.edited, readDraft(work.rows), latest.rows, work.elsewhere);
+    const carried = carryUnsaved(work.edited, sent ?? work.base, work.rows, latest.rows, sent ? [] : work.elsewhere);
     setWork({
       ...latest,
+      base: carried.base,
       edited: carried.draft,
       elsewhere: carried.elsewhere,
       drawn: { ...work.drawn, ...Object.fromEntries(carried.replaced.map((key) => [key, latest.editVersion])) },
