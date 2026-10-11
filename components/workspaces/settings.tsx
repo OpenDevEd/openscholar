@@ -35,7 +35,6 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
-import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 import { findPlan, planCreditCap } from "@/lib/billing/catalog";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
@@ -104,9 +103,7 @@ export function WorkspaceGeneral() {
   // The organization's plan no longer includes Evidence Libraries, so the library's own pages are shut: it's deleted from here (#652).
   const [removing, setRemoving] = useState(false);
   const restartTeardown = useMutation(api.evidenceLibraries.teardown.restartDevelopmentTeardown);
-  const catalog = useBillingCatalog();
-  // The plan's name comes from the catalog: shown before it, the plan chip is an empty pill that widens and pushes the row.
-  if (!organization || !summary || !catalog) return <Enter ready={false}>{null}</Enter>;
+  if (!organization || !summary) return <Enter ready={false}>{null}</Enter>;
 
   const { name, slug } = organization;
   const address = `${window.location.host}/o/${slug}`;
