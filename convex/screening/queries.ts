@@ -183,7 +183,8 @@ export const getScreeningJobAction = defineUserQuery({
   description:
     "Read a screening job's source, questions, scoring rules, decision revision and outcome counts. Its workspace's members read it, with `guests`: how many people outside the workspace it's shared with, invitations still waiting included. " +
     "Someone it's shared with reads it from their own workspace, with `guest`: what they may do with it and whose it is, and `source`, the kind of thing its papers came from. They get neither what it cost, where its papers went, nor the ID of the collection, search or screening they came from: those are its workspace's. What was searched (`snapshot`) is the screening's own, and a guest reads it.",
-  args: { jobId: v.id("screeningJobs") },
+  // The Screening page reads the ID from its address: text that is no screening's ID answers null, as a screening that is gone does (#826).
+  args: { jobId: v.string() },
   returns: v.union(
     v.null(),
     v.object({
@@ -225,7 +226,8 @@ export const getScreeningJobAction = defineUserQuery({
     })
   ),
   run: async (ctx, actor, args) => {
-    const job = await ctx.db.get("screeningJobs", args.jobId);
+    const jobId = ctx.db.normalizeId("screeningJobs", args.jobId);
+    const job = jobId ? await ctx.db.get("screeningJobs", jobId) : null;
     if (!job) return null;
     const role = job.workspaceId === actor.workspaceId ? null : await guestRole(ctx, actor, job);
     if (job.workspaceId !== actor.workspaceId && !role) return null;

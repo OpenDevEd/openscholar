@@ -476,13 +476,15 @@ export const getCollectionAction = defineUserQuery({
     "One of the workspace's collections by its ID, or one shared with the person from another workspace: its name and how many papers it holds. " +
     "One of the workspace's comes with `guests`: how many people outside the workspace it's shared with, invitations still waiting included. " +
     "A shared one comes with `guest`: what they may do with it (`viewer` or `editor`) and whose it is. Null when it's gone or isn't theirs to open.",
-  args: { collectionId: v.id("collections") },
+  // The Library reads the ID from its address: text that is no collection's ID answers null, as a collection that is gone does (#826).
+  args: { collectionId: v.string() },
   returns: v.union(
     v.object({ _id: v.id("collections"), name: v.string(), itemCount: v.number(), guests: v.optional(v.number()), guest: v.optional(v.object({ role: guestRoleValidator, from: sharedFromValidator })) }),
     v.null(),
   ),
   run: async (ctx, actor, args) => {
-    const collection = await ctx.db.get("collections", args.collectionId);
+    const id = ctx.db.normalizeId("collections", args.collectionId);
+    const collection = id ? await ctx.db.get("collections", id) : null;
     if (!collection) return null;
     const own = { _id: collection._id, name: collection.name, itemCount: collection.itemCount };
     if (collection.workspaceId === actor.workspaceId) return { ...own, guests: await countOf(ctx, itemGuestsOf(collection._id)) };

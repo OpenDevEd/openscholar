@@ -212,16 +212,26 @@ function along(ctx: QueryCtx, scope: Scope, field: LibrarySortBy, order: "asc" |
  * collection is in, for a view of a collection shared with them from another (#653). The
  * collection's papers are in its own workspace's library.
  */
-export async function libraryOf(ctx: QueryCtx, actor: InWorkspace, collectionId: Id<"collections"> | undefined) {
-  const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;
+export async function libraryOf(ctx: QueryCtx, actor: InWorkspace, collectionId: string | undefined) {
+  const collection = await collectionAt(ctx, collectionId);
   if (!collection || collection.workspaceId === actor.workspaceId) return actor.workspaceId;
   return (await guestRole(ctx, actor, collection)) ? collection.workspaceId : actor.workspaceId;
 }
 
 /** The workspace's collection, or null when it's gone or in another. */
-async function ownCollection(ctx: QueryCtx, workspaceId: Id<"workspaces">, collectionId: Id<"collections"> | undefined) {
-  const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;
+async function ownCollection(ctx: QueryCtx, workspaceId: Id<"workspaces">, collectionId: string | undefined) {
+  const collection = await collectionAt(ctx, collectionId);
   return collection?.workspaceId === workspaceId ? collection : null;
+}
+
+/**
+ * The collection an ID names, or null: for none given, for one that is gone, and for text that is
+ * no collection's ID at all. A page reads the ID from its address, where a link cut short or
+ * mistyped leaves anything (#826).
+ */
+async function collectionAt(ctx: QueryCtx, collectionId: string | undefined) {
+  const id = collectionId ? ctx.db.normalizeId("collections", collectionId) : null;
+  return id ? await ctx.db.get("collections", id) : null;
 }
 
 /** Which of these papers are in the collection: one point read each. */
@@ -314,7 +324,8 @@ export async function readLibraryPage(ctx: QueryCtx, workspaceId: Id<"workspaces
  * own. In an organization's library outside a collection, a rated paper comes with how its
  * members rated it themselves.
  */
-async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, read: LibraryPage, collectionId: Id<"collections"> | undefined, guest: boolean) {
+async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspace, read: LibraryPage, given: string | undefined, guest: boolean) {
+  const collectionId = (given && ctx.db.normalizeId("collections", given)) || undefined;
   const workspace = await ctx.db.get("workspaces", workspaceId);
   const own = workspace?.kind === "personal" && workspace.userId === userId;
   // In their own workspace a paper's rating is the person's; anywhere else it's read from their own ratings.
@@ -548,7 +559,7 @@ const sinceValidator = v.object({ week: v.number(), month: v.number(), year: v.n
  * answer each, so the size of the library doesn't matter.
  */
 export const getSavedSinceCounts = workspaceQuery({
-  args: { collectionId: v.optional(v.id("collections")), since: sinceValidator },
+  args: { collectionId: v.optional(v.string()), since: sinceValidator },
   returns: v.object({ total: v.number(), kept: sinceValidator }),
   handler: async (ctx, actor, { collectionId, since }) => {
     const workspaceId = await libraryOf(ctx, actor, collectionId);
