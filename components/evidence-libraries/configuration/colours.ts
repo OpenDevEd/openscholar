@@ -1,6 +1,7 @@
 import { HEX_COLOUR, THEME_DEFAULTS, type ThemeDraft } from "@/lib/evidence-libraries/configuration/rules";
 
 export type ColourPresetKey =
+  | "openscholar"
   | "sunrise"
   | "forest"
   | "ocean"
@@ -15,6 +16,8 @@ export const COLOUR_PRESETS: {
   key: ColourPresetKey;
   colors: ThemeDraft["colors"];
 }[] = [
+  // OpenScholar's own blues: the primary for the accent, the brand navy, and a deeper blue for links.
+  { key: "openscholar", colors: { ...THEME_DEFAULTS.colors, accent: "#2563eb", tertiary: "#172554", link: "#1d4ed8" } },
   { key: "sunrise", colors: { ...THEME_DEFAULTS.colors, accent: "#e68124", tertiary: "#2b4c7e", link: "#c2410c" } },
   { key: "forest", colors: { ...THEME_DEFAULTS.colors, accent: "#1d9a6c", tertiary: "#0f3d3e", link: "#047857" } },
   { key: "ocean", colors: { ...THEME_DEFAULTS.colors, accent: "#2563eb", tertiary: "#1e293b", link: "#1d4ed8" } },

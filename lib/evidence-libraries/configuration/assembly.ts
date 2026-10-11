@@ -58,7 +58,10 @@ export type ManagedEvidenceLibraryConfiguration = {
 export type TeamMember = { id: string; name: string; photo?: string };
 
 export type PlatformBrandAssets = {
+  /** The OpenScholar logo for light mode. */
   logoUrl: string;
+  /** The OpenScholar logo for dark mode; light mode's when there is none. */
+  logoDarkUrl?: string;
   faviconUrl: string;
   iconUrls: readonly string[];
 };
@@ -98,10 +101,13 @@ function fillBrandAssets(
   const defaults: Record<(typeof BRAND_ASSET_KEYS)[number], string | undefined> = {
     // The light logo is the owner's main one; dark mode uses it until a dark
     // logo is uploaded.
-    logoDark: ownLogoLight ?? brand?.logoUrl,
+    logoDark: ownLogoLight ?? brand?.logoDarkUrl ?? brand?.logoUrl,
     favicon: brand?.faviconUrl,
   };
   const filled: Record<string, unknown> = { ...own };
+  // A library with no logo of its own shows OpenScholar's, in each mode's version.
+  const hasOwnLogo = Boolean(ownLogoLight) || (typeof own.logoDark === "string" && own.logoDark !== "");
+  if (!hasOwnLogo && brand) filled.logoLight = brand.logoUrl;
   const missing: (typeof BRAND_ASSET_KEYS)[number][] = [];
   for (const key of BRAND_ASSET_KEYS) {
     if (typeof own[key] === "string" && own[key] !== "") continue;
