@@ -183,7 +183,7 @@ export function WorkspaceGeneral() {
             <div className="flex flex-wrap items-center gap-2">
               <PlanChip workspace={organization} />
               <Link href="/settings/workspace/members" className="flex h-7 items-center gap-2 rounded-full pl-1 pr-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
-                <MemberFaces workspaceId={workspaceId} label={tw("members", { count: organization.members ?? 0 })} />
+                <MemberFaces workspaceId={workspaceId} label={tw("members", { count: organization.members ?? 0 })} count={organization.members} />
                 <span className="tabular-nums">{tw("members", { count: organization.members ?? 0 })}</span>
               </Link>
               <button
@@ -542,7 +542,7 @@ export function WorkspaceBilling() {
                 <Coins className="size-4" /> {t("sharedCredits")}
                 <TooltipHint label={t("membersDraw", { count: memberCount })}>
                   <span>
-                    <MemberFaces workspaceId={workspaceId} label={t("membersDraw", { count: memberCount })} />
+                    <MemberFaces workspaceId={workspaceId} label={t("membersDraw", { count: memberCount })} count={memberCount} />
                   </span>
                 </TooltipHint>
               </div>

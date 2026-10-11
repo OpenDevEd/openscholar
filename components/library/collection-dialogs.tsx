@@ -157,7 +157,7 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
               <div className="flex min-h-5 items-center gap-2 text-xs text-muted-foreground">
                 {org ? (
                   <>
-                    <MemberFaces workspaceId={workspaceId} label={t("everyoneIn", { workspace: workspace.name })} ring="ring-background" />
+                    <MemberFaces workspaceId={workspaceId} label={t("everyoneIn", { workspace: workspace.name })} ring="ring-background" count={workspace.members} />
                     <span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                       <PenLine className="size-3.5" /> {t("everyMemberEdits")}
                     </span>
