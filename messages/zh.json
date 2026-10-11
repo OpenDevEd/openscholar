@@ -4043,12 +4043,14 @@
       "shareThis": {
         "collection": "共享此合集",
         "screening": "共享此筛选",
-        "extraction": "共享此提取"
+        "extraction": "共享此提取",
+        "search": "共享此搜索"
       },
       "title": {
         "collection": "共享合集",
         "screening": "共享筛选",
-        "extraction": "共享提取"
+        "extraction": "共享提取",
+        "search": "共享搜索"
       },
       "addPeople": "按姓名或邮箱添加",
       "inviteEmail": "邀请 {email}",
@@ -4076,7 +4078,8 @@
       "full": {
         "collection": "{plan} 允许每个合集有 {count, plural, other {# 位访客}}",
         "screening": "{plan} 允许每个筛选有 {count, plural, other {# 位访客}}",
-        "extraction": "{plan} 允许每个提取有 {count, plural, other {# 位访客}}"
+        "extraction": "{plan} 允许每个提取有 {count, plural, other {# 位访客}}",
+        "search": "{plan} 允许每个搜索有 {count, plural, other {# 位访客}}"
       },
       "failed": "无法更改共享对象"
     },
@@ -4090,12 +4093,14 @@
       "kinds": {
         "collection": "合集",
         "screening": "筛选任务",
-        "extraction": "提取任务"
+        "extraction": "提取任务",
+        "search": "搜索"
       },
       "size": {
         "collection": "{count, plural, other {# 篇论文}}",
         "screening": "{count, plural, other {# 篇论文}}",
-        "extraction": "{count, plural, other {# 篇论文}}"
+        "extraction": "{count, plural, other {# 篇论文}}",
+        "search": "{count, plural, other {# 条结果}}"
       },
       "runUses": "你在这些内容上运行的任务使用",
       "yourCredits": "你的积分",
@@ -4109,7 +4114,8 @@
       "sharedOne": {
         "collection": "{name} 共享了一个合集",
         "screening": "{name} 共享了一个筛选",
-        "extraction": "{name} 共享了一个提取"
+        "extraction": "{name} 共享了一个提取",
+        "search": "{name} 共享了一个搜索"
       },
       "pointOwn": "它在你自己的工作区里",
       "pointCredits": "你在上面运行的任务使用你的积分",

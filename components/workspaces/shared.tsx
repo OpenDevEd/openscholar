@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 import { usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { Building2, Coins, FileSearch, Folder, ListFilter, LogOut, Mail, SearchX, Share2, Unlink, UserRound, type AppIcon } from "@/components/icons";
+import { Building2, Coins, FileSearch, Folder, ListFilter, LogOut, Mail, Search, SearchX, Share2, Unlink, UserRound, type AppIcon } from "@/components/icons";
 import { CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { Entry, EntryAction, EntryAside, ENTRY_OPEN } from "@/components/command-center/entry";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -36,6 +36,8 @@ export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; hre
   collection: { icon: Folder, tint: "#e8890c", href: (id) => `/library?col=${id}`, roles: ["viewer", "editor"] },
   screening: { icon: ListFilter, tint: "#34d399", href: (id) => `/screening?job=${id}`, roles: ["viewer"] },
   extraction: { icon: FileSearch, tint: "#818cf8", href: (id) => `/extraction/${id}`, roles: ["viewer"] },
+  // A search opens by the ID its page goes by (the list's `address`), with its own query and filters.
+  search: { icon: Search, tint: "#60a5fa", href: (id) => `/results/${id}`, roles: ["viewer", "editor"] },
 };
 
 type Sort = "recent" | "name";
@@ -147,7 +149,7 @@ function KindChip({ on, onClick, count, children }: { on: boolean; onClick: () =
   );
 }
 
-type SharedItem = { kind: SharedKind; id: string; name: string; role: "viewer" | "editor"; at: number; by: { name: string; imageUrl?: string }; from: From; size: number };
+type SharedItem = { kind: SharedKind; id: string; /** The ID a search's page goes by. */ address?: string; name: string; role: "viewer" | "editor"; at: number; by: { name: string; imageUrl?: string }; from: From; size: number };
 
 export type From = { name: string; organization: boolean };
 
@@ -186,7 +188,7 @@ function Row({ item }: { item: SharedItem }) {
     <Entry viewMode="list-detail">
       <Tile icon={kind.icon} tint={kind.tint} className="size-10 rounded-xl" />
       <div className="min-w-0 flex-1 space-y-2">
-        <Link href={kind.href(item.id)} className={cn(ENTRY_OPEN, "line-clamp-2")}>
+        <Link href={kind.href(item.address ?? item.id)} className={cn(ENTRY_OPEN, "line-clamp-2")}>
           {item.name}
         </Link>
         <div className="flex flex-wrap items-center gap-1.5">

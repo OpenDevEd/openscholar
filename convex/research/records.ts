@@ -24,6 +24,11 @@ import { shortcutSortName } from "../../lib/query-shortcuts";
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
 import { personalWorkspaceOf, requireMakerOrAdmin, type Actor, type InWorkspace } from "../workspaces/actor";
 import { personalRatingRow, setPersonalRating } from "../ratings";
+import { countOf } from "../lib/listCounts";
+import { personName } from "../lib/people";
+import { guestRole, itemGuestsOf } from "../sharing/items";
+import { guestRoleValidator, sharedFromValidator, type GuestRole } from "../sharing/validators";
+import { workspaceFrom } from "../workspaces/personal";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
@@ -218,12 +223,22 @@ const listed = (search: SavedSearch) => { const { screeningResponses: _answers, 
 
 export const getSearchAction = defineUserQuery({
   path: "research/records:getSearch",
-  description: "Reads one saved search by ID: its query, filters, sort, page and screening questions. Its screening answers are read by paper with answersOf.",
+  description:
+    "Reads one saved search by ID: its query, filters, sort, page and screening questions. Its screening answers are read by paper with answersOf. In an organization it names who ran it (`by`) and how many people outside it were given it (`guests`). " +
+    "One shared with the person from another workspace reads the same in their own workspace, with `guest`: what they may do with it (`viewer`: read and export; `editor`: also change it) and the workspace it's in.",
   args: { id: v.string() },
-  returns: v.union(listedSearchValidator, v.null()),
-  run: async (ctx, { workspaceId }, args) => {
-    const search = await findSearch(ctx, workspaceId, args.id);
-    return search ? listed(currentSearch(search.data)) : null;
+  returns: v.union(v.object({ ...listedSearchValidator.fields, by: v.optional(makerValidator), guest: v.optional(v.object({ role: guestRoleValidator, from: sharedFromValidator })), guests: v.optional(v.number()) }), v.null()),
+  run: async (ctx, actor, args) => {
+    const found = await readableSearch(ctx, actor, args.id);
+    if (!found) return null;
+    const { search, guest } = found;
+    const fields = listed(currentSearch(search.data));
+    if (guest) {
+      const maker = await ctx.db.get("users", search.createdBy);
+      return { ...fields, ...(maker ? { by: { name: personName(maker) || maker.email, ...(maker.avatarUrl ? { imageUrl: maker.avatarUrl } : {}), you: false } } : {}), guest: { role: guest, from: await workspaceFrom(ctx, search.workspaceId) } };
+    }
+    const by = await (await makersIn(ctx, actor.workspaceId, actor.userId))(search.createdBy);
+    return { ...fields, ...(by ? { by } : {}), guests: await countOf(ctx, itemGuestsOf(search._id)) };
   },
 });
 export const getSearch = accountQuery(getSearchAction);
@@ -234,9 +249,9 @@ export const answersOfAction = defineUserQuery({
   description: `Reads a saved search's screening answers for the papers with these IDs, at most ${ANSWERED_PAPERS_MAX} of them, as one page; a paper with no answers is left out. Given \`version\`, the answers as they were at that screening version, which a revision of the search names.`,
   args: { id: v.string(), paperIds: v.array(v.string()), version: v.optional(v.number()) },
   returns: paginationResultValidator(paperResponsesValidator),
-  run: async (ctx, { workspaceId }, { id, paperIds, version }) => {
+  run: async (ctx, actor, { id, paperIds, version }) => {
     if (paperIds.length > ANSWERED_PAPERS_MAX) throw new Error(`Answers are read ${ANSWERED_PAPERS_MAX} papers at a time.`);
-    const search = await findSearch(ctx, workspaceId, id);
+    const search = (await readableSearch(ctx, actor, id))?.search;
     const screening = search && (await screeningFor(ctx, search._id));
     return { page: screening ? await answersAmong(ctx, screening, paperIds, version) : [], isDone: true, continueCursor: "" };
   },
@@ -249,8 +264,8 @@ export const revisionsAction = defineUserQuery({
   description: "Lists a saved search's earlier versions, newest first, each marked as made by the person or by the assistant. Each names the screening version its answers stood at, which answersOf reads by paper.",
   args: { ...pageArgs, id: v.string() },
   returns: paginationResultValidator(v.object({ revision: v.number(), author: v.union(v.literal("user"), v.literal("assistant")), data: listedSearchValidator, answersVersion: v.optional(v.number()), deleted: v.boolean(), createdAt: v.number() })),
-  run: async (ctx, { workspaceId }, args) => {
-    const search = await findSearch(ctx, workspaceId, args.id);
+  run: async (ctx, actor, args) => {
+    const search = (await readableSearch(ctx, actor, args.id))?.search;
     if (!search) return { page: [], isDone: true, continueCursor: "" };
     const page = await ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", search._id)).order("desc")
       // Revisions saved before #354 hold their search's whole history; a page of them stops at
@@ -272,8 +287,8 @@ export const searchHistoryAction = defineUserQuery({
   description: "Lists a saved search's earlier queries, or its research questions, newest first, a page at a time.",
   args: { ...pageArgs, id: v.string(), kind: historyKind },
   returns: paginationResultValidator(historyEntryValidator),
-  run: async (ctx, { workspaceId }, args) => {
-    const search = await findSearch(ctx, workspaceId, args.id);
+  run: async (ctx, actor, args) => {
+    const search = (await readableSearch(ctx, actor, args.id))?.search;
     if (!search) return { page: [], isDone: true, continueCursor: "" };
     // A search not moved yet still holds its history: all of it, as one page.
     const legacy = args.kind === "query" ? search.data.queryHistory : search.data.questionHistory;
@@ -296,8 +311,8 @@ export const searchHistoryEntryAction = defineUserQuery({
   // Either the entry (null when there's none that far back), or where to go on from after
   // skipping as many entries as one read allows.
   returns: v.union(v.object({ entry: v.union(historyEntryValidator, v.null()) }), v.object({ skipped: v.number(), cursor: v.string() })),
-  run: async (ctx, { workspaceId }, args) => {
-    const search = await findSearch(ctx, workspaceId, args.id);
+  run: async (ctx, actor, args) => {
+    const search = (await readableSearch(ctx, actor, args.id))?.search;
     if (!search || !Number.isInteger(args.stepsBack) || args.stepsBack < 0) return { entry: null };
     const legacy = args.kind === "query" ? search.data.queryHistory : search.data.questionHistory;
     if (legacy) {
@@ -412,6 +427,24 @@ export function searchNote(command: Infer<typeof commandValidator>): Note | null
 
 export function findSearch(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, localId: string) {
   return ctx.db.query("searches").withIndex("by_workspace_and_localId", q => q.eq("workspaceId", workspaceId).eq("localId", localId)).unique();
+}
+
+/** Searches with one ID that a guest's read looks through for theirs: an ID is a search's own within its workspace, and only a copy or a move gives two workspaces the same one. */
+const SAME_ID_READ = 8;
+
+/**
+ * The search the person may read by the ID its page shows: the one in the workspace they act in,
+ * or one given to them as a guest (#653), which is theirs to open in their own workspace; `guest`
+ * is their role on that one.
+ */
+export async function readableSearch(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, localId: string): Promise<{ search: Doc<"searches">; guest: GuestRole | null } | null> {
+  const own = await findSearch(ctx, actor.workspaceId, localId);
+  if (own) return { search: own, guest: null };
+  for (const search of await ctx.db.query("searches").withIndex("by_localId", q => q.eq("localId", localId)).take(SAME_ID_READ)) {
+    const guest = await guestRole(ctx, actor, search);
+    if (guest) return { search, guest };
+  }
+  return null;
 }
 
 /** Who a change to answers is recorded as: the assistant, or the person and what the page said. */
@@ -689,10 +722,15 @@ export const changeAction = defineUserMutation({
   // The receipt makes a retried request apply once, from the page or from the assistant. It
   // keeps the undo, so a caller that lost the first answer gets the same one from a retry.
   run: async (ctx, actor, args) => {
-    const { userId, workspaceId, author } = actor;
+    const { userId, author } = actor;
     const key = `change:${args.requestId}`;
     const receipt = await received(ctx, userId, key);
     if (!receipt) await checkRemoval(ctx, actor, args.command);
+    // A change to a search shared with the person to edit (#653) is made where the search is, and noted in its
+    // Activity there. One shared to view isn't theirs to change, and no guest copies another search's history into it.
+    const shared = args.command.kind === "editSearch" ? await readableSearch(ctx, actor, args.command.id) : null;
+    if (shared?.guest && args.command.kind === "editSearch" && (shared.guest === "viewer" || args.command.edit.kind === "copySearch")) throw createError("FORBIDDEN", "This search is shared with you to view. Save a copy of it to change it.");
+    const workspaceId = shared?.guest ? shared.search.workspaceId : actor.workspaceId;
     // What the change did to its search, for its Activity (#656): noted here, not declared, so a
     // retried request or a change that left the search as it was notes nothing.
     const note = receipt ? null : searchNote(args.command);

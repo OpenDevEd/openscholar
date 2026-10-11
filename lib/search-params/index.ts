@@ -56,18 +56,20 @@ export function buildResultsUrl(searchId: string, params: Partial<ParsedSearchPa
 }
 
 /**
- * Build a SHAREABLE results URL — deliberately WITHOUT a searchId.
+ * Build a SHAREABLE results URL: the query and filters, and the search's id when it's an account's.
  *
- * The searchId is a per-browser localStorage history key, meaningless (and a
- * minor leak) to a recipient. A shared `${origin}/results?…` carries only the
- * query/filters; the recipient's SearchInitializer mints a fresh id for them
- * (resolveSearchInit Branch A). Defaults are stripped via clearOnDefault.
+ * With the id (#653), whoever can open the search opens the search itself: a member of its
+ * workspace, or a guest it was shared with. Anyone else doesn't have it, and their
+ * SearchInitializer makes their own copy from the query and filters (resolveSearchInit Branch A),
+ * as it does for a link without one. A signed-out browser's id is a key in its own storage,
+ * meaningless to a recipient, so its links carry none. Defaults are stripped via clearOnDefault.
  *
  * @param origin - The absolute origin, e.g. window.location.origin
  * @param params - The search params to serialize
+ * @param searchId - The account's search the link opens for those who can open it
  */
-export function buildShareableUrl(origin: string, params: Partial<ParsedSearchParams>): string {
-  const url = serializeSearchParams(`${origin}/results`, withUrlQuery(params));
+export function buildShareableUrl(origin: string, params: Partial<ParsedSearchParams>, searchId?: string): string {
+  const url = serializeSearchParams(`${origin}/results${searchId ? `/${encodeURIComponent(searchId)}` : ""}`, withUrlQuery(params));
   // A browser never sends the fragment to the server, so a long OQL query fits there.
   return params.field === OQL_FIELD && params.q ? `${url}#${SHARED_OQL}=${encodeURIComponent(params.q)}` : url;
 }

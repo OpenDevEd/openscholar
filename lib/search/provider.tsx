@@ -827,13 +827,13 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     // Expand keywords in the query (e.g., ml... → "machine learning" OR AI)
     const { expandedQuery } = expandQuery(urlParams.q || '');
 
-    // Strip the local history id from shared links — the recipient's
-    // SearchInitializer mints a fresh id for them. See buildShareableUrl.
+    // An account's search goes by its id, which opens it for whoever can open it; anyone else's
+    // SearchInitializer makes them a copy. A signed-out browser's id means nothing to a recipient. See buildShareableUrl.
     return buildShareableUrl(window.location.origin, {
       ...urlParams,
       q: expandedQuery,
-    });
-  }, [urlParams, expandQuery]);
+    }, account && !local && searchId ? searchId : undefined);
+  }, [urlParams, expandQuery, account, local, searchId]);
   
   // Convert URL params to SearchFilters for external use
   const toSearchFilters = useCallback((): SearchFilters => ({
