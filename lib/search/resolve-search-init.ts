@@ -48,7 +48,7 @@ export interface SearchInitInput {
   currentUrl: string;
 }
 
-function canonicalUrlForParams(
+export function canonicalUrlForParams(
   searchId: string,
   parsedParams: ParsedSearchParams
 ): string {
@@ -58,6 +58,14 @@ function canonicalUrlForParams(
     id: searchId,
   } as SearchResult);
   return buildResultsUrl(searchId, canonicalParams);
+}
+
+/**
+ * Whether an address carries a search: a query, a field or a filter the page knows. A parameter
+ * it doesn't, or one left at its default, carries none.
+ */
+export function carriesSearch(parsedParams: ParsedSearchParams): boolean {
+  return canonicalUrlForParams("", parsedParams).includes("?");
 }
 
 /**

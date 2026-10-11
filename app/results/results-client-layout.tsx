@@ -12,12 +12,14 @@ import { useSearchHistoryStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { useItemHome } from "@/components/workspaces/item-home";
 import { Gone } from "@/components/workspaces/shared";
+import { parseSearchParamsFromUrl } from "@/lib/search-params";
+import { carriesSearch } from "@/lib/search/resolve-search-init";
 import { useWorkspaceSlug, workspaceHref } from "@/lib/workspaces/href";
 
 function InitializeResults({ children }: { children: React.ReactNode }) {
   const t = useTranslations("searchCommand");
   const account = useContext(ResearchContext);
-  const carried = useSearchParams().toString() !== "";
+  const carried = carriesSearch(parseSearchParamsFromUrl(useSearchParams()));
   const searchId = getEffectiveSearchId(usePathname());
   const watched = useWatchedSearch(account ? searchId : undefined);
   const { retry } = useResearchStatus();
