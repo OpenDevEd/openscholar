@@ -3828,6 +3828,7 @@
     "members": "{count, plural, other {# 名成员}}",
     "switchTo": "切换到",
     "otherWorkspaces": "其他工作区",
+    "addedByName": "由 {name} 添加",
     "sharedWithYou": "与你共享的 {count, number} 个项目",
     "from": "来自",
     "decline": "拒绝",

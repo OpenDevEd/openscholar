@@ -14,6 +14,7 @@ import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { WorkspaceTile, type WorkspaceLook } from "@/components/workspaces/parts";
 import { PersonName } from "@/components/ui/identity";
 import { showStyledToast } from "@/components/ui/sonner";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
@@ -34,6 +35,19 @@ const ROW_PX = 38;
  * How a member gives a paper their rating in a collection. The cards' own rating control calls it
  * while a collection is open (components/rating-selector.tsx), so there is one way to rate there.
  */
+/** Who saved a paper in an organization's library (#656): their photo, and their first name where the card has room. */
+export function AddedBy({ name, imageUrl, you, compact = false }: { name: string; imageUrl?: string; you: boolean; compact?: boolean }) {
+  const t = useTranslations("workspaces");
+  return (
+    <TooltipHint label={t("addedByName", { name })}>
+      <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+        <IdentityAvatar name={name} imageUrl={imageUrl} className="size-5" />
+        {compact ? null : <PersonName name={name.split(" ")[0] ?? name} you={you} className="max-w-40" />}
+      </span>
+    </TooltipHint>
+  );
+}
+
 export function useRateInCollection(collectionId: Id<"collections"> | undefined) {
   const tc = useTranslations("common");
   const rate = useWorkspaceMutation(api.library.collections.setCollectionRating);

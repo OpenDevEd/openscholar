@@ -89,3 +89,14 @@ it("an organization's bookmarks name who added each, list one member's, and are 
   await set("alice", "ai", 'AI OR "machine learning"');
   expect((await bob.query(api.research.records.listedShortcuts, { accountId: "bob", workspaceId, sort: "alpha", ...page })).page[0]).toMatchObject({ shorthand: "ai", expansion: 'AI OR "machine learning"' });
 });
+
+it("an organization's library says who saved each paper, and a person's own names no one", async () => {
+  const { alice, bob, workspaceId, aliceOwn } = await lab();
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "One" });
+  await bob.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W2", title: "Two" });
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: aliceOwn, openalexId: "https://openalex.org/W3", title: "Three" });
+  const view = { sortBy: "savedAt" as const, sortOrder: "asc" as const, paginationOpts: { cursor: null, numItems: 20 } };
+  const lab_ = (await alice.query(api.library.queries.browseLibrary, { workspaceId, ...view })).page;
+  expect(lab_.map((paper) => [paper.title, paper.by?.name, paper.by?.you])).toEqual([["One", "Alice", true], ["Two", "Bob", false]]);
+  expect((await alice.query(api.library.queries.browseLibrary, { workspaceId: aliceOwn, ...view })).page[0]).not.toHaveProperty("by");
+});
