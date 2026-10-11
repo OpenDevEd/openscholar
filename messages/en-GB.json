@@ -3832,6 +3832,7 @@
     "dark": "Dark",
     "auto": "Auto",
     "signOut": "Sign out",
+    "signOutFailed": "Couldn't sign out. Check your connection and try again.",
     "personal": "Personal",
     "admin": "Admin",
     "member": "Member",

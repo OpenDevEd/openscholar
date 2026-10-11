@@ -8,6 +8,7 @@
 import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useClerk, useUser } from "@clerk/nextjs";
+import { showStyledToast } from "@/components/ui/sonner";
 import { useTheme } from "next-themes";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -182,6 +183,10 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const tint = current ? workspaceTint(current) : undefined;
   const item = (props: Omit<React.ComponentProps<typeof RailItem>, "onClick">) => <RailItem {...props} onClick={onClose} />;
   const [card, setCard] = useState<"workspace" | "account" | null>(null);
+  const { signOut } = useClerk();
+  // Signing out waits for the account card to close: open, it would sit there as Clerk empties it. Once asked for,
+  // the card doesn't open again, so nothing cancels its closing, and signing out starts once.
+  const [signOutStep, setSignOutStep] = useState<"asked" | "started" | null>(null);
   const [creating, setCreating] = useState(false);
   const reduceMotion = useReducedMotion();
   const workspaceTrigger = useRef<HTMLButtonElement>(null);
@@ -276,7 +281,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
           transition={CARD_SPRING}
           style={{ transformOrigin: "50% calc(56px - 50vh)" }}
         >
-          <AccountButton ref={accountTrigger} me={me} signedIn={signedIn} open={card === "account"} onOpen={() => setCard("account")} />
+          <AccountButton ref={accountTrigger} me={me} signedIn={signedIn} open={card === "account"} onOpen={() => signOutStep === null && setCard("account")} />
         </motion.div>
       </div>
 
@@ -314,6 +319,20 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
         from="bottom"
         label={t("account")}
         onClose={close}
+        onClosed={
+          signOutStep === "asked"
+            ? () => {
+                setSignOutStep("started");
+                // On a phone the rail's sheet closes as signing out starts, not before the card has closed in it.
+                onClose?.();
+                // A sign-out that fails leaves the person signed in, says so, and gives their card back.
+                signOut().catch(() => {
+                  setSignOutStep(null);
+                  showStyledToast("error", t("signOutFailed"));
+                });
+              }
+            : undefined
+        }
         head={
           <motion.span layoutId="rail-account-avatar" layoutDependency={card === "account"} transition={CARD_SPRING} className="flex rounded-full">
             <IdentityAvatar name={me?.name ?? ""} imageUrl={me?.imageUrl} className="size-10" />
@@ -326,6 +345,10 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
           onNavigate={() => {
             setCard(null);
             onClose?.();
+          }}
+          onSignOut={() => {
+            setSignOutStep("asked");
+            setCard(null);
           }}
         />
       </RailCard>
@@ -355,14 +378,15 @@ function CardTile() {
  * A card that rises from the foot of the rail, or drops from its head, over the rail and the
  * page. The page dims behind it; a click outside or Escape sends it back.
  */
-function RailCard({ open, from, label, onClose, head, children }: { open: boolean; from: "top" | "bottom"; label: string; onClose: () => void; head: React.ReactNode; children: React.ReactNode }) {
+/** `onClosed` runs once the card has finished closing. */
+function RailCard({ open, from, label, onClose, onClosed, head, children }: { open: boolean; from: "top" | "bottom"; label: string; onClose: () => void; onClosed?: () => void; head: React.ReactNode; children: React.ReactNode }) {
   const t = useTranslations("workspaces");
   const reduceMotion = useReducedMotion();
   const enter = from === "bottom" ? 36 : -36;
   // Stable, so it focuses the card once, as it mounts, and not again as it renders.
   const focusOnOpen = useCallback((node: HTMLDivElement | null) => node?.focus({ preventScroll: true }), []);
   return (
-    <AnimatePresence>
+    <AnimatePresence onExitComplete={onClosed}>
       {open ? (
         <>
           <motion.button
@@ -548,12 +572,11 @@ const AccountButton = React.forwardRef<HTMLButtonElement, { me: CachedMe | undef
  * opened while the page is still loading: it then has your name as the rail knows it (`me`), and
  * what is read after fades in or opens its place.
  */
-function AccountCard({ me, workspace, onNavigate }: { me: CachedMe | undefined; workspace: WorkspaceRow | undefined; onNavigate: () => void }) {
+function AccountCard({ me, workspace, onNavigate, onSignOut }: { me: CachedMe | undefined; workspace: WorkspaceRow | undefined; onNavigate: () => void; onSignOut: () => void }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
   const format = useFormatter();
   const { user } = useUser();
-  const { signOut } = useClerk();
   const { theme, setTheme } = useTheme();
   const { account, catalog, resolvedPlan } = useSubscriptionState();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
@@ -619,7 +642,7 @@ function AccountCard({ me, workspace, onNavigate }: { me: CachedMe | undefined; 
         </div>
       </div>
       <div className="border-t border-border/60 pt-1">
-        <button type="button" onClick={() => signOut()} className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+        <button type="button" onClick={onSignOut} className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
           <LogOut className="size-4" /> {t("signOut")}
         </button>
       </div>
