@@ -3832,6 +3832,7 @@
     "dark": "深色",
     "auto": "自动",
     "signOut": "退出登录",
+    "signOutFailed": "无法退出登录。请检查网络连接后重试。",
     "personal": "个人",
     "admin": "管理员",
     "member": "成员",

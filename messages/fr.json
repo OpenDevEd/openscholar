@@ -3832,6 +3832,7 @@
     "dark": "Sombre",
     "auto": "Auto",
     "signOut": "Se déconnecter",
+    "signOutFailed": "Impossible de se déconnecter. Vérifiez votre connexion et réessayez.",
     "personal": "Personnel",
     "admin": "Administrateur",
     "member": "Membre",

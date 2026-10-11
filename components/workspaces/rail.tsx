@@ -8,6 +8,7 @@
 import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAuth, useClerk, useUser } from "@clerk/nextjs";
+import { showStyledToast } from "@/components/ui/sonner";
 import { useTheme } from "next-themes";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -324,8 +325,11 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                 setSignOutStep("started");
                 // On a phone the rail's sheet closes as signing out starts, not before the card has closed in it.
                 onClose?.();
-                // A sign-out that fails leaves the person signed in, with their card back.
-                signOut().catch(() => setSignOutStep(null));
+                // A sign-out that fails leaves the person signed in, says so, and gives their card back.
+                signOut().catch(() => {
+                  setSignOutStep(null);
+                  showStyledToast("error", t("signOutFailed"));
+                });
               }
             : undefined
         }
