@@ -28,7 +28,7 @@ const CANDIDATE_ROWS = 500;
 /** A guest as a change names them: someone given the item, or an address invited to it. */
 const guestValidator = v.union(v.object({ userId: v.id("users") }), v.object({ email: v.string() }));
 
-const ROLES = "to view it (`viewer`: open, read and export) or to edit it (`editor`: also put papers in a collection and take them out, or change a search's query, filters, questions and answers; a screening or an extraction is shared to view only). A search is named by the ID its page shows";
+const ROLES = "to view it (`viewer`: open, read and export) or to edit it (`editor`: also put papers in a collection and take them out, or change a search's query, filters, questions and answers; a screening or an extraction is shared to view only, and an author profile, which is public, to edit only). A search is named by the ID its page shows";
 
 export const addAction = defineUserMutation({
   path: "sharing/guests:add",

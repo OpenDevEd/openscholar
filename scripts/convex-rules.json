@@ -37,10 +37,7 @@
       "MAX_FEATURE_FLAGS": "convex/featureFlags/internal.ts",
       "MAX_PENDING_INVITATIONS_PER_EMAIL": "convex/evidenceLibraries/invitations.ts",
       "MAX_PENDING_INVITATIONS_PER_LIBRARY": "convex/evidenceLibraries/invitations.ts",
-      "MAX_PENDING_INVITATIONS_PER_PROFILE": "convex/authors/invitations.ts",
-      "MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL": "convex/authors/invitations.ts",
       "MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL": "convex/sharing/invitations.ts",
-      "MAX_PROFILE_MEMBERS": "convex/authors/invitations.ts",
       "MAX_ZOTERO_GROUPS_PER_LIBRARY": "convex/zotero/libraryGroups.ts",
       "MAX_EVIDENCE_LIBRARY_DOMAINS": "convex/evidenceLibraries/domains.ts",
       "MAX_CATALOG_MODELS": "convex/models/mutations.ts",
@@ -86,7 +83,10 @@
       "MAX_RATERS": "the members of an organization its averages read, and the ratings of a paper in one collection; Clerk lets a free organization have 5 members",
       "PLACES_NOTED": "the collections a removed or restored paper notes in their Activity; a paper in more is noted in the first of them",
       "MAKER_ROWS_READ": "the makers of one kind of record the Run by filter reads for members who left; one row per person who ever made one, so an organization past it lists the first of them",
-      "OPEN_HOLDS_READ": "the holds a member has open, summed to size a reply's hold under their cap; a job holds one per slot and a workspace has 40 slots, and Autumn enforces the cap whatever this reads"
+      "OPEN_HOLDS_READ": "the holds a member has open, summed to size a reply's hold under their cap; a job holds one per slot and a workspace has 40 slots, and Autumn enforces the cap whatever this reads",
+      "MAX_PROFILE_MEMBERS": "the first editors and admins a profile's Access section lists; its workspace's plan holds how many guests a profile has (convex/sharing/access.ts requireRoom)",
+      "MAX_PENDING_INVITATIONS_PER_PROFILE": "the first waiting invitations a profile's Access section lists; each holds a guest's place, which its workspace's plan limits",
+      "CHECKED": "the old sharing rows a migration's check reads of each table to say how many aren't moved yet; shared dev holds a handful"
     },
     "batches": {
       "ACTIVITY_STEP": "a moved item's activity rows, a step at a time; it reschedules itself until none are left in the old workspace",

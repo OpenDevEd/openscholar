@@ -197,7 +197,7 @@ export const getAction = defineUserQuery({
   returns: v.union(
     v.null(),
     v.object({ state: v.literal("other") }),
-    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.number(), state: v.union(v.literal("pending"), v.literal("accepted")) }),
+    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.optional(v.number()), state: v.union(v.literal("pending"), v.literal("accepted")) }),
   ),
   run: async (ctx, { userId }, { invitationId }) => {
     const id = ctx.db.normalizeId("itemInvitations", invitationId);
@@ -213,7 +213,7 @@ export const getAction = defineUserQuery({
     return {
       kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role,
       by: { name: inviter ? personName(inviter) || inviter.email : "", ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) },
-      from: await workspaceFrom(ctx, shared.workspaceId), size: shared.size, state,
+      from: await workspaceFrom(ctx, shared.workspaceId), ...(shared.size === undefined ? {} : { size: shared.size }), state,
     };
   },
 });

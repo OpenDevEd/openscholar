@@ -4049,13 +4049,15 @@
         "collection": "このコレクションを共有",
         "screening": "このスクリーニングを共有",
         "extraction": "この抽出を共有",
-        "search": "この検索を共有"
+        "search": "この検索を共有",
+        "author": "この著者プロフィールを共有"
       },
       "title": {
         "collection": "コレクションを共有",
         "screening": "スクリーニングを共有",
         "extraction": "抽出を共有",
-        "search": "検索を共有"
+        "search": "検索を共有",
+        "author": "著者プロフィールを共有"
       },
       "addPeople": "名前またはメールで追加",
       "inviteEmail": "{email} を招待",
@@ -4084,7 +4086,8 @@
         "collection": "{plan} ではコレクションごとに{count, plural, other {#人}}までゲストを追加できます",
         "screening": "{plan} ではスクリーニングごとに{count, plural, other {#人}}までゲストを追加できます",
         "extraction": "{plan} では抽出ごとに{count, plural, other {#人}}までゲストを追加できます",
-        "search": "{plan} では検索ごとに{count, plural, other {#人}}までゲストを追加できます"
+        "search": "{plan} では検索ごとに{count, plural, other {#人}}までゲストを追加できます",
+        "author": "{plan} では著者プロフィールごとに{count, plural, other {#人}}までゲストを追加できます"
       },
       "failed": "共有を変更できませんでした"
     },
@@ -4099,13 +4102,15 @@
         "collection": "コレクション",
         "screening": "スクリーニング",
         "extraction": "抽出",
-        "search": "検索"
+        "search": "検索",
+        "author": "著者プロフィール"
       },
       "size": {
         "collection": "{count, plural, other {#件の論文}}",
         "screening": "{count, plural, other {#件の論文}}",
         "extraction": "{count, plural, other {#件の論文}}",
-        "search": "{count, plural, other {#件の結果}}"
+        "search": "{count, plural, other {#件の結果}}",
+        "author": "{count, plural, other {#件の出版物}}"
       },
       "runUses": "ここで実行する処理に使われるのは",
       "yourCredits": "あなたのクレジット",
@@ -4120,7 +4125,8 @@
         "collection": "{name} がコレクションを共有しました",
         "screening": "{name} がスクリーニングを共有しました",
         "extraction": "{name} が抽出を共有しました",
-        "search": "{name} が検索を共有しました"
+        "search": "{name} が検索を共有しました",
+        "author": "{name} が著者プロフィールを共有しました"
       },
       "pointOwn": "あなた自身のワークスペースに表示されます",
       "pointCredits": "実行する処理にはあなたのクレジットが使われます",

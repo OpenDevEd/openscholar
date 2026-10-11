@@ -13,15 +13,6 @@ const migrations = new Migrations<DataModel>(components.migrations, { internalMu
  *   npx convex run migrations/expireInvitations:run '{"dryRun": true}'
  *   npx convex run migrations/expireInvitations:run
  */
-export const authorProfileInvitations = migrations.define({
-  table: "authorProfileInvitations",
-  migrateOne: async (ctx, invitation) => {
-    if (invitation.state !== "pending") return;
-    if (invitation.expiresAt <= Date.now()) return { state: "expired" as const };
-    await ctx.scheduler.runAt(invitation.expiresAt, internal.authors.invitations.expire, { invitationId: invitation._id });
-  },
-});
-
 export const evidenceLibraryInvitations = migrations.define({
   table: "evidenceLibraryInvitations",
   migrateOne: async (ctx, invitation) => {
@@ -31,7 +22,4 @@ export const evidenceLibraryInvitations = migrations.define({
   },
 });
 
-export const run = migrations.runner([
-  internal.migrations.expireInvitations.authorProfileInvitations,
-  internal.migrations.expireInvitations.evidenceLibraryInvitations,
-]);
+export const run = migrations.runner([internal.migrations.expireInvitations.evidenceLibraryInvitations]);

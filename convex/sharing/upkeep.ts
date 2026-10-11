@@ -56,8 +56,10 @@ export const close = internalMutation({
           ? await ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate(page)
           : kind === "extraction"
             ? await ctx.db.query("extractionJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate(page)
-            : // A search holds its whole query: a page of them stops at these bytes and goes on from its cursor.
-              await ctx.db.query("searches").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate({ ...page, maximumBytesRead: 4 * 1024 * 1024 });
+            : kind === "search"
+              ? // A search holds its whole query: a page of them stops at these bytes and goes on from its cursor.
+                await ctx.db.query("searches").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate({ ...page, maximumBytesRead: 4 * 1024 * 1024 })
+              : await ctx.db.query("authorProfiles").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).paginate(page);
     for (const item of items.page) {
       if (await hasGuests(ctx, item._id)) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.follow, { kind, item: item._id, cursor: null, closed: true });
     }

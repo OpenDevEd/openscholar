@@ -4049,13 +4049,15 @@
         "collection": "Partager cette collection",
         "screening": "Partager ce criblage",
         "extraction": "Partager cette extraction",
-        "search": "Partager cette recherche"
+        "search": "Partager cette recherche",
+        "author": "Partager ce profil d'auteur"
       },
       "title": {
         "collection": "Partager la collection",
         "screening": "Partager le criblage",
         "extraction": "Partager l'extraction",
-        "search": "Partager la recherche"
+        "search": "Partager la recherche",
+        "author": "Partager le profil d'auteur"
       },
       "addPeople": "Ajouter des personnes par nom ou e-mail",
       "inviteEmail": "Inviter {email}",
@@ -4084,7 +4086,8 @@
         "collection": "{plan} permet {count, plural, one {# invité} other {# invités}} par collection",
         "screening": "{plan} permet {count, plural, one {# invité} other {# invités}} par criblage",
         "extraction": "{plan} permet {count, plural, one {# invité} other {# invités}} par extraction",
-        "search": "{plan} permet {count, plural, one {# invité} other {# invités}} par recherche"
+        "search": "{plan} permet {count, plural, one {# invité} other {# invités}} par recherche",
+        "author": "{plan} permet {count, plural, one {# invité} other {# invités}} par profil d'auteur"
       },
       "failed": "Impossible de modifier le partage"
     },
@@ -4099,13 +4102,15 @@
         "collection": "Collections",
         "screening": "Criblages",
         "extraction": "Extractions",
-        "search": "Recherches"
+        "search": "Recherches",
+        "author": "Profils d'auteur"
       },
       "size": {
         "collection": "{count, plural, one {# article} other {# articles}}",
         "screening": "{count, plural, one {# article} other {# articles}}",
         "extraction": "{count, plural, one {# article} other {# articles}}",
-        "search": "{count, plural, one {# résultat} other {# résultats}}"
+        "search": "{count, plural, one {# résultat} other {# résultats}}",
+        "author": "{count, plural, one {# publication} other {# publications}}"
       },
       "runUses": "Tout ce que vous lancez dessus utilise",
       "yourCredits": "vos crédits",
@@ -4120,7 +4125,8 @@
         "collection": "{name} a partagé une collection",
         "screening": "{name} a partagé un criblage",
         "extraction": "{name} a partagé une extraction",
-        "search": "{name} a partagé une recherche"
+        "search": "{name} a partagé une recherche",
+        "author": "{name} a partagé un profil d'auteur"
       },
       "pointOwn": "Elle se trouve dans votre propre espace de travail",
       "pointCredits": "Ce que vous lancez dessus utilise vos crédits",

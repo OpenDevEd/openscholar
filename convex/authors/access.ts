@@ -3,6 +3,7 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { getCurrentUser, requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
+import { grantOf, open } from "../sharing/items";
 import { actorIn } from "../workspaces/actor";
 
 /** What the person reading a profile is to it: their role, and whether they act in the workspace that owns it, whose members see its Activity and who has it open (#656, #657). */
@@ -14,16 +15,15 @@ export async function profileViewer(ctx: QueryCtx | MutationCtx, profile: Doc<"a
 
 /**
  * What a person may do with a profile: own it as its maker or an admin of the workspace
- * that owns it (#650), or edit it when they were invited to.
+ * that owns it (#650), or edit it when it was shared with them (#653): a profile is public, so
+ * its guests are its editors, wherever they act.
  */
 export async function profileRoleForUser(ctx: QueryCtx | MutationCtx, profile: Doc<"authorProfiles">, userId: Id<"users">) {
   // Its maker and the workspace's admins own it while they can act in that workspace; one who left it keeps only an invitation of their own.
   const user = profile.workspaceId ? await ctx.db.get("users", userId) : null;
   const actor = user && profile.workspaceId ? await actorIn(ctx, user, profile.workspaceId) : null;
   if (actor && (actor.role === "admin" || profile.createdBy === userId)) return "owner" as const;
-  const member = await ctx.db.query("authorProfileMembers")
-    .withIndex("by_profileId_and_userId", q => q.eq("profileId", profile._id).eq("userId", userId)).unique();
-  return member ? "editor" as const : null;
+  return profile.workspaceId && (await grantOf(ctx, profile._id, userId)) && (await open(ctx, profile.workspaceId)) ? "editor" as const : null;
 }
 
 /**

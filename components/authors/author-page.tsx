@@ -98,7 +98,7 @@ const safeUrl = (value?: string) => {
 export default function AuthorPage({
   profile, configuration, canEdit, member = false, atHome = false, moveFrom, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
   openAlexAuthors, openAlexPapers: works, onSearchAuthors, openAlexError,
-  hasMoreWorks, workCount, loadingWorks: fetchingWorks, onLoadMoreWorks, invitationSection,
+  hasMoreWorks, workCount, loadingWorks: fetchingWorks, onLoadMoreWorks,
 }: {
   profile: AuthorProfile;
   configuration: boolean;
@@ -112,7 +112,6 @@ export default function AuthorPage({
   canBrowseAuthors?: boolean;
   onSave: (profile: AuthorProfile, previous: AuthorProfile) => Promise<AuthorProfile>;
   accessSection: ReactNode;
-  invitationSection?: ReactNode;
   papers: AuthorPublication[];
   publicationStatus: string | null;
   loadingPublications: boolean;
@@ -643,7 +642,6 @@ export default function AuthorPage({
           )}
           filtersInCard
           intro={<>
-            {invitationSection}
               <header className="relative isolate overflow-hidden p-5 sm:p-6">
                 <div
                   aria-hidden="true"

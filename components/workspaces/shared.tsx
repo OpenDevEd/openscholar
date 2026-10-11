@@ -38,6 +38,8 @@ export const SHARED_KINDS: Record<SharedKind, { icon: AppIcon; tint: string; hre
   extraction: { icon: FileSearch, tint: "#818cf8", href: (id) => `/extraction/${id}`, roles: ["viewer"] },
   // A search shared with you goes by its document's ID, and opens with its own query and filters.
   search: { icon: Search, tint: "#60a5fa", href: (id) => `/results/${id}`, roles: ["viewer", "editor"] },
+  // An author profile is public: what's shared is editing it, from its own page.
+  author: { icon: UserRound, tint: "#f472b6", href: (id) => `/authors/${id}`, roles: ["editor"] },
 };
 
 type Sort = "recent" | "name";
@@ -149,7 +151,7 @@ function KindChip({ on, onClick, count, children }: { on: boolean; onClick: () =
   );
 }
 
-type SharedItem = { kind: SharedKind; id: string; name: string; role: "viewer" | "editor"; at: number; by: { name: string; imageUrl?: string }; from: From; size: number };
+type SharedItem = { kind: SharedKind; id: string; name: string; role: "viewer" | "editor"; at: number; by: { name: string; imageUrl?: string }; from: From; size?: number };
 
 export type From = { name: string; organization: boolean };
 
@@ -194,7 +196,8 @@ function Row({ item }: { item: SharedItem }) {
         <div className="flex flex-wrap items-center gap-1.5">
           <PersonTag name={item.by.name} imageUrl={item.by.imageUrl} />
           <GuestChips from={item.from} role={item.role} />
-          <span className="inline-flex h-6 items-center rounded-full border border-border-subtle px-2.5 text-xs tabular-nums text-muted-foreground">{t(`size.${item.kind}`, { count: item.size })}</span>
+          {/* A kind that keeps no count of what it holds, an author profile, has none to show. */}
+          {item.size === undefined ? null : <span className="inline-flex h-6 items-center rounded-full border border-border-subtle px-2.5 text-xs tabular-nums text-muted-foreground">{t(`size.${item.kind}`, { count: item.size })}</span>}
         </div>
       </div>
       <EntryAside className="h-7 self-start" meta={<time>{format.relativeTime(item.at, now)}</time>}>
@@ -265,9 +268,11 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
               {invitation.role === "viewer" ? ts("canView") : ts("canEdit")}
             </RoleLabel>
           </Chip>
-          <Chip>
-            <span className="tabular-nums">{t(`size.${invitation.kind}`, { count: invitation.size })}</span>
-          </Chip>
+          {invitation.size === undefined ? null : (
+            <Chip>
+              <span className="tabular-nums">{t(`size.${invitation.kind}`, { count: invitation.size })}</span>
+            </Chip>
+          )}
         </>
       }
     >

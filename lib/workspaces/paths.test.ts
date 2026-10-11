@@ -65,10 +65,9 @@ it("keeps the page where the workspace picked has it, opens the section where th
   expect(switchTarget("lab", "/library", "col=abc")).toBe("/o/lab/library");
   expect(switchTarget("lab", "/screening", "job=abc")).toBe("/o/lab/screening");
   expect(switchTarget(undefined, "/o/lab/extraction/abc", "")).toBe("/extraction");
-  // Shared with me is a person's own, as are the deployment's settings and an invitation to a profile.
+  // Shared with me is a person's own, as are the deployment's settings.
   expect(switchTarget("lab", "/shared", "")).toBe("/o/lab");
   expect(switchTarget("lab", "/settings/admin/models", "")).toBe("/o/lab");
-  expect(switchTarget("lab", "/authors/abc/invitation", "")).toBe("/o/lab");
   // An organization's own settings are no person's.
   expect(switchTarget(undefined, "/o/lab/settings/workspace/members", "")).toBe("/settings");
 });

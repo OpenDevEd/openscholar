@@ -4049,13 +4049,15 @@
         "collection": "Share this collection",
         "screening": "Share this screening",
         "extraction": "Share this extraction",
-        "search": "Share this search"
+        "search": "Share this search",
+        "author": "Share this author profile"
       },
       "title": {
         "collection": "Share collection",
         "screening": "Share screening",
         "extraction": "Share extraction",
-        "search": "Share search"
+        "search": "Share search",
+        "author": "Share author profile"
       },
       "addPeople": "Add people by name or email",
       "inviteEmail": "Invite {email}",
@@ -4084,7 +4086,8 @@
         "collection": "{plan} allows {count, plural, one {# guest} other {# guests}} on each collection",
         "screening": "{plan} allows {count, plural, one {# guest} other {# guests}} on each screening",
         "extraction": "{plan} allows {count, plural, one {# guest} other {# guests}} on each extraction",
-        "search": "{plan} allows {count, plural, one {# guest} other {# guests}} on each search"
+        "search": "{plan} allows {count, plural, one {# guest} other {# guests}} on each search",
+        "author": "{plan} allows {count, plural, one {# guest} other {# guests}} on each author profile"
       },
       "failed": "Couldn't change who this is shared with"
     },
@@ -4099,13 +4102,15 @@
         "collection": "Collections",
         "screening": "Screenings",
         "extraction": "Extractions",
-        "search": "Searches"
+        "search": "Searches",
+        "author": "Author profiles"
       },
       "size": {
         "collection": "{count, plural, one {# paper} other {# papers}}",
         "screening": "{count, plural, one {# paper} other {# papers}}",
         "extraction": "{count, plural, one {# paper} other {# papers}}",
-        "search": "{count, plural, one {# result} other {# results}}"
+        "search": "{count, plural, one {# result} other {# results}}",
+        "author": "{count, plural, one {# publication} other {# publications}}"
       },
       "runUses": "Anything you run on these uses",
       "yourCredits": "your credits",
@@ -4120,7 +4125,8 @@
         "collection": "{name} shared a collection",
         "screening": "{name} shared a screening",
         "extraction": "{name} shared an extraction",
-        "search": "{name} shared a search"
+        "search": "{name} shared a search",
+        "author": "{name} shared an author profile"
       },
       "pointOwn": "It sits in your own workspace",
       "pointCredits": "Work you run on it uses your credits",
