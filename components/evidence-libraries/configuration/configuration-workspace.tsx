@@ -629,19 +629,23 @@ function Workspace({
                 ids={draft.collections.map((collection) => collection.id)}
               >
                 <SaveRefusalProvider refusal={refusal}>
-                  {PAGE_SECTION_KEYS.map((key) => {
-                    const Section = SECTION_COMPONENTS[key];
-                    return (
-                      <Section
-                        key={key}
-                        libraryId={libraryId}
-                        draft={draft}
-                        saved={saved}
-                        patch={patch}
-                        reset={reset}
-                      />
-                    );
-                  })}
+                  {/* A save ends by drawing the form again from what was saved. A change made while one is on its
+                      way would be lost without a word, so the settings cannot be changed until it is back. */}
+                  <div className="contents" inert={saving || activating} aria-busy={saving || activating || undefined}>
+                    {PAGE_SECTION_KEYS.map((key) => {
+                      const Section = SECTION_COMPONENTS[key];
+                      return (
+                        <Section
+                          key={key}
+                          libraryId={libraryId}
+                          draft={draft}
+                          saved={saved}
+                          patch={patch}
+                          reset={reset}
+                        />
+                      );
+                    })}
+                  </div>
                 </SaveRefusalProvider>
               </CollectionFactsProvider>
               <PublicationSection libraryId={libraryId} operationRunning={operationRunning} />
