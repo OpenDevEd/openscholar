@@ -36,6 +36,7 @@ import type { FunctionReturnType } from "convex/server";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
+import { useHydrated } from "@/lib/use-hydrated";
 import { findPlan, planCreditCap } from "@/lib/billing/catalog";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
@@ -100,6 +101,7 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
   // The page shows with what the server read, a moment before the browser knows the workspace its changes go to. What
   // changes it at a click waits for that; the rest asks or opens a form first, and the workspace is known by then.
   const ready = workspaceId !== undefined;
+  const hydrated = useHydrated();
   const rename = useWorkspaceAction(api.organizations.manage.rename);
   const setColour = useWorkspaceMutation(api.organizations.manage.setColour);
   const setLogo = useWorkspaceAction(api.organizations.manage.setLogo);
@@ -116,7 +118,8 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
   if (!organization || !summary) return <Enter ready={false}>{null}</Enter>;
 
   const { name, slug } = organization;
-  const address = `${window.location.host}/o/${slug}`;
+  // The page can be drawn on the server now that its data comes with it, where there is no window to ask.
+  const address = `${hydrated ? window.location.host : ""}/o/${slug}`;
   const tint = workspaceTint(organization);
   const lastAdmin = admin && summary.admins === 1;
   const contents = [
