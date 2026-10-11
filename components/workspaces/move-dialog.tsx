@@ -32,7 +32,7 @@ export type Movable = "collection" | "search" | "screening" | "extraction" | "ch
 /** What goes with each kind of item, as chips. */
 const GOES = {
   collection: ["itsPapers", "ratingsInIt", "activity"],
-  author: ["publications", "editors"],
+  author: ["publications", "editors", "activity"],
   search: ["resultsRatings", "screeningAnswers", "earlierQueries", "activity"],
   screening: ["answers", "questions", "activity"],
   extraction: ["answers", "questions", "pdfs", "activity"],

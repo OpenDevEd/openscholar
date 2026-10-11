@@ -1008,7 +1008,8 @@ export default function AuthorPage({
           </Dialog>
         </>
       )}
-      {member ? <ActivitySheet open={activity} onOpenChange={setActivity} kind="author" id={profileId} name={profile.name} /> : null}
+      {/* The profile's own view has the button; its settings read nothing for a sheet they can't open. */}
+      {member && !draft ? <ActivitySheet open={activity} onOpenChange={setActivity} kind="author" id={profileId} name={profile.name} /> : null}
       {moveFrom ? <MoveDialog open={moving} onOpenChange={setMoving} kind="author" id={profileId} name={profile.name} from={moveFrom} /> : null}
     </main>
   );
