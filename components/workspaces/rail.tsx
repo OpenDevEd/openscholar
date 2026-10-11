@@ -183,8 +183,9 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const item = (props: Omit<React.ComponentProps<typeof RailItem>, "onClick">) => <RailItem {...props} onClick={onClose} />;
   const [card, setCard] = useState<"workspace" | "account" | null>(null);
   const { signOut } = useClerk();
-  // Signing out waits for the account card to close: open, it would sit there as Clerk empties it.
-  const [signingOut, setSigningOut] = useState(false);
+  // Signing out waits for the account card to close: open, it would sit there as Clerk empties it. Once asked for,
+  // the card doesn't open again, so nothing cancels its closing, and signing out starts once.
+  const [signOutStep, setSignOutStep] = useState<"asked" | "started" | null>(null);
   const [creating, setCreating] = useState(false);
   const reduceMotion = useReducedMotion();
   const workspaceTrigger = useRef<HTMLButtonElement>(null);
@@ -279,7 +280,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
           transition={CARD_SPRING}
           style={{ transformOrigin: "50% calc(56px - 50vh)" }}
         >
-          <AccountButton ref={accountTrigger} me={me} signedIn={signedIn} open={card === "account"} onOpen={() => setCard("account")} />
+          <AccountButton ref={accountTrigger} me={me} signedIn={signedIn} open={card === "account"} onOpen={() => signOutStep === null && setCard("account")} />
         </motion.div>
       </div>
 
@@ -318,11 +319,13 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
         label={t("account")}
         onClose={close}
         onClosed={
-          signingOut
+          signOutStep === "asked"
             ? () => {
+                setSignOutStep("started");
                 // On a phone the rail's sheet closes as signing out starts, not before the card has closed in it.
                 onClose?.();
-                void signOut();
+                // A sign-out that fails leaves the person signed in, with their card back.
+                signOut().catch(() => setSignOutStep(null));
               }
             : undefined
         }
@@ -340,7 +343,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
             onClose?.();
           }}
           onSignOut={() => {
-            setSigningOut(true);
+            setSignOutStep("asked");
             setCard(null);
           }}
         />
