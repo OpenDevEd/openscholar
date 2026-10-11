@@ -22,7 +22,8 @@ export function SearchOrigin({ searchId }: { searchId: string }) {
     return (
       <>
         {by}
-        <GuestChips from={access.guest.from} role={access.guest.role} person />
+        {/* A person's own workspace is named by who ran it; an organization's has its own chip. */}
+        <GuestChips from={access.guest.from} role={access.guest.role} />
       </>
     );
   }
