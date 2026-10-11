@@ -14,11 +14,13 @@ import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { EASE } from "@/components/settings/model-map";
 import { Enter, LIST, Segmented, Zone } from "@/components/settings/parts";
+import { QueryText } from "@/components/ui/query-text";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
 import { useModelPicks } from "@/lib/ai/use-model-picks";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { ITEMS_PER_PAGE } from "@/lib/constants";
+import { OQL_FIELD } from "@/lib/openalex/oql";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { useResearchStatus } from "@/lib/research/provider";
@@ -163,9 +165,10 @@ export function SetupView({
   // An earlier screening's questions to reuse, with their points. A search needs none: its questions load with it.
   const { data: earlier } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, source?.kind === "screening" ? { jobId: source.id } : "skip"));
   const fresh = earlier ? questionsOf(earlier).filter((q) => !questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase())) : [];
-  const defaultName = !source ? "" : source.kind === "screening" ? source.label : t("includedIn", { name: source.label });
   // What it's called left unnamed: its papers, named from what the server keeps of them, as the rail names a screening.
   const unnamed = source ? jobName(t, { createdAt: now.getTime(), set: setOf(source), label: source.kind === "screening" ? source.called : source.label }, date) : t("newScreening");
+  // A search with no query has no name to lend the collection, so it takes the screening's.
+  const defaultName = !source ? "" : source.kind === "screening" ? source.label : t("includedIn", { name: source.label.trim() || unnamed });
 
   const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
@@ -286,7 +289,7 @@ export function SetupView({
                       onToggle={() => choose(s)}
                       disabled={s.count === 0}
                       icon={SOURCE_ICON[s.kind]}
-                      label={s.label}
+                      label={s.kind === "search" ? <QueryText query={s.label} oql={s.search.field === OQL_FIELD} /> : s.label}
                       detail={
                         // As on a search's history card: one row that scrolls sideways under a fading edge.
                         s.kind === "search" ? (
@@ -309,7 +312,7 @@ export function SetupView({
                         summary={
                           <div className="flex flex-wrap items-center gap-1.5">
                             <Chip className="text-foreground"><span>{t.rich("papersBold", { count: papers, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
-                            <Chip>{scope === "all" ? t("oneJob") : t("resultsPage", { page })}</Chip>
+                            {scope === "page" ? <Chip>{t("resultsPage", { page })}</Chip> : null}
                           </div>
                         }
                       />

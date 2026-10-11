@@ -1816,7 +1816,6 @@
     "firstPaper": "First paper",
     "lastPaper": "Last paper",
     "papersBold": "{count, plural, one {<n>#</n> paper} other {<n>#</n> papers}}",
-    "oneJob": "One job",
     "resultsPage": "Results page {page}",
     "sharedWithResults": "Shared with this search's results page",
     "importQuestions": "Import {count, plural, one {# question} other {# questions}} from {name}",

@@ -1814,7 +1814,6 @@
     "firstPaper": "第一篇论文",
     "lastPaper": "最后一篇论文",
     "papersBold": "{count, plural, other {<n>#</n> 篇}}",
-    "oneJob": "一个任务",
     "resultsPage": "结果第 {page} 页",
     "sharedWithResults": "与此搜索的结果页共用",
     "importQuestions": "从 {name} 导入 {count, plural, other {# 个问题}}",
