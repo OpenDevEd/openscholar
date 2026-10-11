@@ -11,7 +11,7 @@ import type { Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { authorContentFields } from "./validators";
-import { profileRole, requireProfileAccess } from "./access";
+import { profileViewer, requireProfileAccess } from "./access";
 import { workspaceMutation, workspaceQuery } from "../lib/userActions";
 import { noteActivity } from "../activity/notes";
 
@@ -69,13 +69,13 @@ export const create = workspaceMutation({
 
 export const get = query({
   args: {profileId: v.string()},
-  returns: v.union(v.null(), v.object({...profileWithPhoto, role: v.union(v.literal("owner"), v.literal("editor"), v.null())})),
+  returns: v.union(v.null(), v.object({...profileWithPhoto, role: v.union(v.literal("owner"), v.literal("editor"), v.null()), member: v.boolean()})),
   handler: async (ctx, {profileId}) => {
     const id = ctx.db.normalizeId("authorProfiles", profileId);
     if (!id) return null;
     const profile = await ctx.db.get("authorProfiles", id);
     if (!profile) return null;
-    return {...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null, role: await profileRole(ctx, profile)};
+    return {...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null, ...(await profileViewer(ctx, profile))};
   },
 });
 

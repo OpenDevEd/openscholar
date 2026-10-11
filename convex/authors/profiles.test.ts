@@ -55,6 +55,8 @@ describe("author profiles", () => {
       {by: "maker", happened: "edited", detail: undefined},
       {by: "maker", happened: "created", detail: "Lab author"},
     ]);
+    // The profile's read says who is of the workspace that owns it: they are shown its Activity.
+    expect(await Promise.all(["maker", "member", "outsider"].map(async subject => (await as(subject).query(api.authors.profiles.get, {profileId}))?.member))).toEqual([true, true, false]);
     // A member with it open is named to the others, and nobody outside the lab joins its room.
     await as("member").mutation(api.presence.heartbeat, {...item, sessionId: "member-tab"});
     expect((await as("maker").query(api.presence.here, {...item, ...page})).page.map(person => person.name)).toEqual(["member"]);

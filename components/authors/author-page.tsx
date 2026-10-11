@@ -96,7 +96,7 @@ const safeUrl = (value?: string) => {
 };
 
 export default function AuthorPage({
-  profile, configuration, canEdit, inWorkspace = false, moveFrom, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
+  profile, configuration, canEdit, member = false, atHome = false, moveFrom, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
   openAlexAuthors, openAlexPapers: works, onSearchAuthors, openAlexError,
   hasMoreWorks, workCount, loadingWorks: fetchingWorks, onLoadMoreWorks, invitationSection,
 }: {
@@ -104,8 +104,10 @@ export default function AuthorPage({
   configuration: boolean;
   canEdit: boolean;
   /** The workspace it's in, for its owners to move it to another of theirs (#654). */
-  /** The page is in the workspace that owns the profile, whose members see who has it open and what changed on it. */
-  inWorkspace?: boolean;
+  /** The person acts in the workspace that owns the profile, whose members see what changed on it. */
+  member?: boolean;
+  /** The page is at that workspace's address, where its members see who else has the profile open. */
+  atHome?: boolean;
   moveFrom?: Id<"workspaces">;
   canBrowseAuthors?: boolean;
   onSave: (profile: AuthorProfile, previous: AuthorProfile) => Promise<AuthorProfile>;
@@ -126,6 +128,8 @@ export default function AuthorPage({
   const ta = useTranslations("workspaces.activity");
   const [moving, setMoving] = useState(false);
   const [activity, setActivity] = useState(false);
+  // Either mode of the page keeps the person in the profile's room. First in the bar's right-hand group, so faces arriving move nothing.
+  const presence = atHome ? <span className="-order-1 flex"><ItemPresence kind="author" id={profileId} /></span> : null;
   // A paper is shown once its rating is read, so its card opens at its final size.
   const rated = useRatedPapers(works);
   const openAlexPapers = rated.papers;
@@ -205,6 +209,7 @@ export default function AuthorPage({
                 ) : null}
               </>}
             >
+              {presence}
               <Button variant="outline" size="sm" className={BAR_ACTION} asChild>
                 <Link href={profileHref}>
                   <ArrowUpRight />
@@ -576,14 +581,12 @@ export default function AuthorPage({
           backHref={canBrowseAuthors ? "/authors" : undefined}
           backLabel="Back to authors"
           actions={<>
-            {inWorkspace ? (
-              <>
-                <ItemPresence kind="author" id={profileId} />
-                <Button variant="ghost" size="sm" className={BAR_ACTION} onClick={() => setActivity(true)}>
-                  <History />
-                  <span className={BAR_LABEL}>{ta("title")}</span>
-                </Button>
-              </>
+            {presence}
+            {member ? (
+              <Button variant="ghost" size="sm" className={BAR_ACTION} onClick={() => setActivity(true)}>
+                <History />
+                <span className={BAR_LABEL}>{ta("title")}</span>
+              </Button>
             ) : null}
             {moveFrom ? (
               <Button variant="ghost" size="sm" className={BAR_ACTION} onClick={() => setMoving(true)}>
@@ -1005,7 +1008,7 @@ export default function AuthorPage({
           </Dialog>
         </>
       )}
-      {inWorkspace ? <ActivitySheet open={activity} onOpenChange={setActivity} kind="author" id={profileId} name={profile.name} /> : null}
+      {member ? <ActivitySheet open={activity} onOpenChange={setActivity} kind="author" id={profileId} name={profile.name} /> : null}
       {moveFrom ? <MoveDialog open={moving} onOpenChange={setMoving} kind="author" id={profileId} name={profile.name} from={moveFrom} /> : null}
     </main>
   );
