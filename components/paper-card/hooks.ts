@@ -19,33 +19,6 @@ import { getEffectiveSearchId } from "@/lib/utils";
 import { buildShareableUrl } from "@/lib/search-params";
 import { ScreeningContext, TranslationContext } from "@/components/results-contexts";
 
-// ==================== Types ====================
-
-export interface PaperData {
-  id: string;
-  title: string;
-  abstract: string;
-  publication_year?: number;
-  authorships?: { author: { display_name: string } }[];
-  primary_location?: {
-    source?: { display_name: string };
-  };
-  biblio?: {
-    volume?: string;
-    issue?: string;
-    first_page?: string;
-    last_page?: string;
-  };
-  cited_by_count?: number;
-  referenced_works_count?: number;
-  related_works?: string[];
-  open_access?: {
-    is_oa: boolean;
-    oa_url?: string;
-  };
-  doi?: string;
-}
-
 export interface TranslationContent {
   translatedTitle: string;
   translatedAbstract: string;
@@ -139,7 +112,6 @@ export function useScreening(data: {
     isScreeningPanelOpen: isScreeningPanelOpen ?? false,
   };
 }
-
 
 // ==================== useCitationHandlers ====================
 

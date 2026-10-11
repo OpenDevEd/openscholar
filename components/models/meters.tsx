@@ -5,7 +5,7 @@
 import { cn } from "@/lib/utils";
 import type { Effort } from "@/lib/ai/core/call-options";
 
-export const money = (n: number) => (n >= 10 ? `$${n.toFixed(0)}` : n >= 1 ? `$${n.toFixed(1).replace(/\.0$/, "")}` : `$${n.toFixed(2)}`);
+const money = (n: number) => (n >= 10 ? `$${n.toFixed(0)}` : n >= 1 ? `$${n.toFixed(1).replace(/\.0$/, "")}` : `$${n.toFixed(2)}`);
 
 /** Price per 1M tokens, input then output. */
 export const priceLabel = (input: number, output: number) => `${money(input)} / ${money(output)}`;

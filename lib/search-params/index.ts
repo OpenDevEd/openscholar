@@ -26,30 +26,10 @@ import { serializeSearchParams, type ParsedSearchParams } from './parsers';
 import { OQL_FIELD } from '../openalex/oql';
 
 // Parsers and serialization
-export {
-  searchParamsParsers,
-  serializeSearchParams,
-  parseSearchParamsFromUrl,
-  DEFAULT_SEARCH_PARAMS,
-  type ParsedSearchParams,
-} from './parsers';
-
-// Region encoding
-export {
-  encodeRegions,
-  decodeRegions,
-} from './regions';
+export { parseSearchParamsFromUrl, DEFAULT_SEARCH_PARAMS, type ParsedSearchParams } from './parsers';
 
 // Type converters
-export {
-  paramsToSearchResult,
-  searchResultToParams,
-  paramsToFilters,
-  effectiveSort,
-  paramsMatchState,
-  hasActiveFilters,
-  type NewSearchResultData,
-} from './converters';
+export { paramsToSearchResult, searchResultToParams, paramsToFilters, effectiveSort } from './converters';
 
 const SHARED_OQL = 'oql';
 

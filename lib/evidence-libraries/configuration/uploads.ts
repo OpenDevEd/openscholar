@@ -9,7 +9,7 @@
 export const EVIDENCE_LIBRARY_UPLOAD_BUCKET = "openscholar";
 
 /** Used by the page's upload field (lane C, plan 05) to build its controls. */
-export const EVIDENCE_LIBRARY_UPLOAD_KINDS = [
+const EVIDENCE_LIBRARY_UPLOAD_KINDS = [
   "image",
   "icon",
   "shareImage",

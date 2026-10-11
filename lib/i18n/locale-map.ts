@@ -2,7 +2,7 @@
  * Map next-intl locale identifiers to BCP 47 language tags
  * for use with Intl APIs (DisplayNames, NumberFormat, etc.)
  */
-export const NEXT_INTL_TO_BCP47: Record<string, string> = {
+const NEXT_INTL_TO_BCP47: Record<string, string> = {
   "zh": "zh-CN",
   "hi": "hi-IN",
   "ja": "ja-JP",

@@ -37,7 +37,7 @@ export interface BatchProcessorConfig<TItem, TConfigInput, TOutput, TResult> {
   getItemId: (item: TItem) => string
 }
 
-export interface ItemTrackingData {
+interface ItemTrackingData {
   latencyMs: number
   temperature: number
 }
@@ -133,7 +133,7 @@ export interface ScreeningBatchConfig {
 }
 
 /** A paper's screening, keeping the confidence in each answer; the overall figure is their mean. */
-export function screeningResult(responses: Record<string, boolean | null>, confidences: Record<string, number>): ScreeningResultData {
+function screeningResult(responses: Record<string, boolean | null>, confidences: Record<string, number>): ScreeningResultData {
   const values = Object.values(confidences)
   return { responses, confidences, confidence: values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1) }
 }

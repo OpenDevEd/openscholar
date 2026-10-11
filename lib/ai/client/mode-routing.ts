@@ -5,12 +5,8 @@ import {
   type CreditsSettlement,
 } from "@/lib/credits/availability";
 
-export {
-  resolveCreditsAvailability,
-  type CreditsAvailability,
-  type CreditsSettlement,
-};
-export type AIExecutionTarget = "local" | "credits";
+export { resolveCreditsAvailability, type CreditsSettlement };
+type AIExecutionTarget = "local" | "credits";
 export type AIExecutionErrorReason =
   | "api_key_required"
   | "insufficient_credits"

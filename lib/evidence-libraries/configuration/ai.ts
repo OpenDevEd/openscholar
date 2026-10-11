@@ -31,7 +31,7 @@ export const AI_PROVIDER_CREDENTIAL_KEY = credentialKeyFor(
   AI_PROVIDER,
 );
 
-export type AiProviderEntry = Record<string, unknown>;
+type AiProviderEntry = Record<string, unknown>;
 
 /** Gives each enabled provider entry its stored key, at assembly time only. */
 export type ApplyAiProviderKey = (
@@ -217,9 +217,9 @@ export function selectedAiModelIds(aiSection: unknown): string[] {
  * the runtime copies its fields straight through to Meilisearch
  * (`src/lib/search-index/embedder-settings.ts`).
  */
-export const PLATFORM_EMBEDDING_URL = "https://openrouter.ai/api/v1/embeddings";
-export const PLATFORM_EMBEDDING_MODEL = "perplexity/pplx-embed-v1-0.6b";
-export const PLATFORM_EMBEDDING_DIMENSIONS = 1024;
+const PLATFORM_EMBEDDING_URL = "https://openrouter.ai/api/v1/embeddings";
+const PLATFORM_EMBEDDING_MODEL = "perplexity/pplx-embed-v1-0.6b";
+const PLATFORM_EMBEDDING_DIMENSIONS = 1024;
 
 /**
  * The embedder block for one library. `{{text}}` is the record Meilisearch

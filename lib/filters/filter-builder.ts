@@ -81,7 +81,7 @@ export function getFieldLabel(field?: string, t?: FilterT): string {
 /**
  * Get human-readable label for a sort option
  */
-export function getSortLabel(sort?: string, t?: FilterT): string {
+function getSortLabel(sort?: string, t?: FilterT): string {
   if (!sort) return t ? t("sortRelevanceDefault") : "Relevance";
   const key = SORT_KEY_MAP[sort];
   if (t && key) return t(key);
@@ -92,14 +92,14 @@ export function getSortLabel(sort?: string, t?: FilterT): string {
 /**
  * Extract valid country codes from a list of region/country IDs
  */
-export function extractCountryCodes(ids: string[]): string[] {
+function extractCountryCodes(ids: string[]): string[] {
   return ids.filter((id) => id.length === 2 && COUNTRIES[id]);
 }
 
 /**
  * Format rating range for display (e.g., "3-5 stars")
  */
-export function formatRatingRange(
+function formatRatingRange(
   range: [number, number],
   t?: FilterT
 ): string {
@@ -113,68 +113,6 @@ export function formatRatingRange(
     return `${min} star${min === 1 ? "" : "s"}`;
   }
   return `${min}-${max} stars`;
-}
-
-/**
- * Check if a SearchResult has any active filters
- * Used by history components to show filter indicators
- */
-export function hasActiveFiltersFromResult(result: {
-  yearRange?: [number, number];
-  dateRange?: { from?: Date; to?: Date };
-  selectedRegions?: string[];
-  selectedCountryFocus?: string[];
-  citesItemId?: string;
-  citedByItemId?: string;
-  relatedToItemId?: string;
-  ratingRange?: [number, number];
-  reviewFilter?: boolean;
-  onlyRatedPapers?: boolean;
-  researchAreas?: string[];
-  sdgs?: string[];
-  openAccessOnly?: boolean;
-  workTypes?: string[];
-  workLanguages?: string[];
-  institutionTypes?: string[];
-  funders?: string[];
-  authors?: string[];
-  journals?: string[];
-  institutions?: string[];
-  studyDesigns?: string[];
-  topCitedOnly?: boolean;
-  venuesOnly?: boolean;
-  minCitations?: number | null;
-  hasAbstract?: boolean;
-  includeRetracted?: boolean;
-}): boolean {
-  return !!(
-    result.yearRange ||
-    result.dateRange ||
-    (result.selectedRegions && result.selectedRegions.length > 0) ||
-    (result.selectedCountryFocus && result.selectedCountryFocus.length > 0) ||
-    result.citesItemId ||
-    result.citedByItemId ||
-    result.relatedToItemId ||
-    result.ratingRange ||
-    result.reviewFilter ||
-    result.onlyRatedPapers ||
-    result.researchAreas?.length ||
-    result.sdgs?.length ||
-    result.openAccessOnly ||
-    result.workTypes?.length ||
-    result.workLanguages?.length ||
-    result.institutionTypes?.length ||
-    result.funders?.length ||
-    result.authors?.length ||
-    result.journals?.length ||
-    result.institutions?.length ||
-    result.studyDesigns?.length ||
-    result.topCitedOnly ||
-    result.venuesOnly ||
-    result.minCitations ||
-    result.hasAbstract ||
-    result.includeRetracted
-  );
 }
 
 // ============ Section Builder Helpers ============

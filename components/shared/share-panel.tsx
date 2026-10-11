@@ -16,7 +16,7 @@ import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover"
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-export const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** A role someone can be given here: `label` in the picker, `can` where it's only read. */
 export type ShareRole<R extends string> = { id: R; kind: RoleKind; label: string; can: string };
@@ -34,7 +34,7 @@ export type ShareEntry<R extends string> = {
   onRemove?: () => void;
 };
 
-export type ShareCandidate = { key: string; avatar: ReactNode; name: string; detail?: string; pick: () => void };
+type ShareCandidate = { key: string; avatar: ReactNode; name: string; detail?: string; pick: () => void };
 
 /** The field, for whoever can share: people found by what's typed, and the typed email to invite. */
 export type ShareAdding = {

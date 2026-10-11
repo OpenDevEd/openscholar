@@ -27,7 +27,7 @@ import { buildResultsUrl } from "../search-params";
 import { OQL_FIELD } from "../openalex/oql";
 import type { SearchResult } from "../types";
 
-export type SearchInitFilterUpdates = Omit<NewSearchResultData, "query" | "count">;
+type SearchInitFilterUpdates = Omit<NewSearchResultData, "query" | "count">;
 
 export type SearchInitDecision =
   | { kind: "create"; entry: NewSearchResultData }

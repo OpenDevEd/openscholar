@@ -34,7 +34,7 @@ import { paramsToSearchResult, searchResultToParams } from '../search-params/con
 import { browserExpand, validateAndExpandKeywordsSilently } from '../keyword-validation-browser';
 import { useQueryShortcuts } from '../research/reads';
 import type { SearchFilters, SearchField, PaperResult } from '../types';
-import type { SearchContextValue, SearchParams, SearchResultData, SetQueryOptions } from './types';
+import type { SearchContextValue, SearchParams, SetQueryOptions } from './types';
 import {
   SEARCH_EVENT_SCHEMA_VERSION,
   SEARCH_FETCH_PARAM_KEYS,
@@ -56,7 +56,7 @@ const SearchContext = createContext<SearchContextValue | undefined>(undefined);
  * Runs the search away from the results page: the caller owns the id and the
  * params that the URL would otherwise hold.
  */
-export interface LocalSearchState {
+interface LocalSearchState {
   searchId: string;
   params: SearchParams;
   onParamsChange: (updates: Partial<SearchParams>) => void;

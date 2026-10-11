@@ -50,7 +50,7 @@ import { Tooltip, TooltipContent, TooltipHint, TooltipTrigger } from "@/componen
 import { cn } from "@/lib/utils";
 import { HEX_COLOUR } from "@/lib/evidence-libraries/configuration/rules";
 import { COLOUR_PRESETS, contrastRatio } from "./colours";
-import { Field, FieldError, labelId } from "./section-card";
+import { Field, labelId } from "./section-card";
 import {
   EVIDENCE_LIBRARY_UPLOAD_ACCEPT,
   EVIDENCE_LIBRARY_UPLOAD_LIMITS,
@@ -1111,5 +1111,3 @@ export function MetaList({ items, className }: { items: MetaItem[]; className?: 
     </dl>
   );
 }
-
-export { FieldError };

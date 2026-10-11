@@ -14,7 +14,7 @@ const MONTHS_PER_INTERVAL: Record<string, number> = {
 };
 
 /** A plan's price per month, so plans with different intervals compare. */
-export function monthlyPrice(plan: CatalogPlan): number {
+function monthlyPrice(plan: CatalogPlan): number {
   if (!plan.price) return 0;
   return plan.price.amount / (MONTHS_PER_INTERVAL[plan.price.interval] ?? 1);
 }

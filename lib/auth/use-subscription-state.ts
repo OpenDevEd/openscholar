@@ -73,9 +73,3 @@ export function useSharedSubscriptionState() {
   }
   return state;
 }
-
-export function useSubscriptionStateSelector<T>(
-  selector: (state: SubscriptionState) => T,
-) {
-  return selector(useSharedSubscriptionState());
-}

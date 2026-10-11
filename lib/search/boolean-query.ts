@@ -10,7 +10,7 @@ import { expandShortcuts, shortcutNameOf, type ShortcutExpansions } from "@/lib/
  * shortcut (`name...`) is one concept, whatever its expansion holds.
  */
 
-export type QueryTokenKind = "space" | "open" | "close" | "and" | "or" | "not" | "term" | "phrase";
+type QueryTokenKind = "space" | "open" | "close" | "and" | "or" | "not" | "term" | "phrase";
 
 export interface QueryToken {
   kind: QueryTokenKind;
@@ -210,7 +210,6 @@ export function parseBooleanQuery(query: string, expansions: ShortcutExpansions 
   }
   return { tokens, conceptCount, concepts };
 }
-
 
 // ---------- Matching in result text ----------
 

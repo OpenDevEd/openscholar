@@ -43,7 +43,7 @@ type ListAction = (args: {
   paginationOpts: { cursor: string | null; numItems: number };
 }) => Promise<CataloguePage>;
 
-export const COLLECTION_TITLE_MAX = 100;
+const COLLECTION_TITLE_MAX = 100;
 
 // Renumbers `order` so rows keep the order they are shown in.
 export function renumber(entries: readonly CollectionEntry[]): CollectionEntry[] {

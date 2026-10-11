@@ -43,7 +43,7 @@ export type ToastErrorMessageKey =
  * a localized title + body via `t(titleKey)` / `t(bodyKey)` instead of
  * piping a raw message string through.
  */
-export type ResolvedToastTaxonomy = {
+type ResolvedToastTaxonomy = {
   code: ErrorCode;
   titleKey: `errors.title.${ErrorCode}`;
   bodyKey: `errors.body.${ErrorCode}`;

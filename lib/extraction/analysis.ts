@@ -8,7 +8,7 @@ export type ExtractionAnswer = string | boolean | number | string[] | null | und
 
 export type QuestionType = "string" | "boolean" | "number" | "array";
 
-export type InsightMode = "scalar" | "array";
+type InsightMode = "scalar" | "array";
 
 export type InsightEntry = {
   paperId: string;
@@ -21,7 +21,7 @@ export type InsightEntry = {
   pdfContentUsed?: boolean;
 };
 
-export type AnswerBucket = {
+type AnswerBucket = {
   normalized: string;
   display: string;
   count: number;
@@ -29,7 +29,7 @@ export type AnswerBucket = {
   paperIds: string[];
 };
 
-export type EntityDistributionBucket = {
+type EntityDistributionBucket = {
   entity: string;
   count: number;
   paperIds: string[];
@@ -38,14 +38,14 @@ export type EntityDistributionBucket = {
   generic: boolean;
 };
 
-export type ConfidenceBuckets = {
+type ConfidenceBuckets = {
   high: number;
   medium: number;
   low: number;
   unknown: number;
 };
 
-export type CitationStatusMix = {
+type CitationStatusMix = {
   grounded: number;
   best_effort: number;
   insufficient_evidence: number;
@@ -186,7 +186,7 @@ export function parseAnswerEntities(answer: ExtractionAnswer): string[] {
   return [];
 }
 
-export function normalizeAnswer(answer: ExtractionAnswer): string | null {
+function normalizeAnswer(answer: ExtractionAnswer): string | null {
   if (answer === null || answer === undefined) return null;
   if (typeof answer === "boolean") return answer ? "yes" : "no";
   if (typeof answer === "number") return String(Number(answer));
@@ -231,7 +231,7 @@ function confidenceMultiplier(status?: CitationStatus): number {
   return EFFECTIVE_CONFIDENCE_MULTIPLIER[status] ?? EFFECTIVE_CONFIDENCE_MULTIPLIER.grounded;
 }
 
-export function getEffectiveConfidence(
+function getEffectiveConfidence(
   confidence?: number,
   status?: CitationStatus
 ): number {

@@ -69,11 +69,11 @@ export type StrictExtractionOutput = {
 // scoring pipeline reads as one unit.
 export const BEST_EFFORT_MAX_CITATIONS = 2;
 export const BEST_EFFORT_CONFIDENCE_CAP = 0.45;
-export const ABSTRACT_ONLY_CONFIDENCE_CAP = 0.7;
+const ABSTRACT_ONLY_CONFIDENCE_CAP = 0.7;
 export const STRICT_NULL_CONFIDENCE_CAP = 0.3;
-export const ARRAY_ANSWER_MAX_ITEMS = 8;
-export const ARRAY_GENERIC_PENALTY = 0.15;
-export const ARRAY_GENERIC_THRESHOLD = 0.6;
+const ARRAY_ANSWER_MAX_ITEMS = 8;
+const ARRAY_GENERIC_PENALTY = 0.15;
+const ARRAY_GENERIC_THRESHOLD = 0.6;
 
 export function dedupeEvidenceIds(ids: string[]): string[] {
   const seen = new Set<string>();

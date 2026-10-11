@@ -1,8 +1,8 @@
 import * as fs from "node:fs/promises";
 import path from "node:path";
 
-export const LEGAL_CONTENT_ROOT = path.join(process.cwd(), "content");
-export const LEGAL_DEFAULT_LOCALE = "en-US";
+const LEGAL_CONTENT_ROOT = path.join(process.cwd(), "content");
+const LEGAL_DEFAULT_LOCALE = "en-US";
 
 const DOC_DIRECTORY: Record<LegalDocumentType, string> = {
   privacy: "privacy-policy",
@@ -12,7 +12,7 @@ const DOC_DIRECTORY: Record<LegalDocumentType, string> = {
 
 const SAFE_LOCALE_PATTERN = /^[A-Za-z0-9-]+$/;
 
-export type LegalDocumentType = "privacy" | "cookie" | "credits";
+type LegalDocumentType = "privacy" | "cookie" | "credits";
 
 export interface GetLegalMarkdownParams {
   docType: LegalDocumentType;
@@ -20,7 +20,7 @@ export interface GetLegalMarkdownParams {
   contentRoot?: string;
 }
 
-export function getLegalMarkdownPath(
+function getLegalMarkdownPath(
   docType: LegalDocumentType,
   locale: string,
   contentRoot = LEGAL_CONTENT_ROOT

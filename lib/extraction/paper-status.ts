@@ -11,7 +11,7 @@
 
 import { isRetryable, type ErrorCode } from "@/lib/errors/taxonomy";
 
-export type PaperQuestionRollupStatus = "pending" | "extracting" | "completed" | "failed";
+type PaperQuestionRollupStatus = "pending" | "extracting" | "completed" | "failed";
 
 export type PaperQuestionInput = {
   status: PaperQuestionRollupStatus;
@@ -30,7 +30,7 @@ export type PaperRollupResult = {
  * `attemptCount` ticks past the cap and the rollup treats the retryable
  * failure as effectively terminal.
  */
-export const MAX_QUESTION_ATTEMPTS = 3;
+const MAX_QUESTION_ATTEMPTS = 3;
 
 /**
  * Precedence bucket each question result falls into during the rollup.
