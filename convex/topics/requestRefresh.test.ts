@@ -25,3 +25,22 @@ describe("topic refresh", () => {
     }
   });
 });
+
+describe("topic details from OpenAlex", () => {
+  it("reads a topic's keywords as OpenAlex sends them now, each an object with its name", async () => {
+    const t = convexTest(schema);
+    vi.stubGlobal("fetch", async () => new Response(JSON.stringify({
+      id: "https://openalex.org/T11636",
+      description: "Artificial intelligence in medicine.",
+      keywords: [{ id: "https://openalex.org/keywords/ai-in-healthcare", display_name: "artificial intelligence in healthcare", score: 0.49 }, { id: "https://openalex.org/keywords/clinical-ai", display_name: "clinical AI", score: 0.3 }],
+      works_count: 120,
+    })));
+    try {
+      await t.action(internal.topics.details.refresh, { id: "T11636" });
+      const saved = await t.run((ctx) => ctx.db.query("topicDetails").withIndex("by_external_id", (q) => q.eq("id", "T11636")).unique());
+      expect(saved?.keywords).toEqual(["artificial intelligence in healthcare", "clinical AI"]);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
