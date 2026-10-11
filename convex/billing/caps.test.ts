@@ -66,11 +66,14 @@ it("caps a member on their seat in Autumn, makes their holds and charges as that
   // What he holds counts against his cap, as what he spent does.
   expect(await spendable("ben")).toBe(900);
 
+  // His page reads the same figure, for what a job is checked against before it starts.
+  expect(await as("ben").query(api.billing.caps.allowance, { workspaceId, month: month() })).toMatchObject({ cap: 1_000, left: 900 });
+
   // A charge past the cap is made as the seat, so Autumn stops it at the cap.
   await t.action(internal.billing.charge.retrySettle, { userId: users.ben, workspaceId, chargeId: "charge:ben", credits: 1_500, usage, attempt: 0 });
   expect(fakeAutumn.calls.find((call) => call.path === "balances.track")?.body.entity_id).toBe("user_ben");
   await t.finishAllScheduledFunctions(vi.runAllTimers);
-  expect(await as("ben").query(api.billing.caps.allowance, { workspaceId, month: month() })).toEqual({ spent: 1_000, cap: 1_000, total: 1_000 });
+  expect(await as("ben").query(api.billing.caps.allowance, { workspaceId, month: month() })).toEqual({ spent: 1_000, cap: 1_000, left: 0, total: 1_000 });
   expect(await spendable("ben")).toBe(0);
 
   await as("ada").action(api.billing.caps.setCap, { workspaceId, ...undo!.args });
@@ -101,4 +104,18 @@ it("lists what members spent with the person first, no page longer than asked fo
     ({ continueCursor: cursor, isDone: done } = read);
   }
   expect(names).toEqual(["ada", "ben", "cy", "dee"]);
+});
+
+it("holds a member to their cap only while they have the seat their work is charged as", async () => {
+  const { t, workspaceId, users, team, as } = await lab();
+  await team({ seats: true });
+  await as("ada").action(api.billing.caps.setCap, { workspaceId, memberId: users.ben, cap: 1_000 });
+  const available = () => t.query(internal.billing.caps.spendable, { workspaceId, userId: users.ben! });
+  expect(await available()).toBe(1_000);
+  // He has left: what's left of his jobs is charged to the lab, so an admin's retry of one is checked against its balance.
+  await t.run(async (ctx) => {
+    const seat = await ctx.db.query("memberSeats").withIndex("by_workspace_and_member", (q) => q.eq("workspaceId", workspaceId).eq("clerkUserId", "user_ben")).unique();
+    await ctx.db.delete("memberSeats", seat!._id);
+  });
+  expect(await available()).toBe((await t.query(internal.billing.accounts.forWorkspace, { workspaceId }))!.balance);
 });

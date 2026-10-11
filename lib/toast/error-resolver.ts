@@ -9,6 +9,7 @@ export type ToastErrorMessageKey =
   | "convexNotFound"
   | "convexInvalidInput"
   | "convexInsufficientCredits"
+  | "memberCapReached"
   | "aiUnauthenticated"
   | "aiInsufficientCredits"
   | "aiCreditsDisabled"
@@ -87,6 +88,7 @@ const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   VALIDATION_ERROR: "convexInvalidInput",
   INVALID_DATA: "convexInvalidInput",
   INSUFFICIENT_CREDITS: "convexInsufficientCredits",
+  MEMBER_CAP_REACHED: "memberCapReached",
   AI_UNAUTHENTICATED: "aiUnauthenticated",
   AI_INSUFFICIENT_CREDITS: "aiInsufficientCredits",
   AI_CREDITS_DISABLED: "aiCreditsDisabled",

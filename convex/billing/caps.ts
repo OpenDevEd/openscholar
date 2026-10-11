@@ -15,7 +15,7 @@ import { assistantAction, assistantQuery, defineChangingAction, defineUserQuery,
 import { TEAM_PLAN } from "../../lib/billing/plans";
 import { readAccount } from "./accounts";
 import { autumn } from "./autumn";
-import { capOf, capRow, MAX_MEMBER_CAP, seatOf, spendable as spendableBy, spentSince, workspaceSpentSince } from "./memberCaps";
+import { capLeft, capOf, capRow, MAX_MEMBER_CAP, seatOf, spendable as spendableBy, spentSince, workspaceSpentSince } from "./memberCaps";
 import { monthStart } from "../../lib/billing/month";
 
 const SET_CAP = "billing/caps:setCap" as const;
@@ -80,15 +80,16 @@ export const spendingForAssistant = assistantQuery(spendingAction);
 export const allowanceAction = defineUserQuery({
   path: "billing/caps:allowance",
   description:
-    "Says what the person spent of the organization's credits since `month` (the first moment of a month in UTC), and their cap if an admin set one on the Team plan; with no cap they draw on its credits freely. " +
+    "Says what the person spent of the organization's credits since `month` (the first moment of a month in UTC), and their cap if an admin set one on the Team plan, with `left`, what remains of it for that month once what their running work holds is taken off; with no cap they draw on its credits freely. " +
     "`total` is what everyone spent for an admin, and the person's own for anyone else. In their own workspace it's what they spent of their own credits.",
   args: monthArg,
-  returns: v.object({ spent: v.number(), cap: v.optional(v.number()), total: v.number() }),
+  returns: v.object({ spent: v.number(), cap: v.optional(v.number()), left: v.optional(v.number()), total: v.number() }),
   run: async (ctx, { userId, workspaceId, role }, { month }) => {
     checkMonth(month);
     const cap = await capOf(ctx, workspaceId, userId);
     const spent = await spentSince(ctx, workspaceId, userId, month);
-    return { spent, ...(cap === undefined ? {} : { cap }), total: role === "admin" ? await workspaceSpentSince(ctx, workspaceId, month) : spent };
+    const left = await capLeft(ctx, workspaceId, userId, month);
+    return { spent, ...(cap === undefined ? {} : { cap }), ...(left === undefined ? {} : { left }), total: role === "admin" ? await workspaceSpentSince(ctx, workspaceId, month) : spent };
   },
 });
 export const allowance = userQuery(allowanceAction);

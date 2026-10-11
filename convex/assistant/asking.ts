@@ -5,7 +5,7 @@
  * described, because it loads the action registry.
  */
 import { v } from "convex/values";
-import { availableCredits } from "../billing/accounts";
+import { spendingRoom } from "../billing/memberCaps";
 import { readConvexErrorData } from "../lib/errors";
 import { internalQuery } from "../lib/functions";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
@@ -81,7 +81,8 @@ export const spend = internalQuery({
     if (!Number.isFinite(credits) || credits < 0) return null;
     // A web search or a PDF read is covered by its own switch in the chat; anything else by what jobs may hold.
     const tool = TOOL_OF[path];
-    const balance = await availableCredits(ctx, workspaceId);
+    // What the person can spend: the workspace's balance, or what's left of their cap when that's less.
+    const balance = (await spendingRoom(ctx, workspaceId, userId)).available;
     return { credits, covered: tool ? (await toolAllowed(ctx, threadId, userId, tool)) && credits <= balance : covers(await allowanceOf(ctx, threadId, userId), credits, balance) };
   },
 });

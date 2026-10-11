@@ -26,7 +26,7 @@ import { QueryText } from "@/components/ui/query-text";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { CreditCheck } from "@/components/workspaces/credit-check";
+import { CreditCheck, useSpendable } from "@/components/workspaces/credit-check";
 import { api } from "@/convex/_generated/api";
 import { useGenerateExtractionQuestions } from "@/lib/ai/client/router";
 import { isDecisionModel } from "@/lib/ai/decisions";
@@ -42,7 +42,7 @@ import type { ExtractionQuestionType } from "@/lib/types/extraction.types";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { inWorkspace, useWorkspace, useWorkspaceMutation, useWorkspaceScope } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { PdfUpload } from "./pdf-upload";
 
 type Kind = PickedSource["set"]["kind"] | "pdf";
@@ -191,8 +191,8 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
   const screenModel = models.modelOf("screenAll");
   const yesNoModel = screenModel && isDecisionModel(screenModel.id) ? screenModel : textModel;
   const { data: estimate } = useProtectedQuery(api.extraction.queries.costs.estimateJob, total > 0 && draftJob.questions.length > 0 ? inWorkspace(workspaceId, { papers: total, questions: draftJob.questions.map((q) => q.type), usePdfs: draftJob.usePdfs }) : "skip");
-  const { data: account } = useProtectedQuery(api.billing.accounts.mine, useWorkspaceScope());
-  const balance = account?.balance ?? 0;
+  const spend = useSpendable();
+  const { balance } = spend;
   const credits = estimate ?? 0;
   // Nothing picked or asked costs nothing, which the balance covers.
   const enough = credits <= balance;
@@ -214,7 +214,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
     });
 
   // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows.
-  const loaded = !searches.isLoading && !collections.isLoading && !screenings.isLoading && savedCount !== undefined && collectionCount !== undefined && account !== undefined;
+  const loaded = !searches.isLoading && !collections.isLoading && !screenings.isLoading && savedCount !== undefined && collectionCount !== undefined && spend.loaded;
   const pickedOf = (k: Kind) => groups.filter((g) => g.kind === k).length;
 
   const pager = (list: { page: number; canPrevious: boolean; canNext: boolean; previous: () => void; next: () => void; hasPages: boolean }, pageCount?: number) =>
@@ -388,7 +388,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
         {textModel ? <ModelsInUse label={t("models")} uses={[{ label: t("textModel"), model: textModel }, { label: t("yesNoModel"), model: yesNoModel ?? textModel }]} /> : null}
 
         <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
-          <CreditCheck credits={credits} balance={balance} enough={enough} />
+          <CreditCheck credits={credits} balance={balance} enough={enough} cap={spend.cap} />
           {why ? (
             <TooltipHint label={why}>
               <span tabIndex={0} className="rounded-md">

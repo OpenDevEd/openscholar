@@ -33,7 +33,7 @@ import { startWaitingPapers } from "./slots";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { applyCommand, findSearch } from "../research/records";
 
-import { availableCredits } from "../billing/accounts";
+import { spendingRoom } from "../billing/memberCaps";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { actorIn, personalWorkspaceOf, requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
 
@@ -128,11 +128,12 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
 }
 
 /**
- * Whether the workspace can pay for screening `papers` papers, with the figures a refusal names: on the
- * model the job was stamped with when it has one, else what the person's Screen all runs on now.
+ * Whether the person can pay for screening `papers` papers in the workspace, within their cap where an
+ * admin set one, with the figures a refusal names: on the model the job was stamped with when it has
+ * one, else what the person's Screen all runs on now.
  */
 async function affords(ctx: MutationCtx, userId: Id<"users">, workspaceId: Id<"workspaces">, papers: number, job?: Doc<"screeningJobs">) {
-  const available = await availableCredits(ctx, workspaceId);
+  const { available } = await spendingRoom(ctx, workspaceId, userId);
   const perPaper = job ? screeningPaperCredits(await pricingOf(ctx, job.serverModelId)) : await screeningPaperCreditsFor(ctx, { userId, workspaceId });
   const estimate = estimateScreening(papers, available, perPaper).credits;
   return { affordable: available >= estimate, estimate, available };

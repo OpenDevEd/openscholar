@@ -18,7 +18,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { effortValidator } from "../aiModelConfig/validators";
-import { availableCredits } from "../billing/accounts";
+import { capReached, spendingRoom } from "../billing/memberCaps";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -239,9 +239,9 @@ export const answer = mutation({
     if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can allow this.");
     let left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
     // A yes to a call that holds more than the person has starts nothing: it waits while they add credits, as its card says.
-    // The workspace the reply acts in pays for it.
-    const balance = allow && step.credits !== undefined ? await availableCredits(ctx, waiting.workspaceId) : 0;
-    if (allow && step.credits !== undefined && step.credits > balance) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
+    // The workspace the reply acts in pays for it, within the person's cap there.
+    const { available: balance, capped } = allow && step.credits !== undefined ? await spendingRoom(ctx, waiting.workspaceId, userId) : { available: 0, capped: false };
+    if (allow && step.credits !== undefined && step.credits > balance) throw capped ? capReached(step.credits) : createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
     const tool = TOOL_OF[step.path];
     // What else waits is allowed with it only while the balance covers this call and each one allowed before it.
     let room = balance - (step.credits ?? 0);
