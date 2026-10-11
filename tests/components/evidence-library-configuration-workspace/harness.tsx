@@ -219,6 +219,12 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
               : queryMock(query, args),
 }));
 
+// The Team section reads the workspace the page is in: the library's organization, whose other members view it.
+vi.mock("@/components/workspaces/parts", async (original) => ({
+  ...(await original<typeof import("@/components/workspaces/parts")>()),
+  useCurrentWorkspace: () => ({ kind: "organization", name: "Test Org", members: 2 }),
+}));
+
 vi.mock("@/components/auth/auth-state-panel", () => ({
   AuthStatePanel: ({ variant }: { variant: string }) => <p>{variant}</p>,
 }));

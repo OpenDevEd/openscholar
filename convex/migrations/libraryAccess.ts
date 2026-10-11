@@ -9,10 +9,11 @@ import { invitationTo } from "../sharing/access";
 
 /**
  * Moves each Evidence Library's editors and creators, and its waiting invitations, onto the tables
- * every shared item's guests are in (#653), with the role each had and when it was given. A
- * library's owners have no row: they are its organization's admins. A grant to an account that's
- * deleted or was never made stays behind, as does an invitation that's answered, cancelled or
- * past its time. Safe to run again: a role or an invitation already there is left as it is.
+ * every shared item's guests are in (#653), with the role each had and when it was given. A role
+ * that's moved leaves the old table, which is read only for the ones still to move
+ * (../evidenceLibraries/access.ts `readLibraryRole`). A library's owners have no row: they are
+ * its organization's admins. A grant to an account that's deleted or was never made stays behind,
+ * as does an invitation that's answered, cancelled or past its time. Safe to run again.
  *
  *   npx convex run migrations/libraryAccess:audit '{"cursor": null}'
  *   npx convex run migrations/libraryAccess:run
@@ -27,9 +28,13 @@ export const members = migrations.define({
   migrateOne: async (ctx, member) => {
     const [library, person] = await Promise.all([ctx.db.get("evidenceLibraries", member.libraryId), account(ctx, member.clerkUserId)]);
     // A deleted account's row would hold a place in the library with nobody to show for it. A suspended one keeps its role for when it's back.
-    if (!library || !person || person.state === "deleted" || (await libraryGrant(ctx, library._id, person._id))) return;
-    const by = (await account(ctx, member.grantedBy)) ?? person;
-    await ctx.db.insert("itemAccess", { kind: "library", item: library._id, name: library.name, userId: person._id, role: member.role, grantedBy: by._id, grantedAt: member.grantedAt });
+    if (!library || !person || person.state === "deleted") return;
+    if (!(await libraryGrant(ctx, library._id, person._id))) {
+      const by = (await account(ctx, member.grantedBy)) ?? person;
+      await ctx.db.insert("itemAccess", { kind: "library", item: library._id, name: library.name, userId: person._id, role: member.role, grantedBy: by._id, grantedAt: member.grantedAt });
+    }
+    // The role is in one place: taking it away later leaves nothing behind for the read of old roles to find.
+    await ctx.db.delete("evidenceLibraryMembers", member._id);
   },
 });
 
@@ -48,22 +53,23 @@ export const invitations = migrations.define({
 export const run = migrations.runner([internal.migrations.libraryAccess.members, internal.migrations.libraryAccess.invitations]);
 
 /**
- * A page of the old roles and what became of each: moved, or left behind because its library is
- * gone, its account was deleted, or its account never reached us. The last is the one to look
- * into before the old table is dropped: a role is an account's, and theirs would be lost.
+ * A page of the roles still in the old table, and what the move does with each: moves it, or
+ * leaves it behind because its library is gone, its account was deleted, or its account never
+ * reached us. The last is the one to look into before the old table is dropped: a role is an
+ * account's, and theirs would be lost. After the move, `toMove` is 0.
  */
 export const audit = internalQuery({
   args: { cursor: v.union(v.string(), v.null()) },
-  returns: v.object({ moved: v.number(), libraryGone: v.number(), accountDeleted: v.number(), noAccount: v.array(v.string()), isDone: v.boolean(), continueCursor: v.string() }),
+  returns: v.object({ toMove: v.number(), libraryGone: v.number(), accountDeleted: v.number(), noAccount: v.array(v.string()), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { cursor }) => {
     const page = await ctx.db.query("evidenceLibraryMembers").paginate({ cursor, numItems: 200 });
-    const found = { moved: 0, libraryGone: 0, accountDeleted: 0, noAccount: [] as string[] };
+    const found = { toMove: 0, libraryGone: 0, accountDeleted: 0, noAccount: [] as string[] };
     for (const member of page.page) {
       const [library, person] = await Promise.all([ctx.db.get("evidenceLibraries", member.libraryId), account(ctx, member.clerkUserId)]);
       if (!library) found.libraryGone++;
       else if (!person) found.noAccount.push(member.clerkUserId);
       else if (person.state === "deleted") found.accountDeleted++;
-      else if (await libraryGrant(ctx, library._id, person._id)) found.moved++;
+      else found.toMove++;
     }
     return { ...found, isDone: page.isDone, continueCursor: page.continueCursor };
   },

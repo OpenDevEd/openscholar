@@ -59,7 +59,7 @@ export const libraryGrant = (ctx: Pick<QueryCtx, "db">, libraryId: Id<"evidenceL
   ctx.db.query("itemAccess").withIndex("by_item_and_user", q => q.eq("item", libraryId).eq("userId", userId)).unique();
 
 /** The role a library's row gives: a creator's, or else an editor's. */
-export const grantedRole = (row: Pick<Doc<"itemAccess">, "role">) => (row.role === "creator" ? "creator" as const : "editor" as const);
+export const grantedRole = (row: { role: Doc<"itemAccess">["role"] }) => (row.role === "creator" ? "creator" as const : "editor" as const);
 
 /** The library a row of those tables is of, or null for a row of anything else. */
 export const libraryOf = async (ctx: Pick<QueryCtx, "db">, row: Pick<Doc<"itemAccess">, "kind" | "item">) => {
@@ -123,7 +123,10 @@ export async function readLibraryRole(
   const owner = await libraryOwner(ctx, library);
   if (!owner || !ownerActive(owner)) return null;
   const membership = owner.organization ? await readActiveOrganizationMembership(ctx, owner.organization._id, clerkUserId) : null;
-  const assignment = user ? await libraryGrant(ctx, library._id, user._id) : null;
+  // A role from before stays good until it's moved (../migrations/libraryAccess.ts), which takes its old row as it goes:
+  // nobody is out of their library between the deploy and the move.
+  const assignment = (user ? await libraryGrant(ctx, library._id, user._id) : null)
+    ?? await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", library._id).eq("clerkUserId", clerkUserId)).unique();
   return libraryRoleFrom(library, owner, { user, membership, assignment });
 }
 
@@ -136,7 +139,7 @@ export async function readLibraryRole(
 export function libraryRoleFrom(
   library: Doc<"evidenceLibraries">,
   owner: LibraryOwner | null,
-  rows: { user: Doc<"users"> | null; membership: Pick<Doc<"organizationMemberships">, "role"> | null; assignment: Pick<Doc<"itemAccess">, "role"> | null },
+  rows: { user: Doc<"users"> | null; membership: Pick<Doc<"organizationMemberships">, "role"> | null; assignment: { role: Doc<"itemAccess">["role"] } | null },
 ): EvidenceLibraryAdminRole | null {
   if (rows.user?.state === "deleted") return null;
   if (!owner || !ownerActive(owner)) return null;

@@ -191,7 +191,9 @@ describe("listTeam", () => {
       await invitation("answered@example.org", "declined");
     });
     const roles = () => fixture.t.run(async ctx => Promise.all(["old_editor", "old_creator", "old_gone"].map(clerkId => readLibraryRole(ctx, library, clerkId))));
-    expect(await roles()).toEqual([null, null, null]);
+    // Before the move each still has the role they had: nobody is out of their library between the deploy and the move.
+    expect(await roles()).toEqual(["editor", "creator", null]);
+    expect(await fixture.t.query(internal.migrations.libraryAccess.audit, { cursor: null })).toMatchObject({ toMove: 2, accountDeleted: 1, noAccount: ["never_seen"] });
     expect(await fixture.t.action(internal.migrations.libraryAccess.verify, {})).toBe(2);
     // The two moves run one after the other, each in steps of its own. The invitation's seven days stay ahead of it.
     const moved = async () => {
@@ -211,6 +213,10 @@ describe("listTeam", () => {
       { kind: "library", item: libraryId, role: "editor", grantedAt: 5 },
       { kind: "library", item: libraryId, role: "creator", grantedAt: 5 },
     ]);
+    // A role that moved left the old table, so taking it away later leaves nothing behind.
+    expect(await fixture.t.run(async ctx => (await ctx.db.query("evidenceLibraryMembers").collect()).map(row => row.clerkUserId))).toEqual(["old_gone", "never_seen"]);
+    await fixture.admin.mutation(api.evidenceLibraries.team.removeMember, { libraryId, clerkUserId: "old_editor" });
+    expect(await roles()).toEqual([null, "creator", null]);
     expect(await fixture.t.run(async ctx => (await ctx.db.query("itemInvitations").collect()).map(({ kind, email, role, state, delivery }) => ({ kind, email, role, state, delivery })))).toEqual([{ kind: "library", email: "waiting@example.org", role: "creator", state: "pending", delivery: "sent" }]);
     expect((await fixture.admin.query(api.evidenceLibraries.queries.listTeam, { libraryId })).invitations.map(({ email, role }) => ({ email, role }))).toEqual([{ email: "waiting@example.org", role: "creator" }]);
   });
