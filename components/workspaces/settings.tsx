@@ -97,6 +97,9 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
   const organization = live.organization ?? (initial?.organization.kind === "organization" ? initial.organization : undefined);
   const admin = organization?.role === "admin";
   const summary = useProtectedQuery(api.organizations.queries.summary, inWorkspace(workspaceId, {})).data ?? initial?.summary;
+  // The page shows with what the server read, a moment before the browser knows the workspace its changes go to. What
+  // changes it at a click waits for that; the rest asks or opens a form first, and the workspace is known by then.
+  const ready = workspaceId !== undefined;
   const rename = useWorkspaceAction(api.organizations.manage.rename);
   const setColour = useWorkspaceMutation(api.organizations.manage.setColour);
   const setLogo = useWorkspaceAction(api.organizations.manage.setLogo);
@@ -157,7 +160,7 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
                   <Camera className="size-5" />
                   {t("changeLogo")}
                 </span>
-                <input type="file" accept="image/*" className="sr-only" aria-label={t("changeLogo")} disabled={busy === "logo"} onChange={(e) => pickLogo(e.target.files?.[0])} />
+                <input type="file" accept="image/*" className="sr-only" aria-label={t("changeLogo")} disabled={!ready || busy === "logo"} onChange={(e) => pickLogo(e.target.files?.[0])} />
               </>
             ) : null}
           </label>
@@ -222,7 +225,7 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
                     role="radio"
                     aria-checked={on}
                     aria-label={swatch}
-                    onClick={() => void attempt("colour", () => setColour({ colour: swatch }))}
+                    onClick={ready ? () => void attempt("colour", () => setColour({ colour: swatch })) : undefined}
                     className="relative flex size-9 items-center justify-center rounded-full"
                     style={{ backgroundColor: `color-mix(in oklab, ${swatch} 22%, var(--background))` }}
                   >
@@ -280,7 +283,7 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
                   </Button>
                 ) : summary.removable?.state === "failed" ? (
                   // A deletion that stopped part-way is tried again here: the libraries' own list, where it is otherwise, is shut with the plan.
-                  <Button variant="outline" size="sm" disabled={busy === "library"} onClick={() => void attempt("library", () => restartTeardown({ libraryId: summary.removable!._id }))}>
+                  <Button variant="outline" size="sm" disabled={!ready || busy === "library"} onClick={() => void attempt("library", () => restartTeardown({ libraryId: summary.removable!._id }))}>
                     <RotateCcw /> {tc("retry")}
                   </Button>
                 ) : null}

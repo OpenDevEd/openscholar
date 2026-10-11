@@ -143,8 +143,9 @@ function Shell({ children }: { children: ReactNode }) {
             ...(links?.autumn ? [{ href: links.autumn, title: t("items.plans"), icon: AutumnIcon, external: "Autumn" }] : []),
           ]
         : [],
-      // The row Plans takes is kept while its address is read, so the list is its full height from the first frame.
-      keeps: isAdmin && links === undefined,
+      // The row Plans takes is kept until it has its address, so the list is its full height from the first frame. A
+      // deployment with no plans to link to keeps the row empty: taken away, it would pull the page up under a narrow window's list.
+      keeps: isAdmin && !links?.autumn,
     },
   ].filter((g) => g.items.length > 0);
 
