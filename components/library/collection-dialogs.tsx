@@ -95,8 +95,9 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
   const reason = full ? t("planAllowsCollections", { plan: plan.name, limit }) : !trimmed ? t("nameTheCollection") : null;
   const guestsFull = typeof guestLimit === "number" && invited.length >= guestLimit;
   const typed = email.trim().toLowerCase();
+  // The people it sends to are the ones named when Create was pressed: nothing about them changes after.
   const addGuest = () => {
-    if (!EMAIL.test(typed) || invited.some((one) => one.email === typed) || guestsFull) return;
+    if (creating || !EMAIL.test(typed) || invited.some((one) => one.email === typed) || guestsFull) return;
     setInvited([...invited, { email: typed, role }]);
     setEmail("");
   };
@@ -189,7 +190,8 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
             </div>
 
             <div className="rounded-xl border border-border-subtle">
-              <button type="button" aria-expanded={inviting} onClick={() => setInviting(!inviting)} className="flex h-11 w-full items-center gap-2.5 rounded-xl px-3 text-left text-sm transition-colors hover:bg-muted/60">
+              {/* It opens once the plan's limit is read, so the row inside is whole from its first frame. */}
+              <button type="button" aria-expanded={inviting} onClick={() => guestLimit !== undefined && setInviting(!inviting)} className="flex h-11 w-full items-center gap-2.5 rounded-xl px-3 text-left text-sm transition-colors hover:bg-muted/60">
                 <Share2 className="size-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 flex-1 truncate">{org && workspace ? t("inviteOutside", { workspace: workspace.name }) : t("inviteToIt")}</span>
                 {invited.length ? <span className="rounded-full bg-primary/10 px-2 text-2xs font-medium tabular-nums text-primary">{invited.length}</span> : null}
@@ -206,7 +208,7 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
                           <Mail className="size-4 shrink-0 text-muted-foreground" />
                           <input
                             value={email}
-                            disabled={guestsFull}
+                            disabled={guestsFull || creating}
                             onChange={(e) => setEmail(e.target.value)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
@@ -220,7 +222,7 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
                           />
                         </label>
                         <Segmented label={t("theirAccess")} value={role} onChange={setRole} options={[{ id: "viewer" as const, label: tsh("view"), icon: Eye }, { id: "editor" as const, label: tsh("edit"), icon: PenLine }]} />
-                        <Button type="button" variant="outline" size="sm" className="h-9" disabled={!EMAIL.test(typed) || guestsFull} onClick={addGuest}>
+                        <Button type="button" variant="outline" size="sm" className="h-9" disabled={!EMAIL.test(typed) || guestsFull || creating} onClick={addGuest}>
                           {tc("add")}
                         </Button>
                       </div>
@@ -230,14 +232,14 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
                             <span key={one.email} className="inline-flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted pl-2.5 pr-1 text-xs">
                               {one.role === "viewer" ? <Eye className="size-3.5 shrink-0 text-muted-foreground" /> : <PenLine className="size-3.5 shrink-0 text-muted-foreground" />}
                               <span className="min-w-0 truncate">{one.email}</span>
-                              <button type="button" aria-label={t("removeGuest", { email: one.email })} onClick={() => setInvited(invited.filter((other) => other.email !== one.email))} className="flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-background">
+                              <button type="button" disabled={creating} aria-label={t("removeGuest", { email: one.email })} onClick={() => setInvited(invited.filter((other) => other.email !== one.email))} className="flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-background">
                                 <X className="size-3" />
                               </button>
                             </span>
                           ))}
                         </div>
                       ) : null}
-                      {guestLimit === null ? null : <p className="min-h-4 text-2xs tabular-nums text-muted-foreground">{guestLimit === undefined ? null : t("guestsOfOn", { used: invited.length, limit: guestLimit, plan: plan.name })}</p>}
+                      {typeof guestLimit === "number" ? <p className="text-2xs tabular-nums text-muted-foreground">{t("guestsOfOn", { used: invited.length, limit: guestLimit, plan: plan.name })}</p> : null}
                     </div>
                   </motion.div>
                 ) : null}
