@@ -96,6 +96,10 @@ it("changes an organization's seats down to those in use, and a declined card ch
   expect(limits().at(-1)?.limit).toBe(5);
   // Two members and an invitation are three seats in use.
   await expect(ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 2 })).rejects.toThrow(/in use/);
+  // Clerk must hold invitations to the fewer seats first: refused, the seats stay as they are.
+  fakeAutumn.refuseLimits = 1;
+  await expect(ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 3 })).rejects.toThrow();
+  expect(await seats()).toBe(5);
   await ada.action(api.billing.actions.changeSeats, { workspaceId, seats: 3 });
   expect(await seats()).toBe(3);
   fakeAutumn.declineCard = true;

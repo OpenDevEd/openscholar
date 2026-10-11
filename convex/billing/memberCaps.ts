@@ -30,6 +30,21 @@ export async function spentSince(ctx: QueryCtx, workspaceId: Id<"workspaces">, u
   return await usageAgg.sum(ctx, { namespace: memberSpace(workspaceId, userId), bounds: { lower: { key: month, id: "", inclusive: true } }, stale: true });
 }
 
+/** A person's newest charges one read checks for any the ledger worker hasn't counted yet (convex/billing/ledger.ts): it counts within seconds. */
+const RECENT_CHARGES_READ = 20;
+
+/**
+ * Whether the person spent the organization's credits since `since`, or holds some now: then
+ * their seat stays theirs until the renewal if they leave (#863). What the ledger counted, a hold,
+ * or a charge it hasn't counted yet each say so.
+ */
+export async function spentThisPeriod(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">, since: number) {
+  if ((await spentSince(ctx, workspaceId, userId, since)) > 0) return true;
+  if (await ctx.db.query("billingHolds").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).first()) return true;
+  const recent = await ctx.db.query("billingUsage").withIndex("by_user_and_createdAt", (q) => q.eq("userId", userId).gte("createdAt", since)).order("desc").take(RECENT_CHARGES_READ);
+  return recent.some((charge) => charge.workspaceId === workspaceId && charge.kind !== "refund" && charge.credits > 0);
+}
+
 /** Credits the workspace was charged since `month`, for everyone's work. Refunds aren't counted, as on the spending chart. */
 export async function workspaceSpentSince(ctx: QueryCtx, workspaceId: Id<"workspaces">, month: number) {
   const kinds = usageKindValidator.members.map((member) => member.value).filter((kind) => kind !== "refund");

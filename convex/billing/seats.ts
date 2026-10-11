@@ -31,7 +31,7 @@ import { clerkRequest, clerkSecretKey } from "../lib/clerk";
 import { createError } from "../lib/errors";
 import { readAccount, refreshAccount, snapshotFromCustomer } from "./accounts";
 import { seatSyncRow } from "./seatSyncs";
-import { capRow, spentSince } from "./memberCaps";
+import { capRow, spentThisPeriod } from "./memberCaps";
 import { autumn, AutumnError, type AutumnEntity } from "./autumn";
 
 /** A member as a seat is given to them: the cap an admin set on them goes on their entity. */
@@ -71,14 +71,7 @@ export const membersOf = internalQuery({
 /** The start of the organization's billing period: its Team's, or the calendar month's when Autumn gives none. */
 const periodStartOf = (account: { periodStart?: number } | undefined, now: number) => account?.periodStart ?? monthStart(now);
 
-/** A person's newest charges one read checks for any the ledger worker hasn't counted yet (convex/billing/ledger.ts): it counts within seconds. */
-const RECENT_CHARGES_READ = 20;
-
-/**
- * Of `clerkUserIds`, the people who spent the organization's credits since `since`, or hold some
- * now: their seats stay theirs until the renewal. What the ledger counted, a hold, or a charge it
- * hasn't counted yet each say so.
- */
+/** Of `clerkUserIds`, the people who spent the organization's credits since `since`, or hold some now: their seats stay theirs until the renewal. */
 export const spentFrom = internalQuery({
   args: { workspaceId: v.id("workspaces"), clerkUserIds: v.array(v.string()), since: v.number() },
   returns: v.array(v.string()),
@@ -86,11 +79,7 @@ export const spentFrom = internalQuery({
     const spent: string[] = [];
     for (const clerkUserId of clerkUserIds.slice(0, MAX_ORGANIZATION_MEMBERS)) {
       const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique();
-      if (!user) continue;
-      const counted = (await spentSince(ctx, workspaceId, user._id, since)) > 0;
-      const holding = counted || (await ctx.db.query("billingHolds").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", user._id)).first()) !== null;
-      const recent = holding ? [] : await ctx.db.query("billingUsage").withIndex("by_user_and_createdAt", (q) => q.eq("userId", user._id).gte("createdAt", since)).order("desc").take(RECENT_CHARGES_READ);
-      if (holding || recent.some((charge) => charge.workspaceId === workspaceId && charge.kind !== "refund" && charge.credits > 0)) spent.push(clerkUserId);
+      if (user && (await spentThisPeriod(ctx, workspaceId, user._id, since))) spent.push(clerkUserId);
     }
     return spent;
   },
@@ -227,16 +216,21 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
 /** How long a sync waits before trying again to set a member limit Clerk refused. */
 const LIMIT_RETRY_MS = 10 * 60_000;
 
+/** Sets Clerk's limit on the organization's members, which counts its pending invitations too, and keeps it; throws when Clerk refuses. */
+async function setMemberLimit(ctx: ActionCtx, workspaceId: Id<"workspaces">, clerkOrganizationId: string, limit: number) {
+  await clerkRequest(clerkSecretKey(), "PATCH", `/organizations/${clerkOrganizationId}`, { max_allowed_memberships: limit });
+  await ctx.runMutation(internal.billing.seats.noteMemberLimit, { workspaceId, memberLimit: limit });
+}
+
 /**
- * Sets Clerk's limit on the organization's members, which counts its pending invitations too: the
- * seats free of held ones on Team (#863), FREE_MEMBERS otherwise.
+ * Sets Clerk's limit on the organization's members to its plan's: the seats free of held ones on
+ * Team (#863), FREE_MEMBERS otherwise. One Clerk refuses is tried again later.
  */
 async function followPlan(ctx: ActionCtx, workspaceId: Id<"workspaces">, { clerkOrganizationId, memberLimit }: { clerkOrganizationId: string; memberLimit?: number }, wanted: number) {
   const limit = Math.max(1, wanted);
   if (memberLimit === limit) return;
   try {
-    await clerkRequest(clerkSecretKey(), "PATCH", `/organizations/${clerkOrganizationId}`, { max_allowed_memberships: limit });
-    await ctx.runMutation(internal.billing.seats.noteMemberLimit, { workspaceId, memberLimit: limit });
+    await setMemberLimit(ctx, workspaceId, clerkOrganizationId, limit);
   } catch (error) {
     // The seats it changed stand. A free organization may not sync again by itself, so this one does, a little later.
     console.error(`[seats] couldn't set ${workspaceId}'s member limit to ${limit} in Clerk; trying again in ${LIMIT_RETRY_MS / 60_000} minutes`, error);
@@ -419,7 +413,8 @@ export async function setSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">, se
   const count = async () => (await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId }))!;
   const before = await count();
   const fewer = seats < before.seats && organization !== null;
-  if (fewer) await followPlan(ctx, workspaceId, organization, seats - before.held);
+  // Clerk must hold it to the fewer seats before they're counted: refused, nothing changes.
+  if (fewer) await setMemberLimit(ctx, workspaceId, organization.clerkOrganizationId, Math.max(1, seats - before.held));
   try {
     const counted = await count();
     const inUse = counted.members + counted.invitations + counted.held;

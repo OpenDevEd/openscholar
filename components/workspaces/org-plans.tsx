@@ -83,7 +83,8 @@ export function OrganizationPlans({ featureName, initial }: { featureName: (id: 
   const invitations = counts?.invitations ?? 0;
   // Each member and pending invitation takes a seat (#863): an organization buys at least that many, and is shown that many until the person picks.
   const fewest = organization ? Math.max(1, members + invitations) : 1;
-  const seats = onTeam ? (counts?.seats ?? 0) : Math.max(fewest, picked ?? (organization ? fewest : SEATS));
+  // On Team, the seats bought, read with the page so the card is drawn as it stays.
+  const seats = onTeam ? (counts?.seats ?? organization?.seats ?? 0) : Math.max(fewest, picked ?? (organization ? fewest : SEATS));
   // Team waits for its renewal to become Free (#862).
   const toFree = onTeam && account?.changesAt !== undefined ? account.changesAt : undefined;
   const date = (at: number) => format.dateTime(new Date(at), { year: "numeric", month: "short", day: "numeric" });

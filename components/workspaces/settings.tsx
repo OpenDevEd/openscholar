@@ -384,10 +384,12 @@ export function WorkspaceMembers() {
     { id: "admin" as const, label: tw("admin"), icon: ROLE_ICONS.admin },
   ];
   const memberCount = counts.members;
-  // Team's seats are bought (#862) and filled by members, invitations and seats held to the renewal (#863); Free has FREE_MEMBERS, invitations included.
+  // Team's seats are bought (#862) and filled by members, invitations and seats held to the renewal (#863); Free has FREE_MEMBERS, invitations included,
+  // which is the room a Team on its way to Free at the renewal has already.
+  const toFree = team && account?.changesAt !== undefined;
   const held = counts.held;
   const used = memberCount + counts.invitations + held;
-  const seats = team ? counts.seats : FREE_MEMBERS;
+  const seats = team && !toFree ? counts.seats : FREE_MEMBERS;
   const free = Math.max(0, seats - used);
   const full = used >= seats;
   const teamName = (catalog && findPlan(catalog, TEAM_PLAN)?.name) || TEAM_PLAN;
@@ -471,7 +473,7 @@ export function WorkspaceMembers() {
               onSubmit={(e) => {
                 e.preventDefault();
                 // Enter submits whatever the button looks like: a full free organization, or an invitation still going, sends nothing.
-                if ((full && !team) || busy !== null || adding || !EMAIL.test(email.trim())) return;
+                if ((full && (!team || toFree)) || busy !== null || adding || !EMAIL.test(email.trim())) return;
                 const sent = email;
                 if (!full) return void send(sent, role);
                 // Team with no free seat: Autumn's figure for one more, then the step that buys it and invites (#863).
@@ -486,7 +488,7 @@ export function WorkspaceMembers() {
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("emailAddress")} aria-label={tw("emailToInvite")} className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
               </label>
               <Segmented label={t("theirRole")} value={role} onChange={setInviteRole} options={roleOptions} size="md" />
-              <Button type="submit" className="h-10 rounded-xl" disabled={!EMAIL.test(email.trim()) || busy === "invite" || (full && !team) || adding !== null}>
+              <Button type="submit" className="h-10 rounded-xl" disabled={!EMAIL.test(email.trim()) || busy === "invite" || (full && (!team || toFree)) || adding !== null}>
                 {t("invite")}
               </Button>
             </form>

@@ -8,7 +8,8 @@ import { personName } from "../lib/people";
 import { hasPlanFeature, readAccount } from "../billing/accounts";
 import { readEvidenceLibraryAccess } from "../evidenceLibraries/access";
 import { EVIDENCE_LIBRARIES_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
-import { spentSince } from "../billing/memberCaps";
+import { spentThisPeriod } from "../billing/memberCaps";
+import { seatSyncRow } from "../billing/seatSyncs";
 import { collectionCountRow } from "../library/counter";
 import { countRow } from "../research/recordCounts";
 import { query } from "../lib/functions";
@@ -39,6 +40,8 @@ const workspaceValidator = v.object({
   role: ROLE,
   /** An organization's active members, up to one past MEMBERS_COUNTED. */
   members: v.optional(v.number()),
+  /** On Team, the seats it bought (#862), so a page has the count from its first frame. */
+  seats: v.optional(v.number()),
   /** Its plan's ID in Autumn, which the catalog names; absent until its account is read. */
   plan: v.optional(v.string()),
   /** The colour an organization's admins picked. */
@@ -54,7 +57,8 @@ async function organizationRow(ctx: QueryCtx, organization: Doc<"organizations">
   const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MEMBERS_COUNTED + 1);
   const account = await readAccount(ctx, workspaceId);
   const plan = account?.plan;
-  return { ...(account ? { credits: account.balance } : {}), workspaceId, kind: "organization" as const, name: organization.name, slug: organization.slug, organizationId: organization._id, aiPreset: organization.aiPreset ?? DEFAULT_PRESET, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role, members: members.length, ...(plan ? { plan } : {}), ...(organization.colour ? { colour: organization.colour } : {}) };
+  const seats = plan === TEAM_PLAN ? (await seatSyncRow(ctx, workspaceId))?.seats : undefined;
+  return { ...(account ? { credits: account.balance } : {}), ...(seats === undefined ? {} : { seats }), workspaceId, kind: "organization" as const, name: organization.name, slug: organization.slug, organizationId: organization._id, aiPreset: organization.aiPreset ?? DEFAULT_PRESET, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}), role, members: members.length, ...(plan ? { plan } : {}), ...(organization.colour ? { colour: organization.colour } : {}) };
 }
 
 /** The person's own workspace as the switcher lists it: named for them, with their photo. */
@@ -123,7 +127,7 @@ const memberValidator = v.object({
 async function memberRow(ctx: QueryCtx, membership: Doc<"organizationMemberships">, you: Id<"users">, workspaceId: Id<"workspaces">, since: number | undefined) {
   const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
   if (!user || user.state !== "active") return null;
-  const keepsSeat = since !== undefined && (await spentSince(ctx, workspaceId, user._id, since)) > 0;
+  const keepsSeat = since !== undefined && (await spentThisPeriod(ctx, workspaceId, user._id, since));
   return { userId: user._id, name: personName(user) || user.email, email: user.email, ...(user.avatarUrl ? { imageUrl: user.avatarUrl } : {}), role: roleOf(membership.role), you: user._id === you, joinedAt: membership.clerkCreatedAt, ...(keepsSeat ? { keepsSeat: true as const } : {}) };
 }
 
