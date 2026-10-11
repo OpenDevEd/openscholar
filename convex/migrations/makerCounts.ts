@@ -25,6 +25,7 @@ const start = (table: ByMaker) =>
   });
 
 export const searches = start("searches");
+export const queryShortcuts = start("queryShortcuts");
 export const screeningJobs = start("screeningJobs");
 export const extractionJobs = start("extractionJobs");
 export const collections = start("collections");
@@ -32,6 +33,7 @@ export const assistantThreads = start("assistantThreads");
 
 export const run = migrations.runner([
   internal.migrations.makerCounts.searches,
+  internal.migrations.makerCounts.queryShortcuts,
   internal.migrations.makerCounts.screeningJobs,
   internal.migrations.makerCounts.extractionJobs,
   internal.migrations.makerCounts.collections,
@@ -56,7 +58,7 @@ export const verify = internalAction({
   args: {},
   returns: v.number(),
   handler: async (ctx): Promise<number> => {
-    const statuses = await migrations.getStatus(ctx, { migrations: [internal.migrations.makerCounts.searches, internal.migrations.makerCounts.screeningJobs, internal.migrations.makerCounts.extractionJobs, internal.migrations.makerCounts.collections, internal.migrations.makerCounts.assistantThreads] });
+    const statuses = await migrations.getStatus(ctx, { migrations: [internal.migrations.makerCounts.searches, internal.migrations.makerCounts.queryShortcuts, internal.migrations.makerCounts.screeningJobs, internal.migrations.makerCounts.extractionJobs, internal.migrations.makerCounts.collections, internal.migrations.makerCounts.assistantThreads] });
     let left = statuses.filter((status) => !status.isDone).length;
     for (let cursor: string | null = null; ;) {
       const page: { counting: number; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.makerCounts.countingPage, { cursor });

@@ -23,11 +23,11 @@ import { cn } from "@/lib/utils";
 import { useWorkspaceSlug } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
-export type RunByTable = "searches" | "screeningJobs" | "extractionJobs" | "collections" | "assistantThreads";
+export type RunByTable = "searches" | "queryShortcuts" | "screeningJobs" | "extractionJobs" | "collections" | "assistantThreads";
 type Member = FunctionReturnType<typeof api.workspaces.makers.counts>["page"][number];
 
 /** The words for a count of each list's items. */
-const NOUN = { searches: "searches", screeningJobs: "screenings", extractionJobs: "extractions", collections: "collections", assistantThreads: "chats" } as const;
+const NOUN = { searches: "searches", queryShortcuts: "bookmarks", screeningJobs: "screenings", extractionJobs: "extractions", collections: "collections", assistantThreads: "chats" } as const;
 
 /** Members read for the filter at a time; "+N" reads more. You come first, on the first page. */
 const MEMBERS = 100;
@@ -39,7 +39,7 @@ const LISTED = 50;
  * `filter`, the row that picks them. The row is there from the first frame on an organization's
  * page, its faces arriving into it. A pick holds in the workspace it was made in.
  */
-export function useRunBy(table: RunByTable, { label = "runBy", compact = false }: { label?: "runBy" | "startedBy"; compact?: boolean } = {}) {
+export function useRunBy(table: RunByTable, { label = "runBy", compact = false }: { label?: "runBy" | "startedBy" | "addedBy"; compact?: boolean } = {}) {
   const workspaceId = useWorkspace();
   const org = useWorkspaceSlug() !== undefined;
   const members = useProtectedPaginatedQuery(api.workspaces.makers.counts, inWorkspace(org ? workspaceId : undefined, { table }), { initialNumItems: MEMBERS });
@@ -83,7 +83,7 @@ function RunByRow({ children }: { children: React.ReactNode }) {
 
 type More = { loading: boolean; load: () => void } | undefined;
 
-function RunByFilter({ people, total: kept, more, noun, label, compact, value, onChange }: { people: Member[] | undefined; total: number | undefined; more: More; noun: (typeof NOUN)[RunByTable]; label: "runBy" | "startedBy"; compact: boolean; value: Id<"users"> | null; onChange: (person: Id<"users"> | null) => void }) {
+function RunByFilter({ people, total: kept, more, noun, label, compact, value, onChange }: { people: Member[] | undefined; total: number | undefined; more: More; noun: (typeof NOUN)[RunByTable]; label: "runBy" | "startedBy" | "addedBy"; compact: boolean; value: Id<"users"> | null; onChange: (person: Id<"users"> | null) => void }) {
   const t = useTranslations("workspaces.runBy");
   const reduce = useReducedMotion();
   const members = people ?? [];

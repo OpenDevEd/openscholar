@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslations, useFormatter } from "next-intl";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { Trash2, Pencil, Check, X, Copy } from "@/components/icons";
@@ -24,9 +24,13 @@ interface BookmarksItemProps {
   onSaveEdit: (newExpansion: string) => void;
   onCancelEdit: () => void;
   onDelete: () => void;
+  /** In an organization: who added it. */
+  addedBy?: ReactNode;
+  /** One someone else added: used and copied, and changed only by them or an admin (#656). */
+  canChange?: boolean;
 }
 
-export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdit, onCancelEdit, onDelete }: BookmarksItemProps) {
+export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdit, onCancelEdit, onDelete, addedBy, canChange = true }: BookmarksItemProps) {
   const toast = useAppToast();
   const tb = useTranslations("bookmarksPage");
   const tc = useTranslations("common");
@@ -85,8 +89,8 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
       className={cn(!grid && "h-7 self-start")}
     >
       <EntryAction label={tb("copyExpansion")} icon={Copy} onClick={copy} />
-      <EntryAction label={tc("edit")} icon={Pencil} onClick={startEdit} />
-      <EntryAction label={tc("delete")} icon={Trash2} danger onClick={onDelete} />
+      {canChange ? <EntryAction label={tc("edit")} icon={Pencil} onClick={startEdit} /> : null}
+      {canChange ? <EntryAction label={tc("delete")} icon={Trash2} danger onClick={onDelete} /> : null}
     </EntryAside>
   );
 
@@ -149,6 +153,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
         <>
           <div className="flex items-center gap-2">
             {name}
+            {!isEditing && addedBy}
             {!isEditing && aside}
           </div>
           {isEditing ? editor : (
@@ -175,6 +180,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
                   <FullTextToggle text={expansionText} className="-ml-1.5 mt-1 flex" />
                 </div>
               )}
+              {addedBy ? <span className="flex shrink-0 self-start">{addedBy}</span> : null}
               {aside}
             </>
           )}

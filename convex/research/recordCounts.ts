@@ -78,8 +78,8 @@ export async function countRecordPage(ctx: Pick<MutationCtx, "db" | "scheduler">
 }
 
 /** The tables whose records an organization also counts for each person who made them, for its lists' Run by (#656). */
-export const byMakerValidator = v.union(v.literal("searches"), v.literal("screeningJobs"), v.literal("extractionJobs"), v.literal("collections"), v.literal("assistantThreads"));
-export type ByMaker = "searches" | "screeningJobs" | "extractionJobs" | "collections" | "assistantThreads";
+export const byMakerValidator = v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs"), v.literal("collections"), v.literal("assistantThreads"));
+export type ByMaker = "searches" | "queryShortcuts" | "screeningJobs" | "extractionJobs" | "collections" | "assistantThreads";
 type Made = { workspaceId: Id<"workspaces">; createdBy: Id<"users"> };
 
 /** How many of a table one person made in a workspace. */

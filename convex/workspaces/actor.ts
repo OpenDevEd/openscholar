@@ -19,7 +19,7 @@ export type InWorkspace = Pick<Actor, "userId" | "workspaceId">;
  * (#650). In their own workspace a person is its admin, so nothing is refused there.
  */
 export function requireMakerOrAdmin(actor: Actor, createdBy: Id<"users"> | undefined) {
-  if (actor.role !== "admin" && createdBy !== actor.userId) throw createError("FORBIDDEN", "Only an admin of this workspace takes away what someone else made.");
+  if (actor.role !== "admin" && createdBy !== actor.userId) throw createError("FORBIDDEN", "Only an admin of this workspace changes or takes away what someone else made.");
 }
 
 /**

@@ -45,7 +45,7 @@ triggers.register("screeningJobs", trackChatJob("screening"));
 triggers.register("extractionJobs", trackChatJob("extraction"));
 triggers.register("assistantThreads", tellIdleChat);
 // Each maker's count, in an organization, for its lists' Run by (#656).
-for (const table of ["searches", "screeningJobs", "extractionJobs", "collections", "assistantThreads"] as const) triggers.register(table, countMakerChange(table));
+for (const table of ["searches", "queryShortcuts", "screeningJobs", "extractionJobs", "collections", "assistantThreads"] as const) triggers.register(table, countMakerChange(table));
 triggers.register("walletKeys", countList(walletKeyList));
 triggers.register("admins", countList(() => ADMIN_LIST));
 triggers.register("evidenceLibraryConfigOperations", countList(libraryVersionList));
