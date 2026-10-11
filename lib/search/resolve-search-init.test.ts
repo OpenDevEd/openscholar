@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveSearchInit } from "./resolve-search-init";
+import { carriesSearch, resolveSearchInit } from "./resolve-search-init";
 import { DEFAULT_SEARCH_PARAMS } from "../search-params/parsers";
 import type { ParsedSearchParams } from "../search-params/parsers";
 import {
@@ -186,5 +186,15 @@ describe("resolveSearchInit — OQL searches keep their query out of the URL", (
       currentUrl: "/results/abc?field=oql",
     });
     expect(d).toEqual({ kind: "ready" });
+  });
+});
+
+describe("carriesSearch", () => {
+  it("is a query, a field or a filter the page knows, and nothing left at its default", () => {
+    // An address with nothing after it, or with a parameter the page doesn't know, parses to the defaults.
+    expect(carriesSearch(params())).toBe(false);
+    expect(carriesSearch(params({ q: "teacher coaching" }))).toBe(true);
+    // An OQL search's query is in its link's fragment: its field says there is one.
+    expect(carriesSearch(params({ field: "oql" }))).toBe(true);
   });
 });

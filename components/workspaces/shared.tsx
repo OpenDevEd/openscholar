@@ -210,6 +210,19 @@ function Row({ item }: { item: SharedItem }) {
   );
 }
 
+/** A page for something that isn't there to open: an invitation that's gone, or a record that was deleted or isn't shared with the person. */
+export function Gone({ title }: { title: string }) {
+  const t = useTranslations("workspaces.shared");
+  const tw = useTranslations("workspaces");
+  return (
+    <Landing hero={<Hero icon={Unlink} />} title={title} chips={<p className="text-sm text-muted-foreground">{t("goneDetail")}</p>}>
+      <Button variant="outline" className="w-full" asChild>
+        <Link href="/">{tw("goToSearch")}</Link>
+      </Button>
+    </Landing>
+  );
+}
+
 /** Where an invitation's email links: who shared what, and opening it, which takes the invitation up. */
 export function OpenShared({ invitationId }: { invitationId: string }) {
   const t = useTranslations("workspaces.shared");
@@ -223,13 +236,7 @@ export function OpenShared({ invitationId }: { invitationId: string }) {
   const [opening, setOpening] = useState(false);
   if (invitation === undefined) return <Landing />;
   if (invitation === null) {
-    return (
-      <Landing hero={<Hero icon={Unlink} />} title={t("goneTitle")} chips={<p className="text-sm text-muted-foreground">{t("goneDetail")}</p>}>
-        <Button variant="outline" className="w-full" asChild>
-          <Link href="/">{tw("goToSearch")}</Link>
-        </Button>
-      </Landing>
-    );
+    return <Gone title={t("goneTitle")} />;
   }
   const open = () => {
     setOpening(true);

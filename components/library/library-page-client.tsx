@@ -462,8 +462,12 @@ export function LibraryPageClient() {
     pageItems.length === 0 &&
     !hasNarrowingCriteria &&
     totalCount === 0;
+  // A collection that was deleted, or isn't shared with the person, isn't a filter that found nothing: the page says which.
+  // Until its read says which it is, an empty list says neither.
+  const lostCollection = Boolean(params.col) && selectedCollection === null;
+  const readingCollection = Boolean(params.col) && selectedCollection === undefined;
   const isNoResults =
-    !isLoading && pageItems.length === 0 && hasNarrowingCriteria && !paged.hasPages;
+    !isLoading && pageItems.length === 0 && hasNarrowingCriteria && !paged.hasPages && !lostCollection && !readingCollection;
 
   return (
     <TranslationContext.Provider value={{}}>
@@ -587,8 +591,11 @@ export function LibraryPageClient() {
                   />
                 )}
 
+                {lostCollection && !isLoading && <LibraryEmptyState variant="lost" onClearFilters={resetAllNarrowing} />}
+
                 {/* A sparse filter can leave a page empty with more after it: the pager stays to reach them. */}
-                {!isLoading && (pageResults.length > 0 || paged.hasPages) && (
+                {/* One that's gone takes its papers with it: the page of them still shown while the list catches up goes at once. */}
+                {!isLoading && !lostCollection && (pageResults.length > 0 || paged.hasPages) && (
                   <>
                     {/* The page shown stays, dimmed and still, until the one it steps to arrives. */}
                     {/* Only the cards rate in the open collection. Focus mode keeps the person's own rating, on its stars, its shortcuts and its phone control alike. */}

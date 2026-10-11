@@ -1,7 +1,8 @@
 "use client";
 
 import React, { Suspense, useContext, useState } from "react";
-import { redirect, usePathname } from "next/navigation";
+import { redirect, usePathname, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { SearchProvider, SearchInitializer } from "@/lib/search";
 import { ResearchLoading, useResearchStatus } from "@/lib/research/provider";
 import { useWatchedSearch } from "@/lib/research/reads";
@@ -10,10 +11,15 @@ import { ResearchContext } from "@/lib/research/binding";
 import { useSearchHistoryStore } from "@/lib/store";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { useItemHome } from "@/components/workspaces/item-home";
+import { Gone } from "@/components/workspaces/shared";
+import { parseSearchParamsFromUrl } from "@/lib/search-params";
+import { carriesSearch } from "@/lib/search/resolve-search-init";
 import { useWorkspaceSlug, workspaceHref } from "@/lib/workspaces/href";
 
 function InitializeResults({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("searchCommand");
   const account = useContext(ResearchContext);
+  const carried = carriesSearch(parseSearchParamsFromUrl(useSearchParams()));
   const searchId = getEffectiveSearchId(usePathname());
   const watched = useWatchedSearch(account ? searchId : undefined);
   const { retry } = useResearchStatus();
@@ -37,6 +43,9 @@ function InitializeResults({ children }: { children: React.ReactNode }) {
   if (account && watched === "failed") return <AuthStatePanel variant="sync_error_retry" onRetry={retry} />;
   if (account && watched === "loading") return <ResultsLoading />;
   if (elsewhere || gone) return <ResultsLoading />;
+  // A search in none of the person's workspaces and not shared with them, as one a chat they were given names: its
+  // address alone carries nothing to make their own copy from, so the page says so in place of an empty search.
+  if (unknown && home === null && !carried) return <Gone title={t("lost")} />;
   return account && saved ? children : <SearchInitializer>{children}</SearchInitializer>;
 }
 
