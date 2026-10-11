@@ -1365,7 +1365,7 @@
     "currentPlan": "वर्तमान योजना",
     "newPlan": "नई योजना",
     "prorationCharge": "आनुपातिक शुल्क",
-    "prorationExplanation": "आपके बिलिंग चक्र के शेष {days} दिनों के लिए",
+    "startsToday": "{plan} आज शुरू होता है और {date} को नवीनीकृत होता है।",
     "creditsGranted": "{credits} क्रेडिट तुरंत प्रदान किए गए",
     "monthlyCreditsAfter": "फिर आगे हर महीने {credits}",
     "confirmUpgrade": "अपग्रेड की पुष्टि करें",

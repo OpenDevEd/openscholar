@@ -1365,7 +1365,7 @@
     "currentPlan": "当前方案",
     "newPlan": "新方案",
     "prorationCharge": "按比例收费",
-    "prorationExplanation": "适用于计费周期剩余的 {days} 天",
+    "startsToday": "{plan} 今天开始，并于 {date} 续订。",
     "creditsGranted": "立即获得 {credits} 积分",
     "monthlyCreditsAfter": "之后每月 {credits} 积分",
     "confirmUpgrade": "确认升级",

@@ -145,6 +145,14 @@ Upgrade credits differ from today: the old code granted prorated credits on
 upgrade. Autumn grants the full new allowance and charges a prorated price.
 This plan keeps Autumn's behavior.
 
+Changed 2026-10-11 (#860): a prorated price for the full new allowance cost
+$0.49 for Pro's 15,000 credits the day before renewal. An upgrade from one paid
+plan to another now starts a new month (`billing_cycle_anchor: "now"`): the new
+plan's full price less the old plan's unused days, renewing a month on. A
+sandbox run on our server charged $16.61 on day 10 of Go and moved the renewal
+to a month after the upgrade. Autumn refuses the anchor on a downgrade, which
+stays scheduled for the period end.
+
 ## Ownership
 
 | Invariant | Owner |
