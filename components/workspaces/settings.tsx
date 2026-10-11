@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useMutation } from "convex/react";
 import { motion } from "motion/react";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { ArrowRight, Camera, Check, ChevronRight, Coins, Copy, EvidenceLibrariesIcon, FileSearch, Folder, ListFilter, LogOut, Mail, Pencil, Repeat, RotateCcw, Search, Trash2, Users, X } from "@/components/icons";
+import { AlertCircle, ArrowRight, CalendarClock, Camera, Check, ChevronRight, Coins, Copy, CreditCard, EvidenceLibrariesIcon, FileSearch, Folder, Hourglass, ListFilter, LogOut, Mail, Pencil, Repeat, RotateCcw, Search, Trash2, Users, X } from "@/components/icons";
 import { IconButton } from "@/components/assistant/parts";
 import { EASE } from "@/components/settings/model-map";
 import { Enter, LIST, Paged, Segmented, Tile, Zone } from "@/components/settings/parts";
@@ -23,6 +23,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { SeatStepper } from "@/components/billing/seat-stepper";
+import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
+import { SeatsMockPanel } from "@/components/seats-mock/panel";
+import { seatChange, useOrganizationSeats } from "@/components/seats-mock/store";
+import { AnimatedNumber } from "@/components/screening/parts";
+import { AnimatePresence } from "motion/react";
 import { DeleteLibraryDialog } from "@/components/evidence-libraries/configuration/delete-library-dialog";
 import { EmailAvatar, IdentityRow, ROLE_ICONS, RoleLabel } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
@@ -43,9 +49,9 @@ import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { ORGANIZATION_COLOURS } from "@/lib/workspaces/colours";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
-import { Guarded, MemberFaces, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
+import { Guarded, MemberFaces, Opening, PlanChip, usePlanOf, useCurrentWorkspace, WorkspaceTile, workspaceTint } from "./parts";
 import { MemberSpending, useMemberSpending } from "./spending";
-import { FREE_MEMBERS, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
+import { FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
 
 /** Rows a page of members holds. */
 const PER_PAGE = 10;
@@ -335,9 +341,15 @@ export function WorkspaceMembers() {
   const { workspaceId, organization, admin } = useOrganization();
   const members = useCursorPage(api.organizations.queries.members, inWorkspace(workspaceId, {}), PER_PAGE);
   const invitations = useCursorPage(api.organizations.queries.invitations, inWorkspace(workspaceId, {}), PER_PAGE);
-  // Team's seats are its members, counted in full: the switcher's count stops at a hundred and one.
-  const team = organization?.plan === TEAM_PLAN;
-  const counts = useProtectedQuery(api.billing.seats.counts, team && workspaceId ? { workspaceId } : "skip").data;
+  // Members and invitations counted in full: the switcher's count stops at a hundred and one.
+  const counts = useProtectedQuery(api.billing.seats.counts, workspaceId ? { workspaceId } : "skip").data;
+  const { account, catalog } = useSharedSubscriptionState();
+  // What each member spent this month, which keeps a removed member's seat until the renewal (#863).
+  const spending = useMemberSpending(workspaceId);
+  const { mock, set: setMock, reset: resetMock, now: nowMs } = useOrganizationSeats(workspaceId, organization, counts, account?.renewsAt);
+  const team = mock?.team ?? organization?.plan === TEAM_PLAN;
+  const [adding, setAdding] = useState<string | null>(null);
+  const [declined, setDeclined] = useState(false);
   const invite = useWorkspaceAction(api.organizations.manage.invite);
   const setRole = useWorkspaceAction(api.organizations.manage.setRole);
   const removeMember = useWorkspaceAction(api.organizations.manage.removeMember);
@@ -351,41 +363,78 @@ export function WorkspaceMembers() {
   // A time Clerk set a moment after the clock last ticked reads as now, not as in a few seconds.
   const ago = (at: number) => format.relativeTime(at, Math.max(now.getTime(), at));
   const { name: planName } = usePlanOf(organization ?? { kind: "organization", name: "" });
-  if (!organization || members.isLoading || invitations.isLoading || (team && !counts)) return <Enter ready={false}>{null}</Enter>;
+  if (!organization || members.isLoading || invitations.isLoading || !counts || !mock) return <Enter ready={false}>{null}</Enter>;
 
   const roleOptions = [
     { id: "member" as const, label: tw("member"), icon: ROLE_ICONS.member },
     { id: "admin" as const, label: tw("admin"), icon: ROLE_ICONS.admin },
   ];
-  const memberCount = counts?.members ?? organization.members ?? 0;
-  // Team has a seat for each member, so it's never full; a free organization has FREE_MEMBERS, invitations included, which one page holds (#652).
-  const used = memberCount + (team ? 0 : invitations.items.length);
-  const seats = team ? used : FREE_MEMBERS;
-  const full = !team && used >= seats;
+  // Members removed in the mock are left out, as if Clerk had them gone.
+  const removed = new Set(mock.removed);
+  const memberCount = counts.members - mock.removed.length;
+  const invited = counts.invitations;
+  // Team holds the seats bought (#862), which members, invitations and held seats fill (#863); Free has FREE_MEMBERS, invitations included.
+  const held = team ? mock.held : 0;
+  const used = memberCount + invited + held;
+  const seats = team ? mock.seats : FREE_MEMBERS;
+  const free = Math.max(0, seats - used);
+  const full = used >= seats;
+  const date = (ms: number) => format.dateTime(new Date(ms), { month: "short", day: "numeric" });
+  const money = (amount: number, cents = false) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: cents ? 2 : 0 });
+  const seatPrice = (catalog && findPlan(catalog, SEAT_PLAN)?.price?.amount) ?? 0;
+  const oneMore = seatChange({ price: seatPrice, from: seats, to: seats + 1, renewsAt: mock.renewsAt, now: nowMs });
+  const spentBy = (userId: string) => spending.list.items.find((row) => row.userId === userId)?.spent ?? 0;
+  const send = (sent: string) => void attempt("invite", () => invite({ emails: [sent.trim()], role })).then((done) => done && setEmail((now) => (now === sent ? "" : now)));
+  const segment = (i: number) => (i < memberCount ? "bg-primary" : i < memberCount + held ? "bg-warning/70" : i < used ? "bg-primary/40" : "bg-muted");
 
   return (
     <Enter ready>
       <div className="space-y-8">
         <section className="space-y-3 rounded-2xl border border-border-subtle p-5">
-          <div>
-            <p className="text-3xl font-semibold tabular-nums tracking-tight">
-              {used} <span className="text-lg font-normal text-muted-foreground">{t("ofSeats", { seats })}</span>
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">{t("membersOnPlan", { plan: planName })}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-3xl font-semibold tabular-nums tracking-tight">
+                {used} <span className="text-lg font-normal text-muted-foreground">{t("ofSeats", { seats })}</span>
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{t("membersOnPlan", { plan: team ? (catalog && findPlan(catalog, TEAM_PLAN)?.name) || planName : planName })}</p>
+            </div>
+            {admin && team ? (
+              <Button asChild variant="outline" size="sm">
+                <Link href="/settings/billing">{t("changeSeats")}</Link>
+              </Button>
+            ) : null}
           </div>
-          {/* A segment a seat while they're few enough to count, members then invitations waiting for an answer; past that, one bar. */}
+          {/* A segment a seat while they're few enough to count: members, held seats, invitations waiting for an answer, then free ones; past that, one bar. */}
           {seats <= SEAT_SEGMENTS ? (
             <div className="flex gap-1" aria-hidden>
               {Array.from({ length: seats }, (_, i) => (
-                <span key={i} className={cn("h-2 flex-1 rounded-full", i < memberCount ? "bg-primary" : i < used ? "bg-primary/40" : "bg-muted")} />
+                <span key={i} className={cn("h-2 flex-1 rounded-full", segment(i))} />
               ))}
             </div>
           ) : (
             <div className="flex h-2 gap-0.5 overflow-hidden rounded-full bg-muted" aria-hidden>
               <span className="h-full rounded-full bg-primary" style={{ width: `${(memberCount / seats) * 100}%` }} />
-              {used > memberCount ? <span className="h-full rounded-full bg-primary/40" style={{ width: `${((used - memberCount) / seats) * 100}%` }} /> : null}
+              {held > 0 ? <span className="h-full rounded-full bg-warning/70" style={{ width: `${(held / seats) * 100}%` }} /> : null}
+              {invited > 0 ? <span className="h-full rounded-full bg-primary/40" style={{ width: `${(invited / seats) * 100}%` }} /> : null}
             </div>
           )}
+          {/* What fills the seats, each tinted as its segments are. */}
+          <div className="flex flex-wrap gap-1.5 text-xs tabular-nums">
+            <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-primary/12 px-2.5 text-primary">
+              <Users className="size-3.5" /> {t("membersCount", { count: memberCount })}
+            </span>
+            {held > 0 ? (
+              <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-warning/15 px-2.5 ink-warning">
+                <Hourglass className="size-3.5" /> {t("heldUntil", { count: held, date: date(mock.renewsAt) })}
+              </span>
+            ) : null}
+            {invited > 0 ? (
+              <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-primary/8 px-2.5 text-primary/80">
+                <Mail className="size-3.5" /> {t("invitedCount", { count: invited })}
+              </span>
+            ) : null}
+            <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-muted px-2.5 text-muted-foreground">{t("freeCount", { count: free })}</span>
+          </div>
         </section>
 
         {admin ? (
@@ -394,11 +443,15 @@ export function WorkspaceMembers() {
               className="flex flex-wrap items-center gap-2"
               onSubmit={(e) => {
                 e.preventDefault();
-                // Enter submits whatever the button looks like: a full organization, or an invitation still going, sends nothing.
-                if (full || busy === "invite" || !EMAIL.test(email.trim())) return;
-                const sent = email;
+                // Enter submits whatever the button looks like: a full free organization, or an invitation still going, sends nothing.
+                if ((full && !team) || busy === "invite" || !EMAIL.test(email.trim())) return;
+                // Team with no free seat asks to add one first (#863).
+                if (full) {
+                  setDeclined(false);
+                  return setAdding(email.trim());
+                }
                 // The address that went is cleared; one typed since stays.
-                void attempt("invite", () => invite({ emails: [sent.trim()], role })).then((done) => done && setEmail((now) => (now === sent ? "" : now)));
+                send(email);
               }}
             >
               <label className="flex h-10 min-w-56 flex-1 items-center gap-2 rounded-xl border border-border/60 bg-background px-3 text-sm focus-within:border-primary/40">
@@ -406,19 +459,86 @@ export function WorkspaceMembers() {
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t("emailAddress")} aria-label={tw("emailToInvite")} className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground" />
               </label>
               <Segmented label={t("theirRole")} value={role} onChange={setInviteRole} options={roleOptions} size="md" />
-              <Guarded reason={full ? t("freeUpTo", { count: FREE_MEMBERS }) : null}>
-                <Button type="submit" className="h-10 rounded-xl" disabled={!EMAIL.test(email.trim()) || busy === "invite"}>
-                  {t("invite")}
-                </Button>
-              </Guarded>
+              <Button type="submit" className="h-10 rounded-xl" disabled={!EMAIL.test(email.trim()) || busy === "invite" || (full && !team) || adding !== null}>
+                {t("invite")}
+              </Button>
             </form>
+            <AnimatePresence initial={false}>
+              {full && !team ? (
+                // A free organization at its limit is offered Team where it invites (#863).
+                <Opening key="team">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border-subtle bg-inset py-2.5 pl-4 pr-2.5 text-sm">
+                    <span className="text-muted-foreground">{t("freeUpTo", { count: FREE_MEMBERS })}</span>
+                    <Button asChild size="sm">
+                      <Link href="/pricing">
+                        {t("moveTo", { plan: (catalog && findPlan(catalog, TEAM_PLAN)?.name) || "Team" })} <ArrowRight />
+                      </Link>
+                    </Button>
+                  </div>
+                </Opening>
+              ) : null}
+              {adding ? (
+                // Team with no free seat: one more, at Autumn's price, then the invitation (#863).
+                <Opening key="seat">
+                  <div className="space-y-3 rounded-2xl border border-border-subtle p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0 space-y-1.5">
+                        <p className="text-sm font-medium">{t("noFreeSeat")}</p>
+                        <p className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                          <span className="inline-flex h-6 min-w-0 items-center gap-1.5 rounded-full bg-muted px-2.5">
+                            <Mail className="size-3.5 shrink-0" /> <span className="truncate">{adding}</span>
+                          </span>
+                          {account?.card ? (
+                            <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-muted px-2.5 capitalize">
+                              <CreditCard className="size-3.5" /> {account.card.brand} {account.card.last4}
+                            </span>
+                          ) : null}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-semibold tabular-nums tracking-tight">{money(oneMore.amount, true)}</p>
+                        <p className="text-xs tabular-nums text-muted-foreground">{t("thenAMonthFrom", { amount: money(oneMore.monthly), date: date(mock.renewsAt) })}</p>
+                      </div>
+                    </div>
+                    {declined ? (
+                      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
+                        <span className="flex items-center gap-2">
+                          <AlertCircle className="size-4 shrink-0" /> {t("seatDeclined")}
+                        </span>
+                        <Button asChild variant="outline" size="sm">
+                          <Link href="/settings/billing">{t("fixPayment")}</Link>
+                        </Button>
+                      </div>
+                    ) : null}
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => setAdding(null)}>
+                        {tc("cancel")}
+                      </Button>
+                      <Button
+                        size="sm"
+                        disabled={busy === "invite"}
+                        onClick={() => {
+                          // The mock's card: declined, nothing is charged and no invitation goes out.
+                          if (mock.failed) return setDeclined(true);
+                          setMock({ seats: seats + 1 });
+                          send(adding);
+                          setAdding(null);
+                        }}
+                      >
+                        {t("addSeatAndInvite")}
+                      </Button>
+                    </div>
+                  </div>
+                </Opening>
+              ) : null}
+            </AnimatePresence>
           </Zone>
         ) : null}
 
         <Zone label={tw("membersHeading")} aside={<span className="pr-1 text-xs tabular-nums text-muted-foreground">{memberCount}</span>}>
           <Paged pager={{ list: members, size: PER_PAGE, total: memberCount }} rowHeight={ROW_HEIGHT} label={t("membersLabel")}>
             <ul key={members.page} className={LIST}>
-              {members.items.map((member) => (
+              {members.items.filter((member) => !removed.has(member.userId)).map((member) => (
                 <li key={member.userId}>
                   <IdentityRow className="p-3" avatar={<IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-9" />} name={member.name} you={member.you} detail={member.email}>
                     <span className="hidden shrink-0 text-xs tabular-nums text-muted-foreground @min-[40rem]/configuration:inline">{t("joined", { when: ago(member.joinedAt) })}</span>
@@ -485,7 +605,10 @@ export function WorkspaceMembers() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{t("removeName", { name: removing?.name ?? "" })}</AlertDialogTitle>
-            <AlertDialogDescription>{t("removeConfirm", { name: removing?.name ?? "", organization: organization.name })}</AlertDialogDescription>
+            <AlertDialogDescription>
+              {t("removeConfirm", { name: removing?.name ?? "", organization: organization.name })}{" "}
+              {!team || !removing ? null : spentBy(removing.userId) > 0 ? t("seatHeld", { name: removing.name, credits: spentBy(removing.userId), date: date(mock.renewsAt) }) : t("seatFreed")}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
@@ -494,7 +617,9 @@ export function WorkspaceMembers() {
               disabled={busy !== null}
               onClick={(e) => {
                 e.preventDefault();
-                if (removing) void attempt("remove", () => removeMember({ userId: removing.userId })).then(() => setRemoving(null));
+                // The mock leaves the member in place and only hides them; a seat they spent from is held to the renewal.
+                if (removing) setMock({ removed: [...mock.removed, removing.userId], held: mock.held + (team && spentBy(removing.userId) > 0 ? 1 : 0) });
+                setRemoving(null);
               }}
             >
               {t("remove")}
@@ -502,6 +627,7 @@ export function WorkspaceMembers() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <SeatsMockPanel mock={mock} set={setMock} reset={resetMock} />
     </Enter>
   );
 }
@@ -518,9 +644,14 @@ export function WorkspaceBilling() {
   const counts = useProtectedQuery(api.billing.seats.counts, workspaceId ? { workspaceId } : "skip").data;
   const openPortal = useWorkspaceAction(api.billing.actions.openPortal);
   const { busy, attempt } = useAttempt();
-  if (!organization || !account || !catalog || !spending.ready || counts === undefined) return <Enter ready={false}>{null}</Enter>;
+  const { mock, set: setMock, reset: resetMock, now: nowMs } = useOrganizationSeats(workspaceId, organization, counts, account?.renewsAt);
+  const [picked, setPicked] = useState<number>();
+  const [reviewing, setReviewing] = useState(false);
+  if (!organization || !account || !catalog || !spending.ready || counts === undefined || !mock) return <Enter ready={false}>{null}</Enter>;
 
-  const planId = account.plan ?? organization.plan ?? "";
+  const realPlan = account.plan ?? organization.plan ?? "";
+  // The mock's move to Team, or back, stands in for the real plan.
+  const planId = mock.team ? TEAM_PLAN : realPlan === TEAM_PLAN ? ORGANIZATION_PLAN : realPlan;
   const plan = findPlan(catalog, planId);
   const fromPlan = Math.max(0, account.balance - account.purchased);
   const memberCount = organization.members ?? 0;
@@ -528,8 +659,16 @@ export function WorkspaceBilling() {
   const teamPlan = findPlan(catalog, TEAM_PLAN);
   const seat = findPlan(catalog, SEAT_PLAN);
   const seatPrice = seat?.price?.amount;
-  // Team's credits are its seats'.
-  const seats = counts?.seats ?? 0;
+  // Team's credits are its seats' (#862): the seats bought, which members, invitations and held seats fill.
+  const seats = mock.seats;
+  const inUse = (counts?.members ?? 0) - mock.removed.length + (counts?.invitations ?? 0) + mock.held;
+  const next = Math.max(inUse, picked ?? seats);
+  const change = seatChange({ price: seatPrice ?? 0, from: seats, to: next, renewsAt: mock.renewsAt, now: nowMs });
+  const added = next - seats;
+  const short = (ms: number) => format.dateTime(new Date(ms), { year: "numeric", month: "short", day: "numeric" });
+  const cents = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: 2 });
+  // When an unpaid Team ends: the mock's stand-in for Stripe's last retry.
+  const endsAt = nowMs + 21 * 86_400_000;
   const monthly = team ? seats * (seat?.credits?.included ?? 0) : plan?.credits?.interval === "month" ? plan.credits.included : 0;
   const cap = team ? monthly : planCreditCap(catalog, planId);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", minimumFractionDigits: 0 });
@@ -547,6 +686,20 @@ export function WorkspaceBilling() {
   return (
     <Enter ready>
       <div className="space-y-8">
+        {mock.failed || account.pastDue ? (
+          // A failed payment, the day the plan ends if it isn't fixed, and where to fix it (#40), as a person's billing page has it.
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
+            <span className="flex items-center gap-2">
+              <AlertCircle className="size-4 shrink-0" />
+              {t("paymentFailedEnds", { plan: plan?.name ?? "", date: date(endsAt) })}
+            </span>
+            {admin ? (
+              <Button variant="outline" size="sm" disabled={busy === "portal"} onClick={() => void attempt("portal", async () => window.location.assign(await openPortal({})))}>
+                {t("fixPayment")}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         <section className="grid overflow-hidden rounded-2xl border border-border-subtle @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
           <div className="space-y-5 p-5">
             <div>
@@ -586,13 +739,26 @@ export function WorkspaceBilling() {
                 {team && seatPrice !== undefined ? <span className="text-sm font-normal text-muted-foreground">{t("aSeat", { price: money(seatPrice) })}</span> : null}
               </p>
               {team ? (
-                // A seat for each member (#652).
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted px-2.5 text-xs tabular-nums text-muted-foreground">
-                    <Users className="size-3.5" />
-                    {t("seats", { count: seats })}
-                  </span>
-                  {seatPrice !== undefined ? <span className="inline-flex h-6 items-center whitespace-nowrap rounded-full bg-muted px-2.5 text-xs font-medium tabular-nums text-foreground">{t("amountAMonth", { amount: money(seatPrice * seats) })}</span> : null}
+                // The seats bought (#862): an admin changes how many, down to those in use.
+                <div className="space-y-2 pt-1">
+                  {admin && !mock.toFree ? (
+                    <SeatStepper seats={next} fewest={inUse} why={t("seatsInUse", { count: inUse })} onChange={setPicked} />
+                  ) : (
+                    <span className="inline-flex h-6 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted px-2.5 text-xs tabular-nums text-muted-foreground">
+                      <Users className="size-3.5" />
+                      {t("seats", { count: seats })}
+                    </span>
+                  )}
+                  {seatPrice !== undefined ? (
+                    <p className="text-xs tabular-nums text-muted-foreground">
+                      $<AnimatedNumber value={seatPrice * next} /> {t("aMonthShort")}
+                    </p>
+                  ) : null}
+                  {mock.toFree ? (
+                    <span className="inline-flex items-center gap-1.5 text-xs ink-info">
+                      <CalendarClock className="size-3.5" /> {t("changesOn", { plan: findPlan(catalog, ORGANIZATION_PLAN)?.name ?? "", date: date(mock.renewsAt) })}
+                    </span>
+                  ) : null}
                 </div>
               ) : (
                 <p className="text-sm tabular-nums text-muted-foreground">{t("upToMembers", { count: FREE_MEMBERS })}</p>
@@ -600,9 +766,25 @@ export function WorkspaceBilling() {
             </div>
             {admin ? (
               team ? (
-                <Button variant="outline" size="sm" disabled={busy === "portal"} onClick={() => void attempt("portal", async () => window.location.assign(await openPortal({})))}>
-                  {t("manageBilling")}
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <AnimatePresence initial={false}>
+                    {added !== 0 ? (
+                      <Opening key="review">
+                        <Button size="sm" className="w-full" onClick={() => setReviewing(true)}>
+                          {added > 0 ? t("addSeats", { count: added }) : t("removeSeats", { count: -added })}
+                        </Button>
+                      </Opening>
+                    ) : null}
+                  </AnimatePresence>
+                  {mock.toFree ? (
+                    <Button size="sm" onClick={() => setMock({ toFree: false })}>
+                      {t("keepPlan", { plan: plan?.name ?? "" })}
+                    </Button>
+                  ) : null}
+                  <Button variant="outline" size="sm" disabled={busy === "portal"} onClick={() => void attempt("portal", async () => window.location.assign(await openPortal({})))}>
+                    {t("manageBilling")}
+                  </Button>
+                </div>
               ) : (
                 <Button asChild size="sm">
                   <Link href="/pricing">
@@ -616,6 +798,41 @@ export function WorkspaceBilling() {
 
         <MemberSpending spending={spending} admin={admin} team={team} members={memberCount} />
 
+        <UpgradeConfirmationDialog
+          open={reviewing && added !== 0}
+          onOpenChange={setReviewing}
+          title={added > 0 ? t("addSeats", { count: added }) : t("removeSeats", { count: -added })}
+          description={t("thenAMonthFrom", { amount: money(change.monthly), date: date(mock.renewsAt) })}
+          confirmLabel={added > 0 ? t("addSeats", { count: added }) : t("removeSeats", { count: -added })}
+          totalLabel={added > 0 ? t("dueNow") : t("offNextBill")}
+          labels={{ from: t("seatsNow"), to: t("seatsAfter") }}
+          isConfirming={false}
+          onConfirm={() => {
+            // The mock's card declines an added seat: nothing changes, and the admin is told why.
+            if (added > 0 && mock.failed) return showStyledToast("error", t("seatsDeclined"));
+            setMock({ seats: next });
+            setPicked(undefined);
+            setReviewing(false);
+          }}
+          preview={{
+            currency: "usd",
+            immediateChargeCents: Math.round(Math.abs(change.amount) * 100),
+            currentPlan: t("seats", { count: seats }),
+            targetPlan: t("seats", { count: next }),
+            targetPlanCreditsPerMonth: 0,
+            remainingDays: 0,
+            lineItems: [
+              {
+                description: added > 0 ? t("seatLine", { count: added, from: short(nowMs), to: short(mock.renewsAt) }) : t("unusedSeatLine", { count: -added, from: short(nowMs), to: short(mock.renewsAt) }),
+                amountCents: Math.round(change.amount * 100),
+                currency: "usd",
+              },
+            ],
+          }}
+          cardBrand={account.card?.brand}
+          cardLast4={account.card?.last4}
+        />
+
         <Zone label={t("included")}>
           <div className="flex flex-wrap gap-1.5">
             {included.map((f) => (
@@ -628,6 +845,7 @@ export function WorkspaceBilling() {
           </div>
         </Zone>
       </div>
+      <SeatsMockPanel mock={mock} set={setMock} reset={resetMock} />
     </Enter>
   );
 }
