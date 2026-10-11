@@ -48,7 +48,8 @@
       "MAX_EVIDENCE_UNITS_PER_PAPER": "convex/extraction/mutations/evidence.ts:replacePaperEvidenceUnits",
       "MAX_JOB_SOURCES": "convex/extraction/jobSources.ts:writeJobSources",
       "MAX_PENDING_FILES": "convex/assistant/files.ts:startUpload",
-      "MAX_FILES_PER_MESSAGE": "convex/assistant/files.ts:partsFor"
+      "MAX_FILES_PER_MESSAGE": "convex/assistant/files.ts:partsFor",
+      "MAX_PROFILE_MEMBERS": "convex/sharing/items.ts"
     },
     "refused": {
       "MAX_ACCOUNTS_PER_EMAIL": "reads one past it and refuses the invitation, naming why",
@@ -83,10 +84,7 @@
       "MAX_RATERS": "the members of an organization its averages read, and the ratings of a paper in one collection; Clerk lets a free organization have 5 members",
       "PLACES_NOTED": "the collections a removed or restored paper notes in their Activity; a paper in more is noted in the first of them",
       "MAKER_ROWS_READ": "the makers of one kind of record the Run by filter reads for members who left; one row per person who ever made one, so an organization past it lists the first of them",
-      "OPEN_HOLDS_READ": "the holds a member has open, summed to size a reply's hold under their cap; a job holds one per slot and a workspace has 40 slots, and Autumn enforces the cap whatever this reads",
-      "MAX_PROFILE_MEMBERS": "the first editors and admins a profile's Access section lists; its workspace's plan holds how many guests a profile has (convex/sharing/access.ts requireRoom)",
-      "MAX_PENDING_INVITATIONS_PER_PROFILE": "the first waiting invitations a profile's Access section lists; each holds a guest's place, which its workspace's plan limits",
-      "CHECKED": "the old sharing rows a migration's check reads of each table to say how many aren't moved yet; shared dev holds a handful"
+      "OPEN_HOLDS_READ": "the holds a member has open, summed to size a reply's hold under their cap; a job holds one per slot and a workspace has 40 slots, and Autumn enforces the cap whatever this reads"
     },
     "batches": {
       "ACTIVITY_STEP": "a moved item's activity rows, a step at a time; it reschedules itself until none are left in the old workspace",

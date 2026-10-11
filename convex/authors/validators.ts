@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { capped } from "../lib/listCaps";
-import { MAX_PENDING_INVITATIONS_PER_PROFILE, MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
+import { MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
 
 export const authorContentFields = {
   name: v.string(),
@@ -31,8 +31,8 @@ export const profileMembersValidator = capped(
   2 * MAX_PROFILE_MEMBERS + 2,
 );
 
-/** A profile's invitations waiting, as its Access section lists them; its workspace's plan holds how many guests it has (../sharing/access.ts). */
+/** A profile's invitations waiting, as its Access section lists them: each holds one of its guests' places (../sharing/access.ts `requireRoom`). */
 export const profileInvitationsValidator = capped(
   v.array(v.object({_id: v.id("itemInvitations"), email: v.string(), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed"))})),
-  MAX_PENDING_INVITATIONS_PER_PROFILE,
+  MAX_PROFILE_MEMBERS,
 );

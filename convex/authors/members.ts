@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../lib/functions";
-import { MAX_PENDING_INVITATIONS_PER_PROFILE, MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
+import { MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
 import { profileOwners, requireProfileAccess } from "./access";
 import { profileInvitationsValidator, profileMembersValidator, profileRoleValidator } from "./validators";
 
@@ -20,9 +20,9 @@ export const list = query({
     const {profile, user: reader, role} = await requireProfileAccess(ctx, profileId);
     const owners = await profileOwners(ctx, profile);
     const ownerIds = new Set(owners.map(owner => owner._id));
-    // The plan of the profile's workspace keeps its guests within what it allows; these read no more than a list holds.
+    // A profile has at most MAX_PROFILE_MEMBERS guests, the invitations still waiting among them (../sharing/items.ts), so each list is whole.
     const guests = await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", q => q.eq("item", profileId)).take(MAX_PROFILE_MEMBERS);
-    const invitations = role === "owner" ? await ctx.db.query("itemInvitations").withIndex("by_item_and_state", q => q.eq("item", profileId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_PROFILE) : [];
+    const invitations = role === "owner" ? await ctx.db.query("itemInvitations").withIndex("by_item_and_state", q => q.eq("item", profileId).eq("state", "pending")).take(MAX_PROFILE_MEMBERS) : [];
     const editors = (await Promise.all(guests.map(guest => ctx.db.get("users", guest.userId)))).filter(user => user && !ownerIds.has(user._id));
     return {
       role,

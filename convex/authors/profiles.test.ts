@@ -88,9 +88,15 @@ describe("author profiles", () => {
     // The one reading it is marked, for their You chip.
     expect(members.members.map(member => [member.email, member.role, member.you])).toEqual([["maker@example.org", "owner", true], ["admin@example.org", "owner", false]]);
     const adminId = members.members.find(member => member.email === "admin@example.org")!.userId;
-    // Sharing it is its owners' alone: another member of the lab, who is nothing to the profile, invites nobody to it.
+    // A colleague in the lab is nothing to the profile until its owner makes them an editor of it: being in its workspace isn't having it.
     const memberId = (await t.run(ctx => ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", "member")).unique()))!._id;
-    await expect(t.mutation(internal.sharing.invitations.prepare, {userId: memberId, workspaceId: lab, author: "user", kind: "author", id: profileId, email: "friend@example.org", role: "editor"})).rejects.toThrow(/Only whoever made this author profile/);
+    const invite = (userId: typeof adminId, email: string) => t.mutation(internal.sharing.invitations.prepare, {userId, workspaceId: lab, author: "user", kind: "author", id: profileId, email, role: "editor"});
+    await expect(invite(memberId, "friend@example.org")).rejects.toThrow(/Only whoever made this author profile/);
+    const invited = await invite(adminId, "member@example.org");
+    await t.mutation(internal.sharing.invitations.respondVerified, {userId: memberId, invitationId: invited, emails: ["member@example.org"], accept: true});
+    expect(await role("member")).toBe("editor");
+    // Sharing it stays its owners' alone: an editor, in the lab or not, invites nobody to it.
+    await expect(invite(memberId, "friend@example.org")).rejects.toThrow(/Only whoever made this author profile/);
     // Someone outside the lab can't make one there.
     await expect(as("outsider").mutation(api.authors.profiles.create, {workspaceId: lab, name: "Not mine"})).rejects.toThrow(/Workspace not found/);
     // An organization without author profiles takes none, whatever another of its members' organizations has.
@@ -195,7 +201,9 @@ describe("author profiles", () => {
       await ctx.db.insert("authorProfileInvitations", {profileId, email: "answered@example.org", invitedBy: ids.owner, expiresAt: Date.now() + 86_400_000, state: "declined", delivery: "sent"});
     });
     expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBeNull();
-    expect(await t.query(internal.migrations.authorAccess.left, {})).toBe(2);
+    // Someone invited again while they already edit it: they keep the one place.
+    await t.run(ctx => ctx.db.insert("authorProfileInvitations", {profileId, email: "editor@example.org", invitedBy: ids.owner, expiresAt: Date.now() + 86_400_000, state: "pending", delivery: "sent"}));
+    expect(await t.action(internal.migrations.authorAccess.verify, {})).toBe(2);
     vi.useFakeTimers();
     try {
       await t.mutation(internal.migrations.authorAccess.run, {});
@@ -204,7 +212,7 @@ describe("author profiles", () => {
       await t.mutation(internal.migrations.authorAccess.run, {});
       await t.finishAllScheduledFunctions(vi.runAllTimers);
     } finally { vi.useRealTimers(); }
-    expect(await t.query(internal.migrations.authorAccess.left, {})).toBe(0);
+    expect(await t.action(internal.migrations.authorAccess.verify, {})).toBe(0);
     expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBe("editor");
     expect(await t.run(async ctx => (await ctx.db.query("itemAccess").collect()).map(({kind, item, userId, role}) => ({kind, item, userId, role})))).toEqual([{kind: "author", item: profileId, userId: ids.editor, role: "editor"}]);
     // The waiting invitation moved with the time it had left, which the test's clock has since run past: it ran out when it would have.

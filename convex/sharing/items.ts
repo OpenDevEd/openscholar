@@ -9,6 +9,7 @@ import { makeFunctionReference } from "convex/server";
 import type { DataModel, Doc, Id, TableNames } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
+import { MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
 import type { Actor, InWorkspace } from "../workspaces/actor";
 import type { GuestRole, SharedKind } from "./validators";
 
@@ -33,8 +34,22 @@ const KINDS = {
   screening: { table: "screeningJobs", name: (row: Doc<"screeningJobs">) => row.name ?? row.label ?? (row.set?.kind === "saved" ? "Saved papers" : "Screening"), size: (row: Doc<"screeningJobs">) => row.totalPapers, word: "screening", roles: ["viewer"] },
   extraction: { table: "extractionJobs", name: (row: Doc<"extractionJobs">) => row.name, size: (row: Doc<"extractionJobs">) => row.totalPapers ?? 0, word: "extraction", roles: ["viewer"] },
   search: { table: "searches", name: (row: Doc<"searches">) => row.data.query || "Search", size: (row: Doc<"searches">) => row.data.count ?? 0, word: "search", roles: ["viewer", "editor"] },
-  author: { table: "authorProfiles", name: (row: Doc<"authorProfiles">) => row.name, word: "author profile", roles: ["editor"], owners: true },
-} as const satisfies { [K in SharedKind]: { table: TableNames; name: (row: never) => string; size?: (row: never) => number; word: string; roles: readonly GuestRole[]; /** Shared only by whoever made it and its workspace's admins, not by every member. */ owners?: true } };
+  author: { table: "authorProfiles", name: (row: Doc<"authorProfiles">) => row.name, word: "author profile", roles: ["editor"], ownersShare: true, ownersHold: true, most: MAX_PROFILE_MEMBERS },
+} as const satisfies {
+  [K in SharedKind]: {
+    table: TableNames; name: (row: never) => string; size?: (row: never) => number; word: string; roles: readonly GuestRole[];
+    /** Shared only by whoever made it and its workspace's admins, not by every member. */
+    ownersShare?: true;
+    /** Held only by them too: its workspace's other members have it only with a place of their own. */
+    ownersHold?: true;
+    /** The most guests one has, whatever its workspace's plan allows: its lists read that many. */
+    most?: number;
+  };
+};
+
+/** Whether a kind is held by its owners alone, and the most guests one of it has, where the kind sets either. */
+export const ownersHold = (kind: SharedKind) => "ownersHold" in KINDS[kind];
+export const guestCap = (kind: SharedKind): number | undefined => { const one = KINDS[kind]; return "most" in one ? one.most : undefined; };
 
 export const kindWord = (kind: SharedKind) => KINDS[kind].word;
 
@@ -64,7 +79,7 @@ export async function sharedIn(ctx: Read, actor: Pick<Actor, "userId" | "workspa
   const search = kind === "search" ? await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", workspaceId).eq("localId", id)).unique() : null;
   const shared = await findShared(ctx, kind, search?._id ?? id);
   if (shared?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "It isn't in this workspace.");
-  if ("owners" in KINDS[kind] && !(actor.role === "admin" || shared.createdBy === actor.userId)) throw createError("FORBIDDEN", `Only whoever made this ${KINDS[kind].word}, or an admin of its workspace, shares it.`);
+  if ("ownersShare" in KINDS[kind] && !(actor.role === "admin" || shared.createdBy === actor.userId)) throw createError("FORBIDDEN", `Only whoever made this ${KINDS[kind].word}, or an admin of its workspace, shares it.`);
   return shared;
 }
 
