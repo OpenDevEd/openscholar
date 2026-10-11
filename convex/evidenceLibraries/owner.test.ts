@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
 import { readLibraryRole } from "./access";
+import { grantLibraryRole } from "./team.test-support";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 
 const modules = import.meta.glob("/convex/**/*.ts");
@@ -22,7 +23,7 @@ it("makes the person whose own workspace a library is in its owner, and an organ
     await ctx.db.patch("organizationMemberships", admin!._id, { role: "org:admin" });
     const base = { state: "active" as const, createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 };
     const mine = (await ctx.db.get("evidenceLibraries", await ctx.db.insert("evidenceLibraries", { ...base, name: "Mine", slug: "mine", workspaceId: await personalWorkspaceOf(ctx, ada) })))!;
-    await ctx.db.insert("evidenceLibraryMembers", { libraryId: mine._id, clerkUserId: "ben", role: "editor", grantedBy: "ada", grantedAt: 1 });
+    await grantLibraryRole(ctx, mine._id, "ben", "editor");
     const theirs = (await ctx.db.get("evidenceLibraries", await ctx.db.insert("evidenceLibraries", { ...base, name: "Team", slug: "team", workspaceId: await organizationWorkspaceOf(ctx, team) })))!;
     const roles = {
       mine: [await readLibraryRole(ctx, mine, "ada"), await readLibraryRole(ctx, mine, "ben")],

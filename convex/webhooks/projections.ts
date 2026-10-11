@@ -1,6 +1,7 @@
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_INVITATIONS_PER_EMAIL, SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
+import { MAX_LIBRARY_GRANTS_PER_PERSON, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL, SINGLE_ROW_CLEANUP } from "../lib/queryBounds";
+import { libraryOf } from "../evidenceLibraries/access";
 import { internalMutation, type MutationCtx } from "../lib/functions";
 import { ensureWorkspace } from "../workspaces/create";
 import { TEAM_PLAN } from "../../lib/billing/plans";
@@ -84,19 +85,19 @@ async function upsertOrganizationSnapshot(
  * looked at: no grant outlives the membership, however many the person holds.
  */
 async function revokeGrantsPage(ctx: MutationCtx, clerkUserId: string, organizationId: Id<"organizations">, cursor: string | null, before: number) {
-  const page = await ctx.db.query("evidenceLibraryMembers")
-    .withIndex("by_clerkUserId", q => q.eq("clerkUserId", clerkUserId))
+  const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", clerkUserId)).unique();
+  if (!user) return;
+  // Their roles in libraries are rows of the table every shared item's guests are in (../evidenceLibraries/access.ts).
+  const page = await ctx.db.query("itemAccess")
+    .withIndex("by_user_and_kind_and_grantedAt", q => q.eq("userId", user._id).eq("kind", "library"))
     .paginate({ cursor, numItems: MAX_LIBRARY_GRANTS_PER_PERSON });
   // A purged organization's workspace held no library (deleting one with a library is refused), so there's nothing to revoke.
   const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique();
   if (!workspace) return;
   for (const assignment of page.page) {
     // A grant made since they left, by a later invitation, is theirs to keep.
-    if (assignment._creationTime > before) continue;
-    const library = await ctx.db.get("evidenceLibraries", assignment.libraryId);
-    if (library?.workspaceId === workspace._id) {
-      await ctx.db.delete("evidenceLibraryMembers", assignment._id);
-    }
+    if (assignment.grantedAt > before) continue;
+    if ((await libraryOf(ctx, assignment))?.workspaceId === workspace._id) await ctx.db.delete("itemAccess", assignment._id);
   }
   if (!page.isDone) await ctx.scheduler.runAfter(0, internal.webhooks.projections.revokeGrants, { clerkUserId, organizationId, cursor: page.continueCursor, before });
 }
@@ -252,20 +253,18 @@ export async function applyMembershipProjection(
         }
       }
       if (args.membership.state === "revoked") {
-        // The sweep takes the grants up to the newest they hold now. A clock can't draw that
-        // line: a grant made a moment earlier or later can carry the same millisecond.
-        const newest = await ctx.db.query("evidenceLibraryMembers")
-          .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.membership.clerkUserId)).order("desc").first();
-        if (newest) await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null, newest._creationTime);
+        // The sweep takes the grants up to the newest they hold now, by when each was given: the
+        // event's own clock can't draw that line, and one given after they left is later than it.
         const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", args.membership.clerkUserId)).unique();
+        const newest = user ? await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", q => q.eq("userId", user._id).eq("kind", "library")).order("desc").first() : null;
+        if (newest) await revokeGrantsPage(ctx, args.membership.clerkUserId, organizationId, null, newest.grantedAt);
         // Read, not made: a deleted organization's workspace is purged, and a late event mustn't bring it back.
         const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique();
         if (user && workspace) {
-          const invitations = await ctx.db.query("evidenceLibraryInvitations")
-            .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_EMAIL);
+          const invitations = await ctx.db.query("itemInvitations")
+            .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
           for (const invitation of invitations) {
-            const library = await ctx.db.get("evidenceLibraries", invitation.libraryId);
-            if (library?.workspaceId === workspace._id) await ctx.db.patch("evidenceLibraryInvitations", invitation._id, { state: "cancelled" });
+            if ((await libraryOf(ctx, invitation))?.workspaceId === workspace._id) await ctx.db.patch("itemInvitations", invitation._id, { state: "cancelled" });
           }
         }
       }

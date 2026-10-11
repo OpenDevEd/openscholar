@@ -312,15 +312,16 @@ describe("Evidence Library identity projections", () => {
     onTestFinished(() => void vi.useRealTimers());
     const t = convexTest(schema);
     const ids = await t.run(async ctx => {
-      await ctx.db.insert("users", {clerkId: "user_123", email: "person@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+      const person = await ctx.db.insert("users", {clerkId: "user_123", email: "person@example.org", state: "active", createdAt: 1, updatedAt: 1 });
       const organizationId = await ctx.db.insert("organizations", { ...organizationSnapshot, state: "active", createdAt: 1, updatedAt: 1 });
       const otherOrganizationId = await ctx.db.insert("organizations", { ...organizationSnapshot, clerkOrganizationId: "other_org", slug: "other", state: "active", createdAt: 1, updatedAt: 1 });
       const libraryIds: Id<"evidenceLibraries">[] = [];
       for (const org of [organizationId, organizationId, otherOrganizationId]) {
         const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId: await organizationWorkspaceOf(ctx, org), name: "Library", slug: `library-${libraryIds.length}`, state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
         libraryIds.push(libraryId);
-        await ctx.db.insert("evidenceLibraryMembers", { libraryId, clerkUserId: "user_123", role: "editor", grantedBy: "owner", grantedAt: 1 });
-        await ctx.db.insert("evidenceLibraryInvitations", { libraryId, email: "person@example.org", role: "creator", invitedBy: "owner", expiresAt: Date.now() + 100000, state: "pending", delivery: "sent" });
+        // Their role and an invitation still waiting, as rows of the tables every shared item's guests are in.
+        await ctx.db.insert("itemAccess", { kind: "library", item: libraryId, name: "Library", userId: person, role: "editor", grantedBy: person, grantedAt: Date.now() });
+        await ctx.db.insert("itemInvitations", { kind: "library", item: libraryId, email: "person@example.org", role: "creator", invitedBy: person, expiresAt: Date.now() + 100000, state: "pending", delivery: "sent" });
       }
       return libraryIds;
     });
@@ -328,9 +329,9 @@ describe("Evidence Library identity projections", () => {
       ...eventMetadata("remove_member_grants", 200), eventType: "organizationMembership.deleted", action: "delete",
       membership: { organization: organizationSnapshot, clerkMembershipId: "orgmem_removed", clerkUserId: "user_123", role: "org:member", state: "revoked", clerkCreatedAt: 1, clerkUpdatedAt: 2 },
     }));
-    expect(await t.run(ctx => ctx.db.query("evidenceLibraryMembers").collect())).toEqual([expect.objectContaining({ libraryId: ids[2] })]);
-    const pending = await t.run(ctx => ctx.db.query("evidenceLibraryInvitations").withIndex("by_email_and_state", q => q.eq("email", "person@example.org").eq("state", "pending")).collect());
-    expect(pending).toEqual([expect.objectContaining({ libraryId: ids[2] })]);
+    expect(await t.run(ctx => ctx.db.query("itemAccess").collect())).toEqual([expect.objectContaining({ item: ids[2] })]);
+    const pending = await t.run(ctx => ctx.db.query("itemInvitations").withIndex("by_email_and_state", q => q.eq("email", "person@example.org").eq("state", "pending")).collect());
+    expect(pending).toEqual([expect.objectContaining({ item: ids[2] })]);
   });
 
   it("keeps a deleted organization's membership revoked when an earlier membership event arrives late (#427)", async () => {

@@ -23,9 +23,6 @@ export const MAX_LIBRARY_GRANTS_PER_PERSON = 200;
 /** Most invitations one library has waiting; another is refused until some are answered, cancelled or expire. */
 export const MAX_PENDING_INVITATIONS_PER_LIBRARY = 500;
 
-/** Most invitations waiting for one address across libraries; another is refused until some are answered or expire. */
-export const MAX_PENDING_INVITATIONS_PER_EMAIL = 100;
-
 /** Most guests one author profile has, the invitations to it still waiting among them, whatever its workspace's plan allows; another is refused. */
 export const MAX_PROFILE_MEMBERS = 100;
 
