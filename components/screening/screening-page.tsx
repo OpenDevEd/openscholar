@@ -12,7 +12,6 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
-import { TooltipHint } from "@/components/ui/tooltip";
 import { ConfigurationLayout, ConfigurationNavigation } from "@/components/evidence-libraries/configuration/configuration-layout";
 import { RailGroup, RailLink } from "@/components/evidence-libraries/configuration/navigation-rail";
 import { BAR_ACTION, BAR_LABEL, PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
@@ -217,9 +216,7 @@ function JobLink({ row, phase, name, active, onClick }: { row: JobRow; phase: Ex
   return (
     <RailLink href={`/screening?job=${row._id}`} icon={row.by && !row.by.you ? faceOf(row.by) : ICON[phase]} active={active} onClick={onClick} className="h-auto items-start py-2 [&>svg]:mt-0.5">
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <TooltipHint label={name} onlyWhenClipped>
-          <span className="truncate">{name}</span>
-        </TooltipHint>
+        <span className="truncate">{name}</span>
         <span className="flex items-center gap-2">
           <span className="block h-1 flex-1 overflow-hidden rounded-full bg-foreground/10">
             <span className={cn("block h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none", FILL[phase])} style={{ width: `${row.totalPapers ? (filled / row.totalPapers) * 100 : 0}%` }} />
