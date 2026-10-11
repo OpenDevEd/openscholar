@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ItemPresence } from "@/components/workspaces/presence";
 import { useQueryStates } from "nuqs";
+import { RefusedId } from "@/components/refused-id";
 import { useFormatter, useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
 import { toast } from "sonner";
@@ -68,7 +69,17 @@ const GRID_CLASSES: Record<ViewMode, string> = {
   "grid-3": "grid grid-cols-3 gap-3",
 };
 
+/** The Library. A collection the address names with something that is no collection's ID opens the Library itself, as one that is gone does (#826). */
 export function LibraryPageClient() {
+  const [{ col }, setParams] = useQueryStates(librarySearchParams);
+  return (
+    <RefusedId id={col} onRefused={() => void setParams({ col: null })}>
+      <LibraryPage />
+    </RefusedId>
+  );
+}
+
+function LibraryPage() {
   const workspaceId = useWorkspace();
   const t = useTranslations("libraryPage");
   const tf = useTranslations("searchFilters");
