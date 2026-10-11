@@ -580,7 +580,7 @@ export const paperContext = internalQuery({
 
 export const estimateAction = defineUserQuery({
   path: "screening/queries:estimate",
-  description: "Estimates the credits screening a number of papers holds, against the workspace's balance, and how many papers that balance covers.",
+  description: "Estimates the credits screening a number of papers holds, against the workspace's balance, and how many papers that balance covers. A member with a monthly cap spends within what's left of it, which billing/caps:allowance says.",
   args: { papers: v.number() },
   returns: v.object({ credits: v.number(), available: v.number(), affordablePapers: v.number() }),
   run: async (ctx, { userId, workspaceId }, args) => estimateScreening(args.papers, await availableCredits(ctx, workspaceId), await screeningPaperCreditsFor(ctx, { userId, workspaceId })),

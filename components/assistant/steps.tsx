@@ -14,7 +14,7 @@ import { readSharedOql } from "@/lib/search-params";
 import { paramsToSearchResult } from "@/lib/search-params/converters";
 import { parseSearchParamsFromUrl } from "@/lib/search-params/parsers";
 import { useFormatter, useTranslations } from "next-intl";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, FileSearch, Globe, Plus, Undo2, X, type AppIcon } from "@/components/icons";
@@ -33,7 +33,8 @@ import { runsOf, shownSteps, whyAsked } from "@/lib/assistant/step-cards";
 import { OrbitMark } from "./orbit-mark";
 import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
-import { inWorkspace, useWorkspace, useWorkspaceScope } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { useSpendable } from "@/components/workspaces/credit-check";
 import { useCurrentWorkspace, WorkspaceTile } from "@/components/workspaces/parts";
 
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -323,6 +324,53 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
 /** Actions whose cost is known only once they run, asked about with what one typically costs: a paper's PDF, read whole, is as long as it is. */
 const TYPICAL_COST = new Set(["research/papers:readPdf"]);
 
+/** What a balance has and what's left once a call takes from it, or how far short it is. Both labels hold their place, so the row never reflows when the balance changes; nothing is said until it's read. */
+function Drawn({ have, take, known, className }: { have: number; take: number; known: boolean; className?: string }) {
+  const t = useTranslations("assistant.asks");
+  const short = known && take > have;
+  return (
+    <span className={cn("flex min-w-0 items-center gap-1.5 tabular-nums transition-opacity duration-200", !known && "opacity-0", className)} aria-hidden={!known}>
+      <AnimatedNumber value={have} />
+      <ArrowRight className="size-3" />
+      <span className="grid font-medium [&>*]:col-start-1 [&>*]:row-start-1 [&>*]:text-right">
+        <motion.span initial={false} animate={{ opacity: short ? 1 : 0 }} aria-hidden={!short} className="text-amber-600 dark:text-amber-400">
+          {t("short", { credits: Math.max(0, take - have) })}
+        </motion.span>
+        <motion.span initial={false} animate={{ opacity: short ? 0 : 1 }} aria-hidden={short} className="text-foreground">
+          {t.rich("left", { n: () => <AnimatedNumber value={Math.max(0, have - take)} /> })}
+        </motion.span>
+      </span>
+    </span>
+  );
+}
+
+/** The bar is the balance; the filled part is what the call takes from it. */
+function Bar({ have, take, known }: { have: number; take: number; known: boolean }) {
+  return (
+    <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10">
+      <motion.span
+        className={cn("block h-full rounded-full", known && take > have ? "bg-amber-400" : "bg-primary")}
+        initial={false}
+        animate={{ width: `${(known ? Math.min(1, take / Math.max(have, 1)) : 0) * 100}%` }}
+        transition={{ type: "spring", stiffness: 170, damping: 26 }}
+      />
+    </div>
+  );
+}
+
+/** One thing an organization's call draws on, named: its credits, or the person's cap this month. */
+function Draw({ label, have, take, known }: { label: string; have: number; take: number; known: boolean }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+        <span className="min-w-0 truncate">{label}</span>
+        <Drawn have={have} take={take} known={known} className="shrink-0" />
+      </div>
+      <Bar have={have} take={take} known={known} />
+    </div>
+  );
+}
+
 /**
  * The part of an approval card for a call that spends credits: the most it holds against the
  * person's balance, or for one whose cost can't be bounded, what it typically costs (`typical`),
@@ -331,56 +379,47 @@ const TYPICAL_COST = new Set(["research/papers:readPdf"]);
  */
 function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddCredits }: { credits: number; typical: boolean; sent: boolean; onAllow: () => void; onAlways: () => void; onDecline: () => void; onAddCredits: () => void }) {
   const t = useTranslations("assistant.asks");
-  const account = useQuery(api.billing.accounts.mine, useWorkspaceScope());
-  // In an organization, its credits pay: its logo and name sit beside the balance (#651).
+  const spend = useSpendable();
+  // In an organization, its credits pay, within the cap an admin set on the person (#651, #652): each is a bar of its own.
   const workspace = useCurrentWorkspace();
   const organization = workspace?.kind === "organization" ? workspace : undefined;
   // Until the balance is read, nothing is said about it, and the row keeps its room.
-  const known = account !== undefined;
-  const balance = Math.floor(account?.balance ?? 0);
+  const known = spend.loaded;
+  const balance = Math.floor(spend.pool);
+  const capLeft = spend.left === undefined ? undefined : Math.floor(spend.left);
   const short = known && credits > balance;
-  // The bar is the balance; the filled part is what this takes from it.
-  const share = known ? Math.min(1, credits / Math.max(balance, 1)) : 0;
+  // The organization has the credits and the person's cap doesn't: an admin raises it, and adding credits changes nothing.
+  const overCap = known && !short && capLeft !== undefined && credits > capLeft;
   return (
     <>
-      <div className="space-y-2 px-4 pb-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Coins className="size-3.5 text-primary" />
-          <span className="font-medium text-foreground">{t(typical ? "about" : "upTo", { credits })}</span>
-          <span className={cn("ml-auto flex min-w-0 items-center gap-1.5 transition-opacity duration-200", !known && "opacity-0")} aria-hidden={!known}>
-            {organization ? (
-              <>
-                <WorkspaceTile workspace={organization} size="xs" />
-                <span className="min-w-0 truncate">{organization.name}</span>
-              </>
-            ) : null}
-            <AnimatedNumber value={balance} />
-            <ArrowRight className="size-3" />
-            {/* Both labels hold their place, so the row never reflows when the balance changes. */}
-            <span className="grid font-medium [&>*]:col-start-1 [&>*]:row-start-1 [&>*]:text-right">
-              <motion.span initial={false} animate={{ opacity: short ? 1 : 0 }} aria-hidden={!short} className="tabular-nums text-amber-600 dark:text-amber-400">
-                {t("short", { credits: Math.max(0, credits - balance) })}
-              </motion.span>
-              <motion.span initial={false} animate={{ opacity: short ? 0 : 1 }} aria-hidden={short} className="text-foreground">
-                {t.rich("left", { n: () => <AnimatedNumber value={Math.max(0, balance - credits)} /> })}
-              </motion.span>
+      {organization ? (
+        <div className="space-y-3 px-4 pb-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Coins className="size-3.5 text-primary" />
+            <span className="font-medium text-foreground">{t(typical ? "about" : "upTo", { credits })}</span>
+            <span className="ml-auto flex min-w-0 items-center gap-1.5">
+              <WorkspaceTile workspace={organization} size="xs" />
+              <span className="min-w-0 truncate">{organization.name}</span>
             </span>
-          </span>
+          </div>
+          <Draw label={t("creditsOf", { name: organization.name })} have={balance} take={credits} known={known} />
+          {capLeft === undefined ? null : <Draw label={t("yourCap")} have={capLeft} take={credits} known />}
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10">
-          <motion.span
-            className={cn("block h-full rounded-full", short ? "bg-amber-400" : "bg-primary")}
-            initial={false}
-            animate={{ width: `${share * 100}%` }}
-            transition={{ type: "spring", stiffness: 170, damping: 26 }}
-          />
+      ) : (
+        <div className="space-y-2 px-4 pb-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Coins className="size-3.5 text-primary" />
+            <span className="font-medium text-foreground">{t(typical ? "about" : "upTo", { credits })}</span>
+            <Drawn have={balance} take={credits} known={known} className="ml-auto" />
+          </div>
+          <Bar have={balance} take={credits} known={known} />
         </div>
-      </div>
+      )}
       {/* The two sets of buttons share one cell and cross-fade, so the card keeps its height. */}
       <div className="grid border-t border-primary/15 p-3 [&>*]:col-start-1 [&>*]:row-start-1">
         {/* Two equal buttons side by side, with little padding so the English pair fits the panel. In a language where one doesn't fit its half, each takes a line of its own: a yes is never cut short.
             Neither can be pressed until the balance is read, since a yes the balance can't cover is refused. */}
-        <motion.div initial={false} animate={{ opacity: short ? 0 : 1, scale: short ? 0.98 : 1 }} transition={{ duration: 0.25, ease: EASE }} inert={short} className="flex flex-wrap gap-2">
+        <motion.div initial={false} animate={{ opacity: short || overCap ? 0 : 1, scale: short || overCap ? 0.98 : 1 }} transition={{ duration: 0.25, ease: EASE }} inert={short || overCap} className="flex flex-wrap gap-2">
           <Button className="h-9 min-w-max flex-[1_1_calc(50%-0.25rem)] px-2" disabled={sent || !known} onClick={onAllow}>
             {t("allow")}
           </Button>
@@ -397,6 +436,23 @@ function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddC
             {t("notNow")}
           </Button>
         </motion.div>
+        {/* Over the person's cap: an admin goes to raise it where caps are set; a member is told to ask one. */}
+        {capLeft === undefined ? null : (
+          <motion.div initial={false} animate={{ opacity: overCap ? 1 : 0, scale: overCap ? 1 : 0.98 }} transition={{ duration: 0.25, ease: EASE }} inert={!overCap} className="grid grid-cols-[1fr_auto] gap-2">
+            {organization?.role === "admin" ? (
+              <Button asChild className="h-9 gap-1.5">
+                <Link href="/settings/billing">
+                  {t("raiseCap")} <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            ) : (
+              <p className="flex min-h-9 items-center justify-center rounded-lg bg-muted/60 px-3 text-center text-xs text-muted-foreground">{t("overCap", { credits: Math.max(0, credits - capLeft) })}</p>
+            )}
+            <Button className="h-9 px-4" variant="secondary" disabled={sent} onClick={onDecline}>
+              {t("notNow")}
+            </Button>
+          </motion.div>
+        )}
       </div>
     </>
   );

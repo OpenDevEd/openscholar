@@ -34,9 +34,9 @@ import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
 import { ANSWER, Chip, ClippedChip, SOURCE_ICON } from "./parts";
 import { PaperScope, PickMark, SourceRow } from "./source-row";
-import { CreditCheck } from "@/components/workspaces/credit-check";
+import { CreditCheck, useSpendable } from "@/components/workspaces/credit-check";
 import { ModelsInUse } from "@/components/models/models-in-use";
-import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceScope } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
 const TINT = {
@@ -176,9 +176,9 @@ export function SetupView({
 
   const models = useModelPicks();
   const model = models.modelOf("screenAll");
-  const { data: account } = useProtectedQuery(api.billing.accounts.mine, useWorkspaceScope());
+  const spend = useSpendable();
   const { data: slots } = useProtectedQuery(api.screening.queries.slots, inWorkspace(workspaceId, {}));
-  const balance = account?.balance ?? 0;
+  const { balance } = spend;
   // The most these papers cost on the model Screen all runs on: what the job holds when it starts.
   const { data: estimate } = useProtectedQuery(api.screening.queries.estimate, inWorkspace(workspaceId, { papers }));
   // Until the figure for these papers arrives, nothing can start.
@@ -261,7 +261,7 @@ export function SetupView({
 
   const list = lists[kind];
   // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows.
-  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && account !== undefined && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
+  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
 
   return (
     <Enter ready={ready}>
@@ -546,7 +546,7 @@ export function SetupView({
         </Zone>
 
         <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
-          <CreditCheck credits={credits} balance={balance} enough={enough} />
+          <CreditCheck credits={credits} balance={balance} enough={enough} cap={spend.cap} />
           <div className="flex flex-wrap items-center gap-1.5">
             {slots ? <Chip icon={Gauge}>{t("atATime", { limit: slots.limit })}</Chip> : null}
             {waitingFor ? (

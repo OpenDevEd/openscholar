@@ -695,6 +695,7 @@ export default function JobDetailPage() {
             {job.status === "creditsExhausted" && !guest && (
               <JobStatusBanner
                 variant="creditsExhausted"
+                jobId={job._id}
                 allowed={job.spendCap}
                 onResume={handleResume}
                 onCancelRemaining={handleCancel}

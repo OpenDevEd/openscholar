@@ -50,7 +50,7 @@ import {
   EXTRACTION_QUESTION_CONCURRENCY,
 } from "../../../lib/extraction/limits";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
-import { availableCredits as readAvailableCredits } from "../../billing/accounts";
+import { capReached, spendingRoom } from "../../billing/memberCaps";
 
 import { getFlag, requireFeature } from "../../featureFlags/guard";
 import {
@@ -138,11 +138,12 @@ export const resumeExtraction = mutation({
     // decision helper ignores balance, so we only need real numbers when
     // currentStatus === "creditsExhausted".
     let availableCredits = 0;
+    let capped = false;
     let remainingEstimateHigh = 0;
 
     if (job.status === "creditsExhausted") {
-      // Its workspace pays for it (#650).
-      availableCredits = await readAvailableCredits(ctx, job.workspaceId);
+      // Its workspace pays for it (#650), within the cap of the member whose job it is.
+      ({ available: availableCredits, capped } = await spendingRoom(ctx, job.workspaceId, job.createdBy));
       const questions = await ctx.db
         .query("extractionQuestions")
         .withIndex("by_job", (q) => q.eq("jobId", jobId))
@@ -160,6 +161,7 @@ export const resumeExtraction = mutation({
 
     if (!decision.ok) {
       if (decision.reason === "insufficient_credits") {
+        if (capped) throw capReached(decision.needed);
         throw createError(
           "INSUFFICIENT_CREDITS",
           `Resume needs ~${decision.needed} credits but only ${decision.available} available`,

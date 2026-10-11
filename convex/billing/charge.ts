@@ -30,7 +30,7 @@ import { autumn, AutumnError } from "./autumn";
 import { customerOf, requestRefresh, zeroCachedBalance } from "./accounts";
 import { billingUsageFields, usageKindValidator } from "./validators";
 import { insertUsage } from "./ledger";
-import { chargedAs } from "./memberCaps";
+import { capReached, chargedAs } from "./memberCaps";
 import { createError } from "../lib/errors";
 import type { Usage } from "../../lib/ai/core/types";
 
@@ -148,10 +148,6 @@ type HoldArgs = { userId: Id<"users">; workspaceId: Id<"workspaces">; chargeId: 
 export async function reserveCredits(ctx: ActionCtx, args: HoldArgs): Promise<boolean> {
   return (await holdCredits(ctx, args)) === "held";
 }
-
-/** The refusal a person sees when the cap an admin set on them stops a hold (#652). */
-export const capReached = (credits: number) =>
-  createError("MEMBER_CAP_REACHED", `This takes up to ${credits.toLocaleString("en")} credits, more than is left of the monthly cap an admin set for you. Ask an admin to raise your cap.`);
 
 /**
  * Holds `credits` for `chargeId`, or says why it held nothing: the balance is short of them,

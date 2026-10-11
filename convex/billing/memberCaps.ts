@@ -7,11 +7,16 @@
  */
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
+import { createError } from "../lib/errors";
 import { monthStart } from "../../lib/billing/month";
 import { TEAM_PLAN } from "../../lib/billing/plans";
 import { readAccount } from "./accounts";
 import { memberSpace, spendSpace, usageAgg } from "./usageLog";
 import { usageKindValidator } from "./validators";
+
+/** The refusal a person sees when the cap an admin set on them stops work that takes up to `credits` (#652). */
+export const capReached = (credits: number) =>
+  createError("MEMBER_CAP_REACHED", `This takes up to ${credits.toLocaleString("en")} credits, more than is left of the monthly cap an admin set for you. Ask an admin to raise your cap.`);
 
 /** The highest cap an admin sets on one member, in credits a month. */
 export const MAX_MEMBER_CAP = 1_000_000;
@@ -43,19 +48,47 @@ export async function capOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId
 }
 
 /**
+ * What's left of the member's cap this month, or undefined with no cap. It counts what they hold
+ * as well as what they spent: a job of theirs running beside a reply holds its papers' credits.
+ * A cap holds only while the member has the seat their work is charged as: once they've left,
+ * what's left of their jobs is charged to the organization, with no cap on it.
+ *
+ * ponytail: an approved job's hold counts in full beside what's already recorded under it, so
+ * while one is part way through this reads less than Autumn would allow, never more. Summing
+ * each open hold's items (billingHoldItems) would make it exact, at a read per item.
+ *
+ * `month` is the first moment of the month in UTC: a page's read is given it, so the figure
+ * moves on with the page's month, not with a clock the read would have to look at.
+ */
+export async function capLeft(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">, month: number) {
+  const cap = await capOf(ctx, workspaceId, userId);
+  if (cap === undefined || !(await chargedAs(ctx, workspaceId, userId))) return undefined;
+  const holds = await ctx.db.query("billingHolds").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).take(OPEN_HOLDS_READ);
+  const held = holds.reduce((sum, hold) => sum + hold.credits, 0);
+  return Math.max(0, cap - held - (await spentSince(ctx, workspaceId, userId, month)));
+}
+
+/**
  * Credits the person can spend in the workspace now, for a hold sized to them: its cached balance,
- * or what's left of their cap this month when that's less. Their cap counts what they hold as well
- * as what they spent: a job of theirs running beside a reply holds its papers' credits. Undefined
- * before the account is first read. Autumn enforces both.
+ * or what's left of their cap this month when that's less. Undefined before the account is first
+ * read. Autumn enforces both. It reads the clock for the month, as a mutation or a read made once may.
  */
 export async function spendable(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) {
   const balance = (await readAccount(ctx, workspaceId))?.balance;
-  const cap = await capOf(ctx, workspaceId, userId);
-  if (cap === undefined) return balance;
-  const holds = await ctx.db.query("billingHolds").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).take(OPEN_HOLDS_READ);
-  const held = holds.reduce((sum, hold) => sum + hold.credits, 0);
-  const left = Math.max(0, cap - held - (await spentSince(ctx, workspaceId, userId, monthStart(Date.now()))));
-  return Math.min(balance ?? left, left);
+  const left = await capLeft(ctx, workspaceId, userId, monthStart(Date.now()));
+  return left === undefined ? balance : Math.min(balance ?? left, left);
+}
+
+/**
+ * What a preflight checks work against before it starts: the credits the person can spend in the
+ * workspace now, and whether their cap is what holds that under its balance, so a refusal says
+ * which. Autumn decides when the credits are held. It reads the clock for the month, as a
+ * mutation or a read made once may: a page's own read passes its month to `capLeft`.
+ */
+export async function spendingRoom(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) {
+  const balance = (await readAccount(ctx, workspaceId))?.balance ?? 0;
+  const left = await capLeft(ctx, workspaceId, userId, monthStart(Date.now()));
+  return left !== undefined && left < balance ? { available: left, capped: true } : { available: balance, capped: false };
 }
 
 /** A member's seat in the organization, by their Clerk ID: the Autumn entity their charges are made as. */

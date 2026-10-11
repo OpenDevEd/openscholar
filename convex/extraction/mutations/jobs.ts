@@ -17,7 +17,8 @@ import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
 import { noteActivity } from "../../activity/notes";
 import { assertBucketWithinLimits } from "../bucket/limits";
-import { availableCredits as readAvailableCredits, planLimit } from "../../billing/accounts";
+import { planLimit } from "../../billing/accounts";
+import { capReached, spendingRoom } from "../../billing/memberCaps";
 import { papersIn } from "../../screening/estimate";
 import { dedupeBucketItems } from "../../../lib/bucket/dedupe";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
@@ -129,8 +130,9 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
   // it now than stop it part way. A job with a hold has its credits already.
   if (!spend) {
     const credits = bucketLimits.effectiveCount * extractionPaperCredits(await extractionPricing(ctx, stamp), qs, args.usePdfs ?? false);
-    const totalAvailable = await readAvailableCredits(ctx, workspaceId);
+    const { available: totalAvailable, capped } = await spendingRoom(ctx, workspaceId, userId);
     if (totalAvailable < credits) {
+      if (capped) throw capReached(credits);
       throw createError(
         "INSUFFICIENT_CREDITS",
         `Need up to ${credits} credits for ${bucketLimits.effectiveCount} papers × ${qs.length} questions but only have ${totalAvailable}`,
