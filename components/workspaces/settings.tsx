@@ -439,6 +439,8 @@ export function WorkspaceMembers() {
 
         {admin ? (
           <Zone label={t("invite")}>
+            {/* One child of the zone, so its spacing doesn't jump when a step opens or closes under the form: each step's gap is inside it. */}
+            <div>
             <form
               className="flex flex-wrap items-center gap-2"
               onSubmit={(e) => {
@@ -467,6 +469,7 @@ export function WorkspaceMembers() {
               {full && !team ? (
                 // A free organization at its limit is offered Team where it invites (#863).
                 <Opening key="team">
+                  <div className="pt-2.5">
                   <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border-subtle bg-inset py-2.5 pl-4 pr-2.5 text-sm">
                     <span className="text-muted-foreground">{t("freeUpTo", { count: FREE_MEMBERS })}</span>
                     <Button asChild size="sm">
@@ -475,11 +478,13 @@ export function WorkspaceMembers() {
                       </Link>
                     </Button>
                   </div>
+                  </div>
                 </Opening>
               ) : null}
               {adding ? (
                 // Team with no free seat: one more, at Autumn's price, then the invitation (#863).
                 <Opening key="seat">
+                  <div className="pt-2.5">
                   <div className="space-y-3 rounded-2xl border border-border-subtle p-4">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0 space-y-1.5">
@@ -529,9 +534,11 @@ export function WorkspaceMembers() {
                       </Button>
                     </div>
                   </div>
+                  </div>
                 </Opening>
               ) : null}
             </AnimatePresence>
+            </div>
           </Zone>
         ) : null}
 
@@ -766,20 +773,25 @@ export function WorkspaceBilling() {
             </div>
             {admin ? (
               team ? (
-                <div className="flex flex-col gap-2">
+                // The gap under each button is inside it, so it opens and closes with the button.
+                <div className="flex flex-col">
                   <AnimatePresence initial={false}>
                     {added !== 0 ? (
                       <Opening key="review">
-                        <Button size="sm" className="w-full" onClick={() => setReviewing(true)}>
-                          {added > 0 ? t("addSeats", { count: added }) : t("removeSeats", { count: -added })}
-                        </Button>
+                        <div className="pb-2">
+                          <Button size="sm" className="w-full" onClick={() => setReviewing(true)}>
+                            {added > 0 ? t("addSeats", { count: added }) : t("removeSeats", { count: -added })}
+                          </Button>
+                        </div>
                       </Opening>
                     ) : null}
                   </AnimatePresence>
                   {mock.toFree ? (
-                    <Button size="sm" onClick={() => setMock({ toFree: false })}>
-                      {t("keepPlan", { plan: plan?.name ?? "" })}
-                    </Button>
+                    <div className="pb-2">
+                      <Button size="sm" className="w-full" onClick={() => setMock({ toFree: false })}>
+                        {t("keepPlan", { plan: plan?.name ?? "" })}
+                      </Button>
+                    </div>
                   ) : null}
                   <Button variant="outline" size="sm" disabled={busy === "portal"} onClick={() => void attempt("portal", async () => window.location.assign(await openPortal({})))}>
                     {t("manageBilling")}
