@@ -105,7 +105,7 @@ export function BookmarksCommandCenter() {
   // In an organization, everyone's bookmarks or one member's (#656).
   const runBy = useRunBy("queryShortcuts", { label: "addedBy" });
   const admin = useCurrentWorkspace()?.role === "admin";
-  const bookmarks = useShortcutList({ sort: bookmarkSortBy, text: searchFilter, pageSize: COMMAND_CENTER_ITEMS_PER_PAGE, by: runBy.by });
+  const bookmarks = useShortcutList({ sort: bookmarkSortBy, text: searchFilter, pageSize: COMMAND_CENTER_ITEMS_PER_PAGE, by: runBy.by, byCount: runBy.by ? runBy.countOf(runBy.by) : undefined });
   const ready = listReady && settingsReady && !bookmarks.isLoading;
   const step = (to: () => void) => () => {
     to();

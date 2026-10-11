@@ -40,7 +40,7 @@ export function useShortcutCount() {
  * and from the account signed in, where only the page shown is read (#420). With `text`,
  * only shortcuts whose name or expansion contain it.
  */
-export function useShortcutList({ sort, text = "", pageSize, by }: { sort: BookmarkSortBy; text?: string; pageSize: number; /** In an organization, one member's alone. */ by?: Id<"users"> }) {
+export function useShortcutList({ sort, text = "", pageSize, by, byCount }: { sort: BookmarkSortBy; text?: string; pageSize: number; /** In an organization, one member's alone, and how many they added once that's read. */ by?: Id<"users">; byCount?: number }) {
   const accountId = useResearchSession()?.accountId;
   const scope = useResearchScope();
   const match = useDebouncedValue(text.trim(), 300);
@@ -60,7 +60,7 @@ export function useShortcutList({ sort, text = "", pageSize, by }: { sort: Bookm
 
   return usePagedRecords({
     remote: accountId ? { ...remote, items: remoteItems } : null,
-    count,
+    count: by ? byCount : count,
     counted: !match,
     local,
     localCount: Object.keys(keywords).length,

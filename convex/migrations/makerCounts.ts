@@ -16,16 +16,17 @@ import { startMakerCount, type ByMaker } from "../research/recordCounts";
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
-const start = (table: ByMaker) =>
+// A search holds its whole query and history: 25 of the largest stay well within a transaction's reads.
+const start = (table: ByMaker, batchSize = 25) =>
   migrations.define({
     table,
-    // A search holds its whole query and history: 25 of the largest stay well within a transaction's reads.
-    batchSize: 25,
+    batchSize,
     migrateOne: async (ctx, record) => startMakerCount(ctx, table, record),
   });
 
 export const searches = start("searches");
-export const queryShortcuts = start("queryShortcuts");
+// A bookmark's expansion is as long as a document may be, a megabyte: eight of those stay within the reads.
+export const queryShortcuts = start("queryShortcuts", 8);
 export const screeningJobs = start("screeningJobs");
 export const extractionJobs = start("extractionJobs");
 export const collections = start("collections");

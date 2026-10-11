@@ -40,7 +40,7 @@ export function AddedBy({ name, imageUrl, you, compact = false }: { name: string
   const t = useTranslations("workspaces");
   return (
     <TooltipHint label={t("addedByName", { name })}>
-      <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+      <span role="img" aria-label={t("addedByName", { name })} className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
         <IdentityAvatar name={name} imageUrl={imageUrl} className="size-5" />
         {compact ? null : <PersonName name={name.split(" ")[0] ?? name} you={you} className="max-w-40" />}
       </span>
