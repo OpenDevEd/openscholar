@@ -78,3 +78,4 @@ triggers.register("itemAccess", countList((grant) => sharedWithOf(grant.userId, 
 triggers.register("collections", followShared("collection"));
 triggers.register("screeningJobs", followShared("screening"));
 triggers.register("extractionJobs", followShared("extraction"));
+triggers.register("searches", followShared("search"));

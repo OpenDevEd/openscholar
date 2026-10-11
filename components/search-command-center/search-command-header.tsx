@@ -4,9 +4,18 @@ import { ensureQueryShortcuts } from "@/lib/keyword-validation-browser";
 import { ItemPresence } from "@/components/workspaces/presence";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Share2, Check, Download, History, MoreHorizontal, Move } from "@/components/icons";
+import { Share2, Check, Copy, Download, History, MoreHorizontal, Move } from "@/components/icons";
 import { ActivitySheet } from "@/components/workspaces/activity";
 import { MoveDialog } from "@/components/workspaces/move-dialog";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
+import { SearchOrigin } from "@/components/workspaces/search-origin";
+import { ShareButton } from "@/components/workspaces/share-dialog";
+import { useResearchSession, useSearchAccess } from "@/lib/research/reads";
+import { buildResultsUrl } from "@/lib/search-params";
+import { paramsToSearchResult, searchResultToParams } from "@/lib/search-params/converters";
+import { useSearchHistoryStore } from "@/lib/store";
+import type { SearchResult } from "@/lib/types";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -65,9 +74,26 @@ export function SearchCommandHeader({
   const [moveOpen, setMoveOpen] = useState(false);
   const ta = useTranslations("workspaces.activity");
   const tm = useTranslations("workspaces.move");
-  // A search's Activity (#656), where the bar shows one.
-  const hasActivity = !queryOnly && Boolean(searchId);
+  const [shareOpen, setShareOpen] = useState(false);
+  const tw = useTranslations("workspaces.share");
+  const router = useWorkspaceRouter();
   const search = useSearchOptional();
+  // Who ran the search and how it's shared, from the page's own read of it (#653).
+  const access = useSearchAccess(queryOnly ? undefined : searchId);
+  const guest = access?.guest !== undefined;
+  // A search's Activity (#656), presence and Move, where the bar shows them: they are its workspace's, not a guest's.
+  const hasActivity = !queryOnly && Boolean(searchId) && !guest;
+  // An account's search in its own workspace is shared from here; signed out, and for a guest, the link is copied as before.
+  const workspace = useCurrentWorkspace();
+  const shares = useResearchSession() !== null && hasActivity && access !== undefined;
+  // Someone else's search, a member's or one shared with you: as it shows now, saved as your own in the workspace you're in.
+  const saveCopy = access && (guest || (access.by && !access.by.you)) && search
+    ? () => {
+        const entry = paramsToSearchResult(search.params);
+        const id = useSearchHistoryStore.getState().addSearchResult(entry);
+        router.push(buildResultsUrl(id, searchResultToParams({ ...entry, id } as SearchResult)));
+      }
+    : null;
   const getShareableUrl = search?.getShareableUrl ?? (() => "");
   const isMobile = useIsTablet();
   const { viewMode, setViewMode } = useUIStore();
@@ -101,8 +127,18 @@ export function SearchCommandHeader({
         "border-b border-border-subtle"
       )}
     >
-      {/* Mode tabs */}
-      <ModeTabs mode={mode} onChange={onModeChange} disabled={isLoading} />
+      {/* Mode tabs, and beside them whose search this is when it isn't simply yours */}
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex shrink-0">
+          <ModeTabs mode={mode} onChange={onModeChange} disabled={isLoading} />
+        </span>
+        {/* It takes the room the actions leave, cut short where there's little. */}
+        {!queryOnly && searchId ? (
+          <span className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+            <SearchOrigin searchId={searchId} />
+          </span>
+        ) : null}
+      </div>
 
       {/* Global actions */}
       <div className="flex items-center gap-2">
@@ -134,6 +170,12 @@ export function SearchCommandHeader({
                   <DropdownMenuSeparator />
                 </>
               ) : null}
+              {saveCopy ? (
+                <DropdownMenuItem onSelect={saveCopy}>
+                  <Copy className="size-4" />
+                  {tsc("saveCopy")}
+                </DropdownMenuItem>
+              ) : null}
               {hasActivity ? (
                 <DropdownMenuItem onSelect={() => setActivityOpen(true)}>
                   <History className="size-4" />
@@ -146,10 +188,17 @@ export function SearchCommandHeader({
                   {tm("toAnother")}
                 </DropdownMenuItem>
               ) : null}
-              <DropdownMenuItem onSelect={() => handleCopyShareLink({ fromMenu: true })}>
-                <Share2 className="size-4" />
-                {tsc("copyShareLink")}
-              </DropdownMenuItem>
+              {shares ? (
+                <DropdownMenuItem onSelect={() => setShareOpen(true)}>
+                  <Share2 className="size-4" />
+                  {tw("shareThis.search")}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => handleCopyShareLink({ fromMenu: true })}>
+                  <Share2 className="size-4" />
+                  {tsc("copyShareLink")}
+                </DropdownMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         ) : null}
@@ -191,6 +240,13 @@ export function SearchCommandHeader({
           </DropdownMenu>
         )}
 
+        {saveCopy ? (
+          <TooltipHint label={tsc("saveCopy")}>
+            <Button variant="ghost" size="icon" aria-label={tsc("saveCopy")} onClick={saveCopy} className="hidden h-8 w-8 text-muted-foreground hover:text-foreground md:inline-flex">
+              <Copy className="h-4 w-4" />
+            </Button>
+          </TooltipHint>
+        ) : null}
         {hasActivity ? (
           <TooltipHint label={ta("title")}>
             <Button variant="ghost" size="icon" aria-label={ta("title")} onClick={() => setActivityOpen(true)} className="hidden h-8 w-8 text-muted-foreground hover:text-foreground md:inline-flex">
@@ -208,8 +264,25 @@ export function SearchCommandHeader({
         ) : null}
         {hasActivity && searchId ? <MoveDialog open={moveOpen} onOpenChange={setMoveOpen} kind="search" id={searchId} name={search?.params.q || tsc("currentQuery")} /> : null}
 
-        {/* Share button */}
-        {!queryOnly && (
+        {/* Share: its guests and its link, which carries the query with its shortcuts expanded, and an OQL query after its #. */}
+        {shares && searchId ? (
+          <ShareButton
+            compact
+            className="hidden md:inline-flex"
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            kind="search"
+            id={searchId}
+            name={search?.params.q || tsc("currentQuery")}
+            guests={access?.guests ?? 0}
+            link={async () => {
+              await ensureQueryShortcuts(search?.params.q);
+              return getShareableUrl();
+            }}
+            note={workspace?.kind === "organization" ? tsc("linkOpensIn", { workspace: workspace.name }) : tsc("linkOpens")}
+          />
+        ) : null}
+        {!queryOnly && !shares && (
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

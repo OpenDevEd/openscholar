@@ -68,6 +68,19 @@ export function useWatchedSearch(id: string | undefined): WatchedStatus {
 }
 
 /**
+ * Search `id` as the session's read gave it, while this component shows: who ran it in an
+ * organization (`by`), how many guests it has (`guests`), and for one shared with the person
+ * their role and the workspace it's in (`guest`, #653). Undefined signed out, while it's read,
+ * or for a search not saved.
+ */
+export function useSearchAccess(id: string | undefined) {
+  const { session } = useContext(SessionContext);
+  const subscribe = useCallback((listener: () => void) => (session && id ? session.watchSearch(id, listener) : noReaders()), [session, id]);
+  const read = useCallback(() => (session && id ? session.watchedSearch(id) : undefined), [session, id]);
+  return useSyncExternalStore(subscribe, read, read);
+}
+
+/**
  * Holds a read of something about these papers, by paper ID, while this component shows.
  * Returns the papers it's read for, from the first, whether more are on their way, and
  * whether a read failed. `watch`, `read` and `failed` are the session's for that read;

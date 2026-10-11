@@ -18,17 +18,20 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger, f
 import { EmailAvatar } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { showStyledToast } from "@/components/ui/sonner";
+import { TooltipHint } from "@/components/ui/tooltip";
 import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
 import type { GuestRole, SharedKind } from "@/convex/sharing/validators";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { getErrorMessage } from "@/lib/toast/use-app-toast";
+import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { PlanChip, useCurrentWorkspace, usePlanOf, WorkspaceTile } from "./parts";
 import { SHARED_KINDS } from "./shared";
 
 type Item = { kind: SharedKind; id: string; name: string };
+/** `link` is what Copy link gives where the item's address alone isn't it: a search's carries its query. `note`, over Copy link, says who the link opens what for. */
+type Linked = { link?: () => Promise<string>; note?: string };
 
 /** Guests and invitations the dialog reads at a time. */
 const PAGE = 25;
@@ -54,24 +57,31 @@ function useGuests({ kind, id }: Pick<Item, "kind" | "id">) {
 /**
  * An item's Share button, and the dialog it opens. `guests` is how many the item has,
  * invitations included, as the page's own read of the item gives it, so the button is its
- * final size from its first frame.
+ * final size from its first frame. `compact` keeps to the icon and the count, where a bar has
+ * no room for the word; `open` and `onOpenChange` let something else open it too, such as a
+ * phone's menu, and `className` hides the button there.
  */
-export function ShareButton({ guests, ...item }: Item & { guests: number }) {
+export function ShareButton({ guests, compact = false, className, open: given, onOpenChange, link, note, ...item }: Item & Linked & { guests: number; compact?: boolean; className?: string; open?: boolean; onOpenChange?: (open: boolean) => void }) {
   const t = useTranslations("workspaces.share");
-  const [open, setOpen] = useState(false);
+  const [own, setOwn] = useState(false);
+  const open = given ?? own;
+  const setOpen = onOpenChange ?? setOwn;
   const access = useGuests(item);
+  const button = (
+    // The dialog's own trigger, so closing it gives the keyboard back to the button.
+    <DialogTrigger asChild>
+      <Button variant="outline" size="sm" className={cn("h-8 shrink-0", compact && !guests && "w-8 px-0", className)} aria-label={t(`shareThis.${item.kind}`)}>
+        <Share2 />
+        {compact ? null : t("share")}
+        {guests ? <span className="ml-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{guests}</span> : null}
+      </Button>
+    </DialogTrigger>
+  );
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      {/* The dialog's own trigger, so closing it gives the keyboard back to the button. */}
-      <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 shrink-0" aria-label={t(`shareThis.${item.kind}`)}>
-          <Share2 />
-          {t("share")}
-          {guests ? <span className="ml-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{guests}</span> : null}
-        </Button>
-      </DialogTrigger>
+      {compact ? <TooltipHint label={t(`shareThis.${item.kind}`)}>{button}</TooltipHint> : button}
       <DialogContent showCloseButton={false} onOpenAutoFocus={focusContent} className="top-[max(1rem,12dvh)] flex max-h-[min(40rem,calc(88dvh-1rem))] max-w-lg translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0">
-        <Share close={() => setOpen(false)} access={access} {...item} />
+        <Share close={() => setOpen(false)} access={access} link={link} note={note} {...item} />
       </DialogContent>
     </Dialog>
   );
@@ -81,7 +91,7 @@ export function ShareButton({ guests, ...item }: Item & { guests: number }) {
  * Who has an item and adding guests to it. Your own workspace's item is yours; an
  * organization's is every member's, so it lists the organization, then its guests.
  */
-function Share({ close, access, kind, id, name }: Item & { close: () => void; access: ReturnType<typeof useGuests> }) {
+function Share({ close, access, kind, id, name, link, note }: Item & Linked & { close: () => void; access: ReturnType<typeof useGuests> }) {
   const t = useTranslations("workspaces.share");
   const tc = useTranslations("common");
   const format = useFormatter();
@@ -99,6 +109,8 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
   const setRole = useWorkspaceMutation(api.sharing.guests.setRole);
   const remove = useWorkspaceMutation(api.sharing.guests.remove);
   const failed = (error: unknown) => showStyledToast("error", getErrorMessage(error, t("failed")));
+  const toast = useAppToast();
+  const tl = useTranslations("searchCommand");
 
   const { room, guests, invited } = access;
   const used = room?.used ?? guests.results.length + invited.results.length;
@@ -172,11 +184,20 @@ function Share({ close, access, kind, id, name }: Item & { close: () => void; ac
               </Button>
             ) : null}
             <GuestMeter room={room} />
+            {note ? <p className="px-1 text-center text-xs text-muted-foreground">{note}</p> : null}
           </>
         }
         // The link without the organization in it opens for a member in the organization and for a guest in their own workspace.
         // The item's own address, without its workspace: a guest opens it in theirs, and a member is taken to the item's (item-home.tsx). The page's address may not name it, as /screening doesn't for the newest screening.
-        onCopy={() => navigator.clipboard.writeText(`${window.location.origin}${SHARED_KINDS[kind].href(id)}`)}
+        // A link that couldn't be made or copied says so: the panel only knows a copy that worked.
+        onCopy={async () => {
+          try {
+            await navigator.clipboard.writeText(link ? await link() : `${window.location.origin}${SHARED_KINDS[kind].href(id)}`);
+          } catch (error) {
+            toast.clipboard.copyFailed(tl("link"));
+            throw error;
+          }
+        }}
       />
     </>
   );

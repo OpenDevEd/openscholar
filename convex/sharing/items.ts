@@ -14,20 +14,23 @@ import type { GuestRole, SharedKind } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
 
-/** An item as sharing sees it: where it is, what it's called, and how much it holds (a collection's papers, a screening's). */
-export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size: number };
+/** An item as sharing sees it: where it is, what it's called, and how much it holds (a collection's papers, a screening's). A search's Activity is kept under the ID its page shows in its workspace (`pageId`); its guests' rows name its document. */
+export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size: number; pageId?: string };
 
 /**
  * Each kind's table, what its row is called, how much it holds, the word for one in a sentence,
  * and the roles a guest of one can be given. A collection's editor puts papers in it and takes
  * them out (../library/collectionMembership.ts `editableCollection`). A screening goes by the
  * name it was given as it started, else by its papers' set as it was named then, as its
- * Activity does; one of the saved papers, or from before sets were kept, has neither.
+ * Activity does; one of the saved papers, or from before sets were kept, has neither. A search
+ * goes by its query, and its editor changes its query, filters, questions and answers
+ * (../research/records.ts `readableSearch`).
  */
 const KINDS = {
   collection: { table: "collections", name: (row: Doc<"collections">) => row.name, size: (row: Doc<"collections">) => row.itemCount, word: "collection", roles: ["viewer", "editor"] },
   screening: { table: "screeningJobs", name: (row: Doc<"screeningJobs">) => row.name ?? row.label ?? (row.set?.kind === "saved" ? "Saved papers" : "Screening"), size: (row: Doc<"screeningJobs">) => row.totalPapers, word: "screening", roles: ["viewer"] },
   extraction: { table: "extractionJobs", name: (row: Doc<"extractionJobs">) => row.name, size: (row: Doc<"extractionJobs">) => row.totalPapers ?? 0, word: "extraction", roles: ["viewer"] },
+  search: { table: "searches", name: (row: Doc<"searches">) => row.data.query || "Search", size: (row: Doc<"searches">) => row.data.count ?? 0, word: "search", roles: ["viewer", "editor"] },
 } as const satisfies { [K in SharedKind]: { table: TableNames; name: (row: never) => string; size: (row: never) => number; word: string; roles: readonly GuestRole[] } };
 
 export const kindWord = (kind: SharedKind) => KINDS[kind].word;
@@ -48,12 +51,14 @@ export async function findShared(ctx: Read, kind: SharedKind, id: string): Promi
   const rowId = ctx.db.normalizeId(table, id);
   const row = rowId ? await ctx.db.get(table, rowId) : null;
   // Whole characters: an emoji cut in two is no character at all.
-  return row ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), size: size(row) } : null;
+  return row ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), size: size(row), ...("localId" in row ? { pageId: row.localId } : {}) } : null;
 }
 
 /** The item, for someone who acts in its workspace: only they share it, and anyone else learns nothing of it. */
 export async function sharedIn(ctx: Read, { workspaceId }: InWorkspace, kind: SharedKind, id: string) {
-  const shared = await findShared(ctx, kind, id);
+  // A member names a search by the ID its page shows, which is its own within the workspace; its guests' rows name its document.
+  const search = kind === "search" ? await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", workspaceId).eq("localId", id)).unique() : null;
+  const shared = await findShared(ctx, kind, search?._id ?? id);
   if (shared?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "It isn't in this workspace.");
   return shared;
 }

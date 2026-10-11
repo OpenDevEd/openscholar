@@ -23,7 +23,8 @@ function InitializeResults({ children }: { children: React.ReactNode }) {
   const unknown = account !== null && searchId !== undefined && !saved && watched === "missing";
   const home = useItemHome(unknown ? { kind: "search", id: searchId } : null);
   const slug = useWorkspaceSlug();
-  const elsewhere = unknown && (home === undefined || (home !== null && home.slug !== slug));
+  // It also opens under another ID where a link to a shared search carries the one its own workspace knows it by (#653).
+  const elsewhere = unknown && (home === undefined || (home !== null && (home.slug !== slug || home.id !== undefined)));
   // The searches this tab has shown. Once one is gone, deleted in another tab or moved where the person
   // can't follow, the tab leaves for search, at once or when Back returns to it: a new one is made only
   // at an address never opened here.

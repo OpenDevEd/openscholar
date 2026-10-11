@@ -204,6 +204,43 @@ describe("research save recovery", () => {
     stop();
   });
 
+  it("keeps a viewer's changes to a shared search on their page without sending them, and drops them once they may change it (#653)", async () => {
+    let read: unknown;
+    const updates = new Set<() => void>();
+    const sent: ResearchCommand[] = [];
+    const client = {
+      watchQuery(query: Parameters<typeof getFunctionName>[0]) {
+        return {
+          localQueryResult: () => (getFunctionName(query).endsWith(":getSearch") ? read : { page: [], isDone: true, continueCursor: "" }),
+          onUpdate: (update: () => void) => { updates.add(update); return () => { updates.delete(update); }; },
+        };
+      },
+      mutation: vi.fn(async (_query: unknown, args: { command: ResearchCommand }) => { sent.push(args.command); return null; }),
+    } as unknown as ConvexReactClient;
+    const shared = { id: "shared", query: "tutoring", field: "title" as const, count: 3, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-09-01T00:00:00.000Z", updatedAt: "2026-09-01T00:00:00.000Z" };
+    read = { ...shared, guest: { role: "viewer", from: { name: "Lab", organization: true } } };
+    const session = new ResearchSession(client, "alice", { workspaceId: WORKSPACE, own: true });
+    const stop = session.subscribe(() => {}, true, undefined);
+    await vi.waitFor(() => expect(session.getSnapshot().ready).toBe(true));
+    const unwatch = session.watchSearch("shared", () => {});
+    const history = () => session.stores.history.getState();
+
+    // To view: her new query shows on her page and is never sent, however many pages she turns after it.
+    history().addQueryToHistory("shared", "tutoring at scale", "title");
+    for (let page = 2; page <= 400; page++) history().updateSearchResult("shared", { page });
+    expect(history().getSearchResult("shared")).toMatchObject({ query: "tutoring at scale", page: 400 });
+    expect([sent, session.getSnapshot().pending]).toEqual([[], 0]);
+
+    // Made an editor: her page shows the search as it is, and what she changes now is saved.
+    read = { ...shared, guest: { role: "editor", from: { name: "Lab", organization: true } } };
+    for (const update of updates) update();
+    expect(history().getSearchResult("shared")).toMatchObject({ query: "tutoring" });
+    history().addQueryToHistory("shared", "peer tutoring", "title");
+    await vi.waitFor(() => expect(sent).toMatchObject([{ kind: "editSearch", id: "shared", edit: { kind: "query", query: "peer tutoring" } }]));
+    unwatch();
+    stop();
+  });
+
   it("says when a search's read failed, saves other changes meanwhile, and reads it again on Retry", async () => {
     let failing = true;
     const updates = new Set<() => void>();

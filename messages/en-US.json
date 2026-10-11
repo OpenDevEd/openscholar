@@ -1123,6 +1123,11 @@
     "currentQuery": "Current query",
     "link": "Link",
     "copyShareLink": "Copy shareable link",
+    "saveCopy": "Save a copy",
+    "yourCopy": "Your copy of a shared link",
+    "yourCopyHint": "You opened this from a shared link. It's your own copy, so what you change stays yours.",
+    "linkOpensIn": "Everyone in {workspace} and your guests open this search. Anyone else with the link gets their own copy of it.",
+    "linkOpens": "Your guests open this search. Anyone else with the link gets their own copy of it.",
     "copied": "Copied!",
     "makeBroader": "Make broader",
     "makeSpecific": "Make specific",
@@ -4049,12 +4054,14 @@
       "shareThis": {
         "collection": "Share this collection",
         "screening": "Share this screening",
-        "extraction": "Share this extraction"
+        "extraction": "Share this extraction",
+        "search": "Share this search"
       },
       "title": {
         "collection": "Share collection",
         "screening": "Share screening",
-        "extraction": "Share extraction"
+        "extraction": "Share extraction",
+        "search": "Share search"
       },
       "addPeople": "Add people by name or email",
       "inviteEmail": "Invite {email}",
@@ -4082,7 +4089,8 @@
       "full": {
         "collection": "{plan} allows {count, plural, one {# guest} other {# guests}} on each collection",
         "screening": "{plan} allows {count, plural, one {# guest} other {# guests}} on each screening",
-        "extraction": "{plan} allows {count, plural, one {# guest} other {# guests}} on each extraction"
+        "extraction": "{plan} allows {count, plural, one {# guest} other {# guests}} on each extraction",
+        "search": "{plan} allows {count, plural, one {# guest} other {# guests}} on each search"
       },
       "failed": "Couldn't change who this is shared with"
     },
@@ -4096,12 +4104,14 @@
       "kinds": {
         "collection": "Collections",
         "screening": "Screenings",
-        "extraction": "Extractions"
+        "extraction": "Extractions",
+        "search": "Searches"
       },
       "size": {
         "collection": "{count, plural, one {# paper} other {# papers}}",
         "screening": "{count, plural, one {# paper} other {# papers}}",
-        "extraction": "{count, plural, one {# paper} other {# papers}}"
+        "extraction": "{count, plural, one {# paper} other {# papers}}",
+        "search": "{count, plural, one {# result} other {# results}}"
       },
       "runUses": "Anything you run on these uses",
       "yourCredits": "your credits",
@@ -4115,7 +4125,8 @@
       "sharedOne": {
         "collection": "{name} shared a collection",
         "screening": "{name} shared a screening",
-        "extraction": "{name} shared an extraction"
+        "extraction": "{name} shared an extraction",
+        "search": "{name} shared a search"
       },
       "pointOwn": "It sits in your own workspace",
       "pointCredits": "Work you run on it uses your credits",

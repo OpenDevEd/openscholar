@@ -1123,6 +1123,11 @@
     "currentQuery": "現在のクエリ",
     "link": "リンク",
     "copyShareLink": "共有リンクをコピー",
+    "saveCopy": "コピーを保存",
+    "yourCopy": "共有リンクからのあなたのコピー",
+    "yourCopyHint": "共有リンクから開きました。これはあなた自身のコピーなので、変更はあなたのものにだけ反映されます。",
+    "linkOpensIn": "{workspace} の全員とあなたのゲストはこの検索を開きます。リンクを持つそれ以外の人には、自分用のコピーが作られます。",
+    "linkOpens": "あなたのゲストはこの検索を開きます。リンクを持つそれ以外の人には、自分用のコピーが作られます。",
     "copied": "コピーしました！",
     "makeBroader": "広げる",
     "makeSpecific": "絞り込む",
@@ -4049,12 +4054,14 @@
       "shareThis": {
         "collection": "このコレクションを共有",
         "screening": "このスクリーニングを共有",
-        "extraction": "この抽出を共有"
+        "extraction": "この抽出を共有",
+        "search": "この検索を共有"
       },
       "title": {
         "collection": "コレクションを共有",
         "screening": "スクリーニングを共有",
-        "extraction": "抽出を共有"
+        "extraction": "抽出を共有",
+        "search": "検索を共有"
       },
       "addPeople": "名前またはメールで追加",
       "inviteEmail": "{email} を招待",
@@ -4082,7 +4089,8 @@
       "full": {
         "collection": "{plan} ではコレクションごとに{count, plural, other {#人}}までゲストを追加できます",
         "screening": "{plan} ではスクリーニングごとに{count, plural, other {#人}}までゲストを追加できます",
-        "extraction": "{plan} では抽出ごとに{count, plural, other {#人}}までゲストを追加できます"
+        "extraction": "{plan} では抽出ごとに{count, plural, other {#人}}までゲストを追加できます",
+        "search": "{plan} では検索ごとに{count, plural, other {#人}}までゲストを追加できます"
       },
       "failed": "共有を変更できませんでした"
     },
@@ -4096,12 +4104,14 @@
       "kinds": {
         "collection": "コレクション",
         "screening": "スクリーニング",
-        "extraction": "抽出"
+        "extraction": "抽出",
+        "search": "検索"
       },
       "size": {
         "collection": "{count, plural, other {#件の論文}}",
         "screening": "{count, plural, other {#件の論文}}",
-        "extraction": "{count, plural, other {#件の論文}}"
+        "extraction": "{count, plural, other {#件の論文}}",
+        "search": "{count, plural, other {#件の結果}}"
       },
       "runUses": "ここで実行する処理に使われるのは",
       "yourCredits": "あなたのクレジット",
@@ -4115,7 +4125,8 @@
       "sharedOne": {
         "collection": "{name} がコレクションを共有しました",
         "screening": "{name} がスクリーニングを共有しました",
-        "extraction": "{name} が抽出を共有しました"
+        "extraction": "{name} が抽出を共有しました",
+        "search": "{name} が検索を共有しました"
       },
       "pointOwn": "あなた自身のワークスペースに表示されます",
       "pointCredits": "実行する処理にはあなたのクレジットが使われます",
