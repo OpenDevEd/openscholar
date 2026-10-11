@@ -183,11 +183,12 @@ export function CitationControl({
               onFocus={prepare}
               variant={compact ? "ghost" : "outline"}
               size={compact ? "icon" : "sm"}
-              className={compact ? "size-8" : ""}
+              className={compact ? "size-8" : "max-sm:w-8 max-sm:px-0"}
               aria-label={t("cite")}
             >
               <Quote className="size-4" />
-              {!compact && t("cite")}
+              {/* Phones show the icon alone, as the rest of the focus mode header does. */}
+              {!compact && <span className="hidden sm:inline">{t("cite")}</span>}
             </Button>
           </PopoverTrigger>
         </TooltipHint>
