@@ -377,7 +377,8 @@ export const updateAction = defineUserMutation({
     "The person's open page follows, from its first page of results. `query` is the search's words, which a search with a filter can do without. " +
     SETTINGS +
     " " +
-    "Returns `undo`, which puts the search back as it was before this change. It is refused if the search changed again in between.",
+    "Returns `undo`, which puts the search back as it was before this change. It is refused if the search changed again in between. " +
+    "It changes the workspace's own searches: one shared with the person from another workspace is changed with research/records:change, by the ID sharing/shared:list gives.",
   args: { id: v.string(), changes: changesValidator },
   returns: v.object({ undo: reversedBy(RESTORE, restoreArgs) }),
   spendsCredits: false,

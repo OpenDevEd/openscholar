@@ -18,6 +18,8 @@ type Rating = { paperId: string; rating: number };
 type PaperResponses = SavedSearch["screeningResponses"][number];
 /** A set of reads by ID: each read under the IDs it takes, and which read has each ID. */
 type ReadsById<T> = { reads: Map<string, Watch<Page<T>>>; by: Map<string, string> };
+/** A Viewer's unsaved changes kept for one search. */
+const DRAFTS_KEPT = 200;
 /** How long shortcuts read for a single action stay read, for the code after it to expand with. */
 const ENSURE_MS = 10_000;
 type Subscription<T> = { localQueryResult: () => T | undefined; onUpdate: (callback: () => void) => () => void };
@@ -42,8 +44,9 @@ export class ResearchSession {
   readonly stores: ResearchStores;
   // Only the searches pages read by ID; lists page through `listedSearches` themselves (#420).
   private watched = new Map<string, Watch<WatchedSearch | null>>();
-  // Changes to a search shared with the person to view: they show on the page that made them and are never sent, since the search isn't theirs to change.
-  private unsaved: ResearchCommand[] = [];
+  // Changes to a search shared with the person to view, by search: they show on the page that made them and are never
+  // sent, since the search isn't theirs to change. They go when the page closes the search, or the person may change it.
+  private drafts = new Map<string, Array<Extract<ResearchCommand, { kind: "editSearch" }>>>();
   // Only the ratings of the papers pages show, read by paper ID, and only the shortcuts the
   // queries in use name, read by name (#420). A search's screening answers likewise: those of
   // the papers its page shows, by paper ID, under the search's ID (#421).
@@ -116,7 +119,7 @@ export class ResearchSession {
         let responses = pages.flatMap(page => page.page);
         // Answers still being saved count as the person left them: those a search still being
         // created came with, then each edit since.
-        for (const { command } of this.pending) {
+        for (const command of [...(this.drafts.get(id) ?? []), ...this.pending.map(({ command }) => command)]) {
           if (command.kind === "createSearch" && command.search.id === id) responses = command.search.screeningResponses.filter(row => ids.includes(row.paperId));
           if (command.kind === "editSearch" && command.id === id) responses = editedResponses(responses, command.edit);
         }
@@ -274,7 +277,7 @@ export class ResearchSession {
    */
   watchSearch = (id: string, reader: () => void, known?: ListedSearch) => {
     const open = () => this.client.watchQuery(api.research.records.getSearch, { ...this.scope!, id });
-    return this.hold(this.watched, id, open, reader, known);
+    return this.hold(this.watched, id, open, reader, known, () => { this.drafts.delete(id); });
   };
   private answersOf(searchId: string) {
     let reads = this.answered.get(searchId);
@@ -413,8 +416,10 @@ export class ResearchSession {
   }
   private dispatch(command: ResearchCommand) {
     if (!this.listeners.size) throw new ResearchAccountChangedError();
-    if (command.kind === "editSearch" && this.watched.get(command.id)?.value?.guest?.role === "viewer") this.unsaved.push(command);
-    else this.pending.push({ requestId: crypto.randomUUID(), command });
+    if (command.kind === "editSearch" && this.watched.get(command.id)?.value?.guest?.role === "viewer") {
+      // The newest of them: a page turned a thousand times keeps the last few hundred changes, which hold where it is.
+      this.drafts.set(command.id, [...(this.drafts.get(command.id) ?? []), command].slice(-DRAFTS_KEPT));
+    } else this.pending.push({ requestId: crypto.randomUUID(), command });
     this.render(); this.notify(); void this.pump();
   }
   private async pump() {
@@ -452,7 +457,9 @@ export class ResearchSession {
       value ? [{ ...value, screeningResponses: [...(this.answered.get(value.id)?.reads.values() ?? [])].flatMap(read => read.value?.page ?? []) }] : []);
     const keywords = Object.fromEntries([...this.named.reads.values()].flatMap(({ value }) => value?.page ?? []).map(({ shorthand, ...value }) => [shorthand, value]));
     const ratings = Object.fromEntries([...this.rated.reads.values()].flatMap(({ value }) => value?.page ?? []).map(row => [row.paperId, row.rating]));
-    for (const command of [...this.unsaved, ...this.pending.map(({ command }) => command)]) {
+    // A Viewer's drafts, while they're still one: made an Editor, their page shows the search as it is, and what they save.
+    for (const [id] of this.drafts) if (this.watched.get(id)?.value?.guest?.role !== "viewer") this.drafts.delete(id);
+    for (const command of [...[...this.drafts.values()].flat(), ...this.pending.map(({ command }) => command)]) {
       switch (command.kind) {
         case "createSearch": if (!searches.some(row => row.id === command.search.id)) searches = [command.search, ...searches]; break;
         case "deleteSearch": searches = searches.filter(row => row.id !== command.id); break;

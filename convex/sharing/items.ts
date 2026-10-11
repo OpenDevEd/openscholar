@@ -14,8 +14,8 @@ import type { GuestRole, SharedKind } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
 
-/** An item as sharing sees it: where it is, what it's called, how much it holds (a collection's papers, a screening's), and for a search the ID its page goes by (`address`), which is its own within its workspace. */
-export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size: number; address?: string };
+/** An item as sharing sees it: where it is, what it's called, and how much it holds (a collection's papers, a screening's). */
+export type Shared = { kind: SharedKind; id: string; workspaceId: Id<"workspaces">; name: string; size: number };
 
 /**
  * Each kind's table, what its row is called, how much it holds, the word for one in a sentence,
@@ -51,12 +51,12 @@ export async function findShared(ctx: Read, kind: SharedKind, id: string): Promi
   const rowId = ctx.db.normalizeId(table, id);
   const row = rowId ? await ctx.db.get(table, rowId) : null;
   // Whole characters: an emoji cut in two is no character at all.
-  return row ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), size: size(row), ...("localId" in row ? { address: row.localId } : {}) } : null;
+  return row ? { kind, id: row._id, workspaceId: row.workspaceId, name: [...name(row)].slice(0, NAME_MAX).join(""), size: size(row) } : null;
 }
 
 /** The item, for someone who acts in its workspace: only they share it, and anyone else learns nothing of it. */
 export async function sharedIn(ctx: Read, { workspaceId }: InWorkspace, kind: SharedKind, id: string) {
-  // A search is named by the ID its page shows.
+  // A member names a search by the ID its page shows, which is its own within the workspace; its guests' rows name its document.
   const search = kind === "search" ? await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", workspaceId).eq("localId", id)).unique() : null;
   const shared = await findShared(ctx, kind, search?._id ?? id);
   if (shared?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "It isn't in this workspace.");

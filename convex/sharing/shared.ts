@@ -30,11 +30,11 @@ async function inOwn(ctx: Pick<QueryCtx, "db">, { userId, workspaceId }: InWorks
 export const listAction = defineUserQuery({
   path: "sharing/shared:list",
   description:
-    "Lists what's shared with the person from other workspaces, a page at a time, newest shared first or by name (`sort`): each item's kind, ID and name (a search's `address` is the ID its page and the search functions go by), what they may do with it (`viewer` or `editor`), who shared it, " +
+    "Lists what's shared with the person from other workspaces, a page at a time, newest shared first or by name (`sort`): each item's kind, ID and name (a search shared with the person goes by this ID in the search functions too), what they may do with it (`viewer` or `editor`), who shared it, " +
     "the workspace it's in and how much it holds (a collection's papers). `kind` keeps one kind, and `text` the items whose name contains it. Empty in an organization: what's shared with someone is in their own workspace.",
   args: { kind: v.optional(sharedKindValidator), text: v.optional(v.string()), sort: v.union(v.literal("recent"), v.literal("name")), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(
-    v.object({ kind: sharedKindValidator, id: v.string(), address: v.optional(v.string()), name: v.string(), role: guestRoleValidator, at: v.number(), by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.number() }),
+    v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, at: v.number(), by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.number() }),
   ),
   run: async (ctx, actor, { kind, text, sort, paginationOpts }) => {
     if (!(await inOwn(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
@@ -53,7 +53,7 @@ export const listAction = defineUserQuery({
       // One whose item was just deleted goes with it in a moment (./upkeep.ts).
       if (!shared) return [];
       return [{
-        kind: row.kind, id: shared.id, ...(shared.address ? { address: shared.address } : {}), name: shared.name, role: row.role, at: row.grantedAt,
+        kind: row.kind, id: shared.id, name: shared.name, role: row.role, at: row.grantedAt,
         by: { name: sharer ? personName(sharer) || sharer.email : "", ...(sharer?.avatarUrl ? { imageUrl: sharer.avatarUrl } : {}) },
         from: await workspaceFrom(ctx, shared.workspaceId), size: shared.size,
       }];

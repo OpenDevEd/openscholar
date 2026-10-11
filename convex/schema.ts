@@ -73,8 +73,6 @@ export default defineSchema({
     .index("by_workspace_and_createdAt", ["workspaceId", "data.createdAt"])
     .index("by_workspace_and_count", ["workspaceId", "data.count"])
     .index("by_workspace_and_localId", ["workspaceId", "localId"])
-    // A guest's read finds the search they were given by the ID its page shows (#653), among the few that share one.
-    .index("by_localId", ["localId"])
     // One person's searches (#656): counted, and listed newest or most results first.
     .index("by_workspace_and_createdBy", ["workspaceId", "createdBy"])
     .index("by_workspace_and_createdBy_and_createdAt", ["workspaceId", "createdBy", "data.createdAt"])

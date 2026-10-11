@@ -60,16 +60,32 @@ async function workspacesOf(ctx: QueryCtx, user: Doc<"users">) {
   return [await personalWorkspaceOf(ctx, user._id), ...organizations.flatMap((workspace) => (workspace ? [workspace._id] : []))];
 }
 
-/** The workspace an item a page's address names is in, or null when there's none such. */
-async function itemWorkspace(ctx: QueryCtx, user: Doc<"users">, kind: "search" | "screening" | "extraction" | "collection" | "library" | "profile", id: string, here: Id<"workspaces">): Promise<Id<"workspaces"> | null> {
-  if (kind === "search") {
-    // A search's address carries its ID within its workspace, which two workspaces may share: the one the page is in comes first.
-    for (const workspaceId of [here, ...(await workspacesOf(ctx, user)).filter((workspace) => workspace !== here)]) {
-      const search = await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", workspaceId).eq("localId", id)).first();
-      if (search) return workspaceId;
-    }
-    return null;
+/** Searches shared with a person that a member's link to one is looked for among. */
+const GUEST_SEARCHES_READ = 100;
+
+/**
+ * The search a page's address names, and the workspace it's in. A member's address carries its ID
+ * within its workspace, which two workspaces may share: the one the page is in comes first. A
+ * guest's carries its document's ID (#653), and a member's link reaches a guest with the member's:
+ * that one is looked for among the searches shared with them.
+ */
+async function searchAt(ctx: QueryCtx, user: Doc<"users">, id: string, here: Id<"workspaces">) {
+  for (const workspaceId of [here, ...(await workspacesOf(ctx, user)).filter((workspace) => workspace !== here)]) {
+    const search = await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", workspaceId).eq("localId", id)).first();
+    if (search) return search;
   }
+  const docId = ctx.db.normalizeId("searches", id);
+  if (docId) return await ctx.db.get("searches", docId);
+  for (const grant of await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", (q) => q.eq("userId", user._id).eq("kind", "search")).order("desc").take(GUEST_SEARCHES_READ)) {
+    const searchId = ctx.db.normalizeId("searches", grant.item);
+    const search = searchId ? await ctx.db.get("searches", searchId) : null;
+    if (search?.localId === id) return search;
+  }
+  return null;
+}
+
+/** The workspace an item a page's address names is in, or null when there's none such. */
+async function itemWorkspace(ctx: QueryCtx, kind: "screening" | "extraction" | "collection" | "library" | "profile", id: string): Promise<Id<"workspaces"> | null> {
   const table = ({ screening: "screeningJobs", extraction: "extractionJobs", collection: "collections", library: "evidenceLibraries", profile: "authorProfiles" } as const)[kind];
   const docId = ctx.db.normalizeId(table, id);
   const item = docId ? await ctx.db.get(docId) : null;
@@ -80,19 +96,27 @@ async function itemWorkspace(ctx: QueryCtx, user: Doc<"users">, kind: "search" |
  * Where an item a page's address names opens (#651): an organization's slug, or none for the
  * person's own workspace, which is also where a guest opens what's shared with them. Null when
  * it's in no workspace they act in and isn't shared with them, so the page answers as it would.
+ * `id` is the ID it goes by there, when that isn't the one given: a search goes by its ID within
+ * its workspace for a member, and by its document's for a guest.
  */
 export const homeOf = query({
   args: { kind: itemKind, id: v.string(), here: v.id("workspaces") },
-  returns: v.union(v.object({ slug: v.optional(v.string()) }), v.null()),
-  handler: async (ctx, { kind, id, here }) => {
+  returns: v.union(v.object({ slug: v.optional(v.string()), id: v.optional(v.string()) }), v.null()),
+  handler: async (ctx, { kind, id, here }): Promise<{ slug?: string; id?: string } | null> => {
     const user = await getCurrentUser(ctx);
-    const workspaceId = user ? await itemWorkspace(ctx, user, kind, id, here) : null;
-    if (!user || !workspaceId) return null;
+    if (!user) return null;
+    const search = kind === "search" ? await searchAt(ctx, user, id, here) : null;
+    const workspaceId = kind === "search" ? search?.workspaceId : await itemWorkspace(ctx, kind, id);
+    if (!workspaceId) return null;
+    const member = (await actorIn(ctx, user, workspaceId)) !== null;
+    // The ID its page takes: a member's is its own within the workspace, a guest's its document's.
+    const goesBy = search ? (member ? search.localId : search._id) : id;
+    const renamed: { id?: string } = goesBy === id ? {} : { id: goesBy };
     // A guest of it opens it in their own workspace (#653).
-    if (!(await actorIn(ctx, user, workspaceId))) return (await grantOf(ctx, id, user._id)) ? {} : null;
+    if (!member) return (await grantOf(ctx, search?._id ?? id, user._id)) ? renamed : null;
     const workspace = await ctx.db.get("workspaces", workspaceId);
-    if (workspace?.kind !== "organization") return {};
+    if (workspace?.kind !== "organization") return renamed;
     const organization = await ctx.db.get("organizations", workspace.organizationId);
-    return organization ? { slug: organization.slug } : null;
+    return organization ? { slug: organization.slug, ...renamed } : null;
   },
 });

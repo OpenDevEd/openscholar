@@ -107,7 +107,6 @@ async function invitedTo(ctx: Pick<QueryCtx, "db">, invitation: Pick<Doc<"itemIn
   return shared && (await open(ctx, shared.workspaceId)) ? shared : null;
 }
 
-/** The item an invitation was to, by the ID its page opens with: a search's is the one its page shows. */
 const opened = v.object({ kind: sharedKindValidator, id: v.string() });
 
 /** Answers an invitation for `userId`, whose verified addresses Clerk gave as `emails`. Accepted, it returns the item it was to. */
@@ -119,7 +118,7 @@ export const respondVerified = internalMutation({
     if (!invitation || person?.state !== "active" || !emails.includes(invitation.email)) throw createError("FORBIDDEN", "Sign in with the invited email address");
     const shared = await invitedTo(ctx, invitation);
     // Accepting again what they already accepted, as a second tab does, opens it again: theirs by their place, or by having joined its workspace since.
-    if (accept && shared && invitation.state === "accepted" && ((await grantOf(ctx, shared.id, userId)) || (await actorIn(ctx, person, shared.workspaceId)))) return { kind: shared.kind, id: shared.address ?? shared.id };
+    if (accept && shared && invitation.state === "accepted" && ((await grantOf(ctx, shared.id, userId)) || (await actorIn(ctx, person, shared.workspaceId)))) return { kind: shared.kind, id: shared.id };
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     if (!shared) throw createError("NOT_FOUND", "What you were invited to is no longer there.");
     // Its place becomes theirs. Someone who joined its workspace since has it without one.
@@ -127,7 +126,7 @@ export const respondVerified = internalMutation({
       await ctx.db.insert("itemAccess", { kind: shared.kind, item: shared.id, name: shared.name, userId, role: invitation.role, grantedBy: invitation.invitedBy, grantedAt: Date.now() });
     }
     await ctx.db.patch("itemInvitations", invitationId, { state: accept ? "accepted" : "declined" });
-    return accept ? { kind: shared.kind, id: shared.address ?? shared.id } : null;
+    return accept ? { kind: shared.kind, id: shared.id } : null;
   },
 });
 
@@ -212,7 +211,7 @@ export const getAction = defineUserQuery({
     if (state === "pending" && (await ctx.db.get("users", userId))?.email.toLowerCase() !== invitation.email) return { state: "other" as const };
     const inviter = await ctx.db.get("users", invitation.invitedBy);
     return {
-      kind: shared.kind, id: shared.address ?? shared.id, name: shared.name, role: invitation.role,
+      kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role,
       by: { name: inviter ? personName(inviter) || inviter.email : "", ...(inviter?.avatarUrl ? { imageUrl: inviter.avatarUrl } : {}) },
       from: await workspaceFrom(ctx, shared.workspaceId), size: shared.size, state,
     };

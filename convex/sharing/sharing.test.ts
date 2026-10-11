@@ -6,6 +6,7 @@ import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { shownOutside } from "../library/followed";
+import { changeAction } from "../research/records";
 import { insertJob } from "../screening/createJob.test-support";
 import { ensureWorkspace } from "../workspaces/create";
 import { personalWorkspaceOf } from "../workspaces/personal";
@@ -349,41 +350,55 @@ it("opens a shared extraction to its guest to read from their own workspace, wit
   expect(await papers(carol)).toEqual([]);
 });
 
-it("opens a shared search to its guest from their own workspace by the ID its page shows: a viewer reads it, an editor's changes are made where it is, and nobody else finds it", async () => {
+it("opens a shared search to its guest from their own workspace by its document's ID: a viewer reads it, an editor's changes are made where it is, and nobody else finds it", async () => {
   const { t, alice, carol, dave, users, workspaceId } = await lab();
-  const { id } = await alice.mutation(api.research.searches.create, { workspaceId, query: "school feeding" });
+  const { id } = await alice.mutation(api.research.searches.create, { workspaceId, query: "school feeding ml..." });
+  await alice.mutation(api.research.records.change, { accountId: "alice", workspaceId, requestId: "shortcut", command: { kind: "shortcut", shorthand: "ml", value: { expansion: "\"machine learning\"", createdAt: 1 } } });
   const item = { workspaceId, kind: "search" as const, id };
-  const [carolOwn, daveOwn] = await t.run(async (ctx) => [await personalWorkspaceOf(ctx, users.carol), await personalWorkspaceOf(ctx, users.dave)]);
-  const read = (as: typeof alice, accountId: string, own: Id<"workspaces">) => as.query(api.research.records.getSearch, { accountId, workspaceId: own, id });
-  const requery = (as: typeof alice, accountId: string, own: Id<"workspaces">, query: string) =>
-    as.mutation(api.research.records.change, { accountId, workspaceId: own, requestId: `${accountId}-${query}`, command: { kind: "editSearch", id, edit: { kind: "query", query, field: "title_and_abstract" } } });
-  expect(await read(carol, "carol", carolOwn)).toBeNull();
+  const [aliceOwn, carolOwn, daveOwn] = await t.run(async (ctx) => [await personalWorkspaceOf(ctx, users.alice), await personalWorkspaceOf(ctx, users.carol), await personalWorkspaceOf(ctx, users.dave)]);
+  const read = (as: typeof alice, accountId: string, own: Id<"workspaces">, by = id) => as.query(api.research.records.getSearch, { accountId, workspaceId: own, id: by });
+  const edit = (as: typeof alice, accountId: string, own: Id<"workspaces">, by: string, change: { kind: "query"; query: string; field: "title_and_abstract" } | { kind: "restore"; revision: number }) =>
+    as.mutation(api.research.records.change, { accountId, workspaceId: own, requestId: `${accountId}-${JSON.stringify(change)}`, command: { kind: "editSearch", id: by, edit: change } });
+  const requery = (query: string) => ({ kind: "query" as const, query, field: "title_and_abstract" as const });
 
-  // To view: she reads it as it is, with who ran it and whose it is, and changes nothing.
+  // To view: what's shared with her lists it by its document's ID, which is what she reads it by.
   await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
-  expect(await read(carol, "carol", carolOwn)).toMatchObject({ id, query: "school feeding", by: { name: "Alice", you: false }, guest: { role: "viewer", from: { name: "lab", organization: true } } });
-  expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school feeding", guests: 1 });
-  await expect(requery(carol, "carol", carolOwn, "changed")).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
-  // What's shared with her lists it with the ID its page goes by.
-  expect((await carol.query(api.sharing.shared.list, { workspaceId: carolOwn, sort: "recent", paginationOpts: { cursor: null, numItems: 10 } })).page).toMatchObject([{ kind: "search", address: id, name: "school feeding", role: "viewer" }]);
+  const [listed] = (await carol.query(api.sharing.shared.list, { workspaceId: carolOwn, sort: "recent", paginationOpts: { cursor: null, numItems: 10 } })).page;
+  expect(listed).toMatchObject({ kind: "search", name: "school feeding ml...", role: "viewer" });
+  const shared = listed!.id;
+  expect(shared).not.toBe(id);
+  // She reads it as it is, with who ran it and whose it is, its workspace's shortcut written out, and changes nothing.
+  expect(await read(carol, "carol", carolOwn, shared)).toMatchObject({ id: shared, query: 'school feeding "machine learning"', by: { name: "Alice", you: false }, guest: { role: "viewer", from: { name: "lab", organization: true } } });
+  expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school feeding ml...", guests: 1 });
+  await expect(edit(carol, "carol", carolOwn, shared, requery("changed"))).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  // The ID a member's page shows is no way in for her: a search of her own could have it.
+  expect(await read(carol, "carol", carolOwn)).toBeNull();
+  // A link carries the member's ID: for her it opens under the document's, in her own workspace, and a member given hers is sent back to theirs.
+  expect(await carol.query(api.workspaces.queries.homeOf, { kind: "search", id, here: carolOwn })).toEqual({ id: shared });
+  expect(await carol.query(api.workspaces.queries.homeOf, { kind: "search", id: shared, here: carolOwn })).toEqual({});
+  expect(await alice.query(api.workspaces.queries.homeOf, { kind: "search", id: shared, here: aliceOwn })).toEqual({ slug: "lab", id });
 
-  // To edit: her change is made in the lab, where the search is, and its Activity there says it was hers.
+  // To edit: her change is made in the lab, where the search is, and its Activity there says it was hers. It gives her nothing to take it back with, and she restores no earlier version.
   await alice.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" });
-  await requery(carol, "carol", carolOwn, "school meals");
+  expect(await edit(carol, "carol", carolOwn, shared, requery("school meals"))).toEqual({});
   expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school meals" });
   expect(await t.run((ctx) => ctx.db.query("searches").withIndex("by_workspace", (q) => q.eq("workspaceId", carolOwn)).collect())).toEqual([]);
   expect((await alice.query(api.activity.queries.list, { ...item, paginationOpts: { cursor: null, numItems: 10 } })).page[0]).toMatchObject({ by: { name: "Carol" }, happened: "edited", detail: "school meals" });
+  await expect(edit(carol, "carol", carolOwn, shared, { kind: "restore", revision: 1 })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  // The assistant asks her before it changes someone else's search, as the page's own change doesn't put it back.
+  expect(await t.run((ctx) => changeAction.asksFirst!(ctx, { userId: users.carol, workspaceId: carolOwn, role: "admin", author: "assistant" }, { requestId: "ask", command: { kind: "editSearch", id: shared, edit: { kind: "patch", fields: {}, clear: ["screeningQuestions"] } } }))).toBe(true);
   // Her place follows the search's name.
   await t.finishAllScheduledFunctions(vi.runAllTimers);
   expect(await t.run(async (ctx) => (await ctx.db.query("itemAccess").withIndex("by_user_and_grantedAt", (q) => q.eq("userId", users.carol)).collect()).map(({ kind, name }) => ({ kind, name })))).toEqual([{ kind: "search", name: "school meals" }]);
 
-  // Dave was given nothing: he finds no search by that ID, and a change of his to it finds none either.
-  expect(await read(dave, "dave", daveOwn)).toBeNull();
-  await expect(requery(dave, "dave", daveOwn, "his own")).rejects.toThrow(/Search not found/);
+  // Dave was given nothing: he finds no search by either ID, and a change of his finds none.
+  expect([await read(dave, "dave", daveOwn), await read(dave, "dave", daveOwn, shared)]).toEqual([null, null]);
+  await expect(edit(dave, "dave", daveOwn, shared, requery("his own"))).rejects.toThrow(/Search not found/);
+  expect(await dave.query(api.workspaces.queries.homeOf, { kind: "search", id: shared, here: daveOwn })).toBeNull();
   expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school meals" });
   // Taken away, it's gone for Carol.
   await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
-  expect(await read(carol, "carol", carolOwn)).toBeNull();
+  expect(await read(carol, "carol", carolOwn, shared)).toBeNull();
 });
 
 it("closes what a deleted account shared from its own workspace, though its data waits to be purged", async () => {

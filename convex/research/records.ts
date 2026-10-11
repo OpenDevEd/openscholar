@@ -20,7 +20,7 @@ import { internal } from "../_generated/api";
 import { internalMutation } from "../lib/functions";
 import schema from "../schema";
 import { byMakerValidator, countMakerPage, countRecordPage, countRow } from "./recordCounts";
-import { shortcutSortName } from "../../lib/query-shortcuts";
+import { expandShortcuts, shortcutNames, shortcutSortName } from "../../lib/query-shortcuts";
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
 import { personalWorkspaceOf, requireMakerOrAdmin, type Actor, type InWorkspace } from "../workspaces/actor";
 import { personalRatingRow, setPersonalRating } from "../ratings";
@@ -225,7 +225,7 @@ export const getSearchAction = defineUserQuery({
   path: "research/records:getSearch",
   description:
     "Reads one saved search by ID: its query, filters, sort, page and screening questions. Its screening answers are read by paper with answersOf. In an organization it names who ran it (`by`); `guests` is how many people outside its workspace were given it, when any were. " +
-    "One shared with the person from another workspace reads the same in their own workspace, with `guest`: what they may do with it (`viewer`: read and export; `editor`: also change it) and the workspace it's in.",
+    "One shared with the person from another workspace reads the same in their own workspace, by the ID sharing/shared:list gives, with `guest`: what they may do with it (`viewer`: read and export; `editor`: also change it) and the workspace it's in. Its query comes with that workspace's shortcuts written out.",
   args: { id: v.string() },
   returns: v.union(v.object({ ...listedSearchValidator.fields, by: v.optional(makerValidator), guest: v.optional(v.object({ role: guestRoleValidator, from: sharedFromValidator })), guests: v.optional(v.number()) }), v.null()),
   run: async (ctx, actor, args) => {
@@ -235,7 +235,10 @@ export const getSearchAction = defineUserQuery({
     const fields = listed(currentSearch(search.data));
     if (guest) {
       const maker = await ctx.db.get("users", search.createdBy);
-      return { ...fields, ...(maker ? { by: { name: personName(maker) || maker.email, ...(maker.avatarUrl ? { imageUrl: maker.avatarUrl } : {}), you: false } } : {}), guest: { role: guest, from: await workspaceFrom(ctx, search.workspaceId) } };
+      // A shortcut in its query is its workspace's, which the guest's own workspace doesn't have, or has as something else: it's read written out.
+      const names = shortcutNames(fields.query).slice(0, SHORTCUT_NAMES_MAX);
+      const query = names.length ? expandShortcuts(fields.query, await shortcutExpansions(ctx, search.workspaceId, names)).expandedQuery : fields.query;
+      return { ...fields, id: args.id, query, ...(maker ? { by: { name: personName(maker) || maker.email, ...(maker.avatarUrl ? { imageUrl: maker.avatarUrl } : {}), you: false } } : {}), guest: { role: guest, from: await workspaceFrom(ctx, search.workspaceId) } };
     }
     const by = await (await makersIn(ctx, actor.workspaceId, actor.userId))(search.createdBy);
     const guests = await countOf(ctx, itemGuestsOf(search._id));
@@ -430,22 +433,19 @@ export function findSearch(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspace
   return ctx.db.query("searches").withIndex("by_workspace_and_localId", q => q.eq("workspaceId", workspaceId).eq("localId", localId)).unique();
 }
 
-/** Searches with one ID that a guest's read looks through for theirs: an ID is a search's own within its workspace, and only a copy or a move gives two workspaces the same one. */
-const SAME_ID_READ = 8;
-
 /**
- * The search the person may read by the ID its page shows: the one in the workspace they act in,
- * or one given to them as a guest (#653), which is theirs to open in their own workspace; `guest`
- * is their role on that one.
+ * The search the person may read: the one in the workspace they act in, by the ID its page shows
+ * there, which is its own within that workspace; or one given to them as a guest (#653), by its
+ * document's ID, which is what their own workspace's page of it goes by and no other search has.
+ * `guest` is their role on that one.
  */
-export async function readableSearch(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, localId: string): Promise<{ search: Doc<"searches">; guest: GuestRole | null } | null> {
-  const own = await findSearch(ctx, actor.workspaceId, localId);
+export async function readableSearch(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, id: string): Promise<{ search: Doc<"searches">; guest: GuestRole | null } | null> {
+  const own = await findSearch(ctx, actor.workspaceId, id);
   if (own) return { search: own, guest: null };
-  for (const search of await ctx.db.query("searches").withIndex("by_localId", q => q.eq("localId", localId)).take(SAME_ID_READ)) {
-    const guest = await guestRole(ctx, actor, search);
-    if (guest) return { search, guest };
-  }
-  return null;
+  const searchId = ctx.db.normalizeId("searches", id);
+  const search = searchId ? await ctx.db.get("searches", searchId) : null;
+  const guest = search ? await guestRole(ctx, actor, search) : null;
+  return search && guest ? { search, guest } : null;
 }
 
 /** Who a change to answers is recorded as: the assistant, or the person and what the page said. */
@@ -681,7 +681,8 @@ export const changeAction = defineUserMutation({
   undoable: true,
   retryKey: "requestId",
   // The assistant asks the person before a change nothing puts back, by the rules that decide whether a change returns an undo (applyCommand).
-  asksFirst: async (ctx, { workspaceId }, { command }) => {
+  asksFirst: async (ctx, actor, { command }) => {
+    const { workspaceId } = actor;
     switch (command.kind) {
       case "createSearch":
       case "rating":
@@ -705,7 +706,10 @@ export const changeAction = defineUserMutation({
         const edit = command.edit;
         // Changes to questions, answers and history stay done.
         if (edit.kind !== "patch" && edit.kind !== "query" && edit.kind !== "restore") return true;
-        const found = await findSearch(ctx, workspaceId, command.id);
+        const shared = await readableSearch(ctx, actor, command.id);
+        // A change to someone else's search, shared with the person, returns nothing to put it back with.
+        if (shared?.guest) return true;
+        const found = shared?.search;
         if (!found) return false;
         if (edit.kind !== "restore") {
           const previous: SavedSearch = { ...currentSearch(found.data), screeningResponses: [] };
@@ -727,16 +731,23 @@ export const changeAction = defineUserMutation({
     const key = `change:${args.requestId}`;
     const receipt = await received(ctx, userId, key);
     if (!receipt) await checkRemoval(ctx, actor, args.command);
-    // A change to a search shared with the person to edit (#653) is made where the search is, and noted in its
-    // Activity there. One shared to view isn't theirs to change, and no guest copies another search's history into it.
+    // A change to a search shared with the person to edit (#653) is made where the search is, under the ID it has there,
+    // and noted in its Activity there. One shared to view isn't theirs to change. A guest's change is theirs to make, not
+    // to take back: it returns no undo, and they restore no revision and copy no other search's history into it.
     const shared = args.command.kind === "editSearch" ? await readableSearch(ctx, actor, args.command.id) : null;
-    if (shared?.guest && args.command.kind === "editSearch" && (shared.guest === "viewer" || args.command.edit.kind === "copySearch")) throw createError("FORBIDDEN", "This search is shared with you to view. Save a copy of it to change it.");
-    const workspaceId = shared?.guest ? shared.search.workspaceId : actor.workspaceId;
+    const guest = shared?.guest ? shared.search : null;
+    if (guest && args.command.kind === "editSearch") {
+      if (shared?.guest === "viewer") throw createError("FORBIDDEN", "This search is shared with you to view. Save a copy of it to change it.");
+      if (args.command.edit.kind === "copySearch" || args.command.edit.kind === "restore") throw createError("FORBIDDEN", "Only the search's own workspace does that.");
+    }
+    const command = guest && args.command.kind === "editSearch" ? { ...args.command, id: guest.localId } : args.command;
+    const workspaceId = guest ? guest.workspaceId : actor.workspaceId;
     // What the change did to its search, for its Activity (#656): noted here, not declared, so a
     // retried request or a change that left the search as it was notes nothing.
-    const note = receipt ? null : searchNote(args.command);
+    const note = receipt ? null : searchNote(command);
     const before = note ? await findSearch(ctx, workspaceId, note.id) : null;
-    const undo = receipt ? receipt.undo : await applyCommand(ctx, { userId, workspaceId }, args.command, author);
+    const applied = receipt ? receipt.undo : await applyCommand(ctx, { userId, workspaceId }, command, author);
+    const undo = guest ? undefined : applied;
     if (!receipt) await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
     if (note) {
       const after = await findSearch(ctx, workspaceId, note.id);
