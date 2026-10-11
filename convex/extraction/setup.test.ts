@@ -58,3 +58,23 @@ it("a screening's copy takes another source's place, and one the job can't read 
   const kept = await t.run(async (ctx) => await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(5));
   expect(kept.map((paper) => [paper.openalexId, paper.sourceType, paper.screeningRevision])).toEqual([["W1", "screening", "r1"]]);
 });
+
+it("a job cancelled between two steps of its setup counts the papers it has", async () => {
+  const t = convexTest(schema);
+  const jobId = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "stopped", email: "stopped@test", state: "active", createdAt: 1, updatedAt: 1 });
+    await ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: false, updatedAt: 1 });
+    return await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Stopped", status: "pending", runEpoch: 0, totalPapers: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 }, createdAt: 1, updatedAt: 1 });
+  });
+  const paper = (n: number) => ({ openalexId: `W${n}`, title: `Paper ${n}`, abstract, sourceType: "history", sourceId: "s" });
+  // Its first step saves two papers; the cancel lands before the second.
+  await t.mutation(internal.extraction.mutations.papers.createPaperRecords, { jobId, papers: [paper(1), paper(2)] as never, setup: { expectedEpoch: 0, next: { position: 1, read: 2, papers: 0, processable: 0 } } });
+  await t.run((ctx) => ctx.db.patch("extractionJobs", jobId, { status: "cancelled", runEpoch: 1 }));
+  // The step that was on its way saves nothing, and the setup's last write changes nothing.
+  await t.mutation(internal.extraction.mutations.papers.createPaperRecords, { jobId, papers: [paper(3)] as never, setup: { expectedEpoch: 0, next: { position: 2, read: 3, papers: 2, processable: 2 } } });
+  await t.mutation(internal.extraction.mutations.results.updateJobStatus, { jobId, expectedEpoch: 0, status: "indexing", totalPapers: 3 });
+  const job = await t.run((ctx) => ctx.db.get("extractionJobs", jobId));
+  const rows = await t.run(async (ctx) => (await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(10)).length);
+  expect(rows).toBe(2);
+  expect(job).toMatchObject({ status: "cancelled", totalPapers: rows });
+});
