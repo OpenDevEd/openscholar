@@ -17,6 +17,7 @@ import AuthorPage from "./author-page";
 import { ProfileAccess } from "./profile-access";
 import { AuthorInvitations } from "./author-invitations";
 import type { AuthorProfile } from "./types";
+import { useWorkspace } from "@/lib/workspaces/url";
 import { readConvexErrorData } from "@/convex/lib/errors";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
 
@@ -57,6 +58,7 @@ function AuthorProfileBody({profileId, record, references, browsedBefore = false
   const { isLoading: authLoading } = useConvexAuth();
   // The directory of authors comes with Evidence Libraries, which the plan of the workspace the page is in has or hasn't.
   const browses = useWorkspaceFeatures().data?.authors ?? browsedBefore;
+  const workspaceId = useWorkspace();
   const publications = useSWR(references ? ["author-publications", profileId, JSON.stringify(references)] : null, () => readAuthorPublications(profileId), {refreshInterval: data => data?.unavailableCount ? 15000 : 0});
   const save = useAction(api.authors.photos.save);
   const [search, setSearch] = useState("");
@@ -76,7 +78,7 @@ function AuthorProfileBody({profileId, record, references, browsedBefore = false
   };
   return <AuthorPage key={`${record._id}:${configuration}`} profile={profile} configuration={configuration}
     invitationSection={invitation && !record.role ? <AuthorInvitations profileId={profileId} showEmpty /> : undefined}
-    canBrowseAuthors={browses} canEdit={Boolean(record.role)} moveFrom={record.role === "owner" ? record.workspaceId : undefined} accessSection={configuration && record.role === "owner" ? <ProfileAccess profileId={profileId} /> : null}
+    canBrowseAuthors={browses} canEdit={Boolean(record.role)} inWorkspace={record.workspaceId !== undefined && record.workspaceId === workspaceId} moveFrom={record.role === "owner" ? record.workspaceId : undefined} accessSection={configuration && record.role === "owner" ? <ProfileAccess profileId={profileId} /> : null}
     papers={publications.data?.papers ?? []} loadingPublications={publications.isLoading} loadingAuthors={authors.isValidating || search !== debouncedSearch} publicationStatus={publications.error ? "Publications could not be loaded. Try again shortly." : publications.data?.unavailableCount ? "Some publications could not be loaded. Try again shortly." : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
     openAlexError={[authors.error, match.error, works.error].find((error) => error instanceof OpenAlexLimitedError)?.message ?? (authors.error || match.error || works.error ? "OpenAlex is unavailable. Try again." : null)}
     onSearchAuthors={value => { setSearch(value); if (value === search) void authors.mutate(); }}
