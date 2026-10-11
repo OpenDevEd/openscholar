@@ -132,8 +132,8 @@ export async function hasGuests(ctx: Read, item: string) {
 }
 
 /**
- * The trigger on a kind's table: when an item with guests is renamed or deleted, its guest
- * rows follow, a step at a time in transactions of their own.
+ * The trigger on a kind's table: when an item with guests is renamed, deleted or left in no
+ * workspace, its guest rows follow, a step at a time in transactions of their own.
  */
 export const followShared =
   <K extends SharedKind>(kind: K) =>
@@ -141,6 +141,8 @@ export const followShared =
     if (change.operation === "insert") return;
     // The table is the kind's own, which the type of a table picked by a type parameter doesn't say.
     const name = KINDS[kind].name as (row: unknown) => string;
-    if (change.operation === "update" && name(change.oldDoc) === name(change.newDoc)) return;
+    // An author profile outlives its workspace (../workspaces/purge.ts) and is then in none: its guests go as a deleted item's do.
+    const home = (row: unknown) => (row as { workspaceId?: string }).workspaceId;
+    if (change.operation === "update" && name(change.oldDoc) === name(change.newDoc) && home(change.oldDoc) === home(change.newDoc)) return;
     if (await hasGuests(ctx, change.id)) await ctx.scheduler.runAfter(0, follow, { kind, item: change.id, cursor: null });
   };

@@ -64,6 +64,21 @@ describe("author profiles", () => {
     await as("member").mutation(api.presence.heartbeat, {...item, sessionId: "member-tab"});
     expect((await as("maker").query(api.presence.here, {...item, ...page})).page.map(person => person.name)).toEqual(["member"]);
     await expect(as("outsider").mutation(api.presence.heartbeat, {...item, sessionId: "outsider-tab"})).rejects.toThrow();
+
+    // The lab is deleted. The profile stays public, in no workspace, and nobody is left invited to edit it.
+    const organizationId = await t.run(async ctx => {
+      const workspace = await ctx.db.get("workspaces", lab);
+      if (workspace?.kind !== "organization") throw new Error("The lab is an organization's workspace");
+      await ctx.db.patch("organizations", workspace.organizationId, {state: "deleted"});
+      return workspace.organizationId;
+    });
+    vi.useFakeTimers();
+    try {
+      await t.mutation(internal.workspaces.purge.purgeOrganization, {organizationId});
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+    } finally { vi.useRealTimers(); }
+    expect((await t.run(ctx => ctx.db.get("authorProfiles", profileId)))?.workspaceId).toBeUndefined();
+    expect(await t.run(ctx => ctx.db.query("itemInvitations").collect())).toEqual([]);
   });
 
   it("are owned by the workspace they were made in: by their maker and its admins, and edited by others only when invited", async () => {
