@@ -294,6 +294,8 @@ export function draftResult(
     hasUnpublishedChanges?: boolean;
     sections?: { sectionKey: string; payload: unknown }[];
     editVersion?: number;
+    role?: "owner" | "editor" | "creator" | "viewer";
+    editable?: boolean;
   } = {},
 ) {
   return {
@@ -313,6 +315,8 @@ export function draftResult(
       hasUnpublishedChanges: overrides.hasUnpublishedChanges ?? false,
       liveAddress: "https://saved-library.example.test",
       sections: overrides.sections ?? savedRows,
+      role: overrides.role ?? "owner",
+      editable: overrides.editable ?? true,
     },
     isReady: true,
   };

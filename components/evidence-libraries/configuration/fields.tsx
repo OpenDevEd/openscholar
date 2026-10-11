@@ -48,6 +48,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipHint, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { useReadOnly } from "./read-only";
 import { HEX_COLOUR } from "@/lib/evidence-libraries/configuration/rules";
 import { COLOUR_PRESETS, contrastRatio } from "./colours";
 import { Field, labelId } from "./section-card";
@@ -115,11 +116,12 @@ export function UploadField({
     onChange(null);
   }
 
+  const readOnly = useReadOnly();
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     accept: EVIDENCE_LIBRARY_UPLOAD_ACCEPT[kind],
     multiple: false,
     noClick: Boolean(value),
-    disabled: uploading,
+    disabled: uploading || readOnly,
     onDrop: handleFiles,
   });
 
@@ -223,11 +225,12 @@ export function TextUploadField({
     }
   }
 
+  const readOnly = useReadOnly();
   const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     accept: EVIDENCE_LIBRARY_UPLOAD_ACCEPT[kind],
     multiple: false,
     noClick: Boolean(value),
-    disabled: uploading,
+    disabled: uploading || readOnly,
     onDrop: handleFiles,
   });
 
@@ -258,7 +261,10 @@ export function TextUploadField({
           filled={Boolean(value)}
           dropzone={{ getRootProps, getInputProps, isDragActive }}
         >
-          {value ? (
+          {value && readOnly ? (
+            // Read-only, the text is the setting: shown whole, where the View button would have opened it (#653).
+            <pre className="max-h-72 overflow-auto whitespace-pre-wrap p-3 font-sans text-xs">{value}</pre>
+          ) : value ? (
             <div className="flex items-center gap-3 p-3">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-lg border border-border-subtle bg-inset">
                 <FileText className="h-5 w-5 text-muted-foreground" />
@@ -634,8 +640,9 @@ export function ListRow({
   hideRemove?: boolean;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.fields");
+  const readOnly = useReadOnly();
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
-    useSortable({ id });
+    useSortable({ id, disabled: readOnly });
   return (
     <div
       ref={setNodeRef}

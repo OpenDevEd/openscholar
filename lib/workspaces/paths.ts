@@ -5,6 +5,9 @@
 /** A page's path without its organization's prefix (/o/<slug>): the page each section reads itself as. */
 export const bareWorkspacePath = (pathname: string) => pathname.replace(/^\/o\/[^/]+(?=\/|$)/, "") || "/";
 
+/** The request header the proxy gives a page its own address in, path and query, which a layout isn't given. */
+export const ADDRESS_HEADER = "x-page-address";
+
 /**
  * The sections whose pages are a workspace's: their paths take an organization's prefix. Each is
  * a folder under app/o/[slug] and under app, and nothing else is: paths.test.ts fails when a
@@ -58,6 +61,16 @@ const SECTION_OF: Record<Item["kind"], string> = { search: "/", screening: "/scr
  *   pages are no organization's, and an organization's own settings aren't a person's: from
  *   those a switch used to go nowhere, and left the rail in one workspace and the page in the other.
  */
+/**
+ * Where an organization's address takes someone who isn't its member (#653): the same page, item
+ * and all, in their own workspace, where what the organization shared with them is; for the
+ * organization's own settings, which aren't a person's, their own settings.
+ */
+export function outsiderTarget(pathname: string, search: string) {
+  const path = bareWorkspacePath(pathname);
+  return within(path, ORGANIZATION_ONLY) ? "/settings" : path + search;
+}
+
 export function switchTarget(slug: string | undefined, pathname: string, search: string) {
   const path = bareWorkspacePath(pathname);
   if (!slug && within(path, ORGANIZATION_ONLY)) return "/settings";

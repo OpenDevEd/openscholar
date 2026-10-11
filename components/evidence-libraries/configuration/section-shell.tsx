@@ -17,6 +17,7 @@ import {
 import { StatusChip, type StatusTone } from "./status-chip";
 import { InlineNotice, SectionCard } from "./section-card";
 import { ResetButton } from "./fields";
+import { useReadOnly } from "./read-only";
 
 export type SectionProps = {
   libraryId: Id<"evidenceLibraries">;
@@ -79,6 +80,7 @@ export function SectionShell({
   const problems = sectionProblems(draft, sectionKey);
   const changed = sectionChanged(draft, saved, sectionKey);
   const { refusal, elsewhere } = useContext(SaveNoticesContext);
+  const readOnly = useReadOnly();
   const refused = refusal?.card === sectionKey ? refusal.message : null;
   return (
     <SectionCard
@@ -86,14 +88,14 @@ export function SectionShell({
       icon={icon}
       title={t(`sections.${sectionKey}`)}
       description={description}
-      aside={
+      aside={readOnly ? undefined : (
         <span className="flex items-center gap-2">
           {changed ? <ResetButton onClick={() => reset(sectionKey)} /> : null}
           <StatusChip tone={STATE_TONE[state]} data-section-state={state}>
             {t(`sectionState.${state}`)}
           </StatusChip>
         </span>
-      }
+      )}
       data-section-state={state}
     >
       {refused ? (

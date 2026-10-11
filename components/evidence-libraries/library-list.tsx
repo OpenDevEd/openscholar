@@ -120,7 +120,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   // An address has at most a page of invitations waiting, so they are filtered here.
   const invited = (invitations.data?.page ?? []).filter((invitation) => `${invitation.name} ${invitation.organization.name}`.toLowerCase().includes(search.trim().toLowerCase()));
   const visible: Library[] = view === "libraries"
-    ? overviews.items.map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, faviconUrl: library.faviconUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) }))
+    ? overviews.items.map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, faviconUrl: library.faviconUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" || library.status !== "deleting" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) }))
     : invited.map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true }));
   const [notice, setNotice] = useState("");
   const [declining, setDeclining] = useState<Library | null>(null);
@@ -234,24 +234,14 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         library.configuration ? <Link href={library.configuration} className="text-sm font-medium">
                           {library.name}
                         </Link> : <span className="text-sm font-medium">{library.name}</span>
-                      ) : library.configuration ? (
+                      ) : (
+                        // Every role opens the settings: owners change them, everyone else reads them (#653).
                         <Link
-                          href={library.configuration}
+                          href={library.configuration!}
                           className="truncate text-sm font-medium hover:underline"
                         >
                           {library.name}
                         </Link>
-                      ) : library.role === "Viewer" ? (
-                        <a href={`https://${library.address}`} target="_blank" rel="noopener noreferrer" className="truncate text-sm font-medium hover:underline">
-                          {library.name}
-                        </a>
-                      ) : (
-                        <AdminAreaLink
-                          address={`https://${library.address}`}
-                          className="truncate text-sm font-medium hover:underline"
-                        >
-                          {library.name}
-                        </AdminAreaLink>
                       )}
                       {!library.pending && (
                         <LibraryStatusChip
@@ -331,20 +321,29 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         </Button>
                       )
                     ) : library.role === "Viewer" ? (
-                      // A viewer has no role in the library's admin: its public address is theirs to open.
-                      <Button asChild size="sm" variant="outline">
-                        <a href={`https://${library.address}`} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink />
-                          View public library
-                        </a>
-                      </Button>
+                      // A viewer has no role in the library's admin: its settings are theirs to read (#653), and its public address theirs to open.
+                      <ButtonGroup aria-label={`Actions for ${library.name}`}>
+                        <Button asChild size="sm" variant="outline">
+                          <Link href={library.configuration!}>
+                            <Settings2 />
+                            Settings
+                          </Link>
+                        </Button>
+                        <Button asChild size="sm" variant="outline">
+                          <a href={`https://${library.address}`} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink />
+                            View public library
+                          </a>
+                        </Button>
+                      </ButtonGroup>
                     ) : (
                       <ButtonGroup aria-label={`Actions for ${library.name}`}>
                         {library.configuration && (
                           <Button asChild size="sm" variant="outline">
                             <Link href={library.configuration}>
                               <Settings2 />
-                              Configure
+                              {/* Owners change the settings; editors and creators read them (#653). */}
+                              {library.role === "Owner" ? "Configure" : "Settings"}
                             </Link>
                           </Button>
                         )}

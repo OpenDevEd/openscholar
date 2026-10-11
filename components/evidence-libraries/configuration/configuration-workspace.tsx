@@ -7,6 +7,7 @@ import {
   AlertCircle,
   ArrowUp,
   ExternalLink,
+  Eye,
   Save,
   PencilLine,
   CircleAlert,
@@ -51,6 +52,7 @@ import {
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { ConfigurationLayout, ConfigurationNavigation } from "./configuration-layout";
 import { RailGroup, RailLink } from "./navigation-rail";
+import { ReadOnlyContext } from "./read-only";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import {
@@ -238,15 +240,19 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
   if (draftQuery.data === null) return <AuthStatePanel variant="no_access" layout="fullscreen" />;
   const {
     draft,
+    editable,
     hasUnpublishedChanges,
     library,
     liveAddress,
     operation,
+    role,
     sections,
   } = draftQuery.data;
   return (
     <Workspace
       key={draft._id}
+      editable={editable}
+      role={role}
       libraryId={draft.libraryId}
       libraryName={library.name}
       libraryState={library.state}
@@ -259,6 +265,8 @@ export function ConfigurationWorkspace({ libraryId }: { libraryId: string }) {
 }
 
 function Workspace({
+  editable,
+  role,
   libraryId,
   libraryName,
   libraryState,
@@ -267,6 +275,9 @@ function Workspace({
   hasUnpublishedChanges,
   operation,
 }: {
+  /** Whether the reader changes the settings; everyone else who views the library reads them (#653). */
+  editable: boolean;
+  role: DraftResult["role"];
   libraryId: Id<"evidenceLibraries">;
   libraryName: string;
   libraryState: DraftResult["library"]["state"];
@@ -347,6 +358,11 @@ function Workspace({
   const current = spied ?? section;
 
   const dirty = isDirty(draft, saved);
+  // Read-only, the rail lists the settings cards only.
+  const railGroups = editable ? RAIL_GROUPS : RAIL_GROUPS.flatMap((group) => {
+    const sections = group.sections.filter(isPageSection);
+    return sections.length ? [{ ...group, sections }] : [];
+  });
   const problems = hasProblems(draft);
   const operationRunning = isOperationRunning(operation);
   const runtimeRefreshKey =
@@ -357,7 +373,7 @@ function Workspace({
   // Software older than the settings page's contract is updated by the publish.
   const publishRuntime = useQuery(
     api.evidenceLibraries.updates.publishRuntime,
-    isDraftLibrary ? "skip" : { libraryId },
+    isDraftLibrary || !editable ? "skip" : { libraryId },
   );
   const canActivate =
     (isDraftLibrary || dirty || hasUnpublishedChanges) &&
@@ -502,7 +518,12 @@ function Workspace({
                   operation={operationRunning && operation && operation.kind !== "setup" ? operation : null}
                   labelClassName={BAR_LABEL}
                 />
-                {dirty ? (
+                {!editable ? (
+                  <StatusChip tone="neutral" data-view-only>
+                    <Eye aria-hidden />
+                    <span className={BAR_LABEL}>{t("viewOnly")}</span>
+                  </StatusChip>
+                ) : dirty ? (
                   <StatusChip tone="warning" data-unsaved>
                     <PencilLine aria-hidden />
                     <span className={BAR_LABEL}>{t("unsaved")}</span>
@@ -511,17 +532,20 @@ function Workspace({
                 <LibraryAddressLink address={draft.identity.baseUrl} className="hidden text-sm text-muted-foreground @5xl:inline-flex" />
               </>}
             >
-              <Button
-                variant="outline"
-                size="sm"
-                className={BAR_ACTION}
-                disabled={!dirty || saving || activating || uploading > 0}
-                onClick={handleSave}
-              >
-                {saving ? <Spinner /> : <Save />}
-                <span className={BAR_LABEL}>{saving ? t("saving") : t("save")}</span>
-              </Button>
-              {libraryState === "active" && liveAddress && !operationRunning && !activating ? (
+              {editable ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={BAR_ACTION}
+                  disabled={!dirty || saving || activating || uploading > 0}
+                  onClick={handleSave}
+                >
+                  {saving ? <Spinner /> : <Save />}
+                  <span className={BAR_LABEL}>{saving ? t("saving") : t("save")}</span>
+                </Button>
+              ) : null}
+              {/* The library's own admin is for the people with a role in it; a viewer has none. */}
+              {libraryState === "active" && liveAddress && role !== "viewer" && !operationRunning && !activating ? (
                 <Button asChild variant="outline" size="sm" className={BAR_ACTION}>
                   <AdminAreaLink address={liveAddress}>
                     <ExternalLink />
@@ -540,7 +564,7 @@ function Workspace({
                   {operationLabel}
                 </span>
               ) : null}
-              {problems ? (
+              {!editable ? null : problems ? (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span tabIndex={0}>{activateButton}</span>
@@ -551,7 +575,7 @@ function Workspace({
                 activateButton
               )}
             </PanelHeader>
-            {operation ? (
+            {operation && editable ? (
               <OperationFailureNotice
                 operation={operation}
                 libraryId={libraryId}
@@ -561,10 +585,10 @@ function Workspace({
         </>}
         navigation={
               <ConfigurationNavigation label={t("rail.aria")}>
-                {RAIL_GROUPS.map((group) => (
+                {railGroups.map((group) => (
                   <RailGroup key={group.key} label={t(`rail.${group.key}`)}>
                     {group.sections.map((key) => {
-                      const state = isPageSection(key)
+                      const state = editable && isPageSection(key)
                         ? sectionState(draft, saved, key)
                         : null;
                       return (
@@ -656,7 +680,9 @@ function Workspace({
               {/* A save ends by taking the saved rows for everything it sent. A change made while one is on its way
                   would be lost without a word, so no section can be changed until the save or activation is back. */}
               {/* The column spaces its children; the sections are this box's children now, so it spaces them the same. */}
-              <div className="space-y-4" inert={saving || activating} aria-busy={saving || activating || undefined}>
+              {/* Read-only, every control is off, the custom ones through ReadOnlyContext, and the values stay readable to everyone, a screen reader included (#653). */}
+              <fieldset disabled={!editable} className="min-w-0 space-y-4" inert={saving || activating} aria-busy={saving || activating || undefined}>
+                <ReadOnlyContext value={!editable}>
                 <CollectionFactsProvider
                   libraryId={libraryId}
                   ids={draft.collections.map((collection) => collection.id)}
@@ -678,17 +704,23 @@ function Workspace({
                     })}
                   </SaveNoticesProvider>
                 </CollectionFactsProvider>
-                <PublicationSection libraryId={libraryId} operationRunning={operationRunning} />
-                <DomainSection libraryId={libraryId} />
-                <VersionsSection
-                  libraryId={libraryId}
-                  live={libraryState === "active"}
-                  operationRunning={operationRunning}
-                  refreshKey={runtimeRefreshKey}
-                />
-                <TeamSection libraryId={libraryId} />
-                <DangerSection onDelete={() => setDeleteOpen(true)} />
-              </div>
+                {/* Publishing, addresses, versions, the team and deletion are its owners' to run. */}
+                {editable ? (
+                  <>
+                    <PublicationSection libraryId={libraryId} operationRunning={operationRunning} />
+                    <DomainSection libraryId={libraryId} />
+                    <VersionsSection
+                      libraryId={libraryId}
+                      live={libraryState === "active"}
+                      operationRunning={operationRunning}
+                      refreshKey={runtimeRefreshKey}
+                    />
+                    <TeamSection libraryId={libraryId} />
+                    <DangerSection onDelete={() => setDeleteOpen(true)} />
+                  </>
+                ) : null}
+                </ReadOnlyContext>
+              </fieldset>
       </ConfigurationLayout>
     </FileUploadsProvider>
   );

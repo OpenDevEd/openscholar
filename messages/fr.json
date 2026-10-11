@@ -1675,6 +1675,7 @@
   "evidenceLibraryConfiguration": {
     "untitled": "Untitled library",
     "unsaved": "Unsaved changes",
+    "viewOnly": "Lecture seule",
     "save": "Save",
     "saving": "Saving…",
     "saveError": "The changes could not be saved. Try again.",

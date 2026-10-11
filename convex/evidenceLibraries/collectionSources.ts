@@ -69,7 +69,8 @@ export const listCollectionSources = query({
   args: { libraryId: v.id("evidenceLibraries"), collectionIds: v.array(v.string()) },
   returns: paginationResultValidator(collectionSourceValidator),
   handler: async (ctx, args) => {
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    // Read on the settings page, which everyone who views the library sees (#653).
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "view");
     if (args.collectionIds.length > MAX_LIBRARY_SOURCES) throw createError("VALIDATION_ERROR", `Collections are read ${MAX_LIBRARY_SOURCES} at a time.`);
     const collectionIds = [...new Set(args.collectionIds)].flatMap((id) => ctx.db.normalizeId("collections", id) ?? []);
     const connections = await Promise.all(collectionIds.map((collectionId) => findConnection(ctx, args.libraryId, collectionId)));

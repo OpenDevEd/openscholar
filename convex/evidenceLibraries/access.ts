@@ -6,11 +6,12 @@ import { hasPlanFeature } from "../billing/accounts";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
 /**
- * What someone does with a library. Managing it takes the plan of the workspace that owns it.
- * Removing it is its owners' whatever the plan says: a workspace whose plan stopped including
- * Evidence Libraries must still be able to clear them, or it could never be deleted (#652).
+ * What someone does with a library. Viewing it, and its settings read-only, is for everyone who reads
+ * it and the other members of its organization (#653). Managing it takes the plan of the workspace
+ * that owns it. Removing it is its owners' whatever the plan says: a workspace whose plan stopped
+ * including Evidence Libraries must still be able to clear them, or it could never be deleted (#652).
  */
-export type OrganizationAction = "read" | "manage" | "remove";
+export type OrganizationAction = "view" | "read" | "manage" | "remove";
 export type EvidenceLibraryAdminRole = "owner" | "editor" | "creator";
 type OrganizationAccessCtx = Pick<QueryCtx | MutationCtx, "auth" | "db">;
 
@@ -112,6 +113,14 @@ export async function readActiveOrganizationMembership(
     .unique();
 }
 
+/** "viewer" for a member of a library's organization who has no role in it (#653), or null. Its caller has checked the account is active. */
+async function viewerOf(ctx: Pick<QueryCtx | MutationCtx, "db">, library: Doc<"evidenceLibraries">, clerkUserId: string) {
+  if (library.state === "disabled") return null;
+  const owner = await libraryOwner(ctx, library);
+  if (!owner?.organization || !ownerActive(owner)) return null;
+  return (await readActiveOrganizationMembership(ctx, owner.organization._id, clerkUserId)) ? "viewer" as const : null;
+}
+
 /** Current library access does not depend on the active Clerk organization. */
 export async function readLibraryRole(
   ctx: Pick<QueryCtx | MutationCtx, "db">,
@@ -154,8 +163,11 @@ export async function readEvidenceLibraryAccess(
   if (!identity) return null;
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   if (!library) return null;
-  const role = await readLibraryRole(ctx, library, identity.subject);
-  if (!role || (action !== "read" && role !== "owner")) return null;
+  // Viewing reaches settings no role reached before (#653): a suspended account views nothing, whatever it was given.
+  const account = action === "view" ? await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", identity.subject)).unique() : null;
+  if (account && account.state !== "active") return null;
+  const role = (await readLibraryRole(ctx, library, identity.subject)) ?? (action === "view" ? await viewerOf(ctx, library, identity.subject) : null);
+  if (!role || ((action === "manage" || action === "remove") && role !== "owner")) return null;
   const owner = await libraryOwner(ctx, library);
   if (!owner) return null;
   // Managing takes the feature, which the plan of the workspace that owns the library grants (#652).

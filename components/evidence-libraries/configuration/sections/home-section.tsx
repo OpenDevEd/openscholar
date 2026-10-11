@@ -38,6 +38,7 @@ import { RichTextField } from "../rich-text-field";
 import { HAND_ENTERED_PREFIX, isHandEntered, publicName, publicPhoto } from "@/lib/evidence-libraries/configuration/home-people";
 import { Field } from "../section-card";
 import { SectionShell, type SectionProps } from "../section-shell";
+import { useReadOnly } from "../read-only";
 import { localPickerSource, PICKER_PAGE_SIZE, type PickerRow, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
 import { IconPreview, NavbarIconPicker } from "./navbar-icon-picker";
 import { PHOTO_ACCEPT, toPersonPhoto } from "../photo-upload";
@@ -745,10 +746,11 @@ function PhotoPerson({ name, photo, onChange }: { name: string; photo: string; o
       setUploading(false);
     }
   }
+  const readOnly = useReadOnly();
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: PHOTO_ACCEPT,
     multiple: false,
-    disabled: uploading,
+    disabled: uploading || readOnly,
     onDrop: upload,
     onDropRejected: () => setFailed(true),
   });

@@ -46,8 +46,8 @@ describe("development Evidence Library teardown", () => {
       const account = (await ctx.db.query("billingAccounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())!;
       await ctx.db.patch("billingAccounts", account._id, { features: [] });
     });
-    // Managing it is shut, and its settings offer its Owner the one thing left: deleting it.
-    expect(await fixture.admin.query(api.evidenceLibraries.queries.getDraft, { libraryId })).toBeNull();
+    // Managing it is shut: its Owner reads its settings, and the organization's settings offer the one thing left, deleting it.
+    expect(await fixture.admin.query(api.evidenceLibraries.queries.getDraft, { libraryId })).toMatchObject({ role: "owner", editable: false });
     expect(await summary()).toMatchObject({ library: "Climate Evidence", removable: { _id: libraryId, name: "Climate Evidence", state: "held" } });
     const requested = await fixture.admin.mutation(api.evidenceLibraries.teardown.requestDevelopmentTeardown, { libraryId, confirmationName: "Climate Evidence" });
     expect(requested.status).toBe("queued");

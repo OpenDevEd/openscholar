@@ -544,11 +544,12 @@ describe("Evidence Library draft storage", () => {
         ]),
       ),
     ).toMatchObject(sections);
+    // A member reads the settings (#653), and can't save them.
     await expect(
       asMember.query(api.evidenceLibraries.queries.getDraft, {
         libraryId: created.libraryId,
       }),
-    ).resolves.toBeNull();
+    ).resolves.toMatchObject({ role: "viewer", editable: false });
     await expect(
       asMember.mutation(api.evidenceLibraries.mutations.saveDraftSections, {
         libraryId: created.libraryId,
