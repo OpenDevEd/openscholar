@@ -102,7 +102,7 @@ export function JobView({
   const source = sourceKind === "saved" ? t("savedPapers") : job.label;
   // Where included papers went: a collection while it exists, the library alone for a job from the results page's old dialog.
   // A guest is told neither: both are of a library that isn't theirs.
-  const savedTo = guest || job.unsaved ? undefined : (job.targetCollectionName ?? (job.targetCollectionId ? undefined : t("yourLibrary")));
+  const savedTo = guest || job.unsaved ? undefined : (job.targetCollectionName ?? (job.targetCollectionId ? undefined : t("theLibrary")));
   const pruned = !guest && job.prune ? job.label : undefined;
   const { spent, estimate } = job.credits ?? { spent: undefined, estimate: 0 };
 
@@ -211,10 +211,10 @@ export function JobView({
             ) : phase === "running" ? (
               <div className="space-y-2">
                 <p className="flex items-center justify-between text-xs font-medium">
-                  <span className="flex items-center gap-1.5"><Gauge className="size-3.5 text-primary" />{t("yourSlots")}</span>
+                  <span className="flex items-center gap-1.5"><Gauge className="size-3.5 text-primary" />{t("papersAtOnce")}</span>
                   {slots ? <span className="tabular-nums text-muted-foreground">{t("ofTotal", { done: slots.running, total: slots.limit })}</span> : null}
                 </p>
-                {/* The row keeps its height while the person's slots are read. */}
+                {/* The row keeps its height while the workspace's slots are read. */}
                 <div className="flex h-1.5 gap-0.5" role="img" aria-label={slots ? t("slotsInUse", { running: slots.running, limit: slots.limit }) : undefined}>
                   {Array.from({ length: slots?.limit ?? 0 }, (_, i) => (
                     <span key={i} className={cn("h-1.5 flex-1 rounded-full transition-colors duration-300", i < (slots?.running ?? 0) ? "bg-primary" : "bg-foreground/10")} />
