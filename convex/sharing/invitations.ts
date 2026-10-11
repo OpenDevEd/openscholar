@@ -15,9 +15,8 @@ import { personName } from "../lib/people";
 import { MAX_ACCOUNTS_PER_EMAIL, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { rateLimit } from "../lib/rateLimit";
 import { actingAs, assistantAction, assistantQuery, defineChangingAction, defineUserQuery, userAction, userQuery } from "../lib/userActions";
-import { actorIn } from "../workspaces/actor";
 import { workspaceFrom, workspaceName } from "../workspaces/personal";
-import { invitationTo, noteShared, requireRoom } from "./access";
+import { holds, invitationTo, noteShared, requireRoom } from "./access";
 import { findShared, grantOf, kindWord, open, requireRole, sharedIn } from "./items";
 import { guestRoleValidator, sharedFromValidator, sharedKindValidator, type SharedKind } from "./validators";
 
@@ -41,7 +40,7 @@ export const prepare = internalMutation({
     if (accounts.length > MAX_ACCOUNTS_PER_EMAIL) throw createError("VALIDATION_ERROR", "Too many accounts have used this address to check which of them already has it. Invite a different address.");
     for (const account of accounts) {
       if (account.state !== "active") continue;
-      if ((await actorIn(ctx, account, shared.workspaceId)) || (await grantOf(ctx, shared.id, account._id))) throw createError("CONFLICT", "This person has it already.");
+      if ((await holds(ctx, shared, account)) || (await grantOf(ctx, shared.id, account._id))) throw createError("CONFLICT", "This person has it already.");
     }
     const existing = await invitationTo(ctx, shared.id, email);
     const waits = existing?.state === "pending";
@@ -118,11 +117,11 @@ export const respondVerified = internalMutation({
     if (!invitation || person?.state !== "active" || !emails.includes(invitation.email)) throw createError("FORBIDDEN", "Sign in with the invited email address");
     const shared = await invitedTo(ctx, invitation);
     // Accepting again what they already accepted, as a second tab does, opens it again: theirs by their place, or by having joined its workspace since.
-    if (accept && shared && invitation.state === "accepted" && ((await grantOf(ctx, shared.id, userId)) || (await actorIn(ctx, person, shared.workspaceId)))) return { kind: shared.kind, id: shared.id };
+    if (accept && shared && invitation.state === "accepted" && ((await grantOf(ctx, shared.id, userId)) || (await holds(ctx, shared, person)))) return { kind: shared.kind, id: shared.id };
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
     if (!shared) throw createError("NOT_FOUND", "What you were invited to is no longer there.");
     // Its place becomes theirs. Someone who joined its workspace since has it without one.
-    if (accept && !(await actorIn(ctx, person, shared.workspaceId)) && !(await grantOf(ctx, shared.id, userId))) {
+    if (accept && !(await holds(ctx, shared, person)) && !(await grantOf(ctx, shared.id, userId))) {
       await ctx.db.insert("itemAccess", { kind: shared.kind, item: shared.id, name: shared.name, userId, role: invitation.role, grantedBy: invitation.invitedBy, grantedAt: Date.now() });
     }
     await ctx.db.patch("itemInvitations", invitationId, { state: accept ? "accepted" : "declined" });

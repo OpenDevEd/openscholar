@@ -26,11 +26,8 @@ export const MAX_PENDING_INVITATIONS_PER_LIBRARY = 500;
 /** Most invitations waiting for one address across libraries; another is refused until some are answered or expire. */
 export const MAX_PENDING_INVITATIONS_PER_EMAIL = 100;
 
-/** The editors and admins of an author profile its Access section lists; its workspace's plan holds how many guests it has. */
+/** Most guests one author profile has, the invitations to it still waiting among them, whatever its workspace's plan allows; another is refused. */
 export const MAX_PROFILE_MEMBERS = 100;
-
-/** The waiting invitations of an author profile its Access section lists; each holds a guest's place. */
-export const MAX_PENDING_INVITATIONS_PER_PROFILE = 100;
 
 /** Most Zotero groups one library connects; another is refused until one is removed. */
 export const MAX_ZOTERO_GROUPS_PER_LIBRARY = 100;
