@@ -9,11 +9,11 @@ import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import { toast } from "sonner";
 import { create } from "zustand";
-import { Check, Folder, Lock, PenLine, Plus, Search, Trash2, X } from "@/components/icons";
+import { Check, ChevronDown, Eye, Folder, Lock, Mail, PenLine, Plus, Search, Share2, Trash2, X } from "@/components/icons";
 import { IconButton } from "@/components/assistant/parts";
 import { StatusChip } from "@/components/evidence-libraries/configuration/status-chip";
 import { EASE } from "@/components/settings/model-map";
-import { LIST, Paged, Tile } from "@/components/settings/parts";
+import { LIST, Paged, Segmented, Tile } from "@/components/settings/parts";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -28,10 +28,11 @@ import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { COLLECTION_UNDO_MS } from "@/lib/library/limits";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
-import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 const FOLDER_TINT = "#e8890c";
 /** Pinned from the top, so the name field never moves as the dialog grows. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DIALOG = "top-[max(1rem,12dvh)] flex max-h-[min(42rem,calc(88dvh-1rem))] max-w-lg translate-y-0 flex-col gap-0 overflow-hidden rounded-2xl p-0";
 
 /** The large folder tile that heads a new or empty collection. */
@@ -72,10 +73,17 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
   const workspaceId = useWorkspace();
   const workspace = useCurrentWorkspace();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
+  const tsh = useTranslations("workspaces.share");
   const createCollection = useWorkspaceMutation(api.library.collections.createCollection);
-  const { count, limit } = useCollectionCount();
+  const invite = useWorkspaceAction(api.sharing.invitations.invite);
+  const { count, limit, guests: guestLimit } = useCollectionCount();
   const [name, setName] = useState("");
   const [withPaper, setWithPaper] = useState(true);
+  // People outside the workspace to invite as it's made (#653): each gets the email the Share dialog sends.
+  const [inviting, setInviting] = useState(false);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"viewer" | "editor">("viewer");
+  const [invited, setInvited] = useState<Array<{ email: string; role: "viewer" | "editor" }>>([]);
   const [creating, setCreating] = useState(false);
   const trimmed = name.trim();
   // Names aren't unique, so one already taken is pointed out, not refused.
@@ -85,6 +93,13 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
   const org = workspace?.kind === "organization";
   const full = typeof limit === "number" && count !== undefined && count >= limit;
   const reason = full ? t("planAllowsCollections", { plan: plan.name, limit }) : !trimmed ? t("nameTheCollection") : null;
+  const guestsFull = typeof guestLimit === "number" && invited.length >= guestLimit;
+  const typed = email.trim().toLowerCase();
+  const addGuest = () => {
+    if (!EMAIL.test(typed) || invited.some((one) => one.email === typed) || guestsFull) return;
+    setInvited([...invited, { email: typed, role }]);
+    setEmail("");
+  };
 
   const make = () => {
     if (reason || creating) return;
@@ -93,6 +108,9 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
       .then(async ({ id }) => {
         // The dialog stays until the paper is in it too, or its own error says it isn't.
         if (paper && withPaper) await paper.add(id);
+        // The collection is made whatever comes of its invitations: one that didn't go can be sent again from Share.
+        const sent = await Promise.allSettled(invited.map((one) => invite({ kind: "collection", id, email: one.email, role: one.role })));
+        if (sent.some((one) => one.status === "rejected")) toast.error(tsh("failed"));
         close();
         onCreated?.(id);
       })
@@ -168,6 +186,62 @@ function NewCollection({ paper, close, onCreated }: { paper?: StartingPaper; clo
                   </span>
                 ) : null}
               </div>
+            </div>
+
+            <div className="rounded-xl border border-border-subtle">
+              <button type="button" aria-expanded={inviting} onClick={() => setInviting(!inviting)} className="flex h-11 w-full items-center gap-2.5 rounded-xl px-3 text-left text-sm transition-colors hover:bg-muted/60">
+                <Share2 className="size-4 shrink-0 text-muted-foreground" />
+                <span className="min-w-0 flex-1 truncate">{org && workspace ? t("inviteOutside", { workspace: workspace.name }) : t("inviteToIt")}</span>
+                {invited.length ? <span className="rounded-full bg-primary/10 px-2 text-2xs font-medium tabular-nums text-primary">{invited.length}</span> : null}
+                <motion.span animate={{ rotate: inviting ? 180 : 0 }} transition={{ duration: 0.25, ease: EASE }} className="flex">
+                  <ChevronDown className="size-4 text-muted-foreground" />
+                </motion.span>
+              </button>
+              <AnimatePresence initial={false}>
+                {inviting ? (
+                  <motion.div key="invite" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE }} className="overflow-hidden">
+                    <div className="space-y-2 px-3 pb-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className={cn("flex h-9 min-w-44 flex-1 items-center gap-2 rounded-lg border border-border/60 bg-background px-2.5 text-sm focus-within:border-primary/40", guestsFull && "opacity-60")}>
+                          <Mail className="size-4 shrink-0 text-muted-foreground" />
+                          <input
+                            value={email}
+                            disabled={guestsFull}
+                            onChange={(e) => setEmail(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                addGuest();
+                              }
+                            }}
+                            placeholder={t("inviteEmail")}
+                            aria-label={t("inviteEmailLabel")}
+                            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+                          />
+                        </label>
+                        <Segmented label={t("theirAccess")} value={role} onChange={setRole} options={[{ id: "viewer" as const, label: tsh("view"), icon: Eye }, { id: "editor" as const, label: tsh("edit"), icon: PenLine }]} />
+                        <Button type="button" variant="outline" size="sm" className="h-9" disabled={!EMAIL.test(typed) || guestsFull} onClick={addGuest}>
+                          {tc("add")}
+                        </Button>
+                      </div>
+                      {invited.length ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {invited.map((one) => (
+                            <span key={one.email} className="inline-flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted pl-2.5 pr-1 text-xs">
+                              {one.role === "viewer" ? <Eye className="size-3.5 shrink-0 text-muted-foreground" /> : <PenLine className="size-3.5 shrink-0 text-muted-foreground" />}
+                              <span className="min-w-0 truncate">{one.email}</span>
+                              <button type="button" aria-label={t("removeGuest", { email: one.email })} onClick={() => setInvited(invited.filter((other) => other.email !== one.email))} className="flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-background">
+                                <X className="size-3" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                      {guestLimit === null ? null : <p className="min-h-4 text-2xs tabular-nums text-muted-foreground">{guestLimit === undefined ? null : t("guestsOfOn", { used: invited.length, limit: guestLimit, plan: plan.name })}</p>}
+                    </div>
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </div>
           </section>
 
@@ -265,7 +339,7 @@ function useCollectionCount() {
   const workspaceId = useWorkspace();
   const { data: count } = useProtectedQuery(api.library.collections.countCollections, inWorkspace(workspaceId, {}));
   const { data: limits } = useProtectedQuery(api.billing.accounts.myLimits, inWorkspace(workspaceId, {}));
-  return { count, limit: limits === undefined ? undefined : (limits?.collections ?? null) };
+  return { count, limit: limits === undefined ? undefined : (limits?.collections ?? null), guests: limits === undefined ? undefined : (limits?.guests ?? null) };
 }
 
 /**
