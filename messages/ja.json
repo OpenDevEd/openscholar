@@ -3800,6 +3800,72 @@
         "did": "Zotero の項目を読みました",
         "where": "Zotero",
         "ask": "Zotero の項目を読む"
+      },
+      "inviteLibraryMember": {
+        "doing": "ライブラリに招待しています",
+        "did": "ライブラリに招待しました",
+        "where": "Evidence Library",
+        "ask": "ライブラリに招待"
+      },
+      "changeLibraryInvite": {
+        "doing": "ライブラリへの招待を変更しています",
+        "did": "ライブラリへの招待を変更しました",
+        "where": "Evidence Library",
+        "ask": "ライブラリへの招待を変更"
+      },
+      "libraryInvites": {
+        "doing": "ライブラリへの招待を読んでいます",
+        "did": "ライブラリへの招待を読みました",
+        "where": "Evidence Library",
+        "ask": "ライブラリへの招待を読む"
+      },
+      "answerLibraryInvite": {
+        "doing": "ライブラリへの招待に返答しています",
+        "did": "ライブラリへの招待に返答しました",
+        "where": "Evidence Library",
+        "ask": "ライブラリへの招待に返答"
+      },
+      "startLibrary": {
+        "doing": "ライブラリの下書きを作成しています",
+        "did": "ライブラリの下書きを作成しました",
+        "where": "Evidence Library",
+        "ask": "ライブラリの下書きを作成"
+      },
+      "librarySources": {
+        "doing": "ライブラリのソースを読んでいます",
+        "did": "ライブラリのソースを読みました",
+        "where": "Evidence Library",
+        "ask": "ライブラリのソースを読む"
+      },
+      "runningCollections": {
+        "doing": "ライブラリのコレクションを読んでいます",
+        "did": "ライブラリのコレクションを読みました",
+        "where": "Evidence Library",
+        "ask": "ライブラリのコレクションを読む"
+      },
+      "runningInstitutions": {
+        "doing": "ライブラリの機関を読んでいます",
+        "did": "ライブラリの機関を読みました",
+        "where": "Evidence Library",
+        "ask": "ライブラリの機関を読む"
+      },
+      "runningPublications": {
+        "doing": "ライブラリの出版物を読んでいます",
+        "did": "ライブラリの出版物を読みました",
+        "where": "Evidence Library",
+        "ask": "ライブラリの出版物を読む"
+      },
+      "runningPublication": {
+        "doing": "ライブラリの出版物を1件読んでいます",
+        "did": "ライブラリの出版物を1件読みました",
+        "where": "Evidence Library",
+        "ask": "ライブラリの出版物を1件読む"
+      },
+      "syncLibrarySource": {
+        "doing": "ライブラリの取り込みを再試行しています",
+        "did": "ライブラリの取り込みを再試行しました",
+        "where": "Evidence Library",
+        "ask": "ライブラリの取り込みを再試行"
       }
     },
     "asks": {

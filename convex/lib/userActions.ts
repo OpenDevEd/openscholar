@@ -195,6 +195,20 @@ export async function asSignedIn<Ctx extends { auth: { getUserIdentity(): Promis
   return { ...ctx, auth: { ...ctx.auth, getUserIdentity: async () => identity } };
 }
 
+/**
+ * The argument an internal function takes for the person an action of the assistant's runs it
+ * for, when the function's access reads the session: internal, so only this app's own code
+ * gives it, from a person the calling action already checked.
+ */
+export const actingArg = { actingAs: v.optional(v.id("users")) };
+/** `ctx` signed in as `userId` when one is given (`actingArg`), and as the caller is otherwise. */
+export async function signedInAs<Ctx extends QueryCtx>(ctx: Ctx, userId: Id<"users"> | undefined): Promise<Ctx> {
+  if (!userId) return ctx;
+  const person = await ctx.db.get("users", userId);
+  if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
+  return await asSignedIn(ctx, person);
+}
+
 /** The internal twin of a public function, which the assistant's tools call with the sender's user ID. */
 export const assistantPath = (path: string) => `${path}ForAssistant`;
 

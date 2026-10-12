@@ -8,6 +8,7 @@ import {
   type MutationCtx,
 } from "../lib/functions";
 import { internal } from "../_generated/api";
+import { actingArg, signedInAs } from "../lib/userActions";
 import { SERVED_HOSTS_BATCH } from "../lib/queryBounds";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
@@ -977,7 +978,7 @@ export const pruneServedHosts = internalMutation({
  * `evidenceLibraries.addressActions.reserveAddress` is the only caller.
  */
 export const reserveAddress = internalMutation({
-  args: {
+  args: { ...actingArg,
     organizationId: v.id("organizations"),
     name: v.string(),
     publicAddress: v.string(),
@@ -1001,7 +1002,8 @@ export const reserveAddress = internalMutation({
     }),
     v.object({ status: v.literal("address-taken") }),
   ),
-  handler: async (ctx, args) => {
+  handler: async (caller, { actingAs: as, ...args }) => {
+    const ctx = await signedInAs(caller, as);
     const access = await requireLibraryOrganization(ctx, args.organizationId);
     const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId: access.organization._id });
     const name = validateEvidenceLibrarySetupName(args.name);
