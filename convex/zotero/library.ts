@@ -8,7 +8,7 @@
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import { createError } from "../lib/errors";
-import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
+import { assistantAction, defineChangingAction, defineUserAction, userAction } from "../lib/userActions";
 import { checkZoteroSet, ZOTERO_ITEMS_MAX, ZOTERO_LIST_PAGE, zoteroCollectionsValidator, zoteroGroupsValidator, zoteroItemsValidator, zoteroPdfValidator } from "./libraryValidators";
 
 /** Characters of an item's abstract one read gives. */
@@ -85,7 +85,7 @@ export const itemsAction = defineUserAction({
 export const items = userAction(itemsAction);
 export const itemsForAssistant = assistantAction(itemsAction);
 
-export const pdfAction = defineUserAction({
+export const pdfAction = defineChangingAction({
   path: "zotero/library:pdf",
   description:
     "Puts the PDF attached to an item of the person's own Zotero library, or of one of their groups (`groupId`), in this chat as a file, by the item's key as zotero/library:items gives it; its `pdf` says whether it has one. " +
@@ -95,6 +95,8 @@ export const pdfAction = defineUserAction({
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
+  // Asked first, as nothing takes it back out: the person is told why, that everyone who reads the chat can open it.
+  seenOutside: true,
   check: async (ctx, { userId }, { key, groupId }) => await checkZoteroSet(ctx, userId, { itemKey: key, ...(groupId != null ? { groupId } : {}) }),
   run: async (ctx, { userId, workspaceId }, { key, groupId }, call): Promise<Infer<typeof zoteroPdfValidator>> => {
     // It goes in the chat the reply runs in, whose files the assistant reads.
