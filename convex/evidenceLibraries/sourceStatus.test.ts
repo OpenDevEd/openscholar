@@ -107,5 +107,14 @@ it("keeps what a screening source found, and refuses screening counts that are n
   expect((await post("2026-09-27T12:10:00.000Z", [{ ...upToDate, screening }])).status).toBe(200);
   expect(await saved()).toMatchObject([{ sources: [{ screening: { grades: { notAbout: 2_648 }, ungraded: 37 } }] }]);
   expect((await post("2026-09-27T12:11:00.000Z", [{ ...upToDate, screening: { ...screening, ungraded: -1 } }])).status).toBe(400);
+  const detail = {
+    ...screening,
+    subject: "Climate change adaptation in agriculture",
+    examples: { about: "Drought-tolerant maize in Malawi", touches: null, passing: null, notAbout: "Corporate bond spreads" },
+    reading: { title: "Heat and wheat yields", left: 120 },
+  };
+  expect((await post("2026-09-27T12:12:00.000Z", [{ ...upToDate, screening: detail }])).status).toBe(200);
+  expect(await saved()).toMatchObject([{ sources: [{ screening: { subject: detail.subject, reading: { left: 120 } } }] }]);
+  expect((await post("2026-09-27T12:13:00.000Z", [{ ...upToDate, screening: { ...detail, reading: { title: "x", left: 1.5 } } }])).status).toBe(400);
 });
 

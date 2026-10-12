@@ -36,6 +36,7 @@ function isSensibleStatus(status: SourceStatus) {
     status.screening?.ungraded ?? 0,
     status.screening?.grading?.done ?? 0,
     status.screening?.grading?.of ?? 0,
+    status.screening?.reading?.left ?? 0,
   ];
   const times = [status.lastSuccessAt];
   if (status.state === "running") {
