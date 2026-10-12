@@ -72,6 +72,7 @@ export async function applyUserUpsertProjection(
       .unique();
 
     // The addresses invitations to the person may go to (../lib/people.ts `addressesOf`).
+    // shortcut: the first MAX_VERIFIED_EMAILS, besides the account's own; raise it if anyone verifies more.
     const verifiedEmails = [...new Set(args.verifiedEmails ?? [])].slice(0, MAX_VERIFIED_EMAILS);
     if (existing) {
       await ctx.db.patch("users", existing._id, {

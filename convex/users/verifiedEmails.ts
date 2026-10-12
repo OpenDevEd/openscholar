@@ -12,6 +12,9 @@ import { CLERK_USERS_PAGE, verifiedEmailsPageValidator } from "../lib/validators
 import { parseClerkUserPayload } from "../webhooks/clerk";
 import { mapClerkUserToUpsertArgs } from "../webhooks/clerk_mappers";
 
+/** Accounts each read of Clerk's reads again from the one before. */
+const PAGES_OVERLAP = 20;
+
 export const refresh = internalAction({
   args: { offset: v.optional(v.number()) },
   returns: v.null(),
@@ -24,7 +27,8 @@ export const refresh = internalAction({
       return user ? [mapClerkUserToUpsertArgs(user)] : [];
     });
     await ctx.runMutation(internal.users.verifiedEmails.keep, { users: users.map(({ clerkId, verifiedEmails }) => ({ clerkId, verifiedEmails: [...new Set(verifiedEmails)].slice(0, MAX_VERIFIED_EMAILS) })) });
-    if (rows.length === CLERK_USERS_PAGE) await ctx.scheduler.runAfter(0, internal.users.verifiedEmails.refresh, { offset: offset + CLERK_USERS_PAGE });
+    // The next read starts a little before this one ended: an account deleted meanwhile moves the rest up, and none is skipped. Reading one twice changes nothing.
+    if (rows.length === CLERK_USERS_PAGE) await ctx.scheduler.runAfter(0, internal.users.verifiedEmails.refresh, { offset: offset + CLERK_USERS_PAGE - PAGES_OVERLAP });
     return null;
   },
 });

@@ -14,7 +14,9 @@ import { addressesOf } from "../lib/people";
  */
 export async function readProfileInvitations(ctx: QueryCtx, user: Doc<"users">) {
   // Those to any address of theirs.
-  const waiting = (await Promise.all(addressesOf(user).map(email => ctx.db.query("itemInvitations").withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL)))).flat();
+  // shortcut: the newest MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL of them all; page them if a person ever has more waiting.
+  const waiting = (await Promise.all(addressesOf(user).map(email => ctx.db.query("itemInvitations").withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).order("desc").take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL))))
+    .flat().sort((a, b) => b._creationTime - a._creationTime).slice(0, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
   return (await Promise.all(waiting.filter(invitation => invitation.kind === "author").map(async invitation => {
     const profileId = ctx.db.normalizeId("authorProfiles", invitation.item);
     const profile = profileId ? await ctx.db.get("authorProfiles", profileId) : null;

@@ -76,8 +76,10 @@ export async function readPendingLibraryInvitations(
 ) {
   if (user.state !== "active") return [];
   // Those to any address of theirs. An address has at most MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL invitations waiting, to anything.
+  // shortcut: the newest MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL of them all; page them if a person ever has more waiting.
   const invitations = (await Promise.all(addressesOf(user).map(email => ctx.db.query("itemInvitations")
-    .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL)))).flat();
+    .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).order("desc").take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL))))
+    .flat().sort((a, b) => b._creationTime - a._creationTime).slice(0, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
   const rows = await Promise.all(invitations.map(async invitation => {
     const library = await libraryOf(ctx, invitation);
     if (!library || library.state === "disabled") return null;
