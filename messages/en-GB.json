@@ -3800,6 +3800,72 @@
         "did": "Read items in your Zotero",
         "where": "Zotero",
         "ask": "Read items in your Zotero"
+      },
+      "inviteLibraryMember": {
+        "doing": "Inviting someone to a library",
+        "did": "Invited someone to a library",
+        "where": "Evidence Library",
+        "ask": "Invite someone to a library"
+      },
+      "changeLibraryInvite": {
+        "doing": "Changing a library invitation",
+        "did": "Changed a library invitation",
+        "where": "Evidence Library",
+        "ask": "Change a library invitation"
+      },
+      "libraryInvites": {
+        "doing": "Reading your library invitations",
+        "did": "Read your library invitations",
+        "where": "Evidence Libraries",
+        "ask": "Read your library invitations"
+      },
+      "answerLibraryInvite": {
+        "doing": "Answering a library invitation",
+        "did": "Answered a library invitation",
+        "where": "Evidence Libraries",
+        "ask": "Answer a library invitation"
+      },
+      "startLibrary": {
+        "doing": "Starting a library draft",
+        "did": "Started a library draft",
+        "where": "Evidence Libraries",
+        "ask": "Start a library draft"
+      },
+      "librarySources": {
+        "doing": "Reading a library’s sources",
+        "did": "Read a library’s sources",
+        "where": "Evidence Library",
+        "ask": "Read a library’s sources"
+      },
+      "runningCollections": {
+        "doing": "Reading a library’s collections",
+        "did": "Read a library’s collections",
+        "where": "Evidence Library",
+        "ask": "Read a library’s collections"
+      },
+      "runningInstitutions": {
+        "doing": "Reading a library’s institutions",
+        "did": "Read a library’s institutions",
+        "where": "Evidence Library",
+        "ask": "Read a library’s institutions"
+      },
+      "runningPublications": {
+        "doing": "Reading a library’s publications",
+        "did": "Read a library’s publications",
+        "where": "Evidence Library",
+        "ask": "Read a library’s publications"
+      },
+      "runningPublication": {
+        "doing": "Reading a library publication",
+        "did": "Read a library publication",
+        "where": "Evidence Library",
+        "ask": "Read a library publication"
+      },
+      "syncLibrarySource": {
+        "doing": "Retrying a library import",
+        "did": "Retried a library import",
+        "where": "Evidence Library",
+        "ask": "Retry a library import"
       }
     },
     "asks": {

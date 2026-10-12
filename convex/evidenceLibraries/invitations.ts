@@ -2,7 +2,9 @@ import { z } from "zod";
 import { v } from "convex/values";
 import { paginationResultValidator } from "convex/server";
 import { internal } from "../_generated/api";
-import { internalMutation, internalQuery, mutation, query, type QueryCtx } from "../lib/functions";
+import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "../lib/functions";
+import type { Id } from "../_generated/dataModel";
+import { pendingInvitationValidator } from "./validators";
 import { actingArg, signedInAs } from "../lib/userActions";
 import { grantedRole, libraryGrant, libraryOf, libraryOwner, ownerActive, requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvitations } from "./access";
 import { getCurrentUser } from "../lib/auth";
@@ -81,27 +83,23 @@ export const readDelivery = internalQuery({
   },
 });
 
+/** Changes the role an invitation still waiting gives, or cancels it, for an owner of its library. */
+export async function changeLibraryInvitation(ctx: MutationCtx, args: { invitationId: Id<"itemInvitations">; role?: "editor" | "creator"; cancel?: boolean }) {
+  const invitation = await ctx.db.get("itemInvitations", args.invitationId);
+  const invited = invitation ? await libraryOf(ctx, invitation) : null;
+  if (!invitation || !invited) throw createError("NOT_FOUND", "Invitation not found");
+  await requireEvidenceLibraryAccess(ctx, invited._id, "manage");
+  if (invitation.state !== "pending") throw createError("CONFLICT", "Invitation is no longer pending");
+  await ctx.db.patch("itemInvitations", args.invitationId, {
+    ...(args.role ? { role: args.role } : {}), ...(args.cancel ? { state: "cancelled" as const } : {}),
+  });
+  return null;
+}
+
 export const change = mutation({
   args: { invitationId: v.id("itemInvitations"), role: v.optional(roleValidator), cancel: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const invitation = await ctx.db.get("itemInvitations", args.invitationId);
-    const invited = invitation ? await libraryOf(ctx, invitation) : null;
-    if (!invitation || !invited) throw createError("NOT_FOUND", "Invitation not found");
-    await requireEvidenceLibraryAccess(ctx, invited._id, "manage");
-    if (invitation.state !== "pending") throw createError("CONFLICT", "Invitation is no longer pending");
-    await ctx.db.patch("itemInvitations", args.invitationId, {
-      ...(args.role ? { role: args.role } : {}), ...(args.cancel ? { state: "cancelled" as const } : {}),
-    });
-    return null;
-  },
-});
-
-const pendingInvitationValidator = v.object({
-  invitationId: v.id("itemInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
-  role: v.union(v.literal("editor"), v.literal("creator")),
-  // Who the library belongs to: its organization, or with no ID the person whose own workspace it's in.
-  organization: v.object({ id: v.union(v.id("organizations"), v.null()), name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
+  handler: async (ctx, args) => await changeLibraryInvitation(ctx, args),
 });
 const pendingInvitations = async (ctx: QueryCtx) => {
   const user = await getCurrentUser(ctx);

@@ -128,7 +128,18 @@
     "screening/queries:getActiveScreeningJobProgress": "screening/queries:getScreeningJob",
     "screening/queries:getScreeningProgress": "screening/queries:getScreeningJob",
     "screening/queries:listUserScreeningJobs": "screening/queries:listJobs",
-    "topics/details:get": "research/topics:get"
+    "topics/details:get": "research/topics:get",
+    "evidenceLibraries/invitationActions:invite": "evidenceLibraries/assistant:invite",
+    "evidenceLibraries/invitationActions:respond": "evidenceLibraries/assistant:answerInvitation",
+    "evidenceLibraries/invitations:change": "evidenceLibraries/assistant:changeInvitation",
+    "evidenceLibraries/invitations:listInvitations": "evidenceLibraries/assistant:invitations",
+    "evidenceLibraries/addressActions:reserveAddress": "evidenceLibraries/assistant:startLibrary",
+    "evidenceLibraries/sourceStatus:listForLibrary": "evidenceLibraries/assistant:sources",
+    "zotero/runtimeReadActions:listCollections": "evidenceLibraries/assistant:runningCollections",
+    "zotero/runtimeReadActions:listInstitutions": "evidenceLibraries/assistant:runningInstitutions",
+    "zotero/runtimeReadActions:listPublications": "evidenceLibraries/assistant:runningPublications",
+    "zotero/runtimeReadActions:readPublication": "evidenceLibraries/assistant:runningPublication",
+    "zotero/runtimeReadActions:requestSourceRun": "evidenceLibraries/assistant:syncSource"
   },
   "manual": {
     "admins/invitations:invite": "Site administration, for OpenScholar's own admins on the admin pages.",
@@ -205,21 +216,10 @@
     "authors/profiles:get": "#323",
     "authors/profiles:list": "#323",
     "authors/publications:list": "#323",
-    "evidenceLibraries/addressActions:reserveAddress": "#329",
     "evidenceLibraries/collectionSources:connectCollectionSource": "#329",
     "evidenceLibraries/collectionSources:listCollectionSources": "#329",
-    "evidenceLibraries/invitationActions:invite": "#329",
-    "evidenceLibraries/invitationActions:respond": "#329",
-    "evidenceLibraries/invitations:change": "#329",
-    "evidenceLibraries/invitations:listInvitations": "#329",
-    "evidenceLibraries/sourceStatus:listForLibrary": "#329",
     "topics/publications:listGroups": "#323",
-    "topics/publications:listLocations": "#323",
-    "zotero/runtimeReadActions:listCollections": "#329",
-    "zotero/runtimeReadActions:listInstitutions": "#329",
-    "zotero/runtimeReadActions:listPublications": "#329",
-    "zotero/runtimeReadActions:readPublication": "#329",
-    "zotero/runtimeReadActions:requestSourceRun": "#329"
+    "topics/publications:listLocations": "#323"
   },
   "inWorkspace": [
     "research/records",

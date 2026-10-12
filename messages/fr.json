@@ -3800,6 +3800,72 @@
         "did": "Éléments de votre Zotero lus",
         "where": "Zotero",
         "ask": "Lire des éléments de votre Zotero"
+      },
+      "inviteLibraryMember": {
+        "doing": "Invitation de quelqu'un dans une bibliothèque",
+        "did": "Quelqu'un invité dans une bibliothèque",
+        "where": "Evidence Library",
+        "ask": "Inviter quelqu'un dans une bibliothèque"
+      },
+      "changeLibraryInvite": {
+        "doing": "Modification d'une invitation à une bibliothèque",
+        "did": "Invitation à une bibliothèque modifiée",
+        "where": "Evidence Library",
+        "ask": "Modifier une invitation à une bibliothèque"
+      },
+      "libraryInvites": {
+        "doing": "Lecture de vos invitations aux bibliothèques",
+        "did": "Invitations aux bibliothèques lues",
+        "where": "Evidence Libraries",
+        "ask": "Lire vos invitations aux bibliothèques"
+      },
+      "answerLibraryInvite": {
+        "doing": "Réponse à une invitation à une bibliothèque",
+        "did": "Invitation à une bibliothèque répondue",
+        "where": "Evidence Libraries",
+        "ask": "Répondre à une invitation à une bibliothèque"
+      },
+      "startLibrary": {
+        "doing": "Création d'un brouillon de bibliothèque",
+        "did": "Brouillon de bibliothèque créé",
+        "where": "Evidence Libraries",
+        "ask": "Créer un brouillon de bibliothèque"
+      },
+      "librarySources": {
+        "doing": "Lecture des sources d'une bibliothèque",
+        "did": "Sources d'une bibliothèque lues",
+        "where": "Evidence Library",
+        "ask": "Lire les sources d'une bibliothèque"
+      },
+      "runningCollections": {
+        "doing": "Lecture des collections d'une bibliothèque",
+        "did": "Collections d'une bibliothèque lues",
+        "where": "Evidence Library",
+        "ask": "Lire les collections d'une bibliothèque"
+      },
+      "runningInstitutions": {
+        "doing": "Lecture des institutions d'une bibliothèque",
+        "did": "Institutions d'une bibliothèque lues",
+        "where": "Evidence Library",
+        "ask": "Lire les institutions d'une bibliothèque"
+      },
+      "runningPublications": {
+        "doing": "Lecture des publications d'une bibliothèque",
+        "did": "Publications d'une bibliothèque lues",
+        "where": "Evidence Library",
+        "ask": "Lire les publications d'une bibliothèque"
+      },
+      "runningPublication": {
+        "doing": "Lecture d'une publication de bibliothèque",
+        "did": "Publication de bibliothèque lue",
+        "where": "Evidence Library",
+        "ask": "Lire une publication de bibliothèque"
+      },
+      "syncLibrarySource": {
+        "doing": "Nouvel essai d'un import de bibliothèque",
+        "did": "Import de bibliothèque relancé",
+        "where": "Evidence Library",
+        "ask": "Relancer un import de bibliothèque"
       }
     },
     "asks": {

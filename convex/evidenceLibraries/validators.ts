@@ -5,7 +5,7 @@ import {
   SECTION_REGISTRY,
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
-import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
+import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { presetKeyValidator } from "../aiModelConfig/validators";
 import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DIGEST_KINDS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
@@ -1157,6 +1157,16 @@ export const addressReservationValidator = v.union(
   nameTakenValidator,
   unavailableValidator,
 );
+
+/** A library invitation waiting for the person (./invitations.ts). */
+export const pendingInvitationValidator = v.object({
+  invitationId: v.id("itemInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
+  role: v.union(v.literal("editor"), v.literal("creator")),
+  // Who the library belongs to: its organization, or with no ID the person whose own workspace it's in.
+  organization: v.object({ id: v.union(v.id("organizations"), v.null()), name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
+});
+/** The library invitations waiting for the person: an address has at most this many waiting, to anything, which inviting enforces. */
+export const pendingInvitationsValidator = capped(v.array(pendingInvitationValidator), MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
 
 /** Libraries one list of the assistant's gives (./assistant.ts). */
 export const LIBRARIES_LISTED = 50;

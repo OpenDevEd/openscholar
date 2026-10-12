@@ -3800,6 +3800,72 @@
         "did": "已读取您 Zotero 中的条目",
         "where": "Zotero",
         "ask": "读取您 Zotero 中的条目"
+      },
+      "inviteLibraryMember": {
+        "doing": "正在邀请某人加入文献库",
+        "did": "已邀请某人加入文献库",
+        "where": "Evidence Library",
+        "ask": "邀请某人加入文献库"
+      },
+      "changeLibraryInvite": {
+        "doing": "正在修改文献库邀请",
+        "did": "已修改文献库邀请",
+        "where": "Evidence Library",
+        "ask": "修改文献库邀请"
+      },
+      "libraryInvites": {
+        "doing": "正在读取您的文献库邀请",
+        "did": "已读取您的文献库邀请",
+        "where": "Evidence Library",
+        "ask": "读取您的文献库邀请"
+      },
+      "answerLibraryInvite": {
+        "doing": "正在回复文献库邀请",
+        "did": "已回复文献库邀请",
+        "where": "Evidence Library",
+        "ask": "回复文献库邀请"
+      },
+      "startLibrary": {
+        "doing": "正在创建文献库草稿",
+        "did": "已创建文献库草稿",
+        "where": "Evidence Library",
+        "ask": "创建文献库草稿"
+      },
+      "librarySources": {
+        "doing": "正在读取文献库的来源",
+        "did": "已读取文献库的来源",
+        "where": "Evidence Library",
+        "ask": "读取文献库的来源"
+      },
+      "runningCollections": {
+        "doing": "正在读取文献库的合集",
+        "did": "已读取文献库的合集",
+        "where": "Evidence Library",
+        "ask": "读取文献库的合集"
+      },
+      "runningInstitutions": {
+        "doing": "正在读取文献库的机构",
+        "did": "已读取文献库的机构",
+        "where": "Evidence Library",
+        "ask": "读取文献库的机构"
+      },
+      "runningPublications": {
+        "doing": "正在读取文献库的出版物",
+        "did": "已读取文献库的出版物",
+        "where": "Evidence Library",
+        "ask": "读取文献库的出版物"
+      },
+      "runningPublication": {
+        "doing": "正在读取文献库的一篇出版物",
+        "did": "已读取文献库的一篇出版物",
+        "where": "Evidence Library",
+        "ask": "读取文献库的一篇出版物"
+      },
+      "syncLibrarySource": {
+        "doing": "正在重试文献库导入",
+        "did": "已重试文献库导入",
+        "where": "Evidence Library",
+        "ask": "重试文献库导入"
       }
     },
     "asks": {

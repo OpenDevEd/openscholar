@@ -59,6 +59,14 @@ const OPENS: Record<string, (args: Row) => string | undefined> = {
   "evidenceLibraries/assistant:draft": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
   "evidenceLibraries/assistant:editDraft": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
   "evidenceLibraries/assistant:team": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:invite": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:sources": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:runningCollections": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:runningInstitutions": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:runningPublications": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:runningPublication": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:syncSource": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
+  "evidenceLibraries/assistant:invitations": () => "/evidence-libraries?view=invitations",
   // A research area, by its topic ID as the read checked it.
   "research/topics:get": (args) => (typeof args.id === "string" && /^T[1-9]\d*$/i.test(args.id.trim()) ? `/topics/${args.id.trim().toUpperCase()}` : undefined),
 };

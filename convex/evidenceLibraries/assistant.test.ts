@@ -1,11 +1,15 @@
 // An Evidence Library's draft as the assistant works it (#329): the configuration page's own reads
 // and save, run as the person the assistant acts for, with an undo for every change it makes unasked.
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { createDraftSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { createActivatedSetupFixture, createDraftSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { ensureWorkspace } from "../workspaces/create";
 import { organizationWorkspaceOf, personalWorkspaceOf } from "../workspaces/personal";
 import { evidenceLibraryUploadPrefix } from "../../lib/evidence-libraries/configuration/uploads";
 import { seedFeatureUser } from "../organizationFeatures.test-support";
+
+const mail = vi.hoisted(() => ({ sendMail: vi.fn(), close: vi.fn() }));
+vi.mock("nodemailer", () => ({ default: { createTransport: () => mail } }));
 
 async function setup() {
   const { t, admin, clerkUserId, created, organizationId } = await createDraftSetupFixture("drafts");
@@ -81,5 +85,62 @@ describe("an Evidence Library's draft, for the assistant", () => {
     expect([...(await team()).editors, ...(await team()).creators]).toEqual([]);
     // Someone outside the organization is invited on the library's page.
     await expect(t.mutation(internal.evidenceLibraries.assistant.addMemberForAssistant, { ...allowed, email: "stranger@example.org", role: "editor" })).rejects.toThrow(/No member of the library's organization/);
+  });
+});
+
+describe("a library's invitations, its start and the running library, for the assistant", () => {
+  beforeEach(() => {
+    vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
+    vi.stubEnv("EL_COOLIFY_ENVIRONMENT", "development");
+    vi.stubEnv("EL_SMTP_HOST", "smtp.example.test");
+    vi.stubEnv("EL_SMTP_FROM", "libraries@example.test");
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.test");
+    vi.stubEnv("CLERK_SECRET_KEY", "test-clerk-key");
+    mail.sendMail.mockReset().mockResolvedValue({});
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ email_addresses: [{ email_address: "outside@example.org", verification: { status: "verified" } }] })));
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+
+  async function activated() {
+    const { t, clerkUserId, created, organizationId } = await createActivatedSetupFixture("assistant-invitations");
+    const ownerId = (await t.run((ctx) => ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique()))!._id;
+    const owner = { userId: ownerId, workspaceId: await t.run((ctx) => organizationWorkspaceOf(ctx, organizationId)) };
+    const ownerAlone = { userId: ownerId, workspaceId: await t.run((ctx) => ensureWorkspace(ctx, { kind: "personal", userId: ownerId })) };
+    const outsideId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "outside", email: "outside@example.org", state: "active", createdAt: 1, updatedAt: 1 }));
+    const outside = { userId: outsideId, workspaceId: await t.run((ctx) => ensureWorkspace(ctx, { kind: "personal", userId: outsideId })) };
+    return { t, owner, ownerAlone, outside, libraryId: created.libraryId };
+  }
+
+  it("invites by email as the owner, changes the invitation, and lets the invited person answer it in their own workspace", async () => {
+    const { t, owner, ownerAlone, outside, libraryId } = await activated();
+    const assistant = internal.evidenceLibraries.assistant;
+    await t.action(assistant.inviteForAssistant, { ...owner, libraryId, email: "Outside@example.org", role: "creator", approved: true });
+    expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ to: "outside@example.org" });
+    // Not from a chat in a workspace the library isn't in.
+    await expect(t.action(assistant.inviteForAssistant, { ...ownerAlone, libraryId, email: "other@example.org", role: "editor", approved: true })).rejects.toThrow(/not found/);
+
+    const [invitation] = await t.query(assistant.invitationsForAssistant, outside);
+    expect(invitation).toMatchObject({ libraryId, role: "creator" });
+    await t.mutation(assistant.changeInvitationForAssistant, { ...owner, invitationId: invitation.invitationId, role: "editor", approved: true });
+    // An invitation is answered where what's offered to someone is: their own workspace.
+    await expect(t.action(assistant.answerInvitationForAssistant, { ...owner, invitationId: invitation.invitationId, accept: true, approved: true })).rejects.toThrow(/own workspace/);
+    await t.action(assistant.answerInvitationForAssistant, { ...outside, invitationId: invitation.invitationId, accept: true, approved: true });
+    expect(await t.run((ctx) => ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", libraryId).eq("userId", outside.userId)).unique())).toMatchObject({ role: "editor" });
+    expect(await t.query(assistant.invitationsForAssistant, outside)).toEqual([]);
+    // Shared with them, the library is theirs to read in their own workspace.
+    expect((await t.query(assistant.librariesForAssistant, outside)).libraries).toEqual([expect.objectContaining({ libraryId, editable: false })]);
+  });
+
+  it("starts a library only in an organization, and reads the running library only from its workspace", async () => {
+    const { t, owner, ownerAlone, libraryId } = await activated();
+    const assistant = internal.evidenceLibraries.assistant;
+    await expect(t.action(assistant.startLibraryForAssistant, { ...ownerAlone, name: "Tutoring evidence", approved: true })).rejects.toThrow(/made in an organization/);
+    // One that isn't running yet has nothing to list, and says so.
+    expect(await t.action(assistant.runningCollectionsForAssistant, { ...owner, libraryId })).toMatchObject({ reason: "not-set-up", page: [] });
+    expect(await t.query(assistant.sourcesForAssistant, { ...owner, libraryId })).toBeNull();
+    await expect(t.action(assistant.syncSourceForAssistant, { ...ownerAlone, libraryId, sourceKey: "openalex", approved: true })).rejects.toThrow(/not found/);
   });
 });
