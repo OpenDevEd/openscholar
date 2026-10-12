@@ -12,7 +12,7 @@ export type CitationStyle = { label: string } & (
   | { id: string; asset: string }
 );
 
-type CitationFormat = (typeof CITATION_FORMATS)[number]["id"];
+export type CitationFormat = (typeof CITATION_FORMATS)[number]["id"];
 export type FormattedCitation = { text: string; html: string | null };
 export type Citations = Record<CitationFormat, FormattedCitation>;
 

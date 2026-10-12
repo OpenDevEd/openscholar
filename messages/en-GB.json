@@ -3650,6 +3650,45 @@
         "doing": "Reading an invitation",
         "did": "Read an invitation",
         "where": "Sharing"
+      },
+      "readAuthor": {
+        "doing": "Reading an author",
+        "did": "Read an author",
+        "where": "OpenAlex",
+        "ask": "Read an author",
+        "askMany": "Read {count, plural, one {# author} other {# authors}}",
+        "doingMany": "Reading {count, plural, one {# author} other {# authors}}",
+        "didMany": "Read {count, plural, one {# author} other {# authors}}"
+      },
+      "readTopic": {
+        "doing": "Reading a research area",
+        "did": "Read a research area",
+        "where": "Research areas",
+        "ask": "Read a research area",
+        "askMany": "Read {count, plural, one {# research area} other {# research areas}}",
+        "doingMany": "Reading {count, plural, one {# research area} other {# research areas}}",
+        "didMany": "Read {count, plural, one {# research area} other {# research areas}}"
+      },
+      "nameFilters": {
+        "doing": "Naming a search’s filters",
+        "did": "Named a search’s filters",
+        "where": "OpenAlex",
+        "ask": "Name a search’s filters"
+      },
+      "cite": {
+        "doing": "Citing a paper",
+        "did": "Cited a paper",
+        "where": "Citations",
+        "ask": "Cite a paper",
+        "askMany": "Cite {count, plural, one {# paper} other {# papers}}",
+        "doingMany": "Citing {count, plural, one {# paper} other {# papers}}",
+        "didMany": "Cited {count, plural, one {# paper} other {# papers}}"
+      },
+      "chatModels": {
+        "doing": "Listing the chat models",
+        "did": "Listed the chat models",
+        "where": "Models",
+        "ask": "List the chat models"
       }
     },
     "asks": {

@@ -18,7 +18,8 @@ import { createError } from "../lib/errors";
 import { actorIn, workingIn } from "../workspaces/actor";
 import { query } from "../lib/functions";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
-import { requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
+import { activeModels, MAX_CATALOG_MODELS, pickable as pickableModels, requireAvailableModel, requireEffort, requireTaskModel } from "../models/catalog";
+import { readsImages, readsPdfs } from "../../lib/assistant/files";
 import schema from "../schema";
 import type { Effort } from "../../lib/ai/core/call-options";
 import { NEW_CHAT_TITLE } from "../../lib/assistant/title";
@@ -27,7 +28,7 @@ import { open } from "../sharing/items";
 import { personName } from "../lib/people";
 import { chatViewers } from "../presence";
 import { startWith } from "./spending";
-import { ASSISTANT_MEMBERS_SHOWN, assistantMembersValidator, assistantRoleValidator, JOBS_DOCKED, JOBS_LISTED, listedJobsValidator } from "./validators";
+import { MODELS_LISTED, chatModelsValidator, ASSISTANT_MEMBERS_SHOWN, assistantMembersValidator, assistantRoleValidator, JOBS_DOCKED, JOBS_LISTED, listedJobsValidator } from "./validators";
 import { progressOf } from "./jobs";
 
 const FLAG = "assistant.enabled";
@@ -376,6 +377,42 @@ export const renameAction = defineUserMutation({
 });
 export const rename = userMutation(renameAction);
 export const renameForAssistant = assistantMutation(renameAction);
+
+/** Whether a chat can run on a model: what setting a chat's model checks (`requireAssistantModel`). */
+function runsChats(model: Doc<"models">) {
+  try {
+    requireAssistantModel(model);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export const modelsAction = defineUserQuery({
+  path: "assistant/threads:models",
+  description:
+    `Lists the models a chat can run on, up to ${MODELS_LISTED}, for assistant/threads:setModel: each one's ID, name, maker, how many tokens it holds, whether it reads PDFs and images, the reasoning efforts it takes, and its price in dollars per million tokens in and out. ` +
+    "`search` keeps those whose name or ID has all of its words, such as \"claude sonnet\".",
+  args: { search: v.optional(v.union(v.string(), v.null())) },
+  returns: chatModelsValidator,
+  run: async (ctx, _actor, { search }) => {
+    const words = (search ?? "").toLowerCase().split(/\s+/).filter(Boolean).slice(0, 10);
+    const models = pickableModels(await activeModels(ctx).take(MAX_CATALOG_MODELS)).filter((model) => runsChats(model) && words.every((word) => `${model.name} ${model.modelId}`.toLowerCase().includes(word)));
+    return models.slice(0, MODELS_LISTED).map((model) => ({
+      modelId: model._id,
+      name: model.name,
+      maker: model.provider,
+      ...(model.contextLength === undefined ? {} : { context: model.contextLength }),
+      readsPdfs: readsPdfs(model.inputModalities),
+      readsImages: readsImages(model.inputModalities),
+      ...(model.reasoningEfforts?.length ? { efforts: model.reasoningEfforts } : {}),
+      dollarsPerMillionIn: model.inputPricePerMillion,
+      dollarsPerMillionOut: model.outputPricePerMillion,
+    }));
+  },
+});
+export const models = userQuery(modelsAction);
+export const modelsForAssistant = assistantQuery(modelsAction);
 
 export const setModelAction = defineUserMutation({
   path: "assistant/threads:setModel",

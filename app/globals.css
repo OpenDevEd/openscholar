@@ -91,6 +91,7 @@
   --kind-screening: #4a3aa7;
   --kind-web: #0e8fb3;
   --kind-file: #d4483f;
+  --kind-author: #9a3fb5;
 
   /* Charts */
   --chart-1: var(--primary);
@@ -161,6 +162,7 @@
   --kind-screening: #9085e9;
   --kind-web: #2bb0d4;
   --kind-file: #e5655c;
+  --kind-author: #c26ad8;
   --primary: #fafafa;
   --primary-bright: #ffffff;
   --primary-deep: #a3a3a3;

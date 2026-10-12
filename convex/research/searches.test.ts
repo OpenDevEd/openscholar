@@ -9,14 +9,14 @@ import schema from "../schema";
 import { searchFilters } from "../extraction/picks";
 import { personalWorkspaceOf } from "../workspaces/personal";
 
-type Request = { url: URL };
+type Request = { url: URL; body?: string };
 let requests: Request[] = [];
 /** The requests that read papers: one that only counts a search asks for a single work. */
 const reads = () => requests.filter((request) => request.url.searchParams.get("per-page") !== "1");
 /** OpenAlex, answering a page with as many works as it's asked for, of a search that has 57. */
-const openAlex = vi.fn(async (input: string | URL) => {
+const openAlex = vi.fn(async (input: string | URL, init?: RequestInit) => {
   const url = new URL(String(input));
-  requests.push({ url });
+  requests.push({ url, ...(typeof init?.body === "string" ? { body: init.body } : {}) });
   if (url.pathname.includes("/autocomplete/")) {
     const author = url.pathname.endsWith("/authors");
     return new Response(JSON.stringify({ results: [{ id: `https://openalex.org/${author ? "A5023888391" : "F4320332161"}`, display_name: author ? "Jane Smith" : "Wellcome Trust", hint: author ? "University of Nairobi, Kenya" : "United Kingdom" }] }), { status: 200 });
@@ -359,6 +359,18 @@ describe("the assistant's search tools", () => {
     expect(await alice.mutation(api.research.searches.deleteSearch, { id })).toBeNull();
     expect(await search(id)).toBeNull();
     await expect(alice.mutation(api.research.searches.deleteSearch, { id })).rejects.toThrow(/not found/i);
+  });
+
+  it("search and count by a query written in OQL, as the search page's OQL mode takes it", async () => {
+    const { alice } = await setup();
+    const query = "(title_and_abstract.search:tutoring) AND publication_year:2020";
+    requests = [];
+    expect((await alice.action(api.research.papers.search, { query, field: "oql" })).total).toBe(57);
+    expect(JSON.parse(reads()[0].body!).oql).toContain("title_and_abstract.search:tutoring");
+    requests = [];
+    expect(await alice.action(api.research.papers.count, { query, field: "oql" })).toEqual({ total: 57 });
+    expect(JSON.parse(requests[0].body!).oql).toContain("title_and_abstract.search:tutoring");
+    await expect(alice.action(api.research.papers.count, { query, field: "oql", by: "year" })).rejects.toThrow(/OQL can't be counted by group/);
   });
 
   it("count papers and how they divide, in one request, and take the names people use for parts of the world", async () => {

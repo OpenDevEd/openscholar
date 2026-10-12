@@ -3,7 +3,7 @@
  * and organizations in. Its messages live in the agent component, under `agentThreadId`.
  */
 import { v } from "convex/values";
-import { effortValidator } from "../aiModelConfig/validators";
+import { effortValidator, modelEffortsValidator } from "../aiModelConfig/validators";
 import { capped } from "../lib/listCaps";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { MAX_FILES_PER_MESSAGE, MAX_PDF_CHUNKS } from "../../lib/assistant/files";
@@ -379,3 +379,22 @@ export const citedFileIdsValidator = capped(v.array(v.string()), MAX_FILES_PER_M
 export const citedFilesValidator = capped(v.array(v.object({ id: v.string(), name: v.string(), url: v.union(v.string(), v.null()) })), MAX_FILES_PER_MESSAGE);
 /** The files a message is sent with. */
 export const sentFileIdsValidator = capped(v.optional(v.array(v.id("assistantFiles"))), MAX_FILES_PER_MESSAGE);
+
+/** Models one list of a chat's models gives (./threads.ts `modelsAction`). */
+export const MODELS_LISTED = 30;
+export const chatModelsValidator = capped(
+  v.array(
+    v.object({
+      modelId: v.id("models"),
+      name: v.string(),
+      maker: v.string(),
+      context: v.optional(v.number()),
+      readsPdfs: v.boolean(),
+      readsImages: v.boolean(),
+      efforts: modelEffortsValidator,
+      dollarsPerMillionIn: v.number(),
+      dollarsPerMillionOut: v.number(),
+    }),
+  ),
+  MODELS_LISTED,
+);

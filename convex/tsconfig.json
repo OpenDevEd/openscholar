@@ -29,7 +29,7 @@
       "@/*": ["../*"]
     }
   },
-  "include": ["./**/*"],
+  "include": ["./**/*", "../types/citeproc-ts.d.ts"],
   "exclude": [
     "./_generated",
     "./**/*.test.ts",

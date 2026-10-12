@@ -3650,6 +3650,45 @@
         "doing": "招待を確認しています",
         "did": "招待を確認しました",
         "where": "共有"
+      },
+      "readAuthor": {
+        "doing": "著者を読んでいます",
+        "did": "著者を読みました",
+        "where": "OpenAlex",
+        "ask": "著者を読む",
+        "askMany": "{count, number} 人の著者を読む",
+        "doingMany": "{count, number} 人の著者を読んでいます",
+        "didMany": "{count, number} 人の著者を読みました"
+      },
+      "readTopic": {
+        "doing": "研究分野を読んでいます",
+        "did": "研究分野を読みました",
+        "where": "研究分野",
+        "ask": "研究分野を読む",
+        "askMany": "{count, number} 件の研究分野を読む",
+        "doingMany": "{count, number} 件の研究分野を読んでいます",
+        "didMany": "{count, number} 件の研究分野を読みました"
+      },
+      "nameFilters": {
+        "doing": "検索の絞り込みに名前を付けています",
+        "did": "検索の絞り込みに名前を付けました",
+        "where": "OpenAlex",
+        "ask": "検索の絞り込みに名前を付ける"
+      },
+      "cite": {
+        "doing": "論文を引用しています",
+        "did": "論文を引用しました",
+        "where": "引用",
+        "ask": "論文を引用",
+        "askMany": "{count, number} 件の論文を引用",
+        "doingMany": "{count, number} 件の論文を引用しています",
+        "didMany": "{count, number} 件の論文を引用しました"
+      },
+      "chatModels": {
+        "doing": "チャットのモデルを一覧しています",
+        "did": "チャットのモデルを一覧しました",
+        "where": "モデル",
+        "ask": "チャットのモデルを一覧"
       }
     },
     "asks": {

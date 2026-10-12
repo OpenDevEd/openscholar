@@ -3650,6 +3650,45 @@
         "doing": "正在查看邀请",
         "did": "已查看邀请",
         "where": "共享"
+      },
+      "readAuthor": {
+        "doing": "正在读取作者",
+        "did": "已读取作者",
+        "where": "OpenAlex",
+        "ask": "读取作者",
+        "askMany": "读取 {count, number} 位作者",
+        "doingMany": "正在读取 {count, number} 位作者",
+        "didMany": "已读取 {count, number} 位作者"
+      },
+      "readTopic": {
+        "doing": "正在读取研究领域",
+        "did": "已读取研究领域",
+        "where": "研究领域",
+        "ask": "读取研究领域",
+        "askMany": "读取 {count, number} 个研究领域",
+        "doingMany": "正在读取 {count, number} 个研究领域",
+        "didMany": "已读取 {count, number} 个研究领域"
+      },
+      "nameFilters": {
+        "doing": "正在为搜索的筛选条件命名",
+        "did": "已为搜索的筛选条件命名",
+        "where": "OpenAlex",
+        "ask": "为搜索的筛选条件命名"
+      },
+      "cite": {
+        "doing": "正在引用论文",
+        "did": "已引用论文",
+        "where": "引用",
+        "ask": "引用论文",
+        "askMany": "引用 {count, number} 篇论文",
+        "doingMany": "正在引用 {count, number} 篇论文",
+        "didMany": "已引用 {count, number} 篇论文"
+      },
+      "chatModels": {
+        "doing": "正在列出聊天模型",
+        "did": "已列出聊天模型",
+        "where": "模型",
+        "ask": "列出聊天模型"
       }
     },
     "asks": {
