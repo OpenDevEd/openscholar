@@ -42,7 +42,8 @@ function GradeBar({ grades, left = 0, hot, onHot, className }: { grades: { key: 
       ) : null)}
       {left > 0 ? (
         <>
-          <span className={cn(PART, "animate-pulse motion-reduce:animate-none")} style={{ flexGrow: Math.min(left, flight), ...STRIPES }} />
+          {/* The pulse is the part's own animation, so it grows without the opacity transition the other parts have. */}
+          <span className="h-full min-w-1 basis-0 animate-pulse rounded-full motion-reduce:animate-none" style={{ flexGrow: Math.min(left, flight), ...STRIPES }} />
           {left > flight ? <span className={cn(PART, "bg-primary/10")} style={{ flexGrow: left - flight }} /> : null}
         </>
       ) : null}
