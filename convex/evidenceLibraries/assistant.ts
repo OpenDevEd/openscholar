@@ -179,6 +179,7 @@ export const editDraftAction = defineUserMutation({
   path: EDIT_PATH,
   description:
     "Changes an Evidence Library's draft settings, for an owner. Each change sets the value at a `path` inside one section (its keys and list places, as evidenceLibraries/assistant:draft shows the section), or with no `value` takes that key out; an empty path sets the section whole, and a list item is added or taken out by setting the list whole. " +
+    "The homepage's text is `home.intro`; `identity.tagline` and `identity.description` only feed page titles and search results. " +
     "Give the draft's `expectedEditVersion` from that read (`unchanged` is Undo's own). The result is checked as the configuration page checks it, and a refusal says what's wrong. " +
     "Uploaded files (logos, photos, documents) are changed on the page: a change can't replace a value holding one or write one in. Nothing is public until the draft is put live, on the library's page. Undo puts the values back.",
   args: { libraryId: v.id("evidenceLibraries"), changes: draftChangesValidator, expectedEditVersion: v.optional(v.number()), unchanged: v.optional(v.string()) },
