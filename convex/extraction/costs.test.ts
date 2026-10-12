@@ -66,7 +66,7 @@ describe("job credit totals", () => {
     await t.finishAllScheduledFunctions(vi.runAllTimers.bind(vi));
     vi.useRealTimers();
 
-    expect((await jobCost(t, jobId)).total).toBe(12);
+    expect(await jobCost(t, jobId)).toEqual({ credits: 12 });
   });
 
   it("clears the total when the job is deleted, and keeps it clear of charges counted after", async () => {

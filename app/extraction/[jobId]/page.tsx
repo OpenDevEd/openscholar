@@ -1,6 +1,6 @@
 "use client";
 
-import { useConvex, useMutation } from "convex/react";
+import { useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { useParams } from "next/navigation";
@@ -148,14 +148,12 @@ export default function JobDetailPage() {
   // Only the action: reading the whole store would redraw this page each time the panel collapses or expands.
   const expandCitationPanel = useExtractionCitationPanelStore((state) => state.expand);
 
-  const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
-  const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
+  const cancelJob = useWorkspaceMutation(api.extraction.mutations.cancelExtraction);
+  const deleteJob = useWorkspaceMutation(api.extraction.mutations.deleteExtraction);
   const duplicateJob = useWorkspaceMutation(api.extraction.mutations.duplicateJob);
   const workspaceId = useWorkspace();
-  const pauseJob = useMutation(api.extraction.mutations.pause.pauseExtraction);
-  const resumeJob = useMutation(
-    api.extraction.mutations.resume.resumeExtraction,
-  );
+  const pauseJob = useWorkspaceMutation(api.extraction.mutations.pause.pauseExtraction);
+  const resumeJob = useWorkspaceMutation(api.extraction.mutations.resume.resumeExtraction);
 
   const jobShellQuery = useProtectedQuery(api.extraction.queries.getJobShell, {
     jobId,

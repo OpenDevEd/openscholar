@@ -3654,6 +3654,48 @@
         "did": "已查看邀请",
         "where": "共享"
       },
+      "stopExtraction": {
+        "doing": "正在停止提取",
+        "did": "已停止提取",
+        "where": "提取",
+        "ask": "停止提取"
+      },
+      "deleteExtraction": {
+        "doing": "正在删除提取",
+        "did": "已删除提取",
+        "where": "提取",
+        "ask": "删除提取"
+      },
+      "pauseExtraction": {
+        "doing": "正在暂停提取",
+        "did": "已暂停提取",
+        "where": "提取",
+        "ask": "暂停提取"
+      },
+      "resumeExtraction": {
+        "doing": "正在继续提取",
+        "did": "已继续提取",
+        "where": "提取",
+        "ask": "继续提取"
+      },
+      "retryExtraction": {
+        "doing": "正在重试提取中失败的问题",
+        "did": "已重试提取中失败的问题",
+        "where": "提取",
+        "ask": "重试提取中失败的问题"
+      },
+      "extractionCost": {
+        "doing": "正在读取提取的费用",
+        "did": "已读取提取的费用",
+        "where": "提取",
+        "ask": "读取提取的费用"
+      },
+      "stopScreening": {
+        "doing": "正在停止筛选",
+        "did": "已停止筛选",
+        "where": "筛选",
+        "ask": "停止筛选"
+      },
       "readAuthor": {
         "doing": "正在读取作者",
         "did": "已读取作者",
@@ -3738,7 +3780,8 @@
         "query": "查询",
         "file": "文件",
         "pages": "页",
-        "range": "范围"
+        "range": "范围",
+        "job": "任务"
       }
     },
     "topUp": {

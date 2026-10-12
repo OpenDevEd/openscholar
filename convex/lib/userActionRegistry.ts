@@ -38,8 +38,12 @@ import { balanceAction, countChargesAction, listChargesAction, planAction, spend
 import { allowanceAction, setCapAction, spendingAction as memberSpendingAction } from "../billing/caps";
 import { countKeysAction as walletKeyCountAction, listKeysAction as walletKeysAction } from "../wallet/queries";
 import type { UserAction } from "./userActions";
-import { startJobAction as extractionStartAction, duplicateJobAction as extractionDuplicateAction } from "../extraction/mutations/jobs";
-import { extractAction } from "../extraction/start";
+import { cancelExtractionAction, deleteExtractionAction, startJobAction as extractionStartAction, duplicateJobAction as extractionDuplicateAction } from "../extraction/mutations/jobs";
+import { pauseExtractionAction } from "../extraction/mutations/pause";
+import { resumeExtractionAction } from "../extraction/mutations/resume";
+import { getJobCostAction } from "../extraction/queries/costs";
+import { cancelScreeningJobAction } from "../screening/mutations";
+import { extractAction, resumeAction as extractionResumeHeldAction, retryAction as extractionRetryAction } from "../extraction/start";
 import { findAction as mentionFindAction } from "../assistant/mentions";
 import { readAction as fileReadAction } from "../assistant/files";
 import { searchAction as webSearchAction } from "../research/web";
@@ -47,6 +51,14 @@ import { searchAction as webSearchAction } from "../research/web";
 export const USER_ACTIONS: readonly UserAction[] = [
   extractionStartAction,
   extractionDuplicateAction,
+  cancelExtractionAction,
+  deleteExtractionAction,
+  pauseExtractionAction,
+  resumeExtractionAction,
+  extractionRetryAction,
+  extractionResumeHeldAction,
+  getJobCostAction,
+  cancelScreeningJobAction,
   chatsAction,
   chatAction,
   chatAccessAction,

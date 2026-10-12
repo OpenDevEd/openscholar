@@ -6,11 +6,10 @@
  * startJob schedules the app-owned paper queue setup action.
  */
 
-import { mutation, type MutationCtx } from "../../lib/functions";
+import type { MutationCtx } from "../../lib/functions";
 import { v, type ObjectType } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
-import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { extractionPricing, extractionStamp } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
@@ -33,10 +32,11 @@ import { extractionPaperCredits } from "../../../lib/pricing";
 import { jobText } from "../../lib/searchText";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
 import { refillWorkspace } from "../queue/dispatcher";
-import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
+import { assistantMutation, defineUserMutation, userMutation, type Acting } from "../../lib/userActions";
 import { checkScreeningSelection } from "../sources/screening";
+import { jobIn } from "../access";
 import { bucketItemFromRow } from "../jobSources";
-import { actorIn, requireMakerOrAdmin, type InWorkspace } from "../../workspaces/actor";
+import { requireMakerOrAdmin, type InWorkspace } from "../../workspaces/actor";
 import { paperPickValidator, sourcesFor, uploadPickValidator } from "../picks";
 
 function deriveSourceType(
@@ -288,68 +288,65 @@ export const duplicateJobAction = defineUserMutation({
 export const duplicateJob = userMutation(duplicateJobAction);
 export const duplicateJobForAssistant = assistantMutation(duplicateJobAction);
 
-export const cancelExtraction = mutation({
+/** The workspace's extraction a call names, for its maker or an admin there; another workspace's, or one that's gone, is not found. */
+async function ownJob(ctx: MutationCtx, actor: Acting, jobId: Id<"extractionJobs">) {
+  const job = await jobIn(ctx, actor, jobId);
+  requireMakerOrAdmin(actor, job.createdBy);
+  return job;
+}
+
+export const cancelExtractionAction = defineUserMutation({
+  path: "extraction/mutations:cancelExtraction",
+  description:
+    "Stops one of the workspace's extractions that is running or paused, for the person who started it or an admin. The answers it has so far stay. A stopped extraction doesn't start again: duplicate it to run it anew. One that has already ended is left as it is.",
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: false,
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args): Promise<{ success: boolean }> => {
-    const user = await requireAuth(ctx);
-
-    const job = await ctx.db.get("extractionJobs", args.jobId);
-    const actor = job && (await actorIn(ctx, user, job.workspaceId));
-    if (!job || !actor) {
-      throw createError("NOT_FOUND", "Job not found");
-    }
-    requireMakerOrAdmin(actor, job.createdBy);
-
-    if (
-      job.status &&
-      ["completed", "failed", "cancelled"].includes(job.status)
-    ) {
+  run: async (ctx, actor, args): Promise<{ success: boolean }> => {
+    const job = await ownJob(ctx, actor, args.jobId);
+    if (job.status && ["completed", "failed", "cancelled"].includes(job.status)) {
+      // The page's button does nothing more to one that ended; a chat is told, so it doesn't say it stopped it.
+      if (actor.author === "assistant") throw createError("CONFLICT", "This extraction has already ended, so there's nothing to stop.");
       return { success: true };
     }
 
     assertValidJobTransition(job.status as JobStatus, "cancelled");
-    await ctx.db.patch("extractionJobs", args.jobId, {
-      status: "cancelled",
-      updatedAt: Date.now(),
-    });
+    await ctx.db.patch("extractionJobs", args.jobId, { status: "cancelled", updatedAt: Date.now() });
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
     // Its papers no longer count against the person's limit; their other jobs start in it.
     await refillWorkspace(ctx, job.workspaceId);
-    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: args.jobId, happened: "stopped" });
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, { kind: "extraction", id: args.jobId, happened: "stopped" });
 
     // Any in-flight paper action sees the cancelled job on its next
     // status check and returns without persisting.
     return { success: true };
   },
 });
+export const cancelExtraction = userMutation(cancelExtractionAction);
+export const cancelExtractionForAssistant = assistantMutation(cancelExtractionAction);
 
-export const deleteExtraction = mutation({
+export const deleteExtractionAction = defineUserMutation({
+  path: "extraction/mutations:deleteExtraction",
+  description: "Deletes one of the workspace's extractions with all its answers, for good, for the person who started it or an admin. Anyone it was shared with loses it too.",
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: false,
   args: { jobId: v.id("extractionJobs") },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
-
-    const job = await ctx.db.get("extractionJobs", args.jobId);
-    const actor = job && (await actorIn(ctx, user, job.workspaceId));
-    if (!job || !actor) {
-      throw createError("NOT_FOUND", "Job not found");
-    }
-    requireMakerOrAdmin(actor, job.createdBy);
-
+  run: async (ctx, actor, args) => {
+    await ownJob(ctx, actor, args.jobId);
     await ctx.db.delete(args.jobId);
     // Its papers stop holding the person's capacity now, not when the cascade reaches them.
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
-    await refillWorkspace(ctx, job.workspaceId);
+    await refillWorkspace(ctx, actor.workspaceId);
 
     // Schedule the cascade delete as an independent mutation to avoid
     // transaction limits on a large job's child tables.
-    await ctx.scheduler.runAfter(
-      0,
-      internal.extraction.mutations.internal.admin.deleteExtractionInternal,
-      { jobId: args.jobId },
-    );
-
+    await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.admin.deleteExtractionInternal, { jobId: args.jobId });
     return null;
   },
 });
+export const deleteExtraction = userMutation(deleteExtractionAction);
+export const deleteExtractionForAssistant = assistantMutation(deleteExtractionAction);

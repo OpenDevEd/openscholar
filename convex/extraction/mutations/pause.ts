@@ -17,41 +17,35 @@
  * pausing the pool would leak across all users sharing it.
  */
 
-import { mutation } from "../../lib/functions";
 import { v } from "convex/values";
-import { requireAuth } from "../../lib/auth";
-import { createError } from "../../lib/errors";
-import { assertJobAccess } from "../access";
+import { jobIn } from "../access";
+import { assistantMutation, defineUserMutation, reversedBy, userMutation } from "../../lib/userActions";
 import {
   assertValidJobTransition,
   type JobStatus,
 } from "../stateMachine";
 import { validatePauseTransition } from "../../../lib/extraction/transitions";
-import { noteActivity } from "../../activity/notes";
 
-export const pauseExtraction = mutation({
+export const pauseExtractionAction = defineUserMutation({
+  path: "extraction/mutations/pause:pauseExtraction",
+  description:
+    "Pauses one of the workspace's extractions while it runs: the papers being read finish, and no more start until it's resumed (extraction/mutations/resume:resumeExtraction). Its answers so far stay. One that isn't running is left as it is, and `reason` says why.",
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: true,
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({
     paused: v.boolean(),
     reason: v.optional(v.string()),
+    undo: reversedBy("extraction/mutations/resume:resumeExtraction", { jobId: v.id("extractionJobs") }),
   }),
-  handler: async (ctx, { jobId }): Promise<{
-    paused: boolean;
-    reason?: string;
-  }> => {
-    const user = await requireAuth(ctx);
-    const { job } = await assertJobAccess(ctx, user, jobId);
-
-    if (!job.status) {
-      // Chat rows and freshly-created extraction rows before startJob
-      // writes a status — nothing to pause.
-      return { paused: false, reason: "not_running" };
-    }
+  activity: ({ jobId }, { paused }) => (paused ? { kind: "extraction", id: jobId, happened: "paused" } : null),
+  run: async (ctx, actor, { jobId }) => {
+    const job = await jobIn(ctx, actor, jobId);
+    if (!job.status) return { paused: false, reason: "not_running" };
 
     const decision = validatePauseTransition(job.status as JobStatus);
-    if (!decision.ok) {
-      return { paused: false, reason: decision.reason };
-    }
+    if (!decision.ok) return { paused: false, reason: decision.reason };
 
     assertValidJobTransition(job.status as JobStatus, decision.nextStatus);
     await ctx.db.patch(jobId, {
@@ -61,8 +55,8 @@ export const pauseExtraction = mutation({
       pausedFromStatus: decision.pausedFrom,
       updatedAt: Date.now(),
     });
-    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: jobId, happened: "paused" });
-
-    return { paused: true };
+    return { paused: true, undo: { path: "extraction/mutations/resume:resumeExtraction" as const, args: { jobId } } };
   },
 });
+export const pauseExtraction = userMutation(pauseExtractionAction);
+export const pauseExtractionForAssistant = assistantMutation(pauseExtractionAction);

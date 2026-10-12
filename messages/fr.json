@@ -3654,6 +3654,48 @@
         "did": "Invitation lue",
         "where": "Partage"
       },
+      "stopExtraction": {
+        "doing": "Arrêt d'une extraction",
+        "did": "Extraction arrêtée",
+        "where": "Extraction",
+        "ask": "Arrêter une extraction"
+      },
+      "deleteExtraction": {
+        "doing": "Suppression d'une extraction",
+        "did": "Extraction supprimée",
+        "where": "Extraction",
+        "ask": "Supprimer une extraction"
+      },
+      "pauseExtraction": {
+        "doing": "Mise en pause d'une extraction",
+        "did": "Extraction mise en pause",
+        "where": "Extraction",
+        "ask": "Mettre une extraction en pause"
+      },
+      "resumeExtraction": {
+        "doing": "Reprise d'une extraction",
+        "did": "Extraction reprise",
+        "where": "Extraction",
+        "ask": "Reprendre une extraction"
+      },
+      "retryExtraction": {
+        "doing": "Relance des questions échouées d'une extraction",
+        "did": "Questions échouées d'une extraction relancées",
+        "where": "Extraction",
+        "ask": "Relancer les questions échouées d'une extraction"
+      },
+      "extractionCost": {
+        "doing": "Lecture du coût d'une extraction",
+        "did": "Coût d'une extraction lu",
+        "where": "Extraction",
+        "ask": "Lire le coût d'une extraction"
+      },
+      "stopScreening": {
+        "doing": "Arrêt d'une sélection",
+        "did": "Sélection arrêtée",
+        "where": "Sélection",
+        "ask": "Arrêter une sélection"
+      },
       "readAuthor": {
         "doing": "Lecture d'un auteur",
         "did": "Auteur lu",
@@ -3738,7 +3780,8 @@
         "query": "Requête",
         "file": "Fichier",
         "pages": "Pages",
-        "range": "Partie"
+        "range": "Partie",
+        "job": "Tâche"
       }
     },
     "topUp": {

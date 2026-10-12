@@ -8,7 +8,7 @@
  * the reader is one; what a job costs, and every change to it, stay on the owned checks.
  */
 
-import type { QueryCtx, MutationCtx } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -74,15 +74,11 @@ export async function resolveOwnedPaper(
  * Mutation-side check: the job, and `user` acting on it in its workspace. Throws NOT_FOUND
  * (not FORBIDDEN, so nobody outside the workspace learns the job exists) when they can't.
  */
-export async function assertJobAccess(
-  ctx: MutationCtx,
-  user: Doc<"users">,
-  jobId: Id<"extractionJobs">,
-): Promise<{ job: Doc<"extractionJobs">; actor: Actor }> {
+/** The extraction a call names, when it's one of the workspace's the actor acts in. Another workspace's, or one that's gone, is not found. */
+export async function jobIn(ctx: QueryCtx, actor: Pick<Actor, "workspaceId">, jobId: Id<"extractionJobs">) {
   const job = await ctx.db.get("extractionJobs", jobId);
-  const actor = job && (await actorIn(ctx, user, job.workspaceId));
-  if (!job || !actor) throw createError("NOT_FOUND", "Job not found");
-  return { job, actor };
+  if (!job || job.workspaceId !== actor.workspaceId) throw createError("NOT_FOUND", "Job not found");
+  return job;
 }
 
 /** What a person outside the job's workspace was given it to do, while that workspace is still anyone's to open; null when they weren't. */
