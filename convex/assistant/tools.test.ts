@@ -169,9 +169,9 @@ describe("the assistant's tools", () => {
     await say("Save that paper");
     mockDoStream.mockImplementationOnce(calling({ id: "rate", name: "run_action", input: { name: "library/mutations:setLibraryRating", arguments: { openalexId: paper.openalexId, rating: 5 } } })).mockImplementationOnce(finishingDoStream(["Rated it."]));
     await say("Rate it five");
-    // Calls run together, so the rating may have started before the save it changes and ended after it.
+    // Calls run together, so the rating may have started before the save it changes, and ended in the same moment.
     const [save, rate] = await steps();
-    await t.run(async (ctx) => ctx.db.patch("assistantSteps", rate._id, { startedAt: save.startedAt - 1 }));
+    await t.run(async (ctx) => ctx.db.patch("assistantSteps", rate._id, { startedAt: save.startedAt - 1, endedAt: save.endedAt }));
 
     // Put back the save first and its removal would refuse a paper rated since; the rating goes first.
     await asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [save._id, rate._id] });

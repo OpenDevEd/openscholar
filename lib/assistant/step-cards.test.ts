@@ -25,9 +25,14 @@ it("folds a reply's PDF reads, saves and failures of one kind into one card each
     step("bulk", "library/papers:save", { batch: 40 }),
     step("lost2", "library/papers:save", { status: "failed" }),
     step("asks", "library/papers:save", { status: "asking" }),
+    // Two reads asked about together and turned down, two allowed and on their way.
+    step("no1", "research/papers:readPdf", { status: "declined", credits: 4 }),
+    step("no2", "research/papers:readPdf", { status: "declined", credits: 4 }),
+    step("yes1", "research/papers:readPdf", { status: "allowed", credits: 4 }),
   ];
-  // The ones that failed are a card beside the ones that worked; a bulk change and a question each stay their own.
-  expect(ids(runsOf(steps))).toEqual([["pdf1", "pdf2"], ["save1", "save2"], ["lost", "lost2"], ["bulk"], ["asks"]]);
+  // The ones that failed are a card beside the ones that worked, and the ones turned down another; a bulk change and a question each stay their own.
+  // Allowed reads join the ones that ran, so a card doesn't move as they start.
+  expect(ids(runsOf(steps))).toEqual([["pdf1", "pdf2", "yes1"], ["save1", "save2"], ["lost", "lost2"], ["bulk"], ["asks"], ["no1", "no2"]]);
 });
 
 it("asks once for the calls of one action a reply asked about together", () => {

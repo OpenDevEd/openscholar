@@ -4,10 +4,13 @@ import { viewOf } from "./actions";
 type CardStep = { status: string; action: string; variant?: string; batch?: unknown; credits?: number };
 
 /**
- * Whether a step's card can stand for several: it ran, or failed, as one call. A bulk change
- * is one card for many already, and a step that waits for an answer is its own question.
+ * Whether a step's card can stand for several: it ran or failed as one call, or the person
+ * answered it, as calls asked about together are. A bulk change is one card for many already,
+ * and a step that waits for an answer is its own question.
  */
-const folds = (step: CardStep) => (step.status === "done" || step.status === "running" || step.status === "failed") && step.batch === undefined;
+const folds = (step: CardStep) => step.status !== "asking" && step.batch === undefined;
+/** What part of a card's run a step is: the calls that failed, the ones the person turned down, and the rest, which were allowed and ran. */
+const outcome = (step: CardStep) => (step.status === "failed" ? "failed" : step.status === "declined" ? "declined" : "ran");
 
 /** The steps in lists, in the order the first of each list was met: each list the steps `keyOf` gives one key. A step it gives none is a list of its own. */
 function grouped<S>(steps: S[], keyOf: (step: S) => string | null): S[][] {
@@ -38,7 +41,7 @@ export function runsOf<S extends CardStep>(steps: S[]): S[][] {
   return grouped(steps, (step) => {
     if (!folds(step)) return null;
     const { kind, words } = viewOf(step.action, step.variant);
-    return `${kind}:${words}:${step.status === "failed" ? "failed" : "ran"}`;
+    return `${kind}:${words}:${outcome(step)}`;
   });
 }
 

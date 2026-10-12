@@ -215,8 +215,11 @@ export const AddCredits = createContext<(waiting: Waiting) => void>(() => {});
 function useStepTitle() {
   const t = useTranslations("assistant");
   const formOf = (step: Pick<StepItem, "status">) => (step.status === "asking" || step.status === "allowed" || step.status === "declined" ? "ask" : step.status === "running" || step.status === "failed" ? "doing" : "did");
-  /** Whether the words have a title for many calls in this form, which says how many: "Saved 5 papers". Without one, a card for many says how many beside its title. */
-  const saysMany = (words: string, step: Pick<StepItem, "status">) => t.has(`steps.${words}.${formOf(step)}Many` as "steps.other.askMany");
+  /** Whether the words have a title for many calls in this form that says how many: "Saved 5 papers", not "Removed all your searches". Without one, a card for many says how many beside its title. */
+  const saysMany = (words: string, step: Pick<StepItem, "status">) => {
+    const many = `steps.${words}.${formOf(step)}Many` as "steps.other.askMany";
+    return t.has(many) && String(t.raw(many)).includes("{count");
+  };
   /** `calls`: how many calls one card stands for, folded or asked together. */
   const title = (words: string, step: Pick<StepItem, "status" | "batch" | "count">, calls = 1): string => {
     const form = formOf(step);
@@ -607,6 +610,8 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                             or under a bulk change that was undone, what couldn't be put back, if anything. */}
                         {folded ? (
                           <>
+                            {/* Turned down, or allowed and waiting to run, the run says so first. */}
+                            {state ? <Fact>{state}</Fact> : null}
                             {saysMany(words, step) ? null : <Fact value={run.length}>{t("steps.times", { count: run.length })}</Fact>}
                             {step.status === "failed" ? (
                               <span className="truncate">{step.error ?? t("steps.interrupted")}</span>

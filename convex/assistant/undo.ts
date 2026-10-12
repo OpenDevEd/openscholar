@@ -33,9 +33,10 @@ export const run = mutation({
       if (!step.undo || step.undone) throw createError("CONFLICT", "There's nothing left to undo here.");
       steps.push({ ...step, undo: step.undo });
     }
-    // The last change made is put back first: calls run together, so one that started first may have ended last.
+    // The last change made is put back first: calls run together, so one that started first may have ended last. Two that
+    // ended in the same moment go by which started later, as the later of two such changes is the one that builds on the other.
     // All in this one transaction, so a run is undone whole or, where one of its changes can't be, not at all.
-    steps.sort((a, b) => (b.endedAt ?? b.startedAt) - (a.endedAt ?? a.startedAt));
+    steps.sort((a, b) => (b.endedAt ?? b.startedAt) - (a.endedAt ?? a.startedAt) || b._creationTime - a._creationTime);
     let { undone = [], undoneMore = [] } = thread;
     for (const step of steps) {
       const entry = USER_ACTIONS.find((candidate) => candidate.path === step.undo.path);
