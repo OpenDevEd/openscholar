@@ -7,8 +7,9 @@
  */
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
+import { createError } from "../lib/errors";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
-import { ZOTERO_ITEMS_MAX, ZOTERO_LIST_PAGE, zoteroCollectionsValidator, zoteroGroupsValidator, zoteroItemsValidator } from "./libraryValidators";
+import { checkZoteroSet, ZOTERO_ITEMS_MAX, ZOTERO_LIST_PAGE, zoteroCollectionsValidator, zoteroGroupsValidator, zoteroItemsValidator, zoteroPdfValidator } from "./libraryValidators";
 
 /** Characters of an item's abstract one read gives. */
 const ABSTRACT_SHOWN = 600;
@@ -51,7 +52,7 @@ export const itemsAction = defineUserAction({
   path: "zotero/library:items",
   description:
     `Reads a page of the items in the person's own Zotero library, or one collection of it (\`collectionKey\`, not its sub-collections), or a group's (\`groupId\`): up to ${ZOTERO_ITEMS_MAX} a page from \`start\` (0 first). ` +
-    "Each item's key, title, first authors, year, DOI, venue, type, the start of its abstract, and whether it has a PDF; `next` is where the next page starts, missing on the last.",
+    "Each item's key, title, first authors, year, DOI, venue, type, the start of its abstract, and whether it has a PDF, which zotero/library:pdf puts in the chat to read; `next` is where the next page starts, missing on the last.",
   args: { collectionKey: v.optional(v.union(v.string(), v.null())), groupId: v.optional(v.union(v.string(), v.null())), start: v.optional(v.union(v.number(), v.null())), limit: v.optional(v.union(v.number(), v.null())) },
   returns: zoteroItemsValidator,
   ...reads,
@@ -83,3 +84,25 @@ export const itemsAction = defineUserAction({
 });
 export const items = userAction(itemsAction);
 export const itemsForAssistant = assistantAction(itemsAction);
+
+export const pdfAction = defineUserAction({
+  path: "zotero/library:pdf",
+  description:
+    "Puts the PDF attached to an item of the person's own Zotero library, or of one of their groups (`groupId`), in this chat as a file, by the item's key as zotero/library:items gives it; its `pdf` says whether it has one. " +
+    "Read its pages with assistant/files:read and the `file` this returns, and cite them by page as [p. 7](/files/FILE_ID#page=7). It's the chat's file, as one the person attached is: everyone who reads the chat can open it.",
+  args: { key: v.string(), groupId: v.optional(v.union(v.string(), v.null())) },
+  returns: zoteroPdfValidator,
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: false,
+  check: async (ctx, { userId }, { key, groupId }) => await checkZoteroSet(ctx, userId, { itemKey: key, ...(groupId != null ? { groupId } : {}) }),
+  run: async (ctx, { userId, workspaceId }, { key, groupId }, call): Promise<Infer<typeof zoteroPdfValidator>> => {
+    // It goes in the chat the reply runs in, whose files the assistant reads.
+    const step = call?.stepId ?? call?.from;
+    const threadId = step ? await ctx.runQuery(internal.assistant.steps.chatOf, { stepId: step }) : null;
+    if (!threadId) throw createError("VALIDATION_ERROR", "A Zotero item's PDF is read in a chat: ask the assistant for it there.");
+    return await ctx.runAction(internal.zotero.actions.pdfToChat, { userId, workspaceId, threadId, itemKey: key, ...(groupId != null ? { groupId } : {}) });
+  },
+});
+export const pdf = userAction(pdfAction);
+export const pdfForAssistant = assistantAction(pdfAction);

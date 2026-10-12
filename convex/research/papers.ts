@@ -173,7 +173,7 @@ export const readPdfAction = defineUserAction({
   path: "research/papers:readPdf",
   description:
     "Reads a paper's open-access PDF, by its ID as results give it (such as W2741809807) or its DOI, with its `title` as they give it, which the person is shown when asked: you get the PDF itself, its text, tables and figures, for the rest of this reply. " +
-    "Search results, a paper's record and the person's saved papers say `pdf` when OpenAlex knows of one; OpenAlex may still hold a copy of one without. When none can be got, ask the person to attach its PDF to the chat. " +
+    "Search results, a paper's record and the person's saved papers say `pdf` when OpenAlex knows of one; OpenAlex may still hold a copy of one without. A paper in the person's Zotero library is read from there, with zotero/library:pdf. When none can be got, ask the person to attach its PDF to the chat. " +
     "OpenAlex sometimes links the wrong file: check the PDF is the paper you asked for, and if it isn't, say so and use nothing from it. " +
     "Cite what you take from it by page, as a link to its address with the page: [p. 7](PDF_ADDRESS#page=7). A later reply that needs it again reads it again. " +
     "The person is asked first, with what the read may cost. One request against the person's OpenAlex allowance.",

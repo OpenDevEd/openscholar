@@ -3926,6 +3926,15 @@
         "askMany": "{count, number} शोध क्षेत्रों के प्रकाशन पढ़ें",
         "doingMany": "{count, number} शोध क्षेत्रों के प्रकाशन पढ़ रहा है",
         "didMany": "{count, number} शोध क्षेत्रों के प्रकाशन पढ़े"
+      },
+      "zoteroPdf": {
+        "doing": "Zotero का PDF चैट में जोड़ रहा है",
+        "did": "Zotero का PDF चैट में जोड़ा",
+        "where": "Zotero",
+        "ask": "Zotero का PDF चैट में जोड़ें",
+        "askMany": "{count, number} Zotero PDF चैट में जोड़ें",
+        "doingMany": "{count, number} Zotero PDF चैट में जोड़ रहा है",
+        "didMany": "{count, number} Zotero PDF चैट में जोड़े"
       }
     },
     "asks": {

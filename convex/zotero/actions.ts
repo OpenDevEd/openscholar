@@ -15,6 +15,9 @@ import { createError } from "../lib/errors";
 import { ZOTERO_ABSTRACT_MAX, ZOTERO_LIST_PAGE, ZOTERO_NAME_MAX, ZOTERO_PAGE, ZOTERO_TITLE_MAX, checkZoteroIds } from "./libraryValidators";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { encrypt, decryptApiKey, getKeyPrefix } from "../lib/crypto";
+import { PDFDocument } from "@cantoo/pdf-lib";
+import { downloadPdf } from "../../lib/pdf/download";
+import { MAX_PDF_BYTES, MAX_PDF_MB } from "../../lib/assistant/files";
 
 const ZOTERO_REQUEST_TOKEN_URL = "https://www.zotero.org/oauth/request";
 const ZOTERO_ACCESS_TOKEN_URL = "https://www.zotero.org/oauth/access";
@@ -429,6 +432,46 @@ async function zoteroAccess(ctx: ActionCtx, userId: Id<"users">, groupId?: strin
   await ctx.runMutation(internal.lib.audit.writeAuditLog, { action: "KEY_DECRYPT", userId, metadata: { purpose: "zotero-api-key-decrypt" } });
   return { apiKey, connection, prefix: groupId ? `/groups/${groupId}` : `/users/${connection.zoteroUserId}` };
 }
+
+/**
+ * The PDF attached to an item of the person's own Zotero library, or a group's of theirs, put in their chat as one of
+ * its files (../assistant/files.ts `keepZoteroPdf`), for the assistant to read by pages. It's read the way an
+ * extraction reads one (../../lib/pdf/download.ts), never kept in the shared paper PDF store: the file is the person's.
+ */
+export const pdfToChat = internalAction({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), threadId: v.id("assistantThreads"), itemKey: v.string(), groupId: v.optional(v.string()) },
+  returns: v.object({ file: v.id("assistantFiles"), name: v.string(), pages: v.number() }),
+  handler: async (ctx, { userId, workspaceId, threadId, itemKey, groupId }): Promise<{ file: Id<"assistantFiles">; name: string; pages: number }> => {
+    checkZoteroIds({ groupId, itemKey });
+    const { apiKey, connection, prefix } = await zoteroAccess(ctx, userId, groupId);
+    const at = groupId ? `zotero://select/groups/${groupId}/items/${itemKey}` : `zotero://select/users/${connection!.zoteroUserId}/items/${itemKey}`;
+    const got = await downloadPdf(at, { zoteroConnection: { apiKey, userId: connection!.zoteroUserId }, maxRetries: 1 });
+    if (!got.success || !got.pdfBlob) {
+      throw createError("NOT_FOUND", got.error === "No PDF attachment found in Zotero" ? "This Zotero item has no PDF attached." : `Zotero didn't give this item's PDF (${got.error ?? "no file"}). Try again in a moment.`);
+    }
+    if (got.pdfBlob.size > MAX_PDF_BYTES) throw createError("VALIDATION_ERROR", `This item's PDF is larger than the ${MAX_PDF_MB} MB a chat file can be.`);
+    const bytes = new Uint8Array(await got.pdfBlob.arrayBuffer());
+    let pages: number;
+    try {
+      pages = (await PDFDocument.load(bytes, { updateMetadata: false })).getPageCount();
+    } catch {
+      throw createError("VALIDATION_ERROR", "This item's attachment isn't a PDF that opens.");
+    }
+    // The item's title names the file, as its name does in Zotero.
+    const item = await fetch(buildZoteroUrl(`${prefix}/items/${itemKey}`).toString(), { headers: buildZoteroHeaders(apiKey) });
+    const title = item.ok ? ((await item.json()) as ZoteroItemResponse).data?.title : undefined;
+    const name = `${(title || itemKey).slice(0, ZOTERO_TITLE_MAX)}.pdf`;
+    const storageId = await ctx.storage.store(new Blob([bytes], { type: "application/pdf" }));
+    try {
+      const file: Id<"assistantFiles"> = await ctx.runMutation(internal.assistant.files.keepZoteroPdf, { userId, workspaceId, threadId, storageId, name, bytes: bytes.length, pages });
+      return { file, name, pages };
+    } catch (error) {
+      // Refused (the plan's hourly allowance, say): nothing keeps the stored bytes.
+      await ctx.storage.delete(storageId);
+      throw error;
+    }
+  },
+});
 
 const collectionValidator = v.object({ key: v.string(), name: v.string(), parentCollection: v.union(v.string(), v.null()), numItems: v.number(), numCollections: v.number() });
 type Collection = Infer<typeof collectionValidator>;

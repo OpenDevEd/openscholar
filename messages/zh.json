@@ -3926,6 +3926,15 @@
         "askMany": "读取 {count, number} 个研究领域的出版物",
         "doingMany": "正在读取 {count, number} 个研究领域的出版物",
         "didMany": "已读取 {count, number} 个研究领域的出版物"
+      },
+      "zoteroPdf": {
+        "doing": "正在将 Zotero PDF 加入对话",
+        "did": "已将 Zotero PDF 加入对话",
+        "where": "Zotero",
+        "ask": "将 Zotero PDF 加入对话",
+        "askMany": "将 {count, number} 个 Zotero PDF 加入对话",
+        "doingMany": "正在将 {count, number} 个 Zotero PDF 加入对话",
+        "didMany": "已将 {count, number} 个 Zotero PDF 加入对话"
       }
     },
     "asks": {

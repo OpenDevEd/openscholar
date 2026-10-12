@@ -3926,6 +3926,15 @@
         "askMany": "Lire les publications de {count, plural, one {# domaine de recherche} other {# domaines de recherche}}",
         "doingMany": "Lecture des publications de {count, plural, one {# domaine de recherche} other {# domaines de recherche}}",
         "didMany": "Publications de {count, plural, one {# domaine de recherche lues} other {# domaines de recherche lues}}"
+      },
+      "zoteroPdf": {
+        "doing": "Ajout d'un PDF Zotero à la conversation",
+        "did": "PDF Zotero ajouté à la conversation",
+        "where": "Zotero",
+        "ask": "Ajouter un PDF Zotero à la conversation",
+        "askMany": "Ajouter {count, plural, one {# PDF Zotero} other {# PDF Zotero}} à la conversation",
+        "doingMany": "Ajout de {count, plural, one {# PDF Zotero} other {# PDF Zotero}} à la conversation",
+        "didMany": "{count, plural, one {# PDF Zotero ajouté} other {# PDF Zotero ajoutés}} à la conversation"
       }
     },
     "asks": {

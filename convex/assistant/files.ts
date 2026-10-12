@@ -82,16 +82,34 @@ export const startUpload = mutation({
       if (oldest._creationTime > Date.now() - ABANDONED_MS) throw createError("VALIDATION_ERROR", `You can have up to ${MAX_PENDING_FILES} files waiting to be sent. Send or remove some first.`);
       await deleteFile(ctx, oldest);
     }
-    const perHour = await planLimit(ctx, workspaceId, "uploads_per_hour");
-    if (perHour !== undefined) {
-      const { ok, retryAt } = await rateLimit(ctx, { name: "assistant-upload", key: `${userId}:${workspaceId}`, config: { kind: "token bucket", rate: perHour, period: HOUR, capacity: perHour } });
-      if (!ok) {
-        const minutes = Math.max(1, Math.ceil(((retryAt ?? Date.now()) - Date.now()) / 60_000));
-        throw createError("VALIDATION_ERROR", `Your plan lets you attach ${perHour} files an hour. You can attach more in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`);
-      }
-    }
+    await countUpload(ctx, userId, workspaceId);
     const mediaType = pdfBytes !== undefined ? "application/pdf" : (text ?? "");
     return { fileId: await ctx.db.insert("assistantFiles", { userId, name: clean, bytes: 0, mediaType, state: "pending", usedAt: Date.now(), uploadDigest: digest }) };
+  },
+});
+
+/** Counts a file against how many the workspace's plan lets the person attach an hour, refusing one past it. */
+async function countUpload(ctx: MutationCtx, userId: Id<"users">, workspaceId: Id<"workspaces">) {
+  const perHour = await planLimit(ctx, workspaceId, "uploads_per_hour");
+  if (perHour === undefined) return;
+  const { ok, retryAt } = await rateLimit(ctx, { name: "assistant-upload", key: `${userId}:${workspaceId}`, config: { kind: "token bucket", rate: perHour, period: HOUR, capacity: perHour } });
+  if (!ok) {
+    const minutes = Math.max(1, Math.ceil(((retryAt ?? Date.now()) - Date.now()) / 60_000));
+    throw createError("VALIDATION_ERROR", `Your plan lets you attach ${perHour} files an hour. You can attach more in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`);
+  }
+}
+
+/**
+ * A PDF from the person's own Zotero library, put in their chat (../zotero/actions.ts `pdfToChat`): one of the
+ * chat's files, as one they attached is, counted against the same hourly allowance, for the assistant to read by pages.
+ */
+export const keepZoteroPdf = internalMutation({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), threadId: v.id("assistantThreads"), storageId: v.id("_storage"), name: v.string(), bytes: v.number(), pages: v.number() },
+  returns: v.id("assistantFiles"),
+  handler: async (ctx, { userId, workspaceId, threadId, storageId, name, bytes, pages }) => {
+    await requireThread(ctx, userId, threadId, "write");
+    await countUpload(ctx, userId, workspaceId);
+    return await ctx.db.insert("assistantFiles", { userId, threadId, storageId, name: name.trim().slice(0, MAX_FILE_NAME) || "Zotero PDF", bytes, mediaType: "application/pdf", state: "sent", usedAt: Date.now(), pages });
   },
 });
 

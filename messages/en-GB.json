@@ -3926,6 +3926,15 @@
         "askMany": "Read the publications of {count, plural, one {# research area} other {# research areas}}",
         "doingMany": "Reading the publications of {count, plural, one {# research area} other {# research areas}}",
         "didMany": "Read the publications of {count, plural, one {# research area} other {# research areas}}"
+      },
+      "zoteroPdf": {
+        "doing": "Putting a Zotero PDF in the chat",
+        "did": "Put a Zotero PDF in the chat",
+        "where": "Zotero",
+        "ask": "Put a Zotero PDF in the chat",
+        "askMany": "Put {count, plural, one {# Zotero PDF} other {# Zotero PDFs}} in the chat",
+        "doingMany": "Putting {count, plural, one {# Zotero PDF} other {# Zotero PDFs}} in the chat",
+        "didMany": "Put {count, plural, one {# Zotero PDF} other {# Zotero PDFs}} in the chat"
       }
     },
     "asks": {
