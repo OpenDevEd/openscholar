@@ -368,12 +368,19 @@ export function assistantMutation<Args extends PropertyValidators, Returns exten
       args: { ...entry.args, ...changeArgs },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { userId, workspaceId, stepId, approved, approvedCredits: _held, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
+        const { userId, workspaceId, stepId, approved, approvedCredits, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
         const rest = own as ObjectType<Args>;
         // The sender may have been suspended or deleted since the turn began.
         const actor = await actingAs(ctx, userId, workspaceId, "assistant");
         // Read here, in the change's own transaction: what was true before the call may not be now.
         if (!approved && entry.asksFirst && (await entry.asksFirst(ctx, actor, rest))) throw createError("FORBIDDEN", ASKS_FIRST);
+        // A change that spends credits holds no more than the person let it (#328): by a yes to its question, by what they allow
+        // in the chat, or by pressing it themselves, as Undo does. What it would hold is read again here: a retry whose failures
+        // grew while it waited for the answer is asked about again, not run past the figure the person said yes to.
+        if (entry.spendsCredits && approvedCredits === undefined && !approved) throw createError("FORBIDDEN", ASKS_FIRST);
+        if (entry.spendsCredits && entry.estimate && approvedCredits !== undefined && (await entry.estimate(ctx, actor, rest)) > approvedCredits) {
+          throw createError("CONFLICT", "This would cost more now than was allowed. Ask again with what it costs now.");
+        }
         const result = await changed(ctx, entry, actor, rest);
         // The step, and through it the model, is told a change that returns nothing was made.
         // Called by reference, in this transaction: importing the steps module would load the assistant's agent with every action defined here.

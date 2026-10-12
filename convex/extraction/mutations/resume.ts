@@ -37,6 +37,8 @@ import { internal } from "../../_generated/api";
 import { createError } from "../../lib/errors";
 import { jobIn } from "../access";
 import { readJobCounters } from "../jobCounters";
+import { MAX_JOB_SOURCES, bucketItemFromRow } from "../jobSources";
+import { effectivePaperCount } from "../../../lib/bucket/effective-paper-count";
 import { assistantMutation, defineUserMutation, reversedBy, userMutation } from "../../lib/userActions";
 import {
   assertValidJobTransition,
@@ -117,11 +119,16 @@ export const requeueLater = internalMutation({
   },
 });
 
-/** The most carrying on a job costs: every paper it hasn't read yet, at the most one paper costs. */
+/**
+ * The most carrying on a job costs: every paper it hasn't read yet, at the most one paper costs. A job paused while
+ * its setup read its sources has saved only some of its papers, so its papers are what its sources hold, if more.
+ */
 async function resumeCredits(ctx: QueryCtx, job: Doc<"extractionJobs">) {
   const questions = await ctx.db.query("extractionQuestions").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(MAX_QUESTIONS_PER_JOB);
+  const sources = await ctx.db.query("extractionJobSources").withIndex("by_job_and_position", (q) => q.eq("jobId", job._id)).take(MAX_JOB_SOURCES);
+  const papers = Math.max(job.totalPapers ?? 0, effectivePaperCount(sources.map(bucketItemFromRow)));
   const { processed } = await readJobCounters(ctx, job._id);
-  return Math.max(0, (job.totalPapers ?? 0) - processed) * extractionPaperCredits(await extractionPricing(ctx, job), questions, job.usePdfs ?? false);
+  return Math.max(0, papers - processed) * extractionPaperCredits(await extractionPricing(ctx, job), questions, job.usePdfs ?? false);
 }
 
 export const resumeExtractionAction = defineUserMutation({

@@ -487,6 +487,29 @@ describe("retryFailedQuestions — public mutation guards", () => {
     expect(rows.every((r) => r.status === "failed")).toBe(true);
   });
 
+  it("from the chat, retries only within the credits the person allowed, read again as it runs", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
+    const { jobId } = await seedJob(t, userId, {
+      jobStatus: "completed",
+      paperStatus: "completed",
+      rows: [
+        { kind: "failed", key: "q_rate", code: "rate_limit" },
+        { kind: "failed", key: "q_net", code: "network" },
+      ],
+    });
+    const { workspaceId } = (await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!;
+    const estimate = await t.withIdentity(OWNER_IDENTITY).query(api.extraction.queries.costs.estimateRetry, { jobId });
+    const retry = (allowed: { approved?: boolean; approvedCredits?: number }) => t.mutation(internal.extraction.mutations.retry.retryFailedQuestionsForAssistant, { userId, workspaceId, jobId, ...allowed });
+
+    // Unasked, it doesn't run. Allowed less than its failures cost now, as when more failed while it waited, it's asked again.
+    await expect(retry({})).rejects.toThrow(/say first/);
+    await expect(retry({ approved: true, approvedCredits: estimate - 1 })).rejects.toThrow(/cost more now/);
+    expect((await t.run((ctx) => ctx.db.get(jobId)))?.status).toBe("completed");
+    expect(await retry({ approved: true, approvedCredits: estimate })).toMatchObject({ retryableCount: 2 });
+  });
+
   it("enqueues retry queue work on the happy path", async () => {
     const t = convexTest(schema);
     setupExtractionPaperWorkpool(t);

@@ -17,6 +17,7 @@ import {
 } from "../../billing/billing.test-support";
 import { extractionPaperCredits } from "../../../lib/pricing";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
+import { rowFromBucketItem } from "../jobSources";
 
 /** The price of the model the jobs are stamped with: GPT-6 Luna's. */
 const PRICE = { input: 0.1, output: 0.5 };
@@ -436,5 +437,27 @@ describe("resumeExtraction — nothing left to run", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("resumeExtraction — from the chat", () => {
+  it("is held to the credits the person allowed, counting the papers its setup had still to read", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    const userId = await seedUserAndCredits(t);
+    const jobId = await seedJob(t, userId, { jobStatus: "paused", pausedFromStatus: "pending", questions: 1 });
+    // Paused while its setup read its one source, a search of 40 papers, it had saved none of them yet.
+    await t.run(async (ctx) => {
+      await ctx.db.patch("extractionJobs", jobId, { totalPapers: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 } });
+      await ctx.db.insert("extractionJobSources", rowFromBucketItem(jobId, 0, { source: "history", bucketKey: "search", sourceRefId: "search-1", title: "tutor", authors: [], searchFilters: { limit: 40 } }));
+    });
+    const { workspaceId } = (await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!;
+    const resume = (allowed: { approved?: boolean; approvedCredits?: number }) => t.mutation(internal.extraction.mutations.resume.resumeExtractionForAssistant, { userId, workspaceId, jobId, ...allowed });
+
+    // Unasked, it doesn't run; allowed a credit, it would run past it.
+    await expect(resume({})).rejects.toThrow(/say first/);
+    await expect(resume({ approved: true, approvedCredits: 1 })).rejects.toThrow(/cost more now/);
+    expect((await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!.status).toBe("paused");
+    expect(await resume({ approved: true, approvedCredits: 1_000_000 })).toMatchObject({ resumed: true });
   });
 });
