@@ -3738,7 +3738,8 @@
         "query": "Requête",
         "file": "Fichier",
         "pages": "Pages",
-        "range": "Partie"
+        "range": "Partie",
+        "job": "Tâche"
       }
     },
     "topUp": {

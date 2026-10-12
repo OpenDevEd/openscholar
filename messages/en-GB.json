@@ -3738,7 +3738,8 @@
         "query": "Query",
         "file": "File",
         "pages": "Pages",
-        "range": "Part"
+        "range": "Part",
+        "job": "Job"
       }
     },
     "topUp": {

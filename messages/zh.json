@@ -3738,7 +3738,8 @@
         "query": "查询",
         "file": "文件",
         "pages": "页",
-        "range": "范围"
+        "range": "范围",
+        "job": "任务"
       }
     },
     "topUp": {
