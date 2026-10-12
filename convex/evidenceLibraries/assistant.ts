@@ -23,13 +23,13 @@ import { changeLibraryInvitation } from "./invitations";
 import { readSourceStatus } from "./sourceStatus";
 import { sourceStatusReadValidator } from "./sourceStatusValidators";
 import { readPendingLibraryInvitations } from "./access";
-import { notSetUpValidator, reviewedPublicationValidator, runtimeCollectionValidator, runtimeInstitutionValidator, runtimePage } from "../zotero/runtimeReadValidators";
+import { reviewedPublicationValidator, runtimeCollectionValidator, runtimeInstitutionValidator, runtimePage } from "../zotero/runtimeReadValidators";
 import { RUNTIME_READ_PAGE_SIZE } from "../zotero/runtimeReadClient";
 import { memberIdWithEmail } from "../organizations/read";
 import { saveEvidenceLibraryDraftSections } from "./mutations";
 import { libraryTeamValidator, readEvidenceLibraryDraft, readEvidenceLibraryRevision, readLibraryTeam, revisionReadValidator } from "./queries";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
-import { addressReservationValidator, assistantDraftValidator, assistantEditResultValidator, assistantLibrariesValidator, pendingInvitationsValidator, DRAFT_CHANGES_MAX, DRAFT_PATH_DEPTH, draftChangesValidator, draftPathValidator, LIBRARIES_LISTED } from "./validators";
+import { addressReservedValidator, assistantDraftValidator, assistantEditResultValidator, assistantLibrariesValidator, pendingInvitationsValidator, DRAFT_CHANGES_MAX, DRAFT_PATH_DEPTH, draftChangesValidator, draftPathValidator, LIBRARIES_LISTED } from "./validators";
 
 const EDIT_PATH = "evidenceLibraries/assistant:editDraft" as const;
 type Change = Infer<typeof draftChangesValidator>[number];
@@ -394,14 +394,26 @@ export const startLibraryAction = defineUserAction({
     "Starts a new Evidence Library as a draft, for an admin of the organization the reply runs in whose plan has Evidence Libraries: reserves the address its name gives and makes its draft settings, which evidenceLibraries/assistant:editDraft then changes. " +
     "Nothing is public until the draft is put live, on the library's page. Asks the person first.",
   args: { name: v.string() },
-  returns: addressReservationValidator,
+  returns: addressReservedValidator,
   spendsCredits: false,
   // It takes an address and a place among the organization's libraries, and nothing gives them back by itself.
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, actor, { name }): Promise<Infer<typeof addressReservationValidator>> => {
+  run: async (ctx, actor, { name }): Promise<Infer<typeof addressReservedValidator>> => {
     const organizationId = await ctx.runQuery(internal.evidenceLibraries.assistant.organizationHere, { workspaceId: actor.workspaceId });
-    return await ctx.runAction(internal.evidenceLibraries.addressActions.reserveAddressFor, { name, organizationId, actingAs: actor.userId });
+    const reserved = await ctx.runAction(internal.evidenceLibraries.addressActions.reserveAddressFor, { name, organizationId, actingAs: actor.userId });
+    // One not made is a failed step, never a done one.
+    if (reserved.status === "reserved") return reserved;
+    throw createError(
+      "CONFLICT",
+      reserved.status === "name-taken"
+        ? "The organization already has a library with that name. Pick another."
+        : reserved.status === "address-taken"
+          ? "Someone took that address while it was being reserved. Try again."
+          : reserved.reason === "check-failed"
+            ? "The address couldn't be checked just now. Try again in a moment."
+            : "No free address was found for that name. Pick another.",
+    );
   },
 });
 export const startLibrary = userAction(startLibraryAction);
@@ -425,7 +437,7 @@ const collectionsPage = runtimePage(runtimeCollectionValidator);
 const institutionsPage = runtimePage(runtimeInstitutionValidator);
 const publicationsPage = runtimePage(reviewedPublicationValidator);
 const publicationRead = v.union(reviewedPublicationValidator, v.null());
-const syncRead = v.object({ reason: notSetUpValidator });
+
 
 export const runningCollectionsAction = defineUserAction({
   path: "evidenceLibraries/assistant:runningCollections",
@@ -487,14 +499,16 @@ export const syncSourceAction = defineUserAction({
   path: "evidenceLibraries/assistant:syncSource",
   description: "Asks the running library to run one of its sources again now, by the key evidenceLibraries/assistant:sources gives: an import that failed is retried within seconds. For an owner; asks the person first.",
   args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string() },
-  returns: syncRead,
+  returns: v.null(),
   spendsCredits: false,
   // The library's records change for everyone who reads it.
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, actor, args): Promise<Infer<typeof syncRead>> => {
+  run: async (ctx, actor, args): Promise<null> => {
     await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId: args.libraryId });
-    return await ctx.runAction(internal.zotero.runtimeReadActions.requestSourceRunFor, { ...args, actingAs: actor.userId });
+    const ran: { reason?: "not-set-up" } = await ctx.runAction(internal.zotero.runtimeReadActions.requestSourceRunFor, { ...args, actingAs: actor.userId });
+    if (ran.reason) throw createError("CONFLICT", "The library isn't running yet, so there's no import to retry.");
+    return null;
   },
 });
 export const syncSource = userAction(syncSourceAction);
