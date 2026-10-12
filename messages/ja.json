@@ -3734,6 +3734,24 @@
         "did": "チャットのモデルを一覧しました",
         "where": "モデル",
         "ask": "チャットのモデルを一覧"
+      },
+      "zoteroGroups": {
+        "doing": "Zotero のグループを読んでいます",
+        "did": "Zotero のグループを読みました",
+        "where": "Zotero",
+        "ask": "Zotero のグループを読む"
+      },
+      "zoteroCollections": {
+        "doing": "Zotero のコレクションを読んでいます",
+        "did": "Zotero のコレクションを読みました",
+        "where": "Zotero",
+        "ask": "Zotero のコレクションを読む"
+      },
+      "zoteroItems": {
+        "doing": "Zotero の項目を読んでいます",
+        "did": "Zotero の項目を読みました",
+        "where": "Zotero",
+        "ask": "Zotero の項目を読む"
       }
     },
     "asks": {
@@ -3781,7 +3799,9 @@
         "file": "ファイル",
         "pages": "ページ",
         "range": "範囲",
-        "job": "ジョブ"
+        "job": "ジョブ",
+        "zotero": "Zotero のコレクション",
+        "group": "Zotero のグループ"
       }
     },
     "topUp": {

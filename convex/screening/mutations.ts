@@ -103,7 +103,8 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
     const job = set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
     if (set?.kind === "collection" && collection?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
     if (set?.kind === "screening" && (!job || !(job.workspaceId === workspaceId))) throw createError("NOT_FOUND", "Screening not found");
-    label = collection?.name ?? job?.name ?? job?.label;
+    // A Zotero set's collection is named in the person's Zotero, which this doesn't read: it's called by where its papers are.
+    label = collection?.name ?? job?.name ?? job?.label ?? (set?.kind === "zotero" ? "Zotero" : undefined);
   }
 
   // Stamped with what Screen All runs on (read back at run by screenPaperAction).

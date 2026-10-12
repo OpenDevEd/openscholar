@@ -55,6 +55,7 @@ export type BucketItemInput = PaperSourceMetadata & {
   collectionKey?: string;
   includeDescendants?: boolean;
   librarySet?: Doc<"extractionJobSources">["librarySet"];
+  zoteroSet?: Doc<"extractionJobSources">["zoteroSet"];
 };
 
 export function rowFromBucketItem(
@@ -89,6 +90,7 @@ export function rowFromBucketItem(
     collectionKey: item.collectionKey,
     includeDescendants: item.includeDescendants,
     librarySet: item.librarySet,
+    zoteroSet: item.zoteroSet,
   };
 }
 
@@ -117,6 +119,7 @@ export function bucketItemFromRow(row: Doc<"extractionJobSources">): BucketItemI
     collectionKey: row.collectionKey,
     includeDescendants: row.includeDescendants,
     librarySet: row.librarySet,
+    zoteroSet: row.zoteroSet,
   };
 }
 

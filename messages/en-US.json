@@ -3734,6 +3734,24 @@
         "did": "Listed the chat models",
         "where": "Models",
         "ask": "List the chat models"
+      },
+      "zoteroGroups": {
+        "doing": "Reading your Zotero groups",
+        "did": "Read your Zotero groups",
+        "where": "Zotero",
+        "ask": "Read your Zotero groups"
+      },
+      "zoteroCollections": {
+        "doing": "Reading your Zotero collections",
+        "did": "Read your Zotero collections",
+        "where": "Zotero",
+        "ask": "Read your Zotero collections"
+      },
+      "zoteroItems": {
+        "doing": "Reading items in your Zotero",
+        "did": "Read items in your Zotero",
+        "where": "Zotero",
+        "ask": "Read items in your Zotero"
       }
     },
     "asks": {
@@ -3781,7 +3799,9 @@
         "file": "File",
         "pages": "Pages",
         "range": "Part",
-        "job": "Job"
+        "job": "Job",
+        "zotero": "Zotero collection",
+        "group": "Zotero group"
       }
     },
     "topUp": {

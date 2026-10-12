@@ -879,6 +879,7 @@ export default defineSchema({
     includeDescendants: v.optional(v.boolean()),
     // A collection's or the library's papers, a range of them, as one source (convex/extraction/validators.ts).
     librarySet: v.optional(librarySetValidator),
+    zoteroSet: v.optional(v.object({ first: v.number(), last: v.number() })),
   })
     .index("by_job_and_position", ["jobId", "position"])
     .index("by_job_and_source", ["jobId", "source"]),

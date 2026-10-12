@@ -3734,6 +3734,24 @@
         "did": "已列出聊天模型",
         "where": "模型",
         "ask": "列出聊天模型"
+      },
+      "zoteroGroups": {
+        "doing": "正在读取您的 Zotero 群组",
+        "did": "已读取您的 Zotero 群组",
+        "where": "Zotero",
+        "ask": "读取您的 Zotero 群组"
+      },
+      "zoteroCollections": {
+        "doing": "正在读取您的 Zotero 合集",
+        "did": "已读取您的 Zotero 合集",
+        "where": "Zotero",
+        "ask": "读取您的 Zotero 合集"
+      },
+      "zoteroItems": {
+        "doing": "正在读取您 Zotero 中的条目",
+        "did": "已读取您 Zotero 中的条目",
+        "where": "Zotero",
+        "ask": "读取您 Zotero 中的条目"
       }
     },
     "asks": {
@@ -3781,7 +3799,9 @@
         "file": "文件",
         "pages": "页",
         "range": "范围",
-        "job": "任务"
+        "job": "任务",
+        "zotero": "Zotero 合集",
+        "group": "Zotero 群组"
       }
     },
     "topUp": {

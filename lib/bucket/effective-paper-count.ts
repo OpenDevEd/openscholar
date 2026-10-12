@@ -17,6 +17,7 @@ export type EffectiveCountItem = {
   source: "history" | "library" | "collection" | "zotero" | "upload" | "screening";
   screeningSelection?: { count: number };
   librarySet?: { count: number };
+  zoteroSet?: { first: number; last: number };
   searchFilters?: { first?: number; limit?: number } & Record<string, unknown>;
 };
 
@@ -24,6 +25,7 @@ export type EffectiveCountItem = {
 export function paperCountForItem(item: EffectiveCountItem): number {
   if (item.source === "screening") return item.screeningSelection?.count ?? 0;
   if (item.librarySet) return item.librarySet.count;
+  if (item.zoteroSet) return Math.max(0, item.zoteroSet.last - item.zoteroSet.first + 1);
   if (item.source !== "history" || !item.searchFilters) return 1;
   const raw = item.searchFilters.limit ?? PAPER_PULL_DEFAULT;
   const first = item.searchFilters.first ?? 1;

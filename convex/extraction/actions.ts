@@ -33,6 +33,8 @@ import {
   classifyUnknownError,
   type ClassifiedError,
 } from "@/lib/errors/taxonomy";
+import { ZOTERO_PAGE } from "../zotero/libraryValidators";
+import { MAX_AUTHORS } from "../lib/listCaps";
 
 
 type SetupRuntime = {
@@ -198,7 +200,7 @@ type StepSource = { position: number; item: BucketItemInput };
 type SetupPaper = PaperDataOut & { storageId?: Id<"_storage">; sourceType: "history" | "zotero" | "manual" | "screening"; sourceId: string; screeningRevision?: string };
 
 /** A search or a screening reads its papers a page at a time; every other source is one paper. */
-const pagedSource = (item: BucketItemInput) => item.source === "screening" || item.librarySet !== undefined || (item.source === "history" && item.searchFilters !== undefined);
+const pagedSource = (item: BucketItemInput) => item.source === "screening" || item.librarySet !== undefined || item.zoteroSet !== undefined || (item.source === "history" && item.searchFilters !== undefined);
 
 /**
  * The next step of a job's papers from `place`, and where its setup goes on after it; null
@@ -239,6 +241,19 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
     const papers = held.map(({ venue, ...paper }): SetupPaper => ({ ...paper, venueName: venue, sourceType: "manual", sourceId: range.collectionId ?? "library" }));
     const read = place.read + papers.length;
     return { papers, next: resume && read < range.count ? { ...place, read, resume } : onTo(position + 1) };
+  }
+  if (item.zoteroSet) {
+    // A range of the person's own Zotero, one page of Zotero's a step, each item read as a Zotero paper picked on the page is (./expandSources.ts).
+    const range = item.zoteroSet;
+    const first = range.first + place.read;
+    const last = Math.min(range.last, first + ZOTERO_PAGE - 1);
+    if (last < first) return { papers: [], next: onTo(position + 1) };
+    const read: { papers: Array<{ key: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean; zoteroUserId: string } = await ctx.runAction(internal.zotero.actions.papersOf, { userId: job.createdBy, ...(item.collectionKey ? { collectionKey: item.collectionKey } : {}), ...(item.groupId ? { groupId: item.groupId } : {}), first, last });
+    const items = read.papers.map((paper): BucketItemInput => ({ ...item, zoteroSet: undefined, bucketKey: `${item.bucketKey}:${paper.key}`, sourceRefId: paper.key, title: paper.title, authors: paper.authors.slice(0, MAX_AUTHORS), year: paper.year, doi: paper.doi, abstract: paper.abstract, venueName: paper.venue, zoteroUserId: read.zoteroUserId }));
+    const expanded = await expandJobSources(items, { fetchPapersFromHistory: () => { throw new Error("A Zotero range holds no search"); }, readLibraryItems: async () => [], resolveZoteroUserId: async () => read.zoteroUserId });
+    const papers = expanded.map(({ paper, sourceType, sourceId }): SetupPaper => ({ ...paper, storageId: paper.storageId as Id<"_storage"> | undefined, sourceType, sourceId }));
+    const done = read.ended || last >= range.last;
+    return { papers, next: done ? onTo(position + 1) : { ...place, read: place.read + (last - first + 1) } };
   }
   if (item.source === "screening") {
     const selection = item.screeningSelection;
