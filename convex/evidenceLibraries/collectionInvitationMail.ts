@@ -5,7 +5,7 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { requireInvitationMail, sendInvitationEmail } from "../lib/invitationDelivery";
-import { renderCollectionInvitation } from "../../lib/emails/library-template";
+import { collectionInvitationMessage } from "../../lib/emails/collection-invitation";
 
 /** Sends a waiting invitation's email for one send (`attempt`, its expiry), and keeps and answers whether it went. One that can't go is logged with why. */
 export const deliver = internalAction({
@@ -16,18 +16,15 @@ export const deliver = internalAction({
     let delivery: "sent" | "failed" = "failed";
     if (!invitation) console.error("Collection invitation email has nothing to send", { invitationId });
     else {
-      const role = invitation.role === "editor" ? "edit" : "view";
       try {
         await sendInvitationEmail(requireInvitationMail(), {
           senderName: `${invitation.inviter} via ${invitation.libraryName}`,
           senderEmail: invitation.contactEmail,
           to: invitation.email,
-          subject: `${invitation.inviter} shared ${invitation.collectionName} with you`,
-          html: renderCollectionInvitation({
+          ...collectionInvitationMessage({
             identity: { ...invitation.emailIdentity, baseUrl: invitation.emailIdentity.baseUrl ?? new URL(invitation.acceptUrl).origin },
-            inviter: invitation.inviter, collectionName: invitation.collectionName, role: invitation.role, acceptUrl: invitation.acceptUrl,
+            acceptUrl: invitation.acceptUrl, email: invitation.email, collectionName: invitation.collectionName, role: invitation.role, inviter: invitation.inviter,
           }),
-          text: `${invitation.inviter} shared the collection ${invitation.collectionName} with you in ${invitation.libraryName}. You can ${role} it.\n\nSign in with ${invitation.email} to open the invitation:\n${invitation.acceptUrl}\n\nThis invitation expires in seven days.`,
         });
         delivery = "sent";
       } catch (error) {
