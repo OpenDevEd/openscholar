@@ -461,7 +461,16 @@ const narrowing = {
   maxRating: optional(v.number()),
   yearFrom: optional(v.number()),
   yearTo: optional(v.number()),
+  savedFrom: optional(v.string()),
+  savedTo: optional(v.string()),
 };
+/** A day as YYYY-MM-DD, in UTC: its first moment, and its last with `end`. A day that isn't one, such as 2026-02-30, is refused. */
+function dayAt(text: string, name: string, end = false) {
+  const [, year, month, day] = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text.trim()) ?? [];
+  const start = Date.UTC(Number(year), Number(month) - 1, Number(day));
+  if (!year || new Date(start).toISOString().slice(0, 10) !== text.trim()) throw createError("VALIDATION_ERROR", `\`${name}\` is a day as YYYY-MM-DD, such as 2026-10-01.`);
+  return end ? start + 24 * 60 * 60 * 1000 - 1 : start;
+}
 /** The library's own filters from those. A model that fills in every argument sends null or nothing for what it doesn't mean: each reads as left out. */
 function viewOf(given: ObjectType<typeof narrowing>) {
   const text = given.search?.trim();
@@ -474,6 +483,8 @@ function viewOf(given: ObjectType<typeof narrowing>) {
     ...(given.maxRating != null ? { maxRating: given.maxRating } : {}),
     ...(given.yearFrom != null ? { yearFrom: given.yearFrom } : {}),
     ...(given.yearTo != null ? { yearTo: given.yearTo } : {}),
+    ...(given.savedFrom ? { savedAfter: dayAt(given.savedFrom, "savedFrom") } : {}),
+    ...(given.savedTo ? { savedBefore: dayAt(given.savedTo, "savedTo", true) } : {}),
   };
   if (given.rated === false && (view.minRating !== undefined || view.maxRating !== undefined)) throw createError("VALIDATION_ERROR", "A paper without a rating has none to filter by: give `rated` false or a rating range, not both.");
   return view;
@@ -491,7 +502,7 @@ export const papersAction = defineUserQuery({
     "`collectionId` may also be a collection shared with them from another workspace: its papers are that workspace's, so each comes with their own library item ID only if they saved the paper themselves, and `inCollection` says whether their own copy is in a collection of theirs. " +
     "`total` is how many papers the whole library or one collection has; a narrowed list has none, and library/queries:countPapers counts it. " +
     "With nothing else given it lists the whole library, newest saved first. To narrow it: `search` is words to find in titles, abstracts and authors; `collectionId` is one of their collections (from library/collections:listCollections); " +
-    "`rated` is true for only the papers with a rating and false for only those without; `minRating` and `maxRating` are 0 to 5. Both go by the rating listed, which in an organization's library is its members' average. `yearFrom` and `yearTo` are years published. " +
+    "`rated` is true for only the papers with a rating and false for only those without; `minRating` and `maxRating` are 0 to 5. Both go by the rating listed, which in an organization's library is its members' average. `yearFrom` and `yearTo` are years published. `savedFrom` and `savedTo` are the first and last days saved, as YYYY-MM-DD in UTC. " +
     "`sort` is saved, rating, year, citations or title, and `ascending` turns its order round. `cursor` is `next` from the page before.",
   args: {
     ...narrowing,
@@ -537,7 +548,7 @@ export const papersForAssistant = assistantQuery(papersAction);
 export const countPapersAction = defineUserQuery({
   path: "library/queries:countPapers",
   description:
-    "Counts the papers in the person's library that a narrowed list has, by the same `search`, `collectionId`, `rated`, `minRating`, `maxRating`, `yearFrom` and `yearTo` as library/queries:papers. " +
+    "Counts the papers in the person's library that a narrowed list has, by the same `search`, `collectionId`, `rated`, `minRating`, `maxRating`, `yearFrom`, `yearTo`, `savedFrom` and `savedTo` as library/queries:papers. " +
     "A count that stopped short of them all comes with `atLeast`.",
   args: narrowing,
   returns: v.object({ count: v.number(), atLeast: v.optional(v.literal(true)) }),

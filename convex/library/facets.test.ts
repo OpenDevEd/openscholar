@@ -53,6 +53,25 @@ describe("library facets", () => {
     expect(await as.query(api.library.queries.countPapers, { minRating: 5 })).toEqual({ count: 1 });
   });
 
+  it("lists and counts the papers saved between two days, the last one whole", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    try {
+      const t = convexTest(schema);
+      const { as } = await setup(t);
+      for (const [i, at] of ["2026-09-30T23:59:59Z", "2026-10-01T00:00:00Z", "2026-10-03T23:59:59Z", "2026-10-04T00:00:00Z"].entries()) {
+        vi.setSystemTime(new Date(at));
+        await as.mutation(api.library.mutations.saveToLibrary, paper(i));
+      }
+      await t.finishAllScheduledFunctions(() => {});
+      const days = { savedFrom: "2026-10-01", savedTo: "2026-10-03" };
+      expect(await as.query(api.library.queries.countPapers, days)).toEqual({ count: 2 });
+      expect((await as.query(api.library.queries.papers, days)).papers.map((saved) => saved.title).sort()).toEqual(["Paper 1", "Paper 2"]);
+      await expect(as.query(api.library.queries.countPapers, { savedFrom: "2026-02-30" })).rejects.toThrow(/YYYY-MM-DD/);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("counts several filters exactly, and papers with no rating", async () => {
     const t = convexTest(schema);
     const { as } = await setup(t);

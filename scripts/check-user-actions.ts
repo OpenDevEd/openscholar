@@ -1,8 +1,9 @@
 // The action registry's gate. The assistant can do everything a user can, so every
 // public Convex function and Next.js server action must be built from a registry entry
 // (convex/lib/userActions.ts) or listed in scripts/user-actions-exempt.json: under
-// "plumbing" with the reason it isn't a user action, or under "pending" with the issue
-// that will register it.
+// "plumbing" with the reason it isn't a user action, under "covered" with the registered
+// action the assistant does the same with, under "manual" with the reason it stays on its
+// page, or under "pending" with the issue that will register it.
 //
 // Convex functions are read at runtime, from what each module actually exports, so
 // re-exports, default exports and factories are all seen. Server actions are read from
@@ -111,24 +112,29 @@ for (const file of sources) {
   }
 }
 
-const exempt = JSON.parse(readFileSync("scripts/user-actions-exempt.json", "utf8")) as { plumbing: Record<string, string>; pending: Record<string, string>; inWorkspace: string[] };
+const exempt = JSON.parse(readFileSync("scripts/user-actions-exempt.json", "utf8")) as { plumbing: Record<string, string>; covered: Record<string, string>; manual: Record<string, string>; pending: Record<string, string>; inWorkspace: string[] };
 const plumbing = new Map(Object.entries(exempt.plumbing));
+const covered = new Map(Object.entries(exempt.covered));
+const manual = new Map(Object.entries(exempt.manual));
 const pending = new Map(Object.entries(exempt.pending));
+const sections = { plumbing, covered, manual, pending };
 
-const unlisted = [...raw].filter((id) => !plumbing.has(id) && !pending.has(id)).sort();
+const unlisted = [...raw].filter((id) => !Object.values(sections).some((section) => section.has(id))).sort();
 if (process.argv.includes("--list")) {
   console.log(unlisted.join("\n"));
   process.exit(0);
 }
 for (const id of unlisted) problems.push(`${id}: register it (convex/lib/userActions.ts), or list it in scripts/user-actions-exempt.json.`);
-for (const [id, reason] of plumbing) {
-  if (!raw.has(id)) problems.push(`${id}: listed as plumbing but no longer exists; remove it.`);
-  if (reason.trim().length < 10) problems.push(`${id}: plumbing needs its reason.`);
+for (const [name, section] of Object.entries(sections)) {
+  for (const id of section.keys()) {
+    if (!raw.has(id)) problems.push(`${id}: listed as ${name} but no longer exists or is registered now; remove it.`);
+    const other = Object.entries(sections).find(([otherName, otherSection]) => otherName > name && otherSection.has(id));
+    if (other) problems.push(`${id}: listed as both ${name} and ${other[0]}; keep one.`);
+  }
 }
-for (const [id, issue] of pending) {
-  if (!raw.has(id)) problems.push(`${id}: listed as pending but no longer exists or is registered now; remove it.`);
-  if (!/^#\d+$/.test(issue)) problems.push(`${id}: pending needs the issue that will register it, such as "#327".`);
-}
+for (const [id, reason] of [...plumbing, ...manual]) if (reason.trim().length < 10) problems.push(`${id}: needs its reason.`);
+for (const [id, path] of covered) if (!listed.has(path)) problems.push(`${id}: covered by ${path}, which isn't a registered action.`);
+for (const [id, issue] of pending) if (!/^#\d+$/.test(issue)) problems.push(`${id}: pending needs the issue that will register it, such as "#327".`);
 
 // The modules whose records have moved into workspaces (#650): every public function in one acts in a
 // workspace and checks it, a registered action through its wrapper and any other itself, so nothing reaches
@@ -144,4 +150,4 @@ if (problems.length) {
   console.error(`User action registry: ${problems.length} problem${problems.length === 1 ? "" : "s"}.\n\n${problems.join("\n")}`);
   process.exit(1);
 }
-console.log(`User action registry: ${listed.size} registered, ${pending.size} pending, ${plumbing.size} plumbing.`);
+console.log(`User action registry: ${listed.size} registered, ${covered.size} covered, ${manual.size} manual, ${pending.size} pending, ${plumbing.size} plumbing.`);
