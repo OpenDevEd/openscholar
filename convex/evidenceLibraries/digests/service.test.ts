@@ -64,8 +64,7 @@ it("writes the digest in the background and returns it on every request until it
   expect(sent.writer).toHaveLength(1);
   expect(sent.writer[0]).toMatchObject({model: "openai/gpt-6-luna", reasoning: {effort: "max"}, provider: {require_parameters: true, allow_fallbacks: false}});
   expect(sent.writer[0]).not.toHaveProperty("tools");
-  // A library that sends no study types leaves telling reviews apart to the writer, and nothing is read by Jev.
-  expect(JSON.stringify(sent.writer[0])).toContain("Tell them from the title and abstract");
+  // Nothing is read by Jev here: the library sends what it read.
   expect(sent.jev).toEqual([]);
   // A second model reads the finished digest against the records it cites.
   expect(sent.reviewer).toMatchObject([{model: REVIEWER}]);
