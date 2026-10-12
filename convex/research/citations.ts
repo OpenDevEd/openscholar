@@ -9,6 +9,7 @@ import { assistantAction, defineUserAction, userAction } from "../lib/userAction
 import { readWork } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { paperToCitationData } from "../../lib/citations/paper-data";
+import { CITATION_FORMATS } from "../../lib/citations/formats";
 import type { PaperResult } from "../../lib/types/search.types";
 
 /** What a citation reads of a paper (lib/citations/paper-data.ts). */
@@ -29,13 +30,16 @@ export const citeAction = defineUserAction({
   run: async (ctx, { userId }, { id, style }): Promise<{ title: string; style: string; citation: string }> => {
     const work = /^(?:https:\/\/openalex\.org\/)?(W\d+)$/i.exec(id.trim())?.[1]?.toUpperCase();
     if (!work) throw createError("VALIDATION_ERROR", "A paper is cited by its ID, such as W2741809807.");
+    const asked = style.trim().toLowerCase();
+    // A style there isn't is refused before the paper is read: the main formats here, the picker's others where they're kept.
+    if (!CITATION_FORMATS.some((format) => format.id === asked)) await ctx.runAction(internal.research.citationFormat.checkStyle, { style: asked });
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const paper = await readWork<PaperResult>(work, CITED, spender(ctx, person.clerkId));
     if (!paper) throw createError("NOT_FOUND", "OpenAlex has no paper by that ID.");
     const data = paperToCitationData(paper);
     if (!data) throw createError("VALIDATION_ERROR", "OpenAlex has no title for this paper, so it can't be cited.");
-    const written: { style: string; citation: string } = await ctx.runAction(internal.research.citationFormat.format, { data: JSON.stringify(data), style: style.trim().toLowerCase() });
+    const written: { style: string; citation: string } = await ctx.runAction(internal.research.citationFormat.format, { data: JSON.stringify(data), style: asked });
     return { title: data.title, ...written };
   },
 });

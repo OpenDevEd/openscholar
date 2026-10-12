@@ -98,7 +98,10 @@ describe("the assistant's reads of OpenAlex", () => {
     expect(cited).toMatchObject({ title: "Tutoring at scale", style: "APA 7" });
     expect(cited.citation).toContain("Tutoring at scale");
     expect(cited.citation).toContain("2020");
+    // A style there isn't is refused before OpenAlex is asked for the paper.
+    requests = [];
     await expect(alice.action(api.research.citations.cite, { id: "W7", style: "no-such-style" })).rejects.toThrow(/No citation style is called .{0,2}no-such-style/);
+    expect(requests).toEqual([]);
     await expect(alice.action(api.research.citations.cite, { id: "10.1234/x", style: "apa" })).rejects.toThrow(/by its ID, such as W2741809807/);
   });
 

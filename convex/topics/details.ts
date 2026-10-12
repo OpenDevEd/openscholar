@@ -10,6 +10,7 @@ import type { Doc } from "../_generated/dataModel";
 import { openAlexUrl } from "../../lib/openalex/request-url";
 import { MAX_TOPIC_KEYWORDS } from "../lib/listCaps";
 import { topicKeywordsValidator, topicPathValidator } from "./validators";
+import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 
 // OpenAlex sends each keyword as {id, display_name, score}; it once sent the name alone, which an old cached reply may still hold.
 const keyword = z.union([z.string().max(1000), z.object({display_name: z.string().max(1000)}).transform(k => k.display_name)]);
@@ -73,12 +74,15 @@ export const refresh = internalAction({
  * A topic's details are fetched from OpenAlex once and kept. Readers always get
  * the saved copy; one older than a day is refreshed in the background.
  * `libraryId` only labels logs; the service endpoint authenticates the caller first.
+ * `spend`, for a person's own read: the fetch of one not kept yet counts against their
+ * OpenAlex allowance, and isn't made past it. The background refresh is the platform's.
  */
-export async function readTopicDetail(ctx: ActionCtx, args: {id: string; libraryId?: string}) {
+export async function readTopicDetail(ctx: ActionCtx, args: {id: string; libraryId?: string; spend?: (pages: number) => Promise<boolean>}) {
     if (!topicIdSchema.safeParse(args.id).success) throw createError("VALIDATION_ERROR", "Invalid topic ID");
     const result: {node: TopicNode; path: {id: string; name: string}[]; detail: Doc<"topicDetails"> | null} = await ctx.runQuery(internal.topics.details.read, {id: args.id});
     let detail: {description: string; keywords: string[]; worksCount: number; fetchedAt: number; revision: string} | null = result.detail?.revision === CATALOG_REVISION ? result.detail : null;
     if (!detail) {
+      if (args.spend && !(await args.spend(1))) throw createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
       try {
         const fetched = await fetchTopicDetail(args.id);
         await ctx.runMutation(internal.topics.details.save, fetched);
