@@ -1147,6 +1147,17 @@ export const teamInvitationsValidator = capped(
   MAX_PENDING_INVITATIONS_PER_LIBRARY,
 );
 
+/** An address check's or reservation's answer that the name is the organization's library already, or that no address could be checked or found (./addressActions.ts). */
+export const nameTakenValidator = v.object({ status: v.literal("name-taken"), libraryId: v.id("evidenceLibraries") });
+export const unavailableValidator = v.object({ status: v.literal("unavailable"), reason: v.union(v.literal("check-failed"), v.literal("no-address")) });
+/** What reserving a new library's address gives: the draft library it starts, or why there is none. */
+export const addressReservationValidator = v.union(
+  v.object({ status: v.literal("reserved"), libraryId: v.id("evidenceLibraries"), ...evidenceLibrarySetupIdentityFields }),
+  v.object({ status: v.literal("address-taken") }),
+  nameTakenValidator,
+  unavailableValidator,
+);
+
 /** Libraries one list of the assistant's gives (./assistant.ts). */
 export const LIBRARIES_LISTED = 50;
 export const assistantLibrariesValidator = capped(

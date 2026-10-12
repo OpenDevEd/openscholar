@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalQuery } from "../_generated/server";
+import { actingArg, signedInAs } from "../lib/userActions";
 import { requireEvidenceLibraryAccess } from "../evidenceLibraries/access";
 import { readLibraryRuntimeTarget } from "../evidenceLibraries/runtimeTarget";
 
@@ -18,7 +19,7 @@ export const requireRuntimeReadAccess = internalQuery({
 // Where a library answers reads, and the encrypted machine credential that
 // opens its read API. `null` while the library is not set up yet.
 export const readRuntimeReadTarget = internalQuery({
-  args: { libraryId: v.id("evidenceLibraries"), action: v.union(v.literal("view"), v.literal("manage")) },
+  args: { ...actingArg, libraryId: v.id("evidenceLibraries"), action: v.union(v.literal("view"), v.literal("manage")) },
   returns: v.union(
     v.null(),
     v.object({
@@ -26,7 +27,8 @@ export const readRuntimeReadTarget = internalQuery({
       encryptedMachineCredential: v.string(),
     }),
   ),
-  handler: async (ctx, args) => {
+  handler: async (caller, { actingAs: as, ...args }) => {
+    const ctx = await signedInAs(caller, as);
     const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, args.action);
     return await readLibraryRuntimeTarget(ctx, access.library);
   },

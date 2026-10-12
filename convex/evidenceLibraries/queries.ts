@@ -1,4 +1,5 @@
 import { publicName, publicPhoto } from "../../lib/evidence-libraries/configuration/home-people";
+import { actingArg, signedInAs } from "../lib/userActions";
 import { hasPublicationProviderChanges } from "./publicationProviders";
 import { readDomainActivationPlan } from "./domainPlan";
 import { readMemberOrganizations, requireLibraryOrganization } from "../organizationFeatures";
@@ -501,7 +502,7 @@ export const listLibraries = query({
  * address action checks Coolify and the host itself before answering.
  */
 export const readAddressCandidates = internalQuery({
-  args: {
+  args: { ...actingArg,
     organizationId: v.id("organizations"), name: v.string() },
   returns: v.union(
     v.object({
@@ -517,7 +518,8 @@ export const readAddressCandidates = internalQuery({
       ),
     }),
   ),
-  handler: async (ctx, args) => {
+  handler: async (caller, { actingAs: as, ...args }) => {
+    const ctx = await signedInAs(caller, as);
     const access = await requireLibraryOrganization(ctx, args.organizationId);
     const workspaceId = await organizationWorkspaceOf(ctx, access.organization._id);
     const named = await readEvidenceLibraryByName(ctx, {

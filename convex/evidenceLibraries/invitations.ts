@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { paginationResultValidator } from "convex/server";
 import { internal } from "../_generated/api";
 import { internalMutation, internalQuery, mutation, query, type QueryCtx } from "../lib/functions";
+import { actingArg, signedInAs } from "../lib/userActions";
 import { grantedRole, libraryGrant, libraryOf, libraryOwner, ownerActive, requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvitations } from "./access";
 import { getCurrentUser } from "../lib/auth";
 import { rateLimit } from "../lib/rateLimit";
@@ -16,9 +17,10 @@ const invitationArgs = { libraryId: v.id("evidenceLibraries"), email: v.string()
 
 /** Checks an invitation and keeps it, ready to send. Sending one again restarts its seven days and takes no second place. */
 export const prepare = internalMutation({
-  args: invitationArgs,
+  args: { ...invitationArgs, ...actingArg },
   returns: v.id("itemInvitations"),
-  handler: async (ctx, args) => {
+  handler: async (caller, { actingAs: as, ...args }) => {
+    const ctx = await signedInAs(caller, as);
     const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
     await rateLimit(ctx, { name: "library-invitation", key: args.libraryId, throws: true });
     const email = args.email.trim().toLowerCase();
@@ -54,8 +56,9 @@ export const prepare = internalMutation({
 });
 
 export const readDelivery = internalQuery({
-  args: { invitationId: v.id("itemInvitations") },
-  handler: async (ctx, args) => {
+  args: { ...actingArg, invitationId: v.id("itemInvitations") },
+  handler: async (caller, { actingAs: as, ...args }) => {
+    const ctx = await signedInAs(caller, as);
     const invitation = await ctx.db.get("itemInvitations", args.invitationId);
     const invited = invitation ? await libraryOf(ctx, invitation) : null;
     if (!invitation || !invited || invitation.state !== "pending" || invitation.expiresAt <= Date.now()) return null;
@@ -114,9 +117,10 @@ export const listInvitations = query({
 
 /** Called only after Clerk confirms a verified address on the signed-in account. */
 export const respondVerified = internalMutation({
-  args: { invitationId: v.id("itemInvitations"), emails: v.array(v.string()), accept: v.boolean() },
+  args: { ...actingArg, invitationId: v.id("itemInvitations"), emails: v.array(v.string()), accept: v.boolean() },
   returns: v.null(),
-  handler: async (ctx, args) => {
+  handler: async (caller, { actingAs: as, ...args }) => {
+    const ctx = await signedInAs(caller, as);
     const user = await getCurrentUser(ctx);
     if (!user) throw createError("UNAUTHENTICATED", "Sign in to respond");
     const invitation = await ctx.db.get("itemInvitations", args.invitationId);
