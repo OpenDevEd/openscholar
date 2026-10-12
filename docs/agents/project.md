@@ -73,8 +73,11 @@ The assistant can do everything a user can, through the same actions
 - `npm run check:user-actions` runs in CI and fails on any public Convex
   function or Next.js server action that is neither registered nor listed in
   `scripts/user-actions-exempt.json`. That file lists plumbing, with the reason
-  it isn't a user action, and pending user actions, with the issue that will
-  register them. Plumbing is never a place for a missing user action.
+  it isn't a user action; covered functions, with the registered action the
+  assistant does the same job with; manual ones, with the reason they stay on
+  their page (money, secrets, putting a library live, site administration);
+  and pending user actions, with the issue that will register them. Plumbing
+  is never a place for a missing user action.
 - Tools address records by ID. The assistant changes what a user sees by
   changing the Convex record the page renders.
 - Reading at scale runs through OpenScholar's own features (screening,
