@@ -211,9 +211,13 @@ function ScreeningBand({ sourceKey, screening, onChange, report }: {
     example: report?.examples?.[GRADE[key].report] ?? null,
   }));
   const graded = grades.reduce((sum, entry) => sum + entry.count, 0);
-  const kept = grades.reduce((sum, entry) => sum + (entry.kept ? entry.count : 0), 0);
+  const keptOut = grades.reduce((sum, entry) => sum + (entry.kept ? 0 : entry.count), 0);
+  // Every record the source holds; an older library reports only graded ones.
+  const records = report?.records ?? graded;
   const ungraded = report?.ungraded ?? 0;
-  const waiting = request !== null && request.error === null;
+  // A request for another subject, such as one made before the subject was edited again, no longer counts.
+  const asking = request !== null && request.subject.trim() === subject ? request : null;
+  const waiting = asking !== null && asking.error === null;
   const regrading = report?.grading ?? null;
   const reading = report?.reading ?? null;
   const busy = regrading ? { title: reading?.title ?? null } : reading;
@@ -246,18 +250,18 @@ function ScreeningBand({ sourceKey, screening, onChange, report }: {
 
       {/* Only when something needs grading: a new subject, or records not graded against the current one. */}
       {!regrading && !waiting && (changed || ungraded > 0) ? (
-        <GradeCard records={changed ? graded + ungraded : ungraded} changed={changed} sample={sample} trying={trying}
+        <GradeCard records={changed ? records : ungraded} changed={changed} sample={sample} trying={trying}
           onTry={trySample} onGrade={gradeNow} kept={(key) => !screening.keptOut.includes(key)} />
       ) : null}
-      {waiting && !request.sent && changed ? <p className="text-xs text-muted-foreground">{t("startsOnActivate")}</p> : null}
-      {request?.error ? <p role="alert" className="text-xs text-destructive">{t("refused", { reason: request.error })}</p> : null}
+      {waiting && !asking.sent && changed ? <p className="text-xs text-muted-foreground">{t("startsOnActivate")}</p> : null}
+      {asking?.error ? <p role="alert" className="text-xs text-destructive">{t("refused", { reason: asking.error })}</p> : null}
 
       {/* Before the library screens the source there is nothing to count: its records are graded once it does. */}
       {report === null ? <p className="text-xs text-muted-foreground">{t("gradedOnceActive")}</p> : (
         <div className="space-y-2">
           <div className="flex h-8 items-end justify-between gap-4 text-xs">
             <span className="shrink-0 text-muted-foreground">
-              <span className="text-2xl font-semibold leading-none text-foreground"><AnimatedNumber value={kept} /></span> {t("inLibrary")}
+              <span className="text-2xl font-semibold leading-none text-foreground"><AnimatedNumber value={records - keptOut} /></span> {t("inLibrary")}
             </span>
             {busy ? (
               <span className="flex min-w-0 items-center gap-1.5 text-primary" role="status">
@@ -268,7 +272,7 @@ function ScreeningBand({ sourceKey, screening, onChange, report }: {
             ) : (
               <span className="flex shrink-0 items-center gap-1.5 text-muted-foreground">
                 <span aria-hidden className="h-2.5 w-5 rounded-full bg-muted-foreground/50" style={HATCH} />
-                <span className="tabular-nums text-foreground"><AnimatedNumber value={graded - kept} /></span> {t("keptOut")}
+                <span className="tabular-nums text-foreground"><AnimatedNumber value={keptOut} /></span> {t("keptOut")}
               </span>
             )}
           </div>

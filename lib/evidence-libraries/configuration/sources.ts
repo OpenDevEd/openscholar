@@ -10,7 +10,8 @@ export const OPENALEX_API_CREDENTIAL_KEY = credentialKeyFor(
 );
 
 /** How close a record is to a screening source's subject, lowest first, as the library grades it. */
-export type ScreeningGrade = "not-about" | "passing" | "touches" | "about";
+export const SCREENING_GRADES = ["not-about", "passing", "touches", "about"] as const;
+export type ScreeningGrade = (typeof SCREENING_GRADES)[number];
 
 /**
  * A source's AI screening: whether the library grades its records against a subject, and which grades it keeps out of

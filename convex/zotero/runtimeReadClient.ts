@@ -442,15 +442,17 @@ const screeningUrl = (target: { baseUrl: string }, sourceKey: string, step: "gra
   new URL(`/api/openscholar/sources/${encodeURIComponent(sourceKey)}/screening/${step}`, target.baseUrl);
 
 /**
- * Asks the library to grade a screening source's records not graded against its subject. "not-ready" until the
- * library has applied that subject; a library without an OpenRouter key, or a source that doesn't screen, refuses.
+ * Asks the library to grade a screening source's records not graded against `subject`. "not-ready" until the library
+ * has applied that subject; a library that screens against another subject by then, has no OpenRouter key, or whose
+ * source doesn't screen, refuses.
  */
 export async function requestRuntimeScreeningGrade(
   fetchImpl: typeof fetch,
   target: { baseUrl: string; credential: string },
   sourceKey: string,
+  subject: string,
 ): Promise<"queued" | "not-ready"> {
-  const response = await runtimeFetch(fetchImpl, target, screeningUrl(target, sourceKey, "grade"), "POST", { accept: [409] });
+  const response = await runtimeFetch(fetchImpl, target, screeningUrl(target, sourceKey, "grade"), "POST", { body: { subject }, accept: [409] });
   if (response.ok) return "queued";
   const body: unknown = await response.json().catch(() => null);
   const refusal = isRecord(body) && isRecord(body.error) ? body.error : null;

@@ -29,6 +29,9 @@ import {
   type EvidenceSourceEntry,
   type OpenAlexSourceEntry,
   type OpenScholarCollectionSourceEntry,
+  SCREENING_GRADES,
+  type ScreeningGrade,
+  type SourceScreeningSettings,
 } from "./sources";
 import {
   TAG_RULE_KEYS,
@@ -942,6 +945,22 @@ function readTopics(payload: unknown): ConfigurationDraft["topics"] {
   return { enabled: flag(record(payload).enabled, false) };
 }
 
+/** A source's screening as saved; none for a source saved before screening, which the library reads as off. */
+function readScreening(value: unknown): { screening?: SourceScreeningSettings } {
+  if (value === undefined || value === null) return {};
+  const screening = record(value);
+  return {
+    screening: {
+      enabled: flag(screening.enabled, false),
+      subject: text(screening.subject),
+      // The library keeps "not about it" out when nothing is said.
+      keptOut: screening.keptOut === undefined
+        ? ["not-about"]
+        : list(screening.keptOut).filter((grade): grade is ScreeningGrade => SCREENING_GRADES.includes(grade as ScreeningGrade)),
+    },
+  };
+}
+
 function readSources(payload: unknown): EvidenceSourceEntry[] {
   return list(payload)
     .map((entry) => record(entry))
@@ -971,6 +990,7 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
             },
             downloadPdfs: flag(settings.downloadPdfs, false),
           },
+          ...readScreening(row.screening),
         };
         // Kept even when incomplete: dropping it would rewrite the row
         // without it on the next save. Validation names what is missing.
@@ -991,6 +1011,7 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
             apiKeyMode: settings.apiKeyMode === "custom" ? "custom" : "platform",
             downloadPdfs: flag(settings.downloadPdfs, false),
           },
+          ...readScreening(row.screening),
         };
         return [parsed];
       }
@@ -1004,6 +1025,7 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
         enabled: flag(row.enabled, true),
         writebackEnabled: flag(row.writebackEnabled, false),
         settings: { downloadPdfs: flag(settings.downloadPdfs, true) },
+        ...readScreening(row.screening),
       };
       return [parsed];
     });

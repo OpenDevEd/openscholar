@@ -306,7 +306,7 @@ export const sendScreeningGrade = internalAction({
     if (!request) return null;
     try {
       const outcome = await readRuntime(ctx, { libraryId: request.libraryId, actingAs: request.requestedBy }, "manage", (target) =>
-        requestRuntimeScreeningGrade(fetch, target, request.sourceKey),
+        requestRuntimeScreeningGrade(fetch, target, request.sourceKey, request.subject),
       );
       await ctx.runMutation(internal.evidenceLibraries.screeningRequests.settle, typeof outcome === "string"
         ? { requestId, outcome }

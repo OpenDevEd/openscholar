@@ -43,15 +43,17 @@ const base = {
   /**
    * What the source's screening found: its records by grade against its subject, how many are not graded against
    * the current subject, and progress while the owner's request to grade them runs. Null for a source that does not
-   * screen, and missing from runtimes older than screening. Newer runtimes add the subject they screen against, a
-   * recently graded record's title for each grade, and, while records wait to be read, the latest one and how many
-   * are left.
+   * screen, and missing from runtimes older than screening. Newer runtimes add the subject they screen against, how
+   * many records the source holds, a recently graded record's title for each grade, and, while records wait to be
+   * read, the latest one and how many are left.
    */
   screening: v.optional(v.union(v.object({
     grades: v.object({ about: v.number(), touches: v.number(), passing: v.number(), notAbout: v.number() }),
     ungraded: v.number(),
     grading: v.union(v.object({ done: v.number(), of: v.number() }), v.null()),
     subject: v.optional(v.string()),
+    /** Every record the source holds, graded or not. */
+    records: v.optional(v.number()),
     examples: v.optional(v.object({
       about: v.union(v.string(), v.null()),
       touches: v.union(v.string(), v.null()),

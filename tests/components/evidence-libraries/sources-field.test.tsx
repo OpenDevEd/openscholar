@@ -31,12 +31,14 @@ const mocks = vi.hoisted(() => ({
 }));
 /** What the source status query answers: a report, null, or an Error. */
 const statusReport = vi.hoisted(() => ({ current: null as unknown }));
+/** What a source's grading request query answers. */
+const screeningRequest = vi.hoisted(() => ({ current: null as unknown }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("convex/react", () => ({
   useConvex: () => ({ query: mocks.myCollections }),
   useQueries: (queries: Record<string, unknown>) =>
-    "report" in queries ? { report: statusReport.current } : {},
+    "report" in queries ? { report: statusReport.current } : "request" in queries ? { request: screeningRequest.current } : {},
   useAction: (ref: string) =>
     ({
       listMyZoteroGroups: mocks.listMyGroups,
@@ -685,6 +687,7 @@ describe("<SourcesField> screening", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.gradeSource.mockResolvedValue(null);
+    screeningRequest.current = null;
   });
 
   it("asks for grading only when the subject changed or records wait for a grade, with the subject in the draft", async () => {
@@ -724,5 +727,20 @@ describe("<SourcesField> screening", () => {
     render(<Harness initial={[screened]} />);
     expect(screen.queryByRole("region", { name: `${sn}.label` })).toBeNull();
     expect(screen.getByRole("switch", { name: `${sn}.label` }).hasAttribute("disabled")).toBe(true);
+  });
+
+  it("waits on a request for the subject in the draft, and offers grading again once the subject is edited past it", async () => {
+    queries({ connected: false, report: report({}) });
+    screeningRequest.current = { subject: "Urban housing policy", sent: false, error: null };
+    render(<Harness initial={[{ ...screened, screening: { ...screened.screening!, subject: "Urban housing policy" } }]} aiReady />);
+    const band = screen.getByRole("region", { name: `${sn}.label` });
+    expect(within(band).getByText(`${sn}.startsOnActivate`)).toBeTruthy();
+    expect(within(band).queryByRole("button", { name: `${sn}.gradeAgain` })).toBeNull();
+
+    const subject = within(band).getByRole("textbox", { name: `${sn}.subjectLabel` });
+    await userEvent.clear(subject);
+    await userEvent.type(subject, "Coastal fisheries");
+    expect(within(band).getByRole("button", { name: `${sn}.gradeAgain` })).toBeTruthy();
+    expect(within(band).queryByText(`${sn}.startsOnActivate`)).toBeNull();
   });
 });

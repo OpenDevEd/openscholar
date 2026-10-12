@@ -161,3 +161,25 @@ it("keeps a grading request the library refused, with its reason", async () => {
   expect(request).toMatchObject({ error: "No OpenRouter key" });
   expect(request?.sendingAt).toBeUndefined();
 });
+
+it("asks a library that isn't ready again in a minute, and gives up on a request an hour old", async () => {
+  const { t, libraryId } = await setup();
+  const ids = await t.run(async (ctx) => {
+    const requestedBy = await ctx.db.insert("users", { clerkId: "owner", email: "owner@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    const fresh = await ctx.db.insert("evidenceLibraryScreeningRequests", { libraryId, sourceKey: "zotero-1", subject: "A", requestedBy, requestedAt: Date.now() });
+    const old = await ctx.db.insert("evidenceLibraryScreeningRequests", { libraryId, sourceKey: "zotero-2", subject: "A", requestedBy, requestedAt: Date.now() - 2 * 60 * 60_000 });
+    return { fresh, old };
+  });
+  await t.mutation(internal.evidenceLibraries.screeningRequests.settle, { requestId: ids.fresh, outcome: "not-ready" });
+  await t.mutation(internal.evidenceLibraries.screeningRequests.settle, { requestId: ids.old, outcome: "not-ready" });
+  const [fresh, old, retries] = await t.run(async (ctx) => [
+    await ctx.db.get("evidenceLibraryScreeningRequests", ids.fresh),
+    await ctx.db.get("evidenceLibraryScreeningRequests", ids.old),
+    (await ctx.db.system.query("_scheduled_functions").collect()).filter((job) => job.name.endsWith("sendScreeningGrade")).length,
+  ] as const);
+  expect(fresh?.sendingAt).toBeTypeOf("number");
+  expect(fresh?.error).toBeUndefined();
+  expect(retries).toBe(1);
+  expect(old?.error).toContain("within an hour");
+});
+

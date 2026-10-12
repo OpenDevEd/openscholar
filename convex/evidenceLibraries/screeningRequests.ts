@@ -14,6 +14,10 @@ import type { SourceStatus } from "./sourceStatusValidators";
 
 // A send that never came back is tried again on a later report.
 const SEND_STALE_MS = 2 * 60_000;
+// The library says it isn't ready while it starts with new settings: asked again this often, for this long. A report
+// naming the subject sends it too, so this only covers a library whose reports stopped changing.
+const NOT_READY_RETRY_MS = 60_000;
+const NOT_READY_GIVE_UP_MS = 60 * 60_000;
 
 /** The source's waiting request, if any: one per source, a new one replacing it. */
 export async function readScreeningRequest(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">, sourceKey: string) {
@@ -79,16 +83,16 @@ export async function sendDueScreeningGrades(
 
 export const get = internalQuery({
   args: { requestId: v.id("evidenceLibraryScreeningRequests") },
-  returns: v.union(v.null(), v.object({ libraryId: v.id("evidenceLibraries"), sourceKey: v.string(), requestedBy: v.id("users") })),
+  returns: v.union(v.null(), v.object({ libraryId: v.id("evidenceLibraries"), sourceKey: v.string(), subject: v.string(), requestedBy: v.id("users") })),
   handler: async (ctx, { requestId }) => {
     const request = await ctx.db.get("evidenceLibraryScreeningRequests", requestId);
-    return request ? { libraryId: request.libraryId, sourceKey: request.sourceKey, requestedBy: request.requestedBy } : null;
+    return request ? { libraryId: request.libraryId, sourceKey: request.sourceKey, subject: request.subject, requestedBy: request.requestedBy } : null;
   },
 });
 
 /**
- * What the library said: a queued request is sent, and waits for the report that shows its grading; "not-ready" waits
- * for the next report; a refusal stays on the source with its reason.
+ * What the library said: a queued request is sent, and waits for the report that shows its grading; "not-ready" is
+ * asked again in a minute, for up to an hour; a refusal stays on the source with its reason.
  */
 export const settle = internalMutation({
   args: {
@@ -100,10 +104,17 @@ export const settle = internalMutation({
   handler: async (ctx, { requestId, outcome, error }) => {
     const request = await ctx.db.get("evidenceLibraryScreeningRequests", requestId);
     if (!request) return null;
+    const now = Date.now();
+    if (outcome === "not-ready" && now - request.requestedAt < NOT_READY_GIVE_UP_MS) {
+      await ctx.db.patch("evidenceLibraryScreeningRequests", requestId, { sendingAt: now });
+      await ctx.scheduler.runAfter(NOT_READY_RETRY_MS, internal.zotero.runtimeReadActions.sendScreeningGrade, { requestId });
+      return null;
+    }
     await ctx.db.patch("evidenceLibraryScreeningRequests", requestId, {
       sendingAt: undefined,
-      ...(outcome === "queued" ? { sentAt: Date.now() } : {}),
+      ...(outcome === "queued" ? { sentAt: now } : {}),
       ...(outcome === "refused" ? { error } : {}),
+      ...(outcome === "not-ready" ? { error: "The library didn't take the new subject within an hour. Check that the settings were activated, then ask again." } : {}),
     });
     return null;
   },
