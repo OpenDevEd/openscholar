@@ -71,11 +71,15 @@ const collectionIdOf = (invitation: Doc<"itemInvitations">) => invitation.item.s
 const roleOf = (invitation: Doc<"itemInvitations">) => invitation.role as GuestRole;
 const waiting = (invitation: Doc<"itemInvitations">) => invitation.state === "pending" && invitation.expiresAt > Date.now();
 
-/** One of this library's collection invitations by its ID, as the library sent it. */
+/**
+ * One of this library's collection invitations by its ID, as the library sent it. One whose
+ * sender's account was deleted is gone at once, before its cancellation (`cancelSentBy`) runs.
+ */
 async function invitationIn(ctx: Pick<QueryCtx, "db">, library: Doc<"evidenceLibraries">, invitationId: string) {
   const id = ctx.db.normalizeId("itemInvitations", invitationId);
   const invitation = id ? await ctx.db.get("itemInvitations", id) : null;
-  return invitation?.kind === "libraryCollection" && invitation.item.startsWith(`${library._id}:`) ? invitation : null;
+  if (invitation?.kind !== "libraryCollection" || !invitation.item.startsWith(`${library._id}:`)) return null;
+  return (await ctx.db.get("users", invitation.invitedBy))?.state === "active" ? invitation : null;
 }
 
 const sentValidator = v.object({
@@ -155,10 +159,13 @@ export const list = internalQuery({
   },
 });
 
-/** Changes the role one of the reader's waiting invitations gives, cancels it, or readies it to send again. */
+/**
+ * Changes the role one of the reader's waiting invitations gives, cancels it, or readies it to
+ * send again. Sending again answers the new send's attempt, which its delivery is recorded for.
+ */
 export const change = internalMutation({
   args: { ...callerArgs, invitationId: v.string(), role: v.optional(guestRoleValidator), resend: v.optional(v.literal(true)), cancel: v.optional(v.literal(true)) },
-  returns: v.union(v.object({ resend: v.boolean() }), refusedValidator),
+  returns: v.union(v.object({ sendAttempt: v.union(v.number(), v.null()) }), refusedValidator),
   handler: async (ctx, { invitationId, role, resend, cancel, ...args }) => {
     const { library, reader } = await callerOf(ctx, args);
     const invitation = await invitationIn(ctx, library, invitationId);
@@ -169,8 +176,23 @@ export const change = internalMutation({
       const expiresAt = Date.now() + WEEK;
       await ctx.db.patch("itemInvitations", invitation._id, { expiresAt, delivery: "queued" });
       await ctx.scheduler.runAt(expiresAt, internal.sharing.invitations.expire, { invitationId: invitation._id });
+      return { sendAttempt: expiresAt };
     } else if (role) await ctx.db.patch("itemInvitations", invitation._id, { role });
-    return { resend: Boolean(resend) && !cancel };
+    return { sendAttempt: null };
+  },
+});
+
+/**
+ * Keeps whether a send went. Each send restarts the invitation's seven days, so its expiry names
+ * the attempt: a slower earlier send that finishes after a later one changes nothing.
+ */
+export const recordDelivery = internalMutation({
+  args: { invitationId: v.id("itemInvitations"), attempt: v.number(), delivery: v.union(v.literal("sent"), v.literal("failed")) },
+  returns: v.null(),
+  handler: async (ctx, { invitationId, attempt, delivery }) => {
+    const invitation = await ctx.db.get("itemInvitations", invitationId);
+    if (invitation?.state === "pending" && invitation.expiresAt === attempt) await ctx.db.patch("itemInvitations", invitationId, { delivery });
+    return null;
   },
 });
 
@@ -255,9 +277,9 @@ const callerBody = z.object({ contractVersion: z.literal(1), libraryId: z.string
 const invitationBody = callerBody.extend({ invitationId: z.string().min(1).max(128) });
 const roleBody = z.enum(["viewer", "editor"]);
 
-/** Emails a waiting invitation; what came of it, `sent` or `failed`, is kept on it and answered. */
-const deliver = (ctx: ActionCtx, invitationId: Id<"itemInvitations">): Promise<"sent" | "failed"> =>
-  ctx.runAction(internal.evidenceLibraries.collectionInvitationMail.deliver, { invitationId });
+/** Emails a waiting invitation for one send; what came of it, `sent` or `failed`, is kept on it and answered. */
+const deliver = (ctx: ActionCtx, invitationId: string, attempt: number): Promise<"sent" | "failed"> =>
+  ctx.runAction(internal.evidenceLibraries.collectionInvitationMail.deliver, { invitationId: invitationId as Id<"itemInvitations">, attempt });
 
 const answer = (result: object) => ("refused" in result ? jsonResponse(REFUSAL_STATUS[result.refused as Refusal], { error: result.refused }) : jsonResponse(200, result as Record<string, unknown>));
 
@@ -268,7 +290,7 @@ const CALLS = {
     run: async (ctx: ActionCtx, caller: Caller, { collectionId, collectionName, email, role }: { collectionId: string; collectionName: string; email: string; role: GuestRole }) => {
       const prepared = await ctx.runMutation(internal.evidenceLibraries.collectionInvitations.prepare, { ...caller, collectionId, collectionName, email, role });
       if ("refused" in prepared) return answer(prepared);
-      return answer({ ...prepared.invitation, delivery: await deliver(ctx, prepared.invitation.id as Id<"itemInvitations">) });
+      return answer({ ...prepared.invitation, delivery: await deliver(ctx, prepared.invitation.id, prepared.invitation.expiresAt) });
     },
   },
   list: {
@@ -284,7 +306,7 @@ const CALLS = {
     run: async (ctx: ActionCtx, caller: Caller, { invitationId, ...change }: { invitationId: string; role?: GuestRole; resend?: true; cancel?: true }) => {
       const changed = await ctx.runMutation(internal.evidenceLibraries.collectionInvitations.change, { ...caller, invitationId, ...change });
       if ("refused" in changed) return answer(changed);
-      if (changed.resend) await deliver(ctx, invitationId as Id<"itemInvitations">);
+      if (changed.sendAttempt !== null) await deliver(ctx, invitationId, changed.sendAttempt);
       return answer({});
     },
   },

@@ -7,11 +7,11 @@ import { internalAction } from "../_generated/server";
 import { requireInvitationMail, sendInvitationEmail } from "../lib/invitationDelivery";
 import { renderCollectionInvitation } from "../../lib/emails/library-template";
 
-/** Sends a waiting invitation's email, and keeps and answers whether it went. One that can't go is logged with why. */
+/** Sends a waiting invitation's email for one send (`attempt`, its expiry), and keeps and answers whether it went. One that can't go is logged with why. */
 export const deliver = internalAction({
-  args: { invitationId: v.id("itemInvitations") },
+  args: { invitationId: v.id("itemInvitations"), attempt: v.number() },
   returns: v.union(v.literal("sent"), v.literal("failed")),
-  handler: async (ctx, { invitationId }): Promise<"sent" | "failed"> => {
+  handler: async (ctx, { invitationId, attempt }): Promise<"sent" | "failed"> => {
     const invitation = await ctx.runQuery(internal.evidenceLibraries.collectionInvitations.readDelivery, { invitationId });
     let delivery: "sent" | "failed" = "failed";
     if (!invitation) console.error("Collection invitation email has nothing to send", { invitationId });
@@ -34,7 +34,7 @@ export const deliver = internalAction({
         console.error("Collection invitation email failed", { invitationId, error });
       }
     }
-    await ctx.runMutation(internal.sharing.invitations.recordDelivery, { invitationId, delivery });
+    await ctx.runMutation(internal.evidenceLibraries.collectionInvitations.recordDelivery, { invitationId, attempt, delivery });
     return delivery;
   },
 });

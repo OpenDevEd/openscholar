@@ -45,7 +45,7 @@ async function seed() {
     return { status: response.status, body: (await response.json()) as Record<string, unknown> };
   };
   const invite = async (email = "invitee@example.org", role = "editor") =>
-    (await call("invite", "user_owner", { collectionId: COLLECTION, collectionName: "Early literacy", email, role })).body as { id: string; delivery: string };
+    (await call("invite", "user_owner", { collectionId: COLLECTION, collectionName: "Early literacy", email, role })).body as { id: string; delivery: string; expiresAt: number };
   return { t, library, other, call, invite };
 }
 
@@ -71,10 +71,12 @@ afterEach(() => {
 
 describe("collection invitations for an Evidence Library", () => {
   it("emails a link to the library's invitation page and lists it for whoever sent it", async () => {
-    const { call, invite, library } = await seed();
+    const { t, call, invite, library } = await seed();
     const sent = await invite();
     expect(sent).toMatchObject({ collectionId: COLLECTION, email: "invitee@example.org", role: "editor", delivery: "sent" });
     expect(mail.sendMail).toHaveBeenCalledWith(expect.objectContaining({ to: "invitee@example.org", html: expect.stringContaining(`${library.url}/invitations/${sent.id}`) }));
+    // A send from before this one that finishes late doesn't change what this one recorded.
+    await t.mutation(internal.evidenceLibraries.collectionInvitations.recordDelivery, { invitationId: sent.id as Id<"itemInvitations">, attempt: sent.expiresAt - 1, delivery: "failed" });
     expect((await call("list", "user_owner")).body).toEqual({ invitations: [expect.objectContaining({ id: sent.id, delivery: "sent" })] });
     // Someone else in the library sent nothing.
     expect((await call("list", "user_invitee")).body).toEqual({ invitations: [] });
@@ -143,6 +145,8 @@ describe("collection invitations for an Evidence Library", () => {
     await t.mutation(internal.users.internal.markUserDeletedFromClerk, {
       clerkId: "user_owner", eventId: "delete-owner", eventType: "user.deleted", instanceId: "instance", occurredAt: 2, payloadSha256: "a".repeat(64),
     });
+    // Gone at once, before the cleanup runs.
+    expect(await call("respond", "user_invitee", { invitationId: second.id, accept: true })).toEqual({ status: 404, body: { error: "not_found" } });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     expect((await call("read", "user_invitee", { invitationId: second.id })).body).toEqual({ state: "gone" });
   });
