@@ -1,7 +1,9 @@
-export type Kind = "web" | "file" | "search" | "paper" | "collection" | "screening" | "extraction" | "chat" | "library" | "topic" | "zotero" | "other";
+export type Kind = "web" | "file" | "search" | "paper" | "collection" | "screening" | "extraction" | "chat" | "library" | "topic" | "zotero" | "author" | "other";
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "webSearch" | "readFile" | "readPaperPdf" | "undoBulk" | "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "extraction" | "chats" | "findRecords" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "workspaces" | "orgMembers" | "myInvites" | "newOrganization" | "inviteMembers" | "revokeInvite" | "declineInvite" | "memberRole" | "memberCap" | "removeMember" | "leaveOrganization" | "renameOrganization" | "deleteOrganization" | "workspaceSummary" | "workspaceColour" | "workspacePreset" | "resendInvite" | "activity" | "moveCheck" | "moveItem" | "shareItem" | "guestRole" | "unshareItem" | "leaveShared" | "answerShare" | "guests" | "sharedWithMe" | "readInvite" | "stopExtraction" | "deleteExtraction" | "pauseExtraction" | "resumeExtraction" | "retryExtraction" | "extractionCost" | "stopScreening" | "zoteroGroups" | "zoteroCollections" | "zoteroItems" | "other";
+type Words = "webSearch" | "readFile" | "readPaperPdf" | "undoBulk" | "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "extraction" | "chats" | "findRecords" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "workspaces" | "orgMembers" | "myInvites" | "newOrganization" | "inviteMembers" | "revokeInvite" | "declineInvite" | "memberRole" | "memberCap" | "removeMember" | "leaveOrganization" | "renameOrganization" | "deleteOrganization" | "workspaceSummary" | "workspaceColour" | "workspacePreset" | "resendInvite" | "activity" | "moveCheck" | "moveItem" | "shareItem" | "guestRole" | "unshareItem" | "leaveShared" | "answerShare" | "guests" | "sharedWithMe" | "readInvite" | "stopExtraction" | "deleteExtraction" | "pauseExtraction" | "resumeExtraction" | "retryExtraction" | "extractionCost" | "stopScreening" | "zoteroGroups" | "zoteroCollections" | "zoteroItems" | "readAuthor" | "readTopic" | "nameFilters" | "cite" | "chatModels" | "other";
+
+/** The words for a kind of step: `assistant.steps.<words>` in the messages. */
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }> = {
@@ -56,6 +58,11 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "assistant/threads:create": { kind: "chat", words: "newChat" },
   "assistant/threads:rename": { kind: "chat", words: "renameChat" },
   "assistant/threads:setModel": { kind: "chat", words: "chatModel" },
+  "assistant/threads:models": { kind: "chat", words: "chatModels" },
+  "research/authors:get": { kind: "author", words: "readAuthor", searching: true },
+  "research/topics:get": { kind: "topic", words: "readTopic" },
+  "research/lookup:names": { kind: "search", words: "nameFilters", searching: true },
+  "research/citations:cite": { kind: "paper", words: "cite", searching: true },
   "screening/papers:answer": { kind: "screening", words: "answer" },
   "screening/papers:list": { kind: "screening", words: "screening" },
   "screening/papers:get": { kind: "screening", words: "screening" },

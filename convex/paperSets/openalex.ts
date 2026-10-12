@@ -240,23 +240,35 @@ async function readLookup(path: string, parameters: Record<string, string>): Pro
   return await response.json();
 }
 
-/** One work by its ID, or null when OpenAlex has none by it. One request, counted against the acting person's allowance. */
-export async function readWork<Work>(id: string, select: string, spend: (pages: number) => Promise<boolean>): Promise<Work | null> {
+/** One record by its address, such as works/W1 or authors/A1, or null when OpenAlex has none by it. One request, counted against the acting person's allowance. `what` names it in errors. */
+async function readRecord<Record>(path: string, select: string, spend: (pages: number) => Promise<boolean>, what: string): Promise<Record | null> {
   contact();
   if (!(await spend(1))) throw limited();
   let response: Response;
   try {
-    response = await fetch(openAlexUrl(`works/${id}`, { select }), { signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
+    response = await fetch(openAlexUrl(path, { select }), { signal: AbortSignal.timeout(PAGE_TIMEOUT_MS) });
   } catch (error) {
-    console.error(`[paperSets] OpenAlex work ${id} didn't answer`, error);
-    throw createError("VALIDATION_ERROR", "OpenAlex didn't return this paper in time. Try again in a moment.");
+    console.error(`[paperSets] OpenAlex ${path} didn't answer`, error);
+    throw createError("VALIDATION_ERROR", `OpenAlex didn't return ${what} in time. Try again in a moment.`);
   }
   if (response.status === 404) return null;
   if (!response.ok) {
-    console.error(`[paperSets] OpenAlex work ${id} failed: ${response.status} ${(await response.text().catch(() => "")).slice(0, 500)}`);
-    throw createError("VALIDATION_ERROR", `OpenAlex couldn't return this paper (${response.status}). Try again in a moment.`);
+    console.error(`[paperSets] OpenAlex ${path} failed: ${response.status} ${(await response.text().catch(() => "")).slice(0, 500)}`);
+    throw createError("VALIDATION_ERROR", `OpenAlex couldn't return ${what} (${response.status}). Try again in a moment.`);
   }
-  return (await response.json()) as Work;
+  return (await response.json()) as Record;
+}
+/** One work by its ID, or null when OpenAlex has none by it. */
+export const readWork = <Work>(id: string, select: string, spend: (pages: number) => Promise<boolean>) => readRecord<Work>(`works/${id}`, select, spend, "this paper");
+/** One author by their ID, or null when OpenAlex has none by it. */
+export const readAuthor = <Author>(id: string, select: string, spend: (pages: number) => Promise<boolean>) => readRecord<Author>(`authors/${id}`, select, spend, "this author");
+
+/** The names of up to 100 authors, funders, journals or institutions by their IDs, such as A1: one request, counted against the acting person's allowance. One OpenAlex has none for is left out. */
+export async function readNames(entity: LookupEntity, ids: readonly string[], spend: (pages: number) => Promise<boolean>): Promise<Array<{ id: string; name: string }>> {
+  contact();
+  if (!(await spend(1))) throw limited();
+  const body = (await readLookup(entity, { filter: `openalex_id:${ids.join("|")}`, select: "id,display_name", "per-page": "100" })) as { results?: Array<{ id?: unknown; display_name?: unknown }> };
+  return (body.results ?? []).flatMap(({ id, display_name: name }) => (typeof id === "string" && typeof name === "string" ? [{ id: id.split("/").at(-1)!, name }] : []));
 }
 
 /**

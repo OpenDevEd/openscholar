@@ -60,7 +60,7 @@ const narrowed = (search: Partial<SavedSearch>) => Boolean(search.query?.trim())
  */
 export function searchHref(query: string | undefined, settings: Settings, year?: number): string | undefined {
   try {
-    return buildShareableUrl("", searchResultToParams(restoreSearch(newSearch("link", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings, year))));
+    return buildShareableUrl("", searchResultToParams(restoreSearch(newSearch("link", query === undefined ? undefined : settings.field === "oql" ? query : withoutQuotedQuestionMarks(query), settings, year))));
   } catch {
     return undefined;
   }
@@ -484,7 +484,8 @@ export const requestFor = internalQuery({
   args: { userId: v.id("users"), workspaceId: v.id("workspaces"), query: v.optional(v.string()), settings: v.object(searchSettings) },
   returns: savedSearchValidator,
   // A title looked up in quotes often ends in a question mark, which OpenAlex refuses there: it's read without.
-  handler: async (ctx, { query, settings, userId, workspaceId }) => requestOf(ctx, { userId, workspaceId }, newSearch("unsaved", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings), 0),
+  // An OQL query is sent as written: OpenAlex reads its quoted question marks as written.
+  handler: async (ctx, { query, settings, userId, workspaceId }) => requestOf(ctx, { userId, workspaceId }, newSearch("unsaved", query === undefined ? undefined : settings.field === "oql" ? query : withoutQuotedQuestionMarks(query), settings), 0),
 });
 
 /** A paper as a page of results gives it. */

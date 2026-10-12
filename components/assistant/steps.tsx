@@ -17,7 +17,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, FileSearch, Globe, Plus, Undo2, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, AuthorsIcon, Check, ChevronDown, CircleAlert, Coins, Compass, FileSearch, Globe, Plus, Undo2, X, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
 import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { AnimatedNumber } from "@/components/screening/parts";
@@ -54,6 +54,7 @@ export const KIND = {
   library: RECORD_KINDS.library,
   topic: RECORD_KINDS.topic,
   zotero: { icon: ZoteroIcon, tint: "var(--kind-zotero)" },
+  author: { icon: AuthorsIcon, tint: "var(--kind-author)" },
   other: { icon: Compass, tint: "var(--muted-foreground)" },
 } satisfies Record<Kind, { icon: AppIcon; tint: string }>;
 
