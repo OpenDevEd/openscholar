@@ -19,7 +19,7 @@ import { getFlag, requireFeature } from "../featureFlags/guard";
 import { checkRateLimit } from "../lib/rateLimit";
 import { startHeld } from "../billing/charge";
 import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
-import { papersIn } from "../screening/estimate";
+import { firstZoteroPaper, papersIn } from "../screening/estimate";
 import { paperSetValidator } from "../screening/validators";
 import { extractionPaperCredits } from "../../lib/pricing";
 import { startJobFor } from "./mutations/jobs";
@@ -147,6 +147,8 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
   checkQuestions(questions);
   // What the job holds now, which checks everything the person was asked about before any of its papers is read.
   const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, workspaceId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
+  // A Zotero collection is read for its first paper before a job is made: one gone, or a group out of reach, is refused here.
+  if (range.set.kind === "zotero") await firstZoteroPaper(ctx, userId, range.set, range.first);
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
   const job = { userId, workspaceId, author, name, sources: [range], questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true, ...(call?.from ? { chatStep: call.from } : {}) };
   if (cap === undefined) return await ctx.runMutation(internal.extraction.start.begin, job);

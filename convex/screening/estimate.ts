@@ -1,6 +1,7 @@
 import type { Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
+import type { ActionCtx, QueryCtx } from "../_generated/server";
 import { libraryCountRow } from "../library/counter";
 import { collectionAllowed } from "../library/collections";
 import { requestOf, snapshotOf } from "../paperSets/search";
@@ -68,8 +69,12 @@ export async function papersIn(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
 /** Whether a set's papers come from Zotero: a Zotero set, or the included papers of a screening of one, however far back. */
 async function fromZotero(ctx: QueryCtx, set: Infer<typeof paperSetValidator>) {
   let current: Infer<typeof paperSetValidator> | undefined = set;
-  // Each screening's set is read once: a chain of screenings of screenings ends at its first.
-  for (let depth = 0; current?.kind === "screening" && depth < 20; depth++) current = (await ctx.db.get("screeningJobs", current.jobId))?.set;
+  // Each screening is read once, back to the set the chain started from.
+  const seen = new Set<string>();
+  while (current?.kind === "screening" && !seen.has(current.jobId)) {
+    seen.add(current.jobId);
+    current = (await ctx.db.get("screeningJobs", current.jobId))?.set;
+  }
   return current?.kind === "zotero";
 }
 
@@ -118,4 +123,10 @@ export async function screeningHold(ctx: QueryCtx, reader: InWorkspace, request:
   const { set, first, last } = request;
   const held = await papersIn(ctx, reader, set);
   return estimateScreening(Math.max(0, Math.min(last, held ?? last) - first + 1), 0, await screeningPaperCreditsFor(ctx, reader)).credits;
+}
+
+/** Reads the first paper of a Zotero range through the person's account, refusing a range Zotero has none in. */
+export async function firstZoteroPaper(ctx: ActionCtx, userId: Id<"users">, { collectionKey, groupId }: { collectionKey?: string; groupId?: string }, first: number) {
+  const read: { papers: unknown[] } = await ctx.runAction(internal.zotero.actions.papersOf, { userId, ...(collectionKey !== undefined ? { collectionKey } : {}), ...(groupId !== undefined ? { groupId } : {}), first, last: first });
+  if (!read.papers.length) throw createError("VALIDATION_ERROR", "There are no Zotero items in that range.");
 }

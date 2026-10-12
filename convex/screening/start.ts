@@ -9,7 +9,7 @@ import { createError, readConvexErrorData } from "../lib/errors";
 import { heldPapers } from "../paperSets/held";
 import { countSearch, numbered, PAGE_SIZE, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest } from "../paperSets/search";
-import { checkScreening, papersIn, requireMinimum, screeningHold } from "./estimate";
+import { checkScreening, firstZoteroPaper, papersIn, requireMinimum, screeningHold } from "./estimate";
 import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
 import { MAX_AUTHORS } from "../lib/listCaps";
@@ -62,6 +62,8 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
     total = (await ctx.runQuery(internal.screening.start.heldCount, { userId, workspaceId, set })) ?? through;
   }
   if (first > total) throw createError("VALIDATION_ERROR", "There are no papers in that range");
+  // A Zotero collection is read for its first paper before a job is made: one gone, or a group out of reach, is refused here.
+  if (set.kind === "zotero") await firstZoteroPaper(ctx, userId, set, first);
   // No further than the set goes: papers past its last are never asked for.
   const last = Math.min(through, total);
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.

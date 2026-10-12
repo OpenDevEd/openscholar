@@ -7,6 +7,10 @@ import type { QueryCtx } from "../_generated/server";
 
 /** Zotero items one read of a job's papers takes (./actions.ts `papersOf`): one page of Zotero's. */
 export const ZOTERO_PAGE = 50;
+/** Characters of a Zotero paper's title, abstract, and an author's or a venue's name a job keeps. */
+export const ZOTERO_TITLE_MAX = 500;
+export const ZOTERO_ABSTRACT_MAX = 10_000;
+export const ZOTERO_NAME_MAX = 300;
 /** Groups, collections and items one read returns. */
 export const ZOTERO_GROUPS_MAX = 100;
 export const ZOTERO_COLLECTIONS_MAX = 500;

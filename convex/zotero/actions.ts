@@ -12,7 +12,8 @@ import type { ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 
 import { createError } from "../lib/errors";
-import { ZOTERO_PAGE, checkZoteroIds } from "./libraryValidators";
+import { ZOTERO_ABSTRACT_MAX, ZOTERO_NAME_MAX, ZOTERO_PAGE, ZOTERO_TITLE_MAX, checkZoteroIds } from "./libraryValidators";
+import { MAX_AUTHORS } from "../lib/listCaps";
 import { encrypt, decryptApiKey, getKeyPrefix } from "../lib/crypto";
 
 const ZOTERO_REQUEST_TOKEN_URL = "https://www.zotero.org/oauth/request";
@@ -920,6 +921,8 @@ async function itemsFor(ctx: ActionCtx, userId: Id<"users">, { collectionKey, in
         start,
         limit: requestLimit,
         includeTrashed: 0,
+        // A file or a note at the top of a library isn't a paper: Zotero leaves out the files, and the notes are left out below.
+        itemType: "-attachment",
       });
 
       console.log("[fetchItems] Fetching from URL:", url.toString());
@@ -955,8 +958,11 @@ async function itemsFor(ctx: ActionCtx, userId: Id<"users">, { collectionKey, in
       nextCursor = computedCursor < totalResults ? computedCursor : undefined;
     }
 
-    const items: Array<ZoteroItem & { hasPdfChild: boolean }> = await Promise.all(
-      currentPageData.map(async (item) => {
+    // Whether each has a PDF takes a request an item: four at a time, as Zotero asks, a refusal said rather than read as none.
+    const papers = currentPageData.filter((item) => item.data.itemType !== "note" && item.data.itemType !== "attachment");
+    const items: Array<ZoteroItem & { hasPdfChild: boolean }> = [];
+    for (let at = 0; at < papers.length; at += 4) items.push(...(await Promise.all(
+      papers.slice(at, at + 4).map(async (item) => {
         const d = item.data;
         const numChildren = item.meta?.numChildren || 0;
         let hasPdfChild = false;
@@ -967,7 +973,8 @@ async function itemsFor(ctx: ActionCtx, userId: Id<"users">, { collectionKey, in
           const childrenResponse = await fetch(childrenUrl.toString(), {
             headers: buildZoteroHeaders(apiKey),
           });
-          if (childrenResponse.ok) {
+          if (!childrenResponse.ok) throw createError("ZOTERO_API_ERROR", `Zotero didn't say which items have a PDF (${childrenResponse.status}). Try again in a moment.`);
+          {
             const children: ZoteroItemResponse[] = await childrenResponse.json();
             hasPdfChild = children.some(
               (child) =>
@@ -992,8 +999,8 @@ async function itemsFor(ctx: ActionCtx, userId: Id<"users">, { collectionKey, in
           numChildren: item.meta?.numChildren,
           hasPdfChild,
         };
-      })
-    );
+      }),
+    )));
 
     const hasMore = nextCursor !== undefined;
 
@@ -1082,17 +1089,18 @@ export const papersOf = internalAction({
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, { userId });
     if (!connection) throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
     const read = await itemsFor(ctx, userId, { collectionKey, groupId, includeDescendants: false, start: first - 1, limit: last - first + 1, pdfs: false });
+    // Bounded as a saved paper's are: a pasted abstract or a long author list can't outgrow what a job's tables hold.
     const papers = read.items.map((item) => ({
       key: item.key,
       openalexId: `zotero:${groupId ? "group" : "user"}:${item.key}`,
       // Where its PDF is, as extraction reads a Zotero paper's (../extraction/expandSources.ts).
       pdfUrl: groupId ? `zotero://select/groups/${groupId}/items/${item.key}` : `zotero://select/users/${connection.zoteroUserId}/items/${item.key}`,
-      title: item.title,
-      authors: item.authors,
-      ...(item.abstract ? { abstract: item.abstract } : {}),
+      title: item.title.slice(0, ZOTERO_TITLE_MAX),
+      authors: item.authors.slice(0, MAX_AUTHORS).map((name) => name.slice(0, ZOTERO_NAME_MAX)),
+      ...(item.abstract ? { abstract: item.abstract.slice(0, ZOTERO_ABSTRACT_MAX) } : {}),
       ...(item.year === undefined ? {} : { year: item.year }),
-      ...(item.doi ? { doi: item.doi } : {}),
-      ...(item.venueName ? { venue: item.venueName } : {}),
+      ...(item.doi ? { doi: item.doi.slice(0, ZOTERO_NAME_MAX) } : {}),
+      ...(item.venueName ? { venue: item.venueName.slice(0, ZOTERO_NAME_MAX) } : {}),
     }));
     return { papers, ended: read.nextCursor === undefined, zoteroUserId: connection.zoteroUserId };
   },

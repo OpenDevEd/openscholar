@@ -40,7 +40,7 @@ export const collectionsAction = defineUserAction({
   ...reads,
   run: async (ctx, { userId }, { groupId, start }): Promise<Infer<typeof zoteroCollectionsValidator>> => {
     const from = Math.max(0, Math.floor(start ?? 0));
-    const all: Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }> = await ctx.runAction(internal.zotero.actions.collectionsOf, { userId, ...(groupId ? { groupId } : {}) });
+    const all: Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }> = await ctx.runAction(internal.zotero.actions.collectionsOf, { userId, ...(groupId != null ? { groupId } : {}) });
     const collections = all.slice(from, from + ZOTERO_COLLECTIONS_MAX).map((one) => ({ key: one.key, name: one.name, ...(one.parentCollection ? { parent: one.parentCollection } : {}), items: one.numItems, subcollections: one.numCollections }));
     return { collections, ...(all.length > from + collections.length ? { next: from + collections.length } : {}) };
   },
@@ -61,8 +61,9 @@ export const itemsAction = defineUserAction({
       userId,
       // One collection's own items, as a screening or an extraction of it reads them.
       includeDescendants: false,
-      ...(collectionKey ? { collectionKey } : {}),
-      ...(groupId ? { groupId } : {}),
+      // An empty one is refused as a key in the wrong form, never read as the whole library.
+      ...(collectionKey != null ? { collectionKey } : {}),
+      ...(groupId != null ? { groupId } : {}),
       start: start ?? 0,
       limit: Math.min(Math.max(1, Math.floor(limit ?? 10)), ZOTERO_ITEMS_MAX),
     });
