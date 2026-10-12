@@ -3490,7 +3490,10 @@
         "doing": "शोधपत्र की PDF पढ़ रहा है",
         "did": "शोधपत्र की PDF पढ़ी",
         "where": "OpenAlex",
-        "ask": "शोधपत्र की PDF पढ़ें"
+        "ask": "शोधपत्र की PDF पढ़ें",
+        "askMany": "{count, number} शोधपत्रों की PDF पढ़ें",
+        "doingMany": "{count, number} शोधपत्रों की PDF पढ़ रहा है",
+        "didMany": "{count, number} शोधपत्रों की PDF पढ़ीं"
       },
       "workspaces": {
         "doing": "वर्कस्पेस देख रहा है",

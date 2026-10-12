@@ -3490,7 +3490,10 @@
         "doing": "Lecture du PDF d’un article",
         "did": "PDF d’un article lu",
         "where": "OpenAlex",
-        "ask": "Lire le PDF d’un article"
+        "ask": "Lire le PDF d’un article",
+        "askMany": "Lire {count, plural, one {le PDF de # article} other {les PDF de # articles}}",
+        "doingMany": "Lecture {count, plural, one {du PDF de # article} other {des PDF de # articles}}",
+        "didMany": "{count, plural, one {PDF de # article lu} other {PDF de # articles lus}}"
       },
       "workspaces": {
         "doing": "Consultation de vos espaces de travail",

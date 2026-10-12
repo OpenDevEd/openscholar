@@ -1,39 +1,57 @@
 import { viewOf } from "./actions";
 
 /** What deciding a step's card needs of it. */
-type CardStep = { status: string; action: string; variant?: string; canUndo?: boolean; undone?: boolean; error?: string; batch?: unknown; credits?: number };
+type CardStep = { status: string; action: string; variant?: string; batch?: unknown; credits?: number };
 
-/** Whether a step leaves its card nothing to press and nothing to read but that it ran: no undo, no error, no answer it waits for, no credits. */
-const folds = (step: CardStep) => (step.status === "done" || step.status === "running") && !step.canUndo && !step.undone && !step.error && step.batch === undefined && step.credits === undefined;
+/**
+ * Whether a step's card can stand for several: it ran or failed as one call, or the person
+ * answered it, as calls asked about together are. A bulk change is one card for many already,
+ * and a step that waits for an answer is its own question.
+ */
+const folds = (step: CardStep) => step.status !== "asking" && step.batch === undefined;
+/** What part of a card's run a step is: the calls that failed, the ones the person turned down, and the rest, which were allowed and ran. */
+const outcome = (step: CardStep) => (step.status === "failed" ? "failed" : step.status === "declined" ? "declined" : "ran");
+
+/** The steps in lists, in the order the first of each list was met: each list the steps `keyOf` gives one key. A step it gives none is a list of its own. */
+function grouped<S>(steps: S[], keyOf: (step: S) => string | null): S[][] {
+  const groups: S[][] = [];
+  const byKey = new Map<string, S[]>();
+  for (const step of steps) {
+    const key = keyOf(step);
+    const group = key === null ? undefined : byKey.get(key);
+    if (group) group.push(step);
+    else {
+      groups.push([step]);
+      if (key !== null) byKey.set(key, groups.at(-1)!);
+    }
+  }
+  return groups;
+}
 
 /**
  * The steps of a reply as its map's cards (components/assistant/steps.tsx): every step of the
  * reply that folds and would show the same card, whichever action it ran, is one card that says
  * how many times, where the first of them ran. A reply that counted papers thirty-nine times ran
- * thirty-nine cards down the page, and one that read a screening three ways, between reading
- * papers, showed three "Read a screening" cards. opencode folds a run of reads into one row the
- * same way (its context tool group). A step with an undo, an error or a question is always its
- * own card, in its place.
+ * thirty-nine cards down the page, one that saved fifty-nine papers one at a time ran fifty-nine,
+ * each with its own Undo, and one that read three PDFs ran three. opencode folds a run of reads
+ * into one row the same way (its context tool group). The card undoes the whole run, and each of
+ * its lines its own step. The calls that failed are a card of their own, beside the ones that worked.
  */
 export function runsOf<S extends CardStep>(steps: S[]): S[][] {
-  const runs: S[][] = [];
-  const byCard = new Map<string, S[]>();
-  for (const step of steps) {
-    if (!folds(step)) {
-      runs.push([step]);
-      continue;
-    }
+  return grouped(steps, (step) => {
+    if (!folds(step)) return null;
     const { kind, words } = viewOf(step.action, step.variant);
-    const card = `${kind}:${words}`;
-    const run = byCard.get(card);
-    if (run) run.push(step);
-    else {
-      byCard.set(card, [step]);
-      runs.push(byCard.get(card)!);
-    }
-  }
-  return runs;
+    return `${kind}:${words}:${outcome(step)}`;
+  });
 }
+
+/**
+ * The calls a reply waits on the person for, as their approval cards: the calls of one action it
+ * asked about together are one card, with one answer for all of them. Five PDFs read at once ask
+ * once, with what the five cost. A bulk change is one card already.
+ */
+export const askedGroups = <S extends CardStep>(steps: S[]): S[][] =>
+  grouped(steps, (step) => (step.batch === undefined ? `${step.action}#${step.variant ?? ""}#${step.credits === undefined ? "free" : "spends"}` : null));
 
 /**
  * The steps a reply shows, in the order they ran: a read that failed is left out once the same
