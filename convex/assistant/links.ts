@@ -46,6 +46,29 @@ const READS: Record<string, Kind> = {
   "assistant/threads:get": "chat",
 };
 
+/** The page a step's card opens, for a change or a read of one record it names by ID: the job it stopped, paused or read the cost of. One it deleted has none. */
+const OPENS: Record<string, (args: Row) => string | undefined> = {
+  "extraction/mutations:cancelExtraction": (args) => KINDS.extraction.href({ _id: args.jobId }),
+  "extraction/mutations/pause:pauseExtraction": (args) => KINDS.extraction.href({ _id: args.jobId }),
+  "extraction/mutations/resume:resumeExtraction": (args) => KINDS.extraction.href({ _id: args.jobId }),
+  "extraction/start:resume": (args) => KINDS.extraction.href({ _id: args.jobId }),
+  "extraction/start:retry": (args) => KINDS.extraction.href({ _id: args.jobId }),
+  "extraction/queries/costs:getJobCost": (args) => KINDS.extraction.href({ _id: args.jobId }),
+  "screening/mutations:cancelScreeningJob": (args) => KINDS.screening.href({ _id: args.jobId }),
+};
+/** The page a step's card opens, from its action and its arguments as JSON (`OPENS`). */
+export function opensOf(path: string, input: string): string | undefined {
+  const open = OPENS[path];
+  if (!open) return undefined;
+  try {
+    const args: unknown = JSON.parse(input);
+    return args && typeof args === "object" ? open(args as Row) || undefined : undefined;
+  } catch {
+    // Arguments too long to keep whole were cut, and don't parse.
+    return undefined;
+  }
+}
+
 /** What a link says: the record's name on one line, short, with markdown's own characters escaped so it reads as text, in a table cell too. */
 export function linkLabel(name: string) {
   const line = name.replace(/\s+/g, " ").trim();

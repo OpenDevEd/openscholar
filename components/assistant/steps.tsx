@@ -78,11 +78,18 @@ function searchOf(href: string) {
  * results in this tab, as a new search, and the panel stays up with its chat. Hovered, it
  * shows the search's card out to the left, over the page, as the sidebar's history does.
  */
-function Subject({ text, step, chips, unqueried = false, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "count" | "at">; /** The settings that tell this search from the others on its card, as chips after its query. */ chips?: FilterParams; /** `text` stands in for a query the search didn't have: written as the search history writes it, and never cut to make room for its chips. */ unqueried?: boolean; className?: string }) {
+function Subject({ text, step, chips, unqueried = false, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "opens" | "count" | "at">; /** The settings that tell this search from the others on its card, as chips after its query. */ chips?: FilterParams; /** `text` stands in for a query the search didn't have: written as the search history writes it, and never cut to make room for its chips. */ unqueried?: boolean; className?: string }) {
+  const underlined = "underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground";
+  // The one record it acted on, such as the extraction it paused, opens on its page.
+  if (step.opens && !step.href)
+    return (
+      <Link href={step.opens} className={cn(className, underlined)}>
+        {text}
+      </Link>
+    );
   if (!step.href) return <span className={className}>{text}</span>;
   const search = searchOf(step.href);
   const at = new Date(step.at).toISOString();
-  const underlined = "underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground";
   return (
     <SearchHoverCard side="left" delay={300} id={step.id} query={search.query} count={step.count} filters={search} createdAt={at} updatedAt={at}>
       {chips ? (
@@ -196,7 +203,7 @@ export function Steps({
 }
 
 /** Names of a call's arguments the card says in the person's language; any other shows as the action names it. */
-const NAMED = ["query", "file", "range", "thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs"] as const;
+const NAMED = ["query", "file", "range", "thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs", "job"] as const;
 
 /** Arguments that are a setting turned on or off. */
 const SWITCHES = new Set(["prune", "inCollection", "usePdfs", "openAccessOnly", "withAbstractOnly", "reviewsOnly", "includeRetracted", "ratedOnly"]);

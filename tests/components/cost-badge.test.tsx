@@ -24,6 +24,11 @@ vi.mock("@/convex/_generated/api", () => ({
   },
 }));
 
+vi.mock("@/lib/workspaces/url", () => ({
+  useWorkspace: () => "workspace_1",
+  inWorkspace: (workspaceId: string, args: Record<string, unknown> | "skip") => (args === "skip" ? "skip" : { ...args, workspaceId }),
+}));
+
 vi.mock("next-intl", () => ({
   useTranslations:
     () =>
@@ -38,7 +43,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 
 const fakeJobId = "job_abc" as Id<"extractionJobs">;
 
-function withCostData(data: { total: number }) {
+function withCostData(data: { credits: number }) {
   useProtectedQueryMock.mockReturnValue({
     data,
     phase: "authenticated",
@@ -70,9 +75,7 @@ describe("<CostBadge>", () => {
   });
 
   it("renders the total with role=status and data-credits-total matching the sum", () => {
-    withCostData({
-      total: 218,
-    });
+    withCostData({ credits: 218 });
     render(<CostBadge jobId={fakeJobId} />);
     const el = screen.getByRole("status");
     expect(el).toHaveAttribute("data-credits-total", "218");
@@ -81,9 +84,7 @@ describe("<CostBadge>", () => {
   });
 
   it("renders a navigation link with aria-label when href is provided", () => {
-    withCostData({
-      total: 42,
-    });
+    withCostData({ credits: 42 });
     render(
       <CostBadge
         jobId={fakeJobId}

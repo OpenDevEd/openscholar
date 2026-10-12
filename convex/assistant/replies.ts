@@ -39,8 +39,9 @@ import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
 import { JOB_ENDED } from "./jobEnds";
 import { bulkOf, detailsOf } from "./details";
+import { opensOf } from "./links";
 import { TOOL_OF, allowAlways, allowTool, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
-import { MAX_ASKS, STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
+import { MAX_ASKS, STEPS_SHOWN, aboutOf, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { filesOf, partsFor, sent } from "./files";
 import { readsImages, readsPdfs } from "../../lib/assistant/files";
@@ -569,7 +570,9 @@ export const release = internalMutation({
       // The chat takes no message until every call is answered, or the reply is stopped. Its summary, if one is due, waits for the reply to end.
       const now = Date.now();
       for (const call of asking.calls) {
-        await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, workspaceId: current.workspaceId, ...call, prompt: asking.promptMessageId, status: "asking", startedAt: now });
+        // Named as a step that runs is named: by the record its arguments give by ID, such as the extraction it would stop.
+        const subject = call.subject ?? (await aboutOf(ctx, current.workspaceId, call.input));
+        await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, workspaceId: current.workspaceId, ...call, ...(subject ? { subject } : {}), prompt: asking.promptMessageId, status: "asking", startedAt: now });
       }
       const waiting = {
         senderId: current.senderId,
@@ -677,6 +680,8 @@ const stepValidator = v.object({
   subject: v.optional(v.string()),
   /** Where it leads, in the app: the results of what it looked up, by a query or by filters alone, as a new search. */
   href: v.optional(v.string()),
+  /** The page of the one record it acted on, such as the extraction it paused, which its subject opens. */
+  opens: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
   /** On a web search (#648): the pages it found, which the reply cites. */
@@ -959,6 +964,12 @@ function hrefOf(step: Doc<"assistantSteps">) {
   }
 }
 
+/** The page of the record the step acted on, which its card's subject opens. */
+function opened(step: Doc<"assistantSteps">) {
+  const opens = opensOf(step.path, step.input);
+  return opens ? { opens } : {};
+}
+
 /** A step as the chat's page shows it. `asked` is what a call that waits for this person would do. */
 function shownStep(
   step: Doc<"assistantSteps">,
@@ -974,6 +985,7 @@ function shownStep(
     ...variantOf(step),
     ...(step.subject ? { subject: step.subject } : {}),
     ...hrefOf(step),
+    ...opened(step),
     ...(step.count === undefined ? {} : { count: step.count }),
     ...(step.sources?.length ? { sources: step.sources } : {}),
     ...(step.credits === undefined ? {} : { credits: step.credits }),

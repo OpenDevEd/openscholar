@@ -25,17 +25,17 @@
  *     (`../queries/costs.ts` `retryCredits`) against the balance.
  */
 
-import { internalMutation, mutation } from "../../lib/functions";
+import { internalMutation } from "../../lib/functions";
 import { internal } from "../../_generated/api";
-import type { MutationCtx } from "../../_generated/server";
+import type { MutationCtx, QueryCtx } from "../../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { requireAuth } from "../../lib/auth";
 import { getFlag, requireFeature } from "../../featureFlags/guard";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
+import { jobIn } from "../access";
+import { actingAs, workspaceMutation } from "../../lib/userActions";
 import { noteActivity } from "../../activity/notes";
-import { assertJobAccess } from "../access";
 import {
   assertValidJobTransition,
   assertValidPaperTransition,
@@ -142,71 +142,82 @@ async function resolveRetryQueueRuntime(
   };
 }
 
-export const retryFailedQuestions = mutation({
-  args: { jobId: v.id("extractionJobs") },
-  returns: v.object({
-    jobId: v.id("extractionJobs"),
-    retryableCount: v.number(),
-  }),
-  handler: async (ctx, { jobId }) => {
-    await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
+/**
+ * What retrying a job's failures needs before it's asked about or run: its switches, a status a retry
+ * takes up from, and failures a retry can fix. It returns how many there are.
+ */
+export async function checkRetry(ctx: QueryCtx, job: Doc<"extractionJobs">, userId: Id<"users">) {
+  await requireFeature(ctx, "extraction.enabled");
+  await requireFeature(ctx, "extraction.start", userId, job.workspaceId);
+  if (!job.status || !ALLOWED_RETRY_STATUSES.includes(job.status as JobStatus)) {
+    throw createError("VALIDATION_ERROR", `Cannot retry job in status ${job.status ?? "unknown"}`);
+  }
+  // The job's counters give the retryable count without reading its results.
+  const { retryable } = await readResultCounts(ctx, job._id);
+  if (retryable === 0) throw createError("VALIDATION_ERROR", "No retryable failures to retry");
+  return retryable;
+}
 
-    const { job } = await assertJobAccess(ctx, user, jobId);
+/** Asks a job's failed questions again: from its page, or from a chat under the figure held for it (`spend`, extraction/start.ts). */
+export async function retryJob(ctx: MutationCtx, job: Doc<"extractionJobs">, { userId, viaAssistant }: { userId: Id<"users">; viaAssistant: boolean }, spend?: { hold: string; cap: number }) {
+  const jobId = job._id;
+  const retryableCount = await checkRetry(ctx, job, userId);
+  await rateLimit(ctx, { name: "start-extraction", key: userId, throws: true });
 
-    await requireFeature(ctx, "extraction.start", user._id, job.workspaceId);
-    await rateLimit(ctx, {
-      name: "start-extraction",
-      key: user._id,
-      throws: true,
-    });
-
-    if (
-      !job.status ||
-      !ALLOWED_RETRY_STATUSES.includes(job.status as JobStatus)
-    ) {
-      throw createError(
-        "VALIDATION_ERROR",
-        `Cannot retry job in status ${job.status ?? "unknown"}`,
-      );
-    }
-
-    // The job's counters give the retryable count without reading its results.
-    const { retryable: retryableCount } = await readResultCounts(ctx, jobId);
-
-    if (retryableCount === 0) {
-      throw createError("VALIDATION_ERROR", "No retryable failures to retry");
-    }
-
-    const credits = await retryCredits(ctx, job, retryableCount);
-    // Its workspace pays for it (#650), within the cap of the member whose job it is.
+  const credits = await retryCredits(ctx, job, retryableCount);
+  // Its workspace pays for it (#650), within the cap of the member whose job it is. A chat's hold has its credits already.
+  if (!spend) {
     const { available: totalAvailable, capped } = await spendingRoom(ctx, job.workspaceId, job.createdBy);
     if (totalAvailable < credits) {
       if (capped) throw capReached(credits);
-      throw createError(
-        "INSUFFICIENT_CREDITS",
-        `Retry needs up to ${credits} credits for ${retryableCount} questions but only have ${totalAvailable}`,
-      );
+      throw createError("INSUFFICIENT_CREDITS", `Retry needs up to ${credits} credits for ${retryableCount} questions but only have ${totalAvailable}`);
     }
+  }
 
-    assertValidJobTransition(job.status as JobStatus, "extracting");
-    const epoch = (job.runEpoch ?? 0) + 1;
-    await ctx.db.patch("extractionJobs", jobId, {
-      status: "extracting" as const,
-      runEpoch: epoch,
-      retryReset: { cursor: null },
-      error: undefined,
-      completedAt: undefined,
-      pausedAt: undefined,
-      pausedFromStatus: undefined,
-      // The job had ended, so the hold it was approved under is settled, or about to be: what's run again holds its own.
-      ...(await approvalLeft(ctx, job)),
-      updatedAt: Date.now(),
-    });
-    await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch });
-    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: jobId, happened: "retried", count: retryableCount });
+  assertValidJobTransition(job.status as JobStatus, "extracting");
+  const epoch = (job.runEpoch ?? 0) + 1;
+  await ctx.db.patch("extractionJobs", jobId, {
+    status: "extracting" as const,
+    runEpoch: epoch,
+    retryReset: { cursor: null },
+    error: undefined,
+    completedAt: undefined,
+    pausedAt: undefined,
+    pausedFromStatus: undefined,
+    // The job had ended, so the hold it was approved under is settled, or about to be: what's run again holds its own,
+    // or runs under the one a chat made for it.
+    ...(spend ? { spendHold: spend.hold, spendCap: spend.cap } : await approvalLeft(ctx, job)),
+    updatedAt: Date.now(),
+  });
+  await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch });
+  await noteActivity(ctx, { workspaceId: job.workspaceId, by: userId, viaAssistant }, { kind: "extraction", id: jobId, happened: "retried", count: retryableCount });
+  return { jobId, retryableCount };
+}
 
-    return { jobId, retryableCount };
+/** The page's Retry. A chat retries under a hold, with extraction/start:retry. */
+export const retryFailedQuestions = workspaceMutation({
+  args: { jobId: v.id("extractionJobs") },
+  returns: v.object({ jobId: v.id("extractionJobs"), retryableCount: v.number() }),
+  handler: async (ctx, actor, { jobId }) => retryJob(ctx, await jobIn(ctx, actor, jobId), { userId: actor.userId, viaAssistant: false }),
+});
+
+/** Retries a job as its page does, for extraction/start:retry called from a page, with nothing held. */
+export const retryPaged = internalMutation({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), jobId: v.id("extractionJobs") },
+  returns: v.object({ jobId: v.id("extractionJobs"), retryableCount: v.number() }),
+  handler: async (ctx, { userId, workspaceId, jobId }) => {
+    const actor = await actingAs(ctx, userId, workspaceId, "user");
+    return await retryJob(ctx, await jobIn(ctx, actor, jobId), { userId, viaAssistant: false });
+  },
+});
+
+/** Retries a job from a chat (extraction/start.ts), under the hold it made for the figure the person allowed. */
+export const retryHeld = internalMutation({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), jobId: v.id("extractionJobs"), spend: v.object({ hold: v.string(), cap: v.number() }) },
+  returns: v.object({ jobId: v.id("extractionJobs"), retryableCount: v.number() }),
+  handler: async (ctx, { userId, workspaceId, jobId, spend }) => {
+    const actor = await actingAs(ctx, userId, workspaceId, "assistant");
+    return await retryJob(ctx, await jobIn(ctx, actor, jobId), { userId, viaAssistant: true }, spend);
   },
 });
 
