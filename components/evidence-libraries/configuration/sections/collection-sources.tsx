@@ -21,6 +21,7 @@ import {
 import { SourceRow, SourceSwitch } from "./source-row";
 import type { SourceLive } from "./source-activity";
 import { useWorkspace } from "@/lib/workspaces/url";
+import { useMockSourceScreening } from "./source-screening";
 
 /** Collections the picker reads at a time. */
 const COLLECTION_PICKER_PAGE_SIZE = 50;
@@ -150,6 +151,8 @@ export function CollectionSourceRow({
   const connected = controller.byId.get(entry.collectionId);
   const paused = !entry.enabled;
   const deleted = connected !== undefined && connected.name === null;
+  // MOCK: screening has no saved setting or counts yet.
+  const screening = useMockSourceScreening(connected?.itemCount ?? 0);
   return (
     <SourceRow
       name={connected?.name ?? entry.settings.name}
@@ -170,14 +173,18 @@ export function CollectionSourceRow({
       onToggle={() => controller.patch(entry.key, { enabled: paused })}
       onRemove={onRemove}
       data-collection-id={entry.collectionId}
+      details={screening.band}
       controls={
-        <SourceSwitch
-          label={t("pdfs")}
-          checked={entry.settings.downloadPdfs}
-          onCheckedChange={(downloadPdfs) =>
-            controller.patch(entry.key, { settings: { ...entry.settings, downloadPdfs } })
-          }
-        />
+        <>
+          {screening.control}
+          <SourceSwitch
+            label={t("pdfs")}
+            checked={entry.settings.downloadPdfs}
+            onCheckedChange={(downloadPdfs) =>
+              controller.patch(entry.key, { settings: { ...entry.settings, downloadPdfs } })
+            }
+          />
+        </>
       }
     />
   );

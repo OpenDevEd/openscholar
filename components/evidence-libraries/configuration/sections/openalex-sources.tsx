@@ -5,6 +5,7 @@ import { Building2, KeyRound } from "@/components/icons";
 import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
+import { useMockSourceScreening } from "./source-screening";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -212,6 +213,8 @@ export function OpenAlexSourceRow({
   live: SourceLive | null;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
+  // MOCK: screening has no saved setting or counts yet.
+  const screening = useMockSourceScreening(controller.countFor(source.key) ?? 0);
   return (
     <SourceRow
       name={source.settings.name}
@@ -236,14 +239,18 @@ export function OpenAlexSourceRow({
         },
       ]}
       controls={
-        <SourceSwitch
-          label={t("pdfs")}
-          checked={source.settings.downloadPdfs}
-          onCheckedChange={(downloadPdfs) =>
-            controller.patch(source.key, { settings: { ...source.settings, downloadPdfs } })
-          }
-        />
+        <>
+          {screening.control}
+          <SourceSwitch
+            label={t("pdfs")}
+            checked={source.settings.downloadPdfs}
+            onCheckedChange={(downloadPdfs) =>
+              controller.patch(source.key, { settings: { ...source.settings, downloadPdfs } })
+            }
+          />
+        </>
       }
+      details={screening.band}
       onEdit={() => controller.setEditing(source)}
       onToggle={() =>
         controller.patch(source.key, { enabled: !source.enabled })

@@ -23,6 +23,7 @@ export function SourceRow({
   metadata,
   description,
   controls,
+  details,
   activity,
   onEdit,
   onToggle,
@@ -39,6 +40,8 @@ export function SourceRow({
   metadata: MetaItem[];
   description?: ReactNode;
   controls?: ReactNode;
+  /** A band a control on the row opens, above the import status. */
+  details?: ReactNode;
   /** The import status band across the foot of the row. */
   activity?: ReactNode;
   onEdit?: () => void;
@@ -123,7 +126,12 @@ export function SourceRow({
         <MetaList items={metadata} />
         {controls ? <div className="flex flex-wrap items-center gap-4">{controls}</div> : null}
       </div>
-      {activity ? <div className="-mx-4 -mb-4">{activity}</div> : null}
+      {details || activity ? (
+        <div className="-mx-4 -mb-4">
+          {details}
+          {activity}
+        </div>
+      ) : null}
     </li>
   );
 }
@@ -131,11 +139,13 @@ export function SourceRow({
 /** A setting on the right of a source row. It explains itself only when it cannot be used. */
 export function SourceSwitch({
   label,
+  icon,
   checked,
   onCheckedChange,
   disabledReason,
 }: {
   label: string;
+  icon?: ReactNode;
   checked: boolean;
   onCheckedChange: (checked: boolean) => void;
   disabledReason?: string;
@@ -148,7 +158,10 @@ export function SourceSwitch({
         aria-label={label}
         onCheckedChange={onCheckedChange}
       />
-      {label}
+      <span className="inline-flex items-center gap-1">
+        {icon}
+        {label}
+      </span>
     </label>
   );
   if (disabledReason === undefined) return control;

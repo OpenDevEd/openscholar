@@ -60,7 +60,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MockLibraryScreening } from "./library-screening";
+import { useMockSourceScreening } from "./source-screening";
 import {
   OpenAlexAccessSettings,
   OpenAlexSearchDialog,
@@ -399,7 +399,6 @@ export function SourcesField({
         </GroupPicker>
       </div>
 
-      <MockLibraryScreening />
 
       <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-xl">
@@ -644,6 +643,8 @@ function GroupRow({
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const paused = !entry.enabled;
   const health: GroupHealth = paused ? "paused" : "connected";
+  // MOCK: screening has no saved setting or counts yet.
+  const screening = useMockSourceScreening(group?.itemCount ?? 0);
   const canWrite = group?.scopes.write === true;
   const metaItems = group
     ? [
@@ -684,8 +685,10 @@ function GroupRow({
       onToggle={() => onPatch({ enabled: paused })}
       onRemove={onRemove}
       description={!canWrite && group ? t("writebackUnavailable") : undefined}
+      details={screening.band}
       controls={
         <>
+          {screening.control}
           {!canWrite ? (
             <Button
               type="button"
