@@ -65,6 +65,14 @@ export async function papersIn(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
   return null;
 }
 
+/** Whether a set's papers come from Zotero: a Zotero set, or the included papers of a screening of one, however far back. */
+async function fromZotero(ctx: QueryCtx, set: Infer<typeof paperSetValidator>) {
+  let current: Infer<typeof paperSetValidator> | undefined = set;
+  // Each screening's set is read once: a chain of screenings of screenings ends at its first.
+  for (let depth = 0; current?.kind === "screening" && depth < 20; depth++) current = (await ctx.db.get("screeningJobs", current.jobId))?.set;
+  return current?.kind === "zotero";
+}
+
 /**
  * What starting a screening refuses that can be read before the person is asked to pay for it
  * (./start.ts, ./mutations.ts `insertJob`), so that a yes is never followed by a refusal: its
@@ -76,11 +84,9 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
   if (questions.length > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `A screening asks up to ${MAX_QUESTIONS} questions.`);
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   if (prune && set.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
-  if (set.kind === "zotero") {
-    await checkZoteroSet(ctx, userId, set);
-    // Its papers are Zotero's, with no OpenAlex record to save them by.
-    if (saveTo && saveTo.kind !== "none") throw createError("VALIDATION_ERROR", "Papers screened from Zotero can't be saved to a collection: they have no OpenAlex record. Leave `saveTo` out.");
-  }
+  if (set.kind === "zotero") await checkZoteroSet(ctx, userId, set);
+  // Papers from Zotero have no OpenAlex record to save them by: a Zotero set's, or an earlier screening's of one.
+  if (saveTo && saveTo.kind !== "none" && (await fromZotero(ctx, set))) throw createError("VALIDATION_ERROR", "Papers screened from Zotero can't be saved to a collection: they have no OpenAlex record. Leave `saveTo` out.");
   if (set.kind === "search") {
     const row = await findSearch(ctx, workspaceId, set.searchId);
     if (!row) throw createError("NOT_FOUND", "Search not found");

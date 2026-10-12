@@ -1073,11 +1073,11 @@ export const itemsOf = internalAction({
 export const papersOf = internalAction({
   args: { userId: v.id("users"), collectionKey: v.optional(v.string()), groupId: v.optional(v.string()), first: v.number(), last: v.number() },
   returns: v.object({
-    papers: v.array(v.object({ key: v.string(), openalexId: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.array(v.string()), year: v.optional(v.number()), doi: v.optional(v.string()), venue: v.optional(v.string()) })),
+    papers: v.array(v.object({ key: v.string(), openalexId: v.string(), title: v.string(), abstract: v.optional(v.string()), authors: v.array(v.string()), year: v.optional(v.number()), doi: v.optional(v.string()), venue: v.optional(v.string()), pdfUrl: v.string() })),
     ended: v.boolean(),
     zoteroUserId: v.string(),
   }),
-  handler: async (ctx, { userId, collectionKey, groupId, first, last }): Promise<{ papers: Array<{ key: string; openalexId: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string }>; ended: boolean; zoteroUserId: string }> => {
+  handler: async (ctx, { userId, collectionKey, groupId, first, last }): Promise<{ papers: Array<{ key: string; openalexId: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean; zoteroUserId: string }> => {
     if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first || last - first + 1 > ZOTERO_PAGE) throw createError("VALIDATION_ERROR", `Read Zotero items from 1 up, at most ${ZOTERO_PAGE} at a time.`);
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, { userId });
     if (!connection) throw createError("ZOTERO_NOT_CONNECTED", "Zotero not connected");
@@ -1085,6 +1085,8 @@ export const papersOf = internalAction({
     const papers = read.items.map((item) => ({
       key: item.key,
       openalexId: `zotero:${groupId ? "group" : "user"}:${item.key}`,
+      // Where its PDF is, as extraction reads a Zotero paper's (../extraction/expandSources.ts).
+      pdfUrl: groupId ? `zotero://select/groups/${groupId}/items/${item.key}` : `zotero://select/users/${connection.zoteroUserId}/items/${item.key}`,
       title: item.title,
       authors: item.authors,
       ...(item.abstract ? { abstract: item.abstract } : {}),

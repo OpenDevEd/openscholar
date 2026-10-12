@@ -15,7 +15,7 @@ export const ZOTERO_ITEMS_MAX = 25;
 export const zoteroGroupsValidator = capped(v.array(v.object({ id: v.string(), name: v.string(), type: v.string(), items: v.number() })), ZOTERO_GROUPS_MAX);
 export const zoteroCollectionsValidator = v.object({
   collections: capped(v.array(v.object({ key: v.string(), name: v.string(), parent: v.optional(v.string()), items: v.number(), subcollections: v.number() })), ZOTERO_COLLECTIONS_MAX),
-  more: v.optional(v.literal(true)),
+  next: v.optional(v.number()),
 });
 export const zoteroItemsValidator = v.object({
   items: capped(

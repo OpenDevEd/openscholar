@@ -33,15 +33,16 @@ export const groupsForAssistant = assistantAction(groupsAction);
 export const collectionsAction = defineUserAction({
   path: "zotero/library:collections",
   description:
-    `Lists the collections of the person's own Zotero library, or with \`groupId\` of one of their groups, up to ${ZOTERO_COLLECTIONS_MAX}: each one's key, name, the key of the collection it sits in, how many items it holds and how many collections. ` +
+    `Lists the collections of the person's own Zotero library, or with \`groupId\` of one of their groups, up to ${ZOTERO_COLLECTIONS_MAX}: each one's key, name, the key of the collection it sits in, how many items it holds and how many collections; \`next\` is where the next \`start\` is, when there are more. ` +
     'Screen or extract a collection\'s papers with the set { kind: "zotero", collectionKey, groupId }; its items one page at a time are zotero/library:items.',
-  args: { groupId: v.optional(v.union(v.string(), v.null())) },
+  args: { groupId: v.optional(v.union(v.string(), v.null())), start: v.optional(v.union(v.number(), v.null())) },
   returns: zoteroCollectionsValidator,
   ...reads,
-  run: async (ctx, { userId }, { groupId }): Promise<Infer<typeof zoteroCollectionsValidator>> => {
+  run: async (ctx, { userId }, { groupId, start }): Promise<Infer<typeof zoteroCollectionsValidator>> => {
+    const from = Math.max(0, Math.floor(start ?? 0));
     const all: Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }> = await ctx.runAction(internal.zotero.actions.collectionsOf, { userId, ...(groupId ? { groupId } : {}) });
-    const collections = all.slice(0, ZOTERO_COLLECTIONS_MAX).map((one) => ({ key: one.key, name: one.name, ...(one.parentCollection ? { parent: one.parentCollection } : {}), items: one.numItems, subcollections: one.numCollections }));
-    return { collections, ...(all.length > collections.length ? { more: true as const } : {}) };
+    const collections = all.slice(from, from + ZOTERO_COLLECTIONS_MAX).map((one) => ({ key: one.key, name: one.name, ...(one.parentCollection ? { parent: one.parentCollection } : {}), items: one.numItems, subcollections: one.numCollections }));
+    return { collections, ...(all.length > from + collections.length ? { next: from + collections.length } : {}) };
   },
 });
 export const collections = userAction(collectionsAction);

@@ -354,5 +354,9 @@ describe("Screen all on a Zotero collection (#328)", () => {
     // The person's own library, that collection's items and not its sub-collections', from the second on.
     expect(requests.map((url) => [url.pathname, url.searchParams.get("start")])).toEqual([["/users/15294942/collections/ABCD1234/items/top", "1"]]);
     expect(await read(jobId)).toMatchObject({ label: "Zotero", totalPapers: 2 });
+    // Each keeps where its PDF is in Zotero, for an extraction of the included ones to read.
+    expect(papers[0].pdfUrl).toBe("zotero://select/users/15294942/items/ITEM0002");
+    // Screened again, the included papers of a Zotero screening still can't be saved to a collection.
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "screening", jobId }, first: 1, last: 2, ...job, saveTo: { kind: "new", name: "Picked" } })).rejects.toThrow(/can't be saved to a collection/);
   });
 });
