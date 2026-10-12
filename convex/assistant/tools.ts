@@ -428,7 +428,7 @@ export function toolsFor(
       if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
       note(entry.path, input, change ? "made" : result);
       // A change that returns nothing says it was made. A read that returns nothing found nothing.
-      return forModel(change ? (result ?? DONE) : linked(entry.path, result));
+      return forModel(linked(entry.path, change ? (result ?? DONE) : result));
     } catch (error) {
       const message = messageOf(error);
       await ctx.runMutation(internal.assistant.steps.failed, { stepId, error: message });

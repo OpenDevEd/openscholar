@@ -37,11 +37,11 @@ export function cleanContent(content: { [K in keyof typeof authorContentFields]:
   return next;
 }
 
-/** A profile owned by `workspaceId`, made by `createdBy` (#650). */
-export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, workspaceId: Id<"workspaces">, name: string) {
+/** A profile owned by `workspaceId`, made by `createdBy` (#650), or by the assistant for them. */
+export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, workspaceId: Id<"workspaces">, name: string, viaAssistant = false) {
   const content = cleanContent({name, headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: ""});
   const id = await ctx.db.insert("authorProfiles", {...content, workspaceId, createdBy, revision: 1, updatedAt: Date.now()});
-  await noteActivity(ctx, {workspaceId, by: createdBy, viaAssistant: false}, {kind: "author", id, happened: "created", detail: content.name});
+  await noteActivity(ctx, {workspaceId, by: createdBy, viaAssistant}, {kind: "author", id, happened: "created", detail: content.name});
   return id;
 }
 
@@ -67,16 +67,19 @@ export const create = workspaceMutation({
   },
 });
 
+/** A profile by its ID as its public page shows it, with what the reader is to it; null for one that isn't there. */
+export async function readProfile(ctx: QueryCtx, profileId: string) {
+  const id = ctx.db.normalizeId("authorProfiles", profileId);
+  if (!id) return null;
+  const profile = await ctx.db.get("authorProfiles", id);
+  if (!profile) return null;
+  return {...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null, ...(await profileViewer(ctx, profile))};
+}
+
 export const get = query({
   args: {profileId: v.string()},
   returns: v.union(v.null(), v.object({...profileWithPhoto, role: v.union(v.literal("owner"), v.literal("editor"), v.null()), member: v.boolean()})),
-  handler: async (ctx, {profileId}) => {
-    const id = ctx.db.normalizeId("authorProfiles", profileId);
-    if (!id) return null;
-    const profile = await ctx.db.get("authorProfiles", id);
-    if (!profile) return null;
-    return {...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null, ...(await profileViewer(ctx, profile))};
-  },
+  handler: async (ctx, {profileId}) => await readProfile(ctx, profileId),
 });
 
 export function searchProfilePage(ctx: QueryCtx, term: string, paginationOpts: PaginationOptions) {
