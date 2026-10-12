@@ -32,7 +32,7 @@ export const publicationsAction = defineUserAction({
       card: fetchPublicationCard,
     }, id, query ?? "", cursor ?? null);
     return {
-      publications: page.papers.map(({ title, type, year, authors, url, library, locations }) => ({ title, type, year, authors, url, library: library.name, copies: locations.length })),
+      publications: page.papers.map(({ title, type, year, authors, url, library, locations }) => ({ title, type, year, authors, url, library: library.name, copies: new Set(locations.map((copy) => new URL(copy.url).origin)).size })),
       next: page.nextCursor,
       unavailable: page.unavailableCount,
       updating: page.updating,

@@ -25,13 +25,13 @@ const KINDS = {
   extraction: { href: (row: Row) => text(row._id) && `/extraction/${row._id}`, name: (row: Row) => row.name },
   screening: { href: (row: Row) => text(row._id) && `/screening?job=${row._id}`, name: (row: Row) => row.name ?? row.label ?? "Screening" },
   chat: { href: (row: Row) => text(row._id) && `/?chat=${row._id}`, name: (row: Row) => row.title },
-  author: { href: (row: Row) => text(row.profileId) && `/authors/${row.profileId}`, name: (row: Row) => row.name },
+  author: { href: (row: Row) => profilePage(row), name: (row: Row) => row.name },
   // A library paper's row has its paper ID in `id`; other reads call it `openalexId`.
   paper: { href: (row: Row) => paperUrl(row.openalexId ?? row.id), name: (row: Row) => row.title },
 } satisfies Record<string, { href: (row: Row) => string | undefined; name: (row: Row) => unknown }>;
 type Kind = keyof typeof KINDS;
 
-/** The reads whose records come with a link, and what kind they are. */
+/** The calls whose records come with a link, and what kind they are: reads, and a change that makes one. */
 const READS: Record<string, Kind> = {
   "research/records:listedSearches": "search",
   "research/records:getSearch": "search",
@@ -47,9 +47,13 @@ const READS: Record<string, Kind> = {
   "assistant/threads:get": "chat",
   "authors/assistant:directory": "author",
   "authors/assistant:profile": "author",
+  "authors/assistant:create": "author",
 };
 
 /** The page a step's card opens, for a change or a read of one record it names by ID: the job it stopped, paused or read the cost of. One it deleted has none. */
+/** An author profile's page, for an argument in the form of a profile's ID: anything else would make some other address. */
+const profilePage = (args: Row) => (typeof args.profileId === "string" && /^[a-z0-9]{16,64}$/.test(args.profileId) ? `/authors/${args.profileId}` : undefined);
+
 const OPENS: Record<string, (args: Row) => string | undefined> = {
   "extraction/mutations:cancelExtraction": (args) => KINDS.extraction.href({ _id: args.jobId }),
   "extraction/mutations/pause:pauseExtraction": (args) => KINDS.extraction.href({ _id: args.jobId }),
@@ -73,9 +77,9 @@ const OPENS: Record<string, (args: Row) => string | undefined> = {
   // A research area, by its topic ID as the read checked it.
   "authors/assistant:directory": () => "/authors",
   "authors/assistant:invitations": () => "/authors",
-  "authors/assistant:profile": (args) => (typeof args.profileId === "string" ? `/authors/${args.profileId}` : undefined),
-  "authors/assistant:editors": (args) => (typeof args.profileId === "string" ? `/authors/${args.profileId}` : undefined),
-  "authors/assistant:publications": (args) => (typeof args.profileId === "string" ? `/authors/${args.profileId}` : undefined),
+  "authors/assistant:profile": profilePage,
+  "authors/assistant:editors": profilePage,
+  "authors/assistant:publications": profilePage,
   "topics/assistant:publications": (args) => (typeof args.topicId === "string" && /^T[1-9]\d*$/i.test(args.topicId.trim()) ? `/topics/${args.topicId.trim().toUpperCase()}` : undefined),
   "research/topics:get": (args) => (typeof args.id === "string" && /^T[1-9]\d*$/i.test(args.id.trim()) ? `/topics/${args.id.trim().toUpperCase()}` : undefined),
 };
