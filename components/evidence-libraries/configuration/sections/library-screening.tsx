@@ -76,7 +76,7 @@ export function LibraryScreening({
   reading?: { title: string; left: number };
   /** A read again after a new subject: how many of all are done. */
   rereading?: { done: number; of: number; title: string };
-  /** What a read of every record costs: records, dollars, and how long it takes. */
+  /** What grading every record again costs: records, dollars, and how long it takes. Only the grade is asked again. */
   cost: { records: number; usd: number; hours: string };
   sample?: SampleResult;
   onTrySample: () => void;
@@ -108,7 +108,7 @@ export function LibraryScreening({
           {changed ? (
             <div className="space-y-3 rounded-lg bg-card p-3 text-sm">
               <p>
-                Saving reads all <span className="font-medium tabular-nums">{cost.records.toLocaleString()}</span> records again with this subject:
+                Saving grades all <span className="font-medium tabular-nums">{cost.records.toLocaleString()}</span> records again against this subject:
                 about <span className="font-medium tabular-nums">${cost.usd.toFixed(0)}</span> on the library&apos;s key and about {cost.hours}.
                 Records keep their current grade until the last one is read, then the new grades take over together.
               </p>
@@ -152,7 +152,7 @@ export function LibraryScreening({
               {reading || rereading ? (
                 <span className="flex min-w-0 items-center gap-1.5 text-primary" role="status">
                   <AiIcon working size={14} className="size-3.5 shrink-0" />
-                  <span className="shrink-0 font-medium">{rereading ? `Reading again, ${rereading.done.toLocaleString()} of ${rereading.of.toLocaleString()}` : "Reading"}</span>
+                  <span className="shrink-0 font-medium">{rereading ? `Grading again, ${rereading.done.toLocaleString()} of ${rereading.of.toLocaleString()}` : "Reading"}</span>
                   <Shimmer as="span" duration={1.4} className="min-w-0 truncate">{(rereading ?? reading)!.title}</Shimmer>
                 </span>
               ) : (
@@ -168,7 +168,7 @@ export function LibraryScreening({
                 <div className="h-1.5 overflow-hidden rounded-full bg-primary/10" aria-hidden>
                   <div className="h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none" style={{ width: `${(rereading.done / rereading.of) * 100}%`, ...STRIPES }} />
                 </div>
-                <p className="text-xs text-muted-foreground">The grades below are the current subject&apos;s until every record has been read again.</p>
+                <p className="text-xs text-muted-foreground">The grades below are the current subject&apos;s until every record has been graded again.</p>
               </div>
             ) : null}
           </div>
@@ -267,7 +267,8 @@ export function MockLibraryScreening() {
       onKeptChange={(key, kept) => setKeptOut((out) => (kept ? out.filter((entry) => entry !== key) : [...out, key]))}
       reading={left ? { title: MOCK_READING[tick]!, left } : undefined}
       rereading={mock === "screening-rereading" ? { done: Math.round(MOCK_RECORDS * again), of: MOCK_RECORDS, title: MOCK_READING[tick]! } : undefined}
-      cost={{ records: MOCK_RECORDS, usd: MOCK_RECORDS * 0.0000746, hours: "an hour" }}
+      // Measured on ECCAR: a full read is $0.0000746 a record; asking only the grade costs 42% of that.
+      cost={{ records: MOCK_RECORDS, usd: MOCK_RECORDS * 0.0000746 * 0.42, hours: "an hour" }}
       sample={sample}
       onTrySample={() => setTrying(true)}
       trying={trying}
