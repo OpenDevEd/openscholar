@@ -5,20 +5,18 @@ import type { ActionCtx } from "../../_generated/server";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { authenticateLibraryServiceCredential } from "../credentials";
-import { evidenceLibraryDigestKindsValidator, evidenceLibraryDigestResultValidator } from "../validators";
+import { evidenceLibraryDigestResultValidator } from "../validators";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError, readConvexErrorData } from "../../lib/errors";
 import { jsonResponse, readBearerCredential } from "../../lib/libraryServiceHttp";
 import { digestOpaqueToken } from "../../lib/opaqueTokenDigest";
 import { digestRequestSchema } from "./contract";
 import { reviewLibraryDigest, writeLibraryDigest } from "./generate";
-import { readKinds } from "./kinds";
 
 // Writing runs in the background, so a proxy timeout in front of this route
 // cannot cut it off. A job still pending after STALE_AFTER_MS lost its action.
-// An action may run for ten minutes. Reading the library's likely reviews and
-// writing share one, and the writer has what the read leaves of it: on a list of
-// 700 publications with 500 reviews it took 488 seconds. The review that follows
+// An action may run for ten minutes, and writing has it: on a list of 700
+// publications with 500 reviews it took 488 seconds. The review that follows
 // runs in an action of its own.
 const WRITING_ACTION_MS = 585_000;
 const STALE_AFTER_MS = 900_000;
@@ -51,7 +49,7 @@ export const poll = internalMutation({
   returns: v.union(
     v.object({status: v.literal("succeeded"), digest: evidenceLibraryDigestResultValidator}),
     v.object({status: v.union(v.literal("pending"), v.literal("start"))}),
-    v.object({status: v.literal("failed"), kinds: evidenceLibraryDigestKindsValidator}),
+    v.object({status: v.literal("failed")}),
   ),
   handler: async (ctx, args) => {
     const libraryId = await authorizeLibrary(ctx, args);
@@ -67,8 +65,7 @@ export const poll = internalMutation({
     if (job.status === "pending" && job.startedAt > Date.now() - STALE_AFTER_MS) return {status: "pending" as const};
     if (job.requestId) await ctx.storage.delete(job.requestId);
     await ctx.db.delete("evidenceLibraryDigestJobs", job._id);
-    // What was read before the writer failed goes back with the failure, so the next attempt does not pay for it again.
-    return {status: "failed" as const, kinds: job.kinds};
+    return {status: "failed" as const};
   },
 });
 
@@ -111,13 +108,13 @@ export const readJob = internalQuery({
 });
 
 export const finish = internalMutation({
-  args: {jobId: v.id("evidenceLibraryDigestJobs"), result: v.union(v.null(), evidenceLibraryDigestResultValidator), kinds: evidenceLibraryDigestKindsValidator},
+  args: {jobId: v.id("evidenceLibraryDigestJobs"), result: v.union(v.null(), evidenceLibraryDigestResultValidator)},
   returns: v.null(),
-  handler: async (ctx, {jobId, result, kinds}) => {
+  handler: async (ctx, {jobId, result}) => {
     const job = await ctx.db.get("evidenceLibraryDigestJobs", jobId);
     if (!job || job.status !== "pending") return null;
     if (job.requestId) await ctx.storage.delete(job.requestId);
-    await ctx.db.patch("evidenceLibraryDigestJobs", jobId, result ? {status: "succeeded", result, requestId: undefined} : {status: "failed", kinds, requestId: undefined});
+    await ctx.db.patch("evidenceLibraryDigestJobs", jobId, result ? {status: "succeeded", result, requestId: undefined} : {status: "failed", requestId: undefined});
     return null;
   },
 });
@@ -135,22 +132,20 @@ export const run = internalAction({
     const started = Date.now();
     const job = await ctx.runQuery(internal.evidenceLibraries.digests.service.readJob, {jobId});
     if (!job?.requestId) return null;
-    let kinds: Awaited<ReturnType<typeof readKinds>> | undefined;
     let written: Awaited<ReturnType<typeof writeLibraryDigest>>;
     try {
       const request = await storedRequest(ctx, job.requestId);
-      kinds = await readKinds(request.publications);
-      written = await writeLibraryDigest(request, kinds, AbortSignal.timeout(WRITING_ACTION_MS - (Date.now() - started)));
+      written = await writeLibraryDigest(request, AbortSignal.timeout(WRITING_ACTION_MS - (Date.now() - started)));
     } catch (error) {
       console.error("Library digest generation failed", {libraryId: job.libraryId, editionId: job.editionId, error});
-      await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: null, kinds});
+      await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: null});
       return null;
     }
     try {
       await ctx.scheduler.runAfter(0, internal.evidenceLibraries.digests.service.check, {jobId, written});
     } catch (error) {
       console.error("Library digest review could not be queued; keeping the digest as written", {libraryId: job.libraryId, editionId: job.editionId, error});
-      await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: written, kinds: undefined});
+      await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: written});
     }
     return null;
   },
@@ -169,7 +164,7 @@ export const check = internalAction({
     } catch (error) {
       console.error("Library digest review did not start; keeping the digest as written", {libraryId: job.libraryId, editionId: job.editionId, error});
     }
-    await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result, kinds: undefined});
+    await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result});
     return null;
   },
 });
@@ -188,7 +183,7 @@ export const generate = httpAction(async (ctx, request) => {
     const state = await ctx.runMutation(internal.evidenceLibraries.digests.service.poll, job);
     if (state.status === "succeeded") return jsonResponse(200, {digest: state.digest});
     if (state.status === "pending") return jsonResponse(202, {status: "pending"});
-    if (state.status === "failed") return jsonResponse(503, {error: "digest_generation_failed", ...(state.kinds && Object.keys(state.kinds).length ? {kinds: state.kinds} : {})});
+    if (state.status === "failed") return jsonResponse(503, {error: "digest_generation_failed"});
     const requestId = await ctx.storage.store(new Blob([JSON.stringify(body.data)], {type: "application/json"}));
     try {
       await ctx.runMutation(internal.evidenceLibraries.digests.service.start, {...job, requestId});

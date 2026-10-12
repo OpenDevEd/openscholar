@@ -64,7 +64,7 @@ it("writes the digest in the background and returns it on every request until it
   expect(sent.writer).toHaveLength(1);
   expect(sent.writer[0]).toMatchObject({model: "openai/gpt-6-luna", reasoning: {effort: "max"}, provider: {require_parameters: true, allow_fallbacks: false}});
   expect(sent.writer[0]).not.toHaveProperty("tools");
-  // A library that marks no likely reviews leaves telling them apart to the writer, and nothing is read by Jev.
+  // A library that sends no study types leaves telling reviews apart to the writer, and nothing is read by Jev.
   expect(JSON.stringify(sent.writer[0])).toContain("Tell them from the title and abstract");
   expect(sent.jev).toEqual([]);
   // A second model reads the finished digest against the records it cites.
@@ -91,55 +91,44 @@ it("writes the digest in the background and returns it on every request until it
   expect(await t.run(ctx => ctx.db.query("users").collect())).toEqual([]);
 });
 
-it("has the likely reviews a library marks read once, tells the writer what each is, and hands the answers back", async () => {
+it("tells the writer each publication's study type, reads none itself, and refuses the old likely-review marks", async () => {
   vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
   const {request, finishGeneration} = await setup();
   const publication = (key: string, title: string, marks: object = {}) => ({key, title, creators: ["Ada Mills"], date: "2026", abstract: null, publicationType: "journalArticle", doi: null, ...marks});
   const publications = [
-    publication("ABCD2345", "Attention in classrooms"),
-    publication("BBBB2345", "Drought: a systematic review", {candidate: true}),
-    // Read for an earlier digest: its answer comes with the request and it is not read again.
-    publication("CCCC2345", "Adaptation, pooled", {candidate: true, kind: "meta-analysis"}),
-    publication("DDDD2345", "A review of my summer", {candidate: true}),
-    publication("EEEE2345", "Unreadable today", {candidate: true}),
+    publication("ABCD2345", "Attention in classrooms", {studyType: "rct"}),
+    publication("BBBB2345", "Drought: a systematic review", {studyType: "systematic-review"}),
+    // Not read yet: the library sends no type.
+    publication("CCCC2345", "Rice under heat"),
   ];
-  const sent = stubModels([{title: "Attention", summary: "One framework.", markdown: "A framework. [Mills, 2026](/lib/ABCD2345)"}], [], {"Drought: a systematic review": "review", "A review of my summer": "study"});
+  const sent = stubModels([{title: "Attention", summary: "One framework.", markdown: "A framework. [Mills, 2026](/lib/ABCD2345)"}]);
   expect((await request({publications})).status).toBe(202);
   await finishGeneration();
-  expect(sent.jev.sort()).toEqual(["A review of my summer", "Drought: a systematic review", "Unreadable today"]);
+  expect(sent.jev).toEqual([]);
   const prompt = JSON.stringify(sent.writer[0]);
-  expect(prompt).toContain("its library had it read");
-  expect(prompt).not.toContain("candidate");
-  // The writer is told only what is a meta-analysis or a review.
+  expect(prompt).toContain("its library read it");
   const supplied = (/\{\\"libraryId.*\}\]\}/.exec(prompt)?.[0] ?? "").replaceAll("\\\"", "\"");
-  expect((JSON.parse(supplied) as {publications: {key: string; kind?: string}[]}).publications.map(entry => [entry.key, entry.kind ?? null])).toEqual([
-    ["ABCD2345", null], ["BBBB2345", "review"], ["CCCC2345", "meta-analysis"], ["DDDD2345", null], ["EEEE2345", null],
+  expect((JSON.parse(supplied) as {publications: {key: string; studyType?: string}[]}).publications.map(entry => [entry.key, entry.studyType ?? null])).toEqual([
+    ["ABCD2345", "rct"], ["BBBB2345", "systematic-review"], ["CCCC2345", null],
   ]);
   const response = await request({publications});
   expect(response.status).toBe(200);
-  // What could not be read is left out, so the library asks again; what it already knew is not repeated.
-  expect((await response.json() as {digest: {kinds: unknown}}).digest.kinds).toEqual({BBBB2345: "review", DDDD2345: "study"});
+  expect(await response.json()).toEqual({digest: expect.not.objectContaining({kinds: expect.anything()})});
+  // A library on a runtime from before study types still marks likely reviews; it must update first.
+  expect((await request({publications: [publication("BBBB2345", "Drought: a systematic review", {candidate: true})]})).status).toBe(400);
 });
 
-it("hands back what was read when the writer fails, so the next attempt has nothing read again", async () => {
+it("answers a failed writer once with the failure, and writes the next request afresh", async () => {
   vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
-  const {request, finishGeneration} = await setup();
-  const publication = (marks: object) => ({key: "BBBB2345", title: "Drought: a systematic review", creators: ["Ada Mills"], date: "2026", abstract: null, publicationType: "journalArticle", doi: null, ...marks});
-  let read = 0;
-  vi.spyOn(globalThis, "fetch").mockImplementation(async url => {
-    if (String(url) !== "https://openrouter.ai/api/alpha/decisions") return new Response(JSON.stringify({error: {message: "Model unavailable", code: 503}}), {status: 503, headers: {"Content-Type": "application/json"}});
-    read++;
-    return Response.json({answers: {k: {choice: "review"}}});
-  });
-  expect((await request({publications: [publication({candidate: true})]})).status).toBe(202);
+  const {request, finishGeneration, saved} = await setup();
+  vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(JSON.stringify({error: {message: "Model unavailable", code: 503}}), {status: 503, headers: {"Content-Type": "application/json"}}));
+  expect((await request()).status).toBe(202);
   await finishGeneration();
-  const failed = await request({publications: [publication({candidate: true})]});
+  const failed = await request();
   expect(failed.status).toBe(503);
-  expect(await failed.json()).toEqual({error: "digest_generation_failed", kinds: {BBBB2345: "review"}});
-  // The library keeps the answer and sends it with its next attempt.
-  expect((await request({publications: [publication({candidate: true, kind: "review"})]})).status).toBe(202);
-  await finishGeneration();
-  expect(read).toBe(1);
+  expect(await failed.json()).toEqual({error: "digest_generation_failed"});
+  expect((await saved()).jobs).toEqual([]);
+  expect((await request()).status).toBe(202);
 });
 
 it("repairs a mistyped citation, straightens curly quotes and levels headings instead of rejecting the digest", async () => {

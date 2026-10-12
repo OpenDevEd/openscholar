@@ -2,7 +2,9 @@ import { z } from "zod";
 
 export const DIGEST_MODEL = "openai/gpt-6-luna";
 export const DIGEST_REASONING = "max";
-export const publicationKindSchema = z.enum(["meta-analysis", "review", "study"]);
+/** What kind of work a library reads each record as (new-el's `study-types.ts`). The first five are the reviews and syntheses. */
+export const STUDY_TYPES = ["review-of-reviews", "meta-analysis", "systematic-review", "literature-review", "bibliometric", "rct", "quasi-experiment", "quantitative", "qualitative", "modelling", "protocol", "commentary", "not-research"] as const;
+export const SYNTHESIS_TYPES = STUDY_TYPES.slice(0, 5);
 export const digestRequestSchema = z.object({
   libraryId: z.string().min(1).max(128),
   editionId: z.string().uuid(),
@@ -19,11 +21,8 @@ export const digestRequestSchema = z.object({
     abstract: z.string().max(16000).nullable(),
     publicationType: z.string().max(100),
     doi: z.string().max(500).nullable(),
-    // The library takes this for a likely meta-analysis or review and wants it read. A library that marks its likely
-    // reviews sends this for every publication, true or false: its presence is how the writer knows not to guess.
-    candidate: z.boolean().optional(),
-    // What an earlier read found, so it is not read again.
-    kind: publicationKindSchema.optional(),
+    // What the library read it as, or an editor set. Left out for a record not read yet, and by a library that reads none.
+    studyType: z.enum(STUDY_TYPES).optional(),
   }).strict()).min(1).max(1000),
 }).strict().superRefine((value, ctx) => {
   if (Date.parse(value.periodEnd) <= Date.parse(value.periodStart)) {
