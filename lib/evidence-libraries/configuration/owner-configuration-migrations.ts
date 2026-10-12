@@ -9,7 +9,7 @@ import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 8 as const;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 9 as const;
 const MAX_CHANGED_POINTERS = 100;
 
 type OwnerConfigurationSnapshotRow = {
@@ -555,6 +555,19 @@ function migrateVersionSevenToEight(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+/** Libraries choose their open-access label; saved ones keep the runtime's default, open records only. */
+function migrateVersionEightToNine(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 9;
+  for (const row of next.sections) {
+    if (row.sectionKey !== "content" || !isRecord(row.payload)) continue;
+    row.payload = { openAccessLabel: "open", ...row.payload };
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [
   {
     sectionKey: "ai",
@@ -618,6 +631,15 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 7,
     to: 8,
     migrate: migrateVersionSevenToEight,
+    defaultRows: [
+      ...disabledAiDefaults,
+      { sectionKey: "topics", payload: () => ({ enabled: false }) },
+    ],
+  },
+  {
+    from: 8,
+    to: 9,
+    migrate: migrateVersionEightToNine,
     defaultRows: [
       ...disabledAiDefaults,
       { sectionKey: "topics", payload: () => ({ enabled: false }) },

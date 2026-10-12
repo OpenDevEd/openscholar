@@ -1146,10 +1146,40 @@ describe("changedSectionRows for the discovery sections", () => {
     expect(rows.map((row) => row.sectionKey)).toEqual(["sources", "content"]);
     expect(rows[1]?.payload).toEqual({
       tags: { publish: ["_publish"], hidden: ["hide"] },
+      openAccessLabel: "open",
     });
     const reset = resetSection(draft, discoveryRows, "sources");
     expect(reset.sources[0]?.writebackEnabled).toBe(true);
     expect(reset.content.tags.hidden).toEqual([]);
+  });
+
+  it("writes the open-access label from the Features card and resets it apart from the tag rules", () => {
+    const draft = readDraft(discoveryRows);
+    draft.content.openAccessLabel = "both";
+    draft.content.tags.hidden = ["hide"];
+    expect(changedSectionRows(draft, discoveryRows)).toEqual([
+      {
+        sectionKey: "content",
+        payload: { tags: { publish: ["_publish"], hidden: ["hide"] }, openAccessLabel: "both" },
+      },
+    ]);
+    expect(sectionState(draft, discoveryRows, "features")).toBe("edited");
+    expect(resetSection(draft, discoveryRows, "features").content).toEqual({
+      tags: { publish: ["_publish"], hidden: ["hide"] },
+      openAccessLabel: "open",
+    });
+    expect(resetSection(draft, discoveryRows, "sources").content).toEqual({
+      tags: { publish: ["_publish"], hidden: [] },
+      openAccessLabel: "both",
+    });
+    // A refused label belongs to the Features card; refused tag rules stay with Sources.
+    expect(saveRefusal("/content/openAccessLabel", "Invalid option")?.card).toBe("features");
+    expect(saveRefusal("/content/tags/hidden", "Invalid tag")?.card).toBe("sources");
+    const unknown = readDraft([
+      ...discoveryRows.filter((row) => row.sectionKey !== "content"),
+      { sectionKey: "content", payload: { tags: {}, openAccessLabel: "sometimes" } },
+    ]);
+    expect(unknown.content.openAccessLabel).toBe("open");
   });
 
   it("writes collections as saved by the picker", () => {

@@ -1234,6 +1234,15 @@
 						}
 					},
 					"additionalProperties": false
+				},
+				"openAccessLabel": {
+					"default": "open",
+					"type": "string",
+					"enum": [
+						"open",
+						"both",
+						"off"
+					]
 				}
 			},
 			"additionalProperties": false
@@ -1817,6 +1826,21 @@
 							"format": "uri"
 						}
 					},
+					"additionalProperties": false
+				},
+				"openAlex": {
+					"type": "object",
+					"properties": {
+						"apiKey": {
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 512,
+							"writeOnly": true
+						}
+					},
+					"required": [
+						"apiKey"
+					],
 					"additionalProperties": false
 				},
 				"publication": {

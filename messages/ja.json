@@ -2385,7 +2385,17 @@
         "appearance": "Appearance",
         "discovery": "Discovery",
         "exports": "Exports",
-        "accounts": "Accounts"
+        "accounts": "Accounts",
+        "openAccess": "Open access label"
+      },
+      "openAccess": {
+        "options": {
+          "open": "Open only",
+          "both": "Open and closed",
+          "off": "Off"
+        },
+        "open": "Open access",
+        "closed": "Closed access"
       },
       "labels": {
         "themeSwitcher": "Light / dark switch",

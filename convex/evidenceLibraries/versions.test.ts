@@ -10,6 +10,7 @@ import {
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 import { organizationWorkspaceOf } from "../workspaces/personal";
+import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 
 const RUNTIME_COMMIT = "a".repeat(40);
 const NEWER_COMMIT = "b".repeat(40);
@@ -204,6 +205,46 @@ describe("Evidence Library versions", () => {
     ]);
   });
 
+  it("restores on the latest release when the running software can't read the current contract", async () => {
+    const fixture = await createReadySetupFixture("restore-update");
+    await publishSecondRevision(fixture);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: open access" }],
+        releases: [],
+        checkedAt: Date.now(),
+        contractSupport: {
+          commit: EVIDENCE_LIBRARY_CONFIG_PROVENANCE.commit,
+          running: false,
+          latest: true,
+        },
+      });
+    });
+
+    const restored = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.restoreRevision,
+      {
+        libraryId: fixture.created.libraryId,
+        revisionId: fixture.activated.revisionId,
+      },
+    );
+    expect(
+      await fixture.t.run((ctx) => ctx.db.get(restored.operationId)),
+    ).toMatchObject({
+      kind: "publish",
+      revisionId: restored.revisionId,
+      runtimeUpdate: {
+        from: RUNTIME_COMMIT,
+        to: NEWER_COMMIT,
+        fromImage: TEST_RUNTIME_IMAGE,
+        toImage: NEWER_RUNTIME_IMAGE,
+      },
+    });
+  });
+
   it("migrates a historical version into a current restore candidate without rewriting history", async () => {
     const fixture = await createReadySetupFixture("restore-v2-candidate");
     const second = await publishSecondRevision(fixture);
@@ -274,7 +315,7 @@ describe("Evidence Library versions", () => {
     expect(state.candidate).toMatchObject({
       basedOnRevisionId: second.revisionId,
       rollbackOfRevisionId: historicalRevisionId,
-      ownerConfigurationVersion: 8,
+      ownerConfigurationVersion: 9,
     });
     expect(state.candidateIdentity?.payload).toMatchObject({ assets: {} });
     expect(state.library?.activeRevisionId).toBe(second.revisionId);
@@ -370,7 +411,7 @@ describe("Evidence Library versions", () => {
     expect(firstState.active?.ownerConfigurationVersion).toBe(1);
     expect(firstState.candidate).toMatchObject({
       basedOnRevisionId: activeRevisionId,
-      ownerConfigurationVersion: 8,
+      ownerConfigurationVersion: 9,
     });
     expect(firstState.library?.activeRevisionId).toBe(activeRevisionId);
     expect(firstState.library?.latestRevisionId).toBe(started.revisionId);
@@ -380,7 +421,7 @@ describe("Evidence Library versions", () => {
     expect(
       firstState.operations.find((operation) => operation.runtimeUpdate)
         ?.idempotencyKey,
-    ).toContain(`${activeRevisionId}:v8:${RUNTIME_COMMIT}:${NEWER_COMMIT}`);
+    ).toContain(`${activeRevisionId}:v9:${RUNTIME_COMMIT}:${NEWER_COMMIT}`);
 
     await markFailed(fixture, started.operationId);
     const repeated = await fixture.admin.mutation(
@@ -605,7 +646,7 @@ describe("Evidence Library versions", () => {
     expect(state.active?.ownerConfigurationVersion).toBe(1);
     expect(state.candidate).toMatchObject({
       basedOnRevisionId: activeRevisionId,
-      ownerConfigurationVersion: 8,
+      ownerConfigurationVersion: 9,
     });
     expect(state.candidateIdentity?.payload).toMatchObject({
       baseUrl: "https://climate.example.org",
@@ -816,7 +857,7 @@ describe("Evidence Library address move", () => {
     });
     expect(state.candidate).toMatchObject({
       basedOnRevisionId: fixture.activated.revisionId,
-      ownerConfigurationVersion: 8,
+      ownerConfigurationVersion: 9,
     });
     expect(state.candidateIdentity?.payload).toMatchObject({
       baseUrl: movedTo,

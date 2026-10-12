@@ -345,6 +345,11 @@ const FEATURE_DEFAULTS = Object.fromEntries(
 ) as Record<FeatureKey, boolean>;
 const FEATURE_KEYS = Object.keys(FEATURE_DEFAULTS) as FeatureKey[];
 
+/** `content.openAccessLabel`: which records say whether they are open access. Edited on the Features card. */
+export const OPEN_ACCESS_LABELS = schemaEnum<"open" | "both" | "off">("/content/openAccessLabel");
+export type OpenAccessLabel = (typeof OPEN_ACCESS_LABELS)[number];
+const OPEN_ACCESS_LABEL_DEFAULT = schemaDefault("/content/openAccessLabel") as OpenAccessLabel;
+
 export const HOME_STEP_TYPES = schemaEnum<
   "arrival" | "check" | "publication" | "search" | "sync" | "duplicates" | "fulltext" | "text"
 >("/home/curation/steps/*/type");
@@ -541,7 +546,7 @@ export type ConfigurationDraft = {
   topics: { enabled: boolean };
   sources: EvidenceSourceEntry[];
   /** `content.tags`: which Zotero tags mean hidden, coming soon, and so on. Edited on the Sources card. */
-  content: { tags: TagRules };
+  content: { tags: TagRules; openAccessLabel: OpenAccessLabel };
   citations: { showUrl: boolean };
   /** `exports.<format>`: which download formats the library generates from its records. */
   exports: Record<ExportFormat, boolean>;
@@ -1006,7 +1011,8 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
 
 // Only the tag rules the runtime knows; anything else would fail the strict `content` row.
 function readContent(payload: unknown): ConfigurationDraft["content"] {
-  const tags = record(record(payload).tags);
+  const content = record(payload);
+  const tags = record(content.tags);
   const known: TagRules = {};
   for (const key of TAG_RULE_KEYS) {
     const value = tags[key];
@@ -1015,7 +1021,8 @@ function readContent(payload: unknown): ConfigurationDraft["content"] {
         (tag): tag is string => typeof tag === "string",
       );
   }
-  return { tags: known };
+  const label = OPEN_ACCESS_LABELS.find((value) => value === content.openAccessLabel);
+  return { tags: known, openAccessLabel: label ?? OPEN_ACCESS_LABEL_DEFAULT };
 }
 
 function readHome(payload: unknown): HomeDraft {
@@ -1431,7 +1438,10 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
     case "sources":
       return draft.sources.map((source) => ({ ...source }));
     case "content":
-      return { tags: { ...draft.content.tags } };
+      return {
+        tags: { ...draft.content.tags },
+        openAccessLabel: draft.content.openAccessLabel,
+      };
     case "citations":
       return { showUrl: draft.citations.showUrl };
     case "exports":
@@ -1597,7 +1607,10 @@ function cardSlice(draft: ConfigurationDraft, sectionKey: PageSectionKey) {
     case "citations":
       return { citations: draft.citations, exports: draft.exports };
     case "features":
-      return SHOWN_FEATURES.map((feature) => draft.features[feature]);
+      return {
+        features: SHOWN_FEATURES.map((feature) => draft.features[feature]),
+        openAccessLabel: draft.content.openAccessLabel,
+      };
     case "languages":
       return draft.localization;
     case "analytics":
@@ -1651,7 +1664,7 @@ const ROWS_FOR_CARD: Record<PageSectionKey, readonly RowKey[]> = {
   search: ["search", "filters", "topics"],
   sources: ["sources", "content"],
   citations: ["citations", "exports"],
-  features: ["features"],
+  features: ["features", "content"],
   ai: ["ai", "features"],
   languages: ["localization"],
   analytics: ["analytics"],
@@ -1660,8 +1673,10 @@ const ROWS_FOR_CARD: Record<PageSectionKey, readonly RowKey[]> = {
 /** The card that edits a runtime row, or null when the page has none for it. */
 export function cardForRow(rowKey: string): PageSectionKey | null {
   // Several cards write `features` (Navigation owns navbarSearch, Home owns
-  // homePage); issues go to the Features card.
+  // homePage); issues go to the Features card. `content` is mostly the
+  // Sources card's tag rules; its open-access label is matched by pointer.
   if (rowKey === "features") return "features";
+  if (rowKey === "content") return "sources";
   return (
     PAGE_SECTION_KEYS.find((card) =>
       (ROWS_FOR_CARD[card] as readonly string[]).includes(rowKey),
@@ -1681,6 +1696,7 @@ export function cardForPointer(pointer: string): PageSectionKey | null {
   ) {
     return "theme";
   }
+  if (pointer === "/content/openAccessLabel") return "features";
   return cardForRow(pointer.split("/")[1] ?? "");
 }
 
@@ -2027,7 +2043,7 @@ function takeSection(
       break;
     case "sources":
       next.sources = saved.sources;
-      next.content = saved.content;
+      next.content = { ...next.content, tags: saved.content.tags };
       break;
     case "citations":
       next.citations = saved.citations;
@@ -2036,6 +2052,7 @@ function takeSection(
     case "features":
       for (const feature of SHOWN_FEATURES)
         next.features[feature] = saved.features[feature];
+      next.content = { ...next.content, openAccessLabel: saved.content.openAccessLabel };
       break;
     case "languages":
       next.localization = saved.localization;
