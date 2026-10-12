@@ -161,6 +161,24 @@ const extractionOn = (t: ReturnType<typeof convexTest>) =>
   });
 
 describe("the assistant's tools", () => {
+  it("undoes a card's run of changes together, the last one made first, whichever started first", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId, say, steps } = await chatOf(t);
+    const paper = { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" };
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: paper } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    await say("Save that paper");
+    mockDoStream.mockImplementationOnce(calling({ id: "rate", name: "run_action", input: { name: "library/mutations:setLibraryRating", arguments: { openalexId: paper.openalexId, rating: 5 } } })).mockImplementationOnce(finishingDoStream(["Rated it."]));
+    await say("Rate it five");
+    // Calls run together, so the rating may have started before the save it changes, and ended in the same moment.
+    const [save, rate] = await steps();
+    await t.run(async (ctx) => ctx.db.patch("assistantSteps", rate._id, { startedAt: save.startedAt - 1, endedAt: save.endedAt }));
+
+    // Put back the save first and its removal would refuse a paper rated since; the rating goes first.
+    await asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [save._id, rate._id] });
+    expect(await t.run(async (ctx) => ctx.db.query("libraryItems").collect())).toEqual([]);
+    expect((await steps()).map((step) => step.undone)).toEqual([true, true]);
+  });
+
   it("run an action as the person who sent the message, keep it as a step, and tell the model what came of it", async () => {
     const t = convexTest(schema);
     const { ada, threadId, say, steps, results, shown } = await chatOf(t);
@@ -295,14 +313,14 @@ describe("the assistant's tools", () => {
     // It would run with Ada's access, so only she can allow it.
     await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: ben, role: "editor" });
     const asking = (await steps()).find((step) => step.status === "asking")!;
-    await expect(asBen.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/Only the person/);
+    await expect(asBen.mutation(api.assistant.replies.answer, { threadId, stepIds: [asking._id], allow: true })).rejects.toThrow(/Only the person/);
     // He sees that it waits, and nothing of what it would do.
     const seen = (await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
     expect(seen).toMatchObject({ canAnswer: false });
     expect(seen).not.toHaveProperty("details");
 
     mockDoStream.mockImplementationOnce(finishingDoStream(["It's in both now."]));
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [asking._id], allow: true });
     await settled();
     // It ran, as its own step, and the model read what came of it where its call left off.
     expect(await collected()).toEqual(expect.arrayContaining([own, followed]));
@@ -323,7 +341,7 @@ describe("the assistant's tools", () => {
     ]);
     expect((await thread())?.reply).toBeUndefined();
     // An answer given twice changes nothing.
-    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true })).rejects.toThrow(/already been answered/);
+    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [asking._id], allow: true })).rejects.toThrow(/already been answered/);
   });
 
   it("make a change to many records as one step with one undo, ask once before one of more than ten, and refuse more than ten of a kind made one by one", async () => {
@@ -350,7 +368,7 @@ describe("the assistant's tools", () => {
 
     // Her yes makes all twelve as that one step, which says how many it made, and the model reads the same.
     mockDoStream.mockImplementationOnce(finishingDoStream(["Your library is empty now."]));
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [(await steps()).find((step) => step.status === "asking")!._id], allow: true });
     await settled();
     expect(await saved()).toEqual([]);
     const [removal, ...others] = await steps();
@@ -360,11 +378,11 @@ describe("the assistant's tools", () => {
     expect(told(1, "all")).not.toHaveProperty("failed");
     // One Undo puts all twelve back, and nothing is left to undo it twice with.
     expect(await undos()).toBe(12);
-    await asAda.mutation(api.assistant.undo.run, { threadId, stepId: removal._id });
+    await asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [removal._id] });
     await waitFor(async () => (await saved()).length === 12 && (await steps())[0].reverting !== true, { timeoutMs: 5_000 });
     expect(await undos()).toBe(0);
     expect((await steps())[0]).toMatchObject({ undone: true });
-    await expect(asAda.mutation(api.assistant.undo.run, { threadId, stepId: removal._id })).rejects.toThrow(/nothing left to undo/);
+    await expect(asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [removal._id] })).rejects.toThrow(/nothing left to undo/);
 
     // Made one by one, the eleventh change of a kind in a reply is refused, and the model is told to make the rest in one call.
     // The count is the reply's, not one request's: a twelfth in its next request is refused too.
@@ -438,7 +456,7 @@ describe("the assistant's tools", () => {
     await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: ben, role: "editor" });
     mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
-    await asAda.mutation(api.assistant.undo.run, { threadId, stepId: (await steps())[0]._id });
+    await asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [(await steps())[0]._id] });
     const lastSent = () => JSON.stringify((requests.at(-1) as Sent).at(-1));
     const waiting = () => t.run(async (ctx) => (await ctx.db.get("assistantThreads", threadId))?.undone?.length ?? 0);
 
@@ -460,7 +478,7 @@ describe("the assistant's tools", () => {
     mockDoStream.mockImplementationOnce(calling({ id: "bens", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W2", title: "Reading camps" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Save this one for me" });
     await finishReply(t, threadId);
-    await asBen.mutation(api.assistant.undo.run, { threadId, stepId: (await steps()).at(-1)!._id });
+    await asBen.mutation(api.assistant.undo.run, { threadId, stepIds: [(await steps()).at(-1)!._id] });
     mockDoStream.mockImplementationOnce(finishingDoStream(["It's out again."]));
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Is mine saved?" });
     await finishReply(t, threadId);
@@ -503,7 +521,7 @@ describe("the assistant's tools", () => {
     expect(asked).toMatchObject({ action: "library/mutations:saveToLibrary", status: "asking", batch: 30, details: [{ name: "collection", value: "luna test" }], each: [1, 2, 3, 4, 5].map((n) => [{ name: "title", value: `Paper ${n}` }]) });
 
     mockDoStream.mockImplementationOnce(finishingDoStream(["Saved all thirty."]));
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps())[0]._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [(await steps())[0]._id], allow: true });
     await settled();
     expect(await held()).toEqual({ saved: 30, collected: 30 });
     // One step for the thirty, more than one transaction holds, named after the collection they went into.
@@ -520,7 +538,7 @@ describe("the assistant's tools", () => {
 
     // One Undo of the thirty takes back the saves and their places. The three taken out since were changed, so they stay saved, and the step says so.
     const [saving] = await steps();
-    await asAda.mutation(api.assistant.undo.run, { threadId, stepId: saving._id });
+    await asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [saving._id] });
     await waitFor(async () => (await steps())[0].error !== undefined, { timeoutMs: 5_000 });
     expect(await held()).toEqual({ saved: 3, collected: 0 });
     expect((await steps())[0]).toMatchObject({ undone: true, error: expect.stringMatching(/^3 of these couldn't be put back/) });
@@ -581,7 +599,7 @@ describe("the assistant's tools", () => {
     expect(asked).toMatchObject({ status: "asking", batch: total });
     expect(JSON.parse(asked.input)).toMatchObject({ stored: expect.any(String), count: total });
     mockDoStream.mockImplementationOnce(finishingDoStream(["Saved them all."]));
-    await asAda.mutation(api.assistant.replies.answer, { threadId: asked.threadId, stepId: asked._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId: asked.threadId, stepIds: [asked._id], allow: true });
     await settled();
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").take(total + 1)).length)).toBe(total);
     expect((await steps())[0]).toMatchObject({ status: "done", count: total });
@@ -597,7 +615,7 @@ describe("the assistant's tools", () => {
     await sayUntilAsked("Delete it");
     const [asking] = await steps();
     mockDoStream.mockImplementationOnce(finishingDoStream(["Deleted."]));
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [asking._id], allow: true });
     await settled();
     expect(told(1, "delete")).toEqual({ done: true });
     expect(await shown()).toEqual(["user: Delete it", "step: library/collections:deleteCollection done", "assistant: Deleted."]);
@@ -640,12 +658,12 @@ describe("the assistant's tools", () => {
     ]);
 
     // The first answer isn't the last, so the reply still waits.
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: rename._id, allow: false });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [rename._id], allow: false });
     expect((await thread())?.asking).toBeDefined();
     // What she declined shows so at once. What she allows doesn't show as running before anything runs.
     expect((await shown()).slice(1)).toEqual(["step: library/mutations:saveToLibrary asking, can be answered", "step: library/collections:renameCollection declined"]);
     mockDoStream.mockImplementationOnce(finishingDoStream(["Saved. The collection keeps its name."]));
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: save._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [save._id], allow: true });
     await settled();
     expect(outcome(1, "rename")).toMatchObject({ type: "execution-denied" });
     expect(outcome(1, "save")).toMatchObject({ type: "json", value: { id: expect.any(String) } });
@@ -697,9 +715,9 @@ describe("the assistant's tools", () => {
     const live = (await asAda.query(api.assistant.replies.live, { threadId }))!;
     expect(live.activity.phase).toBe("waiting");
     const waiting = live.attemptId;
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: one._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [one._id], allow: true });
     // The last answer starts the reply again. Stop, pressed on the waiting reply, arrives just after it: it stops the reply all the same.
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: two._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [two._id], allow: true });
     await asAda.mutation(api.assistant.replies.stop, { threadId, attemptId: waiting });
     await finishReply(t, threadId);
 
@@ -725,7 +743,7 @@ describe("the assistant's tools", () => {
     // As many replies of hers as one person has at once are being written elsewhere. Waiting isn't one of them, but carrying on would be one more.
     mockDoStream.mockImplementation(hangingDoStream());
     for (const id of others) await asAda.mutation(api.assistant.replies.send, { threadId: id, text: "Go" });
-    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asked._id, allow: true })).rejects.toThrow(new RegExp(`already writing ${ASSISTANT_REPLIES_AT_ONCE} replies`));
+    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [asked._id], allow: true })).rejects.toThrow(new RegExp(`already writing ${ASSISTANT_REPLIES_AT_ONCE} replies`));
     expect((await steps())[0].status).toBe("asking");
     for (const id of others) {
       await asAda.mutation(api.assistant.replies.stop, { threadId: id, attemptId: (await t.run(async (ctx) => ctx.db.get("assistantThreads", id)))!.reply!.attemptId });
@@ -882,7 +900,7 @@ describe("the assistant's tools", () => {
 
     // "Always allow in this chat": it runs, and from now on jobs that hold no more than the smallest listed limit covering it run without asking.
     mockDoStream.mockImplementationOnce(finishingDoStream(["Screening them now."]));
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true, always: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [(await steps()).find((step) => step.status === "asking")!._id], allow: true, always: true });
     await settled();
     expect(await jobs()).toBe(1);
     // The job keeps the step that started it, so its chat hears when it ends.
@@ -912,11 +930,11 @@ describe("the assistant's tools", () => {
     const waits = (await steps()).find((step) => step.status === "asking")!._id;
     const account = await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())!);
     await t.run(async (ctx) => ctx.db.patch("billingAccounts", account._id, { balance: 5 }));
-    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepId: waits, allow: true, always: true })).rejects.toThrow(/enough credits/);
+    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [waits], allow: true, always: true })).rejects.toThrow(/enough credits/);
     expect(await limits()).toEqual({ replyLimit: null, allowance: null });
     await t.run(async (ctx) => ctx.db.patch("billingAccounts", account._id, { balance: account.balance }));
     mockDoStream.mockImplementationOnce(finishingDoStream(["Left as it is."]));
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: waits, allow: false });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [waits], allow: false });
     await settled();
     expect(await jobs()).toBe(2);
 
@@ -925,7 +943,7 @@ describe("the assistant's tools", () => {
     mockDoStream.mockImplementationOnce(calling(screen("third")));
     await sayUntilAsked("And once more");
     mockDoStream.mockImplementationOnce(finishingDoStream(["Left as it is."]));
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: false });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [(await steps()).find((step) => step.status === "asking")!._id], allow: false });
     await settled();
     expect(await jobs()).toBe(2);
 
@@ -1031,7 +1049,7 @@ describe("the assistant's tools", () => {
     // Carrying on, it reads some more, and answers when it's done. No request is made its answer for it.
     toolChoices.length = 0;
     mockDoStream.mockImplementation(async () => (requests.length < before + 4 ? calling(list())() : finishingDoStream(["Deleted, and read the rest."])()));
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [(await steps()).find((step) => step.status === "asking")!._id], allow: true });
     await settled();
     expect(requests).toHaveLength(before + 4);
     expect(toolChoices).toEqual(["auto", "auto", "auto", "auto"]);
@@ -1073,7 +1091,7 @@ describe("the assistant's tools", () => {
 
     // Carrying on, the last call is already answered: it was refused, since it wasn't asked about.
     mockDoStream.mockImplementationOnce(calling({ id: "more", name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: 5 } } })).mockImplementationOnce(finishingDoStream(["Ten renamed."]));
-    for (const step of asked) await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: step._id, allow: true });
+    for (const step of asked) await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [step._id], allow: true });
     await settled();
     expect(outcome(1, `rename${MAX_ASKS}`)).toMatchObject({ type: "execution-denied" });
     expect(await t.run(async (ctx) => (await ctx.db.get("assistantThreads", chats[0]))?.title)).toBe("Renamed 0");
@@ -1283,7 +1301,7 @@ describe("the assistant's tools", () => {
     // Declined, and asked again, three times over.
     for (let round = 0; round < 3; round++) {
       const waiting = (await steps()).find((step) => step.status === "asking")!;
-      await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: waiting._id, allow: false });
+      await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [waiting._id], allow: false });
       if (round < 2) {
         await finishReply(t, threadId);
         expect((await steps()).some((step) => step.status === "asking")).toBe(true);
@@ -1465,7 +1483,7 @@ describe("the assistant's tools", () => {
     await t.run(async (ctx) => {
       await ctx.db.insert("organizationMemberships", { organizationId: labOrganization, clerkUserId: "ben", clerkMembershipId: "lab-ben", role: "org:member", state: "active", createdAt: 1, updatedAt: 1, clerkCreatedAt: 1, clerkUpdatedAt: 1 });
     });
-    await asBen.mutation(api.assistant.replies.answer, { threadId, stepId: asked._id, allow: true });
+    await asBen.mutation(api.assistant.replies.answer, { threadId, stepIds: [asked._id], allow: true });
     expect((await chat())?.reply?.workspaceId).toBe(theirs);
     await finishReply(t, threadId);
     expect(await t.run(async (ctx) => ctx.db.get("assistantThreads", his))).toBeNull();
@@ -1506,7 +1524,7 @@ describe("the assistant's tools", () => {
       }
     });
     // Answering the question isn't agreeing to more credits: the reply waits to be carried on, with the answer kept.
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: (await steps()).find((step) => step.status === "asking")!._id, allow });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [(await steps()).find((step) => step.status === "asking")!._id], allow });
     expect(await thread()).toMatchObject({ asking: { paused: "credits" } });
     expect((await thread())?.reply).toBeUndefined();
     expect(requests).toHaveLength(1);
@@ -1726,12 +1744,12 @@ describe("the assistant's tools", () => {
     const benSees = (await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step");
     // Someone else in the chat sees the step, and can't undo it: it changed the sender's library.
     expect(benSees).toMatchObject({ action: "library/mutations:saveToLibrary", canUndo: false });
-    await expect(asBen.mutation(api.assistant.undo.run, { threadId, stepId: step._id })).rejects.toThrow(/Only the person/);
+    await expect(asBen.mutation(api.assistant.undo.run, { threadId, stepIds: [step._id] })).rejects.toThrow(/Only the person/);
 
-    await asAda.mutation(api.assistant.undo.run, { threadId, stepId: step._id });
+    await asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [step._id] });
     expect(await t.run(async (ctx) => ctx.db.query("libraryItems").collect())).toEqual([]);
     expect((await shown())[1]).toBe("step: library/mutations:saveToLibrary done, undone");
-    await expect(asAda.mutation(api.assistant.undo.run, { threadId, stepId: step._id })).rejects.toThrow(/nothing left to undo/);
+    await expect(asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [step._id] })).rejects.toThrow(/nothing left to undo/);
   });
 
   it("are one fixed list for every chat and person, each tool small enough to keep the list cheap", async () => {
