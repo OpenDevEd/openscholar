@@ -165,6 +165,15 @@ describe("readRuntimeInstitutions", () => {
     });
   });
 
+  it("refuses a page longer than it asked for", async () => {
+    const long = vi.fn<typeof fetch>(async () =>
+      jsonResponse({ items: [1, 2, 3].map((n) => ({ name: `University ${n}`, count: n })) }),
+    );
+    await expect(
+      readRuntimeInstitutions(long, { baseUrl: "https://lib.example.test", credential, pageSize: 2 }),
+    ).rejects.toThrow(RuntimeReadError);
+  });
+
   it("reports a broken answer", async () => {
     const broken = vi.fn<typeof fetch>(async () =>
       jsonResponse({ items: [{ name: 1, count: 1 }] }),

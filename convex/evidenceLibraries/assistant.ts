@@ -12,7 +12,8 @@ import type { QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { internalQuery } from "../lib/functions";
 import { createError } from "../lib/errors";
-import { asSignedIn, assistantAction, assistantMutation, assistantQuery, defineUserAction, defineUserMutation, defineUserQuery, userAction, userMutation, userQuery } from "../lib/userActions";
+import { asSignedIn, assistantAction, assistantMutation, assistantQuery, defineChangingAction, defineUserAction, defineUserMutation, defineUserQuery, userAction, userMutation, userQuery } from "../lib/userActions";
+import { requireLibraryOrganization } from "../organizationFeatures";
 import { STEP_TEXT_MAX } from "../../lib/assistant/steps";
 import { evidenceLibraryUploadPrefix } from "../../lib/evidence-libraries/configuration/uploads";
 import { libraryGrant, libraryOf, readEvidenceLibraryAccess } from "./access";
@@ -53,6 +54,20 @@ async function signedInFor<Ctx extends QueryCtx>(ctx: Ctx, actor: InWorkspace, l
   const here = library !== null && (library.workspaceId === actor.workspaceId || ((await inOwnWorkspace(ctx, actor)) && (await libraryGrant(ctx, libraryId, actor.userId)) !== null));
   if (!here) throw createError("NOT_FOUND", "Evidence Library not found");
   return await asSignedIn(ctx, await personOf(ctx, actor.userId));
+}
+
+/** Refuses, before the person is asked, what only an owner of a library the reply reaches does. */
+async function ownerHere(ctx: QueryCtx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">) {
+  if (!(await readEvidenceLibraryAccess(await signedInFor(ctx, actor, libraryId), libraryId, "manage"))) throw createError("FORBIDDEN", "Only an owner of the library does this.");
+}
+
+/** The invitation to a library a call names, while it still waits. */
+async function waitingInvitation(ctx: QueryCtx, invitationId: Id<"itemInvitations">) {
+  const invitation = await ctx.db.get("itemInvitations", invitationId);
+  const library = invitation ? await libraryOf(ctx, invitation) : null;
+  if (!invitation || !library) throw createError("NOT_FOUND", "Invitation not found");
+  if (invitation.state !== "pending") throw createError("CONFLICT", "Invitation is no longer pending");
+  return { invitation, library };
 }
 
 export const librariesAction = defineUserQuery({
@@ -319,7 +334,7 @@ export const organizationHere = internalQuery({
 
 const roleOrNone = v.optional(v.union(roleValidator, v.null()));
 
-export const inviteAction = defineUserAction({
+export const inviteAction = defineChangingAction({
   path: "evidenceLibraries/assistant:invite",
   description:
     "Invites someone to a library's team by email, for an owner: editor (changes its records) or creator (adds them). They get an email, and see it under invitations once they sign in with that address. " +
@@ -327,6 +342,7 @@ export const inviteAction = defineUserAction({
   args: { libraryId: v.id("evidenceLibraries"), email: v.string(), role: roleValidator },
   returns: v.null(),
   ...teamChange,
+  check: async (ctx, actor, { libraryId }) => await ownerHere(ctx, actor, libraryId),
   run: async (ctx, actor, args): Promise<null> => {
     await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId: args.libraryId });
     return await ctx.runAction(internal.evidenceLibraries.invitationActions.inviteFor, { ...args, actingAs: actor.userId });
@@ -342,9 +358,7 @@ export const changeInvitationAction = defineUserMutation({
   returns: v.null(),
   ...teamChange,
   run: async (ctx, actor, { invitationId, role, cancel }) => {
-    const invitation = await ctx.db.get("itemInvitations", invitationId);
-    const library = invitation ? await libraryOf(ctx, invitation) : null;
-    if (!library) throw createError("NOT_FOUND", "Invitation not found");
+    const { library } = await waitingInvitation(ctx, invitationId);
     return await changeLibraryInvitation(await signedInFor(ctx, actor, library._id), { invitationId, ...(role ? { role } : {}), ...(cancel ? { cancel } : {}) });
   },
 });
@@ -363,7 +377,7 @@ export const invitationsAction = defineUserQuery({
 export const invitations = userQuery(invitationsAction);
 export const invitationsForAssistant = assistantQuery(invitationsAction);
 
-export const answerInvitationAction = defineUserAction({
+export const answerInvitationAction = defineChangingAction({
   path: "evidenceLibraries/assistant:answerInvitation",
   description: "Accepts or declines an invitation to an Evidence Library waiting for the person, by its ID evidenceLibraries/assistant:invitations gives. It must be to an address their account has verified. Done in their own workspace; asks the person first.",
   args: { invitationId: v.id("itemInvitations"), accept: v.boolean() },
@@ -372,6 +386,10 @@ export const answerInvitationAction = defineUserAction({
   // The library's owners see who joined, and nothing takes an answer back.
   outsideEffect: true,
   undoable: false,
+  check: async (ctx, actor, { invitationId }) => {
+    if (!(await inOwnWorkspace(ctx, actor))) throw createError("VALIDATION_ERROR", "An invitation is answered in the person's own workspace. Switch to it, then ask again.");
+    await waitingInvitation(ctx, invitationId);
+  },
   run: async (ctx, actor, args): Promise<null> => {
     const own: boolean = await ctx.runQuery(internal.evidenceLibraries.assistant.ownWorkspace, where(actor));
     if (!own) throw createError("VALIDATION_ERROR", "An invitation is answered in the person's own workspace. Switch to it, then ask again.");
@@ -388,7 +406,7 @@ export const ownWorkspace = internalQuery({
   handler: async (ctx, actor) => await inOwnWorkspace(ctx, actor),
 });
 
-export const startLibraryAction = defineUserAction({
+export const startLibraryAction = defineChangingAction({
   path: "evidenceLibraries/assistant:startLibrary",
   description:
     "Starts a new Evidence Library as a draft, for an admin of the organization the reply runs in whose plan has Evidence Libraries: reserves the address its name gives and makes its draft settings, which evidenceLibraries/assistant:editDraft then changes. " +
@@ -399,6 +417,11 @@ export const startLibraryAction = defineUserAction({
   // It takes an address and a place among the organization's libraries, and nothing gives them back by itself.
   outsideEffect: true,
   undoable: false,
+  check: async (ctx, actor) => {
+    const workspace = await ctx.db.get("workspaces", actor.workspaceId);
+    if (workspace?.kind !== "organization") throw createError("VALIDATION_ERROR", "Evidence Libraries are made in an organization. Switch to one, then ask again.");
+    await requireLibraryOrganization(await asSignedIn(ctx, await personOf(ctx, actor.userId)), workspace.organizationId);
+  },
   run: async (ctx, actor, { name }): Promise<Infer<typeof addressReservedValidator>> => {
     const organizationId = await ctx.runQuery(internal.evidenceLibraries.assistant.organizationHere, { workspaceId: actor.workspaceId });
     const reserved = await ctx.runAction(internal.evidenceLibraries.addressActions.reserveAddressFor, { name, organizationId, actingAs: actor.userId });
@@ -495,7 +518,7 @@ export const runningPublicationAction = defineUserAction({
 export const runningPublication = userAction(runningPublicationAction);
 export const runningPublicationForAssistant = assistantAction(runningPublicationAction);
 
-export const syncSourceAction = defineUserAction({
+export const syncSourceAction = defineChangingAction({
   path: "evidenceLibraries/assistant:syncSource",
   description: "Asks the running library to run one of its sources again now, by the key evidenceLibraries/assistant:sources gives: an import that failed is retried within seconds. For an owner; asks the person first.",
   args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string() },
@@ -504,6 +527,7 @@ export const syncSourceAction = defineUserAction({
   // The library's records change for everyone who reads it.
   outsideEffect: true,
   undoable: false,
+  check: async (ctx, actor, { libraryId }) => await ownerHere(ctx, actor, libraryId),
   run: async (ctx, actor, args): Promise<null> => {
     await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId: args.libraryId });
     const ran: { reason?: "not-set-up" } = await ctx.runAction(internal.zotero.runtimeReadActions.requestSourceRunFor, { ...args, actingAs: actor.userId });

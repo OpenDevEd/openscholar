@@ -213,12 +213,14 @@ async function runtimeGet(
 
 /**
  * One page of a list answer. A library that answers without `nextCursor`
- * has given its whole list, so the page is the only one.
+ * has given its whole list, so the page is the only one. With `most`, a page
+ * longer than was asked for is refused, so no read returns more than it says.
  */
 function readPage<T>(
   body: unknown,
   readItem: (value: unknown) => T | null,
   what: string,
+  most?: number,
 ): { items: T[]; nextCursor: string | null } {
   const items =
     isRecord(body) && Array.isArray(body.items)
@@ -227,6 +229,7 @@ function readPage<T>(
   const nextCursor = isRecord(body) ? body.nextCursor : undefined;
   if (
     !items ||
+    (most !== undefined && items.length > most) ||
     items.some((item) => item === null) ||
     (nextCursor !== undefined &&
       nextCursor !== null &&
@@ -263,7 +266,7 @@ export async function readRuntimeCollections(
       pageSize: String(input.pageSize ?? RUNTIME_READ_PAGE_SIZE),
     },
   );
-  return readPage(body, readCollection, "collection list");
+  return readPage(body, readCollection, "collection list", input.pageSize ?? RUNTIME_READ_PAGE_SIZE);
 }
 
 export async function readRuntimeInstitutions(
@@ -290,7 +293,7 @@ export async function readRuntimeInstitutions(
       pageSize: String(input.pageSize ?? RUNTIME_READ_PAGE_SIZE),
     },
   );
-  return readPage(body, readInstitution, "institution list");
+  return readPage(body, readInstitution, "institution list", input.pageSize ?? RUNTIME_READ_PAGE_SIZE);
 }
 
 /** The most ids one call may ask about, as the runtime allows. */
@@ -377,7 +380,7 @@ export async function readRuntimeReviewedPublications(
           pageSize: String(input.pageSize ?? RUNTIME_READ_PAGE_SIZE),
         },
   );
-  return readPage(body, readReviewedPublication, "reviewed publication list");
+  return readPage(body, readReviewedPublication, "reviewed publication list", input.ids ? input.ids.length : (input.pageSize ?? RUNTIME_READ_PAGE_SIZE));
 }
 
 /**
