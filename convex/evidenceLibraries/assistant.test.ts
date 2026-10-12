@@ -6,6 +6,8 @@ import { createActivatedSetupFixture, createDraftSetupFixture } from "../../test
 import { ensureWorkspace } from "../workspaces/create";
 import { organizationWorkspaceOf, personalWorkspaceOf } from "../workspaces/personal";
 import { evidenceLibraryUploadPrefix } from "../../lib/evidence-libraries/configuration/uploads";
+import { AI_PROVIDER, AI_PROVIDER_KEY_PATH } from "../../lib/evidence-libraries/configuration/ai";
+import { TEST_AI_MODELS } from "../../lib/evidence-libraries/configuration/test-models";
 import { seedFeatureUser } from "../organizationFeatures.test-support";
 
 const mail = vi.hoisted(() => ({ sendMail: vi.fn(), close: vi.fn() }));
@@ -77,6 +79,18 @@ describe("an Evidence Library's draft, for the assistant", () => {
     await expect(edit([{ sectionKey: "identity", path: ["__proto__", "polluted"], value: true }], { expectedEditVersion: version })).rejects.toThrow(/has no \W+__proto__/);
     // A section the draft hasn't got can't be taken back out, so it's asked about first.
     await expect(edit([{ sectionKey: "analytics", path: [], value: {} }], { expectedEditVersion: version })).rejects.toThrow(/say first/);
+  });
+
+  it("says the AI card wants a key only while none is stored, as the page does", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", "44".repeat(32));
+    const { t, admin, as, libraryId } = await setup();
+    const read = async () => (await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId })).problems.map(({ problem }) => problem);
+    const { editVersion } = await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId });
+    await t.mutation(internal.evidenceLibraries.assistant.editDraftForAssistant, { ...as, libraryId, changes: [{ sectionKey: "features", path: [], value: { ai: true } }, { sectionKey: "ai", path: [], value: { providers: [{ provider: AI_PROVIDER, enabled: true, models: [TEST_AI_MODELS[0]], defaultModel: TEST_AI_MODELS[0] }] } }], expectedEditVersion: editVersion, approved: true });
+    expect(await read()).toContain("aiKey");
+    await admin.action(api.evidenceLibraries.credentialActions.writeCredential, { libraryId, concretePath: AI_PROVIDER_KEY_PATH, instanceKey: AI_PROVIDER, value: `sk-or-v1-${"0".repeat(48)}` });
+    expect(await read()).not.toContain("aiKey");
+    vi.unstubAllEnvs();
   });
 
   it("changes a library's team as its owner, once the person allows it: a colleague by email, then their role, then not at all", async () => {

@@ -16,7 +16,9 @@ import { asSignedIn, assistantAction, assistantMutation, assistantQuery, defineC
 import { requireLibraryOrganization } from "../organizationFeatures";
 import { STEP_TEXT_MAX } from "../../lib/assistant/steps";
 import { evidenceLibraryUploadPrefix } from "../../lib/evidence-libraries/configuration/uploads";
-import { PAGE_SECTION_KEYS, readDraft, sectionProblems } from "../../lib/evidence-libraries/configuration/rules";
+import { PAGE_SECTION_KEYS, readDraft, sectionProblems, withAiKey } from "../../lib/evidence-libraries/configuration/rules";
+import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
+import { readCredentialMetadata } from "./credentials";
 import { publicOperationErrorMessage } from "../../lib/evidence-libraries/public-operation-error";
 import { libraryGrant, libraryOf, readEvidenceLibraryAccess } from "./access";
 import { MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
@@ -113,7 +115,8 @@ export const draftAction = defineUserQuery({
   args: { libraryId: v.id("evidenceLibraries"), sections: v.optional(v.union(v.array(v.string()), v.null())), path: v.optional(draftPathValidator) },
   returns: assistantDraftValidator,
   run: async (ctx, actor, { libraryId, sections, path }) => {
-    const read = await draftOf(await signedInFor(ctx, actor, libraryId), libraryId);
+    const signedIn = await signedInFor(ctx, actor, libraryId);
+    const read = await draftOf(signedIn, libraryId);
     const asked = sections?.length ? new Set(sections) : null;
     const shown = read.sections.filter((section) => !asked || asked.has(section.sectionKey));
     if (path?.length && shown.length !== 1) throw createError("VALIDATION_ERROR", "Name the one section to read a path in.");
@@ -126,7 +129,7 @@ export const draftAction = defineUserQuery({
       hasUnpublishedChanges: read.hasUnpublishedChanges,
       ...(read.liveAddress ? { liveAddress: read.liveAddress } : {}),
       sections: path?.length ? shown.map((section) => ({ ...section, payload: valueAt(section.payload, path, section.sectionKey) ?? null })) : shown,
-      problems: problemsOf(read.sections),
+      problems: await problemsOf(signedIn, libraryId, read.sections),
       ...(read.operation?.status === "failed" ? { failed: failureOf(read.operation) } : {}),
     };
   },
@@ -154,11 +157,16 @@ export const teamAction = defineUserQuery({
 export const team = userQuery(teamAction);
 export const teamForAssistant = assistantQuery(teamAction);
 
-/** What the configuration page flags on each card of a draft, by the card and the page's name for the problem (lib/evidence-libraries/configuration/rules.ts). */
-const problemsOf = (rows: ReadonlyArray<{ sectionKey: string; payload: unknown }>) => {
-  const draft = readDraft(rows as Parameters<typeof readDraft>[0]);
+/**
+ * What the configuration page flags on each card of a draft, by the card and the page's name for the problem
+ * (lib/evidence-libraries/configuration/rules.ts). Whether an AI key is stored isn't a saved row: the page reads it
+ * from the credential store, and so does this, with `ctx` signed in as the person.
+ */
+async function problemsOf(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">, rows: ReadonlyArray<{ sectionKey: string; payload: unknown }>) {
+  const keySaved = (await readCredentialMetadata(ctx, { libraryId })).some((credential) => credential.credentialKey === AI_PROVIDER_CREDENTIAL_KEY);
+  const draft = withAiKey(readDraft(rows as Parameters<typeof readDraft>[0]), keySaved);
   return PAGE_SECTION_KEYS.flatMap((card) => sectionProblems(draft, card).map((problem) => ({ card, problem })));
-};
+}
 
 /** A failed attempt to put a draft live, as the page tells its owner: hosting details stay in the operation's record. */
 const HOSTING_FAILED = "The hosting step failed. It can be tried again on the library's page.";
@@ -280,7 +288,7 @@ export const editDraftAction = defineUserMutation({
     const { editVersion } = await saveEvidenceLibraryDraftSections(signedIn, { libraryId, sections: rows, expectedEditVersion: expectedEditVersion ?? draft.draft.editVersion });
     const kept = undo && undoFits(libraryId, undo) ? { libraryId, changes: undo, unchanged: await heldAt((key) => after.get(key), undo) } : null;
     // What the page now flags, so a change that leaves a card wanting is seen.
-    const problems = problemsOf([...draft.sections.filter((section) => !after.has(section.sectionKey)), ...rows]);
+    const problems = await problemsOf(signedIn, libraryId, [...draft.sections.filter((section) => !after.has(section.sectionKey)), ...rows]);
     return { editVersion, problems, ...(kept ? { undo: { path: EDIT_PATH, args: kept } } : {}) };
   },
 });
