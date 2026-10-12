@@ -306,7 +306,11 @@ export const cancelExtractionAction = defineUserMutation({
   returns: v.object({ success: v.boolean() }),
   run: async (ctx, actor, args): Promise<{ success: boolean }> => {
     const job = await ownJob(ctx, actor, args.jobId);
-    if (job.status && ["completed", "failed", "cancelled"].includes(job.status)) return { success: true };
+    if (job.status && ["completed", "failed", "cancelled"].includes(job.status)) {
+      // The page's button does nothing more to one that ended; a chat is told, so it doesn't say it stopped it.
+      if (actor.author === "assistant") throw createError("CONFLICT", "This extraction has already ended, so there's nothing to stop.");
+      return { success: true };
+    }
 
     assertValidJobTransition(job.status as JobStatus, "cancelled");
     await ctx.db.patch("extractionJobs", args.jobId, { status: "cancelled", updatedAt: Date.now() });

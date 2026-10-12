@@ -51,7 +51,8 @@ const OPENS: Record<string, (args: Row) => string | undefined> = {
   "extraction/mutations:cancelExtraction": (args) => KINDS.extraction.href({ _id: args.jobId }),
   "extraction/mutations/pause:pauseExtraction": (args) => KINDS.extraction.href({ _id: args.jobId }),
   "extraction/mutations/resume:resumeExtraction": (args) => KINDS.extraction.href({ _id: args.jobId }),
-  "extraction/mutations:retryFailedQuestions": (args) => KINDS.extraction.href({ _id: args.jobId }),
+  "extraction/start:resume": (args) => KINDS.extraction.href({ _id: args.jobId }),
+  "extraction/start:retry": (args) => KINDS.extraction.href({ _id: args.jobId }),
   "extraction/queries/costs:getJobCost": (args) => KINDS.extraction.href({ _id: args.jobId }),
   "screening/mutations:cancelScreeningJob": (args) => KINDS.screening.href({ _id: args.jobId }),
 };

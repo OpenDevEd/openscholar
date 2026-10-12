@@ -17,6 +17,7 @@ import schema from "../../schema";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { markPaperTerminalTx } from "../paperLifecycle";
 import {
+  installFakeAutumn,
   seedCreditsForTest,
 } from "../../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
@@ -487,27 +488,34 @@ describe("retryFailedQuestions — public mutation guards", () => {
     expect(rows.every((r) => r.status === "failed")).toBe(true);
   });
 
-  it("from the chat, retries only within the credits the person allowed, read again as it runs", async () => {
+  it("from the chat, holds the credits the person allowed and retries under them, read again as it runs", async () => {
     const t = convexTest(schema);
     setupExtractionPaperWorkpool(t);
-    const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
-    const { jobId } = await seedJob(t, userId, {
-      jobStatus: "completed",
-      paperStatus: "completed",
-      rows: [
-        { kind: "failed", key: "q_rate", code: "rate_limit" },
-        { kind: "failed", key: "q_net", code: "network" },
-      ],
-    });
-    const { workspaceId } = (await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!;
-    const estimate = await t.withIdentity(OWNER_IDENTITY).query(api.extraction.queries.costs.estimateRetry, { jobId });
-    const retry = (allowed: { approved?: boolean; approvedCredits?: number }) => t.mutation(internal.extraction.mutations.retry.retryFailedQuestionsForAssistant, { userId, workspaceId, jobId, ...allowed });
+    installFakeAutumn();
+    try {
+      const { userId } = await seedFlagsAndCredits(t, { paid: 100_000 });
+      const { jobId } = await seedJob(t, userId, {
+        jobStatus: "completed",
+        paperStatus: "completed",
+        rows: [
+          { kind: "failed", key: "q_rate", code: "rate_limit" },
+          { kind: "failed", key: "q_net", code: "network" },
+        ],
+      });
+      const { workspaceId } = (await t.run((ctx) => ctx.db.get(jobId)))!;
+      const estimate = await t.withIdentity(OWNER_IDENTITY).query(api.extraction.queries.costs.estimateRetry, { jobId });
+      const retry = (allowed: { approved?: boolean; approvedCredits?: number }) => t.action(internal.extraction.start.retryForAssistant, { userId, workspaceId, jobId, ...allowed });
 
-    // Unasked, it doesn't run. Allowed less than its failures cost now, as when more failed while it waited, it's asked again.
-    await expect(retry({})).rejects.toThrow(/say first/);
-    await expect(retry({ approved: true, approvedCredits: estimate - 1 })).rejects.toThrow(/cost more now/);
-    expect((await t.run((ctx) => ctx.db.get(jobId)))?.status).toBe("completed");
-    expect(await retry({ approved: true, approvedCredits: estimate })).toMatchObject({ retryableCount: 2 });
+      // Unasked, it doesn't run. Allowed less than its failures cost now, as when more failed while it waited, it's asked again.
+      await expect(retry({})).rejects.toThrow(/say first/);
+      await expect(retry({ approved: true, approvedCredits: estimate - 1 })).rejects.toThrow(/more than the .* approved/);
+      expect((await t.run((ctx) => ctx.db.get(jobId)))?.status).toBe("completed");
+      // Allowed, it holds that figure and the retry runs under it, never past it.
+      expect(await retry({ approved: true, approvedCredits: estimate })).toMatchObject({ retryableCount: 2 });
+      expect(await t.run((ctx) => ctx.db.get(jobId))).toMatchObject({ status: "extracting", spendCap: estimate, spendHold: expect.stringMatching(/^extraction-job:/) });
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("enqueues retry queue work on the happy path", async () => {

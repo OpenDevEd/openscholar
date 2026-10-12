@@ -36,6 +36,8 @@ import { v } from "convex/values";
 import { internal } from "../../_generated/api";
 import { createError } from "../../lib/errors";
 import { jobIn } from "../access";
+import { noteActivity } from "../../activity/notes";
+import { actingAs } from "../../lib/userActions";
 import { readJobCounters } from "../jobCounters";
 import { MAX_JOB_SOURCES, bucketItemFromRow } from "../jobSources";
 import { effectivePaperCount } from "../../../lib/bucket/effective-paper-count";
@@ -47,7 +49,7 @@ import {
 import { validateResumeTransition } from "../../../lib/extraction/transitions";
 import { extractionPaperCredits } from "../../../lib/pricing";
 import { extractionPricing } from "../../ai/serverModel";
-import { approvalLeft } from "../../billing/spend";
+import { approvalLeft, holdOpen } from "../../billing/spend";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
   EXTRACTION_QUESTION_CONCURRENCY,
@@ -119,23 +121,123 @@ export const requeueLater = internalMutation({
   },
 });
 
+/** Whether a job is still under the credits approved when a chat started it: paused with its hold still taking items, it resumes under it and holds nothing new. */
+export async function underHold(ctx: QueryCtx, job: Doc<"extractionJobs">) {
+  return job.spendHold !== undefined && job.status !== "creditsExhausted" && (await holdOpen(ctx, job.spendHold));
+}
+
 /**
- * The most carrying on a job costs: every paper it hasn't read yet, at the most one paper costs. A job paused while
- * its setup read its sources has saved only some of its papers, so its papers are what its sources hold, if more.
+ * The most carrying on a job costs: nothing for one still under its approval; otherwise every paper it has
+ * left, at the most one paper costs. Once its setup is done those are its papers that are neither read nor
+ * failed for good; while its setup still reads its sources, the papers those sources hold.
  */
-async function resumeCredits(ctx: QueryCtx, job: Doc<"extractionJobs">) {
+export async function resumeCredits(ctx: QueryCtx, job: Doc<"extractionJobs">) {
+  if (await underHold(ctx, job)) return 0;
   const questions = await ctx.db.query("extractionQuestions").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(MAX_QUESTIONS_PER_JOB);
-  const sources = await ctx.db.query("extractionJobSources").withIndex("by_job_and_position", (q) => q.eq("jobId", job._id)).take(MAX_JOB_SOURCES);
-  const papers = Math.max(job.totalPapers ?? 0, effectivePaperCount(sources.map(bucketItemFromRow)));
-  const { processed } = await readJobCounters(ctx, job._id);
-  return Math.max(0, papers - processed) * extractionPaperCredits(await extractionPricing(ctx, job), questions, job.usePdfs ?? false);
+  const setUp = job.setup ? job.setup.done === true : (job.totalPapers ?? 0) > 0;
+  const sources = setUp ? [] : await ctx.db.query("extractionJobSources").withIndex("by_job_and_position", (q) => q.eq("jobId", job._id)).take(MAX_JOB_SOURCES);
+  const papers = setUp ? (job.totalPapers ?? 0) : Math.max(job.totalPapers ?? 0, effectivePaperCount(sources.map(bucketItemFromRow)));
+  const { processed, failed } = await readJobCounters(ctx, job._id);
+  return Math.max(0, papers - processed - failed) * extractionPaperCredits(await extractionPricing(ctx, job), questions, job.usePdfs ?? false);
+}
+
+/**
+ * Carries on a paused job, or one that ran out of credits, from where it stopped: from its page, from a
+ * person's Undo of a pause, or from a chat under the figure held for it (`spend`, extraction/start.ts).
+ */
+export async function resumeJob(ctx: MutationCtx, job: Doc<"extractionJobs">, { userId, viaAssistant }: { userId: Id<"users">; viaAssistant: boolean }, spend?: { hold: string; cap: number }): Promise<{ resumed: boolean; reason?: string }> {
+  if (!job.status) {
+    return { resumed: false, reason: "not_paused" };
+  }
+
+  // Compute remaining estimate. For paused (user-initiated), the pure
+  // decision helper ignores balance, so we only need real numbers when
+  // currentStatus === "creditsExhausted".
+  let availableCredits = 0;
+  let capped = false;
+  let remainingEstimateHigh = 0;
+
+  if (job.status === "creditsExhausted") {
+    // Its workspace pays for it (#650), within the cap of the member whose job it is.
+    ({ available: availableCredits, capped } = await spendingRoom(ctx, job.workspaceId, job.createdBy));
+    const questions = await ctx.db
+      .query("extractionQuestions")
+      .withIndex("by_job", (q) => q.eq("jobId", job._id))
+      .take(MAX_QUESTIONS_PER_JOB);
+    // The next paper, on the models the job was stamped with.
+    remainingEstimateHigh = extractionPaperCredits(await extractionPricing(ctx, job), questions, job.usePdfs ?? false);
+  }
+
+  const decision = validateResumeTransition({
+    currentStatus: job.status as JobStatus,
+    pausedFromStatus: job.pausedFromStatus as JobStatus | undefined,
+    availableCredits,
+    remainingEstimate: remainingEstimateHigh,
+  });
+
+  if (!decision.ok) {
+    if (decision.reason === "insufficient_credits") {
+      if (capped) throw capReached(decision.needed);
+      throw createError(
+        "INSUFFICIENT_CREDITS",
+        `Resume needs ~${decision.needed} credits but only ${decision.available} available`,
+      );
+    }
+    // "not_paused" — idempotent no-op.
+    return { resumed: false, reason: decision.reason };
+  }
+
+  assertValidJobTransition(job.status as JobStatus, decision.nextStatus);
+  const nextEpoch = (job.runEpoch ?? 0) + 1;
+  const jobId = job._id;
+  await ctx.db.patch(jobId, {
+    status: decision.nextStatus,
+    runEpoch: nextEpoch,
+    pausedAt: undefined,
+    pausedFromStatus: undefined,
+    // Clear any stale creditsExhausted error so the UI doesn't show it
+    // after resume.
+    error: undefined,
+    // Under the figure a chat held for it now, or what it keeps of the approval it had.
+    ...(spend ? { spendHold: spend.hold, spendCap: spend.cap } : await approvalLeft(ctx, job)),
+    updatedAt: Date.now(),
+  });
+  await noteActivity(ctx, { workspaceId: job.workspaceId, by: userId, viaAssistant }, { kind: "extraction", id: jobId, happened: "resumed" });
+
+  // Effective pdfEnabled = admin flag × per-job opt-in (mirrors
+  // `getJobAndFlagsInternal`). Question concurrency mirrors the
+  // queue setup action.
+  const pdfFlag = await getFlag(ctx, "extraction.pdf");
+  const pdfFlagOn = pdfFlag?.enabled ?? true;
+  const pdfEnabled = pdfFlagOn && (job.usePdfs ?? false);
+
+  const questionConcurrency = EXTRACTION_QUESTION_CONCURRENCY;
+  const paperConcurrency = EXTRACTION_PAPER_CONCURRENCY;
+
+  // A setup stopped partway reads on from where it was, and queues every paper when it ends:
+  // a paper run before then could miss a screening copy still to come.
+  // A job paused before any of its papers was saved, from before jobs kept their setup's place, sets up from the start.
+  const unread = job.setup === undefined && (await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).first()) === null;
+  if (unread) await ctx.db.patch(jobId, { setup: { position: 0, read: 0, papers: 0, processable: 0 } });
+  if (unread || (job.setup !== undefined && !job.setup.done)) {
+    await ctx.scheduler.runAfter(0, internal.extraction.actions.setupExtractionQueueJob, { jobId, expectedEpoch: nextEpoch });
+  } else {
+    await requeuePage(ctx, { jobId, epoch: nextEpoch, pdfEnabled, paperConcurrency, questionConcurrency, cursor: null, queued: 0 });
+  }
+
+  // A retry stopped while it reset the job's failures carries on where it stopped.
+  if (job.retryReset && decision.nextStatus === "extracting") {
+    await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch: nextEpoch });
+  }
+
+  return { resumed: true };
 }
 
 export const resumeExtractionAction = defineUserMutation({
   path: "extraction/mutations/resume:resumeExtraction",
   description:
-    "Resumes one of the workspace's extractions that was paused or ran out of credits: it reads on from where it stopped, and spends credits on the papers it hasn't read. One that isn't paused is left as it is, and `reason` says why.",
-  spendsCredits: true,
+    "Resumes one of the workspace's extractions that a chat started and paused, under the credits approved when it started. One that needs credits it doesn't hold, because it was started on its page or ran out, is resumed with extraction/start:resume, which asks the person with what it may hold. One that isn't paused is left as it is, and `reason` says why.",
+  spendsCredits: false,
   outsideEffect: false,
   undoable: true,
   args: { jobId: v.id("extractionJobs") },
@@ -144,95 +246,28 @@ export const resumeExtractionAction = defineUserMutation({
     reason: v.optional(v.string()),
     undo: reversedBy("extraction/mutations/pause:pauseExtraction", { jobId: v.id("extractionJobs") }),
   }),
-  estimate: async (ctx, actor, { jobId }) => resumeCredits(ctx, await jobIn(ctx, actor, jobId)),
-  activity: ({ jobId }, { resumed }) => (resumed ? { kind: "extraction", id: jobId, happened: "resumed" } : null),
   run: async (ctx, actor, { jobId }): Promise<{ resumed: boolean; reason?: string; undo?: { path: "extraction/mutations/pause:pauseExtraction"; args: { jobId: Id<"extractionJobs"> } } }> => {
     const job = await jobIn(ctx, actor, jobId);
     await requireFeature(ctx, "extraction.enabled", actor.userId);
-
-    if (!job.status) {
-      return { resumed: false, reason: "not_paused" };
+    // A chat spends only what a hold already allows. A person who pressed Undo on a pause resumes it as its page would.
+    if (actor.author === "assistant" && !actor.approved && !(await underHold(ctx, job))) {
+      throw createError("FORBIDDEN", "Resuming this extraction spends credits it doesn't hold. Resume it with extraction/start:resume, which asks the person with what it may hold.");
     }
-
-    // Compute remaining estimate. For paused (user-initiated), the pure
-    // decision helper ignores balance, so we only need real numbers when
-    // currentStatus === "creditsExhausted".
-    let availableCredits = 0;
-    let capped = false;
-    let remainingEstimateHigh = 0;
-
-    if (job.status === "creditsExhausted") {
-      // Its workspace pays for it (#650), within the cap of the member whose job it is.
-      ({ available: availableCredits, capped } = await spendingRoom(ctx, job.workspaceId, job.createdBy));
-      const questions = await ctx.db
-        .query("extractionQuestions")
-        .withIndex("by_job", (q) => q.eq("jobId", jobId))
-        .take(MAX_QUESTIONS_PER_JOB);
-      // The next paper, on the models the job was stamped with.
-      remainingEstimateHigh = extractionPaperCredits(await extractionPricing(ctx, job), questions, job.usePdfs ?? false);
-    }
-
-    const decision = validateResumeTransition({
-      currentStatus: job.status as JobStatus,
-      pausedFromStatus: job.pausedFromStatus as JobStatus | undefined,
-      availableCredits,
-      remainingEstimate: remainingEstimateHigh,
-    });
-
-    if (!decision.ok) {
-      if (decision.reason === "insufficient_credits") {
-        if (capped) throw capReached(decision.needed);
-        throw createError(
-          "INSUFFICIENT_CREDITS",
-          `Resume needs ~${decision.needed} credits but only ${decision.available} available`,
-        );
-      }
-      // "not_paused" — idempotent no-op.
-      return { resumed: false, reason: decision.reason };
-    }
-
-    assertValidJobTransition(job.status as JobStatus, decision.nextStatus);
-    const nextEpoch = (job.runEpoch ?? 0) + 1;
-    await ctx.db.patch(jobId, {
-      status: decision.nextStatus,
-      runEpoch: nextEpoch,
-      pausedAt: undefined,
-      pausedFromStatus: undefined,
-      // Clear any stale creditsExhausted error so the UI doesn't show it
-      // after resume.
-      error: undefined,
-      ...(await approvalLeft(ctx, job)),
-      updatedAt: Date.now(),
-    });
-
-    // Effective pdfEnabled = admin flag × per-job opt-in (mirrors
-    // `getJobAndFlagsInternal`). Question concurrency mirrors the
-    // queue setup action.
-    const pdfFlag = await getFlag(ctx, "extraction.pdf");
-    const pdfFlagOn = pdfFlag?.enabled ?? true;
-    const pdfEnabled = pdfFlagOn && (job.usePdfs ?? false);
-
-    const questionConcurrency = EXTRACTION_QUESTION_CONCURRENCY;
-    const paperConcurrency = EXTRACTION_PAPER_CONCURRENCY;
-
-    // A setup stopped partway reads on from where it was, and queues every paper when it ends:
-    // a paper run before then could miss a screening copy still to come.
-    // A job paused before any of its papers was saved, from before jobs kept their setup's place, sets up from the start.
-    const unread = job.setup === undefined && (await ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).first()) === null;
-    if (unread) await ctx.db.patch(jobId, { setup: { position: 0, read: 0, papers: 0, processable: 0 } });
-    if (unread || (job.setup !== undefined && !job.setup.done)) {
-      await ctx.scheduler.runAfter(0, internal.extraction.actions.setupExtractionQueueJob, { jobId, expectedEpoch: nextEpoch });
-    } else {
-      await requeuePage(ctx, { jobId, epoch: nextEpoch, pdfEnabled, paperConcurrency, questionConcurrency, cursor: null, queued: 0 });
-    }
-
-    // A retry stopped while it reset the job's failures carries on where it stopped.
-    if (job.retryReset && decision.nextStatus === "extracting") {
-      await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch: nextEpoch });
-    }
-
-    return { resumed: true, undo: { path: "extraction/mutations/pause:pauseExtraction", args: { jobId } } };
+    const resumed = await resumeJob(ctx, job, { userId: actor.userId, viaAssistant: actor.author === "assistant" });
+    return resumed.resumed ? { ...resumed, undo: { path: "extraction/mutations/pause:pauseExtraction", args: { jobId } } } : resumed;
   },
 });
 export const resumeExtraction = userMutation(resumeExtractionAction);
 export const resumeExtractionForAssistant = assistantMutation(resumeExtractionAction);
+
+/** Resumes a job from a chat (extraction/start.ts): under the hold it made for the figure the person allowed, or under the job's own when it's still open. */
+export const resumeHeld = internalMutation({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), author: v.union(v.literal("user"), v.literal("assistant")), jobId: v.id("extractionJobs"), spend: v.optional(v.object({ hold: v.string(), cap: v.number() })) },
+  returns: v.object({ resumed: v.boolean(), reason: v.optional(v.string()) }),
+  handler: async (ctx, { userId, workspaceId, author, jobId, spend }) => {
+    const actor = await actingAs(ctx, userId, workspaceId, author);
+    const job = await jobIn(ctx, actor, jobId);
+    await requireFeature(ctx, "extraction.enabled", userId);
+    return await resumeJob(ctx, job, { userId, viaAssistant: author === "assistant" }, spend);
+  },
+});

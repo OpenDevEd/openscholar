@@ -96,6 +96,8 @@
     "app/actions/topics:readWork": "research/papers:get",
     "billing/accounts:checkBalance": "billing/usage:balance",
     "billing/accounts:mine": "billing/usage:plan",
+    "extraction/mutations/retry:retryFailedQuestions": "extraction/start:retry",
+    "extraction/mutations:retryFailedQuestions": "extraction/start:retry",
     "extraction/queries/papers:results": "extraction/queries:listJobResults",
     "extraction/sources/library:list": "library/queries:papers",
     "extraction/sources/library:listAllIds": "library/queries:papers",

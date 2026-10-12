@@ -18,6 +18,7 @@ import {
 import { extractionPaperCredits } from "../../../lib/pricing";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
 import { rowFromBucketItem } from "../jobSources";
+import { installFakeAutumn } from "../../billing/billing.test-support";
 
 /** The price of the model the jobs are stamped with: GPT-6 Luna's. */
 const PRICE = { input: 0.1, output: 0.5 };
@@ -441,23 +442,39 @@ describe("resumeExtraction — nothing left to run", () => {
 });
 
 describe("resumeExtraction — from the chat", () => {
-  it("is held to the credits the person allowed, counting the papers its setup had still to read", async () => {
+  it("holds the credits the person allowed, counting the papers its setup had still to read", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    installFakeAutumn();
+    try {
+      const userId = await seedUserAndCredits(t);
+      const jobId = await seedJob(t, userId, { jobStatus: "paused", pausedFromStatus: "pending", questions: 1 });
+      // Paused while its setup read its one source, a search of 40 papers, it had saved none of them yet.
+      await t.run(async (ctx) => {
+        await ctx.db.patch("extractionJobs", jobId, { totalPapers: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 } });
+        await ctx.db.insert("extractionJobSources", rowFromBucketItem(jobId, 0, { source: "history", bucketKey: "search", sourceRefId: "search-1", title: "tutor", authors: [], searchFilters: { limit: 40 } }));
+      });
+      const { workspaceId } = (await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!;
+      const resume = (allowed: { approved?: boolean; approvedCredits?: number }) => t.action(internal.extraction.start.resumeForAssistant, { userId, workspaceId, jobId, ...allowed });
+
+      // Unasked, it doesn't run; allowed a credit, it would hold past it. The page's resume, from a chat, won't spend what it doesn't hold.
+      await expect(resume({})).rejects.toThrow(/say first/);
+      await expect(resume({ approved: true, approvedCredits: 1 })).rejects.toThrow(/more than the 1 approved/);
+      await expect(t.mutation(internal.extraction.mutations.resume.resumeExtractionForAssistant, { userId, workspaceId, jobId })).rejects.toThrow(/extraction\/start:resume/);
+      expect((await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!.status).toBe("paused");
+      expect(await resume({ approved: true, approvedCredits: 50_000 })).toMatchObject({ resumed: true });
+      expect(await t.run((ctx) => ctx.db.get("extractionJobs", jobId))).toMatchObject({ spendCap: 50_000, spendHold: expect.stringMatching(/^extraction-job:/) });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("resumes, as Undo of a pause, one the person pressed it for, as its page would", async () => {
     const t = convexTest(schema);
     setupExtractionPaperWorkpool(t);
     const userId = await seedUserAndCredits(t);
-    const jobId = await seedJob(t, userId, { jobStatus: "paused", pausedFromStatus: "pending", questions: 1 });
-    // Paused while its setup read its one source, a search of 40 papers, it had saved none of them yet.
-    await t.run(async (ctx) => {
-      await ctx.db.patch("extractionJobs", jobId, { totalPapers: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 } });
-      await ctx.db.insert("extractionJobSources", rowFromBucketItem(jobId, 0, { source: "history", bucketKey: "search", sourceRefId: "search-1", title: "tutor", authors: [], searchFilters: { limit: 40 } }));
-    });
+    const jobId = await seedJob(t, userId, { jobStatus: "paused", pausedFromStatus: "extracting", questions: 1 });
     const { workspaceId } = (await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!;
-    const resume = (allowed: { approved?: boolean; approvedCredits?: number }) => t.mutation(internal.extraction.mutations.resume.resumeExtractionForAssistant, { userId, workspaceId, jobId, ...allowed });
-
-    // Unasked, it doesn't run; allowed a credit, it would run past it.
-    await expect(resume({})).rejects.toThrow(/say first/);
-    await expect(resume({ approved: true, approvedCredits: 1 })).rejects.toThrow(/cost more now/);
-    expect((await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!.status).toBe("paused");
-    expect(await resume({ approved: true, approvedCredits: 1_000_000 })).toMatchObject({ resumed: true });
+    expect(await t.mutation(internal.extraction.mutations.resume.resumeExtractionForAssistant, { userId, workspaceId, jobId, approved: true })).toMatchObject({ resumed: true });
   });
 });

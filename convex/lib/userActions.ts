@@ -23,8 +23,9 @@ export type Author = "user" | "assistant";
 /**
  * Who an action runs as (#650): the person, the workspace they act in and their role there,
  * and whether the assistant acts for them. Every wrapper resolves it once, with `actorFor`.
+ * `approved`: the assistant's call is one the person said yes to, or pressed themselves, as Undo.
  */
-export type Acting = Actor & { author: Author };
+export type Acting = Actor & { author: Author; approved?: true };
 
 /** `userId` acting in `workspaceId` as `author`, for a call that names its person: refuses an account no longer active, or a workspace they aren't in. */
 export async function actingAs(ctx: QueryCtx, userId: Id<"users">, workspaceId: Id<"workspaces">, author: Author): Promise<Acting> {
@@ -371,7 +372,7 @@ export function assistantMutation<Args extends PropertyValidators, Returns exten
         const { userId, workspaceId, stepId, approved, approvedCredits, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
         const rest = own as ObjectType<Args>;
         // The sender may have been suspended or deleted since the turn began.
-        const actor = await actingAs(ctx, userId, workspaceId, "assistant");
+        const actor: Acting = { ...(await actingAs(ctx, userId, workspaceId, "assistant")), ...(approved ? { approved: true as const } : {}) };
         // Read here, in the change's own transaction: what was true before the call may not be now.
         if (!approved && entry.asksFirst && (await entry.asksFirst(ctx, actor, rest))) throw createError("FORBIDDEN", ASKS_FIRST);
         // A change that spends credits holds no more than the person let it (#328): by a yes to its question, by what they allow

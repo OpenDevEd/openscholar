@@ -22,4 +22,4 @@ export {
   deleteExtractionForAssistant,
 } from "./mutations/jobs";
 
-export { retryFailedQuestions, retryFailedQuestionsForAssistant } from "./mutations/retry";
+export { retryFailedQuestions } from "./mutations/retry";

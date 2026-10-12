@@ -335,8 +335,9 @@ export const cancelScreeningJobAction = defineUserMutation({
     if (!job || job.workspaceId !== actor.workspaceId) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
     requireMakerOrAdmin(actor, job.createdBy);
 
-    // Terminal states are idempotent no-ops
+    // Terminal states are idempotent no-ops for the page; a chat is told, so it doesn't say it stopped it.
     if (isTerminalScreeningJobStatus(job.status)) {
+      if (actor.author === "assistant") throw createError("CONFLICT", "This screening has already ended, so there's nothing to stop.");
       return null;
     }
 
