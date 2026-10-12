@@ -490,12 +490,12 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   const { title: stepTitle, saysMany } = useStepTitle();
   // The steps being undone, whose Undo rests until the chat shows them undone.
   const [undoing, setUndoing] = useState<ReadonlySet<string>>(new Set());
-  /** Undoes these steps, the newest first, each with its own undo: a card's Undo does its whole run, a line's its own step. It stops at one that can't be undone. */
+  /** Undoes these steps together, the last made first (convex/assistant/undo.ts): a card's Undo does its whole run, a line's its own step. One that can't be undone leaves them all as they are. */
   const undoSteps = async (some: StepItem[]) => {
     const ids = some.filter((one) => one.canUndo).map((one) => one.id);
     setUndoing((all) => new Set([...all, ...ids]));
     try {
-      for (const id of ids.toReversed()) await undo({ threadId, stepId: id as Id<"assistantSteps"> });
+      await undo({ threadId, stepIds: ids as Id<"assistantSteps">[] });
     } catch (error) {
       toast.error(t("steps.undoFailed"), getErrorMessage(error, ""));
     } finally {
@@ -511,9 +511,11 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
     const searches = run.length > 1 ? run.map((one) => (one.href ? searchOf(one.href) : null)) : [];
     return searches.length && searches.every((search) => search !== null) ? differences(searches as NonNullable<(typeof searches)[number]>[]) : null;
   };
-  // A run opens into its steps only when they say something its card doesn't: what each was about, or the
-  // filters its searches differ by. Six lines that all read "Extraction" tell the person nothing more.
-  const opensOf = (run: StepItem[]) => run.length > 1 && (new Set(linesOf(run)).size > 1 || new Set(run.map((one) => one.error)).size > 1 || (toldOf(run)?.filters.some((filters) => filters !== undefined) ?? false));
+  // A run opens into its steps only when they say something its card doesn't: what each was about, why each
+  // failed, or the filters its searches differ by; or when more than one can be undone, each by its own line.
+  // Six lines that all read "Extraction" tell the person nothing more.
+  const opensOf = (run: StepItem[]) =>
+    run.length > 1 && (new Set(linesOf(run)).size > 1 || new Set(run.map((one) => one.error)).size > 1 || run.filter((one) => one.canUndo).length > 1 || (toldOf(run)?.filters.some((filters) => filters !== undefined) ?? false));
   // One that stops opening, when the step that told it apart fails and leaves it, closes with it.
   const isOpen = (run: StepItem[]) => opensOf(run) && run.some((one) => opened.has(one.id));
   const runs = runsOf(steps);
