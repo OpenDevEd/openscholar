@@ -1,7 +1,6 @@
 {
   "plumbing": {
     "ai/actions:enhanceSearchQuery": "The search page's AI query writer. The assistant writes a query itself and checks how many it finds with research/papers:count.",
-    "ai/actions:generateBatchScreeningResponses": "The results page screening the papers on screen. The assistant screens through screening/start:screen.",
     "ai/actions:generateBatchTranslations": "The results page translating the papers on screen. The assistant translates in its reply.",
     "ai/actions:generateExtractionQuestions": "The extraction page suggesting questions. The assistant writes its own questions to extraction/start:extract.",
     "ai/actions:generateScreeningQuestions": "The screening page suggesting questions. The assistant writes its own questions to screening/start:screen.",
@@ -11,7 +10,6 @@
     "apiKeys/actions:encryptAndSave": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:markUsed": "User API keys never reach the assistant (plan decision 5).",
     "apiKeys/mutations:remove": "User API keys never reach the assistant (plan decision 5).",
-    "app/actions/openalex-lookup:readOpenAlexRecordNames": "Names the OpenAlex IDs in a search's filter chips. The assistant gets names with every record it reads.",
     "assistant/files:cited": "The PDFs a reply cites whose messages the panel hasn't loaded, for its page citations to open them. The assistant reads files through assistant/files:read.",
     "assistant/files:remove": "Removes a file the person attached and hasn't sent. The assistant doesn't attach files.",
     "assistant/files:startUpload": "Starts an upload of a file the person attaches to a message, for a token their browser holds. The assistant reads attached files; it doesn't attach its own.",
@@ -93,6 +91,7 @@
     "zotero/runtimeReadActions:resolveLibraryCollections": "Names the collections the configuration page's links point at, from the running library."
   },
   "covered": {
+    "ai/actions:generateBatchScreeningResponses": "screening/start:screen",
     "app/actions/openalex-lookup:searchOpenAlexRecords": "research/lookup:find",
     "app/actions/topics:readWork": "research/papers:get",
     "billing/accounts:checkBalance": "billing/usage:balance",
@@ -150,7 +149,6 @@
     "evidenceLibraries/publicationProviders:get": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
     "evidenceLibraries/teardown:requestDevelopmentTeardown": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
     "evidenceLibraries/teardown:restartDevelopmentTeardown": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
-    "evidenceLibraries/uploadActions:remove": "An upload of a file the person picks on the page. The assistant has no file of its own to upload.",
     "evidenceLibraries/uploadActions:upload": "An upload of a file the person picks on the page. The assistant has no file of its own to upload.",
     "evidenceLibraries/versions:restoreRevision": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
     "evidenceLibraries/versions:setDomainPrimary": "Putting a library live or taking it down, its addresses, domains and versions, and sending its digest: done on the library's page, where the person sees what goes public.",
@@ -180,6 +178,7 @@
     "app/actions/citations:enrichPaperCitationMetadata": "#323",
     "app/actions/openalex-count:countOpenAlexQueries": "#327",
     "app/actions/openalex-count:searchOpenAlexCount": "#327",
+    "app/actions/openalex-lookup:readOpenAlexRecordNames": "#327",
     "app/actions/openalex:getSearchResults": "#327",
     "app/actions/topic-publications:readTopicPublications": "#323",
     "app/actions/topics:readTopic": "#323",
@@ -207,6 +206,7 @@
     "evidenceLibraries/team:addOrganizationMember": "#329",
     "evidenceLibraries/team:changeRole": "#329",
     "evidenceLibraries/team:removeMember": "#329",
+    "evidenceLibraries/uploadActions:remove": "#329",
     "extraction/mutations/jobs:cancelExtraction": "#328",
     "extraction/mutations/jobs:deleteExtraction": "#328",
     "extraction/mutations/pause:pauseExtraction": "#328",
