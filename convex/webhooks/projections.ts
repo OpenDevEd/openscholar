@@ -18,6 +18,7 @@ import type {
   ClerkMembershipSnapshot,
   ClerkOrganizationSnapshot,
 } from "./clerk_mappers";
+import { addressesOf } from "../lib/people";
 import {
   applyOrderedClerkEvent,
   type ClerkEventMetadata,
@@ -243,10 +244,11 @@ export async function applyMembershipProjection(
         // the membership, so the seat it held frees now; a late event from before can't reopen it.
         const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", args.membership.clerkUserId)).unique();
         if (user) {
-          const answered = await ctx.db.query("organizationInvitations")
-            .withIndex("by_email_and_state", (q) => q.eq("email", user.email.toLowerCase()).eq("state", "pending"))
+          // Those to any address of theirs.
+          const answered = (await Promise.all(addressesOf(user).map((email) => ctx.db.query("organizationInvitations")
+            .withIndex("by_email_and_state", (q) => q.eq("email", email).eq("state", "pending"))
             .filter((q) => q.eq(q.field("organizationId"), organizationId))
-            .take(SINGLE_ROW_CLEANUP);
+            .take(SINGLE_ROW_CLEANUP)))).flat();
           for (const invitation of answered) {
             await ctx.db.patch("organizationInvitations", invitation._id, { state: "accepted", clerkUpdatedAt: Math.max(invitation.clerkUpdatedAt, args.membership.clerkCreatedAt), updatedAt: args.processedAt });
           }
@@ -262,8 +264,8 @@ export async function applyMembershipProjection(
         // Read, not made: a deleted organization's workspace is purged, and a late event mustn't bring it back.
         const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique();
         if (user && workspace) {
-          const invitations = await ctx.db.query("itemInvitations")
-            .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
+          const invitations = (await Promise.all(addressesOf(user).map(email => ctx.db.query("itemInvitations")
+            .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL)))).flat();
           for (const invitation of invitations) {
             if ((await libraryOf(ctx, invitation))?.workspaceId === workspace._id) await ctx.db.patch("itemInvitations", invitation._id, { state: "cancelled" });
           }

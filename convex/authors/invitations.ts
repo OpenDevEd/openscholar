@@ -5,6 +5,7 @@ import type { Doc } from "../_generated/dataModel";
 import { profileInvitationWaitingValidator } from "./validators";
 import { requireAuth } from "../lib/auth";
 import { MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
+import { addressesOf } from "../lib/people";
 
 /**
  * The invitations to edit a profile that wait for the person, for the Authors page to offer
@@ -12,7 +13,8 @@ import { MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
  * an address to MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL waiting, so they are one page.
  */
 export async function readProfileInvitations(ctx: QueryCtx, user: Doc<"users">) {
-  const waiting = await ctx.db.query("itemInvitations").withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
+  // Those to any address of theirs.
+  const waiting = (await Promise.all(addressesOf(user).map(email => ctx.db.query("itemInvitations").withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL)))).flat();
   return (await Promise.all(waiting.filter(invitation => invitation.kind === "author").map(async invitation => {
     const profileId = ctx.db.normalizeId("authorProfiles", invitation.item);
     const profile = profileId ? await ctx.db.get("authorProfiles", profileId) : null;

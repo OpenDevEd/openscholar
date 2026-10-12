@@ -56,6 +56,23 @@ describe("library invitations", () => {
     expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ from: {name: "Climate Evidence", address: "libraries@example.test"}, to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-libraries?view=invitations") });
   });
 
+  it("finds an invitation sent to another address Clerk verified on the account, and lets them answer it", async () => {
+    const fixture = await setup();
+    // Clerk says the account has two verified addresses; its own is the first.
+    await fixture.t.mutation(internal.users.internal.upsertUserFromClerk, {
+      clerkId: "second", email: "first@example.org", verifiedEmails: ["first@example.org", "second@example.org"],
+      eventId: "evt_second", eventType: "user.created", instanceId: "ins_1", occurredAt: 1, payloadSha256: "e".repeat(64),
+    });
+    const second = fixture.t.withIdentity({ subject: "second" });
+    await fixture.admin.action(api.evidenceLibraries.invitationActions.invite, { libraryId: fixture.libraryId, email: "Second@example.org", role: "editor" });
+    const [invitation] = (await second.query(api.evidenceLibraries.invitations.listInvitations, {})).page;
+    expect(invitation).toMatchObject({ libraryId: fixture.libraryId, role: "editor" });
+    expect(await second.query(api.organizationFeatures.opens, {})).toEqual({ evidenceLibraries: true, authors: false });
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ email_addresses: [{ email_address: "first@example.org", verification: { status: "verified" } }, { email_address: "second@example.org", verification: { status: "verified" } }] })));
+    await second.action(api.evidenceLibraries.invitationActions.respond, { invitationId: invitation.invitationId, accept: true });
+    expect((await second.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([expect.objectContaining({ _id: fixture.libraryId, role: "editor" })]);
+  });
+
   it.each(["expired", "cancelled", "disabled-library", "deleted-organization", "suspended-account"] as const)("does not open library navigation for an %s invitation", async reason => {
     const fixture = await setup();
     await fixture.invite();

@@ -11,7 +11,7 @@ import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { createError } from "../lib/errors";
-import { personName } from "../lib/people";
+import { addressesOf, personName } from "../lib/people";
 import { MAX_ACCOUNTS_PER_EMAIL, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { rateLimit } from "../lib/rateLimit";
 import { actingAs, assistantAction, assistantQuery, defineChangingAction, defineUserQuery, userAction, userQuery } from "../lib/userActions";
@@ -209,7 +209,8 @@ export const getAction = defineUserQuery({
     const state = invitation.state === "pending" ? ("pending" as const) : invitation.state === "accepted" && (await grantOf(ctx, shared.id, userId)) ? ("accepted" as const) : null;
     if (!state) return null;
     // The link alone says nothing of the item: it may have been passed on. The address it was sent to does.
-    if (state === "pending" && (await ctx.db.get("users", userId))?.email.toLowerCase() !== invitation.email) return { state: "other" as const };
+    const reader = await ctx.db.get("users", userId);
+    if (state === "pending" && !(reader && addressesOf(reader).includes(invitation.email))) return { state: "other" as const };
     const inviter = await ctx.db.get("users", invitation.invitedBy);
     return {
       kind: shared.kind, id: shared.id, name: shared.name, role: invitation.role,
