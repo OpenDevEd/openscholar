@@ -64,7 +64,7 @@ export const libraryGrant = (ctx: Pick<QueryCtx, "db">, libraryId: Id<"evidenceL
 export const grantedRole = (row: Pick<Doc<"itemAccess">, "role">) => (row.role === "creator" ? "creator" as const : "editor" as const);
 
 /** The library a row of those tables is of, or null for a row of anything else. */
-export const libraryOf = async (ctx: Pick<QueryCtx, "db">, row: Pick<Doc<"itemAccess">, "kind" | "item">) => {
+export const libraryOf = async (ctx: Pick<QueryCtx, "db">, row: Pick<Doc<"itemInvitations">, "kind" | "item">) => {
   const libraryId = row.kind === "library" ? ctx.db.normalizeId("evidenceLibraries", row.item) : null;
   return libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
 };

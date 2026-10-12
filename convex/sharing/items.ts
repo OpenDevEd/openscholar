@@ -11,7 +11,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { MAX_ASSISTANT_THREAD_GRANTS, MAX_PROFILE_MEMBERS } from "../lib/queryBounds";
 import type { Actor, InWorkspace } from "../workspaces/actor";
-import type { AccessKind, AccessRole, GuestRole, SharedKind } from "./validators";
+import { sharedKinds, type AccessKind, type AccessRole, type GuestRole, type InvitationKind, type SharedKind } from "./validators";
 
 type Read = Pick<QueryCtx, "db">;
 
@@ -88,8 +88,8 @@ export async function sharedIn(ctx: Read, actor: Pick<Actor, "userId" | "workspa
   return shared;
 }
 
-/** Whether a row is a guest's, of an item that's shared: an Evidence Library's rows are its own functions' to read (../evidenceLibraries/access.ts). */
-export const shares = <Row extends { kind: AccessKind; role: AccessRole }>(row: Row): row is Row & { kind: SharedKind; role: GuestRole } => row.kind !== "library";
+/** Whether a row is a guest's, of an item that's shared: an Evidence Library's rows, and invitations to its collections, are its own functions' to read (../evidenceLibraries). */
+export const shares = <Row extends { kind: InvitationKind; role: AccessRole }>(row: Row): row is Row & { kind: SharedKind; role: GuestRole } => (sharedKinds as readonly string[]).includes(row.kind);
 
 /** A person's place as a guest of an item, if they have one. */
 export async function grantOf(ctx: Read, item: string, userId: Id<"users">) {

@@ -40,9 +40,18 @@ export const itemAccessFields = {
   lastMessageAt: v.optional(v.number()),
 };
 
+/**
+ * What an invitation can be to: what people are given above, and a reader's collection in an
+ * Evidence Library (`libraryCollection`, item `<libraryId>:<collectionId>`). The library keeps
+ * that collection's members and accepts its invitations on its own page
+ * (../evidenceLibraries/collectionInvitations.ts), so nobody is given one here.
+ */
+export const invitationKindValidator = v.union(accessKindValidator, v.literal("libraryCollection"));
+export type InvitationKind = Infer<typeof invitationKindValidator>;
+
 /** An invitation to an item, sent to an address that may have no account yet. */
 export const itemInvitationFields = {
-  kind: accessKindValidator,
+  kind: invitationKindValidator,
   item: v.string(),
   email: v.string(),
   role: accessRoleValidator,
@@ -50,4 +59,8 @@ export const itemInvitationFields = {
   expiresAt: v.number(),
   state: v.union(v.literal("pending"), v.literal("accepted"), v.literal("declined"), v.literal("cancelled"), v.literal("expired")),
   delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")),
+  /** On one to a library's collection, which OpenScholar can't read: the collection's name as the library gave it, for the email. */
+  name: v.optional(v.string()),
+  /** On one to a library's collection: who accepted it, so accepting again answers the same. */
+  acceptedBy: v.optional(v.id("users")),
 };

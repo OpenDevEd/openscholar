@@ -96,3 +96,29 @@ export function renderLibraryInvitation({
 			"You received this email because you were invited to the library.",
 	});
 }
+
+/** An invitation to a reader's collection in a library, in the role names the library shows. */
+export function renderCollectionInvitation({
+	identity,
+	inviter,
+	collectionName,
+	role,
+	acceptUrl,
+}: {
+	identity: LibraryEmailIdentity;
+	inviter: string;
+	collectionName: string;
+	role: "editor" | "viewer";
+	acceptUrl: string;
+}) {
+	const [label, description] =
+		role === "editor"
+			? ["Can edit", "Read the collection, add records to it and take them out."]
+			: ["Can view", "Read the collection and its records, even while it is private."];
+	return renderLibraryEmail({
+		identity,
+		title: "You’re invited to a collection",
+		content: `<p style="${emailStyles.paragraph}"><strong style="color:#202822">${escapeHtml(inviter)}</strong> shared <strong style="color:#202822">${escapeHtml(collectionName)}</strong> with you in ${escapeHtml(identity.name)}.</p>${emailPanel(label, description, "Your role")}${emailButton("View invitation", acceptUrl, identity.accent)}<p style="font-size:13px;line-height:1.7;color:#797b73;margin:22px 0 0">Sign in with the email address that received this invitation. Your invitation expires in 7 days.</p>`,
+		footerHtml: "You received this email because someone shared a collection with you.",
+	});
+}
