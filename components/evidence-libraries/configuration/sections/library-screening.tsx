@@ -61,7 +61,7 @@ type SampleResult = { size: number; now: Record<GradeKey, number>; next: Record<
  * sample first; saved, it has every record read again, and the new grades take over once the last one is read.
  */
 export function LibraryScreening({
-  on, onOnChange, noAi, subject, savedSubject, onSubjectChange, grades, onKeptChange, reading, rereading, cost, sample, onTrySample, trying,
+  on, onOnChange, noAi, subject, savedSubject, onSubjectChange, onSave, grades, onKeptChange, reading, rereading, cost, sample, onTrySample, trying,
 }: {
   on: boolean;
   onOnChange: (on: boolean) => void;
@@ -70,6 +70,8 @@ export function LibraryScreening({
   subject: string;
   savedSubject: string;
   onSubjectChange: (subject: string) => void;
+  /** Saves the new subject, which has every record graded again. The configuration page's Save does this. */
+  onSave: () => void;
   grades: Grade[];
   onKeptChange: (key: GradeKey, kept: boolean) => void;
   /** The first read: the title in hand and how many are left. */
@@ -141,6 +143,9 @@ export function LibraryScreening({
                   {trying ? "Reading 200 records" : "Try it on 200 records"}
                 </Button>
               )}
+              <div className="flex justify-end">
+                <Button type="button" size="sm" onClick={onSave}>Save and grade again</Button>
+              </div>
             </div>
           ) : null}
 
@@ -214,7 +219,9 @@ const MOCK_GRADES: Record<GradeKey, { share: number; example: string }> = {
   passing: { share: 393 / 2910, example: "Building Labor-Market Resilience in Emerging Economies through Coordinated Employment Policy and Social Protection" },
   "not-about": { share: 49 / 2910, example: "A study in the use of fuzzy logic in the management of an automotive heat engine / electric hybrid vehicle powertrain" },
 };
+const MOCK_NEW_SUBJECT = "Research on how communities in low-income countries adapt to climate change, especially farming, water and health.";
 const MOCK_SUBJECT = "Research on climate change adaptation and resilience: how farms, cities, coasts, health systems and communities adapt to floods, drought, heat and other climate hazards.";
+const GRADE_SHARES = Object.fromEntries(Object.entries(MOCK_GRADES).map(([key, grade]) => [key, grade.share])) as Record<GradeKey, number>;
 const MOCK_READING = [
   "Toward Climate-Resilient Agribusiness and Food Security in Kenya's Highland Counties: Evidence from Kisii and Nyamira Counties",
   "From fragmentation to coordination? Governing urban heat risks in Greater Sydney",
@@ -231,42 +238,55 @@ const MOCK_SAMPLE: SampleResult = {
 export function MockLibraryScreening() {
   const mock = useSearchParams().get("mock");
   const [on, setOn] = useState(mock !== "screening-off");
-  const [subject, setSubject] = useState(mock === "screening-subject" ? "Research on how communities in low-income countries adapt to climate change, especially farming, water and health." : MOCK_SUBJECT);
+  const [saved, setSaved] = useState(MOCK_SUBJECT);
+  const [subject, setSubject] = useState(mock === "screening-subject" || mock === "screening-rereading" ? MOCK_NEW_SUBJECT : MOCK_SUBJECT);
+  const [shares, setShares] = useState(() => GRADE_SHARES);
   const [keptOut, setKeptOut] = useState<GradeKey[]>(["not-about"]);
   const [read, setRead] = useState(mock === "screening-reading" ? 0.38 : 1);
-  const [again, setAgain] = useState(0.27);
+  // How far grading again has got after a new subject was saved; null when nothing is being graded again.
+  const [again, setAgain] = useState<number | null>(mock === "screening-rereading" ? 0.27 : null);
   const [sample, setSample] = useState<SampleResult | undefined>(undefined);
   const [trying, setTrying] = useState(false);
   // MOCK: timers stand in for the library reporting how far a read has got, and for the sample's read.
   useEffect(() => {
-    if (mock !== "screening-reading" && mock !== "screening-rereading") return;
-    const timer = setInterval(() => {
-      if (mock === "screening-reading") setRead((share) => (share >= 1 ? 0.38 : Math.min(1, share + 0.004)));
-      else setAgain((share) => (share >= 1 ? 0.27 : Math.min(1, share + 0.004)));
-    }, 900);
+    if (mock !== "screening-reading") return;
+    const timer = setInterval(() => setRead((share) => (share >= 1 ? 0.38 : Math.min(1, share + 0.004))), 900);
     return () => clearInterval(timer);
   }, [mock]);
+  const regrading = again !== null;
+  useEffect(() => {
+    if (!regrading) return;
+    const timer = setInterval(() => setAgain((share) => (share === null ? null : Math.min(1, share + 0.02))), 300);
+    return () => clearInterval(timer);
+  }, [regrading]);
+  // MOCK: the last record graded again, the new grades take over together.
+  if (again !== null && again >= 1) {
+    setAgain(null);
+    setSaved(subject);
+    setShares(Object.fromEntries(GRADE_KEYS.map((key) => [key, MOCK_SAMPLE.next[key] / MOCK_SAMPLE.size])) as Record<GradeKey, number>);
+  }
   useEffect(() => {
     if (!trying) return;
     const timer = setTimeout(() => { setSample(MOCK_SAMPLE); setTrying(false); }, 2400);
     return () => clearTimeout(timer);
   }, [trying]);
   if (!mock?.startsWith("screening")) return null;
-  const grades: Grade[] = GRADE_KEYS.map((key) => ({ key, count: Math.round(MOCK_RECORDS * MOCK_GRADES[key].share * read), kept: !keptOut.includes(key), example: MOCK_GRADES[key].example }));
+  const grades: Grade[] = GRADE_KEYS.map((key) => ({ key, count: Math.round(MOCK_RECORDS * shares[key] * read), kept: !keptOut.includes(key), example: MOCK_GRADES[key].example }));
   const left = Math.round(MOCK_RECORDS * (1 - read));
-  const tick = Math.round((mock === "screening-rereading" ? again : read) * 250) % MOCK_READING.length;
+  const tick = Math.round((again ?? read) * 250) % MOCK_READING.length;
   return (
     <LibraryScreening
       on={on}
       onOnChange={setOn}
       noAi={mock === "screening-noai"}
       subject={subject}
-      savedSubject={MOCK_SUBJECT}
+      savedSubject={regrading ? subject : saved}
       onSubjectChange={(next) => { setSubject(next); setSample(undefined); }}
+      onSave={() => { setSample(undefined); setAgain(0); }}
       grades={grades}
       onKeptChange={(key, kept) => setKeptOut((out) => (kept ? out.filter((entry) => entry !== key) : [...out, key]))}
       reading={left ? { title: MOCK_READING[tick]!, left } : undefined}
-      rereading={mock === "screening-rereading" ? { done: Math.round(MOCK_RECORDS * again), of: MOCK_RECORDS, title: MOCK_READING[tick]! } : undefined}
+      rereading={again !== null ? { done: Math.round(MOCK_RECORDS * again), of: MOCK_RECORDS, title: MOCK_READING[tick]! } : undefined}
       // Measured on ECCAR: a full read is $0.0000746 a record; asking only the grade costs 42% of that.
       cost={{ records: MOCK_RECORDS, usd: MOCK_RECORDS * 0.0000746 * 0.42, hours: "an hour" }}
       sample={sample}
