@@ -106,7 +106,7 @@ describe("owner configuration migrations", () => {
         },
       ],
     });
-    expect(result.snapshot.ownerConfigurationVersion).toBe(8);
+    expect(result.snapshot.ownerConfigurationVersion).toBe(9);
     expect(result.snapshot.sections.find((row) => row.sectionKey === "sources")?.payload).toEqual([
       { ...zotero("42"), settings: { downloadPdfs: true } },
       { ...zotero("77"), settings: { downloadPdfs: false } },
@@ -127,6 +127,17 @@ describe("owner configuration migrations", () => {
     // A value that is not a yes or no cannot be read as either.
     expect(() => features({ login: "true" })).toThrow();
     expect(() => features({ userCollections: null })).toThrow();
+  });
+
+  it("gives a saved content row the open-access label readers already see", () => {
+    const { snapshot } = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 8,
+      sections: [{ sectionKey: "content", payload: { tags: { hidden: ["hide"] } } }],
+    });
+    expect(snapshot.sections.find((row) => row.sectionKey === "content")?.payload).toEqual({
+      openAccessLabel: "open",
+      tags: { hidden: ["hide"] },
+    });
   });
 
   it("adds an Identity assets container without changing its other values", () => {
@@ -368,6 +379,7 @@ describe("owner configuration migrations", () => {
       [5, 6],
       [6, 7],
       [7, 8],
+      [8, 9],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -606,6 +618,7 @@ describe("owner configuration migrations", () => {
       [5, 6],
       [6, 7],
       [7, 8],
+      [8, 9],
     ]);
   });
 
