@@ -42,7 +42,8 @@ type Values = Record<string, string | boolean | string[] | undefined>;
 /** What the working tree holds that a production build bakes in: the commit, uncommitted changes and untracked files. */
 function fingerprint(): string {
   const hash = createHash("sha1").update(git(["rev-parse", "HEAD"], ROOT));
-  hash.update(execFileSync("git", ["diff", "HEAD", "--", ".", ...NOT_BUILT], { cwd: ROOT }));
+  // A contract pin rewrites a one-line validator of several megabytes, past execFileSync's 1 MB default.
+  hash.update(execFileSync("git", ["diff", "HEAD", "--", ".", ...NOT_BUILT], { cwd: ROOT, maxBuffer: Infinity }));
   for (const name of git(["ls-files", "--others", "--exclude-standard", "--", ".", ...NOT_BUILT], ROOT).split("\n").filter(Boolean).sort()) {
     hash.update(name);
     if (existsSync(path.join(ROOT, name))) hash.update(readFileSync(path.join(ROOT, name)));
