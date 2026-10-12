@@ -1517,6 +1517,38 @@
 									}
 								},
 								"additionalProperties": false
+							},
+							"screening": {
+								"default": {},
+								"type": "object",
+								"properties": {
+									"enabled": {
+										"default": false,
+										"type": "boolean"
+									},
+									"subject": {
+										"default": "",
+										"type": "string",
+										"maxLength": 1000
+									},
+									"keptOut": {
+										"default": [
+											"not-about"
+										],
+										"maxItems": 4,
+										"type": "array",
+										"items": {
+											"type": "string",
+											"enum": [
+												"not-about",
+												"passing",
+												"touches",
+												"about"
+											]
+										}
+									}
+								},
+								"additionalProperties": false
 							}
 						},
 						"required": [
@@ -1628,6 +1660,38 @@
 									"approvedQuery"
 								],
 								"additionalProperties": false
+							},
+							"screening": {
+								"default": {},
+								"type": "object",
+								"properties": {
+									"enabled": {
+										"default": false,
+										"type": "boolean"
+									},
+									"subject": {
+										"default": "",
+										"type": "string",
+										"maxLength": 1000
+									},
+									"keptOut": {
+										"default": [
+											"not-about"
+										],
+										"maxItems": 4,
+										"type": "array",
+										"items": {
+											"type": "string",
+											"enum": [
+												"not-about",
+												"passing",
+												"touches",
+												"about"
+											]
+										}
+									}
+								},
+								"additionalProperties": false
 							}
 						},
 						"required": [
@@ -1689,6 +1753,38 @@
 								"required": [
 									"name"
 								],
+								"additionalProperties": false
+							},
+							"screening": {
+								"default": {},
+								"type": "object",
+								"properties": {
+									"enabled": {
+										"default": false,
+										"type": "boolean"
+									},
+									"subject": {
+										"default": "",
+										"type": "string",
+										"maxLength": 1000
+									},
+									"keptOut": {
+										"default": [
+											"not-about"
+										],
+										"maxItems": 4,
+										"type": "array",
+										"items": {
+											"type": "string",
+											"enum": [
+												"not-about",
+												"passing",
+												"touches",
+												"about"
+											]
+										}
+									}
+								},
 								"additionalProperties": false
 							},
 							"collectionId": {
