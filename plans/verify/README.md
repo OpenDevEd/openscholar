@@ -29,7 +29,9 @@ Screening and extraction answer "what does the literature say". Verify answers
   and image, page ranges), not through extraction's passage search.
 - A paper's verdict is stored once and is public: shown wherever the paper
   appears in OpenScholar (search, library, focus mode, the assistant), and
-  served to Evidence Libraries through an API.
+  readable from anywhere, signed in or not, the way any public Convex query
+  already is. Starting a check and following its progress are user actions,
+  signed in like every other one. No separate API.
 - Everyone pays the same. A paper that already has a stored reading is charged
   at that reading's stored price. Storing saves time, not money.
 - A later reading replaces the public verdict when the average intelligence
@@ -173,10 +175,13 @@ ledger.
   and quotes.
 - Starting a check: a paper card's menu, focus mode, and the assistant, as a
   registered user action (`convex/lib/userActionRegistry.ts`).
-- Evidence Libraries: `POST /api/v1/evidence-libraries/verdicts`, OpenAlex IDs
-  in, verdicts out, with the library's machine credential like the other
-  `/api/v1/evidence-libraries/*` routes. The library's record page shows the
-  badge and the graph (a new-el issue in an EL milestone).
+- Anywhere else: a public query, `verify/verdicts:get`, OpenAlex IDs in (at
+  most 100), verdicts out, needing no sign-in. Any public Convex query is
+  already callable over HTTP (`POST <convex url>/api/query` with its path and
+  arguments) or with a Convex client; on 2026-10-12 `models/queries:list` was
+  read from shared dev with plain `curl`. Evidence Libraries read verdicts
+  this way, and the library's record page shows the badge and the graph (a
+  new-el issue in an EL milestone).
 
 ## Data
 
@@ -203,8 +208,7 @@ New tables, nothing migrated:
    and whether two runs agree. Report the numbers before slice 2.
 2. **Backend.** Tables, queue, Workpool, agent runtime, the second look,
    credits, the user action for the assistant.
-3. **Public verdicts.** Reuse and replacement, the Convex query the app reads,
-   the library route.
+3. **Public verdicts.** Reuse and replacement, the public query.
 4. **UI.** A mock first, on real data: the rail item, the Verify page with its
    graph and list, badges, the start points. Then the build.
 5. **new-el.** Badge and graph on library records, from the route.
