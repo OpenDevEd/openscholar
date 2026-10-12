@@ -6,6 +6,8 @@ import { createActivatedSetupFixture, createDraftSetupFixture } from "../../test
 import { ensureWorkspace } from "../workspaces/create";
 import { organizationWorkspaceOf, personalWorkspaceOf } from "../workspaces/personal";
 import { evidenceLibraryUploadPrefix } from "../../lib/evidence-libraries/configuration/uploads";
+import { AI_PROVIDER, AI_PROVIDER_KEY_PATH } from "../../lib/evidence-libraries/configuration/ai";
+import { TEST_AI_MODELS } from "../../lib/evidence-libraries/configuration/test-models";
 import { seedFeatureUser } from "../organizationFeatures.test-support";
 
 const mail = vi.hoisted(() => ({ sendMail: vi.fn(), close: vi.fn() }));
@@ -39,14 +41,20 @@ describe("an Evidence Library's draft, for the assistant", () => {
   it("changes values unasked with an undo that puts them back, two undone in turn, and keeps uploads and prototypes out of reach", async () => {
     const { t, as, libraryId, admin } = await setup();
     const read = () => t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId, sections: ["identity"] });
-    type Change = { sectionKey: "identity" | "analytics"; path: Array<string | number>; value?: unknown };
+    type Change = { sectionKey: "identity" | "analytics" | "localization"; path: Array<string | number>; value?: unknown };
     const edit = (changes: Change[], check: { expectedEditVersion: number } | { unchanged: string }, approved?: true) =>
       t.mutation(internal.evidenceLibraries.assistant.editDraftForAssistant, { ...as, libraryId, changes, ...check, ...(approved ? { approved } : {}) });
     const undo = (result: Awaited<ReturnType<typeof edit>>) => edit(result.undo!.args.changes as Change[], { unchanged: result.undo!.args.unchanged }, true);
     const before = await read();
     const identity = before.sections[0].payload as Record<string, unknown>;
 
-    const first = await edit([{ sectionKey: "identity", path: ["name"], value: "Renamed library" }], { expectedEditVersion: before.editVersion });
+    expect(before.problems).toEqual([]);
+    // A change the page would flag comes back with what it flags, so the assistant sees what it left wanting.
+    const flagged = await edit([{ sectionKey: "localization", path: ["defaultLocale"], value: "fr" }], { expectedEditVersion: before.editVersion });
+    expect(flagged.problems).toEqual([{ card: "languages", problem: "languages" }]);
+    expect((await read()).problems).toEqual(flagged.problems);
+    await undo(flagged);
+    const first = await edit([{ sectionKey: "identity", path: ["name"], value: "Renamed library" }], { expectedEditVersion: (await read()).editVersion });
     const second = await edit([{ sectionKey: "identity", path: ["name"], value: "Renamed again" }, { sectionKey: "identity", path: ["description"], value: "About tutoring" }], { expectedEditVersion: first.editVersion });
     expect((await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId, sections: ["identity"], path: ["name"] })).sections[0].payload).toBe("Renamed again");
     // One reply's changes are undone newest first: each still finds what its edit left.
@@ -71,6 +79,29 @@ describe("an Evidence Library's draft, for the assistant", () => {
     await expect(edit([{ sectionKey: "identity", path: ["__proto__", "polluted"], value: true }], { expectedEditVersion: version })).rejects.toThrow(/has no \W+__proto__/);
     // A section the draft hasn't got can't be taken back out, so it's asked about first.
     await expect(edit([{ sectionKey: "analytics", path: [], value: {} }], { expectedEditVersion: version })).rejects.toThrow(/say first/);
+  });
+
+  it("tells an owner why the last attempt to put the draft live failed, and nothing of a teardown's", async () => {
+    const { t, as, libraryId } = await setup();
+    const read = async () => (await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId })).failed;
+    const fail = (kind: "publish" | "teardown", after: number) =>
+      t.run((ctx) => ctx.db.insert("evidenceLibraryConfigOperations", { libraryId, kind, idempotencyKey: `${kind}-failed`, status: "failed", stage: "validating", attemptCount: 1, error: { code: "CONFIGURATION_INVALID", message: "The configuration has problems.", stage: "validating" }, issues: [{ pointer: "/contact/email", message: "Enter a contact email." }], requestedByClerkUserId: "user_drafts", createdAt: Date.now() + after, updatedAt: Date.now() + after }));
+    await fail("publish", 1_000);
+    expect(await read()).toEqual({ kind: "publish", error: "The configuration has problems.", issues: [{ pointer: "/contact/email", message: "Enter a contact email." }] });
+    await fail("teardown", 2_000);
+    expect(await read()).toBeUndefined();
+  });
+
+  it("says the AI card wants a key only while none is stored, as the page does", async () => {
+    vi.stubEnv("ENCRYPTION_KEY", "44".repeat(32));
+    const { t, admin, as, libraryId } = await setup();
+    const read = async () => (await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId })).problems.map(({ problem }) => problem);
+    const { editVersion } = await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId });
+    await t.mutation(internal.evidenceLibraries.assistant.editDraftForAssistant, { ...as, libraryId, changes: [{ sectionKey: "features", path: [], value: { ai: true } }, { sectionKey: "ai", path: [], value: { providers: [{ provider: AI_PROVIDER, enabled: true, models: [TEST_AI_MODELS[0]], defaultModel: TEST_AI_MODELS[0] }] } }], expectedEditVersion: editVersion, approved: true });
+    expect(await read()).toContain("aiKey");
+    await admin.action(api.evidenceLibraries.credentialActions.writeCredential, { libraryId, concretePath: AI_PROVIDER_KEY_PATH, instanceKey: AI_PROVIDER, value: `sk-or-v1-${"0".repeat(48)}` });
+    expect(await read()).not.toContain("aiKey");
+    vi.unstubAllEnvs();
   });
 
   it("changes a library's team as its owner, once the person allows it: a colleague by email, then their role, then not at all", async () => {

@@ -1175,6 +1175,9 @@ export const assistantLibrariesValidator = v.object({
   libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), slug: v.string(), state: evidenceLibraryStateValidator, editable: v.boolean() })), LIBRARIES_LISTED),
   next: v.optional(v.number()),
 });
+/** What the configuration page flags on a draft's cards, by card and the page's name for each problem: a few to a card at most. */
+export const DRAFT_PROBLEMS_MAX = 300;
+export const draftProblemsValidator = capped(v.array(v.object({ card: v.string(), problem: v.string() })), DRAFT_PROBLEMS_MAX);
 /** A library's draft as the assistant reads it (./assistant.ts): its sections, and what says whether it can change them. */
 export const assistantDraftValidator = v.object({
   libraryId: v.id("evidenceLibraries"),
@@ -1185,6 +1188,9 @@ export const assistantDraftValidator = v.object({
   hasUnpublishedChanges: v.boolean(),
   liveAddress: v.optional(v.string()),
   sections: draftSectionsValidator,
+  problems: draftProblemsValidator,
+  // The last time it was put live, or a version restored, when that failed: why, and what the full check found.
+  failed: v.optional(v.object({ kind: v.string(), error: v.optional(v.string()), issues: capped(v.array(configurationIssueValidator), MAX_CONFIGURATION_ISSUES) })),
 });
 /** How deep a path into a draft section goes, and how many changes one edit of the assistant's makes (./assistant.ts). */
 export const DRAFT_PATH_DEPTH = 12;
@@ -1197,5 +1203,6 @@ export const draftChangesValidator = capped(v.array(draftChangeValidator), DRAFT
 /** What an edit of a draft returns (./assistant.ts): the draft's new edit version, and the changes that put its values back while they hold what it left. */
 export const assistantEditResultValidator = v.object({
   editVersion: v.number(),
+  problems: draftProblemsValidator,
   undo: v.optional(v.object({ path: v.literal("evidenceLibraries/assistant:editDraft"), args: v.object({ libraryId: v.id("evidenceLibraries"), changes: draftChangesValidator, unchanged: v.string() }) })),
 });
