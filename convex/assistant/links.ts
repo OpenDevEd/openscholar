@@ -25,6 +25,7 @@ const KINDS = {
   extraction: { href: (row: Row) => text(row._id) && `/extraction/${row._id}`, name: (row: Row) => row.name },
   screening: { href: (row: Row) => text(row._id) && `/screening?job=${row._id}`, name: (row: Row) => row.name ?? row.label ?? "Screening" },
   chat: { href: (row: Row) => text(row._id) && `/?chat=${row._id}`, name: (row: Row) => row.title },
+  author: { href: (row: Row) => text(row.profileId) && `/authors/${row.profileId}`, name: (row: Row) => row.name },
   // A library paper's row has its paper ID in `id`; other reads call it `openalexId`.
   paper: { href: (row: Row) => paperUrl(row.openalexId ?? row.id), name: (row: Row) => row.title },
 } satisfies Record<string, { href: (row: Row) => string | undefined; name: (row: Row) => unknown }>;
@@ -44,6 +45,8 @@ const READS: Record<string, Kind> = {
   "screening/queries:getScreeningJob": "screening",
   "assistant/threads:list": "chat",
   "assistant/threads:get": "chat",
+  "authors/assistant:directory": "author",
+  "authors/assistant:profile": "author",
 };
 
 /** The page a step's card opens, for a change or a read of one record it names by ID: the job it stopped, paused or read the cost of. One it deleted has none. */

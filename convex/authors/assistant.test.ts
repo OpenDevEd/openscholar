@@ -30,14 +30,15 @@ describe("author profiles, for the assistant", () => {
   it("makes one in the workspace, lists and reads it, and shows who has it only where it is", async () => {
     const { t, owner, other } = await setup();
     const authors = internal.authors.assistant;
-    const profileId = await t.mutation(authors.createForAssistant, { ...owner, name: "  Caitlin Mills ", approved: true });
+    const { profileId, name } = await t.mutation(authors.createForAssistant, { ...owner, name: "  Caitlin Mills ", approved: true });
+    expect(name).toBe("Caitlin Mills");
     // Without Evidence Libraries in its plan, a workspace makes none and has no directory.
     await expect(t.mutation(authors.createForAssistant, { ...other, name: "Someone", approved: true })).rejects.toThrow(/plan/);
     await expect(t.query(authors.directoryForAssistant, other)).rejects.toThrow(/plan/);
 
     expect((await t.query(authors.directoryForAssistant, { ...owner, search: "caitlin" })).page).toEqual([expect.objectContaining({ profileId, name: "Caitlin Mills" })]);
     expect(await t.query(authors.profileForAssistant, { ...owner, profileId })).toMatchObject({ profileId, name: "Caitlin Mills", role: "owner", member: true });
-    // Its page is public, so anyone reads it; who has it, with their emails, stays in its workspace.
+    // Its page is public, so anyone reads it; what the person is to it, and who has it with their emails, stay in its workspace.
     expect(await t.query(authors.profileForAssistant, { ...other, profileId })).toMatchObject({ profileId, role: null, member: false });
     expect((await t.query(authors.editorsForAssistant, { ...owner, profileId })).members).toEqual([expect.objectContaining({ userId: owner.userId, role: "owner" })]);
     await expect(t.query(authors.editorsForAssistant, { ...other, profileId })).rejects.toThrow(/not found/);

@@ -3581,12 +3581,6 @@
         "where": "Members",
         "ask": "Send the invitation again"
       },
-      "workspacePreset": {
-        "doing": "Changing the organisation's AI preset",
-        "did": "Changed the organisation's AI preset",
-        "where": "AI settings",
-        "ask": "Change the organisation's AI preset"
-      },
       "activity": {
         "doing": "Reading what changed",
         "did": "Read what changed",

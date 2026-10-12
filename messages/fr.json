@@ -3581,12 +3581,6 @@
         "where": "Membres",
         "ask": "Renvoyer l'invitation"
       },
-      "workspacePreset": {
-        "doing": "Changement du préréglage IA de l'organisation",
-        "did": "Préréglage IA de l'organisation changé",
-        "where": "Paramètres IA",
-        "ask": "Changer le préréglage IA de l'organisation"
-      },
       "activity": {
         "doing": "Lecture des modifications",
         "did": "Modifications lues",

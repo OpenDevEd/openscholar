@@ -215,7 +215,8 @@
     "zotero/libraryGroups:listZoteroGroups": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
     "zotero/libraryGroups:removeZoteroGroup": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
     "zotero/mutations:disconnect": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
-    "zotero/queries:getConnectionStatus": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat."
+    "zotero/queries:getConnectionStatus": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat.",
+    "organizations/manage:setAiPreset": "An organization's AI preset is its admins' choice, made on the AI settings page. The assistant doesn't change the models it runs on."
   },
   "pending": {
     "evidenceLibraries/collectionSources:connectCollectionSource": "#329",

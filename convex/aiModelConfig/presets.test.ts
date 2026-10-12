@@ -72,7 +72,7 @@ describe("presets", () => {
     expect(await runsOn("chat", lab)).toEqual({ modelId: sonnet });
     // Only its admins change it.
     await expect(user.mutation(api.organizations.manage.setAiPreset, { workspaceId: lab, preset: "cheap" })).rejects.toThrow(/Only an admin/);
-    expect((await admin.mutation(api.organizations.manage.setAiPreset, { workspaceId: lab, preset: "fast" })).undo).toEqual({ path: "organizations/manage:setAiPreset", args: { preset: "balanced" } });
+    await admin.mutation(api.organizations.manage.setAiPreset, { workspaceId: lab, preset: "fast" });
     expect(await runsOn("chat", lab)).toEqual({ modelId: flash });
     // A chat there that kept a model of its own runs on what the organization's preset gives chats all the same.
     const { kept, preset } = await t.run(async (ctx) => {

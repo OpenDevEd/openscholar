@@ -49,9 +49,15 @@ export const authorProfileReadValidator = v.union(v.null(), v.object({
 
 /** A profile's publications one read of the assistant's gives, each read from its library (./assistant.ts). */
 export const AUTHOR_PUBLICATIONS_READ = 20;
+/** A publication of a profile's, and the library it's in (./publications.ts). */
+export const publicationReferenceValidator = v.object({
+  id: v.id("authorPublications"), itemKey: v.string(), rank: v.optional(v.number()),
+  library: v.object({id: v.id("evidenceLibraries"), name: v.string(), url: v.string()}),
+});
+export const publicationReferencePageValidator = v.object({page: capped(v.array(publicationReferenceValidator), AUTHOR_PUBLICATIONS_READ), isDone: v.boolean(), continueCursor: v.string()});
 export const authorPublicationsReadValidator = v.object({
   publications: capped(v.array(v.object({id: v.string(), title: v.string(), type: v.string(), year: v.string(), authors: v.string(), url: v.string(), library: v.string()})), AUTHOR_PUBLICATIONS_READ),
   // Ones a library couldn't answer for now.
   unavailable: v.number(),
-  next: v.optional(v.number()),
+  next: v.optional(v.string()),
 });

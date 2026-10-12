@@ -3581,12 +3581,6 @@
         "where": "成员",
         "ask": "重新发送邀请"
       },
-      "workspacePreset": {
-        "doing": "正在更改组织的 AI 预设",
-        "did": "已更改组织的 AI 预设",
-        "where": "AI 设置",
-        "ask": "更改组织的 AI 预设"
-      },
       "activity": {
         "doing": "正在查看变更",
         "did": "已查看变更",

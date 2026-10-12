@@ -14,12 +14,12 @@ import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
 import { FREE_MEMBERS } from "../../lib/billing/plans";
 import { setSeats } from "../billing/seats";
 import { createError } from "../lib/errors";
-import { assistantAction, assistantMutation, defineChangingAction, defineUserMutation, reversedBy, userAction, userMutation, type Acting } from "../lib/userActions";
+import { assistantAction, assistantMutation, defineChangingAction, defineUserMutation, reversedBy, userAction, userMutation, workspaceMutation, type Acting } from "../lib/userActions";
 import { processClerkWebhookEvent } from "../webhooks/clerk";
 import { ORGANIZATION_COLOURS, type OrganizationColour } from "../../lib/workspaces/colours";
 import { deletable, organizationOf, PAST_ROOM_STEP } from "./read";
 import { presetKeyValidator } from "../aiModelConfig/validators";
-import { DEFAULT_PRESET, PRESET_KEYS } from "../../lib/ai/tasks";
+import { DEFAULT_PRESET } from "../../lib/ai/tasks";
 import type { Actor } from "../workspaces/actor";
 
 /** What a change to an organization's people starts from (./read.ts `context`). */
@@ -483,27 +483,21 @@ export const setColourAction = defineUserMutation({
 export const setColour = userMutation(setColourAction);
 export const setColourForAssistant = assistantMutation(setColourAction);
 
-const SET_AI_PRESET = "organizations/manage:setAiPreset" as const;
-
-export const setAiPresetAction = defineUserMutation({
-  path: SET_AI_PRESET,
-  description: `Sets the AI preset the work of the organization the person is in runs on: its screenings, extractions, helpers and chats, for every member; an admin of it does this. One of ${PRESET_KEYS.join(", ")}. Returns \`undo\`, which puts the preset back.`,
+/**
+ * Sets the AI preset the organization's work runs on: its screenings, extractions, helpers and
+ * chats, for every member. An admin does this on the AI settings page; the assistant never does,
+ * as it doesn't change the models it runs on.
+ */
+export const setAiPreset = workspaceMutation({
   args: { preset: presetKeyValidator },
-  returns: v.object({ undo: v.optional(reversedBy(SET_AI_PRESET, { preset: presetKeyValidator })) }),
-  spendsCredits: false,
-  outsideEffect: true,
-  undoable: true,
-  run: async (ctx, { workspaceId, role }, { preset }) => {
+  returns: v.null(),
+  handler: async (ctx, { workspaceId, role }, { preset }) => {
     if (role !== "admin") throw createError("FORBIDDEN", "Only an admin of the organization changes its AI preset.");
     const organization = await organizationOf(ctx, workspaceId);
-    const was = organization.aiPreset ?? DEFAULT_PRESET;
-    if (was === preset) return {};
-    await ctx.db.patch("organizations", organization._id, { aiPreset: preset });
-    return { undo: { path: SET_AI_PRESET, args: { preset: was } } };
+    if ((organization.aiPreset ?? DEFAULT_PRESET) !== preset) await ctx.db.patch("organizations", organization._id, { aiPreset: preset });
+    return null;
   },
 });
-export const setAiPreset = userMutation(setAiPresetAction);
-export const setAiPresetForAssistant = assistantMutation(setAiPresetAction);
 
 const RESEND = "organizations/manage:resendInvitation" as const;
 

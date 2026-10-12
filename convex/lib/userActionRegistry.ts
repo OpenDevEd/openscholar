@@ -21,7 +21,7 @@ import { undoAction as bulkUndoAction } from "../assistant/batches";
 import { messagesAction as chatMessagesAction, stepsAction as chatStepsAction } from "../assistant/replies";
 import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, modelsAction as chatModelsAction, peopleAction as chatAccessAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
 import { countPapersAction as libraryCountPapersAction, papersAction as libraryPapersAction, savedPaperAction } from "../library/queries";
-import { createAction as createOrganizationAction, declineInvitationAction, deleteOrganizationAction, inviteAction, leaveAction, removeMemberAction, renameAction as renameOrganizationAction, resendInvitationAction, revokeInvitationAction, setAiPresetAction, setColourAction, setRoleAction } from "../organizations/manage";
+import { createAction as createOrganizationAction, declineInvitationAction, deleteOrganizationAction, inviteAction, leaveAction, removeMemberAction, renameAction as renameOrganizationAction, resendInvitationAction, revokeInvitationAction,  setColourAction, setRoleAction } from "../organizations/manage";
 import { invitationsAction as organizationInvitationsAction, membersAction as organizationMembersAction, myInvitationsAction, summaryAction as workspaceSummaryAction, workspaceAction, workspacesAction } from "../organizations/queries";
 import { heldAction as moveHeldAction, moveAction } from "../workspaces/move";
 import { addAction as guestAddAction, candidatesAction as guestCandidatesAction, invitedAction as guestInvitedAction, leaveAction as guestLeaveAction, listAction as guestListAction, removeAction as guestRemoveAction, roomAction as guestRoomAction, setRoleAction as guestRoleAction } from "../sharing/guests";
@@ -195,7 +195,6 @@ export const USER_ACTIONS: readonly UserAction[] = [
   leaveAction,
   renameOrganizationAction,
   setColourAction,
-  setAiPresetAction,
   deleteOrganizationAction,
   moveHeldAction,
   moveAction,
