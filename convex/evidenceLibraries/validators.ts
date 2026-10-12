@@ -1149,10 +1149,10 @@ export const teamInvitationsValidator = capped(
 
 /** Libraries one list of the assistant's gives (./assistant.ts). */
 export const LIBRARIES_LISTED = 50;
-export const assistantLibrariesValidator = capped(
-  v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), slug: v.string(), state: evidenceLibraryStateValidator, editable: v.boolean() })),
-  LIBRARIES_LISTED,
-);
+export const assistantLibrariesValidator = v.object({
+  libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), slug: v.string(), state: evidenceLibraryStateValidator, editable: v.boolean() })), LIBRARIES_LISTED),
+  next: v.optional(v.number()),
+});
 /** A library's draft as the assistant reads it (./assistant.ts): its sections, and what says whether it can change them. */
 export const assistantDraftValidator = v.object({
   libraryId: v.id("evidenceLibraries"),

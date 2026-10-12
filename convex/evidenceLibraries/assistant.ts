@@ -13,7 +13,9 @@ import { createError } from "../lib/errors";
 import { asSignedIn, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, userMutation, userQuery } from "../lib/userActions";
 import { STEP_TEXT_MAX } from "../../lib/assistant/steps";
 import { evidenceLibraryUploadPrefix } from "../../lib/evidence-libraries/configuration/uploads";
-import { readEvidenceLibraryAccess } from "./access";
+import { libraryGrant, libraryOf, readEvidenceLibraryAccess } from "./access";
+import { MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
+import { inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { addLibraryMember, changeLibraryRole, removeLibraryMember } from "./team";
 import { memberIdWithEmail } from "../organizations/read";
 import { saveEvidenceLibraryDraftSections } from "./mutations";
@@ -32,23 +34,46 @@ async function personOf(ctx: QueryCtx, userId: Id<"users">) {
   return person;
 }
 
+/**
+ * `ctx` signed in as the person, for a library the reply may reach: one of the workspace it runs
+ * in or, in the person's own workspace, one shared with them, as what's shared with someone is
+ * opened there and nowhere else. Any other is not found, so a chat never carries another
+ * workspace's library to the people who read it.
+ */
+async function signedInFor<Ctx extends QueryCtx>(ctx: Ctx, actor: InWorkspace, libraryId: Id<"evidenceLibraries">): Promise<Ctx> {
+  const library = await ctx.db.get("evidenceLibraries", libraryId);
+  const here = library !== null && (library.workspaceId === actor.workspaceId || ((await inOwnWorkspace(ctx, actor)) && (await libraryGrant(ctx, libraryId, actor.userId)) !== null));
+  if (!here) throw createError("NOT_FOUND", "Evidence Library not found");
+  return await asSignedIn(ctx, await personOf(ctx, actor.userId));
+}
+
 export const librariesAction = defineUserQuery({
   path: "evidenceLibraries/assistant:libraries",
   description:
-    `Lists the workspace's Evidence Libraries the person can see, the first ${LIBRARIES_LISTED} made: each one's ID, name, address name, state, and whether they can change its settings. ` +
+    `Lists the Evidence Libraries the person can see here, ${LIBRARIES_LISTED} a page from \`start\` (0 first): the workspace's, and in their own workspace the ones shared with them. Each one's ID, name, address name, state, and whether they can change its settings; \`next\` is where the next \`start\` is, when there are more. ` +
     "A library's settings are evidenceLibraries/assistant:draft; putting a draft live is done on the library's page.",
-  args: {},
+  args: { start: v.optional(v.union(v.number(), v.null())) },
   returns: assistantLibrariesValidator,
-  run: async (ctx, { userId, workspaceId }) => {
-    const signedIn = await asSignedIn(ctx, await personOf(ctx, userId));
-    const libraries = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(LIBRARIES_LISTED);
-    const shown: Infer<typeof assistantLibrariesValidator> = [];
-    for (const library of libraries) {
+  run: async (ctx, actor, { start }) => {
+    const signedIn = await asSignedIn(ctx, await personOf(ctx, actor.userId));
+    // Both lists are kept small by what makes them: a workspace's libraries and a person's roles in them.
+    const own = await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", actor.workspaceId)).take(MAX_LIBRARIES_PER_WORKSPACE);
+    const grants = (await inOwnWorkspace(ctx, actor))
+      ? await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", (q) => q.eq("userId", actor.userId).eq("kind", "library")).take(MAX_LIBRARY_GRANTS_PER_PERSON)
+      : [];
+    const all = [...own.map((library) => ({ library })), ...grants.map((grant) => ({ grant }))];
+    const from = Math.max(0, Math.floor(start ?? 0));
+    const slice = all.slice(from, from + LIBRARIES_LISTED);
+    const libraries: Infer<typeof assistantLibrariesValidator>["libraries"] = [];
+    for (const entry of slice) {
+      const library = "library" in entry ? entry.library : await libraryOf(ctx, entry.grant);
+      // One shared with them that's also the workspace's is listed once, as the workspace's.
+      if (!library || ("grant" in entry && library.workspaceId === actor.workspaceId)) continue;
       if (!(await readEvidenceLibraryAccess(signedIn, library._id, "view"))) continue;
       const editable = (await readEvidenceLibraryAccess(signedIn, library._id, "manage")) !== null;
-      shown.push({ libraryId: library._id, name: library.name, slug: library.slug, state: library.state, editable });
+      libraries.push({ libraryId: library._id, name: library.name, slug: library.slug, state: library.state, editable });
     }
-    return shown;
+    return { libraries, ...(all.length > from + slice.length ? { next: from + slice.length } : {}) };
   },
 });
 export const libraries = userQuery(librariesAction);
@@ -61,8 +86,8 @@ export const draftAction = defineUserQuery({
     "Give `sections` to read only those, and with one section named, `path` to read only the value there: for a section too long to read whole. Change values with evidenceLibraries/assistant:editDraft.",
   args: { libraryId: v.id("evidenceLibraries"), sections: v.optional(v.union(v.array(v.string()), v.null())), path: v.optional(draftPathValidator) },
   returns: assistantDraftValidator,
-  run: async (ctx, { userId }, { libraryId, sections, path }) => {
-    const read = await draftOf(await asSignedIn(ctx, await personOf(ctx, userId)), libraryId);
+  run: async (ctx, actor, { libraryId, sections, path }) => {
+    const read = await draftOf(await signedInFor(ctx, actor, libraryId), libraryId);
     const asked = sections?.length ? new Set(sections) : null;
     const shown = read.sections.filter((section) => !asked || asked.has(section.sectionKey));
     if (path?.length && shown.length !== 1) throw createError("VALIDATION_ERROR", "Name the one section to read a path in.");
@@ -86,7 +111,7 @@ export const revisionAction = defineUserQuery({
   description: "Reads one revision of an Evidence Library's settings, a version that was put live, with its sections, for an owner. Its draft is evidenceLibraries/assistant:draft.",
   args: { libraryId: v.id("evidenceLibraries"), revisionId: v.id("evidenceLibraryConfigRevisions") },
   returns: revisionReadValidator,
-  run: async (ctx, { userId }, args) => await readEvidenceLibraryRevision(await asSignedIn(ctx, await personOf(ctx, userId)), args),
+  run: async (ctx, actor, args) => await readEvidenceLibraryRevision(await signedInFor(ctx, actor, args.libraryId), args),
 });
 export const revision = userQuery(revisionAction);
 export const revisionForAssistant = assistantQuery(revisionAction);
@@ -96,7 +121,7 @@ export const teamAction = defineUserQuery({
   description: "Reads an Evidence Library's team: its owners, editors and creators, and for an owner the invitations still waiting, as the library's team page shows them.",
   args: { libraryId: v.id("evidenceLibraries") },
   returns: libraryTeamValidator,
-  run: async (ctx, { userId }, args) => await readLibraryTeam(await asSignedIn(ctx, await personOf(ctx, userId)), args),
+  run: async (ctx, actor, args) => await readLibraryTeam(await signedInFor(ctx, actor, args.libraryId), args),
 });
 export const team = userQuery(teamAction);
 export const teamForAssistant = assistantQuery(teamAction);
@@ -171,7 +196,11 @@ function changed(libraryId: Id<"evidenceLibraries">, draft: Awaited<ReturnType<t
 
 /** What the places changes touch hold, as a digest: an undo goes ahead only while they hold what its edit left. */
 const heldAt = (payloadOf: (sectionKey: Change["sectionKey"]) => unknown, changes: Change[]) =>
-  digestOpaqueToken(JSON.stringify(changes.map(({ sectionKey, path }) => valueAt(payloadOf(sectionKey), path, sectionKey) ?? null)));
+  digestOpaqueToken(JSON.stringify(changes.map(({ sectionKey, path }) => {
+    const value = valueAt(payloadOf(sectionKey), path, sectionKey);
+    // A key that isn't there and one set to null are told apart.
+    return value === undefined ? [] : [value];
+  })));
 /** An undo is kept only when it fits a step; its digest is always this long (SHA-256 in hex). */
 const undoFits = (libraryId: Id<"evidenceLibraries">, undo: Change[]) => JSON.stringify({ libraryId, changes: undo, unchanged: "0".repeat(64) }).length <= STEP_TEXT_MAX;
 
@@ -188,13 +217,13 @@ export const editDraftAction = defineUserMutation({
   outsideEffect: false,
   undoable: true,
   // An edit that can't be put back, a new section or one too large for an undo, asks first.
-  asksFirst: async (ctx, { userId }, { libraryId, changes }) => {
-    const { undo } = changed(libraryId, await draftOf(await asSignedIn(ctx, await personOf(ctx, userId)), libraryId), changes);
+  asksFirst: async (ctx, actor, { libraryId, changes }) => {
+    const { undo } = changed(libraryId, await draftOf(await signedInFor(ctx, actor, libraryId), libraryId), changes);
     return !undo || !undoFits(libraryId, undo);
   },
-  run: async (ctx, { userId }, { libraryId, changes, expectedEditVersion, unchanged }) => {
+  run: async (ctx, actor, { libraryId, changes, expectedEditVersion, unchanged }) => {
     if ((expectedEditVersion === undefined) === (unchanged === undefined)) throw createError("VALIDATION_ERROR", "Give the draft's expectedEditVersion from evidenceLibraries/assistant:draft.");
-    const signedIn = await asSignedIn(ctx, await personOf(ctx, userId));
+    const signedIn = await signedInFor(ctx, actor, libraryId);
     const draft = await draftOf(signedIn, libraryId);
     // An undo checks the places it puts back, not the draft's version: other edits undone before it, newest first, moved that on.
     if (unchanged !== undefined) {
@@ -222,8 +251,8 @@ export const addMemberAction = defineUserMutation({
   args: { libraryId: v.id("evidenceLibraries"), email: v.string(), role: roleValidator },
   returns: v.null(),
   ...teamChange,
-  run: async (ctx, { userId }, { libraryId, email, role }) => {
-    const signedIn = await asSignedIn(ctx, await personOf(ctx, userId));
+  run: async (ctx, actor, { libraryId, email, role }) => {
+    const signedIn = await signedInFor(ctx, actor, libraryId);
     const access = await readEvidenceLibraryAccess(signedIn, libraryId, "manage");
     if (!access?.organization) throw createError("FORBIDDEN", "Only an owner of the library changes its team.");
     const clerkUserId = await memberIdWithEmail(ctx, access.organization._id, email);
@@ -240,7 +269,7 @@ export const changeRoleAction = defineUserMutation({
   args: { libraryId: v.id("evidenceLibraries"), clerkUserId: v.string(), role: roleValidator },
   returns: v.null(),
   ...teamChange,
-  run: async (ctx, { userId }, args) => await changeLibraryRole(await asSignedIn(ctx, await personOf(ctx, userId)), args),
+  run: async (ctx, actor, args) => await changeLibraryRole(await signedInFor(ctx, actor, args.libraryId), args),
 });
 export const changeRole = userMutation(changeRoleAction);
 export const changeRoleForAssistant = assistantMutation(changeRoleAction);
@@ -251,7 +280,7 @@ export const removeMemberAction = defineUserMutation({
   args: { libraryId: v.id("evidenceLibraries"), clerkUserId: v.string() },
   returns: v.null(),
   ...teamChange,
-  run: async (ctx, { userId }, args) => await removeLibraryMember(await asSignedIn(ctx, await personOf(ctx, userId)), args),
+  run: async (ctx, actor, args) => await removeLibraryMember(await signedInFor(ctx, actor, args.libraryId), args),
 });
 export const removeMember = userMutation(removeMemberAction);
 export const removeMemberForAssistant = assistantMutation(removeMemberAction);
