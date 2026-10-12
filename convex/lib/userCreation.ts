@@ -9,6 +9,7 @@ export async function createUserWithDefaults(
   userData: {
     clerkId: string;
     email: string;
+    verifiedEmails?: string[];
     firstName?: string;
     lastName?: string;
     avatarUrl?: string;

@@ -1,3 +1,4 @@
+import { MAX_VERIFIED_EMAILS } from "../lib/listCaps";
 import { internal } from "../_generated/api";
 import { MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
 import type { Id } from "../_generated/dataModel";
@@ -70,9 +71,13 @@ export async function applyUserUpsertProjection(
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
 
+    // The addresses invitations to the person may go to (../lib/people.ts `addressesOf`).
+    // shortcut: the first MAX_VERIFIED_EMAILS, besides the account's own; raise it if anyone verifies more.
+    const verifiedEmails = [...new Set(args.verifiedEmails ?? [])].slice(0, MAX_VERIFIED_EMAILS);
     if (existing) {
       await ctx.db.patch("users", existing._id, {
         email: args.email,
+        verifiedEmails,
         firstName: args.firstName,
         lastName: args.lastName,
         avatarUrl: args.avatarUrl,
@@ -87,6 +92,7 @@ export async function applyUserUpsertProjection(
     const userId = await createUserWithDefaults(ctx, {
       clerkId: args.clerkId,
       email: args.email,
+      verifiedEmails,
       firstName: args.firstName,
       lastName: args.lastName,
       avatarUrl: args.avatarUrl,

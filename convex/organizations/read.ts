@@ -9,6 +9,7 @@ import { createError } from "../lib/errors";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
 import { searchTerms } from "../lib/searchText";
 import { FREE_MEMBERS, TEAM_PLAN } from "../../lib/billing/plans";
+import { addressesOf } from "../lib/people";
 
 /** Invitations past an organization's room that one read names, for whoever takes them back a few at a time. */
 export const PAST_ROOM_STEP = 10;
@@ -215,12 +216,13 @@ export const expireInvitation = internalMutation({
 
 /** An invitation the person may answer: a pending one to their own email. */
 export const invitationFor = internalQuery({
-  args: { invitationId: v.id("organizationInvitations"), email: v.string() },
+  args: { invitationId: v.id("organizationInvitations"), userId: v.id("users") },
   returns: v.object({ clerkInvitationId: v.string(), clerkOrganizationId: v.string() }),
-  handler: async (ctx, { invitationId, email }) => {
-    const invitation = await ctx.db.get("organizationInvitations", invitationId);
+  handler: async (ctx, { invitationId, userId }) => {
+    const [invitation, person] = await Promise.all([ctx.db.get("organizationInvitations", invitationId), ctx.db.get("users", userId)]);
     const organization = invitation && (await ctx.db.get("organizations", invitation.organizationId));
-    if (!invitation || !organization || invitation.email !== email || invitation.state !== "pending") throw createError("NOT_FOUND", "This invitation is no longer open.");
+    // One sent to any address of theirs.
+    if (!invitation || !organization || !person || !addressesOf(person).includes(invitation.email) || invitation.state !== "pending") throw createError("NOT_FOUND", "This invitation is no longer open.");
     return { clerkInvitationId: invitation.clerkInvitationId, clerkOrganizationId: organization.clerkOrganizationId };
   },
 });

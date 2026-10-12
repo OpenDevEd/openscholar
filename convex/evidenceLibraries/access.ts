@@ -4,6 +4,7 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { hasPlanFeature } from "../billing/accounts";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
+import { addressesOf } from "../lib/people";
 
 /**
  * What someone does with a library. Viewing it, and its settings read-only, is for everyone who reads
@@ -74,9 +75,11 @@ export async function readPendingLibraryInvitations(
   user: Doc<"users">,
 ) {
   if (user.state !== "active") return [];
-  // An address has at most MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL invitations waiting, to anything.
-  const invitations = await ctx.db.query("itemInvitations")
-    .withIndex("by_email_and_state", q => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
+  // Those to any address of theirs. An address has at most MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL invitations waiting, to anything.
+  // shortcut: the newest MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL of them all; page them if a person ever has more waiting.
+  const invitations = (await Promise.all(addressesOf(user).map(email => ctx.db.query("itemInvitations")
+    .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).order("desc").take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL))))
+    .flat().sort((a, b) => b._creationTime - a._creationTime).slice(0, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
   const rows = await Promise.all(invitations.map(async invitation => {
     const library = await libraryOf(ctx, invitation);
     if (!library || library.state === "disabled") return null;

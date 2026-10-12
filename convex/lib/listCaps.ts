@@ -159,6 +159,8 @@ export const MAX_BILLING_FEATURES = 200;
 export const MAX_PLAN_DETAILS = 50;
 /** Fields of one audit log or credit transaction's metadata. */
 export const MAX_METADATA_FIELDS = 50;
+/** An account's addresses Clerk has verified, besides its own, kept to match invitations sent to any of them (../users/internal.ts). */
+export const MAX_VERIFIED_EMAILS = 10;
 /** Papers one hand-picked selection holds, sent or returned as one list: the longest a list may be. A whole collection or library is a source of its own, not a selection. */
 export const MAX_SELECTED_PAPERS = MAX_LIST_CAP;
 /**
