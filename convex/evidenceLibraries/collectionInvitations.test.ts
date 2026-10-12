@@ -112,6 +112,11 @@ describe("collection invitations for an Evidence Library", () => {
     expect(await call("respond", "user_invitee", { invitationId: sent.id, accept: true })).toEqual(accepted);
     expect((await call("read", "user_invitee", { invitationId: sent.id })).body).toEqual({ state: "accepted", collectionId: COLLECTION, role: "viewer" });
     expect((await call("list", "user_owner")).body).toEqual({ invitations: [] });
+    // Inviting the address again once it answered is a new invitation with an ID of its own, which the library hasn't made a member with.
+    const again = await invite("invitee@example.org", "editor");
+    expect(again.id).not.toBe(sent.id);
+    expect((await call("read", "user_invitee", { invitationId: again.id })).body).toEqual({ state: "pending", collectionId: COLLECTION, role: "editor" });
+    expect((await call("read", "user_invitee", { invitationId: sent.id })).body).toEqual({ state: "gone" });
   });
 
   it("refuses an invitation someone else answered, and one that expired", async () => {

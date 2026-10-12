@@ -97,7 +97,11 @@ const sentBy = (ctx: Pick<QueryCtx, "db">, readerId: Id<"users">) =>
   ctx.db.query("itemInvitations").withIndex("by_invitedBy_and_kind_and_state", (q) => q.eq("invitedBy", readerId).eq("kind", "libraryCollection").eq("state", "pending"))
     .take(MAX_PENDING_COLLECTION_INVITATIONS_PER_READER);
 
-/** Keeps an invitation, ready to email. One to the same address and collection is the same row: sending it again restarts its seven days and takes no second place. */
+/**
+ * Keeps an invitation, ready to email. One still waiting at the same address and collection is the same row: sending
+ * it again restarts its seven days and takes no second place. One answered, cancelled or expired is replaced by a new
+ * row with a new ID, since the library makes a member once per invitation ID and the owner may have ended that since.
+ */
 export const prepare = internalMutation({
   args: { ...callerArgs, collectionId: v.string(), collectionName: v.string(), email: v.string(), role: guestRoleValidator },
   returns: v.union(v.object({ invitation: sentValidator }), refusedValidator),
@@ -107,8 +111,9 @@ export const prepare = internalMutation({
     if (email.length > 254 || !EMAIL.test(email)) return refused("invalid_email");
     if (!(await rateLimit(ctx, { name: "item-invitation", key: String(reader._id) })).ok) return refused("rate_limited");
     const item = itemOf(library._id, collectionId);
-    const existing = await invitationTo(ctx, item, email);
-    if (existing?.state !== "pending") {
+    const found = await invitationTo(ctx, item, email);
+    const existing = found?.state === "pending" ? found : null;
+    if (!existing) {
       const [sent, theirs] = await Promise.all([
         sentBy(ctx, reader._id),
         ctx.db.query("itemInvitations").withIndex("by_email_and_state", (q) => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL),
@@ -116,6 +121,7 @@ export const prepare = internalMutation({
       if (sent.length >= MAX_PENDING_COLLECTION_INVITATIONS_PER_READER || theirs.length >= MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL) return refused("too_many_invitations");
     }
     const values = { kind: "libraryCollection" as const, item, name: collectionName, email, role, invitedBy: reader._id, expiresAt: Date.now() + WEEK, state: "pending" as const, delivery: "queued" as const };
+    if (found && !existing) await ctx.db.delete("itemInvitations", found._id);
     const invitationId = existing?._id ?? (await ctx.db.insert("itemInvitations", values));
     if (existing) await ctx.db.replace("itemInvitations", existing._id, values);
     // Its time up, it is marked expired, so lists filter on its state (../sharing/invitations.ts).
