@@ -8,7 +8,7 @@
  * the reader is one; what a job costs, and every change to it, stay on the owned checks.
  */
 
-import type { QueryCtx, MutationCtx } from "../_generated/server";
+import type { QueryCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { getCurrentUser } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -79,17 +79,6 @@ export async function jobIn(ctx: QueryCtx, actor: Pick<Actor, "workspaceId">, jo
   const job = await ctx.db.get("extractionJobs", jobId);
   if (!job || job.workspaceId !== actor.workspaceId) throw createError("NOT_FOUND", "Job not found");
   return job;
-}
-
-export async function assertJobAccess(
-  ctx: MutationCtx,
-  user: Doc<"users">,
-  jobId: Id<"extractionJobs">,
-): Promise<{ job: Doc<"extractionJobs">; actor: Actor }> {
-  const job = await ctx.db.get("extractionJobs", jobId);
-  const actor = job && (await actorIn(ctx, user, job.workspaceId));
-  if (!job || !actor) throw createError("NOT_FOUND", "Job not found");
-  return { job, actor };
 }
 
 /** What a person outside the job's workspace was given it to do, while that workspace is still anyone's to open; null when they weren't. */

@@ -1,4 +1,4 @@
-import { mutation, internalMutation } from "../lib/functions";
+import { internalMutation } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { v, type Infer, type ObjectType } from "convex/values";
 import { sourceMetadata } from "../../lib/library/paper-metadata";
@@ -11,7 +11,7 @@ import {
   screeningQuestionValidator,
   screeningScoringConfigValidator,
 } from "./validators";
-import { requireActiveUser, requireAuth } from "../lib/auth";
+import { requireActiveUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { noteActivity } from "../activity/notes";
 import { pricingOf, resolveTaskPick, serverStamp } from "../ai/serverModel";
@@ -35,7 +35,7 @@ import { applyCommand, findSearch } from "../research/records";
 
 import { spendingRoom } from "../billing/memberCaps";
 import { MAX_AUTHORS } from "../lib/listCaps";
-import { actorIn, personalWorkspaceOf, requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
+import { personalWorkspaceOf, requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
 import { assistantMutation, defineUserMutation, userMutation } from "../lib/userActions";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */

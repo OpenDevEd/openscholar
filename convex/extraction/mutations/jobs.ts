@@ -6,11 +6,10 @@
  * startJob schedules the app-owned paper queue setup action.
  */
 
-import { mutation, type MutationCtx } from "../../lib/functions";
+import type { MutationCtx } from "../../lib/functions";
 import { v, type ObjectType } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
-import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { extractionPricing, extractionStamp } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
@@ -37,7 +36,7 @@ import { assistantMutation, defineUserMutation, userMutation, type Acting } from
 import { checkScreeningSelection } from "../sources/screening";
 import { jobIn } from "../access";
 import { bucketItemFromRow } from "../jobSources";
-import { actorIn, requireMakerOrAdmin, type InWorkspace } from "../../workspaces/actor";
+import { requireMakerOrAdmin, type InWorkspace } from "../../workspaces/actor";
 import { paperPickValidator, sourcesFor, uploadPickValidator } from "../picks";
 
 function deriveSourceType(
