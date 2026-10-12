@@ -295,6 +295,16 @@ The exempt list is only for plumbing, never for a missing user action. The
 inventory includes creating a library, finding, cancelling and retrying jobs,
 and exports.
 
+2026-10-12: the exempt list has two more sections. `covered` names, for a
+page's own function, the registered action the assistant does the same job
+with, and the gate checks that action is registered. `manual` keeps on their
+page, with a reason, what the user decided the assistant doesn't do: money
+(purchases, plan and seat changes and their quotes), secrets and sign-ins,
+putting a library live (activation, versions, domains, addresses, deletion,
+digests), uploads, site administration, the person's profile and language, and
+the account's AI preset. Plumbing stays for what isn't a user action. Proof:
+PR #880, where `check:user-actions` reads all four sections.
+
 ### Records (#322, built in PR #332)
 
 - `searches`: owner, query, field, filters with the `SearchResult` filter
@@ -541,7 +551,11 @@ public functions were still pending registration in
 `scripts/user-actions-exempt.json`: 62 under #329, 48 under #323, 48 under
 #328, 32 under #327, 15 under #325, and one each under #336
 (`ai/actions:enhanceSearchQuery`) and #334
-(`ai/actions:generateBatchScreeningResponses`). These can run in parallel with the steps
+(`ai/actions:generateBatchScreeningResponses`). On 2026-10-12, after the
+list was sorted (PR #880), 60 were pending: 21 under #323 (OpenAlex authors
+and topics, citations, author profiles, the model catalog), 22 under #329
+(library drafts, their team and sources), 13 under #328 (job controls and
+Zotero) and 4 under #327 (OQL search and naming saved filter IDs). These can run in parallel with the steps
 above: #336 (query count check), #337 with #339 (extraction calls and
 quotes), #343 (Sub-Saharan Africa), #344 (fields added to a job) and
 new-el#465. #338 (agreement with people) follows #334. #51 stays with OARS
