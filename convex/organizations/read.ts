@@ -37,15 +37,20 @@ const MEMBERS_MATCHED = 20;
  * in the case it was given: the members are searched by its words, and compared whatever the case.
  */
 export async function memberWithEmail(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, email: string) {
+  return (await memberIdWithEmail(ctx, organizationId, email)) !== null;
+}
+
+/** The Clerk ID of the organization's active member with this email, or null when there's none. */
+export async function memberIdWithEmail(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, email: string) {
   const wanted = email.trim().toLowerCase();
   const terms = searchTerms(wanted);
-  if (!terms) return false;
+  if (!terms) return null;
   const found = await ctx.db.query("organizationMemberships").withSearchIndex("search_member_text", (q) => q.search("searchText", terms).eq("organizationId", organizationId).eq("state", "active")).take(MEMBERS_MATCHED);
   for (const membership of found) {
     const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.clerkUserId)).unique();
-    if (user && user.state !== "deleted" && user.email.toLowerCase() === wanted) return true;
+    if (user && user.state !== "deleted" && user.email.toLowerCase() === wanted) return membership.clerkUserId;
   }
-  return false;
+  return null;
 }
 
 /** An address's waiting invitations one read looks through for this organization's: someone is rarely invited to many at once. */

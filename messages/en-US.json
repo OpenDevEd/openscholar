@@ -3735,6 +3735,54 @@
         "where": "Models",
         "ask": "List the chat models"
       },
+      "libraries": {
+        "doing": "Reading your Evidence Libraries",
+        "did": "Read your Evidence Libraries",
+        "where": "Evidence Libraries",
+        "ask": "Read your Evidence Libraries"
+      },
+      "readLibraryDraft": {
+        "doing": "Reading a library’s settings",
+        "did": "Read a library’s settings",
+        "where": "Evidence Library",
+        "ask": "Read a library’s settings"
+      },
+      "readLibraryRevision": {
+        "doing": "Reading a version of a library’s settings",
+        "did": "Read a version of a library’s settings",
+        "where": "Evidence Library",
+        "ask": "Read a version of a library’s settings"
+      },
+      "readLibraryTeam": {
+        "doing": "Reading a library’s team",
+        "did": "Read a library’s team",
+        "where": "Evidence Library",
+        "ask": "Read a library’s team"
+      },
+      "editLibraryDraft": {
+        "doing": "Changing a library’s draft",
+        "did": "Changed a library’s draft",
+        "where": "Evidence Library",
+        "ask": "Change a library’s draft"
+      },
+      "addLibraryMember": {
+        "doing": "Adding someone to a library’s team",
+        "did": "Added someone to a library’s team",
+        "where": "Evidence Library",
+        "ask": "Add someone to a library’s team"
+      },
+      "changeLibraryRole": {
+        "doing": "Changing someone’s role on a library",
+        "did": "Changed someone’s role on a library",
+        "where": "Evidence Library",
+        "ask": "Change someone’s role on a library"
+      },
+      "removeLibraryMember": {
+        "doing": "Removing someone from a library’s team",
+        "did": "Removed someone from a library’s team",
+        "where": "Evidence Library",
+        "ask": "Remove someone from a library’s team"
+      },
       "zoteroGroups": {
         "doing": "Reading your Zotero groups",
         "did": "Read your Zotero groups",
@@ -3800,6 +3848,10 @@
         "pages": "Pages",
         "range": "Part",
         "job": "Job",
+        "email": "Email",
+        "clerkUser": "Person",
+        "sectionKey": "Section",
+        "path": "Setting",
         "zotero": "Zotero collection",
         "group": "Zotero group"
       }

@@ -840,12 +840,8 @@ export const getDraft = query({
   },
 });
 
-export const getRevision = query({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    revisionId: v.id("evidenceLibraryConfigRevisions"),
-  },
-  returns: v.object({
+/** A revision of a library's settings, as its page reads one (`readEvidenceLibraryRevision`). */
+export const revisionReadValidator = v.object({
     revision: v.object({
       _id: v.id("evidenceLibraryConfigRevisions"),
       _creationTime: v.number(),
@@ -866,7 +862,14 @@ export const getRevision = query({
       createdAt: v.number(),
     }),
     sections: revisionSectionsValidator,
-  }),
+  });
+
+export const getRevision = query({
+  args: {
+    libraryId: v.id("evidenceLibraries"),
+    revisionId: v.id("evidenceLibraryConfigRevisions"),
+  },
+  returns: revisionReadValidator,
   handler: readEvidenceLibraryRevision,
 });
 
@@ -947,32 +950,37 @@ export const isOrganizationPerson = query({
   },
 });
 
+/** A library's team, as its page shows it (`listTeam`). */
+export const libraryTeamValidator = v.object({
+  organizationName: v.string(),
+  owners: grantedPeopleValidator,
+  editors: grantedPeopleValidator,
+  creators: grantedPeopleValidator,
+  invitations: teamInvitationsValidator,
+});
+
 /** A library's people by role, which everyone who views it reads; its invitations are for its owners, who manage them (#653). */
+export async function readLibraryTeam(ctx: QueryCtx, args: { libraryId: Id<"evidenceLibraries"> }) {
+  const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "view");
+  const people = await readLibraryPeople(ctx, access.library);
+  people.sort((a, b) => (a.person.name || a.person.email).localeCompare(b.person.name || b.person.email));
+  const owner = access.role === "owner";
+  const invitations = owner ? await ctx.db.query("itemInvitations").withIndex("by_item_and_state", q => q.eq("item", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY) : [];
+  // Everyone else is told names, photos and roles: an email is the owners', who manage the team.
+  const shown = (role: "owner" | "editor" | "creator") => people.filter(p => p.role === role).map(p => (owner ? p.person : { ...p.person, email: "" }));
+  return {
+    invitations: invitations.map(i => ({ invitationId: i._id, email: i.email, role: grantedRole(i), delivery: i.delivery })),
+    organizationName: (await ownerName(ctx, access.owner)).name,
+    owners: shown("owner"),
+    editors: shown("editor"),
+    creators: shown("creator"),
+  };
+  }
+
 export const listTeam = query({
   args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.object({
-    organizationName: v.string(),
-    owners: grantedPeopleValidator,
-    editors: grantedPeopleValidator,
-    creators: grantedPeopleValidator,
-    invitations: teamInvitationsValidator,
-  }),
-  handler: async (ctx, args) => {
-    const access = await requireEvidenceLibraryAccess(ctx, args.libraryId, "view");
-    const people = await readLibraryPeople(ctx, access.library);
-    people.sort((a, b) => (a.person.name || a.person.email).localeCompare(b.person.name || b.person.email));
-    const owner = access.role === "owner";
-    const invitations = owner ? await ctx.db.query("itemInvitations").withIndex("by_item_and_state", q => q.eq("item", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY) : [];
-    // Everyone else is told names, photos and roles: an email is the owners', who manage the team.
-    const shown = (role: "owner" | "editor" | "creator") => people.filter(p => p.role === role).map(p => (owner ? p.person : { ...p.person, email: "" }));
-    return {
-      invitations: invitations.map(i => ({ invitationId: i._id, email: i.email, role: grantedRole(i), delivery: i.delivery })),
-      organizationName: (await ownerName(ctx, access.owner)).name,
-      owners: shown("owner"),
-      editors: shown("editor"),
-      creators: shown("creator"),
-    };
-  },
+  returns: libraryTeamValidator,
+  handler: readLibraryTeam,
 });
 
 /**

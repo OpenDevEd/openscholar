@@ -206,7 +206,7 @@ export function Steps({
 }
 
 /** Names of a call's arguments the card says in the person's language; any other shows as the action names it. */
-const NAMED = ["query", "file", "range", "thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs", "job", "zotero", "group"] as const;
+const NAMED = ["query", "file", "range", "thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs", "job", "email", "clerkUser", "sectionKey", "path", "zotero", "group"] as const;
 
 /** Arguments that are a setting turned on or off. */
 const SWITCHES = new Set(["prune", "inCollection", "usePdfs", "openAccessOnly", "withAbstractOnly", "reviewsOnly", "includeRetracted", "ratedOnly"]);

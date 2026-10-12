@@ -3735,6 +3735,54 @@
         "where": "模型",
         "ask": "列出聊天模型"
       },
+      "libraries": {
+        "doing": "正在读取您的 Evidence Library",
+        "did": "已读取您的 Evidence Library",
+        "where": "Evidence Library",
+        "ask": "读取您的 Evidence Library"
+      },
+      "readLibraryDraft": {
+        "doing": "正在读取一个文献库的设置",
+        "did": "已读取一个文献库的设置",
+        "where": "Evidence Library",
+        "ask": "读取一个文献库的设置"
+      },
+      "readLibraryRevision": {
+        "doing": "正在读取文献库设置的一个版本",
+        "did": "已读取文献库设置的一个版本",
+        "where": "Evidence Library",
+        "ask": "读取文献库设置的一个版本"
+      },
+      "readLibraryTeam": {
+        "doing": "正在读取文献库的团队",
+        "did": "已读取文献库的团队",
+        "where": "Evidence Library",
+        "ask": "读取文献库的团队"
+      },
+      "editLibraryDraft": {
+        "doing": "正在更改文献库的草稿",
+        "did": "已更改文献库的草稿",
+        "where": "Evidence Library",
+        "ask": "更改文献库的草稿"
+      },
+      "addLibraryMember": {
+        "doing": "正在将某人加入文献库团队",
+        "did": "已将某人加入文献库团队",
+        "where": "Evidence Library",
+        "ask": "将某人加入文献库团队"
+      },
+      "changeLibraryRole": {
+        "doing": "正在更改某人在文献库中的角色",
+        "did": "已更改某人在文献库中的角色",
+        "where": "Evidence Library",
+        "ask": "更改某人在文献库中的角色"
+      },
+      "removeLibraryMember": {
+        "doing": "正在将某人移出文献库团队",
+        "did": "已将某人移出文献库团队",
+        "where": "Evidence Library",
+        "ask": "将某人移出文献库团队"
+      },
       "zoteroGroups": {
         "doing": "正在读取您的 Zotero 群组",
         "did": "已读取您的 Zotero 群组",
@@ -3800,6 +3848,10 @@
         "pages": "页",
         "range": "范围",
         "job": "任务",
+        "email": "电子邮件",
+        "clerkUser": "人员",
+        "sectionKey": "部分",
+        "path": "设置",
         "zotero": "Zotero 合集",
         "group": "Zotero 群组"
       }

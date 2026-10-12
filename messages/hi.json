@@ -3735,6 +3735,54 @@
         "where": "मॉडल",
         "ask": "चैट मॉडल की सूची देखें"
       },
+      "libraries": {
+        "doing": "आपकी Evidence Libraries पढ़ रहा है",
+        "did": "आपकी Evidence Libraries पढ़ीं",
+        "where": "Evidence Libraries",
+        "ask": "अपनी Evidence Libraries पढ़ें"
+      },
+      "readLibraryDraft": {
+        "doing": "एक लाइब्रेरी की सेटिंग्स पढ़ रहा है",
+        "did": "एक लाइब्रेरी की सेटिंग्स पढ़ीं",
+        "where": "Evidence Library",
+        "ask": "एक लाइब्रेरी की सेटिंग्स पढ़ें"
+      },
+      "readLibraryRevision": {
+        "doing": "एक लाइब्रेरी की सेटिंग्स का एक संस्करण पढ़ रहा है",
+        "did": "एक लाइब्रेरी की सेटिंग्स का एक संस्करण पढ़ा",
+        "where": "Evidence Library",
+        "ask": "एक लाइब्रेरी की सेटिंग्स का एक संस्करण पढ़ें"
+      },
+      "readLibraryTeam": {
+        "doing": "एक लाइब्रेरी की टीम पढ़ रहा है",
+        "did": "एक लाइब्रेरी की टीम पढ़ी",
+        "where": "Evidence Library",
+        "ask": "एक लाइब्रेरी की टीम पढ़ें"
+      },
+      "editLibraryDraft": {
+        "doing": "एक लाइब्रेरी का ड्राफ़्ट बदल रहा है",
+        "did": "एक लाइब्रेरी का ड्राफ़्ट बदला",
+        "where": "Evidence Library",
+        "ask": "एक लाइब्रेरी का ड्राफ़्ट बदलें"
+      },
+      "addLibraryMember": {
+        "doing": "किसी को लाइब्रेरी की टीम में जोड़ रहा है",
+        "did": "किसी को लाइब्रेरी की टीम में जोड़ा",
+        "where": "Evidence Library",
+        "ask": "किसी को लाइब्रेरी की टीम में जोड़ें"
+      },
+      "changeLibraryRole": {
+        "doing": "लाइब्रेरी में किसी की भूमिका बदल रहा है",
+        "did": "लाइब्रेरी में किसी की भूमिका बदली",
+        "where": "Evidence Library",
+        "ask": "लाइब्रेरी में किसी की भूमिका बदलें"
+      },
+      "removeLibraryMember": {
+        "doing": "किसी को लाइब्रेरी की टीम से हटा रहा है",
+        "did": "किसी को लाइब्रेरी की टीम से हटाया",
+        "where": "Evidence Library",
+        "ask": "किसी को लाइब्रेरी की टीम से हटाएँ"
+      },
       "zoteroGroups": {
         "doing": "आपके Zotero समूह पढ़ रहा है",
         "did": "आपके Zotero समूह पढ़े",
@@ -3800,6 +3848,10 @@
         "pages": "पृष्ठ",
         "range": "भाग",
         "job": "जॉब",
+        "email": "ईमेल",
+        "clerkUser": "व्यक्ति",
+        "sectionKey": "अनुभाग",
+        "path": "सेटिंग",
         "zotero": "Zotero संग्रह",
         "group": "Zotero समूह"
       }

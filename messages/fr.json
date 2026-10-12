@@ -3735,6 +3735,54 @@
         "where": "Modèles",
         "ask": "Lister les modèles de discussion"
       },
+      "libraries": {
+        "doing": "Lecture de vos Evidence Libraries",
+        "did": "Evidence Libraries lues",
+        "where": "Evidence Libraries",
+        "ask": "Lire vos Evidence Libraries"
+      },
+      "readLibraryDraft": {
+        "doing": "Lecture des paramètres d'une bibliothèque",
+        "did": "Paramètres d'une bibliothèque lus",
+        "where": "Evidence Library",
+        "ask": "Lire les paramètres d'une bibliothèque"
+      },
+      "readLibraryRevision": {
+        "doing": "Lecture d'une version des paramètres d'une bibliothèque",
+        "did": "Version des paramètres d'une bibliothèque lue",
+        "where": "Evidence Library",
+        "ask": "Lire une version des paramètres d'une bibliothèque"
+      },
+      "readLibraryTeam": {
+        "doing": "Lecture de l'équipe d'une bibliothèque",
+        "did": "Équipe d'une bibliothèque lue",
+        "where": "Evidence Library",
+        "ask": "Lire l'équipe d'une bibliothèque"
+      },
+      "editLibraryDraft": {
+        "doing": "Modification du brouillon d'une bibliothèque",
+        "did": "Brouillon d'une bibliothèque modifié",
+        "where": "Evidence Library",
+        "ask": "Modifier le brouillon d'une bibliothèque"
+      },
+      "addLibraryMember": {
+        "doing": "Ajout de quelqu'un à l'équipe d'une bibliothèque",
+        "did": "Quelqu'un ajouté à l'équipe d'une bibliothèque",
+        "where": "Evidence Library",
+        "ask": "Ajouter quelqu'un à l'équipe d'une bibliothèque"
+      },
+      "changeLibraryRole": {
+        "doing": "Changement du rôle de quelqu'un dans une bibliothèque",
+        "did": "Rôle de quelqu'un dans une bibliothèque changé",
+        "where": "Evidence Library",
+        "ask": "Changer le rôle de quelqu'un dans une bibliothèque"
+      },
+      "removeLibraryMember": {
+        "doing": "Retrait de quelqu'un de l'équipe d'une bibliothèque",
+        "did": "Quelqu'un retiré de l'équipe d'une bibliothèque",
+        "where": "Evidence Library",
+        "ask": "Retirer quelqu'un de l'équipe d'une bibliothèque"
+      },
       "zoteroGroups": {
         "doing": "Lecture de vos groupes Zotero",
         "did": "Groupes Zotero lus",
@@ -3800,6 +3848,10 @@
         "pages": "Pages",
         "range": "Partie",
         "job": "Tâche",
+        "email": "E-mail",
+        "clerkUser": "Personne",
+        "sectionKey": "Section",
+        "path": "Réglage",
         "zotero": "Collection Zotero",
         "group": "Groupe Zotero"
       }

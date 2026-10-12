@@ -1146,3 +1146,34 @@ export const teamInvitationsValidator = capped(
   v.array(v.object({ invitationId: v.id("itemInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
   MAX_PENDING_INVITATIONS_PER_LIBRARY,
 );
+
+/** Libraries one list of the assistant's gives (./assistant.ts). */
+export const LIBRARIES_LISTED = 50;
+export const assistantLibrariesValidator = v.object({
+  libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), slug: v.string(), state: evidenceLibraryStateValidator, editable: v.boolean() })), LIBRARIES_LISTED),
+  next: v.optional(v.number()),
+});
+/** A library's draft as the assistant reads it (./assistant.ts): its sections, and what says whether it can change them. */
+export const assistantDraftValidator = v.object({
+  libraryId: v.id("evidenceLibraries"),
+  name: v.string(),
+  state: evidenceLibraryStateValidator,
+  editVersion: v.number(),
+  editable: v.boolean(),
+  hasUnpublishedChanges: v.boolean(),
+  liveAddress: v.optional(v.string()),
+  sections: draftSectionsValidator,
+});
+/** How deep a path into a draft section goes, and how many changes one edit of the assistant's makes (./assistant.ts). */
+export const DRAFT_PATH_DEPTH = 12;
+export const DRAFT_CHANGES_MAX = 50;
+/** Where a value is inside a draft section: object keys and list places, from the section's top. */
+export const draftPathValidator = capped(v.array(v.union(v.string(), v.number())), DRAFT_PATH_DEPTH);
+/** One change to a draft section: the value at `path` set, or with no `value` that key taken out. An empty path is the section whole. */
+export const draftChangeValidator = v.object({ sectionKey: sectionKeyValidator, path: draftPathValidator, value: sized(v.optional(v.any()), MAX_SECTION_PAYLOAD_BYTES) });
+export const draftChangesValidator = capped(v.array(draftChangeValidator), DRAFT_CHANGES_MAX);
+/** What an edit of a draft returns (./assistant.ts): the draft's new edit version, and the changes that put its values back while they hold what it left. */
+export const assistantEditResultValidator = v.object({
+  editVersion: v.number(),
+  undo: v.optional(v.object({ path: v.literal("evidenceLibraries/assistant:editDraft"), args: v.object({ libraryId: v.id("evidenceLibraries"), changes: draftChangesValidator, unchanged: v.string() }) })),
+});

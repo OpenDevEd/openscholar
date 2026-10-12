@@ -5,12 +5,11 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
 import { stream } from "convex-helpers/server/stream";
 import { v } from "convex/values";
-import type { QueryCtx } from "../_generated/server";
 import { countOf } from "../lib/listCounts";
 import { personName } from "../lib/people";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import schema from "../schema";
-import { actorIn, type InWorkspace } from "../workspaces/actor";
+import { actorIn, inOwnWorkspace } from "../workspaces/actor";
 import { workspaceFrom } from "../workspaces/personal";
 import { findItem } from "../library/find";
 import { findShared, open, sharedWithOf, shares } from "./items";
@@ -20,12 +19,6 @@ import { guestRoleValidator, sharedFromValidator, sharedKindValidator, sharedKin
 const SHARED_PAGE_MAX = 50;
 /** Rows one page of a text search looks through for the ones whose name matches. */
 const SHARED_FILTER_ROWS = 500;
-
-/** Whether the person acts in their own workspace, where what's shared with them is. */
-async function inOwn(ctx: Pick<QueryCtx, "db">, { userId, workspaceId }: InWorkspace) {
-  const workspace = await ctx.db.get("workspaces", workspaceId);
-  return workspace?.kind === "personal" && workspace.userId === userId;
-}
 
 export const listAction = defineUserQuery({
   path: "sharing/shared:list",
@@ -37,7 +30,7 @@ export const listAction = defineUserQuery({
     v.object({ kind: sharedKindValidator, id: v.string(), name: v.string(), role: guestRoleValidator, at: v.number(), by: v.object({ name: v.string(), imageUrl: v.optional(v.string()) }), from: sharedFromValidator, size: v.optional(v.number()) }),
   ),
   run: async (ctx, actor, { kind, text, sort, paginationOpts }) => {
-    if (!(await inOwn(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
+    if (!(await inOwnWorkspace(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
     const { userId } = actor;
     const person = await ctx.db.get("users", userId);
     const needle = text?.trim().toLowerCase() ?? "";
@@ -75,7 +68,7 @@ export const editableCollectionsAction = defineUserQuery({
   args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), openalexId: v.optional(v.string()) },
   returns: paginationResultValidator(v.object({ _id: v.id("collections"), name: v.string(), itemCount: v.number(), containsItem: v.boolean(), from: sharedFromValidator })),
   run: async (ctx, actor, { paginationOpts, search, openalexId }) => {
-    if (!(await inOwn(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
+    if (!(await inOwnWorkspace(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
     const needle = search?.trim().toLowerCase() ?? "";
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHARED_PAGE_MAX) };
     // The index holds only the ones they may edit, by name. A search reads on until a page is full or the list ends,
