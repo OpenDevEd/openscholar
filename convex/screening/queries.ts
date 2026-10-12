@@ -222,7 +222,7 @@ export const getScreeningJobAction = defineUserQuery({
       guests: v.optional(v.number()),
       guest: v.optional(v.object({ role: guestRoleValidator, from: sharedFromValidator })),
       // For a guest, in place of `set`: the kind of thing its papers came from, and not which one. Its name is `label`, as the job itself goes by it.
-      source: v.optional(v.union(v.literal("search"), v.literal("collection"), v.literal("saved"), v.literal("screening"))),
+      source: v.optional(v.union(v.literal("search"), v.literal("collection"), v.literal("saved"), v.literal("screening"), v.literal("zotero"))),
     })
   ),
   run: async (ctx, actor, args) => {

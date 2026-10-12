@@ -3782,6 +3782,24 @@
         "did": "Quelqu'un retiré de l'équipe d'une bibliothèque",
         "where": "Evidence Library",
         "ask": "Retirer quelqu'un de l'équipe d'une bibliothèque"
+      },
+      "zoteroGroups": {
+        "doing": "Lecture de vos groupes Zotero",
+        "did": "Groupes Zotero lus",
+        "where": "Zotero",
+        "ask": "Lire vos groupes Zotero"
+      },
+      "zoteroCollections": {
+        "doing": "Lecture de vos collections Zotero",
+        "did": "Collections Zotero lues",
+        "where": "Zotero",
+        "ask": "Lire vos collections Zotero"
+      },
+      "zoteroItems": {
+        "doing": "Lecture d'éléments de votre Zotero",
+        "did": "Éléments de votre Zotero lus",
+        "where": "Zotero",
+        "ask": "Lire des éléments de votre Zotero"
       }
     },
     "asks": {
@@ -3833,7 +3851,9 @@
         "email": "E-mail",
         "clerkUser": "Personne",
         "sectionKey": "Section",
-        "path": "Réglage"
+        "path": "Réglage",
+        "zotero": "Collection Zotero",
+        "group": "Groupe Zotero"
       }
     },
     "topUp": {

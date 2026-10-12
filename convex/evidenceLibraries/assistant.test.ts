@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { api, internal } from "../_generated/api";
 import { createDraftSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
-import { organizationWorkspaceOf } from "../workspaces/personal";
+import { organizationWorkspaceOf, personalWorkspaceOf } from "../workspaces/personal";
 import { evidenceLibraryUploadPrefix } from "../../lib/evidence-libraries/configuration/uploads";
 import { seedFeatureUser } from "../organizationFeatures.test-support";
 
@@ -20,11 +20,16 @@ async function setup() {
 }
 
 describe("an Evidence Library's draft, for the assistant", () => {
-  it("lists the workspace's libraries and reads one's draft as its owner", async () => {
+  it("lists the workspace's libraries and reads one's draft as its owner, and none from a chat in another workspace", async () => {
     const { t, as, libraryId } = await setup();
-    expect(await t.query(internal.evidenceLibraries.assistant.librariesForAssistant, as)).toEqual([expect.objectContaining({ libraryId, editable: true })]);
+    expect(await t.query(internal.evidenceLibraries.assistant.librariesForAssistant, as)).toEqual({ libraries: [expect.objectContaining({ libraryId, editable: true })] });
     const draft = await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId, sections: ["identity"] });
     expect(draft).toMatchObject({ libraryId, editable: true, sections: [{ sectionKey: "identity" }] });
+    // From their own workspace's chat, the organization's library isn't there: its people don't read that chat.
+    const own = { userId: as.userId, workspaceId: await t.run((ctx) => personalWorkspaceOf(ctx, as.userId)) };
+    expect(await t.query(internal.evidenceLibraries.assistant.librariesForAssistant, own)).toEqual({ libraries: [] });
+    await expect(t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...own, libraryId })).rejects.toThrow(/not found/);
+    await expect(t.query(internal.evidenceLibraries.assistant.teamForAssistant, { ...own, libraryId })).rejects.toThrow(/not found/);
   });
 
   it("changes values unasked with an undo that puts them back, two undone in turn, and keeps uploads and prototypes out of reach", async () => {

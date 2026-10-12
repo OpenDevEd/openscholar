@@ -401,6 +401,8 @@ const bucketItemFields = {
   collectionKey: v.optional(v.string()),
   includeDescendants: v.optional(v.boolean()),
   librarySet: v.optional(librarySetValidator),
+  /** A range of the person's own Zotero library or one collection of it, read through their account a page at a time as the job is set up (#328). */
+  zoteroSet: v.optional(v.object({ first: v.number(), last: v.number() })),
 };
 
 /**

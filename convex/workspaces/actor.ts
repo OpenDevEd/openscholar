@@ -45,6 +45,12 @@ export async function actorIn(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, wor
   return role ? { userId: user._id, workspaceId, role } : null;
 }
 
+/** Whether the person acts in their own workspace, where what's shared with them is. */
+export async function inOwnWorkspace(ctx: Pick<QueryCtx, "db">, { userId, workspaceId }: InWorkspace) {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  return workspace?.kind === "personal" && workspace.userId === userId;
+}
+
 /**
  * Who reads a page and where (#651): the workspace it names, while they're in it, or their own
  * when it names none. Null when signed out or not in it.
