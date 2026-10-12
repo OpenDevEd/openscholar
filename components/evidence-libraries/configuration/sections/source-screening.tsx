@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { AiIcon, ArrowRight, Check, FileText, FlaskConical, Link2, Quote, RefreshCw, X, type AppIcon } from "@/components/icons";
+import { AiIcon, ArrowRight, Check, FileText, FlaskConical, Link2, Quote, X, type AppIcon } from "@/components/icons";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { LIST } from "@/components/settings/parts";
@@ -67,37 +67,43 @@ function Figure({ value, label }: { value: ReactNode; label: string }) {
   );
 }
 
+/** Dollars as readers think of them: whole dollars, cents below a dollar, and "under 1¢" below that. */
+const usd = (value: number) => (value >= 1 ? `$${Math.round(value)}` : value >= 0.01 ? `$${value.toFixed(2)}` : "under 1¢");
+
 /**
- * What saving a new subject does: how many of the source's records are graded again, what it costs and how long it
- * takes, as figures beside the two actions. A trial on 200 records adds how many would change grade, and the sample's
- * grades now and with the new subject.
+ * Records that need grading: every record of the source after its subject changes, or those not graded against the
+ * current subject (a read that failed, or a subject saved without grading). Shown as figures beside the actions: how
+ * many, what it costs and how long it takes. With a new subject, a trial on 200 records adds how many would change
+ * grade, and the sample's grades now and with the new subject.
  */
-function SubjectChange({ cost, sample, trying, onTry, onSave, kept }: {
-  cost: { records: number; usd: number; time: string };
+function GradeCard({ records, changed, estimate, sample, trying, onTry, onGrade, kept }: {
+  records: number;
+  /** The subject was edited, so every record is graded again and a trial is offered. */
+  changed: boolean;
+  estimate: { usd: number; time: string };
   sample?: SampleResult;
   trying: boolean;
   onTry: () => void;
-  onSave: () => void;
+  onGrade: () => void;
   kept: (key: GradeKey) => boolean;
 }) {
   return (
     <div className="space-y-3 rounded-lg bg-card p-3">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
-        <RefreshCw aria-hidden className="size-4 shrink-0 text-primary" />
         <div className="flex min-w-0 flex-1 flex-wrap gap-x-6 gap-y-2">
-          <Figure value={cost.records.toLocaleString()} label="records graded again" />
-          <Figure value={`$${cost.usd.toFixed(0)}`} label="on the library's key" />
-          <Figure value={cost.time} label="to finish" />
+          <Figure value={records.toLocaleString()} label={changed ? "records graded again" : "records not graded yet"} />
+          <Figure value={usd(estimate.usd)} label="on the library's key" />
+          <Figure value={estimate.time} label="to finish" />
           {sample ? <Figure value={`${sample.changed} of ${sample.size}`} label="change grade in a trial" /> : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {sample ? null : (
+          {changed && !sample ? (
             <Button type="button" variant="outline" size="sm" onClick={onTry} disabled={trying}>
               {trying ? <AiIcon working size={14} className="size-3.5" /> : <FlaskConical />}
               {trying ? "Reading 200" : "Try on 200"}
             </Button>
-          )}
-          <Button type="button" size="sm" onClick={onSave}>Grade again</Button>
+          ) : null}
+          <Button type="button" size="sm" onClick={onGrade}>{changed ? "Grade again" : "Grade them"}</Button>
         </div>
       </div>
       {sample ? (
@@ -121,7 +127,6 @@ function SubjectChange({ cost, sample, trying, onTry, onSave, kept }: {
           </ul>
         </div>
       ) : null}
-      <p className="text-xs text-muted-foreground">Current grades stay until every record is graded again, then they all switch together.</p>
     </div>
   );
 }
@@ -133,22 +138,24 @@ function SubjectChange({ cost, sample, trying, onTry, onSave, kept }: {
  * the source's records graded again, and the new grades take over once the last one is done.
  */
 export function SourceScreening({
-  subject, savedSubject, subjectPlaceholder, onSubjectChange, onSave, grades, onKeptChange, reading, regrading, cost, sample, onTrySample, trying,
+  subject, savedSubject, subjectPlaceholder, onSubjectChange, onGrade, grades, ungraded, onKeptChange, reading, regrading, estimate, sample, onTrySample, trying,
 }: {
   subject: string;
   savedSubject: string;
   subjectPlaceholder: string;
   onSubjectChange: (subject: string) => void;
-  /** Saves the new subject, which has the source's records graded again. The configuration page's Save does this. */
-  onSave: () => void;
+  /** Grades what needs it: every record with a new subject, which is saved first, or the records not graded yet. */
+  onGrade: () => void;
   grades: Grade[];
+  /** Records not graded against the current subject: a read that failed, or a subject saved without grading. */
+  ungraded: number;
   onKeptChange: (key: GradeKey, kept: boolean) => void;
   /** The first read: the title in hand and how many are left. */
   reading?: { title: string; left: number };
   /** Grading again after a new subject: how many of all are done. */
   regrading?: { done: number; of: number; title: string };
-  /** What grading every record again costs. Only the grade is asked again. */
-  cost: { records: number; usd: number; time: string };
+  /** What grading this many records costs and how long it takes. Only the grade is asked again. */
+  estimate: (records: number) => { usd: number; time: string };
   sample?: SampleResult;
   onTrySample: () => void;
   trying: boolean;
@@ -166,7 +173,11 @@ export function SourceScreening({
         <Textarea className="min-h-9 resize-none bg-card pl-9" rows={1} aria-label="What to screen for" value={subject} placeholder={subjectPlaceholder} onChange={(event) => onSubjectChange(event.target.value)} />
       </div>
 
-      {changed ? <SubjectChange cost={cost} sample={sample} trying={trying} onTry={onTrySample} onSave={onSave} kept={(key) => grades.find((grade) => grade.key === key)!.kept} /> : null}
+      {/* Only when something needs grading: a new subject, or records not graded against the current one. */}
+      {!regrading && (changed || ungraded > 0) ? (
+        <GradeCard records={changed ? total : ungraded} changed={changed} estimate={estimate(changed ? total : ungraded)} sample={sample} trying={trying}
+          onTry={onTrySample} onGrade={onGrade} kept={(key) => grades.find((grade) => grade.key === key)!.kept} />
+      ) : null}
 
       <div className="space-y-2">
         <div className="flex h-8 items-end justify-between gap-4 text-xs">
@@ -227,6 +238,9 @@ export function SourceScreening({
   );
 }
 
+/** How long, in the largest unit that reads naturally. */
+const duration = (seconds: number) => (seconds < 60 ? "under a minute" : seconds < 3600 ? `about ${Math.round(seconds / 60)} min` : `about ${Math.round(seconds / 3600)} h`);
+
 // MOCK: grades as shares of a source's records, from Jev's real reading of ECCAR's 2,910 records dated from 1 September 2026.
 const MOCK_GRADES: Record<GradeKey, { share: number; example: string }> = {
   about: { share: 1206 / 2910, example: "An analysis of power relations in flood disaster resilience in Rivers State, Nigeria" },
@@ -251,7 +265,7 @@ const MOCK_SAMPLE: SampleResult = {
 
 /**
  * MOCK: a source row's Screening switch and band, with the mock's state, for any kind of source.
- * ?mock=screening | screening-reading | screening-subject | screening-rereading | screening-off | screening-noai
+ * ?mock=screening | screening-reading | screening-subject | screening-rereading | screening-ungraded | screening-off | screening-noai
  */
 export function useMockSourceScreening(records: number) {
   const mock = useSearchParams().get("mock");
@@ -261,8 +275,12 @@ export function useMockSourceScreening(records: number) {
   const [shares, setShares] = useState(GRADE_SHARES);
   const [keptOut, setKeptOut] = useState<GradeKey[]>(["not-about"]);
   const [read, setRead] = useState(mock === "screening-reading" ? 0.38 : 1);
-  // How far grading again has got after a new subject was saved; null when nothing is being graded again.
+  // How far grading has got, as a share of `grading` records; null when nothing is being graded.
   const [again, setAgain] = useState<number | null>(mock === "screening-rereading" ? 0.27 : null);
+  // How many records are being graded: all of them after a new subject, or the ones not graded yet.
+  const [grading, setGrading] = useState(records);
+  // MOCK: records whose read failed, so they have no grade yet.
+  const [ungraded, setUngraded] = useState(mock === "screening-ungraded" ? 37 : 0);
   const [sample, setSample] = useState<SampleResult | undefined>(undefined);
   const [trying, setTrying] = useState(false);
   // MOCK: timers stand in for the library reporting how far a read has got, and for the trial's read.
@@ -277,11 +295,14 @@ export function useMockSourceScreening(records: number) {
     const timer = setInterval(() => setAgain((share) => (share === null ? null : Math.min(1, share + 0.02))), 300);
     return () => clearInterval(timer);
   }, [regrading]);
-  // MOCK: once the last record is graded again, the new grades take over together.
+  // MOCK: once the last record is graded, a new subject's grades take over together.
   if (again !== null && again >= 1) {
     setAgain(null);
-    setSaved(subject);
-    setShares(Object.fromEntries(GRADE_KEYS.map((key) => [key, MOCK_SAMPLE.next[key] / MOCK_SAMPLE.size])) as Record<GradeKey, number>);
+    setUngraded(0);
+    if (subject !== saved) {
+      setSaved(subject);
+      setShares(Object.fromEntries(GRADE_KEYS.map((key) => [key, MOCK_SAMPLE.next[key] / MOCK_SAMPLE.size])) as Record<GradeKey, number>);
+    }
   }
   useEffect(() => {
     if (!trying) return;
@@ -311,13 +332,15 @@ export function useMockSourceScreening(records: number) {
             savedSubject={regrading ? subject : saved}
             subjectPlaceholder="What this source's records should be about"
             onSubjectChange={(next) => { setSubject(next); setSample(undefined); }}
-            onSave={() => { setSample(undefined); setAgain(0); }}
+            onGrade={() => { setGrading(subject !== saved ? records : ungraded); setSample(undefined); setAgain(0); }}
+            ungraded={ungraded}
             grades={grades}
             onKeptChange={(key, kept) => setKeptOut((out) => (kept ? out.filter((entry) => entry !== key) : [...out, key]))}
             reading={left ? { title: MOCK_READING[tick]!, left } : undefined}
-            regrading={again !== null ? { done: Math.round(records * again), of: records, title: MOCK_READING[tick]! } : undefined}
-            // Measured on ECCAR: a full read is $0.0000746 a record; asking only the grade costs 42% of that.
-            cost={{ records, usd: records * 0.0000746 * 0.42, time: "about 1 h" }}
+            regrading={again !== null ? { done: Math.round((grading || records) * again), of: grading || records, title: MOCK_READING[tick]! } : undefined}
+            // Measured on ECCAR: a full read is $0.0000746 a record; asking only the grade costs 42% of that. A new
+            // subject asks only the grade; a record not read yet gets the whole read. About 40 records a second.
+            estimate={(count) => ({ usd: count * 0.0000746 * (subject !== saved ? 0.42 : 1), time: duration(count / 40) })}
             sample={sample}
             onTrySample={() => setTrying(true)}
             trying={trying}
