@@ -111,7 +111,7 @@ export const draftAction = defineUserQuery({
   description:
     "Reads an Evidence Library's draft settings, as its configuration page shows them: each section by its key (identity, home, features, ai, sources and the rest) with its settings, its `editVersion`, whether it has changes not yet live, where it answers, and whether the person can change it. " +
     "Give `sections` to read only those, and with one section named, `path` to read only the value there: for a section too long to read whole. Change values with evidenceLibraries/assistant:editDraft. " +
-    "`problems` is what the page flags on its cards, the whole draft's, by the card and the page's name for each (nameMissing, linkUrl, badColour and the like): the draft can't be put live with any. `failed` is the last attempt to put it live, when that failed: why, and what the full check found, each by where in the settings.",
+    "`problems` is what the page flags on its cards, the whole draft's, by the card and the page's name for each (nameMissing, linkUrl, badColour and the like): the draft can't be put live with any. For an owner, `failed` is the last check, attempt to put it live or restore of a version, when that failed: why, and what the full check found, each by where in the settings.",
   args: { libraryId: v.id("evidenceLibraries"), sections: v.optional(v.union(v.array(v.string()), v.null())), path: v.optional(draftPathValidator) },
   returns: assistantDraftValidator,
   run: async (ctx, actor, { libraryId, sections, path }) => {
@@ -130,7 +130,8 @@ export const draftAction = defineUserQuery({
       ...(read.liveAddress ? { liveAddress: read.liveAddress } : {}),
       sections: path?.length ? shown.map((section) => ({ ...section, payload: valueAt(section.payload, path, section.sectionKey) ?? null })) : shown,
       problems: await problemsOf(signedIn, libraryId, read.sections),
-      ...(read.operation?.status === "failed" ? { failed: failureOf(read.operation) } : {}),
+      // Its failures are its owners', as the page shows them only to them, and only those of putting the draft live, checking it or restoring a version.
+      ...(read.editable && read.operation?.status === "failed" && DRAFT_OPERATIONS.has(read.operation.kind) ? { failed: failureOf(read.operation) } : {}),
     };
   },
 });
@@ -167,6 +168,9 @@ async function problemsOf(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">, row
   const draft = withAiKey(readDraft(rows as Parameters<typeof readDraft>[0]), keySaved);
   return PAGE_SECTION_KEYS.flatMap((card) => sectionProblems(draft, card).map((problem) => ({ card, problem })));
 }
+
+/** What's done with a library's draft: putting it live (setup, publish), checking it, and restoring a version. A teardown takes the library down. */
+const DRAFT_OPERATIONS = new Set(["setup", "publish", "validate", "rollback"]);
 
 /** A failed attempt to put a draft live, as the page tells its owner: hosting details stay in the operation's record. */
 const HOSTING_FAILED = "The hosting step failed. It can be tried again on the library's page.";

@@ -81,6 +81,17 @@ describe("an Evidence Library's draft, for the assistant", () => {
     await expect(edit([{ sectionKey: "analytics", path: [], value: {} }], { expectedEditVersion: version })).rejects.toThrow(/say first/);
   });
 
+  it("tells an owner why the last attempt to put the draft live failed, and nothing of a teardown's", async () => {
+    const { t, as, libraryId } = await setup();
+    const read = async () => (await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId })).failed;
+    const fail = (kind: "publish" | "teardown", after: number) =>
+      t.run((ctx) => ctx.db.insert("evidenceLibraryConfigOperations", { libraryId, kind, idempotencyKey: `${kind}-failed`, status: "failed", stage: "validating", attemptCount: 1, error: { code: "CONFIGURATION_INVALID", message: "The configuration has problems.", stage: "validating" }, issues: [{ pointer: "/contact/email", message: "Enter a contact email." }], requestedByClerkUserId: "user_drafts", createdAt: Date.now() + after, updatedAt: Date.now() + after }));
+    await fail("publish", 1_000);
+    expect(await read()).toEqual({ kind: "publish", error: "The configuration has problems.", issues: [{ pointer: "/contact/email", message: "Enter a contact email." }] });
+    await fail("teardown", 2_000);
+    expect(await read()).toBeUndefined();
+  });
+
   it("says the AI card wants a key only while none is stored, as the page does", async () => {
     vi.stubEnv("ENCRYPTION_KEY", "44".repeat(32));
     const { t, admin, as, libraryId } = await setup();
