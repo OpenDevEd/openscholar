@@ -47,8 +47,14 @@ import { extractAction, resumeAction as extractionResumeHeldAction, retryAction 
 import { findAction as mentionFindAction } from "../assistant/mentions";
 import { readAction as fileReadAction } from "../assistant/files";
 import { searchAction as webSearchAction } from "../research/web";
+import { draftAction as libraryDraftAction, librariesAction as librariesListAction, revisionAction as libraryRevisionAction, saveSectionsAction as librarySaveSectionsAction, teamAction as libraryTeamAction } from "../evidenceLibraries/assistant";
 
 export const USER_ACTIONS: readonly UserAction[] = [
+  librariesListAction,
+  libraryDraftAction,
+  libraryRevisionAction,
+  libraryTeamAction,
+  librarySaveSectionsAction,
   extractionStartAction,
   extractionDuplicateAction,
   cancelExtractionAction,

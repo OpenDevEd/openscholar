@@ -93,6 +93,7 @@ import type * as evidenceLibraries_aiProviderKey from "../evidenceLibraries/aiPr
 import type * as evidenceLibraries_applicationSetup from "../evidenceLibraries/applicationSetup.js";
 import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibraries/applicationSetupActions.js";
 import type * as evidenceLibraries_approvedQueries from "../evidenceLibraries/approvedQueries.js";
+import type * as evidenceLibraries_assistant from "../evidenceLibraries/assistant.js";
 import type * as evidenceLibraries_clerkOAuthApplications from "../evidenceLibraries/clerkOAuthApplications.js";
 import type * as evidenceLibraries_collectionSourceValidators from "../evidenceLibraries/collectionSourceValidators.js";
 import type * as evidenceLibraries_collectionSources from "../evidenceLibraries/collectionSources.js";
@@ -526,6 +527,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/applicationSetup": typeof evidenceLibraries_applicationSetup;
   "evidenceLibraries/applicationSetupActions": typeof evidenceLibraries_applicationSetupActions;
   "evidenceLibraries/approvedQueries": typeof evidenceLibraries_approvedQueries;
+  "evidenceLibraries/assistant": typeof evidenceLibraries_assistant;
   "evidenceLibraries/clerkOAuthApplications": typeof evidenceLibraries_clerkOAuthApplications;
   "evidenceLibraries/collectionSourceValidators": typeof evidenceLibraries_collectionSourceValidators;
   "evidenceLibraries/collectionSources": typeof evidenceLibraries_collectionSources;

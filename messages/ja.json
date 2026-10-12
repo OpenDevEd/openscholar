@@ -3734,6 +3734,36 @@
         "did": "チャットのモデルを一覧しました",
         "where": "モデル",
         "ask": "チャットのモデルを一覧"
+      },
+      "libraries": {
+        "doing": "Evidence Library の一覧を読んでいます",
+        "did": "Evidence Library の一覧を読みました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library の一覧を読む"
+      },
+      "readLibraryDraft": {
+        "doing": "ライブラリの設定を読んでいます",
+        "did": "ライブラリの設定を読みました",
+        "where": "Evidence Library",
+        "ask": "ライブラリの設定を読む"
+      },
+      "readLibraryRevision": {
+        "doing": "ライブラリ設定の版を読んでいます",
+        "did": "ライブラリ設定の版を読みました",
+        "where": "Evidence Library",
+        "ask": "ライブラリ設定の版を読む"
+      },
+      "readLibraryTeam": {
+        "doing": "ライブラリのチームを読んでいます",
+        "did": "ライブラリのチームを読みました",
+        "where": "Evidence Library",
+        "ask": "ライブラリのチームを読む"
+      },
+      "editLibraryDraft": {
+        "doing": "ライブラリの下書きを変更しています",
+        "did": "ライブラリの下書きを変更しました",
+        "where": "Evidence Library",
+        "ask": "ライブラリの下書きを変更"
       }
     },
     "asks": {

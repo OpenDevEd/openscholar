@@ -247,6 +247,12 @@ export async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"worksp
     // title its result gives, not by the collection it goes into.
     return item?.title ? cut(item.title, 200) : undefined;
   }
+  // An Evidence Library it reads or changes, by its name.
+  if (typeof args.libraryId === "string") {
+    const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
+    const library = libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
+    return library?.workspaceId === workspaceId ? cut(library.name, 200) : undefined;
+  }
   // A job it controls, by its name: an extraction's, or a screening's.
   if (typeof args.jobId === "string") {
     const extractionId = ctx.db.normalizeId("extractionJobs", args.jobId);

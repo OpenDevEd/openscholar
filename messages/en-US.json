@@ -3734,6 +3734,36 @@
         "did": "Listed the chat models",
         "where": "Models",
         "ask": "List the chat models"
+      },
+      "libraries": {
+        "doing": "Reading your Evidence Libraries",
+        "did": "Read your Evidence Libraries",
+        "where": "Evidence Libraries",
+        "ask": "Read your Evidence Libraries"
+      },
+      "readLibraryDraft": {
+        "doing": "Reading a library’s settings",
+        "did": "Read a library’s settings",
+        "where": "Evidence Library",
+        "ask": "Read a library’s settings"
+      },
+      "readLibraryRevision": {
+        "doing": "Reading a version of a library’s settings",
+        "did": "Read a version of a library’s settings",
+        "where": "Evidence Library",
+        "ask": "Read a version of a library’s settings"
+      },
+      "readLibraryTeam": {
+        "doing": "Reading a library’s team",
+        "did": "Read a library’s team",
+        "where": "Evidence Library",
+        "ask": "Read a library’s team"
+      },
+      "editLibraryDraft": {
+        "doing": "Changing a library’s draft",
+        "did": "Changed a library’s draft",
+        "where": "Evidence Library",
+        "ask": "Change a library’s draft"
       }
     },
     "asks": {

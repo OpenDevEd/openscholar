@@ -10,7 +10,8 @@
 import { v, type GenericValidator, type Infer, type ObjectType, type PropertyValidators } from "convex/values";
 import { action, internalAction, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./functions";
 import { internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { UserIdentity } from "convex/server";
 import { getCurrentUser, requireActiveUser, requireAuth } from "./auth";
 import { createError } from "./errors";
 import { DONE } from "../../lib/assistant/steps";
@@ -181,6 +182,18 @@ export const defineChangingAction = <Args extends PropertyValidators, Returns ex
       return result;
     },
   });
+
+/**
+ * `ctx` as it would be with the acting person signed in: for a page's own function whose access
+ * reads the session (`ctx.auth`), such as an Evidence Library's, run by a registered action for
+ * the person it acts as. Its identity is theirs, read from their account by the wrapper that
+ * already checked them, never from anything a call was given.
+ */
+export async function asSignedIn<Ctx extends { auth: { getUserIdentity(): Promise<UserIdentity | null> } }>(ctx: Ctx, person: Pick<Doc<"users">, "clerkId" | "email">): Promise<Ctx> {
+  const issuer = process.env.CLERK_JWT_ISSUER_DOMAIN ?? "";
+  const identity: UserIdentity = { subject: person.clerkId, issuer, tokenIdentifier: `${issuer}|${person.clerkId}`, email: person.email };
+  return { ...ctx, auth: { ...ctx.auth, getUserIdentity: async () => identity } };
+}
 
 /** The internal twin of a public function, which the assistant's tools call with the sender's user ID. */
 export const assistantPath = (path: string) => `${path}ForAssistant`;

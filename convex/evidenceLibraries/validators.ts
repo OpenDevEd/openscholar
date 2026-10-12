@@ -1146,3 +1146,26 @@ export const teamInvitationsValidator = capped(
   v.array(v.object({ invitationId: v.id("itemInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
   MAX_PENDING_INVITATIONS_PER_LIBRARY,
 );
+
+/** Libraries one list of the assistant's gives (./assistant.ts). */
+export const LIBRARIES_LISTED = 50;
+export const assistantLibrariesValidator = capped(
+  v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), slug: v.string(), state: evidenceLibraryStateValidator, editable: v.boolean() })),
+  LIBRARIES_LISTED,
+);
+/** A library's draft as the assistant reads it (./assistant.ts): its sections, and what says whether it can change them. */
+export const assistantDraftValidator = v.object({
+  libraryId: v.id("evidenceLibraries"),
+  name: v.string(),
+  state: evidenceLibraryStateValidator,
+  editVersion: v.number(),
+  editable: v.boolean(),
+  hasUnpublishedChanges: v.boolean(),
+  liveAddress: v.optional(v.string()),
+  sections: draftSectionsValidator,
+});
+/** What a save of draft sections returns (./assistant.ts): the draft's new edit version, and what puts the sections back. */
+export const assistantSaveResultValidator = v.object({
+  editVersion: v.number(),
+  undo: v.optional(v.object({ path: v.literal("evidenceLibraries/assistant:saveSections"), args: v.object({ libraryId: v.id("evidenceLibraries"), sections: capped(v.array(sectionRowValidator), MAX_CONFIG_SECTIONS), expectedEditVersion: v.number() }) })),
+});
