@@ -1,14 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { AiIcon, Building2, KeyRound } from "@/components/icons";
+import { Building2, KeyRound } from "@/components/icons";
 import { useAction, useMutation } from "convex/react";
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { SourceScreening, VERDICT_KEYS, type ScreeningVerdict, type VerdictKey } from "./source-screening";
-import { Collapsible } from "@/components/ui/collapsible";
-import { DisclosureContent } from "../disclosure-button";
+import { useRef, useState } from "react";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -206,24 +202,6 @@ export function useOpenAlexSources({
   };
 }
 
-// MOCK: what screening this source would report. The titles are records the AIED library holds.
-const MOCK_RECORDS = 316_869;
-const MOCK_SCREENED: Record<VerdictKey, { count: number; example: string }> = {
-  about: { count: 240_820, example: "ChatGPT in medical education: usage, perceptions, and the role of AI literacy among healthcare profession students" },
-  touches: { count: 31_687, example: "Teaching and learning spoken language in the age of artificial intelligence: An analysis of professional practices" },
-  passing: { count: 15_843, example: "Digital Transformation and Strategic Management Processes in Nigerian Private Universities: Implications for Achieving SDG 4" },
-  "not-about": { count: 22_181, example: "Low-latency chip architecture of adaptive-learning-rate gradient boosting decision tree (GBDT) design with early stopping techniques" },
-  "not-research": { count: 3_169, example: "LLMs vs. Assignments - Multi-Model Lab-Assignment Benchmarking Dataset" },
-  unclear: { count: 3_169, example: "Empowering Learning" },
-};
-const MOCK_READING = [
-  "Addicted to AI? Prevalence and psychological drivers of generative AI dependency among pre-service teachers",
-  "AI-Supported Flipped Classroom in Teaching Business Mathematics: A Classroom Action Research",
-  "Impact of virtual simulation on radiography education during the war in Palestine",
-  "Cultivating Technocuriosity: Building Custom GPTs for K-12 Social Studies",
-  "Graduate Students’ Perceptions of The Use of AI in Counselling Psychology",
-];
-
 export function OpenAlexSourceRow({
   source,
   controller,
@@ -234,26 +212,6 @@ export function OpenAlexSourceRow({
   live: SourceLive | null;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
-  // MOCK: screening has no saved setting or counts yet.
-  // ?mock=screening | screening-running | screening-new | screening-off | screening-noai
-  const mock = useSearchParams().get("mock");
-  const [screening, setScreening] = useState(mock !== null && mock !== "screening-off" && mock !== "screening-noai");
-  const [subject, setSubject] = useState("");
-  const [keptOut, setKeptOut] = useState<VerdictKey[]>(["not-about"]);
-  const [read, setRead] = useState(mock === "screening-running" ? 0.38 : 1);
-  // MOCK: a timer stands in for the library reporting how far screening has got.
-  useEffect(() => {
-    if (mock !== "screening-running") return;
-    const timer = setInterval(() => setRead((share) => (share >= 1 ? 0.38 : Math.min(1, share + 0.004))), 900);
-    return () => clearInterval(timer);
-  }, [mock]);
-  const verdicts: ScreeningVerdict[] = VERDICT_KEYS.map((key) => ({
-    key,
-    count: mock === "screening-new" ? null : Math.round(MOCK_SCREENED[key].count * read),
-    kept: !keptOut.includes(key),
-    example: mock === "screening-new" ? undefined : MOCK_SCREENED[key].example,
-  }));
-  const left = Math.round(MOCK_RECORDS * (1 - read));
   return (
     <SourceRow
       name={source.settings.name}
@@ -278,40 +236,13 @@ export function OpenAlexSourceRow({
         },
       ]}
       controls={
-        <>
-          {mock?.startsWith("screening") ? (
-            <SourceSwitch
-              label="Screening"
-              icon={<AiIcon size={14} className="size-3.5 text-primary" />}
-              checked={screening}
-              onCheckedChange={setScreening}
-              disabledReason={mock === "screening-noai" ? "Turn on AI answers and save an OpenRouter key first" : undefined}
-            />
-          ) : null}
-          <SourceSwitch
-            label={t("pdfs")}
-            checked={source.settings.downloadPdfs}
-            onCheckedChange={(downloadPdfs) =>
-              controller.patch(source.key, { settings: { ...source.settings, downloadPdfs } })
-            }
-          />
-        </>
-      }
-      details={
-        mock?.startsWith("screening") ? (
-          <Collapsible open={screening && mock !== "screening-noai"}>
-            <DisclosureContent>
-                <SourceScreening
-                  subject={subject}
-                  subjectPlaceholder="Research on artificial intelligence in education: intelligent tutoring, learning analytics, automated feedback and assessment"
-                  onSubjectChange={setSubject}
-                  verdicts={verdicts}
-                  onKeptChange={(key, kept) => setKeptOut((out) => (kept ? out.filter((entry) => entry !== key) : [...out, key]))}
-                  progress={left ? { title: MOCK_READING[Math.round(read * 250) % MOCK_READING.length]!, left } : undefined}
-                />
-            </DisclosureContent>
-          </Collapsible>
-        ) : null
+        <SourceSwitch
+          label={t("pdfs")}
+          checked={source.settings.downloadPdfs}
+          onCheckedChange={(downloadPdfs) =>
+            controller.patch(source.key, { settings: { ...source.settings, downloadPdfs } })
+          }
+        />
       }
       onEdit={() => controller.setEditing(source)}
       onToggle={() =>

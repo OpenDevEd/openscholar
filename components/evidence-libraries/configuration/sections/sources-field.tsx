@@ -60,6 +60,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MockLibraryScreening } from "./library-screening";
 import {
   OpenAlexAccessSettings,
   OpenAlexSearchDialog,
@@ -397,6 +398,8 @@ export function SourcesField({
           </DropdownMenu>
         </GroupPicker>
       </div>
+
+      <MockLibraryScreening />
 
       <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
         <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-xl">
