@@ -390,6 +390,17 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     expect(
       (withoutZotero.services as Record<string, unknown>).zotero,
     ).not.toHaveProperty("translationUrl");
+    expect(withoutZotero.services).not.toHaveProperty("openAlex");
+    expect(withoutZotero).toMatchObject({ content: { openAccessLabel: "open" } });
+
+    // With OpenScholar's OpenAlex key the library looks up the open access of records from other sources.
+    const withOpenAlex = assembleEvidenceLibraryConfiguration({
+      sections: ownerSections,
+      managed: { ...managedConfiguration, openAlexApiKey: "openalex-platform-key" },
+      now: new Date("2026-08-24T19:00:00.000Z"),
+    });
+    expect(validateLibraryConfigStructure(withOpenAlex).valid).toBe(true);
+    expect(withOpenAlex.services).toMatchObject({ openAlex: { apiKey: "openalex-platform-key" } });
   });
 
   test("ignores owner rows for platform sections and hands sources to the credential hook", () => {

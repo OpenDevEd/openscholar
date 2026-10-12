@@ -41,6 +41,9 @@ export type ManagedEvidenceLibraryConfiguration = {
   aiModelMetadata: Record<string, { name: string; company: string }>;
   aiModelCatalogReady: boolean;
   zoteroTranslationUrl?: string;
+  // OpenScholar's OpenAlex key, with which the library looks up whether its
+  // records from other sources are open access. Undefined means no key is set up.
+  openAlexApiKey?: string;
   // The platform pays for meaning-based search. Assembly builds the embedder
   // from this key; owners never see it. Undefined means no key is set up.
   embeddingApiKey?: string;
@@ -377,6 +380,9 @@ export function assembleEvidenceLibraryConfiguration({
         zotero: managed.zoteroTranslationUrl
           ? { translationUrl: managed.zoteroTranslationUrl }
           : {},
+        ...(managed.openAlexApiKey
+          ? { openAlex: { apiKey: managed.openAlexApiKey } }
+          : {}),
         publication: managed.publication ?? {},
       },
       authentication: {
