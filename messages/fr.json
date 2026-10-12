@@ -3986,6 +3986,18 @@
         "askMany": "Ajouter {count, plural, one {# PDF Zotero} other {# PDF Zotero}} à la conversation",
         "doingMany": "Ajout de {count, plural, one {# PDF Zotero} other {# PDF Zotero}} à la conversation",
         "didMany": "{count, plural, one {# PDF Zotero ajouté} other {# PDF Zotero ajoutés}} à la conversation"
+      },
+      "gradeLibrarySource": {
+        "doing": "Demande de notation d'une source",
+        "did": "Notation d'une source demandée",
+        "where": "Evidence Library",
+        "ask": "Noter les notices d'une source"
+      },
+      "trySourceSubject": {
+        "doing": "Essai d'un sujet de tri",
+        "did": "Sujet de tri essayé",
+        "where": "Evidence Library",
+        "ask": "Essayer un sujet de tri sur 200 notices"
       }
     },
     "asks": {

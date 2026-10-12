@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
-import { expect, it } from "vitest";
+import { expect, it, onTestFinished, vi } from "vitest";
 import schema from "../schema";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
@@ -121,6 +121,11 @@ it("keeps what a screening source found, and refuses screening counts that are n
 });
 
 it("holds an owner's grading request until the library reports its subject, then sends it once", async () => {
+  // The send is only scheduled here: with the clock held, it never runs and settles the request before it is read.
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  onTestFinished(() => {
+    vi.useRealTimers();
+  });
   const { t, libraryId, post } = await setup();
   const screening = (subject: string) => ({ grades: { about: 2, touches: 0, passing: 0, notAbout: 0 }, ungraded: 2, grading: null, subject });
   const requestId = await t.run(async (ctx) => {

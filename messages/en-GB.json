@@ -3986,6 +3986,18 @@
         "askMany": "Put {count, plural, one {# Zotero PDF} other {# Zotero PDFs}} in the chat",
         "doingMany": "Putting {count, plural, one {# Zotero PDF} other {# Zotero PDFs}} in the chat",
         "didMany": "Put {count, plural, one {# Zotero PDF} other {# Zotero PDFs}} in the chat"
+      },
+      "gradeLibrarySource": {
+        "doing": "Asking a library to grade a source",
+        "did": "Asked a library to grade a source",
+        "where": "Evidence Library",
+        "ask": "Grade a library source's records"
+      },
+      "trySourceSubject": {
+        "doing": "Trying a screening subject",
+        "did": "Tried a screening subject",
+        "where": "Evidence Library",
+        "ask": "Try a screening subject on 200 records"
       }
     },
     "asks": {

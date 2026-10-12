@@ -3986,6 +3986,18 @@
         "askMany": "将 {count, number} 个 Zotero PDF 加入对话",
         "doingMany": "正在将 {count, number} 个 Zotero PDF 加入对话",
         "didMany": "已将 {count, number} 个 Zotero PDF 加入对话"
+      },
+      "gradeLibrarySource": {
+        "doing": "正在请求文献库为来源评级",
+        "did": "已请求文献库为来源评级",
+        "where": "Evidence Library",
+        "ask": "为文献库来源的记录评级"
+      },
+      "trySourceSubject": {
+        "doing": "正在试用筛选主题",
+        "did": "已试用筛选主题",
+        "where": "Evidence Library",
+        "ask": "在 200 条记录上试用筛选主题"
       }
     },
     "asks": {

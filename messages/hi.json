@@ -3986,6 +3986,18 @@
         "askMany": "{count, number} Zotero PDF चैट में जोड़ें",
         "doingMany": "{count, number} Zotero PDF चैट में जोड़ रहा है",
         "didMany": "{count, number} Zotero PDF चैट में जोड़े"
+      },
+      "gradeLibrarySource": {
+        "doing": "लाइब्रेरी से स्रोत ग्रेड करवाया जा रहा है",
+        "did": "लाइब्रेरी से स्रोत ग्रेड करने को कहा",
+        "where": "Evidence Library",
+        "ask": "लाइब्रेरी स्रोत के रिकॉर्ड ग्रेड करें"
+      },
+      "trySourceSubject": {
+        "doing": "छँटाई का विषय आज़माया जा रहा है",
+        "did": "छँटाई का विषय आज़माया",
+        "where": "Evidence Library",
+        "ask": "छँटाई का विषय 200 रिकॉर्ड पर आज़माएँ"
       }
     },
     "asks": {

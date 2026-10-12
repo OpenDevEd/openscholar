@@ -3986,6 +3986,18 @@
         "askMany": "Zotero の PDF を {count, number} 件チャットに追加",
         "doingMany": "Zotero の PDF を {count, number} 件チャットに追加しています",
         "didMany": "Zotero の PDF を {count, number} 件チャットに追加しました"
+      },
+      "gradeLibrarySource": {
+        "doing": "ライブラリにソースの評価を依頼中",
+        "did": "ライブラリにソースの評価を依頼しました",
+        "where": "Evidence Library",
+        "ask": "ライブラリのソースのレコードを評価する"
+      },
+      "trySourceSubject": {
+        "doing": "スクリーニングの主題を試行中",
+        "did": "スクリーニングの主題を試しました",
+        "where": "Evidence Library",
+        "ask": "スクリーニングの主題を 200 件で試す"
       }
     },
     "asks": {
