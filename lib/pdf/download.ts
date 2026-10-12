@@ -10,6 +10,7 @@ import { buildZoteroHeaders } from "../zotero-utils";
 import { MAX_PDF_BYTES } from "../files/limits";
 import { openAlexUrl } from "../openalex/request-url";
 import {
+  readCappedBody,
   safeFetchPdf,
   UnsafeUrlError,
   type SafeFetchPdfResult,
@@ -57,7 +58,7 @@ export async function downloadPdf(
   try {
     // Handle Zotero attachments
     if (url.startsWith("zotero://") && options.zoteroConnection) {
-      return await downloadZoteroPdf(url, options.zoteroConnection, timeout, maxRetries);
+      return await downloadZoteroPdf(url, options.zoteroConnection, timeout, maxRetries, options.maxBytes ?? MAX_PDF_BYTES);
     }
 
     // Try PMC/EuropePMC conversion first (bypasses PoW challenge)
@@ -198,7 +199,8 @@ async function downloadZoteroPdf(
   zoteroUrl: string,
   connection: { apiKey: string; userId: string },
   timeout: number,
-  maxRetries: number
+  maxRetries: number,
+  maxBytes: number,
 ): Promise<DownloadPdfResult> {
   try {
     // Parse Zotero URL to get item key
@@ -270,7 +272,8 @@ async function downloadZoteroPdf(
       return { success: false, error: `Zotero download failed: ${pdfResponse.status}` };
     }
 
-    const pdfBlob = await pdfResponse.blob();
+    // Read no further than the cap: a larger file stops here, never held whole.
+    const pdfBlob = await readCappedBody(pdfResponse, maxBytes);
     return { success: true, pdfBlob };
   } catch (e: unknown) {
     const error = e instanceof Error ? e.message : String(e);

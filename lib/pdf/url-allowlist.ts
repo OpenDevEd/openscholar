@@ -134,7 +134,8 @@ export function validatePdfUrl(raw: string, allowHttp = false): URL {
   return parsed;
 }
 
-async function readCappedBody(
+/** A response's body, read no further than `maxBytes`: past it, the read stops and throws. */
+export async function readCappedBody(
   response: Response,
   maxBytes: number,
 ): Promise<Blob> {
