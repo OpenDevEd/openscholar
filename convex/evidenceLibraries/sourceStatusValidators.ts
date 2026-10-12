@@ -40,6 +40,16 @@ const base = {
    * step. While PDFs are added, the counts of that run.
    */
   pdfs: v.optional(v.union(v.object({ added: v.number(), missed: v.number() }), v.null())),
+  /**
+   * What the source's screening found: its records by grade against its subject, how many are not graded against
+   * the current subject, and progress while the owner's request to grade them runs. Null for a source that does not
+   * screen, and missing from runtimes older than screening.
+   */
+  screening: v.optional(v.union(v.object({
+    grades: v.object({ about: v.number(), touches: v.number(), passing: v.number(), notAbout: v.number() }),
+    ungraded: v.number(),
+    grading: v.union(v.object({ done: v.number(), of: v.number() }), v.null()),
+  }), v.null())),
 };
 
 export const sourceStatusValidator = v.union(

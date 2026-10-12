@@ -32,6 +32,10 @@ function isSensibleStatus(status: SourceStatus) {
     ...Object.values(status.issues),
     status.pdfs?.added ?? 0,
     status.pdfs?.missed ?? 0,
+    ...Object.values(status.screening?.grades ?? {}),
+    status.screening?.ungraded ?? 0,
+    status.screening?.grading?.done ?? 0,
+    status.screening?.grading?.of ?? 0,
   ];
   const times = [status.lastSuccessAt];
   if (status.state === "running") {

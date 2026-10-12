@@ -99,3 +99,13 @@ it("refuses PDF counts that are not whole numbers from zero up", async () => {
   const response = await post("2026-09-27T12:10:00.000Z", [{ ...upToDate, pdfs: { added: -1, missed: 0.5 } }]);
   expect(response.status).toBe(400);
 });
+
+it("keeps what a screening source found, and refuses screening counts that are not whole numbers from zero up", async () => {
+  const { post, saved } = await setup();
+  const screening = { grades: { about: 65_174, touches: 68_200, passing: 21_238, notAbout: 2_648 }, ungraded: 37, grading: { done: 12, of: 49 } };
+
+  expect((await post("2026-09-27T12:10:00.000Z", [{ ...upToDate, screening }])).status).toBe(200);
+  expect(await saved()).toMatchObject([{ sources: [{ screening: { grades: { notAbout: 2_648 }, ungraded: 37 } }] }]);
+  expect((await post("2026-09-27T12:11:00.000Z", [{ ...upToDate, screening: { ...screening, ungraded: -1 } }])).status).toBe(400);
+});
+
