@@ -68,6 +68,12 @@ const OPENS: Record<string, (args: Row) => string | undefined> = {
   "evidenceLibraries/assistant:syncSource": (args) => (typeof args.libraryId === "string" ? `/evidence-libraries/${args.libraryId}/configuration` : undefined),
   "evidenceLibraries/assistant:invitations": () => "/evidence-libraries?view=invitations",
   // A research area, by its topic ID as the read checked it.
+  "authors/assistant:directory": () => "/authors",
+  "authors/assistant:invitations": () => "/authors",
+  "authors/assistant:profile": (args) => (typeof args.profileId === "string" ? `/authors/${args.profileId}` : undefined),
+  "authors/assistant:editors": (args) => (typeof args.profileId === "string" ? `/authors/${args.profileId}` : undefined),
+  "authors/assistant:publications": (args) => (typeof args.profileId === "string" ? `/authors/${args.profileId}` : undefined),
+  "topics/assistant:publications": (args) => (typeof args.topicId === "string" && /^T[1-9]\d*$/i.test(args.topicId.trim()) ? `/topics/${args.topicId.trim().toUpperCase()}` : undefined),
   "research/topics:get": (args) => (typeof args.id === "string" && /^T[1-9]\d*$/i.test(args.id.trim()) ? `/topics/${args.id.trim().toUpperCase()}` : undefined),
 };
 /** The page a step's card opens, from its action and its arguments as JSON (`OPENS`). */

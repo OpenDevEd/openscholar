@@ -99,6 +99,9 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
       const library = invitation ? await libraryOf(ctx, invitation) : null;
       return invitation && library && (invitation.email === reader.email.toLowerCase() || library.workspaceId === workspaceId) ? `${invitation.email}, ${library.name}` : null;
     }
+    // An author profile, by its name: its page is public.
+    const profileId = ctx.db.normalizeId("authorProfiles", id);
+    if (profileId) return (await ctx.db.get("authorProfiles", profileId))?.name ?? null;
     const collectionId = ctx.db.normalizeId("collections", id);
     if (collectionId) {
       const collection = await ctx.db.get("collections", collectionId);

@@ -48,9 +48,18 @@ import { findAction as mentionFindAction } from "../assistant/mentions";
 import { readAction as fileReadAction } from "../assistant/files";
 import { searchAction as webSearchAction } from "../research/web";
 import { addMemberAction as libraryAddMemberAction, changeRoleAction as libraryChangeRoleAction, removeMemberAction as libraryRemoveMemberAction, draftAction as libraryDraftAction, librariesAction as librariesListAction, revisionAction as libraryRevisionAction, editDraftAction as libraryEditDraftAction, teamAction as libraryTeamAction, inviteAction as libraryInviteAction, changeInvitationAction as libraryChangeInvitationAction, invitationsAction as libraryInvitationsAction, answerInvitationAction as libraryAnswerInvitationAction, startLibraryAction as libraryStartLibraryAction, sourcesAction as librarySourcesAction, runningCollectionsAction as libraryRunningCollectionsAction, runningInstitutionsAction as libraryRunningInstitutionsAction, runningPublicationsAction as libraryRunningPublicationsAction, runningPublicationAction as libraryRunningPublicationAction, syncSourceAction as librarySyncSourceAction } from "../evidenceLibraries/assistant";
+import { createAction as authorCreateAction, directoryAction as authorDirectoryAction, editorsAction as authorEditorsAction, invitationsAction as authorInvitationsAction, profileAction as authorProfileAction, publicationsAction as authorPublicationsAction } from "../authors/assistant";
+import { publicationsAction as topicPublicationsAction } from "../topics/assistant";
 import { collectionsAction as zoteroCollectionsAction, groupsAction as zoteroGroupsAction, itemsAction as zoteroItemsAction } from "../zotero/library";
 
 export const USER_ACTIONS: readonly UserAction[] = [
+  authorDirectoryAction,
+  authorProfileAction,
+  authorEditorsAction,
+  authorInvitationsAction,
+  authorCreateAction,
+  authorPublicationsAction,
+  topicPublicationsAction,
   zoteroGroupsAction,
   zoteroCollectionsAction,
   zoteroItemsAction,

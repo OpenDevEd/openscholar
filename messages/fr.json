@@ -3866,6 +3866,48 @@
         "did": "Import de bibliothèque relancé",
         "where": "Evidence Library",
         "ask": "Relancer un import de bibliothèque"
+      },
+      "authorProfiles": {
+        "doing": "Lecture de profils d'auteurs",
+        "did": "Profils d'auteurs lus",
+        "where": "Auteurs",
+        "ask": "Lire des profils d'auteurs"
+      },
+      "readAuthorProfile": {
+        "doing": "Lecture d'un profil d'auteur",
+        "did": "Profil d'auteur lu",
+        "where": "Auteurs",
+        "ask": "Lire un profil d'auteur"
+      },
+      "authorProfileEditors": {
+        "doing": "Lecture des personnes qui ont un profil d'auteur",
+        "did": "Personnes qui ont un profil d'auteur lues",
+        "where": "Auteurs",
+        "ask": "Lire qui a un profil d'auteur"
+      },
+      "authorInvites": {
+        "doing": "Lecture de vos invitations à des profils d'auteurs",
+        "did": "Invitations à des profils d'auteurs lues",
+        "where": "Auteurs",
+        "ask": "Lire vos invitations à des profils d'auteurs"
+      },
+      "newAuthorProfile": {
+        "doing": "Création d'un profil d'auteur",
+        "did": "Profil d'auteur créé",
+        "where": "Auteurs",
+        "ask": "Créer un profil d'auteur"
+      },
+      "authorPublications": {
+        "doing": "Lecture des publications d'un auteur",
+        "did": "Publications d'un auteur lues",
+        "where": "Auteurs",
+        "ask": "Lire les publications d'un auteur"
+      },
+      "topicPublications": {
+        "doing": "Lecture des publications d'un domaine de recherche",
+        "did": "Publications d'un domaine de recherche lues",
+        "where": "Domaines de recherche",
+        "ask": "Lire les publications d'un domaine de recherche"
       }
     },
     "asks": {

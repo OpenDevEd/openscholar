@@ -3866,6 +3866,48 @@
         "did": "Retried a library import",
         "where": "Evidence Library",
         "ask": "Retry a library import"
+      },
+      "authorProfiles": {
+        "doing": "Reading author profiles",
+        "did": "Read author profiles",
+        "where": "Authors",
+        "ask": "Read author profiles"
+      },
+      "readAuthorProfile": {
+        "doing": "Reading an author profile",
+        "did": "Read an author profile",
+        "where": "Authors",
+        "ask": "Read an author profile"
+      },
+      "authorProfileEditors": {
+        "doing": "Reading who has an author profile",
+        "did": "Read who has an author profile",
+        "where": "Authors",
+        "ask": "Read who has an author profile"
+      },
+      "authorInvites": {
+        "doing": "Reading your author profile invitations",
+        "did": "Read your author profile invitations",
+        "where": "Authors",
+        "ask": "Read your author profile invitations"
+      },
+      "newAuthorProfile": {
+        "doing": "Making an author profile",
+        "did": "Made an author profile",
+        "where": "Authors",
+        "ask": "Make an author profile"
+      },
+      "authorPublications": {
+        "doing": "Reading an author’s publications",
+        "did": "Read an author’s publications",
+        "where": "Authors",
+        "ask": "Read an author’s publications"
+      },
+      "topicPublications": {
+        "doing": "Reading a research area’s publications",
+        "did": "Read a research area’s publications",
+        "where": "Research areas",
+        "ask": "Read a research area’s publications"
       }
     },
     "asks": {

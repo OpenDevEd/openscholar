@@ -139,7 +139,18 @@
     "zotero/runtimeReadActions:listInstitutions": "evidenceLibraries/assistant:runningInstitutions",
     "zotero/runtimeReadActions:listPublications": "evidenceLibraries/assistant:runningPublications",
     "zotero/runtimeReadActions:readPublication": "evidenceLibraries/assistant:runningPublication",
-    "zotero/runtimeReadActions:requestSourceRun": "evidenceLibraries/assistant:syncSource"
+    "zotero/runtimeReadActions:requestSourceRun": "evidenceLibraries/assistant:syncSource",
+    "authors/profiles:directory": "authors/assistant:directory",
+    "authors/profiles:list": "authors/assistant:directory",
+    "authors/profiles:get": "authors/assistant:profile",
+    "authors/profiles:create": "authors/assistant:create",
+    "authors/members:list": "authors/assistant:editors",
+    "authors/invitations:listInvitations": "authors/assistant:invitations",
+    "authors/publications:list": "authors/assistant:publications",
+    "app/actions/author-publications:readAuthorPublications": "authors/assistant:publications",
+    "app/actions/topic-publications:readTopicPublications": "topics/assistant:publications",
+    "topics/publications:listGroups": "topics/assistant:publications",
+    "topics/publications:listLocations": "topics/assistant:publications"
   },
   "manual": {
     "admins/invitations:invite": "Site administration, for OpenScholar's own admins on the admin pages.",
@@ -207,19 +218,8 @@
     "zotero/queries:getConnectionStatus": "A secret or a sign-in: keys, credentials and connected accounts are entered, read and removed on their settings page, never through a chat."
   },
   "pending": {
-    "app/actions/author-publications:readAuthorPublications": "#323",
-    "app/actions/topic-publications:readTopicPublications": "#323",
-    "authors/invitations:listInvitations": "#323",
-    "authors/members:list": "#323",
-    "authors/profiles:create": "#323",
-    "authors/profiles:directory": "#323",
-    "authors/profiles:get": "#323",
-    "authors/profiles:list": "#323",
-    "authors/publications:list": "#323",
     "evidenceLibraries/collectionSources:connectCollectionSource": "#329",
-    "evidenceLibraries/collectionSources:listCollectionSources": "#329",
-    "topics/publications:listGroups": "#323",
-    "topics/publications:listLocations": "#323"
+    "evidenceLibraries/collectionSources:listCollectionSources": "#329"
   },
   "inWorkspace": [
     "research/records",

@@ -253,6 +253,12 @@ export async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"worksp
     const library = libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
     return library?.workspaceId === workspaceId ? cut(library.name, 200) : undefined;
   }
+  // An author profile, by its name: its page is public.
+  if (typeof args.profileId === "string") {
+    const profileId = ctx.db.normalizeId("authorProfiles", args.profileId);
+    const profile = profileId ? await ctx.db.get("authorProfiles", profileId) : null;
+    return profile ? cut(profile.name, 200) : undefined;
+  }
   // A job it controls, by its name: an extraction's, or a screening's.
   if (typeof args.jobId === "string") {
     const extractionId = ctx.db.normalizeId("extractionJobs", args.jobId);

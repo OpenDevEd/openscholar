@@ -3866,6 +3866,48 @@
         "did": "已重试文献库导入",
         "where": "Evidence Library",
         "ask": "重试文献库导入"
+      },
+      "authorProfiles": {
+        "doing": "正在读取作者资料",
+        "did": "已读取作者资料",
+        "where": "作者",
+        "ask": "读取作者资料"
+      },
+      "readAuthorProfile": {
+        "doing": "正在读取一份作者资料",
+        "did": "已读取一份作者资料",
+        "where": "作者",
+        "ask": "读取一份作者资料"
+      },
+      "authorProfileEditors": {
+        "doing": "正在读取作者资料的成员",
+        "did": "已读取作者资料的成员",
+        "where": "作者",
+        "ask": "读取作者资料的成员"
+      },
+      "authorInvites": {
+        "doing": "正在读取您的作者资料邀请",
+        "did": "已读取您的作者资料邀请",
+        "where": "作者",
+        "ask": "读取您的作者资料邀请"
+      },
+      "newAuthorProfile": {
+        "doing": "正在创建作者资料",
+        "did": "已创建作者资料",
+        "where": "作者",
+        "ask": "创建作者资料"
+      },
+      "authorPublications": {
+        "doing": "正在读取作者的出版物",
+        "did": "已读取作者的出版物",
+        "where": "作者",
+        "ask": "读取作者的出版物"
+      },
+      "topicPublications": {
+        "doing": "正在读取研究领域的出版物",
+        "did": "已读取研究领域的出版物",
+        "where": "研究领域",
+        "ask": "读取研究领域的出版物"
       }
     },
     "asks": {
