@@ -3490,7 +3490,10 @@
         "doing": "正在阅读论文 PDF",
         "did": "已阅读论文 PDF",
         "where": "OpenAlex",
-        "ask": "阅读论文 PDF"
+        "ask": "阅读论文 PDF",
+        "askMany": "阅读 {count, number} 篇论文的 PDF",
+        "doingMany": "正在阅读 {count, number} 篇论文的 PDF",
+        "didMany": "已阅读 {count, number} 篇论文的 PDF"
       },
       "workspaces": {
         "doing": "正在查看工作区",

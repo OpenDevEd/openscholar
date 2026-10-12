@@ -301,9 +301,34 @@ describe("reading a paper's PDF", () => {
     expect(asking).toMatchObject([{ path: "research/papers:readPdf" }]);
     expect(asking[0].credits).toBeGreaterThan(STORED_PDF_CREDITS);
 
-    await asAda.mutation(api.assistant.replies.answer, { threadId, stepId: asking[0]._id, allow: true });
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [asking[0]._id], allow: true });
     await replied(t, threadId);
     expect(JSON.stringify(resultIn(mockDoStream.mock.lastCall![0].prompt as Prompt))).toContain(`"url":"${storedAddress(await byLink(PDF))}?`);
+  });
+
+  it("allows the PDFs a reply asked to read together with one answer, held to what they cost together", async () => {
+    const t = convexTest(schema);
+    const { asAda, threadId } = await chat(t);
+    await asAda.mutation(api.assistant.spending.setTool, { threadId, tool: "files", allowed: false });
+    mockDoStream
+      .mockImplementationOnce(callingDoStream({ id: "pdf-1", name: "research_papers_readPdf", input: { id: "W1" } }, { id: "pdf-2", name: "research_papers_readPdf", input: { id: "W1", title: "Loot boxes" } }))
+      .mockImplementation(finishingDoStream(["Both report a link."]));
+    await asAda.mutation(api.assistant.replies.send, { threadId, text: "What are this paper's methods, and its sample?" });
+    await replied(t, threadId);
+    const asking = await t.run((ctx) => ctx.db.query("assistantSteps").withIndex("by_thread_and_status", (q) => q.eq("threadId", threadId).eq("status", "asking")).collect());
+    expect(asking).toHaveLength(2);
+    const both = asking.reduce((sum, step) => sum + step.credits!, 0);
+    const balance = (credits: number) => t.run(async (ctx) => ctx.db.patch("billingAccounts", (await ctx.db.query("billingAccounts").first())!._id, { balance: credits }));
+
+    // Enough for one of them is not enough for the two.
+    await balance(both - 1);
+    await expect(asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: asking.map((step) => step._id), allow: true })).rejects.toThrow(/enough credits/);
+    expect((await t.run((ctx) => ctx.db.query("assistantSteps").collect())).map((step) => step.status)).toEqual(["asking", "asking"]);
+
+    await balance(both);
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: asking.map((step) => step._id), allow: true });
+    await replied(t, threadId);
+    expect((await t.run((ctx) => ctx.db.query("assistantSteps").collect())).map((step) => step.status)).toEqual(["done", "done"]);
   });
 
   it("sends the model a link to the stored copy in the reply that read it, and only a note in later replies", async () => {
