@@ -269,10 +269,9 @@ export const declineInvitationAction = defineChangingAction({
   spendsCredits: false,
   outsideEffect: false,
   undoable: false,
-  run: async (ctx, { userId, workspaceId }, { invitationId }) => {
+  run: async (ctx, { userId }, { invitationId }) => {
     const key = clerkSecretKey();
-    const { email }: Context = await ctx.runQuery(internal.organizations.read.context, { userId, workspaceId });
-    const invitation: { clerkInvitationId: string; clerkOrganizationId: string } = await ctx.runQuery(internal.organizations.read.invitationFor, { invitationId, email });
+    const invitation: { clerkInvitationId: string; clerkOrganizationId: string } = await ctx.runQuery(internal.organizations.read.invitationFor, { invitationId, userId });
     const revoked = await clerk(key, "POST", `/organizations/${invitation.clerkOrganizationId}/invitations/${invitation.clerkInvitationId}/revoke`, {});
     await keep(ctx, key, "organizationInvitation.revoked", revoked);
     return null;

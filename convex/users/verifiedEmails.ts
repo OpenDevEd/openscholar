@@ -1,7 +1,7 @@
 /**
  * Each account's addresses Clerk has verified (../lib/people.ts `addressesOf`), read for every account at once: the
- * Clerk webhook keeps them from each account's next change on, and this fills them for accounts made before it did, or
- * after events it missed. Run it with `npx convex run users/verifiedEmails:refresh`.
+ * Clerk webhook keeps them from each account's next change on, and this fills them for accounts it hasn't kept them
+ * for yet. Run it with `npx convex run users/verifiedEmails:refresh`.
  */
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
@@ -35,7 +35,8 @@ export const keep = internalMutation({
   handler: async (ctx, { users }) => {
     for (const { clerkId, verifiedEmails } of users) {
       const user = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId)).unique();
-      if (user) await ctx.db.patch("users", user._id, { verifiedEmails });
+      // An account the webhook has kept them for is left as it says: this read of Clerk may be older than its last event.
+      if (user && user.verifiedEmails === undefined) await ctx.db.patch("users", user._id, { verifiedEmails });
     }
     return null;
   },

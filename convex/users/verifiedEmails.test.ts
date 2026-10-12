@@ -12,7 +12,7 @@ afterEach(() => {
 });
 
 describe("verified addresses", () => {
-  it("keeps the addresses Clerk verified for each account it lists", async () => {
+  it("fills the addresses Clerk verified for each account it lists that has none kept", async () => {
     const t = convexTest(schema, modules);
     vi.stubEnv("CLERK_SECRET_KEY", "sk_test");
     const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "user_ada", email: "ada@example.org", state: "active", createdAt: 1, updatedAt: 1 }));
@@ -26,5 +26,9 @@ describe("verified addresses", () => {
     ])));
     await t.action(internal.users.verifiedEmails.refresh, {});
     expect((await t.run((ctx) => ctx.db.get("users", userId)))?.verifiedEmails).toEqual(["ada@example.org", "ada@lab.example.org"]);
+    // One the webhook has kept since stays as it says: this read of Clerk may be older than its last event.
+    await t.run((ctx) => ctx.db.patch("users", userId, { verifiedEmails: ["ada@example.org"] }));
+    await t.action(internal.users.verifiedEmails.refresh, {});
+    expect((await t.run((ctx) => ctx.db.get("users", userId)))?.verifiedEmails).toEqual(["ada@example.org"]);
   });
 });

@@ -1,6 +1,8 @@
 // What the switcher, an organization's Members settings and the join page read (#651).
 
-import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
+import { mergedStream, stream } from "convex-helpers/server/stream";
+import schema from "../schema";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
@@ -183,19 +185,13 @@ const myInvitationValidator = v.object({
   sentAt: v.number(),
 });
 
-/** Invitations to join an organization one address of a person's has waiting that are read: far more than one is ever sent. */
-const INVITATIONS_LISTED = 50;
-
-/**
- * The person's pending invitations, newest first, each with what the switcher and the join page show: those to any
- * address of theirs, as one page.
- */
-async function invitationsTo(ctx: QueryCtx, user: Doc<"users">) {
-  const waiting = (await Promise.all(addressesOf(user).map((email) => ctx.db.query("organizationInvitations").withIndex("by_email_and_state", (q) => q.eq("email", email).eq("state", "pending")).order("desc").take(INVITATIONS_LISTED))))
-    .flat()
-    .sort((a, b) => b._creationTime - a._creationTime)
-    .slice(0, INVITATIONS_LISTED);
-  return { page: await shownInvitations(ctx, waiting), isDone: true, continueCursor: "" };
+/** A page of the person's pending invitations, newest first, each with what the switcher and the join page show: those to any address of theirs. */
+async function invitationsTo(ctx: QueryCtx, user: Doc<"users">, paginationOpts: PaginationOptions) {
+  const page = await mergedStream(
+    addressesOf(user).map((email) => stream(ctx.db, schema).query("organizationInvitations").withIndex("by_email_and_state", (q) => q.eq("email", email).eq("state", "pending")).order("desc")),
+    ["_creationTime"],
+  ).paginate(paginationOpts);
+  return { ...page, page: await shownInvitations(ctx, page.page) };
 }
 
 /** Invitations as the switcher and the join page show them: the organization, the role and who sent it. */
@@ -221,13 +217,13 @@ async function shownInvitations(ctx: QueryCtx, invitations: Doc<"organizationInv
 export const myInvitationsAction = defineUserQuery({
   path: "organizations/queries:myInvitations",
   description:
-    "Lists the invitations the person was sent to join organizations that they haven't answered, at any address of theirs, each with the organization, the role and who sent it. " +
-    "They decline one with organizations/manage:declineInvitation; accepting is theirs to do on the page.",
+    "Lists the invitations the person was sent to join organizations that they haven't answered, at any address of theirs, a page at a time, each with the organization, the role and who sent it. " +
+    "They decline one with organizations/manage:declineInvitation; accepting is theirs to do on the page. `cursor` is `continueCursor` from the page before.",
   args: { paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(myInvitationValidator),
-  run: async (ctx, { userId }) => {
+  run: async (ctx, { userId }, { paginationOpts }) => {
     const user = await ctx.db.get("users", userId);
-    return user ? await invitationsTo(ctx, user) : { page: [], isDone: true, continueCursor: "" };
+    return user ? await invitationsTo(ctx, user, paginationOpts) : { page: [], isDone: true, continueCursor: "" };
   },
 });
 export const myInvitations = userQuery(myInvitationsAction, { signedOut: { page: [], isDone: true, continueCursor: "" } });
