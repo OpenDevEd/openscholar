@@ -8,14 +8,23 @@ import { encrypt } from "../lib/crypto";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { setupExtractionPaperWorkpool } from "../extraction/queue/workpool.test-support";
+import { ensureWorkspace } from "../workspaces/create";
+import { PDFDocument } from "@cantoo/pdf-lib";
+import { downloadPdf } from "../../lib/pdf/download";
 
 const KEY = "0".repeat(64);
 let requests: URL[] = [];
 const item = (i: number) => ({ key: `ITEM000${i}`, data: { title: `Zotero paper ${i}`, abstractNote: "x".repeat(900), creators: [{ creatorType: "author", firstName: "Ada", lastName: "Okafor" }], date: "2021", DOI: `10.1/${i}`, itemType: "journalArticle", publicationTitle: "A journal" }, meta: { numChildren: 0 } });
+let pdfBytes: Uint8Array;
 const zotero = vi.fn(async (input: string | URL) => {
   const url = new URL(String(input));
   requests.push(url);
   const json = (body: unknown, total: number) => new Response(JSON.stringify(body), { status: 200, headers: { "Total-Results": String(total) } });
+  // The first item has a PDF attached, the second none.
+  if (url.pathname.endsWith("/items/ITEM0001/children")) return json([{ key: "ATTACH01", data: { itemType: "attachment", contentType: "application/pdf" }, links: { enclosure: { href: "https://api.zotero.org/users/15294942/items/ATTACH01/file" } } }], 1);
+  if (url.pathname.endsWith("/items/ITEM0002/children")) return json([], 0);
+  if (url.pathname.endsWith("/items/ATTACH01/file")) return new Response(pdfBytes.slice().buffer, { status: 200, headers: { "Content-Type": "application/pdf" } });
+  if (/\/items\/ITEM000\d$/.test(url.pathname)) return json({ key: "ITEM0001", data: { title: "Zotero paper 1" } }, 1);
   if (url.pathname.endsWith("/groups")) return json([{ id: 4719820, data: { name: "Lab", type: "Private" }, meta: { numItems: 12 } }], 1);
   // Every level at once, more than one page of them.
   if (url.pathname.endsWith("/collections")) return json([{ key: "ABCD1234", data: { name: "Trials", parentCollection: false }, meta: { numItems: 3, numCollections: 1 } }, { key: "EFGH5678", data: { name: "Pilots", parentCollection: "ABCD1234" }, meta: { numItems: 1, numCollections: 0 } }], 150);
@@ -80,5 +89,31 @@ describe("the person's Zotero library, read for the assistant", () => {
     expect(papers.map((paper) => [paper.openalexId, paper.title]).sort()).toEqual([["zotero:user:ITEM0002", "Zotero paper 2"], ["zotero:user:ITEM0003", "Zotero paper 3"]]);
     // Only that collection's own items, from the second, two of them: never the whole library. In the order they were added, which an item edited while the job reads doesn't change.
     expect([...new Set(requests.map((url) => `${url.pathname}?start=${url.searchParams.get("start")}&limit=${url.searchParams.get("limit")}&sort=${url.searchParams.get("sort")}&direction=${url.searchParams.get("direction")}`))]).toEqual(["/users/15294942/collections/ABCD1234/items/top?start=1&limit=2&sort=dateAdded&direction=asc"]);
+  });
+
+  it("puts an item's PDF in the chat as one of its files, and says when an item has none", async () => {
+    const pdf = await PDFDocument.create();
+    pdf.addPage();
+    pdf.addPage();
+    pdfBytes = await pdf.save();
+    const { t, userId } = await setup();
+    const { workspaceId, stepId, threadId } = await t.run(async (ctx) => {
+      const workspaceId = await ensureWorkspace(ctx, { kind: "personal", userId });
+      const threadId = await ctx.db.insert("assistantThreads", { workspaceId, createdBy: userId, title: "Chat", agentThreadId: "agent", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
+      const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId, order: 0, userId, toolCallId: "call", path: "zotero/library:pdf", input: "{}", status: "running", startedAt: 1 });
+      return { workspaceId, stepId, threadId };
+    });
+    const put = await t.action(internal.zotero.library.pdfForAssistant, { userId, workspaceId, key: "ITEM0001", fromStep: stepId });
+    expect(put).toMatchObject({ name: "Zotero paper 1.pdf", pages: 2 });
+    // The chat's own file, which the assistant reads by pages as one the person attached.
+    expect(await t.run((ctx) => ctx.db.get("assistantFiles", put.file))).toMatchObject({ threadId, userId, mediaType: "application/pdf", state: "sent", pages: 2, bytes: pdfBytes.length });
+    await expect(t.action(internal.zotero.library.pdfForAssistant, { userId, workspaceId, key: "ITEM0002", fromStep: stepId })).rejects.toThrow(/no PDF attached/);
+    // A file past the cap stops being read there, never held whole.
+    const capped = await downloadPdf("zotero://select/users/15294942/items/ITEM0001", { zoteroConnection: { apiKey: "zotero-key", userId: "15294942" }, maxRetries: 1, maxBytes: 10 });
+    expect(capped).toMatchObject({ success: false, error: expect.stringMatching(/byte cap/) });
+    // An item key in the wrong form is refused before Zotero is asked.
+    requests = [];
+    expect(await t.query(internal.assistant.asking.check, { userId, workspaceId, path: "zotero/library:pdf", input: JSON.stringify({ key: "../keys" }) })).toMatch(/eight capital letters/);
+    expect(requests).toEqual([]);
   });
 });

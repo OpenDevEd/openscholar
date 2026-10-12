@@ -3926,6 +3926,15 @@
         "askMany": "{count, number} 件の研究分野の出版物を読む",
         "doingMany": "{count, number} 件の研究分野の出版物を読んでいます",
         "didMany": "{count, number} 件の研究分野の出版物を読みました"
+      },
+      "zoteroPdf": {
+        "doing": "Zotero の PDF をチャットに追加しています",
+        "did": "Zotero の PDF をチャットに追加しました",
+        "where": "Zotero",
+        "ask": "Zotero の PDF をチャットに追加",
+        "askMany": "Zotero の PDF を {count, number} 件チャットに追加",
+        "doingMany": "Zotero の PDF を {count, number} 件チャットに追加しています",
+        "didMany": "Zotero の PDF を {count, number} 件チャットに追加しました"
       }
     },
     "asks": {

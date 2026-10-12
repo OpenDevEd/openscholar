@@ -45,15 +45,19 @@ export const zoteroItemsValidator = v.object({
 });
 
 /** A Zotero group's ID is its number, and a collection's key eight capital letters and digits: anything else would change the address it's read from. */
-export function checkZoteroIds({ groupId, collectionKey }: { groupId?: string; collectionKey?: string }) {
+export function checkZoteroIds({ groupId, collectionKey, itemKey }: { groupId?: string; collectionKey?: string; itemKey?: string }) {
   if (groupId !== undefined && !/^\d{1,15}$/.test(groupId)) throw createError("VALIDATION_ERROR", "A Zotero group is named by its number, such as 4719820.");
   if (collectionKey !== undefined && !/^[A-Z0-9]{8}$/.test(collectionKey)) throw createError("VALIDATION_ERROR", "A Zotero collection is named by its key, eight capital letters and digits such as ABCD1234.");
+  if (itemKey !== undefined && !/^[A-Z0-9]{8}$/.test(itemKey)) throw createError("VALIDATION_ERROR", "A Zotero item is named by its key, eight capital letters and digits such as ITEM0001.");
 }
 
 /** A Zotero set a job would read: its IDs in their form, and the person's Zotero connected, before anyone is asked to pay for it. */
-export async function checkZoteroSet(ctx: QueryCtx, userId: Id<"users">, set: { groupId?: string; collectionKey?: string }) {
+export async function checkZoteroSet(ctx: QueryCtx, userId: Id<"users">, set: { groupId?: string; collectionKey?: string; itemKey?: string }) {
   checkZoteroIds(set);
   if (!(await ctx.db.query("zoteroConnections").withIndex("by_user", (q) => q.eq("userId", userId)).first())) {
     throw createError("ZOTERO_NOT_CONNECTED", "Zotero isn't connected to this account. Connect it in Settings, then try again.");
   }
 }
+
+/** A Zotero item's PDF put in a chat (./library.ts `pdf`): the chat's file for it, its name and how many pages it has. */
+export const zoteroPdfValidator = v.object({ file: v.id("assistantFiles"), name: v.string(), pages: v.number() });
