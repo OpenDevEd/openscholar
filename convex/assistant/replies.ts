@@ -40,7 +40,7 @@ import { CARRIED, CARRY_ON, compactionDue } from "./context";
 import { JOB_ENDED } from "./jobEnds";
 import { bulkOf, detailsOf } from "./details";
 import { TOOL_OF, allowAlways, allowTool, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
-import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
+import { MAX_ASKS, STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { filesOf, partsFor, sent } from "./files";
 import { readsImages, readsPdfs } from "../../lib/assistant/files";
@@ -224,37 +224,48 @@ const waitingAttempt = (waiting: { order: number; askedAt: number }) => `${waiti
 
 /** The person's answer to a call the assistant asked about (./steps.ts): run it, or don't. */
 export const answer = mutation({
-  // `always`, with a yes to a call that spends credits: jobs that hold no more run in this chat without asking from now on (./spending.ts).
-  args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), allow: v.boolean(), always: v.optional(v.boolean()) },
+  // `stepIds`: the calls of one action the reply asked about together, answered as one (lib/assistant/step-cards.ts `askedGroups`).
+  // `always`, with a yes to calls that spend credits: jobs that hold no more run in this chat without asking from now on (./spending.ts).
+  args: { threadId: v.id("assistantThreads"), stepIds: v.array(v.id("assistantSteps")), allow: v.boolean(), always: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { threadId, stepId, allow, always }) => {
+  handler: async (ctx, { threadId, stepIds, allow, always }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId, "write");
-    const step = await ctx.db.get("assistantSteps", stepId);
     const waiting = thread.asking;
-    if (!step || step.threadId !== threadId) throw createError("NOT_FOUND", "That step isn't in this chat.");
-    if (!waiting || step.order !== waiting.order || step.status !== "asking") throw createError("CONFLICT", "This has already been answered.");
-    // It would run with their access, on their records, so the answer is theirs alone.
-    if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can allow this.");
-    let left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
-    // A yes to a call that holds more than the person has starts nothing: it waits while they add credits, as its card says.
-    // The workspace the reply acts in pays for it, within the person's cap there.
-    const { available: balance, capped } = allow && step.credits !== undefined ? await spendingRoom(ctx, waiting.workspaceId, userId) : { available: 0, capped: false };
-    if (allow && step.credits !== undefined && step.credits > balance) throw capped ? capReached(step.credits) : createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
-    const tool = TOOL_OF[step.path];
-    // What else waits is allowed with it only while the balance covers this call and each one allowed before it.
-    let room = balance - (step.credits ?? 0);
-    const fits = (credits: number) => credits <= room && ((room -= credits), true);
+    if (!waiting) throw createError("CONFLICT", "This has already been answered.");
+    const ids = [...new Set(stepIds)];
+    if (!ids.length || ids.length > MAX_ASKS) throw createError("VALIDATION_ERROR", `Answer between 1 and ${MAX_ASKS} calls at once.`);
+    const steps: Doc<"assistantSteps">[] = [];
+    for (const id of ids) {
+      const step = await ctx.db.get("assistantSteps", id);
+      if (!step || step.threadId !== threadId) throw createError("NOT_FOUND", "That step isn't in this chat.");
+      if (step.order !== waiting.order || step.status !== "asking") throw createError("CONFLICT", "This has already been answered.");
+      // It would run with their access, on their records, so the answer is theirs alone.
+      if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can allow this.");
+      steps.push(step);
+    }
+    const answered = new Set<Id<"assistantSteps">>(ids);
+    let left = (await stepsAt(ctx, threadId, "asking")).filter((other) => !answered.has(other._id));
+    // A yes to calls that hold more than the person has starts nothing: they wait while they add credits, as their card says.
+    // The workspace the reply acts in pays for them, within the person's cap there.
+    const held = steps.filter((step) => step.credits !== undefined);
+    const credits = held.reduce((sum, step) => sum + step.credits!, 0);
+    const { available: balance, capped } = allow && held.length ? await spendingRoom(ctx, waiting.workspaceId, userId) : { available: 0, capped: false };
+    if (allow && held.length && credits > balance) throw capped ? capReached(credits) : createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
+    const tool = TOOL_OF[steps[0].path];
+    // What else waits is allowed with them only while the balance covers these calls and each one allowed before it.
+    let room = balance - credits;
+    const fits = (more: number) => more <= room && ((room -= more), true);
     if (allow && always && tool) {
       // A web search or a PDF read is allowed by its own switch, and so is whatever else waits of the same kind.
       await allowTool(ctx, threadId, userId, tool, true);
       const covered = left.filter((other) => TOOL_OF[other.path] === tool && fits(other.credits ?? 0));
       for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
       left = left.filter((other) => !covered.includes(other));
-    } else if (allow && always && step.credits !== undefined) {
+    } else if (allow && always && held.length) {
       // As opencode's "always" does for a session: the rule is kept, and what else waits that it now covers is allowed with it.
-      const allowance = await allowAlways(ctx, threadId, userId, step.credits);
+      const allowance = await allowAlways(ctx, threadId, userId, Math.max(...held.map((step) => step.credits!)));
       const covered = left.filter((other) => other.credits !== undefined && !TOOL_OF[other.path] && covers(allowance, other.credits, room) && fits(other.credits));
       for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
       left = left.filter((other) => !covered.includes(other));
@@ -265,9 +276,9 @@ export const answer = mutation({
     // It carries on in the workspace it asked from; its actions are refused there if the sender has left it since.
     const workspaceId = waiting.workspaceId;
     if (!left.length && !paused) await admit(ctx, workspaceId);
-    if (allow) await ctx.db.patch("assistantSteps", stepId, { status: "allowed" });
-    else await declineSteps(ctx, [step]);
-    // Calls it asked about together are answered one by one. The reply carries on after the last.
+    if (allow) for (const step of steps) await ctx.db.patch("assistantSteps", step._id, { status: "allowed" });
+    else await declineSteps(ctx, steps);
+    // Calls it asked about together are answered card by card. The reply carries on after the last.
     if (left.length) return null;
     // The answers are kept, and it runs what was allowed once it's carried on: answering a question isn't agreeing to spend more.
     if (paused) {

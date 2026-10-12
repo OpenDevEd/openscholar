@@ -3490,7 +3490,10 @@
         "doing": "論文の PDF を読んでいます",
         "did": "論文の PDF を読みました",
         "where": "OpenAlex",
-        "ask": "論文の PDF を読む"
+        "ask": "論文の PDF を読む",
+        "askMany": "{count, number} 件の論文の PDF を読む",
+        "doingMany": "{count, number} 件の論文の PDF を読んでいます",
+        "didMany": "{count, number} 件の論文の PDF を読みました"
       },
       "workspaces": {
         "doing": "ワークスペースを確認しています",

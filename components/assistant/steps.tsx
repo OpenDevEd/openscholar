@@ -29,7 +29,7 @@ import { STEPS_SHOWN } from "@/lib/assistant/steps";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { viewOf, type Kind } from "@/lib/assistant/actions";
-import { runsOf, shownSteps, whyAsked } from "@/lib/assistant/step-cards";
+import { askedGroups, runsOf, shownSteps, whyAsked } from "@/lib/assistant/step-cards";
 import { OrbitMark } from "./orbit-mark";
 import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
@@ -171,8 +171,8 @@ export function Steps({
     <div className="space-y-3">
       {steps.length ? <RunMap threadId={threadId} steps={steps} earlier={status === "CanLoadMore" ? () => loadMore(STEPS_SHOWN) : status === "LoadingMore" ? "loading" : null} /> : null}
       <AnimatePresence initial={false}>
-        {asked.map((step) => (
-          <ApprovalCard key={step.id} threadId={threadId} step={step} />
+        {askedGroups(asked).map((group) => (
+          <ApprovalCard key={group[0].id} threadId={threadId} steps={group} />
         ))}
       </AnimatePresence>
       {/* Each job the reply started, under its map, once it has ended: while it runs, its card is docked over the message box. As it
@@ -214,12 +214,18 @@ export const AddCredits = createContext<(waiting: Waiting) => void>(() => {});
  */
 function useStepTitle() {
   const t = useTranslations("assistant");
-  return (words: string, step: Pick<StepItem, "status" | "batch" | "count">) => {
-    const form = step.status === "asking" || step.status === "allowed" || step.status === "declined" ? "ask" : step.status === "running" || step.status === "failed" ? "doing" : "did";
+  const formOf = (step: Pick<StepItem, "status">) => (step.status === "asking" || step.status === "allowed" || step.status === "declined" ? "ask" : step.status === "running" || step.status === "failed" ? "doing" : "did");
+  /** Whether the words have a title for many calls in this form, which says how many: "Saved 5 papers". Without one, a card for many says how many beside its title. */
+  const saysMany = (words: string, step: Pick<StepItem, "status">) => t.has(`steps.${words}.${formOf(step)}Many` as "steps.other.askMany");
+  /** `calls`: how many calls one card stands for, folded or asked together. */
+  const title = (words: string, step: Pick<StepItem, "status" | "batch" | "count">, calls = 1): string => {
+    const form = formOf(step);
+    if (calls > 1) return saysMany(words, step) ? t(`steps.${words}.${form}Many` as "steps.other.askMany", { count: calls }) : title(words, { status: step.status });
     const many = step.batch === undefined ? "" : "Many";
     const own = `steps.${words}.${form}${many}` as "steps.other.askMany";
     return t(t.has(own) ? own : (`steps.other.${form}${many}` as "steps.other.askMany"), { count: (form === "did" ? step.count : undefined) ?? step.batch ?? 1 });
   };
+  return { title, saysMany };
 }
 
 /**
@@ -227,26 +233,36 @@ function useStepTitle() {
  * would do, with the records it names, then Allow once or Not now. One that spends credits
  * (#328) asks with the most it holds against the person's balance, and can be allowed for
  * the rest of the chat. A bulk change asks once for all of it, with the first of the records
- * it's made to and how many more there are. The mock's approval card.
+ * it's made to and how many more there are. Calls of one action asked about together are one
+ * card (`askedGroups`): what they're all given alike, then each of them, with one answer and
+ * what they cost together. The mock's approval card.
  */
-function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; step: StepItem }) {
+function ApprovalCard({ threadId, steps }: { threadId: Id<"assistantThreads">; /** Calls of one action, asked about together. */ steps: StepItem[] }) {
   const t = useTranslations("assistant");
   const answer = useMutation(api.assistant.replies.answer);
   const toast = useAppToast();
   // Pressed once: the buttons rest until the chat shows the answer, or says it couldn't be sent.
   const [sent, setSent] = useState(false);
+  const [step] = steps;
   const { kind, words } = viewOf(step.action, step.variant);
   const addCredits = useContext(AddCredits);
   const common = useTranslations("common");
-  const heading = useStepTitle()(words, step);
+  const { title, saysMany } = useStepTitle();
+  const heading = title(words, step, steps.length);
   /** A value as the card says it: a setting that is on or off as yes or no, not as the action writes it. A name that happens to read "true" stays as typed. */
   const said = ({ name, value }: { name: string; value: string }) => (SWITCHES.has(name) && (value === "true" || value === "false") ? common(value === "true" ? "yes" : "no") : value);
-  const each = step.each ?? [];
+  // Of calls asked together, what all are given alike is said once, and each of them as what it alone is given, as a bulk change says its changes.
+  const alike = (detail: { name: string; value: string }) => steps.length > 1 && steps.every((one) => one.details?.some((other) => other.name === detail.name && other.value === detail.value));
+  const details = (step.details ?? []).filter((detail) => steps.length === 1 || alike(detail));
+  // A call given just what the others are is told apart by what it's about.
+  const each = steps.length > 1 ? steps.map((one) => { const own = (one.details ?? []).filter((detail) => !alike(detail)); return own.length ? own : [{ name: "title", value: one.subject ?? "" }]; }) : (step.each ?? []);
+  const held = steps.filter((one) => one.credits !== undefined);
+  const credits = held.length ? held.reduce((sum, one) => sum + one.credits!, 0) : undefined;
   /** An argument's name in the person's language, where the card has one; any other shows as the action names it. */
   const named = (name: string) => ((NAMED as readonly string[]).includes(name) ? t(`asks.names.${name as (typeof NAMED)[number]}`) : name);
   const say = (allow: boolean, always?: boolean) => {
     setSent(true);
-    answer({ threadId, stepId: step.id as Id<"assistantSteps">, allow, ...(always ? { always } : {}) }).catch((error) => {
+    answer({ threadId, stepIds: steps.map((one) => one.id as Id<"assistantSteps">), allow, ...(always ? { always } : {}) }).catch((error) => {
       setSent(false);
       toast.error(t("asks.failed"), getErrorMessage(error, ""));
     });
@@ -262,9 +278,13 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
       <div className="flex items-start gap-3 p-4">
         <KindTile kind={kind} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{heading}</p>
+          <p className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+            <span className="min-w-0">{heading}</span>
+            {/* Calls asked together whose words can't say how many: how many, beside them. */}
+            {steps.length > 1 && !saysMany(words, step) ? <Fact value={steps.length}>{t("steps.times", { count: steps.length })}</Fact> : null}
+          </p>
           <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground empty:hidden">
-            {(step.details ?? []).map((detail, i) => (
+            {details.map((detail, i) => (
               <li key={i} className="flex gap-2">
                 <span className="shrink-0 text-foreground/50">{named(detail.name)}</span>
                 {/* What someone may do in a shared chat, in the Share sheet's own words. A record with nothing to call it by, such as a search saved with filters alone, says so. */}
@@ -302,7 +322,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
           </button>
         </TooltipHint>
       </div>
-      {step.credits === undefined ? (
+      {credits === undefined ? (
         <>
           <p className="px-4 pb-4 text-xs text-muted-foreground">{t(`asks.${whyAsked(step)}`)}</p>
           <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-primary/15 p-3">
@@ -315,7 +335,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
           </div>
         </>
       ) : (
-        <Spending credits={step.credits} typical={TYPICAL_COST.has(step.action)} sent={sent} onAllow={() => say(true)} onAlways={() => say(true, true)} onDecline={() => say(false)} onAddCredits={() => addCredits({ kind, title: heading, credits: step.credits! })} />
+        <Spending credits={credits} typical={TYPICAL_COST.has(step.action)} sent={sent} onAllow={() => say(true)} onAlways={() => say(true, true)} onDecline={() => say(false)} onAddCredits={() => addCredits({ kind, title: heading, credits })} />
       )}
     </motion.div>
   );
@@ -467,7 +487,21 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   const reduceMotion = useReducedMotion();
   const undo = useMutation(api.assistant.undo.run);
   const toast = useAppToast();
-  const stepTitle = useStepTitle();
+  const { title: stepTitle, saysMany } = useStepTitle();
+  // The steps being undone, whose Undo rests until the chat shows them undone.
+  const [undoing, setUndoing] = useState<ReadonlySet<string>>(new Set());
+  /** Undoes these steps, the newest first, each with its own undo: a card's Undo does its whole run, a line's its own step. It stops at one that can't be undone. */
+  const undoSteps = async (some: StepItem[]) => {
+    const ids = some.filter((one) => one.canUndo).map((one) => one.id);
+    setUndoing((all) => new Set([...all, ...ids]));
+    try {
+      for (const id of ids.toReversed()) await undo({ threadId, stepId: id as Id<"assistantSteps"> });
+    } catch (error) {
+      toast.error(t("steps.undoFailed"), getErrorMessage(error, ""));
+    } finally {
+      setUndoing((all) => new Set([...all].filter((id) => !ids.includes(id))));
+    }
+  };
   // The folded runs the person opened, each by a step of it: by its first when it was opened, which stays in the run when earlier steps load in front of it.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   /** Each step of a folded run as its line: what it was about, or where its card's action looks. */
@@ -479,7 +513,7 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   };
   // A run opens into its steps only when they say something its card doesn't: what each was about, or the
   // filters its searches differ by. Six lines that all read "Extraction" tell the person nothing more.
-  const opensOf = (run: StepItem[]) => run.length > 1 && (new Set(linesOf(run)).size > 1 || (toldOf(run)?.filters.some((filters) => filters !== undefined) ?? false));
+  const opensOf = (run: StepItem[]) => run.length > 1 && (new Set(linesOf(run)).size > 1 || new Set(run.map((one) => one.error)).size > 1 || (toldOf(run)?.filters.some((filters) => filters !== undefined) ?? false));
   // One that stops opening, when the step that told it apart fails and leaves it, closes with it.
   const isOpen = (run: StepItem[]) => opensOf(run) && run.some((one) => opened.has(one.id));
   const runs = runsOf(steps);
@@ -532,14 +566,26 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             const step = run.find((one) => one.status === "running") ?? run.at(-1)!;
             const { kind, words } = viewOf(step.action, step.variant);
             const working = step.status === "running";
-            const faded = step.undone || step.status === "failed" || step.status === "declined";
+            // A run is faded and struck through once all of it is.
+            const faded = run.every((one) => one.undone || one.status === "failed" || one.status === "declined");
             const state = step.status === "asking" ? t("steps.waiting") : step.status === "allowed" ? t("steps.allowed") : step.status === "declined" ? t("steps.declined") : null;
-            const title = stepTitle(words, step);
+            const title = stepTitle(words, step, run.length);
             const folded = run.length > 1;
             const open = isOpen(run);
             const lines = linesOf(run);
             const told = toldOf(run);
             const opens = opensOf(run);
+            const undoable = run.filter((one) => one.canUndo);
+            const undoButton = undoable.length ? (
+              <button
+                type="button"
+                disabled={undoable.some((one) => undoing.has(one.id))}
+                onClick={() => undoSteps(undoable)}
+                className="flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+              >
+                <Undo2 className="size-3" /> {t("steps.undo")}
+              </button>
+            ) : null;
             return (
               <motion.div
                 key={run[0].id}
@@ -553,20 +599,29 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                   <div className="flex items-center gap-3 px-3" style={{ height: CARD - 2 }}>
                     <KindTile kind={kind} working={working} />
                     <div className="min-w-0 flex-1 space-y-0.5">
-                      <p className={cn("truncate text-sm font-semibold", step.undone && "line-through decoration-muted-foreground/60")}>{working ? <WorkingText>{title}</WorkingText> : title}</p>
+                      <p className={cn("truncate text-sm font-semibold", run.every((one) => one.undone) && "line-through decoration-muted-foreground/60")}>{working ? <WorkingText>{title}</WorkingText> : title}</p>
                       <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-muted-foreground">
-                        {/* Why it failed. Under a bulk change that was undone, what couldn't be put back, if anything. */}
-                        {(step.status === "failed" && !step.undone) || (step.undone && step.error) ? (
+                        {/* A folded run: how many, where its title doesn't say, then what the last was about, or why it failed. A step alone: why it failed,
+                            or under a bulk change that was undone, what couldn't be put back, if anything. */}
+                        {folded ? (
+                          <>
+                            {saysMany(words, step) ? null : <Fact value={run.length}>{t("steps.times", { count: run.length })}</Fact>}
+                            {step.status === "failed" ? (
+                              <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
+                            ) : step.subject ? (
+                              <Subject text={step.subject} step={step} className={cn("truncate", step.undone && "line-through")} />
+                            ) : unqueried(step) ? (
+                              <Unqueried step={step} />
+                            ) : (
+                              <span className="truncate">{t(`steps.${words}.where`)}</span>
+                            )}
+                          </>
+                        ) : (step.status === "failed" && !step.undone) || (step.undone && step.error) ? (
                           <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
                         ) : state ? (
                           <>
                             <Fact>{state}</Fact>
                             {step.subject ? <Subject text={step.subject} step={step} /> : null}
-                          </>
-                        ) : folded ? (
-                          <>
-                            <Fact value={run.length}>{t("steps.times", { count: run.length })}</Fact>
-                            {step.subject ? <Subject text={step.subject} step={step} /> : unqueried(step) ? <Unqueried step={step} /> : <span className="truncate">{t(`steps.${words}.where`)}</span>}
                           </>
                         ) : (
                           <>
@@ -578,8 +633,10 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                         )}
                       </div>
                     </div>
-                    {/* A folded run opens into its steps. A bulk change that ended partway made some of its changes: those can still be undone. */}
+                    {/* A folded run opens into its steps, and undoes all of them that can be. A bulk change that ended partway made some of its changes: those can still be undone. */}
                     {opens ? (
+                      <div className="flex shrink-0 items-center gap-1">
+                      {undoButton}
                       <TooltipHint label={t(open ? "steps.fold" : "steps.unfold")}>
                         <button
                           type="button"
@@ -591,34 +648,47 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                           <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
                         </button>
                       </TooltipHint>
+                      </div>
                     ) : step.status === "failed" && !step.canUndo ? (
                       <CircleAlert className="size-4 shrink-0 text-destructive" aria-label={t("steps.failed")} />
-                    ) : step.canUndo ? (
-                      <button
-                        type="button"
-                        onClick={() => undo({ threadId, stepId: step.id as Id<"assistantSteps"> }).catch((error) => toast.error(t("steps.undoFailed"), getErrorMessage(error, "")))}
-                        className="flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        <Undo2 className="size-3" /> {t("steps.undo")}
-                      </button>
+                    ) : undoButton ? (
+                      undoButton
                     ) : step.status === "done" && !step.undone ? (
                       <Check className="size-4 shrink-0 text-success" aria-label={t("steps.done")} />
                     ) : null}
                   </div>
                   {opens ? (
-                    // Each step of the run as a line, under the card's text: what it was about, and how many it found.
+                    // Each step of the run as a line, under the card's text: what it was about, how many it found, why it failed, and its own Undo.
                     <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
                       {run.map((one, at) => (
                         <li key={one.id} className="flex items-center gap-2" style={{ height: LINE }}>
                           {unqueried(one) ? (
                             <Unqueried step={one} chips={told ? (told.filters[at] ?? {}) : undefined} className="mr-auto min-w-0 truncate" />
                           ) : (
-                            <Subject text={told?.sameQuery && told.filters[at] ? "" : lines[at]} chips={told?.filters[at]} step={one} className="mr-auto min-w-0 truncate" />
+                            <Subject text={told?.sameQuery && told.filters[at] ? "" : lines[at]} chips={told?.filters[at]} step={one} className={cn("mr-auto min-w-0 truncate", one.undone && "line-through")} />
                           )}
                           {one.count !== undefined ? (
                             <span className="shrink-0 tabular-nums">
                               <span className="font-semibold text-foreground/90">{counted(one.count)}</span> {t("steps.found")}
                             </span>
+                          ) : null}
+                          {one.error ? (
+                            <TooltipHint label={one.error} onlyWhenClipped>
+                              <span className="min-w-0 max-w-[55%] truncate">{one.error}</span>
+                            </TooltipHint>
+                          ) : null}
+                          {one.canUndo ? (
+                            <TooltipHint label={t("steps.undo")}>
+                              <button
+                                type="button"
+                                aria-label={t("steps.undo")}
+                                disabled={undoing.has(one.id)}
+                                onClick={() => undoSteps([one])}
+                                className="-mr-1 flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                              >
+                                <Undo2 className="size-3" />
+                              </button>
+                            </TooltipHint>
                           ) : null}
                         </li>
                       ))}
