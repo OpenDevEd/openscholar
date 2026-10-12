@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import { createActivatedSetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { organizationOfLibrary } from "../../tests/helpers/evidence-library-setup-fixture";
 
 const mail = vi.hoisted(() => ({ sendMail: vi.fn(), close: vi.fn() }));
 vi.mock("nodemailer", () => ({ default: { createTransport: () => mail } }));
@@ -30,25 +31,46 @@ describe("library invitations", () => {
 
   it("accepts external access only after verified email confirmation without joining the organization", async () => {
     const fixture = await setup();
-    const features = () => fixture.outside.query(api.organizationFeatures.get, {});
-    expect(await features()).toEqual({ evidenceLibraries: false, authors: false, extraction: false });
+    const features = () => fixture.outside.query(api.organizationFeatures.opens, {});
+    expect(await features()).toEqual({ evidenceLibraries: false, authors: false });
     await fixture.invite();
-    expect(await features()).toEqual({ evidenceLibraries: true, authors: false, extraction: false });
+    expect(await features()).toEqual({ evidenceLibraries: true, authors: false });
     const invitations = (await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page;
     expect(invitations).toEqual([expect.objectContaining({ libraryId: fixture.libraryId, role: "creator" })]);
     expect((await fixture.outside.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([]);
     await fixture.outside.action(api.evidenceLibraries.invitationActions.respond, { invitationId: invitations[0].invitationId, accept: true });
+    // A second press of Accept, or a second tab's, changes nothing.
+    await fixture.outside.action(api.evidenceLibraries.invitationActions.respond, { invitationId: invitations[0].invitationId, accept: true });
     expect((await fixture.outside.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([expect.objectContaining({ _id: fixture.libraryId, role: "creator" })]);
     expect(await fixture.t.run(ctx => ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", q => q.eq("clerkUserId", "outside").eq("state", "active")).collect())).toEqual([]);
     expect((await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page).toEqual([]);
-    expect(await features()).toEqual({ evidenceLibraries: true, authors: false, extraction: false });
+    expect(await features()).toEqual({ evidenceLibraries: true, authors: false });
     expect((await fixture.outside.query(api.organizationFeatures.listLibraryOrganizations, {})).page).toEqual([]);
     await fixture.t.run(async ctx => {
-      const assignment = await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", q => q.eq("libraryId", fixture.libraryId).eq("clerkUserId", "outside")).unique();
-      await ctx.db.delete("evidenceLibraryMembers", assignment!._id);
+      const assignment = await ctx.db.query("itemAccess").withIndex("by_item_and_grantedAt", q => q.eq("item", fixture.libraryId)).unique();
+      // Its role is a row of the table every shared item's guests are in, under the library's own kind.
+      expect(assignment).toMatchObject({ kind: "library", role: "creator" });
+      await ctx.db.delete("itemAccess", assignment!._id);
     });
-    expect(await features()).toEqual({ evidenceLibraries: false, authors: false, extraction: false });
+    expect(await features()).toEqual({ evidenceLibraries: false, authors: false });
     expect(mail.sendMail.mock.calls[0][0]).toMatchObject({ from: {name: "Climate Evidence", address: "libraries@example.test"}, to: "outside@example.org", text: expect.stringContaining("https://app.example.test/evidence-libraries?view=invitations") });
+  });
+
+  it("finds an invitation sent to another address Clerk verified on the account, and lets them answer it", async () => {
+    const fixture = await setup();
+    // Clerk says the account has two verified addresses; its own is the first.
+    await fixture.t.mutation(internal.users.internal.upsertUserFromClerk, {
+      clerkId: "second", email: "first@example.org", verifiedEmails: ["first@example.org", "second@example.org"],
+      eventId: "evt_second", eventType: "user.created", instanceId: "ins_1", occurredAt: 1, payloadSha256: "e".repeat(64),
+    });
+    const second = fixture.t.withIdentity({ subject: "second" });
+    await fixture.admin.action(api.evidenceLibraries.invitationActions.invite, { libraryId: fixture.libraryId, email: "Second@example.org", role: "editor" });
+    const [invitation] = (await second.query(api.evidenceLibraries.invitations.listInvitations, {})).page;
+    expect(invitation).toMatchObject({ libraryId: fixture.libraryId, role: "editor" });
+    expect(await second.query(api.organizationFeatures.opens, {})).toEqual({ evidenceLibraries: true, authors: false });
+    vi.stubGlobal("fetch", vi.fn(async () => Response.json({ email_addresses: [{ email_address: "first@example.org", verification: { status: "verified" } }, { email_address: "second@example.org", verification: { status: "verified" } }] })));
+    await second.action(api.evidenceLibraries.invitationActions.respond, { invitationId: invitation.invitationId, accept: true });
+    expect((await second.query(api.evidenceLibraries.queries.listLibraries, { paginationOpts: { cursor: null, numItems: 50 } })).page).toEqual([expect.objectContaining({ _id: fixture.libraryId, role: "editor" })]);
   });
 
   it.each(["expired", "cancelled", "disabled-library", "deleted-organization", "suspended-account"] as const)("does not open library navigation for an %s invitation", async reason => {
@@ -56,20 +78,19 @@ describe("library invitations", () => {
     await fixture.invite();
     const [invitation] = (await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page;
     await fixture.t.run(async ctx => {
-      if (reason === "expired") await ctx.db.patch("evidenceLibraryInvitations", invitation.invitationId, { expiresAt: Date.now() - 1 });
-      if (reason === "cancelled") await ctx.db.patch("evidenceLibraryInvitations", invitation.invitationId, { state: "cancelled" });
+      if (reason === "expired") await ctx.db.patch("itemInvitations", invitation.invitationId, { expiresAt: Date.now() - 1 });
+      if (reason === "cancelled") await ctx.db.patch("itemInvitations", invitation.invitationId, { state: "cancelled" });
       if (reason === "disabled-library") await ctx.db.patch("evidenceLibraries", fixture.libraryId, { state: "disabled" });
       if (reason === "deleted-organization") {
-        const library = await ctx.db.get("evidenceLibraries", fixture.libraryId);
-        await ctx.db.patch("organizations", library!.organizationId, { state: "deleted" });
+        await ctx.db.patch("organizations", await organizationOfLibrary(ctx, fixture.libraryId), { state: "deleted" });
       }
       if (reason === "suspended-account") {
         const user = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", "outside")).unique();
         await ctx.db.patch("users", user!._id, { state: "suspended" });
       }
     });
-    if (reason === "expired") await fixture.t.mutation(internal.evidenceLibraries.invitations.expire, { invitationId: invitation.invitationId });
-    expect(await fixture.outside.query(api.organizationFeatures.get, {})).toEqual({ evidenceLibraries: false, authors: false, extraction: false });
+    if (reason === "expired") await fixture.t.mutation(internal.sharing.invitations.expire, { invitationId: invitation.invitationId });
+    expect(await fixture.outside.query(api.organizationFeatures.opens, {})).toEqual({ evidenceLibraries: false, authors: false });
     expect((await fixture.outside.query(api.evidenceLibraries.invitations.listInvitations, {})).page).toEqual([]);
   });
 
@@ -89,7 +110,7 @@ describe("library invitations", () => {
       vi.advanceTimersByTime(3 * day);
       await fixture.t.finishInProgressScheduledFunctions();
       expect(await listed()).toBe(0);
-      const [invitation] = await fixture.t.run(ctx => ctx.db.query("evidenceLibraryInvitations").collect());
+      const [invitation] = await fixture.t.run(ctx => ctx.db.query("itemInvitations").collect());
       expect(invitation.state).toBe("expired");
     } finally { vi.useRealTimers(); }
   });

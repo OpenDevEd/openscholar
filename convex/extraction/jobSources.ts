@@ -12,8 +12,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { createError } from "../lib/errors";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { sourceMetadata, type PaperSourceMetadata } from "../../lib/library/paper-metadata";
-import type { BucketSource } from "../../lib/bucket/bucketItem";
-export type { BucketSource } from "../../lib/bucket/bucketItem";
+/** Where a job's source came from. */
+export type BucketSource = "screening" | "history" | "library" | "collection" | "zotero" | "upload";
 
 export type JobSourceSearchFilters = NonNullable<
   Doc<"extractionJobSources">["searchFilters"]
@@ -55,6 +55,7 @@ export type BucketItemInput = PaperSourceMetadata & {
   collectionKey?: string;
   includeDescendants?: boolean;
   librarySet?: Doc<"extractionJobSources">["librarySet"];
+  zoteroSet?: Doc<"extractionJobSources">["zoteroSet"];
 };
 
 export function rowFromBucketItem(
@@ -89,6 +90,7 @@ export function rowFromBucketItem(
     collectionKey: item.collectionKey,
     includeDescendants: item.includeDescendants,
     librarySet: item.librarySet,
+    zoteroSet: item.zoteroSet,
   };
 }
 
@@ -117,6 +119,7 @@ export function bucketItemFromRow(row: Doc<"extractionJobSources">): BucketItemI
     collectionKey: row.collectionKey,
     includeDescendants: row.includeDescendants,
     librarySet: row.librarySet,
+    zoteroSet: row.zoteroSet,
   };
 }
 

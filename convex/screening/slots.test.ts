@@ -1,7 +1,7 @@
 // Each person's Screen all papers run under their limit and the rest wait their turn (#335).
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { seedCreditsForTest } from "../billing/billing.test-support";
@@ -9,6 +9,8 @@ import { SCREENING_POOL_SIZE } from "../workpool";
 import { createJob } from "./createJob.test-support";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
+import { accountOf } from "../billing/billing.test-support";
 
 const questions = [{ key: "q1", question: "Is this relevant?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] };
@@ -40,14 +42,16 @@ const papersOf = (t: T, jobId: Id<"screeningJobs">) =>
     return { rows, started: rows.filter((row) => row.workId !== undefined), waiting: rows.filter((row) => row.waitingSince !== undefined) };
   });
 const running = (t: T, userId: Id<"users">) =>
-  t.run(async (ctx) => (await ctx.db.query("screeningSlots").withIndex("by_user", (q) => q.eq("userId", userId)).unique())?.running);
+  t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return (await ctx.db.query("screeningSlots").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())?.running; });
 
-/** Papers finishing as their work completes them, then one batch of the bookkeeping worker. */
+/** Papers finishing as their work completes them, then one batch of the bookkeeping worker: what its query reads, handed to its mutation. */
 async function finishAndBookkeep(t: T, ids: Id<"screeningResults">[]) {
   await t.run(async (ctx) => {
     for (const id of ids) await ctx.db.patch("screeningResults", id, { status: "completed", completedAt: 2, doneAt: ctx.db.vars.commitTs });
   });
-  await t.mutation(internal.screening.bookkeeping.bookkeep, { results: ids });
+  const work = await t.query(internal.screening.bookkeeping.nextFinished, { name: "screening" });
+  expect(work.batch?.results).toEqual(ids);
+  await t.mutation(internal.screening.bookkeeping.bookkeep, work.batch!);
 }
 
 describe("each person's paper slots", () => {
@@ -80,7 +84,8 @@ describe("each person's paper slots", () => {
   it("starts the next waiting papers as running ones finish, oldest job first", async () => {
     const { t, person } = await setup();
     const ada = await person("ada");
-    const first = await createJob(ada.as, { papers: papers(25, "a"), questions, scoringConfig });
+    // Five more papers than the pool holds: they wait.
+    const first = await createJob(ada.as, { papers: papers(SCREENING_POOL_SIZE + 5, "a"), questions, scoringConfig });
     const second = await createJob(ada.as, { papers: papers(10, "b"), questions, scoringConfig });
 
     await finishAndBookkeep(t, (await papersOf(t, first.jobId)).started.slice(0, 8).map((row) => row._id));
@@ -91,11 +96,29 @@ describe("each person's paper slots", () => {
     expect(await running(t, ada.userId)).toBe(SCREENING_POOL_SIZE);
   });
 
+  it("shows a job's papers as being read while they hold a slot, so its page and the slots row agree", async () => {
+    const { t, person } = await setup();
+    const ada = await person("ada");
+    const { jobId } = await createJob(ada.as, { papers: papers(8, "a"), questions, scoringConfig });
+    const beingRead = async () => (await ada.as.query(api.screening.queries.getScreeningJob, { jobId }))!.running;
+    expect([await beingRead(), await running(t, ada.userId)]).toEqual([8, 8]);
+
+    // Three finish. Until they're counted off they still hold their slots, and the job says the same.
+    const done = (await papersOf(t, jobId)).started.slice(0, 3).map((row) => row._id);
+    await t.run(async (ctx) => {
+      for (const id of done) await ctx.db.patch("screeningResults", id, { status: "completed", completedAt: 2, doneAt: ctx.db.vars.commitTs });
+    });
+    expect([await beingRead(), await running(t, ada.userId)]).toEqual([8, 8]);
+
+    await t.mutation(internal.screening.bookkeeping.bookkeep, { results: done });
+    expect([await beingRead(), await running(t, ada.userId)]).toEqual([5, 5]);
+  });
+
   it("holds a person to their plan's concurrency", async () => {
     const { t, person } = await setup();
     const ada = await person("ada");
     await t.run(async (ctx) => {
-      const account = await ctx.db.query("billingAccounts").withIndex("by_user", (q) => q.eq("userId", ada.userId)).unique();
+      const account = await accountOf(ctx, ada.userId);
       await ctx.db.patch("billingAccounts", account!._id, { limits: { concurrency: 5 } });
     });
 
@@ -107,13 +130,13 @@ describe("each person's paper slots", () => {
   it("skips an ended job's waiting papers, which held no slot, and frees its running ones as they finish", async () => {
     const { t, person } = await setup();
     const ada = await person("ada");
-    const ended = await createJob(ada.as, { papers: papers(30, "a"), questions, scoringConfig });
+    const ended = await createJob(ada.as, { papers: papers(SCREENING_POOL_SIZE + 10, "a"), questions, scoringConfig });
     const next = await createJob(ada.as, { papers: papers(5, "b"), questions, scoringConfig });
     await t.run((ctx) => ctx.db.patch("screeningJobs", ended.jobId, { status: "cancelled" }));
 
     await t.mutation(internal.screening.mutations.endScreeningWork, { jobId: ended.jobId, cursor: null });
     const skipped = (await papersOf(t, ended.jobId)).rows.filter((row) => row.status === "skipped");
-    expect(skipped).toHaveLength(30 - SCREENING_POOL_SIZE);
+    expect(skipped).toHaveLength(10);
     await t.mutation(internal.screening.bookkeeping.bookkeep, { results: skipped.map((row) => row._id) });
     expect(await running(t, ada.userId)).toBe(SCREENING_POOL_SIZE);
 
@@ -125,7 +148,7 @@ describe("each person's paper slots", () => {
     const { t, person } = await setup();
     const ada = await person("ada");
     // Ada said yes to what three papers cost at most; the job found twelve.
-    const spendCap = estimateScreening(3, 0, await t.run((ctx) => screeningPaperCreditsFor(ctx, ada.userId))).credits;
+    const spendCap = estimateScreening(3, 0, await t.run(async (ctx) => screeningPaperCreditsFor(ctx, { userId: ada.userId, workspaceId: await personalWorkspaceOf(ctx, ada.userId) }))).credits;
     const { jobId } = await createJob(ada.as, { papers: papers(12, "a"), questions, scoringConfig, spendCap });
     const other = await createJob(ada.as, { papers: papers(4, "b"), questions, scoringConfig });
     const finish = async (ids: Id<"screeningResults">[], creditsUsed: number) => {
@@ -157,8 +180,8 @@ describe("each person's paper slots", () => {
   it("starts the person's next job once one that filled the queue has stopped at its limit", async () => {
     const { t, person } = await setup();
     const ada = await person("ada");
-    // Room for one paper of twenty-five: the rest wait at the head of Ada's queue, ahead of her next job's.
-    const first = await createJob(ada.as, { papers: papers(25, "a"), questions, scoringConfig, spendCap: estimateScreening(1, 0, await t.run((ctx) => screeningPaperCreditsFor(ctx, ada.userId))).credits });
+    // Room for one paper of more than the pool holds: the rest wait at the head of Ada's queue, ahead of her next job's.
+    const first = await createJob(ada.as, { papers: papers(SCREENING_POOL_SIZE + 5, "a"), questions, scoringConfig, spendCap: estimateScreening(1, 0, await t.run(async (ctx) => screeningPaperCreditsFor(ctx, { userId: ada.userId, workspaceId: await personalWorkspaceOf(ctx, ada.userId) }))).credits });
     const next = await createJob(ada.as, { papers: papers(3, "b"), questions, scoringConfig });
     expect((await papersOf(t, next.jobId)).started).toHaveLength(0);
 

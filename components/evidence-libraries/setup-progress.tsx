@@ -3,7 +3,7 @@
 import { useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { ExternalLink, Settings , CircleDashed } from "@/components/icons";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -46,12 +46,12 @@ export function SetupProgress({ libraryId }: { libraryId: string }) {
   return <SetupProgressView setup={setupQuery.data} retrySetup={retrySetup} />;
 }
 
-export type SetupProgressData = NonNullable<
+type SetupProgressData = NonNullable<
   FunctionReturnType<typeof api.evidenceLibraries.queries.getSetupDraftSelection>
 >;
 
 /** The page itself, given the setup data. Kept separate so it can render without a query. */
-export function SetupProgressView({
+function SetupProgressView({
   setup,
   retrySetup,
 }: {

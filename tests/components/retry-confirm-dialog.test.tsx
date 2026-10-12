@@ -12,26 +12,31 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { RetryConfirmDialog } from "@/components/extraction/retry-confirm-dialog";
 
 vi.mock("next-intl", () => ({
+  useNow: () => new Date("2026-10-11T00:00:00Z"),
   useTranslations: () => (key: string, params?: Record<string, number>) =>
     params ? `${key}:${JSON.stringify(params)}` : key,
 }));
 
 vi.mock("next/navigation", () => ({
+  useParams: () => ({}),
   useRouter: () => ({ push: vi.fn() }),
 }));
 
 const balanceStore = { data: undefined as unknown };
 // The retry's figure comes from the server (convex/extraction/queries/costs.ts); the balance is checked against it.
 vi.mock("@/lib/auth/use-auth-query", () => ({
-  useProtectedQuery: (ref: string) => (ref === "estimateRetry" ? { data: 90 } : balanceStore),
+  useProtectedQuery: (ref: string) => (ref === "estimateRetry" ? { data: 90 } : ref === "capLeftOf" ? { data: capStore.left } : balanceStore),
 }));
+
+// What's left of the cap an admin set on the member whose job it is; null with no cap.
+const capStore = { left: null as number | null };
 
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     billing: {
       accounts: { checkBalance: "checkBalance" },
     },
-    extraction: { queries: { costs: { estimateRetry: "estimateRetry" } } },
+    extraction: { queries: { costs: { estimateRetry: "estimateRetry", capLeftOf: "capLeftOf" } } },
   },
 }));
 
@@ -49,6 +54,15 @@ function setBalance(total: number, hasEnough: boolean, required: number) {
 describe("<RetryConfirmDialog>", () => {
   beforeEach(() => {
     balanceStore.data = undefined;
+    capStore.left = null;
+  });
+
+  it("Continue is disabled when the retry takes more than is left of the cap on the member whose job it is, though the workspace has the credits", () => {
+    setBalance(1_000_000, true, 90);
+    capStore.left = 50;
+    render(<RetryConfirmDialog open={true} onOpenChange={() => {}} retryableCount={3} jobId={"job" as never} onConfirm={() => {}} />);
+    expect(screen.getByRole("button", { name: /continue/i })).toBeDisabled();
+    expect(screen.getByText("member_cap")).toBeInTheDocument();
   });
 
   it("renders the dialog with the count-aware title when open", () => {

@@ -1,10 +1,11 @@
 "use client";
 
-import { LibraryOrganizationPicker, useLibraryOrganizationChoice } from "./organization-picker";
+import { useLibraryOrganizationChoice } from "./organization-picker";
+import { useCurrentWorkspace, WorkspaceTag } from "@/components/workspaces/parts";
 import { useAction } from "convex/react";
 import { Building2, Check, Lock, RotateCw } from "@/components/icons";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import Link from "@/components/workspace-link";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations } from "next-intl";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
@@ -50,19 +51,22 @@ const CHECK_DELAY_MS = 300;
 export function NewLibraryForm() {
   const owner = useLibraryOrganizationChoice();
   const t = useTranslations("evidenceLibraries.new");
-  if (!owner.isReady) return <AuthStatePanel variant="loading" layout="fullscreen" />;
-  if (!owner.selected) return <AuthStatePanel variant="no_access" layout="fullscreen" title={t("ownerOnlyTitle")} description={t("ownerOnlyDescription")} />;
-  return <OwnerForm key={owner.selected.id} organizationId={owner.selected.id}
-    organizationPicker={<LibraryOrganizationPicker organizations={owner.organizations} value={owner.selected.id} onChange={owner.choose} />} />;
+  // A new library belongs to the workspace you're in: an organization you're an admin of (#651).
+  const workspace = useCurrentWorkspace();
+  const selected = owner.organizations.find((org) => org.id === workspace?.organizationId);
+  if (!owner.isReady || !workspace) return <AuthStatePanel variant="loading" layout="fullscreen" />;
+  if (!selected) return <AuthStatePanel variant="no_access" layout="fullscreen" title={t("ownerOnlyTitle")} description={t("ownerOnlyDescription")} />;
+  return <OwnerForm key={selected.id} organizationId={selected.id}
+    organization={<WorkspaceTag workspace={workspace} />} />;
 }
 
-function OwnerForm({ organizationId, organizationPicker }: {
+function OwnerForm({ organizationId, organization }: {
   organizationId: Id<"organizations">;
-  organizationPicker: React.ReactNode;
+  organization: React.ReactNode;
 }) {
   const t = useTranslations("evidenceLibraries.new");
   const tc = useTranslations("common");
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const checkAddress = useAction(
     api.evidenceLibraries.addressActions.checkAddress,
   );
@@ -211,7 +215,7 @@ function OwnerForm({ organizationId, organizationPicker }: {
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-5 p-4 md:p-6">
         <FieldGroup title={t("ownerTitle")}>
-          {organizationPicker}
+          {organization}
         </FieldGroup>
 
         <FieldGroup title={t("libraryTitle")} hint={t("libraryDescription")}>

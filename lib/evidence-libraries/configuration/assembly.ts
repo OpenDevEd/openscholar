@@ -41,6 +41,9 @@ export type ManagedEvidenceLibraryConfiguration = {
   aiModelMetadata: Record<string, { name: string; company: string }>;
   aiModelCatalogReady: boolean;
   zoteroTranslationUrl?: string;
+  // OpenScholar's OpenAlex key, with which the library looks up whether its
+  // records from other sources are open access. Undefined means no key is set up.
+  openAlexApiKey?: string;
   // The platform pays for meaning-based search. Assembly builds the embedder
   // from this key; owners never see it. Undefined means no key is set up.
   embeddingApiKey?: string;
@@ -58,12 +61,15 @@ export type ManagedEvidenceLibraryConfiguration = {
 export type TeamMember = { id: string; name: string; photo?: string };
 
 export type PlatformBrandAssets = {
+  /** The OpenScholar logo for light mode. */
   logoUrl: string;
+  /** The OpenScholar logo for dark mode; light mode's when there is none. */
+  logoDarkUrl?: string;
   faviconUrl: string;
   iconUrls: readonly string[];
 };
 
-export const PLATFORM_BRAND_MISSING_MESSAGE =
+const PLATFORM_BRAND_MISSING_MESSAGE =
   "The library has no logo or favicon and the OpenScholar defaults are not set up yet. Upload one or ask support.";
 
 export type PlatformMailService = {
@@ -85,7 +91,7 @@ const BRAND_ASSET_KEYS = ["logoDark", "favicon"] as const;
  * left them empty. Returns the assets and the keys that stayed empty because
  * the platform brand is not set up.
  */
-export function fillBrandAssets(
+function fillBrandAssets(
   assets: unknown,
   brand: PlatformBrandAssets | undefined,
 ): { assets: Record<string, unknown>; missing: (typeof BRAND_ASSET_KEYS)[number][] } {
@@ -98,10 +104,13 @@ export function fillBrandAssets(
   const defaults: Record<(typeof BRAND_ASSET_KEYS)[number], string | undefined> = {
     // The light logo is the owner's main one; dark mode uses it until a dark
     // logo is uploaded.
-    logoDark: ownLogoLight ?? brand?.logoUrl,
+    logoDark: ownLogoLight ?? brand?.logoDarkUrl ?? brand?.logoUrl,
     favicon: brand?.faviconUrl,
   };
   const filled: Record<string, unknown> = { ...own };
+  // A library with no logo of its own shows OpenScholar's, in each mode's version.
+  const hasOwnLogo = Boolean(ownLogoLight) || (typeof own.logoDark === "string" && own.logoDark !== "");
+  if (!hasOwnLogo && brand) filled.logoLight = brand.logoUrl;
   const missing: (typeof BRAND_ASSET_KEYS)[number][] = [];
   for (const key of BRAND_ASSET_KEYS) {
     if (typeof own[key] === "string" && own[key] !== "") continue;
@@ -211,7 +220,7 @@ export type ApplySourceCredentials = (
   sources: readonly SourceEntry[],
 ) => SourceEntry[];
 
-export const passThroughSourceCredentials: ApplySourceCredentials = (sources) =>
+const passThroughSourceCredentials: ApplySourceCredentials = (sources) =>
   sources.map((source) => ({ ...source }));
 
 export type AssembledEvidenceLibraryConfiguration = Record<string, unknown> & {
@@ -371,6 +380,9 @@ export function assembleEvidenceLibraryConfiguration({
         zotero: managed.zoteroTranslationUrl
           ? { translationUrl: managed.zoteroTranslationUrl }
           : {},
+        ...(managed.openAlexApiKey
+          ? { openAlex: { apiKey: managed.openAlexApiKey } }
+          : {}),
         publication: managed.publication ?? {},
       },
       authentication: {

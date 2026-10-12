@@ -3,6 +3,7 @@ import { TEST_AI_MODELS } from "./test-models";
 import {
   AI_PROVIDER,
   cardForRow,
+  carryUnsaved,
   collectionOptions,
   featureBlock,
   settleFeatures,
@@ -347,6 +348,129 @@ describe("sectionState and reset", () => {
     expect(reset.theme.colors.accent).toBe("#e68124");
     expect(sectionState(reset, savedRows, "theme")).toBe("complete");
     expect(sectionState(reset, savedRows, "identity")).toBe("edited");
+  });
+
+  it("takes the topics switch back with the rest of the search section", () => {
+    const draft = savedDraft();
+    draft.topics.enabled = true;
+    const reset = resetSection(draft, savedRows, "search");
+    expect(reset.topics.enabled).toBe(false);
+    expect(sectionState(reset, savedRows, "search")).toBe("complete");
+  });
+});
+
+describe("a save made elsewhere while the page is open", () => {
+  const savedElsewhere = (sectionKey: string, payload: unknown, rows: readonly { sectionKey: string; payload: unknown }[] = savedRows) =>
+    rows.map((row) => (row.sectionKey === sectionKey ? { sectionKey, payload } : row));
+  const renamedElsewhere = savedElsewhere("identity", { ...brandRows[0].payload, name: "Their name" });
+
+  it("keeps a section's unsaved values and takes the saved values for the others", () => {
+    const draft = savedDraft();
+    draft.footer.disclaimer = "Mine, not saved yet";
+    const carried = carryUnsaved(draft, savedDraft(), savedRows, renamedElsewhere, []);
+    expect(carried.draft.footer.disclaimer).toBe("Mine, not saved yet");
+    expect(carried.draft.identity.name).toBe("Their name");
+    expect(sectionState(carried.draft, renamedElsewhere, "footer")).toBe("edited");
+    expect(sectionState(carried.draft, renamedElsewhere, "identity")).toBe("complete");
+    expect(carried.elsewhere).toEqual([]);
+    // Only the section that took new values is drawn again; the one being edited is left alone.
+    expect(carried.replaced).toEqual(["identity"]);
+  });
+
+  it("names a section that was changed here and saved elsewhere, until it is saved or reset", () => {
+    const draft = savedDraft();
+    draft.identity.name = "My name";
+    const carried = carryUnsaved(draft, savedDraft(), savedRows, renamedElsewhere, []);
+    expect(carried.draft.identity.name).toBe("My name");
+    expect(carried.elsewhere).toEqual(["identity"]);
+    expect(carried.replaced).toEqual([]);
+    // A later save of another section leaves the name unresolved, so the section stays named.
+    const footerToo = savedElsewhere("footer", { disclaimer: "Theirs" }, renamedElsewhere);
+    const later = carryUnsaved(carried.draft, carried.base, renamedElsewhere, footerToo, carried.elsewhere);
+    expect(later.draft.identity.name).toBe("My name");
+    expect(later.elsewhere).toEqual(["identity"]);
+  });
+
+  it("has nothing to say when the saved value is the one already on the page", () => {
+    const draft = savedDraft();
+    draft.identity.name = "Their name";
+    const carried = carryUnsaved(draft, savedDraft(), savedRows, renamedElsewhere, []);
+    expect(carried.elsewhere).toEqual([]);
+    expect(isDirty(carried.draft, renamedElsewhere)).toBe(false);
+  });
+
+  it("does not hold on to values a library has no row for yet", () => {
+    // Every section of a new library counts as changed until its rows are written; nobody typed those values.
+    const draft = readDraft(brandRows);
+    const carried = carryUnsaved(draft, readDraft(brandRows), brandRows, renamedElsewhere, []);
+    expect(carried.draft.identity.name).toBe("Their name");
+    expect(carried.elsewhere).toEqual([]);
+  });
+
+  it("does not take a row saved without ids for an edit of its own", () => {
+    // Such a row is given new ids on every read, so two readings of it never match.
+    const withoutIds = savedElsewhere("institutions", [{ name: "Saved institute", logoUrl: "" }]);
+    const page = readDraft(withoutIds);
+    const theirs = savedElsewhere("institutions", [{ name: "Their institute", logoUrl: "" }]);
+    const untouched = carryUnsaved(page, page, withoutIds, theirs, []);
+    expect(untouched.draft.institutions[0].name).toBe("Their institute");
+    expect(untouched.elsewhere).toEqual([]);
+    // Edited here, with a save elsewhere that left its row alone: kept, and nothing to say.
+    const edited = structuredClone(page);
+    edited.institutions[0].name = "My institute";
+    const kept = carryUnsaved(edited, page, withoutIds, savedElsewhere("footer", { disclaimer: "Theirs" }, withoutIds), []);
+    expect(kept.draft.institutions[0].name).toBe("My institute");
+    expect(kept.elsewhere).toEqual([]);
+  });
+
+  it("keeps a feature that needs what another kept section holds", () => {
+    const oneLanguage = savedElsewhere("localization", { locales: ["en-GB"], defaultLocale: "en-GB" }, platformRows);
+    const draft = readDraft(oneLanguage);
+    draft.localization.locales = ["en-GB", "fr"];
+    draft.features.languageSwitcher = true;
+    const carried = carryUnsaved(draft, readDraft(oneLanguage), oneLanguage, savedElsewhere("footer", { disclaimer: "Theirs" }, oneLanguage), []);
+    expect(carried.draft.localization.locales).toEqual(["en-GB", "fr"]);
+    expect(carried.draft.features.languageSwitcher).toBe(true);
+    expect(carried.draft.footer.disclaimer).toBe("Theirs");
+  });
+
+  it("keeps a feature switched on here when a save elsewhere takes away what it needs, and flags it", () => {
+    const withoutDownloads = savedElsewhere("features", { collections: true, collectionNotes: true, downloads: false }, platformRows);
+    const page = readDraft(withoutDownloads);
+    const draft = structuredClone(page);
+    draft.features.downloads = true;
+    const noExports = savedElsewhere("exports", { ris: false, bibtex: false, atom: false }, withoutDownloads);
+    const carried = carryUnsaved(draft, page, withoutDownloads, noExports, []);
+    expect(carried.draft.features.downloads).toBe(true);
+    expect(carried.draft.exports.ris).toBe(false);
+    expect(sectionState(carried.draft, noExports, "features")).toBe("attention");
+    expect(sectionProblems(carried.draft, "features")).toEqual(["featureDependency"]);
+    // The other way round: the formats were switched off here, which had switched downloads off with them.
+    const withDownloads = readDraft(platformRows);
+    const formatsOff = structuredClone(withDownloads);
+    formatsOff.exports.ris = false;
+    settleFeatures(formatsOff);
+    const other = carryUnsaved(formatsOff, withDownloads, platformRows, savedElsewhere("footer", { disclaimer: "Theirs" }, platformRows), []);
+    expect(other.draft.exports.ris).toBe(false);
+    expect(other.draft.features.downloads).toBe(false);
+    expect(sectionProblems(other.draft, "features")).toEqual([]);
+  });
+
+  it("starts again from the saved rows after this page's own save, keeping only what was typed since", () => {
+    const sent = savedDraft();
+    sent.footer.disclaimer = "Sent with the save";
+    // The rows that follow the page's own save: whatever the platform made of what was sent.
+    const own = carryUnsaved(sent, sent, savedRows, renamedElsewhere, []);
+    expect(own.draft).toEqual(readDraft(renamedElsewhere));
+    expect(own.elsewhere).toEqual([]);
+    expect(own.replaced).toEqual(["identity", "footer"]);
+    // The answer came before the rows, and a tagline was typed in between.
+    const typedSince = structuredClone(sent);
+    typedSince.contact.email = "typed-since@example.org";
+    const late = carryUnsaved(typedSince, sent, savedRows, savedElsewhere("footer", { disclaimer: "Sent with the save" }), []);
+    expect(late.draft.contact.email).toBe("typed-since@example.org");
+    expect(late.draft.footer.disclaimer).toBe("Sent with the save");
+    expect(late.elsewhere).toEqual([]);
   });
 });
 
@@ -1022,10 +1146,40 @@ describe("changedSectionRows for the discovery sections", () => {
     expect(rows.map((row) => row.sectionKey)).toEqual(["sources", "content"]);
     expect(rows[1]?.payload).toEqual({
       tags: { publish: ["_publish"], hidden: ["hide"] },
+      openAccessLabel: "open",
     });
     const reset = resetSection(draft, discoveryRows, "sources");
     expect(reset.sources[0]?.writebackEnabled).toBe(true);
     expect(reset.content.tags.hidden).toEqual([]);
+  });
+
+  it("writes the open-access label from the Features card and resets it apart from the tag rules", () => {
+    const draft = readDraft(discoveryRows);
+    draft.content.openAccessLabel = "both";
+    draft.content.tags.hidden = ["hide"];
+    expect(changedSectionRows(draft, discoveryRows)).toEqual([
+      {
+        sectionKey: "content",
+        payload: { tags: { publish: ["_publish"], hidden: ["hide"] }, openAccessLabel: "both" },
+      },
+    ]);
+    expect(sectionState(draft, discoveryRows, "features")).toBe("edited");
+    expect(resetSection(draft, discoveryRows, "features").content).toEqual({
+      tags: { publish: ["_publish"], hidden: ["hide"] },
+      openAccessLabel: "open",
+    });
+    expect(resetSection(draft, discoveryRows, "sources").content).toEqual({
+      tags: { publish: ["_publish"], hidden: [] },
+      openAccessLabel: "both",
+    });
+    // A refused label belongs to the Features card; refused tag rules stay with Sources.
+    expect(saveRefusal("/content/openAccessLabel", "Invalid option")?.card).toBe("features");
+    expect(saveRefusal("/content/tags/hidden", "Invalid tag")?.card).toBe("sources");
+    const unknown = readDraft([
+      ...discoveryRows.filter((row) => row.sectionKey !== "content"),
+      { sectionKey: "content", payload: { tags: {}, openAccessLabel: "sometimes" } },
+    ]);
+    expect(unknown.content.openAccessLabel).toBe("open");
   });
 
   it("writes collections as saved by the picker", () => {
@@ -1495,7 +1649,10 @@ describe("notification configuration", () => {
   it("saves and resets the schedule and what a digest covers with the contact section and rejects invalid schedules", () => {
     const draft = savedDraft();
     expect(draft.notifications.digestCovers).toBe("published");
-    draft.notifications = {enabled: true, digestCovers: "added", schedule: {frequency: "weekly", weekday: 5, time: "16:30", timezone: "Europe/London"}};
+    expect(draft.notifications.pausedSince).toBeNull();
+    // A library saved before these settings existed sends digests as written and names nobody.
+    expect(draft.notifications).toMatchObject({approval: false, attribution: false});
+    draft.notifications = {enabled: true, digestCovers: "added", pausedSince: "2026-10-10T18:00:00.000Z", approval: true, attribution: true, schedule: {frequency: "weekly", weekday: 5, time: "16:30", timezone: "Europe/London"}};
     expect(changedSectionRows(draft, savedRows)).toEqual([{sectionKey: "notifications", payload: draft.notifications}]);
     expect(resetSection(draft, savedRows, "contact").notifications).toEqual(savedDraft().notifications);
     expect(sectionProblems(draft, "contact")).toEqual([]);

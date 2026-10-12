@@ -11,7 +11,7 @@ const DECISIONS_URL = 'https://openrouter.ai/api/alpha/decisions'
 export const isDecisionModel = (modelSlug: string) => modelSlug.startsWith('typesafe/jev')
 
 /** A failed decisions call, with the HTTP status the error classifier reads. */
-export class DecisionsError extends Error {
+class DecisionsError extends Error {
   constructor(readonly status: number, detail: string) {
     super(`Jev decision failed (${status}): ${detail}`)
     this.name = 'DecisionsError'

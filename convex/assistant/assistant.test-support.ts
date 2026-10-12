@@ -3,6 +3,7 @@ import { register as registerAgentComponent } from "@convex-dev/agent/test";
 import { register as registerPresence } from "@convex-dev/presence/test";
 import type { convexTest } from "convex-test";
 import { seedFeatureUser, seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { ensureWorkspace } from "../workspaces/create";
 
 type Test = ReturnType<typeof convexTest>;
 
@@ -17,7 +18,9 @@ export async function people(t: Test) {
     const [ada, ben, cy] = await Promise.all(["ada", "ben", "cy"].map((clerkId) => seedFeatureUser(ctx, clerkId)));
     const team = await seedOrganizationFeatures(ctx, ["ada", "ben"], {});
     const elsewhere = await seedOrganizationFeatures(ctx, ["cy"], {});
-    return { ada, ben, cy, team, elsewhere };
+    // Each one's own workspace, for a call that names someone else as `userId`: sharing a chat with them.
+    const [adas, bens, cys] = await Promise.all([ada, ben, cy].map((userId) => ensureWorkspace(ctx, { kind: "personal", userId })));
+    return { ada, ben, cy, team, elsewhere, home: { ada: adas, ben: bens, cy: cys } };
   });
   const as = (clerkId: string) => t.withIdentity({ subject: clerkId, tokenIdentifier: `${clerkId}|test` });
   return { ...ids, asAda: as("ada"), asBen: as("ben"), asCy: as("cy") };

@@ -1,11 +1,16 @@
 import type {MutationCtx} from "../../convex/_generated/server";
 import {EVIDENCE_LIBRARY_CONFIG_PROVENANCE as provenance} from "../../lib/evidence-libraries/configuration/contract";
 import {CURRENT_OWNER_CONFIGURATION_VERSION} from "../../lib/evidence-libraries/configuration/owner-configuration-migrations";
+import { organizationWorkspaceOf } from "../../convex/workspaces/personal";
+import { grantPlanFeaturesForTest } from "../../convex/billing/billing.test-support";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
 export async function seedTopicLibrary(ctx: MutationCtx, name: string, credentialDigest: string, url = "https://library.example.test", enabled = true) {
   const now = Date.now();
-  const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: `org_${name}`, evidenceLibrariesEnabled: true, name, slug: name, state: "active", clerkCreatedAt: now, clerkUpdatedAt: now, createdAt: now, updatedAt: now});
-  const libraryId = await ctx.db.insert("evidenceLibraries", {organizationId, name, slug: name, state: "active", createdByClerkUserId: "topic-test", updatedByClerkUserId: "topic-test", createdAt: now, updatedAt: now});
+  const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: `org_${name}`, name, slug: name, state: "active", clerkCreatedAt: now, clerkUpdatedAt: now, createdAt: now, updatedAt: now});
+  // Evidence Libraries come with the organization's plan (#652).
+  await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
+  const libraryId = await ctx.db.insert("evidenceLibraries", {workspaceId: await organizationWorkspaceOf(ctx, organizationId), name, slug: name, state: "active", createdByClerkUserId: "topic-test", updatedByClerkUserId: "topic-test", createdAt: now, updatedAt: now});
   const credentialId = await ctx.db.insert("evidenceLibraryCredentials", {libraryId, credentialKey: "library-service", credentialDigest, encryptedValue: "isolated-test-only", validationState: "valid", createdByClerkUserId: "topic-test", updatedByClerkUserId: "topic-test", createdAt: now, updatedAt: now});
   const revisionId = await ctx.db.insert("evidenceLibraryConfigRevisions", {libraryId, revisionKey: `${name}-r1`, revisionNumber: 1, basedOnRevisionId: null, rollbackOfRevisionId: null, ownerConfigurationVersion: CURRENT_OWNER_CONFIGURATION_VERSION, contractProvenance: provenance, createdByClerkUserId: "topic-test", createdAt: now});
   const sectionId = await ctx.db.insert("evidenceLibraryConfigSections", {kind: "revision", libraryId, revisionId, sectionKey: "topics", payload: {enabled}, payloadByteLength: 16, contractProvenance: provenance, createdByClerkUserId: "topic-test", createdAt: now});

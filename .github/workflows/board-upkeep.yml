@@ -1,0 +1,50 @@
+name: Board upkeep
+
+# Keeps the OpenScholar project board in step with the issues of openalex-count
+# and new-el (scripts/board-upkeep.mts). It runs as the "OpenDevEd board
+# upkeep" GitHub App, installed on both repositories, because the job's own
+# token can't edit the organization's board. new-el's own events are caught by
+# the schedule.
+on:
+  schedule:
+    - cron: "23 */4 * * *"
+  issues:
+    types: [opened, closed, reopened, milestoned, demilestoned]
+  pull_request:
+    types: [opened, reopened, ready_for_review, converted_to_draft, closed]
+  workflow_dispatch:
+
+concurrency:
+  group: board-upkeep
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  upkeep:
+    name: Board upkeep
+    runs-on: openscholar-secret
+    timeout-minutes: 10
+    steps:
+      # A plain checkout: the runners keep their workspace between jobs, and a
+      # sparse one broke the next job's checkout.
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Get the app's token
+        id: app
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.BOARD_APP_CLIENT_ID }}
+          private-key: ${{ secrets.BOARD_APP_PRIVATE_KEY }}
+          owner: OpenDevEd
+          repositories: openalex-count,new-el
+
+      - name: Bring the board in step
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: node scripts/board-upkeep.mts

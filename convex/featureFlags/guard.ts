@@ -1,4 +1,3 @@
-import { requireOrganizationFeature } from "../organizationFeatures";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { hasPlanFeature } from "../billing/accounts";
@@ -8,13 +7,16 @@ import { createError } from "../lib/errors";
  * Asserts that a feature flag is on for the user.
  *
  * Throws FEATURE_DISABLED if the flag is off everywhere.
- * Throws FEATURE_PLAN_REQUIRED if the flag names a plan feature and the
- * user's plan in Autumn doesn't grant it.
+ * Throws FEATURE_PLAN_REQUIRED if the flag names a plan feature and the plan of
+ * the workspace they act in doesn't grant it: `workspaceId`, or their own when
+ * none is given. A plan is one workspace's: a person's own grants nothing in an
+ * organization, nor an organization's in its members' own workspaces.
  */
 export async function requireFeature(
   ctx: QueryCtx | MutationCtx,
   flagKey: string,
   userId?: Id<"users">,
+  workspaceId?: Id<"workspaces">,
 ): Promise<void> {
   const flag = await ctx.db
     .query("featureFlags")
@@ -25,18 +27,15 @@ export async function requireFeature(
     throw createError("FEATURE_DISABLED", `Feature "${flagKey}" is disabled`);
   }
 
-  if (flagKey === "extraction.enabled") await requireOrganizationFeature(ctx, "extraction", userId);
-
   if (flag.planFeature) {
     if (!userId) {
       throw createError("UNAUTHENTICATED", "Authentication required for this feature");
     }
-    // The person's own workspace's plan, until features come from the acting workspace's plan (#652).
-    const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
-    if (!own || !(await hasPlanFeature(ctx, own._id, flag.planFeature))) {
+    const acting = workspaceId ?? (await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique())?._id;
+    if (!acting || !(await hasPlanFeature(ctx, acting, flag.planFeature))) {
       throw createError(
         "FEATURE_PLAN_REQUIRED",
-        `${flag.description || flagKey} isn't included in your plan. Upgrade to continue.`,
+        `${flag.description || flagKey} isn't included in this workspace's plan. Upgrade to continue.`,
       );
     }
   }

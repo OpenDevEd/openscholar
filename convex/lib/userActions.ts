@@ -10,19 +10,23 @@
 import { v, type GenericValidator, type Infer, type ObjectType, type PropertyValidators } from "convex/values";
 import { action, internalAction, internalMutation, internalQuery, mutation, query, type ActionCtx, type MutationCtx, type QueryCtx } from "./functions";
 import { internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { UserIdentity } from "convex/server";
 import { getCurrentUser, requireActiveUser, requireAuth } from "./auth";
 import { createError } from "./errors";
-import { DONE, endStep } from "../assistant/steps";
+import { DONE } from "../../lib/assistant/steps";
 import { actorFor, type Actor } from "../workspaces/actor";
+import { noteActivity } from "../activity/notes";
+import type { Note } from "../activity/validators";
 
 /** Who made a change: the person themselves, or the assistant acting for them. */
 export type Author = "user" | "assistant";
 /**
  * Who an action runs as (#650): the person, the workspace they act in and their role there,
  * and whether the assistant acts for them. Every wrapper resolves it once, with `actorFor`.
+ * `approved`: the assistant's call is one the person said yes to, or pressed themselves, as Undo.
  */
-export type Acting = Actor & { author: Author };
+export type Acting = Actor & { author: Author; approved?: true };
 
 /** `userId` acting in `workspaceId` as `author`, for a call that names its person: refuses an account no longer active, or a workspace they aren't in. */
 export async function actingAs(ctx: QueryCtx, userId: Id<"users">, workspaceId: Id<"workspaces">, author: Author): Promise<Acting> {
@@ -64,11 +68,14 @@ export const reversal = <Path extends string, Args extends PropertyValidators>(p
   v.object({ path: v.literal(path), args: v.object(args) });
 
 /**
- * Whether one call asks the person first although its action as a whole doesn't: the call
- * would show outside the account, such as a change to a collection a library follows
- * (decision 12). The assistant reads it before it runs the call.
+ * Whether one call asks the person first although its action as a whole doesn't. The assistant
+ * reads it before it runs the call. An action asks this way for one of two reasons, and the
+ * person asked is told which: other people would see the change, such as one to a collection
+ * a library follows (decision 12), which `seenOutside` says; or nothing puts this call's change
+ * back, such as clearing every search.
+ * ponytail: the reason is the action's, not the call's. Have `asksFirst` return it when one action asks for both.
  */
-type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, actor: Acting, args: ObjectType<Args>): Promise<boolean> };
+type AsksFirst<Args extends PropertyValidators> = { asksFirst?(ctx: QueryCtx, actor: Acting, args: ObjectType<Args>): Promise<boolean>; seenOutside?: true };
 
 /**
  * The most one call of an action that spends credits holds (#328): an upper estimate, read
@@ -94,11 +101,24 @@ type Checks<Args extends PropertyValidators> = { check?(ctx: QueryCtx, actor: Ac
  */
 type Shows<Args extends PropertyValidators> = { shown?(args: ObjectType<Args>): Record<string, unknown> };
 
+/**
+ * What a change did to an item, for its Activity (#656): the wrapper writes it in the change's
+ * own transaction, as the person or as the assistant for them, from what the change was given
+ * and what it returned. A change that left things as they were declares nothing. An action
+ * notes what it did in the mutation that writes it (../activity/notes.ts).
+ */
+type Records<Args extends PropertyValidators, Returns extends GenericValidator> = {
+  activity?(args: ObjectType<Args>, result: Infer<Returns>): Note | Note[] | null | undefined;
+  /** The workspace whose item the change was to, where that can be another than the one the person acts in: a guest's change to an item shared with them (#653). */
+  activityIn?(ctx: QueryCtx, actor: Acting, args: ObjectType<Args>): Promise<Id<"workspaces">>;
+};
+
 export type UserMutation<Args extends PropertyValidators, Returns extends GenericValidator> = Common<Args, Returns> &
   Labels<keyof Args & string> &
   AsksFirst<Args> &
   Estimates<Args> &
-  Shows<Args> & {
+  Shows<Args> &
+  Records<Args, Returns> & {
     kind: "mutation";
     run: (ctx: MutationCtx, actor: Acting, args: ObjectType<Args>) => Promise<Infer<Returns>>;
   };
@@ -146,6 +166,48 @@ export const defineUserMutation = <Args extends PropertyValidators, Returns exte
 export const defineUserAction = <Args extends PropertyValidators, Returns extends GenericValidator>(
   entry: Omit<UserActionEntry<Args, Returns>, "kind">,
 ): UserActionEntry<Args, Returns> => ({ kind: "action", ...entry });
+
+/**
+ * An action that changes something outside, such as Clerk or Autumn, and keeps the change here:
+ * the assistant's step for it ends once the change is kept, with what the action returned, or
+ * that it was made.
+ */
+export const defineChangingAction = <Args extends PropertyValidators, Returns extends GenericValidator>(entry: Omit<UserActionEntry<Args, Returns>, "kind" | "changes">) =>
+  defineUserAction<Args, Returns>({
+    ...entry,
+    changes: true,
+    run: async (ctx, actor, args, call) => {
+      const result = await entry.run(ctx, actor, args, call);
+      if (call?.stepId) await ctx.runMutation(internal.assistant.steps.read, { stepId: call.stepId, result: JSON.stringify(result ?? DONE) });
+      return result;
+    },
+  });
+
+/**
+ * `ctx` as it would be with the acting person signed in: for a page's own function whose access
+ * reads the session (`ctx.auth`), such as an Evidence Library's, run by a registered action for
+ * the person it acts as. Its identity is theirs, read from their account by the wrapper that
+ * already checked them, never from anything a call was given.
+ */
+export async function asSignedIn<Ctx extends { auth: { getUserIdentity(): Promise<UserIdentity | null> } }>(ctx: Ctx, person: Pick<Doc<"users">, "clerkId" | "email">): Promise<Ctx> {
+  const issuer = process.env.CLERK_JWT_ISSUER_DOMAIN ?? "";
+  const identity: UserIdentity = { subject: person.clerkId, issuer, tokenIdentifier: `${issuer}|${person.clerkId}`, email: person.email };
+  return { ...ctx, auth: { ...ctx.auth, getUserIdentity: async () => identity } };
+}
+
+/**
+ * The argument an internal function takes for the person an action of the assistant's runs it
+ * for, when the function's access reads the session: internal, so only this app's own code
+ * gives it, from a person the calling action already checked.
+ */
+export const actingArg = { actingAs: v.optional(v.id("users")) };
+/** `ctx` signed in as `userId` when one is given (`actingArg`), and as the caller is otherwise. */
+export async function signedInAs<Ctx extends QueryCtx>(ctx: Ctx, userId: Id<"users"> | undefined): Promise<Ctx> {
+  if (!userId) return ctx;
+  const person = await ctx.db.get("users", userId);
+  if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
+  return await asSignedIn(ctx, person);
+}
 
 /** The internal twin of a public function, which the assistant's tools call with the sender's user ID. */
 export const assistantPath = (path: string) => `${path}ForAssistant`;
@@ -286,6 +348,16 @@ export function assistantQuery<Args extends PropertyValidators, Returns extends 
   );
 }
 
+/** Runs a change and writes what it did to its items' Activity, in the change's own transaction. */
+async function changed<Args extends PropertyValidators, Returns extends GenericValidator>(ctx: MutationCtx, entry: UserMutation<Args, Returns>, actor: Acting, args: ObjectType<Args>) {
+  const result = await entry.run(ctx, actor, args);
+  if (entry.activity) {
+    const workspaceId = entry.activityIn ? await entry.activityIn(ctx, actor, args) : actor.workspaceId;
+    await noteActivity(ctx, { workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, entry.activity(args, result));
+  }
+  return result;
+}
+
 /** The public mutation the UI calls, for the signed-in user. */
 export function userMutation<Args extends PropertyValidators, Returns extends GenericValidator>(entry: UserMutation<Args, Returns>) {
   return tagged(
@@ -294,7 +366,7 @@ export function userMutation<Args extends PropertyValidators, Returns extends Ge
       returns: entry.returns,
       handler: async (ctx, args) => {
         const { workspaceId, rest } = inWorkspace<Args>(args);
-        return entry.run(ctx, { ...(await actorFor(ctx, await requireAuth(ctx), workspaceId)), author: "user" }, rest);
+        return changed(ctx, entry, { ...(await actorFor(ctx, await requireAuth(ctx), workspaceId)), author: "user" }, rest);
       },
     }),
     entry.path,
@@ -310,7 +382,7 @@ export function accountMutation<Args extends PropertyValidators, Returns extends
       handler: async (ctx, args) => {
         const { accountId, workspaceId, ...rest } = args as unknown as ObjectType<typeof accountArg & typeof workspaceArg> & Record<string, unknown>;
         const actor = await actorFor(ctx, await accountUser(ctx, accountId), workspaceId);
-        return entry.run(ctx, { ...actor, author: "user" }, rest as ObjectType<Args>);
+        return changed(ctx, entry, { ...actor, author: "user" }, rest as ObjectType<Args>);
       },
     }),
     entry.path,
@@ -324,15 +396,23 @@ export function assistantMutation<Args extends PropertyValidators, Returns exten
       args: { ...entry.args, ...changeArgs },
       returns: entry.returns,
       handler: async (ctx, args) => {
-        const { userId, workspaceId, stepId, approved, approvedCredits: _held, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
+        const { userId, workspaceId, stepId, approved, approvedCredits, ...own } = args as unknown as ObjectType<typeof changeArgs> & Record<string, unknown>;
         const rest = own as ObjectType<Args>;
         // The sender may have been suspended or deleted since the turn began.
-        const actor = await actingAs(ctx, userId, workspaceId, "assistant");
+        const actor: Acting = { ...(await actingAs(ctx, userId, workspaceId, "assistant")), ...(approved ? { approved: true as const } : {}) };
         // Read here, in the change's own transaction: what was true before the call may not be now.
         if (!approved && entry.asksFirst && (await entry.asksFirst(ctx, actor, rest))) throw createError("FORBIDDEN", ASKS_FIRST);
-        const result = await entry.run(ctx, actor, rest);
+        // A change that spends credits holds no more than the person let it (#328): by a yes to its question, by what they allow
+        // in the chat, or by pressing it themselves, as Undo does. What it would hold is read again here: a retry whose failures
+        // grew while it waited for the answer is asked about again, not run past the figure the person said yes to.
+        if (entry.spendsCredits && approvedCredits === undefined && !approved) throw createError("FORBIDDEN", ASKS_FIRST);
+        if (entry.spendsCredits && entry.estimate && approvedCredits !== undefined && (await entry.estimate(ctx, actor, rest)) > approvedCredits) {
+          throw createError("CONFLICT", "This would cost more now than was allowed. Ask again with what it costs now.");
+        }
+        const result = await changed(ctx, entry, actor, rest);
         // The step, and through it the model, is told a change that returns nothing was made.
-        if (stepId) await endStep(ctx, stepId, result ?? DONE);
+        // Called by reference, in this transaction: importing the steps module would load the assistant's agent with every action defined here.
+        if (stepId) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? DONE) });
         return result;
       },
     }),

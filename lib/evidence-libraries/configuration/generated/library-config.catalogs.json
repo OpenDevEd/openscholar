@@ -23,6 +23,15 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "content.openAccessLabel",
+				"values": [
+					"open",
+					"both",
+					"off"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "email.smtp.security",
 				"values": [
 					"tls",
@@ -371,6 +380,7 @@
 			"email.smtp.username",
 			"search.embedder.apiKey",
 			"services.database.url",
+			"services.openAlex.apiKey",
 			"services.publication.crossref.loginId",
 			"services.publication.crossref.password",
 			"services.publication.zenodo.token",

@@ -13,9 +13,13 @@ import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec"
 import { answerPaper } from "../research/answers";
 import { collectionSortName } from "../library/collections";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { SCREENING_POOL_SIZE } from "../workpool";
 import type { SavedSearch } from "../../lib/research/records";
 import { exportParts } from "../exports.test-support";
 import { createJob } from "./createJob.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
+import { madeBy } from "../workspaces/actor.test-support";
+import { encrypt } from "../lib/crypto";
 
 const questions = [{ key: "q1", question: "Randomized?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 };
@@ -41,12 +45,12 @@ async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
     const userId = await ctx.db.insert("users", { clerkId: "alice", email: "alice@example.com", state: "active", createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("users", { clerkId: "bob", email: "bob@example.com", state: "active", createdAt: 1, updatedAt: 1 });
     await seedCreditsForTest(ctx, { userId, free: credits });
-    await ctx.db.insert("libraryCounts", { userId, count: saved });
+    await ctx.db.insert("libraryCounts", { workspaceId: await personalWorkspaceOf(ctx, userId), count: saved });
     await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: PRICE.input, outputPricePerMillion: PRICE.output, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: [], syncedAt: 1, createdAt: 1, updatedAt: 1 });
-    const collectionId = await ctx.db.insert("collections", { userId, name: "Reading trials", sortName: collectionSortName("Reading trials"), itemCount: inCollection, createdAt: 1, updatedAt: 1 });
+    const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Reading trials", sortName: collectionSortName("Reading trials"), itemCount: inCollection, createdAt: 1, updatedAt: 1 });
     for (let i = 1; i <= saved; i++) {
-      const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: W(i), title: `Paper ${i}`, authors: ["Ada Lovelace", "Alan Turing"], abstract: "Tutoring works", journal: "A journal", citedByCount: i, publicationYear: 2020, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
-      if (i <= inCollection) await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: i });
+      const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: W(i), title: `Paper ${i}`, authors: ["Ada Lovelace", "Alan Turing"], abstract: "Tutoring works", journal: "A journal", citedByCount: i, publicationYear: 2020, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
+      if (i <= inCollection) await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: i });
     }
     return { userId, collectionId };
   });
@@ -103,6 +107,19 @@ describe("Screen all on papers the account holds", () => {
     expect(await read(second.jobId)).toMatchObject({ set: { kind: "screening", jobId: first.jobId }, totalPapers: 2 });
   });
 
+  it("keeps the name it was given, which a screening of its papers goes by (#696)", async () => {
+    const { screen, collectionId, answerAll, read } = await setup();
+
+    const named = await screen({ set: { kind: "collection", collectionId }, first: 1, last: 2, ...job, saveTo: { kind: "none" }, name: "  Pilot  " });
+    expect(await read(named.jobId)).toMatchObject({ name: "Pilot", label: "Reading trials" });
+    await answerAll(named.jobId, [4]);
+
+    const again = await screen({ set: { kind: "screening", jobId: named.jobId }, first: 1, last: 1, ...job, saveTo: { kind: "none" }, name: " " });
+    const ofIt = await read(again.jobId);
+    expect(ofIt).toMatchObject({ label: "Pilot" });
+    expect(ofIt).not.toHaveProperty("name");
+  });
+
   it("refuses another person's collection or job, and a range with no papers", async () => {
     const { t, alice, screen, collectionId } = await setup();
     const bob = t.withIdentity({ subject: "bob" });
@@ -123,7 +140,7 @@ describe("where a job's papers go", () => {
     const { jobId } = await screen({ set: { kind: "collection", collectionId }, first: 1, last: 4, ...job, saveTo: { kind: "new", name: " Included trials " }, prune: true });
     await answerAll(jobId, [4, 1], 3);
 
-    const made = await t.run((ctx) => ctx.db.query("collections").withIndex("by_user_sortName", (q) => q.eq("userId", userId).eq("sortName", "included trials")).unique());
+    const made = await t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId).eq("sortName", "included trials")).unique(); });
     expect(await read(jobId)).toMatchObject({ status: "completed", targetCollectionName: "Included trials", prune: true, outcomes: { included: 2, excluded: 2 }, credits: { spent: 12, estimate: 4 * PER_PAPER }, saved: 2, removed: 2 });
     expect(await inCollectionNow(made!._id)).toEqual([W(1), W(4)]);
     expect(await inCollectionNow(collectionId)).toEqual([W(1), W(4)]);
@@ -177,8 +194,8 @@ describe("where a job's papers go", () => {
     const { t, screen, userId, collectionId, answerAll, inCollectionNow } = await setup({ saved: 0, inCollection: 0 });
     // Papers from a job, which aren't saved yet.
     const source = await t.run(async (ctx) => {
-      const screeningId = await ctx.db.insert("screenings", { userId, version: 0, createdAt: 1 });
-      const jobId = await ctx.db.insert("screeningJobs", { userId, status: "completed", totalPapers: 2, questions, scoringConfig, screeningId, createdAt: 1, updatedAt: 1 });
+      const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 0, createdAt: 1 });
+      const jobId = await ctx.db.insert("screeningJobs", { ...(await madeBy(ctx, userId)), status: "completed", totalPapers: 2, questions, scoringConfig, screeningId, createdAt: 1, updatedAt: 1 });
       for (const i of [1, 2]) await ctx.db.insert("screeningResults", { jobId, openalexId: W(i), title: `Paper ${i}`, status: "completed", outcome: "included", createdAt: 1 });
       return jobId;
     });
@@ -186,7 +203,7 @@ describe("where a job's papers go", () => {
     const { jobId } = await screen({ set: { kind: "screening", jobId: source }, first: 1, last: 2, ...job, saveTo: { kind: "none" } });
     await answerAll(jobId, [1, 2]);
 
-    expect(await t.run((ctx) => ctx.db.query("libraryItems").withIndex("by_user", (q) => q.eq("userId", userId)).take(5))).toEqual([]);
+    expect(await t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return ctx.db.query("libraryItems").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(5); })).toEqual([]);
     expect(await inCollectionNow(collectionId)).toEqual([]);
   });
 });
@@ -258,8 +275,9 @@ describe("a job on a search whose page already answered some papers", () => {
     await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: [{ search }], shortcuts: [], ratings: [] });
     const papers = Array.from({ length: 400 }, (_, i) => ({ openalexId: W(i + 1), title: `Paper ${i + 1}` }));
     await t.run(async (ctx) => {
-      const row = (await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", search.id)).unique())!;
-      const screeningId = await ctx.db.insert("screenings", { userId, searchId: row._id, version: 0, createdAt: 1 });
+      const rowWorkspace = await personalWorkspaceOf(ctx, userId);
+      const row = (await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", rowWorkspace).eq("localId", search.id)).unique())!;
+      const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), searchId: row._id, version: 0, createdAt: 1 });
       for (const paper of papers) await answerPaper(ctx, screeningId, paper.openalexId, [{ question: "Randomized?", response: true }], "model", 1);
     });
 
@@ -279,8 +297,9 @@ describe("a job on a search whose page already answered some papers", () => {
     const papers = [1, 2, 3].map((i) => ({ openalexId: W(i), title: `Paper ${i}` }));
     // The search's page answered W1 (by a person) and W2 (by the model); W3 is new.
     await t.run(async (ctx) => {
-      const row = (await ctx.db.query("searches").withIndex("by_user_and_localId", (q) => q.eq("userId", userId).eq("localId", search.id)).unique())!;
-      const screeningId = await ctx.db.insert("screenings", { userId, searchId: row._id, version: 0, createdAt: 1 });
+      const rowWorkspace = await personalWorkspaceOf(ctx, userId);
+      const row = (await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", rowWorkspace).eq("localId", search.id)).unique())!;
+      const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), searchId: row._id, version: 0, createdAt: 1 });
       await answerPaper(ctx, screeningId, W(1), [{ question: "Randomized?", response: true }], "person", 1);
       await answerPaper(ctx, screeningId, W(2), [{ question: "Randomized?", response: false }], "model", 1);
     });
@@ -293,10 +312,59 @@ describe("a job on a search whose page already answered some papers", () => {
 
     await answerAll(jobId, [3]);
     expect(await read(jobId)).toMatchObject({ status: "completed", running: 0, outcomes: { included: 2, excluded: 1, unclear: 0, failed: 0 }, tallies: [{ key: "q1", yes: 2, no: 1, unclear: 0 }] });
-    expect(await alice.query(api.screening.queries.slots, {})).toEqual({ limit: 20, running: 0 });
+    expect(await alice.query(api.screening.queries.slots, {})).toEqual({ limit: SCREENING_POOL_SIZE, running: 0 });
     const exported = JSON.parse((await exportParts(t, alice, { kind: "screening", jobId })).text);
     expect(exported.results[0]).toMatchObject({ answers: { q1: true }, modelAnswers: {}, decisions: { q1: { by: "person" } } });
     expect(exported.results[0].modelAnswers).toEqual({});
     expect(exported.results[1]).toMatchObject({ answers: { q1: false }, modelAnswers: { q1: false } });
+  });
+});
+
+describe("Screen all on a Zotero collection (#328)", () => {
+  const KEY = "0".repeat(64);
+  it("reads its items through the person's own Zotero, and refuses saving them, a key in the wrong form or a person with no Zotero", async () => {
+    const { t, alice, userId, screen, results, read } = await setup();
+    vi.stubEnv("ENCRYPTION_KEY", KEY);
+    const requests: URL[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) => {
+        const url = new URL(String(input));
+        requests.push(url);
+        if (url.pathname.includes("GONE1234")) return new Response("Not found", { status: 404 });
+        const start = Number(url.searchParams.get("start") ?? 0);
+        const limit = Number(url.searchParams.get("limit") ?? 50);
+        const items = [1, 2, 3].map((i) => ({ key: `ITEM000${i}`, data: { title: `Zotero paper ${i}`, abstractNote: "Tutors help", creators: [{ creatorType: "author", firstName: "Ada", lastName: "Okafor" }], date: "2021-03-01", DOI: `10.1/${i}`, itemType: "journalArticle", publicationTitle: "A journal" }, meta: { numChildren: 0 } }));
+        return new Response(JSON.stringify(items.slice(start, start + limit)), { status: 200, headers: { "Total-Results": "3" } });
+      }),
+    );
+    const set = { kind: "zotero" as const, collectionKey: "ABCD1234" };
+
+    await expect(alice.action(api.screening.start.screen, { set, first: 1, last: 3, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/Zotero isn't connected/);
+    await t.run((ctx) => ctx.db.insert("zoteroConnections", { userId, zoteroUserId: "15294942", encryptedApiKey: encrypt("zotero-key", KEY), keyPrefix: "zot...", username: "ada", connectedAt: 1 }));
+    // Its papers have no OpenAlex record to save them by.
+    await expect(alice.action(api.screening.start.screen, { set, first: 1, last: 3, ...job, saveTo: { kind: "new", name: "Picked" } })).rejects.toThrow(/can't be saved to a collection/);
+    // A key that would change the address Zotero is asked at.
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "zotero", collectionKey: "../../x" }, first: 1, last: 3, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/eight capital letters and digits/);
+    expect(requests).toEqual([]);
+    // A collection Zotero no longer has is refused before a job is made or anything is held.
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "zotero", collectionKey: "GONE1234" }, first: 1, last: 3, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/Failed to fetch items from Zotero: 404/);
+    expect(await t.run((ctx) => ctx.db.query("screeningJobs").collect())).toEqual([]);
+    requests.length = 0;
+
+    const { jobId } = await screen({ set, first: 2, last: 3, ...job, saveTo: { kind: "none" } });
+    const papers = await results(jobId);
+    expect(papers.map((paper) => paper.openalexId)).toEqual(["zotero:user:ITEM0002", "zotero:user:ITEM0003"]);
+    expect(papers[0]).toMatchObject({ title: "Zotero paper 2", abstract: "Tutors help", authors: ["Ada Okafor"], doi: "10.1/2", venue: "A journal", publicationYear: 2021 });
+    // The person's own library, that collection's items and not its sub-collections', from the second on: its first read before the job is made, then the job's.
+    expect(requests.map((url) => [url.pathname, url.searchParams.get("start"), url.searchParams.get("limit")])).toEqual([
+      ["/users/15294942/collections/ABCD1234/items/top", "1", "1"],
+      ["/users/15294942/collections/ABCD1234/items/top", "1", "2"],
+    ]);
+    expect(await read(jobId)).toMatchObject({ label: "Zotero", totalPapers: 2 });
+    // Each keeps where its PDF is in Zotero, for an extraction of the included ones to read.
+    expect(papers[0].pdfUrl).toBe("zotero://select/users/15294942/items/ITEM0002");
+    // Screened again, the included papers of a Zotero screening still can't be saved to a collection.
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "screening", jobId }, first: 1, last: 2, ...job, saveTo: { kind: "new", name: "Picked" } })).rejects.toThrow(/can't be saved to a collection/);
   });
 });

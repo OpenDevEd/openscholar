@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
 import { CookiePreferencesTrigger } from "@/components/cookie-consent-banner";
 

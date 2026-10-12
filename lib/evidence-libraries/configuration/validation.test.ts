@@ -83,6 +83,7 @@ const platformMail = {
 
 const platformBrand = {
   logoUrl: "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-logo.svg",
+  logoDarkUrl: "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-logo-dark.svg",
   faviconUrl: "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-favicon.ico",
   iconUrls: [
     "https://storage.example.test/storage/v1/object/public/openscholar/platform/openscholar-icon.svg",
@@ -389,6 +390,17 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     expect(
       (withoutZotero.services as Record<string, unknown>).zotero,
     ).not.toHaveProperty("translationUrl");
+    expect(withoutZotero.services).not.toHaveProperty("openAlex");
+    expect(withoutZotero).toMatchObject({ content: { openAccessLabel: "open" } });
+
+    // With OpenScholar's OpenAlex key the library looks up the open access of records from other sources.
+    const withOpenAlex = assembleEvidenceLibraryConfiguration({
+      sections: ownerSections,
+      managed: { ...managedConfiguration, openAlexApiKey: "openalex-platform-key" },
+      now: new Date("2026-08-24T19:00:00.000Z"),
+    });
+    expect(validateLibraryConfigStructure(withOpenAlex).valid).toBe(true);
+    expect(withOpenAlex.services).toMatchObject({ openAlex: { apiKey: "openalex-platform-key" } });
   });
 
   test("ignores owner rows for platform sections and hands sources to the credential hook", () => {
@@ -930,7 +942,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     expect(validateLibraryConfigStructure(filled).valid).toBe(true);
     expect(filled.identity).toMatchObject({
       assets: {
-        logoDark: platformBrand.logoUrl,
+        logoLight: platformBrand.logoUrl,
+        logoDark: platformBrand.logoDarkUrl,
         favicon: platformBrand.faviconUrl,
         icons: platformBrand.iconUrls,
       },
@@ -948,7 +961,8 @@ describe("assembleEvidenceLibraryConfiguration", () => {
     });
     expect(partial.identity).toMatchObject({
       assets: {
-        logoDark: platformBrand.logoUrl,
+        logoLight: platformBrand.logoUrl,
+        logoDark: platformBrand.logoDarkUrl,
         favicon: "https://assets.example.test/own-favicon.svg",
       },
     });
@@ -972,6 +986,14 @@ describe("assembleEvidenceLibraryConfiguration", () => {
         logoDark: "https://assets.example.test/own-logo.svg",
       },
     });
+
+    // Without a dark version set, dark mode shows the light logo.
+    const { logoDarkUrl: _dark, ...lightBrandOnly } = platformBrand;
+    const oneLogo = assembleEvidenceLibraryConfiguration({
+      sections: { ...ownerSections, identity: identityWithoutAssets },
+      managed: { ...managedConfiguration, brand: lightBrandOnly },
+    });
+    expect(oneLogo.identity).toMatchObject({ assets: { logoLight: platformBrand.logoUrl, logoDark: platformBrand.logoUrl } });
 
     const own = assembleEvidenceLibraryConfiguration({
       sections: ownerSections,

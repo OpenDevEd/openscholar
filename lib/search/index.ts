@@ -28,19 +28,15 @@
 
 // Provider and hooks
 export { SearchProvider, useSearch, useSearchOptional } from './provider';
-export type { LocalSearchState } from './provider';
 
 // Initializer for shared link handling
 export { SearchInitializer } from './initializer';
 
 // Actions
-export { submitNewSearch, restoreFromHistory, createCitationSearch } from './actions';
-
-// Question detection
-export { detectSearchMode } from './detect-mode';
+export { submitNewSearch, createCitationSearch } from './actions';
 
 // Types (interfaces only - no duplicate constants/functions)
-export type { SearchParams, SearchContextValue, SearchResultData, SetQueryOptions } from './types';
+export type { SearchParams, SetQueryOptions } from './types';
 
 // Re-export from canonical location (lib/search-params) to avoid duplication
-export { hasActiveFilters, DEFAULT_SEARCH_PARAMS } from '../search-params';
+export { DEFAULT_SEARCH_PARAMS } from '../search-params';

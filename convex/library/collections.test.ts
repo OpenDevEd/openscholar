@@ -5,6 +5,7 @@ import { api } from "../_generated/api";
 import schema from "../schema";
 import { collectionSortName } from "./collections";
 import type { Doc, Id } from "../_generated/dataModel";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -124,7 +125,7 @@ async function seedJunctionRow(
 }
 
 describe("createCollection", () => {
-  it("creates a collection with name, verifies it has userId, name, createdAt, updatedAt", async () => {
+  it("creates a collection with name, verifies who made it, name, createdAt, updatedAt", async () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
@@ -139,7 +140,7 @@ describe("createCollection", () => {
     });
 
     expect(collection).not.toBeNull();
-    expect(collection!.userId).toBe(user!._id);
+    expect(collection!.createdBy).toBe(user!._id);
     expect(collection!.name).toBe("My Papers");
     expect(collection!.createdAt).toBeTypeOf("number");
     expect(collection!.updatedAt).toBeTypeOf("number");
@@ -159,7 +160,7 @@ describe("createCollection", () => {
     const t = convexTest(schema);
     const user = await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
-    const account = await t.run((ctx) => ctx.db.insert("billingAccounts", { userId: user!._id, plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { collections: 2 } }));
+    const account = await t.run(async (ctx) => ctx.db.insert("billingAccounts", { workspaceId: await personalWorkspaceOf(ctx, user!._id), plan: "free", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, refreshedAt: 1, limits: { collections: 2 } }));
     await asUser.mutation(api.library.collections.createCollection, { name: "One" });
     await asUser.mutation(api.library.collections.createCollection, { name: "Two" });
     await expect(asUser.mutation(api.library.collections.createCollection, { name: "Three" })).rejects.toThrow(/plan allows 2 collections/);
@@ -261,6 +262,32 @@ describe("deleteCollection", () => {
     });
 
     expect(deleted).toBeNull();
+  });
+
+  it("deletes one the Library held for its Undo with no page left to ask, and keeps one Undo took back", async () => {
+    vi.useFakeTimers();
+    try {
+      const t = convexTest(schema);
+      const user = await seedUser(t, "clerk_user1", "user1@test.com");
+      const asUser = t.withIdentity({ subject: "clerk_user1" });
+      const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, user!._id));
+      const gone = await seedCollection(t, user!._id, "Gone");
+      const kept = await seedCollection(t, user!._id, "Kept");
+
+      await asUser.mutation(api.library.collections.deleteSoon, { workspaceId, collectionId: gone!._id });
+      const deletingAt = await asUser.mutation(api.library.collections.deleteSoon, { workspaceId, collectionId: kept!._id });
+      await asUser.mutation(api.library.collections.keepCollection, { workspaceId, collectionId: kept!._id, deletingAt });
+      // An Undo of an earlier deletion than the one standing leaves that one be.
+      await asUser.mutation(api.library.collections.keepCollection, { workspaceId, collectionId: gone!._id, deletingAt: 1 });
+      // Held, not gone: Undo is still open.
+      expect(await t.run((ctx) => ctx.db.get("collections", gone!._id))).not.toBeNull();
+
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+      expect(await t.run((ctx) => ctx.db.get("collections", gone!._id))).toBeNull();
+      expect(await t.run((ctx) => ctx.db.get("collections", kept!._id))).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("cascade-deletes all junction rows for the collection", async () => {
@@ -540,7 +567,6 @@ describe("addToCollection", () => {
     });
 
     expect(junctionRows).toHaveLength(1);
-    expect(junctionRows[0].userId).toBe(user!._id);
     expect(junctionRows[0].collectionId).toBe(collection!._id);
     expect(junctionRows[0].libraryItemId).toBe(item!._id);
     expect(junctionRows[0].assignedAt).toBeGreaterThan(0);
@@ -1022,5 +1048,26 @@ describe("searchLibrary with collectionId filter", () => {
     });
 
     expect(result.page.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("an ID from the page's address that is no ID (#826)", () => {
+  it("reads as a collection, or a screening, that is gone: a link cut short, and another kind's ID", async () => {
+    const t = convexTest(schema);
+    const user = await seedUser(t, "clerk_address", "address@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_address" });
+    const real = (await asUser.mutation(api.library.collections.createCollection, { name: "Real one" })).id;
+    await seedLibraryItem(t, user!._id, { title: "A saved paper", openalexId: "https://openalex.org/W1" });
+    const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, paginationOpts: { numItems: 10, cursor: null } };
+    // A user's ID is well formed, and no collection's or screening's.
+    for (const broken of ["abc", user!._id as string]) {
+      expect(await asUser.query(api.library.collections.getCollection, { collectionId: broken })).toBeNull();
+      expect((await asUser.query(api.library.queries.browseLibrary, { ...view, collectionId: broken })).page).toEqual([]);
+      expect(await asUser.query(api.library.queries.getLibraryFilteredCount, { sortBy: view.sortBy, sortOrder: view.sortOrder, collectionId: broken })).toMatchObject({ count: 0 });
+      expect(await asUser.query(api.screening.queries.getScreeningJob, { jobId: broken })).toBeNull();
+    }
+    // A real one still opens.
+    expect(await asUser.query(api.library.collections.getCollection, { collectionId: real })).toMatchObject({ name: "Real one" });
+    expect((await asUser.query(api.library.queries.browseLibrary, view)).page).toHaveLength(1);
   });
 });

@@ -96,7 +96,7 @@ async function requestTeardown(
   const access = await requireEvidenceLibraryAccess(
     ctx,
     args.libraryId,
-    "manage",
+    "remove",
   );
   if (args.confirmationName !== access.library.name) {
     throw createError(
@@ -261,7 +261,7 @@ export const getDevelopmentTeardownStatus = query({
     }
     const library = await ctx.db.get("evidenceLibraries", operation.libraryId);
     if (!library) return { status: "complete" as const };
-    if (!await readEvidenceLibraryAccess(ctx, library._id, "manage")) return null;
+    if (!await readEvidenceLibraryAccess(ctx, library._id, "remove")) return null;
     return {
       ...(operation.error
         ? {
@@ -288,7 +288,7 @@ export const restartDevelopmentTeardown = mutation({
   returns: v.object({ status: v.literal("queued") }),
   handler: async (ctx, args) => {
     requireDevelopmentTeardownEnabled();
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
+    await requireEvidenceLibraryAccess(ctx, args.libraryId, "remove");
     const operation = await ctx.db
       .query("evidenceLibraryConfigOperations")
       .withIndex("by_libraryId_and_createdAt", (query) =>
@@ -821,29 +821,17 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       await Promise.all(bindings.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
-    // Its grants and invitations go with it, so they don't count against the people who held them.
-    const members = await ctx.db
-      .query("evidenceLibraryMembers")
-      .withIndex("by_libraryId_and_clerkUserId", (query) =>
-        query.eq("libraryId", args.libraryId),
-      )
-      .take(BATCH_SIZE);
-    if (members.length > 0) {
-      await Promise.all(members.map((row) => ctx.db.delete(row._id)));
-      return { complete: false };
-    }
-    const invitations = await ctx.db
-      .query("evidenceLibraryInvitations")
-      .withIndex("by_libraryId_and_state", (query) =>
-        query.eq("libraryId", args.libraryId),
-      )
-      .take(BATCH_SIZE);
-    if (invitations.length > 0) {
-      await Promise.all(invitations.map((row) => ctx.db.delete(row._id)));
-      return { complete: false };
-    }
+    // Its people's roles and its invitations go with it, a step at a time, so they don't count against the people who held them (../sharing/items.ts `followShared`).
     await ctx.db.delete(operation._id);
     await ctx.db.delete(args.libraryId);
     return { complete: true };
   },
+});
+
+/** A workspace's first library, by name: what moving its organization to a plan without Evidence Libraries waits on. Null when it has none. */
+export const heldBy = internalQuery({
+  args: { workspaceId: v.id("workspaces") },
+  returns: v.union(v.null(), v.string()),
+  handler: async (ctx, { workspaceId }) =>
+    (await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).first())?.name ?? null,
 });

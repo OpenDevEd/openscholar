@@ -16,7 +16,7 @@ export const LAST_PAGE = 10_000 / RESULTS_PAGE;
  */
 export const LAST_PAGE_FROM_START = 2_000 / RESULTS_PAGE;
 
-const fieldValidator = v.union(v.literal("title_and_abstract"), v.literal("title"), v.literal("abstract"), v.literal("fulltext"));
+const fieldValidator = v.union(v.literal("title_and_abstract"), v.literal("title"), v.literal("abstract"), v.literal("fulltext"), v.literal("oql"));
 const sortValidator = v.union(v.literal("relevance"), v.literal("most_cited"), v.literal("newest"), v.literal("oldest"));
 const numberValidator = v.optional(v.union(v.number(), v.null()));
 /** A day or a paper's ID, or null to take it off. */
@@ -80,6 +80,7 @@ export const changesValidator = v.array(
 
 /** What the settings mean, for the description of each tool that takes them. A value one doesn't take is refused with the ones it does. */
 export const SETTINGS =
+  "`field`: where the query's words are looked for (title_and_abstract, the default, title, abstract, fulltext), or oql for a query in OpenAlex Query Language. " +
   "A time span is in years (`fromYear`, `toYear`) or days (`fromDate`, `toDate`, YYYY-MM-DD). " +
   "`authorsIn` is where the authors work and `about` where the paper is about: two-letter country codes, regions such as africa, western_africa or latin_america, or income groups low_income, lower_middle_income, upper_middle_income and high_income. " +
   "`types` and `institutionTypes` are OpenAlex's, such as article or education. `languages` are ISO 639 codes, `sdgs` goal numbers 1 to 17. " +
@@ -93,6 +94,22 @@ export const SETTINGS =
 export const AUTHORS_SHOWN = 3;
 /** Matches one lookup returns. */
 export const LOOKUP_MAX = 10;
+/** IDs one call of research/lookup:names names. */
+export const NAMES_MAX = 50;
+export const namesValidator = capped(v.array(v.object({ id: v.string(), name: v.string() })), NAMES_MAX);
+/** Institutions and research areas an author's record lists (./authors.ts). */
+export const AUTHOR_LISTED = 5;
+export const authorValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  orcid: v.optional(v.string()),
+  institutions: capped(v.array(v.object({ id: v.string(), name: v.string(), country: v.optional(v.string()) })), AUTHOR_LISTED),
+  areas: capped(v.array(v.object({ id: v.string(), name: v.string(), papers: v.number() })), AUTHOR_LISTED),
+  papers: v.number(),
+  citations: v.number(),
+  hIndex: v.optional(v.number()),
+  link: v.string(),
+});
 export const lookupKindValidator = v.union(v.literal("author"), v.literal("funder"), v.literal("journal"), v.literal("institution"), v.literal("researchArea"));
 export const lookupValidator = v.object({
   matches: capped(v.array(v.object({ id: v.string(), name: v.string(), detail: v.optional(v.string()) })), LOOKUP_MAX),
@@ -152,7 +169,8 @@ const paperValidator = v.object({
 });
 
 /** A paper's PDF as a read gives it to the model: by its address, which the model's provider fetches (./papers.ts `readPdf`). */
-export const paperPdfValidator = v.object({ id: v.string(), title: v.string(), paperPdf: v.string() });
+/** A paper's PDF a read got: `paperPdf` is the address it's cited by, `stored` its copy in the paper PDF store (convex/lib/paperPdfs.ts), which the model is sent. */
+export const paperPdfValidator = v.object({ id: v.string(), title: v.string(), paperPdf: v.string(), stored: v.string() });
 
 /** Authors of one paper its record lists, institutions named for each, and its funders. */
 export const AUTHORS_LISTED = 20;

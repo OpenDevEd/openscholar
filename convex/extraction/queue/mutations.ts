@@ -12,7 +12,6 @@ import {
   type ExtractionQueueStatus,
 } from "./status";
 import { planLimit } from "../../billing/accounts";
-import { workspaceOf } from "../../workspaces/personal";
 
 type QueueKind = Doc<"extractionPaperQueue">["kind"];
 
@@ -123,7 +122,6 @@ async function insertPendingQueueRow(
   ctx: MutationCtx,
   {
     jobId,
-    userId,
     workspaceId,
     paperId,
     runEpoch,
@@ -134,7 +132,6 @@ async function insertPendingQueueRow(
     now,
   }: {
     jobId: Id<"extractionJobs">;
-    userId: Id<"users">;
     workspaceId: Id<"workspaces">;
     paperId: Id<"extractionPapers">;
     runEpoch: number;
@@ -147,7 +144,6 @@ async function insertPendingQueueRow(
 ): Promise<Id<"extractionPaperQueue">> {
   const queueRow: Omit<Doc<"extractionPaperQueue">, "_id" | "_creationTime"> = {
     jobId,
-    userId,
     workspaceId,
     paperId,
     runEpoch,
@@ -227,8 +223,7 @@ async function enqueuePaperQueueRows(
 
     await insertPendingQueueRow(ctx, {
       jobId,
-      userId: job.userId,
-      workspaceId: (workspaceId ??= await workspaceOf(ctx, job)),
+      workspaceId: (workspaceId ??= job.workspaceId),
       paperId: candidate.paperId,
       runEpoch: expectedEpoch,
       kind,
@@ -365,7 +360,7 @@ async function leaseNextPaperQueueRowsTx(
   args: LeaseRowsArgs,
 ): Promise<LeaseRowsResult> {
   const job = await ctx.db.get(args.jobId);
-  const personFree = job ? await poolCapacity(ctx, await workspaceOf(ctx, job), args.paperConcurrency) : 0;
+  const personFree = job ? await poolCapacity(ctx, job.workspaceId, args.paperConcurrency) : 0;
   const activeReadLimit = Math.max(0, Math.floor(args.paperConcurrency));
   const [leasedRows, runningRows] = await Promise.all([
     loadQueueRowsByStatus(ctx, {
@@ -538,7 +533,7 @@ export async function cancelPaperQueueRowsForJobTx(
   if (batches.some((batch) => batch.length === CANCEL_BATCH)) {
     await ctx.scheduler.runAfter(0, internal.extraction.queue.mutations.cancelPaperQueueRowsForJob, { jobId: args.jobId });
   }
-  return { cancelled: rows.length, cancelRequested, workspaceId: rows[0] ? await workspaceOf(ctx, rows[0]) : undefined };
+  return { cancelled: rows.length, cancelRequested, workspaceId: rows[0] ? rows[0].workspaceId : undefined };
 }
 
 export const cancelPaperQueueRowsForJob = internalMutation({
@@ -572,7 +567,7 @@ export const updatePaperQueueStatus = internalMutation({
     // A row that held its person's capacity and stops without a release (a stale run parking)
     // frees it; their held-back jobs have no other event to start them.
     if ((row.status === "leased" || row.status === "running") && args.status !== "leased" && args.status !== "running") {
-      await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { workspaceId: await workspaceOf(ctx, row) });
+      await ctx.scheduler.runAfter(0, internal.extraction.queue.dispatcher.wakePerson, { workspaceId: row.workspaceId });
     }
     await ctx.db.patch(args.queueId, {
       status: args.status,

@@ -42,7 +42,7 @@ import { actorFor } from "../workspaces/actor";
 import { MODEL_READS } from "./steps";
 import { citedFileIdsValidator, citedFilesValidator } from "./validators";
 import { chatModel } from "./threads";
-import { downloadPdf } from "../../lib/pdf/download";
+import { readStored, storedLink } from "../lib/paperPdfs";
 
 const FLAG = "assistant.enabled";
 const HOUR = 60 * 60 * 1000;
@@ -82,16 +82,34 @@ export const startUpload = mutation({
       if (oldest._creationTime > Date.now() - ABANDONED_MS) throw createError("VALIDATION_ERROR", `You can have up to ${MAX_PENDING_FILES} files waiting to be sent. Send or remove some first.`);
       await deleteFile(ctx, oldest);
     }
-    const perHour = await planLimit(ctx, workspaceId, "uploads_per_hour");
-    if (perHour !== undefined) {
-      const { ok, retryAt } = await rateLimit(ctx, { name: "assistant-upload", key: `${userId}:${workspaceId}`, config: { kind: "token bucket", rate: perHour, period: HOUR, capacity: perHour } });
-      if (!ok) {
-        const minutes = Math.max(1, Math.ceil(((retryAt ?? Date.now()) - Date.now()) / 60_000));
-        throw createError("VALIDATION_ERROR", `Your plan lets you attach ${perHour} files an hour. You can attach more in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`);
-      }
-    }
+    await countUpload(ctx, userId, workspaceId);
     const mediaType = pdfBytes !== undefined ? "application/pdf" : (text ?? "");
     return { fileId: await ctx.db.insert("assistantFiles", { userId, name: clean, bytes: 0, mediaType, state: "pending", usedAt: Date.now(), uploadDigest: digest }) };
+  },
+});
+
+/** Counts a file against how many the workspace's plan lets the person attach an hour, refusing one past it. */
+async function countUpload(ctx: MutationCtx, userId: Id<"users">, workspaceId: Id<"workspaces">) {
+  const perHour = await planLimit(ctx, workspaceId, "uploads_per_hour");
+  if (perHour === undefined) return;
+  const { ok, retryAt } = await rateLimit(ctx, { name: "assistant-upload", key: `${userId}:${workspaceId}`, config: { kind: "token bucket", rate: perHour, period: HOUR, capacity: perHour } });
+  if (!ok) {
+    const minutes = Math.max(1, Math.ceil(((retryAt ?? Date.now()) - Date.now()) / 60_000));
+    throw createError("VALIDATION_ERROR", `Your plan lets you attach ${perHour} files an hour. You can attach more in ${minutes} ${minutes === 1 ? "minute" : "minutes"}.`);
+  }
+}
+
+/**
+ * A PDF from the person's own Zotero library, put in their chat (../zotero/actions.ts `pdfToChat`): one of the
+ * chat's files, as one they attached is, counted against the same hourly allowance, for the assistant to read by pages.
+ */
+export const keepZoteroPdf = internalMutation({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), threadId: v.id("assistantThreads"), storageId: v.id("_storage"), name: v.string(), bytes: v.number(), pages: v.number() },
+  returns: v.id("assistantFiles"),
+  handler: async (ctx, { userId, workspaceId, threadId, storageId, name, bytes, pages }) => {
+    await requireThread(ctx, userId, threadId, "write");
+    await countUpload(ctx, userId, workspaceId);
+    return await ctx.db.insert("assistantFiles", { userId, threadId, storageId, name: name.trim().slice(0, MAX_FILE_NAME) || "Zotero PDF", bytes, mediaType: "application/pdf", state: "sent", usedAt: Date.now(), pages });
   },
 });
 
@@ -361,12 +379,11 @@ const fileIdOf = (part: FilePart) => (part.providerOptions?.openscholar as { fil
  * that says so. The files sent are noted as used, so they don't expire while a chat that
  * reads them is in use.
  *
- * A paper's PDF (research/papers:readPdf) goes by its own address, which the provider
- * fetches, but only in the reply that read it: from `fresh` on, the reply's own messages.
+ * A paper's PDF (research/papers:readPdf) is its copy in the paper PDF store (convex/lib/paperPdfs.ts), sent as a
+ * link the provider fetches, but only in the reply that read it: from `fresh` on, the reply's own messages.
  * Before that it's a line saying it was read, so a long paper isn't sent again with every later message.
- * `linked` hears that a request carries a paper's address. A provider that can't fetch it refuses the whole
- * request, and the reply makes it again with `download` (./run.ts): each paper downloaded here and sent as it is,
- * or a line saying it couldn't be.
+ * `linked` hears that a request carries such a link. A provider that can't fetch it refuses the whole request,
+ * and the reply makes it again with `download` (./run.ts): each paper read from the store and sent as it is.
  */
 export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "runMutation">, messages: ModelMessage[], modelId: Id<"models"> | null, fresh?: number, paperPdfs: { download?: boolean; linked?: () => void } = {}): Promise<ModelMessage[]> {
   const fileIds = messages.flatMap((message) => {
@@ -385,7 +402,7 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
     return blob ? new Uint8Array(await blob.arrayBuffer()) : null;
   };
   const used: Id<"assistantFiles">[] = [];
-  // What's left of PAPER_BYTES for papers downloaded to be sent.
+  // What's left of PAPER_BYTES for stored papers sent as they are.
   let room = PAPER_BYTES;
   const out = await Promise.all(
     messages.map(async (message, at): Promise<ModelMessage> => {
@@ -394,16 +411,16 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
           message.content.map(async (part): Promise<(typeof message.content)[number]> => {
             const paper = part.type === "tool-result" ? paperOf(part.output) : null;
             if (part.type === "tool-result" && paper) {
-              const said = JSON.stringify((part.output as { value: unknown }).value);
+              const said = JSON.stringify(paper.shown);
               if (!read.pdfs) return { ...part, output: { type: "text", value: `${said}\n[This PDF can't be shown to the model this chat now runs on, which doesn't read PDFs.]` } };
               if (fresh === undefined || at < fresh) return { ...part, output: { type: "text", value: `${said}\n[You read this paper's PDF in an earlier reply, and it isn't in view now. Read it again with research_papers_readPdf if you need it.]` } };
               if (!paperPdfs.download) {
                 paperPdfs.linked?.();
-                return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "url", url: new URL(paper) }, filename: "paper.pdf" }] } };
+                return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "url", url: new URL(await storedLink(paper.stored)) }, filename: "paper.pdf" }] } };
               }
-              const bytes = await paperBytes(paper, room);
-              // The downloads run together: one that finishes after the room has gone is left out too.
-              if (!bytes || bytes.length > room) return { ...part, output: { type: "text", value: `${said}\n[This paper's PDF couldn't be downloaded from its address, or is too large to send. Tell the person, and ask them to attach its PDF to the chat if they want it read.]` } };
+              const bytes = await readStored(paper.stored, room);
+              // The reads run together: one that finishes after the room has gone is left out too.
+              if (!bytes || bytes.length > room) return { ...part, output: { type: "text", value: `${said}\n[This paper's PDF is too large to send with the others. Tell the person, and read it again on its own if they want it.]` } };
               room -= bytes.length;
               return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "data", data: bytes }, filename: "paper.pdf" }] } };
             }
@@ -443,24 +460,12 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
  */
 const PAPER_BYTES = 20 * 1024 * 1024;
 
-/**
- * A paper's PDF, downloaded as the extraction downloads one, from a plain-HTTP address too as the read's check allows,
- * or null when it can't be or is larger than `room`: why is logged, with the address's host.
- */
-async function paperBytes(url: string, room: number) {
-  const { pdfBlob, error } = await downloadPdf(url, { maxRetries: 1, allowHttp: true, maxBytes: room });
-  const bytes = pdfBlob ? new Uint8Array(await pdfBlob.arrayBuffer()) : null;
-  // A landing page's PDF link can lead to another page: bytes that aren't a PDF would be refused as one.
-  const why = !bytes ? (error ?? "no file") : bytes.length > room ? `${bytes.length} bytes, past the ${room} left` : !new TextDecoder().decode(bytes.subarray(0, 1024)).includes("%PDF") ? "not a PDF" : null;
-  if (!why) return bytes;
-  console.warn("[assistant] a paper's PDF couldn't be downloaded to send", { host: URL.canParse(url) ? new URL(url).host : "", why });
-  return null;
-}
-
-/** A paper's PDF address, from the result of a read of it (research/papers:readPdf). */
-function paperOf(output: unknown): string | null {
-  const value = output && typeof output === "object" && "type" in output && output.type === "json" && "value" in output ? (output.value as { paperPdf?: unknown } | null) : null;
-  return value && typeof value === "object" && typeof value.paperPdf === "string" && /^https?:\/\//.test(value.paperPdf) ? value.paperPdf : null;
+/** A paper's stored copy, from the result of a read of it (research/papers:readPdf), and the result as the model reads it, without the copy's key. */
+function paperOf(output: unknown): { stored: string; shown: Record<string, unknown> } | null {
+  const value = output && typeof output === "object" && "type" in output && output.type === "json" && "value" in output ? (output.value as Record<string, unknown> | null) : null;
+  if (!value || typeof value !== "object" || typeof value.stored !== "string") return null;
+  const { stored, ...shown } = value;
+  return { stored, shown };
 }
 
 /** The pages a read of a PDF cut (`readPdf`), by the file ID its result names. */

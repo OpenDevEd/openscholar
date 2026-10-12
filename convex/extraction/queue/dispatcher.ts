@@ -20,7 +20,7 @@ import {
 import { extractionQueueStatusValidator } from "../validators";
 import { dispatchPaperQueueWindowTx } from "./mutations";
 import { release } from "./release";
-import { personalWorkspaceOf, workspaceOf } from "../../workspaces/personal";
+import { personalWorkspaceOf } from "../../workspaces/personal";
 
 /** Released rows per batch; each job in a batch is refilled once. */
 const BATCH = 50;
@@ -142,7 +142,7 @@ export const refill = internalMutation({
     for (const run of runs.values()) {
       const job = await ctx.db.get(run.jobId);
       if (!job || (job.runEpoch ?? 0) !== run.epoch) continue;
-      const workspaceId = await workspaceOf(ctx, job);
+      const workspaceId = job.workspaceId;
       pools.set(workspaceId, [...(pools.get(workspaceId) ?? []), run]);
     }
     for (const [workspaceId, released] of pools) {

@@ -5,9 +5,10 @@
 // (convex/assistant/jobs.ts) and keeps one size from its first frame, whatever arrives.
 
 import { createContext, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
+import { useWorkspaceMutation } from "@/lib/workspaces/url";
 import type { FunctionReturnType } from "convex/server";
 import { animate, AnimatePresence, motion, useAnimationFrame, useMotionValue, useReducedMotion } from "motion/react";
 import { Ban, Check, ChevronDown, CircleAlert, CircleHelp, Coins, ExternalLink, Hourglass, X } from "@/components/icons";
@@ -28,7 +29,7 @@ type Extraction = Extract<Read["card"], { kind: "extraction" }>;
 export const JOB_STARTS = new Set(["screening/start:screen", "extraction/start:extract"]);
 
 /** A job card's height, held from its first frame so the chat around it never moves. */
-export const JOB_CARD_H = 118;
+const JOB_CARD_H = 118;
 const RUNNING = new Set(["processing", "pending", "downloading_pdfs", "indexing", "extracting"]);
 
 /** A job's card, by the step that started it: its frame until the job is read. */
@@ -360,7 +361,7 @@ function Track({ total, parts, on = true }: { total: number; parts: { n: number;
  */
 function ScreeningCard({ job, mine }: { job: Screening; mine: boolean }) {
   const t = useTranslations("assistant.jobs");
-  const cancel = useCancel(useMutation(api.screening.mutations.cancelScreeningJob).bind(null, { jobId: job.jobId }));
+  const cancel = useCancel(useWorkspaceMutation(api.screening.mutations.cancelScreeningJob).bind(null, { jobId: job.jobId }));
   const done = job.included + job.excluded + job.unclear + job.failed;
   const running = RUNNING.has(job.status);
   const queued = running && job.waiting !== undefined;
@@ -423,7 +424,7 @@ function ScreeningCard({ job, mine }: { job: Screening; mine: boolean }) {
 /** An extraction: how many of its papers are read, and how many failed. The answers are on its page. */
 function ExtractionCard({ job, mine }: { job: Extraction; mine: boolean }) {
   const t = useTranslations("assistant.jobs");
-  const cancel = useCancel(useMutation(api.extraction.mutations.jobs.cancelExtraction).bind(null, { jobId: job.jobId }));
+  const cancel = useCancel(useWorkspaceMutation(api.extraction.mutations.cancelExtraction).bind(null, { jobId: job.jobId }));
   const running = RUNNING.has(job.status);
   const stopped = job.status === "creditsExhausted" || job.status === "paused";
   // `done` counts the papers it answered; a paper that failed is counted apart, and both are finished.

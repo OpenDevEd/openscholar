@@ -7,7 +7,7 @@ import { useTranslations } from "next-intl";
 import type { QueryErrorDetail } from "@/lib/search/search-error";
 import { OQL_REFERENCE_URL } from "@/lib/openalex/oql";
 
-export type NoResultsVariant = "search" | "filter";
+type NoResultsVariant = "search" | "filter";
 
 interface NoResultsProps {
   query?: string;
@@ -48,7 +48,7 @@ export function NoResults({ query, variant = "search", onTryNewSearch }: NoResul
 
         {/* Typography hierarchy */}
         <motion.div
-          className="space-y-2 mb-6"
+          className="space-y-2 mb-6 w-full min-w-0"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.1 }}
@@ -56,7 +56,8 @@ export function NoResults({ query, variant = "search", onTryNewSearch }: NoResul
           <h2 className="text-2xl md:text-3xl font-semibold tracking-tight text-foreground">
             {title}
           </h2>
-          <p className="text-base text-muted-foreground leading-relaxed">
+          {/* A query with no spaces in it wraps where it must, and three lines of one are enough to know it by. */}
+          <p className="line-clamp-3 text-base text-muted-foreground leading-relaxed [overflow-wrap:anywhere]">
             {subtitle}
           </p>
         </motion.div>
@@ -147,7 +148,7 @@ export function QueryErrorState({ detail, oql }: { detail: QueryErrorDetail; oql
   );
 }
 
-export type LoadingResultsVariant = "full" | "banner";
+type LoadingResultsVariant = "full" | "banner";
 
 interface LoadingResultsProps {
   variant?: LoadingResultsVariant;

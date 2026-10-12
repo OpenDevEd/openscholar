@@ -44,7 +44,7 @@ export type VersionHistoryRow = {
 /** Versions the history reads at a time. */
 export const VERSIONS_PAGE_SIZE = 10;
 
-export const VERSION_TONE: Record<VersionStatus, StatusTone> = {
+const VERSION_TONE: Record<VersionStatus, StatusTone> = {
   live: "success",
   previous: "neutral",
   failed: "danger",

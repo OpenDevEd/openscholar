@@ -8,6 +8,7 @@ import {
   type MutationCtx,
 } from "../lib/functions";
 import { internal } from "../_generated/api";
+import { actingArg, signedInAs } from "../lib/userActions";
 import { SERVED_HOSTS_BATCH } from "../lib/queryBounds";
 import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
@@ -78,8 +79,8 @@ import {
   sectionRowValidator,
 } from "./validators";
 import {
-  readPublishRuntime,
   readRunningContractSupport,
+  requirePublishRuntime,
   type PublishRuntime,
 } from "./updates";
 
@@ -160,7 +161,6 @@ export async function createEvidenceLibrarySetup(
   const libraryId = await ctx.db.insert("evidenceLibraries", {
     // No revisions yet, so every version it publishes is recorded as it's saved.
     approvedQueriesRecorded: true,
-    organizationId: access.organization._id,
     workspaceId,
     ...(creator ? { createdBy: creator._id } : {}),
     name,
@@ -759,13 +759,7 @@ export async function activateEvidenceLibraryConfiguration(
   let publishRuntime: PublishRuntime = { kind: "current" };
   if (access.library.state === "active") {
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
-    publishRuntime = await readPublishRuntime(ctx, access.library);
-    if (publishRuntime.kind === "unreleased") {
-      throw createError(
-        "CONFLICT",
-        "These changes need Evidence Library software that is still being released. Try again in a few minutes.",
-      );
-    }
+    publishRuntime = await requirePublishRuntime(ctx, access.library);
     const topicsEnabled = readTopicsEnabled(
       persisted.migration.snapshot.sections.find(
         (row) => row.sectionKey === "topics",
@@ -978,7 +972,7 @@ export const pruneServedHosts = internalMutation({
  * `evidenceLibraries.addressActions.reserveAddress` is the only caller.
  */
 export const reserveAddress = internalMutation({
-  args: {
+  args: { ...actingArg,
     organizationId: v.id("organizations"),
     name: v.string(),
     publicAddress: v.string(),
@@ -1002,7 +996,8 @@ export const reserveAddress = internalMutation({
     }),
     v.object({ status: v.literal("address-taken") }),
   ),
-  handler: async (ctx, args) => {
+  handler: async (caller, { actingAs: as, ...args }) => {
+    const ctx = await signedInAs(caller, as);
     const access = await requireLibraryOrganization(ctx, args.organizationId);
     const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId: access.organization._id });
     const name = validateEvidenceLibrarySetupName(args.name);

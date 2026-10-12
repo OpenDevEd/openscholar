@@ -1,6 +1,4 @@
 "use client";
-
-import React from "react";
 import { PaperCardListDetail } from "./paper-card-list-detail";
 import { PaperCardListSimple } from "./paper-card-list-simple";
 import { PaperCardGrid } from "./paper-card-grid";
@@ -10,7 +8,6 @@ import type { ViewMode } from "@/lib/types";
 // Re-export for consumers (focus-mode, etc.)
 export { useTranslate } from "./hooks";
 export { ScreeningResponses } from "./shared";
-export type { PaperCardProps } from "./shared";
 
 interface PaperCardWithModeProps extends PaperCardProps {
   viewMode?: ViewMode;
@@ -23,6 +20,7 @@ export function PaperCard({
   onDownloadEssentialItem,
   viewMode = "list-detail",
   hide,
+  extra,
 }: PaperCardWithModeProps) {
   switch (viewMode) {
     case "list-simple":
@@ -33,6 +31,7 @@ export function PaperCard({
           onDownloadItem={onDownloadItem}
           onDownloadEssentialItem={onDownloadEssentialItem}
           hide={hide}
+          extra={extra}
         />
       );
     case "grid-2":
@@ -45,6 +44,7 @@ export function PaperCard({
           onDownloadEssentialItem={onDownloadEssentialItem}
           hide={hide}
           viewMode={viewMode}
+          extra={extra}
         />
       );
     case "list-detail":
@@ -56,6 +56,7 @@ export function PaperCard({
           onDownloadItem={onDownloadItem}
           onDownloadEssentialItem={onDownloadEssentialItem}
           hide={hide}
+          extra={extra}
         />
       );
   }

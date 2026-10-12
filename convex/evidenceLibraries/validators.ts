@@ -5,8 +5,9 @@ import {
   SECTION_REGISTRY,
   type SectionKey,
 } from "../../lib/evidence-libraries/configuration/section-registry";
-import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY } from "../lib/queryBounds";
-import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
+import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
+import { presetKeyValidator } from "../aiModelConfig/validators";
+import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DIGEST_KINDS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
 
@@ -58,6 +59,8 @@ export const evidenceLibraryAdminRoleValidator = v.union(
   v.literal("editor"),
   v.literal("creator"),
 );
+/** What the list of libraries says of each: a role in it, or a viewer's, which every other member of its organization has (#653). A viewer has no role in the library's own admin. */
+export const libraryListRoleValidator = v.union(evidenceLibraryAdminRoleValidator, v.literal("viewer"));
 
 export const clerkEventOutcomeValidator = v.union(
   v.literal("applied"),
@@ -70,7 +73,45 @@ export const clerkEventEntityTypeValidator = v.union(
   v.literal("user"),
   v.literal("organization"),
   v.literal("organizationMembership"),
+  v.literal("organizationInvitation"),
 );
+
+export const organizationInvitationStateValidator = v.union(
+  v.literal("pending"),
+  v.literal("accepted"),
+  v.literal("revoked"),
+  v.literal("expired"),
+);
+
+/** An invitation to an organization as Clerk has it (#651). */
+export const clerkInvitationSnapshotFields = {
+  clerkInvitationId: v.string(),
+  clerkOrganizationId: v.string(),
+  /** Lowercase. */
+  email: v.string(),
+  role: organizationRoleValidator,
+  state: organizationInvitationStateValidator,
+  /** Who sent it, kept in the invitation's public metadata by convex/organizations/manage.ts. */
+  inviterClerkUserId: v.optional(v.string()),
+  /** When its link stops working; Clerk sends no event then (./read.ts in organizations marks it expired). */
+  expiresAt: v.optional(v.number()),
+  clerkCreatedAt: v.number(),
+  clerkUpdatedAt: v.number(),
+};
+
+export const organizationInvitationFields = {
+  organizationId: v.id("organizations"),
+  clerkInvitationId: v.string(),
+  email: v.string(),
+  role: organizationRoleValidator,
+  state: organizationInvitationStateValidator,
+  inviterClerkUserId: v.optional(v.string()),
+  expiresAt: v.optional(v.number()),
+  clerkCreatedAt: v.number(),
+  clerkUpdatedAt: v.number(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+};
 
 export const clerkEventLogFields = {
   instanceId: v.string(),
@@ -89,14 +130,6 @@ export const clerkOrganizationSnapshotFields = {
   name: v.string(),
   slug: v.string(),
   imageUrl: v.optional(v.string()),
-  /**
-   * Whether the platform team switched Evidence Libraries on for this
-   * organisation, from Clerk public metadata `{ "evidenceLibraries": true }`.
-   * The webhook always computes it, so the snapshot always carries it.
-   */
-  evidenceLibrariesEnabled: v.boolean(),
-  authorsEnabled: v.boolean(),
-  extractionEnabled: v.boolean(),
   devEnabled: v.optional(v.boolean()),
   clerkCreatedAt: v.number(),
   clerkUpdatedAt: v.number(),
@@ -104,9 +137,15 @@ export const clerkOrganizationSnapshotFields = {
 
 export const organizationFields = {
   ...clerkOrganizationSnapshotFields,
-  authorsEnabled: v.optional(v.boolean()),
-  extractionEnabled: v.optional(v.boolean()),
   state: organizationStateValidator,
+  /** Set while an admin's deletion runs (convex/organizations/manage.ts): nobody acts in its workspace meanwhile. */
+  deletingAt: v.optional(v.number()),
+  /** Set while a change that takes an admin away runs (convex/organizations/read.ts): the next one waits, so two made at once can't leave it with none. */
+  adminChangeAt: v.optional(v.number()),
+  /** The AI preset its work runs on, which its admins pick (#651); absent, the default preset. */
+  aiPreset: v.optional(presetKeyValidator),
+  /** The colour its admins picked (#651), which tints the rail while someone is in it. Clerk doesn't keep it. */
+  colour: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.number(),
 };
@@ -181,6 +220,7 @@ export const ownerConfigurationVersionValidator = v.union(
   v.literal(6),
   v.literal(7),
   v.literal(8),
+  v.literal(9),
 );
 export const draftOwnerConfigurationVersionValidator = v.union(
   v.literal(3),
@@ -189,8 +229,9 @@ export const draftOwnerConfigurationVersionValidator = v.union(
   v.literal(6),
   v.literal(7),
   v.literal(8),
+  v.literal(9),
 );
-export const currentOwnerConfigurationVersionValidator = v.literal(8);
+export const currentOwnerConfigurationVersionValidator = v.literal(9);
 
 export const evidenceLibraryStateValidator = v.union(
   v.literal("provisioning"),
@@ -203,12 +244,8 @@ export const evidenceLibraryFields = {
   // Set once every approved OpenAlex query version in the library's revisions is in
   // evidenceLibraryApprovedQueries; until then a sources save reads the revisions (#357).
   approvedQueriesRecorded: v.optional(v.literal(true)),
-  organizationId: v.id("organizations"),
-  /**
-   * The workspace it belongs to (#650), which slice 8 makes required, dropping `organizationId`,
-   * and the account that made it, absent for one whose creator's account is gone.
-   */
-  workspaceId: v.optional(v.id("workspaces")),
+  /** The workspace it belongs to (#650), and the account that made it, absent for one whose creator's account is gone. */
+  workspaceId: v.id("workspaces"),
   createdBy: v.optional(v.id("users")),
   name: v.string(),
   slug: v.string(),
@@ -527,12 +564,25 @@ export const runtimeContractSupportValidator = v.object({
   latest: v.boolean(),
 });
 
+// What each likely review a library marked turned out to be, by record key.
+export const evidenceLibraryDigestKindsValidator = capped(
+  v.optional(
+    v.record(
+      v.string(),
+      v.union(v.literal("meta-analysis"), v.literal("review"), v.literal("study")),
+    ),
+  ),
+  MAX_DIGEST_KINDS,
+);
+
 export const evidenceLibraryDigestResultValidator = v.object({
   title: v.string(),
   summary: v.string(),
   markdown: v.string(),
   model: v.string(),
   reasoning: v.string(),
+  // Absent from digests written before libraries marked any.
+  kinds: evidenceLibraryDigestKindsValidator,
 });
 
 export const evidenceLibraryDigestJobFields = {
@@ -544,6 +594,8 @@ export const evidenceLibraryDigestJobFields = {
   status: v.union(v.literal("pending"), v.literal("succeeded"), v.literal("failed")),
   startedAt: v.number(),
   result: v.optional(evidenceLibraryDigestResultValidator),
+  // Kept when the writer failed, so the library gets what was read and does not have it read again.
+  kinds: evidenceLibraryDigestKindsValidator,
 };
 
 /** The commits and the release notes one software check holds, capped as the release row stores them. */
@@ -1093,6 +1145,66 @@ export const teamPersonValidator = v.object({
 export const grantedPeopleValidator = capped(v.array(teamPersonValidator), MAX_LIBRARY_MEMBERS);
 /** A library's invitations waiting: inviting another past this is refused. */
 export const teamInvitationsValidator = capped(
-  v.array(v.object({ invitationId: v.id("evidenceLibraryInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
+  v.array(v.object({ invitationId: v.id("itemInvitations"), email: v.string(), role: v.union(v.literal("editor"), v.literal("creator")), delivery: v.union(v.literal("queued"), v.literal("sent"), v.literal("failed")) })),
   MAX_PENDING_INVITATIONS_PER_LIBRARY,
 );
+
+/** An address check's or reservation's answer that the name is the organization's library already, or that no address could be checked or found (./addressActions.ts). */
+export const nameTakenValidator = v.object({ status: v.literal("name-taken"), libraryId: v.id("evidenceLibraries") });
+export const unavailableValidator = v.object({ status: v.literal("unavailable"), reason: v.union(v.literal("check-failed"), v.literal("no-address")) });
+/** What reserving a new library's address gives: the draft library it starts, or why there is none. */
+export const addressReservedValidator = v.object({ status: v.literal("reserved"), libraryId: v.id("evidenceLibraries"), ...evidenceLibrarySetupIdentityFields });
+export const addressReservationValidator = v.union(
+  addressReservedValidator,
+  v.object({ status: v.literal("address-taken") }),
+  nameTakenValidator,
+  unavailableValidator,
+);
+
+/** A library invitation waiting for the person (./invitations.ts). */
+export const pendingInvitationValidator = v.object({
+  invitationId: v.id("itemInvitations"), libraryId: v.id("evidenceLibraries"), name: v.string(),
+  role: v.union(v.literal("editor"), v.literal("creator")),
+  // Who the library belongs to: its organization, or with no ID the person whose own workspace it's in.
+  organization: v.object({ id: v.union(v.id("organizations"), v.null()), name: v.string(), imageUrl: v.union(v.string(), v.null()) }),
+});
+/** The library invitations waiting for the person: an address has at most this many waiting, to anything, which inviting enforces. */
+export const pendingInvitationsValidator = capped(v.array(pendingInvitationValidator), MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
+
+/** Libraries one list of the assistant's gives (./assistant.ts). */
+export const LIBRARIES_LISTED = 50;
+export const assistantLibrariesValidator = v.object({
+  libraries: capped(v.array(v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), slug: v.string(), state: evidenceLibraryStateValidator, editable: v.boolean() })), LIBRARIES_LISTED),
+  next: v.optional(v.number()),
+});
+/** What the configuration page flags on a draft's cards, by card and the page's name for each problem: a few to a card at most. */
+export const DRAFT_PROBLEMS_MAX = 300;
+export const draftProblemsValidator = capped(v.array(v.object({ card: v.string(), problem: v.string() })), DRAFT_PROBLEMS_MAX);
+/** A library's draft as the assistant reads it (./assistant.ts): its sections, and what says whether it can change them. */
+export const assistantDraftValidator = v.object({
+  libraryId: v.id("evidenceLibraries"),
+  name: v.string(),
+  state: evidenceLibraryStateValidator,
+  editVersion: v.number(),
+  editable: v.boolean(),
+  hasUnpublishedChanges: v.boolean(),
+  liveAddress: v.optional(v.string()),
+  sections: draftSectionsValidator,
+  problems: draftProblemsValidator,
+  // The last time it was put live, or a version restored, when that failed: why, and what the full check found.
+  failed: v.optional(v.object({ kind: v.string(), error: v.optional(v.string()), issues: capped(v.array(configurationIssueValidator), MAX_CONFIGURATION_ISSUES) })),
+});
+/** How deep a path into a draft section goes, and how many changes one edit of the assistant's makes (./assistant.ts). */
+export const DRAFT_PATH_DEPTH = 12;
+export const DRAFT_CHANGES_MAX = 50;
+/** Where a value is inside a draft section: object keys and list places, from the section's top. */
+export const draftPathValidator = capped(v.array(v.union(v.string(), v.number())), DRAFT_PATH_DEPTH);
+/** One change to a draft section: the value at `path` set, or with no `value` that key taken out. An empty path is the section whole. */
+export const draftChangeValidator = v.object({ sectionKey: sectionKeyValidator, path: draftPathValidator, value: sized(v.optional(v.any()), MAX_SECTION_PAYLOAD_BYTES) });
+export const draftChangesValidator = capped(v.array(draftChangeValidator), DRAFT_CHANGES_MAX);
+/** What an edit of a draft returns (./assistant.ts): the draft's new edit version, and the changes that put its values back while they hold what it left. */
+export const assistantEditResultValidator = v.object({
+  editVersion: v.number(),
+  problems: draftProblemsValidator,
+  undo: v.optional(v.object({ path: v.literal("evidenceLibraries/assistant:editDraft"), args: v.object({ libraryId: v.id("evidenceLibraries"), changes: draftChangesValidator, unchanged: v.string() }) })),
+});

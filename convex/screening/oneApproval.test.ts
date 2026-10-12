@@ -4,6 +4,8 @@ import { api, internal } from "../_generated/api";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import schema from "../schema";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
+import { personalWorkspaceOf } from "../workspaces/personal";
 
 // Each paper answered for 1 credit's worth of tokens.
 vi.mock("../../lib/ai/core/batch", () => ({
@@ -29,16 +31,15 @@ it("runs a request as one job under the one figure the person approved: one hold
   const { userId, collectionId, threadId, stepId } = await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { clerkId: "clerk_one_approval", email: "one@test.local", state: "active", createdAt: 1, updatedAt: 1 });
     await seedCreditsForTest(ctx, { userId, free: 100 });
-    const collectionId = await ctx.db.insert("collections", { userId, name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
+    const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
     for (const n of [1, 2]) {
-      const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
-      await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: n });
+      const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
+      await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: n });
     }
     // The chat and the step of its reply that started the screening.
-    const threadId = await ctx.db.insert("assistantThreads", { ownerId: userId, title: "Screening", agentThreadId: "agent", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
-    await ctx.db.insert("assistantThreadAccess", { threadId, principal: `user:${userId}`, role: "owner", lastMessageAt: 1, createdAt: 1 });
+    const threadId = await ctx.db.insert("assistantThreads", { ...(await madeBy(ctx, userId)), title: "Screening", agentThreadId: "agent", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("featureFlags", { key: "assistant.enabled", enabled: true, updatedAt: 1 });
-    const stepId = await ctx.db.insert("assistantSteps", { threadId, order: 0, userId, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
+    const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId: (await ctx.db.get("assistantThreads", threadId))!.workspaceId, order: 0, userId, toolCallId: "screen", path: "screening/start:screen", input: "{}", status: "running", startedAt: 1 });
     return { userId, collectionId, threadId, stepId };
   });
   const calls = (path: string) => fakeAutumn.calls.filter((call) => call.path === path);
@@ -61,7 +62,7 @@ it("runs a request as one job under the one figure the person approved: one hold
     await t.finishInProgressScheduledFunctions();
   }
 
-  const jobs = await t.run((ctx) => ctx.db.query("screeningJobs").withIndex("by_user", (q) => q.eq("userId", userId)).order("asc").take(5));
+  const jobs = await t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).order("asc").take(5); });
   // One job for the whole request, done.
   expect(jobs.map(({ status, first, last, totalPapers }) => ({ status, first, last, totalPapers }))).toEqual([{ status: "completed", first: 1, last: 2, totalPapers: 2 }]);
   expect(jobs[0]).toMatchObject({ spendCap: 10, chatStep: stepId });

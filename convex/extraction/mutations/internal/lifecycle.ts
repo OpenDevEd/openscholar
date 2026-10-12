@@ -28,6 +28,7 @@ import { readJobCounters } from "../../jobCounters";
 import { hasWaitingChanges } from "../../counts";
 import { jobText } from "../../../lib/searchText";
 import { personalWorkspaceOf } from "../../../workspaces/personal";
+import { noteActivity } from "../../../activity/notes";
 
 export const maybeFinalizeJob = internalMutation({
   args: {
@@ -99,6 +100,8 @@ export const maybeFinalizeJob = internalMutation({
       completedAt: now,
       updatedAt: now,
     });
+    // Its Activity (#656): the papers it extracted from, as whoever ran it.
+    if (status === "completed" && job.workspaceId) await noteActivity(ctx, { workspaceId: job.workspaceId, by: job.createdBy, viaAssistant: false }, { kind: "extraction", id: args.jobId, happened: "extracted", count: processed });
     return null;
   },
 });
@@ -113,9 +116,9 @@ export const createJobDirect = internalMutation({
   returns: v.id("extractionJobs"),
   handler: async (ctx, args) => {
 
+    const workspaceId = await personalWorkspaceOf(ctx, args.userId);
     const jobId = await ctx.db.insert("extractionJobs", {
-      userId: args.userId,
-      workspaceId: await personalWorkspaceOf(ctx, args.userId),
+      workspaceId,
       createdBy: args.userId,
       name: args.name,
       searchText: jobText({ name: args.name }),
@@ -123,7 +126,7 @@ export const createJobDirect = internalMutation({
       status: "pending",
       totalPapers: 0,
       runEpoch: 0,
-      ...(await extractionStamp(ctx, args.userId)),
+      ...(await extractionStamp(ctx, { userId: args.userId, workspaceId })),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });

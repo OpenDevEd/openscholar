@@ -18,18 +18,21 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { upsertLibraryItem } from "../library/mutations";
-import { workspaceOf } from "../workspaces/personal";
+
 import { addCollectionMembership, removeCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
 import { account, FAILED, standing, withDeltas, type Delta, type Move } from "./accounting";
-import { startWaitingPapers } from "./slots";
+import { readStartFacts, startWaitingPapers } from "./slots";
+import { startFactsValidator } from "./validators";
 import { captureLater } from "../lib/analyticsEvents";
+import { noteActivity } from "../activity/notes";
 
 /** Papers per batch: each moves its answers and may save a library item, a few dozen reads. */
 const BATCH = 50;
 
 const { vQueryArgs, vQueryReturns, vMutationArgs, vMutationReturns } = defineBatchWorkerValidators({
-  batch: { results: v.array(v.id("screeningResults")) },
+  // `facts` is what the pass that starts the next papers needs, read by the query (./slots.ts).
+  batch: { results: v.array(v.id("screeningResults")), facts: v.optional(startFactsValidator) },
 });
 
 /** When a waiting paper finished; a read value is always the resolved timestamp. */
@@ -61,7 +64,9 @@ export const nextFinished = internalQuery({
       .take(BATCH);
     const last = rows.length ? doneAtOf(rows.at(-1)!) : undefined;
     if (last === undefined) return { kind: "idle" as const };
-    return { kind: "work" as const, batch: { results: rows.map((row) => row._id) }, cursor: last };
+    const jobs = await Promise.all([...new Set(rows.map((row) => row.jobId))].map((jobId) => ctx.db.get("screeningJobs", jobId)));
+    const workspaces = [...new Set(jobs.flatMap((job) => (job ? [job.workspaceId] : [])))];
+    return { kind: "work" as const, batch: { results: rows.map((row) => row._id), facts: await readStartFacts(ctx, workspaces) }, cursor: last };
   },
 });
 
@@ -101,7 +106,7 @@ async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   const add = tally(results);
   const credits = results.reduce((sum, result) => sum + (result.creditsUsed ?? 0), 0);
   await ctx.db.patch("screeningJobProgress", row._id, {
-    // Papers of a job with a spending limit stop being held at the estimate once they're counted at what they cost (./slots.ts).
+    // Papers that held a slot leave it as they're counted (./slots.ts): a spending limit stops holding them at the estimate, and the job's page stops showing them as being read.
     ...(row.running ? { running: Math.max(0, row.running - results.filter((result) => result.workId !== undefined).length) } : {}),
     completed: row.completed + add.completed,
     skipped: row.skipped + add.skipped,
@@ -114,9 +119,11 @@ async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, result
 
 /** Saves a qualified paper to the person's library and the job's collection; saving one already there changes nothing. */
 export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
+  // A paper from the person's Zotero has no OpenAlex record to save it by: it stays in its screening.
+  if (result.openalexId.startsWith("zotero:")) return;
   const libraryItemId = await upsertLibraryItem(
     ctx,
-    { userId: job.userId, workspaceId: await workspaceOf(ctx, job) },
+    { userId: job.createdBy, workspaceId: job.workspaceId },
     {
       openalexId: result.openalexId,
       title: result.title,
@@ -137,7 +144,7 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
     { preserveRating: true },
   );
   const collection = job.targetCollectionId ? await ctx.db.get("collections", job.targetCollectionId) : null;
-  if (collection) await addCollectionMembership(ctx, { userId: job.userId, collection, item: (await ctx.db.get("libraryItems", libraryItemId))! });
+  if (collection) await addCollectionMembership(ctx, { collection, item: (await ctx.db.get("libraryItems", libraryItemId))! });
   await ctx.db.patch("screeningResults", result._id, { savedToLibrary: true, libraryItemId });
 }
 
@@ -156,7 +163,9 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   }
   if (!job.prune || job.set?.kind !== "collection" || !(becameIncluded || left)) return moved;
   const collectionId = job.set.collectionId;
-  const workspaceId = await workspaceOf(ctx, job);
+  const workspaceId = job.workspaceId;
+  // A screening moved to another workspace (#654) leaves the collection it read alone.
+  if ((await ctx.db.get("collections", collectionId))?.workspaceId !== workspaceId) return moved;
   const item = await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", result.openalexId)).first();
   if (!item) return moved;
   const membership = await ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collectionId).eq("libraryItemId", item._id)).unique();
@@ -167,7 +176,7 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   }
   const collection = becameIncluded && !membership ? await ctx.db.get("collections", collectionId) : null;
   if (collection) {
-    await addCollectionMembership(ctx, { userId: job.userId, collection, item });
+    await addCollectionMembership(ctx, { collection, item });
     if (result.pruned) {
       await ctx.db.patch("screeningResults", result._id, { pruned: undefined });
       moved.removed = -1;
@@ -182,6 +191,25 @@ export const withMoved = (progress: Pick<Doc<"screeningJobProgress">, "saved" | 
   ...(moved.removed ? { removed: Math.max(0, (progress.removed ?? 0) + moved.removed) } : {}),
 });
 
+/**
+ * Notes in their Activity (#656) what a job did once it ends or is stopped, as whoever ran it: the
+ * papers it screened, on it and on the search or collection it read; those it saved to its
+ * collection; and those it took out of the collection it read. A failed job screened none. A paper
+ * an answer moves after the job ended moves without a note; the screening's own Activity has the answer.
+ */
+export async function noteEnded(ctx: MutationCtx, job: Doc<"screeningJobs">, progress?: Doc<"screeningJobProgress"> | null) {
+  const { completed, saved, removed } = progress ?? (await progressRow(ctx, job._id)) ?? {};
+  const pruned = job.prune && job.set?.kind === "collection" ? job.set.collectionId : undefined;
+  const read = job.set?.kind === "search" ? { kind: "search" as const, id: job.set.searchId } : job.set?.kind === "collection" ? { kind: "collection" as const, id: job.set.collectionId } : null;
+  const detail = job.name ?? job.label;
+  const about = detail ? { detail } : {};
+  await noteActivity(ctx, { workspaceId: job.workspaceId, by: job.createdBy, viaAssistant: false }, [
+    ...(completed ? [{ kind: "screening" as const, id: job._id, happened: "screened" as const, count: completed }, ...(read ? [{ ...read, happened: "screened" as const, count: completed, ...about }] : [])] : []),
+    ...(job.targetCollectionId && saved ? [{ kind: "collection" as const, id: job.targetCollectionId, happened: "added" as const, count: saved, ...about }] : []),
+    ...(pruned && removed ? [{ kind: "collection" as const, id: pruned, happened: "removed" as const, count: removed, ...about }] : []),
+  ]);
+}
+
 /** Finishes a processing job once it has read its papers and its progress counts every one. */
 export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">) {
   const job = await ctx.db.get("screeningJobs", jobId);
@@ -191,7 +219,8 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
   const now = Date.now();
   // One that stopped at the most it may spend, or when the person's credits ran out, has papers it never read: it ends as stopped, not as done.
   await ctx.db.patch("screeningJobs", jobId, { status: job.capped || job.outOfCredits ? "creditsExhausted" : "completed", completedAt: now, updatedAt: now });
-  const user = await ctx.db.get("users", job.userId);
+  await noteEnded(ctx, job, progress);
+  const user = await ctx.db.get("users", job.createdBy);
   if (user?.clerkId) {
     await captureLater(ctx, [{
       distinctId: user.clerkId,
@@ -213,16 +242,15 @@ export async function finishIfDone(ctx: MutationCtx, jobId: Id<"screeningJobs">)
 export const bookkeep = internalMutation({
   args: vMutationArgs,
   returns: vMutationReturns,
-  handler: async (ctx, { results: ids }) => {
+  handler: async (ctx, { results: ids, facts }) => {
     const results = (await Promise.all(ids.map((id) => ctx.db.get("screeningResults", id)))).filter(
       (result): result is Doc<"screeningResults"> => result !== null && result.doneAt !== undefined,
     );
     const byJob = new Map<Id<"screeningJobs">, Doc<"screeningResults">[]>();
     for (const result of results) byJob.set(result.jobId, [...(byJob.get(result.jobId) ?? []), result]);
-    // Papers of each person's that stopped running. A paper skipped before it started held no slot, but its
-    // person is still listed: with it out of the queue, the papers that waited behind it can start.
-    // Papers freed in each workspace's pool, with a person whose job freed them for a new slots row.
-    const freed = new Map<Id<"workspaces">, { userId: Id<"users">; finished: number }>();
+    // Papers of each workspace's that stopped running. A paper skipped before it started held no slot, but its
+    // workspace is still listed: with it out of the queue, the papers that waited behind it can start.
+    const freed = new Map<Id<"workspaces">, number>();
     for (const [jobId, jobResults] of byJob) {
       const job = await ctx.db.get("screeningJobs", jobId);
       if (job) {
@@ -252,13 +280,12 @@ export const bookkeep = internalMutation({
         }
         await countFinished(ctx, current, jobResults, deltas, moved);
         await finishIfDone(ctx, jobId);
-        const workspaceId = await workspaceOf(ctx, job);
-        freed.set(workspaceId, { userId: job.userId, finished: (freed.get(workspaceId)?.finished ?? 0) + jobResults.filter((result) => result.workId !== undefined).length });
+        freed.set(job.workspaceId, (freed.get(job.workspaceId) ?? 0) + jobResults.filter((result) => result.workId !== undefined).length);
       }
       // Bookkept, or its job is gone: out of the queue.
       for (const result of jobResults) await ctx.db.patch("screeningResults", result._id, { doneAt: undefined });
     }
-    for (const [workspaceId, { userId, finished }] of freed) await startWaitingPapers(ctx, { userId, workspaceId }, finished);
+    for (const [workspaceId, finished] of freed) await startWaitingPapers(ctx, workspaceId, finished, facts);
     return null;
   },
 });

@@ -1,4 +1,4 @@
-import { mutation, internalMutation } from "../lib/functions";
+import { internalMutation } from "../lib/functions";
 import { internal } from "../_generated/api";
 import { v, type Infer, type ObjectType } from "convex/values";
 import { sourceMetadata } from "../../lib/library/paper-metadata";
@@ -11,8 +11,9 @@ import {
   screeningQuestionValidator,
   screeningScoringConfigValidator,
 } from "./validators";
-import { requireActiveUser, requireAuth } from "../lib/auth";
+import { requireActiveUser } from "../lib/auth";
 import { createError } from "../lib/errors";
+import { noteActivity } from "../activity/notes";
 import { pricingOf, resolveTaskPick, serverStamp } from "../ai/serverModel";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { screeningPool } from "../workpool";
@@ -27,14 +28,15 @@ import { decodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec"
 import { answeredFully, ensureScreening } from "../research/answers";
 import { newCollection } from "../library/collections";
 import { searchSnapshotValidator } from "../paperSets/openalex";
-import { bookkeepLater, finishIfDone } from "./bookkeeping";
+import { bookkeepLater, finishIfDone, noteEnded } from "./bookkeeping";
 import { startWaitingPapers } from "./slots";
 import { estimateScreening, screeningPaperCreditsFor } from "./estimate";
 import { applyCommand, findSearch } from "../research/records";
 
-import { availableCredits } from "../billing/accounts";
+import { spendingRoom } from "../billing/memberCaps";
 import { MAX_AUTHORS } from "../lib/listCaps";
-import { actorOnRecord, isInWorkspace, personalWorkspaceOf, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../workspaces/actor";
+import { personalWorkspaceOf, requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
+import { assistantMutation, defineUserMutation, userMutation } from "../lib/userActions";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */
 async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
@@ -51,6 +53,8 @@ const jobSetup = {
   author: v.union(v.literal("user"), v.literal("assistant")),
   questions: v.array(screeningQuestionValidator),
   scoringConfig: screeningScoringConfigValidator,
+  // Its own name; without one it goes by its set's.
+  name: v.optional(v.string()),
   // Where the papers come from and which of them the job takes (from 1). A search's page shows the answers.
   set: v.optional(paperSetValidator),
   first: v.optional(v.number()),
@@ -71,7 +75,7 @@ type JobSetup = ObjectType<typeof jobSetup>;
  * Makes a job's row for `user`, with its progress row: finds the screening its answers go to,
  * names it after its set, and stamps it with the model Screen all runs on.
  */
-async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"workspaces">, { author, set, saveTo, prune, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading" | "newCollection">) {
+async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"workspaces">, { author, set, saveTo, prune, name, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading" | "newCollection">) {
   if (prune && set?.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
 
   const writer = { userId: user._id, workspaceId };
@@ -91,26 +95,27 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
       const screeningQuestions = [...search.data.screeningQuestions, ...missing.map((question) => ({ question }))];
       await applyCommand(ctx, writer, { kind: "editSearch", id: localId, edit: { kind: "patch", fields: { screeningQuestions }, clear: [] } }, author);
     }
-    screeningId = (await ensureScreening(ctx, user._id, search._id))._id;
+    screeningId = (await ensureScreening(ctx, search._id))._id;
     label = search.data.query;
   } else {
-    screeningId = await ctx.db.insert("screenings", { userId: user._id, workspaceId, version: 0, createdAt: now });
+    screeningId = await ctx.db.insert("screenings", { workspaceId, version: 0, createdAt: now });
     const collection = set?.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : null;
     const job = set?.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
     if (set?.kind === "collection" && collection?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
-    if (set?.kind === "screening" && (!job || !(await isInWorkspace(ctx, job, workspaceId)))) throw createError("NOT_FOUND", "Screening not found");
-    label = collection?.name ?? job?.label;
+    if (set?.kind === "screening" && (!job || !(job.workspaceId === workspaceId))) throw createError("NOT_FOUND", "Screening not found");
+    // A Zotero set's collection is named in the person's Zotero, which this doesn't read: it's called by where its papers are.
+    label = collection?.name ?? job?.name ?? job?.label ?? (set?.kind === "zotero" ? "Zotero" : undefined);
   }
 
   // Stamped with what Screen All runs on (read back at run by screenPaperAction).
-  const serverPick = await resolveTaskPick(ctx, user._id, "screenAll");
+  const serverPick = await resolveTaskPick(ctx, { userId: user._id, workspaceId }, "screenAll");
   const jobId = await ctx.db.insert("screeningJobs", {
-    userId: user._id,
     workspaceId,
     createdBy: user._id,
     ...state,
     screeningId,
     ...args,
+    ...(name?.trim() ? { name: name.trim() } : {}),
     ...(set ? { set } : {}),
     ...(label ? { label } : {}),
     ...(await destination(ctx, writer, saveTo)),
@@ -120,16 +125,18 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
     updatedAt: now,
   });
   await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
+  await noteActivity(ctx, { workspaceId, by: user._id, viaAssistant: author === "assistant" }, { kind: "screening", id: jobId, happened: "created", ...(name?.trim() ? { detail: name.trim() } : {}) });
   return jobId;
 }
 
 /**
- * Whether the workspace can pay for screening `papers` papers, with the figures a refusal names: on the
- * model the job was stamped with when it has one, else what the person's Screen all runs on now.
+ * Whether the person can pay for screening `papers` papers in the workspace, within their cap where an
+ * admin set one, with the figures a refusal names: on the model the job was stamped with when it has
+ * one, else what the person's Screen all runs on now.
  */
 async function affords(ctx: MutationCtx, userId: Id<"users">, workspaceId: Id<"workspaces">, papers: number, job?: Doc<"screeningJobs">) {
-  const available = await availableCredits(ctx, workspaceId);
-  const perPaper = job ? screeningPaperCredits(await pricingOf(ctx, job.serverModelId)) : await screeningPaperCreditsFor(ctx, userId);
+  const { available } = await spendingRoom(ctx, workspaceId, userId);
+  const perPaper = job ? screeningPaperCredits(await pricingOf(ctx, job.serverModelId)) : await screeningPaperCreditsFor(ctx, { userId, workspaceId });
   const estimate = estimateScreening(papers, available, perPaper).credits;
   return { affordable: available >= estimate, estimate, available };
 }
@@ -183,7 +190,7 @@ export const fillScreeningJob = internalMutation({
     const reading = await ctx.db.get("screeningJobs", jobId);
     if (!reading?.reading || reading.status !== "processing") return null;
     // The person may have been suspended while the papers were read.
-    await requireActiveUser(ctx, reading.userId);
+    await requireActiveUser(ctx, reading.createdBy);
     const place = reading.readPlace ?? { read: 0, papers: 0 };
     // A paper an earlier step took already (OpenAlex can list one on two pages) is screened, and paid for, once.
     const held = await Promise.all(given.map((paper) => ctx.db.query("screeningResults").withIndex("by_job_openalexId", (q) => q.eq("jobId", jobId).eq("openalexId", paper.openalexId)).first()));
@@ -193,15 +200,18 @@ export const fillScreeningJob = internalMutation({
     const reused = reading.set?.kind === "search" ? await answeredFully(ctx, screening, reading.questions.map((q) => q.question), papers.map((paper) => paper.openalexId)) : new Set<string>();
     // The papers it took that cost credits and aren't done, so not paid for yet, and this step's: as a job made with all of them is checked.
     // Reused papers count as done only once bookkept, so taking them all as done-first can only overstate what's unpaid.
-    const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();
-    const free = reading.reused ?? 0;
-    const done = progress ? progress.completed + progress.skipped + progress.failed : 0;
-    const unpaid = Math.max(0, place.papers - free - Math.max(0, done - free));
-    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.userId, await workspaceOf(ctx, reading), unpaid + papers.length - reused.size, reading)).affordable;
+    // Read only for a job with no hold: the bookkeeping worker rewrites the progress row as papers finish, and a step that read it conflicted with it (#796).
+    const unpaid = async () => {
+      const progress = await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique();
+      const free = reading.reused ?? 0;
+      const done = progress ? progress.completed + progress.skipped + progress.failed : 0;
+      return Math.max(0, place.papers - free - Math.max(0, done - free));
+    };
+    const affordable = reading.spendHold !== undefined || (await affords(ctx, reading.createdBy, reading.workspaceId, (await unpaid()) + papers.length - reused.size, reading)).affordable;
     const now = Date.now();
     const taken = { read: place.read + read, papers: place.papers + (affordable ? papers.length : 0) };
     const over = ended || !affordable;
-    const made = affordable && papers.length && reading.newCollection ? { targetCollectionId: await newCollection(ctx, { userId: reading.userId, workspaceId: await workspaceOf(ctx, reading) }, reading.newCollection), newCollection: undefined } : {};
+    const made = affordable && papers.length && reading.newCollection ? { targetCollectionId: await newCollection(ctx, { userId: reading.createdBy, workspaceId: reading.workspaceId }, reading.newCollection), newCollection: undefined } : {};
     await ctx.db.patch("screeningJobs", jobId, {
       readPlace: taken,
       resume,
@@ -256,7 +266,6 @@ type PaperInput = Infer<typeof screeningPaperInputValidator>;
  */
 async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: PaperInput[], createdAt: number, answered?: Set<string>) {
   const batch = papers.slice(0, CREATE_BATCH);
-  const pool = { userId: job.userId, workspaceId: await workspaceOf(ctx, job) };
   const screening = (await ctx.db.get("screenings", job.screeningId))!;
   const ids = batch.map((paper) => paper.openalexId);
   // Given which papers are answered already, as their step found them; a later batch looks for itself.
@@ -281,12 +290,12 @@ async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers
         : job.capped
           ? // The job reached the most it may spend while its papers were still being made: the rest are never read.
             { status: "skipped" as const, completedAt: createdAt, doneAt: ctx.db.vars.commitTs }
-          : { status: "processing" as const, waitingWorkspace: pool.workspaceId, waitingSince: createdAt }),
+          : { status: "processing" as const, waitingWorkspace: job.workspaceId, waitingSince: createdAt }),
     });
   }
   if (reused.size) await ctx.db.patch("screeningJobs", job._id, { reused: (job.reused ?? 0) + reused.size });
   if (reused.size || job.capped) await bookkeepLater(ctx);
-  await startWaitingPapers(ctx, pool);
+  await startWaitingPapers(ctx, job.workspaceId);
   if (papers.length > CREATE_BATCH) {
     await ctx.scheduler.runAfter(0, internal.screening.mutations.createScreeningResults, { jobId: job._id, papers: papers.slice(CREATE_BATCH), createdAt });
   }
@@ -313,21 +322,23 @@ export const createScreeningResults = internalMutation({
  * - Preserves existing screening results
  * - Cancels only this job's outstanding workpool items
  */
-export const cancelScreeningJob = mutation({
+export const cancelScreeningJobAction = defineUserMutation({
+  path: "screening/mutations:cancelScreeningJob",
+  description:
+    "Stops one of the workspace's screenings that is running, for the person who started it or an admin. The papers it has screened keep their answers, and the rest aren't screened. A stopped screening doesn't start again. One that has already ended is left as it is.",
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: false,
   args: { jobId: v.id("screeningJobs") },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
-
+  run: async (ctx, actor, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
-    const actor = job && (await actorOnRecord(ctx, user, job));
-    if (!job || !actor) {
-      throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
-    }
-    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
+    if (!job || job.workspaceId !== actor.workspaceId) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
+    requireMakerOrAdmin(actor, job.createdBy);
 
-    // Terminal states are idempotent no-ops
+    // Terminal states are idempotent no-ops for the page; a chat is told, so it doesn't say it stopped it.
     if (isTerminalScreeningJobStatus(job.status)) {
+      if (actor.author === "assistant") throw createError("CONFLICT", "This screening has already ended, so there's nothing to stop.");
       return null;
     }
 
@@ -340,10 +351,14 @@ export const cancelScreeningJob = mutation({
     // Its papers' queued work is dropped in batches afterwards, as Firecrawl drops a cancelled
     // crawl's queue, so the pool's slots free up sooner.
     await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId: args.jobId, cursor: null });
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, { kind: "screening", id: args.jobId, happened: "stopped" });
+    await noteEnded(ctx, job);
 
     return null;
   },
 });
+export const cancelScreeningJob = userMutation(cancelScreeningJobAction);
+export const cancelScreeningJobForAssistant = assistantMutation(cancelScreeningJobAction);
 
 /** Results one batch of an ended job's sweep handles. */
 const END_BATCH = 100;
@@ -366,7 +381,7 @@ export const endScreeningWork = internalMutation({
     for (const result of page.page) {
       if (result.waitingSince === undefined) continue;
       // Never started: counted as skipped by the bookkeeping worker.
-      await ctx.db.patch("screeningResults", result._id, { status: "skipped", waitingUser: undefined, waitingWorkspace: undefined, waitingSince: undefined, completedAt: Date.now(), doneAt: ctx.db.vars.commitTs });
+      await ctx.db.patch("screeningResults", result._id, { status: "skipped", waitingWorkspace: undefined, waitingSince: undefined, completedAt: Date.now(), doneAt: ctx.db.vars.commitTs });
       skipped++;
     }
     if (skipped) await bookkeepLater(ctx);
@@ -443,7 +458,7 @@ export const addToCollectionInternal = internalMutation({
   handler: async (ctx, args) => {
     const collection = await ctx.db.get("collections", args.collectionId);
     const item = await ctx.db.get("libraryItems", args.libraryItemId);
-    if (collection && item) await addCollectionMembership(ctx, { userId: args.userId, collection, item });
+    if (collection && item) await addCollectionMembership(ctx, { collection, item });
     return null;
   },
 });
@@ -455,18 +470,20 @@ export const addToCollectionInternal = internalMutation({
  * schedules any secondary work as follow-up mutations.
  */
 export const handleScreeningComplete = screeningPool.defineOnComplete({
+  // Papers start in one call to the pool and share a context (./slots.ts), so the paper is found by its
+  // work. A paper started before #796 carries its own IDs here, which nothing reads.
   context: v.object({
-    resultId: v.id("screeningResults"),
-    jobId: v.id("screeningJobs"),
+    resultId: v.optional(v.id("screeningResults")),
+    jobId: v.optional(v.id("screeningJobs")),
   }),
-  handler: async (ctx, { context, result }) => {
-    const job = await ctx.db.get("screeningJobs", context.jobId) as
+  handler: async (ctx, { workId, result }) => {
+    const screeningResult = await ctx.db
+      .query("screeningResults")
+      .withIndex("by_workId", (q) => q.eq("workId", workId))
+      .unique() as Doc<"screeningResults"> | null;
+    const job = (screeningResult ? await ctx.db.get("screeningJobs", screeningResult.jobId) : null) as
       | Doc<"screeningJobs">
       | null;
-    const screeningResult = await ctx.db.get(
-      "screeningResults",
-      context.resultId,
-    ) as Doc<"screeningResults"> | null;
     if (!job || !screeningResult) {
       return;
     }
@@ -532,14 +549,14 @@ export const handleScreeningComplete = screeningPool.defineOnComplete({
     const completedAt = Date.now();
     const doneAt = ctx.db.vars.commitTs;
     if (transition.rowPatch.status === "completed") {
-      await ctx.db.patch("screeningResults", context.resultId, {
+      await ctx.db.patch("screeningResults", screeningResult._id, {
         ...transition.rowPatch,
         completedAt,
         doneAt,
         ...(pending ? { ...pending, pendingAnswers: true as const } : {}),
       });
     } else {
-      await ctx.db.patch("screeningResults", context.resultId, {
+      await ctx.db.patch("screeningResults", screeningResult._id, {
         ...transition.rowPatch,
         completedAt,
         doneAt,

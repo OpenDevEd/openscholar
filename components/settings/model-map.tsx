@@ -3,20 +3,17 @@
 // The tasks-to-models map shared by the AI settings page and the admin AI models
 // page, and the cost meter.
 
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
 import { motion, AnimatePresence, useReducedMotion } from "motion/react";
-import { ArrowUpDown, Brain, Check, ChevronsUpDown, Cloud, Filter, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal, Search, PenLine, Scale, Zap, ExtractionIcon, TranslateIcon } from "@/components/icons";
+import { ArrowUpDown, Brain, ChevronsUpDown, Cloud, Filter, ListChecks, MessageSquare, PiggyBank, SlidersHorizontal, Search, PenLine, Scale, Zap, ExtractionIcon, TranslateIcon } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipHint } from "@/components/ui/tooltip";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { getModelIcon } from "@/components/icons/provider-icons";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
-import { isVariant } from "@/lib/ai/native-model-id";
 import { BROWSER_TASKS, CLOUD_TASKS, PRESET_KEYS, type AiTask, type PresetKey } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { Segmented, type Ico } from "./parts";
@@ -43,13 +40,13 @@ export type MapModel = {
 };
 
 /** Whether a model takes a reasoning effort. */
-export const reasons = (model: Pick<MapModel, "reasoningEfforts">) => Boolean(model.reasoningEfforts?.length);
+const reasons = (model: Pick<MapModel, "reasoningEfforts">) => Boolean(model.reasoningEfforts?.length);
 /** The effort a model runs at: its pick's, else its own default. Null when it doesn't reason or OpenRouter names no default. */
 export const effortOf = (model: Pick<MapModel, "effort" | "reasoningEfforts" | "defaultEffort">): Effort | null => (reasons(model) ? (model.effort ?? model.defaultEffort ?? null) : null);
 
 export const PRESET_ICONS: Record<PresetKey, Ico> = { cheap: PiggyBank, fast: Zap, balanced: Scale, intelligent: Brain };
 
-export const TASK_ICONS: Record<AiTask, Ico> = {
+const TASK_ICONS: Record<AiTask, Ico> = {
   chat: MessageSquare,
   extraction: ExtractionIcon,
   screenAll: ListChecks,
@@ -66,7 +63,7 @@ const PROVIDER_TINT: Array<[string, string]> = [
   ["openai/", "#34d399"], ["deepseek/", "#fb923c"], ["z-ai/", "#2dd4bf"], ["meta-llama/", "#818cf8"],
   ["mistralai/", "#f472b6"], ["x-ai/", "#e5e7eb"], ["qwen/", "#c084fc"],
 ];
-export const KEY_TINT = "var(--primary)";
+const KEY_TINT = "var(--primary)";
 export const tintOf = (modelId: string) => PROVIDER_TINT.find(([prefix]) => modelId.startsWith(prefix))?.[1] ?? "#94a3b8";
 
 /** A catalog model, which always has an id. */
@@ -108,7 +105,7 @@ export type PresetPick = { id: PresetKey; models: MapModel[]; onSelect: () => vo
 const ROW = 46;
 const LABEL = 34;
 const GAP = 14;
-export const NODE_H = 64;
+const NODE_H = 64;
 const NODE_GAP = 12;
 export const ZONE_LABEL = 28;
 const BROWSER_TOP = LABEL + CLOUD_TASKS.length * ROW + GAP;

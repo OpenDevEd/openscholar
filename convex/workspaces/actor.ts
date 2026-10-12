@@ -19,7 +19,7 @@ export type InWorkspace = Pick<Actor, "userId" | "workspaceId">;
  * (#650). In their own workspace a person is its admin, so nothing is refused there.
  */
 export function requireMakerOrAdmin(actor: Actor, createdBy: Id<"users"> | undefined) {
-  if (actor.role !== "admin" && createdBy !== actor.userId) throw createError("FORBIDDEN", "Only an admin of this workspace takes away what someone else made.");
+  if (actor.role !== "admin" && createdBy !== actor.userId) throw createError("FORBIDDEN", "Only an admin of this workspace changes or takes away what someone else made.");
 }
 
 /**
@@ -34,11 +34,6 @@ export async function actorFor(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, wo
   return actor;
 }
 
-/** `user` acting on a record opened by its ID, in the record's workspace; null when they can't act there. */
-export async function actorOnRecord(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, row: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }): Promise<Actor | null> {
-  return await actorIn(ctx, user, await workspaceOf(ctx, row));
-}
-
 /** `actorFor`, or null where it would refuse: for a record opened by its ID, which anyone who can act in its workspace may open. */
 export async function actorIn(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, workspaceId: Id<"workspaces">): Promise<Actor | null> {
   const workspace = await ctx.db.get("workspaces", workspaceId);
@@ -50,8 +45,26 @@ export async function actorIn(ctx: Pick<QueryCtx, "db">, user: Doc<"users">, wor
   return role ? { userId: user._id, workspaceId, role } : null;
 }
 
+/** Whether the person acts in their own workspace, where what's shared with them is. */
+export async function inOwnWorkspace(ctx: Pick<QueryCtx, "db">, { userId, workspaceId }: InWorkspace) {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  return workspace?.kind === "personal" && workspace.userId === userId;
+}
+
+/**
+ * Who reads a page and where (#651): the workspace it names, while they're in it, or their own
+ * when it names none. Null when signed out or not in it.
+ */
+export async function workingIn(ctx: Pick<QueryCtx, "db">, user: Doc<"users"> | null, workspaceId: Id<"workspaces"> | undefined): Promise<InWorkspace | null> {
+  if (!user) return null;
+  if (!workspaceId) return { userId: user._id, workspaceId: await personalWorkspaceOf(ctx, user._id) };
+  return (await actorIn(ctx, user, workspaceId)) ? { userId: user._id, workspaceId } : null;
+}
+
 async function organizationRole(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">, clerkUserId: string) {
-  if ((await ctx.db.get("organizations", organizationId))?.state !== "active") return null;
+  const organization = await ctx.db.get("organizations", organizationId);
+  // One being deleted takes no more work: nothing new can stop its deletion.
+  if (organization?.state !== "active" || organization.deletingAt !== undefined) return null;
   const membership = await ctx.db
     .query("organizationMemberships")
     .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organizationId).eq("clerkUserId", clerkUserId).eq("state", "active"))
@@ -59,8 +72,8 @@ async function organizationRole(ctx: Pick<QueryCtx, "db">, organizationId: Id<"o
   return !membership ? null : membership.role === "org:admin" ? "admin" : "member";
 }
 
-export { isInWorkspace, personalWorkspaceOf, workspaceOf } from "./personal";
-import { personalWorkspaceOf, workspaceOf } from "./personal";
+export { personalWorkspaceOf } from "./personal";
+import { personalWorkspaceOf } from "./personal";
 
 /** `personalWorkspaceOf`, for an action. */
 export const personalOf = internalQuery({

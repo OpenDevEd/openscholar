@@ -41,7 +41,7 @@ export type Attachment = {
 /** A file a sent message carried, as the chat lists it: no address (null) once it expired, and an empty one while it's still on its way. */
 export type SentFile = { id: string; name: string; bytes: number; mediaType: string; url: string | null; pages?: number; lines?: number };
 
-export const isReady = (file: Attachment) => !file.error && file.fileId !== undefined && file.progress >= 1;
+const isReady = (file: Attachment) => !file.error && file.fileId !== undefined && file.progress >= 1;
 
 let shrinker: Worker | null = null;
 const shrinking = new Map<string, { resolve: (blob: Blob) => void; reject: (error: Error) => void }>();

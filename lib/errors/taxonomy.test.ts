@@ -278,6 +278,12 @@ describe("errorCodeValidator", () => {
 });
 
 describe("classifyChatError", () => {
+  it("names a member's cap as what refused a reply, not an unknown failure", () => {
+    const refused = new ConvexError({ code: "MEMBER_CAP_REACHED", message: "More than is left of the monthly cap." });
+    expect(classifyChatError(refused).class).toBe("member_cap");
+    expect(classifyUnknownError(refused).code).toBe("member_cap");
+  });
+
   it("parses the current chat abort sentinel as aborted", () => {
     const envelope = parseChatError(ABORT_ERROR_STRING);
 

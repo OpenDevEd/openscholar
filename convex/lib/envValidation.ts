@@ -13,6 +13,11 @@ export const REQUIRED_ENV_VARS = [
   "STRIPE_WEBHOOK_SECRET",
   "CLERK_JWT_ISSUER_DOMAIN",
   "EVIDENCE_LIBRARY_PLATFORM_DOMAIN",
+  // The paper PDF store (./paperPdfs.ts), which the assistant's and extraction's PDF reads go through.
+  "PAPER_PDFS_ENDPOINT",
+  "PAPER_PDFS_BUCKET",
+  "PAPER_PDFS_ACCESS_KEY_ID",
+  "PAPER_PDFS_SECRET_ACCESS_KEY",
 ] as const;
 
 export function validateRequiredEnvVars(): { missing: string[] } {

@@ -2,7 +2,7 @@ import { internalMutation } from "../lib/functions";
 import type { QueryCtx } from "../_generated/server";
 import { MAX_FEATURE_FLAGS } from "../lib/queryBounds";
 import { v } from "convex/values";
-import { FLAG_REGISTRY } from "../../lib/feature-flags/registry";
+import { FLAG_REGISTRY, type FlagDefault } from "../../lib/feature-flags/registry";
 
 /** Refuses another flag once the table holds MAX_FEATURE_FLAGS, so every read of it is one small query. */
 export async function assertFlagRoom(ctx: Pick<QueryCtx, "db">) {
@@ -45,13 +45,13 @@ export const upsert = internalMutation({
 
 /**
  * Inserts every flag in the registry that doesn't exist yet, with its
- * default. Idempotent.
+ * default, and brings an existing one's plan feature in line. Idempotent.
  */
 export const seed = internalMutation({
   args: {},
   returns: v.null(),
   handler: async (ctx) => {
-    for (const [key, flag] of Object.entries(FLAG_REGISTRY)) {
+    for (const [key, flag] of Object.entries<FlagDefault>(FLAG_REGISTRY)) {
       const existing = await ctx.db
         .query("featureFlags")
         .withIndex("by_key", (q) => q.eq("key", key))
@@ -61,50 +61,15 @@ export const seed = internalMutation({
         await ctx.db.insert("featureFlags", {
           key,
           enabled: flag.enabled,
-          ...("planFeature" in flag ? { planFeature: flag.planFeature } : {}),
+          ...(flag.planFeature ? { planFeature: flag.planFeature } : {}),
           description: flag.description,
           updatedAt: Date.now(),
         });
+        // The registry says which plan feature a flag needs: a row seeded before one was dropped (extraction's, 2026-10-10) loses it here.
+      } else if (existing.planFeature !== flag.planFeature) {
+        await ctx.db.patch("featureFlags", existing._id, { planFeature: flag.planFeature, updatedAt: Date.now() });
       }
     }
     return null;
-  },
-});
-
-/** Flags that only showed plans on the pricing page; Autumn's catalog does that now. */
-const RETIRED_FLAGS = ["subscriptions.plan.go", "subscriptions.plan.pro"];
-
-/**
- * One-off: moves flags from plan tiers to plan features in Autumn. A flag
- * that had a minimum tier takes the plan feature its registry entry names;
- * every flag loses `minimumTier`; flags Autumn replaces are removed.
- * Idempotent. Run once per deployment after the release that adds it.
- */
-export const adoptPlanFeatures = internalMutation({
-  args: {},
-  returns: v.object({ updated: v.number(), removed: v.number() }),
-  handler: async (ctx) => {
-    let updated = 0;
-    let removed = 0;
-    for (const flag of await ctx.db.query("featureFlags").take(MAX_FEATURE_FLAGS)) {
-      if (RETIRED_FLAGS.includes(flag.key)) {
-        await ctx.db.delete("featureFlags", flag._id);
-        removed += 1;
-        continue;
-      }
-      if (flag.minimumTier === undefined) continue;
-      const registered = FLAG_REGISTRY[flag.key as keyof typeof FLAG_REGISTRY];
-      const planFeature =
-        flag.minimumTier > 0 && registered && "planFeature" in registered
-          ? registered.planFeature
-          : flag.planFeature;
-      await ctx.db.patch("featureFlags", flag._id, {
-        minimumTier: undefined,
-        planFeature,
-        updatedAt: Date.now(),
-      });
-      updated += 1;
-    }
-    return { updated, removed };
   },
 });

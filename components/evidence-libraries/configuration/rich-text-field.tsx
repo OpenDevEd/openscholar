@@ -2,6 +2,7 @@
 
 import { Markdown } from "@tiptap/markdown";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
+import { useReadOnly } from "./read-only";
 import StarterKit from "@tiptap/starter-kit";
 import { Placeholder } from "@tiptap/extension-placeholder";
 import { Bold, Italic, Link2, List, Unlink } from "@/components/icons";
@@ -81,8 +82,10 @@ function RichTextEditor({
   lists: boolean;
   minRows: number;
 }) {
+  const readOnly = useReadOnly();
   const editor = useEditor({
     immediatelyRender: false,
+    editable: !readOnly,
     extensions: [
       StarterKit.configure({
         heading: false,

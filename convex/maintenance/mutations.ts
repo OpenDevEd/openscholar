@@ -6,11 +6,9 @@ import { internal } from "../_generated/api";
 import { purgeAccountChats } from "../assistant/access";
 import { purgeSpending } from "../assistant/spending";
 import { purgeFiles } from "../assistant/files";
-import { collectionCountRow } from "../library/collections";
-import { countRow } from "../research/recordCounts";
-import { libraryCountRow } from "../library/counter";
-import { readAccount } from "../billing/accounts";
-import { purgeWorkspace } from "../workspaces/purge";
+import { dropWorkspace, purgeWorkspace } from "../workspaces/purge";
+import { purgeRatings } from "../ratings";
+import { purgeGrants } from "../sharing/upkeep";
 
 // Retention period for deleted users (30 days)
 const DELETED_USER_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
@@ -95,26 +93,23 @@ export const cleanupDeletedUsers = internalMutation({
           deferred = true;
           continue; // Skip user delete, process on next run
         }
+        // Their ratings are theirs alone: their own, and the ones they gave in collections.
+        if (!(await purgeRatings(ctx, user._id))) {
+          deferred = true;
+          continue; // Skip user delete, process on next run
+        }
+        // Their places as a guest of other workspaces' items.
+        if (!(await purgeGrants(ctx, user._id))) {
+          deferred = true;
+          continue; // Skip user delete, process on next run
+        }
         // Everything else in their own workspace: searches, screenings, bookmarks, library and collections.
         if (workspace && !(await purgeWorkspace(ctx, workspace._id))) {
           deferred = true;
           continue; // Skip user delete, process on next run
         }
 
-        // billingUsage rows stay as financial records; their own workspace's cached account goes.
-        const account = workspace && (await readAccount(ctx, workspace._id));
-        if (account) await ctx.db.delete("billingAccounts", account._id);
-        // Its library counts are a cache of its saved papers and collections, so they go with it.
-        const libraryCount = workspace && (await libraryCountRow(ctx, workspace._id));
-        if (libraryCount) await ctx.db.delete("libraryCounts", libraryCount._id);
-        const collectionCount = workspace && (await collectionCountRow(ctx, workspace._id));
-        if (collectionCount) await ctx.db.delete("collectionCounts", collectionCount._id);
-        for (const table of ["searches", "queryShortcuts", "screeningJobs", "extractionJobs"] as const) {
-          const counted = workspace && (await countRow(ctx, table, workspace._id));
-          if (counted) await ctx.db.delete("recordCounts", counted._id);
-        }
-
-        if (workspace) await ctx.db.delete("workspaces", workspace._id);
+        if (workspace) await dropWorkspace(ctx, workspace._id);
 
         // The tombstone keeps who they were, in the transaction that deletes them, for what they made in organizations.
         const kept = { userId: user._id, name: [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email };

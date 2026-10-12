@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useNow, useTranslations } from "next-intl";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -14,8 +14,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
+import { useWorkspaceScope } from "@/lib/workspaces/url";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ExtractionPreflightBanner } from "@/components/extraction/preflight-banner";
+import { monthStart } from "@/lib/billing/month";
 
 export interface RetryConfirmDialogProps {
   open: boolean;
@@ -48,14 +50,24 @@ export function RetryConfirmDialog({
 
   // The most the retry costs, on the job's model: the figure the retry checks the balance against.
   const { data: credits } = useProtectedQuery(api.extraction.queries.costs.estimateRetry, open ? { jobId } : "skip");
+  // The page's workspace pays (#651).
+  const balanceScope = useWorkspaceScope();
   const { data: balance } = useProtectedQuery(
     api.billing.accounts.checkBalance,
-    open && credits ? { requiredAmount: credits } : "skip",
+    open && credits && balanceScope !== "skip" ? { ...balanceScope, requiredAmount: credits } : "skip",
   );
+
+  // The organization can have the credits while the cap an admin set on the member whose job it is doesn't (#652): the retry is charged as theirs.
+  const month = monthStart(useNow({ updateInterval: 60_000 }).getTime());
+  const { data: capLeft } = useProtectedQuery(api.extraction.queries.costs.capLeftOf, open ? { jobId, month } : "skip");
+  const overCap = typeof capLeft === "number" && credits !== undefined && credits > capLeft;
+  const te = useTranslations("errors.body");
 
   const [submitting, setSubmitting] = useState(false);
   const canConfirm =
     !submitting &&
+    capLeft !== undefined &&
+    !overCap &&
     (balance === null || balance === undefined
       ? false
       : balance.hasEnough);
@@ -85,6 +97,7 @@ export function RetryConfirmDialog({
           balance={balance}
           onBeforeNavigate={() => onOpenChange(false)}
         />
+        {overCap ? <p role="status" className="rounded-md bg-destructive/10 px-3 py-2 text-xs">{te("member_cap")}</p> : null}
         <AlertDialogFooter>
           <AlertDialogCancel>{tc("cancel")}</AlertDialogCancel>
           <AlertDialogAction

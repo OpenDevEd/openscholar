@@ -143,6 +143,8 @@ export function InlineNotice({
 
 /** The id of the label `Field` renders for a control id. Lets non-form controls point at it with `aria-labelledby`. */
 export const labelId = (controlId: string) => `${controlId}-label`;
+/** The id of a field's hint, for a control to name as its description. */
+export const hintId = (controlId: string) => `${controlId}-hint`;
 
 /** Label, control, help or error text, spaced like the settings forms. */
 export function Field({
@@ -181,7 +183,7 @@ export function Field({
       {error ? (
         <FieldError>{error}</FieldError>
       ) : hint ? (
-        <p className="text-xs text-subtle-foreground">{hint}</p>
+        <p id={hintId(id)} className="text-xs text-subtle-foreground">{hint}</p>
       ) : null}
     </div>
   );

@@ -29,7 +29,7 @@ export { RoutingIcon as FallbackRouteIcon } from "@solar-icons/react/bold-duoton
 // Sections of the app. The sidebar, page headers and settings rails share these.
 export { Home2Icon as HomeIcon, Home2Icon as Home } from "@solar-icons/react/bold-duotone/home-2";
 export { LibraryIcon, LibraryIcon as Library, LibraryIcon as LibraryBig } from "@solar-icons/react/bold-duotone/library";
-export { BookBookmarkIcon as BookmarksIcon, BookBookmarkIcon as BookMarked } from "@solar-icons/react/bold-duotone/book-bookmark";
+export { BookBookmarkIcon as BookmarksIcon } from "@solar-icons/react/bold-duotone/book-bookmark";
 export { HistoryIcon, HistoryIcon as History, HistoryIcon as TimerReset } from "@solar-icons/react/bold-duotone/history";
 export { DatabaseIcon as ExtractionIcon, DatabaseIcon as SourcesIcon, DatabaseIcon as Database } from "@solar-icons/react/bold-duotone/database";
 export { StructureIcon as TopicsIcon, StructureIcon as Network } from "@solar-icons/react/bold-duotone/structure";
@@ -41,10 +41,10 @@ export { ShieldCheckIcon as SecurityIcon, ShieldCheckIcon as ShieldCheck } from 
 export { CardIcon as BillingIcon, CardIcon as CreditCard } from "@solar-icons/react/bold-duotone/card";
 export { PlugCircleIcon as ConnectionsIcon, PlugCircleIcon as Plug } from "@solar-icons/react/bold-duotone/plug-circle";
 export { Tuning2Icon as SwitchesIcon, Tuning2Icon as SlidersHorizontal, Tuning2Icon as Settings2, Tuning2Icon as SlidersHorizontalIcon, Tuning2Icon as ToggleLeft } from "@solar-icons/react/bold-duotone/tuning-2";
-export { BoxIcon as ModelsIcon, BoxIcon as Package, BoxIcon as Boxes } from "@solar-icons/react/bold-duotone/box";
+export { BoxIcon as ModelsIcon, BoxIcon as Boxes } from "@solar-icons/react/bold-duotone/box";
 export { ShieldUserIcon as AdminsIcon } from "@solar-icons/react/bold-duotone/shield-user";
-export { DocumentTextIcon as DocumentIcon, DocumentTextIcon as FileText } from "@solar-icons/react/bold-duotone/document-text";
-export { ChatSquareIcon as ChatIcon, ChatSquareIcon as MessageSquare, ChatSquareIcon as MessageSquareText } from "@solar-icons/react/bold-duotone/chat-square";
+export { DocumentTextIcon as FileText } from "@solar-icons/react/bold-duotone/document-text";
+export { ChatSquareIcon as MessageSquare } from "@solar-icons/react/bold-duotone/chat-square";
 export { GlobalIcon as GlobeIcon, GlobalIcon as Globe } from "@solar-icons/react/bold-duotone/global";
 export { PaletteIcon } from "@solar-icons/react/bold-duotone/palette";
 export { Buildings2Icon as BuildingsIcon, Buildings2Icon as Building2 } from "@solar-icons/react/bold-duotone/buildings-2";
@@ -58,8 +58,14 @@ export { Dialog2Icon as LanguagesIcon, Dialog2Icon as Languages } from "@solar-i
 export { Chart2Icon as AnalyticsIcon, Chart2Icon as BarChart3 } from "@solar-icons/react/bold-duotone/chart-2";
 export { LinkIcon, LinkIcon as Link2 } from "@solar-icons/react/bold-duotone/link";
 export { Plane2Icon as PublishIcon, Plane2Icon as Send } from "@solar-icons/react/bold-duotone/plane-2";
-export { TrashBinTrashIcon as TrashIcon, TrashBinTrashIcon as Trash2, TrashBinTrashIcon as Trash2Icon } from "@solar-icons/react/bold-duotone/trash-bin-trash";
+export { TrashBinTrashIcon as TrashIcon, TrashBinTrashIcon as Trash2 } from "@solar-icons/react/bold-duotone/trash-bin-trash";
 export { Book2Icon as BookIcon, Book2Icon as BookOpen } from "@solar-icons/react/bold-duotone/book-2";
+
+// The four OpenAlex topic domains.
+export { DnaIcon as LifeSciencesIcon } from "@solar-icons/react/bold-duotone/dna";
+export { UsersGroupTwoRoundedIcon as SocialSciencesIcon } from "@solar-icons/react/bold-duotone/users-group-two-rounded";
+export { AtomIcon as PhysicalSciencesIcon } from "@solar-icons/react/bold-duotone/atom";
+export { HeartPulseIcon as HealthSciencesIcon } from "@solar-icons/react/bold-duotone/heart-pulse";
 
 /**
  * A star that is solid when it is given a fill-* class and an outline when it
@@ -73,13 +79,13 @@ export function Star({ className, ...props }: ComponentPropsWithoutRef<"svg">) {
 // Everything else.
 export { CloseIcon as X, CloseIcon as XIcon } from "@solar-icons/react/bold-duotone/close";
 export { CheckIcon as Check, CheckIcon } from "@solar-icons/react/bold-duotone/check";
-export { AddIcon as Plus, AddIcon as PlusIcon } from "@solar-icons/react/bold-duotone/add";
+export { AddIcon as Plus } from "@solar-icons/react/bold-duotone/add";
 export { AltArrowRightIcon as ChevronRight, AltArrowRightIcon as ChevronRightIcon } from "@solar-icons/react/linear/alt-arrow-right";
 export { SquareArrowRightUpIcon as ExternalLink, SquareArrowRightUpIcon as ExternalLinkIcon } from "@solar-icons/react/bold-duotone/square-arrow-right-up";
 export { AltArrowDownIcon as ChevronDown, AltArrowDownIcon as ChevronDownIcon } from "@solar-icons/react/linear/alt-arrow-down";
 export { RefreshIcon as RefreshCw, RefreshIcon as RefreshCwIcon } from "@solar-icons/react/bold-duotone/refresh";
 export { AltArrowLeftIcon as ChevronLeft, AltArrowLeftIcon as ChevronLeftIcon } from "@solar-icons/react/linear/alt-arrow-left";
-export { ArrowRightIcon as ArrowRight, ArrowRightIcon } from "@solar-icons/react/bold-duotone/arrow-right";
+export { ArrowRightIcon as ArrowRight } from "@solar-icons/react/bold-duotone/arrow-right";
 export { MagnifierCloseIcon as SearchX } from "@solar-icons/react/bold-duotone/magnifier-close";
 export { PenIcon as Pencil } from "@solar-icons/react/bold-duotone/pen";
 export { DollarMinimalisticIcon as Coins, DollarMinimalisticIcon as CoinsIcon } from "@solar-icons/react/bold-duotone/dollar-minimalistic";
@@ -96,13 +102,12 @@ export { DangerTriangleIcon as AlertTriangle, DangerTriangleIcon as TriangleAler
 export { BoltIcon as Zap } from "@solar-icons/react/bold-duotone/bolt";
 export { MenuDotsIcon as MoreHorizontal, MenuDotsIcon as MoreHorizontalIcon } from "@solar-icons/react/bold-duotone/menu-dots";
 export { KeyIcon as KeyRound } from "@solar-icons/react/bold-duotone/key";
-export { ArrowLeftIcon as ArrowLeft, ArrowLeftIcon } from "@solar-icons/react/bold-duotone/arrow-left";
+export { ArrowLeftIcon as ArrowLeft } from "@solar-icons/react/bold-duotone/arrow-left";
 export { UploadMinimalisticIcon as Upload } from "@solar-icons/react/bold-duotone/upload-minimalistic";
 export { DisketteIcon as Save } from "@solar-icons/react/bold-duotone/diskette";
 export { PlayIcon as Play } from "@solar-icons/react/bold-duotone/play";
 export { FilterIcon as ListFilter, FilterIcon as Filter } from "@solar-icons/react/bold-duotone/filter";
 export { EarthIcon as Globe2 } from "@solar-icons/react/bold-duotone/earth";
-export { FolderOpenIcon as FolderOpen } from "@solar-icons/react/bold-duotone/folder-open";
 export { FolderIcon as Folder } from "@solar-icons/react/bold-duotone/folder";
 export { CircleDashedIcon as CircleDashed } from "@solar-icons/react/bold-duotone/circle-dashed";
 export { CheckCircleIcon as CheckCircle2, CheckCircleIcon as CircleCheck } from "@solar-icons/react/bold-duotone/check-circle";
@@ -123,7 +128,6 @@ export { BookmarkPlusIcon as BookmarkPlus } from "@solar-icons/react/bold-duoton
 export { ArrowUpIcon as ArrowUp } from "@solar-icons/react/bold-duotone/arrow-up";
 export { WiFiOffIcon as WifiOffIcon } from "@solar-icons/react/bold-duotone/wi-fi-off";
 export { UnlinkIcon as Unlink } from "@solar-icons/react/bold-duotone/unlink";
-export { StopIcon as SquareIcon } from "@solar-icons/react/bold-duotone/stop";
 export { ShieldIcon } from "@solar-icons/react/bold-duotone/shield";
 export { ShieldWarningIcon as ShieldAlertIcon, ShieldWarningIcon as ShieldAlert } from "@solar-icons/react/bold-duotone/shield-warning";
 export { Widget5Icon as Shapes } from "@solar-icons/react/bold-duotone/widget-5";
@@ -141,11 +145,10 @@ export { AddFolderIcon as FolderPlus } from "@solar-icons/react/bold-duotone/add
 export { RemoveFolderIcon as FolderMinus } from "@solar-icons/react/bold-duotone/remove-folder";
 export { SpeedometerMiddleIcon as Gauge } from "@solar-icons/react/bold-duotone/speedometer-middle";
 export { HourglassIcon as Hourglass } from "@solar-icons/react/bold-duotone/hourglass";
-export { TextSquareIcon as Type } from "@solar-icons/react/bold-duotone/text-square";
 export { StopIcon as Square } from "@solar-icons/react/bold-duotone/stop";
 export { FileSendIcon as FileUp } from "@solar-icons/react/bold-duotone/file-send";
 export { CameraIcon as Camera } from "@solar-icons/react/bold-duotone/camera";
-export { BrainIcon as Brain, BrainIcon } from "@solar-icons/react/bold-duotone/brain";
+export { BrainIcon as Brain } from "@solar-icons/react/bold-duotone/brain";
 export { ClipboardCheckIcon as BookCheck } from "@solar-icons/react/bold-duotone/clipboard-check";
 export { ForbiddenCircleIcon as BanIcon, ForbiddenCircleIcon as Ban } from "@solar-icons/react/bold-duotone/forbidden-circle";
 export { ArrowDownIcon as ArrowDown, ArrowDownIcon } from "@solar-icons/react/bold-duotone/arrow-down";
@@ -158,11 +161,9 @@ export { UndoLeftIcon as Undo2 } from "@solar-icons/react/bold-duotone/undo-left
 export { GraphUpIcon as TrendingUp } from "@solar-icons/react/bold-duotone/graph-up";
 export { GraphDownIcon as TrendingDown } from "@solar-icons/react/bold-duotone/graph-down";
 export { TabletIcon as Tablet } from "@solar-icons/react/bold-duotone/tablet";
-export { TablePropertiesIcon as TableProperties } from "@solar-icons/react/bold-duotone/table-properties";
 export { TableIcon as Table2, TableIcon as Table } from "@solar-icons/react/bold-duotone/table";
 export { Sun2Icon as Sun } from "@solar-icons/react/bold-duotone/sun-2";
-export { StopCircleIcon, StopCircleIcon as CircleStop } from "@solar-icons/react/bold-duotone/stop-circle";
-export { MinusSquareIcon as SquareMinus } from "@solar-icons/react/bold-duotone/minus-square";
+export { StopCircleIcon as CircleStop } from "@solar-icons/react/bold-duotone/stop-circle";
 export { SortFromBottomToTopIcon as SortAsc } from "@solar-icons/react/bold-duotone/sort-from-bottom-to-top";
 export { SmartphoneIcon as Smartphone } from "@solar-icons/react/bold-duotone/smartphone";
 export { ShareIcon as Share2 } from "@solar-icons/react/bold-duotone/share";
@@ -170,20 +171,13 @@ export { RepeatIcon as Repeat2, RepeatIcon as Repeat } from "@solar-icons/react/
 export { StationIcon as RadioTower, StationIcon as Radio } from "@solar-icons/react/bold-duotone/station";
 export { Safe2Icon as PiggyBank } from "@solar-icons/react/bold-duotone/safe-2";
 export { PaperclipIcon as Paperclip } from "@solar-icons/react/bold-duotone/paperclip";
-export { PanelRightOpenIcon, PanelRightOpenIcon as PanelRightOpen } from "@solar-icons/react/bold-duotone/panel-right-open";
-export { PanelRightCloseIcon as PanelRightClose } from "@solar-icons/react/bold-duotone/panel-right-close";
-export { PanelLeftCloseIcon as PanelLeftClose } from "@solar-icons/react/bold-duotone/panel-left-close";
 export { BoxMinimalisticIcon as PackageOpen } from "@solar-icons/react/bold-duotone/box-minimalistic";
-export { MenuDotsVerticalIcon as MoreVertical } from "@solar-icons/react/bold-duotone/menu-dots-vertical";
 export { MoonIcon as Moon } from "@solar-icons/react/bold-duotone/moon";
 export { MinimizeIcon as Minimize2 } from "@solar-icons/react/bold-duotone/minimize";
-export { ChatRoundAddIcon as MessageSquarePlus } from "@solar-icons/react/bold-duotone/chat-round-add";
-export { MaximizeIcon as Maximize2Icon, MaximizeIcon as Expand } from "@solar-icons/react/bold-duotone/maximize";
+export { MaximizeIcon as Expand } from "@solar-icons/react/bold-duotone/maximize";
 export { LeafIcon as Leaf } from "@solar-icons/react/bold-duotone/leaf";
 export { LayoutListIcon as LayoutList } from "@solar-icons/react/bold-duotone/layout-list";
 export { TextItalicIcon as Italic } from "@solar-icons/react/bold-duotone/text-italic";
-export { InboxIcon as Inbox } from "@solar-icons/react/bold-duotone/inbox";
-export { ImportIcon as Import } from "@solar-icons/react/bold-duotone/import";
 export { QuestionCircleIcon as HelpCircle, QuestionCircleIcon as CircleHelp } from "@solar-icons/react/bold-duotone/question-circle";
 export { HeartPulseIcon as HeartPulse } from "@solar-icons/react/bold-duotone/heart-pulse";
 export { HashtagIcon as Hash } from "@solar-icons/react/bold-duotone/hashtag";
@@ -199,19 +193,15 @@ export { FileSpreadsheetIcon as FileSpreadsheet } from "@solar-icons/react/bold-
 export { CodeFileIcon as FileJson } from "@solar-icons/react/bold-duotone/code-file";
 export { FileCheckIcon as FileCheck2 } from "@solar-icons/react/bold-duotone/file-check";
 export { EyeIcon as Eye } from "@solar-icons/react/bold-duotone/eye";
-export { UndoLeftRoundIcon as CornerDownLeftIcon } from "@solar-icons/react/bold-duotone/undo-left-round";
 export { Columns3Icon as Columns3 } from "@solar-icons/react/bold-duotone/columns-3";
 export { CloudUploadIcon as CloudUpload } from "@solar-icons/react/bold-duotone/cloud-upload";
 export { CloudIcon as Cloud } from "@solar-icons/react/bold-duotone/cloud";
-export { ClipboardListIcon as ClipboardList } from "@solar-icons/react/bold-duotone/clipboard-list";
 export { PauseCircleIcon as CirclePause } from "@solar-icons/react/bold-duotone/pause-circle";
-export { CheckReadIcon as CheckCheck } from "@solar-icons/react/bold-duotone/check-read";
 export { CalendarDateIcon as CalendarClock } from "@solar-icons/react/bold-duotone/calendar-date";
 export { BuildingsIcon as Building } from "@solar-icons/react/bold-duotone/buildings";
 export { ClipboardAddIcon as BookPlus } from "@solar-icons/react/bold-duotone/clipboard-add";
 export { TextBoldIcon as Bold } from "@solar-icons/react/bold-duotone/text-bold";
 export { VerifiedCheckIcon as BadgeCheck } from "@solar-icons/react/bold-duotone/verified-check";
-export { SortHorizontalIcon as ArrowLeftRight } from "@solar-icons/react/bold-duotone/sort-horizontal";
 export { ArrowRightDownIcon as ArrowDownRight } from "@solar-icons/react/bold-duotone/arrow-right-down";
 export { WindowFrameIcon as AppWindow } from "@solar-icons/react/bold-duotone/window-frame";
 
@@ -223,4 +213,5 @@ export { CompassIcon as Compass } from "@solar-icons/react/bold-duotone/compass"
 
 // Solar has no match for these: spinners, a balance scale, a few plain shapes
 // and other companies' logos.
-export { Asterisk, CircleIcon, Cookie, Github, Linkedin, Loader2, Loader2Icon, LoaderCircle, Scale, Youtube } from "lucide-react";
+export { CircleIcon, Cookie, Github, Linkedin, Loader2, Loader2Icon, LoaderCircle, Scale, Youtube } from "lucide-react";
+export { MoveToFolderIcon as Move } from "@solar-icons/react/bold-duotone/move-to-folder";

@@ -1,4 +1,6 @@
-import { requireOrganizationFeature } from "../organizationFeatures";
+import { openedBefore } from "../organizationFeatures";
+import { hasPlanFeature } from "../billing/accounts";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 import { searchTerms } from "../lib/searchText";
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import schema from "../schema";
@@ -6,10 +8,12 @@ import { v, type Infer } from "convex/values";
 import { query, internalQuery, internalMutation } from "../lib/functions";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
+import { getCurrentUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { authorContentFields } from "./validators";
-import { profileRole, requireProfileAccess } from "./access";
-import { workspaceMutation } from "../lib/userActions";
+import { profileViewer, requireProfileAccess } from "./access";
+import { workspaceMutation, workspaceQuery } from "../lib/userActions";
+import { noteActivity } from "../activity/notes";
 
 export function cleanContent(content: { [K in keyof typeof authorContentFields]: string }) {
   const next = {...content};
@@ -33,39 +37,49 @@ export function cleanContent(content: { [K in keyof typeof authorContentFields]:
   return next;
 }
 
-/** A profile owned by `workspaceId`, made by `ownerId` (#650). */
-export async function createProfile(ctx: MutationCtx, ownerId: Id<"users">, workspaceId: Id<"workspaces">, name: string) {
+/** A profile owned by `workspaceId`, made by `createdBy` (#650), or by the assistant for them. */
+export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, workspaceId: Id<"workspaces">, name: string, viaAssistant = false) {
   const content = cleanContent({name, headline: "", affiliation: "", bio: "", website: "", linkedin: "", orcid: "", openalex: ""});
-  return await ctx.db.insert("authorProfiles", {...content, ownerId, workspaceId, createdBy: ownerId, revision: 1, updatedAt: Date.now()});
+  const id = await ctx.db.insert("authorProfiles", {...content, workspaceId, createdBy, revision: 1, updatedAt: Date.now()});
+  await noteActivity(ctx, {workspaceId, by: createdBy, viaAssistant}, {kind: "author", id, happened: "created", detail: content.name});
+  return id;
 }
 
 /** A profile as pages show it, with its photo's URL. */
 const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union(v.string(), v.null())};
+
+/**
+ * Refuses unless `workspaceId` manages author profiles: takes a new one, or one moved into it,
+ * and reads the directory. Its plan includes Evidence Libraries, which profiles are managed with;
+ * a library shared with the person isn't that. A plan is its workspace's alone.
+ */
+export async function requireAuthorProfiles(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
+  if (!(await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE))) throw createError("FORBIDDEN", "This workspace's plan doesn't include Evidence Libraries, which author profiles come with.");
+}
 
 /** Makes a profile owned by the page's workspace. */
 export const create = workspaceMutation({
   args: {name: v.string()},
   returns: v.id("authorProfiles"),
   handler: async (ctx, {userId, workspaceId}, args) => {
-    // In an organization, its own switch; in a person's own workspace, any of their organizations', until plans give features (#652).
-    const workspace = await ctx.db.get("workspaces", workspaceId);
-    const organization = workspace?.kind === "organization" ? await ctx.db.get("organizations", workspace.organizationId) : null;
-    if (workspace?.kind === "organization" ? organization?.authorsEnabled !== true : false) throw createError("FORBIDDEN", "This organization doesn't have author profiles enabled.");
-    if (workspace?.kind !== "organization") await requireOrganizationFeature(ctx, "authors");
+    await requireAuthorProfiles(ctx, workspaceId);
     return await createProfile(ctx, userId, workspaceId, args.name);
   },
 });
 
+/** A profile by its ID as its public page shows it, with what the reader is to it; null for one that isn't there. */
+export async function readProfile(ctx: QueryCtx, profileId: string) {
+  const id = ctx.db.normalizeId("authorProfiles", profileId);
+  if (!id) return null;
+  const profile = await ctx.db.get("authorProfiles", id);
+  if (!profile) return null;
+  return {...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null, ...(await profileViewer(ctx, profile))};
+}
+
 export const get = query({
   args: {profileId: v.string()},
-  returns: v.union(v.null(), v.object({...profileWithPhoto, role: v.union(v.literal("owner"), v.literal("editor"), v.null())})),
-  handler: async (ctx, {profileId}) => {
-    const id = ctx.db.normalizeId("authorProfiles", profileId);
-    if (!id) return null;
-    const profile = await ctx.db.get("authorProfiles", id);
-    if (!profile) return null;
-    return {...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null, role: await profileRole(ctx, profile)};
-  },
+  returns: v.union(v.null(), v.object({...profileWithPhoto, role: v.union(v.literal("owner"), v.literal("editor"), v.null()), member: v.boolean()})),
+  handler: async (ctx, {profileId}) => await readProfile(ctx, profileId),
 });
 
 export function searchProfilePage(ctx: QueryCtx, term: string, paginationOpts: PaginationOptions) {
@@ -76,19 +90,37 @@ export function searchProfilePage(ctx: QueryCtx, term: string, paginationOpts: P
   return query.paginate({...paginationOpts, numItems: Math.max(1, Math.min(30, Math.floor(paginationOpts.numItems)))});
 }
 
+const directoryArgs = {search: v.string(), paginationOpts: paginationOptsValidator};
+const directoryPage = paginationResultValidator(v.object(profileWithPhoto));
+async function directoryOf(ctx: QueryCtx, args: {search: string; paginationOpts: PaginationOptions}) {
+  const rows = await searchProfilePage(ctx, args.search, args.paginationOpts);
+  return {...rows, page: await Promise.all(rows.page.map(async profile => ({...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null})))};
+}
+
+/** The directory of profiles, in a workspace whose plan includes Evidence Libraries, as making one needs. A profile's own page is public (`get`). */
+export const directory = workspaceQuery({
+  args: directoryArgs,
+  returns: directoryPage,
+  handler: async (ctx, {workspaceId}, args) => {
+    await requireAuthorProfiles(ctx, workspaceId);
+    return directoryOf(ctx, args);
+  },
+});
+
+/** The directory as a page loaded before 2026-10-10 asks for it, without a workspace: see organizationFeatures.ts `openedBefore`. Goes with it. */
 export const list = query({
-  args: {search: v.string(), paginationOpts: paginationOptsValidator},
-  returns: paginationResultValidator(v.object(profileWithPhoto)),
+  args: directoryArgs,
+  returns: directoryPage,
   handler: async (ctx, args) => {
-    await requireOrganizationFeature(ctx, "authors");
-    const rows = await searchProfilePage(ctx, args.search, args.paginationOpts);
-    return {...rows, page: await Promise.all(rows.page.map(async profile => ({...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null})))};
+    const user = await getCurrentUser(ctx);
+    if (!user || !(await openedBefore(ctx, user))) throw createError("FORBIDDEN", "None of your organizations' plans includes Evidence Libraries.");
+    return directoryOf(ctx, args);
   },
 });
 
 const contentValidator = v.object(authorContentFields);
 async function saveContent(ctx: MutationCtx, args: {profileId: Id<"authorProfiles">; expectedRevision: number; content: Infer<typeof contentValidator>; photo?: {storageId?: Id<"_storage">}; featured?: Id<"authorPublications">[]}) {
-  const {profile} = await requireProfileAccess(ctx, args.profileId);
+  const {profile, user} = await requireProfileAccess(ctx, args.profileId);
   if (profile.revision !== args.expectedRevision) throw createError("CONFLICT", "This profile changed while you were editing. Reload it before saving.");
   if (args.featured) {
     if (args.featured.length > 1000 || new Set(args.featured).size !== args.featured.length) throw createError("VALIDATION_ERROR", "Invalid publication selection");
@@ -105,6 +137,8 @@ async function saveContent(ctx: MutationCtx, args: {profileId: Id<"authorProfile
   const revision = profile.revision + 1;
   const content = cleanContent(args.content);
   await ctx.db.patch("authorProfiles", args.profileId, {...content, revision, updatedAt: Date.now(), ...(args.photo ? {photoId: args.photo.storageId} : {})});
+  // Its Activity (#656), kept by the workspace that owns it: a new name says the one it had.
+  if (profile.workspaceId) await noteActivity(ctx, {workspaceId: profile.workspaceId, by: user._id, viaAssistant: false}, {kind: "author", id: args.profileId, ...(content.name === profile.name ? {happened: "edited"} : {happened: "renamed", detail: profile.name})});
   return {...content, revision};
 }
 

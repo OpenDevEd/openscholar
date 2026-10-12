@@ -6,6 +6,7 @@ import type { Id } from "../_generated/dataModel";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
+import { ensureWorkspace } from "../workspaces/create";
 
 // ─── Seed helpers ────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ async function seedWalletKey(
   return await t.run(async (ctx) => {
     const walletKeyId = await ctx.db.insert("walletKeys", {
       userId,
+      workspaceId: await ensureWorkspace(ctx, { kind: "personal", userId }),
       hashedKey: overrides?.hashedKey ?? "testhash_abc123",
       keyPrefix: "wk_test...",
       appName: overrides?.appName ?? "TestApp",
@@ -139,8 +141,10 @@ describe("wallet internal mutations", () => {
       const t = convexTest(schema);
       const userId = await seedUser(t);
 
+      const workspaceId = await t.run((ctx) => ensureWorkspace(ctx, { kind: "personal", userId }));
       const walletKeyId = await t.mutation(internal.wallet.internal.insertKey, {
         userId,
+        workspaceId,
         hashedKey: "test_insert_hash",
         keyPrefix: "wk_ins...",
         appName: "InsertTest",
@@ -502,5 +506,28 @@ describe("models (unified table)", () => {
       expect(served!.sortOrder).toBe(5);
       expect(served!.category).toBe("flagship");
     });
+  });
+});
+
+describe("a connected app's workspace (#651)", () => {
+  it("draws on the workspace it was connected to, which must be one of the person's", async () => {
+    const t = convexTest(schema);
+    const userId = await seedUser(t, { clerkId: "ada" });
+    const { lab, elsewhere } = await t.run(async (ctx) => {
+      await ensureWorkspace(ctx, { kind: "personal", userId });
+      const stamp = { clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 };
+      const organization = (name: string) => ctx.db.insert("organizations", { clerkOrganizationId: `org_${name}`, name, slug: name, state: "active", ...stamp });
+      const [lab, other] = [await organization("lab"), await organization("other")];
+      await ctx.db.insert("organizationMemberships", { organizationId: lab, clerkMembershipId: "orgmem_ada", clerkUserId: "ada", role: "org:member", state: "active", ...stamp });
+      return { lab: await ensureWorkspace(ctx, { kind: "organization", organizationId: lab }), elsewhere: await ensureWorkspace(ctx, { kind: "organization", organizationId: other }) };
+    });
+    const ada = t.withIdentity({ subject: "ada" });
+    const walletKeyId = await ada.mutation(api.wallet.mutations.approveConnection, { appName: "Zotero", redirectOrigin: "manual", workspaceId: lab });
+    // The key the app gets in place of the pending one keeps it.
+    await ada.action(api.wallet.actions.finalizeConnection, { walletKeyId });
+    const made = (await t.run((ctx) => ctx.db.query("walletKeys").collect())).filter((key) => key.appName === "Zotero");
+    expect(made.map((key) => key.workspaceId)).toEqual([lab]);
+    // Not one the person isn't in.
+    await expect(ada.mutation(api.wallet.mutations.approveConnection, { appName: "Zotero", redirectOrigin: "manual", workspaceId: elsewhere })).rejects.toThrow();
   });
 });

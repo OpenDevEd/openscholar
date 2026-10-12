@@ -33,6 +33,8 @@ import {
   classifyUnknownError,
   type ClassifiedError,
 } from "@/lib/errors/taxonomy";
+import { ZOTERO_PAGE } from "../zotero/libraryValidators";
+import { MAX_AUTHORS } from "../lib/listCaps";
 
 
 type SetupRuntime = {
@@ -198,7 +200,7 @@ type StepSource = { position: number; item: BucketItemInput };
 type SetupPaper = PaperDataOut & { storageId?: Id<"_storage">; sourceType: "history" | "zotero" | "manual" | "screening"; sourceId: string; screeningRevision?: string };
 
 /** A search or a screening reads its papers a page at a time; every other source is one paper. */
-const pagedSource = (item: BucketItemInput) => item.source === "screening" || item.librarySet !== undefined || (item.source === "history" && item.searchFilters !== undefined);
+const pagedSource = (item: BucketItemInput) => item.source === "screening" || item.librarySet !== undefined || item.zoteroSet !== undefined || (item.source === "history" && item.searchFilters !== undefined);
 
 /**
  * The next step of a job's papers from `place`, and where its setup goes on after it; null
@@ -207,7 +209,7 @@ const pagedSource = (item: BucketItemInput) => item.source === "screening" || it
  * papers are read up to the next of those.
  */
 /** Who a job reads its papers as: its person, in its workspace (or theirs, for a job its backfill hasn't reached). */
-const jobReader = async (ctx: ActionCtx, job: Doc<"extractionJobs">) => ({ userId: job.userId, workspaceId: job.workspaceId ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: job.userId })) });
+const jobReader = async (ctx: ActionCtx, job: Doc<"extractionJobs">) => ({ userId: job.createdBy, workspaceId: job.workspaceId });
 
 async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: string, place: SetupPlace): Promise<{ papers: SetupPaper[]; next: SetupPlace } | null> {
   // Typed here: the generated API's types depend on this module, so inference would loop.
@@ -218,10 +220,11 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
   if (item.source === "history" && item.searchFilters) {
     const filters = item.searchFilters;
     if (!("openAlexQuery" in filters)) throw createError("VALIDATION_ERROR", OLD_SEARCH_MESSAGE);
-    // As many papers as the bucket counted it for (lib/bucket/effective-paper-count.ts).
+    // As many papers as the bucket counted it for (lib/bucket/effective-paper-count.ts), from the result it starts at.
     const wanted = paperCountForItem(item);
-    const first = place.read + 1;
-    const last = Math.min(wanted, place.read + SEARCH_STEP);
+    const start = filters.first ?? 1;
+    const first = start + place.read;
+    const last = Math.min(start + wanted - 1, first + SEARCH_STEP - 1);
     if (last < first) return { papers: [], next: onTo(position + 1) };
     const run = await readSearchRun<unknown>(filters.openAlexQuery, { first, last, select: OPENALEX_WORK_SELECT_FIELDS.join(","), resume: place.resume, goesOn: true }, spender(ctx, clerkId));
     const papers = run.works.map((work): SetupPaper => ({ ...mapOpenAlexWorkToPaperData(toOpenAlexWork(work)), sourceType: "history", sourceId: item.sourceRefId }));
@@ -239,13 +242,28 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
     const read = place.read + papers.length;
     return { papers, next: resume && read < range.count ? { ...place, read, resume } : onTo(position + 1) };
   }
+  if (item.zoteroSet) {
+    // A range of the person's own Zotero, one page of Zotero's a step, each item read as a Zotero paper picked on the page is (./expandSources.ts).
+    const range = item.zoteroSet;
+    const first = range.first + place.read;
+    const last = Math.min(range.last, first + ZOTERO_PAGE - 1);
+    if (last < first) return { papers: [], next: onTo(position + 1) };
+    const read: { papers: Array<{ key: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean; zoteroUserId: string } = await ctx.runAction(internal.zotero.actions.papersOf, { userId: job.createdBy, ...(item.collectionKey ? { collectionKey: item.collectionKey } : {}), ...(item.groupId ? { groupId: item.groupId } : {}), first, last });
+    const items = read.papers.map((paper): BucketItemInput => ({ ...item, zoteroSet: undefined, bucketKey: `${item.bucketKey}:${paper.key}`, sourceRefId: paper.key, title: paper.title, authors: paper.authors.slice(0, MAX_AUTHORS), year: paper.year, doi: paper.doi, abstract: paper.abstract, venueName: paper.venue, zoteroUserId: read.zoteroUserId }));
+    const expanded = await expandJobSources(items, { fetchPapersFromHistory: () => { throw new Error("A Zotero range holds no search"); }, readLibraryItems: async () => [], resolveZoteroUserId: async () => read.zoteroUserId });
+    const papers = expanded.map(({ paper, sourceType, sourceId }): SetupPaper => ({ ...paper, storageId: paper.storageId as Id<"_storage"> | undefined, sourceType, sourceId }));
+    const done = read.ended || last >= range.last;
+    return { papers, next: done ? onTo(position + 1) : { ...place, read: place.read + (last - first + 1) } };
+  }
   if (item.source === "screening") {
     const selection = item.screeningSelection;
     if (!selection) throw createError("VALIDATION_ERROR", "Screening selection is missing.");
-    const { papers: held, resume } = await heldPapers(ctx, await jobReader(ctx, job), { kind: "screening", jobId: selection.jobId }, { first: place.read + 1, last: place.read + SETUP_STEP }, place.resume, selection.revision);
+    // From the first paper of its range, as many as the start counted.
+    const from = (selection.first ?? 1) + place.read;
+    const { papers: held, resume } = await heldPapers(ctx, await jobReader(ctx, job), { kind: "screening", jobId: selection.jobId }, { first: from, last: Math.min((selection.first ?? 1) + selection.count - 1, from + SETUP_STEP - 1) }, place.resume, selection.revision);
     const papers = held.map(({ venue, ...paper }): SetupPaper => ({ ...paper, venueName: venue, sourceType: "screening", sourceId: selection.jobId, screeningRevision: selection.revision }));
     const read = place.read + papers.length;
-    if (resume) return { papers, next: { ...place, read, resume } };
+    if (resume && read < selection.count) return { papers, next: { ...place, read, resume } };
     if (read !== selection.count) throw createError("CONFLICT", "Screening inputs changed. Select the screening again before starting extraction.");
     return { papers, next: onTo(position + 1) };
   }
@@ -290,7 +308,7 @@ export async function runSetupExtractionQueueJob(
   try {
     const runtime = setupRuntime(initialControl.pdfEnabled);
     // Typed here: the generated API's types depend on this module, so inference would loop.
-    const user: Doc<"users"> | null = await ctx.runQuery(internal.users.internal.getUserById, { userId: initialControl.job.userId });
+    const user: Doc<"users"> | null = await ctx.runQuery(internal.users.internal.getUserById, { userId: initialControl.job.createdBy });
     if (!user) throw createError("UNAUTHENTICATED", "Authentication required");
     let place: SetupPlace = initialControl.job.setup ?? { position: 0, read: 0, papers: 0, processable: 0 };
     while (!place.done) {

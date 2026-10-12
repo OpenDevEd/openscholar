@@ -24,6 +24,7 @@ import { applyCommand, checkRemoval, findSearch, revisionRow } from "./records";
 import { AUTHORS_SHOWN, changesValidator, COUNTRIES_SHOWN, LAST_PAGE, LAST_PAGE_FROM_START, pageValidator, RESULTS_PAGE, resultsValidator, searchSettings, SETTINGS } from "./searchValidators";
 import type { Id } from "../_generated/dataModel";
 import { personalWorkspaceOf } from "../workspaces/actor";
+import { noteActivity } from "../activity/notes";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
@@ -54,17 +55,19 @@ const narrowed = (search: Partial<SavedSearch>) => Boolean(search.query?.trim())
 /**
  * The results page a query and settings open as a new search: a link with no search ID, which
  * the page makes a search of, as a shared link does. None for settings that make no search.
+ * `year` is the year the search ran, where a span of years left open ends: a link to a lookup
+ * made last year still opens what that lookup searched. This year when it's left out.
  */
-export function searchHref(query: string | undefined, settings: Settings): string | undefined {
+export function searchHref(query: string | undefined, settings: Settings, year?: number): string | undefined {
   try {
-    return buildShareableUrl("", searchResultToParams(restoreSearch(newSearch("link", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings))));
+    return buildShareableUrl("", searchResultToParams(restoreSearch(newSearch("link", query === undefined ? undefined : settings.field === "oql" ? query : withoutQuotedQuestionMarks(query), settings, year))));
   } catch {
     return undefined;
   }
 }
 
 /** A search from a query and settings, as one is first saved. */
-function newSearch(id: string, query: string | undefined, settings: Settings): SavedSearch {
+function newSearch(id: string, query: string | undefined, settings: Settings, year?: number): SavedSearch {
   const now = new Date().toISOString();
   const search: SavedSearch = {
     id,
@@ -77,7 +80,7 @@ function newSearch(id: string, query: string | undefined, settings: Settings): S
     questionText: "",
     screeningQuestions: [],
     screeningResponses: [],
-    ...savedFields(settings).fields,
+    ...savedFields(settings, undefined, year).fields,
     createdAt: now,
     updatedAt: now,
   };
@@ -194,10 +197,9 @@ const LISTS = [
  * Plain settings as the saved search's own fields: what to set, and what to take off.
  * `current` is the search being changed, whose year range fills in a year left out.
  */
-function savedFields(settings: Settings, current?: SavedSearch) {
+function savedFields(settings: Settings, current?: SavedSearch, thisYear = new Date().getFullYear()) {
   const fields: Partial<SavedSearch> = {};
   const clear: string[] = [];
-  const thisYear = new Date().getFullYear();
   if (settings.field !== undefined) fields.field = settings.field;
   // Exact days and whole years are the page's two ways of giving a time span: it filters by the one last set.
   // A call gives one of them. The other's ends, taken off or left out, go with it, so the search moves across whole.
@@ -285,6 +287,7 @@ const madeHere = v.object({ created: v.number(), revision: v.number() });
 
 export const createAction = defineUserMutation({
   path: CREATE,
+  activity: (args, { id }) => ({ kind: "search", id, happened: "created", ...(args.query ? { detail: args.query } : {}) }),
   description:
     "Makes a saved search in the person's account from a query, filters, or both, which shows in their search history at once. For when they ask for a search to keep: to look papers up, use research/papers:search, which saves nothing. " +
     "It doesn't run the search: read its results with research/searches:results. The query is keywords, with AND, OR, NOT and quoted phrases. " +
@@ -374,7 +377,8 @@ export const updateAction = defineUserMutation({
     "The person's open page follows, from its first page of results. `query` is the search's words, which a search with a filter can do without. " +
     SETTINGS +
     " " +
-    "Returns `undo`, which puts the search back as it was before this change. It is refused if the search changed again in between.",
+    "Returns `undo`, which puts the search back as it was before this change. It is refused if the search changed again in between. " +
+    "It changes the workspace's own searches: one shared with the person from another workspace is changed with research/records:change, by the ID sharing/shared:list gives.",
   args: { id: v.string(), changes: changesValidator },
   returns: v.object({ undo: reversedBy(RESTORE, restoreArgs) }),
   spendsCredits: false,
@@ -399,6 +403,7 @@ export const updateAction = defineUserMutation({
     const kept = (value: unknown) => (value === undefined || value === false || value === "" || (Array.isArray(value) && !value.length) ? "off" : JSON.stringify(value));
     const refiltered = Object.entries(filters).some(([key, value]) => kept(current[key as keyof SavedSearch]) !== kept(value)) || clear.some((key) => current[key as keyof SavedSearch] !== undefined);
     if (!requeried && !refiltered) return {};
+    await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, { kind: "search", id, happened: "edited", ...(requeried && asked ? { detail: asked } : {}) });
     const edits: Array<UndoCommand | undefined> = [];
     if (requeried) edits.push(await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "query", query: asked, field } }, author));
     // Its results start again from their first page, as they do when the person changes the search on its page.
@@ -418,6 +423,7 @@ export const updateForAssistant = assistantMutation(updateAction);
 
 export const restoreAction = defineUserMutation({
   path: RESTORE,
+  activity: ({ id }) => ({ kind: "search", id, happened: "edited" }),
   description:
     "Puts a saved search's query and filters back as they were at one of its revisions, as a new revision. With `expect`, the revision whose query and filters the search should hold now, it is refused if the search changed since. " +
     "Returns `undo`, which puts back what this replaced.",
@@ -475,11 +481,11 @@ export const deleteSearchForAssistant = assistantMutation(deleteAction);
 
 /** The request a search with this query and these settings would make, saved nowhere: for trying one (./papers.ts). */
 export const requestFor = internalQuery({
-  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), query: v.optional(v.string()), settings: v.object(searchSettings) },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), query: v.optional(v.string()), settings: v.object(searchSettings) },
   returns: savedSearchValidator,
   // A title looked up in quotes often ends in a question mark, which OpenAlex refuses there: it's read without.
-  handler: async (ctx, { query, settings, userId, workspaceId }) => requestOf(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, newSearch("unsaved", query === undefined ? undefined : withoutQuotedQuestionMarks(query), settings), 0),
+  // An OQL query is sent as written: OpenAlex reads its quoted question marks as written.
+  handler: async (ctx, { query, settings, userId, workspaceId }) => requestOf(ctx, { userId, workspaceId }, newSearch("unsaved", query === undefined ? undefined : settings.field === "oql" ? query : withoutQuotedQuestionMarks(query), settings), 0),
 });
 
 /** A paper as a page of results gives it. */
@@ -526,11 +532,9 @@ export async function readPage(ctx: ActionCtx, userId: Id<"users">, found: Saved
  * search history shows it. Left alone when the search changed while its results were read.
  */
 export const counted = internalMutation({
-  // Optional only for calls from a `recount` scheduled before the workspace was passed (#650); required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), id: v.string(), revision: v.number(), count: v.number(), author: authorValidator },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), id: v.string(), revision: v.number(), count: v.number(), author: authorValidator },
   returns: v.null(),
-  handler: async (ctx, { userId, workspaceId: given, id, revision, count, author }) => {
-    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
+  handler: async (ctx, { userId, workspaceId, id, revision, count, author }) => {
     const found = await findSearch(ctx, workspaceId, id);
     if (found?.revision === revision && currentSearch(found.data).count !== count) await applyCommand(ctx, { userId, workspaceId }, { kind: "editSearch", id, edit: { kind: "patch", fields: { count }, clear: [] } }, author);
     return null;
@@ -544,11 +548,9 @@ export const counted = internalMutation({
  * keeps the count it has until its results are next read.
  */
 export const recount = internalAction({
-  // Optional only for calls scheduled before the workspace was passed (#650), which act in their maker's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), id: v.string(), author: authorValidator },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), id: v.string(), author: authorValidator },
   returns: v.null(),
-  handler: async (ctx, { userId, workspaceId: given, id, author }) => {
-    const workspaceId: Id<"workspaces"> = given ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId }));
+  handler: async (ctx, { userId, workspaceId, id, author }) => {
     try {
       const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, workspaceId, searchId: id });
       if (!found.request) return null;

@@ -16,20 +16,18 @@ import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
-import { STEPS_SHOWN } from "../../lib/assistant/steps";
+import { DONE, STEP_TEXT_MAX, STEPS_SHOWN } from "../../lib/assistant/steps";
 import { workUrl } from "../../lib/openalex/work-id";
 import { ABORT_ERROR_STRING } from "../../lib/ai/abort-signal";
 import { assistant } from "./agent";
 import { forgetLimits, noteReply } from "./spending";
 import { linked } from "./links";
 import { WEB_SOURCES_KEPT } from "./validators";
-import { personalWorkspaceOf } from "../workspaces/actor";
 
-/** Characters of an action's arguments, of what reverses it, and of why it failed, that a step keeps. */
-export const STEP_TEXT_MAX = 16_000;
 /** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
-export { STEPS_SHOWN };
+// Defined where modules outside the assistant read them without loading this one, which holds the agent (scripts/check-module-weight.mjs).
+export { DONE, STEP_TEXT_MAX, STEPS_SHOWN };
 
 /** Calls one reply may ask the person about before it carries on. More than a person would read, so the rest are refused. */
 export const MAX_ASKS = 10;
@@ -87,13 +85,6 @@ const shallow = (value: unknown, levels: number): unknown =>
       : Array.isArray(value)
         ? value.map((inner) => shallow(inner, levels - 1))
         : Object.fromEntries(Object.entries(value).map(([key, inner]) => [key, shallow(inner, levels - 1)]));
-
-/**
- * What a change that returns nothing tells the model. Nothing at all read, to a weaker model,
- * as not done yet: after the person allowed a deletion and it ran, the reply said it was
- * still waiting for them.
- */
-export const DONE = { done: true } as const;
 
 /**
  * What the model reads of anything a tool returns, and what's saved with the reply: all of
@@ -208,30 +199,37 @@ export const begin = internalMutation({
     variant: v.optional(v.string()),
     reads: v.optional(v.literal(true)),
     request: v.optional(v.number()),
-    // The workspace the reply acts in, where a record the step names is looked up. One called before replies named theirs (#650) looks in the person's own, until slice 8.
-    workspaceId: v.optional(v.id("workspaces")),
+    // The workspace the reply acts in, where a record the step names is looked up (#650).
+    workspaceId: v.id("workspaces"),
   },
   returns: v.id("assistantSteps"),
   handler: async (ctx, args) => {
-    const subject = args.subject ?? (await aboutOf(ctx, args.workspaceId ?? (await personalWorkspaceOf(ctx, args.userId)), args.input));
+    const subject = args.subject ?? (await aboutOf(ctx, args.workspaceId, args.input));
     return ctx.db.insert("assistantSteps", { ...args, ...(subject ? { subject } : {}), status: "running", startedAt: Date.now() });
   },
+});
+
+/** The chat a step belongs to, for a tool that charges once a chat. */
+export const chatOf = internalQuery({
+  args: { stepId: v.id("assistantSteps") },
+  returns: v.union(v.id("assistantThreads"), v.null()),
+  handler: async (ctx, { stepId }) => (await ctx.db.get("assistantSteps", stepId))?.threadId ?? null,
 });
 
 /** What a call given these arguments is about (`aboutOf`), for a tool that names its step before it has one. */
 export const about = internalQuery({
   // `input` is the arguments, as JSON.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), input: v.string() },
+  args: { workspaceId: v.id("workspaces"), input: v.string() },
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, { userId, workspaceId, input }) => (await aboutOf(ctx, workspaceId ?? (await personalWorkspaceOf(ctx, userId)), input)) ?? null,
+  handler: async (ctx, { workspaceId, input }) => (await aboutOf(ctx, workspaceId, input)) ?? null,
 });
 
 /**
  * What a call is about when its arguments name one of the workspace's records by ID alone:
- * the saved paper's title, or else the collection's name. A paper it is about to save isn't
+ * the saved paper's title, the job's name, or else the collection's name. A paper it is about to save isn't
  * in it yet, and gets its title from what the call returns (`namedBy`).
  */
-async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, input: string) {
+export async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, input: string) {
   let args: Record<string, unknown>;
   try {
     args = JSON.parse(input) as Record<string, unknown>;
@@ -249,12 +247,33 @@ async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">,
     // title its result gives, not by the collection it goes into.
     return item?.title ? cut(item.title, 200) : undefined;
   }
+  // An Evidence Library it reads or changes, by its name.
+  if (typeof args.libraryId === "string") {
+    const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
+    const library = libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
+    return library?.workspaceId === workspaceId ? cut(library.name, 200) : undefined;
+  }
+  // An author profile, by its name: its page is public.
+  if (typeof args.profileId === "string") {
+    const profileId = ctx.db.normalizeId("authorProfiles", args.profileId);
+    const profile = profileId ? await ctx.db.get("authorProfiles", profileId) : null;
+    return profile ? cut(profile.name, 200) : undefined;
+  }
+  // A job it controls, by its name: an extraction's, or a screening's.
+  if (typeof args.jobId === "string") {
+    const extractionId = ctx.db.normalizeId("extractionJobs", args.jobId);
+    const screeningId = ctx.db.normalizeId("screeningJobs", args.jobId);
+    const extraction = extractionId ? await ctx.db.get("extractionJobs", extractionId) : null;
+    const screening = screeningId ? await ctx.db.get("screeningJobs", screeningId) : null;
+    const named = extraction?.workspaceId === workspaceId ? extraction.name : screening?.workspaceId === workspaceId ? (screening.name ?? screening.label) : undefined;
+    return named ? cut(named, 200) : undefined;
+  }
   const collectionId = typeof args.collectionId === "string" ? ctx.db.normalizeId("collections", args.collectionId) : null;
   const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;
   return collection && collection.workspaceId === workspaceId ? cut(collection.name, 200) : undefined;
 }
 
-/** A step that read something ends with its result. A change ends its own (`endStep`). */
+/** A step that read something ends with its result, as does a change an action made outside and kept (organizations/manage.ts). A change written here ends its own (`endStep`). */
 export const read = internalMutation({
   // `result` is what the action returned, as JSON.
   args: { stepId: v.id("assistantSteps"), result: v.string() },

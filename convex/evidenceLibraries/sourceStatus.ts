@@ -1,6 +1,7 @@
 import { v, type Infer } from "convex/values";
 import { validate } from "convex-helpers/validators";
-import { httpAction, internalMutation, query } from "../lib/functions";
+import { httpAction, internalMutation, query, type QueryCtx } from "../lib/functions";
+import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createError, readConvexErrorData } from "../lib/errors";
 import { jsonResponse, readBearerCredential } from "../lib/libraryServiceHttp";
@@ -8,8 +9,8 @@ import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { requireEvidenceLibraryAccess } from "./access";
 import { authenticateLibraryServiceCredential } from "./credentials";
 import {
-  evidenceLibrarySourceStatusFields,
   type SourceStatus,
+  sourceStatusReadValidator,
   sourceStatusSnapshotValidator,
   sourceStatusValidator,
 } from "./sourceStatusValidators";
@@ -66,18 +67,21 @@ export const record = internalMutation({
   },
 });
 
-/** The runtime's latest report, for the owner's configuration page. */
+/** The runtime's latest report on a library's sources, for someone who views the library. */
+export async function readSourceStatus(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">) {
+  await requireEvidenceLibraryAccess(ctx, libraryId, "view");
+  const snapshot = await ctx.db
+    .query("evidenceLibrarySourceStatus")
+    .withIndex("by_libraryId", (q) => q.eq("libraryId", libraryId))
+    .unique();
+  return snapshot ? { observedAt: snapshot.observedAt, sources: snapshot.sources } : null;
+}
+
+/** The runtime's latest report, for the configuration page, which everyone who views the library sees (#653). */
 export const listForLibrary = query({
   args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.union(v.null(), v.object({ observedAt: v.number(), sources: evidenceLibrarySourceStatusFields.sources })),
-  handler: async (ctx, args) => {
-    await requireEvidenceLibraryAccess(ctx, args.libraryId, "manage");
-    const snapshot = await ctx.db
-      .query("evidenceLibrarySourceStatus")
-      .withIndex("by_libraryId", (q) => q.eq("libraryId", args.libraryId))
-      .unique();
-    return snapshot ? { observedAt: snapshot.observedAt, sources: snapshot.sources } : null;
-  },
+  returns: sourceStatusReadValidator,
+  handler: async (ctx, args) => await readSourceStatus(ctx, args.libraryId),
 });
 
 /** `POST /api/v1/evidence-libraries/source-status`, called by the library's source worker. */

@@ -10,11 +10,14 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { readMemberOrganizations } from "../organizationFeatures";
 import { findSearch } from "../research/records";
-import { isInWorkspace } from "../workspaces/actor";
+
 import { currentSearch } from "../../lib/research/records";
-import { personName, roleIn } from "./access";
+import { roleIn } from "./access";
+import { libraryOf } from "../evidenceLibraries/access";
+import { personName } from "../lib/people";
 import { workUrl } from "../../lib/openalex/work-id";
 import { ASKED_DETAILS_MAX, ASKED_EACH_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
+import { addressesOf } from "../lib/people";
 
 /** A saved search's ID: the one the page made for it. */
 const SEARCH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -30,6 +33,7 @@ const DEPTH_MAX = 3;
 type Leaf = [path: string[], value: string | number | boolean | null];
 
 /** An argument's name: the last part of its path, without the "Id" that only says it's a reference. */
+const UNSAID = new Set(["expect", "unchanged", "expectedEditVersion"]);
 const nameOf = (path: string[]) => (path.at(-1) ?? "").replace(/Ids?$/, "") || (path.at(-2) ?? "");
 
 /** Every plain value among a call's arguments, with the path to it. One given as null is kept: taking a value off is a change too. */
@@ -89,6 +93,16 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
       const file = await ctx.db.get("assistantFiles", fileId);
       return file?.threadId && (await opens(file.threadId)) ? file.name : null;
     }
+    // An invitation to a library, by who it's for and the library: to the person it's for, or to someone in the library's workspace.
+    const invitationId = ctx.db.normalizeId("itemInvitations", id);
+    if (invitationId) {
+      const invitation = await ctx.db.get("itemInvitations", invitationId);
+      const library = invitation ? await libraryOf(ctx, invitation) : null;
+      return invitation && library && (addressesOf(reader).includes(invitation.email) || library.workspaceId === workspaceId) ? `${invitation.email}, ${library.name}` : null;
+    }
+    // An author profile, by its name: its page is public.
+    const profileId = ctx.db.normalizeId("authorProfiles", id);
+    if (profileId) return (await ctx.db.get("authorProfiles", profileId))?.name ?? null;
     const collectionId = ctx.db.normalizeId("collections", id);
     if (collectionId) {
       const collection = await ctx.db.get("collections", collectionId);
@@ -107,16 +121,18 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
     const screeningId = ctx.db.normalizeId("screeningJobs", id);
     if (screeningId) {
       const job = await ctx.db.get("screeningJobs", screeningId);
-      return job && workspaceId && (await isInWorkspace(ctx, job, workspaceId)) ? job.label || null : null;
+      return job && workspaceId && (job.workspaceId === workspaceId) ? job.name || job.label || null : null;
     }
     const extractionId = ctx.db.normalizeId("extractionJobs", id);
     if (extractionId) {
       const job = await ctx.db.get("extractionJobs", extractionId);
-      return job && workspaceId && (await isInWorkspace(ctx, job, workspaceId)) ? job.name || null : null;
+      return job && workspaceId && (job.workspaceId === workspaceId) ? job.name || null : null;
     }
     const organizationId = ctx.db.normalizeId("organizations", id);
     if (organizationId) return mine.find(({ organization }) => organization._id === organizationId)?.organization.name ?? null;
-    const userId = ctx.db.normalizeId("users", id);
+    // Someone a library's team names by their Clerk ID, as a user is named.
+    const clerkPerson = key === "clerkUserId" ? await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", id)).unique() : null;
+    const userId = clerkPerson?._id ?? ctx.db.normalizeId("users", id);
     if (userId) {
       const person = await ctx.db.get("users", userId);
       if (!person) return null;
@@ -129,8 +145,8 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
   };
   // The call's own arguments come before the fields inside them, so what it acts on and what
   // it changes are shown even when a paper it carries has more fields than fit.
-  // `expect` is what an undo passes so that it leaves alone a record changed since: it says what the record is now, not what the call does.
-  const leaves = plain(args).filter(([path]) => path[0] !== "expect").sort(([a], [b]) => a.length - b.length);
+  // `expect` and `unchanged` are what an undo passes so that it leaves alone a record changed since, and `expectedEditVersion` is a draft's version as it was read: they say what the record is now, not what the call does.
+  const leaves = plain(args).filter(([path]) => !UNSAID.has(path[0])).sort(([a], [b]) => a.length - b.length);
   const details: Array<{ name: string; value: string; record: boolean; within: string; key: string }> = [];
   for (const [path, value] of leaves.slice(0, ASKED_DETAILS_MAX)) {
     // A name that can't be read, such as someone in more organizations than are read at once, stays an ID.

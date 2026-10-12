@@ -1,8 +1,7 @@
-import type { AIProvider } from '@/lib/types/ai.types'
 import { isVariant, toNativeModelId } from './native-model-id'
 
 /** Providers a user can save a browser key for. OpenRouter's key runs every model. */
-export const KEY_PROVIDERS = ['openai', 'google', 'anthropic', 'openrouter'] as const
+const KEY_PROVIDERS = ['openai', 'google', 'anthropic', 'openrouter'] as const
 export type KeyProvider = (typeof KEY_PROVIDERS)[number]
 
 const vendorOf = (modelSlug: string) => modelSlug.split('/')[0] as KeyProvider
@@ -19,5 +18,3 @@ export function keyFor(modelSlug: string, keys: Partial<Record<string, string>>)
 export function keyModelId(modelSlug: string, provider: KeyProvider): string {
   return provider === 'openrouter' ? modelSlug : toNativeModelId(modelSlug, provider as Exclude<KeyProvider, 'openrouter'>)
 }
-
-export type { AIProvider }

@@ -3,15 +3,31 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 import { locales } from "@/i18n/config";
 import { detectLocaleFromAcceptLanguage } from "@/i18n/locale-detection";
 import { shouldProtectPath } from "@/lib/auth/proxy-policy";
+import { slugOf, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
+import { ADDRESS_HEADER } from "@/lib/workspaces/paths";
 
 const COOKIE_NAME = "NEXT_LOCALE";
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
-const authMiddleware = clerkMiddleware(async (auth, request) => {
-  if (shouldProtectPath(request.nextUrl.pathname)) {
-    await auth.protect();
-  }
-});
+const authMiddleware = clerkMiddleware(
+  async (auth, request) => {
+    if (shouldProtectPath(request.nextUrl.pathname)) {
+      await auth.protect();
+    }
+    // The workspace the address is in, for the root layout, which gets no route params: it draws
+    // the rail as that workspace looked last time (lib/workspaces/look-cache.ts).
+    const headers = new Headers(request.headers);
+    headers.set(WORKSPACE_HEADER, slugOf(request.nextUrl.pathname) ?? "");
+    // And the address itself, for an organization's layout to send someone outside it to the same page in their own workspace.
+    headers.set(ADDRESS_HEADER, request.nextUrl.pathname + request.nextUrl.search);
+    return NextResponse.next({ request: { headers } });
+  },
+  {
+    // The session's active organization follows the address (#651): an organization's pages sit
+    // under /o/<slug>, every other page is the person's own. Convex reads its own memberships.
+    organizationSyncOptions: { organizationPatterns: ["/o/:slug", "/o/:slug/(.*)"], personalAccountPatterns: ["/(.*)"] },
+  },
+);
 
 function hasValidLocaleCookie(request: NextRequest): boolean {
   const raw = request.cookies.get(COOKIE_NAME)?.value;

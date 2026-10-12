@@ -1,5 +1,7 @@
+import { MAX_VERIFIED_EMAILS } from "../lib/listCaps";
 import { internal } from "../_generated/api";
 import { MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
+import type { Id } from "../_generated/dataModel";
 import { internalMutation, internalQuery, type MutationCtx } from "../lib/functions";
 import { v } from "convex/values";
 import { requireActiveUser, requireAuth } from "../lib/auth";
@@ -69,9 +71,13 @@ export async function applyUserUpsertProjection(
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
 
+    // The addresses invitations to the person may go to (../lib/people.ts `addressesOf`).
+    // shortcut: the first MAX_VERIFIED_EMAILS, besides the account's own; raise it if anyone verifies more.
+    const verifiedEmails = [...new Set(args.verifiedEmails ?? [])].slice(0, MAX_VERIFIED_EMAILS);
     if (existing) {
       await ctx.db.patch("users", existing._id, {
         email: args.email,
+        verifiedEmails,
         firstName: args.firstName,
         lastName: args.lastName,
         avatarUrl: args.avatarUrl,
@@ -86,6 +92,7 @@ export async function applyUserUpsertProjection(
     const userId = await createUserWithDefaults(ctx, {
       clerkId: args.clerkId,
       email: args.email,
+      verifiedEmails,
       firstName: args.firstName,
       lastName: args.lastName,
       avatarUrl: args.avatarUrl,
@@ -129,11 +136,8 @@ export async function applyUserDeleteProjection(
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
 
-    const grants = await ctx.db.query("evidenceLibraryMembers")
-      .withIndex("by_clerkUserId", q => q.eq("clerkUserId", args.clerkId)).take(MAX_LIBRARY_GRANTS_PER_PERSON);
-    for (const grant of grants) await ctx.db.delete("evidenceLibraryMembers", grant._id);
-    // More than one read's worth, from before grants were capped: the rest go in the next batches.
-    if (grants.length === MAX_LIBRARY_GRANTS_PER_PERSON) await ctx.scheduler.runAfter(0, internal.users.internal.deleteLibraryGrants, { clerkId: args.clerkId });
+    // Their roles in Evidence Libraries go now, so they hold no place in one. What else was shared with them goes when the account is purged (../sharing/upkeep.ts).
+    if (user) await deleteLibraryRoles(ctx, user._id);
     // Kept even without a user row, for a deletion that arrives before the
     // account's creation: libraries ask whether a reader still exists.
     const tombstone = await ctx.db.query("clerkDeletedUsers")
@@ -146,6 +150,9 @@ export async function applyUserDeleteProjection(
       state: "deleted",
       updatedAt: Date.now(),
     });
+    // What they shared from their own workspace closes to its guests now, not when the account's data is purged (#653).
+    const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique();
+    if (workspace) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.close, { workspaceId: workspace._id, cursor: null });
   });
 }
 
@@ -183,15 +190,20 @@ export const updateLastLogin = internalMutation({
   },
 });
 
-/** Deletes a batch of a deleted account's library grants, and schedules the next until none are left. */
+/** Deletes a batch of a deleted account's roles in Evidence Libraries, and schedules the next until none are left. */
+async function deleteLibraryRoles(ctx: MutationCtx, userId: Id<"users">) {
+  const grants = await ctx.db.query("itemAccess")
+    .withIndex("by_user_and_kind_and_grantedAt", q => q.eq("userId", userId).eq("kind", "library")).take(MAX_LIBRARY_GRANTS_PER_PERSON);
+  for (const grant of grants) await ctx.db.delete("itemAccess", grant._id);
+  // More than one read's worth: the rest go in the next batches.
+  if (grants.length === MAX_LIBRARY_GRANTS_PER_PERSON) await ctx.scheduler.runAfter(0, internal.users.internal.deleteLibraryGrants, { userId });
+}
+
 export const deleteLibraryGrants = internalMutation({
-  args: { clerkId: v.string() },
+  args: { userId: v.id("users") },
   returns: v.null(),
-  handler: async (ctx, { clerkId }) => {
-    const grants = await ctx.db.query("evidenceLibraryMembers")
-      .withIndex("by_clerkUserId", q => q.eq("clerkUserId", clerkId)).take(MAX_LIBRARY_GRANTS_PER_PERSON);
-    for (const grant of grants) await ctx.db.delete("evidenceLibraryMembers", grant._id);
-    if (grants.length === MAX_LIBRARY_GRANTS_PER_PERSON) await ctx.scheduler.runAfter(0, internal.users.internal.deleteLibraryGrants, { clerkId });
+  handler: async (ctx, { userId }) => {
+    await deleteLibraryRoles(ctx, userId);
     return null;
   },
 });

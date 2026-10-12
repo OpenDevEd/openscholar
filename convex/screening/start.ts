@@ -9,9 +9,11 @@ import { createError, readConvexErrorData } from "../lib/errors";
 import { heldPapers } from "../paperSets/held";
 import { countSearch, numbered, PAGE_SIZE, type SearchSnapshot } from "../paperSets/openalex";
 import { searchPapers, snapshotOf, spender, type SavedSearchRequest } from "../paperSets/search";
-import { checkScreening, papersIn, requireMinimum, screeningHold } from "./estimate";
+import { checkScreening, firstZoteroPaper, papersIn, requireMinimum, screeningHold } from "./estimate";
 import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
+import { MAX_AUTHORS } from "../lib/listCaps";
+import { ZOTERO_PAGE } from "../zotero/libraryValidators";
 
 type PaperSet = Infer<typeof paperSetValidator>;
 
@@ -19,7 +21,7 @@ const jobArgs = {
   questions: v.array(screeningQuestionValidator),
   scoringConfig: screeningScoringConfigValidator,
 };
-type Config = { questions: Infer<typeof jobArgs.questions>; scoringConfig: Infer<typeof jobArgs.scoringConfig>; saveTo?: Infer<typeof saveToValidator>; prune?: boolean };
+type Config = { questions: Infer<typeof jobArgs.questions>; scoringConfig: Infer<typeof jobArgs.scoringConfig>; saveTo?: Infer<typeof saveToValidator>; prune?: boolean; name?: string };
 
 /** Papers one step of a job's reading takes: up to the end of one of OpenAlex's pages, so no page is asked for twice. */
 const READ_STEP = PAGE_SIZE;
@@ -40,7 +42,7 @@ export const heldCount = internalQuery({
  * counted first, so a query OpenAlex won't take, or a range past the search's last paper, is
  * refused here; a held set's count is the account's.
  */
-async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, author: "user" | "assistant", { set, first, last: through, ...config }: Config & { set: PaperSet; first: number; last: number }, call?: ChangeCall): Promise<{ jobId: Id<"screeningJobs"> }> {
+async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, author: "user" | "assistant", { set, first, last: through, name, ...config }: Config & { set: PaperSet; first: number; last: number }, call?: ChangeCall): Promise<{ jobId: Id<"screeningJobs"> }> {
   const spendCap = call?.credits;
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(through) || first < 1 || through < first) {
     throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
@@ -60,12 +62,14 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
     total = (await ctx.runQuery(internal.screening.start.heldCount, { userId, workspaceId, set })) ?? through;
   }
   if (first > total) throw createError("VALIDATION_ERROR", "There are no papers in that range");
+  // A Zotero collection is read for its first paper before a job is made: one gone, or a group out of reach, is refused here.
+  if (set.kind === "zotero") await firstZoteroPaper(ctx, userId, set, first);
   // No further than the set goes: papers past its last are never asked for.
   const last = Math.min(through, total);
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
   const step = call?.from ? { chatStep: call.from } : {};
   const open = (spend: { spendCap?: number; spendHold?: string }) =>
-    ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, workspaceId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...config, papers: last - first + 1, ...step, ...spend });
+    ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, workspaceId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...config, ...(name ? { name } : {}), papers: last - first + 1, ...step, ...spend });
   // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
   return spendCap === undefined ? await open({}) : await startHeld(ctx, { userId, workspaceId, credits: spendCap, kind: "screening" }, (spendHold) => open({ spendCap, spendHold }));
 }
@@ -121,6 +125,15 @@ export const read = internalAction({
           const done = ended || from + read > job.last;
           await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read, ...(resume ? { resume } : {}), ended: done });
           if (done) return null;
+        } else if (job.set.kind === "zotero") {
+          // Read through the person's own Zotero account, one page of its items a step.
+          const { collectionKey, groupId } = job.set;
+          const through = Math.min(to, from + ZOTERO_PAGE - 1);
+          const read: { papers: Array<{ openalexId: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean } = await ctx.runAction(internal.zotero.actions.papersOf, { userId: job.userId, ...(collectionKey ? { collectionKey } : {}), ...(groupId ? { groupId } : {}), first: from, last: through });
+          const papers = read.papers.map(({ openalexId, title, abstract, authors, year, doi, venue, pdfUrl }) => ({ openalexId, title, pdfUrl, authors: authors.slice(0, MAX_AUTHORS), ...(abstract ? { abstract } : {}), ...(year === undefined ? {} : { publicationYear: year }), ...(doi ? { doi } : {}), ...(venue ? { venue } : {}) }));
+          const done = read.ended || through >= job.last;
+          await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: through - from + 1, ended: done });
+          if (done) return null;
         } else {
           const { papers, resume } = await heldPapers(ctx, { userId: job.userId, workspaceId: job.workspaceId }, job.set, { first: from, last: to }, job.resume);
           const done = !resume || to >= job.last;
@@ -151,18 +164,19 @@ export const screenAction = defineUserAction({
   path: "screening/start:screen",
   description:
     "Screens papers `first` to `last` (from 1) of a paper set: one of the person's saved searches, in its results page's order and rating filter; one of their collections or all their saved papers, newest saved first; " +
-    "or the included papers of an earlier screening. Answers the questions for each paper and scores them by the rules. A search's answers show on its page, and papers that page already answered every question for keep their answers and cost nothing. " +
+    "the included papers of an earlier screening; or the items of the person's own Zotero library, a collection of it (not its sub-collections) or a group's, in Zotero's order (`kind: \"zotero\"`, found with zotero/library:collections), which can't be saved to a collection. Answers the questions for each paper and scores them by the rules. A search's answers show on its page, and papers that page already answered every question for keep their answers and cost nothing. " +
     "The job is made at once and its papers are read after, a step at a time, however many: until then the job is `reading`, and one whose papers can't be read ends `failed`, with why in its `failure`. " +
-    "Included papers go to `saveTo`. With `prune`, papers of a collection that end excluded or failed leave it. Spends credits.",
-  args: { set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: saveToValidator, prune: v.optional(v.boolean()) },
+    "Included papers go to `saveTo`. With `prune`, papers of a collection that end excluded or failed leave it. Give it a `name` when the person names it; without one it goes by its papers' set. Spends credits.",
+  args: { set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: saveToValidator, prune: v.optional(v.boolean()), name: v.optional(v.string()) },
   returns: v.object({ jobId: v.id("screeningJobs") }),
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
   estimate: (ctx, actor, args) => screeningHold(ctx, actor, args),
   // The papers, the questions put to them and where the included ones go. How each answer scores is the job's own business.
-  shown: ({ set, first, last, questions, saveTo, prune }) => ({
-    ...(set.kind === "collection" ? { collectionId: set.collectionId } : set.kind === "search" ? { search: set.searchId } : set.kind === "screening" ? { screening: set.jobId } : { papers: "library" }),
+  shown: ({ set, first, last, questions, saveTo, prune, name }) => ({
+    ...(name?.trim() ? { name: name.trim() } : {}),
+    ...(set.kind === "collection" ? { collectionId: set.collectionId } : set.kind === "search" ? { search: set.searchId } : set.kind === "screening" ? { screening: set.jobId } : set.kind === "zotero" ? { zotero: set.collectionKey ?? "library", ...(set.groupId ? { group: set.groupId } : {}) } : { papers: "library" }),
     first,
     last,
     question: questions.map((asked) => asked.question),

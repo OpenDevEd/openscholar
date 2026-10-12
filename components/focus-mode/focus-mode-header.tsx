@@ -65,19 +65,45 @@ export function FocusModeHeader({
   const effectiveRating = useEffectiveRating(currentPaper.id);
   // A paper with no OpenAlex record, such as one an extraction read from Zotero, has nothing to rate, save or open there.
   const onOpenAlex = workUrl(currentPaper.id) !== null;
+  const hasTranslation = !!translatedContent && !translatedContent.noTranslationNeeded;
+  const previous = (
+    <Button variant="outline" size="icon-sm" onClick={onGoToPrevious} disabled={currentIndex === 0}>
+      <ChevronLeft className="h-3 w-3" />
+    </Button>
+  );
+  const next = (
+    <Button variant="outline" size="icon-sm" onClick={onGoToNext} disabled={currentIndex === totalPapers - 1}>
+      <ChevronRight className="h-3 w-3" />
+    </Button>
+  );
+  const close = (
+    <SheetClose asChild>
+      <Button variant="outline" size="icon-sm" aria-label={tAccessibility("closeDialog")}>
+        <X className="h-3 w-3" />
+      </Button>
+    </SheetClose>
+  );
 
   return (
     <SheetHeader className="flex-shrink-0 p-3 border-b">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between w-full gap-2 md:gap-0">
-        {/* First row: where the paper is in its list, and the rating */}
-        <div className="flex items-center justify-between md:justify-start gap-3">
+        {/* First row: where the paper is in its list, and the rating. Phones step and close here, Close in the corner. */}
+        <div className="flex items-center gap-1 md:gap-3">
           {/* Named for screen readers only: the row shows the paper's controls. Out of the flow, so it takes no gap. */}
           <SheetTitle className="sr-only">{tAccessibility('focusMode')}</SheetTitle>
           {totalPapers > 1 ? (
-            <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded">
-              {currentIndex + 1} / {totalPapers}
-            </div>
+            <>
+              {/* The count sits after both arrows, so its width never moves an arrow from under a finger. */}
+              <div className="flex items-center gap-1 md:hidden">
+                {previous}
+                {next}
+              </div>
+              <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded tabular-nums max-md:ml-1">
+                {currentIndex + 1} / {totalPapers}
+              </div>
+            </>
           ) : null}
+          <div className="ml-auto md:hidden">{close}</div>
           {/* Star rating buttons - hidden on mobile */}
           {onOpenAlex ? (
             <div className="hidden md:flex items-center gap-0.5">
@@ -162,131 +188,117 @@ export function FocusModeHeader({
           ) : null}
         </div>
 
-        {/* Second row: Navigation and actions */}
-        {/* Phones wrap this into two rows: rating, save and navigation, then the tools */}
+        {/* Second row: actions. Phones show the rating and save on the left and the tools on the right. */}
         <div className="flex flex-wrap items-center gap-1 md:flex-nowrap md:justify-end md:mr-8">
           {/* Compact rating selector - only on mobile */}
           {onOpenAlex ? (
-            <div className="order-1 flex items-center gap-1 md:hidden">
+            <div className="flex items-center gap-1 md:hidden">
               <RatingSelector paper={currentPaper} variant="compact" />
               <SaveControl paper={currentPaper} compact />
             </div>
           ) : null}
 
-          <div className="order-4 flex items-center gap-1 md:order-none">
-            <Button
-              variant={showTranslated ? "outline-primary" : "outline"}
-              size="sm"
-              onClick={onToggleTranslation}
-              aria-label={
-                showTranslated
-                  ? tFocus("showOriginal")
-                  : tFocus("showTranslation")
-              }
-              disabled={
-                !translatedContent ||
-                translatedContent.noTranslationNeeded
-              }
-            >
-              <TranslateIcon working={isTranslating} size={12} className="h-3 w-3 md:mr-1" />
-              <span className="hidden sm:inline">
-                {showTranslated ? tFocus("original") : tFocus("translation")}
-              </span>
-            </Button>
-            <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-              T
-            </span>
-            <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
-            <Button
-              variant={showSettings ? "outline-primary" : "outline"}
-              size="sm"
-              onClick={onToggleSettings}
-            >
-              <Settings className="h-3 w-3" />
-            </Button>
-            <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-              S
-            </span>
-          </div>
-          {/* One paper has nothing to step to. */}
-          {totalPapers > 1 ? (
-            <>
-              <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
-              <div className="order-2 ml-auto flex items-center gap-1 md:order-none md:ml-0">
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onGoToPrevious}
-                    disabled={currentIndex === 0}
-                  >
-                    <ChevronLeft className="h-3 w-3" />
-                  </Button>
-                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                    &larr;
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={onGoToNext}
-                    disabled={currentIndex === totalPapers - 1}
-                  >
-                    <ChevronRight className="h-3 w-3" />
-                  </Button>
-                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                    &rarr;
-                  </span>
-                </div>
-              </div>
-            </>
-          ) : null}
-          <div className="order-3 basis-full md:hidden" />
-          <div className="order-5 w-px h-4 bg-border mx-1 md:order-none"></div>
-          <div className="order-6 flex items-center gap-1 md:order-none">
-            {onOpenAlex ? (
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(currentPaper.id, "_blank")}
-                >
-                  <ExternalLink className="h-3 w-3" />
-                </Button>
-                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                  O
-                </span>
-              </div>
-            ) : null}
-            <CitationControl paper={currentPaper} compact={false} />
+          {/* The tools stay together, so a row too narrow for them moves them to a line of their own. */}
+          <div className="ml-auto flex items-center gap-1 md:ml-0">
             <div className="flex items-center gap-1">
-              <DownloadMenu
-                variant="icon"
-                onDownloadJSON={() => onDownloadItem(currentPaper, "json")}
-                onDownloadCSV={() => onDownloadItem(currentPaper, "csv")}
-                onDownloadEssentialJSON={() =>
-                  onDownloadEssentialItem(currentPaper, "json")
-                }
-                onDownloadEssentialCSV={() =>
-                  onDownloadEssentialItem(currentPaper, "csv")
-                }
-              />
+              {/* Shown while the paper is translating or once it has a translation; a paper already in the reader's language has nothing to switch. */}
+              {hasTranslation || isTranslating ? (
+                <>
+                  <Button
+                    variant={showTranslated ? "outline-primary" : "outline"}
+                    size="sm"
+                    className="max-sm:w-8 max-sm:px-0"
+                    onClick={onToggleTranslation}
+                    aria-label={
+                      showTranslated
+                        ? tFocus("showOriginal")
+                        : tFocus("showTranslation")
+                    }
+                    disabled={!hasTranslation}
+                  >
+                    <TranslateIcon working={isTranslating} size={12} className="h-3 w-3 md:mr-1" />
+                    <span className="hidden sm:inline">
+                      {showTranslated ? tFocus("original") : tFocus("translation")}
+                    </span>
+                  </Button>
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    T
+                  </span>
+                  <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+                </>
+              ) : null}
+              <Button
+                variant={showSettings ? "outline-primary" : "outline"}
+                size="icon-sm"
+                onClick={onToggleSettings}
+              >
+                <Settings className="h-3 w-3" />
+              </Button>
               <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                D
+                S
               </span>
             </div>
-            <div className="w-px h-4 bg-border mx-1"></div>
-            {/* Closes as the rest of the row acts: an outline button with its key beside it. */}
+            {/* One paper has nothing to step to. */}
+            {totalPapers > 1 ? (
+              <>
+                <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+                <div className="hidden md:flex items-center gap-1">
+                  <div className="flex items-center gap-1">
+                    {previous}
+                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                      &larr;
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {next}
+                    <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                      &rarr;
+                    </span>
+                  </div>
+                </div>
+              </>
+            ) : null}
+            <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
             <div className="flex items-center gap-1">
-              <SheetClose asChild>
-                <Button variant="outline" size="sm" aria-label={tAccessibility("closeDialog")}>
-                  <X className="h-3 w-3" />
-                </Button>
-              </SheetClose>
-              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                Esc
-              </span>
+              {onOpenAlex ? (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    onClick={() => window.open(currentPaper.id, "_blank")}
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                  </Button>
+                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                    O
+                  </span>
+                </div>
+              ) : null}
+              <CitationControl paper={currentPaper} compact={false} />
+              <div className="flex items-center gap-1">
+                <DownloadMenu
+                  variant="outline"
+                  onDownloadJSON={() => onDownloadItem(currentPaper, "json")}
+                  onDownloadCSV={() => onDownloadItem(currentPaper, "csv")}
+                  onDownloadEssentialJSON={() =>
+                    onDownloadEssentialItem(currentPaper, "json")
+                  }
+                  onDownloadEssentialCSV={() =>
+                    onDownloadEssentialItem(currentPaper, "csv")
+                  }
+                />
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                  D
+                </span>
+              </div>
+              <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
+              {/* Closes as the rest of the row acts: an outline button with its key beside it. */}
+              <div className="hidden md:flex items-center gap-1">
+                {close}
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
+                  Esc
+                </span>
+              </div>
             </div>
           </div>
         </div>

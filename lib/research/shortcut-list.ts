@@ -1,5 +1,6 @@
 "use client";
 
+import type { Id } from "@/convex/_generated/dataModel";
 import { useMemo } from "react";
 import { useStore } from "zustand";
 import { api } from "@/convex/_generated/api";
@@ -13,7 +14,8 @@ import { useResearchScope, useResearchSession } from "./reads";
 import { usePagedRecords } from "./paged-records";
 
 /** A shortcut as the Bookmarks page lists it. */
-export type ListedShortcut = { name: string; expansion: string; createdAt: number };
+/** A shortcut as a list shows it; `by`, in an organization, is who added it. */
+export type ListedShortcut = { name: string; expansion: string; createdAt: number; by?: { name: string; imageUrl?: string; you: boolean } };
 
 // By name as the account orders it, so both lists read the same.
 const byName = (a: ListedShortcut, b: ListedShortcut) => (shortcutSortName(a.name) < shortcutSortName(b.name) ? -1 : shortcutSortName(a.name) > shortcutSortName(b.name) ? 1 : 0);
@@ -38,11 +40,11 @@ export function useShortcutCount() {
  * and from the account signed in, where only the page shown is read (#420). With `text`,
  * only shortcuts whose name or expansion contain it.
  */
-export function useShortcutList({ sort, text = "", pageSize }: { sort: BookmarkSortBy; text?: string; pageSize: number }) {
+export function useShortcutList({ sort, text = "", pageSize, by, byCount }: { sort: BookmarkSortBy; text?: string; pageSize: number; /** In an organization, one member's alone, and how many they added once that's read. */ by?: Id<"users">; byCount?: number }) {
   const accountId = useResearchSession()?.accountId;
   const scope = useResearchScope();
   const match = useDebouncedValue(text.trim(), 300);
-  const remote = useCursorPage(api.research.records.listedShortcuts, scope ? { ...scope, sort, text: match || undefined } : "skip", pageSize);
+  const remote = useCursorPage(api.research.records.listedShortcuts, scope ? { ...scope, sort, text: match || undefined, ...(by ? { by } : {}) } : "skip", pageSize);
   const { data: count } = useProtectedQuery(api.research.records.countShortcuts, scope ?? "skip");
   const remoteItems = useMemo(() => remote.items.map(({ shorthand, ...shortcut }): ListedShortcut => ({ name: shorthand, ...shortcut })), [remote.items]);
 
@@ -58,7 +60,7 @@ export function useShortcutList({ sort, text = "", pageSize }: { sort: BookmarkS
 
   return usePagedRecords({
     remote: accountId ? { ...remote, items: remoteItems } : null,
-    count,
+    count: by ? byCount : count,
     counted: !match,
     local,
     localCount: Object.keys(keywords).length,

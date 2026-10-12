@@ -31,7 +31,7 @@ interface SearchTooltipContentProps {
   search?: SearchResult;
 }
 
-export function SearchTooltipContent({
+function SearchTooltipContent({
   id,
   query,
   count,

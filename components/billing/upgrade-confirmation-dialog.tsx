@@ -19,7 +19,8 @@ export type UpgradePreview = {
   targetPlan: string;
   /** Granted in full as soon as the upgrade is paid. */
   targetPlanCreditsPerMonth: number;
-  remainingDays: number;
+  /** When the new plan renews, in ms: a month from the upgrade (#860). */
+  renewsAt?: number;
   /** The saved card the upgrade charges. */
   card?: { brand: string; last4: string };
   lineItems: Array<{
@@ -30,6 +31,12 @@ export type UpgradePreview = {
 };
 
 type UpgradeConfirmationDialogProps = {
+  /** In place of the upgrade's title, line under it, confirm button, total's label and "Current plan" and "New plan": a change of seats (#862). */
+  title?: string;
+  description?: string;
+  confirmLabel?: string;
+  totalLabel?: string;
+  labels?: { from: string; to: string };
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
@@ -40,6 +47,11 @@ type UpgradeConfirmationDialogProps = {
 };
 
 export function UpgradeConfirmationDialog({
+  title,
+  description,
+  confirmLabel,
+  totalLabel,
+  labels,
   open,
   onOpenChange,
   onConfirm,
@@ -62,7 +74,7 @@ export function UpgradeConfirmationDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-          {...(preview.remainingDays > 0 ? {} : { "aria-describedby": undefined })}
+          {...(preview.renewsAt || description ? {} : { "aria-describedby": undefined })}
           onEscapeKeyDown={(e) => {
             if (isConfirming) e.preventDefault();
           }}
@@ -76,11 +88,12 @@ export function UpgradeConfirmationDialog({
         >
         <DialogHeader>
           <DialogTitle>
-            {t("title", { plan: preview.targetPlan.charAt(0).toUpperCase() + preview.targetPlan.slice(1) })}
+            {title ?? t("title", { plan: preview.targetPlan.charAt(0).toUpperCase() + preview.targetPlan.slice(1) })}
           </DialogTitle>
-          {preview.remainingDays > 0 && (
+          {description ? <DialogDescription>{description}</DialogDescription> : null}
+          {!description && preview.renewsAt && (
             <DialogDescription>
-              {t("prorationExplanation", { days: preview.remainingDays })}
+              {t("startsToday", { plan: preview.targetPlan, date: format.dateTime(new Date(preview.renewsAt), { year: "numeric", month: "short", day: "numeric" }) })}
             </DialogDescription>
           )}
         </DialogHeader>
@@ -97,6 +110,7 @@ export function UpgradeConfirmationDialog({
                 {cardBrand}
               </span>
               <span className="font-medium">
+                {/* ui-rules-allow: dot-separator -- the masked digits of a card number */}
                 &bull;&bull;&bull;&bull; {cardLast4}
               </span>
             </div>
@@ -105,13 +119,13 @@ export function UpgradeConfirmationDialog({
           {/* Plan change */}
           <div className="flex items-center justify-between rounded-lg border p-3">
             <div className="text-sm">
-              <span className="text-muted-foreground">{t("currentPlan")}: </span>
-              <span className="font-medium capitalize">{preview.currentPlan}</span>
+              <span className="text-muted-foreground">{labels?.from ?? t("currentPlan")}: </span>
+              <span className="font-medium">{preview.currentPlan}</span>
             </div>
             <ArrowRight className="h-4 w-4 text-muted-foreground" />
             <div className="text-sm">
-              <span className="text-muted-foreground">{t("newPlan")}: </span>
-              <span className="font-semibold capitalize">{preview.targetPlan}</span>
+              <span className="text-muted-foreground">{labels?.to ?? t("newPlan")}: </span>
+              <span className="font-semibold">{preview.targetPlan}</span>
             </div>
           </div>
 
@@ -121,10 +135,11 @@ export function UpgradeConfirmationDialog({
               <>
                 {preview.lineItems.map((item, index) => (
                   <div key={index} className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground truncate mr-2">
+                    {/* A long line wraps on a phone rather than pushing the amounts past the dialog's edge (#858). */}
+                    <span className="min-w-0 mr-2 text-muted-foreground">
                       {item.description}
                     </span>
-                    <span className={item.amountCents < 0 ? "ink-success" : ""}>
+                    <span className={item.amountCents < 0 ? "shrink-0 ink-success" : "shrink-0"}>
                       {format.number(item.amountCents / 100, {
                         style: "currency",
                         currency: item.currency,
@@ -137,7 +152,7 @@ export function UpgradeConfirmationDialog({
             )}
             <div className={(preview.lineItems ?? []).length > 0 ? "border-t pt-2 flex items-center justify-between" : "flex items-center justify-between"}>
               <span className={(preview.lineItems ?? []).length > 0 ? "text-sm font-medium" : "text-sm text-muted-foreground"}>
-                {(preview.lineItems ?? []).length > 0 ? t("totalCharge") : t("prorationCharge")}
+                {totalLabel ?? ((preview.lineItems ?? []).length > 0 ? t("totalCharge") : t("prorationCharge"))}
               </span>
               <span data-testid="upgrade-total-charge" className="text-lg font-semibold">{formattedCharge}</span>
             </div>
@@ -168,13 +183,14 @@ export function UpgradeConfirmationDialog({
             {t("cancel")}
           </Button>
           <Button data-testid="upgrade-confirm-button" onClick={onConfirm} disabled={isConfirming}>
+            {/* An action the caller names, such as removing seats, keeps its name while it runs (#858). */}
             {isConfirming ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {t("upgrading")}
+                {confirmLabel ?? t("upgrading")}
               </>
             ) : (
-              t("confirmUpgrade")
+              confirmLabel ?? t("confirmUpgrade")
             )}
           </Button>
         </DialogFooter>

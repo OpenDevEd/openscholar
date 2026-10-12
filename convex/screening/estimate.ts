@@ -1,11 +1,12 @@
 import type { Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import { internal } from "../_generated/api";
+import type { ActionCtx, QueryCtx } from "../_generated/server";
 import { libraryCountRow } from "../library/counter";
 import { collectionAllowed } from "../library/collections";
 import { requestOf, snapshotOf } from "../paperSets/search";
 import { findSearch } from "../research/records";
-import { isInWorkspace, type InWorkspace } from "../workspaces/actor";
+import { type InWorkspace } from "../workspaces/actor";
 import { currentSearch } from "../../lib/research/records";
 import { MAX_QUESTIONS } from "../lib/listCaps";
 import { taskPricing } from "../ai/serverModel";
@@ -13,6 +14,7 @@ import { checkRequestPapers } from "../billing/accounts";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { createError } from "../lib/errors";
 import type { paperSetValidator, saveToValidator, screeningScoringConfigValidator } from "./validators";
+import { checkZoteroSet } from "../zotero/libraryValidators";
 
 /**
  * Refuses a screening whose rules include every paper, whatever it's answered: one with no
@@ -39,9 +41,9 @@ export function estimateScreening(papers: number, available: number, perPaper: n
   };
 }
 
-/** What screening one paper costs a person at most, on the model their Screen all runs on. */
-export async function screeningPaperCreditsFor(ctx: QueryCtx, userId: Id<"users">) {
-  return screeningPaperCredits(await taskPricing(ctx, userId, "screenAll"));
+/** What screening one paper costs at most for someone working in a workspace, on the model Screen all runs on there. */
+export async function screeningPaperCreditsFor(ctx: QueryCtx, working: InWorkspace) {
+  return screeningPaperCredits(await taskPricing(ctx, working, "screenAll"));
 }
 
 /**
@@ -58,10 +60,22 @@ export async function papersIn(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
   if (set.kind === "saved") return (await libraryCountRow(ctx, workspaceId))?.count ?? null;
   if (set.kind === "screening") {
     const job = await ctx.db.get("screeningJobs", set.jobId);
-    if (!job || !(await isInWorkspace(ctx, job, workspaceId))) return null;
+    if (!job || !(job.workspaceId === workspaceId)) return null;
     return (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", set.jobId)).unique())?.qualified ?? null;
   }
   return null;
+}
+
+/** Whether a set's papers come from Zotero: a Zotero set, or the included papers of a screening of one, however far back. */
+async function fromZotero(ctx: QueryCtx, set: Infer<typeof paperSetValidator>) {
+  let current: Infer<typeof paperSetValidator> | undefined = set;
+  // Each screening is read once, back to the set the chain started from.
+  const seen = new Set<string>();
+  while (current?.kind === "screening" && !seen.has(current.jobId)) {
+    seen.add(current.jobId);
+    current = (await ctx.db.get("screeningJobs", current.jobId))?.set;
+  }
+  return current?.kind === "zotero";
 }
 
 /**
@@ -75,6 +89,9 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
   if (questions.length > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `A screening asks up to ${MAX_QUESTIONS} questions.`);
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   if (prune && set.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
+  if (set.kind === "zotero") await checkZoteroSet(ctx, userId, set);
+  // Papers from Zotero have no OpenAlex record to save them by: a Zotero set's, or an earlier screening's of one.
+  if (saveTo && saveTo.kind !== "none" && (await fromZotero(ctx, set))) throw createError("VALIDATION_ERROR", "Papers screened from Zotero can't be saved to a collection: they have no OpenAlex record. Leave `saveTo` out.");
   if (set.kind === "search") {
     const row = await findSearch(ctx, workspaceId, set.searchId);
     if (!row) throw createError("NOT_FOUND", "Search not found");
@@ -86,7 +103,7 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
     await checkRequestPapers(ctx, workspaceId, last - first + 1, "screening");
   } else {
     const source = set.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : set.kind === "screening" ? await ctx.db.get("screeningJobs", set.jobId) : null;
-    const mine = set.kind !== "collection" && set.kind !== "screening" ? true : source !== null && (await isInWorkspace(ctx, source, workspaceId));
+    const mine = set.kind !== "collection" && set.kind !== "screening" ? true : source !== null && (source.workspaceId === workspaceId);
     if (!mine) throw createError("NOT_FOUND", set.kind === "collection" ? "Collection not found" : "Screening not found");
     const held = await papersIn(ctx, { userId, workspaceId }, set);
     if (held !== null && first > held) throw createError("VALIDATION_ERROR", "There are no papers in that range");
@@ -102,9 +119,14 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
  * asked for. Papers a search's page already answered cost nothing, so it is an upper figure.
  */
 export async function screeningHold(ctx: QueryCtx, reader: InWorkspace, request: Parameters<typeof checkScreening>[2]) {
-  const { userId } = reader;
   await checkScreening(ctx, reader, request);
   const { set, first, last } = request;
   const held = await papersIn(ctx, reader, set);
-  return estimateScreening(Math.max(0, Math.min(last, held ?? last) - first + 1), 0, await screeningPaperCreditsFor(ctx, userId)).credits;
+  return estimateScreening(Math.max(0, Math.min(last, held ?? last) - first + 1), 0, await screeningPaperCreditsFor(ctx, reader)).credits;
+}
+
+/** Reads the first paper of a Zotero range through the person's account, refusing a range Zotero has none in. */
+export async function firstZoteroPaper(ctx: ActionCtx, userId: Id<"users">, { collectionKey, groupId }: { collectionKey?: string; groupId?: string }, first: number) {
+  const read: { papers: unknown[] } = await ctx.runAction(internal.zotero.actions.papersOf, { userId, ...(collectionKey !== undefined ? { collectionKey } : {}), ...(groupId !== undefined ? { groupId } : {}), first, last: first });
+  if (!read.papers.length) throw createError("VALIDATION_ERROR", "There are no Zotero items in that range.");
 }

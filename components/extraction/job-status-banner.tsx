@@ -15,13 +15,16 @@
  * attribute, never Tailwind utility strings.
  */
 
-import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { useNow, useTranslations } from "next-intl";
 import { AlertTriangle, Coins, Pause } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { api } from "@/convex/_generated/api";
+import { useWorkspaceScope } from "@/lib/workspaces/url";
+import { monthStart } from "@/lib/billing/month";
+import type { Id } from "@/convex/_generated/dataModel";
 
 type CommonProps = {
   onResume?: () => void;
@@ -37,6 +40,8 @@ export type JobStatusBannerProps =
     })
   | (CommonProps & {
       variant: "creditsExhausted";
+      /** The job, whose member's cap its Resume is checked against (#652). */
+      jobId?: Id<"extractionJobs">;
       /** Required balance floor before the Resume CTA is enabled. */
       minCreditsToResume?: number;
       /** Set when the job stopped at the credits it was allowed from a chat, not at an empty balance: that figure. */
@@ -46,17 +51,24 @@ export type JobStatusBannerProps =
 export function JobStatusBanner(props: JobStatusBannerProps) {
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
-  const router = useRouter();
+  const router = useWorkspaceRouter();
 
   // Skip the balance query on paused-variant renders — paused is not a
   // credit state, so displaying balance would be misleading and the
   // query cost is wasted.
+  // The page's workspace pays (#651).
+  const balanceScope = useWorkspaceScope();
   const { data: balance } = useProtectedQuery(
     api.billing.accounts.checkBalance,
-    props.variant === "creditsExhausted"
-      ? { requiredAmount: props.minCreditsToResume ?? 1 }
+    props.variant === "creditsExhausted" && balanceScope !== "skip"
+      ? { ...balanceScope, requiredAmount: props.minCreditsToResume ?? 1 }
       : "skip",
   );
+
+  // The organization can have the credits while the cap an admin set on the member whose job it is doesn't (#652): the job is charged as theirs.
+  const month = monthStart(useNow({ updateInterval: 60_000 }).getTime());
+  const { data: capLeft } = useProtectedQuery(api.extraction.queries.costs.capLeftOf, props.variant === "creditsExhausted" && props.jobId ? { jobId: props.jobId, month } : "skip");
+  const te = useTranslations("errors.body");
 
   if (props.variant === "paused") {
     return (
@@ -102,7 +114,8 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
 
   const hasEnough = balance?.hasEnough ?? false;
   const total = balance?.total ?? 0;
-  const canResume = Boolean(props.onResume) && hasEnough;
+  const overCap = typeof capLeft === "number" && (props.minCreditsToResume ?? 1) > capLeft;
+  const canResume = Boolean(props.onResume) && hasEnough && !overCap;
 
   return (
     <Alert
@@ -123,6 +136,7 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
             {total.toLocaleString()} {tc("credits").toLowerCase()}
           </span>
         </div>
+        {overCap ? <p className="text-xs">{te("member_cap")}</p> : null}
         <div className="flex flex-wrap items-center gap-2">
           {/* A job stopped at its own figure usually has the balance to go on, so Resume leads there. */}
           <Button

@@ -1,10 +1,12 @@
 import { paginationOptsValidator, paginationResultValidator } from "convex/server";
-import { v } from "convex/values";
+import type { Note } from "../activity/validators";
+import { noteActivity } from "../activity/notes";
+import { v, type Infer } from "convex/values";
 import { mutation, type MutationCtx, type QueryCtx } from "../lib/functions";
 import type { Doc, Id } from "../_generated/dataModel";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { STEP_TEXT_MAX } from "../assistant/steps";
+import { STEP_TEXT_MAX } from "../../lib/assistant/steps";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
 import { type Author, accountMutation, accountQuery, accountWorkspaceMutation, assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy } from "../lib/userActions";
 import { answersAmong, clearPaperAnswers, removeAnswers, screeningFor, seedAnswers, setPaperAnswers, sweepAnswers, type AnswerSource } from "./answers";
@@ -13,13 +15,20 @@ import {
   type ResearchCommand, type SavedSearch, type StoredSearch, type UndoCommand,
 } from "../../lib/research/records";
 import { stream } from "convex-helpers/server/stream";
+import { makerValidator, makersIn } from "../workspaces/makers";
 import { internal } from "../_generated/api";
 import { internalMutation } from "../lib/functions";
 import schema from "../schema";
-import { countRecordPage, countRow } from "./recordCounts";
-import { shortcutSortName } from "../../lib/query-shortcuts";
+import { byMakerValidator, countMakerPage, countRecordPage, countRow } from "./recordCounts";
+import { expandShortcuts, shortcutNames, shortcutSortName } from "../../lib/query-shortcuts";
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
 import { personalWorkspaceOf, requireMakerOrAdmin, type Actor, type InWorkspace } from "../workspaces/actor";
+import { personalRatingRow, setPersonalRating } from "../ratings";
+import { countOf } from "../lib/listCounts";
+import { personName } from "../lib/people";
+import { guestRole, itemGuestsOf } from "../sharing/items";
+import { guestRoleValidator, sharedFromValidator, type GuestRole } from "../sharing/validators";
+import { workspaceFrom } from "../workspaces/personal";
 
 const accountArgs = { accountId: v.string() };
 const pageArgs = { paginationOpts: paginationOptsValidator };
@@ -38,24 +47,36 @@ const LISTED_BYTES = 8 * 1024 * 1024;
 export const listedSearchesAction = defineUserQuery({
   path: "research/records:listedSearches",
   description:
-    "Lists the person's saved searches without their screening answers, a page at a time: newest, oldest, most or fewest results first. Given `text`, those whose query or questions best match its words, best first; given `exclude`, all but the search with that ID. A page can come back short without being the last.",
-  args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()), exclude: v.optional(v.string()) },
-  returns: paginationResultValidator(listedSearchValidator),
-  run: async (ctx, { workspaceId }, { paginationOpts, sort, text, exclude }) => {
+    "Lists the saved searches in the workspace without their screening answers, a page at a time: newest, oldest, most or fewest results first. In an organization, each names who ran it (`by`). Given `text`, those whose query or questions best match its words, best first; given `exclude`, all but the search with that ID; given `by`, only the searches that member ran (their `userId` from workspaces/makers:counts). A page can come back short without being the last.",
+  args: { ...pageArgs, sort: listedSortValidator, text: v.optional(v.string()), exclude: v.optional(v.string()), by: v.optional(v.id("users")) },
+  returns: paginationResultValidator(v.object({ ...listedSearchValidator.fields, by: v.optional(makerValidator) })),
+  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text, exclude, by }) => {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, LISTED_PAGE_MAX) };
-    const index = sort === "most" || sort === "least" ? "by_workspace_and_count" : "by_workspace_and_createdAt";
+    const byCount = sort === "most" || sort === "least";
     const order = sort === "oldest" || sort === "least" ? "asc" : "desc";
     const needle = searchTerms(text);
+    const index = byCount ? "by_workspace_and_count" : "by_workspace_and_createdAt";
+    // One member's, given `by`, read along their own index range.
+    const mine = byCount ? "by_workspace_and_createdBy_and_count" : "by_workspace_and_createdBy_and_createdAt";
     const read = await (needle
-      ? ctx.db.query("searches").withSearchIndex("search_text", q => q.search("searchText", needle).eq("workspaceId", workspaceId)).paginate({ ...opts, maximumBytesRead: LISTED_BYTES })
+      ? ctx.db.query("searches").withSearchIndex("search_text", q => (by === undefined ? q.search("searchText", needle).eq("workspaceId", workspaceId) : q.search("searchText", needle).eq("workspaceId", workspaceId).eq("createdBy", by))).paginate({ ...opts, maximumBytesRead: LISTED_BYTES })
       : exclude !== undefined
-        ? stream(ctx.db, schema).query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId)).order(order)
-            .filterWith(async row => row.localId !== exclude)
-            .paginate({ ...opts, maximumRowsRead: FILTER_ROWS, maximumBytesRead: LISTED_BYTES })
-        : ctx.db.query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId)).order(order).paginate({ ...opts, maximumBytesRead: LISTED_BYTES }));
+        ? (by === undefined
+            ? stream(ctx.db, schema).query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId))
+            : stream(ctx.db, schema).query("searches").withIndex(mine, q => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+          ).order(order).filterWith(async row => row.localId !== exclude).paginate({ ...opts, maximumRowsRead: FILTER_ROWS, maximumBytesRead: LISTED_BYTES })
+        : (by === undefined
+            ? ctx.db.query("searches").withIndex(index, q => q.eq("workspaceId", workspaceId))
+            : ctx.db.query("searches").withIndex(mine, q => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+          ).order(order).paginate({ ...opts, maximumBytesRead: LISTED_BYTES }));
     // A search's matches leave the excluded one out of their page.
     const rows = needle && exclude !== undefined ? read.page.filter(row => row.localId !== exclude) : read.page;
-    return { ...read, page: rows.map(row => { const { screeningResponses: _answers, ...listed } = currentSearch(row.data); return listed; }) };
+    const makerOf = await makersIn(ctx, workspaceId, userId);
+    return { ...read, page: await Promise.all(rows.map(async row => {
+      const { screeningResponses: _answers, ...listed } = currentSearch(row.data);
+      const by = await makerOf(row.createdBy);
+      return by ? { ...listed, by } : listed;
+    })) };
   },
 });
 export const listedSearches = accountQuery(listedSearchesAction);
@@ -74,12 +95,20 @@ export const countSearchesForAssistant = assistantQuery(countSearchesAction);
 
 /** One step of a workspace's first count of its searches, shortcuts or screening or extraction jobs (./recordCounts.ts). */
 export const countRecordsPage = internalMutation({
-  // `userId` alone only for a step scheduled before counts were kept by workspace (#650), which counts its person's own; slice 8 drops it.
-  args: { table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), workspaceId: v.optional(v.id("workspaces")), userId: v.optional(v.id("users")) },
+  args: { table: v.union(v.literal("searches"), v.literal("queryShortcuts"), v.literal("screeningJobs"), v.literal("extractionJobs")), workspaceId: v.id("workspaces") },
   returns: v.null(),
-  handler: async (ctx, { table, workspaceId, userId }) => {
-    const counted = workspaceId ?? (userId ? await personalWorkspaceOf(ctx, userId) : undefined);
-    if (counted) await countRecordPage(ctx, table, counted);
+  handler: async (ctx, { table, workspaceId }) => {
+    await countRecordPage(ctx, table, workspaceId);
+    return null;
+  },
+});
+
+/** One step of the first count of what one person made of a table in an organization (./recordCounts.ts, #656). */
+export const countMakerRecordsPage = internalMutation({
+  args: { table: byMakerValidator, workspaceId: v.id("workspaces"), createdBy: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { table, workspaceId, createdBy }) => {
+    await countMakerPage(ctx, table, workspaceId, createdBy);
     return null;
   },
 });
@@ -90,18 +119,26 @@ const SHORTCUT_PAGE_MAX = 50;
 export const listedShortcutsAction = defineUserQuery({
   path: "research/records:listedShortcuts",
   description:
-    "Lists the person's query shortcuts (the Bookmarks page), each a short name that expands to a longer query, a page at a time: newest or oldest first, or by name. Given `text`, those whose name or expansion best match its words, best first.",
-  args: { ...pageArgs, sort: shortcutSortValidator, text: v.optional(v.string()) },
-  returns: paginationResultValidator(shortcutValidator),
-  run: async (ctx, { workspaceId }, { paginationOpts, sort, text }) => {
+    "Lists the person's query shortcuts (the Bookmarks page), each a short name that expands to a longer query, a page at a time: newest or oldest first, or by name. Given `text`, those whose name or expansion best match its words, best first. " +
+    "In an organization the shortcuts are its members', each with `by`, who added it; `by` as an argument (a member's `userId`, from workspaces/makers:counts) lists that member's alone.",
+  args: { ...pageArgs, sort: shortcutSortValidator, text: v.optional(v.string()), by: v.optional(v.id("users")) },
+  returns: paginationResultValidator(v.object({ ...shortcutValidator.fields, by: v.optional(makerValidator) })),
+  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text, by }) => {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHORTCUT_PAGE_MAX), maximumBytesRead: LISTED_BYTES };
-    const index = sort === "alpha" || sort === "alpha-desc" ? "by_workspace_and_sortName" : "by_workspace_and_createdAt";
+    const named = sort === "alpha" || sort === "alpha-desc";
     const order = sort === "oldest" || sort === "alpha" ? "asc" : "desc";
     const needle = searchTerms(text);
     const page = await (needle
-      ? ctx.db.query("queryShortcuts").withSearchIndex("search_text", q => q.search("searchText", needle).eq("workspaceId", workspaceId)).paginate(opts)
-      : ctx.db.query("queryShortcuts").withIndex(index, q => q.eq("workspaceId", workspaceId)).order(order).paginate(opts));
-    return { ...page, page: page.page.map(row => row.data) };
+      ? ctx.db.query("queryShortcuts").withSearchIndex("search_text", q => (by === undefined ? q.search("searchText", needle).eq("workspaceId", workspaceId) : q.search("searchText", needle).eq("workspaceId", workspaceId).eq("createdBy", by))).paginate(opts)
+      : (by === undefined
+          ? ctx.db.query("queryShortcuts").withIndex(named ? "by_workspace_and_sortName" : "by_workspace_and_createdAt", q => q.eq("workspaceId", workspaceId))
+          : ctx.db.query("queryShortcuts").withIndex(named ? "by_workspace_and_createdBy_and_sortName" : "by_workspace_and_createdBy_and_createdAt", q => q.eq("workspaceId", workspaceId).eq("createdBy", by))
+        ).order(order).paginate(opts));
+    const makerOf = await makersIn(ctx, workspaceId, userId);
+    return { ...page, page: await Promise.all(page.page.map(async row => {
+      const maker = await makerOf(row.createdBy);
+      return maker ? { ...row.data, by: maker } : row.data;
+    })) };
   },
 });
 export const listedShortcuts = accountQuery(listedShortcutsAction);
@@ -154,8 +191,8 @@ export const ratingsAction = defineUserQuery({
   args: pageArgs,
   returns: paginationResultValidator(ratingValidator),
   run: async (ctx, { userId }, args) => {
-    const page = await ctx.db.query("paperRatings").withIndex("by_user", q => q.eq("userId", userId)).paginate(args.paginationOpts);
-    return { ...page, page: page.page.map(row => row.data) };
+    const page = await ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", q => q.eq("userId", userId).eq("collectionId", undefined)).paginate(args.paginationOpts);
+    return { ...page, page: page.page.map(({ paperId, rating }) => ({ paperId, rating })) };
   },
 });
 export const ratings = accountQuery(ratingsAction);
@@ -163,10 +200,9 @@ export const ratingsForAssistant = assistantQuery(ratingsAction);
 
 /** The person's ratings among `paperIds`. */
 export async function ratingsAmong(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperIds: string[]) {
-  const rows = await Promise.all(
-    paperIds.map(paperId => ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", paperId)).first()),
-  );
-  return rows.flatMap(row => (row ? [row.data] : []));
+  const rows = await Promise.all(paperIds.map(paperId => personalRatingRow(ctx, userId, paperId)));
+  // Each under the ID it was asked for: a rating is kept under the paper's whole address.
+  return paperIds.flatMap((paperId, at) => (rows[at] ? [{ paperId, rating: rows[at].rating }] : []));
 }
 
 export const ratingsOfAction = defineUserQuery({
@@ -187,12 +223,24 @@ const listed = (search: SavedSearch) => { const { screeningResponses: _answers, 
 
 export const getSearchAction = defineUserQuery({
   path: "research/records:getSearch",
-  description: "Reads one saved search by ID: its query, filters, sort, page and screening questions. Its screening answers are read by paper with answersOf.",
+  description:
+    "Reads one saved search by ID: its query, filters, sort, page and screening questions. Its screening answers are read by paper with answersOf. In an organization it names who ran it (`by`); `guests` is how many people outside its workspace were given it, when any were. " +
+    "`shareId` is the ID its link carries, which opens it for its workspace's members and its guests. " +
+    "One shared with the person from another workspace reads the same in their own workspace, by the ID sharing/shared:list gives, with `guest`: what they may do with it (`viewer`: read and export; `editor`: also change it) and the workspace it's in. Its query comes with that workspace's shortcuts written out.",
   args: { id: v.string() },
-  returns: v.union(listedSearchValidator, v.null()),
-  run: async (ctx, { workspaceId }, args) => {
-    const search = await findSearch(ctx, workspaceId, args.id);
-    return search ? listed(currentSearch(search.data)) : null;
+  returns: v.union(v.object({ ...listedSearchValidator.fields, shareId: v.optional(v.string()), by: v.optional(makerValidator), guest: v.optional(v.object({ role: guestRoleValidator, from: sharedFromValidator })), guests: v.optional(v.number()) }), v.null()),
+  run: async (ctx, actor, args) => {
+    const found = await readableSearch(ctx, actor, args.id);
+    if (!found) return null;
+    const { search, guest } = found;
+    const fields = listed(currentSearch(search.data));
+    if (guest) {
+      const maker = await ctx.db.get("users", search.createdBy);
+      return { ...fields, id: args.id, query: await writtenOut(ctx, search, fields.query), ...(maker ? { by: { name: personName(maker) || maker.email, ...(maker.avatarUrl ? { imageUrl: maker.avatarUrl } : {}), you: false } } : {}), guest: { role: guest, from: await workspaceFrom(ctx, search.workspaceId) } };
+    }
+    const by = await (await makersIn(ctx, actor.workspaceId, actor.userId))(search.createdBy);
+    const guests = await countOf(ctx, itemGuestsOf(search._id));
+    return { ...fields, shareId: search._id, ...(by ? { by } : {}), ...(guests ? { guests } : {}) };
   },
 });
 export const getSearch = accountQuery(getSearchAction);
@@ -203,9 +251,9 @@ export const answersOfAction = defineUserQuery({
   description: `Reads a saved search's screening answers for the papers with these IDs, at most ${ANSWERED_PAPERS_MAX} of them, as one page; a paper with no answers is left out. Given \`version\`, the answers as they were at that screening version, which a revision of the search names.`,
   args: { id: v.string(), paperIds: v.array(v.string()), version: v.optional(v.number()) },
   returns: paginationResultValidator(paperResponsesValidator),
-  run: async (ctx, { workspaceId }, { id, paperIds, version }) => {
+  run: async (ctx, actor, { id, paperIds, version }) => {
     if (paperIds.length > ANSWERED_PAPERS_MAX) throw new Error(`Answers are read ${ANSWERED_PAPERS_MAX} papers at a time.`);
-    const search = await findSearch(ctx, workspaceId, id);
+    const search = (await readableSearch(ctx, actor, id))?.search;
     const screening = search && (await screeningFor(ctx, search._id));
     return { page: screening ? await answersAmong(ctx, screening, paperIds, version) : [], isDone: true, continueCursor: "" };
   },
@@ -218,14 +266,17 @@ export const revisionsAction = defineUserQuery({
   description: "Lists a saved search's earlier versions, newest first, each marked as made by the person or by the assistant. Each names the screening version its answers stood at, which answersOf reads by paper.",
   args: { ...pageArgs, id: v.string() },
   returns: paginationResultValidator(v.object({ revision: v.number(), author: v.union(v.literal("user"), v.literal("assistant")), data: listedSearchValidator, answersVersion: v.optional(v.number()), deleted: v.boolean(), createdAt: v.number() })),
-  run: async (ctx, { workspaceId }, args) => {
-    const search = await findSearch(ctx, workspaceId, args.id);
-    if (!search) return { page: [], isDone: true, continueCursor: "" };
+  run: async (ctx, actor, args) => {
+    const found = await readableSearch(ctx, actor, args.id);
+    if (!found) return { page: [], isDone: true, continueCursor: "" };
+    const { search, guest } = found;
     const page = await ctx.db.query("searchRevisions").withIndex("by_search_and_revision", q => q.eq("searchId", search._id)).order("desc")
       // Revisions saved before #354 hold their search's whole history; a page of them stops at
       // this many bytes and goes on from its cursor.
       .paginate({ ...args.paginationOpts, maximumBytesRead: REVISION_PAGE_BYTES });
-    return { ...page, page: page.page.map(row => ({ revision: row.revision, author: row.author, data: listed(currentSearch(row.data)), ...(row.answersVersion === undefined ? {} : { answersVersion: row.answersVersion }), deleted: row.deleted, createdAt: row.createdAt })) };
+    // A guest reads each as they read the search: by the ID they asked with, its shortcuts written out.
+    const data = async (row: Doc<"searchRevisions">) => { const fields = listed(currentSearch(row.data)); return guest ? { ...fields, id: args.id, query: await writtenOut(ctx, search, fields.query) } : fields; };
+    return { ...page, page: await Promise.all(page.page.map(async row => ({ revision: row.revision, author: row.author, data: await data(row), ...(row.answersVersion === undefined ? {} : { answersVersion: row.answersVersion }), deleted: row.deleted, createdAt: row.createdAt }))) };
   },
 });
 /** Bytes one page of revisions reads at most. */
@@ -241,18 +292,21 @@ export const searchHistoryAction = defineUserQuery({
   description: "Lists a saved search's earlier queries, or its research questions, newest first, a page at a time.",
   args: { ...pageArgs, id: v.string(), kind: historyKind },
   returns: paginationResultValidator(historyEntryValidator),
-  run: async (ctx, { workspaceId }, args) => {
-    const search = await findSearch(ctx, workspaceId, args.id);
-    if (!search) return { page: [], isDone: true, continueCursor: "" };
+  run: async (ctx, actor, args) => {
+    const found = await readableSearch(ctx, actor, args.id);
+    if (!found) return { page: [], isDone: true, continueCursor: "" };
+    const { search } = found;
+    // A guest reads an earlier query as they read the search's: its workspace's shortcuts written out.
+    const said = async <Entry extends { text: string }>(entry: Entry) => (found.guest && args.kind === "query" ? { ...entry, text: await writtenOut(ctx, search, entry.text) } : entry);
     // A search not moved yet still holds its history: all of it, as one page.
     const legacy = args.kind === "query" ? search.data.queryHistory : search.data.questionHistory;
     if (legacy) {
       const entries = legacy.map((entry) => ("query" in entry ? { text: entry.query, field: entry.field, timestamp: entry.timestamp } : { text: entry.question, timestamp: entry.timestamp }));
-      return { page: entries.reverse(), isDone: true, continueCursor: "" };
+      return { page: await Promise.all(entries.reverse().map(said)), isDone: true, continueCursor: "" };
     }
     const page = await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_position", q => q.eq("searchId", search._id).eq("kind", args.kind)).order("desc")
       .paginate({ ...args.paginationOpts, numItems: Math.min(args.paginationOpts.numItems, HISTORY_PAGE_MAX) });
-    return { ...page, page: page.page.map(({ text, field, timestamp }) => ({ text, ...(field ? { field } : {}), timestamp })) };
+    return { ...page, page: await Promise.all(page.page.map(({ text, field, timestamp }) => said({ text, ...(field ? { field } : {}), timestamp }))) };
   },
 });
 export const searchHistory = accountQuery(searchHistoryAction);
@@ -265,18 +319,20 @@ export const searchHistoryEntryAction = defineUserQuery({
   // Either the entry (null when there's none that far back), or where to go on from after
   // skipping as many entries as one read allows.
   returns: v.union(v.object({ entry: v.union(historyEntryValidator, v.null()) }), v.object({ skipped: v.number(), cursor: v.string() })),
-  run: async (ctx, { workspaceId }, args) => {
-    const search = await findSearch(ctx, workspaceId, args.id);
-    if (!search || !Number.isInteger(args.stepsBack) || args.stepsBack < 0) return { entry: null };
+  run: async (ctx, actor, args) => {
+    const found = await readableSearch(ctx, actor, args.id);
+    if (!found || !Number.isInteger(args.stepsBack) || args.stepsBack < 0) return { entry: null };
+    const { search } = found;
+    const said = async <Entry extends { text: string }>(entry: Entry) => (found.guest && args.kind === "query" ? { ...entry, text: await writtenOut(ctx, search, entry.text) } : entry);
     const legacy = args.kind === "query" ? search.data.queryHistory : search.data.questionHistory;
     if (legacy) {
       const entry = legacy[legacy.length - 1 - args.stepsBack];
-      return { entry: entry ? ("query" in entry ? { text: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp } : { text: entry.question, timestamp: entry.timestamp }) : null };
+      return { entry: entry ? await said("query" in entry ? { text: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp } : { text: entry.question, timestamp: entry.timestamp }) : null };
     }
     const page = await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_position", q => q.eq("searchId", search._id).eq("kind", args.kind)).order("desc")
       .paginate({ cursor: args.cursor ?? null, numItems: args.stepsBack + 1, maximumRowsRead: HISTORY_SKIP_ROWS, maximumBytesRead: HISTORY_SKIP_BYTES });
     const row = page.page[args.stepsBack];
-    if (row) return { entry: { text: row.text, ...(row.field ? { field: row.field } : {}), timestamp: row.timestamp } };
+    if (row) return { entry: await said({ text: row.text, ...(row.field ? { field: row.field } : {}), timestamp: row.timestamp }) };
     return page.isDone ? { entry: null } : { skipped: page.page.length, cursor: page.continueCursor };
   },
 });
@@ -296,11 +352,11 @@ const HISTORY_PAGE_MAX = 100;
  * ponytail: one transaction writes at most 16,000 rows, so a search with more entries than
  * that can't move or be imported; none on shared dev comes near.
  */
-async function addHistory(ctx: MutationCtx, search: Pick<Doc<"searches">, "_id" | "userId">, kind: "query" | "question", entries: Array<{ text: string; field?: SavedSearch["field"]; timestamp: string }>) {
+async function addHistory(ctx: MutationCtx, search: Pick<Doc<"searches">, "_id">, kind: "query" | "question", entries: Array<{ text: string; field?: SavedSearch["field"]; timestamp: string }>) {
   if (!entries.length) return;
   const last = await ctx.db.query("searchHistory").withIndex("by_search_and_kind_and_position", q => q.eq("searchId", search._id).eq("kind", kind)).order("desc").first();
   let position = last?.position ?? -1;
-  for (const entry of entries) await ctx.db.insert("searchHistory", { userId: search.userId, searchId: search._id, kind, ...entry, position: ++position });
+  for (const entry of entries) await ctx.db.insert("searchHistory", { searchId: search._id, kind, ...entry, position: ++position });
 }
 
 const queryEntry = (entry: { query: string; field?: SavedSearch["field"]; timestamp: string }) => ({ text: entry.query, ...(entry.field ? { field: entry.field } : {}), timestamp: entry.timestamp });
@@ -350,13 +406,68 @@ async function copyHistory(ctx: MutationCtx, { userId, workspaceId }: InWorkspac
     if (replaced.length > COPY_HISTORY_MAX) throw new Error(`This search has more than ${COPY_HISTORY_MAX} ${kind} history entries to replace.`);
     if (rows.length > COPY_HISTORY_MAX) throw new Error(`Search ${fromId} has more than ${COPY_HISTORY_MAX} ${kind} history entries to copy.`);
     for (const row of replaced) await ctx.db.delete("searchHistory", row._id);
-    for (const { text, field, timestamp, position } of rows) await ctx.db.insert("searchHistory", { userId, searchId: search._id, kind, text, ...(field ? { field } : {}), timestamp, position });
+    for (const { text, field, timestamp, position } of rows) await ctx.db.insert("searchHistory", { searchId: search._id, kind, text, ...(field ? { field } : {}), timestamp, position });
   }
   return { queryHistoryCount, questionCount, latestQuestion, questionText };
 }
 
+/** Fields the page writes itself as it shows a search. */
+const KEPT_BY_THE_PAGE = new Set(["count", "page", "updatedAt"]);
+/** And what a search keeps of its own history, which a query run again adds to without changing it. */
+const HISTORY = new Set(["queryHistoryCount", "questionCount", "latestQuestion", "questionText"]);
+
+/** Whether a change left the search different, apart from what the page and its history keep. */
+function changedSearch(before: Doc<"searches">["data"], after: Doc<"searches">["data"]) {
+  const kept = (data: Doc<"searches">["data"]) => JSON.stringify(Object.entries(currentSearch(data)).filter(([field]) => !KEPT_BY_THE_PAGE.has(field) && !HISTORY.has(field)).sort(([a], [b]) => a.localeCompare(b)));
+  return kept(before) !== kept(after);
+}
+
+/** What a change from a search's page did to it, for its Activity (#656); a change to no one search, such as a shortcut, notes nothing. */
+export function searchNote(command: Infer<typeof commandValidator>): Note | null {
+  if (command.kind === "createSearch") return { kind: "search", id: command.search.id, happened: "created", ...(command.search.query ? { detail: command.search.query } : {}) };
+  if (command.kind !== "editSearch") return null;
+  const { id, edit } = command;
+  // The model's answers, which the page saves as they come, aren't a change anyone made.
+  if (edit.kind === "responses") return edit.by === "model" ? null : { kind: "search", id, happened: "answered", count: 1 };
+  if (edit.kind === "removeQueryHistoryEntry") return null;
+  // The page keeps a search's result count and page current as it shows it; that's not a change anyone made.
+  if (edit.kind === "patch" && [...Object.keys(edit.fields), ...edit.clear].every((field) => KEPT_BY_THE_PAGE.has(field))) return null;
+  return { kind: "search", id, happened: "edited", ...(edit.kind === "query" && edit.query ? { detail: edit.query } : {}) };
+}
+
 export function findSearch(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, localId: string) {
   return ctx.db.query("searches").withIndex("by_workspace_and_localId", q => q.eq("workspaceId", workspaceId).eq("localId", localId)).unique();
+}
+
+/**
+ * The search the person may read: the one in the workspace they act in, by the ID its page shows
+ * there, which is its own within that workspace; or one given to them as a guest (#653), by its
+ * document's ID, which is what their own workspace's page of it goes by and no other search has.
+ * `guest` is their role on that one.
+ */
+async function readableSearch(ctx: Pick<QueryCtx, "db">, actor: InWorkspace, id: string): Promise<{ search: Doc<"searches">; guest: GuestRole | null } | null> {
+  // The two kinds of ID never stand for each other: no search is made with a document's ID as its own (applyCommand).
+  const searchId = ctx.db.normalizeId("searches", id);
+  if (!searchId) {
+    const own = await findSearch(ctx, actor.workspaceId, id);
+    return own ? { search: own, guest: null } : null;
+  }
+  const search = await ctx.db.get("searches", searchId);
+  const guest = search ? await guestRole(ctx, actor, search) : null;
+  return search && guest ? { search, guest } : null;
+}
+
+/**
+ * A query of a search as its guest reads it, or as it leaves for another workspace: with its
+ * workspace's shortcuts written out, since the other workspace doesn't have them, or has them as
+ * something else.
+ *
+ * ponytail: one pass, as the person's own shortcuts get; an expansion that itself names a shortcut
+ * the guest also has is expanded again by their page. Marking the query as written out would stop that.
+ */
+export async function writtenOut(ctx: Pick<QueryCtx, "db">, search: Doc<"searches">, query: string) {
+  const names = shortcutNames(query);
+  return names.length ? expandShortcuts(query, await shortcutExpansions(ctx, search.workspaceId, names)).expandedQuery : query;
 }
 
 /** Who a change to answers is recorded as: the assistant, or the person and what the page said. */
@@ -372,10 +483,10 @@ function validateSearch(search: SavedSearch) {
   }
 }
 
-/** A revision stores the search's fields, and the screening version its answers are rebuilt from. */
-async function revision(ctx: MutationCtx, search: Doc<"searches">, author: Author, deleted = false) {
+/** A revision stores the search's fields, who made it, and the screening version its answers are rebuilt from. */
+async function revision(ctx: MutationCtx, search: Doc<"searches">, author: Author, by: Id<"users">, deleted = false) {
   const answersVersion = (await screeningFor(ctx, search._id))?.version;
-  await ctx.db.insert("searchRevisions", { userId: search.userId, searchId: search._id, revision: search.revision, author, data: search.data, ...(answersVersion === undefined ? {} : { answersVersion }), deleted, createdAt: Date.now() });
+  await ctx.db.insert("searchRevisions", { createdBy: by, searchId: search._id, revision: search.revision, author, data: search.data, ...(answersVersion === undefined ? {} : { answersVersion }), deleted, createdAt: Date.now() });
 }
 
 /** One revision of a search, if it was kept. */
@@ -413,6 +524,8 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
   switch (command.kind) {
     case "createSearch": {
       validateSearch(command.search);
+      // A search's own ID is never one of the table's document IDs, which is what a guest's page of a shared search goes by (readableSearch).
+      if (ctx.db.normalizeId("searches", command.search.id)) throw new Error("Invalid saved search identity or timestamp.");
       if (await findSearch(ctx, workspaceId, command.search.id)) {
         if (command.ifExists === "keep") return;
         throw new Error("Search already exists.");
@@ -421,13 +534,13 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
       const queries = command.history?.queryHistory.length ? command.history.queryHistory : [{ query: command.search.query, field: command.search.field, timestamp: command.search.createdAt }];
       const questions = command.history?.questionHistory ?? [];
       const stored = { ...command.search, ...historySummary(queries, questions), screeningResponses: [] };
-      const id = await ctx.db.insert("searches", withText({ userId, workspaceId, createdBy: userId, localId: command.search.id, data: stored, revision: FIRST_REVISION }, searchText(stored)));
-      await addHistory(ctx, { _id: id, userId }, "query", queries.map(queryEntry));
-      await addHistory(ctx, { _id: id, userId }, "question", questions.map(questionEntry));
+      const id = await ctx.db.insert("searches", withText({ workspaceId, createdBy: userId, localId: command.search.id, data: stored, revision: FIRST_REVISION }, searchText(stored)));
+      await addHistory(ctx, { _id: id }, "query", queries.map(queryEntry));
+      await addHistory(ctx, { _id: id }, "question", questions.map(questionEntry));
       // Answers carried in a new search come from an import or the assistant; neither says who gave them.
       await seedAnswers(ctx, userId, id, command.search.screeningResponses, author === "assistant" ? "assistant" : "unrecorded", Date.now());
       const made = (await ctx.db.get("searches", id))!;
-      await revision(ctx, made, author);
+      await revision(ctx, made, author, userId);
       return { kind: "deleteSearch", id: command.search.id, expect: await asMade(ctx, made) };
     }
     case "editSearch": {
@@ -486,7 +599,7 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
         if (!entry) throw new Error("History entry not found.");
         await ctx.db.delete("searchHistory", entry._id);
       }
-      await revision(ctx, next, author);
+      await revision(ctx, next, author, userId);
       // A change to the query or the filters is reversed by restoring the revision before it,
       // when that revision was kept and restoring it would bring something back.
       const reversible = (edit.kind === "patch" || edit.kind === "query" || edit.kind === "restore") && restoreReverses(previous, data);
@@ -509,7 +622,7 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
       }
       // Its history stays in its rows, with the revisions, after the search is gone.
       const search = (await moveSearchHistory(ctx, found._id)) ? (await ctx.db.get("searches", found._id))! : found;
-      await revision(ctx, { ...search, revision: search.revision + 1 }, author, true);
+      await revision(ctx, { ...search, revision: search.revision + 1 }, author, userId, true);
       await ctx.db.delete("searches", search._id);
       return;
     }
@@ -529,7 +642,7 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
       if (command.value === null) { if (row) await ctx.db.delete("queryShortcuts", row._id); return undo; }
       const data = { shorthand: command.shorthand, ...command.value };
       if (row) await ctx.db.patch("queryShortcuts", row._id, { data, searchText: withText({ ...row, data }, shortcutText(data)).searchText });
-      else await ctx.db.insert("queryShortcuts", withText({ userId, workspaceId, createdBy: userId, data, sortName: shortcutSortName(command.shorthand) }, shortcutText(data)));
+      else await ctx.db.insert("queryShortcuts", withText({ workspaceId, createdBy: userId, data, sortName: shortcutSortName(command.shorthand) }, shortcutText(data)));
       return undo;
     }
     // A clear takes the rows up to the newest there is now. A clock can't draw that line:
@@ -552,22 +665,17 @@ export async function applyCommand(ctx: MutationCtx, { userId, workspaceId }: In
 /** Sets or clears a person's rating of a paper, which is theirs whatever workspace they're in (#650). Returns what puts it back. */
 export async function applyRating(ctx: MutationCtx, userId: Id<"users">, command: Extract<ResearchCommand, { kind: "rating" }>): Promise<UndoCommand | undefined> {
   if (!command.paperId || (command.rating !== null && (!Number.isInteger(command.rating) || command.rating < 0 || command.rating > 5))) throw new Error("Rating must be an integer from 0 to 5.");
-  const row = await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique();
-  if (command.expect !== undefined && (row?.data.rating ?? null) !== command.expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
-  const before = row?.data.rating ?? null;
+  const before = (await personalRatingRow(ctx, userId, command.paperId))?.rating ?? null;
+  if (command.expect !== undefined && before !== command.expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
+  await setPersonalRating(ctx, userId, command.paperId, command.rating);
   // A rating set to what it already was has nothing to undo.
-  const undo: UndoCommand | undefined = before === command.rating ? undefined : { kind: "rating", paperId: command.paperId, rating: before, expect: command.rating };
-  if (command.rating === null) { if (row) await ctx.db.delete("paperRatings", row._id); return undo; }
-  const data = { paperId: command.paperId, rating: command.rating };
-  if (row) await ctx.db.patch("paperRatings", row._id, { data });
-  else await ctx.db.insert("paperRatings", { userId, data });
-  return undo;
+  return before === command.rating ? undefined : { kind: "rating", paperId: command.paperId, rating: before, expect: command.rating };
 }
 
 /**
- * Refuses taking away a search or bookmark someone else made, unless the person is an admin of
- * the workspace, and Clear all in an organization, which has none (#650). In their own
- * workspace a person is its admin, so nothing is refused there.
+ * Refuses taking away a search someone else made, and changing or taking away a bookmark someone
+ * else added, unless the person is an admin of the workspace; and Clear all in an organization,
+ * which has none (#650). In their own workspace a person is its admin, so nothing is refused there.
  */
 export async function checkRemoval(ctx: QueryCtx, actor: Actor, command: ResearchCommand) {
   if (command.kind === "clearSearches" || command.kind === "clearShortcuts") {
@@ -576,7 +684,7 @@ export async function checkRemoval(ctx: QueryCtx, actor: Actor, command: Researc
   }
   if (actor.role === "admin") return;
   const row = command.kind === "deleteSearch" ? await findSearch(ctx, actor.workspaceId, command.id)
-    : command.kind === "shortcut" && command.value === null ? await shortcut(ctx, actor.workspaceId, command.shorthand)
+    : command.kind === "shortcut" ? await shortcut(ctx, actor.workspaceId, command.shorthand)
       : null;
   if (row) requireMakerOrAdmin(actor, row.createdBy);
 }
@@ -597,7 +705,8 @@ export const changeAction = defineUserMutation({
   undoable: true,
   retryKey: "requestId",
   // The assistant asks the person before a change nothing puts back, by the rules that decide whether a change returns an undo (applyCommand).
-  asksFirst: async (ctx, { workspaceId }, { command }) => {
+  asksFirst: async (ctx, actor, { command }) => {
+    const { workspaceId } = actor;
     switch (command.kind) {
       case "createSearch":
       case "rating":
@@ -621,7 +730,10 @@ export const changeAction = defineUserMutation({
         const edit = command.edit;
         // Changes to questions, answers and history stay done.
         if (edit.kind !== "patch" && edit.kind !== "query" && edit.kind !== "restore") return true;
-        const found = await findSearch(ctx, workspaceId, command.id);
+        const shared = await readableSearch(ctx, actor, command.id);
+        // A change to someone else's search, shared with the person, returns nothing to put it back with.
+        if (shared?.guest) return true;
+        const found = shared?.search;
         if (!found) return false;
         if (edit.kind !== "restore") {
           const previous: SavedSearch = { ...currentSearch(found.data), screeningResponses: [] };
@@ -639,12 +751,37 @@ export const changeAction = defineUserMutation({
   // The receipt makes a retried request apply once, from the page or from the assistant. It
   // keeps the undo, so a caller that lost the first answer gets the same one from a retry.
   run: async (ctx, actor, args) => {
-    const { userId, workspaceId, author } = actor;
+    const { userId, author } = actor;
     const key = `change:${args.requestId}`;
     const receipt = await received(ctx, userId, key);
-    if (!receipt) await checkRemoval(ctx, actor, args.command);
-    const undo = receipt ? receipt.undo : await applyCommand(ctx, { userId, workspaceId }, args.command, author);
-    if (!receipt) await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
+    // A request already applied answers as it did then, whatever the person may do now.
+    if (receipt) return receipt.undo ? { undo: { path: "research/records:change" as const, args: { command: receipt.undo } } } : {};
+    await checkRemoval(ctx, actor, args.command);
+    // A change to a search shared with the person to edit (#653) is made where the search is, under the ID it has there,
+    // and noted in its Activity there. One shared to view isn't theirs to change. A guest's change is theirs to make, not
+    // to take back: it returns no undo, and they restore no revision and copy no other search's history into it.
+    const shared = args.command.kind === "editSearch" ? await readableSearch(ctx, actor, args.command.id) : null;
+    const guest = shared?.guest ? shared.search : null;
+    if (guest && args.command.kind === "editSearch") {
+      if (shared?.guest === "viewer") throw createError("FORBIDDEN", "This search is shared with you to view. Save a copy of it to change it.");
+      if (args.command.edit.kind === "copySearch" || args.command.edit.kind === "restore") throw createError("FORBIDDEN", "Only the search's own workspace does that.");
+    }
+    const command = guest && args.command.kind === "editSearch" ? { ...args.command, id: guest.localId } : args.command;
+    const workspaceId = guest ? guest.workspaceId : actor.workspaceId;
+    // What the change did to its search, for its Activity (#656): noted here, not declared, so a
+    // retried request or a change that left the search as it was notes nothing.
+    const note = searchNote(command);
+    const before = note ? await findSearch(ctx, workspaceId, note.id) : null;
+    const applied = await applyCommand(ctx, { userId, workspaceId }, command, author);
+    const undo = guest ? undefined : applied;
+    await ctx.db.insert("researchReceipts", { userId, key, ...(undo ? { undo } : {}) });
+    if (note) {
+      const after = await findSearch(ctx, workspaceId, note.id);
+      // Answers are kept apart from the search, so its revision doesn't move with them.
+      if (after && (note.happened === "answered" || !before || changedSearch(before.data, after.data))) {
+        await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, note);
+      }
+    }
     return undo ? { undo: { path: "research/records:change" as const, args: { command: undo } } } : {};
   },
 });
@@ -698,21 +835,19 @@ async function clearShortcutBatch(ctx: MutationCtx, writer: InWorkspace, before:
 }
 
 export const clearShortcutsBatch = internalMutation({
-  // Optional only for batches scheduled before the workspace was passed (#650), which clear their maker's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), before: v.number() },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), before: v.number() },
   returns: v.null(),
   handler: async (ctx, { userId, workspaceId, before }) => {
-    await clearShortcutBatch(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, before);
+    await clearShortcutBatch(ctx, { userId, workspaceId }, before);
     return null;
   },
 });
 
 export const clearSearchesBatch = internalMutation({
-  // Optional only for batches scheduled before the workspace was passed (#650), which clear their maker's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), author: v.union(v.literal("user"), v.literal("assistant")), before: v.number() },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), author: v.union(v.literal("user"), v.literal("assistant")), before: v.number() },
   returns: v.null(),
   handler: async (ctx, { userId, workspaceId, author, before }) => {
-    await clearBatch(ctx, { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) }, author, before);
+    await clearBatch(ctx, { userId, workspaceId }, author, before);
     return null;
   },
 });
@@ -742,14 +877,14 @@ export const importBatch = accountWorkspaceMutation({
         continue;
       }
       if (receipt) throw new Error("This local bookmark or rating changed after import. Your local copy has been kept.");
+      // What the account holds already: the same bookmark or rating is fine, a different one keeps the local copy.
       const existing = command.kind === "shortcut"
-        ? await shortcut(ctx, workspaceId, command.shorthand)
+        ? (await shortcut(ctx, workspaceId, command.shorthand))?.data.expansion
         : command.kind === "rating"
-          ? await ctx.db.query("paperRatings").withIndex("by_user_and_paperId", q => q.eq("userId", userId).eq("data.paperId", command.paperId)).unique()
-          : null;
-      if (existing) {
-        const same = command.kind === "shortcut" ? existing.data && "expansion" in existing.data && existing.data.expansion === command.value?.expansion
-          : command.kind === "rating" && "rating" in existing.data && existing.data.rating === command.rating;
+          ? (await personalRatingRow(ctx, userId, command.paperId))?.rating
+          : undefined;
+      if (existing !== undefined) {
+        const same = command.kind === "shortcut" ? existing === command.value?.expansion : command.kind === "rating" && existing === command.rating;
         if (!same) throw new Error("This local bookmark or rating differs from your saved account record. Your local copy has been kept.");
       } else await applyCommand(ctx, { userId, workspaceId }, command, "user");
       await ctx.db.insert("researchReceipts", { userId, key: `import:${key}`, fingerprint });

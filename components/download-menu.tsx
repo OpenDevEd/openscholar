@@ -17,7 +17,8 @@ interface DownloadMenuProps {
   onDownloadCSV?: () => void;
   onDownloadEssentialJSON?: () => void;
   onDownloadEssentialCSV?: () => void;
-  variant?: "icon" | "button";
+  /** `outline` is an icon button that matches the focus mode header's outline buttons. */
+  variant?: "icon" | "outline" | "button";
   size?: "sm" | "default";
 }
 
@@ -33,8 +34,12 @@ export function DownloadMenu({
   const tc = useTranslations("common");
 
   const TriggerButton = variant === "icon" ? (
-    <Button variant="ghost" size="icon">
+    <Button variant="ghost" size="icon" aria-label={tc("download")}>
       <Download className="h-4 w-4" />
+    </Button>
+  ) : variant === "outline" ? (
+    <Button variant="outline" size="icon-sm" aria-label={tc("download")}>
+      <Download className="h-3 w-3" />
     </Button>
   ) : (
     <Button variant="outline" size={size}>

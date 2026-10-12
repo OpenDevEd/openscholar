@@ -98,18 +98,18 @@ function escapeCSVCell(value: string): string {
 }
 
 /** The export's name without its extension: the day the job was made and how it ended. */
-export function screeningExportName(job: Pick<ScreeningExportJob, "createdAt" | "status">): string {
+function screeningExportName(job: Pick<ScreeningExportJob, "createdAt" | "status">): string {
   const date = new Date(job.createdAt).toISOString().slice(0, 10);
   return `screening-export-${date}-${job.status}`;
 }
 
 /** The columns of the results table: the paper, an answer per question, then the scoring. */
-export function screeningHeaders(questions: Questions): string[] {
+function screeningHeaders(questions: Questions): string[] {
   return ['Title', 'Authors', 'Year', 'DOI', 'OpenAlex ID', ...questions.map((q) => `${q.key}: ${q.question}`), 'Score', 'Stars', 'Qualified', 'Status', 'Outcome', 'Result ID', 'Model', 'Completed at', ...questions.flatMap((q) => [`${q.key}: model answer`, `${q.key}: model confidence`, `${q.key}: decided by`, `${q.key}: decided at`]), 'Authors (unparsed)', 'Venue', 'Citation count', 'Work type', 'Open access', 'Access status', 'Open access URL', 'PDF URL'];
 }
 
 /** One result under those columns. Score and stars stay numbers, for a spreadsheet. */
-export function screeningCells(questions: Questions, result: ScreeningExportResult): Array<string | number> {
+function screeningCells(questions: Questions, result: ScreeningExportResult): Array<string | number> {
   return [
     result.title,
     result.authors?.join('; ') ?? '',

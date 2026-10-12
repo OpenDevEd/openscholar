@@ -1,3 +1,4 @@
+import { personalWorkspaceOf } from "../workspaces/personal";
 import type { TestConvexForDataModel } from "convex-test";
 import type { FunctionArgs } from "convex/server";
 import { internal } from "../_generated/api";
@@ -21,12 +22,18 @@ export async function createJob(as: TestConvexForDataModel<DataModel>, { papers,
   return { jobId };
 }
 
-type JobFields = Omit<Doc<"screeningJobs">, "_id" | "_creationTime" | "screeningId"> & { screeningId?: Id<"screenings"> };
+type JobFields = Omit<Doc<"screeningJobs">, "_id" | "_creationTime" | "screeningId" | "userId" | "workspaceId" | "createdBy"> & {
+  /** Who started it; it's in their own workspace unless `workspaceId` says otherwise. */
+  userId: Id<"users">;
+  workspaceId?: Id<"workspaces">;
+  screeningId?: Id<"screenings">;
+};
 
 /** A job as rows, for a test that seeds one without starting it: its screening and its progress row with it. */
-export async function insertJob(ctx: MutationCtx, fields: JobFields) {
-  const screeningId = fields.screeningId ?? (await ctx.db.insert("screenings", { userId: fields.userId, version: 0, createdAt: fields.createdAt }));
-  const jobId = await ctx.db.insert("screeningJobs", { ...fields, screeningId });
+export async function insertJob(ctx: MutationCtx, { userId, ...fields }: JobFields) {
+  const workspaceId = fields.workspaceId ?? (await personalWorkspaceOf(ctx, userId));
+  const screeningId = fields.screeningId ?? (await ctx.db.insert("screenings", { workspaceId, version: 0, createdAt: fields.createdAt }));
+  const jobId = await ctx.db.insert("screeningJobs", { ...fields, workspaceId, createdBy: userId, screeningId });
   await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
   return jobId;
 }

@@ -100,6 +100,8 @@ async function seedScreeningResult(
       openalexId: overrides.openalexId ?? `https://openalex.org/W${Date.now()}`,
       title: overrides.title ?? "Screening Result",
       status: overrides.status ?? "processing",
+      // A paper being read has its work in the pool, which is how its completion finds it.
+      ...((overrides.status ?? "processing") === "processing" ? { workId: crypto.randomUUID() } : {}),
       ...(overrides.answers !== undefined ? { answers: overrides.answers } : {}),
       ...(overrides.score !== undefined ? { score: overrides.score } : {}),
       ...(overrides.stars !== undefined ? { stars: overrides.stars } : {}),
@@ -260,7 +262,7 @@ describe("createScreeningJob", () => {
     });
 
     expect(job).not.toBeNull();
-    expect(job!.userId).toBe(user._id);
+    expect(job!.createdBy).toBe(user._id);
     expect(job!.status).toBe("processing");
     expect(job!.totalPapers).toBe(10);
     expect(job!.questions).toEqual(questions);
@@ -381,8 +383,8 @@ describe("Screen all on a saved search", () => {
     const result = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique());
     vi.useFakeTimers();
     await t.mutation(internal.screening.mutations.handleScreeningComplete, {
-      workId: "work_search",
-      context: { jobId, resultId: result!._id },
+      workId: result!.workId!,
+      context: {},
       result: { kind: "success", returnValue: { responses: encodeQuestionResponseMap({ "Is this relevant?": true }), confidences: encodeQuestionResponseMap({ "Is this relevant?": 0.8 }), confidence: 0.8 } },
     });
 
@@ -475,8 +477,8 @@ describe("handleScreeningComplete", () => {
       });
 
       await t.mutation(internal.screening.mutations.handleScreeningComplete, {
-        workId: "work_success",
-        context: { jobId: job._id, resultId: result._id },
+        workId: result.workId!,
+        context: {},
         result: {
           kind: "success",
           returnValue: {
@@ -492,10 +494,11 @@ describe("handleScreeningComplete", () => {
       await t.run(async (ctx) => {
         const updatedResult = await ctx.db.get("screeningResults", result._id);
         const updatedJob = await ctx.db.get("screeningJobs", job._id);
+        const workspaceId = await personalWorkspaceOf(ctx, user._id);
         const libraryItems = await ctx.db
           .query("libraryItems")
-          .withIndex("by_user_openalexId", (q) =>
-            q.eq("userId", user._id).eq("openalexId", "https://openalex.org/Wsuccess"),
+          .withIndex("by_workspace_openalexId", (q) =>
+            q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/Wsuccess"),
           )
           .collect();
         const scheduledFunctions = await ctx.db.system
@@ -518,10 +521,11 @@ describe("handleScreeningComplete", () => {
       await t.run(async (ctx) => {
         const updatedResult = await ctx.db.get("screeningResults", result._id);
         const updatedJob = await ctx.db.get("screeningJobs", job._id);
+        const workspaceId = await personalWorkspaceOf(ctx, user._id);
         const libraryItems = await ctx.db
           .query("libraryItems")
-          .withIndex("by_user_openalexId", (q) =>
-            q.eq("userId", user._id).eq("openalexId", "https://openalex.org/Wsuccess"),
+          .withIndex("by_workspace_openalexId", (q) =>
+            q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/Wsuccess"),
           )
           .collect();
         const links = await ctx.db
@@ -574,8 +578,8 @@ describe("handleScreeningComplete", () => {
       });
 
       await t.mutation(internal.screening.mutations.handleScreeningComplete, {
-        workId: "work_failed",
-        context: { jobId: job._id, resultId: result._id },
+        workId: result.workId!,
+        context: {},
         result: {
           kind: "failed",
           error: "screening exploded",
@@ -624,8 +628,8 @@ describe("handleScreeningComplete", () => {
         });
 
         await t.mutation(internal.screening.mutations.handleScreeningComplete, {
-          workId: `work_${status}`,
-          context: { jobId: job._id, resultId: result._id },
+          workId: result.workId!,
+          context: {},
           result: {
             kind: "success",
             returnValue: {
@@ -642,10 +646,11 @@ describe("handleScreeningComplete", () => {
         await t.run(async (ctx) => {
           const updatedResult = await ctx.db.get("screeningResults", result._id);
           const updatedJob = await ctx.db.get("screeningJobs", job._id);
+          const workspaceId = await personalWorkspaceOf(ctx, user._id);
           const libraryItems = await ctx.db
             .query("libraryItems")
-            .withIndex("by_user_openalexId", (q) =>
-              q.eq("userId", user._id).eq("openalexId", `https://openalex.org/W${status}`),
+            .withIndex("by_workspace_openalexId", (q) =>
+              q.eq("workspaceId", workspaceId).eq("openalexId", `https://openalex.org/W${status}`),
             )
             .collect();
           const counts = await readScreeningProgressCounts(ctx, job);
@@ -678,7 +683,7 @@ describe("jobs in workspaces (#650)", () => {
     const user = await seedUser(t, "clerk_test");
     await seedCredits(t, user._id, 100, 0);
     const lab = await t.run(async (ctx) => {
-      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
       const lab = await ensureWorkspace(ctx, { kind: "organization", organizationId });
       await seedCreditsForTest(ctx, { workspaceId: lab, free: 100 });
       return lab;
@@ -699,7 +704,7 @@ describe("jobs in workspaces (#650)", () => {
     await seedUser(t, "carol", "carol@example.com");
     for (const user of [alice, bob]) await seedCredits(t, user._id, 100, 0);
     const lab = await t.run(async (ctx) => {
-      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
       for (const [clerkUserId, role] of [["alice", "org:member"], ["bob", "org:admin"]] as const) {
         await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role, state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
       }
@@ -727,40 +732,12 @@ describe("jobs in workspaces (#650)", () => {
     const asSource = (userId: Id<"users">, workspaceId: Id<"workspaces">) => t.query(internal.screening.start.check, { userId, workspaceId, set: { kind: "screening", jobId: bobs }, first: 1, last: 1, questions: [{ key: "q1", question: "Relevant?" }], scoringConfig: rules });
     await expect(asSource(alice._id, lab)).rejects.toThrow(/no papers in that range/);
     await expect(asSource(alice._id, await t.run((ctx) => personalWorkspaceOf(ctx, alice._id)))).rejects.toThrow(/Screening not found/);
-    // Cancelling is its starter's or an admin's.
-    await expect(asAlice.mutation(api.screening.mutations.cancelScreeningJob, { jobId: bobs })).rejects.toThrow(/admin/);
-    await asBob.mutation(api.screening.mutations.cancelScreeningJob, { jobId: alicesInLab });
+    // Cancelling is its starter's or an admin's, in the job's own workspace.
+    await expect(asAlice.mutation(api.screening.mutations.cancelScreeningJob, { workspaceId: lab, jobId: bobs })).rejects.toThrow(/admin/);
+    await expect(asBob.mutation(api.screening.mutations.cancelScreeningJob, { jobId: alicesInLab })).rejects.toThrow(/not found/i);
+    await asBob.mutation(api.screening.mutations.cancelScreeningJob, { workspaceId: lab, jobId: alicesInLab });
     await expect(asCarol.mutation(api.screening.mutations.cancelScreeningJob, { jobId: alicesOwn })).rejects.toThrow(/not found/i);
     expect(await t.run(async (ctx) => (await ctx.db.get("screeningJobs", alicesInLab))!.status)).toBe("cancelled");
   });
 
-  it("puts jobs from before workspaces, and what goes with them, in their person's own, however often the backfill runs", async () => {
-    vi.useFakeTimers();
-    try {
-      const t = convexTest(schema);
-      const user = await seedUser(t, "clerk_test");
-      const own = await t.run((ctx) => personalWorkspaceOf(ctx, user._id));
-      // As they were before workspaces, a screening of a search the search's backfill already reached.
-      await runUntriggered(t, async (ctx) => {
-        const searchId = await ctx.db.insert("searches", { userId: user._id, workspaceId: own, createdBy: user._id, localId: "s", revision: 1, data: { id: "s", query: "q", field: "title_and_abstract", count: 0, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-10-01T00:00:00Z", updatedAt: "2026-10-01T00:00:00Z" } });
-        const screeningId = await ctx.db.insert("screenings", { userId: user._id, searchId, version: 0, createdAt: 1 });
-        await ctx.db.insert("screeningJobs", { userId: user._id, screeningId, status: "completed", totalPapers: 0, questions: [], scoringConfig: rules, createdAt: 1, updatedAt: 1 } as never);
-        const extractionJobId = await ctx.db.insert("extractionJobs", { userId: user._id, name: "Old", status: "completed", createdAt: 1, updatedAt: 1 } as never);
-        const paperId = await ctx.db.insert("extractionPapers", { jobId: extractionJobId, openalexId: "W1", title: "P", status: "completed" } as never);
-        await ctx.db.insert("extractionPaperQueue", { jobId: extractionJobId, userId: user._id, paperId, runEpoch: 0, kind: "initial", status: "completed", priority: 0, attempt: 0, createdAt: 1, updatedAt: 1 });
-        await ctx.db.insert("screeningSlots", { userId: user._id, running: 0 });
-        await ctx.db.insert("recordCounts", { userId: user._id, table: "screeningJobs", count: 1 });
-      });
-      expect(await t.action(internal.migrations.jobWorkspaces.verify, {})).toBe(6);
-      for (let runs = 0; runs < 2; runs++) {
-        await t.mutation(internal.migrations.jobWorkspaces.run, {});
-        await t.finishAllScheduledFunctions(vi.runAllTimers);
-      }
-      expect(await t.action(internal.migrations.jobWorkspaces.verify, {})).toBe(0);
-      const rows = await t.run(async (ctx) => Promise.all((["screeningJobs", "extractionJobs", "screenings", "extractionPaperQueue", "screeningSlots", "recordCounts"] as const).map(async (table) => (await ctx.db.query(table).take(1))[0].workspaceId)));
-      expect(rows).toEqual(Array(6).fill(own));
-    } finally {
-      vi.useRealTimers();
-    }
-  });
 });

@@ -127,7 +127,9 @@ export function optionalPlatformBrandAssets(
   ) {
     throw createError("EL_DEFAULT_ICON_URLS_JSON must be a non-empty JSON array of URLs");
   }
-  return { logoUrl, faviconUrl, iconUrls };
+  // Optional: dark mode shows the light logo until a dark version is set.
+  const logoDarkUrl = optionalRuntimeEnvironment("EL_DEFAULT_LOGO_DARK_URL");
+  return { logoUrl, ...(logoDarkUrl ? { logoDarkUrl } : {}), faviconUrl, iconUrls };
 }
 
 // The key that pays for meaning-based search. A separate embedding key keeps

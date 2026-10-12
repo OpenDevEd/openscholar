@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
-import { OrganizationFeatureGate } from "@/components/auth/organization-feature-gate";
+import { EvidenceLibrariesGate } from "@/components/auth/evidence-libraries-gate";
 
 export default function Layout({ children }: { children: ReactNode }) {
-  return <OrganizationFeatureGate feature="evidenceLibraries">{children}</OrganizationFeatureGate>;
+  return <EvidenceLibrariesGate>{children}</EvidenceLibrariesGate>;
 }

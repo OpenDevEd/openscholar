@@ -43,6 +43,7 @@ const toastMock = vi.hoisted(() => {
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/navigation", () => ({
+  useParams: () => ({}),
   useRouter: () => ({ push: pushMock }),
 }));
 
@@ -59,9 +60,10 @@ vi.mock("next-intl", () => ({
 
 vi.mock("sonner", () => ({ toast: toastMock }));
 
-// The Team section opens Clerk's organisation modal from its manage button.
+// The Team section opens Clerk's organisation modal from its manage button, and marks you in its list.
 vi.mock("@clerk/nextjs", () => ({
   useClerk: () => ({ openOrganizationProfile: vi.fn() }),
+  useUser: () => ({ user: { id: "user_me" } }),
 }));
 
 vi.mock("@/convex/_generated/api", () => ({
@@ -217,6 +219,12 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
               : queryMock(query, args),
 }));
 
+// The Team section reads the workspace the page is in: the library's organization, whose other members view it.
+vi.mock("@/components/workspaces/parts", async (original) => ({
+  ...(await original<typeof import("@/components/workspaces/parts")>()),
+  useCurrentWorkspace: () => ({ kind: "organization", name: "Test Org", members: 2 }),
+}));
+
 vi.mock("@/components/auth/auth-state-panel", () => ({
   AuthStatePanel: ({ variant }: { variant: string }) => <p>{variant}</p>,
 }));
@@ -286,6 +294,8 @@ export function draftResult(
     hasUnpublishedChanges?: boolean;
     sections?: { sectionKey: string; payload: unknown }[];
     editVersion?: number;
+    role?: "owner" | "editor" | "creator" | "viewer";
+    editable?: boolean;
   } = {},
 ) {
   return {
@@ -305,6 +315,8 @@ export function draftResult(
       hasUnpublishedChanges: overrides.hasUnpublishedChanges ?? false,
       liveAddress: "https://saved-library.example.test",
       sections: overrides.sections ?? savedRows,
+      role: overrides.role ?? "owner",
+      editable: overrides.editable ?? true,
     },
     isReady: true,
   };

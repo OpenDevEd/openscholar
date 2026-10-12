@@ -1,4 +1,3 @@
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +8,8 @@ import { SERVER_MODEL_SLUG } from "../ai/config";
 import { extractionPaperCredits } from "../../lib/pricing";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
+import { savedPapersPick } from "./picks.test-support";
 
 const {
   mockProviderGenerate,
@@ -91,7 +92,6 @@ async function seedUserFlagsAndCredits(
 ): Promise<{ userId: Id<"users"> }> {
   return await t.run(async (ctx) => {
     const now = Date.now();
-    await seedOrganizationFeatures(ctx, [TEST_CLERK], { extraction: true });
     const userId = await ctx.db.insert("users", {
       
       clerkId: TEST_CLERK,
@@ -161,21 +161,24 @@ describe("extraction full flow with mocked provider I/O", () => {
     const auth = t.withIdentity(TEST_IDENTITY);
     expect(fakeAutumn.balance(userId)).toBe(STARTING_CREDITS);
 
+    // One saved paper, read from its abstract.
+    await t.run(async (ctx) =>
+      ctx.db.insert("libraryItems", {
+        ...(await madeBy(ctx, userId)),
+        openalexId: "full-flow-paper",
+        title: "Abstract-only paper",
+        authors: ["Fixture Author"],
+        publicationYear: 2024,
+        abstract:
+          "This abstract is intentionally long enough to be processed without a PDF. It states the intervention improved retention and gives the mocked extraction flow source material.",
+        searchableText: "abstract-only paper",
+        savedAt: 1,
+        updatedAt: 1,
+      }),
+    );
     const { jobId } = await auth.mutation(api.extraction.mutations.startJob, {
       name: "Full Flow E2E",
-      bucketItems: [
-        {
-          bucketKey: "upload:full-flow-paper",
-          source: "upload",
-          sourceRefId: "full-flow-paper",
-          title: "Abstract-only paper",
-          authors: ["Fixture Author"],
-          year: 2024,
-          openalexId: "full-flow-paper",
-          abstract:
-            "This abstract is intentionally long enough to be processed without a PDF. It states the intervention improved retention and gives the mocked extraction flow source material.",
-        },
-      ],
+      sources: [await savedPapersPick(t, userId, 1)],
       questions: [
         {
           key: "main_finding",
@@ -295,10 +298,10 @@ describe("extraction full flow with mocked provider I/O", () => {
     // Two saved papers in a collection: the set the assistant names.
     const collectionId = await t.run(async (ctx) => {
       const now = Date.now();
-      const id = await ctx.db.insert("collections", { userId, name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: now, updatedAt: now });
+      const id = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: now, updatedAt: now });
       for (const n of [1, 2]) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: ["Fixture Author"], abstract, searchableText: `Trial ${n}`, savedAt: now + n, updatedAt: now });
-        await ctx.db.insert("libraryItemCollections", { userId, collectionId: id, libraryItemId, assignedAt: now + n });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: ["Fixture Author"], abstract, searchableText: `Trial ${n}`, savedAt: now + n, updatedAt: now });
+        await ctx.db.insert("libraryItemCollections", { collectionId: id, libraryItemId, assignedAt: now + n });
       }
       return id;
     });

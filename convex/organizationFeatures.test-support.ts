@@ -1,10 +1,12 @@
 import type { MutationCtx } from "./_generated/server";
-import type { OrganizationFeature } from "./organizationFeatures";
+import { grantPlanFeaturesForTest } from "./billing/billing.test-support";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../lib/billing/plans";
 
+/** An organization with these members, on a plan that includes Evidence Libraries when asked. */
 export async function seedOrganizationFeatures(
   ctx: MutationCtx,
   clerkUserIds: string[],
-  features: Partial<Record<OrganizationFeature, boolean>>,
+  features: { evidenceLibraries?: boolean },
 ) {
   const key = crypto.randomUUID();
   const timestamps = {
@@ -19,10 +21,9 @@ export async function seedOrganizationFeatures(
     name: "Feature test",
     state: "active",
     ...timestamps,
-    evidenceLibrariesEnabled: features.evidenceLibraries === true,
-    authorsEnabled: features.authors === true,
-    extractionEnabled: features.extraction === true,
   });
+  // What the organization's plan includes (#652).
+  if (features.evidenceLibraries) await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
   for (const clerkUserId of clerkUserIds)
     await ctx.db.insert("organizationMemberships", {
       organizationId,

@@ -57,6 +57,15 @@ export function inputSchema(entry: UserAction) {
   return z.object({ ...convexToZodFields(fieldsWithStringIds(fields)), ...("paginationOpts" in fields ? { paginationOpts: PAGE } : {}) });
 }
 
+/**
+ * A call's arguments without the optional IDs the model sent empty. One that fills in every
+ * argument sends "" where it has no ID to give (`by` on a list of jobs); no ID is empty, so the
+ * function refused the call, and the person saw its validator's words in the chat.
+ */
+export function withoutEmptyIds(args: PropertyValidators, input: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(input).filter(([name, value]) => !(value === "" && args[name]?.kind === "id" && args[name].isOptional === "optional")));
+}
+
 /** Who the assistant acts as, and in which workspace. */
 export type ActingAs = { userId: Id<"users">; workspaceId: Id<"workspaces"> };
 
@@ -69,7 +78,7 @@ export type ActingAs = { userId: Id<"users">; workspaceId: Id<"workspaces"> };
  */
 export function runAction(ctx: ActionCtx, as: ActingAs, entry: UserAction, input: Record<string, unknown>, callKey: string, stepId?: Id<"assistantSteps">, approved = false, credits?: number): Promise<unknown> {
   const retryKey = retryKeyOf(entry);
-  const args = { ...input, ...(retryKey ? { [retryKey]: callKey } : {}), ...as, ...(credits === undefined || entry.kind === "query" ? {} : { approvedCredits: credits }) };
+  const args = { ...withoutEmptyIds(entry.args as PropertyValidators, input), ...(retryKey ? { [retryKey]: callKey } : {}), ...as, ...(credits === undefined || entry.kind === "query" ? {} : { approvedCredits: credits }) };
   const ref = assistantPath(entry.path);
   if (entry.kind === "query") return ctx.runQuery(makeFunctionReference<"query">(ref), args);
   const change = { ...args, ...(stepId ? { stepId } : {}), ...(approved ? { approved } : {}) };

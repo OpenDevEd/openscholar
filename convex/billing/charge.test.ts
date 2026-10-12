@@ -310,7 +310,7 @@ describe("holding and charging", () => {
     await t.mutation(internal.billing.accounts.zeroBalance, { workspaceId });
     expect(await t.run(async (ctx) => (await ctx.db.query("billingAccounts").first())?.purchased)).toBe(0);
     const snapshot = await t.run(async (ctx) => {
-      const { _id, _creationTime, userId: _user, workspaceId: _workspace, refreshedAt, refreshQueuedAt, ...rest } = (await ctx.db.query("billingAccounts").first())!;
+      const { _id, _creationTime, workspaceId: _workspace, refreshedAt, refreshQueuedAt, ...rest } = (await ctx.db.query("billingAccounts").first())!;
       return { ...rest, balance: 10 };
     });
 
@@ -391,7 +391,7 @@ describe("an approved job's hold", () => {
     const t = convexTest(schema);
     const { userId, own, lab } = await t.run(async (ctx) => {
       const userId = await ctx.db.insert("users", { clerkId: "clerk_payer", email: "payer@test.local", state: "active", createdAt: 1, updatedAt: 1 });
-      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_payer", name: "Lab", slug: "lab", evidenceLibrariesEnabled: false, authorsEnabled: false, extractionEnabled: false, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_payer", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
       return { userId, own: await personalWorkspaceOf(ctx, userId), lab: (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id };
     });
     // A job's hold taken on her own workspace, as one started before charges named their payer was.
@@ -551,7 +551,7 @@ describe("the usage ledger", () => {
       for (let i = 0; i < 400; i += 100) {
         await t.run(async (ctx) => {
           for (let k = i; k < i + 100; k++) {
-            await insertUsage(ctx, { userId, jobId, chargeId: `extraction:${k}`, credits: 1, kind: "extraction", description: "Extraction", createdAt: k });
+            await insertUsage(ctx, { userId, workspaceId: await personalWorkspaceOf(ctx, userId), jobId, chargeId: `extraction:${k}`, credits: 1, kind: "extraction", description: "Extraction", createdAt: k });
           }
         });
       }

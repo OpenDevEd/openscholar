@@ -32,9 +32,9 @@ import { useSearchHistoryStore, useKeywordExpansionStore } from '../store';
 import { ResearchContext } from '../research/binding';
 import { paramsToSearchResult, searchResultToParams } from '../search-params/converters';
 import { browserExpand, validateAndExpandKeywordsSilently } from '../keyword-validation-browser';
-import { useQueryShortcuts } from '../research/reads';
+import { useQueryShortcuts, useSearchAccess } from '../research/reads';
 import type { SearchFilters, SearchField, PaperResult } from '../types';
-import type { SearchContextValue, SearchParams, SearchResultData, SetQueryOptions } from './types';
+import type { SearchContextValue, SearchParams, SetQueryOptions } from './types';
 import {
   SEARCH_EVENT_SCHEMA_VERSION,
   SEARCH_FETCH_PARAM_KEYS,
@@ -56,7 +56,7 @@ const SearchContext = createContext<SearchContextValue | undefined>(undefined);
  * Runs the search away from the results page: the caller owns the id and the
  * params that the URL would otherwise hold.
  */
-export interface LocalSearchState {
+interface LocalSearchState {
   searchId: string;
   params: SearchParams;
   onParamsChange: (updates: Partial<SearchParams>) => void;
@@ -130,6 +130,9 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
   const searchId = getEffectiveSearchId(usePathname(), local?.searchId) ?? '';
   
   const account = useContext(ResearchContext);
+  // The ID a link to it carries (#653): its document's, which a guest's page already goes by.
+  const access = useSearchAccess(account && !local && searchId ? searchId : undefined);
+  const shareId = access?.guest ? searchId : access?.shareId;
   const [routeUrlParams, setRouteUrlParams] = useQueryStates(searchParamsParsers, {
     history: 'push',
     shallow: false,
@@ -827,13 +830,13 @@ export function SearchProvider({ children, local }: SearchProviderProps) {
     // Expand keywords in the query (e.g., ml... → "machine learning" OR AI)
     const { expandedQuery } = expandQuery(urlParams.q || '');
 
-    // Strip the local history id from shared links — the recipient's
-    // SearchInitializer mints a fresh id for them. See buildShareableUrl.
+    // An account's saved search goes by its document's ID, which opens it for whoever can open it; anyone else's
+    // SearchInitializer makes them a copy. A signed-out browser's id means nothing to a recipient. See buildShareableUrl.
     return buildShareableUrl(window.location.origin, {
       ...urlParams,
       q: expandedQuery,
-    });
-  }, [urlParams, expandQuery]);
+    }, shareId);
+  }, [urlParams, expandQuery, shareId]);
   
   // Convert URL params to SearchFilters for external use
   const toSearchFilters = useCallback((): SearchFilters => ({

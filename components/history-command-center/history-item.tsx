@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { OQL_FIELD } from "@/lib/openalex/oql";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { Copy, Trash2, BookmarkPlus, History, AiIcon } from "@/components/icons";
@@ -26,9 +26,13 @@ interface HistoryItemProps {
   onSearchClick: (item: SearchResult) => void;
   /** The list is choosing a search, not managing history: saving as a bookmark and deleting are left out. */
   choosing?: boolean;
+  /** In an organization, who ran it. */
+  runBy?: ReactNode;
+  /** Whether the person may delete it: in an organization, whoever ran it and its admins may (#651). */
+  canDelete?: boolean;
 }
 
-export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }: HistoryItemProps) {
+export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, runBy, canDelete = true }: HistoryItemProps) {
   const toast = useAppToast();
   const th = useTranslations("historyPage");
   const tc = useTranslations("common");
@@ -183,7 +187,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
           </PopoverContent>
         </Popover>
       )}
-      {!choosing && <EntryAction label={tc("delete")} icon={Trash2} danger onClick={handleDelete} />}
+      {!choosing && canDelete && <EntryAction label={tc("delete")} icon={Trash2} danger onClick={handleDelete} />}
     </EntryAside>
   );
 
@@ -196,6 +200,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
             {count}
             {!roomy && versions}
             <span className="flex-1" />
+            {runBy}
             {aside()}
           </div>
           {open(roomy ? "line-clamp-3" : "line-clamp-2")}
@@ -211,6 +216,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
             {question}
             {chips}
           </div>
+          {runBy ? <span className="flex shrink-0 self-start">{runBy}</span> : null}
           {/* Beside the query's first line; on a narrow screen, a line of its own under the text. */}
           {aside("h-7 self-start max-sm:basis-full max-sm:flex-row-reverse max-sm:justify-between max-sm:pl-[5.25rem]")}
         </>
@@ -221,6 +227,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false }:
           <FullTextToggle text={queryText} iconOnly className="mt-0.5" />
           {versions && <span className="mt-0.5 flex">{versions}</span>}
           <span className="flex-1" />
+          {runBy ? <span className="flex shrink-0 self-start">{runBy}</span> : null}
           {aside("h-7")}
         </>
       )}

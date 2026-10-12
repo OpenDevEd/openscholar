@@ -10,7 +10,7 @@ import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { subtleSpring } from "@/lib/animation-config";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 
 /** Session-scoped shared state — dismiss once, all gates hide. */
 const useAISetupGateDismissed = create<{

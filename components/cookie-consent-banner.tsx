@@ -206,7 +206,7 @@ export function CookieConsentBanner() {
   );
 }
 
-export const COOKIE_PREFERENCES_EVENT = "openscholar-open-cookie-preferences";
+const COOKIE_PREFERENCES_EVENT = "openscholar-open-cookie-preferences";
 
 export function CookiePreferencesTrigger() {
   const t = useTranslations("footer");

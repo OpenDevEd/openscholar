@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { AnimatePresence, motion, useReducedMotion, type Variants } from "motion/react";
 import { LogIn, RefreshCw, ShieldAlert } from "@/components/icons";
 import { Spinner } from "@/components/ui/spinner";
@@ -8,14 +8,14 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
 
-export type AuthStateVariant =
+type AuthStateVariant =
   | "loading"
   | "sign_in_required"
   | "no_access"
   | "sync_error_retry";
 
-export type AuthStateLayout = "inline" | "fullscreen";
-export type AuthStateLoadingStyle = "spinner" | "panel";
+type AuthStateLayout = "inline" | "fullscreen";
+type AuthStateLoadingStyle = "spinner" | "panel";
 
 type AuthStatePanelProps = {
   variant: AuthStateVariant;

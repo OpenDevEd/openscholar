@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { expandShortcuts, type ShortcutExpansions } from './query-shortcuts'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import { SIDEBAR_STORAGE_KEY, SIDEBAR_WIDTH_COLLAPSED, SIDEBAR_WIDTH_EXPANDED } from './sidebar-width'
 import type {
   SearchField,
   QueryHistoryEntry,
@@ -56,7 +55,7 @@ export interface RatingsState {
 }
 
 /** The search a copy takes its history from, as a list shows it. */
-export type CopySource = Pick<SearchResult, 'id' | 'updatedAt' | 'queryHistoryCount' | 'questionCount' | 'latestQuestion' | 'questionText'>;
+type CopySource = Pick<SearchResult, 'id' | 'updatedAt' | 'queryHistoryCount' | 'questionCount' | 'latestQuestion' | 'questionText'>;
 
 export interface SearchHistoryState {
   searchHistory: SearchResult[]
@@ -874,11 +873,6 @@ export const useAIConfigStore = create<AIConfigState>()(
 );
 
 // UI Component States
-interface ThemeToggleState {
-  mounted: boolean
-  setMounted: (mounted: boolean) => void
-}
-
 interface CurrentQueryState {
   currentQuery: string
   setCurrentQuery: (query: string) => void
@@ -903,25 +897,6 @@ interface KeywordExpansionDialogState {
   resetForm: () => void
 }
 
-// Removed NavbarState - using currentQuery from ResultsStore as single source of truth
-// Removed PageContentState - using currentQuery from ResultsStore as single source of truth
-
-interface AIConfigDialogState {
-  isEnhancing: boolean
-  enhancedPreview: {
-    enhancedQuery: string
-    explanation: string
-  } | null
-  setIsEnhancing: (enhancing: boolean) => void
-  setEnhancedPreview: (preview: { enhancedQuery: string; explanation: string } | null) => void
-}
-
-
-export const useThemeToggleStore = create<ThemeToggleState>((set) => ({
-  mounted: false,
-  setMounted: (mounted) => set({ mounted }),
-}))
-
 export const useCurrentQueryStore = create<CurrentQueryState>((set) => ({
   currentQuery: '',
   setCurrentQuery: (query) => set({ currentQuery: query }),
@@ -944,13 +919,6 @@ export const useKeywordExpansionDialogStore = create<KeywordExpansionDialogState
   setCurrentKeyword: (keyword) => set({ currentKeyword: keyword }),
   setSuggestedQuery: (query) => set({ suggestedQuery: query }),
   resetForm: () => set({ newShorthand: '', newExpansion: '', currentKeyword: '', suggestedQuery: '' }),
-}))
-
-export const useAIConfigDialogStore = create<AIConfigDialogState>((set) => ({
-  isEnhancing: false,
-  enhancedPreview: null,
-  setIsEnhancing: (enhancing) => set({ isEnhancing: enhancing }),
-  setEnhancedPreview: (preview) => set({ enhancedPreview: preview }),
 }))
 
 // Translation Store - for storing translation data by paper ID
@@ -1066,52 +1034,11 @@ export const useResultsTranslationSettingsStore = create<ResultsTranslationSetti
   )
 );
 
-// Sidebar Store - Main navigation sidebar
-
-interface SidebarState {
-  isOpen: boolean;
-  isCollapsed: boolean;
-  _hasHydrated: boolean;
-  setOpen: (open: boolean) => void;
-  setCollapsed: (collapsed: boolean) => void;
-  toggle: (isMobile: boolean) => void;
-  setHasHydrated: (state: boolean) => void;
-}
-
-export const useSidebarStore = create<SidebarState>()(
-  persist(
-    (set, get) => ({
-      isOpen: false,
-      isCollapsed: true,
-      _hasHydrated: false,
-      setOpen: (open) => set({ isOpen: open }),
-      setCollapsed: (collapsed) => set({ isCollapsed: collapsed }),
-      toggle: (isMobile) => {
-        if (isMobile) {
-          set((state) => ({ isOpen: !state.isOpen }));
-        } else {
-          set((state) => ({ isCollapsed: !state.isCollapsed }));
-        }
-      },
-      setHasHydrated: (state) => set({ _hasHydrated: state }),
-    }),
-    {
-      name: SIDEBAR_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ isCollapsed: state.isCollapsed }),
-      onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true);
-      },
-    }
-  )
-);
-
-// Derived values for sidebar dimensions
-export const getSidebarDimensions = (isCollapsed: boolean) => ({
-  expandedWidth: SIDEBAR_WIDTH_EXPANDED,
-  collapsedWidth: SIDEBAR_WIDTH_COLLAPSED,
-  currentWidth: isCollapsed ? SIDEBAR_WIDTH_COLLAPSED : SIDEBAR_WIDTH_EXPANDED,
-});
+// The mobile navigation sheet. On wider screens the rail is always there.
+export const useSidebarStore = create<{ isOpen: boolean; setOpen: (open: boolean) => void }>((set) => ({
+  isOpen: false,
+  setOpen: (open) => set({ isOpen: open }),
+}));
 
 // Filter Sidebar Store - Search filters sidebar
 const FILTER_SIDEBAR_WIDTH_EXPANDED = 320;
@@ -1157,7 +1084,7 @@ export const getFilterSidebarDimensions = (isCollapsed: boolean) => ({
  * Each page gets its own store instance with separate localStorage persistence.
  * Usage: const useMyStore = createSidebarStore('my-persist-key');
  */
-export function createSidebarStore(persistKey: string) {
+function createSidebarStore(persistKey: string) {
   return create<FilterSidebarState>()(
     persist(
       (set) => ({
@@ -1183,7 +1110,7 @@ export function createSidebarStore(persistKey: string) {
  * Factory for creating sidebar dimension calculators.
  * Returns a function that computes current dimensions based on collapse state.
  */
-export function createSidebarDimensions(expandedWidth: number, collapsedWidth: number) {
+function createSidebarDimensions(expandedWidth: number, collapsedWidth: number) {
   return (isCollapsed: boolean) => ({
     expandedWidth,
     collapsedWidth,
@@ -1194,20 +1121,6 @@ export function createSidebarDimensions(expandedWidth: number, collapsedWidth: n
 // Library filter sidebar store (independent collapse state from search sidebar)
 export const useLibrarySidebarStore = createSidebarStore('openalex-library-sidebar');
 export const getLibrarySidebarDimensions = createSidebarDimensions(320, 48);
-
-// Bucket sidebar store — staged-papers sidebar on job-creator
-export const useBucketSidebarStore = createSidebarStore('openalex-bucket-sidebar');
-export const getBucketSidebarDimensions = createSidebarDimensions(360, 48);
-
-// Chat papers-in-context sidebar — same visual shell as bucket, read-only,
-// independent collapse persistence so users can prefer it open in chat
-// even if they collapsed bucket on the creator.
-export const useChatPapersSidebarStore = createSidebarStore('openalex-chat-papers-sidebar');
-export const getChatPapersSidebarDimensions = createSidebarDimensions(320, 48);
-
-// Extraction source sidebar — collection picker inside the Library tab
-export const useExtractionSourceSidebarStore = createSidebarStore('openalex-extraction-source-sidebar');
-export const getExtractionSourceSidebarDimensions = createSidebarDimensions(240, 48);
 
 // Extraction citation panel store
 const EXTRACTION_CITATION_PANEL_WIDTH_EXPANDED = 460;

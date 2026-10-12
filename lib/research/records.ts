@@ -15,13 +15,13 @@ export const fieldValidator = v.union(...[
   "title_and_abstract", "title", "abstract", "fulltext", "display_name", "oql",
 ].map((field) => v.literal(field as SearchResult["field"])));
 
-export const queryHistoryEntryValidator = v.object({ query: v.string(), timestamp: v.string(), field: v.optional(fieldValidator) });
-export const questionHistoryEntryValidator = v.object({ question: v.string(), timestamp: v.string() });
+const queryHistoryEntryValidator = v.object({ query: v.string(), timestamp: v.string(), field: v.optional(fieldValidator) });
+const questionHistoryEntryValidator = v.object({ question: v.string(), timestamp: v.string() });
 /** A search's earlier queries and questions, as saved before they had their own rows (#354). */
 export const historyArrays = { queryHistory: v.array(queryHistoryEntryValidator), questionHistory: v.array(questionHistoryEntryValidator) };
 
 /** The most of a search's past questions kept on the search itself, for filtering the history page by them. */
-export const QUESTION_TEXT_MAX = 4_000;
+const QUESTION_TEXT_MAX = 4_000;
 
 export const searchFields = {
   id: v.string(),
@@ -126,7 +126,7 @@ export type SavedSearch = Infer<typeof searchValidator>;
 // answer edits, never by a patch.
 const { id: _id, createdAt: _createdAt, queryHistoryCount: _queries, questionCount: _questions, latestQuestion: _latest, questionText: _text, screeningResponses: _answers, ...editableFields } = searchFields;
 const summaryValidator = v.object({ queryHistoryCount: v.number(), questionCount: v.number(), latestQuestion: v.optional(v.string()), questionText: v.string() });
-export const editValidator = v.union(
+const editValidator = v.union(
   v.object({ kind: v.literal("patch"), fields: v.object(partial(editableFields)), clear: strings }),
   v.object({ kind: v.literal("query"), query: v.string(), field: fieldValidator }),
   v.object({ kind: v.literal("question"), question: v.string() }),
@@ -385,7 +385,7 @@ export const ANSWERED_PAPERS_MAX = 200;
  * it should still hold, and the version of its answers, which a screening job moves without
  * touching the search.
  */
-export const searchAsMade = v.object({ created: v.number(), revision: v.number(), answers: v.optional(v.number()) });
+const searchAsMade = v.object({ created: v.number(), revision: v.number(), answers: v.optional(v.number()) });
 const shortcutValue = v.union(v.object({ expansion: v.string(), createdAt: v.number() }), v.null());
 export const commandValidator = v.union(
   // `history`: the earlier queries and questions of a search brought from this browser or a file.

@@ -49,14 +49,28 @@ export async function userAiConfig(ctx: QueryCtx | MutationCtx, userId: Id<"user
 }
 
 /**
- * What a user's `task` runs on: their Custom pick, else their preset's, else
+ * What a person's own `task` runs on: their Custom pick, else their preset's, else
  * the default preset's. Null only when nothing is configured at all.
  */
-export async function resolveTaskPick(ctx: QueryCtx | MutationCtx, userId: Id<"users">, task: AiTask): Promise<TaskPick | null> {
+export async function ownTaskPick(ctx: QueryCtx | MutationCtx, userId: Id<"users">, task: AiTask): Promise<TaskPick | null> {
   const cfg = await userAiConfig(ctx, userId);
   const choice = cfg?.choice ?? DEFAULT_PRESET;
   const picked = choice === "custom" ? await livePick(ctx, cfg?.custom?.[task], task) : await presetPick(ctx, choice, task);
   return picked ?? (choice === DEFAULT_PRESET ? null : await presetPick(ctx, DEFAULT_PRESET, task));
+}
+
+/** The preset an organization's work runs on, which its admins pick (#651); null in a person's own workspace, which runs on their own settings. */
+export async function organizationPreset(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">): Promise<PresetKey | null> {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  if (workspace?.kind !== "organization") return null;
+  return (await ctx.db.get("organizations", workspace.organizationId))?.aiPreset ?? DEFAULT_PRESET;
+}
+
+/** What `task` runs on for someone working in a workspace: an organization's preset there, else their own settings. */
+export async function resolveTaskPick(ctx: QueryCtx | MutationCtx, { userId, workspaceId }: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, task: AiTask): Promise<TaskPick | null> {
+  const preset = await organizationPreset(ctx, workspaceId);
+  if (preset === null) return await ownTaskPick(ctx, userId, task);
+  return (await presetPick(ctx, preset, task)) ?? (preset === DEFAULT_PRESET ? null : await presetPick(ctx, DEFAULT_PRESET, task));
 }
 
 /** Job fields that record what a background run uses. */
@@ -67,20 +81,20 @@ export const serverStamp = (pick: TaskPick | null) =>
  * Job fields for an extraction run: what its questions run on, and the decision
  * model (Jev) its yes/no questions go to when the user screens with one.
  */
-export async function extractionStamp(ctx: QueryCtx | MutationCtx, userId: Id<"users">) {
-  const screen = await resolveTaskPick(ctx, userId, "screenAll");
+export async function extractionStamp(ctx: QueryCtx | MutationCtx, working: { userId: Id<"users">; workspaceId: Id<"workspaces"> }) {
+  const screen = await resolveTaskPick(ctx, working, "screenAll");
   const screenModel = screen ? await ctx.db.get("models", screen.modelId) : null;
   return {
-    ...serverStamp(await resolveTaskPick(ctx, userId, "extraction")),
+    ...serverStamp(await resolveTaskPick(ctx, working, "extraction")),
     ...(screenModel && isDecisionModel(screenModel.modelId) && { decisionModelId: screenModel._id }),
   };
 }
 
 /** Action-callable wrapper around resolveTaskPick (actions have no ctx.db). */
 export const resolveForUser = internalQuery({
-  args: { userId: v.id("users"), task: aiTaskValidator },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), task: aiTaskValidator },
   returns: v.union(taskPickValidator, v.null()),
-  handler: async (ctx, { userId, task }) => resolveTaskPick(ctx, userId, task),
+  handler: async (ctx, { userId, workspaceId, task }) => resolveTaskPick(ctx, { userId, workspaceId }, task),
 });
 
 /** The fields the settings map shows for a model, or null when there's none. */
@@ -101,9 +115,9 @@ export async function pricingOf(ctx: QueryCtx | MutationCtx, id: Id<"models"> | 
   return model ? { input: model.inputPricePerMillion, output: Math.max(model.outputPricePerMillion, model.reasoningPricePerMillion ?? 0) } : { input: 0, output: 0 };
 }
 
-/** The price of what a user's `task` runs on. */
-export async function taskPricing(ctx: QueryCtx | MutationCtx, userId: Id<"users">, task: AiTask): Promise<Pricing> {
-  return await pricingOf(ctx, (await resolveTaskPick(ctx, userId, task))?.modelId);
+/** The price of what `task` runs on for someone working in a workspace. */
+export async function taskPricing(ctx: QueryCtx | MutationCtx, working: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, task: AiTask): Promise<Pricing> {
+  return await pricingOf(ctx, (await resolveTaskPick(ctx, working, task))?.modelId);
 }
 
 /** The prices of the models an extraction sends its questions to (`extractionStamp`, or a job stamped with it). */

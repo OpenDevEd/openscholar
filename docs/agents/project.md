@@ -42,15 +42,22 @@ supported process changed. Read the page back before claiming success.
   `convex/_generated/ai/guidelines.md`.
 - Application state uses Convex queries alongside the shared React rules in
   `AGENTS.md`.
-- An animated element (a CSS animation class or Framer props) never also
-  transitions opacity or transform: no `transition`, `transition-all`,
-  `transition-opacity`, or `transition-transform` on it. Put the animation on a
-  wrapper, or transition only colors, borders, and shadows. Shared
-  `components/ui` parts name the properties they transition.
-  `npm run check:animation-clash` enforces both, in CI.
-- The shared tooltip is `TooltipHint` or `Tooltip` from
-  `components/ui/tooltip`. The only native `title` left is on the hidden
-  `Z3988` spans, which carry citation data for Zotero.
+- `npm run check:ui-rules` runs in CI and enforces the UI rules agents kept
+  breaking. Each error names the fix. A line that needs an exception says why
+  on the line before it: `// ui-rules-allow: <rule> -- <reason>`.
+
+  | Rule | Enforced by |
+  |---|---|
+  | No animation that also transitions opacity or transform | `check:ui-rules` (`animation-clash`) |
+  | No uppercase labels | `check:ui-rules` (`uppercase`) |
+  | No native `title` tooltips | `check:ui-rules` (`native-title`) |
+  | No dot separators, in code or in `messages/` | `check:ui-rules` (`dot-separator`) |
+  | An avatar without a photo shows an icon, never initials | `check:ui-rules` (`initials`) |
+  | No "Loading" text; the shared Spinner or the final size | `check:ui-rules` (`loading-text`) |
+  | A dialog, popover or picker comes from `components/ui`, never a raw primitive | `check:ui-rules` (`raw-primitive`) |
+  | No "Coolify" in text people read | `check:ui-rules` (`coolify`) |
+  | Nothing moves or flashes as data arrives | `npm run verify -- shift` |
+  | A dialog, sheet, popover or menu opens with its data in it | `npm run verify -- shift` with a `--do` step that opens it |
 
 ## Research assistant
 
@@ -66,8 +73,11 @@ The assistant can do everything a user can, through the same actions
 - `npm run check:user-actions` runs in CI and fails on any public Convex
   function or Next.js server action that is neither registered nor listed in
   `scripts/user-actions-exempt.json`. That file lists plumbing, with the reason
-  it isn't a user action, and pending user actions, with the issue that will
-  register them. Plumbing is never a place for a missing user action.
+  it isn't a user action; covered functions, with the registered action the
+  assistant does the same job with; manual ones, with the reason they stay on
+  their page (money, secrets, putting a library live, site administration);
+  and pending user actions, with the issue that will register them. Plumbing
+  is never a place for a missing user action.
 - Tools address records by ID. The assistant changes what a user sees by
   changing the Convex record the page renders.
 - Reading at scale runs through OpenScholar's own features (screening,
@@ -81,7 +91,8 @@ checkout. It is the only checkout allowed to upload to the shared self-hosted
 development Convex service.
 
 - `npm run dev:web` runs the Next.js app only. Use it for `app/` and
-  `components/` work.
+  `components/` work, or `npm run verify -- up`, which also gives the
+  worktree its environment and its own port.
 - `npm run dev` also watches `convex/` and keeps pushing functions to the
   shared development backend. Run it only from `dev-self` when that upload is
   intended.
@@ -140,8 +151,6 @@ settings, so every change to its shape ships a migration.
 - For Convex work, upload from the correct checkout, require
   `Convex functions ready!`, run the changed function or browser flow, and
   confirm the matching remote logs are clean.
-- For `app/` or `components/` work, run `npm run dev:web`, open the
-  changed page, and check the browser plus terminal.
 - GitHub CI runs the pre-merge suite. Tests tagged `size` run nightly.
 - Convex and plain test files share modules within a Vitest worker, so a test
   can't count on a fresh module. A file that calls `vi.mock`, itself or through

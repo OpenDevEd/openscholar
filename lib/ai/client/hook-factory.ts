@@ -8,7 +8,8 @@ import { api } from '@/convex/_generated/api'
 import { useAuthReadiness } from '@/components/providers/convex-provider'
 import { useOptionalAuthQuery } from '@/lib/auth/use-auth-query'
 import { useAIConfigStore } from '@/lib/store'
-import { useWorkspace } from '@/lib/workspaces/url'
+import { inWorkspace, useWorkspace, useWorkspaceScope } from '@/lib/workspaces/url'
+import { useWorkspaceSlug } from '@/lib/workspaces/href'
 import { useFeatureFlag } from '@/lib/feature-flags/hook'
 import {
   AIApiKeyRequiredError,
@@ -61,6 +62,9 @@ function mapExecutionError(reason: AIExecutionErrorReason): Error {
  */
 function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
   const { provider, apiKey, providerApiKeys } = useAIConfigStore()
+  // An organization's work runs on its preset, on its credits: no one's own keys (#651). Known from
+  // the address, so nothing runs on someone's own key while the organization loads.
+  const inOrganization = useWorkspaceSlug() !== undefined
   const settings = useOptionalAuthQuery(api.userAiConfig.queries.get, {})
   const presets = useQuery(api.aiModelConfig.queries.presetPicks, {})
   return useMemo(() => {
@@ -80,9 +84,9 @@ function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
     const loading = isAuthenticated && settings.settlement !== 'ready'
     return {
       configFor,
-      onCredits: isAuthenticated && creditsEnabled && (loading || choice !== 'custom'),
+      onCredits: isAuthenticated && (inOrganization || (creditsEnabled && (loading || choice !== 'custom'))),
     }
-  }, [provider, apiKey, providerApiKeys, settings.data, settings.settlement, presets, isAuthenticated, creditsEnabled])
+  }, [provider, apiKey, providerApiKeys, settings.data, settings.settlement, presets, isAuthenticated, creditsEnabled, inOrganization])
 }
 
 export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
@@ -106,8 +110,8 @@ export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
     const defaultTask = typeof options.task === 'function' ? options.task({} as TParams) : options.task
     // Presets run on credits; paying with your own key is part of Custom.
     const apiKeyMode = onCredits ? 'credits' : chosenMode
-    const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, {})
-    const figures = useOptionalAuthQuery(api.ai.estimates.mine, {})
+    const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, useWorkspaceScope())
+    const figures = useOptionalAuthQuery(api.ai.estimates.mine, inWorkspace(useWorkspace(), {}))
     const isConfigured = useMemo(
       () =>
         resolveModeConfigurability({

@@ -76,6 +76,7 @@ export function SearchCommandCenter({
 
       {/* Header with mode tabs and actions */}
       <SearchCommandHeader
+        searchId={searchId}
         mode={mode}
         onModeChange={setMode}
         onDownloadAllJSON={onDownloadAllJSON}

@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronLeft, type AppIcon } from "@/components/icons";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -70,10 +70,10 @@ export function PanelHeader({
         ) : null}
         {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
       </div>
-      {tabs ? <div className="hidden shrink-0 border-l border-border-subtle pl-4 @3xl:block">{tabs}</div> : null}
+      {/* The view switch and the filters are inset wells, made for a white card. The light bar is the page's grey, so here they take the card's white. */}
+      {tabs ? <div className="hidden shrink-0 border-l border-border-subtle pl-4 not-dark:[--inset:var(--card)] @3xl:block">{tabs}</div> : null}
       {filters || children ? (
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          {/* Filters are inset wells, made for a white card. The light bar is the page's grey, so here they take the card's white. */}
           {filters ? <div className="hidden items-center gap-2 not-dark:[--inset:var(--card)] @6xl:flex">{filters}</div> : null}
           {children}
         </div>

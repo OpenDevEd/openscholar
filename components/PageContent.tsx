@@ -1,7 +1,7 @@
 "use client";
 "use no memo"; // try/finally in handlers
 
-import { useRouter } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import dynamic from "next/dynamic";
 import { useUIStore, useCurrentQueryStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
@@ -32,9 +32,11 @@ function PageContent() {
   const tToast = useTranslations("toast");
   const locale = useLocale();
   const toast = useAppToast();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
 
   const { loadingResultIndex, setLoadingResultIndex } = useUIStore();
+  // Leaving for the results: a second click before the page changes would save the search again.
+  const [leaving, startLeaving] = React.useTransition();
 
   // Loading state for AI enhancement
   const [isEnhancingQuestion, setIsEnhancingQuestion] = React.useState(false);
@@ -59,6 +61,7 @@ function PageContent() {
     if (e && e.preventDefault) {
       e.preventDefault();
     }
+    if (leaving) return;
 
     setLoadingResultIndex(null);
 
@@ -105,7 +108,7 @@ function PageContent() {
     const { url } = submitNewSearch(searchQuery, filters, researchQuestion);
 
     // Navigate to the results page with search params
-    router.push(url);
+    startLeaving(() => router.push(url));
   };
 
   return (

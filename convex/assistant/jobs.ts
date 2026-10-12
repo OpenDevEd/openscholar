@@ -15,7 +15,7 @@ import { internalMutation, query } from "../lib/functions";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { getScreeningJobAction } from "../screening/queries";
 import type { Acting } from "../lib/userActions";
-import { workspaceOf } from "../workspaces/actor";
+
 import { readJobCounters } from "../extraction/jobCounters";
 import { readScreeningProgressCounts } from "../screening/progress";
 import { replyWorkspace, requireThread } from "./access";
@@ -55,19 +55,25 @@ async function jobOf(ctx: QueryCtx, step: Doc<"assistantSteps">) {
   }
 }
 
+/** What a screening is called on its card: the name it was given, or its set's. */
+const calledBy = (job: { name?: string; label?: string }) => {
+  const label = job.name ?? job.label;
+  return label ? { label } : {};
+};
+
 /**
  * The person who started a job, reading it in the job's workspace (#650). The card has already
  * checked who may see it: the starter's account needn't still be active for the others in a shared chat to see their job.
  */
-async function starter(ctx: QueryCtx, job: Doc<"screeningJobs">): Promise<Acting> {
-  return { userId: job.userId, workspaceId: await workspaceOf(ctx, job), role: "admin", author: "user" };
+function starter(job: Doc<"screeningJobs">): Acting {
+  return { userId: job.createdBy, workspaceId: job.workspaceId, role: "admin", author: "user" };
 }
 
 /** What a screening has come to, as its card and its readout say it. */
 async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"screeningJobs">): Promise<Infer<typeof screeningCardValidator> | null> {
   const row = await ctx.db.get("screeningJobs", jobId);
-  if (!row || row.userId !== userId) return null;
-  const actor = await starter(ctx, row);
+  if (!row || row.createdBy !== userId) return null;
+  const actor = starter(row);
   const job = await getScreeningJobAction.run(ctx, actor, { jobId });
   if (!job) return null;
   const jobs = [job];
@@ -84,13 +90,13 @@ async function screeningFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"scr
     kind: "screening",
     jobId: job._id,
     status: job.status,
-    ...(job.label ? { label: job.label } : {}),
+    ...calledBy(job),
     total: sum((one) => one.totalPapers),
     included: sum((one) => one.outcomes.included),
     unclear: sum((one) => one.outcomes.unclear),
     excluded: sum((one) => one.outcomes.excluded),
     failed: sum((one) => one.outcomes.failed),
-    credits: sum((one) => one.credits.spent ?? 0),
+    credits: sum((one) => one.credits?.spent ?? 0),
     // What the person approved is the first job's cap: each job after holds what was left of it.
     ...(jobs[0].spendCap === undefined ? {} : { cap: jobs[0].spendCap }),
     ...(jobs.some((one) => one.capped) ? { capped: true } : {}),
@@ -104,9 +110,9 @@ async function screeningAhead(ctx: QueryCtx, workspaceId: Id<"workspaces">, wait
   const running = await ctx.db.query("screeningJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", "processing")).take(5);
   for (const other of running) {
     if (other._id === waiting) continue;
-    const job = await getScreeningJobAction.run(ctx, await starter(ctx, other), { jobId: other._id });
+    const job = await getScreeningJobAction.run(ctx, starter(other), { jobId: other._id });
     if (!job?.running) continue;
-    return { ...(job.label ? { label: job.label } : {}), done: job.outcomes.included + job.outcomes.unclear + job.outcomes.excluded + job.outcomes.failed, total: job.totalPapers };
+    return { ...calledBy(job), done: job.outcomes.included + job.outcomes.unclear + job.outcomes.excluded + job.outcomes.failed, total: job.totalPapers };
   }
   return null;
 }
@@ -114,7 +120,7 @@ async function screeningAhead(ctx: QueryCtx, workspaceId: Id<"workspaces">, wait
 /** What an extraction has come to: how many papers it has read, and the questions it asks. */
 async function extractionFacts(ctx: QueryCtx, userId: Id<"users">, jobId: Id<"extractionJobs">): Promise<Infer<typeof extractionCardValidator> | null> {
   const job = await ctx.db.get("extractionJobs", jobId);
-  if (!job || job.userId !== userId) return null;
+  if (!job || job.createdBy !== userId) return null;
   const [counters, credits, questions] = await Promise.all([
     readJobCounters(ctx, jobId),
     creditsAgg.sum(ctx, { namespace: jobId }),

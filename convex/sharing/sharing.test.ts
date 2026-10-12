@@ -1,0 +1,446 @@
+// Guests of an item (#653): who its workspace's members can give it to, how many its plan
+// allows, what an emailed invitation takes to accept, and what's left once the item changes.
+import { convexTest } from "convex-test";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { api, internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
+import schema from "../schema";
+import { shownOutside } from "../library/followed";
+import { changeAction } from "../research/records";
+import { insertJob } from "../screening/createJob.test-support";
+import { ensureWorkspace } from "../workspaces/create";
+import { personalWorkspaceOf } from "../workspaces/personal";
+
+const mail = vi.hoisted(() => ({ sendMail: vi.fn(), close: vi.fn() }));
+vi.mock("nodemailer", () => ({ default: { createTransport: () => mail } }));
+
+/** The addresses Clerk says the person answering has verified. */
+let verified: string[] = [];
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.stubEnv("EVIDENCE_LIBRARY_PLATFORM_DOMAIN", "libraries.example.test");
+  vi.stubEnv("EL_COOLIFY_ENVIRONMENT", "development");
+  vi.stubEnv("EL_SMTP_HOST", "smtp.example.test");
+  vi.stubEnv("EL_SMTP_FROM", "libraries@example.test");
+  vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.test");
+  vi.stubEnv("CLERK_SECRET_KEY", "test-clerk-key");
+  mail.sendMail.mockReset().mockResolvedValue({});
+  vi.stubGlobal("fetch", vi.fn(async () => Response.json({ email_addresses: verified.map((email_address) => ({ email_address, verification: { status: "verified" } })) })));
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
+});
+
+/**
+ * Alice and Bob are in the lab. Carol is in the club with Alice, and in nothing with Bob. Dave
+ * is in no organization. The lab has a collection Alice made.
+ */
+async function lab(guests?: number) {
+  const t = convexTest(schema);
+  const seeded = await t.run(async (ctx) => {
+    const users: Record<string, Id<"users">> = {};
+    for (const clerkId of ["alice", "bob", "carol", "dave"]) users[clerkId] = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, firstName: clerkId[0].toUpperCase() + clerkId.slice(1), state: "active", createdAt: 1, updatedAt: 1 });
+    const organization = async (slug: string, members: string[]) => {
+      const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: `org_${slug}`, name: slug, slug, clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
+      for (const clerkUserId of members) await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: `orgmem_${slug}_${clerkUserId}`, clerkUserId, role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+      return ensureWorkspace(ctx, { kind: "organization", organizationId });
+    };
+    const workspaceId = await organization("lab", ["alice", "bob"]);
+    const club = await organization("club", ["alice", "carol"]);
+    if (guests !== undefined) await ctx.db.insert("billingAccounts", { workspaceId, plan: "free_organization", pastDue: false, balance: 0, purchased: 0, signupGranted: true, hasPaid: false, limits: { guests }, refreshedAt: Date.now() });
+    return { users, workspaceId, club };
+  });
+  const [alice, bob, carol, dave] = ["alice", "bob", "carol", "dave"].map((subject) => t.withIdentity({ subject }));
+  const { workspaceId } = seeded;
+  const { id } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Trials" });
+  const item = { workspaceId, kind: "collection" as const, id };
+  const guestsOf = () => t.run(async (ctx) => (await ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", id)).collect()).map(({ userId, role, name }) => ({ userId, role, name })));
+  const invitationsOf = () => t.run(async (ctx) => (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", id)).collect()).map(({ email, role, state }) => ({ email, role, state })));
+  return { t, alice, bob, carol, dave, item, guestsOf, invitationsOf, ...seeded };
+}
+
+it("gives a colleague an item at once, and no one a stranger's, a member's or another workspace's", async () => {
+  const { t, alice, bob, carol, item, guestsOf, users, workspaceId } = await lab();
+
+  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  expect(await guestsOf()).toEqual([{ userId: users.carol, role: "viewer", name: "Trials" }]);
+  const activity = await t.run((ctx) => ctx.db.query("activity").withIndex("by_workspace_and_item", (q) => q.eq("workspaceId", workspaceId).eq("item", `collection:${item.id}`)).collect());
+  expect(activity.map(({ happened, detail }) => [happened, detail])).toContainEqual(["shared", "Carol"]);
+
+  // Dave shares no organization with Alice, Bob is in the lab already, and Bob shares none with Carol.
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.dave, role: "viewer" })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.bob, role: "viewer" })).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+  // A guest acts in their own workspace, where the item isn't: they can't share it on.
+  await expect(carol.mutation(api.sharing.guests.add, { kind: "collection", id: item.id, userId: users.dave, role: "viewer" })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+  // The assistant is told so before it asks her about an invitation that could never go: a yes is never followed by a refusal.
+  const carolOwn = await t.run((ctx) => personalWorkspaceOf(ctx, users.carol));
+  const refused = (userId: Id<"users">, from: Id<"workspaces">) => t.query(internal.assistant.asking.check, { userId, workspaceId: from, path: "sharing/invitations:invite", input: JSON.stringify({ kind: "collection", id: item.id, email: "dave@example.org", role: "viewer" }) });
+  expect(await refused(users.carol, carolOwn)).toBe("It isn't in this workspace.");
+  expect(await refused(users.alice, workspaceId)).toBeNull();
+
+  // Any member makes a guest an editor.
+  await bob.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" });
+  expect(await guestsOf()).toEqual([{ userId: users.carol, role: "editor", name: "Trials" }]);
+  // A guest gives up their own place.
+  await carol.mutation(api.sharing.guests.leave, { id: item.id });
+  expect(await guestsOf()).toEqual([]);
+});
+
+it("lets a guest who edits a collection put papers in it and take them out, in the collection's own library, and no one else", async () => {
+  const { t, alice, carol, dave, item, users, workspaceId, club } = await lab();
+  const collectionId = item.id as Id<"collections">;
+  const paper = { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" };
+  const put = (who: typeof carol, inCollection = true) => who.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection });
+  const held = () => t.run(async (ctx) => (await ctx.db.get("collections", collectionId))!.itemCount);
+  // What her collection picker offers beside her own collections, for this paper.
+  const offered = async (who: typeof carol) => (await who.query(api.sharing.shared.editableCollections, { openalexId: paper.openalexId, paginationOpts: { cursor: null, numItems: 20 } })).page;
+
+  // A viewer reads it, and someone it isn't shared with has nothing of it.
+  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  await expect(put(carol)).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  await expect(put(dave)).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  expect(await held()).toBe(0);
+  expect(await offered(carol)).toEqual([]);
+
+  await alice.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" });
+  expect(await offered(carol)).toEqual([{ _id: collectionId, name: "Trials", itemCount: 0, containsItem: false, from: { name: "lab", organization: true } }]);
+  // Her assistant asks her before it changes the lab's collection, which the lab's people see; Dave's has nothing to ask about.
+  const asks = (userId: Id<"users">) => t.run(async (ctx) => shownOutside(ctx, { userId, workspaceId: await personalWorkspaceOf(ctx, userId) }, { collectionId }));
+  expect([await asks(users.carol), await asks(users.dave)]).toEqual([true, false]);
+  const { undo } = await put(carol);
+  expect(await held()).toBe(1);
+  expect(await offered(carol)).toMatchObject([{ itemCount: 1, containsItem: true }]);
+  // In the club, an organization of hers, nothing is shared with her: it's hers in her own workspace.
+  expect((await carol.query(api.sharing.shared.editableCollections, { workspaceId: club, paginationOpts: { cursor: null, numItems: 20 } })).page).toEqual([]);
+  // The paper is the lab's, saved there by Carol: her own library has none of it.
+  expect((await t.run((ctx) => ctx.db.query("libraryItems").collect())).map((saved) => ({ workspaceId: saved.workspaceId, createdBy: saved.createdBy }))).toEqual([{ workspaceId, createdBy: users.carol }]);
+  // The lab's Activity for the collection says she put it there.
+  const activity = await t.run((ctx) => ctx.db.query("activity").withIndex("by_workspace_and_item", (q) => q.eq("workspaceId", workspaceId).eq("item", `collection:${item.id}`)).collect());
+  expect(activity.map(({ happened, by, detail }) => [happened, by, detail])).toContainEqual(["added", users.carol, "Tutoring at scale"]);
+
+  // Her undo takes it out again, and by the saved paper's ID she puts it back and takes it out.
+  await carol.mutation(api.library.mutations.setPaperInCollection, undo!.args);
+  expect(await held()).toBe(0);
+  // Putting in a paper the lab already has leaves the lab's record of it as it is, whatever hers says.
+  await carol.mutation(api.library.mutations.setPaperInCollection, { paper: { ...paper, title: "Renamed by a guest" }, collectionId, inCollection: true });
+  expect((await t.run((ctx) => ctx.db.query("libraryItems").collect())).map((saved) => saved.title)).toEqual(["Tutoring at scale"]);
+  await put(carol, false);
+  const libraryItemId = (await t.run((ctx) => ctx.db.query("libraryItems").first()))!._id;
+  await carol.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId });
+  expect(await held()).toBe(1);
+  await carol.mutation(api.library.collections.removeFromCollection, { collectionId, libraryItemId });
+  expect(await held()).toBe(0);
+
+  // A viewer again, she changes nothing; nor does she once it's taken back.
+  await put(carol);
+  await alice.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "viewer" });
+  await expect(put(carol, false)).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  await expect(carol.mutation(api.library.collections.removeFromCollection, { collectionId, libraryItemId })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  expect(await held()).toBe(1);
+});
+
+it("holds an item to the guests its workspace's plan allows, invitations still waiting among them", async () => {
+  const { alice, item, guestsOf, invitationsOf, users } = await lab(1);
+  const invite = (email: string) => alice.action(api.sharing.invitations.invite, { ...item, email, role: "viewer" });
+
+  await invite("Eve@example.org");
+  expect(mail.sendMail).toHaveBeenCalledTimes(1);
+  expect(await invitationsOf()).toEqual([{ email: "eve@example.org", role: "viewer", state: "pending" }]);
+  // The one place is the invitation's.
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" })).rejects.toThrow(/allows 1 guest /);
+  await expect(invite("frank@example.org")).rejects.toThrow(/allows 1 guest /);
+  // Sending it again takes no second place.
+  await invite("eve@example.org");
+
+  await alice.mutation(api.sharing.guests.remove, { ...item, guest: { email: "eve@example.org" } });
+  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  expect(await guestsOf()).toHaveLength(1);
+  await expect(invite("frank@example.org")).rejects.toThrow(/allows 1 guest /);
+});
+
+it("makes an invitation the place of whoever accepts it with the invited address verified", async () => {
+  const { alice, carol, dave, item, guestsOf, invitationsOf, users, t } = await lab(1);
+  await alice.action(api.sharing.invitations.invite, { ...item, email: "dave@example.org", role: "viewer" });
+  const invitationId = await t.run(async (ctx) => (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", item.id)).first())!._id);
+
+  // The link says nothing of the item to an account it wasn't sent to, which can't take it up either.
+  verified = ["carol@example.org"];
+  expect(await carol.query(api.sharing.invitations.get, { invitationId })).toEqual({ state: "other" });
+  await expect(carol.action(api.sharing.invitations.respond, { invitationId, accept: true })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  // Nor can Dave while Clerk hasn't verified that address on his account.
+  verified = ["someone@example.org"];
+  await expect(dave.action(api.sharing.invitations.respond, { invitationId, accept: true })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  expect(await guestsOf()).toEqual([]);
+
+  verified = ["dave@example.org"];
+  expect(await dave.query(api.sharing.invitations.get, { invitationId })).toMatchObject({ state: "pending", name: "Trials", role: "viewer" });
+  expect(await dave.action(api.sharing.invitations.respond, { invitationId, accept: true })).toEqual({ kind: "collection", id: item.id });
+  expect(await guestsOf()).toEqual([{ userId: users.dave, role: "viewer", name: "Trials" }]);
+  expect(await invitationsOf()).toEqual([{ email: "dave@example.org", role: "viewer", state: "accepted" }]);
+  // A second tab that accepts it too opens the same item.
+  expect(await dave.action(api.sharing.invitations.respond, { invitationId, accept: true })).toEqual({ kind: "collection", id: item.id });
+  expect(await guestsOf()).toHaveLength(1);
+  // It was the item's one place, and still is: nobody else fits.
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" })).rejects.toThrow(/allows 1 guest /);
+});
+
+it("keeps a guest's row to the item's name, and leaves none of an item that's deleted", async () => {
+  const { t, alice, item, guestsOf, invitationsOf, users } = await lab();
+  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  await alice.action(api.sharing.invitations.invite, { ...item, email: "eve@example.org", role: "viewer" });
+
+  await alice.mutation(api.library.collections.renameCollection, { workspaceId: item.workspaceId, collectionId: item.id, name: "Coaching trials" });
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(await guestsOf()).toEqual([{ userId: users.carol, role: "viewer", name: "Coaching trials" }]);
+
+  await alice.mutation(api.library.collections.deleteCollection, { workspaceId: item.workspaceId, collectionId: item.id });
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(await guestsOf()).toEqual([]);
+  expect(await invitationsOf()).toEqual([]);
+});
+
+it("opens a shared collection to its guest from their own workspace, and to nobody else", async () => {
+  const { t, alice, carol, dave, item, users, club } = await lab();
+  const { id: saved } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: item.workspaceId, openalexId: "https://openalex.org/W1", title: "One", collectionId: item.id });
+  await alice.mutation(api.library.collections.setCollectionRating, { workspaceId: item.workspaceId, collectionId: item.id, libraryItemId: saved, rating: 4, expect: null });
+  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, collectionId: item.id };
+  const titles = async (as: typeof carol, workspaceId?: Id<"workspaces">) => (await as.query(api.library.queries.browseLibrary, { ...view, ...(workspaceId ? { workspaceId } : {}), paginationOpts: { cursor: null, numItems: 10 } })).page.map((paper) => paper.title);
+
+  // Carol reads it in her own workspace: its papers, its count and whose it is.
+  expect(await titles(carol)).toEqual(["One"]);
+  expect((await carol.query(api.library.queries.getLibraryFilteredCount, view)).count).toBe(1);
+  expect(await carol.query(api.library.collections.getCollection, { collectionId: item.id })).toEqual({ _id: item.id, name: "Trials", itemCount: 1, guest: { role: "viewer", from: { name: "lab", organization: true } } });
+  // She reads how its members rated each paper in it, and has no rating there herself.
+  const [paper] = (await carol.query(api.library.queries.browseLibrary, { ...view, paginationOpts: { cursor: null, numItems: 10 } })).page;
+  expect(paper.collection).toMatchObject({ count: 1, raters: [{ name: "Alice", rating: 4 }] });
+  expect(paper.collection).not.toHaveProperty("mine");
+  const raters = (as: typeof carol) => as.query(api.library.collections.raters, { collectionId: item.id, libraryItemId: saved, paginationOpts: { cursor: null, numItems: 10 } });
+  expect((await raters(carol)).page).toMatchObject([{ name: "Alice", rating: 4 }]);
+  await expect(raters(dave)).rejects.toThrow();
+  // Not while she acts in the club, whose credits aren't hers to spend on it.
+  expect(await titles(carol, club)).toEqual([]);
+  // Dave was given nothing.
+  expect(await titles(dave)).toEqual([]);
+  expect(await dave.query(api.library.collections.getCollection, { collectionId: item.id })).toBeNull();
+
+  // The assistant lists it for her too. Its rows are the lab's: each names a library item only once she has saved the paper herself.
+  const listed = async () => (await carol.query(api.library.queries.papers, { collectionId: item.id })).papers.map(({ id, libraryItemId, inCollection }) => ({ id, libraryItemId, inCollection }));
+  expect(await listed()).toEqual([{ id: "https://openalex.org/W1", libraryItemId: undefined, inCollection: false }]);
+  const { id: hers } = await carol.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W1", title: "One" });
+  expect(await listed()).toEqual([{ id: "https://openalex.org/W1", libraryItemId: hers, inCollection: false }]);
+
+  // An export she started reads the collection again for each part, so it ends with her place.
+  const carolOwn = await t.run((ctx) => personalWorkspaceOf(ctx, users.carol));
+  const exported = () => t.query(internal.exports.page, { userId: users.carol, workspaceId: carolOwn, source: { kind: "library", view }, format: "json", cursor: null, written: 0 });
+  expect((await exported()).count).toBe(1);
+
+  // A paper taken out of the collection takes its ratings there out of her reach.
+  await alice.mutation(api.library.collections.removeFromCollection, { workspaceId: item.workspaceId, collectionId: item.id, libraryItemId: saved });
+  await expect(raters(carol)).rejects.toThrow();
+  await alice.mutation(api.library.collections.addToCollection, { workspaceId: item.workspaceId, collectionId: item.id, libraryItemId: saved });
+
+  await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
+  expect(await titles(carol)).toEqual([]);
+  expect((await exported()).count).toBe(0);
+});
+
+it("opens a shared screening to its guest to read and export from their own workspace, and its answers to nobody outside its workspace", async () => {
+  const { t, alice, carol, dave, users, workspaceId, club, item: trials } = await lab();
+  const jobId = await t.run(async (ctx) => {
+    const jobId = await insertJob(ctx, {
+      userId: users.alice, workspaceId, name: "Pilot", set: { kind: "collection", collectionId: trials.id }, label: "Trials", status: "completed", totalPapers: 1, questions: [{ key: "q1", question: "Randomized?" }],
+      scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }] },
+      createdAt: 1, updatedAt: 1,
+    });
+    await ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "One", status: "completed", answers: { q1: true }, score: 1, stars: 5, qualified: true, outcome: "included", createdAt: 1 });
+    return jobId;
+  });
+  const item = { workspaceId, kind: "screening" as const, id: jobId };
+  // A screening is shared to view only.
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "editor" })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
+  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+
+  // Its members read what it cost and how many guests it has. Carol, from her own workspace, reads whose it is and nothing of what it cost.
+  expect(await alice.query(api.screening.queries.getScreeningJob, { workspaceId, jobId })).toMatchObject({ name: "Pilot", guests: 1, credits: expect.any(Object) });
+  const hers = await carol.query(api.screening.queries.getScreeningJob, { jobId });
+  expect(hers).toMatchObject({ name: "Pilot", totalPapers: 1, guest: { role: "viewer", from: { name: "lab", organization: true } } });
+  expect(hers).not.toHaveProperty("credits");
+  expect(hers).not.toHaveProperty("guests");
+  // She's told its papers came from a collection, by the name the job goes by, and not which collection: that one isn't shared with her.
+  expect(hers).toMatchObject({ source: "collection", label: "Trials" });
+  expect(hers).not.toHaveProperty("set");
+  const papers = (as: typeof carol, from?: Id<"workspaces">) => as.query(api.screening.papers.list, { jobId, outcome: "included", paginationOpts: { cursor: null, numItems: 10 }, ...(from ? { workspaceId: from } : {}) });
+  expect((await papers(carol)).page.map((paper) => paper.title)).toEqual(["One"]);
+  expect((await carol.query(api.screening.queries.listScreeningResults, { jobId, paginationOpts: { cursor: null, numItems: 10 } })).page).toHaveLength(1);
+  expect((await carol.query(api.sharing.shared.list, { sort: "recent", paginationOpts: { cursor: null, numItems: 10 } })).page).toMatchObject([{ kind: "screening", id: jobId, name: "Pilot", role: "viewer", size: 1 }]);
+
+  // She exports it, and changes no answer in it.
+  const carolOwn = await t.run((ctx) => personalWorkspaceOf(ctx, users.carol));
+  const exported = () => t.query(internal.exports.page, { userId: users.carol, workspaceId: carolOwn, source: { kind: "screening", jobId }, format: "json", cursor: null, written: 0 });
+  expect((await exported()).count).toBe(1);
+  expect(await t.query(internal.exports.screeningJob, { userId: users.carol, workspaceId: carolOwn, jobId })).not.toHaveProperty("set");
+  expect(await t.query(internal.exports.screeningJob, { userId: users.alice, workspaceId, jobId })).toMatchObject({ set: { kind: "collection", collectionId: trials.id } });
+  await expect(carol.mutation(api.screening.papers.answer, { jobId, paperId: "https://openalex.org/W1", questionKey: "q1", answer: false })).rejects.toMatchObject({ data: { code: "SCREENING_JOB_NOT_FOUND" } });
+  // Not while she acts in the club, and Dave was given nothing.
+  expect((await papers(carol, club)).page).toEqual([]);
+  expect(await dave.query(api.screening.queries.getScreeningJob, { jobId })).toBeNull();
+  expect((await papers(dave)).page).toEqual([]);
+
+  await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
+  expect(await carol.query(api.screening.queries.getScreeningJob, { jobId })).toBeNull();
+  await expect(exported()).rejects.toThrow(/not found/i);
+});
+
+it("opens a shared extraction to its guest to read from their own workspace, without what it cost, and to nobody else", async () => {
+  const { t, alice, carol, dave, users, workspaceId, club, item: trials } = await lab();
+  const { jobId, paperId } = await t.run(async (ctx) => {
+    await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
+    const jobId = await ctx.db.insert("extractionJobs", {
+      workspaceId, createdBy: users.alice, name: "Sample sizes", sourceType: "history", status: "creditsExhausted", totalPapers: 1, runEpoch: 0, spendCap: 500, spendHold: "hold_1", createdAt: 1, updatedAt: 1,
+      error: { code: "insufficient_credits", message: "This extraction reached the 500 credits it was allowed. Resume it to carry on past them.", at: 1 },
+    });
+    const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: "W1", title: "Trial", authors: [], processable: true, status: "completed", creditsUsed: 3, admittedEstimateCredits: 5, questionsBilled: true, indexingBilled: true, sourceId: trials.id });
+    return { jobId, paperId };
+  });
+  const item = { workspaceId, kind: "extraction" as const, id: jobId };
+  // An extraction is shared to view only.
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "editor" })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
+  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+
+  // Its page's first read tells a member how many guests it has, and Carol whose it is. Hers leaves out what the job holds and may spend.
+  expect(await alice.query(api.extraction.queries.getJobShell, { jobId })).toMatchObject({ status: "ok", guests: 1, job: { spendCap: 500, spendHold: "hold_1", error: { code: "insufficient_credits" } } });
+  const hers = await carol.query(api.extraction.queries.getJobShell, { jobId });
+  expect(hers).toMatchObject({ status: "ok", job: { name: "Sample sizes", totalPapers: 1 }, guest: { role: "viewer", from: { name: "lab", organization: true } } });
+  expect(hers).not.toHaveProperty("guests");
+  expect(hers).not.toHaveProperty("job.spendCap");
+  expect(hers).not.toHaveProperty("job.spendHold");
+  // Nor why it ran out of credits, which names the figure: its status says it did.
+  expect(hers).toMatchObject({ job: { status: "creditsExhausted" } });
+  expect(hers).not.toHaveProperty("job.error");
+
+  // Its papers and their answers, from her own workspace, without what each cost.
+  const view = { jobId, filters: { searchQuery: "", confidenceRange: [0, 100], statusFilters: [], questionFilters: [] }, sortBy: "default" as const, paginationOpts: { cursor: null, numItems: 10 } };
+  const papers = async (as: typeof carol, from?: Id<"workspaces">) => (await as.query(api.extraction.queries.listJobResults, { ...view, ...(from ? { workspaceId: from } : {}) })).page;
+  expect(await papers(alice, workspaceId)).toMatchObject([{ title: "Trial", creditsUsed: 3, sourceId: trials.id }]);
+  expect(await papers(carol)).toMatchObject([{ title: "Trial" }]);
+  for (const billing of ["creditsUsed", "admittedEstimateCredits", "questionsBilled", "indexingBilled"]) expect((await papers(carol))[0]).not.toHaveProperty(billing);
+  // The collection the paper came from isn't shared with her: its ID stays behind.
+  expect((await papers(carol))[0]).not.toHaveProperty("sourceId");
+  expect(await carol.query(api.extraction.queries.getJobDetails, { jobId })).toMatchObject({ status: "ok", guest: { role: "viewer" } });
+  const paper = await carol.query(api.extraction.queries.papers.results, { paperId });
+  expect(paper).toMatchObject({ status: "ok", paper: { title: "Trial" } });
+  expect(paper).not.toHaveProperty("paper.creditsUsed");
+  expect(paper).not.toHaveProperty("paper.sourceId");
+  expect((await carol.query(api.sharing.shared.list, { sort: "recent", paginationOpts: { cursor: null, numItems: 10 } })).page).toMatchObject([{ kind: "extraction", id: jobId, name: "Sample sizes", role: "viewer", size: 1 }]);
+
+  // Every change to it is its workspace's.
+  await expect(carol.mutation(api.extraction.mutations.deleteExtraction, { jobId })).rejects.toThrow();
+  // Not while she acts in the club, and Dave was given nothing.
+  expect(await papers(carol, club)).toEqual([]);
+  expect(await dave.query(api.extraction.queries.getJobShell, { jobId })).toMatchObject({ status: "no_access" });
+  expect(await papers(dave)).toEqual([]);
+  expect(await dave.query(api.extraction.queries.papers.results, { paperId })).toMatchObject({ status: "no_access" });
+
+  await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
+  expect(await carol.query(api.extraction.queries.getJobShell, { jobId })).toMatchObject({ status: "no_access" });
+  expect(await papers(carol)).toEqual([]);
+});
+
+it("opens a shared search to its guest from their own workspace by its document's ID: a viewer reads it, an editor's changes are made where it is, and nobody else finds it", async () => {
+  const { t, alice, carol, dave, users, workspaceId } = await lab();
+  const { id } = await alice.mutation(api.research.searches.create, { workspaceId, query: "school feeding ml..." });
+  await alice.mutation(api.research.records.change, { accountId: "alice", workspaceId, requestId: "shortcut", command: { kind: "shortcut", shorthand: "ml", value: { expansion: "\"machine learning\"", createdAt: 1 } } });
+  const item = { workspaceId, kind: "search" as const, id };
+  const [aliceOwn, carolOwn, daveOwn] = await t.run(async (ctx) => [await personalWorkspaceOf(ctx, users.alice), await personalWorkspaceOf(ctx, users.carol), await personalWorkspaceOf(ctx, users.dave)]);
+  const read = (as: typeof alice, accountId: string, own: Id<"workspaces">, by = id) => as.query(api.research.records.getSearch, { accountId, workspaceId: own, id: by });
+  const edit = (as: typeof alice, accountId: string, own: Id<"workspaces">, by: string, change: { kind: "query"; query: string; field: "title_and_abstract" } | { kind: "restore"; revision: number }) =>
+    as.mutation(api.research.records.change, { accountId, workspaceId: own, requestId: `${accountId}-${JSON.stringify(change)}`, command: { kind: "editSearch", id: by, edit: change } });
+  const requery = (query: string) => ({ kind: "query" as const, query, field: "title_and_abstract" as const });
+
+  // To view: what's shared with her lists it by its document's ID, which is what she reads it by.
+  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  const [listed] = (await carol.query(api.sharing.shared.list, { workspaceId: carolOwn, sort: "recent", paginationOpts: { cursor: null, numItems: 10 } })).page;
+  expect(listed).toMatchObject({ kind: "search", name: "school feeding ml...", role: "viewer" });
+  const shared = listed!.id;
+  expect(shared).not.toBe(id);
+  // She reads it as it is, with who ran it and whose it is, its workspace's shortcut written out, and changes nothing.
+  expect(await read(carol, "carol", carolOwn, shared)).toMatchObject({ id: shared, query: 'school feeding "machine learning"', by: { name: "Alice", you: false }, guest: { role: "viewer", from: { name: "lab", organization: true } } });
+  expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school feeding ml...", guests: 1, shareId: shared });
+  await expect(edit(carol, "carol", carolOwn, shared, requery("changed"))).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  // The ID a member's page shows is no way in for her: a search of her own could have it. And no search of hers can take the document's ID as its own.
+  expect(await read(carol, "carol", carolOwn)).toBeNull();
+  await expect(carol.mutation(api.research.records.change, { accountId: "carol", workspaceId: carolOwn, requestId: "squat", command: { kind: "createSearch", search: { id: shared, query: "hers", field: "title_and_abstract", count: 0, queryHistoryCount: 1, questionCount: 0, questionText: "", screeningQuestions: [], screeningResponses: [], createdAt: "2026-10-01T00:00:00.000Z", updatedAt: "2026-10-01T00:00:00.000Z" } } })).rejects.toThrow(/Invalid saved search identity/);
+  // Its link carries the document's ID: it opens for her in her own workspace, and sends a member to the search's, under the ID it has there.
+  expect(await carol.query(api.workspaces.queries.homeOf, { kind: "search", id: shared, here: carolOwn })).toEqual({});
+  expect(await alice.query(api.workspaces.queries.homeOf, { kind: "search", id: shared, here: aliceOwn })).toEqual({ slug: "lab", id });
+  // Its earlier versions and queries reach her the same way: by the ID she reads it by, shortcuts written out.
+  expect((await carol.query(api.research.records.revisions, { accountId: "carol", workspaceId: carolOwn, id: shared, paginationOpts: { cursor: null, numItems: 5 } })).page[0]?.data).toMatchObject({ id: shared, query: 'school feeding "machine learning"' });
+  expect((await carol.query(api.research.records.searchHistory, { accountId: "carol", workspaceId: carolOwn, id: shared, kind: "query", paginationOpts: { cursor: null, numItems: 5 } })).page.map((entry) => entry.text)).toEqual(['school feeding "machine learning"']);
+
+  // To edit: her change is made in the lab, where the search is, and its Activity there says it was hers. It gives her nothing to take it back with, and she restores no earlier version.
+  await alice.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" });
+  expect(await edit(carol, "carol", carolOwn, shared, requery("school meals"))).toEqual({});
+  // The same request sent again, as a page does when it lost the answer, is answered as it was, whatever she may do by then.
+  await alice.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "viewer" });
+  expect(await edit(carol, "carol", carolOwn, shared, requery("school meals"))).toEqual({});
+  await alice.mutation(api.sharing.guests.setRole, { ...item, guest: { userId: users.carol }, role: "editor" });
+  expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school meals" });
+  expect(await t.run((ctx) => ctx.db.query("searches").withIndex("by_workspace", (q) => q.eq("workspaceId", carolOwn)).collect())).toEqual([]);
+  expect((await alice.query(api.activity.queries.list, { ...item, paginationOpts: { cursor: null, numItems: 10 } })).page[0]).toMatchObject({ by: { name: "Carol" }, happened: "edited", detail: "school meals" });
+  await expect(edit(carol, "carol", carolOwn, shared, { kind: "restore", revision: 1 })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  // The assistant asks her before it changes someone else's search, as the page's own change doesn't put it back.
+  expect(await t.run((ctx) => changeAction.asksFirst!(ctx, { userId: users.carol, workspaceId: carolOwn, role: "admin", author: "assistant" }, { requestId: "ask", command: { kind: "editSearch", id: shared, edit: { kind: "patch", fields: {}, clear: ["screeningQuestions"] } } }))).toBe(true);
+  // Sharing it is in its Activity too, under the ID its page shows.
+  expect((await alice.query(api.activity.queries.list, { ...item, paginationOpts: { cursor: null, numItems: 10 } })).page.map((row) => row.happened)).toContain("shared");
+  // Her place follows the search's name.
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(await t.run(async (ctx) => (await ctx.db.query("itemAccess").withIndex("by_user_and_grantedAt", (q) => q.eq("userId", users.carol)).collect()).map(({ kind, name }) => ({ kind, name })))).toEqual([{ kind: "search", name: "school meals" }]);
+
+  // Dave was given nothing: he finds no search by either ID, and a change of his finds none.
+  expect([await read(dave, "dave", daveOwn), await read(dave, "dave", daveOwn, shared)]).toEqual([null, null]);
+  await expect(edit(dave, "dave", daveOwn, shared, requery("his own"))).rejects.toThrow(/Search not found/);
+  expect(await dave.query(api.workspaces.queries.homeOf, { kind: "search", id: shared, here: daveOwn })).toBeNull();
+  expect(await read(alice, "alice", workspaceId)).toMatchObject({ query: "school meals" });
+  // Taken away, it's gone for Carol.
+  await alice.mutation(api.sharing.guests.remove, { ...item, guest: { userId: users.carol } });
+  expect(await read(carol, "carol", carolOwn, shared)).toBeNull();
+});
+
+it("closes what a deleted account shared from its own workspace, though its data waits to be purged", async () => {
+  const { t, alice, carol, dave, users } = await lab();
+  const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, users.alice));
+  const { id } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Mine" });
+  await alice.mutation(api.sharing.guests.add, { workspaceId, kind: "collection", id, userId: users.carol, role: "viewer" });
+  await alice.action(api.sharing.invitations.invite, { workspaceId, kind: "collection", id, email: "dave@example.org", role: "viewer" });
+  const shared = { kind: undefined, text: "", sort: "recent" as const, paginationOpts: { cursor: null, numItems: 10 } };
+  expect((await carol.query(api.sharing.shared.list, shared)).page.map((row) => row.name)).toEqual(["Mine"]);
+
+  await t.mutation(internal.users.internal.markUserDeletedFromClerk, { eventId: "evt_gone", eventType: "user.deleted", instanceId: "ins_test", occurredAt: Date.now(), payloadSha256: "sha_gone", clerkId: "alice" });
+  // Closed from that moment, before the cleanup has taken a row: nobody opens it or accepts an invitation to it.
+  expect(await carol.query(api.library.collections.getCollection, { collectionId: id as Id<"collections"> })).toBeNull();
+  const waiting = await t.run(async (ctx) => (await ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", id)).first())!._id);
+  verified = ["dave@example.org"];
+  await expect(dave.action(api.sharing.invitations.respond, { invitationId: waiting, accept: true })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+  expect(await dave.query(api.sharing.invitations.get, { invitationId: waiting })).toBeNull();
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+  // The collection is still there, for its retention, and nobody is its guest or invited to it.
+  expect(await t.run((ctx) => ctx.db.get("collections", id as Id<"collections">))).not.toBeNull();
+  expect(await t.run((ctx) => ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", id)).collect())).toEqual([]);
+  expect(await t.run((ctx) => ctx.db.query("itemInvitations").withIndex("by_item_and_state", (q) => q.eq("item", id)).collect())).toEqual([]);
+  expect((await carol.query(api.sharing.shared.list, shared)).page).toEqual([]);
+});
+
+it("takes a deleted account's places as a guest in steps of their own", async () => {
+  const { t, users } = await lab();
+  await t.run(async (ctx) => {
+    for (let n = 0; n < 60; n++) await ctx.db.insert("itemAccess", { kind: "collection", item: `gone_${n}`, name: `Collection ${n}`, userId: users.carol, role: "viewer", grantedBy: users.alice, grantedAt: n });
+  });
+  await t.mutation(internal.sharing.upkeep.purge, { userId: users.carol });
+  await t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(await t.run((ctx) => ctx.db.query("itemAccess").withIndex("by_user_and_grantedAt", (q) => q.eq("userId", users.carol)).collect())).toEqual([]);
+});

@@ -152,15 +152,10 @@ function DialogDescription({
   )
 }
 
-export {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogOverlay,
-  DialogPortal,
-  DialogTitle,
-  DialogTrigger,
+/** For `onOpenAutoFocus`: focuses the dialog itself, not its first button, so no tooltip opens with it. */
+function focusContent(event: Event) {
+  event.preventDefault()
+  ;(event.currentTarget as HTMLElement).focus()
 }
+
+export { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, focusContent };

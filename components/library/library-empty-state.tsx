@@ -1,13 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { Library, SearchX } from "@/components/icons";
+import Link from "@/components/workspace-link";
+import { Library, SearchX, Unlink } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 
 interface LibraryEmptyStateProps {
-  variant: "empty-library" | "no-results";
+  /** `lost` is a collection that was deleted or isn't shared with the person: `onClearFilters` goes back to their library. */
+  variant: "empty-library" | "no-results" | "lost";
   onClearFilters?: () => void;
 }
 
@@ -17,8 +18,10 @@ export function LibraryEmptyState({
 }: LibraryEmptyStateProps) {
   const t = useTranslations("libraryPage");
   const tc = useTranslations("common");
+  const ts = useTranslations("workspaces.shared");
   const isEmptyLibrary = variant === "empty-library";
-  const Icon = isEmptyLibrary ? Library : SearchX;
+  const lost = variant === "lost";
+  const Icon = lost ? Unlink : isEmptyLibrary ? Library : SearchX;
 
   return (
     <CommandCenterContainer>
@@ -28,13 +31,15 @@ export function LibraryEmptyState({
         </div>
 
         <h2 className="text-xl font-semibold tracking-tight">
-          {isEmptyLibrary ? t("emptyLibraryTitle") : t("noResultsTitle")}
+          {lost ? t("lostCollection") : isEmptyLibrary ? t("emptyLibraryTitle") : t("noResultsTitle")}
         </h2>
 
         <p className="mt-2 max-w-md text-sm leading-6 text-muted-foreground">
-          {isEmptyLibrary
-            ? t("emptyLibraryDescription")
-            : tc("tryAdjustingSearch")}
+          {lost
+            ? ts("goneDetail")
+            : isEmptyLibrary
+              ? t("emptyLibraryDescription")
+              : tc("tryAdjustingSearch")}
         </p>
 
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
@@ -51,7 +56,7 @@ export function LibraryEmptyState({
                 onClick={onClearFilters}
                 className="rounded-xl"
               >
-                {t("clearFilters")}
+                {lost ? t("title") : t("clearFilters")}
               </Button>
             )
           )}

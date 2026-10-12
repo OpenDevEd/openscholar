@@ -2,18 +2,14 @@ import { paginationResultValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { query, type QueryCtx, type MutationCtx } from "./_generated/server";
+import { hasPlanFeature } from "./billing/accounts";
 import { getCurrentUser } from "./lib/auth";
 import { createError } from "./lib/errors";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { hasDirectLibraryAccess } from "./evidenceLibraries/access";
-
-export const organizationFeatureFields = {
-  evidenceLibraries: v.boolean(),
-  authors: v.boolean(),
-  extraction: v.boolean(),
-};
-export type OrganizationFeature = keyof typeof organizationFeatureFields;
-type FeatureAccess = Record<OrganizationFeature, boolean>;
+import { EVIDENCE_LIBRARIES_FEATURE } from "../lib/billing/plans";
+import { workspaceQuery } from "./lib/userActions";
+import type { InWorkspace } from "./workspaces/actor";
 
 /** The same active memberships drive feature access and organization pickers. */
 export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, person?: Doc<"users"> | null) {
@@ -43,33 +39,29 @@ export async function readMemberOrganizations(ctx: QueryCtx | MutationCtx, perso
   );
 }
 
-export async function readOrganizationFeatures(
-  ctx: QueryCtx | MutationCtx,
-  person?: Doc<"users"> | null,
-): Promise<FeatureAccess> {
-  const access: FeatureAccess = {
-    evidenceLibraries: false,
-    authors: false,
-    extraction: false,
-  };
-  for (const { organization } of await readMemberOrganizations(ctx, person)) {
-    access.evidenceLibraries ||= organization.evidenceLibrariesEnabled === true;
-    access.authors ||= organization.authorsEnabled === true;
-    access.extraction ||= organization.extractionEnabled === true;
-  }
-  if (!access.evidenceLibraries) {
-    const user = person ?? (await getCurrentUser(ctx));
-    access.evidenceLibraries = user !== null && await hasDirectLibraryAccess(ctx, user);
-  }
-  return access;
+/** Whether the plan of an organization's workspace includes Evidence Libraries. */
+async function planGrants(ctx: QueryCtx | MutationCtx, organizationId: Id<"organizations">) {
+  const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
+  return workspace !== null && (await hasPlanFeature(ctx, workspace._id, EVIDENCE_LIBRARIES_FEATURE));
 }
 
+/**
+ * Whether the workspace a person acts in opens Evidence Libraries for them: its plan includes
+ * them, or, in their own workspace, a library of another's was shared with them. A plan is its
+ * workspace's alone: one of their organizations' opens nothing in another, nor in their own.
+ */
+export async function opensEvidenceLibraries(ctx: QueryCtx | MutationCtx, { userId, workspaceId }: InWorkspace) {
+  if (await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE)) return true;
+  if ((await ctx.db.get("workspaces", workspaceId))?.kind !== "personal") return false;
+  const user = await ctx.db.get("users", userId);
+  return user !== null && (await hasDirectLibraryAccess(ctx, user));
+}
+
+/** The organizations the person may create a library in: those they're an admin of whose plan includes Evidence Libraries. */
 export async function readLibraryOrganizations(ctx: QueryCtx | MutationCtx) {
-  return (await readMemberOrganizations(ctx)).filter(
-    ({ membership, organization }) =>
-      membership.role === "org:admin" &&
-      organization.evidenceLibrariesEnabled === true,
-  );
+  const admin = (await readMemberOrganizations(ctx)).filter(({ membership }) => membership.role === "org:admin");
+  const granted = await Promise.all(admin.map(({ organization }) => planGrants(ctx, organization._id)));
+  return admin.filter((_, i) => granted[i]);
 }
 
 export async function requireLibraryOrganization(
@@ -84,32 +76,44 @@ export async function requireLibraryOrganization(
   if (!entry)
     throw createError(
       "FORBIDDEN",
-      "Choose an organization you own with Evidence Libraries enabled.",
+      "Choose an organization you're an admin of whose plan includes Evidence Libraries.",
     );
   return { ...entry, clerkUserId: entry.membership.clerkUserId };
 }
 
-/** Refuses unless one of the person's organizations has the feature: `userId`'s when the assistant acts for them, else the signed-in person's. */
-export async function requireOrganizationFeature(
-  ctx: QueryCtx | MutationCtx,
-  feature: OrganizationFeature,
-  userId?: Id<"users">,
-) {
-  const person = userId ? await ctx.db.get("users", userId) : null;
-  if (!person && !(await ctx.auth.getUserIdentity()))
-    throw createError("UNAUTHENTICATED", "Authentication required");
-  if (!(await readOrganizationFeatures(ctx, person))[feature]) {
-    throw createError(
-      "FORBIDDEN",
-      "None of your organizations has this feature enabled.",
-    );
-  }
+/**
+ * What the workspace the page is in opens for the person: Evidence Libraries (see
+ * `opensEvidenceLibraries`), and the managing of author profiles, which takes the plan itself.
+ */
+export const opens = workspaceQuery({
+  args: {},
+  returns: v.object({ evidenceLibraries: v.boolean(), authors: v.boolean() }),
+  signedOut: { evidenceLibraries: false, authors: false },
+  handler: async (ctx, actor) => {
+    const authors = await hasPlanFeature(ctx, actor.workspaceId, EVIDENCE_LIBRARIES_FEATURE);
+    return { authors, evidenceLibraries: authors || (await opensEvidenceLibraries(ctx, actor)) };
+  },
+});
+
+/**
+ * What a page loaded before 2026-10-10 is told: it asks without a workspace and reads three
+ * answers. A tab left open keeps what it showed, in place of failing when this deployed: Evidence
+ * Libraries and authors where any of the person's organizations has them, extraction always.
+ * `get` here and `list` in authors/profiles.ts go once those tabs are gone.
+ */
+export async function openedBefore(ctx: QueryCtx, user: Doc<"users">) {
+  for (const { organization } of await readMemberOrganizations(ctx, user)) if (await planGrants(ctx, organization._id)) return true;
+  return await hasDirectLibraryAccess(ctx, user);
 }
 
 export const get = query({
   args: {},
-  returns: v.object(organizationFeatureFields),
-  handler: (ctx) => readOrganizationFeatures(ctx),
+  returns: v.object({ evidenceLibraries: v.boolean(), authors: v.boolean(), extraction: v.boolean() }),
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    const libraries = user !== null && (await openedBefore(ctx, user));
+    return { evidenceLibraries: libraries, authors: libraries, extraction: true };
+  },
 });
 
 const libraryOrganizationValidator = v.object({

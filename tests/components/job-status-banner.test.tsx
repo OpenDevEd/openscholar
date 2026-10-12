@@ -7,10 +7,12 @@ import { JobStatusBanner } from "@/components/extraction/job-status-banner";
 
 const pushMock = vi.fn();
 vi.mock("next/navigation", () => ({
+  useParams: () => ({}),
   useRouter: () => ({ push: pushMock }),
 }));
 
 vi.mock("next-intl", () => ({
+  useNow: () => new Date("2026-10-11T00:00:00Z"),
   useTranslations: () => (key: string) => key,
 }));
 

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 const linkClassName = "text-primary underline-offset-4 hover:underline";
 
-export const markdownComponents: Components = {
+const markdownComponents: Components = {
   h1: ({ children }) => (
     <h1 className="text-2xl sm:text-3xl font-semibold text-foreground mb-6">
       {children}

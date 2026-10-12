@@ -24,10 +24,12 @@ export async function getPaperCitationMetadata(input: unknown) {
     try {
       // DOI content negotiation works with Crossref and DataCite. The locally
       // loaded record remains usable if a publisher's metadata is unavailable.
-      const response = await fetch(`https://doi.org/${encodeURIComponent(doi)}`, {
+      // `next` caches it on the Next server for a day; Convex's citations (convex/research/citationFormat.ts) read it each time.
+      const init: RequestInit & { next?: { revalidate: number } } = {
         headers: { Accept: "application/vnd.citationstyles.csl+json" },
         signal: AbortSignal.timeout(4000), next: { revalidate: 86400 },
-      });
+      };
+      const response = await fetch(`https://doi.org/${encodeURIComponent(doi)}`, init);
       if (response.ok) {
         const metadata: unknown = await response.json();
         if (typeof metadata === "object" && metadata !== null && "type" in metadata && typeof metadata.type === "string") {

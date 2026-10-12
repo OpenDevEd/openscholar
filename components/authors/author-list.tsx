@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
 import { usePaginatedQuery } from "convex/react";
-import { useWorkspaceMutation } from "@/lib/workspaces/url";
 import { SignInButton, useUser } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import Link from "@/components/workspace-link";
 import { Users, Plus, ArrowUpRight, SearchX, AuthorsIcon } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -24,14 +24,14 @@ import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "
  */
 export function AuthorList({pending = false}: {pending?: boolean}) {
   const {isSignedIn} = useUser();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
   const create = useWorkspaceMutation(api.authors.profiles.create);
-  const {results, status, loadMore} = usePaginatedQuery(api.authors.profiles.list, pending ? "skip" : {search}, {initialNumItems: 20});
+  const {results, status, loadMore} = usePaginatedQuery(api.authors.profiles.directory, inWorkspace(useWorkspace(), pending ? "skip" : {search}), {initialNumItems: 20});
   // The page renders before sign-in finishes, so only a confirmed sign-out asks to sign in.
   const createLabel = <><Plus /><span className={BAR_LABEL}>Create author</span></>;
   return <LibraryPageShell icon={AuthorsIcon} title="Authors" actions={isSignedIn === false

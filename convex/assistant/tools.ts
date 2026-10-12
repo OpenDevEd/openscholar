@@ -260,9 +260,12 @@ export function askedSteps(requests: Asked[], held: (path: string, input: unknow
     const credits = call ? held(call.entry.path, call.input) : undefined;
     // What the person is asked about, where the action says: its arguments don't all read as what it does.
     const shown = call && call.entry.kind !== "query" && call.entry.shown ? cut(JSON.stringify(call.entry.shown(call.input)), STEP_TEXT_MAX) : undefined;
-    // Why it asks, for the person asked: what it does can reach other people too, besides that it can't be undone.
-    const outside = call?.entry.kind !== "query" && call?.entry.outsideEffect === true;
-    return { toolCallId, tool, path: call?.entry.path ?? tool, input: cut(JSON.stringify(call?.input ?? input ?? {}), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(credits === undefined ? {} : { credits }), ...(shown ? { shown } : {}), ...(outside ? { outside: true as const } : {}) };
+    // Why it asks, for the person asked. Other people see what it does: its action always, or a call of it that asks first for that.
+    const changes = call && call.entry.kind !== "query" ? call.entry : undefined;
+    const outside = changes !== undefined && (changes.outsideEffect || changes.seenOutside === true);
+    // And whether it can be undone. One that can and still asks is seen by others; a call of an action that asks first without being seen is one nothing puts back.
+    const undoable = outside && changes?.undoable === true;
+    return { toolCallId, tool, path: call?.entry.path ?? tool, input: cut(JSON.stringify(call?.input ?? input ?? {}), STEP_TEXT_MAX), ...(subject ? { subject } : {}), ...(credits === undefined ? {} : { credits }), ...(shown ? { shown } : {}), ...(outside ? { outside: true as const } : {}), ...(undoable ? { undoable: true as const } : {}) };
   });
 }
 
@@ -425,7 +428,7 @@ export function toolsFor(
       if (!change) await ctx.runMutation(internal.assistant.steps.read, { stepId, result: JSON.stringify(result ?? null) });
       note(entry.path, input, change ? "made" : result);
       // A change that returns nothing says it was made. A read that returns nothing found nothing.
-      return forModel(change ? (result ?? DONE) : linked(entry.path, result));
+      return forModel(linked(entry.path, change ? (result ?? DONE) : result));
     } catch (error) {
       const message = messageOf(error);
       await ctx.runMutation(internal.assistant.steps.failed, { stepId, error: message });
@@ -497,7 +500,7 @@ export function toolsFor(
         found = { entry, items: change.items, kept, about: change.shared, shown: JSON.stringify({ shared: change.shared, each: papers.slice(0, ASKED_EACH_MAX).map((paper) => cut(paper.title, 200)) }) };
       }
       const about = JSON.stringify(found.about);
-      const subject = await ctx.runQuery(internal.assistant.steps.about, { userId, workspaceId, input: about });
+      const subject = await ctx.runQuery(internal.assistant.steps.about, { workspaceId, input: about });
       const variant = variantIn(found.entry.path, found.items[0]);
       return { tool: toolName, entry: found.entry, items: found.items, kept: found.kept, about, ...(found.shown ? { shown: found.shown } : {}), ...(variant ? { variant } : {}), ...(subject ? { subject } : {}) };
     } catch (error) {

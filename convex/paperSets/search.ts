@@ -57,11 +57,10 @@ export async function requestOf(ctx: QueryCtx, { userId, workspaceId }: InWorksp
 
 /** The request a saved search's results page makes, and its rating filter. */
 export const readSearch = internalQuery({
-  // Optional only for a call from an action already running when this deployed (#650), which reads in its person's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), searchId: v.string() },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), searchId: v.string() },
   returns: savedSearchValidator,
   handler: async (ctx, { userId, workspaceId, searchId }) => {
-    const reader = { userId, workspaceId: workspaceId ?? (await personalWorkspaceOf(ctx, userId)) };
+    const reader = { userId, workspaceId };
     const row = await findSearch(ctx, reader.workspaceId, searchId);
     if (!row) throw createError("NOT_FOUND", "Search not found");
     return await requestOf(ctx, reader, currentSearch(row.data), row.revision);
@@ -122,6 +121,7 @@ export type Work = {
   language?: string | null;
   open_access?: { is_oa?: boolean | null; oa_url?: string | null; oa_status?: string | null } | null;
   funders?: Array<{ id?: string | null; display_name?: string | null }> | null;
+  has_content?: { pdf?: boolean | null } | null;
 };
 
 export function toPaper(work: Work): SearchPaper {

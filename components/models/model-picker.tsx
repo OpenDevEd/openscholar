@@ -8,6 +8,7 @@ import { useDeferredValue, useRef, useState, type KeyboardEvent, type ReactNode 
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useQuery } from "convex/react";
 import { useTranslations } from "next-intl";
+// ui-rules-allow: raw-primitive -- the picker draws its own search field and rows; the shared Command parts add an icon row and row padding
 import { Command as CommandPrimitive } from "cmdk";
 import { ArrowLeft, ArrowUpRight, Check, FileText, ImageIcon, Search } from "@/components/icons";
 import type { FunctionReturnType } from "convex/server";
@@ -23,6 +24,7 @@ import type { Effort } from "@/lib/ai/core/call-options";
 import { Segmented } from "@/components/settings/parts";
 import { EffortMeter, IntelligenceMeter, priceLabel } from "@/components/models/meters";
 import { EASE, PRESET_ICONS, effortOf, toMapModel, type MapModel, type PickedModel, type PresetPick } from "@/components/settings/model-map";
+import { Spinner } from "@/components/ui/spinner";
 
 export type CatalogModel = FunctionReturnType<typeof api.models.queries.listCatalogOptions>[number];
 
@@ -428,7 +430,7 @@ export function ModelPicker({
             {rowsReady ? (
             <div className="animate-in fade-in-0 duration-200 motion-reduce:animate-none">
             <CommandPrimitive.Empty className="py-10 text-center text-sm text-muted-foreground">
-              {catalog === undefined ? tm("loadingModels") : tm("noModels")}
+              {catalog === undefined ? <Spinner className="mx-auto my-0.5" aria-label={tm("loadingModels")} /> : tm("noModels")}
             </CommandPrimitive.Empty>
             {presets?.length && vendor === "all" ? (
               <CommandPrimitive.Group heading={tm("presetsGroup")} className={GROUP}>

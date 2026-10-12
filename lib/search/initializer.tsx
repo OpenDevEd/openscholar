@@ -17,13 +17,15 @@
  */
 
 import { useState, useEffect, type ReactNode } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useSearchParams, usePathname } from 'next/navigation';
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { getEffectiveSearchId } from '../utils';
 import { useSearchHistoryStore } from '../store';
 import { searchResultToParams } from '../search-params/converters';
 import { buildResultsUrl, parseSearchParamsFromUrl, readSharedOql } from '../search-params';
 import { OQL_FIELD } from '../openalex/oql';
 import { resolveSearchInit } from './resolve-search-init';
+import { useCopiedSearches } from './copied';
 import type { SearchField, SearchResult } from '../types';
 
 interface SearchInitializerProps {
@@ -31,7 +33,7 @@ interface SearchInitializerProps {
 }
 
 export function SearchInitializer({ children }: SearchInitializerProps) {
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const searchId = getEffectiveSearchId(pathname) ?? '';
@@ -70,6 +72,8 @@ export function SearchInitializer({ children }: SearchInitializerProps) {
       case 'create': {
         setStatus('redirecting');
         const newId = addSearchResult(decision.entry);
+        // A link that named a search this person can't open made them their own copy of it, and its page says so. An address that names one and carries no query of it copied nothing.
+        if (searchId && parsedParams.q?.trim()) useCopiedSearches.setState((state) => ({ ids: [...state.ids, newId] }));
         const url = buildResultsUrl(
           newId,
           searchResultToParams({ ...decision.entry, id: newId } as SearchResult),

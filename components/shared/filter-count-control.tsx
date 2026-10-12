@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { X } from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { hoverSpring } from "@/lib/ui/sidebar-motion";
 import { cn } from "@/lib/utils";
 
@@ -30,28 +30,25 @@ export function FilterCountControl({
     >
       <span
         className={cn(
-          "flex items-center justify-center h-7 text-xs font-medium rounded-md bg-gradient-to-r from-primary-bright via-primary to-primary-deep text-primary-foreground badge-glow",
+          "flex h-7 items-center justify-center rounded-md bg-primary text-xs font-medium tabular-nums text-primary-foreground",
           column ? "w-7" : "min-w-7 px-2",
         )}
       >
         {count}
       </span>
-      <Tooltip delayDuration={0}>
-        <TooltipTrigger asChild>
-          <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={hoverSpring}>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClearAll}
-              aria-label={t("clearAllFilters")}
-              className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
-            >
-              <X className="h-3.5 w-3.5" />
-            </Button>
-          </motion.div>
-        </TooltipTrigger>
-        <TooltipContent side={column ? "left" : "bottom"}>{t("clearAllFilters")}</TooltipContent>
-      </Tooltip>
+      <TooltipHint label={t("clearAllFilters")}>
+        <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} transition={hoverSpring}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClearAll}
+            aria-label={t("clearAllFilters")}
+            className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
+          >
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </motion.div>
+      </TooltipHint>
     </motion.div>
   );
 }

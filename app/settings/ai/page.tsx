@@ -25,6 +25,8 @@ import {
 } from "@/components/settings/model-map";
 import { ModelPicker } from "@/components/models/model-picker";
 import { useModelPicks } from "@/lib/ai/use-model-picks";
+import { useWorkspaceScope } from "@/lib/workspaces/url";
+import { useCurrentWorkspace, WorkspaceTag } from "@/components/workspaces/parts";
 
 const PROVIDERS: Array<{ id: KeyProvider; icon: Ico }> = [
   { id: "openai", icon: OpenAIIcon },
@@ -40,11 +42,13 @@ export default function AISettingsPage() {
   const tc = useTranslations("common");
   const toast = useAppToast();
   const { provider, setProvider, apiKey, setApiKey, providerApiKeys, apiKeyMode, setApiKeyMode } = useAIConfigStore();
-  const { signedIn, goToSignIn, creditsEnabled, presetModel, settings, choose, choice, modelsOf, modelOf, fail, requireSignIn, pickAll, presetPicks } = useModelPicks();
+  const { signedIn, goToSignIn, creditsEnabled, presetModel, settings, choose, choice, modelsOf, modelOf, fail, requireSignIn, pickAll, presetPicks, organization } = useModelPicks();
+  const workspace = useCurrentWorkspace();
   const [hover, setHover] = useState<Hover>(null);
 
-  const account = useOptionalAuthQuery(api.billing.accounts.mine, creditsEnabled ? {} : "skip");
-  const figures = useOptionalAuthQuery(api.ai.estimates.mine, creditsEnabled ? {} : "skip");
+  const scope = useWorkspaceScope();
+  const account = useOptionalAuthQuery(api.billing.accounts.mine, creditsEnabled && scope !== "skip" ? scope : "skip");
+  const figures = useOptionalAuthQuery(api.ai.estimates.mine, creditsEnabled && scope !== "skip" ? scope : "skip");
   const isCustom = choice === "custom";
   // Signed-out users can only run on a key: the default preset's picks, on theirs.
   const onKeys = isCustom || !signedIn;
@@ -106,17 +110,26 @@ export default function AISettingsPage() {
   };
 
   const ready =
-    presetModel !== undefined && (!signedIn || settings !== undefined) && (!signedIn || !creditsEnabled || account.settlement === "ready");
+    presetModel !== undefined && (!signedIn || settings !== undefined) && (!signedIn || !creditsEnabled || account.settlement === "ready") && !organization?.loading;
 
   return (
     <Enter ready={ready}>
       <div className="space-y-6">
-        <PresetSwitch
-          withCustom
-          value={choice}
-          onChange={chooseModels}
-          modelsOf={(c) => AI_TASKS.flatMap((task) => modelsOf(c)(task) ?? [])}
-        />
+        {/* In an organization its admins pick the preset everyone in it runs on, with no Custom and no keys of one's own (#651). */}
+        {organization && workspace ? (
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <WorkspaceTag workspace={workspace} strong />
+            {organization.admin ? t("organizationPresetAdmin") : t("organizationPresetMember")}
+          </div>
+        ) : null}
+        <div className={cn(organization && !organization.admin && "pointer-events-none opacity-60")} aria-disabled={organization ? !organization.admin : undefined}>
+          <PresetSwitch
+            withCustom={!organization}
+            value={choice}
+            onChange={chooseModels}
+            modelsOf={(c) => AI_TASKS.flatMap((task) => modelsOf(c)(task) ?? [])}
+          />
+        </div>
         <MapSummary
           routing={routing}
           title={t("modelCount", { count: routing.modelCount })}

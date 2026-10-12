@@ -14,3 +14,15 @@ export const recordTopicIdsValidator = capped(v.array(v.string()), MAX_RECORD_TO
 /** A topic's keywords, as its details row stores them, and the domain, field and subfield above it. */
 export const topicKeywordsValidator = capped(v.array(v.string()), MAX_TOPIC_KEYWORDS);
 export const topicPathValidator = capped(v.array(v.object({id: v.string(), name: v.string()})), MAX_TOPIC_DEPTH);
+
+/** Publications one page of a topic's gives, as its page asks for them (../../lib/topics/publications.ts). */
+export const TOPIC_PUBLICATIONS_PAGE = 10;
+/** A page of a topic's publications as the assistant reads it (./assistant.ts): each with how many libraries hold a copy. */
+export const topicPublicationsReadValidator = v.object({
+  publications: capped(v.array(v.object({title: v.string(), type: v.string(), year: v.string(), authors: v.string(), url: v.string(), library: v.string(), copies: v.number()})), TOPIC_PUBLICATIONS_PAGE),
+  next: v.union(v.string(), v.null()),
+  // Ones a library couldn't answer for now.
+  unavailable: v.number(),
+  // The list is being regrouped and may change.
+  updating: v.boolean(),
+});

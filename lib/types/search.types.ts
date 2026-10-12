@@ -57,17 +57,9 @@ export const SEARCH_FIELDS = [
 ] as const;
 
 /**
- * Download handlers interface
- */
-export interface DownloadHandlers {
-  onDownloadItem: (item: PaperResult, format: 'json' | 'csv') => void;
-  onDownloadEssentialItem: (item: PaperResult, format: 'json' | 'csv') => void;
-}
-
-/**
  * Year range preset - key is used for i18n (searchFilters namespace), range is [from, to]
  */
-export type YearPresetKey =
+type YearPresetKey =
   | "yearPresetThisYear"
   | "yearPresetLastYear"
   | "yearPresetLast5Years"

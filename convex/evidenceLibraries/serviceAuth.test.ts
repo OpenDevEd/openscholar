@@ -6,6 +6,9 @@ import { api } from "../_generated/api";
 import { decrypt } from "../lib/crypto";
 import schema from "../schema";
 import { authenticateLibraryServiceCredential } from "./credentials";
+import { organizationWorkspaceOf } from "../workspaces/personal";
+import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const encryptionKey = "ab".repeat(32);
@@ -22,8 +25,8 @@ async function seedLibrary() {
       clerkUpdatedAt: 1,
       createdAt: 1,
       updatedAt: 1,
-      evidenceLibrariesEnabled: true,
     });
+    await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
     await ctx.db.insert("organizationMemberships", {
       organizationId,
       clerkMembershipId: "orgmem_service_auth",
@@ -36,7 +39,7 @@ async function seedLibrary() {
       updatedAt: 1,
     });
     const libraryId = await ctx.db.insert("evidenceLibraries", {
-      organizationId,
+      workspaceId: await organizationWorkspaceOf(ctx, organizationId),
       name: "Service Auth Library",
       slug: "service-auth-library",
       state: "active",
@@ -46,7 +49,7 @@ async function seedLibrary() {
       updatedAt: 1,
     });
     const secondLibraryId = await ctx.db.insert("evidenceLibraries", {
-      organizationId,
+      workspaceId: await organizationWorkspaceOf(ctx, organizationId),
       name: "Second Service Auth Library",
       slug: "second-service-auth-library",
       state: "active",

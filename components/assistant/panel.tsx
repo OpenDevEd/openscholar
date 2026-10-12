@@ -5,12 +5,19 @@
 // This is the chat itself. The run map, the cards, the sheets and the spending controls
 // arrive with the issues that build what they show; the @ picker is ./mentions.tsx.
 
+import { bareWorkspacePath } from "@/lib/workspaces/paths";
+import { useKeyboardViewport } from "@/lib/hooks/use-keyboard-viewport";
+import { useRoomHeartbeat } from "@/lib/hooks/use-room-heartbeat";
+import { useWorkspaceSlug } from "@/lib/workspaces/href";
+import { useSpendable } from "@/components/workspaces/credit-check";
+import { useCurrentWorkspace, WorkspaceTile } from "@/components/workspaces/parts";
 import { Component, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
+import { ConvexError } from "convex/values";
 import { useSmoothText } from "@convex-dev/agent/react";
-import { insertAtTop, useAction, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { insertAtTop, useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { usePathname } from "next/navigation";
 import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, ExternalLink, Eye, FileSearch, Gauge, Globe, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus, X } from "@/components/icons";
 import { useTranslations } from "next-intl";
@@ -33,7 +40,6 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { PRESET_KEYS } from "@/lib/ai/tasks";
 import type { Effort } from "@/lib/ai/core/call-options";
 import { stripProviderPrefix } from "@/lib/ai/model-display";
-import { PRESENCE_HEARTBEAT_MS } from "@/lib/assistant/presence";
 import { titleFrom } from "@/lib/assistant/title";
 import { stillNamed, withTokens, type Mention } from "@/lib/assistant/mentions";
 import { MentionComposer, MessageText, RECORD_CHIP, recordChipStyle } from "./mentions";
@@ -51,16 +57,17 @@ import { FocusMode } from "@/components/ui/focus-mode";
 import { downloadLibraryEssentialItem, downloadLibraryItem } from "@/lib/library/download-handlers";
 import type { PaperResult } from "@/lib/types";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
-import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
+import { getErrorMessage, payOpenAction, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { OrbitMark, type OrbitClock } from "./orbit-mark";
 import { observeActivity, restingObservation, type Activity, type OrbitMotion } from "@/lib/assistant/activity";
-import { panelPlace, panelSeed } from "@/lib/assistant/place";
+import { panelPlace, panelSeed, threadIn, withThread } from "@/lib/assistant/place";
 import { AddCredits, KIND, KindTile, Steps, type StepItem } from "./steps";
 import { DockedJobs, JobDock, JobFlight, type Flight } from "./job-cards";
 import { IconButton, WorkingText } from "./parts";
-import { Dim, HistorySheet, SHEET_SPRING, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
-import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { Dim, HistorySheet, ShareSheet, Sheet, SpendingSheet, TopUpSheet, changed, stackedUnder, type OpenSheet, type Purchase } from "./sheets";
+import { SHEET_SPRING } from "@/lib/motion";
+import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 type ThreadId = Id<"assistantThreads">;
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
@@ -111,14 +118,18 @@ type Drafts = {
 };
 
 const setOpen = (update: (open: boolean) => boolean) => panelPlace.set((now) => ({ ...now, open: update(now.open) }));
-const setThreadId = (threadId: ThreadId | null) => panelPlace.set((now) => ({ ...now, threadId }));
 
 export function AssistantPanel() {
+  const t = useTranslations("assistant");
+  const toast = useAppToast();
   const enabled = useFeatureFlag("assistant.enabled");
   // Signed in, and the account's own record made: the chat's reads fail before it is, and a failed read loses a linked chat.
   const { canRunProtectedQueries } = useAuthReadiness();
   // Open or folded, and on which chat: kept by the tab, so a reload comes back to the conversation, and a link to a chat (`?chat=`) opens the panel on it.
   const place = useSyncExternalStore(panelPlace.subscribe, panelPlace.get, panelPlace.onServer);
+  // Each workspace keeps the chat last open in it (#651); one in another workspace never shows here.
+  const key = useWorkspaceSlug() ?? "";
+  const setThreadId = (threadId: ThreadId | null) => panelPlace.set((now) => withThread(now, key, threadId));
   // Kept here, above the panel, so folding it away keeps what was typed.
   const [typed, setTyped] = useState<Record<string, string>>({});
   const [picked, setPicked] = useState<Record<string, Mention[]>>({});
@@ -155,8 +166,22 @@ export function AssistantPanel() {
   return (
     // Session replays show none of the conversation (instrumentation-client.ts).
     <div data-ph-mask className="contents">
-      <Lost onLost={() => setThreadId(null)}>
-        <Overlay open={place.open} setOpen={setOpen} threadId={place.threadId as ThreadId | null} setThreadId={setThreadId} drafts={drafts} />
+      <Lost
+        onLost={(error) => {
+          const lost = threadIn(place, key);
+          // A chat that's gone, deleted or no longer shared, answers its reads with NOT_FOUND. Any other failure leaves the chat and its draft as they are, to come back to.
+          if (lost && error instanceof ConvexError && (error.data as { code?: string } | undefined)?.code === "NOT_FOUND") {
+            // What was being typed in it goes to the new chat's box, whole, when nothing is waiting there: text, picks or files.
+            if (!typed[NEW] && !picked[NEW]?.length && !attached[NEW]?.length) {
+              setTyped(({ [lost]: text, ...rest }) => (text ? { ...rest, [NEW]: text } : rest));
+              setPicked(({ [lost]: mine, ...rest }) => (mine?.length ? { ...rest, [NEW]: mine } : rest));
+            }
+            toast.error(t("lost"));
+          }
+          setThreadId(null);
+        }}
+      >
+        <Overlay open={place.open} setOpen={setOpen} threadId={threadIn(place, key) as ThreadId | null} setThreadId={setThreadId} drafts={drafts} />
       </Lost>
     </div>
   );
@@ -167,18 +192,18 @@ export function AssistantPanel() {
  * or in a sheet open on it. The panel then starts over on a new chat, with its sheets
  * closed, instead of taking the page down with it.
  */
-class Lost extends Component<{ onLost: () => void; children: ReactNode }, { failed: boolean }> {
+class Lost extends Component<{ onLost: (error: unknown) => void; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   private failedAt = 0;
   static getDerivedStateFromError() {
     return { failed: true };
   }
-  componentDidCatch() {
+  componentDidCatch(error: unknown) {
     // Failing again straight after starting over isn't a lost chat, so the panel stays away rather than loop.
     const again = Date.now() - this.failedAt < LOOP_MS;
     this.failedAt = Date.now();
     if (again) return;
-    this.props.onLost();
+    this.props.onLost(error);
     this.setState({ failed: false });
   }
   render() {
@@ -200,6 +225,7 @@ function Overlay({
   drafts: Drafts;
 }) {
   const t = useTranslations("assistant");
+  const tc = useTranslations("common");
   // Read here, not in the chat, so the launcher shows a reply being written while the panel is folded.
   const live = useQuery(api.assistant.replies.live, threadId ? { threadId } : "skip") ?? null;
   // What the mark shows: what the reply at work is doing, or how the chat's last one ended.
@@ -211,6 +237,7 @@ function Overlay({
   const [sendingFor, setSendingFor] = useState<Sending | null>(null);
   const sending = sendingFor !== null && sendingFor.threadId === threadId;
   const [focused, setFocused] = useState(false);
+  const keyboard = useKeyboardViewport();
   const clock = useRef<OrbitClock>(null);
   const working = sending || (live !== null && !live.asking && !live.stopping);
   const resting: OrbitMotion = focused ? "listening" : "idle";
@@ -223,7 +250,8 @@ function Overlay({
   // Sheets stacked over the panel, bottom first.
   const [sheets, setSheets] = useState<OpenSheet[]>([]);
   const depth = sheets.length;
-  const push = (sheet: OpenSheet) => setSheets((all) => [...all, sheet]);
+  // A second press of what opened a card, before the card is there to cover it, opens no second one.
+  const push = (sheet: OpenSheet) => setSheets((all) => (all.at(-1)?.kind === sheet.kind ? all : [...all, sheet]));
   // A chat started about a record elsewhere opens on its message box, over any sheet left open.
   const seed = useSyncExternalStore(panelSeed.subscribe, panelSeed.get, panelSeed.onServer);
   const [seenSeed, setSeenSeed] = useState(seed?.id ?? 0);
@@ -233,7 +261,8 @@ function Overlay({
   }
   // A purchase of credits belongs to the panel, not to the sheet that started it: the sheet can be closed and opened
   // again while the purchase is on its way, and a second one started then would charge the card twice.
-  const buyCredits = useAction(api.billing.actions.buyCredits);
+  // Bought for the workspace the panel is in: an organization's admins buy its credits.
+  const buyCredits = useWorkspaceAction(api.billing.actions.buyCredits);
   const toast = useAppToast();
   const [buying, setBuying] = useState<number | null>(null);
   const [bought, setBought] = useState<number | null>(null);
@@ -249,7 +278,7 @@ function Overlay({
           if (url) window.location.href = url;
           else setBought(credits);
         })
-        .catch((error) => toast.error(t("topUp.failed"), getErrorMessage(error, "")))
+        .catch((error) => toast.error(t("topUp.failed"), getErrorMessage(error, ""), payOpenAction(error, tc("payNow"))))
         .finally(() => setBuying(null));
     },
   };
@@ -290,8 +319,12 @@ function Overlay({
             layoutDependency={open}
             transition={SHELL_SPRING}
             // On a phone it starts under the app's top bar, which sits above it.
-            className="fixed bottom-3 right-3 top-[4.25rem] z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:right-4 md:top-4"
-            style={{ width: PANEL_W, borderRadius: 18 }}
+            // While an on-screen keyboard is up, it fits the part of the page still visible above it, and still clears the top bar when that is in view.
+            className={cn(
+              "fixed bottom-3 right-3 z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:right-4",
+              keyboard ? "top-[max(calc(var(--keyboard-top)+0.75rem),4.25rem)] md:top-[max(calc(var(--keyboard-top)+0.75rem),1rem)]" : "top-[4.25rem] md:top-4",
+            )}
+            style={{ width: PANEL_W, borderRadius: 18, ...(keyboard ? { "--keyboard-top": `${keyboard.top}px`, bottom: keyboard.bottom + 12 } : {}) }}
             aria-label={t("label")}
           >
             {threadId ? <Here threadId={threadId} /> : null}
@@ -326,7 +359,7 @@ function Overlay({
                   value={(waiting) => {
                     // What an earlier visit to the sheet bought has landed by now.
                     if (buying === null) setBought(null);
-                    setSheets((all) => (all.at(-1)?.kind === "topUp" ? all : [...all, { kind: "topUp", waiting }]));
+                    push({ kind: "topUp", waiting });
                   }}
                 >
                 <Chat
@@ -385,31 +418,9 @@ function Overlay({
 
 /** Keeps the person in the chat's room while the panel has it open, so the others in it see they're there. */
 function Here({ threadId }: { threadId: ThreadId }) {
-  const heartbeat = useMutation(api.assistant.presence.heartbeat);
-  const leave = useMutation(api.assistant.presence.leave);
-  // A timer is an outside system: a beat now, one every PRESENCE_HEARTBEAT_MS, and leaving when the chat closes.
-  // A tab that closes just stops beating, and the room drops it after 2.5 beats.
-  useEffect(() => {
-    const sessionId = crypto.randomUUID();
-    let token: string | null = null;
-    let left = false;
-    const beat = () =>
-      heartbeat({ threadId, sessionId }).then(
-        (sessionToken) => {
-          token = sessionToken;
-          // The chat closed while this beat was on its way.
-          if (left) leave({ sessionToken }).catch(() => {});
-        },
-        () => {},
-      );
-    void beat();
-    const timer = setInterval(beat, PRESENCE_HEARTBEAT_MS);
-    return () => {
-      left = true;
-      clearInterval(timer);
-      if (token) leave({ sessionToken: token }).catch(() => {});
-    };
-  }, [threadId, heartbeat, leave]);
+  const heartbeat = useMutation(api.presence.chatHeartbeat);
+  const leave = useMutation(api.presence.leave);
+  useRoomHeartbeat(threadId, (sessionId) => heartbeat({ threadId, sessionId }), (sessionToken) => leave({ sessionToken }));
   return null;
 }
 
@@ -442,8 +453,13 @@ function Chat({
   const t = useTranslations("assistant");
   const toast = useAppToast();
   const thread = useQuery(api.assistant.threads.get, inWorkspace(workspaceId, threadId ? { threadId } : "skip"));
-  // What a new chat starts on: the chat model of the person's AI settings.
-  const start = useQuery(api.assistant.threads.newChatModel, {});
+  // What a new chat starts on: the chat model of the workspace's AI settings, an organization's preset in one.
+  const start = useQuery(api.assistant.threads.newChatModel, inWorkspace(workspaceId, {}));
+  // An organization's chats run on its preset, which its admins change in AI settings (#651).
+  const workspace = useCurrentWorkspace();
+  const inOrganization = workspace?.kind === "organization";
+  // The address says a chat is an organization's before the organization is read, so its line under the title is there from the first frame.
+  const organizationSlug = useWorkspaceSlug();
   // What the person lets a reply spend here: the meter's "allow more" is by it, and the Spending sheet opens with it in hand.
   const spending = useQuery(api.assistant.spending.get, threadId ? { threadId } : "skip");
   const carryOn = useMutation(api.assistant.replies.carryOn);
@@ -495,8 +511,10 @@ function Chat({
   const [stack, setStack] = useState<{ threadId: ThreadId | null; open: boolean }>({ threadId: null, open: false });
   const stackOpen = stack.open && stack.threadId === threadId && (running?.length ?? 0) > 1;
   const openStack = (open: boolean) => setStack({ threadId, open });
+  // Read with the chat, which shows once it is: an approval card in it has what a call draws on, credits and cap, from its first frame, and keeps its height.
+  const spendable = useSpendable();
   // Which of its jobs are docked is known; a chat its first message just started has none yet.
-  const jobsKnown = running !== undefined || threadId === born;
+  const jobsKnown = (running !== undefined && spendable.loaded) || threadId === born;
   // The chat being made, so sending and sharing a chat that hasn't started both end up in the same one.
   const making = useRef<Promise<ThreadId> | null>(null);
   // The message on its way to the server, and the chat it's for: Stop pressed before its reply shows waits for it.
@@ -612,7 +630,7 @@ function Chat({
       going.current = up.done.length ? up.done.map((file) => file.shown) : undefined;
       setFirst((now) => (now && now.text === text ? { ...now, files: up.done.map((file) => file.shown) } : now));
       // Where it's sent from goes with it, so "this" and "here" mean the page the person is on.
-      await sendMessage({ threadId: id, text, view: window.location.pathname + window.location.search, ...(fileIds.length ? { files: fileIds } : {}) });
+      await sendMessage({ threadId: id, text, view: bareWorkspacePath(window.location.pathname) + window.location.search, ...(fileIds.length ? { files: fileIds } : {}) });
       return id;
     })();
     outgoing.current = sent.catch(() => null);
@@ -644,7 +662,10 @@ function Chat({
     setThreadId(null);
     composer.current?.focus();
   };
-  // Sharing a chat that hasn't started makes it first, so there's something to share.
+  // Sharing a chat that hasn't started makes it first, so there's something to share: it is the person's own.
+  // One that's still being read says nothing yet of who may share it, so its card waits for that:
+  // opened as an owner's for a guest, it would ask for what only an owner is given.
+  const shareable = threadId === null || threadId === born || thread !== undefined;
   const share = () =>
     started().then(
       (id) => onShare(id, thread?.title ?? t("newChat"), thread?.role ?? "owner"),
@@ -702,7 +723,7 @@ function Chat({
       }}
     >
       {/* A chat that has just been made is named by its first message until its record arrives, as the server names it, so "New chat" changes once. */}
-      <Header title={threadId ? (thread?.title ?? (threadId === born && first?.threadId === threadId ? first.title : "")) : t("newChat")} onHistory={onHistory} onShare={share} onSpending={spend} onRestart={restart} onFold={onFold} />
+      <Header title={threadId ? (thread?.title ?? (threadId === born && first?.threadId === threadId ? first.title : "")) : t("newChat")} detail={organizationSlug ? (inOrganization && workspace ? <span className="fade-enter flex min-w-0 items-center gap-1.5"><WorkspaceTile workspace={workspace} size="xs" /><span className="truncate text-2xs text-muted-foreground">{workspace.name}</span></span> : null) : undefined} onHistory={onHistory} onShare={shareable ? share : undefined} onSpending={spend} onRestart={restart} onFold={onFold} />
       <DockedJobs.Provider value={jobsShown}>
         <div className="relative flex min-h-0 flex-1 flex-col">
           {/* Under the dock's opened list, the chat takes no keyboard focus or clicks; the layer over it folds the list. */}
@@ -715,7 +736,8 @@ function Chat({
             // An open chat shows once it's known which of its jobs are docked, so no job's card moves out of it after it shows.
             messages={threadId && !jobsKnown ? sent : [...messages, ...sent]}
             live={live}
-            fresh={threadId === null && sent.length === 0}
+            // A chat with nothing said in it keeps its intro: a new one, and one that sharing or a move made before its first message.
+            fresh={sent.length === 0 && messages.length === 0 && live === null && (threadId === null || threadId === born || status === "Exhausted")}
             // An open chat's first page is still on its way, unless it's the chat this message just started.
             older={threadId && (status === "LoadingFirstPage" || !jobsKnown) && !sent.length ? "first" : status === "CanLoadMore" ? () => loadMore(FIRST_MESSAGES) : status === "LoadingMore" ? "loading" : null}
           />
@@ -747,7 +769,7 @@ function Chat({
       </div>
       <Footer
         dock={threadId && running ? <JobDock key={threadId} threadId={threadId} jobs={running} open={stackOpen} onOpen={openStack} /> : null}
-        composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} picked={drafts.picks(threadId)} onPick={(mention) => drafts.pick(threadId, mention)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel}
+        composer={composer} draft={draft} setDraft={(text) => drafts.set(threadId, text)} picked={drafts.picks(threadId)} onPick={(mention) => drafts.pick(threadId, mention)} busy={busy} summarizing={live?.compacting === true} canWrite={canWrite} onSend={send} onStop={stop} onComposerFocus={onComposerFocus} model={model} onModel={pickModel} presetModel={presetModel} modelFixed={inOrganization}
         meter={meter}
         allowance={spending?.allowance ?? null}
         allowed={{ web: spending?.web ?? false, files: spending?.files ?? false }}
@@ -795,6 +817,8 @@ function Launcher({ orbit, clock, onComplete, onOpen }: { orbit: OrbitMotion; cl
         layoutDependency={false}
         onClick={onOpen}
         aria-label={t("open")}
+        // Buttons pinned to the same corner, such as Back to top, step aside while it is on the page.
+        data-assistant-launcher
         transition={SHELL_SPRING}
         className="fixed bottom-6 right-6 z-40 flex size-14 items-center justify-center border border-border/60 bg-card shadow-lg transition-colors hover:bg-muted"
         style={{ borderRadius: 18 }}
@@ -882,7 +906,7 @@ function Thread({
       }}
     >
       <ConversationContent className="gap-5 overflow-x-clip px-4 pt-4" style={{ paddingBottom: EDGE_FADE + 8 }}>
-        {fresh ? <Empty /> : null}
+        {fresh ? <Empty arrives={threadId !== null} /> : null}
         {typeof older === "function" || loading ? (
           <button
             type="button"
@@ -1161,17 +1185,18 @@ function Thinking({ wordless }: { wordless: boolean }) {
   );
 }
 
-function Empty() {
+/** The intro of a chat with nothing said in it. One found empty once its messages were read fades in. */
+function Empty({ arrives }: { arrives: boolean }) {
   const t = useTranslations("assistant");
   return (
-    <div className="space-y-1 pt-2">
+    <div className={cn("space-y-1 pt-2", arrives && "fade-enter")}>
       <p className="text-base font-semibold">{t("emptyTitle")}</p>
       <p className="text-sm leading-relaxed text-muted-foreground">{t("emptyBody")}</p>
     </div>
   );
 }
 
-function Header({ title, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; onHistory: () => void; onShare: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
+function Header({ title, detail, onHistory, onShare, onSpending, onRestart, onFold }: { title: string; /** A line under the title: the organization a chat is in. Null keeps the line while it's read. */ detail?: ReactNode | null; onHistory: () => void; /** Absent while the chat is still being read: who may share it comes with it. The button looks the same meanwhile, and a press does nothing. */ onShare?: () => void; onSpending: () => void; onRestart: () => void; onFold: () => void }) {
   const t = useTranslations("assistant");
   return (
     <div className="border-b border-border/50 px-4 pb-3 pt-3.5">
@@ -1192,6 +1217,7 @@ function Header({ title, onHistory, onShare, onSpending, onRestart, onFold }: { 
               {title}
             </motion.p>
           </AnimatePresence>
+          {detail !== undefined ? <div className="mt-0.5 flex h-5 min-w-0 items-center gap-1.5">{detail}</div> : null}
         </div>
         <div className="flex items-center">
           <IconButton label={t("chats")} icon={<MessagesSquare className="size-4" />} onClick={onHistory} />
@@ -1276,7 +1302,7 @@ function ModelPill({
 
 /** The page the person is on, as the composer names it. Each message carries its address (`send`). */
 function useViewName() {
-  const pathname = usePathname();
+  const pathname = bareWorkspacePath(usePathname());
   const t = useTranslations("assistant.views");
   const common = useTranslations("common");
   const topics = useTranslations("topics");
@@ -1312,6 +1338,7 @@ function Footer({
   model,
   onModel,
   presetModel,
+  modelFixed = false,
   meter,
   allowance,
   onStopAllowance,
@@ -1340,6 +1367,8 @@ function Footer({
   model: PickedModel | null;
   onModel: (model: PickedModel, effort: Effort | undefined) => void;
   presetModel: ReturnType<typeof usePresetModels>;
+  /** The chat runs on its organization's preset, which only its admins change, in AI settings (#651). */
+  modelFixed?: boolean;
   /** What the reply being written has cost the person reading, when it's theirs. */
   meter: Meter | null;
   /** What jobs that spend credits may hold in this chat without asking, when the person allowed them. The chip opens Spending, and its X turns the allowance off. */
@@ -1442,7 +1471,7 @@ function Footer({
           <span className="flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-muted/60 px-2.5 text-xs text-muted-foreground">
             <Eye className="size-3" /> {t("sees", { view })}
           </span>
-          <ModelPill model={model} onChange={onModel} presetModel={presetModel} readOnly={!canWrite} />
+          <ModelPill model={model} onChange={onModel} presetModel={presetModel} readOnly={!canWrite || modelFixed} />
           {/* The span keeps the hint reachable while the button is disabled. */}
           <TooltipHint label={!canWrite ? t("readOnly") : busy ? t("stop") : t("send")}>
             <span className="flex shrink-0" tabIndex={canWrite ? undefined : 0}>
@@ -1549,13 +1578,14 @@ function EdgeGlow({ open, working }: { open: boolean; working: boolean }) {
           exit={{ opacity: 0 }}
           transition={{ duration: 0.8, ease: EASE }}
         >
+          {/* Each blob on its own layer: Safari blurs it once and moves it, instead of blurring it again on every frame. */}
           <motion.div
-            className="absolute -right-40 top-[-10%] h-[70%] w-[420px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-bright)_32%,transparent),transparent)] blur-3xl"
+            className="absolute -right-40 top-[-10%] h-[70%] w-[420px] rounded-full will-change-transform bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-bright)_32%,transparent),transparent)] blur-3xl"
             animate={{ y: ["0%", "45%", "0%"], x: [0, -40, 0] }}
             transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
           />
           <motion.div
-            className="absolute -right-48 bottom-[-15%] h-[70%] w-[440px] rounded-full bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-deep)_28%,transparent),transparent)] blur-3xl"
+            className="absolute -right-48 bottom-[-15%] h-[70%] w-[440px] rounded-full will-change-transform bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-deep)_28%,transparent),transparent)] blur-3xl"
             animate={{ y: ["0%", "-40%", "0%"], x: [0, -30, 0] }}
             transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
           />

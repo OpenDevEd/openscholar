@@ -7,6 +7,7 @@ import schema from "../schema";
 import { insertJob } from "./createJob.test-support";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
+import { madeBy } from "../workspaces/actor.test-support";
 
 vi.mock("../../lib/ai/core/batch", () => ({
   processScreeningBatch: async ({ papers }: { papers: Array<{ id: string }> }) => ({
@@ -27,7 +28,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
       scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] },
       createdAt: 1, updatedAt: 1,
     });
-    const paper = (i: number) => ctx.db.insert("screeningResults", { jobId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, abstract: "An abstract.", status: "processing", createdAt: 1 });
+    const paper = (i: number) => ctx.db.insert("screeningResults", { jobId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, abstract: "An abstract.", status: "processing", workId: `work_${i}`, createdAt: 1 });
     return { userId, jobId, first: await paper(1), second: await paper(2) };
   });
 }
@@ -71,7 +72,7 @@ describe("charging a Screen all paper", () => {
     await t.run(async (ctx) => ctx.db.patch("screeningJobs", jobId, { spendCap: 3 }));
     const counted = (credits: number) => t.run(async (ctx) => ctx.db.patch("screeningJobProgress", (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique())!._id, { credits }));
     const complete = (resultId: typeof first, returnValue: Record<string, unknown>) =>
-      t.mutation(internal.screening.mutations.handleScreeningComplete, { workId: "work", context: { jobId, resultId }, result: { kind: "success", returnValue } });
+      t.mutation(internal.screening.mutations.handleScreeningComplete, { workId: resultId === first ? "work_1" : "work_2", context: {}, result: { kind: "success", returnValue } });
 
     // Under it, a paper is read and charged as any other.
     await counted(2);
@@ -124,10 +125,10 @@ describe("charging a Screen all paper", () => {
     const { userId, collectionId } = await t.run(async (ctx) => {
       const userId = await ctx.db.insert("users", { clerkId: "clerk_held", email: "held@test.local", state: "active", createdAt: 1, updatedAt: 1 });
       await seedCreditsForTest(ctx, { userId, free: 100 });
-      const collectionId = await ctx.db.insert("collections", { userId, name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
+      const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
       for (const n of [1, 2]) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
-        await ctx.db.insert("libraryItemCollections", { userId, collectionId, libraryItemId, assignedAt: n });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
+        await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: n });
       }
       return { userId, collectionId };
     });

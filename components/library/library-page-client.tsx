@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ItemPresence } from "@/components/workspaces/presence";
 import { useQueryStates } from "nuqs";
 import { useFormatter, useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
@@ -36,8 +37,11 @@ import type { ViewMode } from "@/lib/types";
 import {
   TranslationContext,
   ScreeningContext,
+  CollectionRatingContext,
   ServerRatingsContext,
 } from "@/components/results-contexts";
+import { AddedBy, CollectionRatings, MembersAverage, useRateInCollection } from "@/components/workspaces/collection-ratings";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { PaperCard } from "@/components/paper-card";
 import { FocusMode } from "@/components/ui/focus-mode";
 import { SidebarLayout } from "@/components/shared/sidebar-layout";
@@ -45,7 +49,10 @@ import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
 import { CommandCenterContainer } from "@/components/command-center/command-center-container";
 import { cn } from "@/lib/utils";
-import { CollectionManager } from "./collection-manager";
+import { ManageCollectionsDialog, NewCollectionDialog, useCollectionDialogsReady, useManageCollections } from "./collection-dialogs";
+import { ActivityButton, MoveButton } from "@/components/workspaces/activity";
+import { ShareButton } from "@/components/workspaces/share-dialog";
+import { GuestChips } from "@/components/workspaces/shared";
 import { LibraryCommandCenter } from "./library-command-center";
 import { LibraryEmptyState } from "./library-empty-state";
 import { LibraryFilterSidebar } from "./library-filter-sidebar";
@@ -96,7 +103,18 @@ export function LibraryPageClient() {
     }
   }, [setParams]);
 
-  const [collectionManagerOpen, setCollectionManagerOpen] = useState(false);
+  const [collectionDialog, setCollectionDialog] = useState<"new" | "manage" | null>(null);
+  // The dialogs open with what they show already read: New collection's counts, and Manage's list, which this page holds.
+  useCollectionDialogsReady();
+  const manage = useManageCollections();
+  // The sidebar control that opened a collection dialog, which focus goes back to.
+  const dialogOpener = useRef<HTMLElement | null>(null);
+  const openCollectionDialog = (which: "new" | "manage") => {
+    dialogOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // Manage opens on the whole list.
+    if (which === "manage") manage.setQuery("");
+    setCollectionDialog(which);
+  };
 
   const { data: totalCount } = useProtectedQuery(
     api.library.queries.getLibraryCount,
@@ -202,11 +220,26 @@ export function LibraryPageClient() {
     [pageItems],
   );
 
-  // Server-authoritative ratings for the cards and FocusMode; null marks a paper saved unrated
+  // In an organization's collection, how its members rated each paper there (#655), by the paper.
+  const collectionRatings = useMemo(
+    () => new Map(pageItems.flatMap((item) => (item.collection ? [[item.openalexId, { libraryItemId: item._id, average: item.rating, ratings: item.collection }] as const] : []))),
+    [pageItems],
+  );
+
+  // In an organization's library, who saved each paper (#656), by the paper.
+  const addedBy = useMemo(() => new Map(pageItems.flatMap((item) => (item.by ? [[item.openalexId, item.by] as const] : []))), [pageItems]);
+
+  // In an organization's library outside a collection, how its members rated each paper themselves (#801): their average and who gave what.
+  const memberRatings = useMemo(
+    () => new Map(pageItems.flatMap((item) => (item.members && item.rating !== undefined ? [[item.openalexId, { libraryItemId: item._id, average: item.rating, ratings: item.members }] as const] : []))),
+    [pageItems],
+  );
+
+  // The person's own ratings, from the server, for the cards and FocusMode; null marks a paper they haven't rated
   const serverRatingsMap = useMemo(
     () =>
       new Map(
-        pageItems.map((item) => [item.openalexId, item.rating ?? null]),
+        pageItems.map((item) => [item.openalexId, item.myRating ?? null]),
       ),
     [pageItems],
   );
@@ -284,6 +317,34 @@ export function LibraryPageClient() {
     inWorkspace(workspaceId, params.col ? { collectionId: params.col as Id<"collections"> } : "skip"),
   );
 
+  const guest = selectedCollection?.guest;
+  const workspace = useCurrentWorkspace();
+  // In an open collection whose members rate in it, the cards' rating control is the person's rating there (#655).
+  // A guest gives none in it, so theirs stays their own rating of the paper.
+  const rateInCollection = useRateInCollection(params.col ? (params.col as Id<"collections">) : undefined);
+  const collectionName = selectedCollection?.name;
+  const ratesInCollection = !selectedCollection?.guest && collectionRatings.size > 0 && collectionName !== undefined;
+  const collectionScope = useMemo(
+    () =>
+      ratesInCollection
+        ? {
+            name: collectionName,
+            ratings: new Map([...collectionRatings].map(([paperId, rated]) => [paperId, rated.ratings.mine ?? null] as const)),
+            rate: (paperId: string, rating: number | null) => {
+              const rated = collectionRatings.get(paperId);
+              if (rated) rateInCollection(rated.libraryItemId, rating);
+            },
+          }
+        : undefined,
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `rateInCollection` is a new function each render over the same mutation.
+    [ratesInCollection, collectionName, collectionRatings],
+  );
+
+  // The heading as last settled: an opened collection's name once it's read, so a switch keeps the last one meanwhile and a cold visit shows none.
+  const settledHeading = params.col ? (selectedCollection === undefined ? undefined : (selectedCollection?.name ?? t("title"))) : t("title");
+  const [heading, setHeading] = useState(settledHeading);
+  if (settledHeading !== undefined && settledHeading !== heading) setHeading(settledHeading);
+
   const sortLabelMap = useMemo<Record<LibrarySortCombined, string>>(
     () => ({
       "savedAt:desc": t("sortSavedAtDesc"),
@@ -347,10 +408,6 @@ export function LibraryPageClient() {
       );
     }
 
-    if (selectedCollection) {
-      labels.push(`${t("filterCollection")}: ${selectedCollection.name}`);
-    }
-
     if (params.sort !== "savedAt:desc") {
       labels.push(`${t("sortBy")}: ${sortLabelMap[params.sort]}`);
     }
@@ -405,8 +462,12 @@ export function LibraryPageClient() {
     pageItems.length === 0 &&
     !hasNarrowingCriteria &&
     totalCount === 0;
+  // A collection that was deleted, or isn't shared with the person, isn't a filter that found nothing: the page says which.
+  // Until its read says which it is, an empty list says neither.
+  const lostCollection = Boolean(params.col) && selectedCollection === null;
+  const readingCollection = Boolean(params.col) && selectedCollection === undefined;
   const isNoResults =
-    !isLoading && pageItems.length === 0 && hasNarrowingCriteria && !paged.hasPages;
+    !isLoading && pageItems.length === 0 && hasNarrowingCriteria && !paged.hasPages && !lostCollection && !readingCollection;
 
   return (
     <TranslationContext.Provider value={{}}>
@@ -458,7 +519,8 @@ export function LibraryPageClient() {
               isPublicationDateActive={publicationDateRange !== undefined && (publicationDateRange.from !== undefined || publicationDateRange.to !== undefined)}
               collectionId={params.col}
               onCollectionChange={(id) => setParams({ col: id })}
-              onManageCollections={() => setCollectionManagerOpen(true)}
+              onManageCollections={() => openCollectionDialog("manage")}
+              onNewCollection={() => openCollectionDialog("new")}
               sort={params.sort}
               onSortChange={(value) => setParams({ sort: value })}
               activeFilterCount={activeFilterCount}
@@ -470,9 +532,28 @@ export function LibraryPageClient() {
             <div className="container mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
               <div className="space-y-6">
                 <LibraryCommandCenter
+                  // An open collection heads the command center; its name is no longer a filter chip.
+                  title={heading}
+                  // A collection shared with you from another workspace says whose it is and what you may do with it (#653).
+                  meta={guest ? <GuestChips from={guest.from} role={guest.role} person /> : undefined}
+                  // An open collection's Activity (#656), Move and Share, at the end of its heading: they are its workspace's, not a guest's.
+                  // With no collection open, who else has the whole library open.
+                  actions={
+                    selectedCollection && !guest ? (
+                      <>
+                        <ItemPresence kind="collection" id={selectedCollection._id} />
+                        <ActivityButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
+                        <MoveButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} />
+                        <ShareButton kind="collection" id={selectedCollection._id} name={selectedCollection.name} guests={selectedCollection.guests ?? 0} />
+                      </>
+                    ) : !params.col && workspaceId ? (
+                      <ItemPresence kind="library" id={workspaceId} />
+                    ) : undefined
+                  }
                   rawSearch={rawSearch}
                   onSearchChange={setRawSearch}
-                  totalCount={totalCount}
+                  // A guest's count is of the collection: the library around it isn't theirs.
+                  totalCount={guest ? selectedCollection?.itemCount : totalCount}
                   filteredCount={filteredTotal ?? filteredAtLeast}
                   filteredCountIsAtLeast={filteredAtLeast !== undefined}
                   activeFilterLabels={activeFilterLabels}
@@ -513,10 +594,15 @@ export function LibraryPageClient() {
                   />
                 )}
 
+                {lostCollection && !isLoading && <LibraryEmptyState variant="lost" onClearFilters={resetAllNarrowing} />}
+
                 {/* A sparse filter can leave a page empty with more after it: the pager stays to reach them. */}
-                {!isLoading && (pageResults.length > 0 || paged.hasPages) && (
+                {/* One that's gone takes its papers with it: the page of them still shown while the list catches up goes at once. */}
+                {!isLoading && !lostCollection && (pageResults.length > 0 || paged.hasPages) && (
                   <>
                     {/* The page shown stays, dimmed and still, until the one it steps to arrives. */}
+                    {/* Only the cards rate in the open collection. Focus mode keeps the person's own rating, on its stars, its shortcuts and its phone control alike. */}
+                    <CollectionRatingContext.Provider value={collectionScope}>
                     <div className={cn(GRID_CLASSES[effectiveViewMode], paged.isStale && "pointer-events-none opacity-60")}>
                       {pageResults.map((paper, index) => {
                         const globalIndex = pageStart + index;
@@ -530,10 +616,23 @@ export function LibraryPageClient() {
                               handleDownloadEssentialItem
                             }
                             viewMode={effectiveViewMode}
+                            extra={(() => {
+                              const by = addedBy.get(paper.id);
+                              const who = by ? <AddedBy {...by} compact={effectiveViewMode === "list-simple"} /> : null;
+                              // Who rated in a collection is for anyone who reads it. Rating in it is its members', through the card's own rating control.
+                              const rated = params.col ? collectionRatings.get(paper.id) : undefined;
+                              // Outside a collection, an organization's library shows its members' average of their own ratings, beside yours.
+                              const members = !rated && workspace ? memberRatings.get(paper.id) : undefined;
+                              const ratings = rated ? <CollectionRatings collectionId={params.col as Id<"collections">} libraryItemId={rated.libraryItemId} average={rated.average} ratings={rated.ratings} />
+                                : members ? <MembersAverage workspace={workspace!} libraryItemId={members.libraryItemId} average={members.average} ratings={members.ratings} /> : null;
+                              if (!who) return ratings ?? undefined;
+                              return <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">{who}{ratings}</span>;
+                            })()}
                           />
                         );
                       })}
                     </div>
+                    </CollectionRatingContext.Provider>
 
                     <CommandCenterContainer>
                       <div className="relative flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -589,15 +688,12 @@ export function LibraryPageClient() {
                   </>
                 )}
               </div>
-
-              <CollectionManager
-                open={collectionManagerOpen}
-                onOpenChange={setCollectionManagerOpen}
-              />
-
             </div>
           </PageWrapper>
         </SidebarLayout>
+        {/* Outside the layout, whose phone tabs show the sidebar or the results, never both: the sidebar opens them. A collection made here opens, as a new folder does. */}
+        <NewCollectionDialog open={collectionDialog === "new"} onOpenChange={(open) => setCollectionDialog(open ? "new" : null)} onCreated={(id) => setParams({ col: id })} returnFocus={() => dialogOpener.current} />
+        <ManageCollectionsDialog manage={manage} open={collectionDialog === "manage"} onOpenChange={(open) => setCollectionDialog(open ? "manage" : null)} onNew={() => setCollectionDialog("new")} returnFocus={() => dialogOpener.current} />
         </ServerRatingsContext.Provider>
       </ScreeningContext.Provider>
     </TranslationContext.Provider>

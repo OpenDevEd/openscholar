@@ -14,7 +14,7 @@ type BuildOptions = {
   addNewlines?: boolean;
 };
 
-export const DEFAULT_PDFJS_TEXT_OPTIONS: BuildOptions = {
+const DEFAULT_PDFJS_TEXT_OPTIONS: BuildOptions = {
   addSpaces: true,
   addNewlines: true,
 };

@@ -49,23 +49,6 @@ const PROVIDER_CONFIGS: Record<AIProvider, AIProviderConfig> = {
   },
 }
 
-/**
- * Default model IDs per provider (short format, used by the native SDKs).
- * These are fallback defaults for when a user hasn't selected a model yet.
- */
-const DEFAULT_MODELS: Record<AIProvider, string> = {
-  openai: 'gpt-4o',
-  google: 'gemini-2.5-flash',
-  anthropic: 'claude-sonnet-4-5',
-  deepseek: 'deepseek-chat',
-  openrouter: 'anthropic/claude-sonnet-4-5',
-  azure: 'gpt-4o',
-}
-
 export function getProviderConfig(provider: AIProvider): AIProviderConfig {
   return PROVIDER_CONFIGS[provider]
-}
-
-export function getDefaultModelForProvider(provider: AIProvider): string {
-  return DEFAULT_MODELS[provider]
 }

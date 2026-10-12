@@ -96,7 +96,7 @@ describe("what the assistant's model is sent", () => {
 
   it("is told the page a message was sent from when that changes, which the chat itself doesn't show", async () => {
     const t = convexTest(schema);
-    const { asAda, asBen, ben, threadId, say, thread } = await chatOf(t);
+    const { home, asAda, asBen, ben, threadId, say, thread } = await chatOf(t);
     const asked = (request: Sent) => noted(request).filter((line) => line.startsWith("user: "));
     mockDoStream.mockImplementation(finishingDoStream(["Answer"]));
     // Of an address, only what says what its page shows is kept: a ticket in it never reaches the chat.
@@ -128,7 +128,7 @@ describe("what the assistant's model is sent", () => {
     expect(page.flatMap((message) => (message.role === "user" ? [message.text] : [])).reverse()).toEqual(["What is this?", "And this one?", "Now here", "And these?", "And those?", "And that?", "And from elsewhere"]);
 
     // In a shared chat each person's message says their own place, even when it's where the last one was sent from.
-    await asAda.mutation(api.assistant.sharing.grant, { threadId, principal: { kind: "user", userId: ben }, role: "write" });
+    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: ben, role: "editor" });
     await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: ben, free: 100_000 }));
     await say("Back to this", "/library?col=collection-9");
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "I'm here too", view: "/library?col=collection-9" });
@@ -342,7 +342,7 @@ describe("what the assistant's model is sent", () => {
     await t.run(async (ctx) => {
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
       const row = (await ctx.db.get("assistantThreads", threadId))!;
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "summary", senderId: row.ownerId, order: 0, startedAt: Date.now(), scheduledId, compacting: true, stop: true } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "summary", senderId: row.createdBy, workspaceId: row.workspaceId, order: 0, startedAt: Date.now(), scheduledId, compacting: true, stop: true } });
     });
     await t.mutation(internal.assistant.replies.release, { threadId, attemptId: "summary", summarized: { summary: "Too late", through: 0 } });
 
@@ -354,7 +354,7 @@ describe("what the assistant's model is sent", () => {
     await t.run(async (ctx) => {
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
       const row = (await ctx.db.get("assistantThreads", threadId))!;
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "owed", senderId: row.ownerId, order: 1, startedAt: Date.now(), scheduledId, stop: true } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "owed", senderId: row.createdBy, workspaceId: row.workspaceId, order: 1, startedAt: Date.now(), scheduledId, stop: true } });
     });
     await t.mutation(internal.assistant.replies.summarized, { threadId, attemptId: "owed", summary: "Too late", through: 0 });
     expect(await thread()).toMatchObject({ compactionOwed: true });
@@ -370,11 +370,11 @@ describe("what the assistant's model is sent", () => {
     const row = (await thread())!;
     await t.run(async (ctx) => {
       const scheduledId = await ctx.scheduler.runAfter(60 * 60 * 1000, internal.assistant.replies.sweep, {});
-      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "long", senderId: row.ownerId, order: 0, startedAt: Date.now(), scheduledId } });
+      await ctx.db.patch("assistantThreads", threadId, { reply: { attemptId: "long", senderId: row.createdBy, workspaceId: row.workspaceId, order: 0, startedAt: Date.now(), scheduledId } });
     });
     await t.mutation(internal.assistant.replies.release, {
       threadId, attemptId: "long",
-      ended: { agentThreadId: row.agentThreadId, senderId: row.ownerId, modelId: null, lastInputTokens: COMPACT_AT_TOKENS + 1, messages: 2, bytes: 100 },
+      ended: { agentThreadId: row.agentThreadId, senderId: row.createdBy, modelId: null, lastInputTokens: COMPACT_AT_TOKENS + 1, messages: 2, bytes: 100 },
     });
     expect(await thread()).toMatchObject({ compactionOwed: true, reply: { compacting: true } });
     // The compaction's action never runs, and the sweep clears its dead lock: the summary is still owed.

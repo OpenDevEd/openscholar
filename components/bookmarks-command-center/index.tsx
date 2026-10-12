@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import React, { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useConvex } from "convex/react";
@@ -28,6 +29,9 @@ import { useResearchStatus } from "@/lib/research/provider";
 import { ResearchAccountChangedError } from "@/lib/research/binding";
 import { useResearchSession } from "@/lib/research/reads";
 import { useShortcutList } from "@/lib/research/shortcut-list";
+import { PersonTag } from "@/components/ui/identity";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
+import { useRunBy } from "@/components/workspaces/run-by";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { CommandCenterFileActions, CommandCenterFilters } from "@/components/command-center/command-center-toolbar";
 import { ViewModeSwitch } from "@/components/view-mode-toggle";
@@ -42,13 +46,16 @@ function createBookmarkListItem(
   onEdit: (name: string) => void,
   onSaveEdit: (name: string, newExpansion: string) => void,
   onCancelEdit: () => void,
-  onDelete: (name: string) => void
+  onDelete: (name: string) => void,
+  admin: boolean
 ) {
   return function BookmarkListItem({ item }: { item: BookmarkEntry }) {
     return (
       <BookmarksItem
         bookmark={item}
         viewMode={viewMode}
+        addedBy={item.by ? <PersonTag {...item.by} /> : undefined}
+        canChange={!item.by || item.by.you || admin}
         isEditing={editingBookmark === item.name}
         onEdit={() => onEdit(item.name)}
         onSaveEdit={(newExpansion) => onSaveEdit(item.name, newExpansion)}
@@ -62,8 +69,6 @@ import { NewBookmarkDialog } from "./new-bookmark-dialog";
 import { BookmarksGuide } from "./bookmarks-guide";
 import posthog from "posthog-js";
 import type { BookmarkEntry } from "./types";
-
-export type { BookmarkEntry } from "./types";
 
 export function BookmarksCommandCenter() {
   const workspaceId = useWorkspace();
@@ -98,7 +103,10 @@ export function BookmarksCommandCenter() {
     setBookmarkSortBy,
   } = useUIStore();
   // Read a page at a time: the page number can't be jumped to, so it stays out of the URL.
-  const bookmarks = useShortcutList({ sort: bookmarkSortBy, text: searchFilter, pageSize: COMMAND_CENTER_ITEMS_PER_PAGE });
+  // In an organization, everyone's bookmarks or one member's (#656).
+  const runBy = useRunBy("queryShortcuts", { label: "addedBy" });
+  const admin = useCurrentWorkspace()?.role === "admin";
+  const bookmarks = useShortcutList({ sort: bookmarkSortBy, text: searchFilter, pageSize: COMMAND_CENTER_ITEMS_PER_PAGE, by: runBy.by, byCount: runBy.by ? runBy.countOf(runBy.by) : undefined });
   const ready = listReady && settingsReady && !bookmarks.isLoading;
   const step = (to: () => void) => () => {
     to();
@@ -176,6 +184,7 @@ export function BookmarksCommandCenter() {
 
   return (
     <BookmarksPageFrame
+      intro={runBy.filter}
       tabs={<ViewModeSwitch value={bookmarkViewMode} onChange={setBookmarkViewMode} />}
       filters={<CommandCenterFilters
         sortOptions={SORT_OPTIONS}
@@ -200,8 +209,8 @@ export function BookmarksCommandCenter() {
       </>}
     >
 
-
-      <div>
+      {/* A page kept from before the filter, sort or search changed is dimmed and takes no clicks until its own arrives. */}
+      <div className={cn(bookmarks.isStale && "opacity-60")} inert={bookmarks.isStale || undefined}>
         {!ready ? error ? <AuthStatePanel variant="sync_error_retry" onRetry={retry} /> : <ListLoading label={tc("loading")} /> : <CommandCenterList
           items={bookmarks.items}
           viewMode={bookmarkViewMode}
@@ -217,7 +226,8 @@ export function BookmarksCommandCenter() {
             handleEdit,
             handleSaveEdit,
             handleCancelEdit,
-            handleDelete
+            handleDelete,
+            admin
           )}
         />}
 
@@ -248,12 +258,14 @@ export function BookmarksCommandCenter() {
 }
 
 /** The bookmarks page's frame, shared with its loading state so nothing moves when it loads. */
-export function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode }) {
+function BookmarksPageFrame({ children, ...controls }: { children: React.ReactNode; tabs?: React.ReactNode; filters?: React.ReactNode; actions?: React.ReactNode; intro?: React.ReactNode }) {
   const tc = useTranslations("common");
   return <LibraryPageShell icon={BookmarksIcon} title={tc("bookmarks")} {...controls}>{children}</LibraryPageShell>;
 }
 
 export function BookmarksLoading() {
   const tc = useTranslations("common");
-  return <BookmarksPageFrame><ListLoading label={tc("loading")} /></BookmarksPageFrame>;
+  // The Added by row is there while it loads too, so the list below it doesn't move when it comes.
+  const runBy = useRunBy("queryShortcuts", { label: "addedBy" });
+  return <BookmarksPageFrame intro={runBy.filter}><ListLoading label={tc("loading")} /></BookmarksPageFrame>;
 }

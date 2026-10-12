@@ -19,6 +19,11 @@ export function useResearchSession() {
   return useContext(SessionContext).session;
 }
 
+/** Whether the person is signed in, signed out, or not known yet: a signed-in person's records are the account's, never this browser's. */
+export function useResearchPhase() {
+  return useContext(SessionContext).phase;
+}
+
 /** What the account's records are read and changed under: the account and the page's workspace; undefined signed out, or while the workspace loads. */
 export function useResearchScope() {
   return useContext(SessionContext).scope;
@@ -60,6 +65,19 @@ export function useWatchedSearch(id: string | undefined): WatchedStatus {
   const subscribe = useCallback((listener: () => void) => (session && id ? session.watchSearch(id, listener) : noReaders()), [session, id]);
   const status = useCallback(() => (session && id ? session.watchedStatus(id) : found()), [session, id]);
   return useSyncExternalStore(subscribe, status, status);
+}
+
+/**
+ * Search `id` as the session's read gave it, while this component shows: who ran it in an
+ * organization (`by`), how many guests it has (`guests`), and for one shared with the person
+ * their role and the workspace it's in (`guest`, #653). Undefined signed out, while it's read,
+ * or for a search not saved.
+ */
+export function useSearchAccess(id: string | undefined) {
+  const { session } = useContext(SessionContext);
+  const subscribe = useCallback((listener: () => void) => (session && id ? session.watchSearch(id, listener) : noReaders()), [session, id]);
+  const read = useCallback(() => (session && id ? session.watchedSearch(id) : undefined), [session, id]);
+  return useSyncExternalStore(subscribe, read, read);
 }
 
 /**

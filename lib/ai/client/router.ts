@@ -4,35 +4,6 @@ import { api } from '@/convex/_generated/api'
 import * as clientExecutor from './executor'
 import { createAIHook } from './hook-factory'
 import { decodeQuestionResponseMap } from '../core/question-key-codec'
-
-import type {
-  EnhanceSearchQueryInput,
-  GenerateScreeningQuestionsInput,
-  GenerateExtractionQuestionsInput,
-  TranslateQueryInput,
-  TranslatePaperContentInput,
-} from '../core/types'
-import type {
-  BatchScreeningResult,
-  BatchTranslationResult,
-} from '../core/batch-types'
-import type {
-  BatchScreeningParams,
-  BatchTranslationParams,
-} from './executor'
-import type { AIKeyMode } from '@/lib/types'
-
-export type EnhanceSearchQueryParams = EnhanceSearchQueryInput
-export type GenerateScreeningQuestionsParams = GenerateScreeningQuestionsInput
-export type GenerateExtractionQuestionsParams = GenerateExtractionQuestionsInput
-export type TranslateQueryParams = TranslateQueryInput
-export type TranslatePaperContentParams = TranslatePaperContentInput
-export type GenerateBatchScreeningResponsesParams = BatchScreeningParams
-export type GenerateBatchTranslationsParams = BatchTranslationParams
-export type { BatchScreeningResult, BatchTranslationResult }
-
-export type { AIKeyMode }
-
 export const useEnhanceSearchQuery = createAIHook(
   api.ai.actions.enhanceSearchQuery,
   clientExecutor.enhanceSearchQuery,
@@ -58,13 +29,6 @@ export const useGenerateExtractionQuestions = createAIHook(
 export const useTranslateQuery = createAIHook(
   api.ai.actions.translateQuery,
   clientExecutor.translateQuery,
-  undefined,
-  { task: 'translate' },
-)
-
-export const useTranslatePaperContent = createAIHook(
-  api.ai.actions.translatePaperContent,
-  clientExecutor.translatePaperContent,
   undefined,
   { task: 'translate' },
 )

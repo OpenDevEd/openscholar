@@ -2,12 +2,21 @@
 // libraries are added (#357).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
-import { MAX_ACCOUNTS_PER_EMAIL, MAX_ACTIVE_OPERATIONS_READ, MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_EMAIL, MAX_PENDING_INVITATIONS_PER_LIBRARY, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
+import { MAX_ACCOUNTS_PER_EMAIL, MAX_ACTIVE_OPERATIONS_READ, MAX_CREDENTIALS_PER_LIBRARY, MAX_FEATURE_FLAGS, MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON, MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL, SETUP_CREDENTIALS_RESERVED } from "../lib/queryBounds";
 import { assertCredentialRoom, writeEvidenceLibraryCredentialRecord } from "./credentials";
 import { requireNoActiveConfigurationDeployment } from "./configurationDeployment";
 import { RUNTIME_ARRIVALS_READ } from "./versions";
 import { insertMany } from "../lib/maxSize.test-support";
 import { createDraftSetupFixture, createReadySetupFixture, reserveLibraryAddressByName } from "../../tests/helpers/evidence-library-setup-fixture";
+import { organizationOfLibrary } from "../../tests/helpers/evidence-library-setup-fixture";
+import { organizationWorkspaceOf } from "../workspaces/personal";
+import type { Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
+
+/** An account for a test's person, and its ID: a role in a library is an account's. */
+const account = (ctx: MutationCtx, clerkId: string) => ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
+/** A role in a library as its row in the table every shared item's guests are in. */
+const role = (libraryId: Id<"evidenceLibraries">, userId: Id<"users">, grantedAt = 1) => ({ kind: "library" as const, item: libraryId, name: "Library", userId, role: "editor" as const, grantedBy: userId, grantedAt });
 
 describe("Evidence Library limits", () => {
   beforeEach(() => {
@@ -19,9 +28,14 @@ describe("Evidence Library limits", () => {
   it("refuses another person once a library has the most it can grant", { tags: ["size"] }, async () => {
     const fixture = await createReadySetupFixture("member_limit");
     const libraryId = fixture.created.libraryId;
-    const organizationId = await fixture.t.run(async (ctx) => (await ctx.db.get("evidenceLibraries", libraryId))!.organizationId);
-    await insertMany(fixture.t, "evidenceLibraryMembers", Array.from({ length: MAX_LIBRARY_MEMBERS }, (_, i) => ({ libraryId, clerkUserId: `user_full_${i}`, role: "editor", grantedBy: "owner", grantedAt: 1 })), 100);
-    await fixture.t.run((ctx) => ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: "orgmem_next", clerkUserId: "user_next", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 }));
+    const organizationId = await fixture.t.run((ctx) => organizationOfLibrary(ctx, libraryId));
+    // The count is of the library's rows, whoever each is for.
+    const filler = await fixture.t.run((ctx) => account(ctx, "user_full"));
+    await insertMany(fixture.t, "itemAccess", Array.from({ length: MAX_LIBRARY_MEMBERS }, () => role(libraryId, filler)), 100);
+    await fixture.t.run(async (ctx) => {
+      await account(ctx, "user_next");
+      await ctx.db.insert("organizationMemberships", { organizationId, clerkMembershipId: "orgmem_next", clerkUserId: "user_next", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 });
+    });
     await expect(fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_next", role: "editor" })).rejects.toThrow(/up to 1,000 people/);
   });
 
@@ -36,8 +50,9 @@ describe("Evidence Library limits", () => {
       for (let i = 0; i < 5; i++) ids.push(await ctx.db.insert("evidenceLibraries", { ...library, name: `Other ${i}`, slug: `grant-limit-${i}` }));
       return ids;
     });
-    await insertMany(fixture.t, "evidenceLibraryMembers", Array.from({ length: MAX_LIBRARY_GRANTS_PER_PERSON }, (_, i) => ({ libraryId: others[i % others.length], clerkUserId: "user_everywhere", role: "editor", grantedBy: "owner", grantedAt: 1 })), 100);
-    await fixture.t.run((ctx) => ctx.db.insert("organizationMemberships", { organizationId: template.organizationId, clerkMembershipId: "orgmem_everywhere", clerkUserId: "user_everywhere", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 }));
+    const everywhere = await fixture.t.run((ctx) => account(ctx, "user_everywhere"));
+    await insertMany(fixture.t, "itemAccess", Array.from({ length: MAX_LIBRARY_GRANTS_PER_PERSON }, (_, i) => role(others[i % others.length], everywhere)), 100);
+    await fixture.t.run(async (ctx) => ctx.db.insert("organizationMemberships", { organizationId: await organizationOfLibrary(ctx, libraryId), clerkMembershipId: "orgmem_everywhere", clerkUserId: "user_everywhere", role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 }));
     await expect(fixture.admin.mutation(api.evidenceLibraries.team.addOrganizationMember, { libraryId, clerkUserId: "user_everywhere", role: "editor" })).rejects.toThrow(/already has access to 200 libraries/);
   }, 120_000);
 
@@ -46,18 +61,19 @@ describe("Evidence Library limits", () => {
     const libraryId = fixture.created.libraryId;
     const { organization, elsewhere } = await fixture.t.run(async (ctx) => {
       const { _id, _creationTime, ...library } = (await ctx.db.get("evidenceLibraries", libraryId))!;
-      const organization = (await ctx.db.get("organizations", library.organizationId))!;
+      const organization = (await ctx.db.get("organizations", await organizationOfLibrary(ctx, libraryId)))!;
       const { _id: _organizationId, _creationTime: _made, ...other } = organization;
       const otherOrganization = await ctx.db.insert("organizations", { ...other, clerkOrganizationId: "org_elsewhere", slug: "elsewhere" });
-      return { organization, elsewhere: await ctx.db.insert("evidenceLibraries", { ...library, organizationId: otherOrganization, name: "Elsewhere", slug: "revoke-all-elsewhere" }) };
+      return { organization, elsewhere: await ctx.db.insert("evidenceLibraries", { ...library, workspaceId: await organizationWorkspaceOf(ctx, otherOrganization), name: "Elsewhere", slug: "revoke-all-elsewhere" }) };
     });
     // From before grants were capped: more than one read holds, with this organization's grant last.
-    await insertMany(fixture.t, "evidenceLibraryMembers", [
-      ...Array.from({ length: MAX_LIBRARY_GRANTS_PER_PERSON + 20 }, () => ({ libraryId: elsewhere, clerkUserId: "user_leaving", role: "editor", grantedBy: "owner", grantedAt: 1 })),
-      { libraryId, clerkUserId: "user_leaving", role: "editor", grantedBy: "owner", grantedAt: 1 },
+    const leaving = await fixture.t.run((ctx) => account(ctx, "user_leaving"));
+    await insertMany(fixture.t, "itemAccess", [
+      ...Array.from({ length: MAX_LIBRARY_GRANTS_PER_PERSON + 20 }, () => role(elsewhere, leaving)),
+      role(libraryId, leaving),
     ], 100);
-    const grantsHere = () => fixture.t.run(async (ctx) => (await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", (q) => q.eq("libraryId", libraryId).eq("clerkUserId", "user_leaving")).take(2)).length);
-    expect(await grantsHere()).toBe(1);
+    const rolesHere = () => fixture.t.run(async (ctx) => (await ctx.db.query("itemAccess").withIndex("by_item_and_user", (q) => q.eq("item", libraryId).eq("userId", leaving)).take(2)).map((grant) => grant.role));
+    expect(await rolesHere()).toEqual(["editor"]);
 
     vi.useFakeTimers();
     await fixture.t.mutation(internal.webhooks.projections.applyOrganizationMembershipEvent, {
@@ -65,15 +81,15 @@ describe("Evidence Library limits", () => {
       action: "delete",
       membership: {
         clerkMembershipId: "orgmem_leaving", clerkUserId: "user_leaving", role: "org:member", state: "revoked", clerkCreatedAt: 1, clerkUpdatedAt: 2,
-        organization: { clerkOrganizationId: organization.clerkOrganizationId, name: organization.name, slug: organization.slug, evidenceLibrariesEnabled: organization.evidenceLibrariesEnabled, authorsEnabled: organization.authorsEnabled ?? false, extractionEnabled: organization.extractionEnabled ?? false, clerkCreatedAt: organization.clerkCreatedAt, clerkUpdatedAt: organization.clerkUpdatedAt },
+        organization: { clerkOrganizationId: organization.clerkOrganizationId, name: organization.name, slug: organization.slug, clerkCreatedAt: organization.clerkCreatedAt, clerkUpdatedAt: organization.clerkUpdatedAt },
       },
     });
     // A grant made after they left, by a later invitation, isn't the sweep's to take.
     vi.setSystemTime(Date.now() + 1_000);
-    await fixture.t.run((ctx) => ctx.db.insert("evidenceLibraryMembers", { libraryId, clerkUserId: "user_leaving", role: "creator", grantedBy: "owner", grantedAt: Date.now() }));
+    await fixture.t.run((ctx) => ctx.db.insert("itemAccess", { ...role(libraryId, leaving, Date.now()), role: "creator" }));
     await fixture.t.finishAllScheduledFunctions(vi.runAllTimers);
     vi.useRealTimers();
-    expect(await fixture.t.run(async (ctx) => (await ctx.db.query("evidenceLibraryMembers").withIndex("by_libraryId_and_clerkUserId", (q) => q.eq("libraryId", libraryId).eq("clerkUserId", "user_leaving")).take(2)).map((grant) => grant.role))).toEqual(["creator"]);
+    expect(await rolesHere()).toEqual(["creator"]);
   });
 
   it("refuses another invitation once a library, or an address, has the most waiting (#427)", async () => {
@@ -83,10 +99,11 @@ describe("Evidence Library limits", () => {
       const { _id, _creationTime, ...library } = (await ctx.db.get("evidenceLibraries", libraryId))!;
       return await ctx.db.insert("evidenceLibraries", { ...library, name: "Elsewhere", slug: "invite-limit-elsewhere" });
     });
-    const waiting = (to: typeof libraryId, email: (i: number) => string, count: number) => insertMany(fixture.t, "evidenceLibraryInvitations", Array.from({ length: count }, (_, i) => ({ libraryId: to, email: email(i), role: "editor", invitedBy: "owner", expiresAt: Date.now() + 86_400_000, state: "pending", delivery: "sent" })));
+    const sender = await fixture.t.run((ctx) => account(ctx, "user_sender"));
+    const waiting = (to: typeof libraryId, email: (i: number) => string, count: number) => insertMany(fixture.t, "itemInvitations", Array.from({ length: count }, (_, i) => ({ kind: "library", item: to, email: email(i), role: "editor", invitedBy: sender, expiresAt: Date.now() + 86_400_000, state: "pending", delivery: "sent" })), 100);
     const invite = (email: string) => fixture.admin.mutation(internal.evidenceLibraries.invitations.prepare, { libraryId, email, role: "editor" });
 
-    await waiting(elsewhere, () => "popular@example.org", MAX_PENDING_INVITATIONS_PER_EMAIL);
+    await waiting(elsewhere, () => "popular@example.org", MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
     await expect(invite("popular@example.org")).rejects.toThrow(/too many invitations waiting/);
 
     await waiting(libraryId, (i) => `person${i}@example.org`, MAX_PENDING_INVITATIONS_PER_LIBRARY);
@@ -163,6 +180,6 @@ describe("Evidence Library limits", () => {
     const template = await fixture.t.run(async (ctx) => (await ctx.db.get("evidenceLibraries", fixture.created.libraryId))!);
     const { _id, _creationTime, ...library } = template;
     await insertMany(fixture.t, "evidenceLibraries", Array.from({ length: MAX_LIBRARIES_PER_WORKSPACE - 1 }, (_, i) => ({ ...library, name: `Library ${i}`, slug: `library-limit-${i}` })), 100);
-    await expect(reserveLibraryAddressByName(fixture.admin, "One More", template.organizationId)).rejects.toThrow(/up to 200 libraries/);
+    await expect(reserveLibraryAddressByName(fixture.admin, "One More", await fixture.t.run((ctx) => organizationOfLibrary(ctx, fixture.created.libraryId)))).rejects.toThrow(/up to 200 libraries/);
   });
 });

@@ -1,9 +1,13 @@
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
+import { seedCreditsForTest } from "../billing/billing.test-support";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 /// <reference types="vite/client" />
+import { register as registerPresence } from "@convex-dev/presence/test";
 import { convexTest } from "convex-test";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
+import { personalWorkspaceOf } from "../workspaces/personal";
 const modules = import.meta.glob("/convex/**/*.ts");
 const mail = vi.hoisted(() => ({sendMail: vi.fn().mockResolvedValue({}), close: vi.fn()}));
 vi.mock("nodemailer", () => ({default: {createTransport: () => mail}}));
@@ -12,12 +16,14 @@ const content = {name: "Caitlin Mills", headline: "Learning scientist", affiliat
 async function setup() {
   const t = convexTest(schema, modules);
   const ids = await t.run(async ctx => {
-    await seedOrganizationFeatures(ctx, ["owner", "editor"], { authors: true });
     const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
-    return {
+    const ids = {
       owner: await ctx.db.insert("users", {...fields, clerkId: "owner", email: "owner@example.org"}),
       editor: await ctx.db.insert("users", {...fields, clerkId: "editor", email: "editor@example.org"}),
     };
+    // A profile is made where the workspace's plan includes Evidence Libraries: here, each one's own.
+    for (const userId of Object.values(ids)) await seedCreditsForTest(ctx, {userId, features: [EVIDENCE_LIBRARIES_FEATURE]});
+    return ids;
   });
   const owner = t.withIdentity({subject: "owner"});
   const editor = t.withIdentity({subject: "editor"});
@@ -26,12 +32,61 @@ async function setup() {
 }
 
 describe("author profiles", () => {
+  it("keep their Activity for the workspace that owns them, where its members see who has one open", async () => {
+    const t = convexTest(schema, modules);
+    registerPresence(t);
+    const lab = await t.run(async ctx => {
+      const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
+      for (const clerkId of ["maker", "member", "outsider"]) await ctx.db.insert("users", {...fields, clerkId, firstName: clerkId, email: `${clerkId}@example.org`});
+      const organizationId = await seedOrganizationFeatures(ctx, ["maker", "member"], { evidenceLibraries: true });
+      return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
+    });
+    const as = (subject: string) => t.withIdentity({subject});
+    const profileId = await as("maker").mutation(api.authors.profiles.create, {workspaceId: lab, name: "Lab author"});
+    const saved = await as("maker").mutation(internal.authors.profiles.saveWithPhoto, {profileId, expectedRevision: 1, content: {...content, name: "Lab author"}});
+    await as("maker").mutation(internal.authors.profiles.saveWithPhoto, {profileId, expectedRevision: saved.revision, content});
+    const maker = (await t.run(ctx => ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", "maker")).unique()))!._id;
+    const invite = () => t.mutation(internal.sharing.invitations.prepare, {userId: maker, workspaceId: lab, author: "user", kind: "author", id: profileId, email: "outsider@example.org", role: "editor"});
+    await invite();
+    // Sending the invitation again is no new change.
+    await invite();
+    const item = {workspaceId: lab, kind: "author" as const, id: profileId};
+    const page = {paginationOpts: {cursor: null, numItems: 10}};
+    expect((await as("member").query(api.activity.queries.list, {...item, ...page})).page.map(({by, happened, detail}) => ({by: by.name, happened, detail}))).toEqual([
+      {by: "maker", happened: "shared", detail: "outsider@example.org"},
+      {by: "maker", happened: "renamed", detail: "Lab author"},
+      {by: "maker", happened: "edited", detail: undefined},
+      {by: "maker", happened: "created", detail: "Lab author"},
+    ]);
+    // The profile's read says who is of the workspace that owns it: they are shown its Activity.
+    expect(await Promise.all(["maker", "member", "outsider"].map(async subject => (await as(subject).query(api.authors.profiles.get, {profileId}))?.member))).toEqual([true, true, false]);
+    // A member with it open is named to the others, and nobody outside the lab joins its room.
+    await as("member").mutation(api.presence.heartbeat, {...item, sessionId: "member-tab"});
+    expect((await as("maker").query(api.presence.here, {...item, ...page})).page.map(person => person.name)).toEqual(["member"]);
+    await expect(as("outsider").mutation(api.presence.heartbeat, {...item, sessionId: "outsider-tab"})).rejects.toThrow();
+
+    // The lab is deleted. The profile stays public, in no workspace, and nobody is left invited to edit it.
+    const organizationId = await t.run(async ctx => {
+      const workspace = await ctx.db.get("workspaces", lab);
+      if (workspace?.kind !== "organization") throw new Error("The lab is an organization's workspace");
+      await ctx.db.patch("organizations", workspace.organizationId, {state: "deleted"});
+      return workspace.organizationId;
+    });
+    vi.useFakeTimers();
+    try {
+      await t.mutation(internal.workspaces.purge.purgeOrganization, {organizationId});
+      await t.finishAllScheduledFunctions(vi.runAllTimers);
+    } finally { vi.useRealTimers(); }
+    expect((await t.run(ctx => ctx.db.get("authorProfiles", profileId)))?.workspaceId).toBeUndefined();
+    expect(await t.run(ctx => ctx.db.query("itemInvitations").collect())).toEqual([]);
+  });
+
   it("are owned by the workspace they were made in: by their maker and its admins, and edited by others only when invited", async () => {
     const t = convexTest(schema, modules);
     const lab = await t.run(async ctx => {
       const fields = {state: "active" as const, createdAt: 1, updatedAt: 1};
       for (const clerkId of ["admin", "maker", "member", "outsider"]) await ctx.db.insert("users", {...fields, clerkId, email: `${clerkId}@example.org`});
-      const organizationId = await seedOrganizationFeatures(ctx, ["admin", "maker", "member"], {authors: true});
+      const organizationId = await seedOrganizationFeatures(ctx, ["admin", "maker", "member"], { evidenceLibraries: true });
       const admin = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_clerkUserId_and_state", q => q.eq("organizationId", organizationId).eq("clerkUserId", "admin").eq("state", "active")).unique();
       await ctx.db.patch("organizationMemberships", admin!._id, {role: "org:admin"});
       return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
@@ -45,9 +100,18 @@ describe("author profiles", () => {
     expect(await role("member")).toBeNull();
     // Its people list the maker and the lab's admin as owners; an owner isn't removed as an editor would be.
     const members = await as("maker").query(api.authors.members.list, {profileId});
-    expect(members.members.map(member => [member.email, member.role])).toEqual([["maker@example.org", "owner"], ["admin@example.org", "owner"]]);
+    // The one reading it is marked, for their You chip.
+    expect(members.members.map(member => [member.email, member.role, member.you])).toEqual([["maker@example.org", "owner", true], ["admin@example.org", "owner", false]]);
     const adminId = members.members.find(member => member.email === "admin@example.org")!.userId;
-    await expect(as("maker").mutation(api.authors.members.remove, {profileId, userId: adminId})).rejects.toThrow(/owns the profile/);
+    // A colleague in the lab is nothing to the profile until its owner makes them an editor of it: being in its workspace isn't having it.
+    const memberId = (await t.run(ctx => ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", "member")).unique()))!._id;
+    const invite = (userId: typeof adminId, email: string) => t.mutation(internal.sharing.invitations.prepare, {userId, workspaceId: lab, author: "user", kind: "author", id: profileId, email, role: "editor"});
+    await expect(invite(memberId, "friend@example.org")).rejects.toThrow(/Only whoever made this author profile/);
+    const invited = await invite(adminId, "member@example.org");
+    await t.mutation(internal.sharing.invitations.respondVerified, {userId: memberId, invitationId: invited, emails: ["member@example.org"], accept: true});
+    expect(await role("member")).toBe("editor");
+    // Sharing it stays its owners' alone: an editor, in the lab or not, invites nobody to it.
+    await expect(invite(memberId, "friend@example.org")).rejects.toThrow(/Only whoever made this author profile/);
     // Someone outside the lab can't make one there.
     await expect(as("outsider").mutation(api.authors.profiles.create, {workspaceId: lab, name: "Not mine"})).rejects.toThrow(/Workspace not found/);
     // An organization without author profiles takes none, whatever another of its members' organizations has.
@@ -55,88 +119,36 @@ describe("author profiles", () => {
       const organizationId = await seedOrganizationFeatures(ctx, ["maker"], {});
       return (await ctx.db.query("workspaces").withIndex("by_organizationId", q => q.eq("organizationId", organizationId)).unique())!._id;
     });
-    await expect(as("maker").mutation(api.authors.profiles.create, {workspaceId: plain, name: "Elsewhere"})).rejects.toThrow(/doesn't have author profiles/);
+    await expect(as("maker").mutation(api.authors.profiles.create, {workspaceId: plain, name: "Elsewhere"})).rejects.toThrow('"code":"FORBIDDEN"');
     // Its maker who leaves the lab no longer owns it.
     await t.run(async ctx => {
       for (const row of await ctx.db.query("organizationMemberships").collect()) if (row.clerkUserId === "maker") await ctx.db.patch("organizationMemberships", row._id, {state: "revoked"});
     });
     expect(await role("maker")).toBeNull();
+    // Invited back, they edit it as anyone invited does.
+    const makerId = members.members.find(member => member.email === "maker@example.org")!.userId;
+    const invitationId = await t.mutation(internal.sharing.invitations.prepare, {userId: adminId, workspaceId: lab, author: "user", kind: "author", id: profileId, email: "maker@example.org", role: "editor"});
+    await t.mutation(internal.sharing.invitations.respondVerified, {userId: makerId, invitationId, emails: ["maker@example.org"], accept: true});
+    expect(await role("maker")).toBe("editor");
   });
 
-  it("sends profile invitations with the profile identity and a direct invitation link", async () => {
+  it("is shared to edit only, by invitation as any item is", async () => {
     vi.stubEnv("EL_SMTP_HOST", "smtp.example.org");
     vi.stubEnv("EL_SMTP_FROM", "contact@platform.example");
     vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://app.example.org");
     try {
-      const {owner, profileId} = await setup();
-      await owner.action(api.authors.invitationActions.invite, {profileId, email: "editor@example.org"});
-      expect(mail.sendMail.mock.lastCall?.[0]).toMatchObject({from: {name: "Caitlin Mills via OpenScholar", address: "contact@platform.example"}, replyTo: "contact@platform.example", to: "editor@example.org"});
-      expect(mail.sendMail.mock.lastCall?.[0].text).toContain(`https://app.example.org/authors/${profileId}/invitation`);
-      expect(mail.sendMail.mock.lastCall?.[0].html).toContain(`href="https://app.example.org/authors/${profileId}/invitation"`);
+      const {t, owner, profileId} = await setup();
+      const workspaceId = (await t.run(ctx => ctx.db.get("authorProfiles", profileId)))!.workspaceId!;
+      const item = {workspaceId, kind: "author" as const, id: profileId, email: "editor@example.org"};
+      // A profile is public: there's nothing to share but editing it.
+      await expect(owner.action(api.sharing.invitations.invite, {...item, role: "viewer"})).rejects.toThrow(/shared to edit only/);
+      await owner.action(api.sharing.invitations.invite, {...item, role: "editor"});
+      const invitation = (await t.run(ctx => ctx.db.query("itemInvitations").collect()))[0]!;
+      expect(invitation).toMatchObject({kind: "author", item: profileId, email: "editor@example.org", role: "editor", state: "pending"});
+      expect(mail.sendMail.mock.lastCall?.[0]).toMatchObject({to: "editor@example.org"});
+      expect(mail.sendMail.mock.lastCall?.[0].text).toContain(`https://app.example.org/shared/${invitation._id}`);
+      expect(mail.sendMail.mock.lastCall?.[0].text).toContain("author profile");
     } finally { vi.unstubAllEnvs(); }
-  });
-  it("expires a profile invitation when its time is up, and never one that was answered", async () => {
-    const {t, owner, editor, profileId} = await setup();
-    vi.useFakeTimers();
-    try {
-      const day = 86_400_000;
-      const invite = () => owner.mutation(internal.authors.invitations.prepare, {profileId, email: "editor@example.org"});
-      const listed = async () => (await editor.query(api.authors.invitations.listInvitations, {})).page.length;
-      await invite();
-      vi.advanceTimersByTime(3 * day);
-      await invite();
-      // The first send's expiry runs at day 7 and leaves the re-sent invitation pending.
-      vi.advanceTimersByTime(5 * day);
-      await t.finishInProgressScheduledFunctions();
-      expect(await listed()).toBe(1);
-      expect((await owner.query(api.authors.members.list, {profileId})).invitations).toHaveLength(1);
-      vi.advanceTimersByTime(3 * day);
-      await t.finishInProgressScheduledFunctions();
-      expect(await listed()).toBe(0);
-      expect((await owner.query(api.authors.members.list, {profileId})).invitations).toHaveLength(0);
-      // An invitation cancelled before its time stays cancelled when its expiry runs.
-      const cancelled = await invite();
-      await owner.mutation(api.authors.invitations.cancel, {invitationId: cancelled});
-      vi.advanceTimersByTime(8 * day);
-      await t.finishInProgressScheduledFunctions();
-      expect((await t.run(ctx => ctx.db.get("authorProfileInvitations", cancelled)))?.state).toBe("cancelled");
-    } finally { vi.useRealTimers(); }
-  });
-
-  it("refuses an invitation to an address that already has a page of them waiting, and still sends one of those again", async () => {
-    const {t, owner, ids, profileId} = await setup();
-    const [other, third] = [await owner.mutation(api.authors.profiles.create, {name: "Another profile"}), await owner.mutation(api.authors.profiles.create, {name: "A third profile"})];
-    const invite = (email: string) => owner.mutation(internal.authors.invitations.prepare, {profileId, email});
-    const first = await invite("busy@example.org");
-    await t.run(async ctx => {
-      for (let waiting = 1; waiting < 100; waiting++) await ctx.db.insert("authorProfileInvitations", {profileId: other, email: "busy@example.org", invitedBy: ids.owner, expiresAt: Date.now() + 86_400_000, state: "pending", delivery: "sent"});
-    });
-    await expect(owner.mutation(internal.authors.invitations.prepare, {profileId: third, email: "busy@example.org"})).rejects.toThrow(/too many invitations waiting/);
-    expect(await invite("busy@example.org")).toBe(first);
-  });
-
-  it("refuses an invitation from a profile with a page of them waiting, and an acceptance into a profile with a page of editors", async () => {
-    const {t, owner, editor, ids, profileId} = await setup();
-    const invitationId = await owner.mutation(internal.authors.invitations.prepare, {profileId, email: "editor@example.org"});
-    await t.run(async ctx => {
-      for (let waiting = 1; waiting < 100; waiting++) await ctx.db.insert("authorProfileInvitations", {profileId, email: `waiting-${waiting}@example.org`, invitedBy: ids.owner, expiresAt: Date.now() + 86_400_000, state: "pending", delivery: "sent"});
-    });
-    await expect(owner.mutation(internal.authors.invitations.prepare, {profileId, email: "one-more@example.org"})).rejects.toThrow(/100 invitations waiting/);
-    expect((await owner.query(api.authors.members.list, {profileId})).invitations).toHaveLength(100);
-
-    await t.run(async ctx => {
-      for (let members = 0; members < 100; members++) await ctx.db.insert("authorProfileMembers", {profileId, userId: ids.owner});
-    });
-    await expect(editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true})).rejects.toThrow(/up to 100 editors/);
-
-    // A deleted account's place is given up, so the next person can accept.
-    await t.run(async ctx => {
-      const gone = await ctx.db.insert("users", {state: "deleted", createdAt: 1, updatedAt: 1, clerkId: "gone", email: "gone@example.org"});
-      const place = (await ctx.db.query("authorProfileMembers").withIndex("by_profileId_and_userId", q => q.eq("profileId", profileId)).first())!;
-      await ctx.db.patch(place._id, {userId: gone});
-    });
-    await editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true});
-    expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBe("editor");
   });
 
   it("keeps profile ownership separate from organization roles", async () => {
@@ -152,39 +164,50 @@ describe("author profiles", () => {
 
   it("allows profile members without an organization, requires the invited address and revokes editing immediately", async () => {
     const {t, owner, editor, ids, profileId} = await setup();
+    const workspaceId = (await t.run(ctx => ctx.db.get("authorProfiles", profileId)))!.workspaceId!;
+    const item = {workspaceId, kind: "author" as const, id: profileId};
+    // A plan that no longer includes Evidence Libraries makes no more profiles and reads no directory; the profile it has is still its owner's to edit.
     await t.run(async ctx => {
-      for (const membership of await ctx.db.query("organizationMemberships").collect()) {
-        await ctx.db.delete("organizationMemberships", membership._id);
-      }
+      for (const account of await ctx.db.query("billingAccounts").collect()) await ctx.db.patch("billingAccounts", account._id, {features: []});
     });
     await expect(owner.mutation(api.authors.profiles.create, {name: "Another profile"})).rejects.toThrow('"code":"FORBIDDEN"');
-    await expect(owner.query(api.authors.profiles.list, {search: "", paginationOpts: {numItems: 10, cursor: null}})).rejects.toThrow('"code":"FORBIDDEN"');
+    await expect(owner.query(api.authors.profiles.directory, {search: "", paginationOpts: {numItems: 10, cursor: null}})).rejects.toThrow('"code":"FORBIDDEN"');
     await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content});
-    const invitationId = await owner.mutation(internal.authors.invitations.prepare, {profileId, email: "Editor@example.org"});
-    const waiting = async (person: typeof editor) => (await person.query(api.authors.invitations.listInvitations, {profileId})).page;
+    const invitationId = await t.mutation(internal.sharing.invitations.prepare, {userId: ids.owner, author: "user", ...item, email: "Editor@example.org", role: "editor"});
+    const waiting = async (person: typeof editor) => (await person.query(api.authors.invitations.listInvitations, {})).page;
     expect(await waiting(editor)).toEqual([{invitationId, profileId, name: content.name}]);
     expect(await waiting(owner)).toEqual([]);
-    await expect(editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: [], accept: true})).rejects.toThrow();
-    await editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true});
+    // Its owner sees it waiting, and it holds a guest's place.
+    expect((await owner.query(api.authors.members.list, {profileId})).invitations).toEqual([{_id: invitationId, email: "editor@example.org", delivery: "queued"}]);
+    await expect(t.mutation(internal.sharing.invitations.respondVerified, {userId: ids.editor, invitationId, emails: [], accept: true})).rejects.toThrow();
+    await t.mutation(internal.sharing.invitations.respondVerified, {userId: ids.editor, invitationId, emails: ["editor@example.org"], accept: true});
     expect(await waiting(editor)).toEqual([]);
+    // An editor edits it from wherever they are, sees who has it, and gives it to nobody: sharing it is its workspace's.
     expect((await editor.query(api.authors.profiles.get, {profileId}))?.role).toBe("editor");
     await editor.action(api.authors.photos.save, {profileId, expectedRevision: 2, content: {...content, bio: "Edited by a profile collaborator"}});
-    await expect(editor.mutation(internal.authors.invitations.prepare, {profileId, email: "third@example.org"})).rejects.toThrow();
-    await expect(editor.mutation(api.authors.members.remove, {profileId, userId: ids.owner})).rejects.toThrow();
-    await owner.mutation(api.authors.members.remove, {profileId, userId: ids.editor});
+    expect((await editor.query(api.authors.members.list, {profileId})).members.map(member => [member.email, member.role])).toEqual([["owner@example.org", "owner"], ["editor@example.org", "editor"]]);
+    const editorOwn = await t.run(ctx => personalWorkspaceOf(ctx, ids.editor));
+    await expect(t.mutation(internal.sharing.invitations.prepare, {userId: ids.editor, workspaceId: editorOwn, author: "user", kind: "author", id: profileId, email: "third@example.org", role: "editor"})).rejects.toThrow();
+    await expect(editor.mutation(api.sharing.guests.remove, {...item, workspaceId: editorOwn, guest: {userId: ids.owner}})).rejects.toThrow();
+    // It shows among what's shared with them, and removing them ends their editing at once.
+    expect((await editor.query(api.sharing.shared.list, {workspaceId: editorOwn, sort: "recent", paginationOpts: {cursor: null, numItems: 5}})).page).toMatchObject([{kind: "author", id: profileId, name: content.name, role: "editor"}]);
+    await owner.mutation(api.sharing.guests.remove, {...item, guest: {userId: ids.editor}});
     await expect(editor.action(api.authors.photos.save, {profileId, expectedRevision: 3, content})).rejects.toThrow();
     expect((await t.query(api.authors.profiles.get, {profileId}))?.bio).toBe("Edited by a profile collaborator");
   });
 
   it("rejects cancelled invitations and concurrent overwrites", async () => {
-    const {owner, editor, profileId} = await setup();
-    const invitationId = await owner.mutation(internal.authors.invitations.prepare, {profileId, email: "editor@example.org"});
-    await owner.mutation(api.authors.invitations.cancel, {invitationId});
-    await expect(editor.mutation(internal.authors.invitations.respondVerified, {invitationId, emails: ["editor@example.org"], accept: true})).rejects.toThrow();
+    const {t, owner, ids, profileId} = await setup();
+    const workspaceId = (await t.run(ctx => ctx.db.get("authorProfiles", profileId)))!.workspaceId!;
+    const item = {workspaceId, kind: "author" as const, id: profileId};
+    const invitationId = await t.mutation(internal.sharing.invitations.prepare, {userId: ids.owner, author: "user", ...item, email: "editor@example.org", role: "editor"});
+    await owner.mutation(api.sharing.guests.remove, {...item, guest: {email: "editor@example.org"}});
+    await expect(t.mutation(internal.sharing.invitations.respondVerified, {userId: ids.editor, invitationId, emails: ["editor@example.org"], accept: true})).rejects.toThrow();
     await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content});
     await expect(owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content: {...content, bio: "Stale edit"}})).rejects.toThrow();
     expect((await owner.query(api.authors.profiles.get, {profileId}))?.bio).toBe(content.bio);
   });
+
   it("stores a photo without allowing stale saves to delete the current file", async () => {
     const {t, owner, editor, profileId} = await setup();
     const photo = "data:image/png;base64,iVBORw0KGgo=";

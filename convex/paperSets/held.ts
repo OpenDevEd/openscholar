@@ -15,10 +15,10 @@ import { paperSetValidator, screeningPaperInputValidator } from "../screening/va
 import { checkRange, type SearchPaper } from "./search";
 import { authorMetadata, sourceMetadata } from "../../lib/library/paper-metadata";
 import { screeningRevision } from "../screening/accounting";
-import { isInWorkspace, personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
+import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 
 type PaperSet = Infer<typeof paperSetValidator>;
-export type HeldSet = Exclude<PaperSet, { kind: "search" }>;
+export type HeldSet = Exclude<PaperSet, { kind: "search" } | { kind: "zotero" }>;
 
 /** Papers one read takes: a saved paper holds its abstract and its whole OpenAlex record. */
 const PAGE = 100;
@@ -44,16 +44,15 @@ const fromResult = (paper: Doc<"screeningResults">): SearchPaper => ({
 
 /** One page of a held set's papers, in its order. Another workspace's collection or another person's job reads as not found. */
 export const page = internalQuery({
-  // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which reads its person's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), set: paperSetValidator, cursor: v.union(v.string(), v.null()), numItems: v.number(), revision: v.optional(v.string()) },
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), set: paperSetValidator, cursor: v.union(v.string(), v.null()), numItems: v.number(), revision: v.optional(v.string()) },
   returns: v.object({ page: v.array(screeningPaperInputValidator), isDone: v.boolean(), continueCursor: v.string() }),
-  handler: async (ctx, { userId, workspaceId: given, set, cursor, numItems, revision }) => {
+  handler: async (ctx, { workspaceId, set, cursor, numItems, revision }) => {
     if (set.kind === "search") throw new Error("A search's papers are read from OpenAlex (./search.ts)");
+    if (set.kind === "zotero") throw new Error("A Zotero set's papers are read from Zotero (../zotero/actions.ts `papersOf`)");
     const opts = { cursor, numItems: Math.min(numItems, PAGE), maximumBytesRead: PAGE_BYTES };
-    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
     if (set.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", set.jobId);
-      if (!job || !(await isInWorkspace(ctx, job, workspaceId))) throw createError("NOT_FOUND", "Screening not found");
+      if (!job || !(job.workspaceId === workspaceId)) throw createError("NOT_FOUND", "Screening not found");
       if (revision !== undefined && revision !== await screeningRevision(ctx, job)) {
         throw createError("CONFLICT", "Screening decisions changed. Remove this source and select it again to review the current Included papers.");
       }

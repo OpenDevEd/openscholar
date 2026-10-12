@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useRouter } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { ResultsList } from "./results-list";
 import {
   downloadItem,
@@ -29,7 +29,7 @@ export default function ResultsPageContent({
     essentialItem: tToast("entityEssentialItem"),
     results: tToast("entityResults"),
   };
-  const router = useRouter();
+  const router = useWorkspaceRouter();
 
   // Use the new search context
   const {

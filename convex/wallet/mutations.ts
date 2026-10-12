@@ -5,6 +5,7 @@ import { getCurrentUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { rateLimit } from "../lib/rateLimit";
 import type { Id } from "../_generated/dataModel";
+import { actorFor } from "../workspaces/actor";
 
 /**
  * Approve a wallet connection and create an API key.
@@ -14,11 +15,14 @@ export const approveConnection = mutation({
   args: {
     appName: v.string(),
     redirectOrigin: v.string(),
+    /** The workspace the app draws on: the person's own, or an organization they're in (#651). */
+    workspaceId: v.id("workspaces"),
   },
   returns: v.id("walletKeys"),
   handler: async (ctx, args) => {
     const user = await getCurrentUser(ctx);
     if (!user) throw createError("UNAUTHENTICATED", "Sign in required");
+    await actorFor(ctx, user, args.workspaceId);
 
     // Validate redirect origin against the registered allowlist
     if (args.redirectOrigin !== "manual") {
@@ -39,6 +43,7 @@ export const approveConnection = mutation({
 
     const walletKeyId = await ctx.db.insert("walletKeys", {
       userId: user._id,
+      workspaceId: args.workspaceId,
       // Placeholder — the action will patch with the real hash
       hashedKey: "__pending__",
       keyPrefix: "__pending__",

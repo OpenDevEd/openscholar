@@ -6,10 +6,10 @@ export type ToastErrorMessageKey =
   | "convexUnknownError"
   | "convexAuthRequired"
   | "convexPermissionDenied"
-  | "extractionPlanRequired"
   | "convexNotFound"
   | "convexInvalidInput"
   | "convexInsufficientCredits"
+  | "memberCapReached"
   | "aiUnauthenticated"
   | "aiInsufficientCredits"
   | "aiCreditsDisabled"
@@ -32,6 +32,7 @@ export type ToastErrorMessageKey =
   | "billingNetworkError"
   | "billingRateLimited"
   | "billingStripeError"
+  | "billingPaymentDeclined"
   | "billingPlanChangeConflict"
   | "billingInvalidPrice"
   | "billingCancelRequiresPortal"
@@ -44,7 +45,7 @@ export type ToastErrorMessageKey =
  * a localized title + body via `t(titleKey)` / `t(bodyKey)` instead of
  * piping a raw message string through.
  */
-export type ResolvedToastTaxonomy = {
+type ResolvedToastTaxonomy = {
   code: ErrorCode;
   titleKey: `errors.title.${ErrorCode}`;
   bodyKey: `errors.body.${ErrorCode}`;
@@ -84,11 +85,11 @@ const LEGACY_CODE_MATCHERS: Array<{ pattern: RegExp; code: string }> = [
 const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   UNAUTHENTICATED: "convexAuthRequired",
   FORBIDDEN: "convexPermissionDenied",
-  EXTRACTION_PLAN_REQUIRED: "extractionPlanRequired",
   NOT_FOUND: "convexNotFound",
   VALIDATION_ERROR: "convexInvalidInput",
   INVALID_DATA: "convexInvalidInput",
   INSUFFICIENT_CREDITS: "convexInsufficientCredits",
+  MEMBER_CAP_REACHED: "memberCapReached",
   AI_UNAUTHENTICATED: "aiUnauthenticated",
   AI_INSUFFICIENT_CREDITS: "aiInsufficientCredits",
   AI_CREDITS_DISABLED: "aiCreditsDisabled",
@@ -114,6 +115,7 @@ const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   BILLING_NETWORK_ERROR: "billingNetworkError",
   BILLING_RATE_LIMITED: "billingRateLimited",
   BILLING_STRIPE_ERROR: "billingStripeError",
+  BILLING_PAYMENT_DECLINED: "billingPaymentDeclined",
   BILLING_PLAN_CHANGE_CONFLICT: "billingPlanChangeConflict",
   BILLING_INVALID_PRICE_ID: "billingInvalidPrice",
   BILLING_CANCEL_TO_FREE_REQUIRES_PORTAL: "billingCancelRequiresPortal",
@@ -130,7 +132,6 @@ const INSUFFICIENT_CREDITS_CODES = new Set<string>([
 ]);
 
 const PLAN_UPGRADE_CODES = new Set<string>([
-  "EXTRACTION_PLAN_REQUIRED",
   "AI_PLAN_ENTITLEMENT",
 ]);
 
@@ -217,6 +218,24 @@ function inferLegacyCode(...messages: Array<string | undefined>): string | undef
     }
   }
   return undefined;
+}
+
+/** The payment still open that a purchase was refused for (#858), when `error` is that refusal: how much, and where to pay it. */
+export function openPayment(error: unknown): { amount?: number; currency?: string; url?: string } | undefined {
+  let data = readErrorData(error);
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch {
+      return undefined;
+    }
+  }
+  const record = asRecord(data);
+  if (record?.code !== "BILLING_PAYMENT_OPEN") return undefined;
+  // A refusal from a backend a moment older than the page, as a deploy lands, has its url and message but no amount.
+  const url = trimToString(record.url);
+  const amount = typeof record.amount === "number" && typeof record.currency === "string" ? { amount: record.amount, currency: record.currency } : {};
+  return { ...amount, ...(url ? { url } : {}) };
 }
 
 export function getToastMessageKeyForErrorCode(

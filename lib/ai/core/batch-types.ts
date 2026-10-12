@@ -20,18 +20,9 @@ export interface BatchError {
   error: string
 }
 
-export interface BatchResult<TData> {
+interface BatchResult<TData> {
   results: Record<string, TData>
   errors: BatchError[]
-}
-
-// ═══════════════════════════════════════════════════════════════
-// SCREENING BATCH TYPES
-// ═══════════════════════════════════════════════════════════════
-
-export interface BatchScreeningParams {
-  papers: BatchPaper[]
-  questions: string[]
 }
 
 export interface ScreeningResultData {
@@ -43,15 +34,6 @@ export interface ScreeningResultData {
 }
 
 export type BatchScreeningResult = BatchResult<ScreeningResultData>
-
-// ═══════════════════════════════════════════════════════════════
-// TRANSLATION BATCH TYPES
-// ═══════════════════════════════════════════════════════════════
-
-export interface BatchTranslationParams {
-  papers: BatchPaper[]
-  targetLanguage?: string
-}
 
 export interface TranslationResultData {
   translatedTitle: string

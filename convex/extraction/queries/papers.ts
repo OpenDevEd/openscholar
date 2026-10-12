@@ -9,7 +9,7 @@
 import { query, internalQuery } from "../../_generated/server";
 import { v } from "convex/values";
 import { ok, statusResultValidator } from "../../lib/query_states";
-import { resolveOwnedPaper } from "../access";
+import { resolvePaperToRead, rowFor } from "../access";
 import { getFlag, requireFeature } from "../../featureFlags/guard";
 import { extractionPaperValidator, extractionResultValidator, paperResultsValidator } from "../validators";
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
@@ -21,7 +21,7 @@ export const results = query({
     results: paperResultsValidator,
   }),
   handler: async (ctx, args) => {
-    const access = await resolveOwnedPaper(ctx, args.paperId);
+    const access = await resolvePaperToRead(ctx, args.paperId);
     if (access.status !== "ok") return access;
     const { paper } = access;
     await requireFeature(ctx, "extraction.enabled");
@@ -31,7 +31,7 @@ export const results = query({
       .withIndex("by_paper", (q) => q.eq("paperId", args.paperId))
       .take(MAX_QUESTIONS_PER_JOB);
 
-    return ok({ paper, results: rows });
+    return ok({ paper, results: access.guest ? rows.map((row) => rowFor(row, true)) : rows });
   },
 });
 
@@ -46,7 +46,7 @@ export const pdfUrl = query({
     v.object({ status: v.literal("no_access") }),
   ),
   handler: async (ctx, args) => {
-    const access = await resolveOwnedPaper(ctx, args.paperId);
+    const access = await resolvePaperToRead(ctx, args.paperId);
     if (access.status !== "ok") return access;
 
     const pdfFlag = await getFlag(ctx, "extraction.pdf");

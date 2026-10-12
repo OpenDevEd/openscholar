@@ -1,6 +1,7 @@
 import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
+import { personName } from "../lib/people";
 
 // Kept apart from ./actor.ts, which reads auth: the database triggers reach these, and must load
 // without the modules that load the triggers themselves.
@@ -16,14 +17,6 @@ export async function personalWorkspaceOf(ctx: Pick<QueryCtx, "db">, userId: Id<
   return workspace._id;
 }
 
-/**
- * The workspace a record is in: its own, or for one from before workspaces that its table's
- * backfill hasn't reached yet, its person's (#650). Slice 8 makes `workspaceId` required.
- */
-export async function workspaceOf(ctx: Pick<QueryCtx, "db">, row: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }) {
-  return row.workspaceId ?? (await personalWorkspaceOf(ctx, row.userId));
-}
-
 /** An organization's workspace, made with it (#650). */
 export async function organizationWorkspaceOf(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">): Promise<Id<"workspaces">> {
   const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
@@ -31,7 +24,14 @@ export async function organizationWorkspaceOf(ctx: Pick<QueryCtx, "db">, organiz
   return workspace._id;
 }
 
-/** Whether a record is in `workspaceId`: for a function given the page's workspace, which takes only that workspace's records. */
-export async function isInWorkspace(ctx: Pick<QueryCtx, "db">, row: { userId: Id<"users">; workspaceId?: Id<"workspaces"> }, workspaceId: Id<"workspaces">) {
-  return (await workspaceOf(ctx, row)) === workspaceId;
+
+/** A workspace as someone outside it is told of it: an organization's name, or for a person's own their name, and which of the two it is. */
+export async function workspaceFrom(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) {
+  const workspace = await ctx.db.get("workspaces", workspaceId);
+  if (workspace?.kind === "organization") return { name: (await ctx.db.get("organizations", workspace.organizationId))?.name ?? "", organization: true };
+  const person = workspace ? await ctx.db.get("users", workspace.userId) : null;
+  return { name: (person && (personName(person) || person.email)) || "", organization: false };
 }
+
+/** A workspace as a person sees it named: an organization's name, or for someone's own their name. */
+export const workspaceName = async (ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">) => (await workspaceFrom(ctx, workspaceId)).name;

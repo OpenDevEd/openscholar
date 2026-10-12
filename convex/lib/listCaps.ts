@@ -114,6 +114,8 @@ export const MAX_BATCH_PAPERS = 200;
 export const MAX_STARS = 5;
 /** OpenAlex lists at most 100 authorships for a work; longer author lists are cut to these. */
 export const MAX_AUTHORS = 100;
+/** Members a saved paper keeps as having rated it, with what each gave (#801): what its list shows before it scrolls, and one more. */
+export const MAX_RATERS_KEPT = 8;
 /**
  * Legacy lists that nothing adds to any more: the history arrays on searches saved before
  * #354 (dropped by #373) and the answer chunks moved out by #334. Shared dev holds 40 at most.
@@ -135,6 +137,8 @@ export const MAX_REDIRECT_URIS = 20;
 export const MAX_RELEASE_CHANGES = 250;
 export const MAX_RELEASES = 100;
 export const MAX_RELEASE_NOTES = 40;
+/** Likely reviews one digest request has read (digests/kinds.ts reads no more). */
+export const MAX_DIGEST_KINDS = 300;
 /** Sources one Evidence Library reports a status for. */
 export const MAX_LIBRARY_SOURCES = 200;
 /** Kinds of issue one source reports. */
@@ -155,6 +159,8 @@ export const MAX_BILLING_FEATURES = 200;
 export const MAX_PLAN_DETAILS = 50;
 /** Fields of one audit log or credit transaction's metadata. */
 export const MAX_METADATA_FIELDS = 50;
+/** An account's addresses Clerk has verified, besides its own, kept to match invitations sent to any of them (../users/internal.ts). */
+export const MAX_VERIFIED_EMAILS = 10;
 /** Papers one hand-picked selection holds, sent or returned as one list: the longest a list may be. A whole collection or library is a source of its own, not a selection. */
 export const MAX_SELECTED_PAPERS = MAX_LIST_CAP;
 /**

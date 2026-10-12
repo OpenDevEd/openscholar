@@ -3,7 +3,7 @@ import { MAX_BILLING_FEATURES, MAX_BILLING_PLANS, MAX_PLAN_DETAILS, capped } fro
 
 /** A plan's limit on each of lib/billing/plans.ts PLAN_LIMITS it sets: a number, or null for unlimited. A limit left out isn't set. */
 const limitValue = v.optional(v.union(v.number(), v.null()));
-export const planLimitsValidator = v.object({ collections: limitValue, concurrency: limitValue, assistant_replies: limitValue, request_papers: limitValue, bulk_papers: limitValue, uploads_per_hour: limitValue });
+export const planLimitsValidator = v.object({ collections: limitValue, concurrency: limitValue, assistant_replies: limitValue, request_papers: limitValue, bulk_papers: limitValue, uploads_per_hour: limitValue, guests: limitValue });
 
 export const billingAccountSnapshotValidator = v.object({
   /** The customer's main plan id in Autumn; absent if they have none. */
@@ -33,15 +33,15 @@ export const billingAccountSnapshotValidator = v.object({
   /** Has paid for a plan or credits, so Stripe holds invoices for them. */
   hasPaid: v.boolean(),
   stripeCustomerId: v.optional(v.string()),
+  /** While past due, the payment that failed (#40): how much, when its invoice was raised, and the page that pays it. */
+  unpaid: v.optional(v.object({ amount: v.number(), currency: v.string(), since: v.number(), url: v.optional(v.string()) })),
 });
 export type BillingAccountSnapshot = Infer<typeof billingAccountSnapshotValidator>;
 
 export const billingAccountFields = {
   ...billingAccountSnapshotValidator.fields,
-  /** A person's own workspace's account names them; an organization's names nobody. Slice 8 drops it. */
-  userId: v.optional(v.id("users")),
-  /** The workspace whose Autumn customer it caches (#650); slice 8 makes it required. */
-  workspaceId: v.optional(v.id("workspaces")),
+  /** The workspace whose Autumn customer it caches (#650). */
+  workspaceId: v.id("workspaces"),
   refreshedAt: v.number(),
   /** When the snapshot was read from Autumn: a refresh read before it is older, and is dropped. Unlike `refreshedAt`, zeroing the balance leaves it. */
   fetchedAt: v.optional(v.number()),
@@ -65,7 +65,7 @@ export type UsageKind = Infer<typeof usageKindValidator>;
 export const billingUsageFields = {
   /** Who spent it. */
   userId: v.id("users"),
-  /** The workspace that paid (#650); slice 8 makes it required. */
+  /** The workspace that paid (#650); absent on a charge of an account purged before workspaces, which left none. */
   workspaceId: v.optional(v.id("workspaces")),
   /** The Autumn lock or idempotency key this charge settled. */
   chargeId: v.string(),

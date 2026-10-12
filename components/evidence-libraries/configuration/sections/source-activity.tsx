@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { Collapsible } from "@/components/ui/collapsible";
 import { DisclosureContent, DisclosureTrigger } from "../disclosure-button";
+import { useReadOnly } from "../read-only";
 import { type StatusTone } from "../status-chip";
 
 /** PDFs added to a source's records, and those that could not be downloaded. */
@@ -43,7 +44,7 @@ const RUNNING_CHIP = { import: "chip.importing", search: "chip.searching", pdfs:
  * The row's chip: the state in one word, so a long list scans quickly.
  * `null` is a source the library has not seen yet: it imports after Activate.
  */
-export function useSourceStatusChip() {
+function useSourceStatusChip() {
   const t = useTranslations("evidenceLibraryConfiguration.sources.status");
   return (status: SourceStatus | null, paused: boolean): { label: string; tone: StatusTone } => {
     if (paused) return { label: t("chip.paused"), tone: "neutral" };
@@ -338,6 +339,7 @@ function FailedActivity({
   const format = useFormatter();
   const now = useNow({ updateInterval: 30_000 });
   const [open, setOpen] = useState(false);
+  const readOnly = useReadOnly();
   const pdfs = status.failedIn === "pdfs" ? (status.pdfs ?? { added: 0, missed: 0 }) : null;
   const at = format.dateTime(new Date(status.failure.at), { timeStyle: "short" });
   return (
@@ -356,7 +358,7 @@ function FailedActivity({
         ) : null}
       </div>
       {pdfs ? <PdfSummary pdfs={pdfs} tone="running" /> : null}
-      <Collapsible open={open} onOpenChange={setOpen}>
+      <Collapsible open={open || readOnly} onOpenChange={setOpen}>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" size="sm" onClick={onRetry} disabled={retrying}>
             {retrying ? <Spinner /> : <RefreshCw />}

@@ -323,7 +323,7 @@ type PaperReservation = { chargeId: string; reserved: number; description: strin
 
 /** The workspace a job is in, which pays for its papers (#650); one its backfill hasn't reached is its starter's own, until slice 8. */
 const payingWorkspace = async (ctx: ActionCtx, job: Doc<"extractionJobs">): Promise<Id<"workspaces">> =>
-  job.workspaceId ?? (await ctx.runQuery(internal.workspaces.actor.personalOf, { userId: job.userId }));
+  job.workspaceId;
 
 /**
  * Holds the paper's worst-case cost before any work starts. When the balance
@@ -352,7 +352,7 @@ async function reservePaperCredits(
   const { credits: reserved, questions: questionCount } = await ctx.runQuery(internal.extraction.queries.internal.paperCredits, {
     jobId: job._id,
     ...(queueRow.kind === "initial" ? {} : { questionKeys: queueRow.questionKeys ?? [] }),
-    pdf: args.pdfEnabled && Boolean(paper.pdfUrl || paper.oaUrl || paper.storageId),
+    pdf: getProcessableFlags({ ...paper, pdfEnabled: args.pdfEnabled }).hasPdfUrl,
   });
   const reservation = {
     chargeId: `extraction:${queueRow._id}:${crypto.randomUUID()}`,
@@ -369,7 +369,7 @@ async function reservePaperCredits(
       : "The credits this extraction was allowed are no longer held for it. Resume it to carry on.";
   } else if (
     await reserveCredits(ctx, {
-      userId: job.userId,
+      userId: job.createdBy,
       workspaceId: await payingWorkspace(ctx, job),
       chargeId: reservation.chargeId,
       credits: reserved,
@@ -399,7 +399,7 @@ async function settlePaperCredits(
   usage: Usage,
 ): Promise<void> {
   await settleUnder(ctx, {
-    userId: job.userId,
+    userId: job.createdBy,
     workspaceId: await payingWorkspace(ctx, job),
     chargeId: reservation.chargeId,
     credits,
@@ -455,6 +455,8 @@ export const runPaperQueueItem = internalAction({
       oaUrl: paper.oaUrl,
       storageId: paper.storageId,
       abstract: paper.abstract,
+      openalexId: paper.openalexId,
+      doi: paper.doi,
       pdfEnabled: args.pdfEnabled,
     });
     const isProcessable = paper.processable !== false && computedProcessable;
@@ -515,7 +517,8 @@ export const runPaperQueueItem = internalAction({
           await completeQueueItem(ctx, queueRow, "completed");
         return null;
       }
-      charged += indexed.embeddingCredits;
+      // A copy of its PDF from the store or OpenAlex is charged with the paper, under its hold.
+      charged += indexed.embeddingCredits + indexed.pdfCredits;
 
       await markPaperStatus(ctx, {
         paperId: paper._id,

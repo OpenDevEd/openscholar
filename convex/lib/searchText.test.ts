@@ -5,7 +5,6 @@ import { expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
-import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { personalWorkspaceOf } from "../workspaces/actor";
 
 it("the backfill makes rows from before findable, and an admin is found by the name they change to", async () => {
@@ -19,15 +18,14 @@ it("the backfill makes rows from before findable, and an admin is found by the n
     });
     // Rows from before, written without the triggers that keep their text.
     await runUntriggered(t, async (ctx) => {
-      await ctx.db.insert("queryShortcuts", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, data: { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 } });
-      await ctx.db.insert("extractionJobs", { userId, workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, name: "Tutoring review", sourceType: "history", status: "completed", totalPapers: 1, createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("queryShortcuts", { workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, data: { shorthand: "rct", expansion: "randomized controlled trial", createdAt: 1 } });
+      await ctx.db.insert("extractionJobs", { workspaceId: await personalWorkspaceOf(ctx, userId), createdBy: userId, name: "Tutoring review", sourceType: "history", status: "completed", totalPapers: 1, createdAt: 1, updatedAt: 1 });
     });
     const as = t.withIdentity({ subject: "admin" });
     const shortcuts = async () => (await as.query(api.research.records.listedShortcuts, { accountId: "admin", sort: "recent", text: "randomized", paginationOpts: { cursor: null, numItems: 10 } })).page.map((row) => row.shorthand);
     const jobs = async () => (await t.query(internal.extraction.queries.listJobsForAssistant, { userId, sort: "recent", text: "tutoring", paginationOpts: { cursor: null, numItems: 10 } })).page.map((job) => job.name);
     await t.run(async (ctx) => {
       await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
-      await seedOrganizationFeatures(ctx, ["admin"], { extraction: true });
     });
     expect(await t.action(internal.migrations.searchText.verify, {})).toBe(2);
     await t.mutation(internal.migrations.searchText.run, {});

@@ -4,12 +4,14 @@ import { describe, expect, test } from "vitest";
 import schema from "../schema";
 
 import { requireEvidenceLibraryAccess } from "./access";
+import { organizationWorkspaceOf } from "../workspaces/personal";
+import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
 describe("library access", () => {
   async function seedMembership(
     role: "org:admin" | "org:member",
     state: "active" | "revoked" = "active",
-    evidenceLibrariesEnabled = true,
   ) {
     const t = convexTest(schema);
     await t.run(async (ctx) => {
@@ -18,7 +20,6 @@ describe("library access", () => {
         name: "Evidence Team",
         slug: "evidence-team",
         state: "active",
-        evidenceLibrariesEnabled,
         clerkCreatedAt: 1,
         clerkUpdatedAt: 1,
         createdAt: 1,
@@ -51,10 +52,10 @@ describe("library access", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: true,
       });
+      await grantPlanFeaturesForTest(ctx, otherOrganizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       const crossTenantLibraryId = await ctx.db.insert("evidenceLibraries", {
-        organizationId: otherOrganizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, otherOrganizationId),
         name: "Other Library",
         slug: "other-library",
         state: "active",
@@ -64,7 +65,7 @@ describe("library access", () => {
         updatedAt: 1,
       });
       const missingLibraryId = await ctx.db.insert("evidenceLibraries", {
-        organizationId: otherOrganizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, otherOrganizationId),
         name: "Deleted Library",
         slug: "deleted-library",
         state: "active",

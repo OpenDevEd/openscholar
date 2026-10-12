@@ -17,8 +17,8 @@
 import { MAX_PDF_BYTES } from "../files/limits";
 
 export const MAX_PDF_URL_LENGTH = 2048;
-export const MAX_REDIRECTS = 5;
-export const DEFAULT_TIMEOUT_MS = 30_000;
+const MAX_REDIRECTS = 5;
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 export class UnsafeUrlError extends Error {
   constructor(reason: string) {
@@ -134,7 +134,8 @@ export function validatePdfUrl(raw: string, allowHttp = false): URL {
   return parsed;
 }
 
-async function readCappedBody(
+/** A response's body, read no further than `maxBytes`: past it, the read stops and throws. */
+export async function readCappedBody(
   response: Response,
   maxBytes: number,
 ): Promise<Blob> {

@@ -2,12 +2,12 @@
 
 import { randomUUID } from "node:crypto";
 import { v } from "convex/values";
-import { action, type ActionCtx } from "../_generated/server";
+import { action, internalAction, type ActionCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { createCoolifyClient } from "./coolifyClient";
 import { SERVED_HOSTS_BATCH } from "../lib/queryBounds";
-import { evidenceLibrarySetupIdentityFields } from "./validators";
+import { addressReservationValidator, evidenceLibrarySetupIdentityFields, nameTakenValidator, unavailableValidator } from "./validators";
 
 const PROBE_TIMEOUT_MS = 8_000;
 // How long the list of hosts Coolify serves may be reused.
@@ -32,16 +32,6 @@ type AddressReservationResult =
   | ({ status: "reserved"; libraryId: Id<"evidenceLibraries"> } & AddressIdentity)
   | { status: "address-taken" }
   | Exclude<AddressCheckResult, { status: "available" }>;
-
-const nameTakenValidator = v.object({
-  status: v.literal("name-taken"),
-  libraryId: v.id("evidenceLibraries"),
-});
-
-const unavailableValidator = v.object({
-  status: v.literal("unavailable"),
-  reason: v.union(v.literal("check-failed"), v.literal("no-address")),
-});
 
 const addressCheckValidator = v.union(
   v.object({
@@ -180,11 +170,11 @@ export async function findFreeEvidenceLibraryAddress(
 
 async function checkEvidenceLibraryAddress(
   ctx: ActionCtx,
-  args: { name: string; organizationId: Id<"organizations"> },
+  args: { name: string; organizationId: Id<"organizations">; actingAs?: Id<"users"> },
 ): Promise<AddressCheckResult> {
   const state = await ctx.runQuery(
     internal.evidenceLibraries.queries.readAddressCandidates,
-    { name: args.name, organizationId: args.organizationId },
+    { name: args.name, organizationId: args.organizationId, ...(args.actingAs ? { actingAs: args.actingAs } : {}) },
   );
   if (state.status === "name-taken") return state;
 
@@ -220,45 +210,47 @@ export const checkAddress = action({
     await checkEvidenceLibraryAddress(ctx, { name: args.name, organizationId: args.organizationId }),
 });
 
+/** Checks the address a name would get and keeps it, as the caller or, with `actingAs`, the person the assistant acts for. */
+async function reserveLibraryAddress(ctx: ActionCtx, args: { name: string; organizationId: Id<"organizations">; actingAs?: Id<"users"> }): Promise<AddressReservationResult> {
+  const checked = await checkEvidenceLibraryAddress(ctx, args);
+  if (checked.status !== "available") return checked;
+  const reserved = await ctx.runMutation(
+    internal.evidenceLibraries.mutations.reserveAddress,
+    {
+      ...(args.actingAs ? { actingAs: args.actingAs } : {}),
+      name: checked.name,
+      organizationId: args.organizationId,
+      publicAddress: checked.publicAddress,
+      slug: checked.slug,
+    },
+  );
+  // Someone took the address between the check and the write.
+  if (reserved.status === "address-taken") return reserved;
+  if (reserved.status === "name-taken") return reserved;
+  return {
+    status: "reserved",
+    libraryId: reserved.libraryId,
+    name: reserved.name,
+    publicAddress: reserved.publicAddress,
+    shortName: reserved.shortName,
+    slug: reserved.slug,
+  };
+}
+
 /**
  * Runs the same check and keeps the address it found, in one transaction.
  */
 export const reserveAddress = action({
   args: { name: v.string(), organizationId: v.id("organizations") },
-  returns: v.union(
-    v.object({
-      status: v.literal("reserved"),
-      libraryId: v.id("evidenceLibraries"),
-      ...evidenceLibrarySetupIdentityFields,
-    }),
-    v.object({ status: v.literal("address-taken") }),
-    nameTakenValidator,
-    unavailableValidator,
-  ),
-  handler: async (ctx, args): Promise<AddressReservationResult> => {
-    const checked = await checkEvidenceLibraryAddress(ctx, { name: args.name, organizationId: args.organizationId });
-    if (checked.status !== "available") return checked;
-    const reserved = await ctx.runMutation(
-      internal.evidenceLibraries.mutations.reserveAddress,
-      {
-        name: checked.name,
-        organizationId: args.organizationId,
-        publicAddress: checked.publicAddress,
-        slug: checked.slug,
-      },
-    );
-    // Someone took the address between the check and the write.
-    if (reserved.status === "address-taken") return reserved;
-    if (reserved.status === "name-taken") return reserved;
-    return {
-      status: "reserved",
-      libraryId: reserved.libraryId,
-      name: reserved.name,
-      publicAddress: reserved.publicAddress,
-      shortName: reserved.shortName,
-      slug: reserved.slug,
-    };
-  },
+  returns: addressReservationValidator,
+  handler: async (ctx, args): Promise<AddressReservationResult> => await reserveLibraryAddress(ctx, args),
+});
+
+/** The same, for the person the assistant acts for (./assistant.ts). */
+export const reserveAddressFor = internalAction({
+  args: { name: v.string(), organizationId: v.id("organizations"), actingAs: v.id("users") },
+  returns: addressReservationValidator,
+  handler: async (ctx, args): Promise<AddressReservationResult> => await reserveLibraryAddress(ctx, args),
 });
 
 /**

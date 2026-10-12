@@ -3,6 +3,9 @@ import { createHash } from "node:crypto";
 import { convexTest } from "convex-test";
 import { afterEach, expect, it, vi } from "vitest";
 import schema from "../../schema";
+import { organizationWorkspaceOf } from "../../workspaces/personal";
+import { grantPlanFeaturesForTest } from "../../billing/billing.test-support";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../../lib/billing/plans";
 const modules = import.meta.glob("/convex/**/*.ts");
 const token = "els_" + "a".repeat(43);
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllEnvs(); });
@@ -11,27 +14,36 @@ async function setup() {
   vi.useFakeTimers();
   const t = convexTest(schema, modules);
   const libraryId = await t.run(async ctx => {
-    const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: "digest-org", evidenceLibrariesEnabled: true, name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
-    const libraryId = await ctx.db.insert("evidenceLibraries", {organizationId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1});
+    const organizationId = await ctx.db.insert("organizations", {clerkOrganizationId: "digest-org", name: "Library", slug: "library", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1});
+    await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
+    const libraryId = await ctx.db.insert("evidenceLibraries", {workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1});
     await ctx.db.insert("evidenceLibraryCredentials", {libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: createHash("sha256").update(token).digest("hex"), validationState: "valid", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1});
     return libraryId;
   });
   const body = {libraryId, editionId: "5e9558ce-ed55-4dc4-a44b-d1cbd3f9af64", locale: "en-GB", periodStart: "2026-09-01T09:00:00Z", periodEnd: "2026-09-08T09:00:00Z", publicationCount: 40, publications: [{key: "ABCD2345", title: "Attention in classrooms", creators: ["Caitlin Mills"], date: "2026", abstract: "A framework for examining attention in learning.", publicationType: "Report", doi: null}]};
   const request = (patch: Record<string, unknown> = {}, credential = token) => t.fetch("/api/v1/evidence-libraries/digests/generate", {method: "POST", headers: {Authorization: `Bearer ${credential}`, "Content-Type": "application/json"}, body: JSON.stringify({...body, ...patch})});
-  // Runs the job that was just queued, leaving its one-day expiry pending.
-  const finishGeneration = async () => { vi.advanceTimersByTime(1); await t.finishInProgressScheduledFunctions(); };
+  // Runs the job that was just queued and the review it queues, leaving its one-day expiry pending.
+  const finishGeneration = async () => { for (let stage = 0; stage < 2; stage++) { vi.advanceTimersByTime(1); await t.finishInProgressScheduledFunctions(); } };
   const saved = () => t.run(async ctx => ({jobs: await ctx.db.query("evidenceLibraryDigestJobs").collect(), files: await ctx.db.system.query("_storage").collect()}));
   return {t, libraryId, request, finishGeneration, saved};
 }
 
 const REVIEWER = "anthropic/claude-haiku-5.5";
 const answer = (model: string, content: unknown) => new Response(JSON.stringify({id: "generation", model, created: 1, choices: [{index: 0, finish_reason: "stop", message: {role: "assistant", content: JSON.stringify(content)}}], usage: {prompt_tokens: 10, completion_tokens: 10, total_tokens: 20}}), {headers: {"Content-Type": "application/json"}});
-/** Stands in for OpenRouter: the writer's answers in order, then the reviewer's, which flags nothing unless told to. */
-function stubModels(writer: unknown[], reviewer: unknown[] = []) {
-  const sent = {writer: [] as Record<string, unknown>[], reviewer: [] as Record<string, unknown>[]};
+/**
+ * Stands in for OpenRouter: the writer's answers in order, then the reviewer's, which flags nothing unless told to.
+ * `jev` answers what kind of publication a title is; a title it does not know gets a failed request.
+ */
+function stubModels(writer: unknown[], reviewer: unknown[] = [], jev: Record<string, string> = {}) {
+  const sent = {writer: [] as Record<string, unknown>[], reviewer: [] as Record<string, unknown>[], jev: [] as string[]};
   vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
-    expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");
     const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    if (String(url) === "https://openrouter.ai/api/alpha/decisions") {
+      const title = /^Title: (.*)$/m.exec(String(body.state))?.[1] ?? "";
+      sent.jev.push(title);
+      return jev[title] ? Response.json({answers: {k: {choice: jev[title]}}}) : new Response("unavailable", {status: 500});
+    }
+    expect(String(url)).toBe("https://openrouter.ai/api/v1/chat/completions");
     const role = body.model === REVIEWER ? "reviewer" : "writer";
     sent[role].push(body);
     const given = (role === "writer" ? writer : reviewer)[sent[role].length - 1];
@@ -52,6 +64,9 @@ it("writes the digest in the background and returns it on every request until it
   expect(sent.writer).toHaveLength(1);
   expect(sent.writer[0]).toMatchObject({model: "openai/gpt-6-luna", reasoning: {effort: "max"}, provider: {require_parameters: true, allow_fallbacks: false}});
   expect(sent.writer[0]).not.toHaveProperty("tools");
+  // A library that marks no likely reviews leaves telling them apart to the writer, and nothing is read by Jev.
+  expect(JSON.stringify(sent.writer[0])).toContain("Tell them from the title and abstract");
+  expect(sent.jev).toEqual([]);
   // A second model reads the finished digest against the records it cites.
   expect(sent.reviewer).toMatchObject([{model: REVIEWER}]);
   const response = await request();
@@ -74,6 +89,57 @@ it("writes the digest in the background and returns it on every request until it
   await t.finishInProgressScheduledFunctions();
   expect(await saved()).toEqual({jobs: [], files: []});
   expect(await t.run(ctx => ctx.db.query("users").collect())).toEqual([]);
+});
+
+it("has the likely reviews a library marks read once, tells the writer what each is, and hands the answers back", async () => {
+  vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
+  const {request, finishGeneration} = await setup();
+  const publication = (key: string, title: string, marks: object = {}) => ({key, title, creators: ["Ada Mills"], date: "2026", abstract: null, publicationType: "journalArticle", doi: null, ...marks});
+  const publications = [
+    publication("ABCD2345", "Attention in classrooms"),
+    publication("BBBB2345", "Drought: a systematic review", {candidate: true}),
+    // Read for an earlier digest: its answer comes with the request and it is not read again.
+    publication("CCCC2345", "Adaptation, pooled", {candidate: true, kind: "meta-analysis"}),
+    publication("DDDD2345", "A review of my summer", {candidate: true}),
+    publication("EEEE2345", "Unreadable today", {candidate: true}),
+  ];
+  const sent = stubModels([{title: "Attention", summary: "One framework.", markdown: "A framework. [Mills, 2026](/lib/ABCD2345)"}], [], {"Drought: a systematic review": "review", "A review of my summer": "study"});
+  expect((await request({publications})).status).toBe(202);
+  await finishGeneration();
+  expect(sent.jev.sort()).toEqual(["A review of my summer", "Drought: a systematic review", "Unreadable today"]);
+  const prompt = JSON.stringify(sent.writer[0]);
+  expect(prompt).toContain("its library had it read");
+  expect(prompt).not.toContain("candidate");
+  // The writer is told only what is a meta-analysis or a review.
+  const supplied = (/\{\\"libraryId.*\}\]\}/.exec(prompt)?.[0] ?? "").replaceAll("\\\"", "\"");
+  expect((JSON.parse(supplied) as {publications: {key: string; kind?: string}[]}).publications.map(entry => [entry.key, entry.kind ?? null])).toEqual([
+    ["ABCD2345", null], ["BBBB2345", "review"], ["CCCC2345", "meta-analysis"], ["DDDD2345", null], ["EEEE2345", null],
+  ]);
+  const response = await request({publications});
+  expect(response.status).toBe(200);
+  // What could not be read is left out, so the library asks again; what it already knew is not repeated.
+  expect((await response.json() as {digest: {kinds: unknown}}).digest.kinds).toEqual({BBBB2345: "review", DDDD2345: "study"});
+});
+
+it("hands back what was read when the writer fails, so the next attempt has nothing read again", async () => {
+  vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
+  const {request, finishGeneration} = await setup();
+  const publication = (marks: object) => ({key: "BBBB2345", title: "Drought: a systematic review", creators: ["Ada Mills"], date: "2026", abstract: null, publicationType: "journalArticle", doi: null, ...marks});
+  let read = 0;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async url => {
+    if (String(url) !== "https://openrouter.ai/api/alpha/decisions") return new Response(JSON.stringify({error: {message: "Model unavailable", code: 503}}), {status: 503, headers: {"Content-Type": "application/json"}});
+    read++;
+    return Response.json({answers: {k: {choice: "review"}}});
+  });
+  expect((await request({publications: [publication({candidate: true})]})).status).toBe(202);
+  await finishGeneration();
+  const failed = await request({publications: [publication({candidate: true})]});
+  expect(failed.status).toBe(503);
+  expect(await failed.json()).toEqual({error: "digest_generation_failed", kinds: {BBBB2345: "review"}});
+  // The library keeps the answer and sends it with its next attempt.
+  expect((await request({publications: [publication({candidate: true, kind: "review"})]})).status).toBe(202);
+  await finishGeneration();
+  expect(read).toBe(1);
 });
 
 it("repairs a mistyped citation, straightens curly quotes and levels headings instead of rejecting the digest", async () => {

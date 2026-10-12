@@ -134,6 +134,7 @@ export function assembleEvidenceLibraryRuntimePayload(input: {
       aiModelMetadata: input.aiModelMetadata,
       aiModelCatalogReady: input.aiModelCatalogReady,
       zoteroTranslationUrl: input.zoteroTranslationUrl,
+      openAlexApiKey: input.platformOpenAlexApiKey,
       mail: input.mail,
       brand: input.brand,
       embeddingApiKey: input.embeddingApiKey,

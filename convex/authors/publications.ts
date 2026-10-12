@@ -1,7 +1,8 @@
 import { MAX_AUTHORS_PER_PUBLICATION } from "../lib/queryBounds";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { v } from "convex/values";
-import { internalMutation, query } from "../lib/functions";
+import { internalMutation, internalQuery, query, type QueryCtx } from "../lib/functions";
+import { AUTHOR_PUBLICATIONS_READ, publicationReferencePageValidator, publicationReferenceValidator } from "./validators";
 import { authenticateLibraryServiceCredential } from "../evidenceLibraries/credentials";
 import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { createError } from "../lib/errors";
@@ -48,26 +49,39 @@ export const replaceFromLibrary = internalMutation({
   },
 });
 
+/** A profile's publications with the library each is in, where that library can be opened. */
+async function withLibraries(ctx: QueryCtx, references: Doc<"authorPublications">[]) {
+  const libraries = new Map<Id<"evidenceLibraries">, {id: Id<"evidenceLibraries">; name: string; url: string}>();
+  for (const libraryId of new Set(references.map(reference => reference.libraryId))) {
+    const library = await ctx.db.get("evidenceLibraries", libraryId);
+    if (!library) continue;
+    const url = await readEvidenceLibraryAdminLaunchTarget(ctx, library);
+    if (url) libraries.set(libraryId, {id: libraryId, name: library.name, url});
+  }
+  return references.flatMap(reference => {
+    const library = libraries.get(reference.libraryId);
+    return library ? [{id: reference._id, itemKey: reference.itemKey, rank: reference.rank, library}] : [];
+  });
+}
+
 export const list = query({
   args: {profileId: v.string()},
-  returns: v.array(v.object({
-    id: v.id("authorPublications"), itemKey: v.string(), rank: v.optional(v.number()),
-    library: v.object({id: v.id("evidenceLibraries"), name: v.string(), url: v.string()}),
-  })),
+  returns: v.array(publicationReferenceValidator),
   handler: async (ctx, args) => {
     const profileId = ctx.db.normalizeId("authorProfiles", args.profileId);
     if (!profileId) return [];
-    const references = await ctx.db.query("authorPublications").withIndex("by_profileId", q => q.eq("profileId", profileId)).take(1000);
-    const libraries = new Map<Id<"evidenceLibraries">, {id: Id<"evidenceLibraries">; name: string; url: string}>();
-    for (const libraryId of new Set(references.map(reference => reference.libraryId))) {
-      const library = await ctx.db.get("evidenceLibraries", libraryId);
-      if (!library) continue;
-      const url = await readEvidenceLibraryAdminLaunchTarget(ctx, library);
-      if (url) libraries.set(libraryId, {id: libraryId, name: library.name, url});
-    }
-    return references.flatMap(reference => {
-      const library = libraries.get(reference.libraryId);
-      return library ? [{id: reference._id, itemKey: reference.itemKey, rank: reference.rank, library}] : [];
-    });
+    return await withLibraries(ctx, await ctx.db.query("authorPublications").withIndex("by_profileId", q => q.eq("profileId", profileId)).take(1000));
+  },
+});
+
+/** A page of a profile's publications, from `cursor`, however many it has (../authors/assistant.ts). */
+export const referencePage = internalQuery({
+  args: {profileId: v.string(), cursor: v.union(v.string(), v.null())},
+  returns: publicationReferencePageValidator,
+  handler: async (ctx, {profileId, cursor}) => {
+    const id = ctx.db.normalizeId("authorProfiles", profileId);
+    if (!id) return {page: [], isDone: true, continueCursor: ""};
+    const read = await ctx.db.query("authorPublications").withIndex("by_profileId", q => q.eq("profileId", id)).paginate({numItems: AUTHOR_PUBLICATIONS_READ, cursor});
+    return {page: await withLibraries(ctx, read.page), isDone: read.isDone, continueCursor: read.continueCursor};
   },
 });

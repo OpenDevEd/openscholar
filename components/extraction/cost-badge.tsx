@@ -1,11 +1,12 @@
 "use client";
 
 import { Coins } from "@/components/icons";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
 import type { Id } from "@/convex/_generated/dataModel";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
+import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 
 export interface CostBadgeProps {
   jobId: Id<"extractionJobs">;
@@ -38,10 +39,8 @@ export interface CostBadgeProps {
 export function CostBadge({ jobId, compact = false, href }: CostBadgeProps) {
   const t = useTranslations("extraction.cost");
 
-  const { data, settlement } = useProtectedQuery(
-    api.extraction.queries.costs.getJobCost,
-    { jobId },
-  );
+  const workspaceId = useWorkspace();
+  const { data, settlement } = useProtectedQuery(api.extraction.queries.costs.getJobCost, inWorkspace(workspaceId, { jobId }));
 
   if (settlement !== "ready" || !data) {
     return (
@@ -54,7 +53,7 @@ export function CostBadge({ jobId, compact = false, href }: CostBadgeProps) {
     );
   }
 
-  const total = data.total;
+  const total = data.credits;
 
   const chipClasses = compact
     ? "inline-flex items-center gap-1 rounded-md bg-inset px-2 py-0.5 text-xs"

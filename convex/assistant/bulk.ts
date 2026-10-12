@@ -18,7 +18,6 @@ import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { assistantPath } from "../lib/userActions";
 import { messageOf } from "./failures";
 import { UNDO_BULK, undoOf } from "./steps";
-import { personalWorkspaceOf } from "../workspaces/actor";
 
 /**
  * Changes one transaction makes at most. Most read and write a handful of rows. One that
@@ -50,15 +49,13 @@ const mutationAt = (path: string) => {
  * A change with no undo of its own (a save over a rating kept on search cards) is kept as
  * one, so undoing the step says it stayed.
  */
-// `workspaceId` on these three: the one the reply or the undo acts in (./access.ts `replyWorkspace`). A call made before
-// replies named theirs (#650) acts in the person's own, until slice 8 makes it required.
-const workspaceArg = { workspaceId: v.optional(v.id("workspaces")) };
+// `workspaceId` on these three: the one the reply or the undo acts in (./access.ts `replyWorkspace`).
+const workspaceArg = { workspaceId: v.id("workspaces") };
 
 export const apply = internalMutation({
   args: { userId: v.id("users"), ...workspaceArg, stepId: v.id("assistantSteps"), path: v.string(), items: v.string(), approved: v.boolean(), key: v.string() },
   returns: v.object({ took: v.number(), made: v.number(), reversible: v.number(), failed: v.number(), why: v.optional(v.string()) }),
-  handler: async (ctx, { userId, stepId, path, items, approved, key, ...given }) => {
-    const workspaceId = given.workspaceId ?? (await personalWorkspaceOf(ctx, userId));
+  handler: async (ctx, { userId, workspaceId, stepId, path, items, approved, key }) => {
     const step = await ctx.db.get("assistantSteps", stepId);
     const action = mutationAt(path);
     const each = (JSON.parse(items) as Record<string, unknown>[]).slice(0, CHUNK);
@@ -103,8 +100,7 @@ export const TRIED = "TRIED";
 export const tryChanges = internalMutation({
   args: { userId: v.id("users"), ...workspaceArg, path: v.string(), items: v.string() },
   returns: v.null(),
-  handler: async (ctx, { userId, path, items, ...given }) => {
-    const workspaceId = given.workspaceId ?? (await personalWorkspaceOf(ctx, userId));
+  handler: async (ctx, { userId, workspaceId, path, items }) => {
     const action = mutationAt(path);
     const each = (JSON.parse(items) as Record<string, unknown>[]).slice(0, CHUNK);
     let failed = 0;
@@ -133,8 +129,7 @@ export const tryChanges = internalMutation({
 export const revert = internalMutation({
   args: { userId: v.id("users"), ...workspaceArg, stepId: v.id("assistantSteps"), reversed: v.number(), refused: v.number(), why: v.optional(v.string()) },
   returns: v.null(),
-  handler: async (ctx, { userId, stepId, workspaceId: given, ...before }) => {
-    const workspaceId = given ?? (await personalWorkspaceOf(ctx, userId));
+  handler: async (ctx, { userId, stepId, workspaceId, ...before }) => {
     let { reversed, refused, why } = before;
     // The newest, and whether another follows it: read before the reversal, which may leave no room to read after.
     const [row, next] = await ctx.db.query("assistantStepUndos").withIndex("by_step", (q) => q.eq("stepId", stepId)).order("desc").take(2);

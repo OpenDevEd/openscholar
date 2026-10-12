@@ -25,7 +25,7 @@ export function filterPaths(value: object, path: string[] = [], result: Record<s
  * start with, and any trailing `sample N seed N`, which must stay outside the
  * filters when more clauses are added.
  */
-export function splitOql(query: string): { where: string; sample: string } {
+function splitOql(query: string): { where: string; sample: string } {
   const match = query.trim().match(/^(?:works\b\s*(?:where\b)?)?\s*([\s\S]*?)\s*(sample\s+\d+(?:\s+seed\s+\d+)?)?$/i);
   return { where: match?.[1] ?? "", sample: match?.[2] ?? "" };
 }
@@ -38,7 +38,7 @@ export function joinOql(query: string, clauses: string[]): string {
 }
 
 /** The sidebar's API filters as OQL clauses. OQL takes the API's column ids as field names. */
-export function oqlClauses(filter: object): string[] {
+function oqlClauses(filter: object): string[] {
   return Object.entries(filterPaths(filter)).map(([column, values]) => {
     const list = values.flatMap((value) => String(value).split("|"));
     // The API writes at least N citations as `cited_by_count:>N-1`, a comparison in OQL.

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Ubuntu } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -6,7 +7,6 @@ import { QuerySyncProvider } from "@/components/query-sync-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmationHost } from "@/lib/confirmation";
 import { AppSidebar } from "@/components/app-sidebar";
-import { sidebarWidthScript } from "@/lib/sidebar-width";
 import { MobileNavbar } from "@/components/mobile-navbar";
 import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
@@ -19,7 +19,12 @@ import { ConsentAwareGoogleAnalytics } from "@/components/google-analytics";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import { preloadQuery } from "convex/nextjs";
+import { cookies, headers } from "next/headers";
+import { auth } from "@clerk/nextjs/server";
+import { LOOK_COOKIE, lookKey, readCache, WORKSPACE_HEADER } from "@/lib/workspaces/look-cache";
 import { AssistantPanel } from "@/components/assistant/panel";
+import { ItemHome, WorkspaceGone } from "@/components/workspaces/item-home";
+import { WorkspacesProvider } from "@/components/workspaces/parts";
 import { api } from "@/convex/_generated/api";
 
 // The brand typeface. To change it, swap the family here; --font-app feeds
@@ -70,18 +75,22 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [locale, messages, preloadedFlags, preloadedCatalog] = await Promise.all([
+  const [locale, messages, preloadedFlags, preloadedCatalog, { userId }, requestHeaders, requestCookies] = await Promise.all([
     getLocale(),
     getMessages(),
     preloadQuery(api.featureFlags.queries.list),
     preloadQuery(api.billing.catalog.get),
+    auth(),
+    headers(),
+    cookies(),
   ]);
+  // The rail as this browser last saw it, drawn from the first frame: the person and the address's workspace. None signed out.
+  const slug = requestHeaders.get(WORKSPACE_HEADER) || null;
+  const { me, looks } = readCache(requestCookies.get(LOOK_COOKIE)?.value, userId);
+  const look = looks[lookKey(slug)];
 
   return (
     <html lang={locale} suppressHydrationWarning className={cn(appFont.variable, "antialiased")}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: sidebarWidthScript }} />
-      </head>
       <body>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
@@ -90,23 +99,30 @@ export default async function RootLayout({
                 <NuqsAdapter>
                   <QuerySyncProvider>
                     <TooltipProvider>
-                      <div className="flex min-h-screen">
-                        {/* Sidebar */}
-                        <AppSidebar />
+                      <WorkspacesProvider>
+                        <div className="flex min-h-screen">
+                          {/* Sidebar */}
+                          <AppSidebar firstWorkspace={{ slug, ...(userId ? { user: userId } : {}), ...(me ? { me } : {}), ...(look ? { look } : {}) }} />
 
-                        {/* Main Content Area */}
-                        <div className="flex-1 flex flex-col min-w-0 min-h-0 [--app-navbar-height:3.5rem] md:[--app-navbar-height:0px]">
-                          {/* Mobile Navbar */}
-                          <MobileNavbar />
+                          {/* Main Content Area */}
+                          <div className="flex-1 flex flex-col min-w-0 min-h-0 [--app-navbar-height:3.5rem] md:[--app-navbar-height:0px]">
+                            {/* Mobile Navbar */}
+                            <MobileNavbar />
 
-                          <AuthRouteGate>{children}</AuthRouteGate>
+                            <AuthRouteGate>{children}</AuthRouteGate>
+                          </div>
                         </div>
-                      </div>
-                      <Toaster />
-                      <ConfirmationHost />
-                      <AssistantPanel />
-                      <CookieConsentBanner />
-                      <ConsentAwareGoogleAnalytics />
+                        <Toaster />
+                        <ConfirmationHost />
+                        {/* A link to an item in another of the person's workspaces opens there (#651), and a page of an organization they're no longer in gives way to their own. */}
+                        <Suspense fallback={null}>
+                          <ItemHome />
+                          <WorkspaceGone />
+                        </Suspense>
+                        <AssistantPanel />
+                        <CookieConsentBanner />
+                        <ConsentAwareGoogleAnalytics />
+                      </WorkspacesProvider>
                     </TooltipProvider>
                   </QuerySyncProvider>
                 </NuqsAdapter>

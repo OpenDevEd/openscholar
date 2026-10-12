@@ -1,10 +1,10 @@
 "use node";
 
 import { paginationOptsValidator, type PaginationOptions } from "convex/server";
-import { type GenericValidator, v } from "convex/values";
+import { type ObjectType, v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-import { action, type ActionCtx } from "../_generated/server";
+import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { decrypt } from "../lib/crypto";
 import { createError } from "../lib/errors";
 import {
@@ -28,41 +28,16 @@ import {
 } from "./runtimeReadClient";
 import {
   homeQuestionsValidator,
+  notSetUpValidator,
   resolvedCollectionsValidator,
+  reviewedPublicationValidator,
+  runtimeCollectionValidator,
+  runtimeInstitutionValidator,
+  runtimePage,
 } from "./runtimeReadValidators";
 
-const collectionValidator = v.object({
-  id: v.string(),
-  title: v.string(),
-  count: v.number(),
-  source: v.string(),
-  parentId: v.union(v.string(), v.null()),
-  hasChildren: v.boolean(),
-});
-
-const institutionValidator = v.object({ name: v.string(), count: v.number() });
-
-const reviewedPublicationValidator = v.object({
-  key: v.string(),
-  title: v.string(),
-  publishedAt: v.string(),
-  reviewer: v.string(),
-  reviewed: v.boolean(),
-});
-
-// `reason: "not-set-up"` means the library has no running runtime yet, so
-// there is nothing to read and the list is empty.
-const notSetUpValidator = v.optional(v.literal("not-set-up"));
 type NotSetUp = { reason: "not-set-up" };
 
-/** One page of a library's own list, as the library pages it. */
-const runtimePage = <Item extends GenericValidator>(item: Item) =>
-  v.object({
-    reason: notSetUpValidator,
-    page: v.array(item),
-    isDone: v.boolean(),
-    continueCursor: v.string(),
-  });
 type RuntimePage<Item> = {
   reason?: "not-set-up";
   page: Item[];
@@ -87,13 +62,16 @@ const pageOf = <Item>(
         continueCursor: result.nextCursor ?? "",
       };
 
-async function readTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">) {
+/** The library a read is of, and with `actingAs` the person the assistant reads it for (../evidenceLibraries/assistant.ts). */
+type Of = { libraryId: Id<"evidenceLibraries">; actingAs?: Id<"users"> };
+
+async function readTarget(ctx: ActionCtx, { libraryId, actingAs }: Of, action: RuntimeAccess) {
   const target: {
     targetBaseUrl: string;
     encryptedMachineCredential: string;
   } | null = await ctx.runQuery(
     internal.zotero.runtimeReads.readRuntimeReadTarget,
-    { libraryId },
+    { libraryId, action, ...(actingAs ? { actingAs } : {}) },
   );
   if (!target) return null;
   const encryptionKey = process.env.ENCRYPTION_KEY;
@@ -109,12 +87,16 @@ async function readTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">) {
   };
 }
 
+/** What a call asks of the library: to view what it holds, which its settings page shows everyone who views it (#653), or to change it. */
+type RuntimeAccess = "view" | "manage";
+
 async function readRuntime<T>(
   ctx: ActionCtx,
-  libraryId: Id<"evidenceLibraries">,
+  of: Of,
+  action: RuntimeAccess,
   read: (target: { baseUrl: string; credential: string }) => Promise<T>,
 ): Promise<T | NotSetUp> {
-  const target = await readTarget(ctx, libraryId);
+  const target = await readTarget(ctx, of, action);
   if (!target) return { reason: "not-set-up" };
   try {
     return await read(target);
@@ -127,48 +109,50 @@ async function readRuntime<T>(
 }
 
 /** One page of the library's collections, searched by `query`. */
-export const listCollections = action({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    query: v.optional(v.string()),
-    paginationOpts: paginationOptsValidator,
-  },
-  returns: runtimePage(collectionValidator),
-  handler: async (ctx, args): Promise<RuntimePage<RuntimeCollection>> =>
-    pageOf(
-      await readRuntime<RuntimeCollectionsPage>(ctx, args.libraryId, (target) =>
-        readRuntimeCollections(fetch, {
-          ...target,
-          query: args.query,
-          ...asked(args.paginationOpts),
-        }),
-      ),
+const listCollectionsArgs = {
+  libraryId: v.id("evidenceLibraries"),
+  query: v.optional(v.string()),
+  paginationOpts: paginationOptsValidator,
+};
+const listCollectionsReturns = runtimePage(runtimeCollectionValidator);
+const listCollectionsRead = async (ctx: ActionCtx, args: ObjectType<typeof listCollectionsArgs> & Of): Promise<RuntimePage<RuntimeCollection>> =>
+  pageOf(
+    await readRuntime<RuntimeCollectionsPage>(ctx, args, "view", (target) =>
+      readRuntimeCollections(fetch, {
+        ...target,
+        query: args.query,
+        ...asked(args.paginationOpts),
+      }),
     ),
-});
+  );
+export const listCollections = action({ args: listCollectionsArgs, returns: listCollectionsReturns, handler: listCollectionsRead });
+/** The same, for the person the assistant acts for (../evidenceLibraries/assistant.ts). */
+export const listCollectionsFor = internalAction({ args: { ...listCollectionsArgs, actingAs: v.id("users") }, returns: listCollectionsReturns, handler: listCollectionsRead });
 
 /** One page of the institutions named on the library's records. */
-export const listInstitutions = action({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    query: v.optional(v.string()),
-    sort: v.optional(v.union(v.literal("count"), v.literal("name"))),
-    direction: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
-    paginationOpts: paginationOptsValidator,
-  },
-  returns: runtimePage(institutionValidator),
-  handler: async (ctx, args): Promise<RuntimePage<RuntimeInstitution>> =>
-    pageOf(
-      await readRuntime<RuntimeInstitutionsPage>(ctx, args.libraryId, (target) =>
-        readRuntimeInstitutions(fetch, {
-          ...target,
-          query: args.query,
-          sort: args.sort,
-          direction: args.direction,
-          ...asked(args.paginationOpts),
-        }),
-      ),
+const listInstitutionsArgs = {
+  libraryId: v.id("evidenceLibraries"),
+  query: v.optional(v.string()),
+  sort: v.optional(v.union(v.literal("count"), v.literal("name"))),
+  direction: v.optional(v.union(v.literal("asc"), v.literal("desc"))),
+  paginationOpts: paginationOptsValidator,
+};
+const listInstitutionsReturns = runtimePage(runtimeInstitutionValidator);
+const listInstitutionsRead = async (ctx: ActionCtx, args: ObjectType<typeof listInstitutionsArgs> & Of): Promise<RuntimePage<RuntimeInstitution>> =>
+  pageOf(
+    await readRuntime<RuntimeInstitutionsPage>(ctx, args, "view", (target) =>
+      readRuntimeInstitutions(fetch, {
+        ...target,
+        query: args.query,
+        sort: args.sort,
+        direction: args.direction,
+        ...asked(args.paginationOpts),
+      }),
     ),
-});
+  );
+export const listInstitutions = action({ args: listInstitutionsArgs, returns: listInstitutionsReturns, handler: listInstitutionsRead });
+/** The same, for the person the assistant acts for (../evidenceLibraries/assistant.ts). */
+export const listInstitutionsFor = internalAction({ args: { ...listInstitutionsArgs, actingAs: v.id("users") }, returns: listInstitutionsReturns, handler: listInstitutionsRead });
 
 /**
  * The names and record counts of collections the site already shows, so the
@@ -186,6 +170,7 @@ export const resolveLibraryCollections = action({
     args,
   ): Promise<{ items: RuntimeCollectionFacts[]; reason?: "not-set-up" }> => {
     await ctx.runQuery(internal.zotero.runtimeReads.requireRuntimeReadAccess, {
+      action: "view",
       libraryId: args.libraryId,
     });
     const ids = [...new Set(args.ids)];
@@ -196,7 +181,7 @@ export const resolveLibraryCollections = action({
         `A site shows at most ${RUNTIME_RESOLVE_MAX_TOTAL_IDS} collections`,
       );
     }
-    const result = await readRuntime(ctx, args.libraryId, async (target) => {
+    const result = await readRuntime(ctx, args, "view", async (target) => {
       // A site may show more collections than the library answers at once, so
       // the list is asked for in batches and put back together here.
       const found = new Map<string, RuntimeCollectionFacts>();
@@ -223,47 +208,46 @@ export const resolveLibraryCollections = action({
  * One page of the publications with a PDF, reviewed or not, for the home
  * page's "publication followed" choice.
  */
-export const listPublications = action({
-  args: {
-    libraryId: v.id("evidenceLibraries"),
-    query: v.optional(v.string()),
-    paginationOpts: paginationOptsValidator,
-  },
-  returns: runtimePage(reviewedPublicationValidator),
-  handler: async (
-    ctx,
-    args,
-  ): Promise<RuntimePage<RuntimeReviewedPublication>> =>
-    pageOf(
-      await readRuntime<RuntimeReviewedPublicationsPage>(
-        ctx,
-        args.libraryId,
-        (target) =>
-          readRuntimeReviewedPublications(fetch, {
-            ...target,
-            query: args.query,
-            ...asked(args.paginationOpts),
-          }),
-      ),
+const listPublicationsArgs = {
+  libraryId: v.id("evidenceLibraries"),
+  query: v.optional(v.string()),
+  paginationOpts: paginationOptsValidator,
+};
+const listPublicationsReturns = runtimePage(reviewedPublicationValidator);
+const listPublicationsRead = async (ctx: ActionCtx, args: ObjectType<typeof listPublicationsArgs> & Of): Promise<RuntimePage<RuntimeReviewedPublication>> =>
+  pageOf(
+    await readRuntime<RuntimeReviewedPublicationsPage>(
+      ctx,
+      args, "view",
+      (target) =>
+        readRuntimeReviewedPublications(fetch, {
+          ...target,
+          query: args.query,
+          ...asked(args.paginationOpts),
+        }),
     ),
-});
+  );
+export const listPublications = action({ args: listPublicationsArgs, returns: listPublicationsReturns, handler: listPublicationsRead });
+/** The same, for the person the assistant acts for (../evidenceLibraries/assistant.ts). */
+export const listPublicationsFor = internalAction({ args: { ...listPublicationsArgs, actingAs: v.id("users") }, returns: listPublicationsReturns, handler: listPublicationsRead });
 
 /** The publication with this key, for the title of a saved choice; null when the library has none. */
-export const readPublication = action({
-  args: { libraryId: v.id("evidenceLibraries"), key: v.string() },
-  returns: v.union(reviewedPublicationValidator, v.null()),
-  handler: async (ctx, args): Promise<RuntimeReviewedPublication | null> => {
-    const result = await readRuntime<RuntimeReviewedPublicationsPage>(
-      ctx,
-      args.libraryId,
-      (target) =>
-        readRuntimeReviewedPublications(fetch, { ...target, ids: [args.key] }),
-    );
-    return "reason" in result
-      ? null
-      : (result.items.find((item) => item.key === args.key) ?? null);
-  },
-});
+const readPublicationArgs = { libraryId: v.id("evidenceLibraries"), key: v.string() };
+const readPublicationReturns = v.union(reviewedPublicationValidator, v.null());
+const readPublicationRead = async (ctx: ActionCtx, args: ObjectType<typeof readPublicationArgs> & Of): Promise<RuntimeReviewedPublication | null> => {
+  const result = await readRuntime<RuntimeReviewedPublicationsPage>(
+    ctx,
+    args, "view",
+    (target) =>
+      readRuntimeReviewedPublications(fetch, { ...target, ids: [args.key] }),
+  );
+  return "reason" in result
+    ? null
+    : (result.items.find((item) => item.key === args.key) ?? null);
+};
+export const readPublication = action({ args: readPublicationArgs, returns: readPublicationReturns, handler: readPublicationRead });
+/** The same, for the person the assistant acts for (../evidenceLibraries/assistant.ts). */
+export const readPublicationFor = internalAction({ args: { ...readPublicationArgs, actingAs: v.id("users") }, returns: readPublicationReturns, handler: readPublicationRead });
 
 /** The questions the home page asks in the slots the owner leaves empty. */
 export const readHomeQuestions = action({
@@ -276,7 +260,7 @@ export const readHomeQuestions = action({
     ctx,
     args,
   ): Promise<{ questions: (string | null)[]; reason?: "not-set-up" }> => {
-    const result = await readRuntime(ctx, args.libraryId, async (target) => ({
+    const result = await readRuntime(ctx, args, "view", async (target) => ({
       questions: await readRuntimeHomeQuestions(fetch, target),
     }));
     return "reason" in result ? { reason: "not-set-up", questions: [] } : result;
@@ -284,14 +268,15 @@ export const readHomeQuestions = action({
 });
 
 /** "Retry import": the library runs the source within seconds. */
-export const requestSourceRun = action({
-  args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string() },
-  returns: v.object({ reason: notSetUpValidator }),
-  handler: async (ctx, args): Promise<{ reason?: "not-set-up" }> => {
-    const result = await readRuntime(ctx, args.libraryId, async (target) => {
-      await requestRuntimeSourceRun(fetch, target, args.sourceKey);
-      return {};
-    });
-    return "reason" in result ? { reason: "not-set-up" } : {};
-  },
-});
+const requestSourceRunArgs = { libraryId: v.id("evidenceLibraries"), sourceKey: v.string() };
+const requestSourceRunReturns = v.object({ reason: notSetUpValidator });
+const requestSourceRunRead = async (ctx: ActionCtx, args: ObjectType<typeof requestSourceRunArgs> & Of): Promise<{ reason?: "not-set-up" }> => {
+  const result = await readRuntime(ctx, args, "manage", async (target) => {
+    await requestRuntimeSourceRun(fetch, target, args.sourceKey);
+    return {};
+  });
+  return "reason" in result ? { reason: "not-set-up" } : {};
+};
+export const requestSourceRun = action({ args: requestSourceRunArgs, returns: requestSourceRunReturns, handler: requestSourceRunRead });
+/** The same, for the person the assistant acts for (../evidenceLibraries/assistant.ts). */
+export const requestSourceRunFor = internalAction({ args: { ...requestSourceRunArgs, actingAs: v.id("users") }, returns: requestSourceRunReturns, handler: requestSourceRunRead });

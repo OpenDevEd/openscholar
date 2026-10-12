@@ -232,15 +232,10 @@ function isSectionKey(value: unknown): value is SectionKey {
   return typeof value === "string" && SECTION_KEYS.has(value);
 }
 
-export function getSectionAuthority(sectionKey: SectionKey): FieldAuthority {
+function getSectionAuthority(sectionKey: SectionKey): FieldAuthority {
   return SECTION_REGISTRY.find((section) => section.key === sectionKey)!
     .authority;
 }
-
-// Sections the platform fills at assembly time. Owners never save them.
-export const PLATFORM_SECTION_KEYS = SECTION_REGISTRY.filter(
-  (section) => section.authority === "platformProvisioned",
-).map((section) => section.key);
 
 export function isPlatformSection(sectionKey: SectionKey): boolean {
   return getSectionAuthority(sectionKey) === "platformProvisioned";

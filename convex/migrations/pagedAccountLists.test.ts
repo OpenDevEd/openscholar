@@ -12,7 +12,8 @@ it("counts the keys and admins saved before, once however often it runs, and rep
     // As rows saved before the counts: written without the triggers that keep them.
     await runUntriggered(t, async (ctx) => {
       const userId = await ctx.db.insert("users", { clerkId: "clerk_before", email: "before@test.local", state: "active" as const, createdAt: 1, updatedAt: 1 });
-      const key = { userId, keyPrefix: "sk_", appName: "app", redirectOrigin: "manual", createdAt: 1 };
+      const workspaceId = await ctx.db.insert("workspaces", { kind: "personal", userId });
+      const key = { userId, workspaceId, keyPrefix: "sk_", appName: "app", redirectOrigin: "manual", createdAt: 1 };
       await ctx.db.insert("walletKeys", { ...key, hashedKey: "a", isActive: true });
       await ctx.db.insert("walletKeys", { ...key, hashedKey: "b", isActive: true });
       await ctx.db.insert("walletKeys", { ...key, hashedKey: "c", isActive: false });

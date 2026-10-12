@@ -1,9 +1,11 @@
 "use client";
 
-import { useConvex, useMutation } from "convex/react";
+import { useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
+import { ItemBar } from "@/components/workspaces/activity";
+import { ShareButton } from "@/components/workspaces/share-dialog";
 import { useTranslations, useFormatter, useNow } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,6 +88,7 @@ import {
 } from "@/lib/extraction/filtering";
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 export default function JobDetailPage() {
   const toast = useAppToast();
@@ -100,7 +103,7 @@ export default function JobDetailPage() {
   const now = useNow();
   
   const params = useParams();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const isMobile = useIsMobile();
   const jobId = params.jobId as Id<"extractionJobs">;
 
@@ -145,14 +148,12 @@ export default function JobDetailPage() {
   // Only the action: reading the whole store would redraw this page each time the panel collapses or expands.
   const expandCitationPanel = useExtractionCitationPanelStore((state) => state.expand);
 
-  const cancelJob = useMutation(api.extraction.mutations.cancelExtraction);
-  const deleteJob = useMutation(api.extraction.mutations.deleteExtraction);
+  const cancelJob = useWorkspaceMutation(api.extraction.mutations.cancelExtraction);
+  const deleteJob = useWorkspaceMutation(api.extraction.mutations.deleteExtraction);
   const duplicateJob = useWorkspaceMutation(api.extraction.mutations.duplicateJob);
   const workspaceId = useWorkspace();
-  const pauseJob = useMutation(api.extraction.mutations.pause.pauseExtraction);
-  const resumeJob = useMutation(
-    api.extraction.mutations.resume.resumeExtraction,
-  );
+  const pauseJob = useWorkspaceMutation(api.extraction.mutations.pause.pauseExtraction);
+  const resumeJob = useWorkspaceMutation(api.extraction.mutations.resume.resumeExtraction);
 
   const jobShellQuery = useProtectedQuery(api.extraction.queries.getJobShell, {
     jobId,
@@ -161,6 +162,9 @@ export default function JobDetailPage() {
   const hasCurrentJobShell =
     jobShell?.status !== "ok" || jobShell.job._id === jobId;
   const shellJob = jobShell?.status === "ok" ? jobShell.job : undefined;
+  // Someone the job is shared with reads it (#653): what changes it, what it cost and what it waits on are its workspace's.
+  const guest = jobShell?.status === "ok" ? jobShell.guest : undefined;
+  const guests = jobShell?.status === "ok" ? (jobShell.guests ?? 0) : 0;
   const isExtractionJob = hasCurrentJobShell && shellJob !== undefined;
   const jobDetailsQuery = useProtectedQuery(
     api.extraction.queries.getJobDetails,
@@ -514,7 +518,7 @@ export default function JobDetailPage() {
                   filters={filters}
                   onFiltersChange={setFilters}
                 />
-                {viewMode === "table" && <ResultsColumnsMenu showCredits={showCreditsColumn} onShowCreditsChange={setShowCreditsColumn} />}
+                {viewMode === "table" && !guest && <ResultsColumnsMenu showCredits={showCreditsColumn} onShowCreditsChange={setShowCreditsColumn} />}
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -532,7 +536,7 @@ export default function JobDetailPage() {
                   </TooltipTrigger>
                   <TooltipContent>{tc("export")}</TooltipContent>
                 </Tooltip>
-                {isProcessing && (
+                {isProcessing && !guest && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -550,7 +554,7 @@ export default function JobDetailPage() {
                   </Tooltip>
                 )}
 
-                {job.status === "paused" && (
+                {job.status === "paused" && !guest && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -568,8 +572,8 @@ export default function JobDetailPage() {
                   </Tooltip>
                 )}
 
-                {/* Less frequent and destructive actions stay one click away. */}
-                <DropdownMenu>
+                {/* Less frequent and destructive actions stay one click away. A guest has none of them. */}
+                {guest ? null : <DropdownMenu>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <DropdownMenuTrigger asChild>
@@ -596,7 +600,7 @@ export default function JobDetailPage() {
                       {tc('delete')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
-                </DropdownMenu>
+                </DropdownMenu>}
                 <AlertDialog open={confirming === "cancel"} onOpenChange={(open) => !open && setConfirming(null)}>
                   <AlertDialogContent>
                       <AlertDialogHeader>
@@ -619,24 +623,26 @@ export default function JobDetailPage() {
                 <AlertDialog open={confirming === "delete"} onOpenChange={(open) => !open && setConfirming(null)}>
                   <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>{tConfirm('cancelJob')}</AlertDialogTitle>
+                        <AlertDialogTitle>{tConfirm('deleteJob')}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          {tConfirm('cancelJobDescription')}
+                          {tConfirm('deleteJobDescription')}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>{tConfirm('keepRunning')}</AlertDialogCancel>
+                        <AlertDialogCancel>{tc('cancel')}</AlertDialogCancel>
                         <AlertDialogAction
-                          onClick={handleCancel}
+                          onClick={handleDelete}
                           className="bg-destructive hover:bg-destructive/90"
                         >
-                          {tConfirm('yesCancel')}
+                          {tc('delete')}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
               </>}
               intro={<>
+          {/* The card's first row: who ran it, in an organization, and its Activity (#656). */}
+          <ItemBar kind="extraction" id={job._id} name={job.name} started="runBy" className="md:px-6" share={<ShareButton kind="extraction" id={job._id} name={job.name} guests={guests} />} guest={guest} />
           {/* What the job covers and how far it has got. Its name and state sit in the bar. */}
           <div className="space-y-3 border-b border-border-subtle px-4 py-4 md:px-6">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
@@ -652,11 +658,13 @@ export default function JobDetailPage() {
                 {isProcessing ? <AiIcon working size={14} className="size-3.5" /> : <RefreshCw className="size-3.5" />}
                 {tJob('updated', { timeAgo: format.relativeTime(new Date(job.updatedAt), now) })}
               </span>
-              <CostBadge
-                jobId={jobId}
-                compact
-                href={`/settings/billing?jobId=${jobId}`}
-              />
+              {guest ? null : (
+                <CostBadge
+                  jobId={jobId}
+                  compact
+                  href={`/settings/billing?jobId=${jobId}`}
+                />
+              )}
             </div>
             <JobProgressBar
               jobName={job.name}
@@ -682,16 +690,17 @@ export default function JobDetailPage() {
               the whole strip when every banner is null — so no phantom
               padding remains on clean completed / idle jobs. */}
           <div className="space-y-3 border-b border-border-subtle px-4 py-4 empty:hidden md:px-6">
-            {job.status === "creditsExhausted" && (
+            {job.status === "creditsExhausted" && !guest && (
               <JobStatusBanner
                 variant="creditsExhausted"
+                jobId={job._id}
                 allowed={job.spendCap}
                 onResume={handleResume}
                 onCancelRemaining={handleCancel}
               />
             )}
 
-            {job.status === "paused" && (
+            {job.status === "paused" && !guest && (
               <JobStatusBanner
                 variant="paused"
                 processedPapers={resolvedProgress.processed}
@@ -703,7 +712,7 @@ export default function JobDetailPage() {
 
             {(job.status === "completed" ||
               job.status === "failed" ||
-              job.status === "creditsExhausted") && (
+              job.status === "creditsExhausted") && !guest && (
               <RetrySummary jobId={jobId} />
             )}
 
@@ -755,7 +764,8 @@ export default function JobDetailPage() {
                     ) : (
                       <ListEmpty
                         icon={FileText}
-                        description={papersWithResults.length === 0 && job.status === "completed" ? tPdf('noResultsDescription') : tPdf('resultsWillAppear')}
+                        // One that has ended has no more to bring: only a job still going promises results.
+                        description={job.status === "completed" || job.status === "failed" || job.status === "cancelled" ? tPdf('noResultsDescription') : tPdf('resultsWillAppear')}
                       >
                         {tc('noResultsFound')}
                       </ListEmpty>
@@ -772,7 +782,7 @@ export default function JobDetailPage() {
                           onOpenAnswer={openAnswerPanel}
                           openAnswer={openAnswerKey(openAnswer)}
                           usePdfs={job.usePdfs ?? false}
-                          showCredits={showCreditsColumn}
+                          showCredits={showCreditsColumn && !guest}
                           onOpenPaper={openListFocus}
                         />
                       )}

@@ -13,11 +13,13 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { RetrySummary } from "@/components/extraction/retry-summary";
 
 vi.mock("next-intl", () => ({
+  useNow: () => new Date("2026-10-11T00:00:00Z"),
   useTranslations: () => (key: string, params?: Record<string, number>) =>
     params ? `${key}:${JSON.stringify(params)}` : key,
 }));
 
 vi.mock("next/navigation", () => ({
+  useParams: () => ({}),
   useRouter: () => ({ push: vi.fn() }),
 }));
 
@@ -49,7 +51,7 @@ vi.mock("convex/react", () => ({
 vi.mock("@/convex/_generated/api", () => ({
   api: {
     extraction: {
-      queries: { countJobFailures: "countJobFailures", costs: { estimateRetry: "estimateRetry" } },
+      queries: { countJobFailures: "countJobFailures", costs: { estimateRetry: "estimateRetry", capLeftOf: "capLeftOf" } },
       mutations: { retryFailedQuestions: "retryFailedQuestions" },
     },
     billing: {

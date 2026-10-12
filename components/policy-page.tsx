@@ -1,4 +1,4 @@
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { getTranslations } from "next-intl/server";
 import { PageWrapper } from "@/components/PageWrapper";
 import { MarkdownContent } from "@/components/markdown-content";

@@ -18,7 +18,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { SERVER_MODEL_SLUG } from "../ai/config";
 import { effortValidator } from "../aiModelConfig/validators";
-import { availableCredits } from "../billing/accounts";
+import { capReached, spendingRoom } from "../billing/memberCaps";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
@@ -32,14 +32,16 @@ import { hasVariants, variantIn, viewOf as actionView } from "../../lib/assistan
 import { CHAT_PROMPT_MAX_CHARS } from "../../lib/extraction/limits";
 import { ASSISTANT_REPLIES_AT_ONCE } from "../lib/constants";
 import { planLimit } from "../billing/accounts";
-import { personName, replyWorkspace, requireThread, touchThread } from "./access";
+import { replyWorkspace, requireThread, roleIn, touchThread } from "./access";
+import { personName } from "../lib/people";
 import { actorIn, personalWorkspaceOf } from "../workspaces/actor";
 import { assistant } from "./agent";
 import { CARRIED, CARRY_ON, compactionDue } from "./context";
 import { JOB_ENDED } from "./jobEnds";
 import { bulkOf, detailsOf } from "./details";
+import { opensOf } from "./links";
 import { TOOL_OF, allowAlways, allowTool, carriedOn, covers, noteReply, pausedAt, replyLimitOf } from "./spending";
-import { STEPS_SHOWN, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
+import { MAX_ASKS, STEPS_SHOWN, aboutOf, declineSteps, healCalls, settleAsked, stepsAt, stepsOfExchange, stopAsking } from "./steps";
 import { chatModel, previewOf, requireAssistantModel, writing } from "./threads";
 import { filesOf, partsFor, sent } from "./files";
 import { readsImages, readsPdfs } from "../../lib/assistant/files";
@@ -95,9 +97,6 @@ export async function admit(ctx: MutationCtx, workspaceId: Id<"workspaces">) {
       : `The assistant is already writing ${most} replies for you. Wait for one to finish.`);
   }
 }
-
-/** The workspace a reply, or one that waits, acts in. One from before replies named theirs ran in its sender's own (#650); slice 8 makes it required. */
-export const actingIn = async (ctx: Pick<QueryCtx, "db">, reply: { senderId: Id<"users">; workspaceId?: Id<"workspaces"> }) => reply.workspaceId ?? (await personalWorkspaceOf(ctx, reply.senderId));
 
 /** Clears the lock of a reply whose action died. What it had cost by then is still one of its sender's last replies. */
 async function endDead(ctx: MutationCtx, thread: Doc<"assistantThreads">) {
@@ -226,37 +225,48 @@ const waitingAttempt = (waiting: { order: number; askedAt: number }) => `${waiti
 
 /** The person's answer to a call the assistant asked about (./steps.ts): run it, or don't. */
 export const answer = mutation({
-  // `always`, with a yes to a call that spends credits: jobs that hold no more run in this chat without asking from now on (./spending.ts).
-  args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), allow: v.boolean(), always: v.optional(v.boolean()) },
+  // `stepIds`: the calls of one action the reply asked about together, answered as one (lib/assistant/step-cards.ts `askedGroups`).
+  // `always`, with a yes to calls that spend credits: jobs that hold no more run in this chat without asking from now on (./spending.ts).
+  args: { threadId: v.id("assistantThreads"), stepIds: v.array(v.id("assistantSteps")), allow: v.boolean(), always: v.optional(v.boolean()) },
   returns: v.null(),
-  handler: async (ctx, { threadId, stepId, allow, always }) => {
+  handler: async (ctx, { threadId, stepIds, allow, always }) => {
     const userId = (await requireAuth(ctx))._id;
     await requireFeature(ctx, FLAG, userId);
     const { thread } = await requireThread(ctx, userId, threadId, "write");
-    const step = await ctx.db.get("assistantSteps", stepId);
     const waiting = thread.asking;
-    if (!step || step.threadId !== threadId) throw createError("NOT_FOUND", "That step isn't in this chat.");
-    if (!waiting || step.order !== waiting.order || step.status !== "asking") throw createError("CONFLICT", "This has already been answered.");
-    // It would run with their access, on their records, so the answer is theirs alone.
-    if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can allow this.");
-    let left = (await stepsAt(ctx, threadId, "asking")).filter((other) => other._id !== stepId);
-    // A yes to a call that holds more than the person has starts nothing: it waits while they add credits, as its card says.
-    // The workspace the reply acts in pays for it.
-    const balance = allow && step.credits !== undefined ? await availableCredits(ctx, await actingIn(ctx, waiting)) : 0;
-    if (allow && step.credits !== undefined && step.credits > balance) throw createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
-    const tool = TOOL_OF[step.path];
-    // What else waits is allowed with it only while the balance covers this call and each one allowed before it.
-    let room = balance - (step.credits ?? 0);
-    const fits = (credits: number) => credits <= room && ((room -= credits), true);
+    if (!waiting) throw createError("CONFLICT", "This has already been answered.");
+    const ids = [...new Set(stepIds)];
+    if (!ids.length || ids.length > MAX_ASKS) throw createError("VALIDATION_ERROR", `Answer between 1 and ${MAX_ASKS} calls at once.`);
+    const steps: Doc<"assistantSteps">[] = [];
+    for (const id of ids) {
+      const step = await ctx.db.get("assistantSteps", id);
+      if (!step || step.threadId !== threadId) throw createError("NOT_FOUND", "That step isn't in this chat.");
+      if (step.order !== waiting.order || step.status !== "asking") throw createError("CONFLICT", "This has already been answered.");
+      // It would run with their access, on their records, so the answer is theirs alone.
+      if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can allow this.");
+      steps.push(step);
+    }
+    const answered = new Set<Id<"assistantSteps">>(ids);
+    let left = (await stepsAt(ctx, threadId, "asking")).filter((other) => !answered.has(other._id));
+    // A yes to calls that hold more than the person has starts nothing: they wait while they add credits, as their card says.
+    // The workspace the reply acts in pays for them, within the person's cap there.
+    const held = steps.filter((step) => step.credits !== undefined);
+    const credits = held.reduce((sum, step) => sum + step.credits!, 0);
+    const { available: balance, capped } = allow && held.length ? await spendingRoom(ctx, waiting.workspaceId, userId) : { available: 0, capped: false };
+    if (allow && held.length && credits > balance) throw capped ? capReached(credits) : createError("INSUFFICIENT_CREDITS", "There aren't enough credits for this yet. Add credits, then allow it.");
+    const tool = TOOL_OF[steps[0].path];
+    // What else waits is allowed with them only while the balance covers these calls and each one allowed before it.
+    let room = balance - credits;
+    const fits = (more: number) => more <= room && ((room -= more), true);
     if (allow && always && tool) {
       // A web search or a PDF read is allowed by its own switch, and so is whatever else waits of the same kind.
       await allowTool(ctx, threadId, userId, tool, true);
       const covered = left.filter((other) => TOOL_OF[other.path] === tool && fits(other.credits ?? 0));
       for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
       left = left.filter((other) => !covered.includes(other));
-    } else if (allow && always && step.credits !== undefined) {
+    } else if (allow && always && held.length) {
       // As opencode's "always" does for a session: the rule is kept, and what else waits that it now covers is allowed with it.
-      const allowance = await allowAlways(ctx, threadId, userId, step.credits);
+      const allowance = await allowAlways(ctx, threadId, userId, Math.max(...held.map((step) => step.credits!)));
       const covered = left.filter((other) => other.credits !== undefined && !TOOL_OF[other.path] && covers(allowance, other.credits, room) && fits(other.credits));
       for (const other of covered) await ctx.db.patch("assistantSteps", other._id, { status: "allowed" });
       left = left.filter((other) => !covered.includes(other));
@@ -265,11 +275,11 @@ export const answer = mutation({
     const paused = left.length ? null : pausedAt(waiting);
     // The answer that lets the reply carry on starts a reply, so it's held to how many a workspace has at once, before anything changes.
     // It carries on in the workspace it asked from; its actions are refused there if the sender has left it since.
-    const workspaceId = await actingIn(ctx, waiting);
+    const workspaceId = waiting.workspaceId;
     if (!left.length && !paused) await admit(ctx, workspaceId);
-    if (allow) await ctx.db.patch("assistantSteps", stepId, { status: "allowed" });
-    else await declineSteps(ctx, [step]);
-    // Calls it asked about together are answered one by one. The reply carries on after the last.
+    if (allow) for (const step of steps) await ctx.db.patch("assistantSteps", step._id, { status: "allowed" });
+    else await declineSteps(ctx, steps);
+    // Calls it asked about together are answered card by card. The reply carries on after the last.
     if (left.length) return null;
     // The answers are kept, and it runs what was allowed once it's carried on: answering a question isn't agreeing to spend more.
     if (paused) {
@@ -318,7 +328,7 @@ export const carryOn = mutation({
     // It spends their credits, so carrying it on is theirs alone.
     if (waiting.senderId !== userId) throw createError("FORBIDDEN", "Only the person the assistant is answering can carry this on.");
     // Carrying it on starts a reply, so it's held to how many a workspace has at once.
-    const workspaceId = await actingIn(ctx, waiting);
+    const workspaceId = waiting.workspaceId;
     await admit(ctx, workspaceId);
     await goOnFrom(ctx, thread, waiting, workspaceId, carriedOn(waiting, await replyLimitOf(ctx, threadId, userId)));
     return null;
@@ -412,14 +422,24 @@ export const stop = mutation({
   },
 });
 
-/** Where a reply's lock stands: still its own (`writing`), stopped by someone (`stop`), or gone with its chat or to another reply (`gone`). */
+/**
+ * Where a reply's lock stands: still its own (`writing`), to be stopped (`stop`), or gone with its
+ * chat or to another reply (`gone`). It is stopped by someone, or because its sender can no longer
+ * write in the chat: their account isn't active, the chat was taken back from them, or its
+ * workspace closed (./access.ts). They couldn't stop it themselves by then, and it runs on their
+ * credits.
+ */
 export const lockState = internalQuery({
   args: lockArgs,
   returns: v.union(v.literal("writing"), v.literal("stop"), v.literal("gone")),
   handler: async (ctx, { threadId, attemptId }) => {
-    const current = (await ctx.db.get("assistantThreads", threadId))?.reply;
-    if (current?.attemptId !== attemptId) return "gone" as const;
-    return current.stop ? ("stop" as const) : ("writing" as const);
+    const thread = await ctx.db.get("assistantThreads", threadId);
+    const current = thread?.reply;
+    if (!thread || current?.attemptId !== attemptId) return "gone" as const;
+    if (current.stop) return "stop" as const;
+    const sender = await ctx.db.get("users", current.senderId);
+    const role = sender?.state === "active" ? await roleIn(ctx, sender, thread) : null;
+    return role === "owner" || role === "write" ? ("writing" as const) : ("stop" as const);
   },
 });
 
@@ -442,7 +462,7 @@ export const release = internalMutation({
     asking: v.optional(
       v.object({
         promptMessageId: v.string(),
-        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()), batch: v.optional(v.number()), variant: v.optional(v.string()), outside: v.optional(v.literal(true)) })),
+        calls: v.array(v.object({ toolCallId: v.string(), tool: v.string(), path: v.string(), input: v.string(), subject: v.optional(v.string()), credits: v.optional(v.number()), shown: v.optional(v.string()), batch: v.optional(v.number()), variant: v.optional(v.string()), outside: v.optional(v.literal(true)), undoable: v.optional(v.literal(true)) })),
         spent: v.number(),
         rounds: v.number(),
         made: v.number(),
@@ -483,7 +503,7 @@ export const release = internalMutation({
     /** Schedules the reply's next request, under the same lock. One stopped meanwhile finds that out there, and shows as stopped. */
     const goOn = async ({ used, ...from }: Infer<typeof resumeValidator>, wait = 0) => {
       const { compacting: _compacting, ...lock } = current;
-      const workspaceId = await actingIn(ctx, current);
+      const workspaceId = current.workspaceId;
       const scheduledId = await ctx.scheduler.runAfter(wait, internal.assistant.run.reply, { threadId, attemptId, ...from, workspaceId, used });
       const { cap: _cap, ...held } = lock;
       return { ...held, workspaceId, scheduledId, spent: used.credits, ...(used.cap === undefined ? {} : { cap: used.cap }) };
@@ -497,7 +517,7 @@ export const release = internalMutation({
     /** The paused reply, as the chat keeps it until it's carried on: where it stands in `order`, and what it runs to. */
     const pausedFrom = ({ used, ...from }: Infer<typeof resumeValidator>, order: number, paused: NonNullable<ReturnType<typeof pauseBefore>>) => ({
       senderId: current.senderId,
-      ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}),
+      workspaceId: current.workspaceId,
       order,
       promptMessageId: from.promptMessageId,
       modelId: from.modelId,
@@ -550,11 +570,13 @@ export const release = internalMutation({
       // The chat takes no message until every call is answered, or the reply is stopped. Its summary, if one is due, waits for the reply to end.
       const now = Date.now();
       for (const call of asking.calls) {
-        await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}), ...call, prompt: asking.promptMessageId, status: "asking", startedAt: now });
+        // Named as a step that runs is named: by the record its arguments give by ID, such as the extraction it would stop.
+        const subject = call.subject ?? (await aboutOf(ctx, current.workspaceId, call.input));
+        await ctx.db.insert("assistantSteps", { threadId, order: current.order, userId: current.senderId, workspaceId: current.workspaceId, ...call, ...(subject ? { subject } : {}), prompt: asking.promptMessageId, status: "asking", startedAt: now });
       }
       const waiting = {
         senderId: current.senderId,
-        ...(current.workspaceId ? { workspaceId: current.workspaceId } : {}),
+        workspaceId: current.workspaceId,
         order: current.order,
         promptMessageId: asking.promptMessageId,
         modelId: ended.modelId,
@@ -586,7 +608,7 @@ export const release = internalMutation({
       // is asked about once the summary is written.
       // A request made again after failing added nothing to summarize, and keeps its wait: the next one that answers is summarized after.
       if (!current.stop && !next.retries && compactionDue({ ...ended, window })) {
-        const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: await actingIn(ctx, current), through: current.order, lastInputTokens, resume: from });
+        const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: current.workspaceId, through: current.order, lastInputTokens, resume: from });
         // Owed from here until a summary is kept, so one that is stopped, or whose action dies, is written by the next reply.
         // The lock holds what the reply has cost so far, for its sender's record if the compaction's action dies.
         await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true, spent: next.spent } });
@@ -609,7 +631,7 @@ export const release = internalMutation({
     // A stopped reply is left alone: whoever stopped it is waiting to write.
     if (ended && !current.stop && compactionDue({ ...ended, window })) {
       const { lastInputTokens, messages: _messages, bytes: _bytes, ...turn } = ended;
-      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: await actingIn(ctx, current), through: current.order, lastInputTokens });
+      const scheduledId = await ctx.scheduler.runAfter(0, internal.assistant.run.compact, { threadId, attemptId, ...turn, workspaceId: current.workspaceId, through: current.order, lastInputTokens });
       // Owed from here until a summary is kept, so one whose action dies is written by the next reply.
       // The reply's cost is recorded above: the lock holds none of it, so it isn't recorded again if this action dies.
       await ctx.db.patch("assistantThreads", threadId, { ...preview, compactionOwed: true, reply: { ...current, scheduledId, compacting: true, spent: 0 } });
@@ -656,16 +678,19 @@ const stepValidator = v.object({
   variant: v.optional(v.string()),
   /** What it was about: a title, a name or a query from its arguments, or the title or name of what it returned. */
   subject: v.optional(v.string()),
-  /** Where its subject leads, in the app: the results of a query it looked up, as a new search. */
+  /** Where it leads, in the app: the results of what it looked up, by a query or by filters alone, as a new search. */
   href: v.optional(v.string()),
+  /** The page of the one record it acted on, such as the extraction it paused, which its subject opens. */
+  opens: v.optional(v.string()),
   /** How many things it found, when its result lists any. */
   count: v.optional(v.number()),
   /** On a web search (#648): the pages it found, which the reply cites. */
   sources: webSourcesValidator,
   /** The most it holds, on a call that spends credits (#328). */
   credits: v.optional(v.number()),
-  /** On a call that asks first: what it does can reach other people too. Otherwise it asks because it can't be undone. */
+  /** On a call that asks first: other people see what it does. With `undoable`, that is the only reason it asks; without, it can't be undone either. Neither: it asks because it can't be undone. */
   outside: v.optional(v.literal(true)),
+  undoable: v.optional(v.literal(true)),
   /**
    * `failed` also covers a step whose reply died while it ran. `asking`: the person is asked before it runs.
    * `allowed`: they said yes, and it runs once the reply carries on. `declined`: they said no, or stopped the reply.
@@ -821,7 +846,7 @@ export const messagesAction = defineUserQuery({
     const reader = thread.asking?.senderId === userId ? await ctx.db.get("users", userId) : null;
     const mine = reader ? await stepsAt(ctx, threadId, "asking") : [];
     // They're named as the workspace the reply acts in calls them, while the reader can still act there.
-    const acting = thread.asking && reader ? await actingIn(ctx, thread.asking) : null;
+    const acting = thread.asking && reader ? thread.asking.workspaceId : null;
     const workspaceId = acting && reader && (await actorIn(ctx, reader, acting)) ? acting : null;
     const details = new Map(
       await Promise.all(mine.map(async (step) => [step._id, step.batch === undefined ? { details: withoutVariant(await detailsOf(ctx, reader!, workspaceId, step.shown ?? step.input), step) } : bulkWithoutVariant(await bulkOf(ctx, reader!, workspaceId, step), step)] as const)),
@@ -931,12 +956,18 @@ function hrefOf(step: Doc<"assistantSteps">) {
   try {
     const { query, ...rest } = JSON.parse(step.input) as Record<string, unknown>;
     const settings = Object.fromEntries(Object.entries(rest).filter(([key]) => key in searchSettings)) as Parameters<typeof searchHref>[1];
-    const href = searchHref(typeof query === "string" ? query : undefined, settings);
+    const href = searchHref(typeof query === "string" ? query : undefined, settings, new Date(step.startedAt).getFullYear());
     return href ? { href } : {};
   } catch {
     // Arguments too long to keep whole were cut, and don't parse.
     return {};
   }
+}
+
+/** The page of the record the step acted on, which its card's subject opens. */
+function opened(step: Doc<"assistantSteps">) {
+  const opens = opensOf(step.path, step.input);
+  return opens ? { opens } : {};
 }
 
 /** A step as the chat's page shows it. `asked` is what a call that waits for this person would do. */
@@ -952,11 +983,14 @@ function shownStep(
     ...(step.reads ? { reads: true as const } : {}),
     ...(step.request === undefined ? {} : { request: step.request }),
     ...variantOf(step),
-    ...(step.subject ? { subject: step.subject, ...hrefOf(step) } : {}),
+    ...(step.subject ? { subject: step.subject } : {}),
+    ...hrefOf(step),
+    ...opened(step),
     ...(step.count === undefined ? {} : { count: step.count }),
     ...(step.sources?.length ? { sources: step.sources } : {}),
     ...(step.credits === undefined ? {} : { credits: step.credits }),
     ...(step.outside ? { outside: true as const } : {}),
+    ...(step.undoable ? { undoable: true as const } : {}),
     status: shownStatus(step.status, answering === step.order),
     ...(step.batch === undefined ? {} : { batch: step.batch }),
     canAnswer: asked !== undefined,

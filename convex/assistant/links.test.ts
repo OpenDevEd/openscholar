@@ -1,12 +1,19 @@
 // Each record a read returns comes with the link a reply writes for it.
 import { describe, expect, it } from "vitest";
-import { linked, linkLabel } from "./links";
+import { linked, linkLabel, opensOf } from "./links";
 
 describe("linked", () => {
   it("links each saved search on a page by its query, escaped and cut to one short line", () => {
     const read = linked("research/records:listedSearches", { page: [{ id: "bc99", query: 'AI AND (teacher* OR "educator")' }], isDone: true });
     expect(read).toMatchObject({ page: [{ link: '[AI AND (teacher\\* OR "educator")](/results/bc99)' }] });
     expect(linkLabel(`a\n${"b".repeat(200)}`)).toHaveLength(80);
+  });
+
+  it("links an author profile it read or made, and opens only one named in a profile ID's form", () => {
+    const profile = { profileId: "k57abcdefghijklmnopqrstuvw", name: "Caitlin Mills" };
+    expect(linked("authors/assistant:create", profile)).toMatchObject({ link: "[Caitlin Mills](/authors/k57abcdefghijklmnopqrstuvw)" });
+    expect(opensOf("authors/assistant:profile", JSON.stringify({ profileId: profile.profileId }))).toBe("/authors/k57abcdefghijklmnopqrstuvw");
+    expect(opensOf("authors/assistant:profile", JSON.stringify({ profileId: "../settings?x" }))).toBeUndefined();
   });
 
   it("links collections, jobs, papers, chats and mentions, and leaves other reads alone", () => {

@@ -81,6 +81,8 @@ export const paperSetValidator = v.union(
   v.object({ kind: v.literal("collection"), collectionId: v.id("collections") }),
   v.object({ kind: v.literal("saved") }),
   v.object({ kind: v.literal("screening"), jobId: v.id("screeningJobs") }),
+  // The person's own Zotero library, or one collection of it, or a group's of theirs: read through their connected account.
+  v.object({ kind: v.literal("zotero"), collectionKey: v.optional(v.string()), groupId: v.optional(v.string()) }),
 );
 
 /** Where a job's included papers go: nowhere, a new collection by name, or one the person has. */
@@ -140,3 +142,15 @@ export const screeningResultStatusValidator = v.union(
   v.literal("failed"),
   v.literal("skipped")
 );
+
+/**
+ * What a pass that starts papers needs to know and must not read itself (#796): each workspace's
+ * limit comes from its account row, which its own charges rewrite several times a second, and a
+ * pass that read it conflicted with them and ran again. The bookkeeping worker's query reads these
+ * (it takes no read dependencies) and hands them to the pass (./slots.ts).
+ */
+export const startFactsValidator = v.object({
+  limits: v.array(v.object({ workspaceId: v.id("workspaces"), limit: v.number() })),
+  // Jobs with no spending limit among the papers a pass could start: the pass reads no row of theirs.
+  uncapped: v.array(v.id("screeningJobs")),
+});

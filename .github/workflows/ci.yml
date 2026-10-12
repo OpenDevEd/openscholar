@@ -170,14 +170,17 @@ jobs:
         if: always()
         run: rm -rf .email-source
 
-      - name: Check animation and transition clashes
-        run: npm run check:animation-clash
+      - name: Check UI rules
+        run: npm run check:ui-rules
 
       - name: Check every OpenAlex request carries the key
         run: npm run check:openalex-key
 
       - name: Check only extraction imports its mutations and queries
         run: npm run check:extraction-imports
+
+      - name: Check only the assistant's modules load its agent
+        run: npm run check:module-weight
 
       - name: Check every user action is registered for the assistant
         run: npm run check:user-actions

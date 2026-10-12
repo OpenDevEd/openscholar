@@ -49,6 +49,7 @@ import {
 } from "./operations";
 import { isFreshRuntimeRelease } from "./runtimeReleases";
 import { isRuntimeImageReference } from "./runtimeImageRegistry";
+import { requirePublishRuntime } from "./updates";
 import { sectionKeyValidator } from "./validators";
 import {
   loadDraftConfigurationSnapshot,
@@ -596,6 +597,9 @@ export async function restoreEvidenceLibraryRevision(
     };
   }
 
+  // The candidate carries the current contract, so it moves the library to
+  // software that reads it, as a publish does.
+  const publishRuntime = await requirePublishRuntime(ctx, running.library);
   const activationEditVersion = draft.editVersion;
   const editVersion = nextDraftEditVersion(
     draft.editVersion,
@@ -651,6 +655,9 @@ export async function restoreEvidenceLibraryRevision(
     revisionId: candidate.revisionId,
     idempotencyKey,
     activationEditVersion,
+    ...(publishRuntime.kind === "update"
+      ? { runtimeUpdate: publishRuntime.runtimeUpdate }
+      : {}),
   });
   const started = await claimAndScheduleConfigurationDeployment(ctx, {
     libraryId: args.libraryId,

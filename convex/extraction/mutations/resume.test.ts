@@ -7,7 +7,6 @@
  * and the resume requeue integration below.
  */
 
-import { seedOrganizationFeatures } from "../../organizationFeatures.test-support";
 import { convexTest } from "convex-test";
 import { describe, it, expect, vi } from "vitest";
 import { api, internal } from "../../_generated/api";
@@ -18,6 +17,8 @@ import {
 } from "../../billing/billing.test-support";
 import { extractionPaperCredits } from "../../../lib/pricing";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
+import { rowFromBucketItem } from "../jobSources";
+import { installFakeAutumn } from "../../billing/billing.test-support";
 
 /** The price of the model the jobs are stamped with: GPT-6 Luna's. */
 const PRICE = { input: 0.1, output: 0.5 };
@@ -42,13 +43,14 @@ async function seedUserAndCredits(
       createdAt: now,
       updatedAt: now,
     });
-    await seedOrganizationFeatures(ctx, [CLERK], {extraction: true});
     await seedCreditsForTest(ctx, {
       userId,
       free: opts.free ?? 0,
       paid: opts.paid ?? 100_000,
       now,
     });
+    // Carrying a job on asks extraction's master switch, like starting one.
+    await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: now });
     return userId;
   });
 }
@@ -125,7 +127,8 @@ describe("resumeExtraction — happy paths", () => {
       api.extraction.mutations.resume.resumeExtraction,
       { jobId },
     );
-    expect(result).toEqual({ resumed: true });
+    // Pausing it again is its undo (#342).
+    expect(result).toEqual({ resumed: true, undo: { path: "extraction/mutations/pause:pauseExtraction", args: { jobId } } });
 
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.status).toBe("downloading_pdfs");
@@ -435,5 +438,43 @@ describe("resumeExtraction — nothing left to run", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("resumeExtraction — from the chat", () => {
+  it("holds the credits the person allowed, counting the papers its setup had still to read", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    installFakeAutumn();
+    try {
+      const userId = await seedUserAndCredits(t);
+      const jobId = await seedJob(t, userId, { jobStatus: "paused", pausedFromStatus: "pending", questions: 1 });
+      // Paused while its setup read its one source, a search of 40 papers, it had saved none of them yet.
+      await t.run(async (ctx) => {
+        await ctx.db.patch("extractionJobs", jobId, { totalPapers: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 } });
+        await ctx.db.insert("extractionJobSources", rowFromBucketItem(jobId, 0, { source: "history", bucketKey: "search", sourceRefId: "search-1", title: "tutor", authors: [], searchFilters: { limit: 40 } }));
+      });
+      const { workspaceId } = (await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!;
+      const resume = (allowed: { approved?: boolean; approvedCredits?: number }) => t.action(internal.extraction.start.resumeForAssistant, { userId, workspaceId, jobId, ...allowed });
+
+      // Unasked, it doesn't run; allowed a credit, it would hold past it. The page's resume, from a chat, won't spend what it doesn't hold.
+      await expect(resume({})).rejects.toThrow(/say first/);
+      await expect(resume({ approved: true, approvedCredits: 1 })).rejects.toThrow(/more than the 1 approved/);
+      await expect(t.mutation(internal.extraction.mutations.resume.resumeExtractionForAssistant, { userId, workspaceId, jobId })).rejects.toThrow(/extraction\/start:resume/);
+      expect((await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!.status).toBe("paused");
+      expect(await resume({ approved: true, approvedCredits: 50_000 })).toMatchObject({ resumed: true });
+      expect(await t.run((ctx) => ctx.db.get("extractionJobs", jobId))).toMatchObject({ spendCap: 50_000, spendHold: expect.stringMatching(/^extraction-job:/) });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("resumes, as Undo of a pause, one the person pressed it for, as its page would", async () => {
+    const t = convexTest(schema);
+    setupExtractionPaperWorkpool(t);
+    const userId = await seedUserAndCredits(t);
+    const jobId = await seedJob(t, userId, { jobStatus: "paused", pausedFromStatus: "extracting", questions: 1 });
+    const { workspaceId } = (await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!;
+    expect(await t.mutation(internal.extraction.mutations.resume.resumeExtractionForAssistant, { userId, workspaceId, jobId, approved: true })).toMatchObject({ resumed: true });
   });
 });

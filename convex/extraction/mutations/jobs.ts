@@ -6,17 +6,18 @@
  * startJob schedules the app-owned paper queue setup action.
  */
 
-import { mutation, type MutationCtx } from "../../lib/functions";
+import type { MutationCtx } from "../../lib/functions";
 import { v, type ObjectType } from "convex/values";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
-import { requireAuth } from "../../lib/auth";
 import { requireFeature } from "../../featureFlags/guard";
 import { extractionPricing, extractionStamp } from "../../ai/serverModel";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
+import { noteActivity } from "../../activity/notes";
 import { assertBucketWithinLimits } from "../bucket/limits";
-import { availableCredits as readAvailableCredits, planLimit } from "../../billing/accounts";
+import { planLimit } from "../../billing/accounts";
+import { capReached, spendingRoom } from "../../billing/memberCaps";
 import { papersIn } from "../../screening/estimate";
 import { dedupeBucketItems } from "../../../lib/bucket/dedupe";
 import { assertValidJobTransition, type JobStatus } from "../stateMachine";
@@ -31,10 +32,12 @@ import { extractionPaperCredits } from "../../../lib/pricing";
 import { jobText } from "../../lib/searchText";
 import { cancelPaperQueueRowsForJobTx } from "../queue/mutations";
 import { refillWorkspace } from "../queue/dispatcher";
-import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
+import { assistantMutation, defineUserMutation, userMutation, type Acting } from "../../lib/userActions";
 import { checkScreeningSelection } from "../sources/screening";
+import { jobIn } from "../access";
 import { bucketItemFromRow } from "../jobSources";
-import { actorOnRecord, isInWorkspace, requireMakerOrAdmin, workspaceOf, type InWorkspace } from "../../workspaces/actor";
+import { requireMakerOrAdmin, type InWorkspace } from "../../workspaces/actor";
+import { paperPickValidator, sourcesFor, uploadPickValidator } from "../picks";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
@@ -68,7 +71,7 @@ const startArgs = {
 export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: ObjectType<typeof startArgs>, spend?: { hold: string; cap: number }, chatStep?: Id<"assistantSteps">): Promise<{ jobId: Id<"extractionJobs"> }> {
   const { userId, workspaceId } = writer;
   await requireFeature(ctx, "extraction.enabled", userId);
-  await requireFeature(ctx, "extraction.start", userId);
+  await requireFeature(ctx, "extraction.start", userId, workspaceId);
   await rateLimit(ctx, {
     name: "start-extraction",
     key: userId,
@@ -76,8 +79,9 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
   });
 
   // Shared: bucket validation + source persistence.
+  // One screening's same papers count once, whatever key a caller gave them.
   const deduped = dedupeBucketItems(args.bucketItems.map(item => item.source === "screening" && item.screeningSelection
-    ? { ...item, bucketKey: `screening:${item.screeningSelection.jobId}` }
+    ? { ...item, bucketKey: `screening:${item.screeningSelection.jobId}:${item.screeningSelection.first ?? 1}-${item.screeningSelection.last ?? "all"}` }
     : item));
   for (const item of deduped) {
     if (item.source !== "screening") continue;
@@ -85,7 +89,9 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
       throw createError("VALIDATION_ERROR", "Select a screening job and its decision revision for extraction.");
     }
     const selection = item.screeningSelection;
-    selection.count = await checkScreeningSelection(ctx, workspaceId, selection.jobId, selection.revision);
+    const included = await checkScreeningSelection(ctx, workspaceId, selection.jobId, selection.revision);
+    // The papers its range holds of the Included ones now; all of them without a range.
+    selection.count = Math.max(0, Math.min(selection.last ?? included, included) - (selection.first ?? 1) + 1);
     item.sourceRefId = selection.jobId;
   }
   // A range of a collection or the library holds what the server counts in it now, never what it was sent.
@@ -101,7 +107,7 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
   const sourceType = deriveSourceType(deduped);
 
   // Stamp what extraction runs on (credits path), read back at run by paperWorker.
-  const stamp = await extractionStamp(ctx, userId);
+  const stamp = await extractionStamp(ctx, { userId, workspaceId });
 
   // Question validation happens after bucket validation so an empty bucket throws first.
   const qs = args.questions ?? [];
@@ -124,8 +130,9 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
   // it now than stop it part way. A job with a hold has its credits already.
   if (!spend) {
     const credits = bucketLimits.effectiveCount * extractionPaperCredits(await extractionPricing(ctx, stamp), qs, args.usePdfs ?? false);
-    const totalAvailable = await readAvailableCredits(ctx, workspaceId);
+    const { available: totalAvailable, capped } = await spendingRoom(ctx, workspaceId, userId);
     if (totalAvailable < credits) {
+      if (capped) throw capReached(credits);
       throw createError(
         "INSUFFICIENT_CREDITS",
         `Need up to ${credits} credits for ${bucketLimits.effectiveCount} papers × ${qs.length} questions but only have ${totalAvailable}`,
@@ -135,7 +142,6 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
 
   const now = Date.now();
   const jobId: Id<"extractionJobs"> = await ctx.db.insert("extractionJobs", {
-    userId,
     workspaceId,
     createdBy: userId,
     name: args.name,
@@ -179,13 +185,16 @@ export async function startJobFor(ctx: MutationCtx, writer: InWorkspace, args: O
 
 export const startJobAction = defineUserMutation({
   path: "extraction/mutations:startJob",
-  description: "Start an extraction from the sources picked on the extraction page. From a chat, an extraction over a collection, saved papers, a search or a screening is extraction/start:extract. Screening sources use the owned job's current Included papers and require its decision revision. Extraction saves those papers unchanged by later screening edits. The person's plan sets how many papers one job takes.",
+  activity: ({ name }, { jobId }) => ({ kind: "extraction", id: jobId, happened: "created", detail: name }),
+  description:
+    "Start an extraction from the sources picked on the extraction page, any number of them: each a paper set (a saved search, a collection, the saved papers, or a finished screening) with its papers `first` to `last`, and PDFs the person uploaded. " +
+    "From a chat, an extraction over one set is extraction/start:extract. A screening is its Included papers as they are now; later screening edits leave the extraction as it is. The person's plan sets how many papers one job takes.",
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
-  args: startArgs,
+  args: { name: v.string(), sources: v.array(paperPickValidator), uploads: v.optional(v.array(uploadPickValidator)), questions: v.optional(v.array(questionInputValidator)), usePdfs: v.optional(v.boolean()) },
   returns: v.object({ jobId: v.id("extractionJobs") }),
-  run: (ctx, { userId, workspaceId }, args) => startJobFor(ctx, { userId, workspaceId }, args),
+  run: async (ctx, { userId, workspaceId }, { sources, uploads, ...args }) => startJobFor(ctx, { userId, workspaceId }, { ...args, bucketItems: await sourcesFor(ctx, { userId, workspaceId }, sources, uploads) }),
 });
 
 export const startJob = userMutation(startJobAction);
@@ -193,6 +202,7 @@ export const startJobForAssistant = assistantMutation(startJobAction);
 
 export const duplicateJobAction = defineUserMutation({
   path: "extraction/mutations:duplicateJob",
+  activity: (_args, { jobId }) => ({ kind: "extraction", id: jobId, happened: "created" }),
   description: "Duplicate a job's questions and sources. Screening sources must still have the saved decision revision; if decisions changed, select the screening again in a new extraction.",
   spendsCredits: true,
   outsideEffect: false,
@@ -204,11 +214,11 @@ export const duplicateJobAction = defineUserMutation({
 
     const oldJob = await ctx.db.get("extractionJobs", args.jobId);
     // The copy is made in the workspace the call acts in, which the original must be in.
-    if (!oldJob || !(await isInWorkspace(ctx, oldJob, workspaceId))) {
+    if (!oldJob || !(oldJob.workspaceId === workspaceId)) {
       throw createError("NOT_FOUND", "Job not found");
     }
 
-    await requireFeature(ctx, "extraction.start", userId);
+    await requireFeature(ctx, "extraction.start", userId, workspaceId);
     await rateLimit(ctx, {
       name: "start-extraction",
       key: userId,
@@ -234,9 +244,8 @@ export const duplicateJobAction = defineUserMutation({
       .order("asc")
       .take(MAX_QUESTIONS_PER_JOB);
 
-    const dupStamp = await extractionStamp(ctx, userId);
+    const dupStamp = await extractionStamp(ctx, { userId, workspaceId });
     const newJobId = await ctx.db.insert("extractionJobs", {
-      userId,
       workspaceId,
       createdBy: userId,
       name: `${oldJob.name} (Copy)`,
@@ -279,67 +288,65 @@ export const duplicateJobAction = defineUserMutation({
 export const duplicateJob = userMutation(duplicateJobAction);
 export const duplicateJobForAssistant = assistantMutation(duplicateJobAction);
 
-export const cancelExtraction = mutation({
+/** The workspace's extraction a call names, for its maker or an admin there; another workspace's, or one that's gone, is not found. */
+async function ownJob(ctx: MutationCtx, actor: Acting, jobId: Id<"extractionJobs">) {
+  const job = await jobIn(ctx, actor, jobId);
+  requireMakerOrAdmin(actor, job.createdBy);
+  return job;
+}
+
+export const cancelExtractionAction = defineUserMutation({
+  path: "extraction/mutations:cancelExtraction",
+  description:
+    "Stops one of the workspace's extractions that is running or paused, for the person who started it or an admin. The answers it has so far stay. A stopped extraction doesn't start again: duplicate it to run it anew. One that has already ended is left as it is.",
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: false,
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({ success: v.boolean() }),
-  handler: async (ctx, args): Promise<{ success: boolean }> => {
-    const user = await requireAuth(ctx);
-
-    const job = await ctx.db.get("extractionJobs", args.jobId);
-    const actor = job && (await actorOnRecord(ctx, user, job));
-    if (!job || !actor) {
-      throw createError("NOT_FOUND", "Job not found");
-    }
-    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
-
-    if (
-      job.status &&
-      ["completed", "failed", "cancelled"].includes(job.status)
-    ) {
+  run: async (ctx, actor, args): Promise<{ success: boolean }> => {
+    const job = await ownJob(ctx, actor, args.jobId);
+    if (job.status && ["completed", "failed", "cancelled"].includes(job.status)) {
+      // The page's button does nothing more to one that ended; a chat is told, so it doesn't say it stopped it.
+      if (actor.author === "assistant") throw createError("CONFLICT", "This extraction has already ended, so there's nothing to stop.");
       return { success: true };
     }
 
     assertValidJobTransition(job.status as JobStatus, "cancelled");
-    await ctx.db.patch("extractionJobs", args.jobId, {
-      status: "cancelled",
-      updatedAt: Date.now(),
-    });
+    await ctx.db.patch("extractionJobs", args.jobId, { status: "cancelled", updatedAt: Date.now() });
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
     // Its papers no longer count against the person's limit; their other jobs start in it.
-    await refillWorkspace(ctx, await workspaceOf(ctx, job));
+    await refillWorkspace(ctx, job.workspaceId);
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, { kind: "extraction", id: args.jobId, happened: "stopped" });
 
     // Any in-flight paper action sees the cancelled job on its next
     // status check and returns without persisting.
     return { success: true };
   },
 });
+export const cancelExtraction = userMutation(cancelExtractionAction);
+export const cancelExtractionForAssistant = assistantMutation(cancelExtractionAction);
 
-export const deleteExtraction = mutation({
+export const deleteExtractionAction = defineUserMutation({
+  path: "extraction/mutations:deleteExtraction",
+  description: "Deletes one of the workspace's extractions with all its answers, for good, for the person who started it or an admin. Anyone it was shared with loses it too.",
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: false,
   args: { jobId: v.id("extractionJobs") },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
-
-    const job = await ctx.db.get("extractionJobs", args.jobId);
-    const actor = job && (await actorOnRecord(ctx, user, job));
-    if (!job || !actor) {
-      throw createError("NOT_FOUND", "Job not found");
-    }
-    requireMakerOrAdmin(actor, job.createdBy ?? job.userId);
-
+  run: async (ctx, actor, args) => {
+    await ownJob(ctx, actor, args.jobId);
     await ctx.db.delete(args.jobId);
     // Its papers stop holding the person's capacity now, not when the cascade reaches them.
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
-    await refillWorkspace(ctx, await workspaceOf(ctx, job));
+    await refillWorkspace(ctx, actor.workspaceId);
 
     // Schedule the cascade delete as an independent mutation to avoid
     // transaction limits on a large job's child tables.
-    await ctx.scheduler.runAfter(
-      0,
-      internal.extraction.mutations.internal.admin.deleteExtractionInternal,
-      { jobId: args.jobId },
-    );
-
+    await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.admin.deleteExtractionInternal, { jobId: args.jobId });
     return null;
   },
 });
+export const deleteExtraction = userMutation(deleteExtractionAction);
+export const deleteExtractionForAssistant = assistantMutation(deleteExtractionAction);

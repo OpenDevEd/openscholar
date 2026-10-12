@@ -79,3 +79,5 @@ export const evidenceLibrarySourceStatusFields = {
   sources: capped(v.array(sourceStatusValidator), MAX_LIBRARY_SOURCES),
 };
 
+/** The runtime's latest report on a library's sources, or null before its first. */
+export const sourceStatusReadValidator = v.union(v.null(), v.object({ observedAt: v.number(), sources: evidenceLibrarySourceStatusFields.sources }));

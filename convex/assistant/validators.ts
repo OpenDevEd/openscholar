@@ -3,7 +3,7 @@
  * and organizations in. Its messages live in the agent component, under `agentThreadId`.
  */
 import { v } from "convex/values";
-import { effortValidator } from "../aiModelConfig/validators";
+import { effortValidator, modelEffortsValidator } from "../aiModelConfig/validators";
 import { capped } from "../lib/listCaps";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
 import { MAX_FILES_PER_MESSAGE, MAX_PDF_CHUNKS } from "../../lib/assistant/files";
@@ -11,17 +11,14 @@ import { MENTION_KINDS } from "../../lib/assistant/mentions";
 
 /** What someone may do in a chat: the owner also shares, renames and deletes it; `write` sends messages; `read` only reads. */
 export const assistantRoleValidator = v.union(v.literal("owner"), v.literal("write"), v.literal("read"));
-/** The roles an owner hands out. */
-export const assistantGrantRoleValidator = v.union(v.literal("write"), v.literal("read"));
-
 /** The reply a chat is writing. It writes one at a time, so this is also the chat's lock. */
 export const assistantReplyValidator = v.object({
   /** Names this run of the reply, so a late write from an earlier run changes nothing. */
   attemptId: v.string(),
   /** Who sent the message it answers. It runs with their access, on their credits. */
   senderId: v.id("users"),
-  /** The workspace it acts in (./access.ts `replyWorkspace`), whose replies at once it counts against. Absent on a reply started before chats were in workspaces (#650). */
-  workspaceId: v.optional(v.id("workspaces")),
+  /** The workspace it acts in (./access.ts `replyWorkspace`), whose replies at once it counts against. */
+  workspaceId: v.id("workspaces"),
   /** The exchange it belongs to: the agent component's order of the message it answers. */
   order: v.number(),
   startedAt: v.number(),
@@ -54,8 +51,8 @@ export const RECENT_REQUESTS = 6;
  */
 export const assistantAskingValidator = v.object({
   senderId: v.id("users"),
-  /** The workspace the reply acts in, which it carries on in. Absent on one that waited from before replies named theirs, which acts in its sender's own (#650). */
-  workspaceId: v.optional(v.id("workspaces")),
+  /** The workspace the reply acts in, which it carries on in (#650). */
+  workspaceId: v.id("workspaces"),
   order: v.number(),
   promptMessageId: v.string(),
   modelId: v.union(v.id("models"), v.null()),
@@ -100,8 +97,8 @@ export const assistantLimitFields = {
 /** A person's own record with the assistant in a workspace: what the chats they start there take, and what their last replies there cost. */
 export const assistantSpenderFields = {
   userId: v.id("users"),
-  /** The workspace it's their record in (#650); slice 8 makes it required. */
-  workspaceId: v.optional(v.id("workspaces")),
+  /** The workspace it's their record in (#650). */
+  workspaceId: v.id("workspaces"),
   /** Set while "Use these for my new chats" is on: the limits a chat they start begins with. */
   newChats: v.optional(v.object({ replyLimit: v.optional(v.number()), jobs: v.optional(assistantAllowanceValidator) })),
   /**
@@ -116,10 +113,9 @@ export const recentCostsValidator = capped(v.array(v.number()), RECENT_REPLIES);
 /** Undone changes a chat keeps to tell the model of: the latest. A bulk change is one of them, however many it made. */
 export const UNDONE_TOLD = 20;
 export const assistantThreadFields = {
-  ownerId: v.id("users"),
-  /** The workspace it's in, and who made it (#650); slice 8 makes them required. */
-  workspaceId: v.optional(v.id("workspaces")),
-  createdBy: v.optional(v.id("users")),
+  /** The workspace it's in, and who made it (#650). */
+  workspaceId: v.id("workspaces"),
+  createdBy: v.id("users"),
   title: v.string(),
   agentThreadId: v.string(),
   /** When its newest message was sent; a chat with none yet has when it was made. */
@@ -172,8 +168,8 @@ export const assistantStepFields = {
   order: v.number(),
   /** Who it ran as: the person whose message was being answered. Only they can undo it. */
   userId: v.id("users"),
-  /** The workspace it ran in, which its undo acts in. Absent on one from before replies named theirs, which ran in its person's own (#650). */
-  workspaceId: v.optional(v.id("workspaces")),
+  /** The workspace it ran in, which its undo acts in (#650). */
+  workspaceId: v.id("workspaces"),
   /** On a web search (#648): what it found, for the reply's citations and its list of sources. */
   sources: webSourcesValidator,
   /** The model's ID for the call. Models reuse these, so nothing is looked up by it. */
@@ -203,8 +199,10 @@ export const assistantStepFields = {
    * once the person allows it.
    */
   batch: v.optional(v.number()),
-  /** On a call that asks first because what it does can reach other people (sharing a chat, deleting one) as well as because it can't be undone. */
+  /** On a call that asks first: other people see what it does (sharing a chat, deleting one, a change to a collection a library follows). */
   outside: v.optional(v.literal(true)),
+  /** On one of those whose change can be undone: it asks only because others see it. Without it, the call can't be undone. */
+  undoable: v.optional(v.literal(true)),
   /** Which of its several jobs its action does (lib/assistant/actions.ts), where its arguments don't say it one by one: a bulk change. */
   variant: v.optional(v.string()),
   /** Its action only reads (./tools.ts `onlyReads`): one that failed and was run again with success is hidden from the chat (lib/assistant/step-cards.ts). */
@@ -270,33 +268,11 @@ export const assistantJobFields = {
   jobId: v.string(),
 };
 
-export const assistantThreadAccessFields = {
-  threadId: v.id("assistantThreads"),
-  /**
-   * Who this row lets in: `user:<id>` or `organization:<id>` (./access.ts). A chat has one
-   * row per principal, its owner's included, so each person's chats list through one index.
-   */
-  principal: v.string(),
-  role: assistantRoleValidator,
-  /** The chat's `lastMessageAt`, copied on every message, which is what the lists order by. */
-  lastMessageAt: v.number(),
-  createdAt: v.number(),
-};
-
-/** Who a chat is shared with, as its owner names them. */
-export const assistantPrincipalValidator = v.union(
-  v.object({ kind: v.literal("user"), userId: v.id("users") }),
-  v.object({ kind: v.literal("organization"), organizationId: v.id("organizations") }),
-);
-
 /** People a chat's row in the list of chats names. */
 export const ASSISTANT_MEMBERS_SHOWN = 3;
 /** The first few people in a chat besides the reader, those who have it open now first. */
 /** People in a chat, each with their photo when they have one. */
 export const assistantMembersValidator = capped(v.array(v.object({ userId: v.id("users"), name: v.string(), here: v.boolean(), imageUrl: v.optional(v.string()) })), ASSISTANT_MEMBERS_SHOWN);
-
-/** Someone a chat's owner could share it with: one of their organizations, or a person in one. */
-export const assistantCandidateValidator = v.object({ principal: assistantPrincipalValidator, name: v.string(), email: v.optional(v.string()), imageUrl: v.optional(v.string()) });
 
 /** Records of each kind @ finds at once (./mentions.ts); the picker shows six. */
 export const MENTIONS_EACH = 4;
@@ -403,3 +379,22 @@ export const citedFileIdsValidator = capped(v.array(v.string()), MAX_FILES_PER_M
 export const citedFilesValidator = capped(v.array(v.object({ id: v.string(), name: v.string(), url: v.union(v.string(), v.null()) })), MAX_FILES_PER_MESSAGE);
 /** The files a message is sent with. */
 export const sentFileIdsValidator = capped(v.optional(v.array(v.id("assistantFiles"))), MAX_FILES_PER_MESSAGE);
+
+/** Models one list of a chat's models gives (./threads.ts `modelsAction`). */
+export const MODELS_LISTED = 30;
+export const chatModelsValidator = capped(
+  v.array(
+    v.object({
+      modelId: v.id("models"),
+      name: v.string(),
+      maker: v.string(),
+      context: v.optional(v.number()),
+      readsPdfs: v.boolean(),
+      readsImages: v.boolean(),
+      efforts: modelEffortsValidator,
+      dollarsPerMillionIn: v.number(),
+      dollarsPerMillionOut: v.number(),
+    }),
+  ),
+  MODELS_LISTED,
+);

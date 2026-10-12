@@ -2,8 +2,9 @@
  * How many papers a staged bucket produces once its rows expand at job-submit time: what the
  * person's plan caps (convex/extraction/bucket/limits.ts).
  *
- * - A saved-search placeholder (`source === "history"` with `searchFilters`) expands to
- *   `searchFilters.limit` papers; one saved without a count pulls PAPER_PULL_DEFAULT.
+ * - A saved-search placeholder (`source === "history"` with `searchFilters`) expands to its
+ *   results `searchFilters.first` (1 when left out) to `searchFilters.limit`; one saved
+ *   without a count pulls PAPER_PULL_DEFAULT.
  * - A screening expands to its included papers, and a library or collection range to its papers.
  * - Every other row (library, collection, zotero, upload, a single history paper) is one.
  *
@@ -16,17 +17,20 @@ export type EffectiveCountItem = {
   source: "history" | "library" | "collection" | "zotero" | "upload" | "screening";
   screeningSelection?: { count: number };
   librarySet?: { count: number };
-  searchFilters?: { limit?: number } & Record<string, unknown>;
+  zoteroSet?: { first: number; last: number };
+  searchFilters?: { first?: number; limit?: number } & Record<string, unknown>;
 };
 
 /** Papers a single bucket row produces. A negative or NaN limit is 0: setup skips the row. */
 export function paperCountForItem(item: EffectiveCountItem): number {
   if (item.source === "screening") return item.screeningSelection?.count ?? 0;
   if (item.librarySet) return item.librarySet.count;
+  if (item.zoteroSet) return Math.max(0, item.zoteroSet.last - item.zoteroSet.first + 1);
   if (item.source !== "history" || !item.searchFilters) return 1;
   const raw = item.searchFilters.limit ?? PAPER_PULL_DEFAULT;
-  if (!Number.isFinite(raw) || raw <= 0) return 0;
-  return Math.floor(raw);
+  const first = item.searchFilters.first ?? 1;
+  if (!Number.isFinite(raw) || raw <= 0 || !Number.isFinite(first) || first < 1) return 0;
+  return Math.max(0, Math.floor(raw) - Math.floor(first) + 1);
 }
 
 /** Papers the whole bucket produces. */

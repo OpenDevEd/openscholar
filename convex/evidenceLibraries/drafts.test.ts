@@ -15,6 +15,9 @@ import {
   createDraftSetupFixture,
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
+import { organizationWorkspaceOf } from "../workspaces/personal";
+import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
+import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 
@@ -54,8 +57,8 @@ describe("Evidence Library draft storage", () => {
         revisionId: fixture.created.revisionId,
       },
     );
-    expect(currentDraft.draft.ownerConfigurationVersion).toBe(8);
-    expect(currentRevision.revision.ownerConfigurationVersion).toBe(8);
+    expect(currentDraft.draft.ownerConfigurationVersion).toBe(9);
+    expect(currentRevision.revision.ownerConfigurationVersion).toBe(9);
 
     await fixture.t.run(async (ctx) => {
       await ctx.db.patch(fixture.created.draftId, {
@@ -105,7 +108,7 @@ describe("Evidence Library draft storage", () => {
     const storedRolloutDraft = await fixture.t.run((ctx) =>
       ctx.db.get(fixture.created.draftId),
     );
-    expect(rolloutDraft.draft.ownerConfigurationVersion).toBe(8);
+    expect(rolloutDraft.draft.ownerConfigurationVersion).toBe(9);
     expect(storedRolloutDraft?.ownerConfigurationVersion).toBe(3);
     expect(
       rolloutDraft.sections.find((row) => row.sectionKey === "features")
@@ -126,7 +129,7 @@ describe("Evidence Library draft storage", () => {
     const migratedDraft = await fixture.t.run((ctx) =>
       ctx.db.get(fixture.created.draftId),
     );
-    expect(migratedDraft?.ownerConfigurationVersion).toBe(8);
+    expect(migratedDraft?.ownerConfigurationVersion).toBe(9);
 
     await expect(
       fixture.t.run((ctx) =>
@@ -163,10 +166,10 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: true,
       });
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       const libraryId = await ctx.db.insert("evidenceLibraries", {
-        organizationId,
+        workspaceId: await organizationWorkspaceOf(ctx, organizationId),
         name: "Climate Evidence",
         slug: "climate-evidence",
         state: "active",
@@ -226,8 +229,8 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: true,
       });
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       await seedFeatureUser(ctx, "user_identity_contract");
     await ctx.db.insert("organizationMemberships", {
         organizationId,
@@ -318,8 +321,8 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: true,
       });
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       await seedFeatureUser(ctx, "user_generic_sections");
     await ctx.db.insert("organizationMemberships", {
         organizationId,
@@ -467,8 +470,8 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: true,
       });
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       await seedFeatureUser(ctx, "user_admin");
     await ctx.db.insert("organizationMemberships", {
         organizationId,
@@ -541,11 +544,12 @@ describe("Evidence Library draft storage", () => {
         ]),
       ),
     ).toMatchObject(sections);
+    // A member reads the settings (#653), and can't save them.
     await expect(
       asMember.query(api.evidenceLibraries.queries.getDraft, {
         libraryId: created.libraryId,
       }),
-    ).resolves.toBeNull();
+    ).resolves.toMatchObject({ role: "viewer", editable: false });
     await expect(
       asMember.mutation(api.evidenceLibraries.mutations.saveDraftSections, {
         libraryId: created.libraryId,
@@ -595,8 +599,8 @@ describe("Evidence Library draft storage", () => {
         clerkUpdatedAt: 1,
         createdAt: 1,
         updatedAt: 1,
-        evidenceLibrariesEnabled: true,
       });
+      await grantPlanFeaturesForTest(ctx, organizationId, [EVIDENCE_LIBRARIES_FEATURE]);
       await seedFeatureUser(ctx, "user_revision");
     await ctx.db.insert("organizationMemberships", {
         organizationId,

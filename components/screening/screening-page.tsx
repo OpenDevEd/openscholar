@@ -6,12 +6,12 @@ import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, LayoutGroup, MotionConfig, motion } from "motion/react";
 import { useQueryState } from "nuqs";
-import { AiIcon, CircleCheck, CircleX, FileSearch, Hourglass, ListChecks, Plus, Square, type AppIcon } from "@/components/icons";
+import { AiIcon, CircleCheck, CircleX, FileSearch, Hourglass, ListChecks, Plus, Square, Unlink, type AppIcon } from "@/components/icons";
+import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Button } from "@/components/ui/button";
-import { TooltipHint } from "@/components/ui/tooltip";
 import { ConfigurationLayout, ConfigurationNavigation } from "@/components/evidence-libraries/configuration/configuration-layout";
 import { RailGroup, RailLink } from "@/components/evidence-libraries/configuration/navigation-rail";
 import { BAR_ACTION, BAR_LABEL, PanelHeader } from "@/components/evidence-libraries/configuration/panel-header";
@@ -24,7 +24,13 @@ import { doneOf, phaseOf, type Job, type JobRow, type Phase } from "@/lib/screen
 import { cn } from "@/lib/utils";
 import { JobView, jobName } from "./job-view";
 import { SetupView } from "./setup-view";
+import { ItemBar } from "@/components/workspaces/activity";
+import { ShareButton } from "@/components/workspaces/share-dialog";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { faceOf, useRunBy } from "@/components/workspaces/run-by";
+
+/** Who ran a screening and its Activity head the pane, edge to edge, as its first row (#656). */
+const PANE_HEADER = "-mx-4 -mt-4 mb-4 @min-[42rem]/configuration:-mx-6 @min-[42rem]/configuration:-mt-6 @min-[42rem]/configuration:mb-6 @min-[42rem]/configuration:px-6";
 
 /** Screenings one page of the rail lists. */
 const RAIL_PAGE = 12;
@@ -48,8 +54,12 @@ export function ScreeningPage() {
   const [searchId] = useQueryState("search");
   const [picked, setPicked] = useQueryState("job");
 
-  const jobs = useCursorPage(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, {}), RAIL_PAGE);
-  const { data: total } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, inWorkspace(workspaceId, {}));
+  // In an organization, everyone's screenings or one member's (#656).
+  const runBy = useRunBy("screeningJobs");
+  const jobs = useCursorPage(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, runBy.by ? { by: runBy.by } : {}), RAIL_PAGE);
+  // Everyone's count, or the one member's the filter knows; the pager goes without one until then.
+  const { data: everyone } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, inWorkspace(workspaceId, {}));
+  const total = runBy.by ? runBy.countOf(runBy.by) : everyone;
   // Until the person's screenings arrive, nothing says whether the form or the newest of them shows.
   const waiting = picked === null && !searchId && jobs.isLoading;
   const jobId = picked === "new" || waiting ? null : (picked ?? (searchId ? null : (jobs.items[0]?._id ?? null)));
@@ -60,7 +70,9 @@ export function ScreeningPage() {
   const job = !jobId || read === null ? null : (read ?? shown);
   // Shown while the one picked is read: it stays dimmed and inert until then.
   const stale = Boolean(job && jobId && job._id !== jobId);
-  const showsForm = !job && !waiting && !(jobId && read === undefined);
+  // The address names a screening that isn't there to read: deleted, or shared with the person no longer. It says so, where it showed the form.
+  const lost = picked !== null && picked !== "new" && read === null;
+  const showsForm = !job && !waiting && !lost && !(jobId && read === undefined);
   // Whether something has shown yet. The first screening to arrive only fades in, since the page is
   // still rising under it; what replaces it rises as well. The form, when the page opens on it, is there from the start.
   const [begun, setBegun] = useState(showsForm);
@@ -89,6 +101,7 @@ export function ScreeningPage() {
     <MotionConfig reducedMotion="user">
       <PageWrapper>
         <ConfigurationLayout
+          intro={runBy.filter}
           header={
             <PanelHeader icon={ListChecks} title={t("title")}>
               <Button size="sm" className={BAR_ACTION} onClick={() => openForm(null)}>
@@ -146,15 +159,29 @@ export function ScreeningPage() {
           <AnimatePresence mode="popLayout" initial={false}>
             {/* Nothing stands in while a screening is read. An empty block has no height, so it could not be
                 lifted out of the flow as it left, and held the next one a gap lower until it was gone. */}
-            {job || showsForm ? (
-              <motion.div key={job?._id ?? "new"} initial={{ opacity: 0, y: begun ? 8 : 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }} onAnimationStart={() => setBegun(true)} className={cn(stale && "pointer-events-none opacity-60")} aria-busy={stale}>
+            {job || showsForm || lost ? (
+              <motion.div key={job?._id ?? (lost ? "lost" : "new")} initial={{ opacity: 0, y: begun ? 8 : 0 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.3, ease: EASE }} onAnimationStart={() => setBegun(true)} className={cn("flow-root", stale && "pointer-events-none opacity-60")} aria-busy={stale}>
                 {job ? (
-                  <JobView
-                    job={job}
-                    phase={phaseOf(job, active)}
-                    blocker={blockerOf(reading(job._id))}
-                    onRunAgain={() => openForm(job)}
-                  />
+                  <>
+                    <ItemBar
+                      kind="screening"
+                      id={job._id}
+                      name={jobName(t, job, date)}
+                      started="runBy"
+                      className={PANE_HEADER}
+                      share={<ShareButton kind="screening" id={job._id} name={jobName(t, job, date)} guests={job.guests ?? 0} />}
+                      guest={job.guest}
+                    />
+                    {/* A screening shared with you waits on its own workspace's screenings, not on yours. */}
+                    <JobView
+                      job={job}
+                      phase={phaseOf(job, job.guest ? [] : active)}
+                      blocker={job.guest ? undefined : blockerOf(reading(job._id))}
+                      onRunAgain={() => openForm(job)}
+                    />
+                  </>
+                ) : lost ? (
+                  <ListEmpty icon={Unlink}>{t("lost")}</ListEmpty>
                 ) : (
                   <SetupView
                     key={again?._id ?? searchId ?? "new"}
@@ -187,11 +214,9 @@ function JobLink({ row, phase, name, active, onClick }: { row: JobRow; phase: Ex
   const done = doneOf(row);
   const filled = phase === "completed" ? row.qualifiedPapers : done;
   return (
-    <RailLink href={`/screening?job=${row._id}`} icon={ICON[phase]} active={active} onClick={onClick} className="h-auto items-start py-2 [&>svg]:mt-0.5">
+    <RailLink href={`/screening?job=${row._id}`} icon={row.by && !row.by.you ? faceOf(row.by) : ICON[phase]} active={active} onClick={onClick} className="h-auto items-start py-2 [&>svg]:mt-0.5">
       <span className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <TooltipHint label={name} onlyWhenClipped>
-          <span className="truncate">{name}</span>
-        </TooltipHint>
+        <span className="truncate">{name}</span>
         <span className="flex items-center gap-2">
           <span className="block h-1 flex-1 overflow-hidden rounded-full bg-foreground/10">
             <span className={cn("block h-full rounded-full transition-[width] duration-500 motion-reduce:transition-none", FILL[phase])} style={{ width: `${row.totalPapers ? (filled / row.totalPapers) * 100 : 0}%` }} />

@@ -10,6 +10,7 @@ import { buildZoteroHeaders } from "../zotero-utils";
 import { MAX_PDF_BYTES } from "../files/limits";
 import { openAlexUrl } from "../openalex/request-url";
 import {
+  readCappedBody,
   safeFetchPdf,
   UnsafeUrlError,
   type SafeFetchPdfResult,
@@ -57,7 +58,7 @@ export async function downloadPdf(
   try {
     // Handle Zotero attachments
     if (url.startsWith("zotero://") && options.zoteroConnection) {
-      return await downloadZoteroPdf(url, options.zoteroConnection, timeout, maxRetries);
+      return await downloadZoteroPdf(url, options.zoteroConnection, timeout, maxRetries, options.maxBytes ?? MAX_PDF_BYTES);
     }
 
     // Try PMC/EuropePMC conversion first (bypasses PoW challenge)
@@ -191,6 +192,10 @@ async function tryDownload(
   return { success: true, pdfBlob: body };
 }
 
+/** Attachments one read of an item's gives, the most Zotero lists at once, and how many such reads look for its PDF. */
+const ZOTERO_CHILD_PAGE = 100;
+const ZOTERO_CHILD_PAGES = 10;
+
 /**
  * Download PDF from Zotero attachment
  */
@@ -198,7 +203,8 @@ async function downloadZoteroPdf(
   zoteroUrl: string,
   connection: { apiKey: string; userId: string },
   timeout: number,
-  maxRetries: number
+  maxRetries: number,
+  maxBytes: number,
 ): Promise<DownloadPdfResult> {
   try {
     // Parse Zotero URL to get item key
@@ -214,23 +220,6 @@ async function downloadZoteroPdf(
     const libraryId = groupId ?? userId ?? "";
     const libraryType = groupId ? "groups" : "users";
 
-    // Fetch attachments
-    const attachmentsUrl = `https://api.zotero.org/${libraryType}/${libraryId}/items/${itemKey}/children?format=json`;
-    
-    const response = await fetchWithTimeout(
-      attachmentsUrl,
-      {
-        headers: buildZoteroHeaders(connection.apiKey),
-      },
-      timeout
-    );
-
-    if (!response.ok) {
-      return { success: false, error: `Zotero API error: ${response.status}` };
-    }
-
-    const attachments = await response.json();
-    
     // Find PDF attachment
     interface ZoteroAttachment {
       data?: {
@@ -244,9 +233,24 @@ async function downloadZoteroPdf(
       };
     }
 
-    const pdfAttachment = (attachments as ZoteroAttachment[]).find(
-      (att: ZoteroAttachment) => att.data?.itemType === "attachment" && att.data?.contentType === "application/pdf"
-    );
+    // Its attachments a page of Zotero's at a time, until a PDF: an item can have more than one page of them.
+    // shortcut: up to ZOTERO_CHILD_PAGES pages; an item with more attachments than that is read as having no PDF.
+    let pdfAttachment: ZoteroAttachment | undefined;
+    for (let page = 0; page < ZOTERO_CHILD_PAGES && !pdfAttachment; page++) {
+      const response = await fetchWithTimeout(
+        `https://api.zotero.org/${libraryType}/${libraryId}/items/${itemKey}/children?format=json&itemType=attachment&limit=${ZOTERO_CHILD_PAGE}&start=${page * ZOTERO_CHILD_PAGE}`,
+        { headers: buildZoteroHeaders(connection.apiKey) },
+        timeout
+      );
+      if (!response.ok) {
+        return { success: false, error: `Zotero API error: ${response.status}` };
+      }
+      const attachments = (await response.json()) as ZoteroAttachment[];
+      pdfAttachment = attachments.find(
+        (att) => att.data?.itemType === "attachment" && att.data?.contentType === "application/pdf"
+      );
+      if (attachments.length < ZOTERO_CHILD_PAGE) break;
+    }
 
     if (!pdfAttachment) {
       return { success: false, error: "No PDF attachment found in Zotero" };
@@ -270,7 +274,8 @@ async function downloadZoteroPdf(
       return { success: false, error: `Zotero download failed: ${pdfResponse.status}` };
     }
 
-    const pdfBlob = await pdfResponse.blob();
+    // Read no further than the cap: a larger file stops here, never held whole.
+    const pdfBlob = await readCappedBody(pdfResponse, maxBytes);
     return { success: true, pdfBlob };
   } catch (e: unknown) {
     const error = e instanceof Error ? e.message : String(e);

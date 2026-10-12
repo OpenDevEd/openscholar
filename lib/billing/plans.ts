@@ -16,6 +16,40 @@ export const TOPUP_PLAN = "top_up";
 /** The plan an organization's customer starts on (#650): its own credits, shared by its members, and Free's limits. */
 export const ORGANIZATION_PLAN = "free_organization";
 
+/** An organization's paid plan (#652): its limits and features. Its price and credits are on its members' seats. */
+export const TEAM_PLAN = "team";
+
+/** Clerk's limit on a free organization's members, invitations included; Team has none. */
+export const FREE_MEMBERS = 5;
+
+/**
+ * Days after a renewal fails that Stripe stops retrying and cancels the plan (#40), measured on
+ * the sandbox's settings: nine tries, cancelled 14 days after the first.
+ * shortcut: Stripe's retry settings can't be read through its API; change this with them.
+ * Counted from the invoice's creation, the only time Autumn gives: Stripe first tries about an hour
+ * later, so the day shown can be one early near midnight, never late.
+ */
+export const DAYS_TO_PAY = 14;
+
+/**
+ * A Team member's seat (#652), attached to the member's entity on the organization's customer.
+ * Each is billed on its own and adds its monthly credits to the organization's one pool.
+ */
+export const SEAT_PLAN = "team_seat";
+
+/** The Autumn feature a member's entity is made for. */
+export const SEATS_FEATURE = "seats";
+
+/**
+ * The boolean feature in Autumn that gives a workspace Evidence Libraries, and with them the
+ * making and editing of author profiles (#652). Team has it; which plans do is set in Autumn's
+ * dashboard, not here. A plan is one workspace's: it grants nothing in another.
+ */
+export const EVIDENCE_LIBRARIES_FEATURE = "evidence_libraries";
+
+/** The plans only an organization is on; a person's own workspace never picks them. */
+export const ORGANIZATION_PLANS: readonly string[] = [ORGANIZATION_PLAN, TEAM_PLAN, SEAT_PLAN];
+
 /**
  * What a plan allows, each a metered feature in Autumn that is never used up: its amount on
  * the plan is the limit, and an unlimited one sets none (#632).
@@ -24,6 +58,7 @@ export const ORGANIZATION_PLAN = "free_organization";
  * - assistant_replies: replies the assistant may be writing for a person at once.
  * - request_papers: papers one screening or extraction request may take.
  * - uploads_per_hour: files a person may attach to assistant chats in an hour (#647).
+ * - guests: people outside a workspace each of its items may be shared with, invitations still waiting included (#653).
  */
-export const PLAN_LIMITS = ["collections", "concurrency", "assistant_replies", "request_papers", "bulk_papers", "uploads_per_hour"] as const;
+export const PLAN_LIMITS = ["collections", "concurrency", "assistant_replies", "request_papers", "bulk_papers", "uploads_per_hour", "guests"] as const;
 export type PlanLimit = (typeof PLAN_LIMITS)[number];

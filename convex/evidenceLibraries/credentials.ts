@@ -253,7 +253,8 @@ export async function readCredentialMetadata(
   ctx: QueryCtx,
   args: { libraryId: Id<"evidenceLibraries"> },
 ) {
-  await requireEvidenceLibraryAccess(ctx, args.libraryId, "read");
+  // Which credentials are stored, never their values: the settings page shows it to everyone who views the library (#653).
+  await requireEvidenceLibraryAccess(ctx, args.libraryId, "view");
   const credentials = await ctx.db
     .query("evidenceLibraryCredentials")
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))

@@ -45,4 +45,12 @@ crons.interval(
   {},
 );
 
+// Seats follow memberships as they change; this catches one an event missed (#652).
+crons.interval(
+  "sync team seats",
+  { hours: 24 },
+  internal.billing.seats.syncTeams,
+  {},
+);
+
 export default crons;

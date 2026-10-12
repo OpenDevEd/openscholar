@@ -10,9 +10,6 @@ import {
   RotateCcw,
   X,
   MoreHorizontal,
-  ShieldCheck,
-  Crown,
-  PenLine,
   Clock3,
   ChevronsUpDown,
   ChevronLeft,
@@ -20,6 +17,8 @@ import {
   Check,
 } from "@/components/icons";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
+import { EmailAvatar, PersonName, ROLE_ICONS, RoleLabel } from "@/components/ui/identity";
+import { WorkspaceTile, type WorkspaceLook } from "@/components/workspaces/parts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -78,12 +77,16 @@ export type AccessMember = {
   invited: boolean;
   delivery?: "queued" | "sent" | "failed";
   protected?: boolean;
+  /** The person looking at the list, who gets a You chip. */
+  you?: boolean;
 };
-const roleHint: Record<Role, string> = {
+const roleHint: Record<Role | "Viewer", string> = {
   Owner:
     "Inherited from the organization. Manage all its libraries and their teams.",
   Editor: "Review and publish items. Manage library content.",
   Creator: "Create and edit items, upload files and submit for review.",
+  // An organization's members without a role in the library (#653).
+  Viewer: "Everyone else in the organization. View the library and its items without changing them.",
 };
 
 /** Organization members one page of the picker shows; typing narrows them. */
@@ -141,6 +144,7 @@ export function TeamAccess({
   members,
   onMembersChange,
   libraryId,
+  organization,
   onResend,
 }: {
   scope: "library" | "profile";
@@ -148,6 +152,8 @@ export function TeamAccess({
   onMembersChange: (members: AccessMember[]) => Promise<void>;
   /** The library whose organization's members can be added; a profile has none. */
   libraryId?: Id<"evidenceLibraries">;
+  /** The organization a library is in, whose other members view it; none for a library in a person's own workspace. */
+  organization?: WorkspaceLook;
   onResend: (member: AccessMember) => Promise<void>;
 }) {
   const isProfile = scope === "profile";
@@ -199,24 +205,18 @@ export function TeamAccess({
         {list.map((member) => (
           <li key={member.id} className="px-4 py-4 hover:bg-muted">
             <div className="flex flex-wrap items-center gap-3">
-              <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-10 rounded-xl" />
+              {member.invited ? <EmailAvatar /> : <IdentityAvatar name={member.name} imageUrl={member.imageUrl} className="size-9" />}
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{member.name}</p>
+                <PersonName name={member.name} you={member.you === true} className="text-sm font-medium" />
                 <p className="truncate text-xs text-muted-foreground">
                   {member.email}
                 </p>
                 {member.invited && member.delivery === "failed" && <p className="text-xs text-destructive">Invitation not delivered</p>}
               </div>
-              {isProfile && member.role === "Editor" ? (
-                <span className="flex w-36 items-center gap-2 px-3 text-xs text-muted-foreground">
-                  <ShieldCheck className="size-3.5" />
-                  Editor
-                </span>
-              ) : member.role === "Owner" ? (
-                <span className="flex w-36 items-center gap-2 px-3 text-xs text-muted-foreground">
-                  <Crown className="size-3.5" />
-                  Owner
-                </span>
+              {(isProfile && member.role === "Editor") || member.role === "Owner" ? (
+                <RoleLabel role={member.role === "Owner" ? "owner" : "editor"} className="w-36 gap-2 px-3">
+                  {member.role}
+                </RoleLabel>
               ) : (
                 <RoleSelect
                   disabled={pending}
@@ -581,6 +581,28 @@ export function TeamAccess({
             {people(members.filter((member) => member.role === "Owner"))}
           </div>
         )}
+        {!isProfile && organization && (
+          // The rest of the organization views the library until an owner gives them a role (#653).
+          <div className="border-b border-border-subtle bg-inset">
+            <div className="px-4 pt-4">
+              <h4 className="text-xs font-medium">Everyone else in the organization</h4>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Viewers until you add them below with a role.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 px-4 py-4">
+              <WorkspaceTile workspace={organization} size="row" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">Everyone in {organization.name}</p>
+                <p className="truncate text-xs text-muted-foreground">Everyone without a role in this library</p>
+              </div>
+              <RoleLabel role="view" className="w-36 gap-2 px-3">
+                Viewer
+              </RoleLabel>
+              <span className="size-8" aria-hidden="true" />
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
           <div className="flex items-center gap-1" aria-label="Team view">
             {(["members", "invitations"] as const).map((tab) => {
@@ -648,18 +670,13 @@ export function TeamAccess({
         {!isProfile && (
           <div className="border-t border-border-subtle px-4 py-3 text-xs text-muted-foreground">
             <Disclosure open={rolesOpen} onOpenChange={setRolesOpen} label="About library roles">
-            <dl className="grid gap-3 pb-1 pt-3 sm:grid-cols-3">
-              {(["Owner", "Editor", "Creator"] as const).map((role) => (
+            <dl className={cn("grid gap-3 pb-1 pt-3", organization ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3")}>
+              {(["Owner", "Editor", "Creator", ...(organization ? (["Viewer"] as const) : [])] as const).map((role) => (
                 <div key={role}>
-                  <dt className="mb-1 flex items-center gap-1.5 font-medium text-foreground">
-                    {role === "Owner" ? (
-                      <Crown className="size-3.5" />
-                    ) : role === "Creator" ? (
-                      <PenLine className="size-3.5" />
-                    ) : (
-                      <ShieldCheck className="size-3.5" />
-                    )}
-                    {role}
+                  <dt className="mb-1">
+                    <RoleLabel role={role === "Owner" ? "owner" : role === "Viewer" ? "view" : role === "Creator" ? "creator" : "editor"} className="font-medium text-foreground">
+                      {role}
+                    </RoleLabel>
                   </dt>
                   <dd className="leading-relaxed">{roleHint[role]}</dd>
                 </div>
@@ -698,11 +715,7 @@ function RoleSelect({
           className,
         )}
       >
-        {value === "Editor" ? (
-          <ShieldCheck className="size-3.5 text-muted-foreground" />
-        ) : (
-          <PenLine className="size-3.5 text-muted-foreground" />
-        )}
+        {value === "Editor" ? <ROLE_ICONS.editor className="size-3.5 text-muted-foreground" /> : <ROLE_ICONS.creator className="size-3.5 text-muted-foreground" />}
         <SelectValue className="shrink-0">{value}</SelectValue>
       </SelectTrigger>
       <SelectContent className="w-72" position="popper">

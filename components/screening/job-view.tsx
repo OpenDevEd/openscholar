@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useConvex, useMutation } from "convex/react";
+import { useConvex } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -50,12 +50,15 @@ const TONE: Record<Exclude<Phase, "processing">, StatusTone> = {
 
 type Translate = ReturnType<typeof useTranslations<"screeningPage">>;
 
-/** What a job is called: its papers' set, as it was named when the job started. */
-export function jobName(t: Translate, job: Pick<JobRow, "createdAt"> & Partial<Pick<JobRow, "set" | "label">>, date: (at: number) => string) {
-  if (job.set?.kind === "saved") return t("savedPapers");
+/** What a job is called: the name it was given as it started, else its papers' set, as it was named then. */
+export function jobName(t: Translate, job: Pick<JobRow, "createdAt"> & Partial<Pick<JobRow, "name" | "set" | "label"> & Pick<Job, "source">>, date: (at: number) => string) {
+  if (job.name) return job.name;
+  // Someone it's shared with is told the kind of its papers' set, not which one (`source`).
+  const kind = job.set?.kind ?? job.source;
+  if (kind === "saved") return t("savedPapers");
   if (!job.label) return t("jobOn", { date: date(job.createdAt) });
   const name = job.label.charAt(0).toUpperCase() + job.label.slice(1);
-  return job.set?.kind === "screening" ? t("includedIn", { name }) : name;
+  return kind === "screening" ? t("includedIn", { name }) : name;
 }
 
 export function JobView({
@@ -75,9 +78,11 @@ export function JobView({
   const format = useFormatter();
   const toast = useAppToast();
   const convex = useConvex();
-  const cancel = useMutation(api.screening.mutations.cancelScreeningJob);
+  const cancel = useWorkspaceMutation(api.screening.mutations.cancelScreeningJob);
   const [exporting, setExporting] = useState(false);
-  const { data: slots } = useProtectedQuery(api.screening.queries.slots, inWorkspace(workspaceId, phase === "running" ? {} : "skip"));
+  // Someone it's shared with reads it (#653): running, cancelling and changing it are its workspace's, and so are the slots it runs in.
+  const guest = Boolean(job.guest);
+  const { data: slots } = useProtectedQuery(api.screening.queries.slots, inWorkspace(workspaceId, phase === "running" && !guest ? {} : "skip"));
 
   // A search's filters come from the search itself, read while its job shows.
   const searchId = job.set?.kind === "search" ? job.set.searchId : undefined;
@@ -92,12 +97,14 @@ export function JobView({
   const done = doneOf(job);
   const active = phase === "running" || phase === "waiting" || phase === "reading";
   const name = jobName(t, job, (at) => format.dateTime(new Date(at), { dateStyle: "medium" }));
-  const SourceIcon = job.set ? SOURCE_ICON[job.set.kind] : undefined;
-  const source = job.set?.kind === "saved" ? t("savedPapers") : job.label;
+  const sourceKind = job.set?.kind ?? job.source;
+  const SourceIcon = sourceKind ? SOURCE_ICON[sourceKind] : undefined;
+  const source = sourceKind === "saved" ? t("savedPapers") : job.label;
   // Where included papers went: a collection while it exists, the library alone for a job from the results page's old dialog.
-  const savedTo = job.unsaved ? undefined : (job.targetCollectionName ?? (job.targetCollectionId ? undefined : t("yourLibrary")));
-  const pruned = job.prune ? job.label : undefined;
-  const { spent, estimate } = job.credits;
+  // A guest is told neither: both are of a library that isn't theirs.
+  const savedTo = guest || job.unsaved ? undefined : (job.targetCollectionName ?? (job.targetCollectionId ? undefined : t("theLibrary")));
+  const pruned = !guest && job.prune ? job.label : undefined;
+  const { spent, estimate } = job.credits ?? { spent: undefined, estimate: 0 };
 
   const exportAs = async (kind: "csv" | "json" | "xlsx") => {
     setExporting(true);
@@ -118,7 +125,8 @@ export function JobView({
     <div className="space-y-8">
       <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
         <ProgressRing value={done} max={total} phase={phase} />
-        <div className="min-w-0 flex-1 space-y-1.5">
+        {/* A least width, so on a narrow screen the buttons take the next line and not the title's room. */}
+        <div className="min-w-0 flex-1 basis-60 space-y-1.5">
           <div className="flex items-center gap-2.5">
             <h2 className="truncate text-xl font-semibold tracking-tight">{name}</h2>
             {/* One that stopped at the most it may spend still has credits to its name: it says so, not "Out of credits". */}
@@ -135,11 +143,12 @@ export function JobView({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {job.status === "processing" ? (
+          {/* A screening of the person's Zotero is run again from a chat: the page has no Zotero to pick. */}
+          {guest ? null : job.status === "processing" ? (
             <Button variant="outline" size="sm" onClick={() => cancel({ jobId: job._id }).catch((error) => toast.error(t("cancelFailed"), getErrorMessage(error, t("cancelFailed"))))}>
               <Square className="fill-current" />{t("cancel")}
             </Button>
-          ) : (
+          ) : job.set?.kind === "zotero" ? null : (
             <Button variant="outline" size="sm" onClick={onRunAgain}><Copy />{t("runAgain")}</Button>
           )}
           <DropdownMenu>
@@ -183,6 +192,8 @@ export function JobView({
               </span>
             ) : null}
           </div>
+          {/* What it waits on, runs in, changed and cost: a guest sees only that its papers are being got, or why it failed. */}
+          {guest && phase !== "reading" && !job.failure ? null : (
           <div className="grid gap-4 border-t border-border-subtle pt-4 sm:grid-cols-2">
             {phase === "waiting" && blocker ? (
               <div className="space-y-2">
@@ -201,10 +212,10 @@ export function JobView({
             ) : phase === "running" ? (
               <div className="space-y-2">
                 <p className="flex items-center justify-between text-xs font-medium">
-                  <span className="flex items-center gap-1.5"><Gauge className="size-3.5 text-primary" />{t("yourSlots")}</span>
+                  <span className="flex items-center gap-1.5"><Gauge className="size-3.5 text-primary" />{t("papersAtOnce")}</span>
                   {slots ? <span className="tabular-nums text-muted-foreground">{t("ofTotal", { done: slots.running, total: slots.limit })}</span> : null}
                 </p>
-                {/* The row keeps its height while the person's slots are read. */}
+                {/* The row keeps its height while the workspace's slots are read. */}
                 <div className="flex h-1.5 gap-0.5" role="img" aria-label={slots ? t("slotsInUse", { running: slots.running, limit: slots.limit }) : undefined}>
                   {Array.from({ length: slots?.limit ?? 0 }, (_, i) => (
                     <span key={i} className={cn("h-1.5 flex-1 rounded-full transition-colors duration-300", i < (slots?.running ?? 0) ? "bg-primary" : "bg-foreground/10")} />
@@ -233,6 +244,7 @@ export function JobView({
               </div>
             )}
           </div>
+          )}
           {active && (savedTo || pruned) ? (
             <div className="flex flex-wrap items-center gap-1.5 border-t border-border-subtle pt-4">
               {savedTo ? <ClippedChip icon={FolderPlus}>{t("savesTo", { name: savedTo })}</ClippedChip> : null}
@@ -301,6 +313,13 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
   const { data: current } = useProtectedQuery(api.screening.papers.get, inWorkspace(workspaceId, held ? { jobId: job._id, paperId: held.paper.openalexId } : "skip"));
   const answer = useWorkspaceMutation(api.screening.papers.answer);
 
+  // The list the papers on screen belong to: it moves on to the one asked for once its papers have arrived.
+  const asked = `${tab}\n${text}\n${list.page}`;
+  const [shownList, setShownList] = useState(list.isLoading ? "" : asked);
+  if (!list.isLoading && !list.isStale && shownList !== asked) setShownList(asked);
+  // What it was asked with, which an empty list's message names until the next one arrives.
+  const [shownTab, shownText] = (shownList || asked).split("\n") as [Outcome, string];
+
   const heldPaper = held ? (current ?? held.paper) : undefined;
   const rows =
     held && heldPaper && !list.items.some((paper) => paper.openalexId === heldPaper.openalexId)
@@ -347,16 +366,18 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
       {/* The list keeps a full page's height while its outcome has pages, and its papers' height while they load, so nothing under it moves. */}
       <div style={{ minHeight: hasPages ? listPx(PAGE_SIZE) : list.isLoading && !text && count ? listPx(count) : undefined }}>
         <motion.div
-          // One list per outcome, search and page, and per arrival of its papers: rows only animate for changes inside the list shown.
-          key={`${tab}\n${text}\n${list.page}\n${list.isStale}`}
+          // One list per outcome, search and page, mounted when its papers arrive, so it fades in once. While the
+          // next ones load, the papers shown stay and dim: keyed on the list asked for instead, the stale papers
+          // faded in again first, then the arrived ones did.
+          key={shownList}
           initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ opacity: list.isStale ? 0.6 : 1, y: 0 }}
           transition={{ duration: 0.25, ease: EASE }}
-          className={cn(LIST, "mt-3", list.isStale && "pointer-events-none opacity-60", list.isLoading && "invisible")}
+          className={cn(LIST, "mt-3", list.isStale && "pointer-events-none", list.isLoading && "invisible")}
         >
           {rows.length === 0 ? (
             <p className="px-4 py-10 text-center text-sm text-muted-foreground">
-              {done === 0 ? t("papersShowHere") : text ? t("noPaperMatches") : t(`noPapers.${tab}`)}
+              {done === 0 ? t("papersShowHere") : shownText ? t("noPaperMatches") : t(`noPapers.${shownTab}`)}
             </p>
           ) : (
             <AnimatePresence initial={false}>
@@ -408,7 +429,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
                     <AnimatePresence initial={false}>
                       {expanded ? (
                         <motion.div key="detail" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden">
-                          <PaperDetail paper={paper} questions={questions} max={max} minimum={minimum} onAnswer={(key, value) => change(paper, index, key, value)} />
+                          <PaperDetail paper={paper} questions={questions} max={max} minimum={minimum} onAnswer={job.guest ? undefined : (key, value) => change(paper, index, key, value)} />
                         </motion.div>
                       ) : null}
                     </AnimatePresence>
@@ -441,7 +462,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
  * the score that includes it, each question's answer on one line with what it added, and
  * the abstract underneath.
  */
-function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Paper; questions: Question[]; max: number; minimum: number; onAnswer: (questionKey: string, answer: Answer | null) => void }) {
+function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Paper; questions: Question[]; max: number; minimum: number; onAnswer?: (questionKey: string, answer: Answer | null) => void }) {
   const t = useTranslations("screeningPage");
   const score = paper.score ?? 0;
   const { icon: OutcomeIcon, text, bar } = OUTCOME[paper.outcome];
@@ -479,9 +500,10 @@ function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Pape
                         type="button"
                         role="radio"
                         aria-checked={on}
-                        disabled={paper.outcome === "failed"}
-                        onClick={() => onAnswer(q.key, option)}
-                        className={cn("inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-colors", on ? className : "text-muted-foreground hover:bg-muted")}
+                        // Without `onAnswer` the answers are read, not changed: someone the screening is shared with.
+                        disabled={paper.outcome === "failed" || !onAnswer}
+                        onClick={() => onAnswer?.(q.key, option)}
+                        className={cn("inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-xs font-medium transition-colors disabled:pointer-events-none", on ? className : "text-muted-foreground hover:bg-muted")}
                       >
                         <Icon className="size-3.5" />{t(`answer.${option}`)}
                       </button>
@@ -490,9 +512,11 @@ function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Pape
                 </div>
                 <div className="flex justify-end">
                   {given?.changed ? (
-                    <TooltipHint label={t("putBack")}>
-                      <Button variant="ghost" size="icon" className="size-7" aria-label={t("putBack")} onClick={() => onAnswer(q.key, null)}><Undo2 /></Button>
-                    </TooltipHint>
+                    onAnswer ? (
+                      <TooltipHint label={t("putBack")}>
+                        <Button variant="ghost" size="icon" className="size-7" aria-label={t("putBack")} onClick={() => onAnswer(q.key, null)}><Undo2 /></Button>
+                      </TooltipHint>
+                    ) : null
                   ) : given?.confidence !== undefined ? (
                     <span className="flex items-center gap-1.5 text-xs tabular-nums text-muted-foreground" aria-label={t("confidence", { percent: Math.round(given.confidence * 100) })}>
                       <Meter value={given.confidence} max={1} className="w-10" fill={a === "unclear" ? "bg-warning" : "bg-primary"} />

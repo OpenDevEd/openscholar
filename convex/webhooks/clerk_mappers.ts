@@ -32,10 +32,6 @@ export type ClerkOrganizationSnapshot = {
   name: string;
   slug: string;
   imageUrl?: string;
-  /** Whether the platform team switched Evidence Libraries on for this organisation. */
-  evidenceLibrariesEnabled: boolean;
-  authorsEnabled: boolean;
-  extractionEnabled: boolean;
   devEnabled?: boolean;
   clerkCreatedAt: number;
   clerkUpdatedAt: number;
@@ -51,7 +47,25 @@ export type ClerkMembershipSnapshot = {
   organization: ClerkOrganizationSnapshot;
 };
 
+/** An invitation to an organization as Clerk sends it (#651). */
+export type ClerkInvitationSnapshot = {
+  clerkInvitationId: string;
+  clerkOrganizationId: string;
+  email: string;
+  role: "org:admin" | "org:member";
+  state: "pending" | "accepted" | "revoked" | "expired";
+  inviterClerkUserId?: string;
+  expiresAt?: number;
+  clerkCreatedAt: number;
+  clerkUpdatedAt: number;
+};
+
 export type ClerkProjectionEvent =
+  | {
+      kind: "invitation";
+      entityId: string;
+      invitation: ClerkInvitationSnapshot;
+    }
   | {
       kind: "organization";
       action: "upsert";
@@ -98,13 +112,11 @@ function mapOrganizationSnapshot(value: unknown): ClerkOrganizationSnapshot | nu
     clerkOrganizationId: organization.id,
     name: organization.name,
     slug: organization.slug,
+    // Only a logo its admins uploaded: the one Clerk makes for every other is drawn here instead, in the organization's colour (#651).
     imageUrl:
-      typeof organization.image_url === "string"
+      organization.has_image === true && typeof organization.image_url === "string"
         ? organization.image_url
         : undefined,
-    evidenceLibrariesEnabled: features?.evidenceLibraries === true,
-    authorsEnabled: features?.authors === true,
-    extractionEnabled: features?.extraction === true,
     devEnabled: features?.dev === true,
     clerkCreatedAt: organization.created_at,
     clerkUpdatedAt: organization.updated_at,
@@ -142,10 +154,46 @@ function mapMembershipSnapshot(
   };
 }
 
+const INVITATION_STATES = new Set(["pending", "accepted", "revoked", "expired"]);
+
+function mapInvitationSnapshot(value: unknown): ClerkInvitationSnapshot | null {
+  const invitation = asRecord(value);
+  const metadata = asRecord(invitation?.public_metadata);
+  if (
+    !invitation ||
+    typeof invitation.id !== "string" ||
+    typeof invitation.organization_id !== "string" ||
+    typeof invitation.email_address !== "string" ||
+    (invitation.role !== "org:admin" && invitation.role !== "org:member") ||
+    typeof invitation.status !== "string" ||
+    !INVITATION_STATES.has(invitation.status) ||
+    typeof invitation.created_at !== "number" ||
+    typeof invitation.updated_at !== "number"
+  ) {
+    return null;
+  }
+  return {
+    clerkInvitationId: invitation.id,
+    clerkOrganizationId: invitation.organization_id,
+    email: invitation.email_address.toLowerCase(),
+    role: invitation.role,
+    state: invitation.status as ClerkInvitationSnapshot["state"],
+    ...(typeof metadata?.inviterClerkUserId === "string" ? { inviterClerkUserId: metadata.inviterClerkUserId } : {}),
+    ...(typeof invitation.expires_at === "number" ? { expiresAt: invitation.expires_at } : {}),
+    clerkCreatedAt: invitation.created_at,
+    clerkUpdatedAt: invitation.updated_at,
+  };
+}
+
 export function parseClerkProjectionEvent(
   eventType: string,
   data: unknown,
 ): ClerkProjectionEvent | null {
+  if (eventType.startsWith("organizationInvitation.")) {
+    const invitation = mapInvitationSnapshot(data);
+    return invitation ? { kind: "invitation", entityId: invitation.clerkInvitationId, invitation } : null;
+  }
+
   if (eventType === "organization.deleted") {
     const organization = asRecord(data);
     return typeof organization?.id === "string"

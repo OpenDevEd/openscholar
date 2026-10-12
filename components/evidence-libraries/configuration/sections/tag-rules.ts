@@ -13,7 +13,7 @@ export const TAG_RULE_KEYS = [
 export type TagRuleKey = (typeof TAG_RULE_KEYS)[number];
 export type TagRules = Partial<Record<TagRuleKey, string[]>>;
 
-export const TAG_RULE_LIMITS = { maxTags: 10, maxLength: 128 } as const;
+const TAG_RULE_LIMITS = { maxTags: 10, maxLength: 128 } as const;
 
 export const DEFAULT_TAG_RULES: Record<TagRuleKey, string[]> = {
   publish: ["_publish", "publishPDF"],

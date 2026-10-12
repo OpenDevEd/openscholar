@@ -1,5 +1,5 @@
 import { v, type Infer } from "convex/values";
-import { capped, MAX_AUTHORS } from "../lib/listCaps";
+import { capped, MAX_AUTHORS, MAX_RATERS_KEPT } from "../lib/listCaps";
 
 export const librarySortValidator = v.union(
   v.literal("savedAt"),
@@ -17,7 +17,8 @@ export const libraryFilterFields = {
   savedBefore: v.optional(v.number()),
   yearFrom: v.optional(v.number()),
   yearTo: v.optional(v.number()),
-  collectionId: v.optional(v.id("collections")),
+  // Read from the page's address, so it can be anything: one that is no collection's ID reads as a collection that is gone (#826).
+  collectionId: v.optional(v.string()),
 };
 
 /** A view of the library: its sort, its filters, and an optional text search. */
@@ -38,7 +39,8 @@ export const libraryPapersValidator = v.object({
   papers: capped(
     v.array(
       v.object({
-        libraryItemId: v.id("libraryItems"),
+        /** The person's own saved copy. Left out for a paper of a collection shared with them from another workspace that they haven't saved themselves. */
+        libraryItemId: v.optional(v.id("libraryItems")),
         id: v.string(),
         title: v.string(),
         authors: v.optional(v.string()),
@@ -59,11 +61,14 @@ export const libraryPapersValidator = v.object({
 
 /** What the library keeps of a saved paper. */
 export const libraryItemFields = {
-    userId: v.id("users"),
-    workspaceId: v.optional(v.id("workspaces")),
-    createdBy: v.optional(v.id("users")),
+    workspaceId: v.id("workspaces"),
+    createdBy: v.id("users"),
     openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
     rating: v.optional(v.number()), // 0-5; unset when the paper was saved without rating it
+    // In an organization's library `rating` is its members' average of their own ratings (#801): how many of them gave one,
+    // and the first of them with what each gave, kept in step with it (convex/ratings.ts). Unset in a person's own workspace.
+    ratingCount: v.optional(v.number()),
+    ratedBy: capped(v.optional(v.array(v.object({ id: v.id("ratings"), userId: v.id("users"), rating: v.number() }))), MAX_RATERS_KEPT),
     title: v.string(),
     authors: capped(v.optional(v.array(v.string())), MAX_AUTHORS),
     authorsUnparsed: v.optional(v.string()),
@@ -85,6 +90,6 @@ export const libraryItemFields = {
     updatedAt: v.number(),
 };
 
-const { userId: _owner, workspaceId: _workspace, ...removedItemFields } = libraryItemFields;
-/** A removed paper as it was, apart from whose and which workspace's it was: the removal keeps those. */
+const { workspaceId: _workspace, ...removedItemFields } = libraryItemFields;
+/** A removed paper as it was, apart from which workspace's it was: the removal keeps that. */
 export const removedItemValidator = v.object(removedItemFields);

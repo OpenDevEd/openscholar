@@ -1,12 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useFormatter, useTranslations } from "next-intl";
 import { ResearchAccountChangedError } from "@/lib/research/binding";
 import { showStyledToast } from "@/components/ui/sonner";
 import { resolveToastActionRoute } from "./action-routing";
 import {
   getToastMessageKeyForErrorCode,
   resolveToastError,
+  openPayment,
 } from "./error-resolver";
 import { classifySearchError } from "@/lib/search/search-error";
 import type { ToastAction } from "./core";
@@ -95,6 +96,12 @@ export type AppToastApi = {
   error: (title: string, description?: string, action?: ToastAction) => void;
 };
 
+/** A toast's button to pay the payment still open that a purchase was refused for (#858), when `error` is that refusal. */
+export function payOpenAction(error: unknown, label: string): ToastAction | undefined {
+  const url = openPayment(error)?.url;
+  return url ? { label, onClick: () => window.location.assign(url), icon: "arrow-right" } : undefined;
+}
+
 export function getErrorMessage(error: unknown, fallback: string): string {
   const resolved = resolveToastError(error, fallback);
   return resolved.message;
@@ -103,13 +110,19 @@ export function getErrorMessage(error: unknown, fallback: string): string {
 export function useAppToast(): AppToastApi {
   const t = useTranslations("toast");
   const tc = useTranslations("common");
+  const format = useFormatter();
 
   const resolveErrorDetails = (error: unknown, fallback: string) => {
     const resolved = resolveToastError(error, fallback);
     const mappedKey = getToastMessageKeyForErrorCode(resolved.code);
+    const open = openPayment(error);
     return {
       code: resolved.code,
-      message: mappedKey
+      message: open
+        ? open.amount !== undefined && open.currency
+          ? t("billingPaymentOpen", { amount: format.number(open.amount, { style: "currency", currency: open.currency.toUpperCase() }) })
+          : resolved.message
+        : mappedKey
         ? t(mappedKey)
         : resolved.isConvex
           ? t("convexUnknownError")
@@ -241,7 +254,7 @@ export function useAppToast(): AppToastApi {
         const resolved = resolveErrorDetails(error, t("billingCheckoutFailed"));
         showStyledToast("error", t("billingCheckoutFailed"), {
           description: resolved.message,
-          action: getActionFromCode(resolved.code),
+          action: payOpenAction(error, tc("payNow")) ?? getActionFromCode(resolved.code),
         });
       },
     },

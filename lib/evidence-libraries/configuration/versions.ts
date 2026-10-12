@@ -32,7 +32,7 @@ export function changedCards(rows: readonly string[]): PageSectionKey[] {
 }
 
 /** The areas new-el files each release note under, in the order shown. */
-export const RELEASE_NOTE_AREAS = [
+const RELEASE_NOTE_AREAS = [
   "search",
   "records",
   "collections",

@@ -33,7 +33,10 @@ function followSectionLayout(target: HTMLElement) {
  * `ids` must be a stable array (a module constant) so the listener attaches once.
  * The active line follows each section's actual scroll margin.
  */
-export function useScrollSpy(ids: readonly string[], requestedSection?: string) {
+export function useScrollSpy(
+  ids: readonly string[],
+  requestedSection?: string,
+) {
   const [active, setActive] = useState<string | null>(null);
   const locked = useRef<string | null>(null);
   const lastJump = useRef<string | null>(null);

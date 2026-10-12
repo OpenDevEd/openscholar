@@ -108,6 +108,8 @@ export const autumnWebhook = httpAction(async (ctx, request) => {
     console.error(`[autumn webhook] refresh for ${customerId} failed on ${id}`, error);
     return new Response("Refresh failed", { status: 500 });
   }
+  // An organization's plan change (onto Team, off it, or a card saved) settles its seats (#652).
+  if (customerId === workspaceId) await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId });
   return new Response(null, { status: 204 });
 });
 

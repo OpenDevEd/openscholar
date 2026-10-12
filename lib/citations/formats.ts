@@ -16,8 +16,8 @@ export type CitationFormat = (typeof CITATION_FORMATS)[number]["id"];
 export type FormattedCitation = { text: string; html: string | null };
 export type Citations = Record<CitationFormat, FormattedCitation>;
 
-export type CitationName = { literal: string } | { family: string; given?: string };
-export type CitationDate = { "date-parts": number[][] } | { literal: string };
+type CitationName = { literal: string } | { family: string; given?: string };
+type CitationDate = { "date-parts": number[][] } | { literal: string };
 export type CitationData = {
 	id: string;
 	type: string;

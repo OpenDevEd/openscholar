@@ -42,7 +42,7 @@ export const RECORD_CHIP =
  * A record named in the chat: one picked with @, or one a reply links to. Inline, not a box,
  * so a long name wraps with the sentence and each line keeps its tint.
  */
-export function RecordChip({ kind, children }: { kind: keyof typeof KIND; children: ReactNode }) {
+function RecordChip({ kind, children }: { kind: keyof typeof KIND; children: ReactNode }) {
   const { icon: Icon, tint } = KIND[kind];
   return (
     <span className={RECORD_CHIP} style={recordChipStyle(tint)}>
@@ -202,7 +202,7 @@ export function MentionComposer({
       </AnimatePresence>
       <div className="relative">
         {/* Same box, font and wrapping as the textarea, so each highlight sits under its text. */}
-        <div ref={mirror} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words px-4 pt-3 text-sm text-transparent">
+        <div ref={mirror} aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden whitespace-pre-wrap break-words px-4 pt-3 text-base md:pointer-fine:text-sm text-transparent">
           {draftSegments(draft, picked).map((part, i) =>
             typeof part === "string" ? (
               part
@@ -250,7 +250,7 @@ export function MentionComposer({
           aria-autocomplete="list"
           aria-controls={menu && kept ? listId : undefined}
           aria-activedescendant={menu && options.length && !stale ? `${listId}-${Math.min(active, options.length - 1)}` : undefined}
-          className="relative block w-full resize-none bg-transparent px-4 pt-3 text-sm outline-none placeholder:text-muted-foreground"
+          className="relative block w-full resize-none bg-transparent px-4 pt-3 text-base md:pointer-fine:text-sm outline-none placeholder:text-muted-foreground"
         />
       </div>
     </div>

@@ -24,7 +24,7 @@ const useQueryHistoryIndexStore = create<{
     set((state) => ({ indices: { ...state.indices, [searchId]: index } })),
 }));
 
-export function useMediaQuery(query: string): boolean {
+function useMediaQuery(query: string): boolean {
   const [matches, setMatches] = useState(false);
 
   useEffect(() => {

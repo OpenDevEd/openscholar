@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "@/components/workspace-link";
+import { useSearchParams } from "next/navigation";
 import { useAction } from "convex/react";
 import { useQueryState } from "nuqs";
 import posthog from "posthog-js";
@@ -36,9 +36,11 @@ import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { defaultPlanId, findPlan, planCreditCap, topUpBundles } from "@/lib/billing/catalog";
+import { DAYS_TO_PAY } from "@/lib/billing/plans";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 
 type Kind = "chat" | "extraction" | "screening" | "search" | "translation" | "wallet_api" | "refund";
 const KINDS: Record<Kind, { icon: AppIcon; tint: string }> = {
@@ -62,7 +64,7 @@ export default function BillingPage() {
   const format = useFormatter();
   const now = useNow({ updateInterval: 60_000 });
   const toast = useAppToast();
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   const searchParams = useSearchParams();
   const [jobId, setJobId] = useQueryState("jobId");
   const state = useSharedSubscriptionState();
@@ -80,9 +82,10 @@ export default function BillingPage() {
   const [hover, setHover] = useState<Kind | null>(null);
   const [day, setDay] = useState<number | null>(null);
 
-  // The chart's window starts at midnight 29 days ago, so its query only changes once a day.
+  // The chart's window starts at midnight 29 days ago, so its query only changes once a day. UTC midnight:
+  // the app shows dates in UTC, so each bar's day is the date it's labelled with.
   const today = new Date(now);
-  today.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
   const start = today.getTime() - (DAYS - 1) * DAY;
   const { data: spending } = useProtectedQuery(api.billing.usage.spending, inWorkspace(workspaceId, { since: start, days: DAYS }));
   // Charges are read a page at a time, newest first; the count totals the pages.
@@ -362,12 +365,19 @@ export default function BillingPage() {
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
                   <span className="flex items-center gap-2">
                     <AlertCircle className="size-4 shrink-0" />
-                    {t("paymentFailedNotice")}
+                    {/* The payment that failed, and the day Stripe stops retrying and the plan ends (#40). */}
+                    {account.unpaid ? t("paymentFailedEnds", { amount: money(account.unpaid.amount), plan: planName(plan), date: date(account.unpaid.since + DAYS_TO_PAY * 86_400_000) }) : t("paymentFailedNotice")}
                   </span>
-                  <Button variant="outline" size="sm" onClick={updatePayment} disabled={openingPortal}>
-                    {openingPortal && <Loader2 className="animate-spin" />}
-                    {t("updatePaymentMethod")}
-                  </Button>
+                  {account.unpaid?.url ? (
+                    <Button asChild variant="outline" size="sm">
+                      <a href={account.unpaid.url}>{t("fixPayment")}</a>
+                    </Button>
+                  ) : (
+                    <Button variant="outline" size="sm" onClick={updatePayment} disabled={openingPortal}>
+                      {openingPortal && <Loader2 className="animate-spin" />}
+                      {t("fixPayment")}
+                    </Button>
+                  )}
                 </div>
               ) : null}
               {periodEnd !== undefined && periodStart !== undefined ? (
@@ -441,7 +451,8 @@ export default function BillingPage() {
                         <p className="text-xs text-muted-foreground">{tu(`kinds.${c.kind}`)}</p>
                       </div>
                       <time dateTime={new Date(c.createdAt).toISOString()} className="text-xs tabular-nums text-muted-foreground">
-                        {format.relativeTime(c.createdAt, now)}
+                        {/* `now` ticks once a minute: a charge made since is just now, not in the future. */}
+                        {format.relativeTime(c.createdAt, Math.max(now.getTime(), c.createdAt))}
                       </time>
                       <span className="w-20 text-right font-mono text-sm tabular-nums">
                         −{format.number(c.credits)}

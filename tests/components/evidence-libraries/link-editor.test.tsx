@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act, screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -121,8 +121,9 @@ describe("<LinkEditor> collection target", () => {
       "heal",
     );
     const table = screen.getByRole("table", { name: `${ns}.collectionPicker.title` });
-    expect(await within(table).findByText("Health")).toBeInTheDocument();
-    expect(within(table).queryByText("Climate change")).not.toBeInTheDocument();
+    // The last answer stays until the next one is in, so wait for the row that doesn't match to go.
+    await waitFor(() => expect(within(table).queryByText("Climate change")).not.toBeInTheDocument());
+    expect(within(table).getByText("Health")).toBeInTheDocument();
   });
 
   it("pages a long list of collections", async () => {

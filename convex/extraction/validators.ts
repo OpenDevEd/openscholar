@@ -248,6 +248,9 @@ export const searchFiltersValidator = v.object({
     oql: v.optional(v.string()),
     sort: v.string(),
   }),
+  /** The search's result its papers start from, from 1 (#690); from its first when left out. */
+  first: v.optional(v.number()),
+  /** The search's result its papers end at. */
   limit: v.optional(v.number()),
 });
 
@@ -304,9 +307,8 @@ export const setupPlaceValidator = v.object({
 });
 
 export const extractionJobFields = {
-  userId: v.id("users"),
-  workspaceId: v.optional(v.id("workspaces")),
-  createdBy: v.optional(v.id("users")),
+  workspaceId: v.id("workspaces"),
+  createdBy: v.id("users"),
   sourceType: v.optional(sourceTypeValidator),
   status: v.optional(jobStatusValidator),
   totalPapers: v.optional(v.number()),
@@ -357,7 +359,12 @@ export const extractionJobValidator = v.object({
 const _check_extractionJobValidator: AssertExactDoc<"extractionJobs", typeof extractionJobValidator> = true;
 void _check_extractionJobValidator;
 
-export const screeningSelectionValidator = v.object({ jobId: v.id("screeningJobs"), revision: v.string(), count: v.number() });
+/**
+ * A screening's Included papers as one source, at the revision of its decisions they were taken
+ * at: papers `first` to `last` of them (#690), all when left out. `count` is how many the job
+ * reads, as the server counted them.
+ */
+export const screeningSelectionValidator = v.object({ jobId: v.id("screeningJobs"), revision: v.string(), count: v.number(), first: v.optional(v.number()), last: v.optional(v.number()) });
 
 /**
  * Papers `first` to `last` of a collection, or of the whole library without one, as one
@@ -394,6 +401,8 @@ const bucketItemFields = {
   collectionKey: v.optional(v.string()),
   includeDescendants: v.optional(v.boolean()),
   librarySet: v.optional(librarySetValidator),
+  /** A range of the person's own Zotero library or one collection of it, read through their account a page at a time as the job is set up (#328). */
+  zoteroSet: v.optional(v.object({ first: v.number(), last: v.number() })),
 };
 
 /**
@@ -540,8 +549,7 @@ export const extractionQueueStatusValidator = v.union(
 
 export const extractionPaperQueueFields = {
   jobId: v.id("extractionJobs"),
-  userId: v.id("users"),
-  workspaceId: v.optional(v.id("workspaces")),
+  workspaceId: v.id("workspaces"),
   paperId: v.id("extractionPapers"),
   runEpoch: v.number(),
   kind: extractionQueueKindValidator,

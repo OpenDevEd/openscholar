@@ -1,10 +1,4 @@
-/**
- * Extraction limits shared by the server and the UI. How many papers one extraction takes is
- * the person's plan's (convex/billing/accounts.ts `planLimit`, "request_papers").
- */
 
-/** "12 of 1,000", or "12" when the plan sets no limit. */
-export const stagedOf = (count: number, limit: number) => (Number.isFinite(limit) ? `${count} of ${limit}` : `${count}`);
 
 /** Papers a search pulls when it's first picked, and what a search saved without a count pulls; the count can be raised to the plan's limit. */
 export const PAPER_PULL_DEFAULT = 200;

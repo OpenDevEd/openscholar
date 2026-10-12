@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "./billing.test-support";
+import { accountOf } from "./billing.test-support";
 
 /** Stripe's answers for one $5.00 top-up of 50,000 credits, refunded `refunded` cents so far. */
 function stripeFetch(state: { refunded: number; userId?: string }) {
@@ -75,13 +76,7 @@ describe("refunding a top-up", () => {
         stripeCustomerId: "cus_1",
         refundedChargeId: "ch_1",
       });
-    await t.run((ctx) =>
-      ctx.db
-        .query("billingAccounts")
-        .withIndex("by_user", (q) => q.eq("userId", userId))
-        .unique()
-        .then((account) => ctx.db.patch(account!._id, { stripeCustomerId: "cus_1" })),
-    );
+    await t.run(async (ctx) => ctx.db.patch((await accountOf(ctx, userId))!._id, { stripeCustomerId: "cus_1" }));
 
     // $1.50 of $5 is 15,000 of the 50,000 credits.
     await refund();

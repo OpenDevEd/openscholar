@@ -1,9 +1,6 @@
-export { AI_COST_MARKUP, CREDITS_PER_USD } from "./constants";
-export {
-  convertUsdToCredits,
-  creditsForUsage,
-  type ConvertUsdToCreditsArgs,
-} from "./convert";
+export { AI_COST_MARKUP } from "./constants";
+export { PAPER_PDF_CREDITS, PAPER_PDF_USD } from "./paper-pdf";
+export { convertUsdToCredits, creditsForUsage } from "./convert";
 export {
   WEB_SEARCH_ENGINE,
   WEB_SEARCH_MAX_RESULTS,

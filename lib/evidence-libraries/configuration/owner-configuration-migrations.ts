@@ -9,10 +9,10 @@ import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 8 as const;
-export const MAX_CHANGED_POINTERS = 100;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 9 as const;
+const MAX_CHANGED_POINTERS = 100;
 
-export type OwnerConfigurationSnapshotRow = {
+type OwnerConfigurationSnapshotRow = {
   // Historical migrations may receive a section that no longer exists in the
   // current registry. The final current-version validation narrows this to a
   // known SectionKey before owner rules run.
@@ -30,7 +30,7 @@ export type OwnerConfigurationMigrationSnapshot = {
   sections: OwnerConfigurationSnapshotRow[];
 };
 
-export type OwnerConfigurationDefaultRow = {
+type OwnerConfigurationDefaultRow = {
   sectionKey: SectionKey;
   payload: () => unknown;
 };
@@ -309,18 +309,6 @@ function validateSnapshotShape(
   };
 }
 
-export function validateOwnerConfigurationSnapshot(
-  value: unknown,
-  options: OwnerConfigurationValidationOptions = {},
-): { valid: boolean; issues: OwnerConfigurationIssue[] } {
-  const result = validateSnapshotShape(
-    value,
-    options,
-    OWNER_CONFIGURATION_MIGRATIONS,
-  );
-  return { valid: result.issues.length === 0, issues: result.issues };
-}
-
 function requireValidSnapshot(
   value: unknown,
   options: OwnerConfigurationValidationOptions,
@@ -567,6 +555,19 @@ function migrateVersionSevenToEight(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+/** Libraries choose their open-access label; saved ones keep the runtime's default, open records only. */
+function migrateVersionEightToNine(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 9;
+  for (const row of next.sections) {
+    if (row.sectionKey !== "content" || !isRecord(row.payload)) continue;
+    row.payload = { openAccessLabel: "open", ...row.payload };
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [
   {
     sectionKey: "ai",
@@ -635,9 +636,16 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
       { sectionKey: "topics", payload: () => ({ enabled: false }) },
     ],
   },
+  {
+    from: 8,
+    to: 9,
+    migrate: migrateVersionEightToNine,
+    defaultRows: [
+      ...disabledAiDefaults,
+      { sectionKey: "topics", payload: () => ({ enabled: false }) },
+    ],
+  },
 ];
-
-export const ownerConfigurationMigrations = OWNER_CONFIGURATION_MIGRATIONS;
 
 export function validateOwnerConfigurationMigrationRegistry(
   migrations: readonly OwnerConfigurationMigration[],

@@ -5,7 +5,7 @@
 // asks the person about first shows under the map as the mock's approval card.
 
 import { createContext, useContext, useState, type ReactNode } from "react";
-import Link from "next/link";
+import Link from "@/components/workspace-link";
 import { SearchHoverCard } from "@/components/search-tooltip-content";
 import { FilterChips } from "@/components/ui/filter-display";
 import type { FilterParams } from "@/lib/filters";
@@ -14,11 +14,12 @@ import { readSharedOql } from "@/lib/search-params";
 import { paramsToSearchResult } from "@/lib/search-params/converters";
 import { parseSearchParamsFromUrl } from "@/lib/search-params/parsers";
 import { useFormatter, useTranslations } from "next-intl";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, FileSearch, Globe, Plus, Undo2, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, AuthorsIcon, Check, ChevronDown, CircleAlert, Coins, Compass, FileSearch, Globe, Plus, Undo2, X, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
+import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -29,11 +30,13 @@ import { STEPS_SHOWN } from "@/lib/assistant/steps";
 import { getErrorMessage, useAppToast } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
 import { viewOf, type Kind } from "@/lib/assistant/actions";
-import { runsOf, shownSteps } from "@/lib/assistant/step-cards";
+import { askedGroups, runsOf, shownSteps, whyAsked } from "@/lib/assistant/step-cards";
 import { OrbitMark } from "./orbit-mark";
 import { CARD_SPRING, DockedJobs, JOB_STARTS, JobCard } from "./job-cards";
 import { FadeRow, WorkingText } from "./parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
+import { useSpendable } from "@/components/workspaces/credit-check";
+import { useCurrentWorkspace, WorkspaceTile } from "@/components/workspaces/parts";
 
 type Item = FunctionReturnType<typeof api.assistant.replies.messages>["page"][number];
 export type StepItem = Extract<Item, { role: "step" }>;
@@ -50,6 +53,8 @@ export const KIND = {
   chat: RECORD_KINDS.chat,
   library: RECORD_KINDS.library,
   topic: RECORD_KINDS.topic,
+  zotero: { icon: ZoteroIcon, tint: "var(--kind-zotero)" },
+  author: { icon: AuthorsIcon, tint: "var(--kind-author)" },
   other: { icon: Compass, tint: "var(--muted-foreground)" },
 } satisfies Record<Kind, { icon: AppIcon; tint: string }>;
 
@@ -76,18 +81,25 @@ function searchOf(href: string) {
  * results in this tab, as a new search, and the panel stays up with its chat. Hovered, it
  * shows the search's card out to the left, over the page, as the sidebar's history does.
  */
-function Subject({ text, step, chips, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "count" | "at">; /** The settings that tell this search from the others on its card, as chips after its query. */ chips?: FilterParams; className?: string }) {
+function Subject({ text, step, chips, unqueried = false, className = "truncate" }: { text: string; step: Pick<StepItem, "id" | "href" | "opens" | "count" | "at">; /** The settings that tell this search from the others on its card, as chips after its query. */ chips?: FilterParams; /** `text` stands in for a query the search didn't have: written as the search history writes it, and never cut to make room for its chips. */ unqueried?: boolean; className?: string }) {
+  const underlined = "underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground";
+  // The one record it acted on, such as the extraction it paused, opens on its page.
+  if (step.opens && !step.href)
+    return (
+      <Link href={step.opens} className={cn(className, underlined)}>
+        {text}
+      </Link>
+    );
   if (!step.href) return <span className={className}>{text}</span>;
   const search = searchOf(step.href);
   const at = new Date(step.at).toISOString();
-  const underlined = "underline decoration-muted-foreground/40 underline-offset-2 transition-colors hover:text-foreground hover:decoration-foreground";
   return (
     <SearchHoverCard side="left" delay={300} id={step.id} query={search.query} count={step.count} filters={search} createdAt={at} updatedAt={at}>
       {chips ? (
         <Link href={step.href} className={cn(className, "group flex items-center gap-1.5")}>
-          {text ? <span className={cn("min-w-0 truncate", underlined)}>{text}</span> : null}
+          {text ? <span className={unqueried ? "shrink-0 italic" : cn("min-w-0 truncate", underlined)}>{text}</span> : null}
           {/* One row, faded where it runs on: the search's card shows them all. Beside a query it takes at most part of the line. */}
-          <FadeRow className={cn("shrink-0 transition-colors group-hover:[&_[data-slot=badge]]:text-foreground", text ? "max-w-[60%]" : "max-w-full")}>
+          <FadeRow className={cn("transition-colors group-hover:[&_[data-slot=badge]]:text-foreground", unqueried ? "max-w-full" : "shrink-0", !unqueried && (text ? "max-w-[60%]" : "max-w-full"))}>
             <FilterChips filters={chips} size="compact" singleLine valuesOnly />
           </FadeRow>
         </Link>
@@ -99,6 +111,15 @@ function Subject({ text, step, chips, className = "truncate" }: { text: string; 
     </SearchHoverCard>
   );
 }
+
+/** A search that ran on filters alone, with no query: it says so, and shows those filters. */
+function Unqueried({ step, chips, className }: { step: StepItem & { href: string }; /** Its filters the others on its card don't share; all of its own when it's alone. */ chips?: FilterParams; className?: string }) {
+  const tc = useTranslations("common");
+  return <Subject unqueried text={tc("noQuery")} chips={chips ?? searchOf(step.href)} step={step} className={className} />;
+}
+
+/** Whether a step is a search that ran with no query. */
+const unqueried = (step: StepItem): step is StepItem & { href: string } => !step.subject && step.href !== undefined;
 
 /** A tinted icon square; the tile of the model cards, one size down. */
 export function KindTile({ kind, size = "md", working }: { kind: Kind; size?: "sm" | "md"; working?: boolean }) {
@@ -160,8 +181,8 @@ export function Steps({
     <div className="space-y-3">
       {steps.length ? <RunMap threadId={threadId} steps={steps} earlier={status === "CanLoadMore" ? () => loadMore(STEPS_SHOWN) : status === "LoadingMore" ? "loading" : null} /> : null}
       <AnimatePresence initial={false}>
-        {asked.map((step) => (
-          <ApprovalCard key={step.id} threadId={threadId} step={step} />
+        {askedGroups(asked).map((group) => (
+          <ApprovalCard key={group[0].id} threadId={threadId} steps={group} />
         ))}
       </AnimatePresence>
       {/* Each job the reply started, under its map, once it has ended: while it runs, its card is docked over the message box. As it
@@ -185,7 +206,7 @@ export function Steps({
 }
 
 /** Names of a call's arguments the card says in the person's language; any other shows as the action names it. */
-const NAMED = ["query", "file", "range", "thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs"] as const;
+const NAMED = ["query", "file", "range", "thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs", "job", "email", "clerkUser", "sectionKey", "path", "zotero", "group"] as const;
 
 /** Arguments that are a setting turned on or off. */
 const SWITCHES = new Set(["prune", "inCollection", "usePdfs", "openAccessOnly", "withAbstractOnly", "reviewsOnly", "includeRetracted", "ratedOnly"]);
@@ -203,12 +224,21 @@ export const AddCredits = createContext<(waiting: Waiting) => void>(() => {});
  */
 function useStepTitle() {
   const t = useTranslations("assistant");
-  return (words: string, step: Pick<StepItem, "status" | "batch" | "count">) => {
-    const form = step.status === "asking" || step.status === "allowed" || step.status === "declined" ? "ask" : step.status === "running" || step.status === "failed" ? "doing" : "did";
+  const formOf = (step: Pick<StepItem, "status">) => (step.status === "asking" || step.status === "allowed" || step.status === "declined" ? "ask" : step.status === "running" || step.status === "failed" ? "doing" : "did");
+  /** Whether the words have a title for many calls in this form that says how many: "Saved 5 papers", not "Removed all your searches". Without one, a card for many says how many beside its title. */
+  const saysMany = (words: string, step: Pick<StepItem, "status">) => {
+    const many = `steps.${words}.${formOf(step)}Many` as "steps.other.askMany";
+    return t.has(many) && String(t.raw(many)).includes("{count");
+  };
+  /** `calls`: how many calls one card stands for, folded or asked together. */
+  const title = (words: string, step: Pick<StepItem, "status" | "batch" | "count">, calls = 1): string => {
+    const form = formOf(step);
+    if (calls > 1) return saysMany(words, step) ? t(`steps.${words}.${form}Many` as "steps.other.askMany", { count: calls }) : title(words, { status: step.status });
     const many = step.batch === undefined ? "" : "Many";
     const own = `steps.${words}.${form}${many}` as "steps.other.askMany";
     return t(t.has(own) ? own : (`steps.other.${form}${many}` as "steps.other.askMany"), { count: (form === "did" ? step.count : undefined) ?? step.batch ?? 1 });
   };
+  return { title, saysMany };
 }
 
 /**
@@ -216,26 +246,36 @@ function useStepTitle() {
  * would do, with the records it names, then Allow once or Not now. One that spends credits
  * (#328) asks with the most it holds against the person's balance, and can be allowed for
  * the rest of the chat. A bulk change asks once for all of it, with the first of the records
- * it's made to and how many more there are. The mock's approval card.
+ * it's made to and how many more there are. Calls of one action asked about together are one
+ * card (`askedGroups`): what they're all given alike, then each of them, with one answer and
+ * what they cost together. The mock's approval card.
  */
-function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; step: StepItem }) {
+function ApprovalCard({ threadId, steps }: { threadId: Id<"assistantThreads">; /** Calls of one action, asked about together. */ steps: StepItem[] }) {
   const t = useTranslations("assistant");
   const answer = useMutation(api.assistant.replies.answer);
   const toast = useAppToast();
   // Pressed once: the buttons rest until the chat shows the answer, or says it couldn't be sent.
   const [sent, setSent] = useState(false);
+  const [step] = steps;
   const { kind, words } = viewOf(step.action, step.variant);
   const addCredits = useContext(AddCredits);
   const common = useTranslations("common");
-  const heading = useStepTitle()(words, step);
+  const { title, saysMany } = useStepTitle();
+  const heading = title(words, step, steps.length);
   /** A value as the card says it: a setting that is on or off as yes or no, not as the action writes it. A name that happens to read "true" stays as typed. */
   const said = ({ name, value }: { name: string; value: string }) => (SWITCHES.has(name) && (value === "true" || value === "false") ? common(value === "true" ? "yes" : "no") : value);
-  const each = step.each ?? [];
+  // Of calls asked together, what all are given alike is said once, and each of them as what it alone is given, as a bulk change says its changes.
+  const alike = (detail: { name: string; value: string }) => steps.length > 1 && steps.every((one) => one.details?.some((other) => other.name === detail.name && other.value === detail.value));
+  const details = (step.details ?? []).filter((detail) => steps.length === 1 || alike(detail));
+  // A call given just what the others are is told apart by what it's about.
+  const each = steps.length > 1 ? steps.map((one) => { const own = (one.details ?? []).filter((detail) => !alike(detail)); return own.length ? own : [{ name: "title", value: one.subject ?? "" }]; }) : (step.each ?? []);
+  const held = steps.filter((one) => one.credits !== undefined);
+  const credits = held.length ? held.reduce((sum, one) => sum + one.credits!, 0) : undefined;
   /** An argument's name in the person's language, where the card has one; any other shows as the action names it. */
   const named = (name: string) => ((NAMED as readonly string[]).includes(name) ? t(`asks.names.${name as (typeof NAMED)[number]}`) : name);
   const say = (allow: boolean, always?: boolean) => {
     setSent(true);
-    answer({ threadId, stepId: step.id as Id<"assistantSteps">, allow, ...(always ? { always } : {}) }).catch((error) => {
+    answer({ threadId, stepIds: steps.map((one) => one.id as Id<"assistantSteps">), allow, ...(always ? { always } : {}) }).catch((error) => {
       setSent(false);
       toast.error(t("asks.failed"), getErrorMessage(error, ""));
     });
@@ -251,9 +291,13 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
       <div className="flex items-start gap-3 p-4">
         <KindTile kind={kind} />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">{heading}</p>
+          <p className="flex min-w-0 items-center gap-2 text-sm font-semibold">
+            <span className="min-w-0">{heading}</span>
+            {/* Calls asked together whose words can't say how many: how many, beside them. */}
+            {steps.length > 1 && !saysMany(words, step) ? <Fact value={steps.length}>{t("steps.times", { count: steps.length })}</Fact> : null}
+          </p>
           <ul className="mt-1.5 space-y-1 text-sm text-muted-foreground empty:hidden">
-            {(step.details ?? []).map((detail, i) => (
+            {details.map((detail, i) => (
               <li key={i} className="flex gap-2">
                 <span className="shrink-0 text-foreground/50">{named(detail.name)}</span>
                 {/* What someone may do in a shared chat, in the Share sheet's own words. A record with nothing to call it by, such as a search saved with filters alone, says so. */}
@@ -291,9 +335,9 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
           </button>
         </TooltipHint>
       </div>
-      {step.credits === undefined ? (
+      {credits === undefined ? (
         <>
-          <p className="px-4 pb-4 text-xs text-muted-foreground">{t(step.batch !== undefined ? "asks.whyMany" : step.outside ? "asks.whyOutside" : "asks.whyUndo")}</p>
+          <p className="px-4 pb-4 text-xs text-muted-foreground">{t(`asks.${whyAsked(step)}`)}</p>
           <div className="grid grid-cols-[1fr_auto] gap-2 border-t border-primary/15 p-3">
             <Button className="h-9" disabled={sent} onClick={() => say(true)}>
               {t("asks.allow")}
@@ -304,7 +348,7 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
           </div>
         </>
       ) : (
-        <Spending credits={step.credits} typical={TYPICAL_COST.has(step.action)} sent={sent} onAllow={() => say(true)} onAlways={() => say(true, true)} onDecline={() => say(false)} onAddCredits={() => addCredits({ kind, title: heading, credits: step.credits! })} />
+        <Spending credits={credits} typical={TYPICAL_COST.has(step.action)} sent={sent} onAllow={() => say(true)} onAlways={() => say(true, true)} onDecline={() => say(false)} onAddCredits={() => addCredits({ kind, title: heading, credits })} />
       )}
     </motion.div>
   );
@@ -312,6 +356,53 @@ function ApprovalCard({ threadId, step }: { threadId: Id<"assistantThreads">; st
 
 /** Actions whose cost is known only once they run, asked about with what one typically costs: a paper's PDF, read whole, is as long as it is. */
 const TYPICAL_COST = new Set(["research/papers:readPdf"]);
+
+/** What a balance has and what's left once a call takes from it, or how far short it is. Both labels hold their place, so the row never reflows when the balance changes; nothing is said until it's read. */
+function Drawn({ have, take, known, className }: { have: number; take: number; known: boolean; className?: string }) {
+  const t = useTranslations("assistant.asks");
+  const short = known && take > have;
+  return (
+    <span className={cn("flex min-w-0 items-center gap-1.5 tabular-nums transition-opacity duration-200", !known && "opacity-0", className)} aria-hidden={!known}>
+      <AnimatedNumber value={have} />
+      <ArrowRight className="size-3" />
+      <span className="grid font-medium [&>*]:col-start-1 [&>*]:row-start-1 [&>*]:text-right">
+        <motion.span initial={false} animate={{ opacity: short ? 1 : 0 }} aria-hidden={!short} className="text-amber-600 dark:text-amber-400">
+          {t("short", { credits: Math.max(0, take - have) })}
+        </motion.span>
+        <motion.span initial={false} animate={{ opacity: short ? 0 : 1 }} aria-hidden={short} className="text-foreground">
+          {t.rich("left", { n: () => <AnimatedNumber value={Math.max(0, have - take)} /> })}
+        </motion.span>
+      </span>
+    </span>
+  );
+}
+
+/** The bar is the balance; the filled part is what the call takes from it. */
+function Bar({ have, take, known }: { have: number; take: number; known: boolean }) {
+  return (
+    <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10">
+      <motion.span
+        className={cn("block h-full rounded-full", known && take > have ? "bg-amber-400" : "bg-primary")}
+        initial={false}
+        animate={{ width: `${(known ? Math.min(1, take / Math.max(have, 1)) : 0) * 100}%` }}
+        transition={{ type: "spring", stiffness: 170, damping: 26 }}
+      />
+    </div>
+  );
+}
+
+/** One thing an organization's call draws on, named: its credits, or the person's cap this month. */
+function Draw({ label, have, take, known }: { label: string; have: number; take: number; known: boolean }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+        <span className="min-w-0 truncate">{label}</span>
+        <Drawn have={have} take={take} known={known} className="shrink-0" />
+      </div>
+      <Bar have={have} take={take} known={known} />
+    </div>
+  );
+}
 
 /**
  * The part of an approval card for a call that spends credits: the most it holds against the
@@ -321,47 +412,47 @@ const TYPICAL_COST = new Set(["research/papers:readPdf"]);
  */
 function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddCredits }: { credits: number; typical: boolean; sent: boolean; onAllow: () => void; onAlways: () => void; onDecline: () => void; onAddCredits: () => void }) {
   const t = useTranslations("assistant.asks");
-  const account = useQuery(api.billing.accounts.mine, {});
+  const spend = useSpendable();
+  // In an organization, its credits pay, within the cap an admin set on the person (#651, #652): each is a bar of its own.
+  const workspace = useCurrentWorkspace();
+  const organization = workspace?.kind === "organization" ? workspace : undefined;
   // Until the balance is read, nothing is said about it, and the row keeps its room.
-  const known = account !== undefined;
-  const balance = Math.floor(account?.balance ?? 0);
+  const known = spend.loaded;
+  const balance = Math.floor(spend.pool);
+  const capLeft = spend.left === undefined ? undefined : Math.floor(spend.left);
   const short = known && credits > balance;
-  // The bar is the balance; the filled part is what this takes from it.
-  const share = known ? Math.min(1, credits / Math.max(balance, 1)) : 0;
+  // The organization has the credits and the person's cap doesn't: an admin raises it, and adding credits changes nothing.
+  const overCap = known && !short && capLeft !== undefined && credits > capLeft;
   return (
     <>
-      <div className="space-y-2 px-4 pb-4">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Coins className="size-3.5 text-primary" />
-          <span className="font-medium text-foreground">{t(typical ? "about" : "upTo", { credits })}</span>
-          <span className={cn("ml-auto flex items-center gap-1.5 transition-opacity duration-200", !known && "opacity-0")} aria-hidden={!known}>
-            <AnimatedNumber value={balance} />
-            <ArrowRight className="size-3" />
-            {/* Both labels hold their place, so the row never reflows when the balance changes. */}
-            <span className="grid font-medium [&>*]:col-start-1 [&>*]:row-start-1 [&>*]:text-right">
-              <motion.span initial={false} animate={{ opacity: short ? 1 : 0 }} aria-hidden={!short} className="tabular-nums text-amber-600 dark:text-amber-400">
-                {t("short", { credits: Math.max(0, credits - balance) })}
-              </motion.span>
-              <motion.span initial={false} animate={{ opacity: short ? 0 : 1 }} aria-hidden={short} className="text-foreground">
-                {t.rich("left", { n: () => <AnimatedNumber value={Math.max(0, balance - credits)} /> })}
-              </motion.span>
+      {organization ? (
+        <div className="space-y-3 px-4 pb-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Coins className="size-3.5 text-primary" />
+            <span className="font-medium text-foreground">{t(typical ? "about" : "upTo", { credits })}</span>
+            <span className="ml-auto flex min-w-0 items-center gap-1.5">
+              <WorkspaceTile workspace={organization} size="xs" />
+              <span className="min-w-0 truncate">{organization.name}</span>
             </span>
-          </span>
+          </div>
+          <Draw label={t("creditsOf", { name: organization.name })} have={balance} take={credits} known={known} />
+          {capLeft === undefined ? null : <Draw label={t("yourCap")} have={capLeft} take={credits} known />}
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-foreground/10">
-          <motion.span
-            className={cn("block h-full rounded-full", short ? "bg-amber-400" : "bg-primary")}
-            initial={false}
-            animate={{ width: `${share * 100}%` }}
-            transition={{ type: "spring", stiffness: 170, damping: 26 }}
-          />
+      ) : (
+        <div className="space-y-2 px-4 pb-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Coins className="size-3.5 text-primary" />
+            <span className="font-medium text-foreground">{t(typical ? "about" : "upTo", { credits })}</span>
+            <Drawn have={balance} take={credits} known={known} className="ml-auto" />
+          </div>
+          <Bar have={balance} take={credits} known={known} />
         </div>
-      </div>
+      )}
       {/* The two sets of buttons share one cell and cross-fade, so the card keeps its height. */}
       <div className="grid border-t border-primary/15 p-3 [&>*]:col-start-1 [&>*]:row-start-1">
         {/* Two equal buttons side by side, with little padding so the English pair fits the panel. In a language where one doesn't fit its half, each takes a line of its own: a yes is never cut short.
             Neither can be pressed until the balance is read, since a yes the balance can't cover is refused. */}
-        <motion.div initial={false} animate={{ opacity: short ? 0 : 1, scale: short ? 0.98 : 1 }} transition={{ duration: 0.25, ease: EASE }} inert={short} className="flex flex-wrap gap-2">
+        <motion.div initial={false} animate={{ opacity: short || overCap ? 0 : 1, scale: short || overCap ? 0.98 : 1 }} transition={{ duration: 0.25, ease: EASE }} inert={short || overCap} className="flex flex-wrap gap-2">
           <Button className="h-9 min-w-max flex-[1_1_calc(50%-0.25rem)] px-2" disabled={sent || !known} onClick={onAllow}>
             {t("allow")}
           </Button>
@@ -378,6 +469,23 @@ function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddC
             {t("notNow")}
           </Button>
         </motion.div>
+        {/* Over the person's cap: an admin goes to raise it where caps are set; a member is told to ask one. */}
+        {capLeft === undefined ? null : (
+          <motion.div initial={false} animate={{ opacity: overCap ? 1 : 0, scale: overCap ? 1 : 0.98 }} transition={{ duration: 0.25, ease: EASE }} inert={!overCap} className="grid grid-cols-[1fr_auto] gap-2">
+            {organization?.role === "admin" ? (
+              <Button asChild className="h-9 gap-1.5">
+                <Link href="/settings/billing">
+                  {t("raiseCap")} <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            ) : (
+              <p className="flex min-h-9 items-center justify-center rounded-lg bg-muted/60 px-3 text-center text-xs text-muted-foreground">{t("overCap", { credits: Math.max(0, credits - capLeft) })}</p>
+            )}
+            <Button className="h-9 px-4" variant="secondary" disabled={sent} onClick={onDecline}>
+              {t("notNow")}
+            </Button>
+          </motion.div>
+        )}
       </div>
     </>
   );
@@ -385,25 +493,42 @@ function Spending({ credits, typical, sent, onAllow, onAlways, onDecline, onAddC
 
 function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">; steps: StepItem[]; /** Loads the steps before these, when the reply ran more. */ earlier: (() => void) | "loading" | null }) {
   const t = useTranslations("assistant");
+  const tc = useTranslations("common");
   const format = useFormatter();
   // A count as the search history writes one: compact past a thousand, so a broad query's 329.5M fits its line.
   const counted = (count: number) => format.number(count, count >= 1000 ? { notation: "compact", maximumFractionDigits: 1 } : undefined);
   const reduceMotion = useReducedMotion();
   const undo = useMutation(api.assistant.undo.run);
   const toast = useAppToast();
-  const stepTitle = useStepTitle();
+  const { title: stepTitle, saysMany } = useStepTitle();
+  // The steps being undone, whose Undo rests until the chat shows them undone.
+  const [undoing, setUndoing] = useState<ReadonlySet<string>>(new Set());
+  /** Undoes these steps together, the last made first (convex/assistant/undo.ts): a card's Undo does its whole run, a line's its own step. One that can't be undone leaves them all as they are. */
+  const undoSteps = async (some: StepItem[]) => {
+    const ids = some.filter((one) => one.canUndo).map((one) => one.id);
+    setUndoing((all) => new Set([...all, ...ids]));
+    try {
+      await undo({ threadId, stepIds: ids as Id<"assistantSteps">[] });
+    } catch (error) {
+      toast.error(t("steps.undoFailed"), getErrorMessage(error, ""));
+    } finally {
+      setUndoing((all) => new Set([...all].filter((id) => !ids.includes(id))));
+    }
+  };
   // The folded runs the person opened, each by a step of it: by its first when it was opened, which stays in the run when earlier steps load in front of it.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   /** Each step of a folded run as its line: what it was about, or where its card's action looks. */
-  const linesOf = (run: StepItem[]) => run.map((one) => one.subject ?? t(`steps.${viewOf(one.action, one.variant).words}.where`));
+  const linesOf = (run: StepItem[]) => run.map((one) => one.subject ?? (unqueried(one) ? tc("noQuery") : t(`steps.${viewOf(one.action, one.variant).words}.where`)));
   /** What tells a folded run of searches apart: each one's settings the others don't share. */
   const toldOf = (run: StepItem[]) => {
     const searches = run.length > 1 ? run.map((one) => (one.href ? searchOf(one.href) : null)) : [];
     return searches.length && searches.every((search) => search !== null) ? differences(searches as NonNullable<(typeof searches)[number]>[]) : null;
   };
-  // A run opens into its steps only when they say something its card doesn't: what each was about, or the
-  // filters its searches differ by. Six lines that all read "Extraction" tell the person nothing more.
-  const opensOf = (run: StepItem[]) => run.length > 1 && (new Set(linesOf(run)).size > 1 || (toldOf(run)?.filters.some((filters) => filters !== undefined) ?? false));
+  // A run opens into its steps only when they say something its card doesn't: what each was about, why each
+  // failed, or the filters its searches differ by; or when more than one can be undone, each by its own line.
+  // Six lines that all read "Extraction" tell the person nothing more.
+  const opensOf = (run: StepItem[]) =>
+    run.length > 1 && (new Set(linesOf(run)).size > 1 || new Set(run.map((one) => one.error)).size > 1 || run.filter((one) => one.canUndo).length > 1 || (toldOf(run)?.filters.some((filters) => filters !== undefined) ?? false));
   // One that stops opening, when the step that told it apart fails and leaves it, closes with it.
   const isOpen = (run: StepItem[]) => opensOf(run) && run.some((one) => opened.has(one.id));
   const runs = runsOf(steps);
@@ -456,14 +581,26 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
             const step = run.find((one) => one.status === "running") ?? run.at(-1)!;
             const { kind, words } = viewOf(step.action, step.variant);
             const working = step.status === "running";
-            const faded = step.undone || step.status === "failed" || step.status === "declined";
+            // A run is faded and struck through once all of it is.
+            const faded = run.every((one) => one.undone || one.status === "failed" || one.status === "declined");
             const state = step.status === "asking" ? t("steps.waiting") : step.status === "allowed" ? t("steps.allowed") : step.status === "declined" ? t("steps.declined") : null;
-            const title = stepTitle(words, step);
+            const title = stepTitle(words, step, run.length);
             const folded = run.length > 1;
             const open = isOpen(run);
             const lines = linesOf(run);
             const told = toldOf(run);
             const opens = opensOf(run);
+            const undoable = run.filter((one) => one.canUndo);
+            const undoButton = undoable.length ? (
+              <button
+                type="button"
+                disabled={undoable.some((one) => undoing.has(one.id))}
+                onClick={() => undoSteps(undoable)}
+                className="flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+              >
+                <Undo2 className="size-3" /> {t("steps.undo")}
+              </button>
+            ) : null;
             return (
               <motion.div
                 key={run[0].id}
@@ -477,33 +614,46 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                   <div className="flex items-center gap-3 px-3" style={{ height: CARD - 2 }}>
                     <KindTile kind={kind} working={working} />
                     <div className="min-w-0 flex-1 space-y-0.5">
-                      <p className={cn("truncate text-sm font-semibold", step.undone && "line-through decoration-muted-foreground/60")}>{working ? <WorkingText>{title}</WorkingText> : title}</p>
+                      <p className={cn("truncate text-sm font-semibold", run.every((one) => one.undone) && "line-through decoration-muted-foreground/60")}>{working ? <WorkingText>{title}</WorkingText> : title}</p>
                       <div className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-muted-foreground">
-                        {/* Why it failed. Under a bulk change that was undone, what couldn't be put back, if anything. */}
-                        {(step.status === "failed" && !step.undone) || (step.undone && step.error) ? (
+                        {/* A folded run: how many, where its title doesn't say, then what the last was about, or why it failed. A step alone: why it failed,
+                            or under a bulk change that was undone, what couldn't be put back, if anything. */}
+                        {folded ? (
+                          <>
+                            {/* Turned down, or allowed and waiting to run, the run says so first. */}
+                            {state ? <Fact>{state}</Fact> : null}
+                            {saysMany(words, step) ? null : <Fact value={run.length}>{t("steps.times", { count: run.length })}</Fact>}
+                            {step.status === "failed" ? (
+                              <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
+                            ) : step.subject ? (
+                              <Subject text={step.subject} step={step} className={cn("truncate", step.undone && "line-through")} />
+                            ) : unqueried(step) ? (
+                              <Unqueried step={step} />
+                            ) : (
+                              <span className="truncate">{t(`steps.${words}.where`)}</span>
+                            )}
+                          </>
+                        ) : (step.status === "failed" && !step.undone) || (step.undone && step.error) ? (
                           <span className="truncate">{step.error ?? t("steps.interrupted")}</span>
                         ) : state ? (
                           <>
                             <Fact>{state}</Fact>
                             {step.subject ? <Subject text={step.subject} step={step} /> : null}
                           </>
-                        ) : folded ? (
-                          <>
-                            <Fact value={run.length}>{t("steps.times", { count: run.length })}</Fact>
-                            {step.subject ? <Subject text={step.subject} step={step} /> : <span className="truncate">{t(`steps.${words}.where`)}</span>}
-                          </>
                         ) : (
                           <>
                             {/* A bulk change's title says how many it made. */}
                             {step.batch === undefined && step.count !== undefined ? <Fact value={counted(step.count)}>{t("steps.found")}</Fact> : null}
-                            {step.subject ? <Subject text={step.subject} step={step} /> : null}
-                            {(step.batch !== undefined || step.count === undefined) && !step.subject ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
+                            {step.subject ? <Subject text={step.subject} step={step} /> : unqueried(step) ? <Unqueried step={step} /> : null}
+                            {(step.batch !== undefined || step.count === undefined) && !step.subject && !unqueried(step) ? <span className="truncate">{t(`steps.${words}.where`)}</span> : null}
                           </>
                         )}
                       </div>
                     </div>
-                    {/* A folded run opens into its steps. A bulk change that ended partway made some of its changes: those can still be undone. */}
+                    {/* A folded run opens into its steps, and undoes all of them that can be. A bulk change that ended partway made some of its changes: those can still be undone. */}
                     {opens ? (
+                      <div className="flex shrink-0 items-center gap-1">
+                      {undoButton}
                       <TooltipHint label={t(open ? "steps.fold" : "steps.unfold")}>
                         <button
                           type="button"
@@ -515,30 +665,47 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
                           <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
                         </button>
                       </TooltipHint>
+                      </div>
                     ) : step.status === "failed" && !step.canUndo ? (
                       <CircleAlert className="size-4 shrink-0 text-destructive" aria-label={t("steps.failed")} />
-                    ) : step.canUndo ? (
-                      <button
-                        type="button"
-                        onClick={() => undo({ threadId, stepId: step.id as Id<"assistantSteps"> }).catch((error) => toast.error(t("steps.undoFailed"), getErrorMessage(error, "")))}
-                        className="flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        <Undo2 className="size-3" /> {t("steps.undo")}
-                      </button>
+                    ) : undoButton ? (
+                      undoButton
                     ) : step.status === "done" && !step.undone ? (
                       <Check className="size-4 shrink-0 text-success" aria-label={t("steps.done")} />
                     ) : null}
                   </div>
                   {opens ? (
-                    // Each step of the run as a line, under the card's text: what it was about, and how many it found.
+                    // Each step of the run as a line, under the card's text: what it was about, how many it found, why it failed, and its own Undo.
                     <ol inert={!open} className="pl-[60px] pr-3 text-xs text-muted-foreground">
                       {run.map((one, at) => (
                         <li key={one.id} className="flex items-center gap-2" style={{ height: LINE }}>
-                          <Subject text={told?.sameQuery && told.filters[at] ? "" : lines[at]} chips={told?.filters[at]} step={one} className="mr-auto min-w-0 truncate" />
+                          {unqueried(one) ? (
+                            <Unqueried step={one} chips={told ? (told.filters[at] ?? {}) : undefined} className="mr-auto min-w-0 truncate" />
+                          ) : (
+                            <Subject text={told?.sameQuery && told.filters[at] ? "" : lines[at]} chips={told?.filters[at]} step={one} className={cn("mr-auto min-w-0 truncate", one.undone && "line-through")} />
+                          )}
                           {one.count !== undefined ? (
                             <span className="shrink-0 tabular-nums">
                               <span className="font-semibold text-foreground/90">{counted(one.count)}</span> {t("steps.found")}
                             </span>
+                          ) : null}
+                          {one.error ? (
+                            <TooltipHint label={one.error} onlyWhenClipped>
+                              <span className="min-w-0 max-w-[55%] truncate">{one.error}</span>
+                            </TooltipHint>
+                          ) : null}
+                          {one.canUndo ? (
+                            <TooltipHint label={t("steps.undo")}>
+                              <button
+                                type="button"
+                                aria-label={t("steps.undo")}
+                                disabled={undoing.has(one.id)}
+                                onClick={() => undoSteps([one])}
+                                className="-mr-1 flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
+                              >
+                                <Undo2 className="size-3" />
+                              </button>
+                            </TooltipHint>
                           ) : null}
                         </li>
                       ))}

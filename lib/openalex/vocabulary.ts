@@ -87,12 +87,5 @@ export function researchAreaFilter(ids: readonly string[]): Record<string, unkno
   );
 }
 
-/** The same filter as query-string clauses, such as `topics.subfield.id:3304|1702`. */
-export function researchAreaClauses(ids: readonly string[]): string[] {
-  return researchAreasByLevel(ids).map(([level, value]) =>
-    level === "topic" ? `topics.id:${value}` : `topics.${level}.id:${value}`,
-  );
-}
-
 export const sdgFilterValue = (goals: readonly string[]) =>
   goals.map((goal) => `https://metadata.un.org/sdg/${goal}`).join("|");

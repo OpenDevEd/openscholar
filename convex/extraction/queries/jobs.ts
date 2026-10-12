@@ -9,26 +9,32 @@
  */
 
 import { query, type QueryCtx } from "../../_generated/server";
-import { getDocumentSize, v } from "convex/values";
-import { paginationOptsValidator, paginationResultValidator } from "convex/server";
+import { countsRow } from "../counts";
+import { getDocumentSize, v, type Infer } from "convex/values";
+import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
 import { mergedStream, stream } from "convex-helpers/server/stream";
 import schema from "../../schema";
 import { searchTerms } from "../../lib/searchText";
 import type { Doc, Id } from "../../_generated/dataModel";
 import { noAccess, ok, statusResultValidator, unauthenticated } from "../../lib/query_states";
-import { ownJob, resolveOwnedJob, type OwnedJobResolution } from "../access";
+import { jobToRead, resolveJobToRead, sharingOf, sharingValidators, type ReadableJobResolution } from "../access";
 import { requireFeature } from "../../featureFlags/guard";
-import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
+import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../../lib/userActions";
 import { countRow } from "../../research/recordCounts";
 import { readJobCounters } from "../jobCounters";
 import { extractionJobValidator, jobQuestionsValidator } from "../validators";
+import { makersIn, makerValidator } from "../../workspaces/makers";
+
+/** A job as its list shows it: in an organization, with who ran it (#656). */
+/** A job as its list shows it: who ran it, in an organization, and its papers done so far, from the counts its workers keep. */
+const listedJobValidator = v.object({ ...extractionJobValidator.fields, by: v.optional(makerValidator), done: v.number() });
 import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 async function resolveReadableJob(
   ctx: QueryCtx,
   jobId: Id<"extractionJobs">,
-): Promise<OwnedJobResolution> {
-  const access = await resolveOwnedJob(ctx, jobId);
+): Promise<ReadableJobResolution> {
+  const access = await resolveJobToRead(ctx, jobId);
   if (access.status !== "ok") return access;
   await requireFeature(ctx, "extraction.enabled");
   return access;
@@ -51,14 +57,29 @@ export const listJobsAction = defineUserQuery({
   path: "extraction/queries:listJobs",
   description:
     "Lists the person's extraction jobs and chats, a page at a time: newest or oldest first, by name, or by status (waiting and running, then completed, failed and cancelled). " +
-    "Given `text`, those whose name or description best match its words, best first.",
-  args: { paginationOpts: paginationOptsValidator, sort: jobSortValidator, text: v.optional(v.string()) },
-  returns: paginationResultValidator(extractionJobValidator),
-  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text }) => {
+    "Given `text`, those whose name or description best match its words, best first. Given `by`, only the jobs that member ran (their `userId` from workspaces/makers:counts); in an organization each job names who ran it.",
+  args: { paginationOpts: paginationOptsValidator, sort: jobSortValidator, text: v.optional(v.string()), by: v.optional(v.id("users")) },
+  returns: paginationResultValidator(listedJobValidator),
+  run: async (ctx, { userId, workspaceId }, { paginationOpts, sort, text, by }) => {
     await requireFeature(ctx, "extraction.enabled", userId);
+    const read = await jobsPage(ctx, workspaceId, { paginationOpts, sort, text, by });
+    const makerOf = await makersIn(ctx, workspaceId, userId);
+    return {
+      ...read,
+      page: await Promise.all(read.page.map(async (job) => {
+        const [maker, counts] = await Promise.all([makerOf(job.createdBy), readJobCounters(ctx, job._id)]);
+        return { ...job, done: counts.processed + counts.failed, ...(maker ? { by: maker } : {}) };
+      })),
+    };
+  },
+});
+export const listJobs = userQuery(listJobsAction);
+
+/** A page of a workspace's jobs, as listJobs sorts and filters them. */
+async function jobsPage(ctx: QueryCtx, workspaceId: Id<"workspaces">, { paginationOpts, sort, text, by }: { paginationOpts: PaginationOptions; sort: Infer<typeof jobSortValidator>; text?: string; by?: Id<"users"> }) {
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, JOBS_PAGE_MAX), maximumBytesRead: JOBS_PAGE_BYTES };
     const needle = searchTerms(text);
-    if (needle) return await ctx.db.query("extractionJobs").withSearchIndex("search_text", (q) => q.search("searchText", needle).eq("workspaceId", workspaceId)).paginate(opts);
+    if (needle) return await ctx.db.query("extractionJobs").withSearchIndex("search_text", (q) => (by ? q.search("searchText", needle).eq("workspaceId", workspaceId).eq("createdBy", by) : q.search("searchText", needle).eq("workspaceId", workspaceId))).paginate(opts);
     // What a page by status has read so far: the statuses of one page share one allowance.
     let rows = 0;
     let bytes = 0;
@@ -73,7 +94,9 @@ export const listJobsAction = defineUserQuery({
       // however many groups it takes them from.
       const from: { rank: number; after: string | null } = opts.cursor ? JSON.parse(opts.cursor) : { rank: 0, after: null };
       const readGroup = async (rank: number, cursor: string | null, room: number) => {
-        const statuses = STATUS_GROUPS[rank].map((status) => stream(ctx.db, schema).query("extractionJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status)).order("desc"));
+        const statuses = STATUS_GROUPS[rank].map((status) => (by
+          ? stream(ctx.db, schema).query("extractionJobs").withIndex("by_workspace_and_createdBy_and_status", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", by).eq("status", status))
+          : stream(ctx.db, schema).query("extractionJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status))).order("desc"));
         const read = await mergedStream(statuses, ["_creationTime"])
           .filterWith(matches)
           .paginate({ cursor, numItems: room, maximumBytesRead: JOBS_PAGE_BYTES - bytes, maximumRowsRead: JOBS_FILTER_ROWS - rows });
@@ -87,12 +110,10 @@ export const listJobsAction = defineUserQuery({
       }
       return { page, isDone: true, continueCursor: "" };
     }
-    const index = sort === "name" ? "by_workspace_and_sortName" : "by_workspace";
     const order = sort === "recent" ? "desc" : "asc";
-    return await ctx.db.query("extractionJobs").withIndex(index, (q) => q.eq("workspaceId", workspaceId)).order(order).paginate(opts);
-  },
-});
-export const listJobs = userQuery(listJobsAction);
+    if (by) return await ctx.db.query("extractionJobs").withIndex(sort === "name" ? "by_workspace_and_createdBy_and_sortName" : "by_workspace_and_createdBy", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", by)).order(order).paginate(opts);
+    return await ctx.db.query("extractionJobs").withIndex(sort === "name" ? "by_workspace_and_sortName" : "by_workspace", (q) => q.eq("workspaceId", workspaceId)).order(order).paginate(opts);
+}
 export const listJobsForAssistant = assistantQuery(listJobsAction);
 
 export const countJobsAction = defineUserQuery({
@@ -109,37 +130,43 @@ export const countJobsForAssistant = assistantQuery(countJobsAction);
 export const getJobDetailsAction = defineUserQuery({
   path: "extraction/queries:getJobDetails",
   description:
-    "Reads one of the person's extraction jobs with its questions, in order: each question's `key`, text, `type` and `description`. " +
-    "Use it to say what an extraction asks, and for a question's `key` to summarize or filter its answers by.",
+    "Reads an extraction job the person may read (one of their workspace's, or one shared with them) with its questions, in order: each question's `key`, text, `type` and `description`. " +
+    "Use it to say what an extraction asks, and for a question's `key` to summarize or filter its answers by. " +
+    "One of the workspace's comes with `guests`: how many people outside the workspace it's shared with, invitations still waiting included. " +
+    "A shared one comes with `guest`: what they may do with it and whose it is, and without what it holds or may spend, which are its workspace's.",
   args: { jobId: v.id("extractionJobs") },
   returns: statusResultValidator({
     job: extractionJobValidator,
     questions: jobQuestionsValidator,
+    ...sharingValidators,
   }),
-  run: async (ctx, { userId, workspaceId }, { jobId }) => {
-    const job = await ownJob(ctx, workspaceId, jobId);
-    if (!job) return noAccess();
-    await requireFeature(ctx, "extraction.enabled", userId);
+  run: async (ctx, actor, { jobId }) => {
+    const read = await jobToRead(ctx, actor, jobId);
+    if (!read) return noAccess();
+    const { job } = read;
+    await requireFeature(ctx, "extraction.enabled", actor.userId);
     const questions = await ctx.db
       .query("extractionQuestions")
       .withIndex("by_job", (q) => q.eq("jobId", jobId))
       .order("asc")
       .take(MAX_QUESTIONS_PER_JOB);
-    return ok({ job, questions });
+    return ok({ job, questions, ...(await sharingOf(ctx, job, read.guest)) });
   },
 });
 export const getJobDetails = userQuery(getJobDetailsAction, { signedOut: unauthenticated() });
 export const getJobDetailsForAssistant = assistantQuery(getJobDetailsAction);
 
+/** The job as its page opens with it: the job, and how it's shared, so the page knows from its first read what its reader may do. */
 export const getJobShell = query({
   args: { jobId: v.id("extractionJobs") },
   returns: statusResultValidator({
     job: extractionJobValidator,
+    ...sharingValidators,
   }),
   handler: async (ctx, args) => {
     const access = await resolveReadableJob(ctx, args.jobId);
     if (access.status !== "ok") return access;
-    return ok({ job: access.job });
+    return ok({ job: access.job, ...(await sharingOf(ctx, access.job, access.guest)) });
   },
 });
 
@@ -168,3 +195,21 @@ export const subscribeToJobProgress = query({
   },
 });
 
+
+/** The statuses of an extraction that's running, which the rail shows as a ring. */
+const RUNNING = ["pending", "downloading_pdfs", "indexing", "extracting"] as const;
+
+/** The workspace's newest running extraction, for the rail's ring around Extract (#651): its name and how many of its papers are done. */
+export const runningJob = workspaceQuery({
+  args: {},
+  returns: v.union(v.null(), v.object({ jobId: v.id("extractionJobs"), name: v.string(), done: v.number(), total: v.number() })),
+  signedOut: null,
+  handler: async (ctx, { workspaceId }) => {
+    const newest = await Promise.all(RUNNING.map((status) => ctx.db.query("extractionJobs").withIndex("by_workspace_status", (q) => q.eq("workspaceId", workspaceId).eq("status", status)).order("desc").first()));
+    const job = newest.filter((row) => row !== null).sort((a, b) => b._creationTime - a._creationTime)[0];
+    if (!job) return null;
+    const counts = (await countsRow(ctx, job._id))?.counts;
+    const done = counts ? (counts.processed ?? 0) + (counts.failed ?? 0) : (job.processedPapers ?? 0) + (job.failedPapers ?? 0);
+    return { jobId: job._id, name: job.name, done, total: job.totalPapers ?? 0 };
+  },
+});

@@ -1,6 +1,12 @@
 /** Most people one Evidence Library grants access to directly, so its team reads in one query (#357). */
 export const MAX_LIBRARY_MEMBERS = 1_000;
 
+/**
+ * Most members one organization has, so its members read in one query: Clerk's member limit for
+ * each plan (#652) stays under it. Past it, seat changes stop and say so.
+ */
+export const MAX_ORGANIZATION_MEMBERS = 1_000;
+
 /** Most Evidence Libraries one organization can make, so its library list reads in one query. */
 export const MAX_LIBRARIES_PER_WORKSPACE = 200;
 
@@ -17,17 +23,8 @@ export const MAX_LIBRARY_GRANTS_PER_PERSON = 200;
 /** Most invitations one library has waiting; another is refused until some are answered, cancelled or expire. */
 export const MAX_PENDING_INVITATIONS_PER_LIBRARY = 500;
 
-/** Most invitations waiting for one address across libraries; another is refused until some are answered or expire. */
-export const MAX_PENDING_INVITATIONS_PER_EMAIL = 100;
-
-/** Most author profile invitations waiting for one address; another is refused until some are answered or expire. */
-export const MAX_PENDING_PROFILE_INVITATIONS_PER_EMAIL = 100;
-
-/** Most people one author profile gives editing to, beside its owner; accepting another invitation past this is refused. */
+/** Most guests one author profile has, the invitations to it still waiting among them, whatever its workspace's plan allows; another is refused. */
 export const MAX_PROFILE_MEMBERS = 100;
-
-/** Most invitations one author profile has waiting; another is refused until some are answered, cancelled or expire. */
-export const MAX_PENDING_INVITATIONS_PER_PROFILE = 100;
 
 /** Most Zotero groups one library connects; another is refused until one is removed. */
 export const MAX_ZOTERO_GROUPS_PER_LIBRARY = 100;
@@ -77,5 +74,8 @@ export const MAX_LOCATIONS_READ_PER_GROUP = 100;
  */
 export const MAX_ACTIVE_OPERATIONS_READ = 50;
 
-/** People and organizations one assistant chat can be shared with (`assistant/sharing:grant`); reads of a chat's access rows take this many and its owner's. */
+/** Most people one assistant chat is shared with, whatever its workspace's plan allows (../sharing/items.ts); another is refused, and reads of a chat's guests take this many. */
 export const MAX_ASSISTANT_THREAD_GRANTS = 50;
+
+/** Most invitations to items waiting for one address (`sharing/invitations:invite`); another is refused until some are answered or expire. */
+export const MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL = 100;

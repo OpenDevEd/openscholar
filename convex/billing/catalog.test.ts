@@ -5,7 +5,6 @@ import {
   isUpgrade,
   mainPlans,
   planCreditCap,
-  plansWithFeature,
   signupCredits,
   topUpBundles,
 } from "../../lib/billing/catalog";
@@ -57,8 +56,12 @@ const plans: AutumnPlan[] = [
     ],
   }),
   plan({ id: "go", price: { amount: 5, interval: "month" }, items: [monthlyCredits(3_000, 3_000)] }),
-  plan({ id: "team", price: { amount: 180, interval: "year" }, items: [monthlyCredits(20_000, 0)] }),
+  plan({ id: "yearly", price: { amount: 180, interval: "year" }, items: [monthlyCredits(20_000, 0)] }),
   plan({ id: "legacy", archived: true, price: { amount: 1, interval: "month" } }),
+  // An organization's plans (#650, #652), which a person never picks.
+  plan({ id: "free_organization", items: [monthlyCredits(1_000, 0)] }),
+  plan({ id: "team", items: [] }),
+  plan({ id: "team_seat", group: "team_seat", price: { amount: 24, interval: "month" }, items: [monthlyCredits(8_000, 0)] }),
   plan({
     id: "signup_credits",
     group: null,
@@ -86,8 +89,8 @@ describe("the billing catalog", () => {
   const catalog = catalogFrom(plans, features);
 
   it("offers live main plans cheapest first, comparing yearly prices per month", () => {
-    // Team is $180 a year, $15 a month: between Go and Pro. Archived plans are gone.
-    expect(mainPlans(catalog).map((p) => p.id)).toEqual(["free", "go", "team", "pro"]);
+    // Yearly is $180 a year, $15 a month: between Go and Pro. Archived plans and organizations' plans are left out.
+    expect(mainPlans(catalog).map((p) => p.id)).toEqual(["free", "go", "yearly", "pro"]);
   });
 
   it("reads credits, plan features and metadata set in the dashboard", () => {
@@ -96,7 +99,6 @@ describe("the billing catalog", () => {
     expect(pro.features).toEqual(["extraction"]);
     expect(pro.popular).toBe(true);
     expect(pro.highlights).toEqual(["Priority support", "All Go features"]);
-    expect(plansWithFeature(catalog, "extraction").map((p) => p.id)).toEqual(["pro"]);
   });
 
   it("reads what each plan allows: an amount, or null for unlimited, and nothing for a limit it leaves out (#632)", () => {
@@ -124,7 +126,7 @@ describe("the billing catalog", () => {
     expect(isUpgrade(catalog, "free", "go")).toBe(true);
     // Team is cheaper per month than Pro, but Autumn charges a switch to
     // yearly billing at once.
-    expect(isUpgrade(catalog, "pro", "team")).toBe(true);
-    expect(isUpgrade(catalog, "team", "go")).toBe(false);
+    expect(isUpgrade(catalog, "pro", "yearly")).toBe(true);
+    expect(isUpgrade(catalog, "yearly", "go")).toBe(false);
   });
 });

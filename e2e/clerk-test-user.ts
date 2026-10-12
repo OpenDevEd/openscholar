@@ -75,6 +75,13 @@ export async function signInClerkTestUser(
   }, user.organizationId);
 }
 
+/** The address name of the test user's organization: its workspace's pages are under `/o/<slug>`. */
+export async function organizationSlug(): Promise<string> {
+  const organization = await getClerkClient().organizations.getOrganization({ organizationId: requireEnv("E2E_CLERK_ORGANIZATION_ID") });
+  if (!organization.slug) throw new Error("The E2E organization has no slug in Clerk.");
+  return organization.slug;
+}
+
 export async function deleteClerkUser(userId: string): Promise<void> {
   await getClerkClient().users.deleteUser(userId);
 }

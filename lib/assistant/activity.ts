@@ -1,4 +1,4 @@
-export type ActivityPhase = "idle" | "thinking" | "searching" | "writing" | "waiting" | "stopping" | "complete" | "failed" | "stopped";
+type ActivityPhase = "idle" | "thinking" | "searching" | "writing" | "waiting" | "stopping" | "complete" | "failed" | "stopped";
 export type Activity = { phase: ActivityPhase; order: number | null };
 export type OrbitMotion = "still" | "idle" | "listening" | "thinking" | "searching" | "writing" | "complete";
 

@@ -45,7 +45,7 @@ describe("library overviews", () => {
 
     const { page: settingUp } = await fixture.admin.query(
       api.evidenceLibraries.queries.listLibraries,
-      { paginationOpts: { cursor: null, numItems: 50 } },
+      { organization: fixture.organizationId, paginationOpts: { cursor: null, numItems: 50 } },
     );
     expect(settingUp).toEqual([
       {
@@ -77,7 +77,7 @@ describe("library overviews", () => {
     );
     const { page: failed } = await fixture.admin.query(
       api.evidenceLibraries.queries.listLibraries,
-      { paginationOpts: { cursor: null, numItems: 50 } },
+      { organization: fixture.organizationId, paginationOpts: { cursor: null, numItems: 50 } },
     );
     expect(failed[0]).toMatchObject({ status: "setup_failed", setupStage: "database" });
 
@@ -87,7 +87,7 @@ describe("library overviews", () => {
     );
     const { page: deleting } = await fixture.admin.query(
       api.evidenceLibraries.queries.listLibraries,
-      { paginationOpts: { cursor: null, numItems: 50 } },
+      { organization: fixture.organizationId, paginationOpts: { cursor: null, numItems: 50 } },
     );
     expect(deleting[0]).toMatchObject({
       status: "deleting",
@@ -104,7 +104,7 @@ describe("library overviews", () => {
     );
     const { page: overviews } = await fixture.admin.query(
       api.evidenceLibraries.queries.listLibraries,
-      { paginationOpts: { cursor: null, numItems: 50 } },
+      { organization: fixture.organizationId, paginationOpts: { cursor: null, numItems: 50 } },
     );
     expect(overviews.find((row) => row._id === draft.libraryId)).toEqual({
       _id: draft.libraryId,
@@ -150,7 +150,7 @@ describe("library overviews", () => {
 
     const { page: overviews } = await fixture.admin.query(
       api.evidenceLibraries.queries.listLibraries,
-      { paginationOpts: { cursor: null, numItems: 50 } },
+      { organization: fixture.organizationId, paginationOpts: { cursor: null, numItems: 50 } },
     );
 
     expect(overviews[0]).toMatchObject({
@@ -200,7 +200,7 @@ describe("library overviews", () => {
 
     const { page: overviews } = await fixture.admin.query(
       api.evidenceLibraries.queries.listLibraries,
-      { paginationOpts: { cursor: null, numItems: 50 } },
+      { organization: fixture.organizationId, paginationOpts: { cursor: null, numItems: 50 } },
     );
     expect(overviews).toEqual([
       expect.objectContaining({
@@ -255,7 +255,7 @@ describe("library overviews", () => {
 
       const { page: overviews } = await fixture.admin.query(
         api.evidenceLibraries.queries.listLibraries,
-        { paginationOpts: { cursor: null, numItems: 50 } },
+        { organization: fixture.organizationId, paginationOpts: { cursor: null, numItems: 50 } },
       );
       const row = overviews.find((library) => library._id === libraryId);
       expect(row?.status).toBe("deleting");
@@ -285,7 +285,7 @@ describe("library overviews", () => {
 
     const { page: overviews } = await fixture.admin.query(
       api.evidenceLibraries.queries.listLibraries,
-      { paginationOpts: { cursor: null, numItems: 50 } },
+      { organization: fixture.organizationId, paginationOpts: { cursor: null, numItems: 50 } },
     );
     const row = overviews.find((library) => library._id === libraryId);
     expect(row?.teardownStage).toBe("storage");

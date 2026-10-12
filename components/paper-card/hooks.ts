@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useContext } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useLocale } from "next-intl";
 import {
   useResultsTranslationSettingsStore,
@@ -17,33 +18,6 @@ import { authorFilterValue, isAuthorId } from "@/lib/openalex/author-filter";
 import { getEffectiveSearchId } from "@/lib/utils";
 import { buildShareableUrl } from "@/lib/search-params";
 import { ScreeningContext, TranslationContext } from "@/components/results-contexts";
-
-// ==================== Types ====================
-
-export interface PaperData {
-  id: string;
-  title: string;
-  abstract: string;
-  publication_year?: number;
-  authorships?: { author: { display_name: string } }[];
-  primary_location?: {
-    source?: { display_name: string };
-  };
-  biblio?: {
-    volume?: string;
-    issue?: string;
-    first_page?: string;
-    last_page?: string;
-  };
-  cited_by_count?: number;
-  referenced_works_count?: number;
-  related_works?: string[];
-  open_access?: {
-    is_oa: boolean;
-    oa_url?: string;
-  };
-  doi?: string;
-}
 
 export interface TranslationContent {
   translatedTitle: string;
@@ -139,11 +113,10 @@ export function useScreening(data: {
   };
 }
 
-
 // ==================== useCitationHandlers ====================
 
 export function useCitationHandlers(paperId: string) {
-  const router = useRouter();
+  const router = useWorkspaceRouter();
 
   const handleFilteredSearch = useCallback(
     (filterType: "cites" | "citedBy" | "related") => {
@@ -177,7 +150,7 @@ export type FilterValue = { value: string; name: string };
  * paper a chat names, `toggle` starts a new search by that record instead.
  */
 function useRecordFilter(field: "authors" | "journals" | "institutions", param: "author" | "journal" | "inst", remember: (names: Record<string, string>) => void) {
-  const router = useRouter();
+  const router = useWorkspaceRouter();
   // A search provider is the search to narrow. Focus mode in the assistant's panel has none, even over a results page.
   const canFilter = Boolean(useSearchOptional());
   const selected = useCurrentSearchFormState()[field];

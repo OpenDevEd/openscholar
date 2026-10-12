@@ -18,5 +18,3 @@ export const RECORD_KINDS = {
   topic: { icon: TopicsIcon, tint: "var(--kind-topic)" },
   chat: { icon: MessagesSquare, tint: "var(--muted-foreground)" },
 } satisfies Record<string, { icon: AppIcon; tint: string }>;
-
-export type RecordKind = keyof typeof RECORD_KINDS;

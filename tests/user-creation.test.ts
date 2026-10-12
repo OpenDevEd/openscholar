@@ -9,6 +9,7 @@ import {
   fakeAutumn,
   installFakeAutumn,
 } from "../convex/billing/billing.test-support";
+import { accountOf } from "../convex/billing/billing.test-support";
 
 describe("createUserWithDefaults", () => {
   beforeEach(() => {
@@ -28,12 +29,7 @@ describe("createUserWithDefaults", () => {
     );
     await t.finishAllScheduledFunctions(vi.runAllTimers);
 
-    const account = await t.run((ctx) =>
-      ctx.db
-        .query("billingAccounts")
-        .withIndex("by_user", (q) => q.eq("userId", userId))
-        .unique(),
-    );
+    const account = await t.run((ctx) => accountOf(ctx, userId));
     expect(account).toMatchObject({ plan: "free", balance: FAKE_SIGNUP_CREDITS, signupGranted: true });
 
     await t.action(internal.billing.accounts.provision, { userId });
