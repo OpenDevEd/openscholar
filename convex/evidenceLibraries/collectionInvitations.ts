@@ -11,7 +11,8 @@
  * - `invite` {collectionId, collectionName, email, role}: keeps an invitation and emails it, or
  *   sends one to the same address again. Answers with it as `list` shows it.
  * - `list`: the reader's invitations still waiting, to their collections in this library.
- * - `change` {invitationId, role | resend | cancel}: one of the reader's waiting invitations.
+ * - `change` {invitationId, role | cancel | resend with collectionId and collectionName}: one of the reader's
+ *   waiting invitations. Sending again uses the collection's name as it is now.
  * - `cancel` {collectionId}: every waiting invitation to a collection being deleted.
  * - `read` {invitationId}: what its page may show this reader.
  * - `respond` {invitationId, accept}: accepts or declines it, for an account with the invited
@@ -92,6 +93,12 @@ const sentView = (invitation: Doc<"itemInvitations">) => ({
   delivery: invitation.delivery, sentAt: invitation.expiresAt - WEEK, expiresAt: invitation.expiresAt,
 });
 
+/**
+ * When a send's invitation expires, which also names that send for its delivery (`recordDelivery`): seven days from
+ * now, and always later than the send before it, even one in the same millisecond.
+ */
+const sendExpiry = (previous?: number) => Math.max(Date.now() + WEEK, (previous ?? 0) + 1);
+
 /** The reader's waiting invitations to collections in any library, which inviting keeps to MAX_PENDING_COLLECTION_INVITATIONS_PER_READER. */
 const sentBy = (ctx: Pick<QueryCtx, "db">, readerId: Id<"users">) =>
   ctx.db.query("itemInvitations").withIndex("by_invitedBy_and_kind_and_state", (q) => q.eq("invitedBy", readerId).eq("kind", "libraryCollection").eq("state", "pending"))
@@ -120,7 +127,7 @@ export const prepare = internalMutation({
       ]);
       if (sent.length >= MAX_PENDING_COLLECTION_INVITATIONS_PER_READER || theirs.length >= MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL) return refused("too_many_invitations");
     }
-    const values = { kind: "libraryCollection" as const, item, name: collectionName, email, role, invitedBy: reader._id, expiresAt: Date.now() + WEEK, state: "pending" as const, delivery: "queued" as const };
+    const values = { kind: "libraryCollection" as const, item, name: collectionName, email, role, invitedBy: reader._id, expiresAt: sendExpiry(existing?.expiresAt), state: "pending" as const, delivery: "queued" as const };
     if (found && !existing) await ctx.db.delete("itemInvitations", found._id);
     const invitationId = existing?._id ?? (await ctx.db.insert("itemInvitations", values));
     if (existing) await ctx.db.replace("itemInvitations", existing._id, values);
@@ -130,7 +137,10 @@ export const prepare = internalMutation({
   },
 });
 
-/** What an invitation's email says and where it links, or null once it no longer waits or its library has no address to link to. */
+/**
+ * What an invitation's email says and where it links. Null once it no longer waits, its sender's account or its
+ * library is gone, or the library has no address to link to: the email would lead nowhere.
+ */
 export const readDelivery = internalQuery({
   args: { invitationId: v.id("itemInvitations") },
   returns: v.union(v.null(), v.object({
@@ -146,7 +156,7 @@ export const readDelivery = internalQuery({
     const binding = library?.runtimeBindingId ? await ctx.db.get("evidenceLibraryRuntimeBindings", library.runtimeBindingId) : null;
     const inviter = await ctx.db.get("users", invitation.invitedBy);
     const address = binding?.canonicalBaseUrl ?? binding?.targetBaseUrl;
-    if (!library || !address || !inviter) return null;
+    if (!library || library.state === "disabled" || !address || inviter?.state !== "active") return null;
     return {
       email: invitation.email, collectionName: invitation.name ?? "", role: roleOf(invitation), inviter: personName(inviter) || inviter.email,
       libraryName: library.name, acceptUrl: new URL(`/invitations/${invitation._id}`, address).href, ...(await libraryEmailSender(ctx, library)),
@@ -166,11 +176,15 @@ export const list = internalQuery({
 });
 
 /**
- * Changes the role one of the reader's waiting invitations gives, cancels it, or readies it to
- * send again. Sending again answers the new send's attempt, which its delivery is recorded for.
+ * Changes the role one of the reader's waiting invitations gives, cancels it, or readies it to send again. Sending
+ * again names its collection, which must be the one it is to, with the name the collection has now for the email;
+ * it answers the new send's attempt, which its delivery is recorded for.
  */
 export const change = internalMutation({
-  args: { ...callerArgs, invitationId: v.string(), role: v.optional(guestRoleValidator), resend: v.optional(v.literal(true)), cancel: v.optional(v.literal(true)) },
+  args: {
+    ...callerArgs, invitationId: v.string(), role: v.optional(guestRoleValidator), cancel: v.optional(v.literal(true)),
+    resend: v.optional(v.object({ collectionId: v.string(), collectionName: v.string() })),
+  },
   returns: v.union(v.object({ sendAttempt: v.union(v.number(), v.null()) }), refusedValidator),
   handler: async (ctx, { invitationId, role, resend, cancel, ...args }) => {
     const { library, reader } = await callerOf(ctx, args);
@@ -178,9 +192,10 @@ export const change = internalMutation({
     if (!invitation || invitation.invitedBy !== reader._id || !waiting(invitation)) return refused("not_found");
     if (cancel) await ctx.db.patch("itemInvitations", invitation._id, { state: "cancelled" });
     else if (resend) {
+      if (invitation.item !== itemOf(library._id, resend.collectionId)) return refused("not_found");
       if (!(await rateLimit(ctx, { name: "item-invitation", key: String(reader._id) })).ok) return refused("rate_limited");
-      const expiresAt = Date.now() + WEEK;
-      await ctx.db.patch("itemInvitations", invitation._id, { expiresAt, delivery: "queued" });
+      const expiresAt = sendExpiry(invitation.expiresAt);
+      await ctx.db.patch("itemInvitations", invitation._id, { expiresAt, delivery: "queued", name: resend.collectionName });
       await ctx.scheduler.runAt(expiresAt, internal.sharing.invitations.expire, { invitationId: invitation._id });
       return { sendAttempt: expiresAt };
     } else if (role) await ctx.db.patch("itemInvitations", invitation._id, { role });
@@ -306,10 +321,16 @@ const CALLS = {
   change: {
     body: z.union([
       invitationBody.extend({ role: roleBody }).strict(),
-      invitationBody.extend({ resend: z.literal(true) }).strict(),
+      invitationBody.extend({ resend: z.literal(true), collectionId: z.uuid(), collectionName: z.string().trim().min(1).max(500) }).strict(),
       invitationBody.extend({ cancel: z.literal(true) }).strict(),
     ]),
-    run: async (ctx: ActionCtx, caller: Caller, { invitationId, ...change }: { invitationId: string; role?: GuestRole; resend?: true; cancel?: true }) => {
+    run: async (
+      ctx: ActionCtx,
+      caller: Caller,
+      { invitationId, role, cancel, resend, collectionId, collectionName }: { invitationId: string; role?: GuestRole; cancel?: true; resend?: true; collectionId?: string; collectionName?: string },
+    ) => {
+      // The body is one of the three, so exactly one of these is there.
+      const change = resend && collectionId && collectionName ? { resend: { collectionId, collectionName } } : cancel ? { cancel } : role ? { role } : {};
       const changed = await ctx.runMutation(internal.evidenceLibraries.collectionInvitations.change, { ...caller, invitationId, ...change });
       if ("refused" in changed) return answer(changed);
       if (changed.sendAttempt !== null) await deliver(ctx, invitationId, changed.sendAttempt);

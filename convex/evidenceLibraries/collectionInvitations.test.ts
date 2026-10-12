@@ -80,6 +80,11 @@ describe("collection invitations for an Evidence Library", () => {
     expect((await call("list", "user_owner")).body).toEqual({ invitations: [expect.objectContaining({ id: sent.id, delivery: "sent" })] });
     // Someone else in the library sent nothing.
     expect((await call("list", "user_invitee")).body).toEqual({ invitations: [] });
+    // Sending again names the collection as it is called now, and only the collection it is to.
+    const resend = (collectionId: string, collectionName: string) => call("change", "user_owner", { invitationId: sent.id, resend: true, collectionId, collectionName });
+    expect(await resend("0e1a9c52-1b7e-4c11-9d6a-5a0c3f1e0002", "Another")).toEqual({ status: 404, body: { error: "not_found" } });
+    expect((await resend(COLLECTION, "Early reading")).status).toBe(200);
+    expect(mail.sendMail).toHaveBeenLastCalledWith(expect.objectContaining({ subject: expect.stringContaining("Early reading") }));
   });
 
   it("keeps OpenScholar's own invitation pages from showing or accepting one", async () => {
