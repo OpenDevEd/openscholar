@@ -40,6 +40,7 @@ import { EASE } from "@/components/settings/model-map";
 import { Segmented } from "@/components/settings/parts";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -218,46 +219,49 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
           <div aria-hidden className="size-11 shrink-0" />
           <div className="my-2 h-px w-8 bg-foreground/10" />
 
-          <nav aria-label={t("main")} className="flex w-full flex-1 flex-col items-center gap-0.5 overflow-y-auto px-2 [scrollbar-width:none]">
-            {item({ href: "/", icon: Search, label: tc("search"), active: is("/") })}
-            {item({ href: "/library", icon: LibraryIcon, label: tc("library"), active: is("/library") })}
-            {item({ href: "/history", icon: HistoryIcon, label: tc("history"), active: is("/history") })}
-            {item({
-              href: "/bookmarks",
-              icon: BookmarksIcon,
-              label: tc("bookmarks"),
-              active: is("/bookmarks"),
-              badge: expandable || undefined,
-              tooltip: hasBookmarkSyntax ? <KeywordExpansionPreview query={activeQuery} /> : undefined,
-            })}
-            {item({
-              href: "/screening",
-              icon: ListChecks,
-              label: t("screen"),
-              active: is("/screening"),
-              running: screening ? { done: screening.processedPapers + screening.failedPapers, total: screening.totalPapers, what: tc("screening"), percent: screening.percentComplete } : undefined,
-            })}
-            {/* Drawn from the first frame when the person's features are known from last time; ones read after open their place. */}
-            <AnimatePresence initial={false}>
-              {extracts ? (
-                <Opening key="extract">
-                  {item({
-                    href: "/extraction",
-                    icon: ExtractionIcon,
-                    label: t("extract"),
-                    active: is("/extraction"),
-                    running: extraction ? { done: extraction.done, total: extraction.total, what: extraction.name } : undefined,
-                  })}
-                </Opening>
-              ) : null}
-              {publishes ? <Opening key="publish">{item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-libraries") || is("/authors") })}</Opening> : null}
-              {/* What's shared with you is in your own workspace (#653), which the address says from the first frame. */}
-              {slug === null ? <Opening key="shared">{item({ href: "/shared", icon: Share2, label: t("shared.nav"), active: is("/shared") })}</Opening> : null}
-            </AnimatePresence>
+          {/* A short window scrolls the sections, faded at an edge that has more, with a scrollbar only while it moves. */}
+          <ScrollArea shades type="scroll" className="min-h-0 w-full flex-1">
+            <nav aria-label={t("main")} className="flex w-full flex-col items-center gap-0.5 px-2">
+              {item({ href: "/", icon: Search, label: tc("search"), active: is("/") })}
+              {item({ href: "/library", icon: LibraryIcon, label: tc("library"), active: is("/library") })}
+              {item({ href: "/history", icon: HistoryIcon, label: tc("history"), active: is("/history") })}
+              {item({
+                href: "/bookmarks",
+                icon: BookmarksIcon,
+                label: tc("bookmarks"),
+                active: is("/bookmarks"),
+                badge: expandable || undefined,
+                tooltip: hasBookmarkSyntax ? <KeywordExpansionPreview query={activeQuery} /> : undefined,
+              })}
+              {item({
+                href: "/screening",
+                icon: ListChecks,
+                label: t("screen"),
+                active: is("/screening"),
+                running: screening ? { done: screening.processedPapers + screening.failedPapers, total: screening.totalPapers, what: tc("screening"), percent: screening.percentComplete } : undefined,
+              })}
+              {/* Drawn from the first frame when the person's features are known from last time; ones read after open their place. */}
+              <AnimatePresence initial={false}>
+                {extracts ? (
+                  <Opening key="extract">
+                    {item({
+                      href: "/extraction",
+                      icon: ExtractionIcon,
+                      label: t("extract"),
+                      active: is("/extraction"),
+                      running: extraction ? { done: extraction.done, total: extraction.total, what: extraction.name } : undefined,
+                    })}
+                  </Opening>
+                ) : null}
+                {publishes ? <Opening key="publish">{item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-libraries") || is("/authors") })}</Opening> : null}
+                {/* What's shared with you is in your own workspace (#653), which the address says from the first frame. */}
+                {slug === null ? <Opening key="shared">{item({ href: "/shared", icon: Share2, label: t("shared.nav"), active: is("/shared") })}</Opening> : null}
+              </AnimatePresence>
 
-            <div className="my-1.5 h-px w-8 bg-foreground/10" />
-            {item({ href: "/topics", icon: TopicsIcon, label: t("explore"), active: is("/topics") })}
-          </nav>
+              <div className="my-1.5 h-px w-8 bg-foreground/10" />
+              {item({ href: "/topics", icon: TopicsIcon, label: t("explore"), active: is("/topics") })}
+            </nav>
+          </ScrollArea>
 
           {/* Your photo's place. */}
           <div aria-hidden className="mt-2 size-11 shrink-0" />
