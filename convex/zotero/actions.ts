@@ -642,24 +642,15 @@ export const completeOAuth = internalAction({
   },
 });
 
-/**
- * Fetch user's Zotero collections.
- */
-export const fetchCollections = action({
-  args: {
-    groupId: v.optional(v.string()), // If provided, fetch group collections
-  },
-  returns: v.array(
-    v.object({
-      key: v.string(),
-      name: v.string(),
-      parentCollection: v.union(v.string(), v.null()),
-      numItems: v.number(),
-      numCollections: v.number(),
-    })
-  ),
-  handler: async (ctx, { groupId }): Promise<Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }>> => {
-    const userId = await requireCurrentUserId(ctx);
+/** A Zotero group's ID is its number, and a collection's key eight letters and digits: anything else would change the address it's read from. */
+function checkZoteroIds({ groupId, collectionKey }: { groupId?: string; collectionKey?: string }) {
+  if (groupId !== undefined && !/^\d{1,15}$/.test(groupId)) throw createError("VALIDATION_ERROR", "A Zotero group is named by its number, such as 4719820.");
+  if (collectionKey !== undefined && !/^[A-Z0-9]{8}$/.test(collectionKey)) throw createError("VALIDATION_ERROR", "A Zotero collection is named by its key, eight capital letters and digits such as ABCD1234.");
+}
+
+/** A person's Zotero collections, or a group's of theirs. */
+async function collectionsFor(ctx: ActionCtx, userId: Id<"users">, groupId?: string): Promise<Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }>> {
+  checkZoteroIds({ groupId });
     // Get API key from connection
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
       userId,
@@ -701,24 +692,44 @@ export const fetchCollections = action({
       numItems: c.meta?.numItems || 0,
       numCollections: c.meta?.numCollections || 0,
     }));
-  },
-});
+}
 
 /**
- * Fetch user's Zotero groups.
+ * Fetch user's Zotero collections.
  */
-export const fetchGroups = action({
-  args: {},
+export const fetchCollections = action({
+  args: {
+    groupId: v.optional(v.string()), // If provided, fetch group collections
+  },
   returns: v.array(
     v.object({
-      id: v.string(),
+      key: v.string(),
       name: v.string(),
-      type: v.string(),
+      parentCollection: v.union(v.string(), v.null()),
       numItems: v.number(),
+      numCollections: v.number(),
     })
   ),
-  handler: async (ctx): Promise<Array<{ id: string; name: string; type: string; numItems: number }>> => {
-    const userId = await requireCurrentUserId(ctx);
+  handler: async (ctx, { groupId }): Promise<Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }>> => collectionsFor(ctx, await requireCurrentUserId(ctx), groupId),
+});
+
+/** The same, for a person a Convex function names (./library.ts). */
+export const collectionsOf = internalAction({
+  args: { userId: v.id("users"), groupId: v.optional(v.string()) },
+  returns: v.array(
+    v.object({
+      key: v.string(),
+      name: v.string(),
+      parentCollection: v.union(v.string(), v.null()),
+      numItems: v.number(),
+      numCollections: v.number(),
+    })
+  ),
+  handler: async (ctx, { userId, groupId }): Promise<Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }>> => collectionsFor(ctx, userId, groupId),
+});
+
+/** The Zotero groups a person is in. */
+async function groupsFor(ctx: ActionCtx, userId: Id<"users">): Promise<Array<{ id: string; name: string; type: string; numItems: number }>> {
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
       userId,
     });
@@ -752,7 +763,36 @@ export const fetchGroups = action({
       type: g.data.type,
       numItems: g.meta?.numItems || 0,
     }));
-  },
+}
+
+/**
+ * Fetch user's Zotero groups.
+ */
+export const fetchGroups = action({
+  args: {},
+  returns: v.array(
+    v.object({
+      id: v.string(),
+      name: v.string(),
+      type: v.string(),
+      numItems: v.number(),
+    })
+  ),
+  handler: async (ctx): Promise<Array<{ id: string; name: string; type: string; numItems: number }>> => groupsFor(ctx, await requireCurrentUserId(ctx)),
+});
+
+/** The same, for a person a Convex function names (./library.ts). */
+export const groupsOf = internalAction({
+  args: { userId: v.id("users") },
+  returns: v.array(
+    v.object({
+      id: v.string(),
+      name: v.string(),
+      type: v.string(),
+      numItems: v.number(),
+    })
+  ),
+  handler: async (ctx, { userId }): Promise<Array<{ id: string; name: string; type: string; numItems: number }>> => groupsFor(ctx, userId),
 });
 
 /**
@@ -770,37 +810,11 @@ type ZoteroItem = {
   numChildren?: number;
 };
 
-export const fetchItems = action({
-  args: {
-    collectionKey: v.optional(v.string()),
-    includeDescendants: v.optional(v.boolean()),
-    groupId: v.optional(v.string()),
-    start: v.optional(v.number()),
-    limit: v.optional(v.number()),
-  },
-  returns: v.object({
-    items: v.array(
-      v.object({
-        key: v.string(),
-        title: v.string(),
-        abstract: v.optional(v.string()),
-        authors: v.array(v.string()),
-        year: v.optional(v.number()),
-        doi: v.optional(v.string()),
-        itemType: v.string(),
-        venueName: v.optional(v.string()),
-        numChildren: v.optional(v.number()),
-        hasPdfChild: v.boolean(),
-      })
-    ),
-    nextCursor: v.optional(v.number()),
-    hasMore: v.boolean(),
-  }),
-  handler: async (
-    ctx,
-    { collectionKey, includeDescendants = true, groupId, start = 0, limit = 50 }
-  ): Promise<{ items: Array<ZoteroItem & { hasPdfChild: boolean }>; nextCursor?: number; hasMore: boolean }> => {
-    const userId = await requireCurrentUserId(ctx);
+type ItemsRequest = { collectionKey?: string; includeDescendants?: boolean; groupId?: string; start?: number; limit?: number };
+/** A page of the items in a person's Zotero library or one of its collections, or a group's of theirs. */
+async function itemsFor(ctx: ActionCtx, userId: Id<"users">, { collectionKey, includeDescendants = true, groupId, start = 0, limit = 50 }: ItemsRequest): Promise<{ items: Array<ZoteroItem & { hasPdfChild: boolean }>; nextCursor?: number; hasMore: boolean }> {
+  checkZoteroIds({ groupId, collectionKey });
+  if (!Number.isSafeInteger(start) || start < 0 || !Number.isSafeInteger(limit) || limit < 1) throw createError("VALIDATION_ERROR", "Read Zotero items from 0 up, at least one at a time.");
     const connection: ZoteroConnection = await ctx.runQuery(internal.zotero.internal.getConnection, {
       userId,
     });
@@ -994,7 +1008,63 @@ export const fetchItems = action({
     });
 
     return { items, nextCursor, hasMore };
+}
+
+export const fetchItems = action({
+  args: {
+    collectionKey: v.optional(v.string()),
+    includeDescendants: v.optional(v.boolean()),
+    groupId: v.optional(v.string()),
+    start: v.optional(v.number()),
+    limit: v.optional(v.number()),
   },
+  returns: v.object({
+    items: v.array(
+      v.object({
+        key: v.string(),
+        title: v.string(),
+        abstract: v.optional(v.string()),
+        authors: v.array(v.string()),
+        year: v.optional(v.number()),
+        doi: v.optional(v.string()),
+        itemType: v.string(),
+        venueName: v.optional(v.string()),
+        numChildren: v.optional(v.number()),
+        hasPdfChild: v.boolean(),
+      })
+    ),
+    nextCursor: v.optional(v.number()),
+    hasMore: v.boolean(),
+  }),
+  handler: async (ctx, request): Promise<{ items: Array<ZoteroItem & { hasPdfChild: boolean }>; nextCursor?: number; hasMore: boolean }> => itemsFor(ctx, await requireCurrentUserId(ctx), request),
+});
+
+/** The same, for a person a Convex function names (./library.ts). */
+export const itemsOf = internalAction({
+  args: { userId: v.id("users"), collectionKey: v.optional(v.string()),
+    includeDescendants: v.optional(v.boolean()),
+    groupId: v.optional(v.string()),
+    start: v.optional(v.number()),
+    limit: v.optional(v.number()), },
+  returns: v.object({
+    items: v.array(
+      v.object({
+        key: v.string(),
+        title: v.string(),
+        abstract: v.optional(v.string()),
+        authors: v.array(v.string()),
+        year: v.optional(v.number()),
+        doi: v.optional(v.string()),
+        itemType: v.string(),
+        venueName: v.optional(v.string()),
+        numChildren: v.optional(v.number()),
+        hasPdfChild: v.boolean(),
+      })
+    ),
+    nextCursor: v.optional(v.number()),
+    hasMore: v.boolean(),
+  }),
+  handler: async (ctx, { userId, ...request }): Promise<{ items: Array<ZoteroItem & { hasPdfChild: boolean }>; nextCursor?: number; hasMore: boolean }> => itemsFor(ctx, userId, request),
 });
 
 /**
