@@ -29,14 +29,15 @@
  *   only the questions without a saved answer, then finalises.
  */
 
-import { internalMutation, mutation, type MutationCtx } from "../../lib/functions";
-import type { Id } from "../../_generated/dataModel";
+import { internalMutation, type MutationCtx } from "../../lib/functions";
+import type { QueryCtx } from "../../_generated/server";
+import type { Doc, Id } from "../../_generated/dataModel";
 import { v } from "convex/values";
 import { internal } from "../../_generated/api";
-import { requireAuth } from "../../lib/auth";
 import { createError } from "../../lib/errors";
-import { noteActivity } from "../../activity/notes";
-import { assertJobAccess } from "../access";
+import { jobIn } from "../access";
+import { readJobCounters } from "../jobCounters";
+import { assistantMutation, defineUserMutation, reversedBy, userMutation } from "../../lib/userActions";
 import {
   assertValidJobTransition,
   type JobStatus,
@@ -116,19 +117,31 @@ export const requeueLater = internalMutation({
   },
 });
 
-export const resumeExtraction = mutation({
+/** The most carrying on a job costs: every paper it hasn't read yet, at the most one paper costs. */
+async function resumeCredits(ctx: QueryCtx, job: Doc<"extractionJobs">) {
+  const questions = await ctx.db.query("extractionQuestions").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(MAX_QUESTIONS_PER_JOB);
+  const { processed } = await readJobCounters(ctx, job._id);
+  return Math.max(0, (job.totalPapers ?? 0) - processed) * extractionPaperCredits(await extractionPricing(ctx, job), questions, job.usePdfs ?? false);
+}
+
+export const resumeExtractionAction = defineUserMutation({
+  path: "extraction/mutations/resume:resumeExtraction",
+  description:
+    "Resumes one of the workspace's extractions that was paused or ran out of credits: it reads on from where it stopped, and spends credits on the papers it hasn't read. One that isn't paused is left as it is, and `reason` says why.",
+  spendsCredits: true,
+  outsideEffect: false,
+  undoable: true,
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({
     resumed: v.boolean(),
     reason: v.optional(v.string()),
+    undo: reversedBy("extraction/mutations/pause:pauseExtraction", { jobId: v.id("extractionJobs") }),
   }),
-  handler: async (ctx, { jobId }): Promise<{
-    resumed: boolean;
-    reason?: string;
-  }> => {
-    const user = await requireAuth(ctx);
-    const { job } = await assertJobAccess(ctx, user, jobId);
-    await requireFeature(ctx, "extraction.enabled", user._id);
+  estimate: async (ctx, actor, { jobId }) => resumeCredits(ctx, await jobIn(ctx, actor, jobId)),
+  activity: ({ jobId }, { resumed }) => (resumed ? { kind: "extraction", id: jobId, happened: "resumed" } : null),
+  run: async (ctx, actor, { jobId }): Promise<{ resumed: boolean; reason?: string; undo?: { path: "extraction/mutations/pause:pauseExtraction"; args: { jobId: Id<"extractionJobs"> } } }> => {
+    const job = await jobIn(ctx, actor, jobId);
+    await requireFeature(ctx, "extraction.enabled", actor.userId);
 
     if (!job.status) {
       return { resumed: false, reason: "not_paused" };
@@ -184,7 +197,6 @@ export const resumeExtraction = mutation({
       ...(await approvalLeft(ctx, job)),
       updatedAt: Date.now(),
     });
-    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: jobId, happened: "resumed" });
 
     // Effective pdfEnabled = admin flag × per-job opt-in (mirrors
     // `getJobAndFlagsInternal`). Question concurrency mirrors the
@@ -212,6 +224,8 @@ export const resumeExtraction = mutation({
       await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch: nextEpoch });
     }
 
-    return { resumed: true };
+    return { resumed: true, undo: { path: "extraction/mutations/pause:pauseExtraction", args: { jobId } } };
   },
 });
+export const resumeExtraction = userMutation(resumeExtractionAction);
+export const resumeExtractionForAssistant = assistantMutation(resumeExtractionAction);

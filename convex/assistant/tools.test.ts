@@ -161,6 +161,33 @@ const extractionOn = (t: ReturnType<typeof convexTest>) =>
   });
 
 describe("the assistant's tools", () => {
+  it("pauses an extraction without asking, named on its card with its page, and its Undo resumes it; stopping one asks first", async () => {
+    const t = convexTest(schema);
+    await extractionOn(t);
+    const { asAda, ada, threadId, say, sayUntilAsked, steps } = await chatOf(t);
+    const jobId = await t.run(async (ctx) =>
+      ctx.db.insert("extractionJobs", { workspaceId: await personalWorkspaceOf(ctx, ada), createdBy: ada, name: "Tutoring outcomes", sourceType: "history", status: "extracting", totalPapers: 10, runEpoch: 0, usePdfs: false, createdAt: 1, updatedAt: 1 }),
+    );
+    const status = async () => (await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!.status;
+    mockDoStream.mockImplementationOnce(calling({ id: "pause", name: "run_action", input: { name: "extraction/mutations/pause:pauseExtraction", arguments: { jobId } } })).mockImplementationOnce(finishingDoStream(["Paused it."]));
+    await say("Pause my extraction");
+    expect(await status()).toBe("paused");
+    const [paused] = await steps();
+    expect(paused).toMatchObject({ status: "done", subject: "Tutoring outcomes", undo: { path: "extraction/mutations/resume:resumeExtraction" } });
+    const card = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step");
+    expect(card).toMatchObject({ opens: `/extraction/${jobId}`, canUndo: true });
+
+    await asAda.mutation(api.assistant.undo.run, { threadId, stepId: paused._id });
+    expect(await status()).toBe("extracting");
+
+    // Nothing puts a stopped extraction back, so stopping one waits for Ada's say.
+    mockDoStream.mockImplementationOnce(calling({ id: "stop", name: "run_action", input: { name: "extraction/mutations:cancelExtraction", arguments: { jobId } } }));
+    await sayUntilAsked("Stop it");
+    expect((await steps()).find((step) => step.status === "asking")).toMatchObject({ path: "extraction/mutations:cancelExtraction", subject: "Tutoring outcomes" });
+    // Resumed with no papers to read, its setup has ended it since; it was never stopped.
+    expect(await status()).not.toBe("cancelled");
+  });
+
   it("run an action as the person who sent the message, keep it as a step, and tell the model what came of it", async () => {
     const t = convexTest(schema);
     const { ada, threadId, say, steps, results, shown } = await chatOf(t);

@@ -1,7 +1,7 @@
 export type Kind = "web" | "file" | "search" | "paper" | "collection" | "screening" | "extraction" | "chat" | "library" | "topic" | "other";
 
 /** The words for a kind of step: `assistant.steps.<words>` in the messages. */
-type Words = "webSearch" | "readFile" | "readPaperPdf" | "undoBulk" | "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "extraction" | "chats" | "findRecords" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "workspaces" | "orgMembers" | "myInvites" | "newOrganization" | "inviteMembers" | "revokeInvite" | "declineInvite" | "memberRole" | "memberCap" | "removeMember" | "leaveOrganization" | "renameOrganization" | "deleteOrganization" | "workspaceSummary" | "workspaceColour" | "workspacePreset" | "resendInvite" | "activity" | "moveCheck" | "moveItem" | "shareItem" | "guestRole" | "unshareItem" | "leaveShared" | "answerShare" | "guests" | "sharedWithMe" | "readInvite" | "other";
+type Words = "webSearch" | "readFile" | "readPaperPdf" | "undoBulk" | "searches" | "search" | "searchHistory" | "newSearch" | "changeSearch" | "restoreSearch" | "removeSearch" | "results" | "lookup" | "lookPapers" | "readPaper" | "credits" | "bookmarks" | "ratings" | "saved" | "save" | "rate" | "remove" | "restore" | "collect" | "collections" | "collection" | "newCollection" | "renameCollection" | "deleteCollection" | "deleteChat" | "newChat" | "renameChat" | "chatModel" | "screening" | "answer" | "extractions" | "extraction" | "chats" | "findRecords" | "readChat" | "chatAccess" | "admins" | "models" | "keys" | "startScreening" | "collectIn" | "collectOut" | "plan" | "startExtraction" | "copyExtraction" | "sharePeople" | "screeningEstimate" | "extractionResults" | "clearSearches" | "bookmark" | "clearBookmarks" | "workspaces" | "orgMembers" | "myInvites" | "newOrganization" | "inviteMembers" | "revokeInvite" | "declineInvite" | "memberRole" | "memberCap" | "removeMember" | "leaveOrganization" | "renameOrganization" | "deleteOrganization" | "workspaceSummary" | "workspaceColour" | "workspacePreset" | "resendInvite" | "activity" | "moveCheck" | "moveItem" | "shareItem" | "guestRole" | "unshareItem" | "leaveShared" | "answerShare" | "guests" | "sharedWithMe" | "readInvite" | "stopExtraction" | "deleteExtraction" | "pauseExtraction" | "resumeExtraction" | "retryExtraction" | "extractionCost" | "stopScreening" | "other";
 
 /** Each action's kind of work and the words for it; one that isn't here shows as work in the account. */
 const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }> = {
@@ -97,6 +97,13 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "extraction/mutations:startJob": { kind: "extraction", words: "startExtraction" },
   "extraction/start:extract": { kind: "extraction", words: "startExtraction" },
   "extraction/mutations:duplicateJob": { kind: "extraction", words: "copyExtraction" },
+  "extraction/mutations:cancelExtraction": { kind: "extraction", words: "stopExtraction" },
+  "extraction/mutations:deleteExtraction": { kind: "extraction", words: "deleteExtraction" },
+  "extraction/mutations/pause:pauseExtraction": { kind: "extraction", words: "pauseExtraction" },
+  "extraction/mutations/resume:resumeExtraction": { kind: "extraction", words: "resumeExtraction" },
+  "extraction/mutations:retryFailedQuestions": { kind: "extraction", words: "retryExtraction" },
+  "extraction/queries/costs:getJobCost": { kind: "extraction", words: "extractionCost" },
+  "screening/mutations:cancelScreeningJob": { kind: "screening", words: "stopScreening" },
   "billing/usage:countCharges": { kind: "other", words: "credits" },
   "wallet/queries:listKeys": { kind: "other", words: "keys" },
   "wallet/queries:countKeys": { kind: "other", words: "keys" },

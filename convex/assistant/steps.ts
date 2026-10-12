@@ -226,10 +226,10 @@ export const about = internalQuery({
 
 /**
  * What a call is about when its arguments name one of the workspace's records by ID alone:
- * the saved paper's title, or else the collection's name. A paper it is about to save isn't
+ * the saved paper's title, the job's name, or else the collection's name. A paper it is about to save isn't
  * in it yet, and gets its title from what the call returns (`namedBy`).
  */
-async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, input: string) {
+export async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">, input: string) {
   let args: Record<string, unknown>;
   try {
     args = JSON.parse(input) as Record<string, unknown>;
@@ -246,6 +246,15 @@ async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"workspaces">,
     // A call about a paper is named after the paper. One it is about to save isn't theirs yet, and is named by the
     // title its result gives, not by the collection it goes into.
     return item?.title ? cut(item.title, 200) : undefined;
+  }
+  // A job it controls, by its name: an extraction's, or a screening's.
+  if (typeof args.jobId === "string") {
+    const extractionId = ctx.db.normalizeId("extractionJobs", args.jobId);
+    const screeningId = ctx.db.normalizeId("screeningJobs", args.jobId);
+    const extraction = extractionId ? await ctx.db.get("extractionJobs", extractionId) : null;
+    const screening = screeningId ? await ctx.db.get("screeningJobs", screeningId) : null;
+    const named = extraction?.workspaceId === workspaceId ? extraction.name : screening?.workspaceId === workspaceId ? (screening.name ?? screening.label) : undefined;
+    return named ? cut(named, 200) : undefined;
   }
   const collectionId = typeof args.collectionId === "string" ? ctx.db.normalizeId("collections", args.collectionId) : null;
   const collection = collectionId ? await ctx.db.get("collections", collectionId) : null;

@@ -15,9 +15,11 @@ export {
   startJob,
   startJobForAssistant,
   cancelExtraction,
+  cancelExtractionForAssistant,
   duplicateJob,
   duplicateJobForAssistant,
   deleteExtraction,
+  deleteExtractionForAssistant,
 } from "./mutations/jobs";
 
-export { retryFailedQuestions } from "./mutations/retry";
+export { retryFailedQuestions, retryFailedQuestionsForAssistant } from "./mutations/retry";

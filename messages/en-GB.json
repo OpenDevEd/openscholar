@@ -3650,6 +3650,48 @@
         "doing": "Reading an invitation",
         "did": "Read an invitation",
         "where": "Sharing"
+      },
+      "stopExtraction": {
+        "doing": "Stopping an extraction",
+        "did": "Stopped an extraction",
+        "where": "Extraction",
+        "ask": "Stop an extraction"
+      },
+      "deleteExtraction": {
+        "doing": "Deleting an extraction",
+        "did": "Deleted an extraction",
+        "where": "Extraction",
+        "ask": "Delete an extraction"
+      },
+      "pauseExtraction": {
+        "doing": "Pausing an extraction",
+        "did": "Paused an extraction",
+        "where": "Extraction",
+        "ask": "Pause an extraction"
+      },
+      "resumeExtraction": {
+        "doing": "Resuming an extraction",
+        "did": "Resumed an extraction",
+        "where": "Extraction",
+        "ask": "Resume an extraction"
+      },
+      "retryExtraction": {
+        "doing": "Retrying an extraction’s failed questions",
+        "did": "Retried an extraction’s failed questions",
+        "where": "Extraction",
+        "ask": "Retry an extraction’s failed questions"
+      },
+      "extractionCost": {
+        "doing": "Reading what an extraction cost",
+        "did": "Read what an extraction cost",
+        "where": "Extraction",
+        "ask": "Read what an extraction cost"
+      },
+      "stopScreening": {
+        "doing": "Stopping a screening",
+        "did": "Stopped a screening",
+        "where": "Screening",
+        "ask": "Stop a screening"
       }
     },
     "asks": {

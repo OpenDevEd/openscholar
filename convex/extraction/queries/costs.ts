@@ -1,6 +1,7 @@
 /** Live credit total for one job, for the cost badge and completion toast, and what a job would cost before it runs. */
 
 import { query, type QueryCtx } from "../../_generated/server";
+import { assistantQuery, defineUserQuery, userQuery } from "../../lib/userActions";
 import { v } from "convex/values";
 import type { Doc } from "../../_generated/dataModel";
 import { getCurrentUser } from "../../lib/auth";
@@ -13,25 +14,19 @@ import { creditsAgg } from "../aggregates";
 import { MAX_QUESTIONS_PER_JOB, questionTypeValidator } from "../validators";
 import { readResultCounts } from "../resultCounts";
 
-/**
- * Live per-job cost. Returns zeros for an unowned or missing job
- * (caller-safe: prevents scope leaks through the error channel).
- */
-export const getJobCost = query({
+export const getJobCostAction = defineUserQuery({
+  path: "extraction/queries/costs:getJobCost",
+  description: "Reads how many credits one of the workspace's extractions has spent so far, retries included: `credits`. Null for an extraction that isn't the workspace's.",
   args: { jobId: v.id("extractionJobs") },
-  returns: v.object({
-    total: v.number(),
-  }),
-  handler: async (ctx, { jobId }) => {
-    const owned = await resolveOwnedJob(ctx, jobId);
-    if (owned.status !== "ok") {
-      return { total: 0 };
-    }
-
-    const total = await creditsAgg.sum(ctx, { namespace: jobId });
-    return { total };
+  returns: v.union(v.object({ credits: v.number() }), v.null()),
+  run: async (ctx, actor, { jobId }) => {
+    const job = await ctx.db.get("extractionJobs", jobId);
+    if (!job || job.workspaceId !== actor.workspaceId) return null;
+    return { credits: await creditsAgg.sum(ctx, { namespace: jobId }) };
   },
 });
+export const getJobCost = userQuery(getJobCostAction);
+export const getJobCostForAssistant = assistantQuery(getJobCostAction);
 
 /**
  * The most a new job of `papers` papers and these questions costs the signed-in person, on the

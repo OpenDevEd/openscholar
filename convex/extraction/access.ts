@@ -74,6 +74,13 @@ export async function resolveOwnedPaper(
  * Mutation-side check: the job, and `user` acting on it in its workspace. Throws NOT_FOUND
  * (not FORBIDDEN, so nobody outside the workspace learns the job exists) when they can't.
  */
+/** The extraction a call names, when it's one of the workspace's the actor acts in. Another workspace's, or one that's gone, is not found. */
+export async function jobIn(ctx: QueryCtx, actor: Pick<Actor, "workspaceId">, jobId: Id<"extractionJobs">) {
+  const job = await ctx.db.get("extractionJobs", jobId);
+  if (!job || job.workspaceId !== actor.workspaceId) throw createError("NOT_FOUND", "Job not found");
+  return job;
+}
+
 export async function assertJobAccess(
   ctx: MutationCtx,
   user: Doc<"users">,

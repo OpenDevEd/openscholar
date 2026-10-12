@@ -125,7 +125,8 @@ describe("resumeExtraction — happy paths", () => {
       api.extraction.mutations.resume.resumeExtraction,
       { jobId },
     );
-    expect(result).toEqual({ resumed: true });
+    // Pausing it again is its undo (#342).
+    expect(result).toEqual({ resumed: true, undo: { path: "extraction/mutations/pause:pauseExtraction", args: { jobId } } });
 
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.status).toBe("downloading_pdfs");

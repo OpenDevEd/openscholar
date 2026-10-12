@@ -25,17 +25,16 @@
  *     (`../queries/costs.ts` `retryCredits`) against the balance.
  */
 
-import { internalMutation, mutation } from "../../lib/functions";
+import { internalMutation } from "../../lib/functions";
 import { internal } from "../../_generated/api";
 import type { MutationCtx } from "../../_generated/server";
 import { v } from "convex/values";
 import type { Doc, Id } from "../../_generated/dataModel";
-import { requireAuth } from "../../lib/auth";
 import { getFlag, requireFeature } from "../../featureFlags/guard";
 import { rateLimit } from "../../lib/rateLimit";
 import { createError } from "../../lib/errors";
-import { noteActivity } from "../../activity/notes";
-import { assertJobAccess } from "../access";
+import { jobIn } from "../access";
+import { assistantMutation, defineUserMutation, userMutation } from "../../lib/userActions";
 import {
   assertValidJobTransition,
   assertValidPaperTransition,
@@ -142,22 +141,31 @@ async function resolveRetryQueueRuntime(
   };
 }
 
-export const retryFailedQuestions = mutation({
+export const retryFailedQuestionsAction = defineUserMutation({
+  path: "extraction/mutations:retryFailedQuestions",
+  description:
+    "Asks again the questions of one of the workspace's extractions that failed in a way a retry can fix, such as a model that timed out, once the extraction has ended or was paused. It spends credits on each question it asks again; `retryableCount` is how many.",
+  spendsCredits: true,
+  outsideEffect: false,
+  undoable: false,
   args: { jobId: v.id("extractionJobs") },
   returns: v.object({
     jobId: v.id("extractionJobs"),
     retryableCount: v.number(),
   }),
-  handler: async (ctx, { jobId }) => {
+  estimate: async (ctx, actor, { jobId }) => {
+    const job = await jobIn(ctx, actor, jobId);
+    return retryCredits(ctx, job, (await readResultCounts(ctx, jobId)).retryable);
+  },
+  activity: ({ jobId }, { retryableCount }) => ({ kind: "extraction", id: jobId, happened: "retried", count: retryableCount }),
+  run: async (ctx, actor, { jobId }) => {
     await requireFeature(ctx, "extraction.enabled");
-    const user = await requireAuth(ctx);
+    const job = await jobIn(ctx, actor, jobId);
 
-    const { job } = await assertJobAccess(ctx, user, jobId);
-
-    await requireFeature(ctx, "extraction.start", user._id, job.workspaceId);
+    await requireFeature(ctx, "extraction.start", actor.userId, job.workspaceId);
     await rateLimit(ctx, {
       name: "start-extraction",
-      key: user._id,
+      key: actor.userId,
       throws: true,
     });
 
@@ -204,9 +212,10 @@ export const retryFailedQuestions = mutation({
       updatedAt: Date.now(),
     });
     await ctx.scheduler.runAfter(0, internal.extraction.mutations.retry.resetRetryBatch, { jobId, epoch });
-    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "extraction", id: jobId, happened: "retried", count: retryableCount });
 
     return { jobId, retryableCount };
   },
 });
+export const retryFailedQuestions = userMutation(retryFailedQuestionsAction);
+export const retryFailedQuestionsForAssistant = assistantMutation(retryFailedQuestionsAction);
 

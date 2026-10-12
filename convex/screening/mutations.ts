@@ -36,6 +36,7 @@ import { applyCommand, findSearch } from "../research/records";
 import { spendingRoom } from "../billing/memberCaps";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { actorIn, personalWorkspaceOf, requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
+import { assistantMutation, defineUserMutation, userMutation } from "../lib/userActions";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */
 async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
@@ -320,17 +321,18 @@ export const createScreeningResults = internalMutation({
  * - Preserves existing screening results
  * - Cancels only this job's outstanding workpool items
  */
-export const cancelScreeningJob = mutation({
+export const cancelScreeningJobAction = defineUserMutation({
+  path: "screening/mutations:cancelScreeningJob",
+  description:
+    "Stops one of the workspace's screenings that is running, for the person who started it or an admin. The papers it has screened keep their answers, and the rest aren't screened. A stopped screening doesn't start again. One that has already ended is left as it is.",
+  spendsCredits: false,
+  outsideEffect: false,
+  undoable: false,
   args: { jobId: v.id("screeningJobs") },
   returns: v.null(),
-  handler: async (ctx, args) => {
-    const user = await requireAuth(ctx);
-
+  run: async (ctx, actor, args) => {
     const job = await ctx.db.get("screeningJobs", args.jobId);
-    const actor = job && (await actorIn(ctx, user, job.workspaceId));
-    if (!job || !actor) {
-      throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
-    }
+    if (!job || job.workspaceId !== actor.workspaceId) throw createError("SCREENING_JOB_NOT_FOUND", "Screening job not found");
     requireMakerOrAdmin(actor, job.createdBy);
 
     // Terminal states are idempotent no-ops
@@ -347,12 +349,14 @@ export const cancelScreeningJob = mutation({
     // Its papers' queued work is dropped in batches afterwards, as Firecrawl drops a cancelled
     // crawl's queue, so the pool's slots free up sooner.
     await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId: args.jobId, cursor: null });
-    await noteActivity(ctx, { workspaceId: job.workspaceId, by: user._id, viaAssistant: false }, { kind: "screening", id: args.jobId, happened: "stopped" });
+    await noteActivity(ctx, { workspaceId: job.workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, { kind: "screening", id: args.jobId, happened: "stopped" });
     await noteEnded(ctx, job);
 
     return null;
   },
 });
+export const cancelScreeningJob = userMutation(cancelScreeningJobAction);
+export const cancelScreeningJobForAssistant = assistantMutation(cancelScreeningJobAction);
 
 /** Results one batch of an ended job's sweep handles. */
 const END_BATCH = 100;
