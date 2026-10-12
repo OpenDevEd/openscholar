@@ -11,14 +11,16 @@ export const ZOTERO_PAGE = 50;
 export const ZOTERO_TITLE_MAX = 500;
 export const ZOTERO_ABSTRACT_MAX = 10_000;
 export const ZOTERO_NAME_MAX = 300;
-/** Groups, collections and items one read returns. */
-export const ZOTERO_GROUPS_MAX = 100;
-export const ZOTERO_COLLECTIONS_MAX = 500;
+/** Groups or collections one read returns, the most Zotero gives at once, and items one read of the assistant's returns. */
+export const ZOTERO_LIST_PAGE = 100;
 export const ZOTERO_ITEMS_MAX = 25;
 
-export const zoteroGroupsValidator = capped(v.array(v.object({ id: v.string(), name: v.string(), type: v.string(), items: v.number() })), ZOTERO_GROUPS_MAX);
+export const zoteroGroupsValidator = v.object({
+  groups: capped(v.array(v.object({ id: v.string(), name: v.string(), type: v.string(), items: v.number() })), ZOTERO_LIST_PAGE),
+  next: v.optional(v.number()),
+});
 export const zoteroCollectionsValidator = v.object({
-  collections: capped(v.array(v.object({ key: v.string(), name: v.string(), parent: v.optional(v.string()), items: v.number(), subcollections: v.number() })), ZOTERO_COLLECTIONS_MAX),
+  collections: capped(v.array(v.object({ key: v.string(), name: v.string(), parent: v.optional(v.string()), items: v.number(), subcollections: v.number() })), ZOTERO_LIST_PAGE),
   next: v.optional(v.number()),
 });
 export const zoteroItemsValidator = v.object({

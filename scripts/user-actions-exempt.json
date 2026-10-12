@@ -120,10 +120,7 @@
     "screening/queries:getActiveScreeningJobProgress": "screening/queries:getScreeningJob",
     "screening/queries:getScreeningProgress": "screening/queries:getScreeningJob",
     "screening/queries:listUserScreeningJobs": "screening/queries:listJobs",
-    "topics/details:get": "research/topics:get",
-    "zotero/actions:fetchCollections": "zotero/library:collections",
-    "zotero/actions:fetchGroups": "zotero/library:groups",
-    "zotero/actions:fetchItems": "zotero/library:items"
+    "topics/details:get": "research/topics:get"
   },
   "manual": {
     "admins/invitations:invite": "Site administration, for OpenScholar's own admins on the admin pages.",

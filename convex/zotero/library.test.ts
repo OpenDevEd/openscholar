@@ -17,8 +17,8 @@ const zotero = vi.fn(async (input: string | URL) => {
   requests.push(url);
   const json = (body: unknown, total: number) => new Response(JSON.stringify(body), { status: 200, headers: { "Total-Results": String(total) } });
   if (url.pathname.endsWith("/groups")) return json([{ id: 4719820, data: { name: "Lab", type: "Private" }, meta: { numItems: 12 } }], 1);
-  if (url.pathname.endsWith("/collections/top")) return json([{ key: "ABCD1234", data: { name: "Trials", parentCollection: false }, meta: { numItems: 3, numCollections: 0 } }], 1);
-  if (url.pathname.includes("/collections/") && url.pathname.endsWith("/collections")) return json([], 0);
+  // Every level at once, more than one page of them.
+  if (url.pathname.endsWith("/collections")) return json([{ key: "ABCD1234", data: { name: "Trials", parentCollection: false }, meta: { numItems: 3, numCollections: 1 } }, { key: "EFGH5678", data: { name: "Pilots", parentCollection: "ABCD1234" }, meta: { numItems: 1, numCollections: 0 } }], 150);
   const start = Number(url.searchParams.get("start") ?? 0);
   const limit = Number(url.searchParams.get("limit") ?? 50);
   const all = [1, 2, 3].map(item);
@@ -48,8 +48,11 @@ async function setup() {
 describe("the person's Zotero library, read for the assistant", () => {
   it("reads their groups, collections and a page of items, and refuses a key or a group in the wrong form before asking Zotero", async () => {
     const { ada } = await setup();
-    expect(await ada.action(api.zotero.library.groups, {})).toEqual([{ id: "4719820", name: "Lab", type: "Private", items: 12 }]);
-    expect(await ada.action(api.zotero.library.collections, {})).toEqual({ collections: [{ key: "ABCD1234", name: "Trials", items: 3, subcollections: 0 }] });
+    expect(await ada.action(api.zotero.library.groups, {})).toEqual({ groups: [{ id: "4719820", name: "Lab", type: "Private", items: 12 }] });
+    // One page of Zotero's a read, never the whole tree.
+    requests = [];
+    expect(await ada.action(api.zotero.library.collections, {})).toEqual({ collections: [{ key: "ABCD1234", name: "Trials", items: 3, subcollections: 1 }, { key: "EFGH5678", name: "Pilots", parent: "ABCD1234", items: 1, subcollections: 0 }], next: 2 });
+    expect(requests.map((url) => url.pathname)).toEqual(["/users/15294942/collections"]);
     const page = await ada.action(api.zotero.library.items, { collectionKey: "ABCD1234", limit: 2 });
     expect(page).toMatchObject({ next: 2, items: [{ key: "ITEM0001", title: "Zotero paper 1", authors: ["Ada Okafor"], year: 2021, doi: "10.1/1", venue: "A journal", type: "journalArticle", pdf: false }, { key: "ITEM0002" }] });
     expect(page.items[0].abstract).toHaveLength(601);
@@ -75,7 +78,7 @@ describe("the person's Zotero library, read for the assistant", () => {
     await t.action(internal.extraction.actions.setupExtractionQueueJob, { jobId, expectedEpoch: 0 });
     const papers = await t.run((ctx) => ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
     expect(papers.map((paper) => [paper.openalexId, paper.title]).sort()).toEqual([["zotero:user:ITEM0002", "Zotero paper 2"], ["zotero:user:ITEM0003", "Zotero paper 3"]]);
-    // Only that collection's own items, from the second, two of them: never the whole library.
-    expect([...new Set(requests.map((url) => `${url.pathname}?start=${url.searchParams.get("start")}&limit=${url.searchParams.get("limit")}`))]).toEqual(["/users/15294942/collections/ABCD1234/items/top?start=1&limit=2"]);
+    // Only that collection's own items, from the second, two of them: never the whole library. In the order they were added, which an item edited while the job reads doesn't change.
+    expect([...new Set(requests.map((url) => `${url.pathname}?start=${url.searchParams.get("start")}&limit=${url.searchParams.get("limit")}&sort=${url.searchParams.get("sort")}&direction=${url.searchParams.get("direction")}`))]).toEqual(["/users/15294942/collections/ABCD1234/items/top?start=1&limit=2&sort=dateAdded&direction=asc"]);
   });
 });

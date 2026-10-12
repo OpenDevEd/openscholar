@@ -8,7 +8,7 @@
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
-import { ZOTERO_COLLECTIONS_MAX, ZOTERO_GROUPS_MAX, ZOTERO_ITEMS_MAX, zoteroCollectionsValidator, zoteroGroupsValidator, zoteroItemsValidator } from "./libraryValidators";
+import { ZOTERO_ITEMS_MAX, ZOTERO_LIST_PAGE, zoteroCollectionsValidator, zoteroGroupsValidator, zoteroItemsValidator } from "./libraryValidators";
 
 /** Characters of an item's abstract one read gives. */
 const ABSTRACT_SHOWN = 600;
@@ -17,14 +17,14 @@ const reads = { spendsCredits: false, outsideEffect: false, undoable: true } as 
 export const groupsAction = defineUserAction({
   path: "zotero/library:groups",
   description:
-    "Lists the Zotero groups the person is in, through the Zotero account they connected: each group's ID, name, type and how many items it has. " +
+    `Lists the Zotero groups the person is in, through the Zotero account they connected, up to ${ZOTERO_LIST_PAGE} from \`start\` (0 first): each group's ID, name, type and how many items it has; \`next\` is where the next \`start\` is, when there are more. ` +
     "A group's collections are zotero/library:collections with its `groupId`. Refused when they haven't connected Zotero in their settings.",
-  args: {},
+  args: { start: v.optional(v.union(v.number(), v.null())) },
   returns: zoteroGroupsValidator,
   ...reads,
-  run: async (ctx, { userId }): Promise<Infer<typeof zoteroGroupsValidator>> => {
-    const groups: Array<{ id: string; name: string; type: string; numItems: number }> = await ctx.runAction(internal.zotero.actions.groupsOf, { userId });
-    return groups.slice(0, ZOTERO_GROUPS_MAX).map(({ id, name, type, numItems }) => ({ id, name, type, items: numItems }));
+  run: async (ctx, { userId }, { start }): Promise<Infer<typeof zoteroGroupsValidator>> => {
+    const read: { page: Array<{ id: string; name: string; type: string; numItems: number }>; next?: number } = await ctx.runAction(internal.zotero.actions.groupsOf, { userId, start: Math.max(0, Math.floor(start ?? 0)) });
+    return { groups: read.page.slice(0, ZOTERO_LIST_PAGE).map(({ id, name, type, numItems }) => ({ id, name, type, items: numItems })), ...(read.next === undefined ? {} : { next: read.next }) };
   },
 });
 export const groups = userAction(groupsAction);
@@ -33,16 +33,15 @@ export const groupsForAssistant = assistantAction(groupsAction);
 export const collectionsAction = defineUserAction({
   path: "zotero/library:collections",
   description:
-    `Lists the collections of the person's own Zotero library, or with \`groupId\` of one of their groups, up to ${ZOTERO_COLLECTIONS_MAX}: each one's key, name, the key of the collection it sits in, how many items it holds and how many collections; \`next\` is where the next \`start\` is, when there are more. ` +
+    `Lists the collections of the person's own Zotero library, or with \`groupId\` of one of their groups, every level, up to ${ZOTERO_LIST_PAGE} from \`start\` (0 first): each one's key, name, the key of the collection it sits in, how many items it holds and how many collections; \`next\` is where the next \`start\` is, when there are more. ` +
     'Screen or extract a collection\'s papers with the set { kind: "zotero", collectionKey, groupId }; its items one page at a time are zotero/library:items.',
   args: { groupId: v.optional(v.union(v.string(), v.null())), start: v.optional(v.union(v.number(), v.null())) },
   returns: zoteroCollectionsValidator,
   ...reads,
   run: async (ctx, { userId }, { groupId, start }): Promise<Infer<typeof zoteroCollectionsValidator>> => {
-    const from = Math.max(0, Math.floor(start ?? 0));
-    const all: Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }> = await ctx.runAction(internal.zotero.actions.collectionsOf, { userId, ...(groupId != null ? { groupId } : {}) });
-    const collections = all.slice(from, from + ZOTERO_COLLECTIONS_MAX).map((one) => ({ key: one.key, name: one.name, ...(one.parentCollection ? { parent: one.parentCollection } : {}), items: one.numItems, subcollections: one.numCollections }));
-    return { collections, ...(all.length > from + collections.length ? { next: from + collections.length } : {}) };
+    const read: { page: Array<{ key: string; name: string; parentCollection: string | null; numItems: number; numCollections: number }>; next?: number } = await ctx.runAction(internal.zotero.actions.collectionsOf, { userId, ...(groupId != null ? { groupId } : {}), start: Math.max(0, Math.floor(start ?? 0)) });
+    const collections = read.page.slice(0, ZOTERO_LIST_PAGE).map((one) => ({ key: one.key, name: one.name, ...(one.parentCollection ? { parent: one.parentCollection } : {}), items: one.numItems, subcollections: one.numCollections }));
+    return { collections, ...(read.next === undefined ? {} : { next: read.next }) };
   },
 });
 export const collections = userAction(collectionsAction);
@@ -59,8 +58,6 @@ export const itemsAction = defineUserAction({
   run: async (ctx, { userId }, { collectionKey, groupId, start, limit }): Promise<Infer<typeof zoteroItemsValidator>> => {
     const read: { items: Array<{ key: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; itemType: string; venueName?: string; hasPdfChild: boolean }>; nextCursor?: number } = await ctx.runAction(internal.zotero.actions.itemsOf, {
       userId,
-      // One collection's own items, as a screening or an extraction of it reads them.
-      includeDescendants: false,
       // An empty one is refused as a key in the wrong form, never read as the whole library.
       ...(collectionKey != null ? { collectionKey } : {}),
       ...(groupId != null ? { groupId } : {}),
