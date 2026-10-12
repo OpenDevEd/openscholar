@@ -91,6 +91,8 @@
   --kind-screening: #4a3aa7;
   --kind-web: #0e8fb3;
   --kind-file: #d4483f;
+  /* Zotero's own red, for the person's Zotero library. */
+  --kind-zotero: #cc2936;
   --kind-author: #9a3fb5;
 
   /* Charts */
@@ -162,6 +164,7 @@
   --kind-screening: #9085e9;
   --kind-web: #2bb0d4;
   --kind-file: #e5655c;
+  --kind-zotero: #e5525d;
   --kind-author: #c26ad8;
   --primary: #fafafa;
   --primary-bright: #ffffff;

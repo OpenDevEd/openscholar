@@ -3782,6 +3782,24 @@
         "did": "Removed someone from a library’s team",
         "where": "Evidence Library",
         "ask": "Remove someone from a library’s team"
+      },
+      "zoteroGroups": {
+        "doing": "Reading your Zotero groups",
+        "did": "Read your Zotero groups",
+        "where": "Zotero",
+        "ask": "Read your Zotero groups"
+      },
+      "zoteroCollections": {
+        "doing": "Reading your Zotero collections",
+        "did": "Read your Zotero collections",
+        "where": "Zotero",
+        "ask": "Read your Zotero collections"
+      },
+      "zoteroItems": {
+        "doing": "Reading items in your Zotero",
+        "did": "Read items in your Zotero",
+        "where": "Zotero",
+        "ask": "Read items in your Zotero"
       }
     },
     "asks": {
@@ -3833,7 +3851,9 @@
         "email": "Email",
         "clerkUser": "Person",
         "sectionKey": "Section",
-        "path": "Setting"
+        "path": "Setting",
+        "zotero": "Zotero collection",
+        "group": "Zotero group"
       }
     },
     "topUp": {

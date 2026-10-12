@@ -119,6 +119,8 @@ async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, result
 
 /** Saves a qualified paper to the person's library and the job's collection; saving one already there changes nothing. */
 export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
+  // A paper from the person's Zotero has no OpenAlex record to save it by: it stays in its screening.
+  if (result.openalexId.startsWith("zotero:")) return;
   const libraryItemId = await upsertLibraryItem(
     ctx,
     { userId: job.createdBy, workspaceId: job.workspaceId },

@@ -7,10 +7,6 @@
       "convex/authors/publications.ts:list:[]": "#424",
       "convex/models/queries.ts:list:[]": "#424",
       "convex/models/queries.ts:listCatalogOptions:[]": "#424",
-      "convex/zotero/actions.ts:fetchCollections:[]": "#425",
-      "convex/zotero/actions.ts:fetchGroups:[]": "#425",
-      "convex/zotero/actions.ts:fetchItems:.items[]": "#425",
-      "convex/zotero/actions.ts:fetchItems:.items[].authors[]": "#425",
       "convex/zotero/libraryGroupActions.ts:listMyZoteroGroups:.groups[]": "#425"
     }
   },
@@ -19,8 +15,6 @@
   },
   "everyPage": {
     "pending": {
-      "convex/zotero/actions.ts:fetchAllCollectionsForParent": "#425",
-      "convex/zotero/actions.ts:fetchAllTopItemsForCollection": "#425",
       "convex/zotero/libraryGroupActions.ts:listAllUserGroups": "#425"
     }
   },

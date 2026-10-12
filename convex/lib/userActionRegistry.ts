@@ -48,8 +48,12 @@ import { findAction as mentionFindAction } from "../assistant/mentions";
 import { readAction as fileReadAction } from "../assistant/files";
 import { searchAction as webSearchAction } from "../research/web";
 import { addMemberAction as libraryAddMemberAction, changeRoleAction as libraryChangeRoleAction, removeMemberAction as libraryRemoveMemberAction, draftAction as libraryDraftAction, librariesAction as librariesListAction, revisionAction as libraryRevisionAction, editDraftAction as libraryEditDraftAction, teamAction as libraryTeamAction } from "../evidenceLibraries/assistant";
+import { collectionsAction as zoteroCollectionsAction, groupsAction as zoteroGroupsAction, itemsAction as zoteroItemsAction } from "../zotero/library";
 
 export const USER_ACTIONS: readonly UserAction[] = [
+  zoteroGroupsAction,
+  zoteroCollectionsAction,
+  zoteroItemsAction,
   librariesListAction,
   libraryDraftAction,
   libraryRevisionAction,

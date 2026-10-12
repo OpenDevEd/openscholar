@@ -19,13 +19,14 @@ import { getFlag, requireFeature } from "../featureFlags/guard";
 import { checkRateLimit } from "../lib/rateLimit";
 import { startHeld } from "../billing/charge";
 import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
-import { papersIn } from "../screening/estimate";
+import { firstZoteroPaper, papersIn } from "../screening/estimate";
 import { paperSetValidator } from "../screening/validators";
 import { extractionPaperCredits } from "../../lib/pricing";
 import { startJobFor } from "./mutations/jobs";
 import { checkRange, paperPickValidator, screeningPicked, searchFilters, sourcesFor, type PaperSet } from "./picks";
 import { MAX_QUESTIONS_PER_JOB, MAX_QUESTION_TEXT_LENGTH, questionInputValidator, questionTypeValidator } from "./validators";
 import { checkRequestPapers } from "../billing/accounts";
+import { checkZoteroSet } from "../zotero/libraryValidators";
 import { noteActivity } from "../activity/notes";
 
 
@@ -70,6 +71,10 @@ async function checkExtraction(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
     return void (await checkRequestPapers(ctx, workspaceId, (await papersIn(ctx, { userId, workspaceId }, set)) ?? 0, "extraction"));
   }
   checkRange(first, last);
+  if (set.kind === "zotero") {
+    await checkZoteroSet(ctx, userId, set);
+    return void (await checkRequestPapers(ctx, workspaceId, last - first + 1, "extraction"));
+  }
   if (set.kind === "search") {
     await searchFilters(ctx, workspaceId, set.searchId);
     return void (await checkRequestPapers(ctx, workspaceId, last - first + 1, "extraction"));
@@ -140,11 +145,14 @@ export const settleHold = internalMutation({
 async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, author: "user" | "assistant", { name, questions, usePdfs, ...range }: { name: string; set: PaperSet; first: number; last: number; questions: Array<Infer<typeof askedValidator>>; usePdfs?: boolean }, call?: ChangeCall): Promise<{ jobId: Id<"extractionJobs"> }> {
   const cap = call?.credits;
   checkQuestions(questions);
+  // What the job holds now, which checks everything the person was asked about before any of its papers is read.
+  const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, workspaceId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
+  // A Zotero collection is read for its first paper before a job is made: one gone, or a group out of reach, is refused here.
+  if (range.set.kind === "zotero") await firstZoteroPaper(ctx, userId, range.set, range.first);
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
   const job = { userId, workspaceId, author, name, sources: [range], questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true, ...(call?.from ? { chatStep: call.from } : {}) };
   if (cap === undefined) return await ctx.runMutation(internal.extraction.start.begin, job);
   // What was approved is what the job holds now, or more: the papers or the model may have changed since the person was asked, and a job that holds more than they said yes to is asked about again.
-  const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, workspaceId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
   if (now > cap) throw invalid(`This extraction now holds up to ${Math.ceil(now).toLocaleString("en")} credits, more than the ${cap.toLocaleString("en")} approved: its papers or the model it runs on changed since. Call it again, and the person is asked with the new figure.`);
   return await startHeld(ctx, { userId, workspaceId, credits: cap, kind: "extraction" }, (hold) => ctx.runMutation(internal.extraction.start.begin, { ...job, spend: { hold, cap } }));
 }
@@ -153,7 +161,7 @@ export const extractAction = defineUserAction({
   path: "extraction/start:extract",
   description:
     "Starts an extraction: answers each question for each paper of a paper set, with the passage each answer rests on. The set is one of the person's collections or all their saved papers, newest saved first, papers `first` to `last` (from 1); " +
-    "one of their saved searches, its results `first` to `last` in its results page's order; or a finished screening, all its included papers, whatever `first` and `last` say. " +
+    "one of their saved searches, its results `first` to `last` in its results page's order; a finished screening, all its included papers, whatever `first` and `last` say; or the items `first` to `last` of the person's own Zotero library, a collection of it or a group's (`kind: \"zotero\"`, found with zotero/library:collections), with their PDFs from Zotero. " +
     "It reads abstracts, or with `usePdfs` the full text of papers that have one, which costs a few times as much. A question's `type` is string, number, boolean or array, and `description` says what counts as an answer. " +
     `As many papers as the person's plan takes in one request, and up to ${MAX_QUESTIONS_PER_JOB} questions. Spends credits. Returns the job, which runs after the reply: read its results later with extraction/queries:listJobResults.`,
   args: extractArgs,
@@ -165,7 +173,7 @@ export const extractAction = defineUserAction({
   // The papers and the questions put to them.
   shown: ({ name, set, first, last, questions, usePdfs }) => ({
     name,
-    ...(set.kind === "collection" ? { collectionId: set.collectionId, first, last } : set.kind === "search" ? { search: set.searchId, first, last } : set.kind === "screening" ? { screening: set.jobId } : { papers: "library", first, last }),
+    ...(set.kind === "collection" ? { collectionId: set.collectionId, first, last } : set.kind === "search" ? { search: set.searchId, first, last } : set.kind === "screening" ? { screening: set.jobId } : set.kind === "zotero" ? { zotero: set.collectionKey ?? "library", ...(set.groupId ? { group: set.groupId } : {}), first, last } : { papers: "library", first, last }),
     question: questions.map((asked) => asked.question),
     ...(usePdfs ? { usePdfs } : {}),
   }),

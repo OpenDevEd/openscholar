@@ -143,11 +143,12 @@ export function JobView({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {/* A screening of the person's Zotero is run again from a chat: the page has no Zotero to pick. */}
           {guest ? null : job.status === "processing" ? (
             <Button variant="outline" size="sm" onClick={() => cancel({ jobId: job._id }).catch((error) => toast.error(t("cancelFailed"), getErrorMessage(error, t("cancelFailed"))))}>
               <Square className="fill-current" />{t("cancel")}
             </Button>
-          ) : (
+          ) : job.set?.kind === "zotero" ? null : (
             <Button variant="outline" size="sm" onClick={onRunAgain}><Copy />{t("runAgain")}</Button>
           )}
           <DropdownMenu>

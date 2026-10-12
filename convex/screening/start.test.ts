@@ -19,6 +19,7 @@ import { exportParts } from "../exports.test-support";
 import { createJob } from "./createJob.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
 import { madeBy } from "../workspaces/actor.test-support";
+import { encrypt } from "../lib/crypto";
 
 const questions = [{ key: "q1", question: "Randomized?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 };
@@ -316,5 +317,54 @@ describe("a job on a search whose page already answered some papers", () => {
     expect(exported.results[0]).toMatchObject({ answers: { q1: true }, modelAnswers: {}, decisions: { q1: { by: "person" } } });
     expect(exported.results[0].modelAnswers).toEqual({});
     expect(exported.results[1]).toMatchObject({ answers: { q1: false }, modelAnswers: { q1: false } });
+  });
+});
+
+describe("Screen all on a Zotero collection (#328)", () => {
+  const KEY = "0".repeat(64);
+  it("reads its items through the person's own Zotero, and refuses saving them, a key in the wrong form or a person with no Zotero", async () => {
+    const { t, alice, userId, screen, results, read } = await setup();
+    vi.stubEnv("ENCRYPTION_KEY", KEY);
+    const requests: URL[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: string | URL) => {
+        const url = new URL(String(input));
+        requests.push(url);
+        if (url.pathname.includes("GONE1234")) return new Response("Not found", { status: 404 });
+        const start = Number(url.searchParams.get("start") ?? 0);
+        const limit = Number(url.searchParams.get("limit") ?? 50);
+        const items = [1, 2, 3].map((i) => ({ key: `ITEM000${i}`, data: { title: `Zotero paper ${i}`, abstractNote: "Tutors help", creators: [{ creatorType: "author", firstName: "Ada", lastName: "Okafor" }], date: "2021-03-01", DOI: `10.1/${i}`, itemType: "journalArticle", publicationTitle: "A journal" }, meta: { numChildren: 0 } }));
+        return new Response(JSON.stringify(items.slice(start, start + limit)), { status: 200, headers: { "Total-Results": "3" } });
+      }),
+    );
+    const set = { kind: "zotero" as const, collectionKey: "ABCD1234" };
+
+    await expect(alice.action(api.screening.start.screen, { set, first: 1, last: 3, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/Zotero isn't connected/);
+    await t.run((ctx) => ctx.db.insert("zoteroConnections", { userId, zoteroUserId: "15294942", encryptedApiKey: encrypt("zotero-key", KEY), keyPrefix: "zot...", username: "ada", connectedAt: 1 }));
+    // Its papers have no OpenAlex record to save them by.
+    await expect(alice.action(api.screening.start.screen, { set, first: 1, last: 3, ...job, saveTo: { kind: "new", name: "Picked" } })).rejects.toThrow(/can't be saved to a collection/);
+    // A key that would change the address Zotero is asked at.
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "zotero", collectionKey: "../../x" }, first: 1, last: 3, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/eight capital letters and digits/);
+    expect(requests).toEqual([]);
+    // A collection Zotero no longer has is refused before a job is made or anything is held.
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "zotero", collectionKey: "GONE1234" }, first: 1, last: 3, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/Failed to fetch items from Zotero: 404/);
+    expect(await t.run((ctx) => ctx.db.query("screeningJobs").collect())).toEqual([]);
+    requests.length = 0;
+
+    const { jobId } = await screen({ set, first: 2, last: 3, ...job, saveTo: { kind: "none" } });
+    const papers = await results(jobId);
+    expect(papers.map((paper) => paper.openalexId)).toEqual(["zotero:user:ITEM0002", "zotero:user:ITEM0003"]);
+    expect(papers[0]).toMatchObject({ title: "Zotero paper 2", abstract: "Tutors help", authors: ["Ada Okafor"], doi: "10.1/2", venue: "A journal", publicationYear: 2021 });
+    // The person's own library, that collection's items and not its sub-collections', from the second on: its first read before the job is made, then the job's.
+    expect(requests.map((url) => [url.pathname, url.searchParams.get("start"), url.searchParams.get("limit")])).toEqual([
+      ["/users/15294942/collections/ABCD1234/items/top", "1", "1"],
+      ["/users/15294942/collections/ABCD1234/items/top", "1", "2"],
+    ]);
+    expect(await read(jobId)).toMatchObject({ label: "Zotero", totalPapers: 2 });
+    // Each keeps where its PDF is in Zotero, for an extraction of the included ones to read.
+    expect(papers[0].pdfUrl).toBe("zotero://select/users/15294942/items/ITEM0002");
+    // Screened again, the included papers of a Zotero screening still can't be saved to a collection.
+    await expect(alice.action(api.screening.start.screen, { set: { kind: "screening", jobId }, first: 1, last: 2, ...job, saveTo: { kind: "new", name: "Picked" } })).rejects.toThrow(/can't be saved to a collection/);
   });
 });
