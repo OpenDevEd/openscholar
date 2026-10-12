@@ -96,6 +96,8 @@ import type * as evidenceLibraries_applicationSetupActions from "../evidenceLibr
 import type * as evidenceLibraries_approvedQueries from "../evidenceLibraries/approvedQueries.js";
 import type * as evidenceLibraries_assistant from "../evidenceLibraries/assistant.js";
 import type * as evidenceLibraries_clerkOAuthApplications from "../evidenceLibraries/clerkOAuthApplications.js";
+import type * as evidenceLibraries_collectionInvitationMail from "../evidenceLibraries/collectionInvitationMail.js";
+import type * as evidenceLibraries_collectionInvitations from "../evidenceLibraries/collectionInvitations.js";
 import type * as evidenceLibraries_collectionSourceValidators from "../evidenceLibraries/collectionSourceValidators.js";
 import type * as evidenceLibraries_collectionSources from "../evidenceLibraries/collectionSources.js";
 import type * as evidenceLibraries_configurationDeployment from "../evidenceLibraries/configurationDeployment.js";
@@ -535,6 +537,8 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/approvedQueries": typeof evidenceLibraries_approvedQueries;
   "evidenceLibraries/assistant": typeof evidenceLibraries_assistant;
   "evidenceLibraries/clerkOAuthApplications": typeof evidenceLibraries_clerkOAuthApplications;
+  "evidenceLibraries/collectionInvitationMail": typeof evidenceLibraries_collectionInvitationMail;
+  "evidenceLibraries/collectionInvitations": typeof evidenceLibraries_collectionInvitations;
   "evidenceLibraries/collectionSourceValidators": typeof evidenceLibraries_collectionSourceValidators;
   "evidenceLibraries/collectionSources": typeof evidenceLibraries_collectionSources;
   "evidenceLibraries/configurationDeployment": typeof evidenceLibraries_configurationDeployment;

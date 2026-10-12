@@ -31,6 +31,7 @@
       "MAX_FEATURE_FLAGS": "convex/featureFlags/internal.ts",
       "MAX_PENDING_INVITATIONS_PER_LIBRARY": "convex/evidenceLibraries/invitations.ts",
       "MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL": "convex/sharing/invitations.ts",
+      "MAX_PENDING_COLLECTION_INVITATIONS_PER_READER": "convex/evidenceLibraries/collectionInvitations.ts",
       "MAX_ZOTERO_GROUPS_PER_LIBRARY": "convex/zotero/libraryGroups.ts",
       "MAX_EVIDENCE_LIBRARY_DOMAINS": "convex/evidenceLibraries/domains.ts",
       "MAX_CATALOG_MODELS": "convex/models/mutations.ts",

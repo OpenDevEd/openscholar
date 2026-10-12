@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { paginationResultValidator } from "convex/server";
 import { internal } from "../_generated/api";
 import { internalMutation, internalQuery, mutation, query, type MutationCtx, type QueryCtx } from "../lib/functions";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import { pendingInvitationValidator } from "./validators";
 import { actingArg, signedInAs } from "../lib/userActions";
 import { grantedRole, libraryGrant, libraryOf, libraryOwner, ownerActive, requireEvidenceLibraryAccess, readLibraryRole, readPendingLibraryInvitations } from "./access";
@@ -65,23 +65,27 @@ export const readDelivery = internalQuery({
     const invited = invitation ? await libraryOf(ctx, invitation) : null;
     if (!invitation || !invited || invitation.state !== "pending" || invitation.expiresAt <= Date.now()) return null;
     const access = await requireEvidenceLibraryAccess(ctx, invited._id, "manage");
-    const revisionId = access.library.activeRevisionId ?? access.library.latestRevisionId;
-    const [contact, identitySection, themeSection] = await Promise.all(
-      (["contact", "identity", "theme"] as const).map(sectionKey => revisionId ? ctx.db.query("evidenceLibraryConfigSections")
-        .withIndex("by_revisionId_and_sectionKey", q => q.eq("revisionId", revisionId).eq("sectionKey", sectionKey)).unique() : null),
-    );
-    const identity = z.object({baseUrl: z.url(), assets: z.object({icons: z.array(z.string()).optional(), logoLight: z.string().optional(), logoDark: z.string().optional()}).optional()}).safeParse(identitySection?.payload);
-    const theme = z.object({colors: z.object({accent: z.string()})}).safeParse(themeSection?.payload);
-    const assets = identity.success ? identity.data.assets : undefined;
-    return {
-      email: invitation.email, libraryName: access.library.name,
-      contactEmail: typeof contact?.payload.email === "string" ? contact.payload.email : null, role: grantedRole(invitation),
-      emailIdentity: {name: access.library.name, baseUrl: identity.success ? identity.data.baseUrl : null,
-        logoUrl: assets?.icons?.find(icon => /\.png(?:\?|$)/.test(icon)) || assets?.logoLight || assets?.logoDark || "",
-        accent: theme.success ? theme.data.colors.accent : "#f58220"},
-    };
+    return { email: invitation.email, libraryName: access.library.name, role: grantedRole(invitation), ...await libraryEmailSender(ctx, access.library) };
   },
 });
+
+/** How an email sent in a library's name looks: its name, logo and colour, from its live configuration, and its contact address to reply to. */
+export async function libraryEmailSender(ctx: Pick<QueryCtx, "db">, library: Doc<"evidenceLibraries">) {
+  const revisionId = library.activeRevisionId ?? library.latestRevisionId;
+  const [contact, identitySection, themeSection] = await Promise.all(
+    (["contact", "identity", "theme"] as const).map(sectionKey => revisionId ? ctx.db.query("evidenceLibraryConfigSections")
+      .withIndex("by_revisionId_and_sectionKey", q => q.eq("revisionId", revisionId).eq("sectionKey", sectionKey)).unique() : null),
+  );
+  const identity = z.object({baseUrl: z.url(), assets: z.object({icons: z.array(z.string()).optional(), logoLight: z.string().optional(), logoDark: z.string().optional()}).optional()}).safeParse(identitySection?.payload);
+  const theme = z.object({colors: z.object({accent: z.string()})}).safeParse(themeSection?.payload);
+  const assets = identity.success ? identity.data.assets : undefined;
+  return {
+    contactEmail: typeof contact?.payload.email === "string" ? contact.payload.email : null,
+    emailIdentity: {name: library.name, baseUrl: identity.success ? identity.data.baseUrl : null,
+      logoUrl: assets?.icons?.find(icon => /\.png(?:\?|$)/.test(icon)) || assets?.logoLight || assets?.logoDark || "",
+      accent: theme.success ? theme.data.colors.accent : "#f58220"},
+  };
+}
 
 /** Changes the role an invitation still waiting gives, or cancels it, for an owner of its library. */
 export async function changeLibraryInvitation(ctx: MutationCtx, args: { invitationId: Id<"itemInvitations">; role?: "editor" | "creator"; cancel?: boolean }) {

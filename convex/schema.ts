@@ -1299,7 +1299,9 @@ export default defineSchema({
   itemInvitations: defineTable(itemInvitationFields)
     .index("by_item_and_email", ["item", "email"])
     .index("by_item_and_state", ["item", "state"])
-    .index("by_email_and_state", ["email", "state"]),
+    .index("by_email_and_state", ["email", "state"])
+    // A reader's waiting invitations to their collections in Evidence Libraries (../evidenceLibraries/collectionInvitations.ts).
+    .index("by_invitedBy_and_kind_and_state", ["invitedBy", "kind", "state"]),
 
   collections: defineTable({
     workspaceId: v.id("workspaces"),

@@ -153,6 +153,8 @@ export async function applyUserDeleteProjection(
     // What they shared from their own workspace closes to its guests now, not when the account's data is purged (#653).
     const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", user._id)).unique();
     if (workspace) await ctx.scheduler.runAfter(0, internal.sharing.upkeep.close, { workspaceId: workspace._id, cursor: null });
+    // And nobody takes up an invitation they sent to one of their collections in a library, which deletes the collections.
+    await ctx.scheduler.runAfter(0, internal.evidenceLibraries.collectionInvitations.cancelSentBy, { userId: user._id });
   });
 }
 

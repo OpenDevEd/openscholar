@@ -10,6 +10,7 @@ import { clerkWebhook } from "./webhooks/clerk";
 import { checkAdminSession, checkReaderStatus } from "./evidenceLibraries/serviceHttp";
 import { receiveSourceStatus } from "./evidenceLibraries/sourceStatus";
 import { readCollectionItems } from "./evidenceLibraries/collectionSources";
+import { COLLECTION_INVITATION_CALLS, serveCollectionInvitations } from "./evidenceLibraries/collectionInvitations";
 import { download as downloadExport } from "./exports";
 import { upload as uploadAssistantFile, uploadOptions as uploadAssistantFileOptions } from "./assistant/files";
 import { requireAppUrl } from "./lib/env";
@@ -44,6 +45,11 @@ http.route({
   method: "POST",
   handler: checkReaderStatus,
 });
+
+// Invitations to a reader's collection in an Evidence Library, one route a call (./evidenceLibraries/collectionInvitations.ts).
+for (const call of COLLECTION_INVITATION_CALLS) {
+  http.route({ path: `/api/v1/evidence-libraries/collection-invitations/${call}`, method: "POST", handler: serveCollectionInvitations(call) });
+}
 
 http.route({
   path: "/webhooks/clerk",

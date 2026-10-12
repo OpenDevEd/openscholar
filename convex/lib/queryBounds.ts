@@ -79,3 +79,6 @@ export const MAX_ASSISTANT_THREAD_GRANTS = 50;
 
 /** Most invitations to items waiting for one address (`sharing/invitations:invite`); another is refused until some are answered or expire. */
 export const MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL = 100;
+
+/** Most invitations to their collections in Evidence Libraries one reader has waiting, in all libraries: one more is refused until some are answered or expire, and a library lists them in one answer. */
+export const MAX_PENDING_COLLECTION_INVITATIONS_PER_READER = 500;
