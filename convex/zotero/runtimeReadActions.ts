@@ -1,12 +1,13 @@
 "use node";
 
 import { paginationOptsValidator, type PaginationOptions } from "convex/server";
-import { type ObjectType, v } from "convex/values";
+import { type Infer, type ObjectType, v } from "convex/values";
+import { validate } from "convex-helpers/validators";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { action, internalAction, type ActionCtx } from "../_generated/server";
 import { decrypt } from "../lib/crypto";
-import { createError } from "../lib/errors";
+import { createError, readConvexErrorData } from "../lib/errors";
 import {
   type RuntimeCollection,
   type RuntimeCollectionFacts,
@@ -24,7 +25,9 @@ import {
   readRuntimeHomeQuestions,
   readRuntimeInstitutions,
   readRuntimeReviewedPublications,
+  requestRuntimeScreeningGrade,
   requestRuntimeSourceRun,
+  tryRuntimeScreeningSubject,
 } from "./runtimeReadClient";
 import {
   homeQuestionsValidator,
@@ -34,6 +37,7 @@ import {
   runtimeCollectionValidator,
   runtimeInstitutionValidator,
   runtimePage,
+  screeningTrialValidator,
 } from "./runtimeReadValidators";
 
 type NotSetUp = { reason: "not-set-up" };
@@ -280,3 +284,41 @@ const requestSourceRunRead = async (ctx: ActionCtx, args: ObjectType<typeof requ
 export const requestSourceRun = action({ args: requestSourceRunArgs, returns: requestSourceRunReturns, handler: requestSourceRunRead });
 /** The same, for the person the assistant acts for (../evidenceLibraries/assistant.ts). */
 export const requestSourceRunFor = internalAction({ args: { ...requestSourceRunArgs, actingAs: v.id("users") }, returns: requestSourceRunReturns, handler: requestSourceRunRead });
+
+/** "Try on 200", for the person the assistant or the page acts for: the library grades a sample against a subject and keeps nothing. */
+export const trySubjectFor = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string(), subject: v.string(), actingAs: v.id("users") },
+  returns: v.union(screeningTrialValidator, v.object({ reason: notSetUpValidator })),
+  handler: async (ctx, args) =>
+    await readRuntime(ctx, args, "manage", async (target) => {
+      const trial = await tryRuntimeScreeningSubject(fetch, target, args.sourceKey, args.subject);
+      if (!validate(screeningTrialValidator, trial)) throw new RuntimeReadError("RUNTIME_READ_INVALID", "The library's trial has an unexpected shape");
+      return trial as Infer<typeof screeningTrialValidator>;
+    }),
+});
+
+/** Sends an owner's grading request to the library, as that owner, once the library reports its subject (./../evidenceLibraries/screeningRequests.ts). */
+export const sendScreeningGrade = internalAction({
+  args: { requestId: v.id("evidenceLibraryScreeningRequests") },
+  returns: v.null(),
+  handler: async (ctx, { requestId }) => {
+    const request = await ctx.runQuery(internal.evidenceLibraries.screeningRequests.get, { requestId });
+    if (!request) return null;
+    try {
+      const outcome = await readRuntime(ctx, { libraryId: request.libraryId, actingAs: request.requestedBy }, "manage", (target) =>
+        requestRuntimeScreeningGrade(fetch, target, request.sourceKey),
+      );
+      await ctx.runMutation(internal.evidenceLibraries.screeningRequests.settle, typeof outcome === "string"
+        ? { requestId, outcome }
+        : { requestId, outcome: "refused", error: "The library isn't running yet." });
+    } catch (error) {
+      console.error("Screening grade request failed", { requestId, error });
+      await ctx.runMutation(internal.evidenceLibraries.screeningRequests.settle, {
+        requestId,
+        outcome: "refused",
+        error: readConvexErrorData(error)?.message ?? (error instanceof Error ? error.message : String(error)),
+      });
+    }
+    return null;
+  },
+});

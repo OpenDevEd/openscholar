@@ -6,6 +6,8 @@ import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shiel
 
 export const RUNTIME_READ_PAGE_SIZE = 50;
 const REQUEST_TIMEOUT_MS = 15_000;
+/** A screening trial grades 200 records, 16 at a time: about a minute, more when OpenRouter is slow. */
+const TRIAL_TIMEOUT_MS = 5 * 60_000;
 
 export type RuntimeCollection = {
   id: string;
@@ -150,12 +152,16 @@ function readReviewedPublication(
   };
 }
 
-/** One call to the library with its machine credential; any refusal or failure throws. */
+/**
+ * One call to the library with its machine credential; any refusal or failure throws, except an answer in `accept`,
+ * which the caller reads.
+ */
 async function runtimeFetch(
   fetchImpl: typeof fetch,
   target: { baseUrl: string; credential: string },
   url: URL,
   method: "GET" | "POST" | "DELETE" = "GET",
+  { body, timeoutMs = REQUEST_TIMEOUT_MS, accept = [] }: { body?: unknown; timeoutMs?: number; accept?: readonly number[] } = {},
 ): Promise<Response> {
   let response: Response;
   try {
@@ -164,8 +170,10 @@ async function runtimeFetch(
       headers: {
         Authorization: `Bearer ${target.credential}`,
         ...publicLibraryHeaders("application/json"),
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       },
-      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {
     throw new RuntimeReadError(
@@ -180,7 +188,7 @@ async function runtimeFetch(
       response.status,
     );
   }
-  if (!response.ok) {
+  if (!response.ok && !accept.includes(response.status)) {
     throw new RuntimeReadError(
       "RUNTIME_READ_UNAVAILABLE",
       `The library answered ${response.status}`,
@@ -428,6 +436,48 @@ export async function requestRuntimeSourceRun(
     target.baseUrl,
   );
   await runtimeFetch(fetchImpl, target, url, "POST");
+}
+
+const screeningUrl = (target: { baseUrl: string }, sourceKey: string, step: "grade" | "trial") =>
+  new URL(`/api/openscholar/sources/${encodeURIComponent(sourceKey)}/screening/${step}`, target.baseUrl);
+
+/**
+ * Asks the library to grade a screening source's records not graded against its subject. "not-ready" until the
+ * library has applied that subject; a library without an OpenRouter key, or a source that doesn't screen, refuses.
+ */
+export async function requestRuntimeScreeningGrade(
+  fetchImpl: typeof fetch,
+  target: { baseUrl: string; credential: string },
+  sourceKey: string,
+): Promise<"queued" | "not-ready"> {
+  const response = await runtimeFetch(fetchImpl, target, screeningUrl(target, sourceKey, "grade"), "POST", { accept: [409] });
+  if (response.ok) return "queued";
+  const body: unknown = await response.json().catch(() => null);
+  const refusal = isRecord(body) && isRecord(body.error) ? body.error : null;
+  if (refusal?.code === "not_ready") return "not-ready";
+  throw new RuntimeReadError(
+    "RUNTIME_READ_REFUSED",
+    typeof refusal?.message === "string" ? refusal.message : "The library refused to grade the source",
+    409,
+  );
+}
+
+/** Asks the library to grade 200 of a source's records against a proposed subject; it keeps nothing. */
+export async function tryRuntimeScreeningSubject(
+  fetchImpl: typeof fetch,
+  target: { baseUrl: string; credential: string },
+  sourceKey: string,
+  subject: string,
+): Promise<unknown> {
+  const response = await runtimeFetch(fetchImpl, target, screeningUrl(target, sourceKey, "trial"), "POST", {
+    body: { subject },
+    timeoutMs: TRIAL_TIMEOUT_MS,
+  });
+  try {
+    return await response.json();
+  } catch {
+    throw new RuntimeReadError("RUNTIME_READ_INVALID", "The library did not answer with JSON");
+  }
 }
 
 /**

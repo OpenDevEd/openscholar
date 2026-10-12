@@ -50,6 +50,16 @@ export const reviewedPublicationValidator = v.object({
 // there is nothing to read and the list is empty.
 export const notSetUpValidator = v.optional(v.literal("not-set-up"));
 
+const gradeCountsValidator = v.object({ about: v.number(), touches: v.number(), passing: v.number(), notAbout: v.number() });
+
+/** What a library's screening trial found: a sample's grades now and against the proposed subject, and how many differ. */
+export const screeningTrialValidator = v.object({
+  size: v.number(),
+  now: gradeCountsValidator,
+  next: gradeCountsValidator,
+  changed: v.number(),
+});
+
 /** One page of a library's own list, as the library pages it: never more than a page it's asked for. */
 export const runtimePage = <Item extends GenericValidator>(item: Item) =>
   v.object({

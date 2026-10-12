@@ -19,6 +19,7 @@ import {
   RemotePickerDialog,
 } from "./remote-picker-dialog";
 import { SourceRow, SourceSwitch } from "./source-row";
+import { sourceScreening } from "./source-screening";
 import type { SourceLive } from "./source-activity";
 import { useWorkspace } from "@/lib/workspaces/url";
 
@@ -150,6 +151,12 @@ export function CollectionSourceRow({
   const connected = controller.byId.get(entry.collectionId);
   const paused = !entry.enabled;
   const deleted = connected !== undefined && connected.name === null;
+  const screening = sourceScreening({
+    sourceKey: entry.key,
+    screening: entry.screening,
+    onChange: (next) => controller.patch(entry.key, { screening: next }),
+    report: live?.screening ?? null,
+  });
   return (
     <SourceRow
       name={connected?.name ?? entry.settings.name}
@@ -170,14 +177,18 @@ export function CollectionSourceRow({
       onToggle={() => controller.patch(entry.key, { enabled: paused })}
       onRemove={onRemove}
       data-collection-id={entry.collectionId}
+      details={screening.band}
       controls={
-        <SourceSwitch
-          label={t("pdfs")}
-          checked={entry.settings.downloadPdfs}
-          onCheckedChange={(downloadPdfs) =>
-            controller.patch(entry.key, { settings: { ...entry.settings, downloadPdfs } })
-          }
-        />
+        <>
+          {screening.control}
+          <SourceSwitch
+            label={t("pdfs")}
+            checked={entry.settings.downloadPdfs}
+            onCheckedChange={(downloadPdfs) =>
+              controller.patch(entry.key, { settings: { ...entry.settings, downloadPdfs } })
+            }
+          />
+        </>
       }
     />
   );

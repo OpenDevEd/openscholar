@@ -26,6 +26,8 @@ const mocks = vi.hoisted(() => ({
   query: vi.fn(),
   myCollections: vi.fn(),
   connectCollection: vi.fn(),
+  gradeSource: vi.fn(),
+  trySourceSubject: vi.fn(),
 }));
 /** What the source status query answers: a report, null, or an Error. */
 const statusReport = vi.hoisted(() => ({ current: null as unknown }));
@@ -42,6 +44,7 @@ vi.mock("convex/react", () => ({
       startOAuth: mocks.startOAuth,
       writeCredential: mocks.writeCredential,
       requestSourceRun: mocks.requestSourceRun,
+      trySourceSubject: mocks.trySourceSubject,
     })[ref],
   useMutation: (ref: string) =>
     ({
@@ -49,6 +52,7 @@ vi.mock("convex/react", () => ({
       disconnect: mocks.disconnect,
       removeOpenAlexKey: mocks.removeOpenAlexKey,
       connectCollectionSource: mocks.connectCollection,
+      gradeSource: mocks.gradeSource,
     })[ref],
 }));
 vi.mock("@/components/providers/convex-provider", () => ({
@@ -65,6 +69,7 @@ vi.mock("@/convex/_generated/api", () => ({
       openAlexSourceKey: { removeOpenAlexKey: "removeOpenAlexKey" },
       sourceStatus: { listForLibrary: "listForLibrary" },
       queries: { getDraft: "getDraft" },
+      assistant: { screeningRequest: "screeningRequest", gradeSource: "gradeSource", trySourceSubject: "trySourceSubject" },
       collectionSources: {
         listCollectionSources: "listCollectionSources",
         connectCollectionSource: "connectCollectionSource",
@@ -203,9 +208,11 @@ function queries(input: {
 function Harness({
   initial = [],
   onChange = vi.fn(),
+  aiReady = false,
 }: {
   initial?: EvidenceSourceEntry[];
   onChange?: (value: EvidenceSourceEntry[]) => void;
+  aiReady?: boolean;
 }) {
   const [value, setValue] = useState(initial);
   const [tags, setTags] = useState<TagRules>({});
@@ -220,6 +227,7 @@ function Harness({
         }}
         tags={tags}
         onTagsChange={setTags}
+        aiReady={aiReady}
       />
     </TooltipProvider>
   );
@@ -655,5 +663,66 @@ describe("SourcesField import status", () => {
 
     const bands = screen.getAllByRole("region", { name: `${ns}.status.label` });
     expect(within(bands[1]!).getByText(`${ns}.status.afterActivate`)).toBeTruthy();
+  });
+});
+
+describe("<SourcesField> screening", () => {
+  const sn = `${ns}.screening`;
+  const screened: OpenAlexSourceEntry = { ...openAlexSource, screening: { enabled: true, subject: "Climate adaptation", keptOut: ["not-about"] } };
+  const report = (screening: Record<string, unknown>) => ({
+    observedAt: Date.parse("2026-09-27T12:09:00.000Z"),
+    sources: [{
+      key: screened.key, provider: "openalex", state: "succeeded", searchable: 45, searchFailed: 0, changed: null,
+      lastSuccessAt: "2026-09-27T12:00:00.000Z", issues: {}, pdfs: null,
+      screening: {
+        grades: { about: 30, touches: 10, passing: 5, notAbout: 5 }, ungraded: 0, grading: null, subject: "Climate adaptation",
+        examples: { about: "Drought-tolerant maize in Malawi", touches: null, passing: null, notAbout: "Corporate bond spreads" }, reading: null,
+        ...screening,
+      },
+    }],
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.gradeSource.mockResolvedValue(null);
+  });
+
+  it("asks for grading only when the subject changed or records wait for a grade, with the subject in the draft", async () => {
+    queries({ connected: false, report: report({}) });
+    render(<Harness initial={[screened]} aiReady />);
+    const band = screen.getByRole("region", { name: `${sn}.label` });
+    expect(within(band).getByText("Drought-tolerant maize in Malawi")).toBeTruthy();
+    expect(within(band).queryByRole("button", { name: `${sn}.gradeAgain` })).toBeNull();
+    expect(within(band).queryByRole("button", { name: `${sn}.gradeThem` })).toBeNull();
+
+    const subject = within(band).getByRole("textbox", { name: `${sn}.subjectLabel` });
+    await userEvent.clear(subject);
+    await userEvent.type(subject, "Urban housing policy");
+    expect(within(band).getByRole("button", { name: `${sn}.tryOnSample` })).toBeTruthy();
+    await userEvent.click(within(band).getByRole("button", { name: `${sn}.gradeAgain` }));
+    expect(mocks.gradeSource).toHaveBeenCalledWith(expect.objectContaining({ libraryId, sourceKey: screened.key, subject: "Urban housing policy" }));
+  });
+
+  it("offers to grade the records not graded yet against an unchanged subject", () => {
+    queries({ connected: false, report: report({ ungraded: 37 }) });
+    render(<Harness initial={[screened]} aiReady />);
+    const band = screen.getByRole("region", { name: `${sn}.label` });
+    expect(within(band).getByRole("button", { name: `${sn}.gradeThem` })).toBeTruthy();
+    expect(within(band).queryByRole("button", { name: `${sn}.tryOnSample` })).toBeNull();
+  });
+
+  it("keeps a grade in or out through the draft", async () => {
+    queries({ connected: false, report: report({}) });
+    const onChange = vi.fn();
+    render(<Harness initial={[screened]} onChange={onChange} aiReady />);
+    await userEvent.click(screen.getByRole("switch", { name: `${sn}.keep ${JSON.stringify({ grade: `${sn}.grades.notAbout` })}` }));
+    expect(onChange).toHaveBeenLastCalledWith([expect.objectContaining({ key: screened.key, screening: expect.objectContaining({ keptOut: [] }) })]);
+  });
+
+  it("can't be turned on without AI answers and an OpenRouter key", () => {
+    queries({ connected: false, report: report({}) });
+    render(<Harness initial={[screened]} />);
+    expect(screen.queryByRole("region", { name: `${sn}.label` })).toBeNull();
+    expect(screen.getByRole("switch", { name: `${sn}.label` }).hasAttribute("disabled")).toBe(true);
   });
 });

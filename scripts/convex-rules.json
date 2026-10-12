@@ -44,7 +44,8 @@
       "MAX_PENDING_FILES": "convex/assistant/files.ts:startUpload",
       "MAX_FILES_PER_MESSAGE": "convex/assistant/files.ts:partsFor",
       "MAX_PROFILE_MEMBERS": "convex/sharing/items.ts",
-      "MAX_LIBRARIES_PER_WORKSPACE": "convex/evidenceLibraries/mutations.ts"
+      "MAX_LIBRARIES_PER_WORKSPACE": "convex/evidenceLibraries/mutations.ts",
+      "MAX_LIBRARY_SOURCES": "convex/evidenceLibraries/screeningRequests.ts:requestScreeningGrade"
     },
     "refused": {
       "MAX_ACCOUNTS_PER_EMAIL": "reads one past it and refuses the invitation, naming why",

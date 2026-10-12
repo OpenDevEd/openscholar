@@ -9,6 +9,15 @@ export const OPENALEX_API_CREDENTIAL_KEY = credentialKeyFor(
   OPENALEX_API_KEY_INSTANCE,
 );
 
+/** How close a record is to a screening source's subject, lowest first, as the library grades it. */
+export type ScreeningGrade = "not-about" | "passing" | "touches" | "about";
+
+/**
+ * A source's AI screening: whether the library grades its records against a subject, and which grades it keeps out of
+ * the library. A source saved before screening has none, which the library reads as off.
+ */
+export type SourceScreeningSettings = { enabled: boolean; subject: string; keptOut: ScreeningGrade[] };
+
 /** What an import asks OpenAlex: a classic search and filter, or one OQL query with the filters in it. */
 export type OpenAlexQuery = { filter?: string; search?: string; oql?: string };
 
@@ -29,6 +38,7 @@ export type OpenAlexSourceEntry = {
     };
     downloadPdfs: boolean;
   };
+  screening?: SourceScreeningSettings;
 };
 
 /** One of the owner's OpenScholar collections, which the library follows live. Its items resolve through OpenAlex. */
@@ -44,6 +54,7 @@ export type OpenScholarCollectionSourceEntry = {
     apiKeyMode: "platform" | "custom";
     downloadPdfs: boolean;
   };
+  screening?: SourceScreeningSettings;
 };
 
 export type EvidenceSourceEntry =

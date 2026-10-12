@@ -101,3 +101,19 @@ export const evidenceLibrarySourceStatusFields = {
 
 /** The runtime's latest report on a library's sources, or null before its first. */
 export const sourceStatusReadValidator = v.union(v.null(), v.object({ observedAt: v.number(), sources: evidenceLibrarySourceStatusFields.sources }));
+
+/** An owner's request to grade a screening source, waiting for the library to report its subject (./screeningRequests.ts). */
+export const screeningRequestFields = {
+  libraryId: v.id("evidenceLibraries"),
+  sourceKey: v.string(),
+  /** The subject the owner asked to grade against. */
+  subject: v.string(),
+  requestedBy: v.id("users"),
+  requestedAt: v.number(),
+  /** Set while it is on its way to the library, so a report arriving meanwhile doesn't send it twice. */
+  sendingAt: v.optional(v.number()),
+  /** When the library took it; it stays until the library's report shows the grading, so the page never loses sight of it. */
+  sentAt: v.optional(v.number()),
+  /** Why the library refused it, shown on the source until the owner asks again. */
+  error: v.optional(v.string()),
+};
