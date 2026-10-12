@@ -10,6 +10,7 @@ import {
   toSectionRows,
 } from "../../tests/helpers/evidence-library-setup-fixture";
 import { organizationWorkspaceOf } from "../workspaces/personal";
+import { EVIDENCE_LIBRARY_CONFIG_PROVENANCE } from "../../lib/evidence-libraries/configuration/contract";
 
 const RUNTIME_COMMIT = "a".repeat(40);
 const NEWER_COMMIT = "b".repeat(40);
@@ -202,6 +203,46 @@ describe("Evidence Library versions", () => {
       ["r3", "previous"],
       ["r2", "previous"],
     ]);
+  });
+
+  it("restores on the latest release when the running software can't read the current contract", async () => {
+    const fixture = await createReadySetupFixture("restore-update");
+    await publishSecondRevision(fixture);
+    await fixture.t.run(async (ctx) => {
+      await ctx.db.insert("evidenceLibraryRuntimeReleases", {
+        running: RUNTIME_COMMIT,
+        latest: NEWER_COMMIT,
+        latestImage: NEWER_RUNTIME_IMAGE,
+        changes: [{ sha: NEWER_COMMIT, message: "feat: open access" }],
+        releases: [],
+        checkedAt: Date.now(),
+        contractSupport: {
+          commit: EVIDENCE_LIBRARY_CONFIG_PROVENANCE.commit,
+          running: false,
+          latest: true,
+        },
+      });
+    });
+
+    const restored = await fixture.admin.mutation(
+      api.evidenceLibraries.versions.restoreRevision,
+      {
+        libraryId: fixture.created.libraryId,
+        revisionId: fixture.activated.revisionId,
+      },
+    );
+    expect(
+      await fixture.t.run((ctx) => ctx.db.get(restored.operationId)),
+    ).toMatchObject({
+      kind: "publish",
+      revisionId: restored.revisionId,
+      runtimeUpdate: {
+        from: RUNTIME_COMMIT,
+        to: NEWER_COMMIT,
+        fromImage: TEST_RUNTIME_IMAGE,
+        toImage: NEWER_RUNTIME_IMAGE,
+      },
+    });
   });
 
   it("migrates a historical version into a current restore candidate without rewriting history", async () => {

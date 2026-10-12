@@ -79,8 +79,8 @@ import {
   sectionRowValidator,
 } from "./validators";
 import {
-  readPublishRuntime,
   readRunningContractSupport,
+  requirePublishRuntime,
   type PublishRuntime,
 } from "./updates";
 
@@ -759,13 +759,7 @@ export async function activateEvidenceLibraryConfiguration(
   let publishRuntime: PublishRuntime = { kind: "current" };
   if (access.library.state === "active") {
     await requireNoActiveConfigurationDeployment(ctx, args.libraryId);
-    publishRuntime = await readPublishRuntime(ctx, access.library);
-    if (publishRuntime.kind === "unreleased") {
-      throw createError(
-        "CONFLICT",
-        "These changes need Evidence Library software that is still being released. Try again in a few minutes.",
-      );
-    }
+    publishRuntime = await requirePublishRuntime(ctx, access.library);
     const topicsEnabled = readTopicsEnabled(
       persisted.migration.snapshot.sections.find(
         (row) => row.sectionKey === "topics",

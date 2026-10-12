@@ -295,6 +295,24 @@ export async function readPublishRuntime(
   };
 }
 
+/**
+ * readPublishRuntime for a publish or restore about to be queued: refused
+ * while the release that can read the configuration is still going out.
+ */
+export async function requirePublishRuntime(
+  ctx: QueryCtx,
+  library: Doc<"evidenceLibraries">,
+): Promise<Exclude<PublishRuntime, { kind: "unreleased" }>> {
+  const runtime = await readPublishRuntime(ctx, library);
+  if (runtime.kind === "unreleased") {
+    throw createError(
+      "CONFLICT",
+      "These changes need Evidence Library software that is still being released. Try again in a few minutes.",
+    );
+  }
+  return runtime;
+}
+
 /** For the publish dialog: whether publishing also updates the software. */
 export const publishRuntime = query({
   args: { libraryId: v.id("evidenceLibraries") },
