@@ -17,6 +17,7 @@ import { libraryOf } from "../evidenceLibraries/access";
 import { personName } from "../lib/people";
 import { workUrl } from "../../lib/openalex/work-id";
 import { ASKED_DETAILS_MAX, ASKED_EACH_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
+import { addressesOf } from "../lib/people";
 
 /** A saved search's ID: the one the page made for it. */
 const SEARCH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -97,7 +98,7 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
     if (invitationId) {
       const invitation = await ctx.db.get("itemInvitations", invitationId);
       const library = invitation ? await libraryOf(ctx, invitation) : null;
-      return invitation && library && (invitation.email === reader.email.toLowerCase() || library.workspaceId === workspaceId) ? `${invitation.email}, ${library.name}` : null;
+      return invitation && library && (addressesOf(reader).includes(invitation.email) || library.workspaceId === workspaceId) ? `${invitation.email}, ${library.name}` : null;
     }
     // An author profile, by its name: its page is public.
     const profileId = ctx.db.normalizeId("authorProfiles", id);

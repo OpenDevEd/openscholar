@@ -9,7 +9,7 @@ import { noteActivity } from "../activity/notes";
 import { planLimit } from "../billing/accounts";
 import { createError } from "../lib/errors";
 import { countOf } from "../lib/listCounts";
-import { personName } from "../lib/people";
+import { addressesOf, personName } from "../lib/people";
 import type { Acting } from "../lib/userActions";
 import { actorIn } from "../workspaces/actor";
 import { grantOf, guestCap, itemGuestsOf, kindWord, ownersHold, type Shared } from "./items";
@@ -20,6 +20,15 @@ type Read = Pick<QueryCtx, "db">;
 /** The invitation to an item sent to an address, answered or not: an item keeps one an address. */
 export const invitationTo = (ctx: Read, item: string, email: string) =>
   ctx.db.query("itemInvitations").withIndex("by_item_and_email", (q) => q.eq("item", item).eq("email", email)).unique();
+
+/** The invitation to an item still waiting for a person, at any address of theirs. */
+export async function waitingFor(ctx: Read, item: string, person: Pick<Doc<"users">, "email" | "verifiedEmails">) {
+  for (const email of addressesOf(person)) {
+    const invitation = await invitationTo(ctx, item, email);
+    if (invitation?.state === "pending") return invitation;
+  }
+  return null;
+}
 
 /** The most guests the item has: what its workspace's plan allows, or its kind's own most where that's fewer; undefined for no limit. */
 export async function roomFor(ctx: QueryCtx, shared: Shared) {
@@ -62,8 +71,8 @@ export async function give(ctx: MutationCtx, shared: Shared, person: Doc<"users"
     if (grant.role !== role) await ctx.db.patch("itemAccess", grant._id, { role });
     return;
   }
-  const waiting = await invitationTo(ctx, shared.id, person.email.toLowerCase());
-  if (waiting?.state === "pending") await ctx.db.patch("itemInvitations", waiting._id, { state: "accepted" });
+  const waiting = await waitingFor(ctx, shared.id, person);
+  if (waiting) await ctx.db.patch("itemInvitations", waiting._id, { state: "accepted" });
   else await requireRoom(ctx, shared);
   await ctx.db.insert("itemAccess", { kind: shared.kind, item: shared.id, name: shared.name, userId: person._id, role, grantedBy: by.userId, grantedAt: Date.now(), ...listedBy(shared) });
   await noteShared(ctx, shared, by, personName(person) || person.email);

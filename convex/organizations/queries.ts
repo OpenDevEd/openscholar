@@ -1,6 +1,8 @@
 // What the switcher, an organization's Members settings and the join page read (#651).
 
 import { paginationOptsValidator, paginationResultValidator, type PaginationOptions } from "convex/server";
+import { mergedStream, stream } from "convex-helpers/server/stream";
+import schema from "../schema";
 import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
@@ -19,6 +21,7 @@ import { DEFAULT_PRESET } from "../../lib/ai/tasks";
 import { getCurrentUser } from "../lib/auth";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { organizationAt, organizationOf } from "./read";
+import { addressesOf } from "../lib/people";
 
 /** An organization's members are counted up to one past this; past it they show as more than it. */
 const MEMBERS_COUNTED = 100;
@@ -182,9 +185,12 @@ const myInvitationValidator = v.object({
   sentAt: v.number(),
 });
 
-/** A page of the person's pending invitations, newest first, each with what the switcher and the join page show. */
+/** A page of the person's pending invitations, newest first, each with what the switcher and the join page show: those to any address of theirs. */
 async function invitationsTo(ctx: QueryCtx, user: Doc<"users">, paginationOpts: PaginationOptions) {
-  const page = await ctx.db.query("organizationInvitations").withIndex("by_email_and_state", (q) => q.eq("email", user.email.toLowerCase()).eq("state", "pending")).order("desc").paginate(paginationOpts);
+  const page = await mergedStream(
+    addressesOf(user).map((email) => stream(ctx.db, schema).query("organizationInvitations").withIndex("by_email_and_state", (q) => q.eq("email", email).eq("state", "pending")).order("desc")),
+    ["_creationTime"],
+  ).paginate(paginationOpts);
   return { ...page, page: await shownInvitations(ctx, page.page) };
 }
 
@@ -211,7 +217,7 @@ async function shownInvitations(ctx: QueryCtx, invitations: Doc<"organizationInv
 export const myInvitationsAction = defineUserQuery({
   path: "organizations/queries:myInvitations",
   description:
-    "Lists the invitations the person was sent to join organizations that they haven't answered, a page at a time, each with the organization, the role and who sent it. " +
+    "Lists the invitations the person was sent to join organizations that they haven't answered, at any address of theirs, a page at a time, each with the organization, the role and who sent it. " +
     "They decline one with organizations/manage:declineInvitation; accepting is theirs to do on the page. `cursor` is `continueCursor` from the page before.",
   args: { paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(myInvitationValidator),
@@ -243,11 +249,15 @@ export const invitationTo = query({
       .withIndex("by_organizationId_and_clerkUserId_and_state", (q) => q.eq("organizationId", organization._id).eq("clerkUserId", user.clerkId).eq("state", "active"))
       .first();
     if (membership) return { joined: true as const, name: organization.name, ...(organization.imageUrl ? { imageUrl: organization.imageUrl } : {}) };
-    const invitation = await ctx.db
-      .query("organizationInvitations")
-      .withIndex("by_email_and_state", (q) => q.eq("email", user.email.toLowerCase()).eq("state", "pending"))
-      .filter((q) => q.eq(q.field("organizationId"), organization._id))
-      .first();
+    // One to any address of theirs.
+    let invitation: Doc<"organizationInvitations"> | null = null;
+    for (const email of addressesOf(user)) {
+      invitation ??= await ctx.db
+        .query("organizationInvitations")
+        .withIndex("by_email_and_state", (q) => q.eq("email", email).eq("state", "pending"))
+        .filter((q) => q.eq(q.field("organizationId"), organization._id))
+        .first();
+    }
     if (!invitation) return null;
     const [shown] = await shownInvitations(ctx, [invitation]);
     const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MEMBERS_COUNTED + 1);

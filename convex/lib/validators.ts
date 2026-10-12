@@ -1,6 +1,6 @@
 import { v, type Infer, type Validator } from "convex/values";
 import type { Doc, TableNames } from "../_generated/dataModel";
-import { MAX_METADATA_FIELDS, capped } from "./listCaps";
+import { MAX_METADATA_FIELDS, MAX_VERIFIED_EMAILS, capped } from "./listCaps";
 
 /**
  * Compile-time invariant: the runtime row type for `T` is exactly the
@@ -76,6 +76,8 @@ export const MAX_API_KEYS_PER_USER = apiKeyProviderValidator.members.length;
 export const userFields = {
   clerkId: v.string(),
   email: v.string(),
+  /** Every address Clerk has verified on the account, in lower case, its own among them: an invitation to any of them is theirs. Kept by the Clerk webhook. */
+  verifiedEmails: capped(v.optional(v.array(v.string())), MAX_VERIFIED_EMAILS),
   firstName: v.optional(v.string()),
   lastName: v.optional(v.string()),
   avatarUrl: v.optional(v.string()),
@@ -84,6 +86,10 @@ export const userFields = {
   createdAt: v.number(),
   updatedAt: v.number(),
 };
+
+/** Accounts one read of Clerk's lists (../users/verifiedEmails.ts), each with the addresses Clerk verified on it. */
+export const CLERK_USERS_PAGE = 100;
+export const verifiedEmailsPageValidator = capped(v.array(v.object({ clerkId: v.string(), verifiedEmails: capped(v.array(v.string()), MAX_VERIFIED_EMAILS) })), CLERK_USERS_PAGE);
 
 export const userValidator = v.object({
   _id: v.id("users"),

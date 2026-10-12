@@ -125,6 +125,20 @@ const membershipSnapshot = (row: any) => ({
 const page = { paginationOpts: { cursor: null, numItems: 20 } };
 
 describe("an organization", () => {
+  it("invites someone at any address Clerk verified on their account, and lets them decline it", async () => {
+    const { t, bob, aliceAs, bobAs } = await people();
+    await t.run((ctx) => ctx.db.patch("users", bob, { verifiedEmails: ["bob@example.org", "bob@lab.example.org"] }));
+    const lab = await aliceAs.action(api.organizations.manage.create, { name: "Lab" });
+    const field = await aliceAs.action(api.organizations.manage.create, { name: "Field" });
+    await aliceAs.action(api.organizations.manage.invite, { workspaceId: lab.workspaceId, emails: ["bob@example.org"], role: "member" });
+    await aliceAs.action(api.organizations.manage.invite, { workspaceId: field.workspaceId, emails: ["bob@lab.example.org"], role: "member" });
+    // Both, newest first, one page at a time.
+    const first = await bobAs.query(api.organizations.queries.myInvitations, { paginationOpts: { cursor: null, numItems: 1 } });
+    const second = await bobAs.query(api.organizations.queries.myInvitations, { paginationOpts: { cursor: first.continueCursor, numItems: 1 } });
+    expect([...first.page, ...second.page].map((invitation) => invitation.organization.name)).toEqual(["Field", "Lab"]);
+    await bobAs.action(api.organizations.manage.declineInvitation, { invitationId: first.page[0].invitationId });
+  });
+
   it("is made with its maker as its admin, invites people who join through Clerk, and keeps one admin", async () => {
     const { t, bob, aliceAs, bobAs, webhook } = await people();
     // Made at once: no waiting for Clerk's webhook before switching to it.
