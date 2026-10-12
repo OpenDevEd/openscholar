@@ -10,6 +10,7 @@ import { readWork } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { paperToCitationData } from "../../lib/citations/paper-data";
 import { CITATION_FORMATS } from "../../lib/citations/formats";
+import { locales } from "../../i18n/config";
 import type { PaperResult } from "../../lib/types/search.types";
 
 /** What a citation reads of a paper (lib/citations/paper-data.ts). */
@@ -20,14 +21,14 @@ export const citeAction = defineUserAction({
   path: "research/citations:cite",
   description:
     "Cites one paper in a citation style, by its ID as results give it, such as W2741809807: apa, harvard, chicago, mla, vancouver or bibtex, or any of the citation picker's other styles by its ID, such as ieee or nature. " +
-    "Returns the citation as text, with the paper's title and the style's name. The paper's record is one request against the person's OpenAlex allowance; its DOI's metadata comes from the publisher where there is some.",
-  args: { id: v.string(), style: v.string() },
+    "`language` is the language the person writes to you in, as en-US, en-GB, fr, hi, ja or zh, for the style's own words and dates; English otherwise. Returns the citation as text, with the paper's title and the style's name. The paper's record is one request against the person's OpenAlex allowance; its DOI's metadata comes from the publisher where there is some.",
+  args: { id: v.string(), style: v.string(), language: v.optional(v.union(v.string(), v.null())) },
   returns: citedValidator,
   spendsCredits: false,
   outsideEffect: false,
   // It changes nothing, so there's nothing to undo.
   undoable: true,
-  run: async (ctx, { userId }, { id, style }): Promise<{ title: string; style: string; citation: string }> => {
+  run: async (ctx, { userId }, { id, style, language }): Promise<{ title: string; style: string; citation: string }> => {
     const work = /^(?:https:\/\/openalex\.org\/)?(W\d+)$/i.exec(id.trim())?.[1]?.toUpperCase();
     if (!work) throw createError("VALIDATION_ERROR", "A paper is cited by its ID, such as W2741809807.");
     const asked = style.trim().toLowerCase();
@@ -39,7 +40,7 @@ export const citeAction = defineUserAction({
     if (!paper) throw createError("NOT_FOUND", "OpenAlex has no paper by that ID.");
     const data = paperToCitationData(paper);
     if (!data) throw createError("VALIDATION_ERROR", "OpenAlex has no title for this paper, so it can't be cited.");
-    const written: { style: string; citation: string } = await ctx.runAction(internal.research.citationFormat.format, { data: JSON.stringify(data), style: asked });
+    const written: { style: string; citation: string } = await ctx.runAction(internal.research.citationFormat.format, { data: JSON.stringify(data), style: asked, language: language && (locales as readonly string[]).includes(language) ? language : "en-US" });
     return { title: data.title, ...written };
   },
 });

@@ -10,6 +10,7 @@ import { createError } from "../lib/errors";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { autocomplete, readNames } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
+import { OpenAlexLimitedError } from "../../lib/openalex/limited";
 import { LOOKUP_MAX, NAMES_MAX, lookupKindValidator, lookupValidator, namesValidator } from "./searchValidators";
 
 const ENTITIES = { author: "authors", funder: "funders", journal: "sources", institution: "institutions" } as const;
@@ -66,8 +67,10 @@ export const namesAction = defineUserAction({
     if (Object.keys(records).length) {
       const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
       if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
-      const spend = spender(ctx, person.clerkId);
-      for (const [letter, group] of Object.entries(records) as Array<[keyof typeof BY_LETTER, string[]]>) named.push(...(await readNames(BY_LETTER[letter], group, spend)));
+      const groups = Object.entries(records) as Array<[keyof typeof BY_LETTER, string[]]>;
+      // One request a kind, all counted before the first is made: past the allowance, none is.
+      if (!(await spender(ctx, person.clerkId)(groups.length))) throw createError("VALIDATION_ERROR", new OpenAlexLimitedError().message);
+      for (const [letter, group] of groups) named.push(...(await readNames(BY_LETTER[letter], group, async () => true)));
     }
     return named;
   },

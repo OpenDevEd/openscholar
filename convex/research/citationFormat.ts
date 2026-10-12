@@ -34,14 +34,21 @@ export const checkStyle = internalAction({
 
 export const format = internalAction({
   // `data`: the paper as citation data, as JSON (lib/citations/paper-data.ts).
-  args: { data: v.string(), style: v.string() },
+  // `language`: one of the app's locales, such as fr; CSL's own terms and dates in it.
+  args: { data: v.string(), style: v.string(), language: v.string() },
   returns: v.object({ style: v.string(), citation: v.string() }),
-  handler: async (_ctx, { data, style }) => {
+  handler: async (_ctx, { data, style, language }) => {
     // Its DOI's metadata from the publisher where there is some, as the citation button reads it; what OpenAlex has otherwise.
     const paper = await getPaperCitationMetadata(JSON.parse(data));
     const named = await styleNamed(style);
-    if (named.main) return { style: named.label, citation: formatCitation(paper, "en-US", named.main).text };
+    if (named.main) return { style: named.label, citation: formatCitation(paper, language, named.main).text };
     // The style's own file, served with the app.
-    return { style: named.label, citation: (await formatAdditionalCitation(paper, "en-US", { ...named.other!, asset: new URL(named.other!.asset!, requireAppUrl()).href })).text };
+    const asset = new URL(named.other!.asset!, requireAppUrl()).href;
+    try {
+      return { style: named.label, citation: (await formatAdditionalCitation(paper, language, { ...named.other!, asset })).text };
+    } catch (error) {
+      console.error(`[citations] ${style} couldn't be written from ${asset}`, error);
+      throw createError("VALIDATION_ERROR", `The ${named.label} style couldn't be loaded just now. Try again in a moment, or cite in APA.`);
+    }
   },
 });

@@ -371,6 +371,10 @@ describe("the assistant's search tools", () => {
     expect(await alice.action(api.research.papers.count, { query, field: "oql" })).toEqual({ total: 57 });
     expect(JSON.parse(requests[0].body!).oql).toContain("title_and_abstract.search:tutoring");
     await expect(alice.action(api.research.papers.count, { query, field: "oql", by: "year" })).rejects.toThrow(/OQL can't be counted by group/);
+    // A quoted question mark is the OQL query's own: it isn't taken out, as it is from keywords.
+    requests = [];
+    await alice.action(api.research.papers.search, { query: 'title.search:"does tutoring work?"', field: "oql" });
+    expect(JSON.parse(reads()[0].body!).oql).toContain("does tutoring work?");
   });
 
   it("count papers and how they divide, in one request, and take the names people use for parts of the world", async () => {
