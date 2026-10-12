@@ -2312,6 +2312,47 @@
         "addPicked": "{count, plural, =0 {Add} one {Add # collection} other {Add # collections}}",
         "loading": "Loading your collections…",
         "failed": "Could not load your collections."
+      },
+      "screening": {
+        "label": "Screening",
+        "needsAi": "Turn on AI answers and save an OpenRouter key first",
+        "subjectLabel": "What to screen for",
+        "subjectPlaceholder": "What this source's records should be about",
+        "grades": {
+          "about": "About it",
+          "touches": "Touches on it",
+          "passing": "Mentions it in passing",
+          "notAbout": "Not about it"
+        },
+        "keep": "Keep in the library: {grade}",
+        "inLibrary": "in the library",
+        "keptOut": "kept out",
+        "reading": "Reading",
+        "gradingAgain": "Grading again, {done, number} of {of, number}",
+        "gradingNote": "The grades below are the current subject's until every record has been graded again.",
+        "gradedAgain": "records graded again",
+        "notGradedYet": "records not graded yet",
+        "onLibraryKey": "on the library's key",
+        "toFinish": "to finish",
+        "ofSample": "{changed, number} of {size, number}",
+        "changeInTrial": "change grade in a trial",
+        "tryOnSample": "Try on 200",
+        "trying": "Reading 200",
+        "gradeAgain": "Grade again",
+        "gradeThem": "Grade them",
+        "currentSubject": "Current subject",
+        "newSubject": "New subject",
+        "startsOnActivate": "Grading starts once you activate these settings and the library takes the new subject.",
+        "refused": "The library didn't start grading: {reason}",
+        "requestFailed": "Grading couldn't be requested",
+        "trialFailed": "The trial didn't finish",
+        "notRunning": "The library isn't running yet.",
+        "underACent": "under 1¢",
+        "underAMinute": "under a minute",
+        "aboutMinutes": "about {count} min",
+        "aboutHours": "about {count} h",
+        "methods": "The same read gives each record its study type, whether its authors pooled results themselves, the region it studies and whether its abstract reports numbers. About $0.000075 a record. A record whose read fails enters the library ungraded and is read again later.",
+        "gradedOnceActive": "Records are graded once these settings are active."
       }
     },
     "search": {
@@ -3945,6 +3986,18 @@
         "askMany": "Put {count, plural, one {# Zotero PDF} other {# Zotero PDFs}} in the chat",
         "doingMany": "Putting {count, plural, one {# Zotero PDF} other {# Zotero PDFs}} in the chat",
         "didMany": "Put {count, plural, one {# Zotero PDF} other {# Zotero PDFs}} in the chat"
+      },
+      "gradeLibrarySource": {
+        "doing": "Asking a library to grade a source",
+        "did": "Asked a library to grade a source",
+        "where": "Evidence Library",
+        "ask": "Grade a library source's records"
+      },
+      "trySourceSubject": {
+        "doing": "Trying a screening subject",
+        "did": "Tried a screening subject",
+        "where": "Evidence Library",
+        "ask": "Try a screening subject on 200 records"
       }
     },
     "asks": {

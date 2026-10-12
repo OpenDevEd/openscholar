@@ -15,6 +15,7 @@ import {
   sourceStatusValidator,
 } from "./sourceStatusValidators";
 import { MAX_LIBRARY_SOURCES as MAX_SOURCES } from "../lib/listCaps";
+import { sendDueScreeningGrades } from "./screeningRequests";
 
 // A library lists its sources in its configuration; far fewer than this.
 // Newest wins, so a clock far ahead would freeze a library's status.
@@ -37,6 +38,7 @@ function isSensibleStatus(status: SourceStatus) {
     status.screening?.grading?.done ?? 0,
     status.screening?.grading?.of ?? 0,
     status.screening?.reading?.left ?? 0,
+    status.screening?.records ?? 0,
   ];
   const times = [status.lastSuccessAt];
   if (status.state === "running") {
@@ -68,6 +70,8 @@ export const record = internalMutation({
     const snapshot = { libraryId, observedAt: args.observedAt, sources: args.sources };
     if (current) await ctx.db.replace("evidenceLibrarySourceStatus", current._id, snapshot);
     else await ctx.db.insert("evidenceLibrarySourceStatus", snapshot);
+    // A report naming a subject an owner asked to grade against sends that request on.
+    await sendDueScreeningGrades(ctx, libraryId, args.sources);
     return "saved";
   },
 });

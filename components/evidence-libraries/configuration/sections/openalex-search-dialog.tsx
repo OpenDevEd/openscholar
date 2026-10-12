@@ -286,6 +286,8 @@ export function OpenAlexSearchDialog({
         searchUrl: openAlexSourceSearchUrl(searchId, params),
         approvedQuery: approveOpenAlexQuery(initial?.settings.approvedQuery, canonical),
       },
+      // An edited search keeps how it is screened.
+      ...(initial?.screening ? { screening: initial.screening } : {}),
     });
   }
 

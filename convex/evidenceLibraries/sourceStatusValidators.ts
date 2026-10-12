@@ -43,15 +43,17 @@ const base = {
   /**
    * What the source's screening found: its records by grade against its subject, how many are not graded against
    * the current subject, and progress while the owner's request to grade them runs. Null for a source that does not
-   * screen, and missing from runtimes older than screening. Newer runtimes add the subject they screen against, a
-   * recently graded record's title for each grade, and, while records wait to be read, the latest one and how many
-   * are left.
+   * screen, and missing from runtimes older than screening. Newer runtimes add the subject they screen against, how
+   * many records the source holds, a recently graded record's title for each grade, and, while records wait to be
+   * read, the latest one and how many are left.
    */
   screening: v.optional(v.union(v.object({
     grades: v.object({ about: v.number(), touches: v.number(), passing: v.number(), notAbout: v.number() }),
     ungraded: v.number(),
     grading: v.union(v.object({ done: v.number(), of: v.number() }), v.null()),
     subject: v.optional(v.string()),
+    /** Every record the source holds, graded or not. */
+    records: v.optional(v.number()),
     examples: v.optional(v.object({
       about: v.union(v.string(), v.null()),
       touches: v.union(v.string(), v.null()),
@@ -101,3 +103,19 @@ export const evidenceLibrarySourceStatusFields = {
 
 /** The runtime's latest report on a library's sources, or null before its first. */
 export const sourceStatusReadValidator = v.union(v.null(), v.object({ observedAt: v.number(), sources: evidenceLibrarySourceStatusFields.sources }));
+
+/** An owner's request to grade a screening source, waiting for the library to report its subject (./screeningRequests.ts). */
+export const screeningRequestFields = {
+  libraryId: v.id("evidenceLibraries"),
+  sourceKey: v.string(),
+  /** The subject the owner asked to grade against. */
+  subject: v.string(),
+  requestedBy: v.id("users"),
+  requestedAt: v.number(),
+  /** Set while it is on its way to the library, so a report arriving meanwhile doesn't send it twice. */
+  sendingAt: v.optional(v.number()),
+  /** When the library took it; it stays until the library's report shows the grading, so the page never loses sight of it. */
+  sentAt: v.optional(v.number()),
+  /** Why the library refused it, shown on the source until the owner asks again. */
+  error: v.optional(v.string()),
+};

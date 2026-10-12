@@ -437,7 +437,12 @@ export function SourceActivityBand({
 // A running import reports every few seconds; this long without one means it stopped.
 const STALE_RUNNING_MS = 120_000;
 
-export type SourceLive = { status: { label: string; tone: StatusTone }; activity: ReactNode };
+export type SourceLive = {
+  status: { label: string; tone: StatusTone };
+  activity: ReactNode;
+  /** What the library's screening of the source found; null when it doesn't screen it. */
+  screening: NonNullable<SourceStatus["screening"]> | null;
+};
 
 /**
  * Each source's live chip and band, from the library's latest report. Returns
@@ -493,6 +498,7 @@ export function useSourceActivity(libraryId: Id<"evidenceLibraries">) {
         />
       ),
       status: chip(status, paused),
+      screening: status?.screening ?? null,
     };
   }
 

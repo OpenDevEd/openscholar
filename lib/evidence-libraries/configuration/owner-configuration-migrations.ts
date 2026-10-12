@@ -9,7 +9,7 @@ import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 9 as const;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 10 as const;
 const MAX_CHANGED_POINTERS = 100;
 
 type OwnerConfigurationSnapshotRow = {
@@ -568,6 +568,23 @@ function migrateVersionEightToNine(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+/** Sources screen their records against a subject; saved ones keep the runtime's default, screening off. */
+function migrateVersionNineToTen(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 10;
+  for (const row of next.sections) {
+    if (row.sectionKey !== "sources" || !Array.isArray(row.payload)) continue;
+    row.payload = row.payload.map((source) =>
+      isRecord(source) && source.screening === undefined
+        ? { ...source, screening: { enabled: false, subject: "", keptOut: ["not-about"] } }
+        : source,
+    );
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [
   {
     sectionKey: "ai",
@@ -640,6 +657,15 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 8,
     to: 9,
     migrate: migrateVersionEightToNine,
+    defaultRows: [
+      ...disabledAiDefaults,
+      { sectionKey: "topics", payload: () => ({ enabled: false }) },
+    ],
+  },
+  {
+    from: 9,
+    to: 10,
+    migrate: migrateVersionNineToTen,
     defaultRows: [
       ...disabledAiDefaults,
       { sectionKey: "topics", payload: () => ({ enabled: false }) },

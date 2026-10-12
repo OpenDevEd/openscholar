@@ -1,3 +1,5 @@
+import type { SourceScreeningSettings } from "../../lib/evidence-libraries/configuration/sources";
+
 // The draft shape of one connected Zotero group. Shared by the page and the
 // deploy pipeline; it never carries the key, which is added at deploy time.
 export type ZoteroSourceEntry = {
@@ -8,6 +10,7 @@ export type ZoteroSourceEntry = {
   writebackEnabled: boolean;
   /** Whether the group adds its tagged PDFs. */
   settings: { downloadPdfs: boolean };
+  screening?: SourceScreeningSettings;
 };
 
 export function zoteroSourceKey(groupId: string): string {

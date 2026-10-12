@@ -160,6 +160,7 @@ import type * as evidenceLibraries_runtimeCredentials from "../evidenceLibraries
 import type * as evidenceLibraries_runtimeImageRegistry from "../evidenceLibraries/runtimeImageRegistry.js";
 import type * as evidenceLibraries_runtimeReleases from "../evidenceLibraries/runtimeReleases.js";
 import type * as evidenceLibraries_runtimeTarget from "../evidenceLibraries/runtimeTarget.js";
+import type * as evidenceLibraries_screeningRequests from "../evidenceLibraries/screeningRequests.js";
 import type * as evidenceLibraries_sectionPayload from "../evidenceLibraries/sectionPayload.js";
 import type * as evidenceLibraries_serviceHttp from "../evidenceLibraries/serviceHttp.js";
 import type * as evidenceLibraries_sessionAccess from "../evidenceLibraries/sessionAccess.js";
@@ -601,6 +602,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/runtimeImageRegistry": typeof evidenceLibraries_runtimeImageRegistry;
   "evidenceLibraries/runtimeReleases": typeof evidenceLibraries_runtimeReleases;
   "evidenceLibraries/runtimeTarget": typeof evidenceLibraries_runtimeTarget;
+  "evidenceLibraries/screeningRequests": typeof evidenceLibraries_screeningRequests;
   "evidenceLibraries/sectionPayload": typeof evidenceLibraries_sectionPayload;
   "evidenceLibraries/serviceHttp": typeof evidenceLibraries_serviceHttp;
   "evidenceLibraries/sessionAccess": typeof evidenceLibraries_sessionAccess;

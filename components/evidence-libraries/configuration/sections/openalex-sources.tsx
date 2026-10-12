@@ -39,6 +39,7 @@ import { readOpenAlexSourceSearch, sourceSearchHistoryId } from "@/lib/evidence-
 import { Field } from "../section-card";
 import { OpenAlexQuerySummary } from "./openalex-query-summary";
 import { SourceCount, SourceRow, SourceSwitch } from "./source-row";
+import { sourceScreening } from "./source-screening";
 import { useOpenAlexQueryCounts } from "@/lib/hooks/use-history-count";
 import type { SourceLive } from "./source-activity";
 
@@ -212,6 +213,12 @@ export function OpenAlexSourceRow({
   live: SourceLive | null;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
+  const screening = sourceScreening({
+    sourceKey: source.key,
+    screening: source.screening,
+    onChange: (next) => controller.patch(source.key, { screening: next }),
+    report: live?.screening ?? null,
+  });
   return (
     <SourceRow
       name={source.settings.name}
@@ -236,14 +243,18 @@ export function OpenAlexSourceRow({
         },
       ]}
       controls={
-        <SourceSwitch
-          label={t("pdfs")}
-          checked={source.settings.downloadPdfs}
-          onCheckedChange={(downloadPdfs) =>
-            controller.patch(source.key, { settings: { ...source.settings, downloadPdfs } })
-          }
-        />
+        <>
+          {screening.control}
+          <SourceSwitch
+            label={t("pdfs")}
+            checked={source.settings.downloadPdfs}
+            onCheckedChange={(downloadPdfs) =>
+              controller.patch(source.key, { settings: { ...source.settings, downloadPdfs } })
+            }
+          />
+        </>
       }
+      details={screening.band}
       onEdit={() => controller.setEditing(source)}
       onToggle={() =>
         controller.patch(source.key, { enabled: !source.enabled })

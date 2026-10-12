@@ -2312,6 +2312,47 @@
         "addPicked": "{count, plural, =0 {添加} other {添加 # 个合集}}",
         "loading": "正在加载你的合集…",
         "failed": "无法加载你的合集。"
+      },
+      "screening": {
+        "label": "筛选",
+        "needsAi": "请先开启 AI 回答并保存 OpenRouter 密钥",
+        "subjectLabel": "筛选主题",
+        "subjectPlaceholder": "此来源的记录应当涉及的内容",
+        "grades": {
+          "about": "正是此主题",
+          "touches": "涉及此主题",
+          "passing": "顺带提及",
+          "notAbout": "与主题无关"
+        },
+        "keep": "保留在文献库中：{grade}",
+        "inLibrary": "条在文献库中",
+        "keptOut": "条被排除",
+        "reading": "正在读取",
+        "gradingAgain": "正在重新评级，{done, number} / {of, number}",
+        "gradingNote": "在每条记录都重新评级之前，下方的评级仍是当前主题的。",
+        "gradedAgain": "条记录将重新评级",
+        "notGradedYet": "条记录尚未评级",
+        "onLibraryKey": "使用文献库的密钥",
+        "toFinish": "完成所需",
+        "ofSample": "{size, number} 条中 {changed, number} 条",
+        "changeInTrial": "在试用中评级改变",
+        "tryOnSample": "试用 200 条",
+        "trying": "正在读取 200 条",
+        "gradeAgain": "重新评级",
+        "gradeThem": "评级",
+        "currentSubject": "当前主题",
+        "newSubject": "新主题",
+        "startsOnActivate": "激活这些设置、文献库采用新主题后，评级就会开始。",
+        "refused": "文献库未开始评级：{reason}",
+        "requestFailed": "无法发起评级",
+        "trialFailed": "试用未完成",
+        "notRunning": "文献库尚未运行。",
+        "underACent": "不到 1 美分",
+        "underAMinute": "不到一分钟",
+        "aboutMinutes": "约 {count} 分钟",
+        "aboutHours": "约 {count} 小时",
+        "methods": "同一次读取还会给出每条记录的研究类型、作者是否自行合并了结果、所研究的地区，以及摘要是否报告数值。每条约 $0.000075。读取失败的记录会以未评级状态进入文献库，稍后再读。",
+        "gradedOnceActive": "这些设置生效后，记录才会被评级。"
       }
     },
     "search": {
@@ -3945,6 +3986,18 @@
         "askMany": "将 {count, number} 个 Zotero PDF 加入对话",
         "doingMany": "正在将 {count, number} 个 Zotero PDF 加入对话",
         "didMany": "已将 {count, number} 个 Zotero PDF 加入对话"
+      },
+      "gradeLibrarySource": {
+        "doing": "正在请求文献库为来源评级",
+        "did": "已请求文献库为来源评级",
+        "where": "Evidence Library",
+        "ask": "为文献库来源的记录评级"
+      },
+      "trySourceSubject": {
+        "doing": "正在试用筛选主题",
+        "did": "已试用筛选主题",
+        "where": "Evidence Library",
+        "ask": "在 200 条记录上试用筛选主题"
       }
     },
     "asks": {

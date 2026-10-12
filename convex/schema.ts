@@ -53,7 +53,7 @@ import {
 } from "./evidenceLibraries/validators";
 import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidators";
 import { evidenceLibraryCollectionSourceFields } from "./evidenceLibraries/collectionSourceValidators";
-import { evidenceLibrarySourceStatusFields } from "./evidenceLibraries/sourceStatusValidators";
+import { evidenceLibrarySourceStatusFields, screeningRequestFields } from "./evidenceLibraries/sourceStatusValidators";
 
 import { authorContentFields } from "./authors/validators";
 
@@ -344,6 +344,10 @@ export default defineSchema({
   evidenceLibrarySourceStatus: defineTable(evidenceLibrarySourceStatusFields).index(
     "by_libraryId",
     ["libraryId"],
+  ),
+  evidenceLibraryScreeningRequests: defineTable(screeningRequestFields).index(
+    "by_library_source",
+    ["libraryId", "sourceKey"],
   ),
 
   evidenceLibraryZoteroGroups: defineTable(evidenceLibraryZoteroGroupFields)

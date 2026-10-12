@@ -20,7 +20,8 @@ import { PAGE_SECTION_KEYS, readDraft, sectionProblems, withAiKey } from "../../
 import { AI_PROVIDER_CREDENTIAL_KEY } from "../../lib/evidence-libraries/configuration/ai";
 import { readCredentialMetadata } from "./credentials";
 import { publicOperationErrorMessage } from "../../lib/evidence-libraries/public-operation-error";
-import { libraryGrant, libraryOf, readEvidenceLibraryAccess } from "./access";
+import { libraryGrant, libraryOf, readEvidenceLibraryAccess, requireEvidenceLibraryAccess } from "./access";
+import { readScreeningRequest, requestScreeningGrade } from "./screeningRequests";
 import { MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
 import { inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
 import { addLibraryMember, changeLibraryRole, removeLibraryMember } from "./team";
@@ -28,7 +29,7 @@ import { changeLibraryInvitation } from "./invitations";
 import { readSourceStatus } from "./sourceStatus";
 import { sourceStatusReadValidator } from "./sourceStatusValidators";
 import { readPendingLibraryInvitations } from "./access";
-import { reviewedPublicationValidator, runtimeCollectionValidator, runtimeInstitutionValidator, runtimePage } from "../zotero/runtimeReadValidators";
+import { notSetUpValidator, reviewedPublicationValidator, runtimeCollectionValidator, runtimeInstitutionValidator, runtimePage, screeningTrialValidator } from "../zotero/runtimeReadValidators";
 import { RUNTIME_READ_PAGE_SIZE } from "../zotero/runtimeReadClient";
 import { memberIdWithEmail } from "../organizations/read";
 import { saveEvidenceLibraryDraftSections } from "./mutations";
@@ -574,3 +575,61 @@ export const syncSourceAction = defineChangingAction({
 });
 export const syncSource = userAction(syncSourceAction);
 export const syncSourceForAssistant = assistantAction(syncSourceAction);
+
+/** A screening subject as the library takes one: written, and at most 1,000 characters. */
+function screeningSubject(subject: string) {
+  const trimmed = subject.trim();
+  if (!trimmed || trimmed.length > 1_000) throw createError("VALIDATION_ERROR", "Write the subject to screen for, up to 1,000 characters.");
+  return trimmed;
+}
+
+export const screeningRequestAction = defineUserQuery({
+  path: "evidenceLibraries/assistant:screeningRequest",
+  description: "Reads an owner's request to grade a screening source's records: the subject it asked for, whether the library took it (`sent`), and why the library refused it, if it did. Null when none waits. Progress once the library grades shows in evidenceLibraries/assistant:sources.",
+  args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string() },
+  returns: v.union(v.null(), v.object({ subject: v.string(), sent: v.boolean(), error: v.union(v.string(), v.null()) })),
+  run: async (ctx, actor, { libraryId, sourceKey }) => {
+    await requireEvidenceLibraryAccess(await signedInFor(ctx, actor, libraryId), libraryId, "view");
+    const request = await readScreeningRequest(ctx, libraryId, sourceKey);
+    return request ? { subject: request.subject, sent: request.sentAt !== undefined, error: request.error ?? null } : null;
+  },
+});
+export const screeningRequest = userQuery(screeningRequestAction);
+export const screeningRequestForAssistant = assistantQuery(screeningRequestAction);
+
+export const gradeSourceAction = defineUserMutation({
+  path: "evidenceLibraries/assistant:gradeSource",
+  description: "Asks the running library to grade a screening source's records against `subject`, the source's subject in the settings: the records it held before it screened, or all of them after a new subject. A new subject reaches the library when the settings are activated; the request waits until the library reports it, then goes. Spends on the library's own OpenRouter key. For an owner; asks the person first.",
+  args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string(), subject: v.string() },
+  returns: v.null(),
+  spendsCredits: false,
+  // The library reads its records on its own OpenRouter key, and may keep some out of the library.
+  outsideEffect: true,
+  undoable: false,
+  run: async (ctx, actor, { libraryId, sourceKey, subject }) => {
+    await requireEvidenceLibraryAccess(await signedInFor(ctx, actor, libraryId), libraryId, "manage");
+    await requestScreeningGrade(ctx, { libraryId, sourceKey, subject: screeningSubject(subject), requestedBy: actor.userId });
+    return null;
+  },
+});
+export const gradeSource = userMutation(gradeSourceAction);
+export const gradeSourceForAssistant = assistantMutation(gradeSourceAction);
+
+const trialResult = v.union(screeningTrialValidator, v.object({ reason: notSetUpValidator }));
+export const trySourceSubjectAction = defineUserAction({
+  path: "evidenceLibraries/assistant:trySourceSubject",
+  description: "Has the running library grade 200 of a source's records, picked at random, against a proposed screening subject, and keep nothing: their grades now and with it (about, touches, passing, notAbout) and how many would change. Takes about a minute and spends a few cents at most on the library's own OpenRouter key. For an owner. `reason: \"not-set-up\"` when the library isn't running yet.",
+  args: { libraryId: v.id("evidenceLibraries"), sourceKey: v.string(), subject: v.string() },
+  returns: trialResult,
+  spendsCredits: false,
+  outsideEffect: true,
+  undoable: false,
+  check: async (ctx, actor, { libraryId }) => await ownerHere(ctx, actor, libraryId),
+  run: async (ctx, actor, { libraryId, sourceKey, subject }): Promise<Infer<typeof trialResult>> => {
+    await ctx.runQuery(internal.evidenceLibraries.assistant.reachable, { ...where(actor), libraryId });
+    return await ctx.runAction(internal.zotero.runtimeReadActions.trySubjectFor, { libraryId, sourceKey, subject: screeningSubject(subject), actingAs: actor.userId });
+  },
+});
+export const trySourceSubject = userAction(trySourceSubjectAction);
+export const trySourceSubjectForAssistant = assistantAction(trySourceSubjectAction);
+

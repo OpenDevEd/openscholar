@@ -36,6 +36,7 @@ import {
   type ZoteroSourceEntry,
   zoteroSourceEntry,
 } from "@/convex/zotero/sourceEntry";
+import { useWorkspace } from "@/lib/workspaces/url";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { getConvexSiteUrl } from "@/lib/convex-site";
 import type {
@@ -66,7 +67,8 @@ import {
   OpenAlexSourceRow,
   useOpenAlexSources,
 } from "./openalex-sources";
-import { SourceRow, SourceSwitch } from "./source-row";
+import { errorMessage, SourceRow, SourceSwitch } from "./source-row";
+import { SourceScreeningProvider, sourceScreening } from "./source-screening";
 import {
   CollectionSourceIcon,
   CollectionSourceRow,
@@ -142,6 +144,8 @@ export type SourcesFieldProps = {
   /** The `content.tags` rules of the draft. */
   tags: TagRules;
   onTagsChange: (tags: TagRules) => void;
+  /** AI answers are on and an OpenRouter key is saved, which screening reads with. */
+  aiReady: boolean;
 };
 
 /**
@@ -154,6 +158,7 @@ export function SourcesField({
   onChange,
   tags,
   onTagsChange,
+  aiReady,
 }: SourcesFieldProps) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const account = useProtectedQuery(api.zotero.queries.getConnectionStatus, {});
@@ -175,6 +180,7 @@ export function SourcesField({
   const addButton = useRef<HTMLButtonElement>(null);
   const openalex = useOpenAlexSources({ libraryId, value, onChange });
   const liveFor = useSourceActivity(libraryId);
+  const workspaceId = useWorkspace();
   const [removeTarget, setRemoveTarget] = useState<
     | { kind: "zotero"; groupId: string }
     | { kind: "collection"; entry: OpenScholarCollectionSourceEntry }
@@ -265,250 +271,252 @@ export function SourcesField({
   }
 
   return (
-    <div className="@container/sources space-y-4" data-library-sources>
-      {value.length === 0 ? (
-        <EmptyList>{t("noSources")}</EmptyList>
-      ) : (
-        <ul
-          aria-label={t("listLabel")}
-          className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background"
-        >
-          {zoteroSources.map((entry) => (
-            <GroupRow
-              key={entry.groupId}
-              entry={entry}
-              group={byGroupId.get(entry.groupId)}
-              busy={busyGroupId === entry.groupId}
-              canReconnect={connected}
-              live={liveFor(entry.key, !entry.enabled, "Zotero")}
-              onPatch={(patch) => patchEntry(entry.groupId, patch)}
-              onReconnect={() => reconnect(entry.groupId)}
-              onRemove={() => setRemoveTarget({ kind: "zotero", groupId: entry.groupId })}
-            />
-          ))}
-          {openalex.sources.map((source) => (
-            <OpenAlexSourceRow
-              key={source.key}
-              source={source}
-              live={liveFor(source.key, !source.enabled, "OpenAlex")}
-              controller={openalex}
-            />
-          ))}
-          {collections.sources.map((entry) => (
-            <CollectionSourceRow
-              key={entry.key}
-              entry={entry}
-              controller={collections}
-              live={liveFor(entry.key, !entry.enabled, "OpenScholar")}
-              onRemove={() => setRemoveTarget({ kind: "collection", entry })}
-            />
-          ))}
-        </ul>
-      )}
+    <SourceScreeningProvider value={{ libraryId, workspaceId, aiReady }}>
+      <div className="@container/sources space-y-4" data-library-sources>
+        {value.length === 0 ? (
+          <EmptyList>{t("noSources")}</EmptyList>
+        ) : (
+          <ul
+            aria-label={t("listLabel")}
+            className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background"
+          >
+            {zoteroSources.map((entry) => (
+              <GroupRow
+                key={entry.groupId}
+                entry={entry}
+                group={byGroupId.get(entry.groupId)}
+                busy={busyGroupId === entry.groupId}
+                canReconnect={connected}
+                live={liveFor(entry.key, !entry.enabled, "Zotero")}
+                onPatch={(patch) => patchEntry(entry.groupId, patch)}
+                onReconnect={() => reconnect(entry.groupId)}
+                onRemove={() => setRemoveTarget({ kind: "zotero", groupId: entry.groupId })}
+              />
+            ))}
+            {openalex.sources.map((source) => (
+              <OpenAlexSourceRow
+                key={source.key}
+                source={source}
+                live={liveFor(source.key, !source.enabled, "OpenAlex")}
+                controller={openalex}
+              />
+            ))}
+            {collections.sources.map((entry) => (
+              <CollectionSourceRow
+                key={entry.key}
+                entry={entry}
+                controller={collections}
+                live={liveFor(entry.key, !entry.enabled, "OpenScholar")}
+                onRemove={() => setRemoveTarget({ kind: "collection", entry })}
+              />
+            ))}
+          </ul>
+        )}
 
-      <div className="flex items-center justify-end gap-2">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-label={t("connections")}
-              onClick={() => setConnectionsOpen(true)}
-            >
-              <Settings2 />
-              <span className="hidden @min-[24rem]/sources:inline">
-                {t("connections")}
-              </span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>{t("connections")}</TooltipContent>
-        </Tooltip>
-        <GroupPicker
-          addedIds={zoteroSources.map((entry) => entry.groupId)}
-          load={() => listMyGroups({ libraryId })}
-          onAdd={addGroups}
-          onOpenChange={(open) => {
-            if (open) setAddMenuOpen(false);
-          }}
-        >
-          <DropdownMenu open={addMenuOpen} onOpenChange={setAddMenuOpen}>
-            <DropdownMenuTrigger asChild>
-              <Button ref={addButton} type="button" variant="outline" size="sm">
-                <Plus />
-                {t("addSource")}
-                <ChevronDown className="size-3.5" />
+        <div className="flex items-center justify-end gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label={t("connections")}
+                onClick={() => setConnectionsOpen(true)}
+              >
+                <Settings2 />
+                <span className="hidden @min-[24rem]/sources:inline">
+                  {t("connections")}
+                </span>
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-64"
-              onCloseAutoFocus={(event) => event.preventDefault()}
-            >
-              {connected ? (
-                <DialogTrigger asChild>
+            </TooltipTrigger>
+            <TooltipContent>{t("connections")}</TooltipContent>
+          </Tooltip>
+          <GroupPicker
+            addedIds={zoteroSources.map((entry) => entry.groupId)}
+            load={() => listMyGroups({ libraryId })}
+            onAdd={addGroups}
+            onOpenChange={(open) => {
+              if (open) setAddMenuOpen(false);
+            }}
+          >
+            <DropdownMenu open={addMenuOpen} onOpenChange={setAddMenuOpen}>
+              <DropdownMenuTrigger asChild>
+                <Button ref={addButton} type="button" variant="outline" size="sm">
+                  <Plus />
+                  {t("addSource")}
+                  <ChevronDown className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-64"
+                onCloseAutoFocus={(event) => event.preventDefault()}
+              >
+                {connected ? (
+                  <DialogTrigger asChild>
+                    <DropdownMenuItem
+                      onSelect={(event) => event.preventDefault()}
+                    >
+                      <ZoteroIcon className="size-4 text-[#cc2936]" />
+                      <span>
+                        {t("zoteroGroup")}
+                        <span className="block text-xs text-muted-foreground">
+                          {t("zoteroGroupHint")}
+                        </span>
+                      </span>
+                    </DropdownMenuItem>
+                  </DialogTrigger>
+                ) : (
                   <DropdownMenuItem
-                    onSelect={(event) => event.preventDefault()}
+                    onSelect={() => {
+                      setConnectionTab("zotero");
+                      setConnectionsOpen(true);
+                    }}
                   >
                     <ZoteroIcon className="size-4 text-[#cc2936]" />
                     <span>
                       {t("zoteroGroup")}
                       <span className="block text-xs text-muted-foreground">
-                        {t("zoteroGroupHint")}
+                        {t("zoteroConnectFirst")}
                       </span>
                     </span>
                   </DropdownMenuItem>
-                </DialogTrigger>
-              ) : (
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setConnectionTab("zotero");
-                    setConnectionsOpen(true);
-                  }}
-                >
-                  <ZoteroIcon className="size-4 text-[#cc2936]" />
+                )}
+                <DropdownMenuItem onSelect={() => openalex.setEditing("new")}>
+                  <OpenAlexIcon className="size-4" />
                   <span>
-                    {t("zoteroGroup")}
+                    {t("openAlexSearch")}
                     <span className="block text-xs text-muted-foreground">
-                      {t("zoteroConnectFirst")}
+                      {t("openAlexSearchHint")}
                     </span>
                   </span>
                 </DropdownMenuItem>
-              )}
-              <DropdownMenuItem onSelect={() => openalex.setEditing("new")}>
-                <OpenAlexIcon className="size-4" />
-                <span>
-                  {t("openAlexSearch")}
-                  <span className="block text-xs text-muted-foreground">
-                    {t("openAlexSearchHint")}
+                <DropdownMenuItem onSelect={() => collections.open()}>
+                  <CollectionSourceIcon />
+                  <span>
+                    {t("openScholarCollection")}
+                    <span className="block text-xs text-muted-foreground">
+                      {t("openScholarCollectionHint")}
+                    </span>
                   </span>
-                </span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => collections.open()}>
-                <CollectionSourceIcon />
-                <span>
-                  {t("openScholarCollection")}
-                  <span className="block text-xs text-muted-foreground">
-                    {t("openScholarCollectionHint")}
-                  </span>
-                </span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </GroupPicker>
-      </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </GroupPicker>
+        </div>
 
-      <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
-        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-xl">
-          <DialogHeader>
-            <DialogTitle>{t("connectionsTitle")}</DialogTitle>
-            <DialogDescription>{t("connectionsDescription")}</DialogDescription>
-          </DialogHeader>
-          <Tabs
-            value={connectionTab}
-            onValueChange={setConnectionTab}
-            className="gap-5"
-          >
-            <TabsList aria-label={t("providerTabs")}>
-              <TabsTrigger value="zotero">
-                <ZoteroIcon className="size-4" />
-                Zotero
-              </TabsTrigger>
-              <TabsTrigger value="openalex">
-                <OpenAlexIcon className="size-4" />
-                OpenAlex
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="zotero" className="space-y-5">
-              <AccountPanel account={account.data} />
-              <Disclosure
-                open={advancedOpen}
-                onOpenChange={setAdvancedOpen}
-                label={t("tagRulesHeading")}
-                className="border-t border-border-subtle pt-5"
-              >
-                <div className="pt-3">
-                  <Panel tone="muted" className="space-y-4">
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-medium">
-                        {t("tagRulesHeading")}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {t("tagRulesIntro")}
-                      </p>
-                    </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      {TAG_RULE_ORDER.map((key) => {
-                        const current = tags[key] ?? DEFAULT_TAG_RULES[key];
-                        const issue = tagRuleIssue(key, current);
-                        return (
-                          <ChipInput
-                            key={key}
-                            label={t(`tagRules.${key}.label`)}
-                            hint={t(`tagRules.${key}.hint`)}
-                            values={current}
-                            placeholder={t("tagPlaceholder")}
-                            error={issue ? t(`tagRules.issues.${issue}`) : null}
-                            onChange={(values) =>
-                              onTagsChange({ ...tags, [key]: values })
-                            }
-                          />
-                        );
-                      })}
-                    </div>
-                  </Panel>
-                </div>
-              </Disclosure>
-            </TabsContent>
-            <TabsContent value="openalex">
-              <OpenAlexAccessSettings source={openalex} />
-            </TabsContent>
-          </Tabs>
-        </DialogContent>
-      </Dialog>
-      {openalex.editing ? (
-        <OpenAlexSearchDialog
-          searchId={openalex.searchId}
-          initial={
-            typeof openalex.editing === "string" ? null : openalex.editing
-          }
-          onClose={() => {
-            openalex.setEditing(null);
-            addButton.current?.focus();
-          }}
-          onApprove={openalex.replaceSource}
-        />
-      ) : null}
-
-      {collections.picker}
-
-      <AlertDialog
-        open={removeTarget !== null}
-        onOpenChange={(open) => !open && setRemoveTarget(null)}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {removeTarget?.kind === "collection" ? t("removeCollectionTitle") : t("removeTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>{t("removeBody")}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{t("picker.cancel")}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                const target = removeTarget;
-                setRemoveTarget(null);
-                if (target?.kind === "zotero") void remove(target.groupId);
-                if (target?.kind === "collection") collections.remove(target.entry);
-              }}
+        <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
+          <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>{t("connectionsTitle")}</DialogTitle>
+              <DialogDescription>{t("connectionsDescription")}</DialogDescription>
+            </DialogHeader>
+            <Tabs
+              value={connectionTab}
+              onValueChange={setConnectionTab}
+              className="gap-5"
             >
-              {t("removeConfirm")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              <TabsList aria-label={t("providerTabs")}>
+                <TabsTrigger value="zotero">
+                  <ZoteroIcon className="size-4" />
+                  Zotero
+                </TabsTrigger>
+                <TabsTrigger value="openalex">
+                  <OpenAlexIcon className="size-4" />
+                  OpenAlex
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="zotero" className="space-y-5">
+                <AccountPanel account={account.data} />
+                <Disclosure
+                  open={advancedOpen}
+                  onOpenChange={setAdvancedOpen}
+                  label={t("tagRulesHeading")}
+                  className="border-t border-border-subtle pt-5"
+                >
+                  <div className="pt-3">
+                    <Panel tone="muted" className="space-y-4">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-medium">
+                          {t("tagRulesHeading")}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {t("tagRulesIntro")}
+                        </p>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {TAG_RULE_ORDER.map((key) => {
+                          const current = tags[key] ?? DEFAULT_TAG_RULES[key];
+                          const issue = tagRuleIssue(key, current);
+                          return (
+                            <ChipInput
+                              key={key}
+                              label={t(`tagRules.${key}.label`)}
+                              hint={t(`tagRules.${key}.hint`)}
+                              values={current}
+                              placeholder={t("tagPlaceholder")}
+                              error={issue ? t(`tagRules.issues.${issue}`) : null}
+                              onChange={(values) =>
+                                onTagsChange({ ...tags, [key]: values })
+                              }
+                            />
+                          );
+                        })}
+                      </div>
+                    </Panel>
+                  </div>
+                </Disclosure>
+              </TabsContent>
+              <TabsContent value="openalex">
+                <OpenAlexAccessSettings source={openalex} />
+              </TabsContent>
+            </Tabs>
+          </DialogContent>
+        </Dialog>
+        {openalex.editing ? (
+          <OpenAlexSearchDialog
+            searchId={openalex.searchId}
+            initial={
+              typeof openalex.editing === "string" ? null : openalex.editing
+            }
+            onClose={() => {
+              openalex.setEditing(null);
+              addButton.current?.focus();
+            }}
+            onApprove={openalex.replaceSource}
+          />
+        ) : null}
+
+        {collections.picker}
+
+        <AlertDialog
+          open={removeTarget !== null}
+          onOpenChange={(open) => !open && setRemoveTarget(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {removeTarget?.kind === "collection" ? t("removeCollectionTitle") : t("removeTitle")}
+              </AlertDialogTitle>
+              <AlertDialogDescription>{t("removeBody")}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{t("picker.cancel")}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  const target = removeTarget;
+                  setRemoveTarget(null);
+                  if (target?.kind === "zotero") void remove(target.groupId);
+                  if (target?.kind === "collection") collections.remove(target.entry);
+                }}
+              >
+                {t("removeConfirm")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </SourceScreeningProvider>
   );
 }
 
@@ -642,6 +650,12 @@ function GroupRow({
   const paused = !entry.enabled;
   const health: GroupHealth = paused ? "paused" : "connected";
   const canWrite = group?.scopes.write === true;
+  const screening = sourceScreening({
+    sourceKey: entry.key,
+    screening: entry.screening,
+    onChange: (next) => onPatch({ screening: next }),
+    report: live?.screening ?? null,
+  });
   const metaItems = group
     ? [
         {
@@ -681,8 +695,10 @@ function GroupRow({
       onToggle={() => onPatch({ enabled: paused })}
       onRemove={onRemove}
       description={!canWrite && group ? t("writebackUnavailable") : undefined}
+      details={screening.band}
       controls={
         <>
+          {screening.control}
           {!canWrite ? (
             <Button
               type="button"
@@ -885,10 +901,3 @@ function PasteLink({
   );
 }
 
-function errorMessage(error: unknown): string | undefined {
-  if (error && typeof error === "object" && "data" in error) {
-    const data = (error as { data?: { message?: string } }).data;
-    if (data?.message) return data.message;
-  }
-  return error instanceof Error ? error.message : undefined;
-}

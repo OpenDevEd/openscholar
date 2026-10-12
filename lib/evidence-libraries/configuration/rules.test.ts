@@ -125,6 +125,19 @@ describe("readDraft", () => {
     expect(draft.institutions).toEqual([]);
   });
 
+  it("keeps each source's screening when a saved draft is read, and reads a source saved before screening as having none", () => {
+    const screening = { enabled: true, subject: "Climate adaptation in farming", keptOut: ["not-about", "passing"] };
+    const draft = readDraft([{
+      sectionKey: "sources",
+      payload: [
+        { key: "zotero-42", provider: "zotero", groupId: "42", enabled: true, writebackEnabled: false, settings: { downloadPdfs: true }, screening },
+        { key: "openscholar-c1", provider: "openscholar", collectionId: "c1", enabled: true, writebackEnabled: false, settings: { name: "Mine", apiKeyMode: "platform", downloadPdfs: false }, screening },
+        { key: "zotero-77", provider: "zotero", groupId: "77", enabled: true, writebackEnabled: false, settings: { downloadPdfs: true } },
+      ],
+    }]);
+    expect(draft.sources.map((source) => source.screening)).toEqual([screening, screening, undefined]);
+  });
+
   it("reads older brand rows into the files visitors already see", () => {
     const identity = (assets: Record<string, string>) =>
       readDraft([{ sectionKey: "identity", payload: { assets } }]).identity

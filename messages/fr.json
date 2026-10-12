@@ -2312,6 +2312,47 @@
         "addPicked": "{count, plural, =0 {Ajouter} one {Ajouter # collection} other {Ajouter # collections}}",
         "loading": "Chargement de vos collections…",
         "failed": "Impossible de charger vos collections."
+      },
+      "screening": {
+        "label": "Tri",
+        "needsAi": "Activez d'abord les réponses IA et enregistrez une clé OpenRouter",
+        "subjectLabel": "Sujet du tri",
+        "subjectPlaceholder": "Ce sur quoi doivent porter les notices de cette source",
+        "grades": {
+          "about": "Porte dessus",
+          "touches": "L'aborde",
+          "passing": "Le mentionne en passant",
+          "notAbout": "N'en parle pas"
+        },
+        "keep": "Garder dans la bibliothèque : {grade}",
+        "inLibrary": "dans la bibliothèque",
+        "keptOut": "écartées",
+        "reading": "Lecture",
+        "gradingAgain": "Nouvelle notation, {done, number} sur {of, number}",
+        "gradingNote": "Les notes ci-dessous restent celles du sujet actuel jusqu'à ce que chaque notice ait été notée à nouveau.",
+        "gradedAgain": "notices notées à nouveau",
+        "notGradedYet": "notices pas encore notées",
+        "onLibraryKey": "sur la clé de la bibliothèque",
+        "toFinish": "pour terminer",
+        "ofSample": "{changed, number} sur {size, number}",
+        "changeInTrial": "changent de note à l'essai",
+        "tryOnSample": "Essayer sur 200",
+        "trying": "Lecture de 200",
+        "gradeAgain": "Noter à nouveau",
+        "gradeThem": "Les noter",
+        "currentSubject": "Sujet actuel",
+        "newSubject": "Nouveau sujet",
+        "startsOnActivate": "La notation commence une fois ces réglages activés et le nouveau sujet pris en compte par la bibliothèque.",
+        "refused": "La bibliothèque n'a pas lancé la notation : {reason}",
+        "requestFailed": "La notation n'a pas pu être demandée",
+        "trialFailed": "L'essai n'a pas abouti",
+        "notRunning": "La bibliothèque ne fonctionne pas encore.",
+        "underACent": "moins de 1 ¢",
+        "underAMinute": "moins d'une minute",
+        "aboutMinutes": "environ {count} min",
+        "aboutHours": "environ {count} h",
+        "methods": "La même lecture donne à chaque notice son type d'étude, indique si ses auteurs ont eux-mêmes regroupé des résultats, la région étudiée et si son résumé rapporte des chiffres. Environ 0,000075 $ par notice. Une notice dont la lecture échoue entre dans la bibliothèque sans note et est relue plus tard.",
+        "gradedOnceActive": "Les notices sont notées une fois ces réglages actifs."
       }
     },
     "search": {
@@ -3945,6 +3986,18 @@
         "askMany": "Ajouter {count, plural, one {# PDF Zotero} other {# PDF Zotero}} à la conversation",
         "doingMany": "Ajout de {count, plural, one {# PDF Zotero} other {# PDF Zotero}} à la conversation",
         "didMany": "{count, plural, one {# PDF Zotero ajouté} other {# PDF Zotero ajoutés}} à la conversation"
+      },
+      "gradeLibrarySource": {
+        "doing": "Demande de notation d'une source",
+        "did": "Notation d'une source demandée",
+        "where": "Evidence Library",
+        "ask": "Noter les notices d'une source"
+      },
+      "trySourceSubject": {
+        "doing": "Essai d'un sujet de tri",
+        "did": "Sujet de tri essayé",
+        "where": "Evidence Library",
+        "ask": "Essayer un sujet de tri sur 200 notices"
       }
     },
     "asks": {
