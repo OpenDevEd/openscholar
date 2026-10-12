@@ -39,14 +39,20 @@ describe("an Evidence Library's draft, for the assistant", () => {
   it("changes values unasked with an undo that puts them back, two undone in turn, and keeps uploads and prototypes out of reach", async () => {
     const { t, as, libraryId, admin } = await setup();
     const read = () => t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId, sections: ["identity"] });
-    type Change = { sectionKey: "identity" | "analytics"; path: Array<string | number>; value?: unknown };
+    type Change = { sectionKey: "identity" | "analytics" | "localization"; path: Array<string | number>; value?: unknown };
     const edit = (changes: Change[], check: { expectedEditVersion: number } | { unchanged: string }, approved?: true) =>
       t.mutation(internal.evidenceLibraries.assistant.editDraftForAssistant, { ...as, libraryId, changes, ...check, ...(approved ? { approved } : {}) });
     const undo = (result: Awaited<ReturnType<typeof edit>>) => edit(result.undo!.args.changes as Change[], { unchanged: result.undo!.args.unchanged }, true);
     const before = await read();
     const identity = before.sections[0].payload as Record<string, unknown>;
 
-    const first = await edit([{ sectionKey: "identity", path: ["name"], value: "Renamed library" }], { expectedEditVersion: before.editVersion });
+    expect(before.problems).toEqual([]);
+    // A change the page would flag comes back with what it flags, so the assistant sees what it left wanting.
+    const flagged = await edit([{ sectionKey: "localization", path: ["defaultLocale"], value: "fr" }], { expectedEditVersion: before.editVersion });
+    expect(flagged.problems).toEqual([{ card: "languages", problem: "languages" }]);
+    expect((await read()).problems).toEqual(flagged.problems);
+    await undo(flagged);
+    const first = await edit([{ sectionKey: "identity", path: ["name"], value: "Renamed library" }], { expectedEditVersion: (await read()).editVersion });
     const second = await edit([{ sectionKey: "identity", path: ["name"], value: "Renamed again" }, { sectionKey: "identity", path: ["description"], value: "About tutoring" }], { expectedEditVersion: first.editVersion });
     expect((await t.query(internal.evidenceLibraries.assistant.draftForAssistant, { ...as, libraryId, sections: ["identity"], path: ["name"] })).sections[0].payload).toBe("Renamed again");
     // One reply's changes are undone newest first: each still finds what its edit left.

@@ -16,6 +16,8 @@ import { asSignedIn, assistantAction, assistantMutation, assistantQuery, defineC
 import { requireLibraryOrganization } from "../organizationFeatures";
 import { STEP_TEXT_MAX } from "../../lib/assistant/steps";
 import { evidenceLibraryUploadPrefix } from "../../lib/evidence-libraries/configuration/uploads";
+import { PAGE_SECTION_KEYS, readDraft, sectionProblems } from "../../lib/evidence-libraries/configuration/rules";
+import { publicOperationErrorMessage } from "../../lib/evidence-libraries/public-operation-error";
 import { libraryGrant, libraryOf, readEvidenceLibraryAccess } from "./access";
 import { MAX_LIBRARIES_PER_WORKSPACE, MAX_LIBRARY_GRANTS_PER_PERSON } from "../lib/queryBounds";
 import { inOwnWorkspace, type InWorkspace } from "../workspaces/actor";
@@ -106,7 +108,8 @@ export const draftAction = defineUserQuery({
   path: "evidenceLibraries/assistant:draft",
   description:
     "Reads an Evidence Library's draft settings, as its configuration page shows them: each section by its key (identity, home, features, ai, sources and the rest) with its settings, its `editVersion`, whether it has changes not yet live, where it answers, and whether the person can change it. " +
-    "Give `sections` to read only those, and with one section named, `path` to read only the value there: for a section too long to read whole. Change values with evidenceLibraries/assistant:editDraft.",
+    "Give `sections` to read only those, and with one section named, `path` to read only the value there: for a section too long to read whole. Change values with evidenceLibraries/assistant:editDraft. " +
+    "`problems` is what the page flags on its cards, the whole draft's, by the card and the page's name for each (nameMissing, linkUrl, badColour and the like): the draft can't be put live with any. `failed` is the last attempt to put it live, when that failed: why, and what the full check found, each by where in the settings.",
   args: { libraryId: v.id("evidenceLibraries"), sections: v.optional(v.union(v.array(v.string()), v.null())), path: v.optional(draftPathValidator) },
   returns: assistantDraftValidator,
   run: async (ctx, actor, { libraryId, sections, path }) => {
@@ -123,6 +126,8 @@ export const draftAction = defineUserQuery({
       hasUnpublishedChanges: read.hasUnpublishedChanges,
       ...(read.liveAddress ? { liveAddress: read.liveAddress } : {}),
       sections: path?.length ? shown.map((section) => ({ ...section, payload: valueAt(section.payload, path, section.sectionKey) ?? null })) : shown,
+      problems: problemsOf(read.sections),
+      ...(read.operation?.status === "failed" ? { failed: failureOf(read.operation) } : {}),
     };
   },
 });
@@ -148,6 +153,23 @@ export const teamAction = defineUserQuery({
 });
 export const team = userQuery(teamAction);
 export const teamForAssistant = assistantQuery(teamAction);
+
+/** What the configuration page flags on each card of a draft, by the card and the page's name for the problem (lib/evidence-libraries/configuration/rules.ts). */
+const problemsOf = (rows: ReadonlyArray<{ sectionKey: string; payload: unknown }>) => {
+  const draft = readDraft(rows as Parameters<typeof readDraft>[0]);
+  return PAGE_SECTION_KEYS.flatMap((card) => sectionProblems(draft, card).map((problem) => ({ card, problem })));
+};
+
+/** A failed attempt to put a draft live, as the page tells its owner: hosting details stay in the operation's record. */
+const HOSTING_FAILED = "The hosting step failed. It can be tried again on the library's page.";
+function failureOf(operation: { kind: string; error?: { code?: string; message?: string }; issues?: Array<{ pointer: string; message: string; code?: string }> }) {
+  const error = publicOperationErrorMessage(operation.error, HOSTING_FAILED);
+  return {
+    kind: operation.kind,
+    ...(error ? { error } : {}),
+    issues: (operation.issues ?? []).map(({ pointer, message, code }) => ({ pointer, message: publicOperationErrorMessage({ code, message }, HOSTING_FAILED) ?? message })),
+  };
+}
 
 /** A library's draft as the person can read it. */
 async function draftOf(ctx: QueryCtx, libraryId: Id<"evidenceLibraries">) {
@@ -233,7 +255,8 @@ export const editDraftAction = defineUserMutation({
     "Changes an Evidence Library's draft settings, for an owner. Each change sets the value at a `path` inside one section (its keys and list places, as evidenceLibraries/assistant:draft shows the section), or with no `value` takes that key out; an empty path sets the section whole, and a list item is added or taken out by setting the list whole. " +
     "The homepage's text is `home.intro`; `identity.tagline` and `identity.description` only feed page titles and search results. " +
     "Give the draft's `expectedEditVersion` from that read (`unchanged` is Undo's own). The result is checked as the configuration page checks it, and a refusal says what's wrong. " +
-    "Uploaded files (logos, photos, documents) are changed on the page: a change can't replace a value holding one or write one in. Nothing is public until the draft is put live, on the library's page. Undo puts the values back.",
+    "Uploaded files (logos, photos, documents) are changed on the page: a change can't replace a value holding one or write one in. Nothing is public until the draft is put live, on the library's page. Undo puts the values back. " +
+    "Returns `problems`, what the page flags on the draft after the change: fix any it made.",
   args: { libraryId: v.id("evidenceLibraries"), changes: draftChangesValidator, expectedEditVersion: v.optional(v.number()), unchanged: v.optional(v.string()) },
   returns: assistantEditResultValidator,
   spendsCredits: false,
@@ -256,7 +279,9 @@ export const editDraftAction = defineUserMutation({
     const { rows, after, undo } = changed(libraryId, draft, changes);
     const { editVersion } = await saveEvidenceLibraryDraftSections(signedIn, { libraryId, sections: rows, expectedEditVersion: expectedEditVersion ?? draft.draft.editVersion });
     const kept = undo && undoFits(libraryId, undo) ? { libraryId, changes: undo, unchanged: await heldAt((key) => after.get(key), undo) } : null;
-    return { editVersion, ...(kept ? { undo: { path: EDIT_PATH, args: kept } } : {}) };
+    // What the page now flags, so a change that leaves a card wanting is seen.
+    const problems = problemsOf([...draft.sections.filter((section) => !after.has(section.sectionKey)), ...rows]);
+    return { editVersion, problems, ...(kept ? { undo: { path: EDIT_PATH, args: kept } } : {}) };
   },
 });
 export const editDraft = userMutation(editDraftAction);
