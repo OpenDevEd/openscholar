@@ -3764,6 +3764,24 @@
         "did": "ライブラリの下書きを変更しました",
         "where": "Evidence Library",
         "ask": "ライブラリの下書きを変更"
+      },
+      "addLibraryMember": {
+        "doing": "ライブラリのチームに追加しています",
+        "did": "ライブラリのチームに追加しました",
+        "where": "Evidence Library",
+        "ask": "ライブラリのチームに追加"
+      },
+      "changeLibraryRole": {
+        "doing": "ライブラリでの役割を変更しています",
+        "did": "ライブラリでの役割を変更しました",
+        "where": "Evidence Library",
+        "ask": "ライブラリでの役割を変更"
+      },
+      "removeLibraryMember": {
+        "doing": "ライブラリのチームから外しています",
+        "did": "ライブラリのチームから外しました",
+        "where": "Evidence Library",
+        "ask": "ライブラリのチームから外す"
       }
     },
     "asks": {
@@ -3811,7 +3829,11 @@
         "file": "ファイル",
         "pages": "ページ",
         "range": "範囲",
-        "job": "ジョブ"
+        "job": "ジョブ",
+        "email": "メール",
+        "clerkUser": "人",
+        "sectionKey": "セクション",
+        "path": "設定"
       }
     },
     "topUp": {

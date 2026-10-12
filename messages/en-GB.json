@@ -3764,6 +3764,24 @@
         "did": "Changed a library’s draft",
         "where": "Evidence Library",
         "ask": "Change a library’s draft"
+      },
+      "addLibraryMember": {
+        "doing": "Adding someone to a library’s team",
+        "did": "Added someone to a library’s team",
+        "where": "Evidence Library",
+        "ask": "Add someone to a library’s team"
+      },
+      "changeLibraryRole": {
+        "doing": "Changing someone’s role on a library",
+        "did": "Changed someone’s role on a library",
+        "where": "Evidence Library",
+        "ask": "Change someone’s role on a library"
+      },
+      "removeLibraryMember": {
+        "doing": "Removing someone from a library’s team",
+        "did": "Removed someone from a library’s team",
+        "where": "Evidence Library",
+        "ask": "Remove someone from a library’s team"
       }
     },
     "asks": {
@@ -3811,7 +3829,11 @@
         "file": "File",
         "pages": "Pages",
         "range": "Part",
-        "job": "Job"
+        "job": "Job",
+        "email": "Email",
+        "clerkUser": "Person",
+        "sectionKey": "Section",
+        "path": "Setting"
       }
     },
     "topUp": {

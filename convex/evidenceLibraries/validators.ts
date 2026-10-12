@@ -1164,8 +1164,16 @@ export const assistantDraftValidator = v.object({
   liveAddress: v.optional(v.string()),
   sections: draftSectionsValidator,
 });
-/** What a save of draft sections returns (./assistant.ts): the draft's new edit version, and what puts the sections back. */
-export const assistantSaveResultValidator = v.object({
+/** How deep a path into a draft section goes, and how many changes one edit of the assistant's makes (./assistant.ts). */
+export const DRAFT_PATH_DEPTH = 12;
+export const DRAFT_CHANGES_MAX = 50;
+/** Where a value is inside a draft section: object keys and list places, from the section's top. */
+export const draftPathValidator = capped(v.array(v.union(v.string(), v.number())), DRAFT_PATH_DEPTH);
+/** One change to a draft section: the value at `path` set, or with no `value` that key taken out. An empty path is the section whole. */
+export const draftChangeValidator = v.object({ sectionKey: sectionKeyValidator, path: draftPathValidator, value: sized(v.optional(v.any()), MAX_SECTION_PAYLOAD_BYTES) });
+export const draftChangesValidator = capped(v.array(draftChangeValidator), DRAFT_CHANGES_MAX);
+/** What an edit of a draft returns (./assistant.ts): the draft's new edit version, and the changes that put its values back while they hold what it left. */
+export const assistantEditResultValidator = v.object({
   editVersion: v.number(),
-  undo: v.optional(v.object({ path: v.literal("evidenceLibraries/assistant:saveSections"), args: v.object({ libraryId: v.id("evidenceLibraries"), sections: capped(v.array(sectionRowValidator), MAX_CONFIG_SECTIONS), expectedEditVersion: v.number() }) })),
+  undo: v.optional(v.object({ path: v.literal("evidenceLibraries/assistant:editDraft"), args: v.object({ libraryId: v.id("evidenceLibraries"), changes: draftChangesValidator, unchanged: v.string() }) })),
 });

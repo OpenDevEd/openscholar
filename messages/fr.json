@@ -3764,6 +3764,24 @@
         "did": "Brouillon d'une bibliothèque modifié",
         "where": "Evidence Library",
         "ask": "Modifier le brouillon d'une bibliothèque"
+      },
+      "addLibraryMember": {
+        "doing": "Ajout de quelqu'un à l'équipe d'une bibliothèque",
+        "did": "Quelqu'un ajouté à l'équipe d'une bibliothèque",
+        "where": "Evidence Library",
+        "ask": "Ajouter quelqu'un à l'équipe d'une bibliothèque"
+      },
+      "changeLibraryRole": {
+        "doing": "Changement du rôle de quelqu'un dans une bibliothèque",
+        "did": "Rôle de quelqu'un dans une bibliothèque changé",
+        "where": "Evidence Library",
+        "ask": "Changer le rôle de quelqu'un dans une bibliothèque"
+      },
+      "removeLibraryMember": {
+        "doing": "Retrait de quelqu'un de l'équipe d'une bibliothèque",
+        "did": "Quelqu'un retiré de l'équipe d'une bibliothèque",
+        "where": "Evidence Library",
+        "ask": "Retirer quelqu'un de l'équipe d'une bibliothèque"
       }
     },
     "asks": {
@@ -3811,7 +3829,11 @@
         "file": "Fichier",
         "pages": "Pages",
         "range": "Partie",
-        "job": "Tâche"
+        "job": "Tâche",
+        "email": "E-mail",
+        "clerkUser": "Personne",
+        "sectionKey": "Section",
+        "path": "Réglage"
       }
     },
     "topUp": {

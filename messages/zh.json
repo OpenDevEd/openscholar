@@ -3764,6 +3764,24 @@
         "did": "已更改文献库的草稿",
         "where": "Evidence Library",
         "ask": "更改文献库的草稿"
+      },
+      "addLibraryMember": {
+        "doing": "正在将某人加入文献库团队",
+        "did": "已将某人加入文献库团队",
+        "where": "Evidence Library",
+        "ask": "将某人加入文献库团队"
+      },
+      "changeLibraryRole": {
+        "doing": "正在更改某人在文献库中的角色",
+        "did": "已更改某人在文献库中的角色",
+        "where": "Evidence Library",
+        "ask": "更改某人在文献库中的角色"
+      },
+      "removeLibraryMember": {
+        "doing": "正在将某人移出文献库团队",
+        "did": "已将某人移出文献库团队",
+        "where": "Evidence Library",
+        "ask": "将某人移出文献库团队"
       }
     },
     "asks": {
@@ -3811,7 +3829,11 @@
         "file": "文件",
         "pages": "页",
         "range": "范围",
-        "job": "任务"
+        "job": "任务",
+        "email": "电子邮件",
+        "clerkUser": "人员",
+        "sectionKey": "部分",
+        "path": "设置"
       }
     },
     "topUp": {
