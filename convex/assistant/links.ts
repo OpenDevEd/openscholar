@@ -55,6 +55,8 @@ const OPENS: Record<string, (args: Row) => string | undefined> = {
   "extraction/start:retry": (args) => KINDS.extraction.href({ _id: args.jobId }),
   "extraction/queries/costs:getJobCost": (args) => KINDS.extraction.href({ _id: args.jobId }),
   "screening/mutations:cancelScreeningJob": (args) => KINDS.screening.href({ _id: args.jobId }),
+  // A research area, by its topic ID as the read checked it.
+  "research/topics:get": (args) => (typeof args.id === "string" && /^T[1-9]\d*$/i.test(args.id.trim()) ? `/topics/${args.id.trim().toUpperCase()}` : undefined),
 };
 /** The page a step's card opens, from its action and its arguments as JSON (`OPENS`). */
 export function opensOf(path: string, input: string): string | undefined {

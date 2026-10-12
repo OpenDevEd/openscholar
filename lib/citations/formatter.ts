@@ -3,7 +3,7 @@ import { CSL } from "citeproc-ts";
 import { withoutCitationNumbers } from "./citation-numbering";
 import { Cite } from "@citation-js/core";
 import "@citation-js/plugin-bibtex";
-import { CITATION_FORMATS, type CitationData, type Citations, type CitationStyle, type FormattedCitation } from "@/lib/citations/formats";
+import { CITATION_FORMATS, type CitationData, type CitationFormat, type Citations, type CitationStyle, type FormattedCitation } from "@/lib/citations/formats";
 
 import { loadCitationStyleAssets } from "./styles";
 
@@ -12,14 +12,14 @@ const locales: Record<string, string> = { en: "en-GB", de: "de-DE", fr: "fr-FR",
 
 /** Every request gets its own processors; only immutable style assets are shared. */
 export async function formatCitations(data: CitationData, language: string): Promise<Citations> {
-	const locale = locales[language] ?? language;
-	const entries = await Promise.all(CITATION_FORMATS.map(async (format) => {
-		if (format.id === "bibtex") {
-			return [format.id, { text: new Cite([data]).format("bibtex", { format: "text" }).trim(), html: null }] as const;
-		}
-        return [format.id, renderCitation(data, locale, assets.styles[format.style], localeAssets)] as const;
-	}));
-	return Object.fromEntries(entries) as Citations;
+	return Object.fromEntries(CITATION_FORMATS.map((format) => [format.id, formatCitation(data, language, format.id)])) as Citations;
+}
+
+/** One of the main formats, such as APA. */
+export function formatCitation(data: CitationData, language: string, id: CitationFormat): FormattedCitation {
+	const format = CITATION_FORMATS.find((each) => each.id === id)!;
+	if (format.style === null) return { text: new Cite([data]).format("bibtex", { format: "text" }).trim(), html: null };
+	return renderCitation(data, locales[language] ?? language, assets.styles[format.style], localeAssets);
 }
 
 function renderCitation(data: CitationData, locale: string, style: unknown, availableLocales: Record<string, unknown>): FormattedCitation {

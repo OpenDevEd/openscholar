@@ -17,7 +17,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, FileSearch, Globe, Plus, Undo2, X, type AppIcon } from "@/components/icons";
+import { ArrowRight, AuthorsIcon, Check, ChevronDown, CircleAlert, Coins, Compass, FileSearch, Globe, Plus, Undo2, X, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { Button } from "@/components/ui/button";
@@ -52,6 +52,7 @@ export const KIND = {
   chat: RECORD_KINDS.chat,
   library: RECORD_KINDS.library,
   topic: RECORD_KINDS.topic,
+  author: { icon: AuthorsIcon, tint: "var(--kind-author)" },
   other: { icon: Compass, tint: "var(--muted-foreground)" },
 } satisfies Record<Kind, { icon: AppIcon; tint: string }>;
 

@@ -6,7 +6,10 @@
 import { answersOfAction, changeAction, countSearchesAction, getSearchAction, listedSearchesAction, ratingsAction, ratingsOfAction, revisionsAction, searchHistoryAction, searchHistoryEntryAction, countShortcutsAction, listedShortcutsAction, shortcutsOfAction } from "../research/records";
 import { createAction as searchCreateAction, deleteAction as searchDeleteAction, removeAction as searchRemoveAction, restoreAction as searchRestoreAction, resultsAction as searchResultsAction, updateAction as searchUpdateAction } from "../research/searches";
 import { countAction as paperCountAction, getAction as paperGetAction, readPdfAction as paperPdfAction, searchAction as paperSearchAction } from "../research/papers";
-import { findAction as lookupFindAction } from "../research/lookup";
+import { findAction as lookupFindAction, namesAction as lookupNamesAction } from "../research/lookup";
+import { getAction as authorGetAction } from "../research/authors";
+import { getAction as topicGetAction } from "../research/topics";
+import { citeAction } from "../research/citations";
 import { listAction as activityListAction, startedByAction as activityStartedByAction } from "../activity/queries";
 import { countsAction as makerCountsAction, totalAction as makerTotalAction } from "../workspaces/makers";
 import { setLibraryRatingAction, removeFromLibraryAction, restoreLibraryItemAction, saveToLibraryAction, setPaperInCollectionAction } from "../library/mutations";
@@ -16,7 +19,7 @@ import { countJobFailuresAction as extractionFailureCountAction } from "../extra
 import { countJobResultsAction as extractionResultCountAction, listJobResultsAction as extractionResultsAction, summarizeJobResultsAction as extractionSummaryAction } from "../extraction/queries/results";
 import { undoAction as bulkUndoAction } from "../assistant/batches";
 import { messagesAction as chatMessagesAction, stepsAction as chatStepsAction } from "../assistant/replies";
-import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, peopleAction as chatAccessAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
+import { createAction as chatCreateAction, getAction as chatAction, listAction as chatsAction, modelsAction as chatModelsAction, peopleAction as chatAccessAction, removeAction as chatRemoveAction, renameAction as chatRenameAction, setModelAction as chatModelAction } from "../assistant/threads";
 import { countPapersAction as libraryCountPapersAction, papersAction as libraryPapersAction, savedPaperAction } from "../library/queries";
 import { createAction as createOrganizationAction, declineInvitationAction, deleteOrganizationAction, inviteAction, leaveAction, removeMemberAction, renameAction as renameOrganizationAction, resendInvitationAction, revokeInvitationAction, setAiPresetAction, setColourAction, setRoleAction } from "../organizations/manage";
 import { invitationsAction as organizationInvitationsAction, membersAction as organizationMembersAction, myInvitationsAction, summaryAction as workspaceSummaryAction, workspaceAction, workspacesAction } from "../organizations/queries";
@@ -62,6 +65,11 @@ export const USER_ACTIONS: readonly UserAction[] = [
   chatCreateAction,
   chatRenameAction,
   chatModelAction,
+  chatModelsAction,
+  lookupNamesAction,
+  authorGetAction,
+  topicGetAction,
+  citeAction,
   chatRemoveAction,
   chatMessagesAction,
   chatStepsAction,
