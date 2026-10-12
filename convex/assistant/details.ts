@@ -13,6 +13,7 @@ import { findSearch } from "../research/records";
 
 import { currentSearch } from "../../lib/research/records";
 import { roleIn } from "./access";
+import { libraryOf } from "../evidenceLibraries/access";
 import { personName } from "../lib/people";
 import { workUrl } from "../../lib/openalex/work-id";
 import { ASKED_DETAILS_MAX, ASKED_EACH_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
@@ -90,6 +91,13 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
     if (fileId) {
       const file = await ctx.db.get("assistantFiles", fileId);
       return file?.threadId && (await opens(file.threadId)) ? file.name : null;
+    }
+    // An invitation to a library, by who it's for and the library: to the person it's for, or to someone in the library's workspace.
+    const invitationId = ctx.db.normalizeId("itemInvitations", id);
+    if (invitationId) {
+      const invitation = await ctx.db.get("itemInvitations", invitationId);
+      const library = invitation ? await libraryOf(ctx, invitation) : null;
+      return invitation && library && (invitation.email === reader.email.toLowerCase() || library.workspaceId === workspaceId) ? `${invitation.email}, ${library.name}` : null;
     }
     const collectionId = ctx.db.normalizeId("collections", id);
     if (collectionId) {

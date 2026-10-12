@@ -1151,8 +1151,9 @@ export const teamInvitationsValidator = capped(
 export const nameTakenValidator = v.object({ status: v.literal("name-taken"), libraryId: v.id("evidenceLibraries") });
 export const unavailableValidator = v.object({ status: v.literal("unavailable"), reason: v.union(v.literal("check-failed"), v.literal("no-address")) });
 /** What reserving a new library's address gives: the draft library it starts, or why there is none. */
+export const addressReservedValidator = v.object({ status: v.literal("reserved"), libraryId: v.id("evidenceLibraries"), ...evidenceLibrarySetupIdentityFields });
 export const addressReservationValidator = v.union(
-  v.object({ status: v.literal("reserved"), libraryId: v.id("evidenceLibraries"), ...evidenceLibrarySetupIdentityFields }),
+  addressReservedValidator,
   v.object({ status: v.literal("address-taken") }),
   nameTakenValidator,
   unavailableValidator,

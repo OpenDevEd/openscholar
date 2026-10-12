@@ -142,5 +142,7 @@ describe("a library's invitations, its start and the running library, for the as
     expect(await t.action(assistant.runningCollectionsForAssistant, { ...owner, libraryId })).toMatchObject({ reason: "not-set-up", page: [] });
     expect(await t.query(assistant.sourcesForAssistant, { ...owner, libraryId })).toBeNull();
     await expect(t.action(assistant.syncSourceForAssistant, { ...ownerAlone, libraryId, sourceKey: "openalex", approved: true })).rejects.toThrow(/not found/);
+    // A retry the library can't run fails, never reads as done.
+    await expect(t.action(assistant.syncSourceForAssistant, { ...owner, libraryId, sourceKey: "openalex", approved: true })).rejects.toThrow(/isn't running yet/);
   });
 });
