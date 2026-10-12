@@ -77,7 +77,8 @@ describe("pauseExtraction — happy path", () => {
       api.extraction.mutations.pause.pauseExtraction,
       { jobId },
     );
-    expect(result).toEqual({ paused: true });
+    // Resuming it is its undo (#342).
+    expect(result).toEqual({ paused: true, undo: { path: "extraction/mutations/resume:resumeExtraction", args: { jobId } } });
 
     const job = await t.run((ctx) => ctx.db.get(jobId));
     expect(job?.status).toBe("paused");

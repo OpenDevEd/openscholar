@@ -8,7 +8,11 @@ import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalMutation, internalQuery, type ActionCtx, type QueryCtx } from "../lib/functions";
-import { assistantAction, defineUserAction, userAction, type ChangeCall } from "../lib/userActions";
+import { ASKS_FIRST, assistantAction, defineChangingAction, defineUserAction, userAction, type ChangeCall } from "../lib/userActions";
+import { jobIn } from "./access";
+import { resumeCredits } from "./mutations/resume";
+import { checkRetry } from "./mutations/retry";
+import { retryCredits } from "./queries/costs";
 import { createError } from "../lib/errors";
 import { extractionPricing, extractionStamp } from "../ai/serverModel";
 import { getFlag, requireFeature } from "../featureFlags/guard";
@@ -170,3 +174,75 @@ export const extractAction = defineUserAction({
 });
 export const extract = userAction(extractAction);
 export const extractForAssistant = assistantAction(extractAction);
+
+/** What carrying on a job (`resume`), or asking its failed questions again, may hold now: read again as it runs from a chat. */
+export const goOnFigure = internalQuery({
+  args: { userId: v.id("users"), workspaceId: v.id("workspaces"), jobId: v.id("extractionJobs"), retry: v.boolean() },
+  returns: v.number(),
+  handler: async (ctx, { userId, workspaceId, jobId, retry }) => {
+    const job = await jobIn(ctx, { workspaceId }, jobId);
+    return retry ? await retryCredits(ctx, job, await checkRetry(ctx, job, userId)) : await resumeCredits(ctx, job);
+  },
+});
+
+/** The figure a chat's call holds, refused when what it would hold has grown past it since the person said yes. */
+function approvedFor(now: number, call: ChangeCall | undefined, author: "user" | "assistant") {
+  const cap = call?.credits;
+  if (author === "assistant" && cap === undefined && !call?.approved) throw createError("FORBIDDEN", ASKS_FIRST);
+  if (cap !== undefined && now > cap) throw invalid(`This now holds up to ${Math.ceil(now).toLocaleString("en")} credits, more than the ${cap.toLocaleString("en")} approved: its papers or the model it runs on changed since. Call it again, and the person is asked with the new figure.`);
+  return cap;
+}
+
+const resumedValidator = v.object({ resumed: v.boolean(), reason: v.optional(v.string()) });
+export const resumeAction = defineChangingAction({
+  path: "extraction/start:resume",
+  description:
+    "Resumes one of the workspace's extractions that was paused or ran out of credits, from where it stopped. It holds up to what its papers left may cost, which the person is asked about first; " +
+    "one a chat started and paused goes on under the credits approved then, and holds nothing new.",
+  args: { jobId: v.id("extractionJobs") },
+  returns: resumedValidator,
+  spendsCredits: true,
+  outsideEffect: false,
+  undoable: false,
+  estimate: async (ctx, actor, { jobId }) => {
+    const job = await jobIn(ctx, actor, jobId);
+    if (job.status !== "paused" && job.status !== "creditsExhausted") throw invalid("This extraction isn't paused, so there's nothing to resume.");
+    return await resumeCredits(ctx, job);
+  },
+  run: async (ctx, { userId, workspaceId, author }, { jobId }, call): Promise<Infer<typeof resumedValidator>> => {
+    const now: number = await ctx.runQuery(internal.extraction.start.goOnFigure, { userId, workspaceId, jobId, retry: false });
+    const cap = approvedFor(now, call, author);
+    const resume = (spend?: { hold: string; cap: number }) => ctx.runMutation(internal.extraction.mutations.resume.resumeHeld, { userId, workspaceId, author, jobId, ...(spend ? { spend } : {}) });
+    // Still under the approval it started with, it holds nothing new; from its page, it charges as it reads, as the page's own resume does.
+    if (now === 0 || cap === undefined) return await resume();
+    return await startHeld(ctx, { userId, workspaceId, credits: cap, kind: "extraction" }, (hold) => resume({ hold, cap }));
+  },
+});
+export const resume = userAction(resumeAction);
+export const resumeForAssistant = assistantAction(resumeAction);
+
+const retriedValidator = v.object({ jobId: v.id("extractionJobs"), retryableCount: v.number() });
+export const retryAction = defineChangingAction({
+  path: "extraction/start:retry",
+  description:
+    "Asks again the questions of one of the workspace's extractions that failed in a way a retry can fix, such as a model that timed out, once the extraction has ended or run out of credits. " +
+    "It holds up to what asking them again may cost, which the person is asked about first; `retryableCount` is how many it asks again.",
+  args: { jobId: v.id("extractionJobs") },
+  returns: retriedValidator,
+  spendsCredits: true,
+  outsideEffect: false,
+  undoable: false,
+  estimate: async (ctx, actor, { jobId }) => {
+    const job = await jobIn(ctx, actor, jobId);
+    return await retryCredits(ctx, job, await checkRetry(ctx, job, actor.userId));
+  },
+  run: async (ctx, { userId, workspaceId, author }, { jobId }, call): Promise<Infer<typeof retriedValidator>> => {
+    const now: number = await ctx.runQuery(internal.extraction.start.goOnFigure, { userId, workspaceId, jobId, retry: true });
+    const cap = approvedFor(now, call, author);
+    // From its page, it charges as it reads, as the page's own retry does.
+    if (cap === undefined) return await ctx.runMutation(internal.extraction.mutations.retry.retryPaged, { userId, workspaceId, jobId });
+    return await startHeld(ctx, { userId, workspaceId, credits: cap, kind: "extraction" }, (hold) => ctx.runMutation(internal.extraction.mutations.retry.retryHeld, { userId, workspaceId, jobId, spend: { hold, cap } }));
+  },
+});
+export const retry = userAction(retryAction);
+export const retryForAssistant = assistantAction(retryAction);

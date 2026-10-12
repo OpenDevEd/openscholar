@@ -732,9 +732,10 @@ describe("jobs in workspaces (#650)", () => {
     const asSource = (userId: Id<"users">, workspaceId: Id<"workspaces">) => t.query(internal.screening.start.check, { userId, workspaceId, set: { kind: "screening", jobId: bobs }, first: 1, last: 1, questions: [{ key: "q1", question: "Relevant?" }], scoringConfig: rules });
     await expect(asSource(alice._id, lab)).rejects.toThrow(/no papers in that range/);
     await expect(asSource(alice._id, await t.run((ctx) => personalWorkspaceOf(ctx, alice._id)))).rejects.toThrow(/Screening not found/);
-    // Cancelling is its starter's or an admin's.
-    await expect(asAlice.mutation(api.screening.mutations.cancelScreeningJob, { jobId: bobs })).rejects.toThrow(/admin/);
-    await asBob.mutation(api.screening.mutations.cancelScreeningJob, { jobId: alicesInLab });
+    // Cancelling is its starter's or an admin's, in the job's own workspace.
+    await expect(asAlice.mutation(api.screening.mutations.cancelScreeningJob, { workspaceId: lab, jobId: bobs })).rejects.toThrow(/admin/);
+    await expect(asBob.mutation(api.screening.mutations.cancelScreeningJob, { jobId: alicesInLab })).rejects.toThrow(/not found/i);
+    await asBob.mutation(api.screening.mutations.cancelScreeningJob, { workspaceId: lab, jobId: alicesInLab });
     await expect(asCarol.mutation(api.screening.mutations.cancelScreeningJob, { jobId: alicesOwn })).rejects.toThrow(/not found/i);
     expect(await t.run(async (ctx) => (await ctx.db.get("screeningJobs", alicesInLab))!.status)).toBe("cancelled");
   });

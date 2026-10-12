@@ -79,6 +79,8 @@ export const spend = internalQuery({
       return null;
     }
     if (!Number.isFinite(credits) || credits < 0) return null;
+    // One that would hold nothing, such as a job resumed under the credits approved when it started, has nothing to ask about.
+    if (credits === 0) return { credits, covered: true };
     // A web search or a PDF read is covered by its own switch in the chat; anything else by what jobs may hold.
     const tool = TOOL_OF[path];
     // What the person can spend: the workspace's balance, or what's left of their cap when that's less.

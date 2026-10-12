@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useConvex, useMutation } from "convex/react";
+import { useConvex } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import {
@@ -78,7 +78,7 @@ export function JobView({
   const format = useFormatter();
   const toast = useAppToast();
   const convex = useConvex();
-  const cancel = useMutation(api.screening.mutations.cancelScreeningJob);
+  const cancel = useWorkspaceMutation(api.screening.mutations.cancelScreeningJob);
   const [exporting, setExporting] = useState(false);
   // Someone it's shared with reads it (#653): running, cancelling and changing it are its workspace's, and so are the slots it runs in.
   const guest = Boolean(job.guest);
