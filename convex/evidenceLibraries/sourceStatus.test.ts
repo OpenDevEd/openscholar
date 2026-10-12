@@ -188,3 +188,13 @@ it("asks a library that isn't ready again in a minute, and gives up on a request
   expect(old?.error).toContain("within an hour");
 });
 
+it("drops a request an hour old for a source the library no longer reports", async () => {
+  const { t, libraryId, post } = await setup();
+  const requestId = await t.run(async (ctx) => {
+    const requestedBy = await ctx.db.insert("users", { clerkId: "owner", email: "owner@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+    return await ctx.db.insert("evidenceLibraryScreeningRequests", { libraryId, sourceKey: "zotero-gone", subject: "A", requestedBy, requestedAt: Date.now() - 2 * 60 * 60_000 });
+  });
+  await post("2026-09-27T12:10:00.000Z", [upToDate]);
+  expect(await t.run((ctx) => ctx.db.get("evidenceLibraryScreeningRequests", requestId))).toBeNull();
+});
+

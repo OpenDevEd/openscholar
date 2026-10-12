@@ -305,9 +305,15 @@ export const sendScreeningGrade = internalAction({
     const request = await ctx.runQuery(internal.evidenceLibraries.screeningRequests.get, { requestId });
     if (!request) return null;
     try {
-      const outcome = await readRuntime(ctx, { libraryId: request.libraryId, actingAs: request.requestedBy }, "manage", (target) =>
-        requestRuntimeScreeningGrade(fetch, target, request.sourceKey, request.subject),
-      );
+      const outcome = await readRuntime(ctx, { libraryId: request.libraryId, actingAs: request.requestedBy }, "manage", async (target) => {
+        try {
+          return await requestRuntimeScreeningGrade(fetch, target, request.sourceKey, request.subject);
+        } catch (error) {
+          // A library that didn't answer, or failed, is asked again as one still starting up is.
+          if (error instanceof RuntimeReadError && error.code === "RUNTIME_READ_UNAVAILABLE") return "not-ready" as const;
+          throw error;
+        }
+      });
       await ctx.runMutation(internal.evidenceLibraries.screeningRequests.settle, typeof outcome === "string"
         ? { requestId, outcome }
         : { requestId, outcome: "refused", error: "The library isn't running yet." });

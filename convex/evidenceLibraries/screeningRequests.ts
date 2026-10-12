@@ -70,6 +70,12 @@ export async function sendDueScreeningGrades(
   for (const request of requests) {
     if (only && !only.includes(request._id)) continue;
     const reported = sources.find((source) => source.key === request.sourceKey)?.screening;
+    // A source the library hasn't screened for an hour, or no longer reports, takes its request with it: re-adding the
+    // source later never sends a request nobody made for it.
+    if (!reported && only === undefined && now - request.requestedAt > NOT_READY_GIVE_UP_MS) {
+      await ctx.db.delete("evidenceLibraryScreeningRequests", request._id);
+      continue;
+    }
     if (request.sentAt !== undefined) {
       if (reported && (reported.grading !== null || reported.ungraded === 0)) await ctx.db.delete("evidenceLibraryScreeningRequests", request._id);
       continue;
@@ -114,7 +120,7 @@ export const settle = internalMutation({
       sendingAt: undefined,
       ...(outcome === "queued" ? { sentAt: now } : {}),
       ...(outcome === "refused" ? { error } : {}),
-      ...(outcome === "not-ready" ? { error: "The library didn't take the new subject within an hour. Check that the settings were activated, then ask again." } : {}),
+      ...(outcome === "not-ready" ? { error: "The library didn't take the request within an hour. Check that the settings were activated and the library is running, then ask again." } : {}),
     });
     return null;
   },

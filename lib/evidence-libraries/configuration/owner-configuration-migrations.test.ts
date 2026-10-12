@@ -106,10 +106,11 @@ describe("owner configuration migrations", () => {
         },
       ],
     });
-    expect(result.snapshot.ownerConfigurationVersion).toBe(9);
+    expect(result.snapshot.ownerConfigurationVersion).toBe(10);
+    const off = { enabled: false, subject: "", keptOut: ["not-about"] };
     expect(result.snapshot.sections.find((row) => row.sectionKey === "sources")?.payload).toEqual([
-      { ...zotero("42"), settings: { downloadPdfs: true } },
-      { ...zotero("77"), settings: { downloadPdfs: false } },
+      { ...zotero("42"), settings: { downloadPdfs: true }, screening: off },
+      { ...zotero("77"), settings: { downloadPdfs: false }, screening: off },
     ]);
   });
 
@@ -138,6 +139,22 @@ describe("owner configuration migrations", () => {
       openAccessLabel: "open",
       tags: { hidden: ["hide"] },
     });
+  });
+
+  it("gives each saved source screening off, as the library reads one saved before screening, and keeps one already set", () => {
+    const screened = { enabled: true, subject: "Climate adaptation", keptOut: ["not-about", "passing"] };
+    const { snapshot } = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 9,
+      sections: [{
+        sectionKey: "sources",
+        payload: [
+          { key: "zotero-42", provider: "zotero", groupId: "42", enabled: true, writebackEnabled: false, settings: { downloadPdfs: true } },
+          { key: "zotero-77", provider: "zotero", groupId: "77", enabled: true, writebackEnabled: false, settings: { downloadPdfs: true }, screening: screened },
+        ],
+      }],
+    });
+    const sources = snapshot.sections.find((row) => row.sectionKey === "sources")?.payload as { screening: unknown }[];
+    expect(sources.map((source) => source.screening)).toEqual([{ enabled: false, subject: "", keptOut: ["not-about"] }, screened]);
   });
 
   it("adds an Identity assets container without changing its other values", () => {
@@ -380,6 +397,7 @@ describe("owner configuration migrations", () => {
       [6, 7],
       [7, 8],
       [8, 9],
+      [9, 10],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -619,6 +637,7 @@ describe("owner configuration migrations", () => {
       [6, 7],
       [7, 8],
       [8, 9],
+      [9, 10],
     ]);
   });
 

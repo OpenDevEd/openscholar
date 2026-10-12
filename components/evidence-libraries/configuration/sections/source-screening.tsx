@@ -43,6 +43,8 @@ export const DEFAULT_SCREENING: SourceScreeningSettings = { enabled: false, subj
 const READ_USD = 0.0000746;
 const GRADE_ONLY_SHARE = 0.42;
 const RECORDS_PER_SECOND = 40;
+/** The longest subject the library takes. */
+const SUBJECT_MAX = 1_000;
 
 // Kept out of the library: the grade's colour, cut by stripes of the surface behind it.
 const HATCH: CSSProperties = { backgroundImage: "repeating-linear-gradient(-45deg, transparent 0 2px, var(--card) 2px 4px)" };
@@ -105,8 +107,10 @@ function useDuration() {
  * current subject. Shown as figures beside the actions: how many, what it costs and how long it takes. With a new
  * subject, a trial on 200 records adds how many would change grade, and the sample's grades now and with it.
  */
-function GradeCard({ records, changed, sample, trying, onTry, onGrade, kept }: {
+function GradeCard({ records, usd: cost, changed, sample, trying, onTry, onGrade, kept }: {
   records: number;
+  /** What grading them costs on the library's key. */
+  usd: number;
   /** The subject was edited, so every record is graded again and a trial is offered. */
   changed: boolean;
   sample?: Trial;
@@ -123,8 +127,7 @@ function GradeCard({ records, changed, sample, trying, onTry, onGrade, kept }: {
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="flex min-w-0 flex-1 flex-wrap gap-x-6 gap-y-2">
           <Figure value={records.toLocaleString()} label={changed ? t("gradedAgain") : t("notGradedYet")} />
-          {/* A new subject asks only the grade; a record not read yet gets the whole read. */}
-          <Figure value={usd(records * READ_USD * (changed ? GRADE_ONLY_SHARE : 1))} label={t("onLibraryKey")} />
+          <Figure value={usd(cost)} label={t("onLibraryKey")} />
           <Figure value={duration(records / RECORDS_PER_SECOND)} label={t("toFinish")} />
           {sample ? <Figure value={t("ofSample", { changed: sample.changed, size: sample.size })} label={t("changeInTrial")} /> : null}
         </div>
@@ -212,9 +215,12 @@ function ScreeningBand({ sourceKey, screening, onChange, report }: {
   }));
   const graded = grades.reduce((sum, entry) => sum + entry.count, 0);
   const keptOut = grades.reduce((sum, entry) => sum + (entry.kept ? 0 : entry.count), 0);
-  // Every record the source holds; an older library reports only graded ones.
-  const records = report?.records ?? graded;
   const ungraded = report?.ungraded ?? 0;
+  // Every record the source holds; an older library reports graded and ungraded ones, which a stale grade counts twice.
+  const records = report?.records ?? graded + ungraded;
+  // A new subject asks only the grade of a record already graded; one not graded against the library's subject may
+  // never have been read, so it is priced as a whole read.
+  const cost = (changed ? Math.max(0, records - ungraded) * GRADE_ONLY_SHARE + ungraded : ungraded) * READ_USD;
   // A request for another subject, such as one made before the subject was edited again, no longer counts.
   const asking = request !== null && request.subject.trim() === subject ? request : null;
   const waiting = asking !== null && asking.error === null;
@@ -244,13 +250,13 @@ function ScreeningBand({ sourceKey, screening, onChange, report }: {
       {/* The field grows with the subject, so a long one is read whole. */}
       <div className="relative">
         <AiIcon size={16} className="pointer-events-none absolute left-3 top-2.5 size-4 text-primary" />
-        <Textarea className="min-h-9 resize-none bg-card pl-9" rows={1} aria-label={t("subjectLabel")} value={screening.subject} placeholder={t("subjectPlaceholder")}
+        <Textarea className="min-h-9 resize-none bg-card pl-9" rows={1} maxLength={SUBJECT_MAX} aria-label={t("subjectLabel")} value={screening.subject} placeholder={t("subjectPlaceholder")}
           onChange={(event) => onChange({ ...screening, subject: event.target.value })} />
       </div>
 
       {/* Only when something needs grading: a new subject, or records not graded against the current one. */}
       {!regrading && !waiting && (changed || ungraded > 0) ? (
-        <GradeCard records={changed ? records : ungraded} changed={changed} sample={sample} trying={trying}
+        <GradeCard records={changed ? records : ungraded} usd={cost} changed={changed} sample={sample} trying={trying}
           onTry={trySample} onGrade={gradeNow} kept={(key) => !screening.keptOut.includes(key)} />
       ) : null}
       {waiting && !asking.sent && changed ? <p className="text-xs text-muted-foreground">{t("startsOnActivate")}</p> : null}
