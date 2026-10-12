@@ -138,6 +138,12 @@ describe("a library's invitations, its start and the running library, for the as
     const { t, owner, ownerAlone, libraryId } = await activated();
     const assistant = internal.evidenceLibraries.assistant;
     await expect(t.action(assistant.startLibraryForAssistant, { ...ownerAlone, name: "Tutoring evidence", approved: true })).rejects.toThrow(/made in an organization/);
+    // What would refuse a change is found before the person is asked about it.
+    const refusal = (where: typeof owner, path: string, input: object) => t.query(internal.assistant.asking.check, { ...where, path: `evidenceLibraries/assistant:${path}`, input: JSON.stringify(input) });
+    expect(await refusal(ownerAlone, "startLibrary", { name: "Tutoring evidence" })).toMatch(/made in an organization/);
+    expect(await refusal(ownerAlone, "invite", { libraryId, email: "other@example.org", role: "editor" })).toMatch(/not found/);
+    expect(await refusal(owner, "answerInvitation", { invitationId: "x", accept: true })).toMatch(/own workspace/);
+    expect(await refusal(owner, "syncSource", { libraryId, sourceKey: "openalex" })).toBeNull();
     // One that isn't running yet has nothing to list, and says so.
     expect(await t.action(assistant.runningCollectionsForAssistant, { ...owner, libraryId })).toMatchObject({ reason: "not-set-up", page: [] });
     expect(await t.query(assistant.sourcesForAssistant, { ...owner, libraryId })).toBeNull();
