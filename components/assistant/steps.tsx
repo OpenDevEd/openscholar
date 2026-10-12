@@ -19,6 +19,7 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Check, ChevronDown, CircleAlert, Coins, Compass, FileSearch, Globe, Plus, Undo2, X, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
+import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { Button } from "@/components/ui/button";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -52,6 +53,7 @@ export const KIND = {
   chat: RECORD_KINDS.chat,
   library: RECORD_KINDS.library,
   topic: RECORD_KINDS.topic,
+  zotero: { icon: ZoteroIcon, tint: "var(--kind-zotero)" },
   other: { icon: Compass, tint: "var(--muted-foreground)" },
 } satisfies Record<Kind, { icon: AppIcon; tint: string }>;
 
@@ -203,7 +205,7 @@ export function Steps({
 }
 
 /** Names of a call's arguments the card says in the person's language; any other shows as the action names it. */
-const NAMED = ["query", "file", "range", "thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs", "job"] as const;
+const NAMED = ["query", "file", "range", "thread", "collection", "user", "organization", "role", "name", "title", "model", "search", "screening", "papers", "first", "last", "question", "saveTo", "prune", "rating", "change", "usePdfs", "job", "zotero", "group"] as const;
 
 /** Arguments that are a setting turned on or off. */
 const SWITCHES = new Set(["prune", "inCollection", "usePdfs", "openAccessOnly", "withAbstractOnly", "reviewsOnly", "includeRetracted", "ratedOnly"]);

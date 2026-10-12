@@ -45,7 +45,8 @@ import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { PdfUpload } from "./pdf-upload";
 
-type Kind = PickedSource["set"]["kind"] | "pdf";
+/** The sources the page offers; a Zotero set is one a chat starts an extraction from. */
+type Kind = Exclude<PickedSource["set"]["kind"], "zotero"> | "pdf";
 const KIND: Record<Kind, { icon: AppIcon; tint: string }> = {
   search: { icon: SOURCE_ICON.search, tint: RECORD_KINDS.search.tint },
   collection: { icon: SOURCE_ICON.collection, tint: RECORD_KINDS.collection.tint },

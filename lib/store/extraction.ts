@@ -15,7 +15,8 @@ import type { ExtractionQuestion } from "@/lib/types";
 /** A source picked: its set, papers `first` to `last` of the `total` it holds, and its name in the tray. */
 export type PickedSource = {
   key: string;
-  set: PaperSet;
+  /** A set the page picked: a Zotero set is one only a chat starts from. */
+  set: Exclude<PaperSet, { kind: "zotero" }>;
   first: number;
   last: number;
   scope: "range" | "all";

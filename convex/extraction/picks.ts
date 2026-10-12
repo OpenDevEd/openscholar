@@ -20,6 +20,7 @@ import { isRatingFilterActive } from "../../lib/utils";
 import { checkScreeningSelection } from "./sources/screening";
 import { MAX_JOB_SOURCES } from "./jobSources";
 import { bucketItemInputValidator } from "./validators";
+import { checkZoteroIds } from "../zotero/libraryValidators";
 
 export const paperPickValidator = v.object({ set: paperSetValidator, first: v.number(), last: v.number() });
 export const uploadPickValidator = v.object({ storageId: v.id("_storage"), title: v.string() });
@@ -68,6 +69,12 @@ async function sourceOf(ctx: QueryCtx, { workspaceId }: InWorkspace, { set, firs
     const filters = await searchFilters(ctx, workspaceId, set.searchId);
     // Each range of a search is a source of its own.
     return { bucketKey: `history:${set.searchId}:${first}-${last}`, source: "history", sourceRefId: set.searchId, title: filters.query, authors: [], searchFilters: { ...filters, ...(first > 1 ? { first } : {}), limit: last } };
+  }
+  // A range of the person's Zotero: one source, read through their account a page at a time when the job is set up (./actions.ts).
+  if (set.kind === "zotero") {
+    checkZoteroIds(set);
+    const where = set.collectionKey ?? "library";
+    return { bucketKey: `zotero:${set.groupId ?? "user"}:${where}:${first}-${last}`, source: "zotero", sourceRefId: where, title: "Zotero", authors: [], libraryType: set.groupId ? "group" : "user", ...(set.groupId ? { groupId: set.groupId } : {}), ...(set.collectionKey ? { collectionKey: set.collectionKey } : {}), zoteroSet: { first, last } };
   }
   // One source for the whole range: the job reads its papers a page at a time when it's set up.
   const collection = set.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : null;

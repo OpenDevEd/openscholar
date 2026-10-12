@@ -3695,6 +3695,24 @@
         "did": "एक स्क्रीनिंग रोकी",
         "where": "स्क्रीनिंग",
         "ask": "एक स्क्रीनिंग रोकें"
+      },
+      "zoteroGroups": {
+        "doing": "आपके Zotero समूह पढ़ रहा है",
+        "did": "आपके Zotero समूह पढ़े",
+        "where": "Zotero",
+        "ask": "अपने Zotero समूह पढ़ें"
+      },
+      "zoteroCollections": {
+        "doing": "आपके Zotero संग्रह पढ़ रहा है",
+        "did": "आपके Zotero संग्रह पढ़े",
+        "where": "Zotero",
+        "ask": "अपने Zotero संग्रह पढ़ें"
+      },
+      "zoteroItems": {
+        "doing": "आपके Zotero की प्रविष्टियाँ पढ़ रहा है",
+        "did": "आपके Zotero की प्रविष्टियाँ पढ़ीं",
+        "where": "Zotero",
+        "ask": "अपने Zotero की प्रविष्टियाँ पढ़ें"
       }
     },
     "asks": {
@@ -3742,7 +3760,9 @@
         "file": "फ़ाइल",
         "pages": "पृष्ठ",
         "range": "भाग",
-        "job": "जॉब"
+        "job": "जॉब",
+        "zotero": "Zotero संग्रह",
+        "group": "Zotero समूह"
       }
     },
     "topUp": {

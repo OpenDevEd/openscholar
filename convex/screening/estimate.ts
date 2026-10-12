@@ -13,6 +13,7 @@ import { checkRequestPapers } from "../billing/accounts";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { createError } from "../lib/errors";
 import type { paperSetValidator, saveToValidator, screeningScoringConfigValidator } from "./validators";
+import { checkZoteroSet } from "../zotero/libraryValidators";
 
 /**
  * Refuses a screening whose rules include every paper, whatever it's answered: one with no
@@ -75,6 +76,11 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
   if (questions.length > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `A screening asks up to ${MAX_QUESTIONS} questions.`);
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   if (prune && set.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
+  if (set.kind === "zotero") {
+    await checkZoteroSet(ctx, userId, set);
+    // Its papers are Zotero's, with no OpenAlex record to save them by.
+    if (saveTo && saveTo.kind !== "none") throw createError("VALIDATION_ERROR", "Papers screened from Zotero can't be saved to a collection: they have no OpenAlex record. Leave `saveTo` out.");
+  }
   if (set.kind === "search") {
     const row = await findSearch(ctx, workspaceId, set.searchId);
     if (!row) throw createError("NOT_FOUND", "Search not found");

@@ -3695,6 +3695,24 @@
         "did": "Sélection arrêtée",
         "where": "Sélection",
         "ask": "Arrêter une sélection"
+      },
+      "zoteroGroups": {
+        "doing": "Lecture de vos groupes Zotero",
+        "did": "Groupes Zotero lus",
+        "where": "Zotero",
+        "ask": "Lire vos groupes Zotero"
+      },
+      "zoteroCollections": {
+        "doing": "Lecture de vos collections Zotero",
+        "did": "Collections Zotero lues",
+        "where": "Zotero",
+        "ask": "Lire vos collections Zotero"
+      },
+      "zoteroItems": {
+        "doing": "Lecture d'éléments de votre Zotero",
+        "did": "Éléments de votre Zotero lus",
+        "where": "Zotero",
+        "ask": "Lire des éléments de votre Zotero"
       }
     },
     "asks": {
@@ -3742,7 +3760,9 @@
         "file": "Fichier",
         "pages": "Pages",
         "range": "Partie",
-        "job": "Tâche"
+        "job": "Tâche",
+        "zotero": "Collection Zotero",
+        "group": "Groupe Zotero"
       }
     },
     "topUp": {

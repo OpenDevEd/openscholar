@@ -109,7 +109,10 @@
     "screening/queries:countUserScreeningJobs": "screening/queries:listJobs",
     "screening/queries:getActiveScreeningJobProgress": "screening/queries:getScreeningJob",
     "screening/queries:getScreeningProgress": "screening/queries:getScreeningJob",
-    "screening/queries:listUserScreeningJobs": "screening/queries:listJobs"
+    "screening/queries:listUserScreeningJobs": "screening/queries:listJobs",
+    "zotero/actions:fetchCollections": "zotero/library:collections",
+    "zotero/actions:fetchGroups": "zotero/library:groups",
+    "zotero/actions:fetchItems": "zotero/library:items"
   },
   "manual": {
     "admins/invitations:invite": "Site administration, for OpenScholar's own admins on the admin pages.",
@@ -215,9 +218,6 @@
     "topics/details:get": "#323",
     "topics/publications:listGroups": "#323",
     "topics/publications:listLocations": "#323",
-    "zotero/actions:fetchCollections": "#328",
-    "zotero/actions:fetchGroups": "#328",
-    "zotero/actions:fetchItems": "#328",
     "zotero/runtimeReadActions:listCollections": "#329",
     "zotero/runtimeReadActions:listInstitutions": "#329",
     "zotero/runtimeReadActions:listPublications": "#329",

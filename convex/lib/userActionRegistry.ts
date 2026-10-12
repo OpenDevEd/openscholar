@@ -44,8 +44,12 @@ import { extractAction, resumeAction as extractionResumeHeldAction, retryAction 
 import { findAction as mentionFindAction } from "../assistant/mentions";
 import { readAction as fileReadAction } from "../assistant/files";
 import { searchAction as webSearchAction } from "../research/web";
+import { collectionsAction as zoteroCollectionsAction, groupsAction as zoteroGroupsAction, itemsAction as zoteroItemsAction } from "../zotero/library";
 
 export const USER_ACTIONS: readonly UserAction[] = [
+  zoteroGroupsAction,
+  zoteroCollectionsAction,
+  zoteroItemsAction,
   extractionStartAction,
   extractionDuplicateAction,
   cancelExtractionAction,

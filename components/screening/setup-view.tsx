@@ -50,7 +50,8 @@ function EmptyTrack() {
   return <div aria-hidden className="h-2 w-full rounded-full border border-dashed border-foreground/20" />;
 }
 
-type Kind = PaperSet["kind"];
+/** The sets the page offers; a Zotero set is one a chat screens. */
+type Kind = Exclude<PaperSet["kind"], "zotero">;
 const KINDS: Kind[] = ["search", "collection", "saved", "screening"];
 /** Sets one page of a kind's list holds, and a row's height with the line under it. */
 const SOURCE_PAGE = 5;
@@ -112,7 +113,8 @@ export function SetupView({
     screening: { rows: screenings.items.map((job: JobRow) => ({ kind: "screening", id: job._id, label: jobName(t, job, date), count: job.qualifiedPapers, called: job.name ?? job.label })), pager: screenings },
   };
 
-  const [kind, setKind] = useState<Kind>(again?.set?.kind ?? "search");
+  // A screening a chat ran on a Zotero collection is run again from its chat: the page starts on a search.
+  const [kind, setKind] = useState<Kind>(again?.set && again.set.kind !== "zotero" ? again.set.kind : "search");
   // The set picked stays picked whatever page its list shows; until one is, a job run again starts on its own set, and otherwise the first listed.
   const [picked, setPicked] = useState<Source | null>(null);
   const againId = again?.set && (again.set.kind === "search" ? again.set.searchId : again.set.kind === "collection" ? again.set.collectionId : again.set.kind === "screening" ? again.set.jobId : "saved");
