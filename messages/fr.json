@@ -3745,7 +3745,10 @@
         "doing": "Lecture des paramètres d'une bibliothèque",
         "did": "Paramètres d'une bibliothèque lus",
         "where": "Evidence Library",
-        "ask": "Lire les paramètres d'une bibliothèque"
+        "ask": "Lire les paramètres d'une bibliothèque",
+        "askMany": "Lire les réglages de {count, plural, one {# bibliothèque} other {# bibliothèques}}",
+        "doingMany": "Lecture des réglages de {count, plural, one {# bibliothèque} other {# bibliothèques}}",
+        "didMany": "Réglages de {count, plural, one {# bibliothèque lus} other {# bibliothèques lus}}"
       },
       "readLibraryRevision": {
         "doing": "Lecture d'une version des paramètres d'une bibliothèque",
@@ -3757,7 +3760,10 @@
         "doing": "Lecture de l'équipe d'une bibliothèque",
         "did": "Équipe d'une bibliothèque lue",
         "where": "Evidence Library",
-        "ask": "Lire l'équipe d'une bibliothèque"
+        "ask": "Lire l'équipe d'une bibliothèque",
+        "askMany": "Lire les équipes de {count, plural, one {# bibliothèque} other {# bibliothèques}}",
+        "doingMany": "Lecture des équipes de {count, plural, one {# bibliothèque} other {# bibliothèques}}",
+        "didMany": "Équipes de {count, plural, one {# bibliothèque lues} other {# bibliothèques lues}}"
       },
       "editLibraryDraft": {
         "doing": "Modification du brouillon d'une bibliothèque",
@@ -3805,7 +3811,10 @@
         "doing": "Invitation de quelqu'un dans une bibliothèque",
         "did": "Quelqu'un invité dans une bibliothèque",
         "where": "Evidence Library",
-        "ask": "Inviter quelqu'un dans une bibliothèque"
+        "ask": "Inviter quelqu'un dans une bibliothèque",
+        "askMany": "Inviter {count, plural, one {# personne} other {# personnes}} dans une bibliothèque",
+        "doingMany": "Invitation de {count, plural, one {# personne} other {# personnes}} dans une bibliothèque",
+        "didMany": "{count, plural, one {# personne invitée} other {# personnes invitées}} dans une bibliothèque"
       },
       "changeLibraryInvite": {
         "doing": "Modification d'une invitation à une bibliothèque",
@@ -3835,7 +3844,10 @@
         "doing": "Lecture des sources d'une bibliothèque",
         "did": "Sources d'une bibliothèque lues",
         "where": "Evidence Library",
-        "ask": "Lire les sources d'une bibliothèque"
+        "ask": "Lire les sources d'une bibliothèque",
+        "askMany": "Lire les sources de {count, plural, one {# bibliothèque} other {# bibliothèques}}",
+        "doingMany": "Lecture des sources de {count, plural, one {# bibliothèque} other {# bibliothèques}}",
+        "didMany": "Sources de {count, plural, one {# bibliothèque lues} other {# bibliothèques lues}}"
       },
       "runningCollections": {
         "doing": "Lecture des collections d'une bibliothèque",
@@ -3859,7 +3871,10 @@
         "doing": "Lecture d'une publication de bibliothèque",
         "did": "Publication de bibliothèque lue",
         "where": "Evidence Library",
-        "ask": "Lire une publication de bibliothèque"
+        "ask": "Lire une publication de bibliothèque",
+        "askMany": "Lire {count, plural, one {# publication de bibliothèque} other {# publications de bibliothèque}}",
+        "doingMany": "Lecture de {count, plural, one {# publication de bibliothèque} other {# publications de bibliothèque}}",
+        "didMany": "{count, plural, one {# publication de bibliothèque lue} other {# publications de bibliothèque lues}}"
       },
       "syncLibrarySource": {
         "doing": "Nouvel essai d'un import de bibliothèque",
@@ -3877,7 +3892,10 @@
         "doing": "Lecture d'un profil d'auteur",
         "did": "Profil d'auteur lu",
         "where": "Auteurs",
-        "ask": "Lire un profil d'auteur"
+        "ask": "Lire un profil d'auteur",
+        "askMany": "Lire {count, plural, one {# profil d'auteur} other {# profils d'auteurs}}",
+        "doingMany": "Lecture de {count, plural, one {# profil d'auteur} other {# profils d'auteurs}}",
+        "didMany": "{count, plural, one {# profil d'auteur lu} other {# profils d'auteurs lus}}"
       },
       "authorProfileEditors": {
         "doing": "Lecture des personnes qui ont un profil d'auteur",
@@ -3901,13 +3919,19 @@
         "doing": "Lecture des publications d'un auteur",
         "did": "Publications d'un auteur lues",
         "where": "Auteurs",
-        "ask": "Lire les publications d'un auteur"
+        "ask": "Lire les publications d'un auteur",
+        "askMany": "Lire les publications de {count, plural, one {# auteur} other {# auteurs}}",
+        "doingMany": "Lecture des publications de {count, plural, one {# auteur} other {# auteurs}}",
+        "didMany": "Publications de {count, plural, one {# auteur lues} other {# auteurs lues}}"
       },
       "topicPublications": {
         "doing": "Lecture des publications d'un domaine de recherche",
         "did": "Publications d'un domaine de recherche lues",
         "where": "Domaines de recherche",
-        "ask": "Lire les publications d'un domaine de recherche"
+        "ask": "Lire les publications d'un domaine de recherche",
+        "askMany": "Lire les publications de {count, plural, one {# domaine de recherche} other {# domaines de recherche}}",
+        "doingMany": "Lecture des publications de {count, plural, one {# domaine de recherche} other {# domaines de recherche}}",
+        "didMany": "Publications de {count, plural, one {# domaine de recherche lues} other {# domaines de recherche lues}}"
       }
     },
     "asks": {

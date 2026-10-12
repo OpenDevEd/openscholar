@@ -3745,7 +3745,10 @@
         "doing": "正在读取一个文献库的设置",
         "did": "已读取一个文献库的设置",
         "where": "Evidence Library",
-        "ask": "读取一个文献库的设置"
+        "ask": "读取一个文献库的设置",
+        "askMany": "读取 {count, number} 个文献库的设置",
+        "doingMany": "正在读取 {count, number} 个文献库的设置",
+        "didMany": "已读取 {count, number} 个文献库的设置"
       },
       "readLibraryRevision": {
         "doing": "正在读取文献库设置的一个版本",
@@ -3757,7 +3760,10 @@
         "doing": "正在读取文献库的团队",
         "did": "已读取文献库的团队",
         "where": "Evidence Library",
-        "ask": "读取文献库的团队"
+        "ask": "读取文献库的团队",
+        "askMany": "读取 {count, number} 个文献库的团队",
+        "doingMany": "正在读取 {count, number} 个文献库的团队",
+        "didMany": "已读取 {count, number} 个文献库的团队"
       },
       "editLibraryDraft": {
         "doing": "正在更改文献库的草稿",
@@ -3805,7 +3811,10 @@
         "doing": "正在邀请某人加入文献库",
         "did": "已邀请某人加入文献库",
         "where": "Evidence Library",
-        "ask": "邀请某人加入文献库"
+        "ask": "邀请某人加入文献库",
+        "askMany": "邀请 {count, number} 人加入文献库",
+        "doingMany": "正在邀请 {count, number} 人加入文献库",
+        "didMany": "已邀请 {count, number} 人加入文献库"
       },
       "changeLibraryInvite": {
         "doing": "正在修改文献库邀请",
@@ -3835,7 +3844,10 @@
         "doing": "正在读取文献库的来源",
         "did": "已读取文献库的来源",
         "where": "Evidence Library",
-        "ask": "读取文献库的来源"
+        "ask": "读取文献库的来源",
+        "askMany": "读取 {count, number} 个文献库的来源",
+        "doingMany": "正在读取 {count, number} 个文献库的来源",
+        "didMany": "已读取 {count, number} 个文献库的来源"
       },
       "runningCollections": {
         "doing": "正在读取文献库的合集",
@@ -3859,7 +3871,10 @@
         "doing": "正在读取文献库的一篇出版物",
         "did": "已读取文献库的一篇出版物",
         "where": "Evidence Library",
-        "ask": "读取文献库的一篇出版物"
+        "ask": "读取文献库的一篇出版物",
+        "askMany": "读取文献库的 {count, number} 篇出版物",
+        "doingMany": "正在读取文献库的 {count, number} 篇出版物",
+        "didMany": "已读取文献库的 {count, number} 篇出版物"
       },
       "syncLibrarySource": {
         "doing": "正在重试文献库导入",
@@ -3877,7 +3892,10 @@
         "doing": "正在读取一份作者资料",
         "did": "已读取一份作者资料",
         "where": "作者",
-        "ask": "读取一份作者资料"
+        "ask": "读取一份作者资料",
+        "askMany": "读取 {count, number} 份作者资料",
+        "doingMany": "正在读取 {count, number} 份作者资料",
+        "didMany": "已读取 {count, number} 份作者资料"
       },
       "authorProfileEditors": {
         "doing": "正在读取作者资料的成员",
@@ -3901,13 +3919,19 @@
         "doing": "正在读取作者的出版物",
         "did": "已读取作者的出版物",
         "where": "作者",
-        "ask": "读取作者的出版物"
+        "ask": "读取作者的出版物",
+        "askMany": "读取 {count, number} 位作者的出版物",
+        "doingMany": "正在读取 {count, number} 位作者的出版物",
+        "didMany": "已读取 {count, number} 位作者的出版物"
       },
       "topicPublications": {
         "doing": "正在读取研究领域的出版物",
         "did": "已读取研究领域的出版物",
         "where": "研究领域",
-        "ask": "读取研究领域的出版物"
+        "ask": "读取研究领域的出版物",
+        "askMany": "读取 {count, number} 个研究领域的出版物",
+        "doingMany": "正在读取 {count, number} 个研究领域的出版物",
+        "didMany": "已读取 {count, number} 个研究领域的出版物"
       }
     },
     "asks": {

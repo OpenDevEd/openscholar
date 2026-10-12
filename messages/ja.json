@@ -3745,7 +3745,10 @@
         "doing": "ライブラリの設定を読んでいます",
         "did": "ライブラリの設定を読みました",
         "where": "Evidence Library",
-        "ask": "ライブラリの設定を読む"
+        "ask": "ライブラリの設定を読む",
+        "askMany": "{count, number} 件のライブラリの設定を読む",
+        "doingMany": "{count, number} 件のライブラリの設定を読んでいます",
+        "didMany": "{count, number} 件のライブラリの設定を読みました"
       },
       "readLibraryRevision": {
         "doing": "ライブラリ設定の版を読んでいます",
@@ -3757,7 +3760,10 @@
         "doing": "ライブラリのチームを読んでいます",
         "did": "ライブラリのチームを読みました",
         "where": "Evidence Library",
-        "ask": "ライブラリのチームを読む"
+        "ask": "ライブラリのチームを読む",
+        "askMany": "{count, number} 件のライブラリのチームを読む",
+        "doingMany": "{count, number} 件のライブラリのチームを読んでいます",
+        "didMany": "{count, number} 件のライブラリのチームを読みました"
       },
       "editLibraryDraft": {
         "doing": "ライブラリの下書きを変更しています",
@@ -3805,7 +3811,10 @@
         "doing": "ライブラリに招待しています",
         "did": "ライブラリに招待しました",
         "where": "Evidence Library",
-        "ask": "ライブラリに招待"
+        "ask": "ライブラリに招待",
+        "askMany": "{count, number} 人をライブラリに招待",
+        "doingMany": "{count, number} 人をライブラリに招待しています",
+        "didMany": "{count, number} 人をライブラリに招待しました"
       },
       "changeLibraryInvite": {
         "doing": "ライブラリへの招待を変更しています",
@@ -3835,7 +3844,10 @@
         "doing": "ライブラリのソースを読んでいます",
         "did": "ライブラリのソースを読みました",
         "where": "Evidence Library",
-        "ask": "ライブラリのソースを読む"
+        "ask": "ライブラリのソースを読む",
+        "askMany": "{count, number} 件のライブラリのソースを読む",
+        "doingMany": "{count, number} 件のライブラリのソースを読んでいます",
+        "didMany": "{count, number} 件のライブラリのソースを読みました"
       },
       "runningCollections": {
         "doing": "ライブラリのコレクションを読んでいます",
@@ -3859,7 +3871,10 @@
         "doing": "ライブラリの出版物を1件読んでいます",
         "did": "ライブラリの出版物を1件読みました",
         "where": "Evidence Library",
-        "ask": "ライブラリの出版物を1件読む"
+        "ask": "ライブラリの出版物を1件読む",
+        "askMany": "ライブラリの出版物を {count, number} 件読む",
+        "doingMany": "ライブラリの出版物を {count, number} 件読んでいます",
+        "didMany": "ライブラリの出版物を {count, number} 件読みました"
       },
       "syncLibrarySource": {
         "doing": "ライブラリの取り込みを再試行しています",
@@ -3877,7 +3892,10 @@
         "doing": "著者プロフィールを1件読んでいます",
         "did": "著者プロフィールを1件読みました",
         "where": "著者",
-        "ask": "著者プロフィールを1件読む"
+        "ask": "著者プロフィールを1件読む",
+        "askMany": "著者プロフィールを {count, number} 件読む",
+        "doingMany": "著者プロフィールを {count, number} 件読んでいます",
+        "didMany": "著者プロフィールを {count, number} 件読みました"
       },
       "authorProfileEditors": {
         "doing": "著者プロフィールの担当者を読んでいます",
@@ -3901,13 +3919,19 @@
         "doing": "著者の出版物を読んでいます",
         "did": "著者の出版物を読みました",
         "where": "著者",
-        "ask": "著者の出版物を読む"
+        "ask": "著者の出版物を読む",
+        "askMany": "{count, number} 人の著者の出版物を読む",
+        "doingMany": "{count, number} 人の著者の出版物を読んでいます",
+        "didMany": "{count, number} 人の著者の出版物を読みました"
       },
       "topicPublications": {
         "doing": "研究分野の出版物を読んでいます",
         "did": "研究分野の出版物を読みました",
         "where": "研究分野",
-        "ask": "研究分野の出版物を読む"
+        "ask": "研究分野の出版物を読む",
+        "askMany": "{count, number} 件の研究分野の出版物を読む",
+        "doingMany": "{count, number} 件の研究分野の出版物を読んでいます",
+        "didMany": "{count, number} 件の研究分野の出版物を読みました"
       }
     },
     "asks": {

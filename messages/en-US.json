@@ -3745,7 +3745,10 @@
         "doing": "Reading a library’s settings",
         "did": "Read a library’s settings",
         "where": "Evidence Library",
-        "ask": "Read a library’s settings"
+        "ask": "Read a library’s settings",
+        "askMany": "Read the settings of {count, plural, one {# library} other {# libraries}}",
+        "doingMany": "Reading the settings of {count, plural, one {# library} other {# libraries}}",
+        "didMany": "Read the settings of {count, plural, one {# library} other {# libraries}}"
       },
       "readLibraryRevision": {
         "doing": "Reading a version of a library’s settings",
@@ -3757,7 +3760,10 @@
         "doing": "Reading a library’s team",
         "did": "Read a library’s team",
         "where": "Evidence Library",
-        "ask": "Read a library’s team"
+        "ask": "Read a library’s team",
+        "askMany": "Read the teams of {count, plural, one {# library} other {# libraries}}",
+        "doingMany": "Reading the teams of {count, plural, one {# library} other {# libraries}}",
+        "didMany": "Read the teams of {count, plural, one {# library} other {# libraries}}"
       },
       "editLibraryDraft": {
         "doing": "Changing a library’s draft",
@@ -3805,7 +3811,10 @@
         "doing": "Inviting someone to a library",
         "did": "Invited someone to a library",
         "where": "Evidence Library",
-        "ask": "Invite someone to a library"
+        "ask": "Invite someone to a library",
+        "askMany": "Invite {count, plural, one {# person} other {# people}} to a library",
+        "doingMany": "Inviting {count, plural, one {# person} other {# people}} to a library",
+        "didMany": "Invited {count, plural, one {# person} other {# people}} to a library"
       },
       "changeLibraryInvite": {
         "doing": "Changing a library invitation",
@@ -3835,7 +3844,10 @@
         "doing": "Reading a library’s sources",
         "did": "Read a library’s sources",
         "where": "Evidence Library",
-        "ask": "Read a library’s sources"
+        "ask": "Read a library’s sources",
+        "askMany": "Read the sources of {count, plural, one {# library} other {# libraries}}",
+        "doingMany": "Reading the sources of {count, plural, one {# library} other {# libraries}}",
+        "didMany": "Read the sources of {count, plural, one {# library} other {# libraries}}"
       },
       "runningCollections": {
         "doing": "Reading a library’s collections",
@@ -3859,7 +3871,10 @@
         "doing": "Reading a library publication",
         "did": "Read a library publication",
         "where": "Evidence Library",
-        "ask": "Read a library publication"
+        "ask": "Read a library publication",
+        "askMany": "Read {count, plural, one {# library publication} other {# library publications}}",
+        "doingMany": "Reading {count, plural, one {# library publication} other {# library publications}}",
+        "didMany": "Read {count, plural, one {# library publication} other {# library publications}}"
       },
       "syncLibrarySource": {
         "doing": "Retrying a library import",
@@ -3877,7 +3892,10 @@
         "doing": "Reading an author profile",
         "did": "Read an author profile",
         "where": "Authors",
-        "ask": "Read an author profile"
+        "ask": "Read an author profile",
+        "askMany": "Read {count, plural, one {# author profile} other {# author profiles}}",
+        "doingMany": "Reading {count, plural, one {# author profile} other {# author profiles}}",
+        "didMany": "Read {count, plural, one {# author profile} other {# author profiles}}"
       },
       "authorProfileEditors": {
         "doing": "Reading who has an author profile",
@@ -3901,13 +3919,19 @@
         "doing": "Reading an author’s publications",
         "did": "Read an author’s publications",
         "where": "Authors",
-        "ask": "Read an author’s publications"
+        "ask": "Read an author’s publications",
+        "askMany": "Read the publications of {count, plural, one {# author} other {# authors}}",
+        "doingMany": "Reading the publications of {count, plural, one {# author} other {# authors}}",
+        "didMany": "Read the publications of {count, plural, one {# author} other {# authors}}"
       },
       "topicPublications": {
         "doing": "Reading a research area’s publications",
         "did": "Read a research area’s publications",
         "where": "Research areas",
-        "ask": "Read a research area’s publications"
+        "ask": "Read a research area’s publications",
+        "askMany": "Read the publications of {count, plural, one {# research area} other {# research areas}}",
+        "doingMany": "Reading the publications of {count, plural, one {# research area} other {# research areas}}",
+        "didMany": "Read the publications of {count, plural, one {# research area} other {# research areas}}"
       }
     },
     "asks": {
