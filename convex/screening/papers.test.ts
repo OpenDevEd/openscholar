@@ -1,4 +1,5 @@
 import { convexTest } from "convex-test";
+import { toPaperKey } from "../../lib/papers/paper-ref";
 import { describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -66,7 +67,7 @@ async function screened({ bookkept = true, before }: { bookkept?: boolean; befor
   const answer = (paperId: string, questionKey: string, value: boolean | null | "model", signed = as) =>
     signed.mutation(api.screening.papers.answer, { jobId, paperId: `https://openalex.org/${paperId}`, questionKey, answer: value });
   /** How many of the owner's library items are paper W3. */
-  const saved = () => t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return (await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W3")).take(2)).length; });
+  const saved = () => t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return (await ctx.db.query("libraryItems").withIndex("by_workspace_paperKey", (q) => q.eq("workspaceId", workspaceId).eq("paperKey", toPaperKey("https://openalex.org/W3")!)).take(2)).length; });
   const list = async (outcome: "included" | "unclear" | "excluded" | "failed", extra: { text?: string } = {}, signed = as) =>
     (await signed.query(api.screening.papers.list, { jobId, outcome, paginationOpts: { cursor: null, numItems: 10 }, ...extra })).page;
   return { t, as, jobId, job, list, answer, saved, settle };

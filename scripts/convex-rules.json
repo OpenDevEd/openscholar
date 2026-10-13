@@ -58,7 +58,6 @@
       "SUBSCRIPTIONS_READ": "reads one past it and stops the billing migration for that account",
       "SEARCH_SCREENINGS_MOVED": "a search with more screenings than a move takes stays where it is, and the dialog says so",
       "SECTION_REGISTRY.length": "a draft or revision holds one row a section; reads one past it and throws on a different row",
-      "RECOVERY_LIMIT": "reads one past it and stops the recovery as unsafe, naming why",
       "MAX_ORGANIZATION_MEMBERS": "reads one past it and leaves the organization's seats as they are, logging why: Clerk's webhooks write memberships, so no write here can"
     },
     "windows": {
@@ -113,7 +112,8 @@
       "PURGE_GRANTS": "a cleanup batch of a deleted account's places as a guest; the account waits for the next run until none are left",
       "FOLLOW_STEP": "a renamed or deleted item's guest rows, a step at a time; it reschedules itself until all are renamed or gone",
       "PURGE_READERS": "a purged person's libraries, a step at a time; the cleanup runs again until none are left",
-      "DELETE_STEP": "a job's library keys, a step at a time; it reschedules itself until none are left"
+      "DELETE_STEP": "a job's library keys, a step at a time; it reschedules itself until none are left",
+      "FIXTURE_ROWS": "what one test fixture with a made-up paper ID holds, deleted with it by migrations/paperIdentity:narrow; fixtures hold a handful"
     }
   }
 }

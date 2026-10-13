@@ -2,6 +2,7 @@
 // papers, read on the server in a fixed order, a step at a time, into one job however many
 // there are (#635); and where included papers go.
 import { convexTest } from "convex-test";
+import { pageIdOf } from "../../lib/papers/paper-ref";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -63,7 +64,7 @@ async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
       await t.mutation(internal.screening.mutations.handleScreeningComplete, {
         workId: result.workId ?? "work",
         context: { jobId, resultId: result._id },
-        result: { kind: "success", returnValue: { responses: encodeQuestionResponseMap({ "Randomized?": yes.some((i) => W(i) === result.openalexId) }), confidences: {}, confidence: 0.8, ...(credits === undefined ? {} : { credits }) } },
+        result: { kind: "success", returnValue: { responses: encodeQuestionResponseMap({ "Randomized?": yes.some((i) => W(i) === pageIdOf(result)) }), confidences: {}, confidence: 0.8, ...(credits === undefined ? {} : { credits }) } },
       });
     }
     await t.finishAllScheduledFunctions(vi.runAllTimers);
@@ -71,7 +72,7 @@ async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
   const inCollectionNow = (collectionId: Id<"collections">) =>
     t.run(async (ctx) => {
       const rows = await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).take(50);
-      return (await Promise.all(rows.map((row) => ctx.db.get("libraryItems", row.libraryItemId)))).map((item) => item!.openalexId).sort();
+      return (await Promise.all(rows.map((row) => ctx.db.get("libraryItems", row.libraryItemId)))).map((item) => pageIdOf(item!)).sort();
     });
   const read = (jobId: Id<"screeningJobs">) => alice.query(api.screening.queries.getScreeningJob, { jobId });
   /** Starts a job as Alice, and runs its reading, which the start schedules. */
@@ -90,7 +91,7 @@ describe("Screen all on papers the account holds", () => {
     const { jobId } = await screen({ set: { kind: "collection", collectionId }, first: 2, last: 3, ...job, saveTo: { kind: "none" } });
 
     const papers = await results(jobId);
-    expect(papers.map((paper) => paper.openalexId)).toEqual([W(3), W(2)]);
+    expect(papers.map((paper) => pageIdOf(paper))).toEqual([W(3), W(2)]);
     expect(papers[0]).toMatchObject({ title: "Paper 3", abstract: "Tutoring works", authors: ["Ada Lovelace", "Alan Turing"], venue: "A journal", citedByCount: 3, publicationYear: 2020 });
     expect(await read(jobId)).toMatchObject({ set: { kind: "collection", collectionId }, label: "Reading trials", first: 2, last: 3, totalPapers: 2, unsaved: true, credits: { spent: 0, estimate: 2 * PER_PAPER } });
   });
@@ -99,11 +100,11 @@ describe("Screen all on papers the account holds", () => {
     const { alice, screen, results, answerAll, read } = await setup();
 
     const first = await screen({ set: { kind: "saved" }, first: 1, last: 50, ...job, saveTo: { kind: "none" } });
-    expect((await results(first.jobId)).map((paper) => paper.openalexId)).toEqual([6, 5, 4, 3, 2, 1].map(W));
+    expect((await results(first.jobId)).map((paper) => pageIdOf(paper))).toEqual([6, 5, 4, 3, 2, 1].map(W));
     await answerAll(first.jobId, [5, 2, 1]);
 
     const second = await screen({ set: { kind: "screening", jobId: first.jobId }, first: 2, last: 3, ...job, saveTo: { kind: "none" } });
-    expect((await results(second.jobId)).map((paper) => paper.openalexId)).toEqual([W(2), W(1)]);
+    expect((await results(second.jobId)).map((paper) => pageIdOf(paper))).toEqual([W(2), W(1)]);
     expect(await read(second.jobId)).toMatchObject({ set: { kind: "screening", jobId: first.jobId }, totalPapers: 2 });
   });
 
@@ -214,7 +215,7 @@ describe("a job of any size", () => {
     const { jobId } = await screen({ set: { kind: "saved" }, first: 1, last: 1_250, ...job, saveTo: { kind: "none" } });
     expect(await read(jobId)).toMatchObject({ totalPapers: 1_250 });
     expect((await read(jobId))?.reading).toBeUndefined();
-    const ids = new Set((await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1_300))).map((paper) => paper.openalexId));
+    const ids = new Set((await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1_300))).map((paper) => pageIdOf(paper)));
     expect(ids.size).toBe(1_250);
     expect((await results(jobId)).length).toBe(50);
   });
@@ -352,7 +353,7 @@ describe("Screen all on a Zotero collection (#328)", () => {
 
     const { jobId } = await screen({ set, first: 2, last: 3, ...job, saveTo: { kind: "new", name: "Picked" } });
     const papers = await results(jobId);
-    expect(papers.map((paper) => paper.openalexId)).toEqual(["zotero:user:15294942:ITEM0002", "zotero:user:15294942:ITEM0003"]);
+    expect(papers.map((paper) => pageIdOf(paper))).toEqual(["zotero:user:15294942:ITEM0002", "zotero:user:15294942:ITEM0003"]);
     expect(papers[0]).toMatchObject({ title: "Zotero paper 2", abstract: "Tutors help", authors: ["Ada Okafor"], doi: "10.1/2", venue: "A journal", publicationYear: 2021 });
     // The person's own library, that collection's items and not its sub-collections', from the second on: its first read before the job is made, then the job's.
     expect(requests.map((url) => [url.pathname, url.searchParams.get("start"), url.searchParams.get("limit")])).toEqual([

@@ -1,6 +1,7 @@
 // Screen all's bookkeeping worker: a finished paper writes only its row; the worker counts
 // it, saves it if it qualified, moves its answers, and finishes the job, each exactly once.
 import { convexTest } from "convex-test";
+import { pageIdOf } from "../../lib/papers/paper-ref";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
@@ -80,7 +81,7 @@ describe("Screen all bookkeeping", () => {
     expect(await counts(t, jobId)).toEqual({ completed: 2, skipped: 1, failed: 1, qualified: 1 });
     expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.status).toBe("completed");
     const library = await t.run(async (ctx) => { const workspaceId = await personalWorkspaceOf(ctx, userId); return ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId)).collect(); });
-    expect(library.map((item) => item.openalexId)).toEqual(["https://openalex.org/W1"]);
+    expect(library.map((item) => pageIdOf(item))).toEqual(["https://openalex.org/W1"]);
     const answers = await t.run((ctx) => ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", screeningId)).collect());
     expect(answers).toHaveLength(2);
     const results = await t.run((ctx) => ctx.db.query("screeningResults").collect());

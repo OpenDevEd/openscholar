@@ -5,6 +5,7 @@ import type { DataModel } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { personalRatingRow, rateItem, ratedPaper, workspaceRating } from "../ratings";
+import { paperKeyOf } from "../../lib/papers/paper-ref";
 
 /**
  * A saved paper's rating becomes its people's average of their own ratings (#655). First, a
@@ -28,10 +29,10 @@ export const adopt = migrations.define({
     const { rating } = item;
     // An average, a rating out of range, or one its people's ratings make already, is no one's own.
     if (rating === undefined || !Number.isInteger(rating) || rating < 0 || rating > 5) return;
-    if (rating === (await workspaceRating(ctx, item.workspaceId, item.openalexId))) return;
+    if (rating === (await workspaceRating(ctx, item.workspaceId, paperKeyOf(item)))) return;
     const workspace = await ctx.db.get("workspaces", item.workspaceId);
     const rater = workspace?.kind === "personal" ? workspace.userId : item.createdBy;
-    if (rater && !(await personalRatingRow(ctx, rater, item.openalexId))) await ctx.db.insert("ratings", { userId: rater, paperId: ratedPaper(item.openalexId), rating });
+    if (rater && !(await personalRatingRow(ctx, rater, paperKeyOf(item)))) await ctx.db.insert("ratings", { userId: rater, paperId: ratedPaper(paperKeyOf(item)), rating });
   },
 });
 
@@ -51,7 +52,7 @@ export const verifyPage = internalQuery({
   returns: v.object({ wrong: v.number(), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { cursor }) => {
     const page = await ctx.db.query("libraryItems").paginate({ cursor, numItems: 100, maximumBytesRead: 8 * 1024 * 1024 });
-    const ratings = await Promise.all(page.page.map((item) => workspaceRating(ctx, item.workspaceId, item.openalexId)));
+    const ratings = await Promise.all(page.page.map((item) => workspaceRating(ctx, item.workspaceId, paperKeyOf(item))));
     return { wrong: page.page.filter((item, at) => item.rating !== ratings[at]).length, isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });

@@ -81,7 +81,7 @@ describe("saving a paper by its ID", () => {
     const userId = (await t.run(async (ctx) => ctx.db.query("users").first()))!._id;
     await t.run(async (ctx) => ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W8", rating: 3 }));
     expect(await ada.action(save, { id: "W8", collectionId })).toHaveProperty("undo");
-    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").take(10)).find((row) => row.openalexId === "https://openalex.org/W8")?.rating)).toBe(3);
+    expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").take(10)).find((row) => row.paperKey === "openalex:W8")?.rating)).toBe(3);
 
     // Taken out of the collection since and left out, the paper is no longer as the save left it either.
     await ada.mutation(api.library.mutations.removeFromLibrary, { paper: "W7" });
@@ -112,7 +112,7 @@ describe("saving a paper by its ID", () => {
     expect(requests[0].pathname).toMatch(/\/works\/W7$/);
     const [item] = await items();
     // What the page saves from a results card: the trimmed fields, the abstract as text, and the whole record for the card.
-    expect(item).toMatchObject({ createdBy: userId, openalexId: "https://openalex.org/W7", title: "Tutoring at scale", authors: ["Ada Okafor", "Ben Mwangi"], doi: "https://doi.org/10.1234/tutoring", abstract: "Tutoring works", publicationYear: 2021, journal: "Journal of Trials", citedByCount: 40, workType: "article", isOpenAccess: true, oaStatus: "gold" });
+    expect(item).toMatchObject({ createdBy: userId, paperKey: "openalex:W7", title: "Tutoring at scale", authors: ["Ada Okafor", "Ben Mwangi"], doi: "https://doi.org/10.1234/tutoring", abstract: "Tutoring works", publicationYear: 2021, journal: "Journal of Trials", citedByCount: 40, workType: "article", isOpenAccess: true, oaStatus: "gold" });
     expect(item.rating).toBeUndefined();
     expect(JSON.parse(item.paperData!)).toMatchObject({ id: "https://openalex.org/W7", abstract: "Tutoring works", authorships: [{ author: { display_name: "Ada Okafor" } }, { author: { display_name: "Ben Mwangi" } }] });
     expect(JSON.parse(item.paperData!).abstract_inverted_index).toBeUndefined();
@@ -131,7 +131,7 @@ describe("saving a paper by its ID", () => {
     const { setPaperInCollection, removeFromLibrary } = api.library.mutations;
     expect((await ada.mutation(setPaperInCollection, { paper: { paper: "W7" }, collectionId, inCollection: true })).undo).toMatchObject({ args: { collectionId, inCollection: false } });
     await ada.mutation(setPaperInCollection, { paper: { paper: "W8", title: "Another paper" }, collectionId, inCollection: true });
-    expect((await items()).map((row) => row.openalexId).sort()).toEqual(["https://openalex.org/W7", "https://openalex.org/W8"]);
+    expect((await items()).map((row) => row.paperKey).sort()).toEqual(["openalex:W7", "openalex:W8"]);
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").take(5)).length)).toBe(2);
 
     // The assistant's own way in and out of a collection takes the paper's ID alone, and says to save a paper that isn't saved yet.
@@ -167,7 +167,7 @@ describe("saving a paper by its ID", () => {
     // The save the page uses takes a paper's whole record. From the assistant, the card's own record isn't kept: it made one up, and the library page couldn't read it.
     await t.mutation(internal.library.mutations.saveToLibraryForAssistant, { userId, paper: "W9", title: "Made up", paperData: JSON.stringify({ title: "No ID here" }) });
     const madeUp = (await items()).find((row) => row.title === "Made up")!;
-    expect(madeUp).toMatchObject({ openalexId: "https://openalex.org/W9" });
+    expect(madeUp).toMatchObject({ paperKey: "openalex:W9" });
     expect(madeUp.paperData).toBeUndefined();
     await ada.mutation(api.library.mutations.removeFromLibrary, { paper: "W9" });
 
@@ -175,6 +175,6 @@ describe("saving a paper by its ID", () => {
     await expect(ada.action(save, { id: "the third one" })).rejects.toThrow(/saved by its OpenAlex ID/);
     await expect(ada.action(save, { id: "W404" })).rejects.toThrow(/no paper by that ID/);
     await expect(ada.action(save, { id: "W9", rating: 9 })).rejects.toThrow(/0 to 5/);
-    expect((await items()).map((row) => row.openalexId).sort()).toEqual(["https://openalex.org/W7", "https://openalex.org/W8"]);
+    expect((await items()).map((row) => row.paperKey).sort()).toEqual(["openalex:W7", "openalex:W8"]);
   });
 });

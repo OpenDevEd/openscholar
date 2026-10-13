@@ -1,6 +1,6 @@
 import { v, type Infer } from "convex/values";
 import { crossRefsValidator, identityFromStored, identityOf } from "../lib/paperRef";
-import { paperIdOf, paperKeyOf, parsePaperKey, saveablePaper } from "../../lib/papers/paper-ref";
+import { paperKeyOf, parsePaperKey, saveablePaper } from "../../lib/papers/paper-ref";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -120,8 +120,6 @@ export async function upsertLibraryItem(
       ...metadata,
       ...merged,
       metadataVersion: 2,
-      // Every writer saves through here, so a paper has one row whatever form its ID came in.
-      openalexId: paperIdOf(key),
       ...identity,
       searchableText,
       savedAt: now,

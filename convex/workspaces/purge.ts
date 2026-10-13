@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
-import type { Id } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { purgeWorkspaceChats } from "../assistant/access";
 import { readAccount } from "../billing/accounts";
@@ -38,15 +38,7 @@ const sizeOf = (row: object) => 2 * JSON.stringify(row).length;
 export async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspaces">): Promise<boolean> {
   const step: Step = { left: STEP, read: 0 };
 
-  if (!(await each(step, (n) => ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), async (job) => {
-    if (!(await drain(ctx, step, (n) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(n), "screeningResults"))) return false;
-    if (!(await drain(ctx, step, (n) => ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(n), "screeningJobProgress"))) return false;
-    if (!(await drain(ctx, step, (n) => ctx.db.query("paperSetKeys").withIndex("by_job_and_part_and_page", (q) => q.eq("job", job._id)).take(n), "paperSetKeys"))) return false;
-    // A job's own screening, of no search, goes with it; a search's goes with the search.
-    const screening = await ctx.db.get("screenings", job.screeningId);
-    if (screening && !screening.searchId && !(await purgeScreening(ctx, step, screening._id))) return false;
-    return await gone(ctx, step, job._id, "screeningJobs");
-  }))) return false;
+  if (!(await each(step, (n) => ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), (job) => purgeScreeningJob(ctx, step, job)))) return false;
 
   if (!(await each(step, (n) => ctx.db.query("searches").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), async (search) => {
     if (!(await drain(ctx, step, (n) => ctx.db.query("searchRevisions").withIndex("by_search_and_revision", (q) => q.eq("searchId", search._id)).take(n), "searchRevisions"))) return false;
@@ -86,6 +78,19 @@ export async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspac
 
 /** What's left of a step: rows it may still delete, and the bytes it has read. */
 type Step = { left: number; read: number };
+/** One step's allowance, for a caller that deletes outside a workspace's purge. */
+export const freshStep = (): Step => ({ left: STEP, read: 0 });
+
+/** Deletes a step's worth of one screening job: its results, its progress, the keys it kept and its own screening, then the job. Returns whether it's gone. */
+export async function purgeScreeningJob(ctx: MutationCtx, step: Step, job: Doc<"screeningJobs">) {
+  if (!(await drain(ctx, step, (n) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(n), "screeningResults"))) return false;
+  if (!(await drain(ctx, step, (n) => ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(n), "screeningJobProgress"))) return false;
+  if (!(await drain(ctx, step, (n) => ctx.db.query("paperSetKeys").withIndex("by_job_and_part_and_page", (q) => q.eq("job", job._id)).take(n), "paperSetKeys"))) return false;
+  // A job's own screening, of no search, goes with it; a search's goes with the search.
+  const screening = await ctx.db.get("screenings", job.screeningId);
+  if (screening && !screening.searchId && !(await purgeScreening(ctx, step, screening._id))) return false;
+  return await gone(ctx, step, job._id, "screeningJobs");
+}
 
 /**
  * Reads rows `chunk` at a time and passes each to `purge`, until the query has none left (true)

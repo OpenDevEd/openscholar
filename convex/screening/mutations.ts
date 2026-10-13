@@ -308,8 +308,6 @@ async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers
     await ctx.db.insert("screeningResults", {
       ...sourceMetadata(paper),
       jobId: job._id,
-      // The paper by its source (plans/evidence-library-sources); `openalexId` holds its address until the field goes.
-      openalexId: paperIdOf(paper.paper),
       ...identityOf(parsePaperKey(paper.paper)!, { openalexId: paper.crossRefs?.openalexId, doi: paper.doi ?? paper.crossRefs?.doi }),
       title: paper.title,
       abstract: paper.abstract,
