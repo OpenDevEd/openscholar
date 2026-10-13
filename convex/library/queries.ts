@@ -19,6 +19,7 @@ import { countInRange, type CountedField, type Range } from "./facets";
 import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
 import { LIBRARY_SEARCH_RESULTS_MAX as SEARCH_RESULTS_MAX } from "../../lib/library/limits";
 import { libraryFilterFields, libraryPapersValidator, librarySortOrderValidator, librarySortValidator, PAPERS_PAGE, type LibraryView } from "./validators";
+import { paperKeyOf } from "../../lib/papers/paper-ref";
 
 /**
  * Rows one page of a filtered view reads at most. A sparse filter gets a short page and a
@@ -332,10 +333,10 @@ async function withOwnRatings(ctx: QueryCtx, { userId, workspaceId }: InWorkspac
   const workspace = await ctx.db.get("workspaces", workspaceId);
   const own = workspace?.kind === "personal" && workspace.userId === userId;
   // In their own workspace a paper's rating is the person's; anywhere else it's read from their own ratings.
-  const mine = own ? null : await Promise.all(read.page.map((item) => personalRatingRow(ctx, userId, item.openalexId)));
+  const mine = own ? null : await Promise.all(read.page.map((item) => personalRatingRow(ctx, userId, paperKeyOf(item))));
   // Who rated it in the collection is for anyone who reads it, a guest too. Rating it there is its members': a guest has no rating in it.
   const inCollection = workspace?.kind === "organization" && collectionId ? await Promise.all(read.page.map(async (item) => {
-    const [raters, place] = await Promise.all([collectionRaters(ctx, collectionId, item.openalexId, userId, RATERS_SHOWN), placeOf(ctx, collectionId, item._id)]);
+    const [raters, place] = await Promise.all([collectionRaters(ctx, collectionId, paperKeyOf(item), userId, RATERS_SHOWN), placeOf(ctx, collectionId, item._id)]);
     const given = guest ? undefined : raters.find((rater) => rater.you)?.rating;
     return { ...(given === undefined ? {} : { mine: given }), raters: raters.map(shownRater), count: place?.ratingCount ?? raters.length };
   })) : null;
@@ -498,7 +499,7 @@ async function inCollection(ctx: QueryCtx, libraryItemIds: Id<"libraryItems">[])
 export const papersAction = defineUserQuery({
   path: "library/queries:papers",
   description:
-    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, its rating (in their own library theirs, in an organization's its members' average), whether it's in any of their collections, the day it was saved, its paper ID and its library item ID. ` +
+    `Lists the papers saved in the person's library, ${PAPERS_PAGE} a page: each one's title, authors, year, journal, its rating (in their own library theirs, in an organization's its members' average), whether it's in any of their collections, the day it was saved, its paper ID (its key, such as openalex:W2741809807, which every library action takes) and its library item ID. ` +
     "`collectionId` may also be a collection shared with them from another workspace: its papers are that workspace's, so each comes with their own library item ID only if they saved the paper themselves, and `inCollection` says whether their own copy is in a collection of theirs. " +
     "`total` is how many papers the whole library or one collection has; a narrowed list has none, and library/queries:countPapers counts it. " +
     "With nothing else given it lists the whole library, newest saved first. To narrow it: `search` is words to find in titles, abstracts and authors; `collectionId` is one of their collections (from library/collections:listCollections); " +
@@ -520,7 +521,7 @@ export const papersAction = defineUserQuery({
     // A narrowed view is counted by reading it, which a page of it leaves no room for in one read: its count is its own action.
     const kept = view.searchText === undefined && !hasNonCollectionLibraryFilters(view);
     // In a collection shared from another workspace the rows are that library's: what the person can act on is their own copy of each paper, if they saved one.
-    const own = library === workspaceId ? read.page : await Promise.all(read.page.map((item) => findItem(ctx, workspaceId, item.openalexId)));
+    const own = library === workspaceId ? read.page : await Promise.all(read.page.map((item) => findItem(ctx, workspaceId, paperKeyOf(item))));
     // Asked paper by paper, finding the ones in no collection took a library of sixty a hundred reads.
     const places = await inCollection(ctx, own.flatMap((item) => (item ? [item._id] : [])));
     const collected = new Map(own.flatMap((item) => (item ? [item._id] : [])).map((id, at) => [id, places[at]]));
@@ -528,7 +529,7 @@ export const papersAction = defineUserQuery({
       ...(kept ? { total: (await countLibraryView(ctx, library, view)).count } : {}),
       papers: read.page.map((item, at) => ({
         ...(own[at] ? { libraryItemId: own[at]._id } : {}),
-        id: item.openalexId,
+        id: paperKeyOf(item),
         title: short(item.title, PAPER_SHOWN.title),
         ...(authorDisplay(item) ? { authors: short(authorDisplay(item), PAPER_SHOWN.authors) } : {}),
         ...(item.publicationYear == null ? {} : { year: item.publicationYear }),
@@ -592,10 +593,10 @@ export const getSavedSinceCounts = workspaceQuery({
 export const savedPaperAction = defineUserQuery({
   path: "library/queries:savedPaper",
   description: "Whether a paper is in the person's library, and whether it's in any of their collections.",
-  args: { openalexId: v.string() },
+  args: { paper: v.string() },
   returns: v.union(v.object({ libraryItemId: v.id("libraryItems"), inCollection: v.boolean() }), v.null()),
   run: async (ctx, { workspaceId }, args) => {
-    const item = await findItem(ctx, workspaceId, args.openalexId);
+    const item = await findItem(ctx, workspaceId, args.paper);
     if (!item) return null;
     return { libraryItemId: item._id, inCollection: (await inCollection(ctx, [item._id]))[0] };
   },

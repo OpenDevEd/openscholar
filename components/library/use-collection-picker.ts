@@ -13,15 +13,15 @@ const LOAD_AHEAD_PX = 80;
 
 /**
  * A collection picker's list: searched by name on the server and read a page at a time
- * as the list scrolls. Given a paper's OpenAlex ID, each collection says whether the paper is in it.
+ * as the list scrolls. Given a paper, each collection says whether the paper is in it.
  * `shared` holds the collections other workspaces shared with the person to edit (#653), which
  * come after their own: there are none in an organization.
  */
-export function useCollectionPicker({ enabled = true, openalexId }: { enabled?: boolean; openalexId?: string } = {}) {
+export function useCollectionPicker({ enabled = true, paper }: { enabled?: boolean; paper?: string } = {}) {
   const workspaceId = useWorkspace();
   const [query, setQuery] = useState("");
   const search = useDebouncedValue(query.trim(), 300);
-  const args = inWorkspace(workspaceId, enabled ? { search: search || undefined, openalexId } : "skip");
+  const args = inWorkspace(workspaceId, enabled ? { search: search || undefined, paper } : "skip");
   const list = useProtectedPaginatedQuery(api.library.collections.listCollections, args, { initialNumItems: PICKER_PAGE_SIZE });
   // Paged with a stream on the server, whose pages hold their place only under this hook.
   const shared = useProtectedStreamPaginatedQuery(api.sharing.shared.editableCollections, args, { initialNumItems: PICKER_PAGE_SIZE });

@@ -24,6 +24,7 @@ import { libraryPaper, upsertLibraryItem } from "../library/mutations";
 import { requireAuthorProfiles } from "../authors/profiles";
 import { actorIn } from "./actor";
 import { workspaceName } from "./personal";
+import { paperKeyOf } from "../../lib/papers/paper-ref";
 
 export const movableKinds = ["collection", "search", "screening", "extraction", "chat", "author"] as const;
 export type Movable = (typeof movableKinds)[number];
@@ -203,9 +204,9 @@ async function rehome(ctx: MutationCtx, by: Id<"users">, from: Id<"workspaces">,
 type Followed = "collections" | "searches" | "screeningJobs" | "extractionJobs" | "authorProfiles";
 const followedValidator = v.union(v.literal("collections"), v.literal("searches"), v.literal("screeningJobs"), v.literal("extractionJobs"), v.literal("authorProfiles"));
 
-/** A library paper as saving it again takes it: its metadata, without whose library it's in. */
+/** A library paper as saving it again takes it: the paper and its metadata, without whose library it's in. */
 const paperOf = (item: Doc<"libraryItems">) =>
-  Object.fromEntries(Object.keys(libraryPaper.fields).flatMap((key) => (item[key as keyof typeof item] === undefined ? [] : [[key, item[key as keyof typeof item]]]))) as Infer<typeof libraryPaper>;
+  ({ ...Object.fromEntries(Object.keys(libraryPaper.fields).flatMap((key) => (item[key as keyof typeof item] === undefined ? [] : [[key, item[key as keyof typeof item]]]))), paper: paperKeyOf(item) }) as Infer<typeof libraryPaper>;
 
 /**
  * Saves a moved collection's papers to the library of the workspace it's in now, a step at a
@@ -247,11 +248,11 @@ export const moveCollectionPapers = internalMutation({
       const source = left.get(item.workspaceId);
       if (workspace.kind === "organization") {
         // One they gave in it before, in an organization it has been in, stays theirs there.
-        if (source?.kind === "personal" && item.rating !== undefined && !(await collectionRatingRow(ctx, source.userId, collectionId, item.openalexId))) await writeRating(ctx, source.userId, collectionId, item.openalexId, item.rating);
+        if (source?.kind === "personal" && item.rating !== undefined && !(await collectionRatingRow(ctx, source.userId, collectionId, paperKeyOf(item)))) await writeRating(ctx, source.userId, collectionId, paperKeyOf(item), item.rating);
       } else if (source?.kind === "organization") {
-        const theirs = await collectionRatingRow(ctx, workspace.userId, collectionId, item.openalexId);
+        const theirs = await collectionRatingRow(ctx, workspace.userId, collectionId, paperKeyOf(item));
         // In a transaction of its own: it brings each of their organizations' copies of the paper in step.
-        if (theirs) await ctx.scheduler.runAfter(0, internal.workspaces.move.keepRating, { userId: workspace.userId, paperId: item.openalexId, rating: theirs.rating });
+        if (theirs) await ctx.scheduler.runAfter(0, internal.workspaces.move.keepRating, { userId: workspace.userId, paperId: paperKeyOf(item), rating: theirs.rating });
       }
       // Put in here meanwhile: the place it has already stands for both.
       const there = await placeOf(ctx, collectionId, saved._id);

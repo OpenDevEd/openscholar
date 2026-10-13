@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crossRefsOf, legacyPaperRef, paperKey, parsePaperKey, type PaperRef } from "./paper-ref";
+import { crossRefsOf, legacyPaperRef, openalexWorkOf, paperKey, parsePaperKey, toPaperKey, type PaperRef } from "./paper-ref";
 
 const refs: PaperRef[] = [
   { source: "openalex", work: "W2741809807" },
@@ -50,5 +50,16 @@ describe("cross-references", () => {
     expect(crossRefsOf({ source: "openalex", work: "W1" }, { doi: "https://doi.org/10.1000/ABC" })).toEqual({ openalexId: "W1", doi: "10.1000/abc" });
     expect(crossRefsOf({ source: "library", libraryId: "r1", key: "K1234567" }, { openalexId: "https://openalex.org/W9", doi: "10.5/X" })).toEqual({ openalexId: "W9", doi: "10.5/x" });
     expect(crossRefsOf({ source: "upload", file: "f" }, { openalexId: "not an id", doi: " " })).toEqual({});
+  });
+});
+
+describe("naming a paper at a boundary", () => {
+  it("takes a key or an older ID, and finds a paper's OpenAlex work wherever it is known", () => {
+    expect(toPaperKey("https://openalex.org/W5")).toBe("openalex:W5");
+    expect(toPaperKey("library:r1:K1234567")).toBe("library:r1:K1234567");
+    expect(toPaperKey("not a paper")).toBeNull();
+    expect(openalexWorkOf("https://openalex.org/W5")).toBe("W5");
+    expect(openalexWorkOf("library:r1:K1234567", { openalexId: "W9" })).toBe("W9");
+    expect(openalexWorkOf("upload:f")).toBeNull();
   });
 });

@@ -75,7 +75,7 @@ export function useRatePaper() {
     setRating(paper.id, rating);
     if (phase !== "authenticated") return;
     if (rating === null) {
-      setLibraryRating({ openalexId: paper.id, rating: null }).catch((error) => {
+      setLibraryRating({ paper: paper.id, rating: null }).catch((error) => {
         console.error("[Library] Failed to clear rating:", error);
       });
     } else {

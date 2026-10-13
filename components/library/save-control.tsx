@@ -113,7 +113,7 @@ export function useSavePaper(paper: WorkInput | undefined) {
   const ready = phase === "authenticated";
   const { data: saved } = useProtectedQuery(
     api.library.queries.savedPaper,
-    inWorkspace(workspaceId, ready && paper ? { openalexId: paper.id } : "skip"),
+    inWorkspace(workspaceId, ready && paper ? { paper: paper.id } : "skip"),
   );
   const pendingSaved = usePending((state) => (paper ? state.saved[paper.id]?.value : undefined));
   const save = useWorkspaceMutation(api.library.mutations.saveToLibrary);
@@ -165,7 +165,7 @@ export function useSavePaper(paper: WorkInput | undefined) {
     const { setSaved, settleSaved } = usePending.getState();
     const token = setSaved(paper.id, false);
     // The server clears the research rating with the paper.
-    const request = remove({ openalexId: paper.id }).then(({ undo }) => undo?.args.removalId ?? null);
+    const request = remove({ paper: paper.id }).then(({ undo }) => undo?.args.removalId ?? null);
     const removal = request.catch(() => null);
     removals.set(key, removal);
     request
@@ -336,7 +336,7 @@ function CollectionsPanel({
   const t = useTranslations("saveToLibrary");
   const tl = useTranslations("libraryPage");
   const workspace = useCurrentWorkspace();
-  const picker = useCollectionPicker({ openalexId: paperId });
+  const picker = useCollectionPicker({ paper: paperId });
   // New collection opens from here: what it shows is read while this is open.
   useCollectionDialogsReady();
 

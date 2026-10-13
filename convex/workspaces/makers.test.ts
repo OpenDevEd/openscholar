@@ -92,9 +92,9 @@ it("an organization's bookmarks name who added each, list one member's, and are 
 
 it("an organization's library says who saved each paper, and a person's own names no one", async () => {
   const { alice, bob, workspaceId, aliceOwn } = await lab();
-  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "One" });
-  await bob.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W2", title: "Two" });
-  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: aliceOwn, openalexId: "https://openalex.org/W3", title: "Three" });
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, paper: "https://openalex.org/W1", title: "One" });
+  await bob.mutation(api.library.mutations.saveToLibrary, { workspaceId, paper: "https://openalex.org/W2", title: "Two" });
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: aliceOwn, paper: "https://openalex.org/W3", title: "Three" });
   const view = { sortBy: "savedAt" as const, sortOrder: "asc" as const, paginationOpts: { cursor: null, numItems: 20 } };
   const lab_ = (await alice.query(api.library.queries.browseLibrary, { workspaceId, ...view })).page;
   expect(lab_.map((paper) => [paper.title, paper.by?.name, paper.by?.you])).toEqual([["One", "Alice", true], ["Two", "Bob", false]]);

@@ -205,7 +205,7 @@ describe("a screening job's papers", () => {
     expect((await list("excluded"))[0]).toMatchObject({ score: 1, answers: [{ key: "q1", answer: false, changed: false }, { key: "q2", answer: true, changed: false }] });
 
     // Removed from the library since: becoming included again saves it again.
-    await as.mutation(api.library.mutations.removeFromLibrary, { openalexId: "https://openalex.org/W3" });
+    await as.mutation(api.library.mutations.removeFromLibrary, { paper: "https://openalex.org/W3" });
     expect(await saved()).toBe(0);
     expect(await answer("W3", "q1", true)).toMatchObject({ outcome: "included" });
     expect(await saved()).toBe(1);

@@ -6,11 +6,12 @@ import { downloadLibraryEssentialItem, downloadLibraryItem } from "@/lib/library
 import { useRatedPapers } from "@/lib/research/reads";
 import { useUIStore } from "@/lib/store";
 import type { PaperResult } from "@/lib/types";
-import { workUrl } from "@/lib/openalex/work-id";
+import { paperIdOf, paperKeyOf } from "@/lib/papers/paper-ref";
 
 /** A paper as a job keeps it: what it stored when it took the paper on, whether or not OpenAlex has a record of it. */
 export type StoredPaper = {
   openalexId: string;
+  paperKey?: string;
   title: string;
   abstract?: string;
   doi?: string;
@@ -34,8 +35,8 @@ function storedPaperResult(paper: StoredPaper): PaperResult {
     ...(paper.oaUrl ? { oa_url: paper.oaUrl } : {}),
   };
   return {
-    // The canonical OpenAlex ID where it has one, so rating, saving and its OpenAlex page all key on it; a Zotero paper keeps its own.
-    id: workUrl(paper.openalexId) ?? paper.openalexId,
+    // An OpenAlex paper's address, so rating, saving and its OpenAlex page all key on it; a paper from elsewhere goes by its key.
+    id: paperIdOf(paperKeyOf(paper)),
     title: paper.title,
     abstract: paper.abstract,
     doi: paper.doi,

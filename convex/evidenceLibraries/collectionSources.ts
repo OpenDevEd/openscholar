@@ -11,6 +11,7 @@ import {
   type QueryCtx,
 } from "../lib/functions";
 import { internal } from "../_generated/api";
+import { openalexWorkOf, paperKeyOf } from "../../lib/papers/paper-ref";
 import { writeAuditLogRecord } from "../lib/audit";
 import { requireAuth } from "../lib/auth";
 import { createError, readConvexErrorData } from "../lib/errors";
@@ -121,11 +122,6 @@ const collectionItemValidator = v.object({
   doi: v.union(v.string(), v.null()),
 });
 
-/** "https://openalex.org/W123" or "W123" as "W123"; anything else is not an OpenAlex work. */
-function openAlexWorkId(value: string) {
-  return /(?:^|\/)(W\d+)$/u.exec(value.trim())?.[1] ?? null;
-}
-
 /** Why the library may not read the collection now, or null when it may. */
 async function refusal(
   ctx: ReadCtx,
@@ -190,7 +186,7 @@ export const readForLibrary = internalQuery({
       page.page.map(async (membership) => {
         const libraryItem = await ctx.db.get("libraryItems", membership.libraryItemId);
         return libraryItem
-          ? [{ itemId: libraryItem._id, openalexId: openAlexWorkId(libraryItem.openalexId), doi: libraryItem.doi ?? null }]
+          ? [{ itemId: libraryItem._id, openalexId: openalexWorkOf(paperKeyOf(libraryItem), libraryItem.crossRefs), doi: libraryItem.doi ?? libraryItem.crossRefs?.doi ?? null }]
           : [];
       }),
     );

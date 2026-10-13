@@ -430,7 +430,7 @@ describe("listCollections", () => {
     await seedJunctionRow(t, user1!._id, holding!._id, mine!._id);
 
     const flags = async (openalexId: string) =>
-      (await asUser1.query(api.library.collections.listCollections, { ...firstPage(10), openalexId })).page.map((c) => [c.name, c.containsItem]);
+      (await asUser1.query(api.library.collections.listCollections, { ...firstPage(10), paper: openalexId })).page.map((c) => [c.name, c.containsItem]);
     expect(await flags(mine!.openalexId)).toEqual([["Holding", true], ["Other", false]]);
     // Someone else's saved paper, and a paper nobody saved.
     expect(await flags(theirs!.openalexId)).toEqual([["Holding", false], ["Other", false]]);
@@ -494,7 +494,7 @@ describe("removeFromLibrary cascade", () => {
 
     // Remove the library item
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
     });
 
     // Verify junction rows are deleted
@@ -522,7 +522,7 @@ describe("removeFromLibrary cascade", () => {
 
     // Remove the library item
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
     });
 
     // Collection should still exist

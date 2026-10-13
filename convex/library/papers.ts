@@ -17,7 +17,8 @@ import { workUrl } from "../../lib/openalex/work-id";
 import { collectionHome, followed, shownOutside } from "./followed";
 import { editableCollection } from "./collectionMembership";
 import { checkSave, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
-import { canonical, findItem } from "./find";
+import { findItem, requirePaperKey } from "./find";
+import { paperKeyOf } from "../../lib/papers/paper-ref";
 
 export const saveAction = defineUserAction({
   path: "library/papers:save",
@@ -38,7 +39,7 @@ export const saveAction = defineUserAction({
   seenOutside: true,
   check: async (ctx, actor, { id, rating, collectionId }) => {
     const openalexId = workUrl(id);
-    if (openalexId) await checkSave(ctx, actor, { openalexId, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }) });
+    if (openalexId) await checkSave(ctx, actor, { paper: openalexId, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }) });
   },
   run: async (ctx, { userId, workspaceId, author }, { id, rating, collectionId }, call) => {
     const openalexId = workUrl(id);
@@ -92,8 +93,7 @@ export const collectAction = defineUserMutation({
           : "This paper isn't in that collection's library yet. Put it there with library/mutations:setPaperInCollection, giving the paper whole.",
       );
     }
-    // By the ID the paper is saved under: one saved before the library kept one form is under the ID it was given.
-    return await setPaperInCollectionAction.run(ctx, actor, { paper: { openalexId: item?.openalexId ?? canonical(id) }, collectionId, inCollection });
+    return await setPaperInCollectionAction.run(ctx, actor, { paper: { paper: item ? paperKeyOf(item) : requirePaperKey(id) }, collectionId, inCollection });
   },
 });
 export const collect = userMutation(collectAction);

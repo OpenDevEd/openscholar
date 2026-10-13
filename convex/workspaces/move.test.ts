@@ -106,7 +106,7 @@ it("brings an item's activity to where it ends up when it moves back before its 
 it("moves a collection with its papers, saved to the library it goes to while the one it left keeps them", async () => {
   const { t, alice, lab: labId, aliceOwn } = await lab();
   const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { name: "Trials" });
-  for (const n of [1, 2]) await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: `https://openalex.org/W${n}`, title: `Paper ${n}`, collectionId });
+  for (const n of [1, 2]) await alice.mutation(api.library.mutations.saveToLibrary, { paper: `https://openalex.org/W${n}`, title: `Paper ${n}`, collectionId });
   const papers = (workspaceId: Id<"workspaces">) => t.run(async (ctx) => (await ctx.db.query("libraryItems").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).collect()).map((item) => item.openalexId).sort());
   const collections = (workspaceId: Id<"workspaces">) => t.run(async (ctx) => (await ctx.db.query("collectionCounts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).unique())?.count ?? 0);
 
@@ -154,8 +154,8 @@ const ratedPlaces = (t: Awaited<ReturnType<typeof lab>>["t"], collectionId: Id<"
 it("gives a person's ratings of their collection's papers to the collection when it moves into an organization", async () => {
   const { t, alice, lab: labId } = await lab();
   const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { name: "Trials" });
-  await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W1", title: "Rated", rating: 4, collectionId });
-  await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W2", title: "Unrated", collectionId });
+  await alice.mutation(api.library.mutations.saveToLibrary, { paper: "https://openalex.org/W1", title: "Rated", rating: 4, collectionId });
+  await alice.mutation(api.library.mutations.saveToLibrary, { paper: "https://openalex.org/W2", title: "Unrated", collectionId });
 
   await alice.mutation(api.workspaces.move.move, { kind: "collection", id: collectionId, to: labId });
   await t.finishAllScheduledFunctions(() => {});
@@ -168,11 +168,11 @@ it("makes a person's ratings in an organization's collection their own when it m
   const { t, alice, bob, lab: labId, aliceOwn, users } = await lab();
   const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { workspaceId: labId, name: "Trials" });
   const saved: Id<"libraryItems">[] = [];
-  for (const n of [1, 2]) saved.push((await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: labId, openalexId: `https://openalex.org/W${n}`, title: `Paper ${n}`, collectionId })).id);
+  for (const n of [1, 2]) saved.push((await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: labId, paper: `https://openalex.org/W${n}`, title: `Paper ${n}`, collectionId })).id);
   for (const libraryItemId of saved) await alice.mutation(api.library.collections.setCollectionRating, { workspaceId: labId, collectionId, libraryItemId, rating: 5 });
   await bob.mutation(api.library.collections.setCollectionRating, { workspaceId: labId, collectionId, libraryItemId: saved[0], rating: 1 });
   // Her own rating of the second paper, which stays hers.
-  await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W2", title: "Paper 2", rating: 2 });
+  await alice.mutation(api.library.mutations.saveToLibrary, { paper: "https://openalex.org/W2", title: "Paper 2", rating: 2 });
 
   await alice.mutation(api.workspaces.move.move, { workspaceId: labId, kind: "collection", id: collectionId, to: aliceOwn });
   await t.finishAllScheduledFunctions(() => {});
@@ -191,7 +191,7 @@ it("moves a collection of papers near the largest Convex stores, in steps that e
   const { t, alice, lab: labId } = await lab();
   const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { name: "Long reads" });
   // About 0.8 MB a paper with its search text: nine read together pass the 16 MiB a transaction reads.
-  for (let n = 0; n < 9; n++) await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: `https://openalex.org/W${n}`, title: `Paper ${n}`, abstract: "a".repeat(400_000), collectionId });
+  for (let n = 0; n < 9; n++) await alice.mutation(api.library.mutations.saveToLibrary, { paper: `https://openalex.org/W${n}`, title: `Paper ${n}`, abstract: "a".repeat(400_000), collectionId });
 
   await alice.mutation(api.workspaces.move.move, { kind: "collection", id: collectionId, to: labId });
   await t.finishAllScheduledFunctions(() => {});
@@ -214,10 +214,10 @@ it("moves a screening that stopped when its credits ran out, which has finished"
 it("keeps one place for a paper put in a moved collection before its papers have moved", async () => {
   const { t, alice, lab: labId } = await lab();
   const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { name: "Trials" });
-  for (const n of [1, 2]) await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: `https://openalex.org/W${n}`, title: `Paper ${n}`, collectionId });
+  for (const n of [1, 2]) await alice.mutation(api.library.mutations.saveToLibrary, { paper: `https://openalex.org/W${n}`, title: `Paper ${n}`, collectionId });
   await alice.mutation(api.workspaces.move.move, { kind: "collection", id: collectionId, to: labId });
   // Saved into it in the lab while its papers are still on their way.
-  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: labId, openalexId: "https://openalex.org/W1", title: "Paper 1", collectionId });
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: labId, paper: "https://openalex.org/W1", title: "Paper 1", collectionId });
   await t.finishAllScheduledFunctions(() => {});
   const places = await t.run((ctx) => ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).collect());
   expect(places).toHaveLength(2);

@@ -12,7 +12,7 @@ it("keeps a rated paper intact through screening, repeated saves and extraction 
   const userId = await t.run((ctx) => ctx.db.insert("users", { clerkId: "metadata-owner", email: "metadata@test", state: "active", createdAt: 1, updatedAt: 1 }));
   const owner = t.withIdentity({ subject: "metadata-owner" });
   const abstract = "Saved abstract: This randomized school trial measured literacy outcomes in two groups of pupils over one school term, using the same assessment before and after teaching.";
-  const { id } = await owner.mutation(api.library.mutations.saveToLibrary, { openalexId: "W7", title: "Saved title", abstract, authors: ["Smith, Jr., John", "ليلى"], citedByCount: 0, isOpenAccess: false, pdfUrl: "https://example.test/retained.pdf", rating: 4 });
+  const { id } = await owner.mutation(api.library.mutations.saveToLibrary, { paper: "W7", title: "Saved title", abstract, authors: ["Smith, Jr., John", "ليلى"], citedByCount: 0, isOpenAccess: false, pdfUrl: "https://example.test/retained.pdf", rating: 4 });
   const before = await t.run((ctx) => ctx.db.get("libraryItems", id));
   await t.run(async (ctx) => {
     const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 0, createdAt: 1 });
@@ -20,7 +20,7 @@ it("keeps a rated paper intact through screening, repeated saves and extraction 
     const resultId = await ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W7", title: "Later title", authors: ["Wrong name"], citedByCount: 100, isOpenAccess: true, venue: "Trial journal", workType: "preprint", stars: 1, status: "completed", createdAt: 1 });
     await saveQualified(ctx, (await ctx.db.get("screeningJobs", jobId))!, (await ctx.db.get("screeningResults", resultId))!);
   });
-  await owner.mutation(api.library.mutations.saveToLibrary, { openalexId: "W7", title: "Partial later save" });
+  await owner.mutation(api.library.mutations.saveToLibrary, { paper: "W7", title: "Partial later save" });
   const saved = await t.run((ctx) => ctx.db.get("libraryItems", id));
   expect(saved).toMatchObject({ title: "Saved title", abstract, authors: ["Smith, Jr., John", "ليلى"], rating: 4, citedByCount: 0, isOpenAccess: false, journal: "Trial journal", workType: "preprint", savedAt: before!.savedAt });
   expect(saved!.searchableText).toContain("Saved abstract");
@@ -33,8 +33,8 @@ it("keeps a rated paper intact through screening, repeated saves and extraction 
   expect(await t.run((ctx) => ctx.db.get("extractionPapers", paperIds[0]))).toMatchObject({ authors: ["Smith, Jr., John", "ليلى"], citedByCount: 0, isOpenAccess: false, venueName: "Trial journal", workType: "preprint", pdfUrl: "https://example.test/retained.pdf", processable: true });
   expect((await t.query(internal.extraction.queries.internal.getJobAndFlagsInternal, { jobId })).pdfEnabled).toBe(false);
   const manyAuthors = Array.from({ length: 101 }, (_, i) => `Author ${i}`);
-  const { id: largeId } = await owner.mutation(api.library.mutations.saveToLibrary, { openalexId: "W8", title: "Large collaboration", authors: manyAuthors });
-  await owner.mutation(api.library.mutations.saveToLibrary, { openalexId: "W8", title: "Partial re-save" });
+  const { id: largeId } = await owner.mutation(api.library.mutations.saveToLibrary, { paper: "W8", title: "Large collaboration", authors: manyAuthors });
+  await owner.mutation(api.library.mutations.saveToLibrary, { paper: "W8", title: "Partial re-save" });
   const large = await t.run(ctx => ctx.db.get("libraryItems", largeId));
   expect(large!.authors).toBeUndefined();
   expect(large!.authorsUnparsed).toBe(manyAuthors.join(", "));
