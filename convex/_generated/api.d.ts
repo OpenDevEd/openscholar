@@ -188,6 +188,7 @@ import type * as evidenceLibraries_uploadsClient from "../evidenceLibraries/uplo
 import type * as evidenceLibraries_validators from "../evidenceLibraries/validators.js";
 import type * as evidenceLibraries_versions from "../evidenceLibraries/versions.js";
 import type * as evidenceLibraries_volumeDeletionClient from "../evidenceLibraries/volumeDeletionClient.js";
+import type * as evidenceLibraries_writes from "../evidenceLibraries/writes.js";
 import type * as exportValidators from "../exportValidators.js";
 import type * as exports from "../exports.js";
 import type * as extraction_access from "../extraction/access.js";
@@ -634,6 +635,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/validators": typeof evidenceLibraries_validators;
   "evidenceLibraries/versions": typeof evidenceLibraries_versions;
   "evidenceLibraries/volumeDeletionClient": typeof evidenceLibraries_volumeDeletionClient;
+  "evidenceLibraries/writes": typeof evidenceLibraries_writes;
   exportValidators: typeof exportValidators;
   exports: typeof exports;
   "extraction/access": typeof extraction_access;

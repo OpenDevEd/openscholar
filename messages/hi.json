@@ -1643,7 +1643,18 @@
     "showAnswers": "{title} के उत्तर दिखाएँ",
     "hideAnswers": "{title} के उत्तर छिपाएँ",
     "yesOrNo": "हाँ या नहीं",
-    "lost": "यह स्क्रीनिंग हटा दी गई है या अब आपके साथ साझा नहीं है"
+    "lost": "यह स्क्रीनिंग हटा दी गई है या अब आपके साथ साझा नहीं है",
+    "inOpenScholar": "OpenScholar",
+    "newCollectionIn": "{library} में नए संग्रह का नाम",
+    "savedToLibrary": "<n>{count, number}</n> {library} के {name} में जोड़े गए",
+    "notInLibrary": "<n>{count, number}</n> {library} में नहीं हैं",
+    "savesToLibrary": "शामिल लेख {library} के {name} में जोड़े जाते हैं",
+    "notInLibraryFilter": "{library} में नहीं",
+    "libraryProblem": {
+      "role": "{name} में नहीं जोड़ सकते: अब आप इसे केवल देख सकते हैं",
+      "notFound": "{name} अब {library} में नहीं है",
+      "unreadable": "{library} ने जवाब नहीं दिया: कुछ लेख नहीं जोड़े गए"
+    }
   },
   "connectionsPage": {
     "connectedApps": "कनेक्टेड ऐप्स",

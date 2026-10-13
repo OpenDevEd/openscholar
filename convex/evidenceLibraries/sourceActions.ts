@@ -15,10 +15,14 @@ import { screeningPaperInputValidator } from "../screening/validators";
 import { paperKey } from "../../lib/papers/paper-ref";
 import { LIBRARY_SOURCE_MAX } from "../../lib/evidence-libraries/source-address";
 import { LIBRARY_KEYS_WINDOW } from "../paperSets/libraryKeys";
+import { libraryDestinationValidator } from "../screening/validators";
 import { LIBRARY_ROWS_MAX, LIBRARY_SOURCE_RECORDS_MAX, handoffRecordsValidator, libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
 import {
   LIBRARY_BATCH_MAX,
   LibrarySourceError,
+  changeCollectionRecords,
+  createReaderCollection,
+  matchLibraryRecords,
   readLibraryCollection,
   readLibraryOverview,
   readLibraryReaders,
@@ -56,6 +60,8 @@ async function asked<T>(libraryId: Id<"evidenceLibraries">, call: string, reader
     if (error.code === "private") throw createError("FORBIDDEN", "This collection is private: only its owner and the people it's shared with can read it.");
     if (error.code === "not_found") throw createError("NOT_FOUND", "The library has no such collection.");
     if (error.code === "too_many") throw createError("VALIDATION_ERROR", `A library source gives at most ${LIBRARY_SOURCE_MAX.toLocaleString("en")} records at once.`);
+    if (error.code === "role") throw createError("FORBIDDEN", "You can only view this collection: its owner can let you edit it.");
+    if (error.code === "not_reader") throw createError("FORBIDDEN", "Sign in to this library once to keep collections there.");
     throw createError("EVIDENCE_LIBRARY_RUNTIME_ERROR", error.code === "index_changed" ? "The library's search changed while it was read. Try again." : error.message);
   }
 }
@@ -112,6 +118,45 @@ export const listed = internalAction({
     for (let at = 0; at < found.keys.length; at += LIBRARY_BATCH_MAX) records.push(...(await asked(libraryId, "records/batch", reader, () => readLibraryRecords(fetch, target, found.keys.slice(at, at + LIBRARY_BATCH_MAX)))));
     return records.map((record) => ({ key: record.key, title: record.title || record.key, authors: record.creators.map((creator) => creator.name).slice(0, MAX_AUTHORS), year: record.year }));
   },
+});
+
+const libraryCollectionSaveTo = v.union(
+  v.object({ kind: v.literal("libraryCollection"), libraryId: v.id("evidenceLibraries"), collection: v.string() }),
+  v.object({ kind: v.literal("newLibraryCollection"), libraryId: v.id("evidenceLibraries"), name: v.string(), private: v.boolean(), requestId: v.string() }),
+);
+
+/**
+ * The library collection a screening's included papers go to: one the person owns or edits there, or a new one of
+ * theirs, made once for its `requestId` however often the start is tried.
+ */
+export const destination = internalAction({
+  args: { userId: v.id("users"), saveTo: libraryCollectionSaveTo },
+  returns: libraryDestinationValidator,
+  handler: async (ctx, { userId, saveTo }): Promise<Infer<typeof libraryDestinationValidator>> => {
+    const target = await libraryTarget(ctx, saveTo.libraryId);
+    const reader = await readerOf(ctx, userId);
+    if (saveTo.kind === "newLibraryCollection") {
+      const name = saveTo.name.trim();
+      if (!name) throw createError("VALIDATION_ERROR", "Name the new collection.");
+      const made = await asked(saveTo.libraryId, "readers/collections:create", reader, () => createReaderCollection(fetch, target, reader, { name, private: saveTo.private, requestId: saveTo.requestId }));
+      return { libraryId: saveTo.libraryId, collection: made.id, name: made.name };
+    }
+    return { libraryId: saveTo.libraryId, ...(await editableCollection(saveTo.libraryId, target, reader, saveTo.collection)) };
+  },
+});
+
+/** A collection of the library's the person owns or edits there, by its ID and name; one they only view is refused. */
+async function editableCollection(libraryId: Id<"evidenceLibraries">, target: LibraryTarget, reader: string, id: string) {
+  const found = await asked(libraryId, "collections", reader, () => readLibraryCollection(fetch, target, id, reader));
+  if (found.access !== "owner" && found.access !== "editor") throw createError("FORBIDDEN", `You can only view ${found.name}: its owner can let you edit it.`);
+  return { collection: found.id, name: found.name };
+}
+
+/** The name of a library collection a screening takes papers out of; one the person may only view is refused. */
+export const requireEditable = internalAction({
+  args: { userId: v.id("users"), libraryId: v.id("evidenceLibraries"), collection: v.string() },
+  returns: v.string(),
+  handler: async (ctx, { userId, libraryId, collection }): Promise<string> => (await editableCollection(libraryId, await libraryTarget(ctx, libraryId), await readerOf(ctx, userId), collection)).name,
 });
 
 const collectionValidator = v.object({
@@ -264,5 +309,61 @@ export const backfillReaders = internalAction({
       if (!page.next) return noted;
       cursor = page.next;
     }
+  },
+});
+
+/** How often a library that didn't answer is asked again for a job's writes, and how long it waits between. */
+const WRITE_ATTEMPTS = 5;
+const WRITE_RETRY_MS = 60_000;
+
+/**
+ * Writes a batch of a screening's queued library changes (./writes.ts), as the person who started the job: a paper
+ * that is a record of that library goes by its key, any other by the record the library holds for its OpenAlex ID or
+ * DOI, and one it holds none of is `missing`. A library that didn't answer is asked again a few times.
+ */
+export const flushWrites = internalAction({
+  args: { job: v.id("screeningJobs"), attempt: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { job, attempt }) => {
+    const { userId, rows, more } = await ctx.runQuery(internal.evidenceLibraries.writes.batch, { job });
+    if (!rows.length || !userId) return null;
+    const reader = await readerOf(ctx, userId);
+    const done: Array<{ id: Id<"libraryWrites">; result: Id<"screeningResults">; write?: "added" | "missing" }> = [];
+    let problem: "role" | "notFound" | "unreadable" | undefined;
+    const groups = new Map<string, typeof rows>();
+    for (const row of rows) groups.set(`${row.libraryId}|${row.collection}|${row.change}`, [...(groups.get(`${row.libraryId}|${row.collection}|${row.change}`) ?? []), row]);
+    for (const group of groups.values()) {
+      const { libraryId, collection, change } = group[0]!;
+      try {
+        const target = await libraryTarget(ctx, libraryId);
+        const keyOf = new Map<string, string>();
+        for (const row of group) if (row.ref.source === "library" && row.ref.libraryId === libraryId) keyOf.set(row.paperKey, row.ref.key);
+        const asking = group.filter((row) => !keyOf.has(row.paperKey) && (row.crossRefs?.openalexId || row.crossRefs?.doi));
+        if (asking.length) {
+          const matches = await matchLibraryRecords(fetch, target, reader, asking.map((row) => ({ ...(row.crossRefs?.openalexId ? { openalexId: row.crossRefs.openalexId } : {}), ...(row.crossRefs?.doi ? { doi: row.crossRefs.doi } : {}) })));
+          for (const { at, key } of matches) if (asking[at]) keyOf.set(asking[at].paperKey, key);
+        }
+        const keys = [...new Set(group.flatMap((row) => keyOf.get(row.paperKey) ?? []))];
+        const changed = keys.length ? await changeCollectionRecords(fetch, target, reader, collection, keys, change) : { missing: [] as string[] };
+        for (const row of group) {
+          const key = keyOf.get(row.paperKey);
+          done.push({ id: row.id, result: row.result, ...(change === "add" ? { write: key && !changed.missing.includes(key) ? ("added" as const) : ("missing" as const) } : {}) });
+        }
+      } catch (error) {
+        if (!(error instanceof LibrarySourceError)) throw error;
+        console.warn("[library sources]", { libraryId, call: `writes:${change}`, reader, job, code: error.code, status: error.status, reason: error.message });
+        if (error.code === "unavailable" && attempt + 1 < WRITE_ATTEMPTS) {
+          // Asked again later, with what this batch already wrote kept.
+          if (done.length) await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: done });
+          await ctx.scheduler.runAfter(WRITE_RETRY_MS, internal.evidenceLibraries.sourceActions.flushWrites, { job, attempt: attempt + 1 });
+          return null;
+        }
+        problem = error.code === "role" || error.code === "not_reader" || error.code === "private" ? "role" : error.code === "not_found" ? "notFound" : "unreadable";
+        for (const row of group) done.push({ id: row.id, result: row.result });
+      }
+    }
+    await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: done, ...(problem ? { problem } : {}) });
+    if (more) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.flushWrites, { job, attempt: 0 });
+    return null;
   },
 });

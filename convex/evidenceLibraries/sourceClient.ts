@@ -18,7 +18,7 @@ export type LibraryTarget = { baseUrl: string; credential: string };
 /** Why a library read failed, in words a person can act on. */
 export class LibrarySourceError extends Error {
   constructor(
-    readonly code: "outdated" | "refused" | "private" | "not_found" | "too_many" | "index_changed" | "invalid" | "unavailable",
+    readonly code: "outdated" | "refused" | "private" | "not_found" | "too_many" | "index_changed" | "invalid" | "unavailable" | "role" | "not_reader",
     message: string,
     readonly status?: number,
   ) {
@@ -30,13 +30,13 @@ export class LibrarySourceError extends Error {
 const refusalSchema = z.object({ error: z.string(), message: z.string().optional() });
 
 /** One call to the library; a refusal or a failure throws, with why. */
-async function call<T>(fetchImpl: typeof fetch, target: LibraryTarget, path: string, schema: z.ZodType<T>, { body, params, timeoutMs = TIMEOUT_MS }: { body?: unknown; params?: Record<string, string | undefined>; timeoutMs?: number } = {}): Promise<T> {
+async function call<T>(fetchImpl: typeof fetch, target: LibraryTarget, path: string, schema: z.ZodType<T>, { body, params, timeoutMs = TIMEOUT_MS, method = body === undefined ? "GET" : "POST" }: { body?: unknown; params?: Record<string, string | undefined>; timeoutMs?: number; method?: "GET" | "POST" | "DELETE" } = {}): Promise<T> {
   const url = new URL(path, target.baseUrl);
   for (const [key, value] of Object.entries(params ?? {})) if (value) url.searchParams.set(key, value);
   let response: Response;
   try {
     response = await fetchImpl(url.toString(), {
-      method: body === undefined ? "GET" : "POST",
+      method,
       headers: { Authorization: `Bearer ${target.credential}`, "OpenScholar-Contract": LIBRARY_CONTRACT, ...publicLibraryHeaders("application/json"), ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       signal: AbortSignal.timeout(timeoutMs),
@@ -61,6 +61,7 @@ async function call<T>(fetchImpl: typeof fetch, target: LibraryTarget, path: str
   if (code === "too_many") throw new LibrarySourceError("too_many", message, response.status);
   if (code === "index_changed") throw new LibrarySourceError("index_changed", message, response.status);
   if (code === "contract") throw new LibrarySourceError("outdated", "This library needs an update to be used here.", response.status);
+  if (code === "role" || code === "not_reader") throw new LibrarySourceError(code, message, response.status);
   throw new LibrarySourceError(response.status >= 500 ? "unavailable" : "invalid", message, response.status);
 }
 
@@ -145,4 +146,23 @@ export async function readLibraryOverview(fetchImpl: typeof fetch, target: Libra
 /** A page of the OpenScholar accounts that signed in to the library. */
 export async function readLibraryReaders(fetchImpl: typeof fetch, target: LibraryTarget, cursor: string | null) {
   return await call(fetchImpl, target, "/api/v1/openscholar/readers", z.object({ readers: z.array(z.string()), next: z.string().nullable() }), { params: { cursor: cursor ?? undefined } });
+}
+
+/** A collection made for a person, as their profile makes one; the same `requestId` answers the one it made before. */
+export async function createReaderCollection(fetchImpl: typeof fetch, target: LibraryTarget, clerkUserId: string, collection: { name: string; private: boolean; requestId: string }) {
+  return (await call(fetchImpl, target, `/api/v1/openscholar/readers/${encodeURIComponent(clerkUserId)}/collections`, z.object({ collection: collectionSchema }), { body: collection })).collection;
+}
+
+/** Most records one change to a collection takes. */
+export const LIBRARY_CHANGE_MAX = 500;
+
+/** Puts records into a collection the person owns or edits, or takes them out; `missing` are records the library doesn't show. */
+export async function changeCollectionRecords(fetchImpl: typeof fetch, target: LibraryTarget, clerkUserId: string, collectionId: string, keys: string[], change: "add" | "remove") {
+  const path = `/api/v1/openscholar/readers/${encodeURIComponent(clerkUserId)}/collections/${encodeURIComponent(collectionId)}/records`;
+  return await call(fetchImpl, target, path, z.object({ count: z.number(), changed: z.number(), missing: z.array(z.string()).max(LIBRARY_CHANGE_MAX) }), { body: { keys }, method: change === "add" ? "POST" : "DELETE" });
+}
+
+/** The records the library holds for papers by their OpenAlex ID or DOI: each match names the paper by its place (`at`). */
+export async function matchLibraryRecords(fetchImpl: typeof fetch, target: LibraryTarget, reader: string | null, papers: Array<{ openalexId?: string; doi?: string }>) {
+  return (await call(fetchImpl, target, "/api/v1/openscholar/records/match", z.object({ matches: z.array(z.object({ at: z.number().int(), key: z.string() })).max(LIBRARY_CHANGE_MAX) }), { body: { reader, papers } })).matches;
 }

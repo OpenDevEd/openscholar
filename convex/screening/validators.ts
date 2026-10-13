@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import { MAX_AUTHORS, MAX_QUESTIONS, MAX_STARS, capped } from "../lib/listCaps";
 import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadataFields } from "../lib/paperMetadata";
@@ -96,7 +96,19 @@ export const saveToValidator = v.union(
   v.object({ kind: v.literal("none") }),
   v.object({ kind: v.literal("new"), name: v.string() }),
   v.object({ kind: v.literal("collection"), collectionId: v.id("collections") }),
+  // A collection in an Evidence Library the person owns or edits there, or a new one of theirs it makes once (by `requestId`).
+  v.object({ kind: v.literal("libraryCollection"), libraryId: v.id("evidenceLibraries"), collection: v.string() }),
+  v.object({ kind: v.literal("newLibraryCollection"), libraryId: v.id("evidenceLibraries"), name: v.string(), private: v.boolean(), requestId: v.string() }),
 );
+
+/** Whether a set's papers can leave it: a collection of the workspace's, or a reader's collection in a library (whose start checks the person edits it). */
+export const prunable = (set: Infer<typeof paperSetValidator> | undefined) => set?.kind === "collection" || (set?.kind === "evidenceLibrary" && "readerCollection" in set.source && !("search" in set.source));
+
+/** Where a job's included papers go in an Evidence Library: one of the person's collections there, by its ID and name. */
+export const libraryDestinationValidator = v.object({ libraryId: v.id("evidenceLibraries"), collection: v.string(), name: v.string() });
+
+/** How a paper went to a library collection: put in, or not, because the library holds no record of it. */
+export const libraryWriteValidator = v.union(v.literal("added"), v.literal("missing"));
 
 /**
  * Where a screened paper landed: included at the job's minimum score; unclear when its

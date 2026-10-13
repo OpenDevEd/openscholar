@@ -9,7 +9,7 @@ import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LIST_CAP, MAX_METADATA_FIELDS, MAX_QUESTIONS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
+import { libraryDestinationValidator, libraryWriteValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { activityFields } from "./activity/validators";
 import { itemAccessFields, itemInvitationFields } from "./sharing/validators";
@@ -335,6 +335,11 @@ export default defineSchema({
   // `part` is the job's source it belongs to: an extraction can read several.
   paperSetKeys: defineTable({ job: v.union(v.id("screeningJobs"), v.id("extractionJobs")), part: v.number(), page: v.number(), keys: capped(v.array(v.string()), MAX_LIST_CAP) })
     .index("by_job_and_part_and_page", ["job", "part", "page"]),
+
+  // Papers waiting to go into, or come out of, a library collection for a screening (./evidenceLibraries/writes.ts).
+  libraryWrites: defineTable({ job: v.id("screeningJobs"), result: v.id("screeningResults"), change: v.union(v.literal("add"), v.literal("remove")), libraryId: v.id("evidenceLibraries"), collection: v.string() })
+    .index("by_job", ["job"])
+    .index("by_result", ["result"]),
 
   // Reader data a library still has to drop for a deleted OpenScholar account.
   evidenceLibraryReaderDeletions: defineTable(evidenceLibraryReaderDeletionFields)
@@ -1095,10 +1100,16 @@ export default defineSchema({
     failure: v.optional(v.string()),
     // The name of the new collection its included papers go to, which is made once it has its papers.
     newCollection: v.optional(v.string()),
-    // Its included papers aren't saved anywhere.
+    // Its included papers aren't saved anywhere in OpenScholar.
     unsaved: v.optional(v.literal(true)),
+    // The Evidence Library collection its included papers go to instead (./evidenceLibraries/writes.ts).
+    libraryDestination: v.optional(libraryDestinationValidator),
+    // Why its library writes stopped: the person can no longer change the collection, or it's gone.
+    libraryWriteProblem: v.optional(v.union(v.literal("role"), v.literal("notFound"), v.literal("unreadable"))),
     // Papers that end excluded or failed leave the collection it read (`set`).
     prune: v.optional(v.literal(true)),
+    // That collection's name, for a reader's collection in a library, whose name lives there.
+    pruneName: v.optional(v.string()),
     // Papers its search's page had already answered every question for: done on those
     // answers, without asking the model.
     reused: v.optional(v.number()),
@@ -1194,6 +1205,8 @@ export default defineSchema({
     savedToLibrary: v.optional(v.boolean()),
     // Taken from the collection its pruning job read, and not put back since.
     pruned: v.optional(v.literal(true)),
+    // How it went to its job's library collection, once written there.
+    libraryWrite: v.optional(libraryWriteValidator),
     libraryItemId: v.optional(v.id("libraryItems")),
     workId: v.optional(v.string()),
     // Set while the paper waits for one of its workspace's paper slots (#335, #650), whose papers
@@ -1212,6 +1225,8 @@ export default defineSchema({
     .index("by_paperKey", ["paperKey"])
     // A job's papers of one outcome, in the order the job took them.
     .index("by_job_and_outcome", ["jobId", "outcome"])
+    // A job's papers by how they went to its library collection: the ones the library holds no record of.
+    .index("by_job_and_libraryWrite", ["jobId", "libraryWrite"])
     // A job's papers the model is reading: processing, and no longer waiting for a slot.
     .index("by_job_and_status_and_waitingWorkspace", ["jobId", "status", "waitingWorkspace"])
     .index("by_waitingWorkspace_and_waitingSince", ["waitingWorkspace", "waitingSince"])
@@ -1220,7 +1235,7 @@ export default defineSchema({
     .index("by_workId", ["workId"])
     // A job's papers waiting for that bookkeeping, which a move waits for (#654).
     .index("by_job_and_doneAt", ["jobId", "doneAt"])
-    .searchIndex("search_text", { searchField: "searchText", filterFields: ["jobId", "outcome"] }),
+    .searchIndex("search_text", { searchField: "searchText", filterFields: ["jobId", "outcome", "libraryWrite"] }),
   // How many of a person's Screen all papers are running (#335). Written by job creation and
   // the bookkeeping worker, which start a person's waiting papers while this is under their
   // plan's limit, as Firecrawl's per-team semaphore does.
@@ -1245,6 +1260,9 @@ export default defineSchema({
     // that are still out of it.
     saved: v.optional(v.number()),
     removed: v.optional(v.number()),
+    // Papers it put into its library collection, and papers it couldn't, the library holding no record of them.
+    libraryAdded: v.optional(v.number()),
+    libraryMissing: v.optional(v.number()),
   }).index("by_job", ["jobId"]),
 
   // How many papers a person has saved. It has its own row, not a field on `users`, because

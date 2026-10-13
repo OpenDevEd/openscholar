@@ -8,6 +8,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import {
   paperSetValidator,
+  libraryDestinationValidator,
+  prunable,
   saveToValidator,
   screeningPaperInputValidator,
   screeningQuestionValidator,
@@ -48,6 +50,8 @@ async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<
   if (!saveTo) return {};
   if (saveTo.kind === "none") return { unsaved: true as const };
   if (saveTo.kind === "new") return { targetCollectionId: await newCollection(ctx, writer, saveTo.name) };
+  // A library collection is checked, or made, by the start before the job is: it comes as `libraryDestination`.
+  if (saveTo.kind === "libraryCollection" || saveTo.kind === "newLibraryCollection") return { unsaved: true as const };
   if ((await ctx.db.get("collections", saveTo.collectionId))?.workspaceId !== writer.workspaceId) throw createError("NOT_FOUND", "Collection not found");
   return { targetCollectionId: saveTo.collectionId };
 }
@@ -67,7 +71,11 @@ const jobSetup = {
   snapshot: v.optional(searchSnapshotValidator),
   // Missing: included papers are saved to the library alone, as jobs from before the screening page were.
   saveTo: v.optional(saveToValidator),
+  // The library collection a library `saveTo` names, as the start found or made it.
+  libraryDestination: v.optional(libraryDestinationValidator),
   prune: v.optional(v.boolean()),
+  // The name of the library collection it takes papers out of, as the start read it there.
+  pruneName: v.optional(v.string()),
   // The most it may spend, when the assistant starts it with the person's say (#328), and the hold that figure is kept in.
   spendCap: v.optional(v.number()),
   spendHold: v.optional(v.string()),
@@ -81,7 +89,8 @@ type JobSetup = ObjectType<typeof jobSetup>;
  * names it after its set, and stamps it with the model Screen all runs on.
  */
 async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"workspaces">, { author, set, saveTo, prune, name, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading" | "newCollection">) {
-  if (prune && set?.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
+  if (prune && !prunable(set)) throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
+  if ((saveTo?.kind === "libraryCollection" || saveTo?.kind === "newLibraryCollection") !== Boolean(args.libraryDestination)) throw createError("VALIDATION_ERROR", "A library collection is checked before the job is made.");
 
   const writer = { userId: user._id, workspaceId };
   // The screening its answers go to, and the set's name as the page shows it.

@@ -1643,7 +1643,18 @@
     "showAnswers": "显示 {title} 的回答",
     "hideAnswers": "隐藏 {title} 的回答",
     "yesOrNo": "是或否",
-    "lost": "此筛选已被删除，或不再与你共享"
+    "lost": "此筛选已被删除，或不再与你共享",
+    "inOpenScholar": "OpenScholar",
+    "newCollectionIn": "{library} 中新合集的名称",
+    "savedToLibrary": "<n>{count, number}</n> 篇已添加到 {library} 的 {name}",
+    "notInLibrary": "<n>{count, number}</n> 篇不在 {library} 中",
+    "savesToLibrary": "入选论文将添加到 {library} 的 {name}",
+    "notInLibraryFilter": "不在 {library} 中",
+    "libraryProblem": {
+      "role": "无法添加到 {name}：你现在只能查看它",
+      "notFound": "{name} 已不在 {library} 中",
+      "unreadable": "{library} 没有响应：部分论文未添加"
+    }
   },
   "connectionsPage": {
     "connectedApps": "已连接的应用",

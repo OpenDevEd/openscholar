@@ -27,6 +27,7 @@ import { readStartFacts, startWaitingPapers } from "./slots";
 import { startFactsValidator } from "./validators";
 import { captureLater } from "../lib/analyticsEvents";
 import { noteActivity } from "../activity/notes";
+import { queueLibraryWrite } from "../evidenceLibraries/writes";
 
 /** Papers per batch: each moves its answers and may save a library item, a few dozen reads. */
 const BATCH = 50;
@@ -161,7 +162,11 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
     moved.saved = result.savedToLibrary ? 0 : 1;
     await saveQualified(ctx, job, result);
   }
-  if (!job.prune || job.set?.kind !== "collection" || !(becameIncluded || left)) return moved;
+  // An Evidence Library collection gets its included papers through the library's own writes (../evidenceLibraries/writes.ts).
+  if (becameIncluded && job.libraryDestination) await queueLibraryWrite(ctx, job, result, "add", job.libraryDestination);
+  if (!job.prune || !(becameIncluded || left)) return moved;
+  if (job.set?.kind === "evidenceLibrary") return await pruneLibraryCollection(ctx, job, result, { becameIncluded, left }, moved);
+  if (job.set?.kind !== "collection") return moved;
   const collectionId = job.set.collectionId;
   const workspaceId = job.workspaceId;
   // A screening moved to another workspace (#654) leaves the collection it read alone.
@@ -181,6 +186,24 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
       await ctx.db.patch("screeningResults", result._id, { pruned: undefined });
       moved.removed = -1;
     }
+  }
+  return moved;
+}
+
+/** `shelve` for a job that prunes the reader's library collection it read: a paper that comes to be left out leaves it, and comes back if a changed answer includes it. */
+async function pruneLibraryCollection(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, { becameIncluded, left }: Move, moved: { saved: number; removed: number }) {
+  const set = job.set;
+  if (set?.kind !== "evidenceLibrary" || !("readerCollection" in set.source) || !set.source.readerCollection || "search" in set.source) return moved;
+  const from = { libraryId: set.libraryId, collection: set.source.readerCollection };
+  if (left && !result.pruned) {
+    await queueLibraryWrite(ctx, job, result, "remove", from);
+    await ctx.db.patch("screeningResults", result._id, { pruned: true });
+    moved.removed = 1;
+  }
+  if (becameIncluded && result.pruned) {
+    await queueLibraryWrite(ctx, job, result, "add", from);
+    await ctx.db.patch("screeningResults", result._id, { pruned: undefined });
+    moved.removed = -1;
   }
   return moved;
 }

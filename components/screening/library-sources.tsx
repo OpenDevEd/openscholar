@@ -138,6 +138,35 @@ export function useRowLabel() {
     row.what === "search" ? row.label || t("allRecords") : row.what === "all" ? t("everyRecord", { library: row.label }) : row.what === "records" && "records" in row.source && row.source.records.length > 1 ? t("recordsFrom", { library: row.label }) : row.label;
 }
 
+/** Picks one of the person's libraries: each by its mark and name, with their role there and how many records it holds. */
+export function LibrarySelect({ libraries, value, onChange, totalOf }: { libraries: ReaderLibrary[]; value: string; onChange: (libraryId: string) => void; totalOf?: (libraryId: string) => number | undefined }) {
+  const t = useTranslations("librarySources");
+  const format = useFormatter();
+  return (
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger aria-label={t("library")} className="h-9 w-full min-w-0 sm:w-64">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {libraries.map((one) => {
+          const Mark = libraryMark(one.faviconUrl);
+          const total = totalOf?.(one.libraryId);
+          return (
+            <SelectItem key={one.libraryId} value={one.libraryId}>
+              <Mark className="size-4" />
+              <span className="truncate">{one.name}</span>
+              <span className="ml-auto flex items-center gap-1.5 pl-2 text-xs tabular-nums text-muted-foreground">
+                {one.role ? <Chip className="h-5 px-1.5">{t(`role.${one.role}`)}</Chip> : null}
+                {total === undefined ? null : format.number(total, { notation: "compact" })}
+              </span>
+            </SelectItem>
+          );
+        })}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function LibrarySources({
   state,
   notice,
@@ -161,7 +190,6 @@ export function LibrarySources({
 }) {
   const t = useTranslations("librarySources");
   const ts = useTranslations("screeningPage");
-  const format = useFormatter();
   const labelOf = useRowLabel();
   const resolveAddress = useWorkspaceAction(api.evidenceLibraries.library.address);
   const { libraries, library, contents, filter, setFilter, words, setWords, page, setPage, held } = state;
@@ -216,29 +244,7 @@ export function LibrarySources({
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2">
-        {library ? (
-          <Select value={library.libraryId} onValueChange={pick}>
-            <SelectTrigger aria-label={t("library")} className="h-9 w-full min-w-0 sm:w-64">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {libraries.map((one) => {
-                const Mark = libraryMark(one.faviconUrl);
-                const total = totalOf(one.libraryId);
-                return (
-                  <SelectItem key={one.libraryId} value={one.libraryId}>
-                    <Mark className="size-4" />
-                    <span className="truncate">{one.name}</span>
-                    <span className="ml-auto flex items-center gap-1.5 pl-2 text-xs tabular-nums text-muted-foreground">
-                      {one.role ? <Chip className="h-5 px-1.5">{t(`role.${one.role}`)}</Chip> : null}
-                      {total === undefined ? null : format.number(total, { notation: "compact" })}
-                    </span>
-                  </SelectItem>
-                );
-              })}
-            </SelectContent>
-          </Select>
-        ) : null}
+        {library ? <LibrarySelect libraries={libraries} value={library.libraryId} onChange={pick} totalOf={totalOf} /> : null}
         <div className="relative min-w-56 flex-1">
           <Link2 aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input

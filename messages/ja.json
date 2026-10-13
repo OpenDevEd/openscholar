@@ -1643,7 +1643,18 @@
     "showAnswers": "{title} の回答を表示",
     "hideAnswers": "{title} の回答を隠す",
     "yesOrNo": "はい／いいえ",
-    "lost": "このスクリーニングは削除されたか、共有が解除されました"
+    "lost": "このスクリーニングは削除されたか、共有が解除されました",
+    "inOpenScholar": "OpenScholar",
+    "newCollectionIn": "{library} の新しいコレクションの名前",
+    "savedToLibrary": "<n>{count, number}</n> 件を {library} の {name} に追加",
+    "notInLibrary": "<n>{count, number}</n> 件は {library} にありません",
+    "savesToLibrary": "採用した論文を {library} の {name} に追加します",
+    "notInLibraryFilter": "{library} にないもの",
+    "libraryProblem": {
+      "role": "{name} に追加できません: 今は閲覧のみです",
+      "notFound": "{name} はもう {library} にありません",
+      "unreadable": "{library} が応答しませんでした: 一部の論文は追加されていません"
+    }
   },
   "connectionsPage": {
     "connectedApps": "接続済みアプリ",

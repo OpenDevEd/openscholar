@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { AiIcon, Ban, Camera, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
+import { AiIcon, Ban, Camera, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Lock, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
 import { ANSWER, Chip, ClippedChip, SOURCE_ICON } from "./parts";
 import { PaperScope, PickMark, SourceRow } from "./source-row";
-import { LibrarySources, useLibrarySources, useRowLabel } from "./library-sources";
+import { LibrarySelect, LibrarySources, useLibrarySources, useRowLabel } from "./library-sources";
 import useSWR from "swr";
 import { useAuth } from "@clerk/nextjs";
 import { LIBRARY_SOURCE_MAX } from "@/lib/evidence-libraries/source-address";
@@ -177,6 +177,14 @@ export function SetupView({
   const [title, setTitle] = useState(again?.name ?? "");
   const [newName, setNewName] = useState<string | null>(null);
   const [prune, setPrune] = useState(again?.prune ?? false);
+  // Where included papers go: one of the workspace's collections, or one of the person's in an Evidence Library.
+  const [destIn, setDestIn] = useState<"openscholar" | "library">(again?.libraryDestination ? "library" : "openscholar");
+  const [destLibraryId, setDestLibraryId] = useState<string | null>(again?.libraryDestination?.libraryId ?? null);
+  // A library collection by its ID, or a new one of theirs, made once however often the start is tried.
+  const [libraryDest, setLibraryDest] = useState<string>(again?.libraryDestination?.collection ?? "new");
+  const [libraryPrivate, setLibraryPrivate] = useState(true);
+  const [libraryDestPage, setLibraryDestPage] = useState(1);
+  const [requestId] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
 
   // A range can reach the last paper: one job takes however many.
@@ -209,6 +217,16 @@ export function SetupView({
   const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
   const target = source?.kind === "collection" && dest === source.id ? "new" : dest;
+  // The library it saves to: the one picked, else the one its papers come from, else the person's first.
+  const destLibrary = libraries.libraries.find((one) => one.libraryId === (destLibraryId ?? (source?.kind === "evidenceLibrary" ? source.held.library.libraryId : undefined))) ?? libraries.libraries[0];
+  const isSourceRow = (row: LibraryRow) => source?.kind === "evidenceLibrary" && source.id === rowKey(row);
+  // The person's collections there they can change: their own, and the ones shared with them to edit, never the one it reads.
+  const changeable = (libraries.contents.find((one) => one.libraryId === destLibrary?.libraryId)?.rows ?? []).filter((row) => (row.what === "yours" || (row.what === "shared" && row.access === "editor")) && !isSourceRow(row));
+  const libraryDestPages = Math.max(1, Math.ceil(changeable.length / DESTINATION_PAGE));
+  const libraryDestAt = Math.min(libraryDestPage, libraryDestPages);
+  const libraryTarget = libraryDest === "new" || changeable.some((row) => "readerCollection" in row.source && row.source.readerCollection === libraryDest) ? libraryDest : "new";
+  // Papers can leave the collection it reads: one of the workspace's, or a reader's in a library the person owns or edits.
+  const prunable = source?.kind === "collection" || (source?.kind === "evidenceLibrary" && "readerCollection" in source.held.row.source && !("search" in source.held.row.source) && (source.held.row.what === "yours" || source.held.row.access === "editor"));
 
   const models = useModelPicks();
   const model = models.modelOf("screenAll");
@@ -293,8 +311,13 @@ export function SetupView({
         first,
         last,
         ...scoringOf(questions, threshold, stars),
-        saveTo: target === "none" ? { kind: "none" } : target === "new" ? { kind: "new", name } : { kind: "collection", collectionId: target },
-        ...(source.kind === "collection" && prune ? { prune: true } : {}),
+        saveTo:
+          destIn === "library" && destLibrary
+            ? libraryTarget === "new"
+              ? { kind: "newLibraryCollection", libraryId: destLibrary.libraryId, name, private: libraryPrivate, requestId }
+              : { kind: "libraryCollection", libraryId: destLibrary.libraryId, collection: libraryTarget }
+            : target === "none" ? { kind: "none" } : target === "new" ? { kind: "new", name } : { kind: "collection", collectionId: target },
+        ...(prunable && prune ? { prune: true } : {}),
         // The server names a library's screening after the library; the form's name for it is what it showed.
         ...(title.trim() ? { name: title.trim() } : source.kind === "evidenceLibrary" ? { name: unnamed } : {}),
       });
@@ -579,8 +602,23 @@ export function SetupView({
         {/* What it screens with, as AI settings set it: changed there, not here (#689). */}
         {model ? <ModelsInUse label={t("model")} uses={[{ label: t("yesOrNo"), model }]} /> : null}
 
-        <Zone label={t("collections")}>
-          {source?.kind === "collection" ? (
+        <Zone
+          label={t("collections")}
+          aside={
+            libraries.libraries.length ? (
+              <Segmented
+                value={destIn}
+                onChange={setDestIn}
+                label={t("saveIncludedTo")}
+                options={[
+                  { id: "openscholar", label: t("inOpenScholar") },
+                  { id: "library", label: tl("library") },
+                ]}
+              />
+            ) : null
+          }
+        >
+          {prunable && source ? (
             <label className="mb-3 flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border border-border-subtle px-4 py-2.5">
               <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", prune ? "text-primary" : "text-muted-foreground")}>
                 <FolderMinus className="size-4" />
@@ -596,6 +634,57 @@ export function SetupView({
               <Switch checked={prune} onCheckedChange={setPrune} aria-label={t("pruneFrom", { name: source.label })} />
             </label>
           ) : null}
+          {destIn === "library" && destLibrary ? (
+            <div className="space-y-3">
+              <LibrarySelect
+                libraries={libraries.libraries}
+                value={destLibrary.libraryId}
+                onChange={(libraryId) => {
+                  setDestLibraryId(libraryId);
+                  setLibraryDest("new");
+                  setLibraryDestPage(1);
+                }}
+              />
+              <div style={libraryDestPages > 1 ? { minHeight: (DESTINATION_PAGE + 1) * SOURCE_ROW + 1 } : undefined}>
+                <div className={LIST} role="radiogroup" aria-label={t("saveIncludedTo")}>
+                  <DestinationRow on={libraryTarget === "new"} onPick={() => setLibraryDest("new")} icon={FolderPlus} facts={<Chip>{t("new")}</Chip>}>
+                    <span className="flex min-w-0 flex-1 items-center gap-3">
+                      <Input
+                        value={newName ?? defaultName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        onFocus={() => setLibraryDest("new")}
+                        aria-label={t("newCollectionIn", { library: destLibrary.name })}
+                        placeholder={t("nameNewCollection")}
+                        className="h-8 flex-1"
+                      />
+                      <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+                        <Lock className="size-3.5" />
+                        {tl("private")}
+                        <Switch checked={libraryPrivate} onCheckedChange={setLibraryPrivate} aria-label={tl("private")} />
+                      </label>
+                    </span>
+                  </DestinationRow>
+                  {changeable.slice((libraryDestAt - 1) * DESTINATION_PAGE, libraryDestAt * DESTINATION_PAGE).map((row) => {
+                    const id = "readerCollection" in row.source ? (row.source.readerCollection ?? "") : "";
+                    return (
+                      <DestinationRow
+                        key={id}
+                        on={libraryTarget === id}
+                        onPick={() => setLibraryDest(id)}
+                        icon={row.private ? Lock : Folder}
+                        name={t("addTo", { name: row.label })}
+                        facts={<Chip>{t("paperCount", { count: row.records })}</Chip>}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+              {libraryDestPages > 1 ? (
+                <PageStepper page={libraryDestAt} pageCount={libraryDestPages} canPrevious={libraryDestAt > 1} canNext={libraryDestAt < libraryDestPages} onPrevious={() => setLibraryDestPage(libraryDestAt - 1)} onNext={() => setLibraryDestPage(libraryDestAt + 1)} />
+              ) : null}
+            </div>
+          ) : (
+          <>
           <div style={destinations.hasPages ? { minHeight: (DESTINATION_PAGE + 2) * SOURCE_ROW + 1 } : undefined}>
             <div className={cn(LIST, destinations.isStale && "pointer-events-none opacity-60")} role="radiogroup" aria-label={t("saveIncludedTo")}>
               <DestinationRow on={target === "none"} onPick={() => setDest("none")} icon={Ban} name={t("dontSave")} />
@@ -627,6 +716,8 @@ export function SetupView({
               onNext={destinations.next}
             />
           ) : null}
+          </>
+          )}
         </Zone>
 
         {/* Stops short of the assistant's button in the screen's corner from the first frame, where the page's column reaches

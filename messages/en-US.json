@@ -1643,7 +1643,18 @@
     "showAnswers": "Show the answers for {title}",
     "hideAnswers": "Hide the answers for {title}",
     "yesOrNo": "Yes or no",
-    "lost": "This screening was deleted or is no longer shared with you"
+    "lost": "This screening was deleted or is no longer shared with you",
+    "inOpenScholar": "OpenScholar",
+    "newCollectionIn": "Name of the new collection in {library}",
+    "savedToLibrary": "<n>{count, number}</n> added to {name} in {library}",
+    "notInLibrary": "<n>{count, number}</n> not in {library}",
+    "savesToLibrary": "Adds included papers to {name} in {library}",
+    "notInLibraryFilter": "Not in {library}",
+    "libraryProblem": {
+      "role": "Can't add to {name}: you can only view it now",
+      "notFound": "{name} is no longer in {library}",
+      "unreadable": "{library} didn't answer: some papers weren't added"
+    }
   },
   "connectionsPage": {
     "connectedApps": "Connected apps",
