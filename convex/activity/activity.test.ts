@@ -30,7 +30,7 @@ it("lists what changed on a collection, newest first, by whom, and what the assi
   await alice.mutation(api.library.collections.renameCollection, { workspaceId, collectionId, name: "RCTs" });
   // A rename to the name it has changes nothing, and notes nothing.
   await alice.mutation(api.library.collections.renameCollection, { workspaceId, collectionId, name: "RCTs" });
-  await bob.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "Coaching at scale", collectionId });
+  await bob.mutation(api.library.mutations.saveToLibrary, { workspaceId, paper: "https://openalex.org/W1", title: "Coaching at scale", collectionId });
   const listed = async (as: typeof alice) => (await as.query(api.activity.queries.list, { workspaceId, kind: "collection", id: collectionId, paginationOpts: { cursor: null, numItems: 10 } })).page;
 
   expect((await listed(alice)).map(({ by, happened, count, detail, viaAssistant }) => ({ by: by.name, you: by.you, happened, count, detail, viaAssistant }))).toEqual([
@@ -43,8 +43,8 @@ it("lists what changed on a collection, newest first, by whom, and what the assi
 it("notes a paper leaving a collection with the library, and coming back with Undo", async () => {
   const { alice, bob, workspaceId } = await lab();
   const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Trials" });
-  await bob.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "Coaching at scale", collectionId });
-  const { undo } = await bob.mutation(api.library.mutations.removeFromLibrary, { workspaceId, openalexId: "https://openalex.org/W1" });
+  await bob.mutation(api.library.mutations.saveToLibrary, { workspaceId, paper: "https://openalex.org/W1", title: "Coaching at scale", collectionId });
+  const { undo } = await bob.mutation(api.library.mutations.removeFromLibrary, { workspaceId, paper: "https://openalex.org/W1" });
   await bob.mutation(api.library.mutations.restoreLibraryItem, { workspaceId, ...undo!.args });
   const rows = (await alice.query(api.activity.queries.list, { workspaceId, kind: "collection", id: collectionId, paginationOpts: { cursor: null, numItems: 10 } })).page;
   expect(rows.slice(0, 2).map(({ by, happened, count, detail }) => ({ by: by.name, happened, count, detail }))).toEqual([

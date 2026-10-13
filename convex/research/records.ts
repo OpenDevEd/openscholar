@@ -24,6 +24,7 @@ import { expandShortcuts, shortcutNames, shortcutSortName } from "../../lib/quer
 import { searchTerms, searchText, shortcutText, withText } from "../lib/searchText";
 import { personalWorkspaceOf, requireMakerOrAdmin, type Actor, type InWorkspace } from "../workspaces/actor";
 import { personalRatingRow, setPersonalRating } from "../ratings";
+import { paperIdOf } from "../../lib/papers/paper-ref";
 import { countOf } from "../lib/listCounts";
 import { personName } from "../lib/people";
 import { guestRole, itemGuestsOf } from "../sharing/items";
@@ -192,7 +193,8 @@ export const ratingsAction = defineUserQuery({
   returns: paginationResultValidator(ratingValidator),
   run: async (ctx, { userId }, args) => {
     const page = await ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", q => q.eq("userId", userId).eq("collectionId", undefined)).paginate(args.paginationOpts);
-    return { ...page, page: page.page.map(({ paperId, rating }) => ({ paperId, rating })) };
+    // Named as pages name papers: an OpenAlex paper by its address.
+    return { ...page, page: page.page.map(({ paperId, rating }) => ({ paperId: paperIdOf(paperId), rating })) };
   },
 });
 export const ratings = accountQuery(ratingsAction);
@@ -201,7 +203,7 @@ export const ratingsForAssistant = assistantQuery(ratingsAction);
 /** The person's ratings among `paperIds`. */
 export async function ratingsAmong(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperIds: string[]) {
   const rows = await Promise.all(paperIds.map(paperId => personalRatingRow(ctx, userId, paperId)));
-  // Each under the ID it was asked for: a rating is kept under the paper's whole address.
+  // Each under the ID it was asked for: a rating is kept under the paper's key.
   return paperIds.flatMap((paperId, at) => (rows[at] ? [{ paperId, rating: rows[at].rating }] : []));
 }
 

@@ -6,6 +6,7 @@
 import { v } from "convex/values";
 import type { PaperSourceMetadata } from "../../lib/library/paper-metadata";
 import type { SourceCitation } from "../../lib/extraction/source-evidence";
+import type { CrossRefs } from "../../lib/papers/paper-ref";
 
 export const extractionQuestionSchema = v.object({
   key: v.string(),
@@ -33,7 +34,9 @@ export interface ExtractionQuestionInput {
 }
 
 export interface PaperData extends PaperSourceMetadata {
-  openalexId: string;
+  /** The paper's key (lib/papers/paper-ref.ts), and what finds it elsewhere. */
+  paper: string;
+  crossRefs?: CrossRefs;
   title: string;
   doi?: string;
   publicationYear?: number;

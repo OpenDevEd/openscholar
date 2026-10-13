@@ -17,12 +17,13 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { DONE, STEP_TEXT_MAX, STEPS_SHOWN } from "../../lib/assistant/steps";
-import { workUrl } from "../../lib/openalex/work-id";
+import { toPaperKey } from "../../lib/papers/paper-ref";
 import { ABORT_ERROR_STRING } from "../../lib/ai/abort-signal";
 import { assistant } from "./agent";
 import { forgetLimits, noteReply } from "./spending";
 import { linked } from "./links";
 import { WEB_SOURCES_KEPT } from "./validators";
+import { findItem } from "../library/find";
 
 /** Characters of an action's result that are kept, well inside one document. */
 export const STEP_RESULT_MAX = 200_000;
@@ -239,10 +240,9 @@ export async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"worksp
   }
   if (!args || typeof args !== "object") return undefined;
   const command = args.command && typeof args.command === "object" ? (args.command as Record<string, unknown>) : {};
-  const paper = [args.id, args.openalexId, args.paperId, command.paperId].find((value): value is string => typeof value === "string");
-  const openalexId = paper ? workUrl(paper) : null;
-  if (openalexId) {
-    const item = await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", openalexId)).first();
+  const paper = [args.paper, args.id, args.openalexId, args.paperId, command.paperId].find((value): value is string => typeof value === "string" && toPaperKey(value) !== null);
+  if (paper) {
+    const item = await findItem(ctx, workspaceId, paper);
     // A call about a paper is named after the paper. One it is about to save isn't theirs yet, and is named by the
     // title its result gives, not by the collection it goes into.
     return item?.title ? cut(item.title, 200) : undefined;

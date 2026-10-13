@@ -89,6 +89,7 @@ import {
 import { getAuthSensitiveListRenderState } from "@/lib/auth/list-render-state";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { paperKeyOf } from "@/lib/papers/paper-ref";
 
 export default function JobDetailPage() {
   const toast = useAppToast();
@@ -268,7 +269,7 @@ export default function JobDetailPage() {
 
   const displayedPapers = papersWithResults;
   // Focus mode steps through the papers as the page lists them; an extraction calls a paper's venue its `venueName`.
-  const focusPapers = useMemo(() => displayedPapers.map((paper) => ({ ...paper, venue: paper.venueName })), [displayedPapers]);
+  const focusPapers = useMemo(() => displayedPapers.map((paper) => ({ ...paper, paper: paperKeyOf(paper), venue: paper.venueName })), [displayedPapers]);
 
 
   const paperIds = useMemo(

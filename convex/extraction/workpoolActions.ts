@@ -43,6 +43,7 @@ import { extractPdfJsTextPages } from "./pdfjs_extract";
 import { buildPageTextFromItems } from "../../lib/extraction/pdfjs-text";
 import { MAX_CITATIONS } from "../lib/listCaps";
 import { abstractEvidence } from "../../lib/extraction/source-evidence";
+import { openalexWorkOfRow } from "../../lib/papers/paper-ref";
 import {
   isGenericArrayEntity,
   normalizeArrayEntity,
@@ -475,7 +476,8 @@ async function resolvePdfBlob(
     pdfUrl: string;
     storageId?: Id<"_storage">;
     doi?: string;
-    openalexId: string;
+    /** Its OpenAlex work, where it has one, which finds an open copy. */
+    openalexId?: string;
   },
 ): Promise<{
   pdfBlob: Blob | null;
@@ -683,7 +685,7 @@ export async function runDownloadAndIndexPdf(
       pdfUrl: existingPaper.pdfUrl || existingPaper.oaUrl || "",
       storageId: existingPaper.storageId,
       doi: existingPaper.doi,
-      openalexId: existingPaper.openalexId,
+      openalexId: openalexWorkOfRow(existingPaper) ?? undefined,
     });
 
     // Keep pipeline alive for abstract-only papers by leaving evidence empty.

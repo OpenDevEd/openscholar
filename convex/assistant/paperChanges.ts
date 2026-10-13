@@ -10,10 +10,10 @@ import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
 import type { InWorkspace } from "../workspaces/actor";
 import { createError } from "../lib/errors";
-import { heldPapers } from "../paperSets/held";
+import { heldPapers, SAVED_A_READ } from "../paperSets/held";
 import { readSearchRun, readSearchWorks, type SearchSnapshot } from "../paperSets/openalex";
 import { PAPERS_A_READ, SCREENING_FIELDS, keptByRating, searchPapers, spender, toPaper, type SavedSearchRequest, type SearchPaper, type Work } from "../paperSets/search";
-import { workUrl } from "../../lib/openalex/work-id";
+import { parsePaperKey, toPaperKey } from "../../lib/papers/paper-ref";
 
 /**
  * Papers one bulk change takes at most, whatever the person's plan allows (`bulk_papers`):
@@ -88,8 +88,9 @@ async function readPieces(first: number, last: number, enough: number, piece: (f
  * search's as their results list them, a collection's and the library's newest saved first, a
  * screening's included papers in the order it took them. Left out, they are the whole set.
  * Either way no more than the person's plan changes in one go (`bulk_papers`): a range or set
- * past it is refused, read no further than one paper past it. Papers named by ID come as
- * OpenAlex has them. Each page read from OpenAlex counts against the person's allowance.
+ * past it is refused, read no further than one paper past it. Papers named by ID or key come as
+ * OpenAlex has them, or from elsewhere as the library holds them. Each page read from OpenAlex
+ * counts against the person's allowance.
  */
 export async function papersOf(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, { papers: set, first: start, last: end }: Pick<ChangePapers, "papers" | "first" | "last">): Promise<SearchPaper[]> {
   // Typed here: the generated API's types depend on this module, so inference would loop.
@@ -97,9 +98,18 @@ export async function papersOf(ctx: ActionCtx, { userId, workspaceId }: InWorksp
   const most = Math.min(allowed ?? BULK_CEILING, BULK_CEILING);
   const tooMany = () => invalid(`The person's plan changes up to ${most.toLocaleString("en")} papers in one go. Name a range of the set with first and last, or a smaller set.`);
   if (set.kind === "ids") {
-    const ids = [...new Set(set.ids.map((id) => workUrl(id)?.split("/").at(-1)))].filter((id): id is string => id !== undefined);
-    if (!ids.length) throw invalid("None of these is a paper's ID, such as W2741809807.");
-    if (ids.length > most) throw tooMany();
+    const keys = [...new Set(set.ids.map((id) => toPaperKey(id)))].filter((key): key is string => key !== null);
+    if (!keys.length) throw invalid("None of these is a paper's ID, such as W2741809807, or a paper's key as a list gave it.");
+    if (keys.length > most) throw tooMany();
+    const ids = keys.flatMap((key) => {
+      const ref = parsePaperKey(key);
+      return ref?.source === "openalex" ? [ref.work] : [];
+    });
+    // A paper from elsewhere is changed as the person's library holds it.
+    const elsewhere = keys.filter((key) => parsePaperKey(key)?.source !== "openalex");
+    const saved: SearchPaper[] = [];
+    for (let from = 0; from < elsewhere.length; from += SAVED_A_READ) saved.push(...(await ctx.runQuery(internal.paperSets.held.saved, { workspaceId, keys: elsewhere.slice(from, from + SAVED_A_READ) })));
+    if (!ids.length) return saved;
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
@@ -109,7 +119,7 @@ export async function papersOf(ctx: ActionCtx, { userId, workspaceId }: InWorksp
       const some = ids.slice(from, from + IDS_A_REQUEST);
       found.push(...(await readSearchWorks<Work>({ filter: `openalex:${some.join("|")}`, sort: "cited_by_count:desc" }, { first: 1, last: some.length, select: SCREENING_FIELDS }, spender(ctx, clerkId))));
     }
-    return found.map(toPaper);
+    return [...found.map(toPaper), ...saved];
   }
   const first = start ?? 1;
   if (!Number.isSafeInteger(first) || first < 1 || (end != null && (!Number.isSafeInteger(end) || end < first))) throw invalid("Pick papers from 1 up, with the first before the last.");
@@ -162,7 +172,7 @@ export function changeOf({ do: what, collectionId, rating }: Pick<ChangePapers, 
     const given = { ...(collectionId == null ? {} : { collectionId }), ...(rating == null ? {} : { rating }) };
     return { path: SAVE, items: papers.map((paper) => ({ ...record(paper), ...given })), shared: given };
   }
-  if (what === "uncollect") return { path: IN_COLLECTION, items: papers.map((paper) => ({ paper: { openalexId: paper.openalexId }, collectionId, inCollection: false })), shared: { collectionId } };
-  if (what === "rate") return { path: RATE, items: papers.map((paper) => ({ openalexId: paper.openalexId, rating })), shared: { rating } };
-  return { path: REMOVE, items: papers.map((paper) => ({ openalexId: paper.openalexId })), shared: {} };
+  if (what === "uncollect") return { path: IN_COLLECTION, items: papers.map((paper) => ({ paper: { paper: paper.paper }, collectionId, inCollection: false })), shared: { collectionId } };
+  if (what === "rate") return { path: RATE, items: papers.map((paper) => ({ paper: paper.paper, rating })), shared: { rating } };
+  return { path: REMOVE, items: papers.map((paper) => ({ paper: paper.paper })), shared: {} };
 }

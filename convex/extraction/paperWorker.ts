@@ -15,6 +15,7 @@ import { resolveOpenRouterModel } from "../ai/provider";
 import { reserveCredits, settleUnder, tokenDetails } from "../billing/charge";
 import { aggregateUsage } from "../../lib/ai/core/cost";
 import type { Usage } from "../../lib/ai/core/types";
+import { openalexWorkOfRow } from "../../lib/papers/paper-ref";
 import {
   batchSkipReasonToWorkerSkipReason,
   captureCompletedQuestionTracking,
@@ -455,7 +456,7 @@ export const runPaperQueueItem = internalAction({
       oaUrl: paper.oaUrl,
       storageId: paper.storageId,
       abstract: paper.abstract,
-      openalexId: paper.openalexId,
+      openalexId: openalexWorkOfRow(paper),
       doi: paper.doi,
       pdfEnabled: args.pdfEnabled,
     });

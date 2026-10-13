@@ -15,14 +15,15 @@ import { currentSearch } from "../../lib/research/records";
 import { roleIn } from "./access";
 import { libraryOf } from "../evidenceLibraries/access";
 import { personName } from "../lib/people";
-import { workUrl } from "../../lib/openalex/work-id";
+import { toPaperKey } from "../../lib/papers/paper-ref";
+import { findItem } from "../library/find";
 import { ASKED_DETAILS_MAX, ASKED_EACH_DETAILS_MAX, ASKED_EACH_MAX } from "./validators";
 import { addressesOf } from "../lib/people";
 
 /** A saved search's ID: the one the page made for it. */
 const SEARCH_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/** Arguments that name a paper by its OpenAlex ID. */
-const PAPER_KEYS = new Set(["id", "openalexId", "paperId"]);
+/** Arguments that name a paper, by its key or its OpenAlex ID. */
+const PAPER_KEYS = new Set(["id", "paper", "openalexId", "paperId"]);
 /** What a `kind` beside a record's ID says when it only names the sort of record, which the record's own line already does. */
 const REFERENCE_KINDS = new Set(["user", "organization"]);
 /** Characters of one argument's value. */
@@ -71,12 +72,11 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
       // One saved with filters alone has no query to show: it is named as such, never by its ID.
       return search ? currentSearch(search.data).query : null;
     }
-    // A paper by its OpenAlex ID is shown by its title when it's one the reader has saved. Only where the
-    // argument is a paper's ID: a name or a title that reads like one is shown as it was typed.
-    const work = PAPER_KEYS.has(key) ? workUrl(id) : null;
-    if (work) {
+    // A paper is shown by its title when it's one the reader has saved. Only where the argument names a
+    // paper: a name or a title that reads like one is shown as it was typed.
+    if (PAPER_KEYS.has(key) && toPaperKey(id)) {
       if (!workspaceId) return null;
-      return (await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", work)).first())?.title ?? null;
+      return (await findItem(ctx, workspaceId, id))?.title ?? null;
     }
     const threadId = ctx.db.normalizeId("assistantThreads", id);
     if (threadId) return (await opens(threadId)) ? ((await ctx.db.get("assistantThreads", threadId))?.title ?? null) : null;
@@ -153,7 +153,7 @@ export async function detailsOf(ctx: QueryCtx, reader: Doc<"users">, workspaceId
     const record = typeof value === "string" ? await named(value, path.at(-1) ?? "").catch(() => null) : null;
     const shown = record ?? String(value);
     // A saved paper is shown by its title, so that is what its line is called, not the ID the call gave.
-    const title = record !== null && typeof value === "string" && PAPER_KEYS.has(path.at(-1) ?? "") && workUrl(value) !== null;
+    const title = record !== null && typeof value === "string" && PAPER_KEYS.has(path.at(-1) ?? "") && toPaperKey(value) !== null;
     details.push({ name: title ? "title" : nameOf(path), value: shown.length > VALUE_MAX ? `${shown.slice(0, VALUE_MAX)}…` : shown, record: record !== null, within: path.slice(0, -1).join("."), key: path.at(-1) ?? "" });
   }
   // Which kind of thing an ID beside it names ("user", "organization") is said by the record's own line.

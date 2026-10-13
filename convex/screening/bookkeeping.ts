@@ -18,6 +18,8 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { upsertLibraryItem } from "../library/mutations";
+import { findItem } from "../library/find";
+import { paperKeyOf } from "../../lib/papers/paper-ref";
 
 import { addCollectionMembership, removeCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
@@ -119,13 +121,12 @@ async function countFinished(ctx: MutationCtx, job: Doc<"screeningJobs">, result
 
 /** Saves a qualified paper to the person's library and the job's collection; saving one already there changes nothing. */
 export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">, result: Doc<"screeningResults">) {
-  // A paper from the person's Zotero has no OpenAlex record to save it by: it stays in its screening.
-  if (result.openalexId.startsWith("zotero:")) return;
   const libraryItemId = await upsertLibraryItem(
     ctx,
     { userId: job.createdBy, workspaceId: job.workspaceId },
     {
-      openalexId: result.openalexId,
+      paper: paperKeyOf(result),
+      ...(result.crossRefs ? { crossRefs: result.crossRefs } : {}),
       title: result.title,
       authors: result.authors,
       authorsUnparsed: result.authorsUnparsed,
@@ -166,7 +167,7 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   const workspaceId = job.workspaceId;
   // A screening moved to another workspace (#654) leaves the collection it read alone.
   if ((await ctx.db.get("collections", collectionId))?.workspaceId !== workspaceId) return moved;
-  const item = await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", result.openalexId)).first();
+  const item = await findItem(ctx, workspaceId, paperKeyOf(result));
   if (!item) return moved;
   const membership = await ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collectionId).eq("libraryItemId", item._id)).unique();
   if (left && membership) {

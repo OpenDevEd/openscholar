@@ -13,11 +13,14 @@ import { readWork } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { trimPaperData, type WorkInput } from "../../lib/library/trim-paper-data";
 import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
-import { workUrl } from "../../lib/openalex/work-id";
+import { openalexAddress, openalexWorkOf, paperKeyOf } from "../../lib/papers/paper-ref";
 import { collectionHome, followed, shownOutside } from "./followed";
 import { editableCollection } from "./collectionMembership";
 import { checkSave, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
-import { canonical, findItem } from "./find";
+import { findItem, requirePaperKey } from "./find";
+
+/** The OpenAlex work's address an ID or key names, which this action reads; null for anything else. */
+const workOf = (id: string) => openalexAddress(openalexWorkOf(id));
 
 export const saveAction = defineUserAction({
   path: "library/papers:save",
@@ -34,15 +37,15 @@ export const saveAction = defineUserAction({
   undoable: true,
   changes: true,
   // A library may follow the collection, which shows the paper outside the account. What isn't a paper's ID asks nothing here, and is refused when it runs.
-  asksFirst: async (ctx, _actor, { id, collectionId }) => workUrl(id) !== null && collectionId != null && (await followed(ctx, collectionId)),
+  asksFirst: async (ctx, _actor, { id, collectionId }) => workOf(id) !== null && collectionId != null && (await followed(ctx, collectionId)),
   seenOutside: true,
   check: async (ctx, actor, { id, rating, collectionId }) => {
-    const openalexId = workUrl(id);
-    if (openalexId) await checkSave(ctx, actor, { openalexId, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }) });
+    const openalexId = workOf(id);
+    if (openalexId) await checkSave(ctx, actor, { paper: openalexId, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }) });
   },
   run: async (ctx, { userId, workspaceId, author }, { id, rating, collectionId }, call) => {
-    const openalexId = workUrl(id);
-    if (!openalexId) throw createError("VALIDATION_ERROR", "A paper is saved by its ID, such as W2741809807, as results give it.");
+    const openalexId = workOf(id);
+    if (!openalexId) throw createError("VALIDATION_ERROR", "A paper is saved by its OpenAlex ID, such as W2741809807, as results give it, or its key, such as openalex:W2741809807.");
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const read = await readWork<WorkInput & { abstract_inverted_index?: Record<string, number[]> | null }>(openalexId.split("/").at(-1)!, OPENALEX_WORK_SELECT_FIELDS.join(","), spender(ctx, person.clerkId));
@@ -69,7 +72,7 @@ export const collectAction = defineUserMutation({
   activity: ({ collectionId, inCollection }, { undo }) => (undo ? { kind: "collection", id: collectionId, happened: inCollection ? "added" : "removed", count: 1 } : null),
   activityIn: collectionHome,
   description:
-    "Puts a paper that's in the person's library into one of their collections, or takes it out, by the paper's ID alone, as results give it. `inCollection` is true to put it in and false to take it out. " +
+    "Puts a paper that's in the person's library into one of their collections, or takes it out, by the paper's ID alone, as results give it, or its key, as library/queries:papers gives it in `id`. `inCollection` is true to put it in and false to take it out. " +
     "It takes a paper already in the library: to save one and put it in a collection, call library/papers:save with `collectionId` instead. Taking it out keeps it in the library. " +
     "A change returns `undo`: the action to run and the arguments to run it with to put the collection back as it was.",
   args: { id: v.string(), collectionId: v.id("collections"), inCollection: v.boolean() },
@@ -92,8 +95,7 @@ export const collectAction = defineUserMutation({
           : "This paper isn't in that collection's library yet. Put it there with library/mutations:setPaperInCollection, giving the paper whole.",
       );
     }
-    // By the ID the paper is saved under: one saved before the library kept one form is under the ID it was given.
-    return await setPaperInCollectionAction.run(ctx, actor, { paper: { openalexId: item?.openalexId ?? canonical(id) }, collectionId, inCollection });
+    return await setPaperInCollectionAction.run(ctx, actor, { paper: { paper: item ? paperKeyOf(item) : requirePaperKey(id) }, collectionId, inCollection });
   },
 });
 export const collect = userMutation(collectAction);

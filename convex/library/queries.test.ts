@@ -685,12 +685,12 @@ describe("library counter", () => {
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
       rating: 3,
       title: "Paper 1",
     });
     await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W2",
+      paper: "https://openalex.org/W2",
       rating: 4,
       title: "Paper 2",
     });
@@ -705,13 +705,13 @@ describe("library counter", () => {
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
       rating: 3,
       title: "Paper 1",
     });
     // Re-rate same paper
     await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
       rating: 5,
       title: "Paper 1",
     });
@@ -726,18 +726,18 @@ describe("library counter", () => {
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
       rating: 3,
       title: "Paper 1",
     });
     await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W2",
+      paper: "https://openalex.org/W2",
       rating: 4,
       title: "Paper 2",
     });
 
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
     });
 
     const count = await asUser.query(api.library.queries.getLibraryCount, {});
@@ -750,13 +750,13 @@ describe("library counter", () => {
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
       rating: 3,
       title: "Paper 1",
     });
 
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      openalexId: "https://openalex.org/W999",
+      paper: "https://openalex.org/W999",
     });
 
     const count = await asUser.query(api.library.queries.getLibraryCount, {});
@@ -770,12 +770,12 @@ describe("library counter", () => {
 
     // Save and remove to get counter to 0
     await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
       rating: 3,
       title: "Paper 1",
     });
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
     });
 
     const count = await asUser.query(api.library.queries.getLibraryCount, {});
@@ -783,7 +783,7 @@ describe("library counter", () => {
 
     // Try removing a non-existent item -- counter should stay at 0
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      openalexId: "https://openalex.org/W999",
+      paper: "https://openalex.org/W999",
     });
 
     const countAfter = await asUser.query(api.library.queries.getLibraryCount, {});
@@ -797,23 +797,23 @@ describe("library counter", () => {
 
     // Save A
     await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/WA",
+      paper: "https://openalex.org/W101",
       rating: 3,
       title: "Paper A",
     });
     // Save B
     await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/WB",
+      paper: "https://openalex.org/W102",
       rating: 4,
       title: "Paper B",
     });
     // Remove A
     await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      openalexId: "https://openalex.org/WA",
+      paper: "https://openalex.org/W101",
     });
     // Save C
     await asUser.mutation(api.library.mutations.saveToLibrary, {
-      openalexId: "https://openalex.org/WC",
+      paper: "https://openalex.org/W103",
       rating: 5,
       title: "Paper C",
     });
@@ -837,7 +837,7 @@ describe("removeFromLibrary", () => {
     });
 
     const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
     });
 
     // What Undo needs is kept on the server, under the ID the removal returns.
@@ -857,7 +857,7 @@ describe("removeFromLibrary", () => {
     });
 
     const removed = await asUser1.mutation(api.library.mutations.removeFromLibrary, {
-      openalexId: "https://openalex.org/W1",
+      paper: "https://openalex.org/W1",
     });
 
     expect(removed.undo).toBeUndefined();
@@ -867,7 +867,7 @@ describe("removeFromLibrary", () => {
 });
 
 describe("saving without a rating", () => {
-  const paper = { openalexId: "https://openalex.org/W1", title: "Paper 1" };
+  const paper = { paper: "https://openalex.org/W1", title: "Paper 1" };
 
   it("saves an unrated paper and keeps a saved rating when saved again without one", async () => {
     const t = convexTest(schema);
@@ -884,13 +884,26 @@ describe("saving without a rating", () => {
     expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
   });
 
+  it("saves a paper from any source but an upload, keeping what finds it elsewhere when it is saved again without it", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const fromZotero = { paper: "zotero:group:42:ABCD1234", title: "From Zotero" };
+
+    const { id } = await asUser.mutation(api.library.mutations.saveToLibrary, { ...fromZotero, crossRefs: { doi: "10.1000/Example" } });
+    await asUser.mutation(api.library.mutations.saveToLibrary, fromZotero);
+    expect(await t.run(async (ctx) => await ctx.db.get("libraryItems", id))).toMatchObject({ paperKey: "zotero:group:42:ABCD1234", crossRefs: { doi: "10.1000/example" } });
+    // An uploaded PDF's file stays with its job.
+    await expect(asUser.mutation(api.library.mutations.saveToLibrary, { paper: "upload:kg2storage", title: "Uploaded" })).rejects.toThrow(/can't be saved to a library/);
+  });
+
   it("clears a rating without removing the paper", async () => {
     const t = convexTest(schema);
     await seedUser(t, "clerk_user1", "user1@test.com");
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     const { id: itemId } = await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 2 });
-    await asUser.mutation(api.library.mutations.setLibraryRating, { openalexId: paper.openalexId, rating: null });
+    await asUser.mutation(api.library.mutations.setLibraryRating, { paper: paper.paper, rating: null });
 
     const item = await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId));
     expect(item).not.toBeNull();
@@ -904,7 +917,7 @@ describe("saving without a rating", () => {
     const asUser = t.withIdentity({ subject: "clerk_user1" });
 
     await asUser.mutation(api.library.mutations.saveToLibrary, paper);
-    await asUser.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W2", title: "Paper 2", rating: 1 });
+    await asUser.mutation(api.library.mutations.saveToLibrary, { paper: "https://openalex.org/W2", title: "Paper 2", rating: 1 });
 
     for (const sortBy of ["savedAt", "rating"] as const) {
       const result = await asUser.query(api.library.queries.browseLibrary, {
@@ -927,7 +940,7 @@ describe("saving without a rating", () => {
     await asUser.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: itemId });
     const savedAt = (await t.run(async (ctx) => await ctx.db.get("libraryItems", itemId)))!.savedAt;
 
-    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
+    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { paper: paper.paper });
     expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(0);
 
     const { id: restoredId } = await asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
@@ -935,8 +948,8 @@ describe("saving without a rating", () => {
     await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args)).rejects.toThrow(/no longer be undone/);
 
     const restored = await t.run(async (ctx) => await ctx.db.get("libraryItems", restoredId));
-    expect(restored).toMatchObject({ openalexId: paper.openalexId, rating: 5, savedAt });
-    const holding = await asUser.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: 10 }, openalexId: paper.openalexId });
+    expect(restored).toMatchObject({ openalexId: paper.paper, rating: 5, savedAt });
+    const holding = await asUser.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: 10 }, paper: paper.paper });
     expect(holding.page.filter((c) => c.containsItem).map((c) => c._id)).toEqual([collectionId]);
     const collection = await t.run(async (ctx) => await ctx.db.get("collections", collectionId));
     expect(collection?.itemCount).toBe(1);
@@ -950,7 +963,7 @@ describe("saving without a rating", () => {
       await seedUser(t, "clerk_user1", "user1@test.com");
       const asUser = t.withIdentity({ subject: "clerk_user1" });
       await asUser.mutation(api.library.mutations.saveToLibrary, paper);
-      const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
+      const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { paper: paper.paper });
       await seedUser(t, "clerk_user2", "user2@test.com");
       await expect(t.withIdentity({ subject: "clerk_user2" }).mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args)).rejects.toThrow(/no longer be undone/);
 
@@ -983,7 +996,7 @@ describe("saving without a rating", () => {
       live.push(collectionId);
     }
 
-    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
+    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { paper: paper.paper });
     const { id: restoredId } = await asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
     await t.finishAllScheduledFunctions(() => {});
 
@@ -1016,19 +1029,19 @@ describe("saving without a rating", () => {
     const asUser = t.withIdentity({ subject: "clerk_user1" });
     const ratings = async () =>
       await t.run(async (ctx) => {
-        const own = (await personalRatingRow(ctx, user!._id, paper.openalexId))?.rating ?? null;
-        const saved = (await ctx.db.query("libraryItems").collect()).find((item) => item.openalexId === paper.openalexId);
+        const own = (await personalRatingRow(ctx, user!._id, paper.paper))?.rating ?? null;
+        const saved = (await ctx.db.query("libraryItems").collect()).find((item) => item.openalexId === paper.paper);
         return { own, library: saved ? (saved.rating ?? null) : "not saved" };
       });
 
     await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 3 });
     expect(await ratings()).toEqual({ own: 3, library: 3 });
 
-    await asUser.mutation(api.library.mutations.setLibraryRating, { openalexId: paper.openalexId, rating: null });
+    await asUser.mutation(api.library.mutations.setLibraryRating, { paper: paper.paper, rating: null });
     expect(await ratings()).toEqual({ own: null, library: null });
 
     await asUser.mutation(api.library.mutations.saveToLibrary, { ...paper, rating: 5 });
-    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper.openalexId });
+    const removed = await asUser.mutation(api.library.mutations.removeFromLibrary, { paper: paper.paper });
     expect(await ratings()).toEqual({ own: 5, library: "not saved" });
 
     await asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
@@ -1044,14 +1057,14 @@ describe("saving without a rating", () => {
     await asUser.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: true });
     await asUser.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: true });
 
-    const saved = await asUser.query(api.library.queries.savedPaper, { openalexId: paper.openalexId });
+    const saved = await asUser.query(api.library.queries.savedPaper, { paper: paper.paper });
     expect(saved?.inCollection).toBe(true);
     expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
     expect((await t.run(async (ctx) => await ctx.db.get("collections", collectionId)))?.itemCount).toBe(1);
 
     await asUser.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection: false });
 
-    expect(await asUser.query(api.library.queries.savedPaper, { openalexId: paper.openalexId })).toEqual({
+    expect(await asUser.query(api.library.queries.savedPaper, { paper: paper.paper })).toEqual({
       libraryItemId: saved!.libraryItemId,
       inCollection: false,
     });
@@ -1075,7 +1088,7 @@ describe("saving without a rating", () => {
 });
 
 describe("undoing a library change (#342)", () => {
-  const paper = { openalexId: "https://openalex.org/W1", title: "Paper 1" };
+  const paper = { paper: "https://openalex.org/W1", title: "Paper 1" };
   const { saveToLibrary, setLibraryRating, removeFromLibrary, restoreLibraryItem, setPaperInCollection } = api.library.mutations;
   const [REMOVE, RATE, IN_COLLECTION, CHANGE] = ["library/mutations:removeFromLibrary", "library/mutations:setLibraryRating", "library/mutations:setPaperInCollection", "research/records:change"] as const;
   /** The undo, once it's checked to go through the action expected. */
@@ -1095,12 +1108,12 @@ describe("undoing a library change (#342)", () => {
       return (signedIn.mutation as (...args: unknown[]) => unknown)(...args);
     }) as unknown as typeof signedIn.mutation;
     const onCards = () =>
-      t.run(async (ctx) => (await personalRatingRow(ctx, user!._id, paper.openalexId))?.rating ?? null);
+      t.run(async (ctx) => (await personalRatingRow(ctx, user!._id, paper.paper))?.rating ?? null);
     return {
       t, mutation, onCards,
       count: () => signedIn.query(api.library.queries.getLibraryCount, {}),
       rating: async () => (await t.run((ctx) => ctx.db.query("libraryItems").first()))?.rating,
-      rateOnCards: (rating: number | null) => mutation(api.research.records.change, { accountId: "clerk_user1", requestId: `rate-${Date.now()}`, command: { kind: "rating", paperId: paper.openalexId, rating } }),
+      rateOnCards: (rating: number | null) => mutation(api.research.records.change, { accountId: "clerk_user1", requestId: `rate-${Date.now()}`, command: { kind: "rating", paperId: paper.paper, rating } }),
     };
   }
 
@@ -1117,11 +1130,11 @@ describe("undoing a library change (#342)", () => {
     // Saved afresh, it isn't the paper that save added.
     await mutation(saveToLibrary, paper);
     await expect(mutation(removeFromLibrary, through(saved.undo, REMOVE).args)).rejects.toThrow(/changed since/);
-    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+    await mutation(removeFromLibrary, { paper: paper.paper });
 
     // Rated since its save: undoing the save leaves it. Once that rating is undone, the save can be undone.
     const second = await mutation(saveToLibrary, paper);
-    const rated = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 3 });
+    const rated = await mutation(setLibraryRating, { paper: paper.paper, rating: 3 });
     await expect(mutation(removeFromLibrary, through(second.undo, REMOVE).args)).rejects.toThrow(/changed since/);
     await mutation(setLibraryRating, through(rated.undo, RATE).args);
     // Rated on a search card alone since: removing the paper would clear that rating, so it stays too.
@@ -1144,7 +1157,7 @@ describe("undoing a library change (#342)", () => {
     expect([await count(), await items()]).toEqual([1, 1]);
 
     // Removed and put back, it's the same save in the same place, so both steps can still be undone, newest first.
-    const removed = await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+    const removed = await mutation(removeFromLibrary, { paper: paper.paper });
     await mutation(restoreLibraryItem, removed.undo!.args);
     expect([await count(), await items()]).toEqual([1, 1]);
     await mutation(setPaperInCollection, added.undo!.args);
@@ -1156,13 +1169,13 @@ describe("undoing a library change (#342)", () => {
     const { mutation, rating, onCards, rateOnCards } = await library();
     await mutation(saveToLibrary, paper);
     const rated = await mutation(saveToLibrary, { ...paper, rating: 4 });
-    expect(rated.undo).toMatchObject({ path: RATE, args: { openalexId: paper.openalexId, rating: null, expect: { rating: 4 } } });
-    const rerated = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 2 });
+    expect(rated.undo).toMatchObject({ path: RATE, args: { paper: "openalex:W1", rating: null, expect: { rating: 4 } } });
+    const rerated = await mutation(setLibraryRating, { paper: paper.paper, rating: 2 });
     await expect(mutation(setLibraryRating, through(rated.undo, RATE).args)).rejects.toThrow(/changed since/);
     await mutation(setLibraryRating, through(rerated.undo, RATE).args);
     expect([await rating(), await onCards()]).toEqual([4, 4]);
     // Setting what it already is, and saving again without a rating, change nothing: no undo.
-    expect((await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 4 })).undo).toBeUndefined();
+    expect((await mutation(setLibraryRating, { paper: paper.paper, rating: 4 })).undo).toBeUndefined();
     expect((await mutation(saveToLibrary, paper)).undo).toBeUndefined();
 
     // Rated on a search card since: it's the same rating, which the library follows, so the undo is refused.
@@ -1171,11 +1184,11 @@ describe("undoing a library change (#342)", () => {
     await expect(mutation(setLibraryRating, through(rated.undo, RATE).args)).rejects.toThrow(/changed since/);
 
     // A paper removed and saved afresh with the same rating isn't the paper the undo was for.
-    const first = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: 3 });
-    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+    const first = await mutation(setLibraryRating, { paper: paper.paper, rating: 3 });
+    await mutation(removeFromLibrary, { paper: paper.paper });
     await mutation(saveToLibrary, { ...paper, rating: 3 });
     await expect(mutation(setLibraryRating, through(first.undo, RATE).args)).rejects.toThrow(/changed since/);
-    await expect(mutation(setLibraryRating, { openalexId: "https://openalex.org/W9", rating: 1 })).rejects.toThrow(/isn't in the library/);
+    await expect(mutation(setLibraryRating, { paper: "https://openalex.org/W9", rating: 1 })).rejects.toThrow(/isn't in the library/);
   });
 
   it("shows the rating a paper had on search cards once it's saved, and an undone save leaves the person's rating as it was", async () => {
@@ -1193,7 +1206,7 @@ describe("undoing a library change (#342)", () => {
     expect(await onCards()).toBe(4);
 
     // Not in the library: clearing its rating clears the person's, and the undo puts it back.
-    const cleared = await mutation(setLibraryRating, { openalexId: paper.openalexId, rating: null });
+    const cleared = await mutation(setLibraryRating, { paper: paper.paper, rating: null });
     expect(await onCards()).toBeNull();
     await mutation(api.research.records.change, { accountId: "clerk_user1", requestId: "undo-clear", ...through(cleared.undo, CHANGE).args });
     expect(await onCards()).toBe(4);
@@ -1205,7 +1218,7 @@ describe("undoing a library change (#342)", () => {
     const items = async () => (await t.run((ctx) => ctx.db.get("collections", collectionId)))?.itemCount;
 
     const added = await mutation(setPaperInCollection, { paper, collectionId, inCollection: true });
-    expect(added.undo).toMatchObject({ path: IN_COLLECTION, args: { paper: { openalexId: paper.openalexId }, collectionId, inCollection: false } });
+    expect(added.undo).toMatchObject({ path: IN_COLLECTION, args: { paper: { paper: "openalex:W1" }, collectionId, inCollection: false } });
     // Already there: no undo, so undoing never takes out a paper this call didn't put in.
     expect((await mutation(setPaperInCollection, { paper, collectionId, inCollection: true })).undo).toBeUndefined();
     const takenOut = await mutation(setPaperInCollection, added.undo!.args);
@@ -1222,7 +1235,7 @@ describe("undoing a library change (#342)", () => {
     expect(await items()).toBe(1);
 
     const out = await mutation(setPaperInCollection, { paper, collectionId, inCollection: false });
-    await mutation(removeFromLibrary, { openalexId: paper.openalexId });
+    await mutation(removeFromLibrary, { paper: paper.paper });
     await expect(mutation(setPaperInCollection, out.undo!.args)).rejects.toThrow(/no longer in the library/);
     // Saved afresh, it isn't the paper that was taken out.
     await mutation(saveToLibrary, paper);
@@ -1266,7 +1279,7 @@ describe("the library as the assistant reads it", () => {
     expect(all.total).toBe(3);
     expect(all.next).toBeUndefined();
     expect(all.papers.map((paper) => paper.title)).toEqual(["School feeding", "Phones and literacy", "Tutoring at scale"]);
-    expect(all.papers[2]).toEqual({ libraryItemId: tutoring!._id, id: "https://openalex.org/W1", title: "Tutoring at scale", authors: "Ada Okafor", year: 2020, journal: "Journal of Trials", rating: 5, inCollection: true, savedOn: "2026-09-01" });
+    expect(all.papers[2]).toEqual({ libraryItemId: tutoring!._id, id: "openalex:W1", title: "Tutoring at scale", authors: "Ada Okafor", year: 2020, journal: "Journal of Trials", rating: 5, inCollection: true, savedOn: "2026-09-01" });
     // Which papers are in no collection shows on the list itself.
     expect(all.papers.map((paper) => paper.inCollection)).toEqual([false, true, true]);
     // A model that fills in every argument sends null or false for what it doesn't mean: that reads as left out.

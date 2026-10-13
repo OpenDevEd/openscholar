@@ -13,6 +13,7 @@ import { createError } from "../lib/errors";
 import { planLimit } from "../billing/accounts";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery, workspaceMutation } from "../lib/userActions";
 import { addCollectionMembership, editableCollection, removeCollectionMembership } from "./collectionMembership";
+import { findItem } from "./find";
 import { asRaters, collectionRatingRow, collectionRatingsOf, everyRater, organizationOfCollection, placeOf, purgeCollectionRatings, raterValidator, ratingOrNone, requireRating, setCollectionRating as setRating, shownRater } from "../ratings";
 import { collectionHome, followed, shownOutside } from "./followed";
 import { copyFacetBatch } from "./facets";
@@ -21,6 +22,7 @@ import { countOf } from "../lib/listCounts";
 import { guestRole, itemGuestsOf } from "../sharing/items";
 import { guestRoleValidator, sharedFromValidator } from "../sharing/validators";
 import { workspaceFrom } from "../workspaces/personal";
+import { paperKeyOf } from "../../lib/papers/paper-ref";
 
 /** Most collections one page holds. */
 const COLLECTIONS_PAGE_MAX = 50;
@@ -190,7 +192,7 @@ export const setCollectionRatingAction = defineUserMutation({
     const item = await ctx.db.get("libraryItems", libraryItemId);
     const place = item && (await placeOf(ctx, collectionId, libraryItemId));
     if (!item || !place) throw createError("NOT_FOUND", "This paper isn't in the collection.");
-    const was = (await collectionRatingRow(ctx, userId, collectionId, item.openalexId))?.rating ?? null;
+    const was = (await collectionRatingRow(ctx, userId, collectionId, paperKeyOf(item)))?.rating ?? null;
     if (expect !== undefined && was !== expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
     if (was === rating) return {};
     await setRating(ctx, userId, place, item, rating);
@@ -217,7 +219,7 @@ export const ratersAction = defineUserQuery({
       const workspace = await ctx.db.get("workspaces", workspaceId);
       // Every member's rating comes in the first page, read from the members and not from everyone who rated the paper: asked for past it, there is no more.
       if (workspace?.kind !== "organization" || paginationOpts.cursor !== null) return { page: [], isDone: true, continueCursor: "" };
-      return { page: (await everyRater(ctx, workspace.organizationId, item.openalexId, userId)).map(shownRater), isDone: true, continueCursor: "" };
+      return { page: (await everyRater(ctx, workspace.organizationId, paperKeyOf(item), userId)).map(shownRater), isDone: true, continueCursor: "" };
     }
     const collection = await ctx.db.get("collections", collectionId);
     // Its workspace's members read them, and so does a guest of it, from their own workspace.
@@ -227,7 +229,7 @@ export const ratersAction = defineUserQuery({
     if (!item || item.workspaceId !== collection.workspaceId || !(await placeOf(ctx, collectionId, libraryItemId))) throw createError("NOT_FOUND", "This paper isn't in the collection.");
     const organizationId = await organizationOfCollection(ctx, collectionId);
     if (!organizationId) return { page: [], isDone: true, continueCursor: "" };
-    const read = await collectionRatingsOf(ctx, collectionId, item.openalexId).paginate(paginationOpts);
+    const read = await collectionRatingsOf(ctx, collectionId, paperKeyOf(item)).paginate(paginationOpts);
     return { ...read, page: (await asRaters(ctx, organizationId, read.page, userId)).map(shownRater) };
   },
 });
@@ -407,17 +409,17 @@ const collectionRow = v.object({
 
 /**
  * A page of the person's collections by name, or those whose name matches `search`, best
- * match first. Given a paper by its OpenAlex ID, each says whether the paper is in it; the
- * ID stays the same when the paper is first saved, so the list keeps its place.
+ * match first. Given a paper by its key, each says whether the paper is in it; the key stays
+ * the same when the paper is first saved, so the list keeps its place.
  */
 export const listCollectionsAction = defineUserQuery({
   path: "library/collections:listCollections",
   description:
-    `A page of the person's collections by name, each with how many papers it holds, at most ${COLLECTIONS_PAGE_MAX} a page. With \`search\`, those whose name matches, best match first. With a paper's OpenAlex ID, each also says whether that paper is in it. In an organization each names who made it, and \`by\` keeps only that member's (their \`userId\` from workspaces/makers:counts).`,
+    `A page of the person's collections by name, each with how many papers it holds, at most ${COLLECTIONS_PAGE_MAX} a page. With \`search\`, those whose name matches, best match first. With \`paper\`, a paper's key or OpenAlex ID, each also says whether that paper is in it. In an organization each names who made it, and \`by\` keeps only that member's (their \`userId\` from workspaces/makers:counts).`,
   args: {
     paginationOpts: paginationOptsValidator,
     search: v.optional(v.string()),
-    openalexId: v.optional(v.string()),
+    paper: v.optional(v.string()),
     by: v.optional(v.id("users")),
   },
   returns: paginationResultValidator(collectionRow),
@@ -432,10 +434,7 @@ export const listCollectionsAction = defineUserQuery({
         : ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId))
     ).paginate(paginationOpts);
     const makerOf = await makersIn(ctx, workspaceId, userId);
-    const { openalexId } = args;
-    const item = openalexId
-      ? await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", openalexId)).unique()
-      : null;
+    const item = args.paper ? await findItem(ctx, workspaceId, args.paper) : null;
     const libraryItemId = item?._id;
     return {
       ...page,

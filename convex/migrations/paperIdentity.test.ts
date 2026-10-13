@@ -6,7 +6,7 @@ import schema from "../schema";
 import { insertJob } from "../screening/createJob.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
 
-it("names every stored paper by its source, and leaves what it can't place for the report", async () => {
+it("names every stored paper by its source, moves ratings and kept undos to it, finds duplicates, and leaves what it can't place for the report", async () => {
   vi.useFakeTimers();
   try {
     const t = convexTest(schema);
@@ -35,6 +35,17 @@ it("names every stored paper by its source, and leaves what it can't place for t
       await paper("upload:kg2storage");
       // An ID from before any source kept one: nothing names its paper.
       await paper("history:lost");
+
+      await ctx.db.insert("ratings", { userId: ada, paperId: "https://openalex.org/W1", rating: 4 });
+      // Rated again under its key since: that is the person's rating now.
+      await ctx.db.insert("ratings", { userId: ada, paperId: "https://openalex.org/W3", rating: 1 });
+      await ctx.db.insert("ratings", { userId: ada, paperId: "openalex:W3", rating: 5 });
+
+      const threadId = await ctx.db.insert("assistantThreads", { ...where, title: "Chat", agentThreadId: "agent", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
+      const step = { threadId, workspaceId: where.workspaceId, order: 0, userId: ada, toolCallId: "call", input: "{}", status: "done" as const, startedAt: 1 };
+      const stepId = await ctx.db.insert("assistantSteps", { ...step, path: "library/mutations:setPaperInCollection", undo: { path: "library/mutations:setPaperInCollection", args: JSON.stringify({ paper: { openalexId: "https://openalex.org/W1", savedAt: 1 }, collectionId: "c", inCollection: false }) } });
+      await ctx.db.insert("assistantStepUndos", { threadId, stepId, path: "library/mutations:removeFromLibrary", args: JSON.stringify({ openalexId: "https://openalex.org/W1", expect: { savedAt: 1, rating: null } }) });
+      await ctx.db.insert("assistantStepUndos", { threadId, stepId, path: "screening/papers:answer", args: JSON.stringify({ openalexId: "W1" }) });
     });
 
     const before = await t.action(internal.migrations.paperIdentity.verify, {});
@@ -49,6 +60,9 @@ it("names every stored paper by its source, and leaves what it can't place for t
       removed: (await ctx.db.query("libraryRemovals").collect()).map(({ item }) => item.paperKey),
       screened: (await ctx.db.query("screeningResults").collect()).map(({ paperKey, ref }) => ({ paperKey, ref })),
       extracted: (await ctx.db.query("extractionPapers").collect()).map(({ openalexId, paperKey }) => ({ openalexId, paperKey })),
+      ratings: (await ctx.db.query("ratings").collect()).map(({ paperId, rating }) => ({ paperId, rating })),
+      undo: JSON.parse((await ctx.db.query("assistantSteps").first())!.undo!.args),
+      undos: (await ctx.db.query("assistantStepUndos").collect()).map(({ args }) => JSON.parse(args)),
     }));
     expect(rows.saved).toEqual([
       { openalexId: "https://openalex.org/W1", paperKey: "openalex:W1", ref: { source: "openalex", work: "W1" }, crossRefs: { openalexId: "W1", doi: "10.1/ab" } },
@@ -63,11 +77,19 @@ it("names every stored paper by its source, and leaves what it can't place for t
       { openalexId: "upload:kg2storage", paperKey: "upload:kg2storage" },
       { openalexId: "history:lost", paperKey: undefined },
     ]);
+    expect(rows.ratings).toEqual([{ paperId: "openalex:W1", rating: 4 }, { paperId: "openalex:W3", rating: 5 }]);
+    expect(rows.undo.paper).toEqual({ paper: "https://openalex.org/W1", savedAt: 1 });
+    // What another action takes stays as it is.
+    expect(rows.undos).toEqual([{ paper: "https://openalex.org/W1", expect: { savedAt: 1, rating: null } }, { openalexId: "W1" }]);
 
     const after = await t.action(internal.migrations.paperIdentity.verify, {});
     expect(after.libraryItems).toEqual({ left: 0, unplaced: 0, sample: [] });
     expect(after.screeningResults.left).toBe(0);
     expect(after.extractionPapers).toEqual({ left: 1, unplaced: 1, sample: ["history:lost"] });
+    expect(after.ratings.left).toBe(0);
+    // W1 is one paper saved twice in one workspace: the narrowing step has to merge it first.
+    expect(after.duplicates.count).toBe(1);
+    expect(after.duplicates.sample[0]).toMatch(/\|openalex:W1$/);
   } finally {
     vi.useRealTimers();
   }

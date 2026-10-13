@@ -19,7 +19,7 @@ const scoringConfig = {
   starThresholds: [{ minScore: 1, stars: 1 }, { minScore: 3, stars: 5 }],
   minimumScore: 2,
 };
-const paper = (i: number) => ({ openalexId: `https://openalex.org/W${i}`, title: `Paper ${i} on reading`, authors: [i === 3 ? "Piper, B." : "Author, A."], publicationYear: 2024, venue: "A journal", citedByCount: 10 * i });
+const paper = (i: number) => ({ paper: `https://openalex.org/W${i}`, title: `Paper ${i} on reading`, authors: [i === 3 ? "Piper, B." : "Author, A."], publicationYear: 2024, venue: "A journal", citedByCount: 10 * i });
 /** What the model answers for each paper; null answers nothing, as a paper it couldn't read. */
 const ANSWERS: Array<Record<string, boolean | null> | null> = [
   { "Randomized?": true, "Primary schools?": true }, // W1: 3 points, included
@@ -156,7 +156,7 @@ describe("a screening job's papers", () => {
     expect((await list("failed")).map((row) => row.title)).toEqual(["Paper 4 on reading"]);
     const [first] = await list("included");
     expect(first).toMatchObject({
-      openalexId: "https://openalex.org/W1", venue: "A journal", citedByCount: 10, outcome: "included", score: 3, stars: 5,
+      paper: "openalex:W1", venue: "A journal", citedByCount: 10, outcome: "included", score: 3, stars: 5,
       answers: [{ key: "q1", answer: true, changed: false, confidence: 0.9 }, { key: "q2", answer: true, changed: false, confidence: 0.7 }],
     });
   });
@@ -164,10 +164,10 @@ describe("a screening job's papers", () => {
   it("pages an outcome by cursor in the job's order, finds papers by words of their title or authors, and shows no one else's", async () => {
     const { t, as, jobId, list } = await screened();
     const first = await as.query(api.screening.papers.list, { jobId, outcome: "included", paginationOpts: { cursor: null, numItems: 1 } });
-    expect(first.page.map((row) => row.openalexId)).toEqual(["https://openalex.org/W1"]);
+    expect(first.page.map((row) => row.paper)).toEqual(["openalex:W1"]);
     expect(first.isDone).toBe(false);
     const second = await as.query(api.screening.papers.list, { jobId, outcome: "included", paginationOpts: { cursor: first.continueCursor, numItems: 1 } });
-    expect(second.page.map((row) => row.openalexId)).toEqual(["https://openalex.org/W5"]);
+    expect(second.page.map((row) => row.paper)).toEqual(["openalex:W5"]);
 
     expect((await list("excluded", { text: "PIPER" })).map((row) => row.title)).toEqual(["Paper 3 on reading"]);
     // Matched by words, best first: every paper with one of them.
@@ -195,7 +195,7 @@ describe("a screening job's papers", () => {
     // W3 was excluded: answering that it's randomized takes it to 3 points.
     expect(await answer("W3", "q1", true)).toMatchObject({ outcome: "included" });
     expect(await job()).toMatchObject(W3_INCLUDED);
-    const moved = (await list("included")).find((row) => row.openalexId === "https://openalex.org/W3");
+    const moved = (await list("included")).find((row) => row.paper === "openalex:W3");
     expect(moved).toMatchObject({ score: 3, stars: 5, answers: [{ key: "q1", answer: true, changed: true, confidence: 0.9 }, { key: "q2", answer: true, changed: false }] });
     expect(await list("excluded")).toEqual([]);
     expect(await saved()).toBe(1);
@@ -205,7 +205,7 @@ describe("a screening job's papers", () => {
     expect((await list("excluded"))[0]).toMatchObject({ score: 1, answers: [{ key: "q1", answer: false, changed: false }, { key: "q2", answer: true, changed: false }] });
 
     // Removed from the library since: becoming included again saves it again.
-    await as.mutation(api.library.mutations.removeFromLibrary, { openalexId: "https://openalex.org/W3" });
+    await as.mutation(api.library.mutations.removeFromLibrary, { paper: "https://openalex.org/W3" });
     expect(await saved()).toBe(0);
     expect(await answer("W3", "q1", true)).toMatchObject({ outcome: "included" });
     expect(await saved()).toBe(1);
@@ -296,7 +296,7 @@ describe("a screening job's papers", () => {
   it("counts a paper once when its answer changes before the worker reaches it", async () => {
     const { job, list, answer, saved, settle } = await screened({ bookkept: false });
     expect(await answer("W3", "q1", true)).toMatchObject({ outcome: "included" });
-    expect((await list("included")).map((row) => row.openalexId)).toContain("https://openalex.org/W3");
+    expect((await list("included")).map((row) => row.paper)).toContain("openalex:W3");
 
     await settle();
     expect(await job()).toMatchObject(W3_INCLUDED);
@@ -319,7 +319,7 @@ describe("a screening job's papers", () => {
 
     await settle();
     expect(await job()).toMatchObject(W3_INCLUDED);
-    expect((await list("included")).find((row) => row.openalexId === "https://openalex.org/W3")).toMatchObject({ score: 3, stars: 5 });
+    expect((await list("included")).find((row) => row.paper === "openalex:W3")).toMatchObject({ score: 3, stars: 5 });
     expect(await answer("W3", "q1", "model")).toMatchObject({ outcome: "excluded" });
     expect(await job()).toMatchObject(COUNTED);
   });
@@ -333,7 +333,7 @@ describe("a screening job's papers", () => {
 
     // As the search's page would: a person answers in the screening the job shares.
     await t.run((ctx) => answerPaper(ctx, screeningId, W3, [{ question: "Randomized?", response: true }], "person", 5));
-    expect((await list("excluded"))[0]).toMatchObject({ openalexId: W3, score: 1, answers: asScored });
+    expect((await list("excluded"))[0]).toMatchObject({ paper: "openalex:W3", score: 1, answers: asScored });
     expect(await job()).toMatchObject(COUNTED);
 
     // The page clears the paper's answers. The job still has its own, takes a change, and
@@ -368,7 +368,7 @@ describe("a screening job's papers", () => {
     vi.useRealTimers();
     expect(await t.action(internal.migrations.screeningOutcomes.verify, {})).toBe(0);
     expect(await job()).toMatchObject(W3_INCLUDED);
-    expect((await list("included")).map((row) => row.openalexId)).toEqual(["https://openalex.org/W1", "https://openalex.org/W3", "https://openalex.org/W5"]);
+    expect((await list("included")).map((row) => row.paper)).toEqual(["openalex:W1", "openalex:W3", "openalex:W5"]);
     await answer("W3", "q1", "model");
     expect(await job()).toMatchObject(COUNTED);
   });

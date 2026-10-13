@@ -211,7 +211,7 @@ describe("listScreeningResults", () => {
 
     // Results
     expect(result!.results).toHaveLength(2);
-    const fullResult = result!.results.find((r) => r.openalexId === "https://openalex.org/W100");
+    const fullResult = result!.results.find((r) => r.paper === "openalex:W100");
     expect(fullResult).toBeDefined();
     expect(fullResult!.title).toBe("Full Paper");
     expect(fullResult!.status).toBe("completed");
@@ -246,7 +246,7 @@ describe("listScreeningResults", () => {
     expect(result!.results).toHaveLength(1);
     const failedResult = result!.results[0];
     expect(failedResult.status).toBe("failed");
-    expect(failedResult.openalexId).toBe("https://openalex.org/W999");
+    expect(failedResult.paper).toBe("openalex:W999");
     expect(failedResult.answers).toBeUndefined();
     expect(failedResult.score).toBeUndefined();
     expect(failedResult.stars).toBeUndefined();

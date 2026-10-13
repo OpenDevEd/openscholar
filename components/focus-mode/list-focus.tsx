@@ -6,11 +6,14 @@ import { downloadLibraryEssentialItem, downloadLibraryItem } from "@/lib/library
 import { useRatedPapers } from "@/lib/research/reads";
 import { useUIStore } from "@/lib/store";
 import type { PaperResult } from "@/lib/types";
-import { workUrl } from "@/lib/openalex/work-id";
+import { paperIdOf } from "@/lib/papers/paper-ref";
 
 /** A paper as a job keeps it: what it stored when it took the paper on, whether or not OpenAlex has a record of it. */
 export type StoredPaper = {
-  openalexId: string;
+  /** The paper's key (lib/papers/paper-ref.ts). */
+  paper: string;
+  /** An uploaded PDF's address, which opens it. */
+  fileUrl?: string;
   title: string;
   abstract?: string;
   doi?: string;
@@ -34,8 +37,8 @@ function storedPaperResult(paper: StoredPaper): PaperResult {
     ...(paper.oaUrl ? { oa_url: paper.oaUrl } : {}),
   };
   return {
-    // The canonical OpenAlex ID where it has one, so rating, saving and its OpenAlex page all key on it; a Zotero paper keeps its own.
-    id: workUrl(paper.openalexId) ?? paper.openalexId,
+    // An OpenAlex paper's address, so rating, saving and its OpenAlex page all key on it; a paper from elsewhere goes by its key.
+    id: paperIdOf(paper.paper),
     title: paper.title,
     abstract: paper.abstract,
     doi: paper.doi,
@@ -45,8 +48,8 @@ function storedPaperResult(paper: StoredPaper): PaperResult {
     authorships: paper.authors?.map((name) => ({ author: { id: "", display_name: name } })),
     authors_unparsed: paper.authorsUnparsed,
     primary_location:
-      paper.venue || paper.pdfUrl
-        ? { ...(paper.venue ? { source: { id: "", display_name: paper.venue } } : {}), ...(paper.pdfUrl ? { pdf_url: paper.pdfUrl } : {}) }
+      paper.venue || paper.pdfUrl || paper.fileUrl
+        ? { ...(paper.venue ? { source: { id: "", display_name: paper.venue } } : {}), ...(paper.pdfUrl || paper.fileUrl ? { pdf_url: paper.pdfUrl ?? paper.fileUrl } : {}) }
         : undefined,
     open_access: Object.keys(access).length ? access : undefined,
   };

@@ -1,4 +1,5 @@
 import type { PaperWithResults, Question } from './filtering';
+import { openalexAddress, openalexWorkOfRow, paperKeyOf } from "../papers/paper-ref";
 
 export class ExtractionExportError extends Error {
   constructor(readonly code: "exportChanged" | "excelCellLimit" | "excelRowLimit" | "searchTooBroad") { super(code); }
@@ -93,7 +94,8 @@ function exportRecord(papers: PaperWithResults[], questions: Question[], options
     questions: questions.map(q => ({ key: q.key, question: q.question, type: q.type, description: q.description ?? null })),
     papers: papers.map(paper => ({
       id: paper._id,
-      openalexId: paper.openalexId,
+      paper: paperKeyOf(paper),
+      openalexId: openalexAddress(openalexWorkOfRow(paper)),
       title: paper.title,
       doi: paper.doi ?? null,
       year: paper.publicationYear ?? null,
@@ -156,7 +158,7 @@ export function formatAnswerForExcel(answer: string | number | boolean | string[
 
 function wideTable(data: ExportRecord, options: ExportOptions, citationMode: "json" | "count" = "json") {
   const { includeMetadata = true, includeConfidence = true, includeReasoning = true, includeCitations = true } = options;
-  const headers = ["Paper ID", "OpenAlex ID", "Paper Title", "DOI", "Year", "Job ID", "Run Epoch", "PDF Enabled", "Job Name", "Job Status", "Source Type", "Selected Model ID", "Selected Effort", "Selected Decision Model ID", "Export Version", "Exported At"];
+  const headers = ["Paper ID", "Paper", "OpenAlex ID", "Paper Title", "DOI", "Year", "Job ID", "Run Epoch", "PDF Enabled", "Job Name", "Job Status", "Source Type", "Selected Model ID", "Selected Effort", "Selected Decision Model ID", "Export Version", "Exported At"];
   headers.push("Paper Source Type", "Paper Source ID", "Screening Decision Revision");
   if (includeMetadata) headers.push("Authors", "Authors (unparsed)", "Abstract", "Open Access", "PDF Used", "Venue", "Citation Count", "Work Type", "Access Status", "Open Access URL", "PDF URL");
   for (const q of data.questions) {
@@ -167,7 +169,7 @@ function wideTable(data: ExportRecord, options: ExportOptions, citationMode: "js
     if (includeCitations) headers.push(label + (citationMode === "count" ? " (Citation count)" : " (Citations)"));
   }
   const rows: Cell[][] = data.papers.map(paper => {
-    const row: Cell[] = [paper.id, paper.openalexId, paper.title, paper.doi ?? "", paper.year ?? "", data.job.id ?? "", data.job.runEpoch ?? "", yesNoUnknown(data.job.pdfEnabled), data.job.name ?? "", data.job.status ?? "", data.job.sourceType ?? "", data.job.selectedModelId ?? "", data.job.selectedEffort ?? "", data.job.selectedDecisionModelId ?? "", data.version, data.exportedAt];
+    const row: Cell[] = [paper.id, paper.paper, paper.openalexId ?? "", paper.title, paper.doi ?? "", paper.year ?? "", data.job.id ?? "", data.job.runEpoch ?? "", yesNoUnknown(data.job.pdfEnabled), data.job.name ?? "", data.job.status ?? "", data.job.sourceType ?? "", data.job.selectedModelId ?? "", data.job.selectedEffort ?? "", data.job.selectedDecisionModelId ?? "", data.version, data.exportedAt];
     row.push(paper.sourceType ?? "", paper.sourceId ?? "", paper.screeningRevision ?? "");
     if (includeMetadata) row.push(paper.authors == null ? "" : JSON.stringify(paper.authors), paper.authorsUnparsed ?? "", paper.abstract ?? "", yesNoUnknown(paper.openAccess), yesNoUnknown(paper.pdfUsed), paper.venue ?? "", paper.citedByCount ?? "", paper.workType ?? "", paper.oaStatus ?? "", paper.oaUrl ?? "", paper.pdfUrl ?? "");
     for (const r of paper.results) {

@@ -71,7 +71,7 @@ async function seedLibrarySmokeFixture(args: {
   for (let index = 0; index < totalTargetCount; index += 1) {
     const { id: libraryItemId } = await client.mutation(api.library.mutations.saveToLibrary, {
       workspaceId,
-      openalexId: `W_PLAN05_${args.seedId}_${index}`,
+      paper: `W_PLAN05_${args.seedId}_${index}`,
       rating: 5,
       title: `Plan 05 Smoke Paper ${index + 1}`,
       authors: ["Smoke, Test"],

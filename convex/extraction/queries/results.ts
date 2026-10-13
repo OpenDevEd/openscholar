@@ -345,8 +345,9 @@ export const listJobResultsAction = defineUserQuery({
     if (!read) return { page: [], isDone: true, continueCursor: "" };
     await requireFeature(ctx, "extraction.enabled", actor.userId);
     const page = await resultsPage(ctx, read.job, args);
-    // What each paper and answer cost is its workspace's: a guest's rows go without it.
-    return read.guest ? { ...page, page: page.page.map((paper) => ({ ...rowFor(paper, true), results: paper.results.map((result) => rowFor(result, true)) })) } : page;
+    // What each paper and answer cost is its workspace's, and so are its uploaded PDFs: a guest's rows go without them.
+    if (read.guest) return { ...page, page: page.page.map((paper) => ({ ...rowFor(paper, true), results: paper.results.map((result) => rowFor(result, true)) })) };
+    return { ...page, page: await Promise.all(page.page.map(async (paper) => (paper.storageId ? { ...paper, fileUrl: (await ctx.storage.getUrl(paper.storageId)) ?? undefined } : paper))) };
   },
 });
 export const listJobResults = userQuery(listJobResultsAction);

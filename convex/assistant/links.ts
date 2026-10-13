@@ -1,3 +1,5 @@
+import { paperPage } from "../../lib/papers/paper-ref";
+
 /**
  * The link to each record a read returns, written the way a reply writes it: `[name](address)`.
  * The model copies `link` instead of putting the link together from an ID and a page, which a
@@ -6,12 +8,11 @@
 type Row = Record<string, unknown>;
 
 const text = (value: unknown) => (typeof value === "string" && value.trim() ? value : undefined);
-/** A paper's page on OpenAlex, from its ID in either form. */
+/** Where a paper opens, from its key or ID, when that is a web page: a reply links nothing else. */
 const paperUrl = (id: unknown) => {
   const value = text(id);
-  if (!value) return undefined;
-  if (/^https:\/\/openalex\.org\/W\d+$/i.test(value)) return value;
-  return /^W\d+$/i.test(value) ? `https://openalex.org/${value.toUpperCase()}` : undefined;
+  const page = value ? paperPage(value) : null;
+  return page?.startsWith("https://") ? page : undefined;
 };
 
 /** A saved search's page. An imported search keeps its outside ID, which may hold a `/`, a space or a bracket. */
@@ -26,8 +27,7 @@ const KINDS = {
   screening: { href: (row: Row) => text(row._id) && `/screening?job=${row._id}`, name: (row: Row) => row.name ?? row.label ?? "Screening" },
   chat: { href: (row: Row) => text(row._id) && `/?chat=${row._id}`, name: (row: Row) => row.title },
   author: { href: (row: Row) => profilePage(row), name: (row: Row) => row.name },
-  // A library paper's row has its paper ID in `id`; other reads call it `openalexId`.
-  paper: { href: (row: Row) => paperUrl(row.openalexId ?? row.id), name: (row: Row) => row.title },
+  paper: { href: (row: Row) => paperUrl(row.id), name: (row: Row) => row.title },
 } satisfies Record<string, { href: (row: Row) => string | undefined; name: (row: Row) => unknown }>;
 type Kind = keyof typeof KINDS;
 

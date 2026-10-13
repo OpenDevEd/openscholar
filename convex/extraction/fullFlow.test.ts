@@ -165,7 +165,7 @@ describe("extraction full flow with mocked provider I/O", () => {
     await t.run(async (ctx) =>
       ctx.db.insert("libraryItems", {
         ...(await madeBy(ctx, userId)),
-        openalexId: "full-flow-paper",
+        openalexId: "https://openalex.org/W9001",
         title: "Abstract-only paper",
         authors: ["Fixture Author"],
         publicationYear: 2024,

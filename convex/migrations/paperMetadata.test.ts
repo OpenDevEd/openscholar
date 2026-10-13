@@ -45,7 +45,7 @@ it("migrates retained authors without crossing owners or guessing, and guards ro
   await expect(t.mutation(internal.migrations.paperMetadata.papers, { cursor: null, dryRun: true, oneBatchOnly: true })).rejects.toMatchObject({ data: { kind: "DRY RUN" } });
   expect(await t.run((ctx) => ctx.db.get("libraryItems", seeded.retained))).toEqual(before);
   expect(await t.run((ctx) => ctx.db.query("paperMetadataChanges").take(10))).toEqual([]);
-  await t.withIdentity({ subject: "owner" }).mutation(api.library.mutations.saveToLibrary, { openalexId: "W1", title: "Partial save before migration" });
+  await t.withIdentity({ subject: "owner" }).mutation(api.library.mutations.saveToLibrary, { paper: "W1", title: "Partial save before migration" });
   await migrate();
   expect(await t.action(internal.migrations.paperMetadata.verify, {})).toEqual({ library: { total: 6, remaining: 0, arrays: 2, unparsed: 3, missing: 1 }, removals: { total: 1, remaining: 0, arrays: 1, unparsed: 0, missing: 0 } });
   expect(await t.run((ctx) => ctx.db.get("libraryItems", seeded.retained))).toMatchObject({ authors: ["Smith, Jr., John", "ليلى"], journal: "Retained journal", citedByCount: 0, rating: 4, savedAt: 10 });

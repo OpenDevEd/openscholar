@@ -37,8 +37,8 @@ it("rates an organization's paper with its members' average, and shows each memb
   };
 
   // Alice saves two papers to the lab, rated. Bob rates one of them on a search card, which counts in the lab too.
-  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "One", rating: 4 });
-  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W2", title: "Two", rating: 3 });
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, paper: "https://openalex.org/W1", title: "One", rating: 4 });
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, paper: "https://openalex.org/W2", title: "Two", rating: 3 });
   await bob.mutation(api.research.records.change, { accountId: "bob", requestId: "rated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 1 } });
   await settled();
   // The lab sorts by the average; each sees their own stars.
@@ -54,8 +54,8 @@ it("rates an organization's paper with its members' average, and shows each memb
 
 it("rates a paper within an organization's collection apart from each member's own rating, and sorts the collection by their average there", async () => {
   const { t, alice, bob, bobIs, workspaceId } = await lab();
-  const { id: one } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "One", rating: 5 });
-  const { id: two } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W2", title: "Two" });
+  const { id: one } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, paper: "https://openalex.org/W1", title: "One", rating: 5 });
+  const { id: two } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, paper: "https://openalex.org/W2", title: "Two" });
   const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Reading" });
   for (const libraryItemId of [one, two]) await alice.mutation(api.library.collections.addToCollection, { workspaceId, collectionId, libraryItemId });
   const sorted = async () => {
@@ -91,7 +91,7 @@ it("rates a paper within an organization's collection apart from each member's o
 
   // A collection in someone's own workspace has no ratings of its own.
   const { id: own } = await alice.mutation(api.library.collections.createCollection, { name: "Mine" });
-  const { id: mine } = await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W3", title: "Three", collectionId: own });
+  const { id: mine } = await alice.mutation(api.library.mutations.saveToLibrary, { paper: "https://openalex.org/W3", title: "Three", collectionId: own });
   await expect(alice.mutation(api.library.collections.setCollectionRating, { collectionId: own, libraryItemId: mine, rating: 3 })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
 
   // Deleting the collection deletes its ratings.
@@ -101,7 +101,7 @@ it("rates a paper within an organization's collection apart from each member's o
 
 it("shows each paper in an organization's collection with its members' ratings there, the person's own first", async () => {
   const { alice, bob, bobIs, workspaceId } = await lab();
-  const { id: one } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "One" });
+  const { id: one } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, paper: "https://openalex.org/W1", title: "One" });
   const { id: collectionId } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Reading" });
   await alice.mutation(api.library.collections.addToCollection, { workspaceId, collectionId, libraryItemId: one });
   await bob.mutation(api.library.collections.setCollectionRating, { workspaceId, collectionId, libraryItemId: one, rating: 2 });
@@ -124,8 +124,8 @@ it("shows each paper in an organization's library with how its members rated it 
   // Carol rated the same paper for herself and isn't in the lab.
   await t.run((ctx) => ctx.db.insert("users", { clerkId: "carol", email: "carol@example.org", state: "active", createdAt: 1, updatedAt: 1 }));
   const carol = t.withIdentity({ subject: "carol" });
-  const { id: one } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W1", title: "One", rating: 4 });
-  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, openalexId: "https://openalex.org/W2", title: "Two" });
+  const { id: one } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, paper: "https://openalex.org/W1", title: "One", rating: 4 });
+  await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId, paper: "https://openalex.org/W2", title: "Two" });
   await bob.mutation(api.research.records.change, { accountId: "bob", requestId: "bob-rated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 2 } });
   await carol.mutation(api.research.records.change, { accountId: "carol", requestId: "carol-rated", command: { kind: "rating", paperId: "https://openalex.org/W1", rating: 5 } });
   await settled();

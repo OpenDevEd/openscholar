@@ -80,6 +80,55 @@ export function legacyPaperRef(id: string, hints: { pdfUrl?: string } = {}): Pap
   return null;
 }
 
+/** The key of a paper named by its key or by an ID stored before keys (with what else it was kept with, `legacyPaperRef`); null when it names none. */
+export function toPaperKey(id: string, hints: { pdfUrl?: string } = {}): string | null {
+  const ref = legacyPaperRef(id, hints);
+  return ref ? paperKey(ref) : null;
+}
+
+/** A stored paper's key: the one it keeps, or for one kept before keys, the one its ID gives. */
+export const paperKeyOf = (row: { paperKey?: string; openalexId: string }) => row.paperKey ?? toPaperKey(row.openalexId) ?? row.openalexId;
+
+/**
+ * The ID pages and `openalexId` fields name a paper by while the field remains: an OpenAlex paper's
+ * address, as OpenAlex gives it and its search results carry it, and any other paper's key.
+ */
+export function paperIdOf(key: string): string {
+  const ref = parsePaperKey(key);
+  return ref?.source === "openalex" ? `https://openalex.org/${ref.work}` : key;
+}
+
+/** Whether a paper can be saved to a library: any but an uploaded PDF, whose file stays with its job. */
+export const saveablePaper = (paper: string) => {
+  const ref = legacyPaperRef(paper);
+  return ref !== null && ref.source !== "upload";
+};
+
+/** Where a paper opens, by its source: its OpenAlex page, the item in Zotero, or an uploaded PDF's `file` where the page has it. Null for one with nowhere to open. */
+export function paperPage(paper: string, file?: string | null): string | null {
+  const ref = legacyPaperRef(paper);
+  if (ref?.source === "openalex") return `https://openalex.org/${ref.work}`;
+  if (ref?.source === "zotero") return `zotero://select/${ref.library === "group" ? "groups" : "users"}/${ref.owner}/items/${ref.key}`;
+  if (ref?.source === "upload") return file ?? null;
+  return null;
+}
+
+/** The OpenAlex work a paper is or is known as, from its key or ID and its cross-references. */
+export function openalexWorkOf(paper: string, crossRefs?: CrossRefs): string | null {
+  const ref = legacyPaperRef(paper);
+  if (ref?.source === "openalex") return ref.work;
+  return crossRefs?.openalexId ? openalexWork(crossRefs.openalexId) : null;
+}
+
+/** The ID a stored paper goes by on pages and in a screening's answers (`paperIdOf` its key). */
+export const pageIdOf = (row: { paperKey?: string; openalexId: string }) => paperIdOf(paperKeyOf(row));
+
+/** The OpenAlex work a stored paper is or is known as. */
+export const openalexWorkOfRow = (row: { paperKey?: string; openalexId: string; crossRefs?: CrossRefs }) => openalexWorkOf(paperKeyOf(row), row.crossRefs);
+
+/** An OpenAlex work's address, as OpenAlex and exports name it. */
+export const openalexAddress = (work: string | null) => (work ? `https://openalex.org/${work}` : null);
+
 /** What finds the same paper elsewhere: an OpenAlex paper carries its own work; IDs and DOIs in one form; nothing that isn't one. */
 export function crossRefsOf(ref: PaperRef, given: { openalexId?: string | null; doi?: string | null } = {}): CrossRefs {
   const openalexId = ref.source === "openalex" ? ref.work : given.openalexId ? openalexWork(given.openalexId) : null;

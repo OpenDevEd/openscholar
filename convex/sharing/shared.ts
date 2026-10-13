@@ -64,10 +64,10 @@ export const editableCollectionsAction = defineUserQuery({
   path: "sharing/shared:editableCollections",
   description:
     "A page of the collections shared with the person to edit, from other workspaces, by name: each with how many papers it holds and whose it is. With `search`, those whose name contains it. " +
-    "With a paper's OpenAlex ID, each also says whether that paper is in it. library/mutations:setPaperInCollection puts a paper in one or takes it out. Empty in an organization: what's shared with someone is in their own workspace.",
-  args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), openalexId: v.optional(v.string()) },
+    "With `paper`, a paper's key or OpenAlex ID, each also says whether that paper is in it. library/mutations:setPaperInCollection puts a paper in one or takes it out. Empty in an organization: what's shared with someone is in their own workspace.",
+  args: { paginationOpts: paginationOptsValidator, search: v.optional(v.string()), paper: v.optional(v.string()) },
   returns: paginationResultValidator(v.object({ _id: v.id("collections"), name: v.string(), itemCount: v.number(), containsItem: v.boolean(), from: sharedFromValidator })),
-  run: async (ctx, actor, { paginationOpts, search, openalexId }) => {
+  run: async (ctx, actor, { paginationOpts, search, paper }) => {
     if (!(await inOwnWorkspace(ctx, actor))) return { page: [], isDone: true, continueCursor: "" };
     const needle = search?.trim().toLowerCase() ?? "";
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, SHARED_PAGE_MAX) };
@@ -84,7 +84,7 @@ export const editableCollectionsAction = defineUserQuery({
       // One whose collection or workspace is gone goes with it in a moment (./upkeep.ts).
       if (!collection || !(await open(ctx, collection.workspaceId))) return [];
       // The paper as the collection's own library holds it, which is where it's put.
-      const item = openalexId ? await findItem(ctx, collection.workspaceId, openalexId) : null;
+      const item = paper ? await findItem(ctx, collection.workspaceId, paper) : null;
       const place = item ? await ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collection._id).eq("libraryItemId", item._id)).unique() : null;
       return [{ _id: collection._id, name: collection.name, itemCount: collection.itemCount, containsItem: place !== null, from: await workspaceFrom(ctx, collection.workspaceId) }];
     }));

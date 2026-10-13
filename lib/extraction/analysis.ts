@@ -13,7 +13,6 @@ type InsightMode = "scalar" | "array";
 export type InsightEntry = {
   paperId: string;
   title: string;
-  openalexId: string;
   questionKey: string;
   answer: ExtractionAnswer;
   confidence?: number;
@@ -74,7 +73,6 @@ export type DisagreementCluster = {
   examples: Array<{
     paperId: string;
     title: string;
-    openalexId: string;
     answer: ExtractionAnswer;
     confidence?: number;
   }>;
@@ -405,7 +403,6 @@ export function buildDisagreementClusters(
           .map((row) => ({
             paperId: row.paperId,
             title: row.title,
-            openalexId: row.openalexId,
             answer: row.answer,
             confidence: row.confidence,
           })),
@@ -487,7 +484,6 @@ export function buildArrayAnswerProfileClusters(
           .map((row) => ({
             paperId: row.paperId,
             title: row.title,
-            openalexId: row.openalexId,
             answer: row.answer,
             confidence: row.confidence,
           })),

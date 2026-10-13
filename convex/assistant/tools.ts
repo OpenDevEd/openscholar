@@ -21,6 +21,7 @@ import { linked } from "./links";
 import { partsOf } from "./bulkPapers";
 import { BULK, DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, UNDO_BULK, forModel } from "./steps";
 import { ASKED_EACH_MAX } from "./validators";
+import { toPaperKey } from "../../lib/papers/paper-ref";
 
 /**
  * Requests in a row whose actions all failed, after which a reply's next request is its
@@ -489,7 +490,7 @@ export function toolsFor(
         const change = changeOf(given, papers);
         const entry = entryAt(change.path)!;
         // What it was asked with, and the papers it found: the reply runs it from these once the person allows it, on those papers and no others.
-        let kept = JSON.stringify({ given, ids: papers.map((paper) => paper.openalexId.split("/").at(-1)) });
+        let kept = JSON.stringify({ given, ids: papers.map((paper) => paper.paper) });
         // Too many to keep on the step: their changes wait in parts (./bulkPapers.ts), and the step keeps where.
         if (kept.length > STEP_TEXT_MAX) {
           const key = crypto.randomUUID();
@@ -684,8 +685,10 @@ export function toolsFor(
     }
     const again = await plan(CHANGE_PAPERS, given);
     if ("error" in again) return again;
-    const approved = new Set(ids ?? []);
-    const at = (item: Record<string, unknown>) => String((item.paper as { openalexId?: unknown } | undefined)?.openalexId ?? item.openalexId).split("/").at(-1)!;
+    // Kept as keys; a step kept before keys named OpenAlex papers by their bare IDs.
+    const approved = new Set((ids ?? []).map((id) => toPaperKey(id) ?? id));
+    // Each change names its paper in `paper`; taking one out of a collection names it inside.
+    const at = (item: Record<string, unknown>) => (typeof item.paper === "string" ? item.paper : String((item.paper as { paper?: unknown } | undefined)?.paper));
     return { ...again, items: again.items.filter((item) => approved.has(at(item))) };
   };
   const resume = async (step: { stepId: Id<"assistantSteps">; toolCallId: string; path: string; input: string; credits?: number; batch?: number; tool?: string }) => {

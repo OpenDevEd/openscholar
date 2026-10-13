@@ -310,7 +310,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
   const [held, setHeld] = useState<Held | null>(null);
   const list = useCursorPage(api.screening.papers.list, inWorkspace(workspaceId, { jobId: job._id, outcome: tab, ...(text ? { text } : {}) }), PAGE_SIZE);
   // The held paper as it stands now, read on its own: its outcome's list no longer holds it.
-  const { data: current } = useProtectedQuery(api.screening.papers.get, inWorkspace(workspaceId, held ? { jobId: job._id, paperId: held.paper.openalexId } : "skip"));
+  const { data: current } = useProtectedQuery(api.screening.papers.get, inWorkspace(workspaceId, held ? { jobId: job._id, paperId: held.paper.paper } : "skip"));
   const answer = useWorkspaceMutation(api.screening.papers.answer);
 
   // The list the papers on screen belong to: it moves on to the one asked for once its papers have arrived.
@@ -322,10 +322,10 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
 
   const heldPaper = held ? (current ?? held.paper) : undefined;
   const rows =
-    held && heldPaper && !list.items.some((paper) => paper.openalexId === heldPaper.openalexId)
+    held && heldPaper && !list.items.some((paper) => paper.paper === heldPaper.paper)
       ? // Added to the page's own papers, so the one that took its place isn't hidden and the next page starts after it.
         [...list.items.slice(0, held.index), heldPaper, ...list.items.slice(held.index)]
-      : list.items.map((paper) => (heldPaper && paper.openalexId === heldPaper.openalexId ? heldPaper : paper));
+      : list.items.map((paper) => (heldPaper && paper.paper === heldPaper.paper ? heldPaper : paper));
   // A search's matches aren't counted on the server, so its pager shows the page alone.
   const count = job.outcomes[tab];
   const pageCount = text ? undefined : Math.max(1, Math.ceil(count / PAGE_SIZE));
@@ -335,7 +335,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
     // Shown at once on the held paper; the server's version replaces it when it arrives.
     const answers = paper.answers.map((a) => (a.key === questionKey && value !== null ? { ...a, answer: valueOf(value), changed: true } : a));
     setHeld({ paper: { ...paper, answers }, index });
-    answer({ jobId: job._id, paperId: paper.openalexId, questionKey, answer: value === null ? "model" : valueOf(value) }).catch((error) => {
+    answer({ jobId: job._id, paperId: paper.paper, questionKey, answer: value === null ? "model" : valueOf(value) }).catch((error) => {
       setHeld(null);
       toast.error(t("answerFailed"), getErrorMessage(error, t("answerFailed")));
     });
@@ -382,14 +382,14 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
           ) : (
             <AnimatePresence initial={false}>
               {rows.map((paper, index) => {
-                const expanded = open === paper.openalexId;
+                const expanded = open === paper.paper;
                 // Held here after a change that gave it another outcome: it leaves towards that outcome's tab.
-                const leaving = paper.openalexId === held?.paper.openalexId && paper.outcome !== tab;
+                const leaving = paper.paper === held?.paper.paper && paper.outcome !== tab;
                 const towards = OUTCOMES.indexOf(paper.outcome) > OUTCOMES.indexOf(tab) ? 1 : -1;
                 const authors = paper.authors ?? [];
                 return (
                   <motion.div
-                    key={paper.openalexId}
+                    key={paper.paper}
                     layout="position"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
@@ -404,7 +404,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
                         type="button"
                         aria-expanded={expanded}
                         aria-label={t(expanded ? "hideAnswers" : "showAnswers", { title: paper.title })}
-                        onClick={() => { if (paper.openalexId !== held?.paper.openalexId) setHeld(null); setOpen(expanded ? null : paper.openalexId); }}
+                        onClick={() => { if (paper.paper !== held?.paper.paper) setHeld(null); setOpen(expanded ? null : paper.paper); }}
                         className="absolute inset-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
                       />
                       <div className={cn("min-w-0 flex-1 transition-opacity duration-300", leaving && "opacity-50")}>

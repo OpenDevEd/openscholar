@@ -29,7 +29,7 @@ describe("trimPaperData", () => {
   it("extracts all metadata fields from a full Work object", () => {
     const result = trimPaperData({ ...fullWork, type: "review" });
 
-    expect(result.openalexId).toBe("https://openalex.org/W1234567890");
+    expect(result.paper).toBe("https://openalex.org/W1234567890");
     expect(result.title).toBe("Machine Learning for Climate Science");
     expect(result.authors).toEqual(["John Doe", "Jane Smith", "Bob Johnson"]);
     expect(result.doi).toBe("https://doi.org/10.1234/example.2024");
@@ -52,7 +52,7 @@ describe("trimPaperData", () => {
 
     const result = trimPaperData(minimalWork);
 
-    expect(result.openalexId).toBe("https://openalex.org/W9999999999");
+    expect(result.paper).toBe("https://openalex.org/W9999999999");
     expect(result.title).toBe("A Minimal Paper");
     expect(result.authors).toBeUndefined();
     expect(result.doi).toBeUndefined();

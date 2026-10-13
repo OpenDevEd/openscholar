@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { MAX_AUTHORS, MAX_QUESTIONS, MAX_STARS, capped } from "../lib/listCaps";
 import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadataFields } from "../lib/paperMetadata";
+import { crossRefsValidator } from "../lib/paperRef";
 
 /**
  * Screening question snapshot embedded in job records.
@@ -61,7 +62,9 @@ export const screeningConfidencesValidator = capped(v.optional(v.record(v.string
  */
 export const screeningPaperInputValidator = v.object({
   ...sourceMetadataFields,
-  openalexId: v.string(),
+  /** The paper's key (lib/papers/paper-ref.ts), and what finds it elsewhere. */
+  paper: v.string(),
+  crossRefs: v.optional(crossRefsValidator),
   title: v.string(),
   abstract: v.optional(v.string()),
   authors: screeningAuthorsValidator,
@@ -71,6 +74,13 @@ export const screeningPaperInputValidator = v.object({
   venue: v.optional(v.string()),
   citedByCount: v.optional(v.number()),
 });
+
+const { paper: _paper, crossRefs: _crossRefs, ...paperInputFields } = screeningPaperInputValidator.fields;
+/**
+ * A paper as a job's reader sends it: by key, or by the ID a reader that started before keys
+ * still sends. ponytail: the second goes with the old IDs, once no job read before keys is left.
+ */
+export const sentPaperValidator = v.union(screeningPaperInputValidator, v.object({ ...paperInputFields, openalexId: v.string() }));
 
 /**
  * The papers a job reads (#341), resolved on the server: a saved search by its ID in the
@@ -107,7 +117,9 @@ export const screeningTalliesValidator = capped(
 /** One paper of a job as its list shows it: the paper, its score, and its answer to each question now. */
 export const screeningJobPaperValidator = v.object({
   ...sourceMetadataFields,
-  openalexId: v.string(),
+  /** The paper's key (lib/papers/paper-ref.ts), which the job's actions take, and what finds it elsewhere. */
+  paper: v.string(),
+  crossRefs: v.optional(crossRefsValidator),
   title: v.string(),
   abstract: v.optional(v.string()),
   authors: screeningAuthorsValidator,

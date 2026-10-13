@@ -256,7 +256,7 @@ describe("cancelScreeningJob", () => {
     const targetJob = await createJob(userATest, {
         papers: [
           {
-            openalexId: "oa:target",
+            paper: "upload:target",
             title: "Target Paper",
           },
         ],
@@ -270,7 +270,7 @@ describe("cancelScreeningJob", () => {
     const otherJob = await createJob(userBTest, {
         papers: [
           {
-            openalexId: "oa:other",
+            paper: "upload:other",
             title: "Other Paper",
           },
         ],
@@ -313,7 +313,7 @@ describe("cancelScreeningJob", () => {
     await seedCredits(t, user._id, 100_000, 0);
     const asUser = t.withIdentity({ subject: "clerk_cancel_big" });
     const { jobId } = await createJob(asUser, {
-      papers: Array.from({ length: 250 }, (_, i) => ({ openalexId: `oa:${i}`, title: `Paper ${i}` })),
+      papers: Array.from({ length: 250 }, (_, i) => ({ paper: `upload:oa${i}`, title: `Paper ${i}` })),
       questions: [{ key: "q1", question: "Is this relevant?" }],
       scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] },
     });

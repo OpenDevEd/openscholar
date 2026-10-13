@@ -32,17 +32,11 @@ export const backfillPaperData = internalAction({
 
     for (const item of batch.items) {
       try {
-        // Extract the Work ID from the full OpenAlex URL
-        // e.g., "https://openalex.org/W1234567890" -> "W1234567890"
-        const workId = item.openalexId.includes("/")
-          ? item.openalexId.split("/").pop()!
-          : item.openalexId;
-
-        const response = await fetch(openAlexUrl(`works/${workId}`));
+        const response = await fetch(openAlexUrl(`works/${item.work}`));
 
         if (!response.ok) {
           console.warn(
-            `[Backfill] Failed to fetch ${item.openalexId}: ${response.status}`,
+            `[Backfill] Failed to fetch ${item.work}: ${response.status}`,
           );
           failCount++;
           continue;
@@ -67,7 +61,7 @@ export const backfillPaperData = internalAction({
         );
       } catch (error) {
         console.error(
-          `[Backfill] Error processing ${item.openalexId}:`,
+          `[Backfill] Error processing ${item.work}:`,
           error,
         );
         failCount++;

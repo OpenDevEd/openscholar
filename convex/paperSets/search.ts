@@ -20,6 +20,7 @@ import { expandShortcuts, shortcutNames } from "../../lib/query-shortcuts";
 import { findSearch, ratingsAmong, shortcutExpansions } from "../research/records";
 import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { readSearchRun, searchRequestValidator, type SearchSnapshot } from "./openalex";
+import { toPaperKey } from "../../lib/papers/paper-ref";
 
 /** The fields a screening paper keeps. */
 export const SCREENING_FIELDS = "id,display_name,title,doi,publication_year,abstract_inverted_index,authorships,cited_by_count,primary_location,best_oa_location,type,open_access";
@@ -127,7 +128,7 @@ export type Work = {
 export function toPaper(work: Work): SearchPaper {
   const authors = (work.authorships ?? []).flatMap((a) => (a.author?.display_name ? [a.author.display_name] : []));
   return {
-    openalexId: work.id,
+    paper: toPaperKey(work.id)!,
     title: work.title ?? work.display_name ?? "",
     ...(work.abstract_inverted_index ? { abstract: convertAbstractArrayToString(work.abstract_inverted_index) } : {}),
     ...(authors.length ? { authors } : {}),
@@ -186,17 +187,17 @@ export async function searchPapers(
   const { works, ended, resume } = await readSearchRun<Work>(request, { first, last, select: SCREENING_FIELDS, ...run }, spender(ctx, found.clerkId));
   // OpenAlex can return a work twice in one read: a job holds it once, or it is screened and paid for twice.
   const ids = new Set<string>();
-  const papers = works.map(toPaper).filter((paper) => !ids.has(paper.openalexId) && ids.add(paper.openalexId));
+  const papers = works.map(toPaper).filter((paper) => !ids.has(paper.paper) && ids.add(paper.paper));
   return { papers: await keptByRating(ctx, reader.userId, papers, rating), ended, snapshot: taken, ...(resume ? { resume } : {}), taken: works.length };
 }
 
 /** The papers a search's rating filter keeps, as its results page does: those the person rated within it. Every paper, when it has none. */
 export async function keptByRating(ctx: ActionCtx, userId: Id<"users">, papers: SearchPaper[], rating: { min: number; max: number } | undefined): Promise<SearchPaper[]> {
   if (!rating || !papers.length) return papers;
-  const rated: Array<{ paperId: string; rating: number }> = await ctx.runQuery(internal.paperSets.search.ratingsOf, { userId, paperIds: papers.map((paper) => paper.openalexId) });
+  const rated: Array<{ paperId: string; rating: number }> = await ctx.runQuery(internal.paperSets.search.ratingsOf, { userId, paperIds: papers.map((paper) => paper.paper) });
   const ratings = new Map(rated.map((row) => [row.paperId, row.rating]));
   return papers.filter((paper) => {
-    const value = ratings.get(paper.openalexId);
+    const value = ratings.get(paper.paper);
     return value !== undefined && value >= rating.min && value <= rating.max;
   });
 }

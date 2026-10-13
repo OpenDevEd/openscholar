@@ -191,10 +191,10 @@ describe("the assistant's tools", () => {
   it("undoes a card's run of changes together, the last one made first, whichever started first", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, say, steps } = await chatOf(t);
-    const paper = { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" };
+    const paper = { paper: "https://openalex.org/W1", title: "Tutoring at scale" };
     mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: paper } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
-    mockDoStream.mockImplementationOnce(calling({ id: "rate", name: "run_action", input: { name: "library/mutations:setLibraryRating", arguments: { openalexId: paper.openalexId, rating: 5 } } })).mockImplementationOnce(finishingDoStream(["Rated it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "rate", name: "run_action", input: { name: "library/mutations:setLibraryRating", arguments: { paper: paper.paper, rating: 5 } } })).mockImplementationOnce(finishingDoStream(["Rated it."]));
     await say("Rate it five");
     // Calls run together, so the rating may have started before the save it changes, and ended in the same moment.
     const [save, rate] = await steps();
@@ -209,7 +209,7 @@ describe("the assistant's tools", () => {
   it("run an action as the person who sent the message, keep it as a step, and tell the model what came of it", async () => {
     const t = convexTest(schema);
     const { ada, threadId, say, steps, results, shown } = await chatOf(t);
-    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { paper: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
 
     // The paper is in the sender's library, not anyone else's.
@@ -320,7 +320,7 @@ describe("the assistant's tools", () => {
       await ctx.db.insert("evidenceLibraryCollectionSources", { libraryId, collectionId: followed, connectedByClerkUserId: "ada", connectedAt: 1 });
     });
     const collected = () => t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").collect()).map((row) => row.collectionId));
-    const paper = { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" };
+    const paper = { paper: "https://openalex.org/W1", title: "Tutoring at scale" };
     mockDoStream.mockImplementationOnce(
       calling(
         { id: "public", name: "run_action", input: { name: "library/mutations:setPaperInCollection", arguments: { paper, collectionId: followed, inCollection: true } } },
@@ -374,18 +374,18 @@ describe("the assistant's tools", () => {
   it("make a change to many records as one step with one undo, ask once before one of more than ten, and refuse more than ten of a kind made one by one", async () => {
     const t = convexTest(schema);
     const { ada, asAda, threadId, say, sayUntilAsked, settled, steps } = await chatOf(t);
-    const work = (n: number) => ({ openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}` });
+    const work = (n: number) => ({ paper: `https://openalex.org/W${n}`, title: `Trial ${n}` });
     for (let n = 1; n <= 12; n++) await asAda.mutation(api.library.mutations.saveToLibrary, work(n));
     const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => item.title).sort());
     const undos = () => t.run(async (ctx) => (await ctx.db.query("assistantStepUndos").collect()).length);
     // On a card, a saved paper's ID reads as its title. A title or a name typed to look like an ID stays as typed, and what a call does to a record is always said.
     const said = (args: unknown) => t.run(async (ctx) => detailsOf(ctx, (await ctx.db.get("users", ada))!, await personalWorkspaceOf(ctx, ada), JSON.stringify(args)));
-    expect(await said({ title: "W1", openalexId: work(1).openalexId })).toEqual([{ name: "title", value: "W1" }, { name: "title", value: "Trial 1" }]);
-    expect(await said({ command: { kind: "editSearch", edit: { kind: "clearResponses", paperId: work(1).openalexId } } })).toContainEqual({ name: "kind", value: "clearResponses" });
+    expect(await said({ title: "W1", paper: work(1).paper })).toEqual([{ name: "title", value: "W1" }, { name: "title", value: "Trial 1" }]);
+    expect(await said({ command: { kind: "editSearch", edit: { kind: "clearResponses", paperId: work(1).paper } } })).toContainEqual({ name: "kind", value: "clearResponses" });
 
     // Twelve removals in one call: nothing is removed, and Ada is asked once, with how many and the first of them by title.
     mockDoStream.mockImplementationOnce(
-      calling({ id: "all", name: "run_many", input: { name: "library/mutations:removeFromLibrary", each: Array.from({ length: 12 }, (_, i) => ({ openalexId: work(i + 1).openalexId })) } }),
+      calling({ id: "all", name: "run_many", input: { name: "library/mutations:removeFromLibrary", each: Array.from({ length: 12 }, (_, i) => ({ paper: work(i + 1).paper })) } }),
     );
     await sayUntilAsked("Remove everything in my library");
     expect(await saved()).toHaveLength(12);
@@ -447,7 +447,7 @@ describe("the assistant's tools", () => {
 
     // A few changes in one call run at once, as one step too.
     mockDoStream
-      .mockImplementationOnce(calling({ id: "few", name: "run_many", input: { name: "library_mutations_setLibraryRating", each: [101, 102, 103].map((n) => ({ openalexId: work(n).openalexId, rating: 4 })) } }))
+      .mockImplementationOnce(calling({ id: "few", name: "run_many", input: { name: "library_mutations_setLibraryRating", each: [101, 102, 103].map((n) => ({ paper: work(n).paper, rating: 4 })) } }))
       .mockImplementationOnce(finishingDoStream(["Rated three."]));
     await say("Rate the first three 4 stars");
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).filter((item) => item.rating === 4).length)).toBe(3);
@@ -455,14 +455,14 @@ describe("the assistant's tools", () => {
 
     // One whose changes all fail is a failed step, and says why the first one couldn't be made.
     mockDoStream
-      .mockImplementationOnce(calling({ id: "none", name: "run_many", input: { name: "library/mutations:setLibraryRating", each: [901, 902].map((n) => ({ openalexId: work(n).openalexId, rating: 2 })) } }))
+      .mockImplementationOnce(calling({ id: "none", name: "run_many", input: { name: "library/mutations:setLibraryRating", each: [901, 902].map((n) => ({ paper: work(n).paper, rating: 2 })) } }))
       .mockImplementationOnce(finishingDoStream(["Those aren't in your library."]));
     await say("Rate two I never saved");
     expect(told(8, "none")).toMatchObject({ error: expect.stringContaining("None of these 2") });
     expect((await steps()).at(-1)).toMatchObject({ status: "failed", batch: 2 });
 
     // Two small ones in one request are counted as they arrive: twelve changes between them, so the second is sent back to ask.
-    const rate = (id: string, from: number) => ({ id, name: "run_many", input: { name: "library/mutations:setLibraryRating", each: Array.from({ length: 6 }, (_, i) => ({ openalexId: work(from + i).openalexId, rating: 5 })) } });
+    const rate = (id: string, from: number) => ({ id, name: "run_many", input: { name: "library/mutations:setLibraryRating", each: Array.from({ length: 6 }, (_, i) => ({ paper: work(from + i).paper, rating: 5 })) } });
     mockDoStream.mockImplementationOnce(calling(rate("a", 1), rate("b", 7))).mockImplementationOnce(finishingDoStream(["Rated six."]));
     await say("Rate these twelve 5 stars");
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).filter((item) => item.rating === 5).length)).toBe(6);
@@ -481,7 +481,7 @@ describe("the assistant's tools", () => {
     const { home, asAda, asBen, ben, threadId, say, steps } = await chatOf(t);
     await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: ben, free: 100_000 }));
     await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: ben, role: "editor" });
-    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { paper: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
     await asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [(await steps())[0]._id] });
     const lastSent = () => JSON.stringify((requests.at(-1) as Sent).at(-1));
@@ -502,7 +502,7 @@ describe("the assistant's tools", () => {
     // Past what the chat keeps, the earliest undo is counted for whoever's it was: Ben's undo pushes one of Ada's out, and it's Ada who hears of it.
     const [saved] = await steps();
     await t.run(async (ctx) => ctx.db.patch("assistantThreads", threadId, { undone: Array.from({ length: 20 }, () => ({ userId: saved.userId, stepId: saved._id })) }));
-    mockDoStream.mockImplementationOnce(calling({ id: "bens", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W2", title: "Reading camps" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "bens", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { paper: "https://openalex.org/W2", title: "Reading camps" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Save this one for me" });
     await finishReply(t, threadId);
     await asBen.mutation(api.assistant.undo.run, { threadId, stepIds: [(await steps()).at(-1)!._id] });
@@ -673,7 +673,7 @@ describe("the assistant's tools", () => {
     mockDoStream.mockImplementationOnce(
       calling(
         // A library that follows the collection shows what's in it, and its name.
-        { id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale", collectionId: followed } } },
+        { id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { paper: "https://openalex.org/W1", title: "Tutoring at scale", collectionId: followed } } },
         { id: "rename", name: "run_action", input: { name: "library/collections:renameCollection", arguments: { collectionId: followed, name: "Public reading" } } },
       ),
     );
@@ -703,7 +703,7 @@ describe("the assistant's tools", () => {
     ]);
 
     // The change holds the same check in its own transaction, for a collection that comes to be followed between the two.
-    const add = { userId: ada, paper: { openalexId: "https://openalex.org/W2", title: "Another paper" }, collectionId: followed, inCollection: true };
+    const add = { userId: ada, paper: { paper: "https://openalex.org/W2", title: "Another paper" }, collectionId: followed, inCollection: true };
     await expect(t.mutation(internal.library.mutations.setPaperInCollectionForAssistant, add)).rejects.toThrow(/needs the person's say first/);
     // The person's own click is their approval.
     await t.mutation(internal.library.mutations.setPaperInCollectionForAssistant, { ...add, approved: true });
@@ -874,7 +874,7 @@ describe("the assistant's tools", () => {
     const t = convexTest(schema);
     const { asAda, say, steps } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
-    await asAda.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W1", title: "Tutoring at scale", collectionId });
+    await asAda.mutation(api.library.mutations.saveToLibrary, { paper: "https://openalex.org/W1", title: "Tutoring at scale", collectionId });
     await extractionOn(t);
     // A plan that takes 1,000 papers in one extraction, and a collection the account counts at 1,500.
     await t.run(async (ctx) => {
@@ -904,7 +904,7 @@ describe("the assistant's tools", () => {
     // Screen all runs on the server's model, at GPT-6 Luna's price: what a paper holds on it.
     await t.run((ctx) => ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: ["tools", "structured_outputs"], contextLength: 400_000, syncedAt: 1, createdAt: 1, updatedAt: 1 }));
     const perPaper = await t.run(async (ctx) => screeningPaperCreditsFor(ctx, { userId: ada, workspaceId: await personalWorkspaceOf(ctx, ada) }));
-    for (const n of [1, 2, 3]) await asAda.mutation(api.library.mutations.setPaperInCollection, { paper: { openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, abstract: "A trial of tutoring." }, collectionId, inCollection: true });
+    for (const n of [1, 2, 3]) await asAda.mutation(api.library.mutations.setPaperInCollection, { paper: { paper: `https://openalex.org/W${n}`, title: `Trial ${n}`, abstract: "A trial of tutoring." }, collectionId, inCollection: true });
     const screen = (id: string, last = 3) => ({
       id,
       name: "run_action",
@@ -1241,7 +1241,7 @@ describe("the assistant's tools", () => {
     // A collection that isn't the sender's.
     const { id: theirs } = await asBen.mutation(api.library.collections.createCollection, { name: "Ben's" });
     mockDoStream
-      .mockImplementationOnce(calling({ id: "add", name: "run_action", input: { name: "library/mutations:setPaperInCollection", arguments: { paper: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" }, collectionId: theirs, inCollection: true } } }))
+      .mockImplementationOnce(calling({ id: "add", name: "run_action", input: { name: "library/mutations:setPaperInCollection", arguments: { paper: { paper: "https://openalex.org/W1", title: "Tutoring at scale" }, collectionId: theirs, inCollection: true } } }))
       .mockImplementationOnce(finishingDoStream(["That collection isn't yours."]));
     await say("Add it to Ben's collection");
 
@@ -1481,7 +1481,7 @@ describe("the assistant's tools", () => {
     });
 
     // What her reply saves is the lab's.
-    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Lab paper" } } })).mockImplementationOnce(finishingDoStream(["Saved."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { paper: "https://openalex.org/W1", title: "Lab paper" } } })).mockImplementationOnce(finishingDoStream(["Saved."]));
     const adaBefore = fakeAutumn.balance(ada);
     await asAda.mutation(api.assistant.replies.send, { threadId, text: "Save W1" });
     await finishReply(t, threadId);
@@ -1492,7 +1492,7 @@ describe("the assistant's tools", () => {
 
     // Shared with Ben, who isn't in the lab, what his reply saves is his own.
     await asAda.mutation(api.sharing.guests.add, { workspaceId: lab, kind: "chat", id: threadId, userId: ben, role: "editor" });
-    mockDoStream.mockImplementationOnce(calling({ id: "save2", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W2", title: "His paper" } } })).mockImplementationOnce(finishingDoStream(["Saved."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save2", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { paper: "https://openalex.org/W2", title: "His paper" } } })).mockImplementationOnce(finishingDoStream(["Saved."]));
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Save W2" });
     await finishReply(t, threadId);
     expect(await saved()).toEqual([["https://openalex.org/W1", lab], ["https://openalex.org/W2", theirs]]);
@@ -1765,7 +1765,7 @@ describe("the assistant's tools", () => {
     const t = convexTest(schema);
     const { home, asAda, asBen, threadId, say, steps, shown } = await chatOf(t);
     await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: (await t.run(async (ctx) => (await ctx.db.query("users").collect()).find((user) => user.clerkId === "ben")))!._id, role: "editor" });
-    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { paper: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
     const [step] = await steps();
     const benSees = (await asBen.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step");
@@ -1847,7 +1847,7 @@ describe("the assistant's tools", () => {
   it("go with their chat when it's deleted", async () => {
     const t = convexTest(schema);
     const { asAda, threadId, say, steps, results } = await chatOf(t);
-    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
+    mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { paper: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
     expect(await steps()).toHaveLength(1);
     await asAda.mutation(api.assistant.threads.remove, { threadId: threadId as Id<"assistantThreads"> });

@@ -28,7 +28,7 @@ export function trimPaperData(work: WorkInput): TrimmedPaperData {
       .filter((name): name is string => !!name?.trim());
 
   return {
-    openalexId: work.id,
+    paper: work.id,
     title: work.title || work.display_name || "",
     authors,
     doi: work.doi || undefined,

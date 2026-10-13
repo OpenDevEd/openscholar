@@ -139,7 +139,7 @@ async function seedCollection(
 
 function makePaper(index: number) {
   return {
-    openalexId: `https://openalex.org/W${index}`,
+    paper: `https://openalex.org/W${index}`,
     title: `Paper ${index}`,
     abstract: `Abstract for paper ${index}`,
     authors: [`Author ${index}`],
@@ -304,7 +304,7 @@ describe("createScreeningJob", () => {
 
     // Verify each paper is represented
     const openalexIds = results.map((r) => r.openalexId).sort();
-    const expectedIds = papers.map((p) => p.openalexId).sort();
+    const expectedIds = papers.map((p) => p.paper).sort();
     expect(openalexIds).toEqual(expectedIds);
   });
 
@@ -472,7 +472,7 @@ describe("handleScreeningComplete", () => {
 
       const result = await seedScreeningResult(t, job._id, {
         status: "processing",
-        openalexId: "https://openalex.org/Wsuccess",
+        openalexId: "https://openalex.org/W4242",
         title: "Qualified Paper",
       });
 
@@ -498,7 +498,7 @@ describe("handleScreeningComplete", () => {
         const libraryItems = await ctx.db
           .query("libraryItems")
           .withIndex("by_workspace_openalexId", (q) =>
-            q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/Wsuccess"),
+            q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W4242"),
           )
           .collect();
         const scheduledFunctions = await ctx.db.system
@@ -525,7 +525,7 @@ describe("handleScreeningComplete", () => {
         const libraryItems = await ctx.db
           .query("libraryItems")
           .withIndex("by_workspace_openalexId", (q) =>
-            q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/Wsuccess"),
+            q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W4242"),
           )
           .collect();
         const links = await ctx.db
@@ -540,7 +540,7 @@ describe("handleScreeningComplete", () => {
         // Then the answer is in the job's screening, with the model's confidence, and not on the row.
         const answerRows = await ctx.db.query("screeningAnswers").withIndex("by_screening_and_paper", (q) => q.eq("screeningId", updatedJob!.screeningId!)).collect();
         expect(answerRows.map((row) => ({ paperId: row.paperId, answers: row.answers.map(({ question, answer, setBy, model }) => ({ question, answer, setBy, confidence: model?.confidence })) }))).toEqual([
-          { paperId: "https://openalex.org/Wsuccess", answers: [{ question: "Is this relevant?", answer: true, setBy: "model", confidence: 0.91 }] },
+          { paperId: "https://openalex.org/W4242", answers: [{ question: "Is this relevant?", answer: true, setBy: "model", confidence: 0.91 }] },
         ]);
         expect([updatedResult?.answers, updatedResult?.confidences, updatedResult?.pendingAnswers]).toEqual([undefined, undefined, undefined]);
 

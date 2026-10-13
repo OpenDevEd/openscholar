@@ -13,7 +13,6 @@ describe("aggregateQuestionInsights", () => {
         {
           paperId: "p1",
           title: "Paper 1",
-          openalexId: "oa:1",
           questionKey: "sample_size",
           answer: "273 studies",
           confidence: 0.92,
@@ -22,7 +21,6 @@ describe("aggregateQuestionInsights", () => {
         {
           paperId: "p2",
           title: "Paper 2",
-          openalexId: "oa:2",
           questionKey: "sample_size",
           answer: null,
           confidence: 0.21,
@@ -31,7 +29,6 @@ describe("aggregateQuestionInsights", () => {
         {
           paperId: "p3",
           title: "Paper 3",
-          openalexId: "oa:3",
           questionKey: "sample_size",
           answer: "270 studies",
           confidence: 0.55,
@@ -58,7 +55,6 @@ describe("aggregateQuestionInsights", () => {
         {
           paperId: "p1",
           title: "Paper 1",
-          openalexId: "oa:1",
           questionKey: "models",
           answer: ["GPT-4", "Machine Learning", "GPT-4; ChatGPT"],
           confidence: 0.9,
@@ -67,7 +63,6 @@ describe("aggregateQuestionInsights", () => {
         {
           paperId: "p2",
           title: "Paper 2",
-          openalexId: "oa:2",
           questionKey: "models",
           answer: ["gpt-4, transformers"],
           confidence: 0.75,
@@ -76,7 +71,6 @@ describe("aggregateQuestionInsights", () => {
         {
           paperId: "p3",
           title: "Paper 3",
-          openalexId: "oa:3",
           questionKey: "models",
           answer: ["CodeLlama", "deep learning"],
           confidence: 0.6,
@@ -104,7 +98,6 @@ describe("buildDisagreementClusters", () => {
         {
           paperId: "p1",
           title: "Paper 1",
-          openalexId: "oa:1",
           questionKey: "direction",
           answer: "increase",
           confidence: 0.88,
@@ -113,7 +106,6 @@ describe("buildDisagreementClusters", () => {
         {
           paperId: "p2",
           title: "Paper 2",
-          openalexId: "oa:2",
           questionKey: "direction",
           answer: "decrease",
           confidence: 0.82,
@@ -122,7 +114,6 @@ describe("buildDisagreementClusters", () => {
         {
           paperId: "p3",
           title: "Paper 3",
-          openalexId: "oa:3",
           questionKey: "direction",
           answer: "increase",
           confidence: 0.71,
@@ -142,7 +133,6 @@ describe("buildDisagreementClusters", () => {
         {
           paperId: "p1",
           title: "Paper 1",
-          openalexId: "oa:1",
           questionKey: "models",
           answer: ["GPT-4", "GitHub Copilot"],
           confidence: 0.9,
@@ -151,7 +141,6 @@ describe("buildDisagreementClusters", () => {
         {
           paperId: "p2",
           title: "Paper 2",
-          openalexId: "oa:2",
           questionKey: "models",
           answer: ["github copilot", "gpt-4"],
           confidence: 0.85,
@@ -160,7 +149,6 @@ describe("buildDisagreementClusters", () => {
         {
           paperId: "p3",
           title: "Paper 3",
-          openalexId: "oa:3",
           questionKey: "models",
           answer: ["CodeLlama"],
           confidence: 0.7,
@@ -209,7 +197,6 @@ describe("aggregateQuestionInsights edge cases", () => {
       {
         paperId: "p1",
         title: "Paper 1",
-        openalexId: "oa:1",
         questionKey: "q1",
         answer: null,
         confidence: 0.9,
@@ -218,7 +205,6 @@ describe("aggregateQuestionInsights edge cases", () => {
       {
         paperId: "p2",
         title: "Paper 2",
-        openalexId: "oa:2",
         questionKey: "q1",
         answer: null,
         confidence: 0.5,
@@ -227,7 +213,6 @@ describe("aggregateQuestionInsights edge cases", () => {
       {
         paperId: "p3",
         title: "Paper 3",
-        openalexId: "oa:3",
         questionKey: "q1",
         answer: null,
         confidence: 0.2,
@@ -251,14 +236,12 @@ describe("aggregateQuestionInsights edge cases", () => {
       {
         paperId: "p1",
         title: "Paper 1",
-        openalexId: "oa:1",
         questionKey: "q1",
         answer: undefined,
       },
       {
         paperId: "p2",
         title: "Paper 2",
-        openalexId: "oa:2",
         questionKey: "q1",
         answer: undefined,
       },
@@ -275,14 +258,12 @@ describe("aggregateQuestionInsights edge cases", () => {
       {
         paperId: "p1",
         title: "Paper 1",
-        openalexId: "oa:1",
         questionKey: "q1",
         answer: "yes",
       },
       {
         paperId: "p2",
         title: "Paper 2",
-        openalexId: "oa:2",
         questionKey: "q1",
         answer: "no",
       },
@@ -299,7 +280,6 @@ describe("aggregateQuestionInsights edge cases", () => {
       {
         paperId: "p1",
         title: "Paper 1",
-        openalexId: "oa:1",
         questionKey: "q1",
         answer: "yes",
         confidence: 0.8,
@@ -307,7 +287,6 @@ describe("aggregateQuestionInsights edge cases", () => {
       {
         paperId: "p2",
         title: "Paper 2",
-        openalexId: "oa:2",
         questionKey: "q1",
         answer: "no",
         confidence: 0.7,
@@ -329,7 +308,6 @@ describe("aggregateQuestionInsights edge cases", () => {
       {
         paperId: "p1",
         title: "Paper 1",
-        openalexId: "oa:1",
         questionKey: "q1",
         answer: "",
         confidence: 0.8,
@@ -348,7 +326,6 @@ describe("aggregateQuestionInsights edge cases", () => {
       {
         paperId: "p1",
         title: "Paper 1",
-        openalexId: "oa:1",
         questionKey: "models",
         answer: ["GPT-4"],
         confidence: 0.9,
@@ -357,7 +334,6 @@ describe("aggregateQuestionInsights edge cases", () => {
       {
         paperId: "p2",
         title: "Paper 2",
-        openalexId: "oa:2",
         questionKey: "models",
         answer: null,
         confidence: 0.5,
@@ -365,7 +341,6 @@ describe("aggregateQuestionInsights edge cases", () => {
       {
         paperId: "p3",
         title: "Paper 3",
-        openalexId: "oa:3",
         questionKey: "models",
         answer: undefined,
       },
@@ -391,7 +366,6 @@ describe("buildDisagreementClusters edge cases", () => {
       {
         paperId: "p1",
         title: "Paper 1",
-        openalexId: "oa:1",
         questionKey: "q1",
         answer: "yes",
         confidence: 0.9,
@@ -399,7 +373,6 @@ describe("buildDisagreementClusters edge cases", () => {
       {
         paperId: "p2",
         title: "Paper 2",
-        openalexId: "oa:2",
         questionKey: "q1",
         answer: "yes",
         confidence: 0.8,
@@ -407,7 +380,6 @@ describe("buildDisagreementClusters edge cases", () => {
       {
         paperId: "p3",
         title: "Paper 3",
-        openalexId: "oa:3",
         questionKey: "q1",
         answer: "yes",
         confidence: 0.7,
@@ -424,21 +396,18 @@ describe("buildDisagreementClusters edge cases", () => {
       {
         paperId: "p1",
         title: "Paper 1",
-        openalexId: "oa:1",
         questionKey: "q1",
         answer: null,
       },
       {
         paperId: "p2",
         title: "Paper 2",
-        openalexId: "oa:2",
         questionKey: "q1",
         answer: null,
       },
       {
         paperId: "p3",
         title: "Paper 3",
-        openalexId: "oa:3",
         questionKey: "q1",
         answer: null,
       },
@@ -460,7 +429,6 @@ describe("aggregateQuestionInsights bar scaling edge cases", () => {
       {
         paperId: "p1",
         title: "Paper 1",
-        openalexId: "oa:1",
         questionKey: "q1",
         answer: null,
         confidence: 0,
@@ -469,7 +437,6 @@ describe("aggregateQuestionInsights bar scaling edge cases", () => {
       {
         paperId: "p2",
         title: "Paper 2",
-        openalexId: "oa:2",
         questionKey: "q1",
         answer: null,
         confidence: 0,
@@ -503,7 +470,6 @@ describe("aggregateQuestionInsights bar scaling edge cases", () => {
       {
         paperId: "p98",
         title: "Paper 98",
-        openalexId: "oa:98",
         questionKey: "model",
         answer: "Claude",
         confidence: 0.85,
@@ -513,7 +479,6 @@ describe("aggregateQuestionInsights bar scaling edge cases", () => {
       {
         paperId: "p99",
         title: "Paper 99",
-        openalexId: "oa:99",
         questionKey: "model",
         answer: "Llama",
         confidence: 0.8,
@@ -547,7 +512,6 @@ describe("aggregateQuestionInsights bar scaling edge cases", () => {
       {
         paperId: "p1",
         title: "Only Paper",
-        openalexId: "oa:1",
         questionKey: "scope",
         answer: "Global",
         confidence: 0.88,
@@ -619,7 +583,6 @@ describe("aggregateQuestionInsights confidence context mapping", () => {
       {
         paperId: "p1",
         title: "Paper 1",
-        openalexId: "oa:1",
         questionKey: "q1",
         answer: "yes",
         confidence: 0.92,
@@ -628,7 +591,6 @@ describe("aggregateQuestionInsights confidence context mapping", () => {
       {
         paperId: "p2",
         title: "Paper 2",
-        openalexId: "oa:2",
         questionKey: "q1",
         answer: "yes",
         confidence: 0.88,

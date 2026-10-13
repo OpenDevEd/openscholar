@@ -8,6 +8,7 @@
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { answerPaper } from "../research/answers";
+import { pageIdOf } from "../../lib/papers/paper-ref";
 
 /** Moves one result's answers into its job's screening and clears them from the result. */
 export async function moveResultAnswers(ctx: MutationCtx, result: Doc<"screeningResults">) {
@@ -23,7 +24,7 @@ export async function moveResultAnswers(ctx: MutationCtx, result: Doc<"screening
     response,
     ...(result.confidences?.[key] === undefined ? {} : { confidence: result.confidences[key] }),
   }));
-  const answersVersion = await answerPaper(ctx, screeningId, result.openalexId, responses, "model", result.completedAt ?? result.createdAt);
+  const answersVersion = await answerPaper(ctx, screeningId, pageIdOf(result), responses, "model", result.completedAt ?? result.createdAt);
   await ctx.db.patch("screeningResults", result._id, { answers: undefined, confidences: undefined, pendingAnswers: undefined, answersVersion });
   return true;
 }

@@ -96,7 +96,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     await t.run(async (ctx) => ctx.db.insert("collectionCounts", { workspaceId: await personalWorkspaceOf(ctx, userId), count: COLLECTIONS }));
     expect(await as.query(api.library.collections.countCollections, {})).toBe(COLLECTIONS);
     // Asking for more than the largest page gets the largest page.
-    const page = await as.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: COLLECTIONS }, openalexId: "https://openalex.org/W0" });
+    const page = await as.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: COLLECTIONS }, paper: "https://openalex.org/W0" });
     expect(page.page).toHaveLength(50);
     expect(page.isDone).toBe(false);
     expect(page.page.filter((collection) => collection.containsItem).map((collection) => collection.name)).toEqual(["Everything"]);
@@ -528,7 +528,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
 
       const { jobId } = await createJob(as, {
         set: { kind: "search", searchId: "reused" }, saveTo: { kind: "none" },
-        papers: ids.map((openalexId, i) => ({ openalexId, title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)) })),
+        papers: ids.map((paper, i) => ({ paper, title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)) })),
         questions,
         scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
       });

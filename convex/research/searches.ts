@@ -25,6 +25,7 @@ import { AUTHORS_SHOWN, changesValidator, COUNTRIES_SHOWN, LAST_PAGE, LAST_PAGE_
 import type { Id } from "../_generated/dataModel";
 import { personalWorkspaceOf } from "../workspaces/actor";
 import { noteActivity } from "../activity/notes";
+import { paperIdOf } from "../../lib/papers/paper-ref";
 
 const CREATE = "research/searches:create" as const;
 const UPDATE = "research/searches:update" as const;
@@ -494,7 +495,7 @@ function shownPaper(work: Work, paper: SearchPaper) {
   const authors = (work.authorships ?? []).flatMap(({ author }) => (author?.display_name ? [author.id ? { name: short(author.display_name, SHOWN.author), id: author.id.split("/").at(-1)! } : { name: leading(author.display_name, SHOWN.name) }] : []));
   const countries = [...new Set((work.authorships ?? []).flatMap(({ institutions }) => (institutions ?? []).flatMap(({ country_code: country }) => (country ? [country] : []))))];
   return {
-    id: paper.openalexId,
+    id: paperIdOf(paper.paper),
     title: short(paper.title, SHOWN.title),
     ...(authors.length ? { authors: authors.slice(0, AUTHORS_SHOWN) } : {}),
     ...(authors.length > AUTHORS_SHOWN ? { moreAuthors: authors.length - AUTHORS_SHOWN } : {}),
@@ -524,7 +525,7 @@ export async function readPage(ctx: ActionCtx, userId: Id<"users">, found: Saved
   const { works, total } = await readSearchPage<Work>(found.request, { page, size: RESULTS_PAGE, select: ASSISTANT_FIELDS }, spender(ctx, found.clerkId));
   const papers = await keptByRating(ctx, userId, works.map(toPaper), found.ratingRange ? { min: found.ratingRange[0], max: found.ratingRange[1] } : undefined);
   const read = new Map(works.map((work) => [work.id, work]));
-  return { total, ...(found.ratingRange ? { totalIgnoresRatings: true as const } : {}), page, pages: Math.min(Math.ceil(total / RESULTS_PAGE), lastPage), papers: papers.map((paper) => shownPaper(read.get(paper.openalexId)!, paper)) };
+  return { total, ...(found.ratingRange ? { totalIgnoresRatings: true as const } : {}), page, pages: Math.min(Math.ceil(total / RESULTS_PAGE), lastPage), papers: papers.map((paper) => shownPaper(read.get(paperIdOf(paper.paper))!, paper)) };
 }
 
 /**

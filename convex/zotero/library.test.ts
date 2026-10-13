@@ -86,7 +86,7 @@ describe("the person's Zotero library, read for the assistant", () => {
     requests = [];
     await t.action(internal.extraction.actions.setupExtractionQueueJob, { jobId, expectedEpoch: 0 });
     const papers = await t.run((ctx) => ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
-    expect(papers.map((paper) => [paper.openalexId, paper.title]).sort()).toEqual([["zotero:user:ITEM0002", "Zotero paper 2"], ["zotero:user:ITEM0003", "Zotero paper 3"]]);
+    expect(papers.map((paper) => [paper.openalexId, paper.title]).sort()).toEqual([["zotero:user:15294942:ITEM0002", "Zotero paper 2"], ["zotero:user:15294942:ITEM0003", "Zotero paper 3"]]);
     // Only that collection's own items, from the second, two of them: never the whole library. In the order they were added, which an item edited while the job reads doesn't change.
     expect([...new Set(requests.map((url) => `${url.pathname}?start=${url.searchParams.get("start")}&limit=${url.searchParams.get("limit")}&sort=${url.searchParams.get("sort")}&direction=${url.searchParams.get("direction")}`))]).toEqual(["/users/15294942/collections/ABCD1234/items/top?start=1&limit=2&sort=dateAdded&direction=asc"]);
   });

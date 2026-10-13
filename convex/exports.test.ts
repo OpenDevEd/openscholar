@@ -34,7 +34,7 @@ describe("library export", () => {
     expect(response.headers.get("Content-Disposition")).toMatch(/^attachment; filename="library-export-\d{4}-\d{2}-\d{2}\.csv"$/);
     const [header, ...rows] = text.trimEnd().split("\n");
     // Excel reads a CSV as UTF-8 only after a byte order mark.
-    expect(header).toBe("\ufeffabstract,authors,authorsUnparsed,citedByCount,doi,isOpenAccess,journal,oaStatus,oaUrl,pdfUrl,workType,metadataRecoveredAt,openalexId,publicationYear,rating,savedAt,title,updatedAt");
+    expect(header).toBe("\ufeffabstract,authors,authorsUnparsed,citedByCount,doi,isOpenAccess,journal,oaStatus,oaUrl,pdfUrl,workType,metadataRecoveredAt,openalexId,paper,publicationYear,rating,savedAt,title,updatedAt");
     expect(rows).toHaveLength(2);
     expect(rows[0]).toContain(',"Has ""quotes"", and commas",');
     expect(text).not.toContain("Not theirs");
@@ -153,9 +153,9 @@ describe("screening export", () => {
     expect(csv.response.headers.get("Content-Disposition")).toBe('attachment; filename="screening-export-2026-09-01-completed.csv"');
     const lines = csv.text.split("\n");
     expect(lines).toHaveLength(121);
-    expect(lines[0]).toContain('Title,Authors,Year,DOI,OpenAlex ID,"q1: Randomized, or quasi-experimental?",Score,Stars,Qualified,Status');
-    expect(lines[1]).toMatch(/^Paper 0,,,,https:\/\/openalex.org\/W0,Yes,1,5,Yes,completed,/);
-    expect(lines[120]).toMatch(/^Paper 119,,,,https:\/\/openalex.org\/W119,No,0,5,No,completed,/);
+    expect(lines[0]).toContain('Title,Authors,Year,DOI,Paper,OpenAlex ID,"q1: Randomized, or quasi-experimental?",Score,Stars,Qualified,Status');
+    expect(lines[1]).toMatch(/^Paper 0,,,,openalex:W0,https:\/\/openalex.org\/W0,Yes,1,5,Yes,completed,/);
+    expect(lines[120]).toMatch(/^Paper 119,,,,openalex:W119,https:\/\/openalex.org\/W119,No,0,5,No,completed,/);
 
     const json = JSON.parse((await exportParts(t, as, { kind: "screening", jobId })).text);
     expect(json.job).toMatchObject({ status: "completed", totalPapers: 120, createdAt: "2026-09-01T00:00:00.000Z" });

@@ -26,7 +26,7 @@ import {
 import { MIN_YEAR } from "@/lib/constants";
 import type { DateRange } from "react-day-picker";
 import { downloadExport } from "@/lib/export";
-import { libraryItemToPaperResult } from "@/lib/library/library-item-to-paper-result";
+import { libraryCardId, libraryItemToPaperResult } from "@/lib/library/library-item-to-paper-result";
 import {
   downloadLibraryItem,
   downloadLibraryEssentialItem,
@@ -222,16 +222,16 @@ export function LibraryPageClient() {
 
   // In an organization's collection, how its members rated each paper there (#655), by the paper.
   const collectionRatings = useMemo(
-    () => new Map(pageItems.flatMap((item) => (item.collection ? [[item.openalexId, { libraryItemId: item._id, average: item.rating, ratings: item.collection }] as const] : []))),
+    () => new Map(pageItems.flatMap((item) => (item.collection ? [[libraryCardId(item), { libraryItemId: item._id, average: item.rating, ratings: item.collection }] as const] : []))),
     [pageItems],
   );
 
   // In an organization's library, who saved each paper (#656), by the paper.
-  const addedBy = useMemo(() => new Map(pageItems.flatMap((item) => (item.by ? [[item.openalexId, item.by] as const] : []))), [pageItems]);
+  const addedBy = useMemo(() => new Map(pageItems.flatMap((item) => (item.by ? [[libraryCardId(item), item.by] as const] : []))), [pageItems]);
 
   // In an organization's library outside a collection, how its members rated each paper themselves (#801): their average and who gave what.
   const memberRatings = useMemo(
-    () => new Map(pageItems.flatMap((item) => (item.members && item.rating !== undefined ? [[item.openalexId, { libraryItemId: item._id, average: item.rating, ratings: item.members }] as const] : []))),
+    () => new Map(pageItems.flatMap((item) => (item.members && item.rating !== undefined ? [[libraryCardId(item), { libraryItemId: item._id, average: item.rating, ratings: item.members }] as const] : []))),
     [pageItems],
   );
 
@@ -239,7 +239,7 @@ export function LibraryPageClient() {
   const serverRatingsMap = useMemo(
     () =>
       new Map(
-        pageItems.map((item) => [item.openalexId, item.myRating ?? null]),
+        pageItems.map((item) => [libraryCardId(item), item.myRating ?? null]),
       ),
     [pageItems],
   );

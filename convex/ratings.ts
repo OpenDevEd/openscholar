@@ -1,6 +1,6 @@
 import type { DataModel, Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { workUrl } from "../lib/openalex/work-id";
+import { paperIdOf, paperKeyOf, toPaperKey } from "../lib/papers/paper-ref";
 import { findItem } from "./library/find";
 import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { MAX_RATERS_KEPT } from "./lib/listCaps";
@@ -10,8 +10,8 @@ import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 import { personName } from "./lib/people";
 
-/** The ID a rating is kept under: a paper's whole OpenAlex address, however it was given, so every rating of it meets. */
-export const ratedPaper = (paperId: string) => workUrl(paperId) ?? paperId;
+/** The ID a rating is kept under: the paper's key (lib/papers/paper-ref.ts), however the paper was named, so every rating of it meets. */
+export const ratedPaper = (paperId: string) => toPaperKey(paperId) ?? paperId;
 
 /** A rating, or null for none. */
 export const ratingOrNone = v.union(v.number(), v.null());
@@ -24,8 +24,12 @@ export function requireRating(rating: number) {
 }
 
 /** A person's rating of a paper within a collection, which the collection's people see, or with no collection their own, the same everywhere (#655). */
-const ratingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, collectionId: Id<"collections"> | undefined, paperId: string) =>
-  ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId).eq("collectionId", collectionId).eq("paperId", ratedPaper(paperId))).unique();
+async function ratingRow(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, collectionId: Id<"collections"> | undefined, paperId: string) {
+  const key = ratedPaper(paperId);
+  const under = (id: string) => ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId).eq("collectionId", collectionId).eq("paperId", id)).unique();
+  // ponytail: a rating of an OpenAlex paper kept before keys is under its address until migrations/paperIdentity moves it; goes when the old IDs do.
+  return (await under(key)) ?? (key.startsWith("openalex:") ? await under(paperIdOf(key)) : null);
+}
 /** A person's own rating of a paper, the same everywhere. */
 export const personalRatingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) => ratingRow(ctx, userId, undefined, paperId);
 
@@ -39,7 +43,7 @@ export async function writeRating(ctx: MutationCtx, userId: Id<"users">, collect
   if ((row?.rating ?? null) === rating) return false;
   if (rating === null) await ctx.db.delete("ratings", row!._id);
   else if (!row) await ctx.db.insert("ratings", { userId, paperId: ratedPaper(paperId), ...(collectionId ? { collectionId } : {}), rating });
-  else await ctx.db.patch("ratings", row._id, { rating });
+  else await ctx.db.patch("ratings", row._id, { rating, paperId: ratedPaper(paperId) });
   return true;
 }
 
@@ -204,7 +208,12 @@ export async function asRaters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"or
 export async function placeRated(ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, item: Doc<"libraryItems">): Promise<{ rating?: number; count?: number }> {
   const workspace = await ctx.db.get("workspaces", item.workspaceId);
   if (workspace?.kind !== "organization") return item.rating === undefined ? {} : { rating: item.rating };
-  const rows = await ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", ratedPaper(item.openalexId))).take(MAX_RATERS);
+  const key = paperKeyOf(item);
+  const under = (id: string) => ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", id)).take(MAX_RATERS);
+  const keyed = await under(key);
+  // ponytail: ratings kept before keys are under the paper's address until migrations/paperIdentity moves them; a person's rating under the key is theirs now. Goes when the old IDs do.
+  const older = paperIdOf(key) === key ? [] : (await under(paperIdOf(key))).filter((row) => !keyed.some((rated) => rated.userId === row.userId));
+  const rows = [...keyed, ...older];
   const counted = await Promise.all(rows.map((row) => isMember(ctx, workspace.organizationId, row.userId)));
   const given = rows.flatMap((row, at) => (counted[at] ? [row.rating] : []));
   return given.length ? { rating: average(given), count: given.length } : {};
@@ -228,7 +237,7 @@ export const collectionRatingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users
 
 /** Sets a person's rating of a paper in a collection, or clears it with null, and the collection's average of it. */
 export async function setCollectionRating(ctx: MutationCtx, userId: Id<"users">, place: Doc<"libraryItemCollections">, item: Doc<"libraryItems">, rating: number | null) {
-  if (await writeRating(ctx, userId, place.collectionId, item.openalexId, rating)) await ratePlace(ctx, place, item);
+  if (await writeRating(ctx, userId, place.collectionId, paperKeyOf(item), rating)) await ratePlace(ctx, place, item);
 }
 
 /** Deletes a step of a deleted collection's ratings. Returns whether all are gone. */
@@ -240,7 +249,7 @@ export async function purgeCollectionRatings(ctx: MutationCtx, collectionId: Id<
 
 /** Brings a saved paper's rating in step with its workspace's people's ratings of it, and in an organization who gave it. */
 export async function rateItem(ctx: MutationCtx, item: Doc<"libraryItems">) {
-  const { rating, count, by } = await workspaceRated(ctx, item.workspaceId, item.openalexId);
+  const { rating, count, by } = await workspaceRated(ctx, item.workspaceId, paperKeyOf(item));
   const same = rating === item.rating && count === item.ratingCount && JSON.stringify(by ?? null) === JSON.stringify(item.ratedBy ?? null);
   if (!same) await ctx.db.patch("libraryItems", item._id, { rating, ratingCount: count, ratedBy: by });
 }

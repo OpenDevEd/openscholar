@@ -26,10 +26,12 @@ async function setup(t: Test) {
 }
 
 const paper = (i: number, fields: { rating?: number; publicationYear?: number } = {}) => ({
-  openalexId: `https://openalex.org/W${i}`,
+  paper: `https://openalex.org/W${i}`,
   title: `Paper ${i}`,
   ...fields,
 });
+// The same paper as a row of the table.
+const row = (i: number) => ({ openalexId: `https://openalex.org/W${i}`, paperKey: `openalex:W${i}`, title: `Paper ${i}` });
 
 describe("library facets", () => {
   it("a rating changed on a paper reaches its collection's view and counts", async () => {
@@ -42,7 +44,7 @@ describe("library facets", () => {
       await as.mutation(api.library.collections.addToCollection, { collectionId, libraryItemId: id });
       ids.push(id);
     }
-    await as.mutation(api.library.mutations.setLibraryRating, { openalexId: paper(1).openalexId, rating: 5 });
+    await as.mutation(api.library.mutations.setLibraryRating, { paper: paper(1).paper, rating: 5 });
     await t.finishAllScheduledFunctions(() => {});
 
     const page = await as.query(api.library.queries.papers, { collectionId, sort: "rating" });
@@ -135,7 +137,7 @@ describe("library facets", () => {
           await t.finishInProgressScheduledFunctions();
         }
       };
-      const removed = await as.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper(1).openalexId });
+      const removed = await as.mutation(api.library.mutations.removeFromLibrary, { paper: paper(1).paper });
       await nextBatches();
       const { id: restored } = await as.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
       // The removal's day ends while its places are still going back: it waits for them.
@@ -172,8 +174,8 @@ describe("library facets", () => {
     const { userId, as } = await setup(t);
     // Many rated papers with no year, which sort before every year; one rated and dated.
     await t.run(async (ctx) => {
-      for (let i = 0; i < 300; i++) await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paper(i), rating: 5, searchableText: "x", savedAt: i, updatedAt: 1 });
-      await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paper(1_000), rating: 5, publicationYear: 2010, searchableText: "x", savedAt: 1_000, updatedAt: 1 });
+      for (let i = 0; i < 300; i++) await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...row(i), rating: 5, searchableText: "x", savedAt: i, updatedAt: 1 });
+      await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...row(1_000), rating: 5, publicationYear: 2010, searchableText: "x", savedAt: 1_000, updatedAt: 1 });
     });
     await t.finishAllScheduledFunctions(() => {});
     expect(await as.query(api.library.queries.countPapers, { minRating: 4, yearTo: 2020 })).toEqual({ count: 1 });
@@ -189,7 +191,7 @@ describe("library facets", () => {
       await t.run(async (ctx) => {
         const collection = (await ctx.db.get("collections", collectionId))!;
         for (let i = start; i < start + 10; i++) {
-          const id = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paper(i), abstract: "x".repeat(400_000), searchableText: "x", savedAt: i, updatedAt: 1 });
+          const id = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...row(i), abstract: "x".repeat(400_000), searchableText: "x", savedAt: i, updatedAt: 1 });
           await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId: id, assignedAt: i });
           await ctx.db.patch("collections", collectionId, { itemCount: collection.itemCount + i - start + 1 });
         }
@@ -240,14 +242,14 @@ describe("library facets", () => {
         }
       };
 
-      const removed = await as.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper(1).openalexId });
+      const removed = await as.mutation(api.library.mutations.removeFromLibrary, { paper: paper(1).paper });
       // The followed place hasn't moved yet: putting the paper back would change the library, so the assistant asks.
       expect(await t.run(async (ctx) => restoreLibraryItemAction.asksFirst!(ctx, await ownActor(ctx, userId), removed.undo!.args))).toBe(true);
       const { id: restored } = await as.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
-      await expect(as.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper(1).openalexId })).rejects.toThrow(/still going back/);
+      await expect(as.mutation(api.library.mutations.removeFromLibrary, { paper: paper(1).paper })).rejects.toThrow(/still going back/);
       await nextBatches();
 
-      const removedAgain = await as.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper(1).openalexId });
+      const removedAgain = await as.mutation(api.library.mutations.removeFromLibrary, { paper: paper(1).paper });
       await nextBatches();
       const { id: back } = await as.mutation(api.library.mutations.restoreLibraryItem, removedAgain.undo!.args);
       await nextBatches();
@@ -274,7 +276,7 @@ describe("the library in workspaces (#650)", () => {
     const { id: kept } = await as.mutation(api.library.mutations.saveToLibrary, paper(1, { rating: 4 }));
     await as.mutation(api.library.mutations.saveToLibrary, paper(2, { rating: 2 }));
     const { id: collectionId } = await as.mutation(api.library.collections.createCollection, { name: "Trials" });
-    const removed = await as.mutation(api.library.mutations.removeFromLibrary, { openalexId: paper(2).openalexId });
+    const removed = await as.mutation(api.library.mutations.removeFromLibrary, { paper: paper(2).paper });
     const { id: restored } = await as.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args);
     await t.finishAllScheduledFunctions(() => {});
 
@@ -322,9 +324,9 @@ describe("the library in workspaces (#650)", () => {
     await expect(asBob.query(api.library.queries.getLibraryCount, { workspaceId: own })).rejects.toThrow(/Workspace not found/);
 
     // A member takes away only what they made; an admin takes away anyone's.
-    await expect(asAlice.mutation(api.library.mutations.removeFromLibrary, { ...inLab, openalexId: paper(2).openalexId })).rejects.toThrow(/admin/);
+    await expect(asAlice.mutation(api.library.mutations.removeFromLibrary, { ...inLab, paper: paper(2).paper })).rejects.toThrow(/admin/);
     await expect(asAlice.mutation(api.library.collections.deleteCollection, { ...inLab, collectionId: bobCollection })).rejects.toThrow(/admin/);
-    await asBob.mutation(api.library.mutations.removeFromLibrary, { ...inLab, openalexId: paper(1).openalexId });
+    await asBob.mutation(api.library.mutations.removeFromLibrary, { ...inLab, paper: paper(1).paper });
     await t.finishAllScheduledFunctions(() => {});
     expect(await titles(asAlice, lab)).toEqual(["Paper 2"]);
   });

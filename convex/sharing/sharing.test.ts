@@ -92,11 +92,11 @@ it("gives a colleague an item at once, and no one a stranger's, a member's or an
 it("lets a guest who edits a collection put papers in it and take them out, in the collection's own library, and no one else", async () => {
   const { t, alice, carol, dave, item, users, workspaceId, club } = await lab();
   const collectionId = item.id as Id<"collections">;
-  const paper = { openalexId: "https://openalex.org/W1", title: "Tutoring at scale" };
+  const paper = { paper: "https://openalex.org/W1", title: "Tutoring at scale" };
   const put = (who: typeof carol, inCollection = true) => who.mutation(api.library.mutations.setPaperInCollection, { paper, collectionId, inCollection });
   const held = () => t.run(async (ctx) => (await ctx.db.get("collections", collectionId))!.itemCount);
   // What her collection picker offers beside her own collections, for this paper.
-  const offered = async (who: typeof carol) => (await who.query(api.sharing.shared.editableCollections, { openalexId: paper.openalexId, paginationOpts: { cursor: null, numItems: 20 } })).page;
+  const offered = async (who: typeof carol) => (await who.query(api.sharing.shared.editableCollections, { paper: paper.paper, paginationOpts: { cursor: null, numItems: 20 } })).page;
 
   // A viewer reads it, and someone it isn't shared with has nothing of it.
   await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
@@ -204,7 +204,7 @@ it("keeps a guest's row to the item's name, and leaves none of an item that's de
 
 it("opens a shared collection to its guest from their own workspace, and to nobody else", async () => {
   const { t, alice, carol, dave, item, users, club } = await lab();
-  const { id: saved } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: item.workspaceId, openalexId: "https://openalex.org/W1", title: "One", collectionId: item.id });
+  const { id: saved } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: item.workspaceId, paper: "https://openalex.org/W1", title: "One", collectionId: item.id });
   await alice.mutation(api.library.collections.setCollectionRating, { workspaceId: item.workspaceId, collectionId: item.id, libraryItemId: saved, rating: 4, expect: null });
   await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
   const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, collectionId: item.id };
@@ -229,9 +229,9 @@ it("opens a shared collection to its guest from their own workspace, and to nobo
 
   // The assistant lists it for her too. Its rows are the lab's: each names a library item only once she has saved the paper herself.
   const listed = async () => (await carol.query(api.library.queries.papers, { collectionId: item.id })).papers.map(({ id, libraryItemId, inCollection }) => ({ id, libraryItemId, inCollection }));
-  expect(await listed()).toEqual([{ id: "https://openalex.org/W1", libraryItemId: undefined, inCollection: false }]);
-  const { id: hers } = await carol.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W1", title: "One" });
-  expect(await listed()).toEqual([{ id: "https://openalex.org/W1", libraryItemId: hers, inCollection: false }]);
+  expect(await listed()).toEqual([{ id: "openalex:W1", libraryItemId: undefined, inCollection: false }]);
+  const { id: hers } = await carol.mutation(api.library.mutations.saveToLibrary, { paper: "https://openalex.org/W1", title: "One" });
+  expect(await listed()).toEqual([{ id: "openalex:W1", libraryItemId: hers, inCollection: false }]);
 
   // An export she started reads the collection again for each part, so it ends with her place.
   const carolOwn = await t.run((ctx) => personalWorkspaceOf(ctx, users.carol));

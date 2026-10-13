@@ -50,7 +50,7 @@ const mockData: ScreeningExportData = {
   },
   results: [
     {
-      openalexId: 'W123',
+      paper: 'openalex:W123',
       title: 'A Great Paper',
       authors: ['Smith, J.', 'Jones, K.'],
       publicationYear: 2024,
@@ -62,7 +62,7 @@ const mockData: ScreeningExportData = {
       qualified: true,
     },
     {
-      openalexId: 'W456',
+      paper: 'openalex:W456',
       title: 'Paper with, comma',
       authors: ['Lee, M.'],
       publicationYear: 2023,
@@ -74,7 +74,7 @@ const mockData: ScreeningExportData = {
       qualified: false,
     },
     {
-      openalexId: 'W789',
+      paper: 'openalex:W789',
       title: 'Failed Paper',
       status: 'failed',
       // No authors, publicationYear, doi, answers, score, stars, qualified
@@ -220,7 +220,7 @@ describe('Screening Export', () => {
       const parsed = JSON.parse(json);
       // Failed result should have explicit nulls
       const failedResult = parsed.results.find(
-        (r: { openalexId: string }) => r.openalexId === 'W789'
+        (r: { paper: string }) => r.paper === 'openalex:W789'
       );
       expect(failedResult.answers).toBeNull();
       expect(failedResult.score).toBeNull();
@@ -234,7 +234,7 @@ describe('Screening Export', () => {
       const json = generateScreeningJSON(mockData);
       const parsed = JSON.parse(json);
       const failedResult = parsed.results.find(
-        (r: { openalexId: string }) => r.openalexId === 'W789'
+        (r: { paper: string }) => r.paper === 'openalex:W789'
       );
       expect(failedResult.authors).toEqual([]);
     });
@@ -287,7 +287,7 @@ describe('Screening Export', () => {
       const dataRow = resultsSheet!.getRow(2);
       const values = dataRow.values as (string | number | undefined)[];
       expect(values).toContain('A Great Paper');
-      expect(values).toContain('W123');
+      expect(values).toContain('openalex:W123');
     });
 
     it('creates Summary sheet with job info section', async () => {
@@ -335,12 +335,12 @@ describe('Screening Export', () => {
         ...mockData,
         results: [
           {
-            openalexId: 'W999',
+            paper: 'openalex:W999',
             title: 'Skipped Paper',
             status: 'skipped',
           },
           {
-            openalexId: 'W789',
+            paper: 'openalex:W789',
             title: 'Failed Paper',
             status: 'failed',
           },

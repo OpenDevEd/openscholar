@@ -16,6 +16,7 @@ import type { QueryCtx } from "../_generated/server";
 import { paperAnswers, type AnswerSource } from "../research/answers";
 import { outcomeOf, scorePaper, tallied, type QuestionTally } from "./scoring";
 import { createError } from "../lib/errors";
+import { pageIdOf } from "../../lib/papers/paper-ref";
 
 export type PaperAnswer = { key: string; answer: boolean | null; changed: boolean; confidence?: number };
 type CurrentAnswer = PaperAnswer & { by?: AnswerSource; at?: number };
@@ -29,7 +30,7 @@ type Counted = NonNullable<Doc<"screeningResults">["counted"]>;
  */
 export async function answersNow(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">): Promise<CurrentAnswer[]> {
   const screening = await ctx.db.get("screenings", job.screeningId);
-  const given = screening ? await paperAnswers(ctx, screening, result.openalexId) : [];
+  const given = screening ? await paperAnswers(ctx, screening, pageIdOf(result)) : [];
   const held = result.answers;
   return job.questions.map(({ key, question }) => {
     const kept = given.find((value) => value.question === question);
@@ -82,7 +83,7 @@ export async function jobModel(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJob
   const version = result.answersVersion;
   const row = await ctx.db
     .query("screeningAnswerHistory")
-    .withIndex("by_screening_and_paper_and_version", (q) => q.eq("screeningId", screeningId).eq("paperId", result.openalexId).lte("version", version))
+    .withIndex("by_screening_and_paper_and_version", (q) => q.eq("screeningId", screeningId).eq("paperId", pageIdOf(result)).lte("version", version))
     .order("desc")
     .first();
   if (!row) return undefined;

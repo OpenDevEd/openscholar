@@ -1,16 +1,18 @@
 import { Migrations } from "@convex-dev/migrations";
 import { v } from "convex/values";
 import { components, internal } from "../_generated/api";
-import type { DataModel } from "../_generated/dataModel";
+import type { DataModel, Doc } from "../_generated/dataModel";
 import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { identityFromStored } from "../lib/paperRef";
+import { toPaperKey } from "../../lib/papers/paper-ref";
 
 /**
  * Gives every saved paper, removed paper and screened or extracted paper kept before papers were
  * named by their source its identity (plans/evidence-library-sources): its key, its source and its
  * cross-references, read from the ID it was stored under, its DOI and its PDF address. A row whose
- * ID names no paper is left as it was and counted by `verify`. Safe to run again.
+ * ID names no paper is left as it was and counted by `verify`. Then ratings move to the paper's key,
+ * and undos the assistant keeps name the paper as the library's actions now take it. Safe to run again.
  *
  *   npx convex run migrations/paperIdentity:run '{"dryRun": true}'
  *   npx convex run migrations/paperIdentity:run
@@ -48,40 +50,130 @@ export const extracted = migrations.define({
   migrateOne: (_ctx, paper) => (paper.paperKey === undefined ? identityFromStored(paper) : undefined),
 });
 
+// A rating kept under a paper's OpenAlex address moves to its key. One given again since, under the key, is the person's rating now.
+export const ratings = migrations.define({
+  table: "ratings",
+  migrateOne: async (ctx, row) => {
+    const key = toPaperKey(row.paperId);
+    if (!key || key === row.paperId) return;
+    const since = await ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", row.userId).eq("collectionId", row.collectionId).eq("paperId", key)).unique();
+    if (since) await ctx.db.delete("ratings", row._id);
+    else return { paperId: key };
+  },
+});
+
+// The library's actions whose arguments named a paper `openalexId`, and now name it `paper`; putting one in a collection names it inside `paper`.
+const NAMED = new Set(["library/mutations:saveToLibrary", "library/mutations:removeFromLibrary", "library/mutations:setLibraryRating"]);
+const IN_COLLECTION = "library/mutations:setPaperInCollection";
+type Args = Record<string, unknown>;
+const renamed = ({ openalexId, ...rest }: Args): Args => ({ paper: openalexId, ...rest });
+const named = (args: Args) => typeof args.openalexId === "string";
+
+/** One action's arguments with the paper named as the action now takes it, or null when they need no change. */
+export function paperArgs(path: string, args: Args): Args | null {
+  if (NAMED.has(path)) return named(args) ? renamed(args) : null;
+  if (path !== IN_COLLECTION) return null;
+  const paper = args.paper as Args | undefined;
+  return paper && named(paper) ? { ...args, paper: renamed(paper) } : null;
+}
+
+/** Stored arguments, as JSON, moved by `paperArgs`; a bulk change's are a list. Undefined when nothing changes. */
+function movedJson(path: string, json: string): string | undefined {
+  let read: unknown;
+  try {
+    read = JSON.parse(json);
+  } catch {
+    return undefined;
+  }
+  if (Array.isArray(read)) {
+    const each = read.map((args: Args) => paperArgs(path, args));
+    return each.some(Boolean) ? JSON.stringify(each.map((moved, at) => moved ?? read[at])) : undefined;
+  }
+  const moved = read && typeof read === "object" ? paperArgs(path, read as Args) : null;
+  return moved ? JSON.stringify(moved) : undefined;
+}
+
+export const stepUndos = migrations.define({
+  table: "assistantSteps",
+  migrateOne: (_ctx, step) => {
+    const undo = step.undo && movedJson(step.undo.path, step.undo.args);
+    // A call still waiting for the person runs from its arguments.
+    const input = step.status === "asking" || step.status === "allowed" ? movedJson(step.path, step.input) : undefined;
+    if (!undo && !input) return;
+    return { ...(undo ? { undo: { path: step.undo!.path, args: undo } } : {}), ...(input ? { input } : {}) };
+  },
+});
+
+export const bulkUndos = migrations.define({
+  table: "assistantStepUndos",
+  migrateOne: (_ctx, row) => {
+    const args = movedJson(row.path, row.args);
+    return args ? { args } : undefined;
+  },
+});
+
 export const run = migrations.runner([
   internal.migrations.paperIdentity.papers,
   internal.migrations.paperIdentity.removals,
   internal.migrations.paperIdentity.screened,
   internal.migrations.paperIdentity.extracted,
+  internal.migrations.paperIdentity.ratings,
+  internal.migrations.paperIdentity.stepUndos,
+  internal.migrations.paperIdentity.bulkUndos,
 ]);
 
-const TABLE = v.union(v.literal("libraryItems"), v.literal("libraryRemovals"), v.literal("screeningResults"), v.literal("extractionPapers"));
+const TABLE = v.union(v.literal("libraryItems"), v.literal("libraryRemovals"), v.literal("screeningResults"), v.literal("extractionPapers"), v.literal("ratings"));
 const PAGE = 200;
 // A page stops early rather than read past this: saved papers can be large.
 const PAGE_BYTES = 4 * 1024 * 1024;
 const SAMPLE = 20;
 
-/** One page of a table: rows still without an identity, and of those, rows whose ID names no paper (a sample of their IDs). */
+/** One page of a table: rows still without an identity (ratings: not under a key), and of those, rows whose ID names no paper (a sample of their IDs). */
 export const verifyPage = internalQuery({
   args: { table: TABLE, cursor: v.union(v.string(), v.null()) },
   returns: v.object({ left: v.number(), unplaced: v.array(v.string()), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { table, cursor }) => {
     const page = await ctx.db.query(table).paginate({ cursor, numItems: PAGE, maximumBytesRead: PAGE_BYTES });
-    const stored = page.page.map((row) => ("item" in row ? row.item : row));
+    if (table === "ratings") {
+      const ids = (page.page as Doc<"ratings">[]).map((row) => row.paperId).filter((id) => toPaperKey(id) !== id);
+      return { left: ids.length, unplaced: ids.filter((id) => !toPaperKey(id)), isDone: page.isDone, continueCursor: page.continueCursor };
+    }
+    const stored = (page.page as Array<Doc<"libraryItems" | "libraryRemovals" | "screeningResults" | "extractionPapers">>).map((row) => ("item" in row ? row.item : row));
     const left = stored.filter((row) => row.paperKey === undefined);
     const unplaced = left.filter((row) => !("paperKey" in identityFromStored(row))).map((row) => row.openalexId);
     return { left: left.length, unplaced, isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });
 
+/** Saved papers of one workspace that share a key: one paper saved twice under two forms of its ID. Read in key order. */
+export const duplicatesPage = internalQuery({
+  args: { cursor: v.union(v.string(), v.null()), last: v.union(v.string(), v.null()) },
+  returns: v.object({ duplicates: v.array(v.string()), last: v.union(v.string(), v.null()), isDone: v.boolean(), continueCursor: v.string() }),
+  handler: async (ctx, args) => {
+    const page = await ctx.db.query("libraryItems").withIndex("by_workspace_paperKey").paginate({ cursor: args.cursor, numItems: PAGE, maximumBytesRead: PAGE_BYTES });
+    const duplicates: string[] = [];
+    let last = args.last;
+    for (const item of page.page) {
+      if (item.paperKey === undefined) continue;
+      const at = `${item.workspaceId}|${item.paperKey}`;
+      if (at === last) duplicates.push(at);
+      last = at;
+    }
+    return { duplicates, last, isDone: page.isDone, continueCursor: page.continueCursor };
+  },
+});
+
 const tableReport = v.object({ left: v.number(), unplaced: v.number(), sample: v.array(v.string()) });
 
-/** What is still left: per table, rows without an identity and how many of them name no paper. All zero when done. */
+/**
+ * What is still left: per table, rows without an identity and how many of them name no paper; and how many
+ * papers a workspace saved twice, with a sample (`duplicatesPage` lists them all). All zero when done.
+ */
 export const verify = internalAction({
   args: {},
-  returns: v.object({ libraryItems: tableReport, libraryRemovals: tableReport, screeningResults: tableReport, extractionPapers: tableReport }),
+  returns: v.object({ libraryItems: tableReport, libraryRemovals: tableReport, screeningResults: tableReport, extractionPapers: tableReport, ratings: tableReport, duplicates: v.object({ count: v.number(), sample: v.array(v.string()) }) }),
   handler: async (ctx) => {
-    const report = async (table: "libraryItems" | "libraryRemovals" | "screeningResults" | "extractionPapers") => {
+    const report = async (table: "libraryItems" | "libraryRemovals" | "screeningResults" | "extractionPapers" | "ratings") => {
       const totals = { left: 0, unplaced: 0, sample: [] as string[] };
       for (let cursor: string | null = null; ;) {
         const page: { left: number; unplaced: string[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.paperIdentity.verifyPage, { table, cursor });
@@ -92,11 +184,22 @@ export const verify = internalAction({
         cursor = page.continueCursor;
       }
     };
+    const duplicates = { count: 0, sample: [] as string[] };
+    for (let cursor: string | null = null, last: string | null = null; ;) {
+      const page: { duplicates: string[]; last: string | null; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.paperIdentity.duplicatesPage, { cursor, last });
+      duplicates.count += page.duplicates.length;
+      duplicates.sample.push(...page.duplicates.slice(0, Math.max(0, SAMPLE - duplicates.sample.length)));
+      if (page.isDone) break;
+      cursor = page.continueCursor;
+      last = page.last;
+    }
     return {
       libraryItems: await report("libraryItems"),
       libraryRemovals: await report("libraryRemovals"),
       screeningResults: await report("screeningResults"),
       extractionPapers: await report("extractionPapers"),
+      ratings: await report("ratings"),
+      duplicates,
     };
   },
 });

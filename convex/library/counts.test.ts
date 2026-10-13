@@ -16,10 +16,10 @@ describe("library counts", () => {
     const before = await t.run((ctx) => ctx.db.get("users", userId));
     const alice = t.withIdentity({ subject: "alice" });
 
-    await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W1", title: "One" });
-    await alice.mutation(api.library.mutations.saveToLibrary, { openalexId: "https://openalex.org/W2", rating: 4, title: "Two" });
+    await alice.mutation(api.library.mutations.saveToLibrary, { paper: "https://openalex.org/W1", title: "One" });
+    await alice.mutation(api.library.mutations.saveToLibrary, { paper: "https://openalex.org/W2", rating: 4, title: "Two" });
     expect(await alice.query(api.library.queries.getLibraryCount, {})).toBe(2);
-    await alice.mutation(api.library.mutations.removeFromLibrary, { openalexId: "https://openalex.org/W1" });
+    await alice.mutation(api.library.mutations.removeFromLibrary, { paper: "https://openalex.org/W1" });
     expect(await alice.query(api.library.queries.getLibraryCount, {})).toBe(1);
 
     const { user, rows } = await t.run(async (ctx) => ({ user: await ctx.db.get("users", userId), rows: await ctx.db.query("libraryCounts").collect() }));

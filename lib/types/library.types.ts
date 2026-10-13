@@ -1,5 +1,6 @@
 export interface TrimmedPaperData {
-  openalexId: string;
+  /** The paper by its key or OpenAlex ID (lib/papers/paper-ref.ts). */
+  paper: string;
   title: string;
   authors: string[] | undefined;
   doi: string | undefined;

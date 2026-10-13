@@ -15,14 +15,16 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import { getFlag } from "../../featureFlags/guard";
 import { getProcessableFlags } from "../content";
 import { errorCodeValidator, paperSourceTypeValidator, setupPlaceValidator } from "../validators";
-import { buildDedupeKey } from "../dedupe";
-import { identityFromStored } from "../../lib/paperRef";
+import { dedupeKeyOf } from "../expandSources";
+import { crossRefsValidator, identityOf } from "../../lib/paperRef";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
 import { isRetryable, type ClassifiedError } from "@/lib/errors/taxonomy";
 import { recomputePaperListProjection } from "../listProjection";
 import { MAX_AUTHORS } from "../../lib/listCaps";
 import { sourceMetadataFields } from "../../lib/paperMetadata";
 import { sourceMetadata } from "../../../lib/library/paper-metadata";
+import { openalexWorkOf, openalexWorkOfRow, paperIdOf, parsePaperKey, toPaperKey } from "../../../lib/papers/paper-ref";
+import { requirePaperKey } from "../../library/find";
 
 function matchesExpectedEpoch(
   job: { runEpoch?: number } | null | undefined,
@@ -37,7 +39,9 @@ const setupPaperValidator = v.object({
   ...sourceMetadataFields,
   citedByCount: v.optional(v.number()),
   venueName: v.optional(v.string()),
-  openalexId: v.string(),
+  /** The paper's key (lib/papers/paper-ref.ts), and what finds it elsewhere. */
+  paper: v.string(),
+  crossRefs: v.optional(crossRefsValidator),
   title: v.string(),
   doi: v.optional(v.string()),
   publicationYear: v.optional(v.number()),
@@ -48,6 +52,16 @@ const setupPaperValidator = v.object({
   sourceId: v.optional(v.string()),
   screeningRevision: v.optional(v.string()),
 });
+const { paper: _paper, crossRefs: _crossRefs, ...setupFields } = setupPaperValidator.fields;
+/** A paper as a setup step sends it: by key, or by the ID a step that started before keys still sends. ponytail: the second goes with the old IDs. */
+const sentPaperValidator = v.union(setupPaperValidator, v.object({ ...setupFields, openalexId: v.string() }));
+
+/** A paper as a job holds it: named by its key, however its source gave it. */
+function keyed(sent: Infer<typeof sentPaperValidator>): Infer<typeof setupPaperValidator> {
+  if ("paper" in sent) return { ...sent, paper: requirePaperKey(sent.paper) };
+  const { openalexId, ...paper } = sent;
+  return { ...paper, paper: requirePaperKey(toPaperKey(openalexId, { pdfUrl: paper.pdfUrl }) ?? openalexId) };
+}
 
 /**
  * Saves a step of a job's papers (#634). A paper another source already brought is saved
@@ -62,7 +76,7 @@ const setupPaperValidator = v.object({
 export const createPaperRecords = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
-    papers: v.array(setupPaperValidator),
+    papers: v.array(sentPaperValidator),
     setup: v.optional(v.object({ expectedEpoch: v.number(), next: setupPlaceValidator })),
   },
   returns: v.object({ paperIds: v.array(v.id("extractionPapers")), processableCount: v.number() }),
@@ -77,7 +91,8 @@ export const createPaperRecords = internalMutation({
     // How the step moved the job's papers, and its processable ones.
     let papers = 0;
     let processableCount = 0;
-    for (const paper of args.papers) {
+    for (const sent of args.papers) {
+      const paper = keyed(sent);
       const sanitizedPdfUrl = pdfEnabled ? paper.pdfUrl : undefined;
       const sanitizedStorageId = pdfEnabled ? paper.storageId : undefined;
       const { processable } = getProcessableFlags({
@@ -85,13 +100,13 @@ export const createPaperRecords = internalMutation({
         oaUrl: paper.oaUrl,
         storageId: sanitizedStorageId,
         abstract: paper.abstract,
-        openalexId: paper.openalexId,
+        openalexId: openalexWorkOf(paper.paper, paper.crossRefs),
         doi: paper.doi,
         pdfEnabled,
       });
       // Without full texts, a paper with nothing to read isn't saved at all.
       const kept = pdfEnabled || processable;
-      const dedupeKey = buildDedupeKey({ openalexId: paper.openalexId, doi: paper.doi, title: paper.title, year: paper.publicationYear });
+      const dedupeKey = dedupeKeyOf(paper);
       const existing = await ctx.db.query("extractionPapers").withIndex("by_job_dedupeKey", (q) => q.eq("jobId", args.jobId).eq("dedupeKey", dedupeKey)).first();
       if (existing) {
         // Only a screening's copy takes the place of another source's, before either has run.
@@ -132,9 +147,9 @@ function paperFields(paper: Infer<typeof setupPaperValidator>, storageId: Id<"_s
     ...sourceMetadata(paper),
     citedByCount: paper.citedByCount,
     venueName: paper.venueName,
-    openalexId: paper.openalexId,
-    // The paper by its source, kept beside `openalexId` until every row has it (convex/migrations/paperIdentity.ts).
-    ...identityFromStored(paper),
+    // The paper by its source (plans/evidence-library-sources); `openalexId` holds its address until the field goes.
+    openalexId: paperIdOf(paper.paper),
+    ...identityOf(parsePaperKey(paper.paper)!, { openalexId: paper.crossRefs?.openalexId, doi: paper.doi ?? paper.crossRefs?.doi }),
     title: paper.title,
     doi: paper.doi,
     publicationYear: paper.publicationYear,
@@ -249,7 +264,7 @@ export const setPaperStorage = internalMutation({
       oaUrl: paper.oaUrl,
       storageId: args.storageId,
       abstract: paper.abstract,
-      openalexId: paper.openalexId,
+      openalexId: openalexWorkOfRow(paper),
       doi: paper.doi,
       pdfEnabled,
     });

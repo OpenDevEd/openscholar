@@ -129,8 +129,8 @@ export const read = internalAction({
           // Read through the person's own Zotero account, one page of its items a step.
           const { collectionKey, groupId } = job.set;
           const through = Math.min(to, from + ZOTERO_PAGE - 1);
-          const read: { papers: Array<{ openalexId: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean } = await ctx.runAction(internal.zotero.actions.papersOf, { userId: job.userId, ...(collectionKey ? { collectionKey } : {}), ...(groupId ? { groupId } : {}), first: from, last: through });
-          const papers = read.papers.map(({ openalexId, title, abstract, authors, year, doi, venue, pdfUrl }) => ({ openalexId, title, pdfUrl, authors: authors.slice(0, MAX_AUTHORS), ...(abstract ? { abstract } : {}), ...(year === undefined ? {} : { publicationYear: year }), ...(doi ? { doi } : {}), ...(venue ? { venue } : {}) }));
+          const read: { papers: Array<{ paper: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean } = await ctx.runAction(internal.zotero.actions.papersOf, { userId: job.userId, ...(collectionKey ? { collectionKey } : {}), ...(groupId ? { groupId } : {}), first: from, last: through });
+          const papers = read.papers.map(({ paper, title, abstract, authors, year, doi, venue, pdfUrl }) => ({ paper, title, pdfUrl, authors: authors.slice(0, MAX_AUTHORS), ...(abstract ? { abstract } : {}), ...(year === undefined ? {} : { publicationYear: year }), ...(doi ? { doi } : {}), ...(venue ? { venue } : {}) }));
           const done = read.ended || through >= job.last;
           await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: through - from + 1, ended: done });
           if (done) return null;
@@ -164,7 +164,7 @@ export const screenAction = defineUserAction({
   path: "screening/start:screen",
   description:
     "Screens papers `first` to `last` (from 1) of a paper set: one of the person's saved searches, in its results page's order and rating filter; one of their collections or all their saved papers, newest saved first; " +
-    "the included papers of an earlier screening; or the items of the person's own Zotero library, a collection of it (not its sub-collections) or a group's, in Zotero's order (`kind: \"zotero\"`, found with zotero/library:collections), which can't be saved to a collection. Answers the questions for each paper and scores them by the rules. A search's answers show on its page, and papers that page already answered every question for keep their answers and cost nothing. " +
+    "the included papers of an earlier screening; or the items of the person's own Zotero library, a collection of it (not its sub-collections) or a group's, in Zotero's order (`kind: \"zotero\"`, found with zotero/library:collections). Answers the questions for each paper and scores them by the rules. A search's answers show on its page, and papers that page already answered every question for keep their answers and cost nothing. " +
     "The job is made at once and its papers are read after, a step at a time, however many: until then the job is `reading`, and one whose papers can't be read ends `failed`, with why in its `failure`. " +
     "Included papers go to `saveTo`. With `prune`, papers of a collection that end excluded or failed leave it. Give it a `name` when the person names it; without one it goes by its papers' set. Spends credits.",
   args: { set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: saveToValidator, prune: v.optional(v.boolean()), name: v.optional(v.string()) },
