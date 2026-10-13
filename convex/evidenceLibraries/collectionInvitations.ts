@@ -195,6 +195,8 @@ export const change = internalMutation({
     if (cancel) await ctx.db.patch("itemInvitations", invitation._id, { state: "cancelled" });
     else if (resend) {
       if (invitation.item !== itemOf(library._id, resend.collectionId)) return refused("not_found");
+      // One sent before own addresses were refused, or to an address the reader has verified since.
+      if (addressesOf(reader).includes(invitation.email)) return refused("own_address");
       if (!(await rateLimit(ctx, { name: "item-invitation", key: String(reader._id) })).ok) return refused("rate_limited");
       const expiresAt = sendExpiry(invitation.expiresAt);
       await ctx.db.patch("itemInvitations", invitation._id, { expiresAt, delivery: "queued", name: resend.collectionName });
