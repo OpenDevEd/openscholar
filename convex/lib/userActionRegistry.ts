@@ -52,6 +52,7 @@ import { createAction as authorCreateAction, directoryAction as authorDirectoryA
 import { publicationsAction as topicPublicationsAction } from "../topics/assistant";
 import { listAction as readLibrariesAction } from "../evidenceLibraries/readers";
 import { addressAction as readerSourceAddressAction, sourceAction as readerSourceAction, sourcesAction as readerSourcesAction } from "../evidenceLibraries/library";
+import { openAction as libraryHandoffAction } from "../evidenceLibraries/handoffs";
 import { collectionsAction as zoteroCollectionsAction, groupsAction as zoteroGroupsAction, itemsAction as zoteroItemsAction, pdfAction as zoteroPdfAction } from "../zotero/library";
 
 export const USER_ACTIONS: readonly UserAction[] = [
@@ -71,6 +72,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   readerSourcesAction,
   readerSourceAddressAction,
   readerSourceAction,
+  libraryHandoffAction,
   libraryDraftAction,
   libraryRevisionAction,
   libraryTeamAction,

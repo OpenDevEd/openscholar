@@ -3,6 +3,9 @@ import { readConvexErrorData } from "../lib/errors";
 import { httpAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import { requireAppUrl } from "../lib/env";
+import { z } from "zod";
+import { HANDOFF_FIELDS_MAX, LIBRARY_SOURCE_RECORDS_MAX } from "./validators";
 
 type LibraryUserRequest = { credential: string; libraryId: string; clerkUserId: string };
 
@@ -63,18 +66,61 @@ export const checkReaderStatus = httpAction(async (ctx, request) =>
       status: await ctx.runQuery(internal.evidenceLibraries.sessionAccess.readReaderStatus, input),
     })));
 
+/** Answers in the library sources contract (plans/evidence-library-sources): every answer, a refusal too, says the version it speaks. */
+async function inContract(request: Request, answer: () => Promise<Response>) {
+  const response = request.headers.get("OpenScholar-Contract") !== "1"
+    ? jsonResponse(400, { error: "contract", message: "This OpenScholar speaks contract 1: send it in OpenScholar-Contract." })
+    : await answer();
+  response.headers.set("OpenScholar-Contract", "1");
+  return response;
+}
+
 /**
  * A library tells OpenScholar a reader signed in, or is still there, so it is among their
- * libraries (./readers.ts). Speaks the library sources contract (plans/evidence-library-sources).
+ * libraries (./readers.ts).
  */
-export const noteReaderSeen = httpAction(async (ctx, request) => {
-  // Every answer, a refusal too, says the contract it speaks.
-  const answer = request.headers.get("OpenScholar-Contract") !== "1"
-    ? jsonResponse(400, { error: "contract", message: "This OpenScholar speaks contract 1: send it in OpenScholar-Contract." })
-    : await answerLibraryUserRequest(request, "Library reader report", async (input) => {
-        await ctx.runMutation(internal.evidenceLibraries.readers.seen, input);
-        return new Response(null, { status: 204 });
-      });
-  answer.headers.set("OpenScholar-Contract", "1");
-  return answer;
+export const noteReaderSeen = httpAction(async (ctx, request) =>
+  inContract(request, () =>
+    answerLibraryUserRequest(request, "Library reader report", async (input) => {
+      await ctx.runMutation(internal.evidenceLibraries.readers.seen, input);
+      return new Response(null, { status: 204 });
+    })));
+
+const id = z.string().trim().min(1).max(200);
+const handoffSchema = z.object({
+  libraryId: z.string().max(128),
+  clerkUserId: z.string().max(512).optional(),
+  from: z.enum(["smartScreening", "search", "collection"]),
+  source: z.union([
+    z.strictObject({ records: z.array(id).min(1).max(LIBRARY_SOURCE_RECORDS_MAX) }),
+    z.strictObject({ search: z.string().max(4_000), readerCollection: id.optional() }),
+    z.strictObject({ readerCollection: id }),
+    z.strictObject({ libraryCollection: id }),
+  ]),
+  fields: z.array(z.object({ label: z.string().trim().min(1).max(200), type: z.enum(["string", "number", "boolean"]), description: z.string().trim().max(2_000) })).max(HANDOFF_FIELDS_MAX),
 });
+
+/** A library hands records, a search or a collection to OpenScholar for a reader (./handoffs.ts), and gets back where to send them. */
+export const handOff = httpAction(async (ctx, request) =>
+  inContract(request, async () => {
+    const credential = readBearerCredential(request);
+    if (!credential) {
+      console.warn("[library sources]", { call: "handoffs", reason: "no machine credential" });
+      return jsonResponse(401, { error: "invalid_service_credential" });
+    }
+    const parsed = handoffSchema.safeParse(await request.json().catch(() => null));
+    if (!parsed.success) {
+      console.warn("[library sources]", { call: "handoffs", reason: z.prettifyError(parsed.error) });
+      return jsonResponse(400, { error: "invalid_request", message: z.prettifyError(parsed.error) });
+    }
+    const { libraryId, clerkUserId, ...handoff } = parsed.data;
+    try {
+      const app = requireAppUrl();
+      const { handoffId, expiresAt } = await ctx.runMutation(internal.evidenceLibraries.handoffs.create, { libraryId, credentialDigest: await digestOpaqueToken(credential), ...handoff });
+      return jsonResponse(201, { handoffId, url: `${app}/from-library/${handoffId}`, expiresAt });
+    } catch (error) {
+      const refused = readConvexErrorData(error)?.code === "UNAUTHENTICATED";
+      console[refused ? "warn" : "error"]("[library sources]", { libraryId, call: "handoffs", reader: clerkUserId ?? null, reason: refused ? "invalid machine credential" : error });
+      return refused ? jsonResponse(401, { error: "invalid_service_credential" }) : jsonResponse(503, { error: "handoff_unavailable" });
+    }
+  }));

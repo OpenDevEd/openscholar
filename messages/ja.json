@@ -3814,6 +3814,12 @@
         "where": "Evidence Library",
         "ask": "Evidence Library のソースを読む"
       },
+      "readHandoff": {
+        "doing": "Evidence Library から渡された内容を開いています",
+        "did": "Evidence Library から渡された内容を開きました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library から渡された内容を開く"
+      },
       "readLibraryDraft": {
         "doing": "ライブラリの設定を読んでいます",
         "did": "ライブラリの設定を読みました",
@@ -4570,6 +4576,7 @@
     "find": "検索",
     "everyRecord": "{library} のすべてのレコード",
     "allRecords": "すべてのレコード",
+    "recordsFrom": "{library} のレコード",
     "private": "非公開",
     "public": "公開",
     "canEdit": "編集可",
@@ -4613,5 +4620,38 @@
       "titleAZ": "タイトル A-Z",
       "titleZA": "タイトル Z-A"
     }
+  },
+  "fromLibrary": {
+    "title": "{library} から",
+    "gone": "開くものがありません",
+    "goneHint": "ライブラリからのこのリンクは期限切れです。ライブラリからもう一度開いてください。",
+    "problem": {
+      "notAddress": "ここに開くものはありません。ライブラリからもう一度開いてください。",
+      "notHosted": "そのライブラリは OpenScholar でもう動いていません。",
+      "private": "そのコレクションは非公開です。所有者があなたと共有できます。",
+      "notFound": "ライブラリには送られたものがもうありません。",
+      "profile": "ここに開くものはありません。ライブラリからもう一度開いてください。",
+      "unknownPage": "ここに開くものはありません。ライブラリからもう一度開いてください。",
+      "outdated": "ここで使うには、そのライブラリの更新が必要です。",
+      "unreadable": "ライブラリが応答しませんでした。少し待ってからもう一度お試しください。"
+    },
+    "from": {
+      "smartScreening": "スマートスクリーニング",
+      "search": "検索",
+      "collection": "コレクション"
+    },
+    "theRecords": "レコード",
+    "sort": "並べ替え",
+    "sortBy": {
+      "given": "送られた順",
+      "newest": "新しい順",
+      "title": "タイトル"
+    },
+    "open": "{library} で開く",
+    "noQuestions": "質問は送られていません。次のページで追加してください。",
+    "screen": "スクリーニング",
+    "extract": "抽出",
+    "screenWith": "{count, plural, other {# 件の質問でスクリーニング}}",
+    "extractWith": "{count, plural, other {# 件の質問で抽出}}"
   }
 }

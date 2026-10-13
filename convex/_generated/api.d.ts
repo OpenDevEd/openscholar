@@ -116,7 +116,6 @@ import type * as evidenceLibraries_deploymentSetupActions from "../evidenceLibra
 import type * as evidenceLibraries_digests_citations from "../evidenceLibraries/digests/citations.js";
 import type * as evidenceLibraries_digests_contract from "../evidenceLibraries/digests/contract.js";
 import type * as evidenceLibraries_digests_generate from "../evidenceLibraries/digests/generate.js";
-import type * as evidenceLibraries_digests_kinds from "../evidenceLibraries/digests/kinds.js";
 import type * as evidenceLibraries_digests_manual from "../evidenceLibraries/digests/manual.js";
 import type * as evidenceLibraries_digests_manualActions from "../evidenceLibraries/digests/manualActions.js";
 import type * as evidenceLibraries_digests_review from "../evidenceLibraries/digests/review.js";
@@ -131,6 +130,7 @@ import type * as evidenceLibraries_domainGates from "../evidenceLibraries/domain
 import type * as evidenceLibraries_domainPlan from "../evidenceLibraries/domainPlan.js";
 import type * as evidenceLibraries_domains from "../evidenceLibraries/domains.js";
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
+import type * as evidenceLibraries_handoffs from "../evidenceLibraries/handoffs.js";
 import type * as evidenceLibraries_invitationActions from "../evidenceLibraries/invitationActions.js";
 import type * as evidenceLibraries_invitations from "../evidenceLibraries/invitations.js";
 import type * as evidenceLibraries_library from "../evidenceLibraries/library.js";
@@ -566,7 +566,6 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/digests/citations": typeof evidenceLibraries_digests_citations;
   "evidenceLibraries/digests/contract": typeof evidenceLibraries_digests_contract;
   "evidenceLibraries/digests/generate": typeof evidenceLibraries_digests_generate;
-  "evidenceLibraries/digests/kinds": typeof evidenceLibraries_digests_kinds;
   "evidenceLibraries/digests/manual": typeof evidenceLibraries_digests_manual;
   "evidenceLibraries/digests/manualActions": typeof evidenceLibraries_digests_manualActions;
   "evidenceLibraries/digests/review": typeof evidenceLibraries_digests_review;
@@ -581,6 +580,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/domainPlan": typeof evidenceLibraries_domainPlan;
   "evidenceLibraries/domains": typeof evidenceLibraries_domains;
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
+  "evidenceLibraries/handoffs": typeof evidenceLibraries_handoffs;
   "evidenceLibraries/invitationActions": typeof evidenceLibraries_invitationActions;
   "evidenceLibraries/invitations": typeof evidenceLibraries_invitations;
   "evidenceLibraries/library": typeof evidenceLibraries_library;
