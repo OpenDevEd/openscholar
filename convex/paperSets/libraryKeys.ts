@@ -16,16 +16,18 @@ import { TERMINAL_JOB_STATUSES, type JobStatus } from "../extraction/stateMachin
 const KEYS_PAGE = MAX_LIST_CAP;
 /** Pages one source's keys take at most: a source gives at most LIBRARY_SOURCE_MAX keys. */
 const KEYS_PAGES = Math.ceil(LIBRARY_SOURCE_MAX / KEYS_PAGE);
+/** Keys one call to a library, or one write here, carries at most: a Convex array holds 8,192 values. */
+export const LIBRARY_KEYS_WINDOW = 5 * KEYS_PAGE;
 /** Pages a cleanup step deletes. */
 const DELETE_STEP = 20;
 
 type Job = Id<"screeningJobs"> | Id<"extractionJobs">;
 const jobValidator = v.union(v.id("screeningJobs"), v.id("extractionJobs"));
 
-/** Keeps a job's keys for one of its sources (`part`, its place among the job's sources), in their order. */
-export async function keepKeys(ctx: MutationCtx, job: Job, keys: string[], part = 0) {
-  if (keys.length > KEYS_PAGES * KEYS_PAGE) throw new Error(`A job keeps at most ${LIBRARY_SOURCE_MAX} keys of a source.`);
-  for (let page = 0; page * KEYS_PAGE < keys.length; page++) await ctx.db.insert("paperSetKeys", { job, part, page, keys: keys.slice(page * KEYS_PAGE, (page + 1) * KEYS_PAGE) });
+/** Keeps a window of a job's keys for one of its sources (`part`, its place among the job's sources), from the source's key `from` (from 0, a page's first), in their order. */
+export async function keepKeys(ctx: MutationCtx, job: Job, keys: string[], part = 0, from = 0) {
+  if (keys.length > LIBRARY_KEYS_WINDOW || from % KEYS_PAGE !== 0 || (from + keys.length) > KEYS_PAGES * KEYS_PAGE) throw new Error(`A job keeps at most ${LIBRARY_SOURCE_MAX} keys of a source, ${LIBRARY_KEYS_WINDOW} at a time.`);
+  for (let page = 0; page * KEYS_PAGE < keys.length; page++) await ctx.db.insert("paperSetKeys", { job, part, page: from / KEYS_PAGE + page, keys: keys.slice(page * KEYS_PAGE, (page + 1) * KEYS_PAGE) });
 }
 
 /** Deletes a step of a job's keys. Returns whether all are gone. */
@@ -63,17 +65,20 @@ export const dropRun = internalMutation({
   },
 });
 
-/** Keeps an extraction source's keys as its setup run `epoch` first reads it (../extraction/actions.ts), and says how many it keeps: none for a run that has stopped since. */
+/**
+ * Keeps a window of a job's keys for one source, from key `from` (from 0) on. The first window starts the source's
+ * keys afresh, so a start tried again never mixes two answers of the library. An extraction's are kept only while
+ * its setup run `epoch` goes on: says whether they were kept.
+ */
 export const keep = internalMutation({
-  args: { job: v.id("extractionJobs"), epoch: v.number(), part: v.number(), keys: v.array(v.string()) },
-  returns: v.number(),
-  handler: async (ctx, { job, epoch, part, keys }) => {
-    if (!(await runGoesOn(ctx, job, epoch))) return 0;
-    // A step tried again keeps the keys the first try kept: at most LIBRARY_SOURCE_MAX of them, a few pages.
-    const kept = await ctx.db.query("paperSetKeys").withIndex("by_job_and_part_and_page", (q) => q.eq("job", job).eq("part", part)).take(KEYS_PAGES);
-    if (kept.length) return kept.reduce((sum, page) => sum + page.keys.length, 0);
-    await keepKeys(ctx, job, keys, part);
-    return keys.length;
+  args: { job: jobValidator, epoch: v.optional(v.number()), part: v.number(), from: v.number(), keys: v.array(v.string()) },
+  returns: v.boolean(),
+  handler: async (ctx, { job, epoch, part, from, keys }) => {
+    const extraction = ctx.db.normalizeId("extractionJobs", job);
+    if (extraction && (epoch === undefined || !(await runGoesOn(ctx, extraction, epoch)))) return false;
+    if (from === 0) for (const page of await ctx.db.query("paperSetKeys").withIndex("by_job_and_part_and_page", (q) => q.eq("job", job).eq("part", part)).take(KEYS_PAGES)) await ctx.db.delete("paperSetKeys", page._id);
+    await keepKeys(ctx, job, keys, part, from);
+    return true;
   },
 });
 

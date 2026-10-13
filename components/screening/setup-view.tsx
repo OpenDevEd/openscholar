@@ -117,6 +117,8 @@ export function SetupView({
   const { userId } = useAuth();
   const ranBefore = useSWR(againLibrary && userId ? ["library-source", userId, againLibrary.libraryId, JSON.stringify(againLibrary.source)] : null, () => describe({ libraryId: againLibrary!.libraryId, source: againLibrary!.source }), { revalidateOnFocus: false });
   const againHeld = ranBefore.data && "row" in ranBefore.data ? ranBefore.data : null;
+  // A source it ran on that can't be read now is said so, and another is never put in its place.
+  const againError = ranBefore.data && "error" in ranBefore.data ? ranBefore.data.error : null;
   const libraries = useLibrarySources(againHeld ? [againHeld] : []);
   // Until one is picked, the form starts on your first collection in the library shown: a whole library is too many to start on.
   const firstOwn = libraries.library && libraries.contents.find((one) => one.libraryId === libraries.library?.libraryId)?.rows?.find((row) => row.what === "yours" && row.records > 0);
@@ -129,7 +131,7 @@ export function SetupView({
     },
     saved: { rows: [{ kind: "saved", id: "saved", label: t("allSavedPapers"), count: savedCount ?? 0 }] },
     screening: { rows: screenings.items.map((job: JobRow) => ({ kind: "screening", id: job._id, label: jobName(t, job, date), count: job.qualifiedPapers, called: job.name ?? job.label })), pager: screenings },
-    evidenceLibrary: { rows: [...(againHeld ? [librarySource(againHeld)] : []), ...(firstOwn && libraries.library ? [librarySource({ library: libraries.library, row: firstOwn })] : [])] },
+    evidenceLibrary: { rows: againLibrary ? (againHeld ? [librarySource(againHeld)] : []) : firstOwn && libraries.library ? [librarySource({ library: libraries.library, row: firstOwn })] : [] },
   };
 
   // A screening a chat ran on a Zotero collection is run again from its chat: the page starts on a search.
@@ -324,6 +326,7 @@ export function SetupView({
             {kind === "evidenceLibrary" ? (
               <LibrarySources
                 state={libraries}
+                notice={againError && !source ? tl(`error.${againError}`) : undefined}
                 isOn={(row) => source?.id === rowKey(row)}
                 onToggle={(row, library) => {
                   choose(librarySource({ library, row }));

@@ -23,6 +23,7 @@ import { paperCountForItem } from "../../lib/bucket/effective-paper-count";
 import { LIBRARY_READ_BATCH } from "./queries/internal";
 import { OLD_SEARCH_MESSAGE, type BucketItemInput } from "./jobSources";
 import { heldPapers } from "../paperSets/held";
+import { keepLibraryKeys, resolveLibraryKeys } from "../evidenceLibraries/sources";
 import type { SearchPaper } from "../paperSets/search";
 import { createError } from "../lib/errors";
 import {
@@ -260,9 +261,9 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
     const range = item.evidenceLibrarySet;
     // The library turns the source into keys on the first step, as the job's person may read it, and the job reads those and no others; `resume` holds how many it kept.
     if (place.resume === undefined) {
-      const resolved: { keys: string[] } = await ctx.runAction(internal.evidenceLibraries.sourceActions.resolve, { libraryId: range.libraryId, userId: job.createdBy, source: range.source, first: range.first, last: range.last });
-      const kept: number = await ctx.runMutation(internal.paperSets.libraryKeys.keep, { job: job._id, epoch: job.runEpoch ?? 0, part: position, keys: resolved.keys.slice(0, range.last - range.first + 1) });
-      return { papers: [], next: kept ? { ...place, resume: String(kept) } : onTo(position + 1) };
+      const keys = await resolveLibraryKeys(ctx, { libraryId: range.libraryId, userId: job.createdBy, source: range.source, first: range.first, last: range.last });
+      const kept = keys.length > 0 && (await keepLibraryKeys(ctx, job._id, keys, { part: position, epoch: job.runEpoch ?? 0 }));
+      return { papers: [], next: kept ? { ...place, resume: String(keys.length) } : onTo(position + 1) };
     }
     const kept = Number(place.resume);
     const keys: string[] = await ctx.runQuery(internal.paperSets.libraryKeys.slice, { job: job._id, part: position, offset: place.read, count: Math.min(SETUP_STEP, kept - place.read) });

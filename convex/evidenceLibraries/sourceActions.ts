@@ -14,6 +14,7 @@ import { MAX_AUTHORS } from "../lib/listCaps";
 import { screeningPaperInputValidator } from "../screening/validators";
 import { paperKey } from "../../lib/papers/paper-ref";
 import { LIBRARY_SOURCE_MAX } from "../../lib/evidence-libraries/source-address";
+import { LIBRARY_KEYS_WINDOW } from "../paperSets/libraryKeys";
 import { LIBRARY_ROWS_MAX, libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
 import {
   LIBRARY_BATCH_MAX,
@@ -59,20 +60,20 @@ async function asked<T>(libraryId: Id<"evidenceLibraries">, call: string, reader
   }
 }
 
-/** A source's record keys `first` to `last` (from 1), as the person may read them, and how many it holds. */
+/** A window of a source's record keys `first` to `last` (from 1), at most LIBRARY_KEYS_WINDOW, as the person may read them, and how many it holds. */
 export const resolve = internalAction({
   args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), source: librarySourceValidator, first: v.number(), last: v.number() },
   returns: v.object({ keys: v.array(v.string()), total: v.number(), truncated: v.boolean() }),
   handler: async (ctx, { libraryId, userId, source, first, last }): Promise<{ keys: string[]; total: number; truncated: boolean }> => {
     const target = await libraryTarget(ctx, libraryId);
     const reader = await readerOf(ctx, userId);
-    return await asked(libraryId, "sources/resolve", reader, () => resolveLibrarySource(fetch, target, { reader, source, first, last: Math.min(last, first + LIBRARY_SOURCE_MAX - 1) }));
+    return await asked(libraryId, "sources/resolve", reader, () => resolveLibrarySource(fetch, target, { reader, source, first, last: Math.min(last, first + LIBRARY_KEYS_WINDOW - 1) }));
   },
 });
 
 /** A library record as a job takes a paper: named by its key in the library, with what finds it elsewhere and its first public PDF. */
 export function libraryPaper(libraryId: Id<"evidenceLibraries">, baseUrl: string, record: LibraryRecord) {
-  const file = record.files[0];
+  const file = record.files.find((one) => one.contentType === "application/pdf");
   return {
     paper: paperKey({ source: "library", libraryId, key: record.key }),
     ...(Object.keys(record.crossRefs).length ? { crossRefs: record.crossRefs } : {}),

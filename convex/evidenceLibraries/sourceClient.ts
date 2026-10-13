@@ -10,6 +10,8 @@ export const LIBRARY_CONTRACT = "1";
 /** Most records one batch reads. */
 export const LIBRARY_BATCH_MAX = 500;
 const TIMEOUT_MS = 30_000;
+/** Times a source is asked for while the library's search keeps changing under it. */
+const RESOLVE_ATTEMPTS = 3;
 
 export type LibraryTarget = { baseUrl: string; credential: string };
 
@@ -66,7 +68,15 @@ const resolvedSchema = z.object({ keys: z.array(z.string()).max(LIBRARY_SOURCE_M
 
 /** A source's record keys `first` to `last` (from 1) as `reader` may read them, in the library's order, with how many it holds. */
 export async function resolveLibrarySource(fetchImpl: typeof fetch, target: LibraryTarget, request: { reader: string | null; source: LibrarySource; first: number; last: number }) {
-  return await call(fetchImpl, target, "/api/v1/openscholar/sources/resolve", resolvedSchema, { body: request });
+  // A library whose search changed while it read asks to be asked again: a sync in progress, which passes.
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await call(fetchImpl, target, "/api/v1/openscholar/sources/resolve", resolvedSchema, { body: request });
+    } catch (error) {
+      if (!(error instanceof LibrarySourceError && error.code === "index_changed" && attempt < RESOLVE_ATTEMPTS)) throw error;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 1_000));
+    }
+  }
 }
 
 const recordSchema = z.object({

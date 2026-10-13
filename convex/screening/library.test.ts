@@ -89,3 +89,30 @@ it("refuses a library that isn't running, and says why the library refused a pri
   await expect(person.action(api.screening.start.screen, { set, first: 1, last: 5, questions, scoringConfig, saveTo: { kind: "none" } })).rejects.toThrow(/isn't running/);
   expect(await t.run((ctx) => ctx.db.query("screeningJobs").collect())).toEqual([]);
 });
+
+it("asks for a source past one window of keys a window at a time, and keeps them all in order before it reads", { tags: ["size"] }, async () => {
+  const { t, created, clerkUserId } = await createReadySetupFixture("libwindows");
+  const libraryId = created.libraryId;
+  setupScreeningWorkpool(t);
+  vi.stubEnv("ENCRYPTION_KEY", KEY);
+  await t.run(async (ctx) => {
+    const credential = (await ctx.db.query("evidenceLibraryCredentials").withIndex("by_libraryId", (q) => q.eq("libraryId", libraryId)).collect()).find((row) => row.credentialKey === "library-service")!;
+    await ctx.db.patch("evidenceLibraryCredentials", credential._id, { encryptedValue: encrypt("machine-secret", KEY) });
+    const userId = (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique())!._id;
+    await seedCreditsForTest(ctx, { userId, free: 10_000_000 });
+    await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: [], syncedAt: 1, createdAt: 1, updatedAt: 1 });
+  });
+  const held = Array.from({ length: 6_200 }, (_, i) => `K${String(i).padStart(7, "0")}`);
+  const windows: Array<[number, number]> = [];
+  vi.stubGlobal("fetch", vi.fn(async (_input: string | URL, init?: RequestInit) => {
+    const { first, last } = JSON.parse(String(init?.body));
+    windows.push([first, last]);
+    return Response.json({ keys: held.slice(first - 1, last), total: held.length, truncated: false });
+  }));
+  const set = { kind: "evidenceLibrary" as const, libraryId, source: { library: true as const } };
+  const { jobId } = await t.withIdentity({ subject: clerkUserId }).action(api.screening.start.screen, { set, first: 1, last: 7_000, questions, scoringConfig, saveTo: { kind: "none" } });
+  expect(windows).toEqual([[1, 5_000], [5_001, 7_000]]);
+  const pages = await t.run((ctx) => ctx.db.query("paperSetKeys").withIndex("by_job_and_part_and_page", (q) => q.eq("job", jobId)).collect());
+  expect(pages.flatMap((page) => page.keys)).toEqual(held);
+  expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ last: 6_200 });
+});

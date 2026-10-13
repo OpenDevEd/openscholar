@@ -97,13 +97,13 @@ it("keeps and drops a library source's keys only for the setup run going on", as
   });
   const kept = () => t.run((ctx) => ctx.db.query("paperSetKeys").collect());
   // A run that was paused and set off again since keeps nothing, and its failure leaves the new run's keys alone.
-  expect(await t.mutation(internal.paperSets.libraryKeys.keep, { job, epoch: 0, part: 0, keys: ["AAAAAAAA"] })).toBe(0);
-  expect(await t.mutation(internal.paperSets.libraryKeys.keep, { job, epoch: 1, part: 0, keys: ["BBBBBBBB"] })).toBe(1);
+  expect(await t.mutation(internal.paperSets.libraryKeys.keep, { job, epoch: 0, part: 0, from: 0, keys: ["AAAAAAAA"] })).toBe(false);
+  expect(await t.mutation(internal.paperSets.libraryKeys.keep, { job, epoch: 1, part: 0, from: 0, keys: ["BBBBBBBB"] })).toBe(true);
   await t.mutation(internal.paperSets.libraryKeys.dropRun, { job, epoch: 0 });
   expect((await kept()).map((page) => page.keys)).toEqual([["BBBBBBBB"]]);
   // A job stopped while the library answered keeps nothing either.
   await t.run((ctx) => ctx.db.patch("extractionJobs", job, { status: "cancelled" }));
-  expect(await t.mutation(internal.paperSets.libraryKeys.keep, { job, epoch: 1, part: 1, keys: ["CCCCCCCC"] })).toBe(0);
+  expect(await t.mutation(internal.paperSets.libraryKeys.keep, { job, epoch: 1, part: 1, from: 0, keys: ["CCCCCCCC"] })).toBe(false);
   await t.mutation(internal.paperSets.libraryKeys.dropRun, { job, epoch: 1 });
   expect(await kept()).toEqual([]);
 });

@@ -18,8 +18,6 @@ import { libraryOf, readLibraryRole } from "./access";
 
 /** A reader's last visit is written at most this often: the library reports one every 15 minutes while they're there. */
 const TOUCH_MS = 60 * 60 * 1000;
-/** Libraries one organization has at most, as its list reads them. */
-const WORKSPACE_LIBRARIES_MAX = 200;
 
 /** Notes that a person reads a library, or still does. */
 export async function noteReader(ctx: MutationCtx, libraryId: Id<"evidenceLibraries">, userId: Id<"users">, via: "signIn" | "handoff") {
@@ -101,8 +99,12 @@ export async function librariesOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">
     const library = await ctx.db.get("evidenceLibraries", row.libraryId);
     if (library) add(library, row.via, row.lastAt);
   }
+  // At most READ_LIBRARIES_MAX libraries come from roles, however many workspaces the person is in.
+  let roles = 0;
   for (const workspace of await workspacesOf(ctx, userId)) {
-    const libraries = await ctx.db.query("evidenceLibraries").withIndex("by_workspace_and_state", (q) => q.eq("workspaceId", workspace._id).eq("state", "active")).take(WORKSPACE_LIBRARIES_MAX);
+    if (roles >= READ_LIBRARIES_MAX) break;
+    const libraries = await ctx.db.query("evidenceLibraries").withIndex("by_workspace_and_state", (q) => q.eq("workspaceId", workspace._id).eq("state", "active")).take(READ_LIBRARIES_MAX - roles);
+    roles += libraries.length;
     for (const library of libraries) add(library, "role", library._creationTime);
   }
   const grants = await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", (q) => q.eq("userId", userId).eq("kind", "library")).order("desc").take(READ_LIBRARIES_MAX);

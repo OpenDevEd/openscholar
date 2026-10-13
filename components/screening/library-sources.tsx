@@ -139,6 +139,7 @@ export function useRowLabel() {
 
 export function LibrarySources({
   state,
+  notice,
   many = false,
   isOn,
   onToggle,
@@ -146,6 +147,8 @@ export function LibrarySources({
   scope,
 }: {
   state: LibrarySourceState;
+  /** Why the source the form was opened on can't be read, said where a pasted address's problem is. */
+  notice?: string;
   /** Extraction takes any number of sources; screening one. */
   many?: boolean;
   isOn: (row: LibraryRow) => boolean;
@@ -163,7 +166,8 @@ export function LibrarySources({
   const { libraries, library, contents, filter, setFilter, words, setWords, page, setPage, held } = state;
   const [address, setAddress] = useState("");
   const [resolving, setResolving] = useState(false);
-  const [problem, setProblem] = useState<string | null>(null);
+  const [pasteProblem, setProblem] = useState<string | null>(null);
+  const problem = pasteProblem ?? notice ?? null;
 
   const read = library ? contents.find((one) => one.libraryId === library.libraryId) : undefined;
   const listed = read?.rows ?? [];
@@ -256,7 +260,7 @@ export function LibrarySources({
             onKeyDown={(e) => e.key === "Enter" && void resolve(address)}
             placeholder={t("address")}
             aria-label={t("address")}
-            aria-invalid={problem ? true : undefined}
+            aria-invalid={pasteProblem ? true : undefined}
             className="h-9 pl-9 pr-9"
           />
           {resolving ? <Spinner className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /> : null}

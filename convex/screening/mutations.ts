@@ -162,10 +162,11 @@ const READ_LIMIT_MS = 15 * 60_000;
  */
 export const openScreeningJob = internalMutation({
   // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which makes the job in its person's own; required again in slice 8.
-  // `libraryKeys`: an Evidence Library set's record keys from `first` on, as the library gave them when the job started (../paperSets/libraryKeys.ts).
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), papers: v.number(), ...jobSetup, first: v.number(), last: v.number(), libraryKeys: v.optional(v.array(v.string())) },
+  // `libraryKeys`: the first window of an Evidence Library set's record keys from `first` on, as the library gave them when the job started (../paperSets/libraryKeys.ts).
+  // With `readLater`, the start keeps the rest of them and then sets the reading off (`beginReading`).
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), papers: v.number(), ...jobSetup, first: v.number(), last: v.number(), libraryKeys: v.optional(v.array(v.string())), readLater: v.optional(v.boolean()) },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, workspaceId, papers, saveTo, libraryKeys, ...setup }) => {
+  handler: async (ctx, { userId, workspaceId, papers, saveTo, libraryKeys, readLater, ...setup }) => {
     const user = await requireActiveUser(ctx, userId);
     // A new collection is made with the papers, so a job that never gets any leaves none behind.
     const later = saveTo?.kind === "new" ? saveTo.name.trim() : undefined;
@@ -174,9 +175,20 @@ export const openScreeningJob = internalMutation({
     await ctx.db.patch("screeningJobs", jobId, { readPlace: { read: 0, papers: 0 } });
     // Kept before the job reads them.
     if (libraryKeys) await keepKeys(ctx, jobId, libraryKeys);
-    await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId });
+    if (!readLater) await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId });
+    // A job whose reading never starts, its keys not all kept, fails as one that stalled.
     await ctx.scheduler.runAfter(READ_LIMIT_MS, internal.screening.mutations.failScreeningRead, { jobId, reason: "Its papers took too long to read. Run it again.", stalled: true });
     return { jobId };
+  },
+});
+
+/** Sets a job's reading off once the start has kept all its library keys (`openScreeningJob`'s `readLater`). */
+export const beginReading = internalMutation({
+  args: { jobId: v.id("screeningJobs") },
+  returns: v.null(),
+  handler: async (ctx, { jobId }) => {
+    await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId });
+    return null;
   },
 });
 
