@@ -16,6 +16,7 @@ import { getFlag } from "../../featureFlags/guard";
 import { getProcessableFlags } from "../content";
 import { errorCodeValidator, paperSourceTypeValidator, setupPlaceValidator } from "../validators";
 import { buildDedupeKey } from "../dedupe";
+import { identityFromStored } from "../../lib/paperRef";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
 import { isRetryable, type ClassifiedError } from "@/lib/errors/taxonomy";
 import { recomputePaperListProjection } from "../listProjection";
@@ -132,6 +133,8 @@ function paperFields(paper: Infer<typeof setupPaperValidator>, storageId: Id<"_s
     citedByCount: paper.citedByCount,
     venueName: paper.venueName,
     openalexId: paper.openalexId,
+    // The paper by its source, kept beside `openalexId` until every row has it (convex/migrations/paperIdentity.ts).
+    ...identityFromStored(paper),
     title: paper.title,
     doi: paper.doi,
     publicationYear: paper.publicationYear,

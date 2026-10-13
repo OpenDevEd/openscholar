@@ -1,4 +1,5 @@
 import { internalMutation } from "../lib/functions";
+import { identityFromStored } from "../lib/paperRef";
 import { internal } from "../_generated/api";
 import { v, type Infer, type ObjectType } from "convex/values";
 import { sourceMetadata } from "../../lib/library/paper-metadata";
@@ -276,6 +277,8 @@ async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers
       ...sourceMetadata(paper),
       jobId: job._id,
       openalexId: paper.openalexId,
+      // The paper by its source, kept beside `openalexId` until every row has it (convex/migrations/paperIdentity.ts).
+      ...identityFromStored(paper),
       title: paper.title,
       abstract: paper.abstract,
       authors: paper.authors?.slice(0, MAX_AUTHORS),

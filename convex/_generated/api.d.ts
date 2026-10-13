@@ -281,6 +281,7 @@ import type * as lib_opaqueToken from "../lib/opaqueToken.js";
 import type * as lib_opaqueTokenDigest from "../lib/opaqueTokenDigest.js";
 import type * as lib_paperMetadata from "../lib/paperMetadata.js";
 import type * as lib_paperPdfs from "../lib/paperPdfs.js";
+import type * as lib_paperRef from "../lib/paperRef.js";
 import type * as lib_people from "../lib/people.js";
 import type * as lib_queryBounds from "../lib/queryBounds.js";
 import type * as lib_query_states from "../lib/query_states.js";
@@ -326,6 +327,7 @@ import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLi
 import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
+import type * as migrations_paperIdentity from "../migrations/paperIdentity.js";
 import type * as migrations_paperMetadata from "../migrations/paperMetadata.js";
 import type * as migrations_placeRatings from "../migrations/placeRatings.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
@@ -723,6 +725,7 @@ declare const fullApi: ApiFromModules<{
   "lib/opaqueTokenDigest": typeof lib_opaqueTokenDigest;
   "lib/paperMetadata": typeof lib_paperMetadata;
   "lib/paperPdfs": typeof lib_paperPdfs;
+  "lib/paperRef": typeof lib_paperRef;
   "lib/people": typeof lib_people;
   "lib/queryBounds": typeof lib_queryBounds;
   "lib/query_states": typeof lib_query_states;
@@ -768,6 +771,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
+  "migrations/paperIdentity": typeof migrations_paperIdentity;
   "migrations/paperMetadata": typeof migrations_paperMetadata;
   "migrations/placeRatings": typeof migrations_placeRatings;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
