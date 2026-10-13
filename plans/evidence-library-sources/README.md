@@ -141,8 +141,10 @@ every batch on shared dev, then narrow):
   workspace), `ref` and `crossRefs`. Every row becomes `{source: "openalex"}`
   with its OpenAlex ID as both key and cross-reference. `libraryRemovals` and
   `paperMetadataChanges` the same.
-- `ratings.paperId`, `screeningAnswers.paperId`, `screeningAnswerHistory.paperId`:
-  rewritten to `paperKey` values.
+- `ratings.paperId`: rewritten to `paperKey` values; a rating is of any paper.
+- `screeningAnswers` and `screeningAnswerHistory` keep their OpenAlex IDs: they
+  are the answers of an OpenAlex search's results page. A job on a search
+  reaches them through its papers' OpenAlex cross-reference.
 - `screeningResults.openalexId`, `extractionPapers.openalexId`,
   `extractionJobSources.openalexId`: become `paperKey`, `ref`, `crossRefs`;
   `zotero:` and made-up values are parsed into their real source.
