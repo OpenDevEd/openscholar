@@ -10,6 +10,7 @@ import { sourceMetadataFields } from "../lib/paperMetadata";
 import { effortValidator } from "../aiModelConfig/validators";
 import { errorCodeValidator } from "@/lib/errors/taxonomy";
 import { type AssertExactDoc } from "../lib/validators";
+import { librarySourceValidator } from "../evidenceLibraries/validators";
 import {
   MAX_ANSWER_ITEMS, MAX_AUTHORS, MAX_CITATIONS, MAX_SELECTED_PAPERS, MAX_ERROR_CONTEXT_BYTES, MAX_FILTER_VALUES, MAX_QUESTIONS, MAX_UNIT_TOKENS, RANGE_ENDS, capped, sized,
 } from "../lib/listCaps";
@@ -191,6 +192,7 @@ export const sourceTypeValidator = v.union(
   v.literal("history"),
   v.literal("zotero"),
   v.literal("manual"),
+  v.literal("evidenceLibrary"),
   v.literal("mixed")
 );
 
@@ -203,7 +205,8 @@ export const paperSourceTypeValidator = v.union(
   v.literal("screening"),
   v.literal("history"),
   v.literal("zotero"),
-  v.literal("manual")
+  v.literal("manual"),
+  v.literal("evidenceLibrary"),
 );
 
 // ---- Nested object validators ----
@@ -374,6 +377,9 @@ export const screeningSelectionValidator = v.object({ jobId: v.id("screeningJobs
  */
 export const librarySetValidator = v.object({ collectionId: v.optional(v.id("collections")), first: v.number(), last: v.number(), count: v.number() });
 
+/** An Evidence Library source's records `first` to `last`, as one extraction source. */
+export const evidenceLibrarySetValidator = v.object({ libraryId: v.id("evidenceLibraries"), source: librarySourceValidator, first: v.number(), last: v.number() });
+
 const bucketItemFields = {
   ...sourceMetadataFields,
   bucketKey: v.string(),
@@ -384,6 +390,7 @@ const bucketItemFields = {
     v.literal("collection"),
     v.literal("zotero"),
     v.literal("upload"),
+    v.literal("evidenceLibrary"),
   ),
   sourceRefId: v.string(),
   screeningSelection: v.optional(screeningSelectionValidator),
@@ -404,6 +411,8 @@ const bucketItemFields = {
   librarySet: v.optional(librarySetValidator),
   /** A range of the person's own Zotero library or one collection of it, read through their account a page at a time as the job is set up (#328). */
   zoteroSet: v.optional(v.object({ first: v.number(), last: v.number() })),
+  /** Records `first` to `last` of an Evidence Library source, as the job's person may read them: the library gives their keys when the job is set up (plans/evidence-library-sources). */
+  evidenceLibrarySet: v.optional(evidenceLibrarySetValidator),
 };
 
 /**

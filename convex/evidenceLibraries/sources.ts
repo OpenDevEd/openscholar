@@ -24,10 +24,11 @@ export async function libraryAt(ctx: Pick<QueryCtx, "db">, origin: string): Prom
   return binding?.libraryId ?? null;
 }
 
-/** Refuses a library that isn't running: it has no records to read. Anyone may read a running one, as far as the library lets them. */
+/** The library, refused when it isn't running: it has no records to read. Anyone may read a running one, as far as the library lets them. */
 export async function requireRunningLibrary(ctx: Pick<QueryCtx, "db">, libraryId: Id<"evidenceLibraries">) {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   if (!library || !(await readLibraryRuntimeTarget(ctx, library))) throw createError("NOT_FOUND", "This Evidence Library isn't running, so its records can't be read.");
+  return library;
 }
 
 /** A running library's name and the address and encrypted credential OpenScholar reads it with; null for one that isn't running. */

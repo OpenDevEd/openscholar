@@ -23,7 +23,7 @@ import {
   extractionPaperQueueFields,
   extractionQuestionFields,
   extractionResultFields, extractionAnswerRowFields, extractionPaperFactFields,
-  storedSearchFiltersValidator, librarySetValidator,
+  storedSearchFiltersValidator, librarySetValidator, evidenceLibrarySetValidator,
 } from "./extraction/validators";
 import {
   chatGenerationUsageFields,
@@ -328,8 +328,9 @@ export default defineSchema({
     .index("by_user_and_lastAt", ["userId", "lastAt"]),
 
   // The record keys a job reads from an Evidence Library, kept when it starts, a page each (./paperSets/libraryKeys.ts).
-  paperSetKeys: defineTable({ job: v.union(v.id("screeningJobs"), v.id("extractionJobs")), page: v.number(), keys: v.array(v.string()) })
-    .index("by_job_and_page", ["job", "page"]),
+  // `part` is the job's source it belongs to: an extraction can read several.
+  paperSetKeys: defineTable({ job: v.union(v.id("screeningJobs"), v.id("extractionJobs")), part: v.number(), page: v.number(), keys: v.array(v.string()) })
+    .index("by_job_and_part_and_page", ["job", "part", "page"]),
 
   // Reader data a library still has to drop for a deleted OpenScholar account.
   evidenceLibraryReaderDeletions: defineTable(evidenceLibraryReaderDeletionFields)
@@ -871,6 +872,7 @@ export default defineSchema({
       v.literal("collection"),
       v.literal("zotero"),
       v.literal("upload"),
+      v.literal("evidenceLibrary"),
     ),
     sourceRefId: v.string(),
     screeningSelection: v.optional(screeningSelectionValidator),
@@ -895,6 +897,7 @@ export default defineSchema({
     // A collection's or the library's papers, a range of them, as one source (convex/extraction/validators.ts).
     librarySet: v.optional(librarySetValidator),
     zoteroSet: v.optional(v.object({ first: v.number(), last: v.number() })),
+    evidenceLibrarySet: v.optional(evidenceLibrarySetValidator),
   })
     .index("by_job_and_position", ["jobId", "position"])
     .index("by_job_and_source", ["jobId", "source"]),

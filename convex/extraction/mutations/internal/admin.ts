@@ -92,6 +92,7 @@ export const deleteExtractionInternal = internalMutation({
       ["extractionResults", "by_job", "jobId"],
       ["extractionQuestions", "by_job", "jobId"],
       ["extractionJobSources", "by_job_and_position", "jobId"],
+      ["paperSetKeys", "by_job_and_part_and_page", "job"],
       ["extractionAnswerTallies", "by_group", "jobId"],
       ["extractionAnswerTotals", "by_job_question", "jobId"],
     ];

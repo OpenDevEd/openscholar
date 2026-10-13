@@ -13,7 +13,7 @@ import { createError } from "../lib/errors";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { sourceMetadata, type PaperSourceMetadata } from "../../lib/library/paper-metadata";
 /** Where a job's source came from. */
-export type BucketSource = "screening" | "history" | "library" | "collection" | "zotero" | "upload";
+export type BucketSource = "screening" | "history" | "library" | "collection" | "zotero" | "upload" | "evidenceLibrary";
 
 export type JobSourceSearchFilters = NonNullable<
   Doc<"extractionJobSources">["searchFilters"]
@@ -56,6 +56,7 @@ export type BucketItemInput = PaperSourceMetadata & {
   includeDescendants?: boolean;
   librarySet?: Doc<"extractionJobSources">["librarySet"];
   zoteroSet?: Doc<"extractionJobSources">["zoteroSet"];
+  evidenceLibrarySet?: Doc<"extractionJobSources">["evidenceLibrarySet"];
 };
 
 export function rowFromBucketItem(
@@ -91,6 +92,7 @@ export function rowFromBucketItem(
     includeDescendants: item.includeDescendants,
     librarySet: item.librarySet,
     zoteroSet: item.zoteroSet,
+    evidenceLibrarySet: item.evidenceLibrarySet,
   };
 }
 
@@ -120,6 +122,7 @@ export function bucketItemFromRow(row: Doc<"extractionJobSources">): BucketItemI
     includeDescendants: row.includeDescendants,
     librarySet: row.librarySet,
     zoteroSet: row.zoteroSet,
+    evidenceLibrarySet: row.evidenceLibrarySet,
   };
 }
 
