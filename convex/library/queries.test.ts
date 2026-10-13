@@ -9,6 +9,7 @@ import { exportedTitles } from "../exports.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
 import { madeBy } from "../workspaces/actor.test-support";
 import { personalRatingRow } from "../ratings";
+import { paperOf } from "../lib/paperRef.test-support";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -66,7 +67,7 @@ async function seedLibraryItem(
 
     const id = await ctx.db.insert("libraryItems", {
       userId,
-      openalexId: overrides.openalexId ?? `https://openalex.org/W${now}`,
+      ...paperOf(overrides.openalexId ?? `https://openalex.org/W${now}`),
       rating: overrides.rating ?? 3,
       title,
       authors,
@@ -842,7 +843,7 @@ describe("removeFromLibrary", () => {
     });
 
     // What Undo needs is kept on the server, under the ID the removal returns.
-    expect(await t.run(async (ctx) => await ctx.db.get("libraryRemovals", removed.undo!.args.removalId))).toMatchObject({ item: { openalexId: "https://openalex.org/W1", rating: 4, savedAt: item!.savedAt } });
+    expect(await t.run(async (ctx) => await ctx.db.get("libraryRemovals", removed.undo!.args.removalId))).toMatchObject({ item: { paperKey: "openalex:W1", rating: 4, savedAt: item!.savedAt } });
     const deleted = await t.run(async (ctx) => await ctx.db.get("libraryItems", item!._id));
     expect(deleted).toBeNull();
   });
@@ -1267,7 +1268,7 @@ describe("the library as the assistant reads it", () => {
       // A place in a collection deleted since, not yet cleared away, isn't one.
       const gone = await ctx.db.insert("collections", { ...(await madeBy(ctx, user!._id)), name: "Deleted", sortName: ("Deleted").toLowerCase(), itemCount: 1, createdAt: 1, updatedAt: 1 });
       const workspaceId = await personalWorkspaceOf(ctx, user!._id);
-      const feeding = await ctx.db.query("libraryItems").withIndex("by_workspace_openalexId", (q) => q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W3")).unique();
+      const feeding = await ctx.db.query("libraryItems").withIndex("by_workspace_paperKey", (q) => q.eq("workspaceId", workspaceId).eq("paperKey", "openalex:W3")).unique();
       await ctx.db.insert("libraryItemCollections", { collectionId: gone, libraryItemId: feeding!._id, assignedAt: 1 });
       await ctx.db.delete("collections", gone);
       return id;

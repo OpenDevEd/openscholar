@@ -6,6 +6,7 @@ import { seedFeatureUser } from "../../organizationFeatures.test-support";
 import { madeBy } from "../../workspaces/actor.test-support";
 import { accountOf } from "../../billing/billing.test-support";
 import { savedPapersPick } from "../picks.test-support";
+import { paperOf } from "../../lib/paperRef.test-support";
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -13,7 +14,7 @@ afterEach(() => vi.useRealTimers());
 describe("extraction from Included screening papers", () => {
   it.each([false, true])("saves screening metadata and revision through overlaps, exclusion and undo, library first: %s", async (libraryFirst) => {
     const { t, as, userId, jobId, selection, revision, start, snapshot, papers } = await screeningInputs();
-    const libraryId = await t.run(async ctx => ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: "https://openalex.org/W0", title: "Separately saved paper", rating: 4, searchableText: "saved paper", savedAt: 1, updatedAt: 1 }));
+    const libraryId = await t.run(async ctx => ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paperOf("https://openalex.org/W0"), title: "Separately saved paper", rating: 4, searchableText: "saved paper", savedAt: 1, updatedAt: 1 }));
     const source = selection();
     const decided = await revision();
     const inputs = [source, await savedPapersPick(t, userId, 1)];

@@ -5,6 +5,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { abstractEvidence } from "../../lib/extraction/source-evidence";
+import { paperOf } from "../lib/paperRef.test-support";
 
 async function seedBatchResultFixture(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
@@ -30,7 +31,7 @@ async function seedBatchResultFixture(t: ReturnType<typeof convexTest>) {
     });
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:results-batch",
+      ...paperOf("oa:results-batch"),
       title: "Results Batch Paper",
       status: "extracting" as const,
       processable: true,

@@ -469,14 +469,12 @@ export const extractionPaperFields = {
   /** Its DOI and its title and year as identifiers, so a copy that shares only one of them finds it too. */
   doiKey: v.optional(v.string()),
   titleKey: v.optional(v.string()),
-  // The paper by its source (plans/evidence-library-sources); replaces `openalexId` once every row has it.
+  // The paper by its source (plans/evidence-library-sources).
   ...paperIdentityFields,
   ...sourceMetadataFields,
   citedByCount: v.optional(v.number()),
   venueName: v.optional(v.string()),
   jobId: v.id("extractionJobs"),
-  // The ID a paper was kept under before papers were named by their source: no longer written, and gone once migrations/paperIdentity:narrow has run.
-  openalexId: v.optional(v.string()),
   title: v.string(),
   doi: v.optional(v.string()),
   publicationYear: v.optional(v.number()),

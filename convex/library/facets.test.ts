@@ -13,6 +13,7 @@ import { countInRange } from "./facets";
 import { ensureWorkspace } from "../workspaces/create";
 import { madeBy } from "../workspaces/actor.test-support";
 import { organizationWorkspaceOf } from "../workspaces/personal";
+import { paperOf } from "../lib/paperRef.test-support";
 
 type Test = ReturnType<typeof convexTest>;
 
@@ -31,7 +32,7 @@ const paper = (i: number, fields: { rating?: number; publicationYear?: number } 
   ...fields,
 });
 // The same paper as a row of the table.
-const row = (i: number) => ({ openalexId: `https://openalex.org/W${i}`, paperKey: `openalex:W${i}`, title: `Paper ${i}` });
+const row = (i: number) => ({ ...paperOf(`openalex:W${i}`), title: `Paper ${i}` });
 
 describe("library facets", () => {
   it("a rating changed on a paper reaches its collection's view and counts", async () => {

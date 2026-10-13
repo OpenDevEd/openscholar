@@ -9,6 +9,7 @@ import { exportLibrary, exportParts } from "./exports.test-support";
 import { parseImportFile } from "../lib/import";
 import { importSearchRecord, serializeSearch } from "../lib/research/records";
 import { personalWorkspaceOf } from "./workspaces/actor";
+import { paperOf } from "./lib/paperRef.test-support";
 
 const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const };
 
@@ -16,7 +17,7 @@ async function seed(t: ReturnType<typeof convexTest>, clerkId: string, titles: s
   return await t.run(async (ctx) => {
     const userId = await ctx.db.insert("users", { clerkId, email: `${clerkId}@example.org`, state: "active", createdAt: 1, updatedAt: 1 });
     for (const [i, title] of titles.entries()) {
-      await ctx.db.insert("libraryItems", { userId, openalexId: `https://openalex.org/W${clerkId}${i}`, title, searchableText: title, savedAt: 1_000 + i, updatedAt: 1_000 + i });
+      await ctx.db.insert("libraryItems", { userId, ...paperOf(`https://openalex.org/W${clerkId}${i}`), title, searchableText: title, savedAt: 1_000 + i, updatedAt: 1_000 + i });
     }
     return userId;
   });
@@ -143,7 +144,7 @@ describe("screening export", () => {
       });
       // More than one read holds, so the file runs across pages.
       for (let i = 0; i < 120; i++) {
-        await ctx.db.insert("screeningResults", { jobId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, status: "completed", answers: { q1: i % 2 === 0 }, score: i % 2 === 0 ? 1 : 0, stars: 5, qualified: i % 2 === 0, createdAt: 1 });
+        await ctx.db.insert("screeningResults", { jobId, ...paperOf(`https://openalex.org/W${i}`), title: `Paper ${i}`, status: "completed", answers: { q1: i % 2 === 0 }, score: i % 2 === 0 ? 1 : 0, stars: 5, qualified: i % 2 === 0, createdAt: 1 });
       }
       return jobId;
     });

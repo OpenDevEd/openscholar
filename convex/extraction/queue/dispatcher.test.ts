@@ -9,6 +9,7 @@ import { EXTRACTION_PAPER_CONCURRENCY } from "../../../lib/extraction/limits";
 import { setupExtractionPaperWorkpool } from "./workpool.test-support";
 import { markPaperTerminalTx } from "../paperLifecycle";
 import { foldCounts } from "../counts.test-support";
+import { paperOf } from "../../lib/paperRef.test-support";
 
 // The worker schedules its runs on whichever timers are active when rows are released.
 beforeEach(() => vi.useFakeTimers());
@@ -25,7 +26,7 @@ async function seedJob(t: ReturnType<typeof convexTest>, papers: PaperState[]) {
     });
     const queueIds: Id<"extractionPaperQueue">[] = [];
     for (const [i, state] of papers.entries()) {
-      const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:${i}`, title: `Paper ${i}`, status: state.paper, processable: true, abstract: "An abstract long enough to pass the processability gate for the dispatch tests." });
+      const paperId = await ctx.db.insert("extractionPapers", { jobId, ...paperOf(`oa:${i}`), title: `Paper ${i}`, status: state.paper, processable: true, abstract: "An abstract long enough to pass the processability gate for the dispatch tests." });
       queueIds.push(await ctx.db.insert("extractionPaperQueue", { jobId, userId, paperId, runEpoch: 0, kind: "initial", status: state.queue, priority: 0, attempt: 0, createdAt: now + i, updatedAt: now + i }));
     }
     return { jobId, queueIds };

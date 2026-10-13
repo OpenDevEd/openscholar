@@ -21,6 +21,7 @@ import { createJob } from "./createJob.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
 import { madeBy } from "../workspaces/actor.test-support";
 import { encrypt } from "../lib/crypto";
+import { paperOf } from "../lib/paperRef.test-support";
 
 const questions = [{ key: "q1", question: "Randomized?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 };
@@ -50,7 +51,7 @@ async function setup({ saved = 6, inCollection = 4, credits = 100_000 } = {}) {
     await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: PRICE.input, outputPricePerMillion: PRICE.output, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: [], syncedAt: 1, createdAt: 1, updatedAt: 1 });
     const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Reading trials", sortName: collectionSortName("Reading trials"), itemCount: inCollection, createdAt: 1, updatedAt: 1 });
     for (let i = 1; i <= saved; i++) {
-      const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: W(i), title: `Paper ${i}`, authors: ["Ada Lovelace", "Alan Turing"], abstract: "Tutoring works", journal: "A journal", citedByCount: i, publicationYear: 2020, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
+      const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paperOf(W(i)), title: `Paper ${i}`, authors: ["Ada Lovelace", "Alan Turing"], abstract: "Tutoring works", journal: "A journal", citedByCount: i, publicationYear: 2020, searchableText: `Paper ${i}`, savedAt: i, updatedAt: i });
       if (i <= inCollection) await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: i });
     }
     return { userId, collectionId };
@@ -197,7 +198,7 @@ describe("where a job's papers go", () => {
     const source = await t.run(async (ctx) => {
       const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 0, createdAt: 1 });
       const jobId = await ctx.db.insert("screeningJobs", { ...(await madeBy(ctx, userId)), status: "completed", totalPapers: 2, questions, scoringConfig, screeningId, createdAt: 1, updatedAt: 1 });
-      for (const i of [1, 2]) await ctx.db.insert("screeningResults", { jobId, openalexId: W(i), title: `Paper ${i}`, status: "completed", outcome: "included", createdAt: 1 });
+      for (const i of [1, 2]) await ctx.db.insert("screeningResults", { jobId, ...paperOf(W(i)), title: `Paper ${i}`, status: "completed", outcome: "included", createdAt: 1 });
       return jobId;
     });
 

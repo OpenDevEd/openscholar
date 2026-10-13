@@ -13,7 +13,7 @@ import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery,
 import { answerAt, answerPaper, paperAnswers, restoreAnswer, restoreModelAnswer } from "../research/answers";
 import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadata } from "../../lib/library/paper-metadata";
-import { pageIdOf, paperKeyOf, toPaperKey } from "../../lib/papers/paper-ref";
+import { pageIdOf, toPaperKey } from "../../lib/papers/paper-ref";
 import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./accounting";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { moveResultAnswers } from "./drain";
@@ -28,7 +28,7 @@ const PAGE_BYTES = 4 * 1024 * 1024;
 async function paperOf(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, outcome: Infer<typeof screeningOutcomeValidator>) {
   return {
     ...sourceMetadata(result),
-    paper: paperKeyOf(result),
+    paper: result.paperKey,
     ...(result.crossRefs ? { crossRefs: result.crossRefs } : {}),
     title: result.title,
     abstract: result.abstract,

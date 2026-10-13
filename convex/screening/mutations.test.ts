@@ -15,6 +15,7 @@ import { ensureWorkspace } from "../workspaces/create";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
 
 import { encodeQuestionResponseMap } from "../../lib/ai/core/question-key-codec";
+import { paperOf } from "../lib/paperRef.test-support";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -98,7 +99,7 @@ async function seedScreeningResult(
   return await t.run(async (ctx) => {
     const resultId = await ctx.db.insert("screeningResults", {
       jobId,
-      openalexId: overrides.openalexId ?? `https://openalex.org/W${Date.now()}`,
+      ...paperOf(overrides.openalexId ?? `https://openalex.org/W${Date.now()}`),
       title: overrides.title ?? "Screening Result",
       status: overrides.status ?? "processing",
       // A paper being read has its work in the pool, which is how its completion finds it.

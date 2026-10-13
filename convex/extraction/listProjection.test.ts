@@ -9,6 +9,7 @@ import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
 import { normalizeProjectionText, recomputePaperListProjection } from "./listProjection";
+import { paperOf } from "../lib/paperRef.test-support";
 
 const answerToken = (key: string, answer: string) => createHash("sha256").update(JSON.stringify([key, answer])).digest("hex");
 
@@ -86,7 +87,7 @@ async function seedProjectionFixture(t: ReturnType<typeof convexTest>): Promise<
 
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "https://openalex.org/W77",
+      ...paperOf("https://openalex.org/W77"),
       title: "The Café Trial",
       abstract: "A study of caffeine outcomes in a randomized setting.",
       authors: ["Jane Doe", "John Roe"],

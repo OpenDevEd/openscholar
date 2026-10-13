@@ -7,6 +7,7 @@ import {
 } from "../billing/billing.test-support";
 import { readJobCounters } from "./jobCounters";
 import { foldCounts } from "./counts.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 async function seedJob(
   t: ReturnType<typeof convexTest>,
@@ -47,7 +48,7 @@ async function seedJob(
     });
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:fg1",
+      ...paperOf("oa:fg1"),
       title: "Finalize Guard Paper",
       status: "extracting" as const,
     });
@@ -164,7 +165,7 @@ describe("maybeFinalizeJob terminal-state guard", () => {
       for (let i = 0; i < 50; i++) {
         await ctx.db.insert("extractionPapers", {
           jobId,
-          openalexId: `oa:stress${i}`,
+          ...paperOf(`oa:stress${i}`),
           title: `Paper ${i}`,
           status: "extracting" as const,
         });

@@ -8,6 +8,7 @@ import { madeBy } from "../workspaces/actor.test-support";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { grantPlanFeaturesForTest } from "../billing/billing.test-support";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
+import { paperOf } from "../lib/paperRef.test-support";
 
 const modules = import.meta.glob("/convex/**/*.ts");
 const token = "els_" + "a".repeat(43);
@@ -24,7 +25,7 @@ async function setup() {
     }
     const libraryId = await ctx.db.insert("evidenceLibraries", { workspaceId: await organizationWorkspaceOf(ctx, organizationId), name: "Library", slug: "library", state: "active", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
     await ctx.db.insert("evidenceLibraryCredentials", { libraryId, credentialKey: "library-service", encryptedValue: "unused", credentialDigest: createHash("sha256").update(token).digest("hex"), validationState: "valid", createdByClerkUserId: "owner", updatedByClerkUserId: "owner", createdAt: 1, updatedAt: 1 });
-    const item = async (openalexId: string) => ctx.db.insert("libraryItems", { ...(await madeBy(ctx, users.get("owner")!)), openalexId, rating: 0, title: openalexId, searchableText: openalexId, savedAt: 1, updatedAt: 1 });
+    const item = async (openalexId: string) => ctx.db.insert("libraryItems", { ...(await madeBy(ctx, users.get("owner")!)), ...paperOf(openalexId), rating: 0, title: openalexId, searchableText: openalexId, savedAt: 1, updatedAt: 1 });
     return { libraryId, items: [await item("https://openalex.org/W1"), await item("https://openalex.org/W2")] };
   });
   const owner = t.withIdentity({ subject: "owner" });

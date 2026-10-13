@@ -8,6 +8,7 @@ import schema from "../schema";
 import { recomputePaperListProjection } from "./listProjection";
 import { catchUp } from "../lib/catchUp.test-support";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
+import { paperOf } from "../lib/paperRef.test-support";
 
 const PAPERS = 1_500;
 const COUNTRIES = ["Kenya", "Ghana", "Peru"];
@@ -27,7 +28,7 @@ async function seedJob(t: ReturnType<typeof convexTest>, { triggered = true } = 
   for (let start = 0; start < PAPERS; start += 150) {
     await run(async (ctx) => {
       for (let i = start; i < start + 150; i++) {
-        const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:${i}`, title: `Paper ${i}`, authors: [], processable: true, status: "completed" });
+        const paperId = await ctx.db.insert("extractionPapers", { jobId, ...paperOf(`oa:${i}`), title: `Paper ${i}`, authors: [], processable: true, status: "completed" });
         await ctx.db.insert("extractionResults", { jobId, paperId, questionKey: "country", answer: countryOf(i), citations: [], citationStatus: "best_effort", confidence: confidenceOf(i), status: "completed", processedAt: 1 });
         await recomputePaperListProjection(ctx, paperId);
       }

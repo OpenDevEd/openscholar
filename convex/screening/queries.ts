@@ -38,7 +38,6 @@ import { pricingOf } from "../ai/serverModel";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { countRow } from "../research/recordCounts";
 import { buildScreeningProgressSnapshot, readScreeningProgressCounts } from "./progress";
-import { paperKeyOf } from "../../lib/papers/paper-ref";
 import { crossRefsValidator } from "../lib/paperRef";
 
 /** Most screening jobs one page lists; each one also reads its progress. */
@@ -469,7 +468,7 @@ export async function readScreeningResultsPage(ctx: QueryCtx, job: Doc<"screenin
         ...sourceMetadata(r),
         venue: r.venue,
         citedByCount: r.citedByCount,
-        paper: paperKeyOf(r),
+        paper: r.paperKey,
         ...(r.crossRefs ? { crossRefs: r.crossRefs } : {}),
         title: r.title,
         authors: r.authors,

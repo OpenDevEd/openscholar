@@ -209,19 +209,6 @@ describe("each person's paper slots", () => {
     expect(late.map((row) => [row.status, row.waitingSince, row.workId])).toEqual([["skipped", undefined, undefined], ["skipped", undefined, undefined]]);
   });
 
-  it("takes the papers a reader that started before keys still sends by their old IDs, each by its key", async () => {
-    const { t, person } = await setup();
-    const ada = await person("ada");
-    const { jobId } = await createJob(ada.as, { papers: papers(1, "a"), questions, scoringConfig });
-    await t.mutation(internal.screening.mutations.createScreeningResults, {
-      jobId,
-      papers: [{ openalexId: "https://openalex.org/W7", title: "Searched" }, { openalexId: "zotero:group:KEY12345", title: "From Zotero", pdfUrl: "zotero://select/groups/42/items/KEY12345" }],
-      createdAt: 3,
-    });
-    const keys = (await papersOf(t, jobId)).rows.map((row) => row.paperKey);
-    expect(keys).toEqual(expect.arrayContaining(["openalex:W7", "zotero:group:42:KEY12345"]));
-  });
-
   it("starts a later job's waiting papers in free slots however many jobs the person has", async () => {
     const { t, person } = await setup();
     const ada = await person("ada");

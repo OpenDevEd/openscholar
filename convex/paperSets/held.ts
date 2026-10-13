@@ -16,7 +16,6 @@ import { checkRange, type SearchPaper } from "./search";
 import { authorMetadata, sourceMetadata } from "../../lib/library/paper-metadata";
 import { screeningRevision } from "../screening/accounting";
 import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
-import { paperKeyOf } from "../../lib/papers/paper-ref";
 import { findItem } from "../library/find";
 
 type PaperSet = Infer<typeof paperSetValidator>;
@@ -27,7 +26,7 @@ const PAGE = 100;
 const PAGE_BYTES = 8 * 1024 * 1024;
 
 const fromLibrary = (item: Doc<"libraryItems">): SearchPaper => ({
-  paper: paperKeyOf(item),
+  paper: item.paperKey,
   ...(item.crossRefs ? { crossRefs: item.crossRefs } : {}),
   title: item.title,
   ...(item.abstract ? { abstract: item.abstract } : {}),
@@ -42,7 +41,7 @@ const fromLibrary = (item: Doc<"libraryItems">): SearchPaper => ({
 
 const fromResult = (paper: Doc<"screeningResults">): SearchPaper => ({
   ...sourceMetadata(paper),
-  paper: paperKeyOf(paper), ...(paper.crossRefs ? { crossRefs: paper.crossRefs } : {}), title: paper.title, abstract: paper.abstract, authors: paper.authors, publicationYear: paper.publicationYear, doi: paper.doi, venue: paper.venue, citedByCount: paper.citedByCount,
+  paper: paper.paperKey, ...(paper.crossRefs ? { crossRefs: paper.crossRefs } : {}), title: paper.title, abstract: paper.abstract, authors: paper.authors, publicationYear: paper.publicationYear, doi: paper.doi, venue: paper.venue, citedByCount: paper.citedByCount,
 });
 
 /** Papers the workspace's library holds, by key, as a set reads them; a key it doesn't hold is left out. A step reads `SAVED_A_READ` at most. */

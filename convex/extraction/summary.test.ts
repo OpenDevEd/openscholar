@@ -5,6 +5,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { recomputePaperListProjection } from "./listProjection";
 import { catchUp } from "../lib/catchUp.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 type Row = { title: string; country: string | null; outcomes: string[]; confidence?: number; status?: "completed" };
 
@@ -19,7 +20,7 @@ async function seedJob(t: ReturnType<typeof convexTest>, rows: Row[], project = 
     await ctx.db.insert("extractionQuestions", { jobId, key: "outcomes", question: "Which outcomes were measured?", type: "array", order: 1, createdAt: now });
     const papers: Id<"extractionPapers">[] = [];
     for (const { title, country, outcomes, confidence = 0.9, status = "completed" } of rows) {
-      const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:${title}`, title, authors: [], processable: true, status: "completed" });
+      const paperId = await ctx.db.insert("extractionPapers", { jobId, ...paperOf(`oa:${title}`), title, authors: [], processable: true, status: "completed" });
       for (const [questionKey, answer] of [["country", country], ["outcomes", outcomes]] as const) {
         await ctx.db.insert("extractionResults", { jobId, paperId, questionKey, answer, citations: [], citationStatus: "best_effort", confidence, ...(project ? { status } : {}), processedAt: 1 });
       }

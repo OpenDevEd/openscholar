@@ -2,7 +2,7 @@
 // plans/evidence-library-sources). `paperKey` is the indexed form, `ref` the parts, `crossRefs`
 // what finds the same paper elsewhere.
 import { v } from "convex/values";
-import { crossRefsOf, legacyPaperRef, paperKey, type CrossRefs, type PaperRef } from "../../lib/papers/paper-ref";
+import { crossRefsOf, paperKey, type CrossRefs, type PaperRef } from "../../lib/papers/paper-ref";
 
 export const paperRefValidator = v.union(
   v.object({ source: v.literal("openalex"), work: v.string() }),
@@ -13,10 +13,10 @@ export const paperRefValidator = v.union(
 
 export const crossRefsValidator = v.object({ openalexId: v.optional(v.string()), doi: v.optional(v.string()) });
 
-/** The fields a row that holds a paper carries. Optional while rows from before them are migrated (convex/migrations/paperIdentity.ts). */
+/** The fields a row that holds a paper carries: its key and source, and what finds it elsewhere when anything does. */
 export const paperIdentityFields = {
-  paperKey: v.optional(v.string()),
-  ref: v.optional(paperRefValidator),
+  paperKey: v.string(),
+  ref: paperRefValidator,
   crossRefs: v.optional(crossRefsValidator),
 };
 
@@ -25,14 +25,4 @@ export type PaperIdentity = { paperKey: string; ref: PaperRef; crossRefs: CrossR
 /** A paper's identity from a ref and what else is known of it. */
 export function identityOf(ref: PaperRef, known: { openalexId?: string | null; doi?: string | null } = {}): PaperIdentity {
   return { paperKey: paperKey(ref), ref, crossRefs: crossRefsOf(ref, known) };
-}
-
-/**
- * The identity of a row kept before identities, from the ID it was stored under (an OpenAlex ID in
- * any form, a Zotero or upload placeholder), its DOI, and its PDF address, which names a Zotero
- * item's owner. Empty when the ID names no paper, so the row is written as it was.
- */
-export function identityFromStored(row: { openalexId?: string | null; doi?: string | null; pdfUrl?: string | null }): PaperIdentity | Record<string, never> {
-  const ref = row.openalexId ? legacyPaperRef(row.openalexId, { pdfUrl: row.pdfUrl ?? undefined }) : null;
-  return ref ? identityOf(ref, { openalexId: row.openalexId, doi: row.doi }) : {};
 }

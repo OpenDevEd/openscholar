@@ -6,6 +6,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { fakeAutumn, fakeAutumnFetch } from "../billing/billing.test-support";
 import { ORGANIZATION_PLAN, TEAM_PLAN } from "../../lib/billing/plans";
+import { paperOf } from "../lib/paperRef.test-support";
 
 /** Clerk's Backend API for organizations, as far as these actions use it, kept in memory. */
 function fakeClerk() {
@@ -285,7 +286,7 @@ describe("an organization", () => {
     // Papers near a document's 1 MiB: a step reading too many of them at once would pass Convex's 16 MiB a transaction, and never finish.
     const abstract = "x".repeat(900 * 1024);
     for (let i = 0; i < 20; i++) {
-      await t.run((ctx) => ctx.db.insert("libraryItems", { workspaceId: lab.workspaceId, createdBy: alice, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, authors: [], abstract, journal: "", citedByCount: 0, publicationYear: 2020, searchableText: "", savedAt: i, updatedAt: i }));
+      await t.run((ctx) => ctx.db.insert("libraryItems", { workspaceId: lab.workspaceId, createdBy: alice, ...paperOf(`https://openalex.org/W${i}`), title: `Paper ${i}`, authors: [], abstract, journal: "", citedByCount: 0, publicationYear: 2020, searchableText: "", savedAt: i, updatedAt: i }));
     }
     await aliceAs.action(api.organizations.manage.deleteOrganization, inLab);
     const organizationId = await t.run(async (ctx) => (await ctx.db.get("workspaces", lab.workspaceId))!.kind === "organization" ? ((await ctx.db.get("workspaces", lab.workspaceId)) as { organizationId: Id<"organizations"> }).organizationId : null);

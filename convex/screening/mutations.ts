@@ -1,6 +1,6 @@
 import { internalMutation } from "../lib/functions";
 import { identityOf } from "../lib/paperRef";
-import { paperIdOf, parsePaperKey, toPaperKey } from "../../lib/papers/paper-ref";
+import { paperIdOf, parsePaperKey } from "../../lib/papers/paper-ref";
 import { internal } from "../_generated/api";
 import { v, type Infer, type ObjectType } from "convex/values";
 import { sourceMetadata } from "../../lib/library/paper-metadata";
@@ -10,7 +10,6 @@ import {
   paperSetValidator,
   saveToValidator,
   screeningPaperInputValidator,
-  sentPaperValidator,
   screeningQuestionValidator,
   screeningScoringConfigValidator,
 } from "./validators";
@@ -202,7 +201,7 @@ export const beginReading = internalMutation({
 export const fillScreeningJob = internalMutation({
   args: {
     jobId: v.id("screeningJobs"),
-    papers: v.array(sentPaperValidator),
+    papers: v.array(screeningPaperInputValidator),
     read: v.number(),
     resume: v.optional(v.string()),
     ended: v.boolean(),
@@ -284,10 +283,8 @@ export const searchTextOf = (paper: { title: string; authors?: string[] }) => [p
 const CREATE_BATCH = 250;
 type PaperInput = Infer<typeof screeningPaperInputValidator>;
 /** A paper as a job holds it: named by its key, however its source gave it. */
-function keyed(sent: Infer<typeof sentPaperValidator>): PaperInput {
-  if ("paper" in sent) return { ...sent, paper: requirePaperKey(sent.paper) };
-  const { openalexId, ...paper } = sent;
-  return { ...paper, paper: requirePaperKey(toPaperKey(openalexId, { pdfUrl: paper.pdfUrl }) ?? openalexId) };
+function keyed(sent: PaperInput): PaperInput {
+  return { ...sent, paper: requirePaperKey(sent.paper) };
 }
 
 /**
@@ -296,7 +293,7 @@ function keyed(sent: Infer<typeof sentPaperValidator>): PaperInput {
  * already answered every question for is done at once on those answers, takes no slot and
  * costs nothing: the bookkeeping worker scores and counts it.
  */
-async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: Array<Infer<typeof sentPaperValidator>>, createdAt: number, answered?: Set<string>) {
+async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: PaperInput[], createdAt: number, answered?: Set<string>) {
   const batch = papers.slice(0, CREATE_BATCH).map(keyed);
   const screening = (await ctx.db.get("screenings", job.screeningId))!;
   // A search's page keeps its answers under the paper's address.
@@ -336,7 +333,7 @@ async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers
 
 /** The next batch of a job's results, unless the job was cancelled or ended meanwhile. */
 export const createScreeningResults = internalMutation({
-  args: { jobId: v.id("screeningJobs"), papers: v.array(sentPaperValidator), createdAt: v.number() },
+  args: { jobId: v.id("screeningJobs"), papers: v.array(screeningPaperInputValidator), createdAt: v.number() },
   returns: v.null(),
   handler: async (ctx, { jobId, papers, createdAt }) => {
     const job = await ctx.db.get("screeningJobs", jobId);

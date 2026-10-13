@@ -4,6 +4,7 @@ import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { madeBy } from "../workspaces/actor.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
+import { paperOf } from "../lib/paperRef.test-support";
 
 let requests: URL[] = [];
 /** OpenAlex, answering for one work as its API does: the abstract as an index of words, and nothing for a work it doesn't have. */
@@ -79,7 +80,7 @@ describe("saving a paper by its ID", () => {
     expect(await held()).toEqual({ papers: 1, places: [collectionId] });
     // A paper the person rated on a search card is saved with that rating, and its save still has an undo: removing the paper leaves the rating.
     const userId = (await t.run(async (ctx) => ctx.db.query("users").first()))!._id;
-    await t.run(async (ctx) => ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W8", rating: 3 }));
+    await t.run(async (ctx) => ctx.db.insert("ratings", { userId, paperId: "openalex:W8", rating: 3 }));
     expect(await ada.action(save, { id: "W8", collectionId })).toHaveProperty("undo");
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItems").take(10)).find((row) => row.paperKey === "openalex:W8")?.rating)).toBe(3);
 
@@ -143,7 +144,7 @@ describe("saving a paper by its ID", () => {
     await expect(ada.mutation(collect, { id: "W99", collectionId, inCollection: true })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
 
     // A paper saved under its bare ID, before the library kept one form, is still found by it, and can still be removed.
-    await t.run(async (ctx) => ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: "W5", title: "Saved bare", searchableText: "Saved bare", savedAt: 1, updatedAt: 1 }));
+    await t.run(async (ctx) => ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paperOf("W5"), title: "Saved bare", searchableText: "Saved bare", savedAt: 1, updatedAt: 1 }));
     expect(await ada.query(api.library.queries.savedPaper, { paper: "W5" })).not.toBeNull();
     await ada.mutation(collect, { id: "W5", collectionId, inCollection: true });
     expect(await t.run(async (ctx) => (await ctx.db.query("libraryItemCollections").take(5)).length)).toBe(3);

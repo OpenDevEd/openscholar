@@ -7,6 +7,7 @@ import { setupExtractionPaperWorkpool } from "./workpool.test-support";
 import { fakeAutumn, installFakeAutumn, seedCreditsForTest } from "../../billing/billing.test-support";
 import { SERVER_MODEL_SLUG } from "../../ai/config";
 import { extractionPaperCredits } from "../../../lib/pricing";
+import { paperOf } from "../../lib/paperRef.test-support";
 
 /** GPT-6 Luna's price, for the model the jobs run on when a test prices it, and what the seeded paper's one question holds on it. */
 const LUNA = { input: 0.1, output: 0.5 };
@@ -41,7 +42,7 @@ async function seedLeasedPaperQueueItem(
     });
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:worker",
+      ...paperOf("oa:worker"),
       title: "Worker Paper",
       status: "pending" as const,
       processable: true,
@@ -93,7 +94,7 @@ async function seedLeasedUnprocessablePaper(
     });
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:worker-unprocessable",
+      ...paperOf("oa:worker-unprocessable"),
       title: "Worker Unprocessable Paper",
       status: "pending" as const,
       processable: true,
@@ -151,7 +152,7 @@ async function seedAlreadyAnsweredPaper(
     });
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:worker-answered",
+      ...paperOf("oa:worker-answered"),
       title: "Worker Answered Paper",
       status: "pending" as const,
       processable: true,
@@ -234,7 +235,7 @@ async function seedQueueRefillJob(
 
     const completedPaperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:worker-refill-completed",
+      ...paperOf("oa:worker-refill-completed"),
       title: "Worker Refill Completed Paper",
       status: "pending" as const,
       processable: true,
@@ -267,14 +268,14 @@ async function seedQueueRefillJob(
 
     const activePaperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:worker-refill-active",
+      ...paperOf("oa:worker-refill-active"),
       title: "Worker Refill Active Paper",
       status: "extracting" as const,
       processable: true,
     });
     const pendingPaperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:worker-refill-pending",
+      ...paperOf("oa:worker-refill-pending"),
       title: "Worker Refill Pending Paper",
       status: "pending" as const,
       processable: true,

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { Doc } from "@/convex/_generated/dataModel";
 import { libraryItemToPaperResult } from "./library-item-to-paper-result";
 
-const item = (paperData?: string) => ({ openalexId: "https://openalex.org/W7", title: "Tutoring at scale", authors: ["Ada Okafor", "Ben Mwangi"], publicationYear: 2021, paperData }) as Doc<"libraryItems">;
+const item = (paperData?: string) => ({ paperKey: "openalex:W7", title: "Tutoring at scale", authors: ["Ada Okafor", "Ben Mwangi"], publicationYear: 2021, paperData }) as Doc<"libraryItems">;
 
 describe("a saved paper as its card shows it", () => {
   it("is the record stored with it, or its saved fields when that isn't a paper's record", () => {

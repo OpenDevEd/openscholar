@@ -19,6 +19,7 @@ import { extractionPaperCredits } from "../../../lib/pricing";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
 import { rowFromBucketItem } from "../jobSources";
 import { installFakeAutumn } from "../../billing/billing.test-support";
+import { paperOf } from "../../lib/paperRef.test-support";
 
 /** The price of the model the jobs are stamped with: GPT-6 Luna's. */
 const PRICE = { input: 0.1, output: 0.5 };
@@ -228,7 +229,7 @@ describe("resumeExtraction — happy paths", () => {
     const paperId = await t.run(async (ctx) => {
       return await ctx.db.insert("extractionPapers", {
         jobId,
-        openalexId: "oa:resume_queue",
+        ...paperOf("oa:resume_queue"),
         title: "Resume Queue Paper",
         status: "pending" as const,
         processable: true,
@@ -427,7 +428,7 @@ describe("resumeExtraction — nothing left to run", () => {
       await t.run(async (ctx) => {
         await ctx.db.patch(jobId, { totalPapers: 2 });
         for (const [i, status] of (["completed", "failed"] as const).entries()) {
-          await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:done${i}`, title: `Done ${i}`, status, processable: true });
+          await ctx.db.insert("extractionPapers", { jobId, ...paperOf(`oa:done${i}`), title: `Done ${i}`, status, processable: true });
         }
       });
 

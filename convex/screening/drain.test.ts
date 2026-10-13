@@ -10,6 +10,7 @@ import { insertJob } from "./createJob.test-support";
 import { moveResultAnswers } from "./drain";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
+import { paperOf } from "../lib/paperRef.test-support";
 
 describe("Screen all answers next to a person's", () => {
   async function seedJob(t: TestConvex<typeof schema>, questions: Array<{ key: string; question: string }>) {
@@ -21,7 +22,7 @@ describe("Screen all answers next to a person's", () => {
     });
   }
   const finish = (t: TestConvex<typeof schema>, jobId: Id<"screeningJobs">, answers: Record<string, boolean | null>, confidences: Record<string, number>, completedAt: number) =>
-    t.run((ctx) => ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "P", status: "completed", createdAt: 1, completedAt, score: 1, stars: 1, qualified: true, answers, confidences, pendingAnswers: true }));
+    t.run((ctx) => ctx.db.insert("screeningResults", { jobId, ...paperOf("https://openalex.org/W1"), title: "P", status: "completed", createdAt: 1, completedAt, score: 1, stars: 1, qualified: true, answers, confidences, pendingAnswers: true }));
   /** Moves the job's waiting answers into its screening, as the bookkeeping worker does for the papers in its batch. */
   const move = (t: TestConvex<typeof schema>, jobId: Id<"screeningJobs">) =>
     t.run(async (ctx) => {

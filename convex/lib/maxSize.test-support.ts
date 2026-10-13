@@ -10,6 +10,7 @@ import { facetsOf } from "../library/facets";
 import { createHash } from "node:crypto";
 import type { Id, TableNames } from "../_generated/dataModel";
 import { MAX_QUESTIONS_PER_JOB } from "../extraction/validators";
+import { paperOf } from "./paperRef.test-support";
 import { seedFeatureUser } from "../organizationFeatures.test-support";
 import { foldCounts } from "../extraction/counts.test-support";
 import { personalWorkspaceOf } from "../workspaces/actor";
@@ -69,7 +70,7 @@ export async function seedExtractionJob(t: Test, userId: Id<"users">, { papers =
   const keys = Array.from({ length: questions }, (_, i) => `q${i}`);
   await insertMany(t, "extractionQuestions", keys.map((key, order) => ({ jobId, key, order, question: `${text(80, order)}?`, type: "string", createdAt: 1 })));
   const paperIds = await insertMany(t, "extractionPapers", Array.from({ length: papers }, (_, i) => ({
-    jobId, openalexId: `W${i}`, title: text(120, i), sortTitle: text(120, i), abstract: text(1_800, i), authors: [text(40, i), text(40, i + 1)],
+    jobId, ...paperOf(`openalex:W${i}`), title: text(120, i), sortTitle: text(120, i), abstract: text(1_800, i), authors: [text(40, i), text(40, i + 1)],
     publicationYear: 2000 + (i % 25), status: "completed", sourceType: "history", sourceId: `W${i}`, processable: true,
     searchText: text(1_500, i), questionAnswerTokens: keys.map((key, q) => createHash("sha256").update(JSON.stringify([key, text(120, i + q).trim()])).digest("hex")), avgConfidence: 0.8, hasErrors: false, hasPdfSource: false, isOpenAccess: false, completedAt: 1,
   })));
@@ -96,7 +97,7 @@ export async function seedLibrary(t: Test, userId: Id<"users">, { items = MAX_SI
   // Written without triggers when not counted, so they name the workspace a save gives them.
   const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, userId));
   const docs = Array.from({ length: items }, (_, i) => ({
-    userId, workspaceId, createdBy: userId, openalexId: `https://openalex.org/W${i}`, rating: (i % 5) + 1, title: text(100, i), authors: [text(60, i)], publicationYear: 1990 + (i % 35),
+    userId, workspaceId, createdBy: userId, ...paperOf(`openalex:W${i}`), rating: (i % 5) + 1, title: text(100, i), authors: [text(60, i)], publicationYear: 1990 + (i % 35),
     journal: text(40, i), citedByCount: i % 500, paperData: text(1_700, i), searchableText: text(160, i), savedAt: 1_700_000_000_000 + i, updatedAt: 1,
     ...(abstractChars ? { abstract: text(abstractChars, i) } : {}),
   }));

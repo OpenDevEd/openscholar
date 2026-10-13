@@ -19,7 +19,6 @@ import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { upsertLibraryItem } from "../library/mutations";
 import { findItem } from "../library/find";
-import { paperKeyOf } from "../../lib/papers/paper-ref";
 
 import { addCollectionMembership, removeCollectionMembership } from "../library/collectionMembership";
 import { moveResultAnswers } from "./drain";
@@ -125,7 +124,7 @@ export async function saveQualified(ctx: MutationCtx, job: Doc<"screeningJobs">,
     ctx,
     { userId: job.createdBy, workspaceId: job.workspaceId },
     {
-      paper: paperKeyOf(result),
+      paper: result.paperKey,
       ...(result.crossRefs ? { crossRefs: result.crossRefs } : {}),
       title: result.title,
       authors: result.authors,
@@ -167,7 +166,7 @@ export async function shelve(ctx: MutationCtx, job: Doc<"screeningJobs">, result
   const workspaceId = job.workspaceId;
   // A screening moved to another workspace (#654) leaves the collection it read alone.
   if ((await ctx.db.get("collections", collectionId))?.workspaceId !== workspaceId) return moved;
-  const item = await findItem(ctx, workspaceId, paperKeyOf(result));
+  const item = await findItem(ctx, workspaceId, result.paperKey);
   if (!item) return moved;
   const membership = await ctx.db.query("libraryItemCollections").withIndex("by_collection_item", (q) => q.eq("collectionId", collectionId).eq("libraryItemId", item._id)).unique();
   if (left && membership) {

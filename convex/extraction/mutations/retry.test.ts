@@ -22,6 +22,7 @@ import {
 } from "../../billing/billing.test-support";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
 import { foldCounts } from "../counts.test-support";
+import { paperOf } from "../../lib/paperRef.test-support";
 
 const CLERK = "clerk_retry_mutation_owner";
 const OWNER_IDENTITY = {
@@ -112,7 +113,7 @@ async function seedJob(
     });
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:retry_paper_1",
+      ...paperOf("oa:retry_paper_1"),
       title: "Paper 1",
       status: opts.paperStatus ?? "completed",
       indexingBilled: true,
@@ -307,7 +308,7 @@ describe("retry reset — state changes", () => {
     await t.run(async (ctx) => {
       await ctx.db.patch(jobId, { totalPapers: 60 });
       for (let i = 1; i < 60; i++) {
-        const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:batch_${i}`, title: `Paper ${i}`, status: "completed", indexingBilled: true, ragEntryId: `rag:${i}`, isIndexed: true });
+        const paperId = await ctx.db.insert("extractionPapers", { jobId, ...paperOf(`oa:batch_${i}`), title: `Paper ${i}`, status: "completed", indexingBilled: true, ragEntryId: `rag:${i}`, isIndexed: true });
         await ctx.db.insert("extractionResults", { jobId, paperId, questionKey: "q1", answer: null, citations: [], citationStatus: "extraction_error", status: "failed", billed: false, attemptCount: 1, lastError: { code: "rate_limit", message: "429", at: 1 }, processedAt: 1 });
       }
     });
@@ -356,7 +357,7 @@ describe("retry reset — state changes", () => {
     const { jobId, paperId: first } = await seedJob(t, userId, { rows: [{ kind: "failed", key: "q1", code: "rate_limit" }] });
     const second = await t.run(async (ctx) => {
       await ctx.db.patch(jobId, { totalPapers: 2 });
-      const id = await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:retry_paper_2", title: "Paper 2", status: "completed", indexingBilled: true, ragEntryId: "rag:2", isIndexed: true });
+      const id = await ctx.db.insert("extractionPapers", { jobId, ...paperOf("oa:retry_paper_2"), title: "Paper 2", status: "completed", indexingBilled: true, ragEntryId: "rag:2", isIndexed: true });
       await ctx.db.insert("extractionResults", { jobId, paperId: id, questionKey: "q1", answer: null, citations: [], citationStatus: "extraction_error", status: "failed", billed: false, attemptCount: 1, lastError: { code: "rate_limit", message: "429", at: 1 }, processedAt: 1 });
       return id;
     });

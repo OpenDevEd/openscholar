@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { madeBy } from "../workspaces/actor.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 describe("cleanupOldPdfs", () => {
   it("deletes storage and clears storageId for completed papers older than maxAgeHours", async () => {
@@ -39,7 +40,7 @@ describe("cleanupOldPdfs", () => {
         );
         const paperId = await ctx.db.insert("extractionPapers", {
           jobId,
-          openalexId: `oa:old${i}`,
+          ...paperOf(`oa:old${i}`),
           title: `Old ${i}`,
           status: "completed" as const,
           completedAt: old,
@@ -54,7 +55,7 @@ describe("cleanupOldPdfs", () => {
       );
       const freshPaperId = await ctx.db.insert("extractionPapers", {
         jobId,
-        openalexId: "oa:fresh",
+        ...paperOf("oa:fresh"),
         title: "Fresh",
         status: "completed" as const,
         completedAt: fresh,
@@ -119,7 +120,7 @@ describe("cleanupOldPdfs", () => {
       for (let i = 0; i < 500; i++) {
         await ctx.db.insert("extractionPapers", {
           jobId,
-          openalexId: `oa:cursor-skip-${i}`,
+          ...paperOf(`oa:cursor-skip-${i}`),
           title: `Skipped ${i}`,
           status: "completed" as const,
           completedAt: old,
@@ -131,7 +132,7 @@ describe("cleanupOldPdfs", () => {
       );
       return await ctx.db.insert("extractionPapers", {
         jobId,
-        openalexId: "oa:cursor-stored",
+        ...paperOf("oa:cursor-stored"),
         title: "Stored",
         status: "completed" as const,
         completedAt: old + 1,

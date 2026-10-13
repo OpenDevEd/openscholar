@@ -37,6 +37,7 @@ import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
 import { readJobCounters } from "./jobCounters";
+import { paperOf } from "../lib/paperRef.test-support";
 
 type JobStatusFixture =
   | "pending"
@@ -142,7 +143,7 @@ async function seedScenario(
     }
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: `oa:fp_${clerkSuffix}`,
+      ...paperOf(`oa:fp_${clerkSuffix}`),
       title: "FinalizePaper Edge Case Paper",
       status: paperStatus,
     });

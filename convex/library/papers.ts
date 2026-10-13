@@ -13,7 +13,7 @@ import { readWork } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { trimPaperData, type WorkInput } from "../../lib/library/trim-paper-data";
 import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
-import { openalexAddress, openalexWorkOf, paperKeyOf } from "../../lib/papers/paper-ref";
+import { openalexAddress, openalexWorkOf } from "../../lib/papers/paper-ref";
 import { collectionHome, followed, shownOutside } from "./followed";
 import { editableCollection } from "./collectionMembership";
 import { checkSave, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
@@ -95,7 +95,7 @@ export const collectAction = defineUserMutation({
           : "This paper isn't in that collection's library yet. Put it there with library/mutations:setPaperInCollection, giving the paper whole.",
       );
     }
-    return await setPaperInCollectionAction.run(ctx, actor, { paper: { paper: item ? paperKeyOf(item) : requirePaperKey(id) }, collectionId, inCollection });
+    return await setPaperInCollectionAction.run(ctx, actor, { paper: { paper: item ? item.paperKey : requirePaperKey(id) }, collectionId, inCollection });
   },
 });
 export const collect = userMutation(collectAction);

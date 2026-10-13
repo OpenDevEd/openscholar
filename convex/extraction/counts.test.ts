@@ -8,6 +8,7 @@ import schema from "../schema";
 import { readJobCounters } from "./jobCounters";
 import { readResultCounts } from "./resultCounts";
 import { exportRevision } from "./counts";
+import { paperOf } from "../lib/paperRef.test-support";
 
 // The worker schedules its runs on whichever timers are active when counts change.
 beforeEach(() => vi.useFakeTimers());
@@ -53,7 +54,7 @@ describe("extraction counts", () => {
     const jobId = await seedJob(t, 2);
     await t.run(async (ctx) => {
       for (const [i, status] of (["completed", "extracting"] as const).entries()) {
-        const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:${i}`, title: `${i}`, status, processable: true });
+        const paperId = await ctx.db.insert("extractionPapers", { jobId, ...paperOf(`oa:${i}`), title: `${i}`, status, processable: true });
         await ctx.db.insert("extractionResults", { jobId, paperId, questionKey: "q1", answer: "a", citations: [], citationStatus: "grounded", status: "completed", billed: true, attemptCount: 1, processedAt: 1 });
       }
     });
@@ -77,7 +78,7 @@ describe("extraction counts", () => {
     const t = convexTest(schema);
     const jobId = await seedJob(t, 1);
     await t.run(async (ctx) => {
-      await ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:1", title: "1", status: "completed", processable: true });
+      await ctx.db.insert("extractionPapers", { jobId, ...paperOf("oa:1"), title: "1", status: "completed", processable: true });
       await ctx.db.delete("extractionJobs", jobId);
     });
     await t.finishAllScheduledFunctions(vi.runAllTimers);
@@ -87,7 +88,7 @@ describe("extraction counts", () => {
   it("don't let a job finish while changes wait to be folded, such as a retry putting a paper back", async () => {
     const t = convexTest(schema);
     const jobId = await seedJob(t, 1);
-    const paperId = await t.run((ctx) => ctx.db.insert("extractionPapers", { jobId, openalexId: "oa:1", title: "1", status: "completed", processable: true }));
+    const paperId = await t.run((ctx) => ctx.db.insert("extractionPapers", { jobId, ...paperOf("oa:1"), title: "1", status: "completed", processable: true }));
     await t.finishAllScheduledFunctions(vi.runAllTimers);
     await t.run((ctx) => ctx.db.patch(jobId, { status: "extracting", retryReset: undefined }));
     // A retry puts the paper back; the change waits for the worker.
