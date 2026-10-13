@@ -1567,13 +1567,15 @@
       "search": "खोज",
       "collection": "संग्रह",
       "saved": "सहेजे गए लेख",
-      "screening": "स्क्रीनिंग"
+      "screening": "स्क्रीनिंग",
+      "evidenceLibrary": "Evidence Library"
     },
     "noSets": {
       "search": "अभी कोई सहेजी गई खोज नहीं।",
       "collection": "अभी कोई संग्रह नहीं।",
       "saved": "अभी कोई सहेजा गया लेख नहीं।",
-      "screening": "अभी कोई पूरी हुई स्क्रीनिंग नहीं।"
+      "screening": "अभी कोई पूरी हुई स्क्रीनिंग नहीं।",
+      "evidenceLibrary": "अभी कोई Evidence Library नहीं।"
     },
     "papersToScreen": "स्क्रीन करने के लिए लेख",
     "paperCount": "{count, plural, one {# लेख} other {# लेख}}",
@@ -4529,5 +4531,63 @@
   },
   "models": {
     "changeInSettings": "AI सेटिंग्स में बदलें"
+  },
+  "librarySources": {
+    "kind": "Evidence Library के रिकॉर्ड",
+    "library": "Evidence Library",
+    "address": "किसी लाइब्रेरी का पता चिपकाएँ",
+    "show": "दिखाएँ",
+    "filter": {
+      "all": "सभी",
+      "yours": "आपके",
+      "shared": "आपसे साझा किए गए",
+      "library": "लाइब्रेरी के अपने"
+    },
+    "find": "खोजें",
+    "everyRecord": "{library} के सभी रिकॉर्ड",
+    "allRecords": "सभी रिकॉर्ड",
+    "private": "निजी",
+    "public": "सार्वजनिक",
+    "canEdit": "संपादित कर सकते हैं",
+    "canView": "देख सकते हैं",
+    "fromAddress": "लिंक से",
+    "in": "{name} में",
+    "frozen": "शुरू होते समय जैसे हैं",
+    "firstOf": "{total, number} में से पहले {count, number}",
+    "empty": {
+      "all": "{library} में अभी पढ़ने को कुछ नहीं है।",
+      "yours": "{library} में आपका कोई संग्रह नहीं है।",
+      "shared": "{library} में किसी ने आपसे कोई संग्रह साझा नहीं किया है।",
+      "library": "{library} का अपना कोई संग्रह नहीं है।",
+      "found": "कुछ नहीं मिला।"
+    },
+    "unread": "{library} ने जवाब नहीं दिया। थोड़ी देर में फिर कोशिश करें।",
+    "outdated": "यहाँ इस्तेमाल के लिए {library} को अपडेट चाहिए।",
+    "error": {
+      "notAddress": "यह कोई पता नहीं है।",
+      "notHosted": "OpenScholar यह लाइब्रेरी नहीं चलाता।",
+      "private": "यह संग्रह निजी है। इसका स्वामी इसे आपसे साझा कर सकता है।",
+      "notFound": "उस पते पर कुछ नहीं है।",
+      "profile": "उनका कोई संग्रह खोलें और उसका पता कॉपी करें।",
+      "unknownPage": "किसी खोज, संग्रह या लाइब्रेरी का पता कॉपी करें।",
+      "outdated": "यहाँ इस्तेमाल के लिए इस लाइब्रेरी को अपडेट चाहिए।",
+      "unreadable": "लाइब्रेरी ने जवाब नहीं दिया। फिर कोशिश करें।"
+    },
+    "role": {
+      "owner": "स्वामी",
+      "editor": "संपादक",
+      "creator": "निर्माता",
+      "viewer": "दर्शक"
+    },
+    "sort": {
+      "desc": "सबसे नए",
+      "asc": "सबसे पुराने",
+      "mostCited": "सबसे ज़्यादा उद्धृत",
+      "leastCited": "सबसे कम उद्धृत",
+      "authorAZ": "लेखक A-Z",
+      "authorZA": "लेखक Z-A",
+      "titleAZ": "शीर्षक A-Z",
+      "titleZA": "शीर्षक Z-A"
+    }
   }
 }

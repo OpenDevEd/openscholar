@@ -25,7 +25,7 @@ export const ANSWER: Record<Answer, { icon: AppIcon; className: string }> = {
 };
 
 /** Where a screening's papers came from, each with its kind's icon (components/record-kinds.ts). */
-export const SOURCE_ICON: Record<PaperSet["kind"], AppIcon> = { search: RECORD_KINDS.search.icon, collection: RECORD_KINDS.collection.icon, saved: RECORD_KINDS.savedPapers.icon, screening: RECORD_KINDS.screening.icon, zotero: ZoteroIcon };
+export const SOURCE_ICON: Record<PaperSet["kind"], AppIcon> = { search: RECORD_KINDS.search.icon, collection: RECORD_KINDS.collection.icon, saved: RECORD_KINDS.savedPapers.icon, screening: RECORD_KINDS.screening.icon, zotero: ZoteroIcon, evidenceLibrary: RECORD_KINDS.library.icon };
 
 /** One answer as a small square with its sign; `label` names its question. */
 export function AnswerMark({ answer, changed, label }: { answer: Answer; changed?: boolean; label: string }) {

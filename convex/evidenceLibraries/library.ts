@@ -6,10 +6,10 @@
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
+import type { ActionCtx } from "../_generated/server";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { parseSourceAddress } from "../../lib/evidence-libraries/source-address";
-import { READ_LIBRARIES_MAX } from "./readers";
-import { libraryContentsValidator, librarySourceRowValidator, sourceAddressErrorValidator } from "./validators";
+import { READ_LIBRARIES_MAX, librariesContentsValidator, libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
 
 const reads = { spendsCredits: false, outsideEffect: false, undoable: true } as const;
 const SET = 'Screen or extract a row\'s records with the set { kind: "evidenceLibrary", libraryId, source }, where `records` is how many it holds now.';
@@ -21,7 +21,7 @@ export const sourcesAction = defineUserAction({
     "all its records (`what: \"all\"`), their own collections there (`yours`), the ones shared with them (`shared`), and the library's own collections (`library`, with the collection it sits in as `parent`). " +
     `A library that couldn't list them says why in \`problem\`: \`outdated\` needs an update, \`unreadable\` didn't answer. ${SET}`,
   args: { libraryIds: v.array(v.id("evidenceLibraries")) },
-  returns: v.array(libraryContentsValidator),
+  returns: librariesContentsValidator,
   ...reads,
   run: async (ctx, { userId }, { libraryIds }): Promise<Array<Infer<typeof libraryContentsValidator>>> =>
     await ctx.runAction(internal.evidenceLibraries.sourceActions.sources, { userId, libraryIds: [...new Set(libraryIds)].slice(0, READ_LIBRARIES_MAX) }),
@@ -29,7 +29,17 @@ export const sourcesAction = defineUserAction({
 export const sources = userAction(sourcesAction);
 export const sourcesForAssistant = assistantAction(sourcesAction);
 
-const addressValidator = v.union(v.object({ row: librarySourceRowValidator }), v.object({ error: sourceAddressErrorValidator }));
+const libraryValidator = v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), address: v.string(), faviconUrl: v.union(v.string(), v.null()) });
+const describedValidator = v.union(v.object({ row: librarySourceRowValidator, library: libraryValidator }), v.object({ error: sourceAddressErrorValidator }));
+type Described = Infer<typeof describedValidator>;
+
+/** A source of a library as the person may read it, with the library it is in; or why it is none. */
+async function described(ctx: ActionCtx, userId: Id<"users">, libraryId: Id<"evidenceLibraries">, source: Infer<typeof librarySourceValidator>): Promise<Described> {
+  const library: { name: string; address: string; faviconUrl: string | null } | null = await ctx.runQuery(internal.evidenceLibraries.readers.running, { libraryId });
+  if (!library) return { error: "notHosted" };
+  const found: { row: Infer<typeof librarySourceRowValidator> } | { error: Infer<typeof sourceAddressErrorValidator> } = await ctx.runAction(internal.evidenceLibraries.sourceActions.describe, { libraryId, userId, source });
+  return "error" in found ? found : { row: found.row, library: { libraryId, ...library } };
+}
 
 export const addressAction = defineUserAction({
   path: "evidenceLibraries/library:address",
@@ -38,16 +48,25 @@ export const addressAction = defineUserAction({
     "Or why it is none: `notAddress`, `notHosted` (no library OpenScholar runs), `private` (a collection they may not read), `notFound`, `profile` (a reader's page: give one of their collections), `unknownPage`, `outdated` (the library needs an update) or `unreadable` (it didn't answer). " +
     SET,
   args: { address: v.string() },
-  returns: addressValidator,
+  returns: describedValidator,
   ...reads,
-  run: async (ctx, { userId }, { address }): Promise<Infer<typeof addressValidator>> => {
+  run: async (ctx, { userId }, { address }): Promise<Described> => {
     const parsed = parseSourceAddress(address.slice(0, 4_000));
     if ("error" in parsed) return parsed;
     const libraryId: Id<"evidenceLibraries"> | null = await ctx.runQuery(internal.evidenceLibraries.sources.at, { origin: parsed.origin });
-    const running: unknown = libraryId ? await ctx.runQuery(internal.evidenceLibraries.readers.running, { libraryId }) : null;
-    if (!libraryId || !running) return { error: "notHosted" };
-    return await ctx.runAction(internal.evidenceLibraries.sourceActions.describe, { libraryId, userId, source: parsed.source });
+    return libraryId ? await described(ctx, userId, libraryId, parsed.source) : { error: "notHosted" };
   },
 });
 export const address = userAction(addressAction);
 export const addressForAssistant = assistantAction(addressAction);
+
+export const sourceAction = defineUserAction({
+  path: "evidenceLibraries/library:source",
+  description: `One source of an Evidence Library as the person may read it now, with how many records it holds, or why it is none (as evidenceLibraries/library:address says). ${SET}`,
+  args: { libraryId: v.id("evidenceLibraries"), source: librarySourceValidator },
+  returns: describedValidator,
+  ...reads,
+  run: async (ctx, { userId }, { libraryId, source }): Promise<Described> => await described(ctx, userId, libraryId, source),
+});
+export const source = userAction(sourceAction);
+export const sourceForAssistant = assistantAction(sourceAction);

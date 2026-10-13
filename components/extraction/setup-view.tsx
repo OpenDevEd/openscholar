@@ -2,7 +2,7 @@
 
 // New extraction (#690), laid out as a new screening is (components/screening/setup-view.tsx) and
 // drawn from the same sources, any number of them: searches, collections, saved papers,
-// screenings, and PDFs of your own. Each source is a paper set and the range of it to read, as
+// screenings, Evidence Libraries' records, and PDFs of your own. Each source is a paper set and the range of it to read, as
 // screening reads them. Every source picked lands in the tray at the top of Papers: one bar, a
 // part per source, filling towards the papers the plan reads in one extraction, over a chip for
 // each source to take it out again.
@@ -10,7 +10,7 @@
 import { useState, useTransition, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, Reorder, motion, useDragControls } from "motion/react";
-import { AiIcon, AlignLeft, FileText, GripVertical, Hash, List as ListIcon, Plus, ToggleLeft, Trash2, X, type AppIcon } from "@/components/icons";
+import { AiIcon, AlignLeft, Camera, FileText, GripVertical, Hash, List as ListIcon, Plus, ToggleLeft, Trash2, X, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
 import { jobName } from "@/components/screening/job-view";
 import { AnimatedNumber, Chip, SOURCE_ICON } from "@/components/screening/parts";
@@ -44,6 +44,9 @@ import { cn } from "@/lib/utils";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { PdfUpload } from "./pdf-upload";
+import { LibrarySources, useLibrarySources, useRowLabel } from "@/components/screening/library-sources";
+import { LIBRARY_SOURCE_MAX } from "@/lib/evidence-libraries/source-address";
+import { isFrozen, rowKey, setOfRow, type HeldRow } from "@/lib/evidence-libraries/reader-sources";
 
 /** The sources the page offers; a Zotero set is one a chat starts an extraction from. */
 type Kind = Exclude<PickedSource["set"]["kind"], "zotero"> | "pdf";
@@ -52,6 +55,7 @@ const KIND: Record<Kind, { icon: AppIcon; tint: string }> = {
   collection: { icon: SOURCE_ICON.collection, tint: RECORD_KINDS.collection.tint },
   saved: { icon: SOURCE_ICON.saved, tint: RECORD_KINDS.savedPapers.tint },
   screening: { icon: SOURCE_ICON.screening, tint: RECORD_KINDS.screening.tint },
+  evidenceLibrary: { icon: SOURCE_ICON.evidenceLibrary, tint: RECORD_KINDS.library.tint },
   pdf: { icon: FileText, tint: "var(--muted-foreground)" },
 };
 /** Sources one page of a kind's list holds. */
@@ -77,6 +81,7 @@ const papersOf = (source: PickedSource) => source.last - source.first + 1;
 export function SetupView({ paperLimit }: { paperLimit: number }) {
   const t = useTranslations("extraction");
   const ts = useTranslations("screeningPage");
+  const tl = useTranslations("librarySources");
   const tc = useTranslations("common");
   const format = useFormatter();
   const locale = useLocale();
@@ -100,10 +105,14 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
   const { data: savedCount } = useProtectedQuery(api.library.queries.getLibraryCount, inWorkspace(workspaceId, {}));
   const screenings = useCursorPage(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, { status: "completed" as const }), SOURCE_PAGE);
   const date = (at: number) => format.dateTime(new Date(at), { dateStyle: "medium" });
+  // The libraries the person reads, read with the rest so switching to them moves nothing; the library sources picked lead their lists.
+  const libraries = useLibrarySources(sources.flatMap((source) => (source.held ? [source.held] : [])));
+  const labelOf = useRowLabel();
 
   const pdfCapability = useFeatureFlag("extraction.pdf");
-  const kinds: Kind[] = ["search", "collection", "saved", "screening", ...(pdfCapability && draftJob.usePdfs ? (["pdf"] as const) : [])];
-  const [kind, setKind] = useState<Kind>("search");
+  const kinds: Kind[] = ["search", "collection", "saved", "screening", "evidenceLibrary", ...(pdfCapability && draftJob.usePdfs ? (["pdf"] as const) : [])];
+  // Records picked from a library open on their own kind.
+  const [kind, setKind] = useState<Kind>(() => (sources.some((source) => source.set.kind === "evidenceLibrary") ? "evidenceLibrary" : "search"));
   const shown = kinds.includes(kind) ? kind : "search";
 
   // ── Picking ────────────────────────────────────────────────────────────────
@@ -155,6 +164,8 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
     />
   );
   const ranged = (key: string, set: PickedSource["set"], label: string, all: number, search: boolean): PickedSource => ({ key, set, label, total: all, ...opening(all, search) });
+  /** A library row as a source; a search or a list of records is frozen at the start, up to LIBRARY_SOURCE_MAX. */
+  const libraryPick = (held: HeldRow): PickedSource => ({ ...ranged(rowKey(held.row), setOfRow(held.row), labelOf(held.row), isFrozen(held.row) ? Math.min(held.row.records, LIBRARY_SOURCE_MAX) : held.row.records, false), held });
 
   // ── Questions ──────────────────────────────────────────────────────────────
   const [draft, setDraft] = useState("");
@@ -215,7 +226,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
     });
 
   // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows.
-  const loaded = !searches.isLoading && !collections.isLoading && !screenings.isLoading && savedCount !== undefined && collectionCount !== undefined && spend.loaded;
+  const loaded = !searches.isLoading && !collections.isLoading && !screenings.isLoading && savedCount !== undefined && collectionCount !== undefined && libraries.loaded && spend.loaded;
   const pickedOf = (k: Kind) => groups.filter((g) => g.kind === k).length;
 
   const pager = (list: { page: number; canPrevious: boolean; canNext: boolean; previous: () => void; next: () => void; hasPages: boolean }, pageCount?: number) =>
@@ -338,6 +349,28 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
                   );
                 })}
               </List>
+            ) : shown === "evidenceLibrary" ? (
+              <LibrarySources
+                many
+                state={libraries}
+                isOn={(row) => Boolean(picked(rowKey(row)))}
+                onToggle={(row, library) => toggle(rowKey(row), () => libraryPick({ library, row }))}
+                onPasted={(held) => workspaceId && !picked(rowKey(held.row)) && setSource(workspaceId, libraryPick(held))}
+                scope={(row) => {
+                  const source = picked(rowKey(row));
+                  if (!source) return null;
+                  return scopeOf(
+                    source,
+                    <span className="flex flex-wrap gap-1.5">
+                      <Chip className="text-foreground">
+                        <span>{ts.rich("papersBold", { count: papersOf(source), n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span>
+                      </Chip>
+                      {isFrozen(row) ? <Chip icon={Camera}>{tl("frozen")}</Chip> : null}
+                      {isFrozen(row) && row.records > LIBRARY_SOURCE_MAX ? <Chip>{tl("firstOf", { count: LIBRARY_SOURCE_MAX, total: row.records })}</Chip> : null}
+                    </span>,
+                  );
+                }}
+              />
             ) : (
               <PdfUpload />
             )}

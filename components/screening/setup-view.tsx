@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { AiIcon, Ban, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
+import { AiIcon, Ban, Camera, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,10 @@ import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
 import { ANSWER, Chip, ClippedChip, SOURCE_ICON } from "./parts";
 import { PaperScope, PickMark, SourceRow } from "./source-row";
+import { LibrarySources, useLibrarySources } from "./library-sources";
+import useSWR from "swr";
+import { LIBRARY_SOURCE_MAX } from "@/lib/evidence-libraries/source-address";
+import { isFrozen, rowKey, setOfRow, type HeldRow, type LibraryRow } from "@/lib/evidence-libraries/reader-sources";
 import { CreditCheck, useSpendable } from "@/components/workspaces/credit-check";
 import { ModelsInUse } from "@/components/models/models-in-use";
 import { inWorkspace, useWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
@@ -52,7 +56,7 @@ function EmptyTrack() {
 
 /** The sets the page offers; a Zotero set is one a chat screens. */
 type Kind = Exclude<PaperSet["kind"], "zotero">;
-const KINDS: Kind[] = ["search", "collection", "saved", "screening"];
+const KINDS: Kind[] = ["search", "collection", "saved", "screening", "evidenceLibrary"];
 /** Sets one page of a kind's list holds, and a row's height with the line under it. */
 const SOURCE_PAGE = 5;
 const SOURCE_ROW = 57;
@@ -65,11 +69,14 @@ type Source =
   | { kind: "collection"; id: Id<"collections">; label: string; count: number }
   | { kind: "saved"; id: "saved"; label: string; count: number }
   // `called`: what the server names a screening of its included papers after (`insertJob`).
-  | { kind: "screening"; id: Id<"screeningJobs">; label: string; count: number; called?: string };
+  | { kind: "screening"; id: Id<"screeningJobs">; label: string; count: number; called?: string }
+  // An Evidence Library's records; a search or a list of them is frozen at the start, up to LIBRARY_SOURCE_MAX.
+  | { kind: "evidenceLibrary"; id: string; label: string; count: number; held: HeldRow };
 
 const setOf = (source: Source): PaperSet =>
-  source.kind === "search" ? { kind: "search", searchId: source.id } : source.kind === "collection" ? { kind: "collection", collectionId: source.id } : source.kind === "saved" ? { kind: "saved" } : { kind: "screening", jobId: source.id };
+  source.kind === "search" ? { kind: "search", searchId: source.id } : source.kind === "collection" ? { kind: "collection", collectionId: source.id } : source.kind === "saved" ? { kind: "saved" } : source.kind === "evidenceLibrary" ? setOfRow(source.held.row) : { kind: "screening", jobId: source.id };
 const searchSource = (search: SearchResult): Source => ({ kind: "search", id: search.id, label: search.query, count: search.count, search });
+const librarySource = (held: HeldRow): Source => ({ kind: "evidenceLibrary", id: rowKey(held.row), label: held.row.label, count: isFrozen(held.row) ? Math.min(held.row.records, LIBRARY_SOURCE_MAX) : held.row.records, held });
 
 export function SetupView({
   fromSearchId,
@@ -87,6 +94,7 @@ export function SetupView({
 }) {
   const workspaceId = useWorkspace();
   const t = useTranslations("screeningPage");
+  const tl = useTranslations("librarySources");
   const tc = useTranslations("common");
   const format = useFormatter();
   const now = useNow();
@@ -102,6 +110,14 @@ export function SetupView({
   const { data: savedCount } = useProtectedQuery(api.library.queries.getLibraryCount, inWorkspace(workspaceId, {}));
   const screenings = useCursorPage(api.screening.queries.listUserScreeningJobs, inWorkspace(workspaceId, { status: "completed" as const }), SOURCE_PAGE);
   const date = (at: number) => format.dateTime(new Date(at), { dateStyle: "medium" });
+  // A library screening run again starts on its source as the library holds it now.
+  const againLibrary = again?.set?.kind === "evidenceLibrary" ? again.set : null;
+  const describe = useWorkspaceAction(api.evidenceLibraries.library.source);
+  const ranBefore = useSWR(againLibrary ? ["library-source", againLibrary.libraryId, JSON.stringify(againLibrary.source)] : null, () => describe({ libraryId: againLibrary!.libraryId, source: againLibrary!.source }), { revalidateOnFocus: false });
+  const againHeld = ranBefore.data && "row" in ranBefore.data ? ranBefore.data : null;
+  const libraries = useLibrarySources(againHeld ? [againHeld] : []);
+  // Until one is picked, the form starts on your first collection in the library shown: a whole library is too many to start on.
+  const firstOwn = libraries.library && libraries.contents.find((one) => one.libraryId === libraries.library?.libraryId)?.rows?.find((row) => row.what === "yours" && row.records > 0);
   const lists: Record<Kind, { rows: Source[]; pager?: Pick<typeof collections, "page" | "canPrevious" | "canNext" | "previous" | "next" | "hasPages" | "isStale"> & { pageCount?: number } }> = {
     // Opened from a results page, its search leads every page of the list.
     search: { rows: [...(from ? [searchSource(from)] : []), ...searches.items.map(searchSource)], pager: searches },
@@ -111,13 +127,14 @@ export function SetupView({
     },
     saved: { rows: [{ kind: "saved", id: "saved", label: t("allSavedPapers"), count: savedCount ?? 0 }] },
     screening: { rows: screenings.items.map((job: JobRow) => ({ kind: "screening", id: job._id, label: jobName(t, job, date), count: job.qualifiedPapers, called: job.name ?? job.label })), pager: screenings },
+    evidenceLibrary: { rows: [...(againHeld ? [librarySource(againHeld)] : []), ...(firstOwn && libraries.library ? [librarySource({ library: libraries.library, row: firstOwn })] : [])] },
   };
 
   // A screening a chat ran on a Zotero collection is run again from its chat: the page starts on a search.
   const [kind, setKind] = useState<Kind>(again?.set && again.set.kind !== "zotero" ? again.set.kind : "search");
   // The set picked stays picked whatever page its list shows; until one is, a job run again starts on its own set, and otherwise the first listed.
   const [picked, setPicked] = useState<Source | null>(null);
-  const againId = again?.set && (again.set.kind === "search" ? again.set.searchId : again.set.kind === "collection" ? again.set.collectionId : again.set.kind === "screening" ? again.set.jobId : "saved");
+  const againId = again?.set && (again.set.kind === "search" ? again.set.searchId : again.set.kind === "collection" ? again.set.collectionId : again.set.kind === "screening" ? again.set.jobId : again.set.kind === "evidenceLibrary" ? rowKey(again.set) : "saved");
   const kept = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : lists[kind].rows.find((row) => row.id === againId);
   // A set with no papers is never the one picked, even one a job ran on that has emptied since.
   const source = kept && kept.count > 0 ? kept : lists[kind].rows.find((row) => row.count > 0);
@@ -168,7 +185,7 @@ export function SetupView({
   const { data: earlier } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, source?.kind === "screening" ? { jobId: source.id } : "skip"));
   const fresh = earlier ? questionsOf(earlier).filter((q) => !questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase())) : [];
   // What it's called left unnamed: its papers, named from what the server keeps of them, as the rail names a screening.
-  const unnamed = source ? jobName(t, { createdAt: now.getTime(), set: setOf(source), label: source.kind === "screening" ? source.called : source.label }, date) : t("newScreening");
+  const unnamed = !source ? t("newScreening") : source.kind === "evidenceLibrary" ? source.label || tl("allRecords") : jobName(t, { createdAt: now.getTime(), set: setOf(source), label: source.kind === "screening" ? source.called : source.label }, date);
   // A search with no query has no name to lend the collection, so it takes the screening's.
   const defaultName = !source ? "" : source.kind === "screening" ? source.label : t("includedIn", { name: source.label.trim() || unnamed });
 
@@ -252,7 +269,8 @@ export function SetupView({
         ...scoringOf(questions, threshold, stars),
         saveTo: target === "none" ? { kind: "none" } : target === "new" ? { kind: "new", name } : { kind: "collection", collectionId: target },
         ...(source.kind === "collection" && prune ? { prune: true } : {}),
-        ...(title.trim() ? { name: title.trim() } : {}),
+        // The server names a library's screening after the library; the form's name for it is what it showed.
+        ...(title.trim() ? { name: title.trim() } : source.kind === "evidenceLibrary" ? { name: unnamed } : {}),
       });
       onStarted(jobId);
     } catch (error) {
@@ -263,7 +281,30 @@ export function SetupView({
 
   const list = lists[kind];
   // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows.
-  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
+  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.loaded && (!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
+  /** How many of a library row's records a job takes, as the other sources ask it. */
+  const libraryScope = (row: LibraryRow) => {
+    if (source?.kind !== "evidenceLibrary" || source.id !== rowKey(row)) return null;
+    return (
+      <PaperScope
+        search={row.what === "search"}
+        page={false}
+        scope={scope}
+        onScope={setScope}
+        range={[first, last]}
+        onRange={setRange}
+        total={top}
+        label={t("papersToScreen")}
+        summary={
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Chip className="text-foreground"><span>{t.rich("papersBold", { count: papers, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</span></Chip>
+            {isFrozen(row) ? <Chip icon={Camera}>{tl("frozen")}</Chip> : null}
+            {isFrozen(row) && row.records > LIBRARY_SOURCE_MAX ? <Chip>{tl("firstOf", { count: LIBRARY_SOURCE_MAX, total: row.records })}</Chip> : null}
+          </div>
+        }
+      />
+    );
+  };
 
   return (
     <Enter ready={ready}>
@@ -277,8 +318,22 @@ export function SetupView({
         <Zone label={t("papers")}>
           <Segmented label={t("sourceKind")} value={kind} onChange={pick} fill="labels" options={KINDS.map((id) => ({ id, label: t(`kind.${id}`), icon: SOURCE_ICON[id] }))} />
           {/* While a kind has pages its list keeps a full page's height, so the pager stays put on a short last page. */}
-          <div className="mt-3" style={list.pager?.hasPages ? { minHeight: SOURCE_PAGE * SOURCE_ROW + 1 } : undefined}>
-            {list.rows.length === 0 ? (
+          <div className="mt-3" style={kind !== "evidenceLibrary" && list.pager?.hasPages ? { minHeight: SOURCE_PAGE * SOURCE_ROW + 1 } : undefined}>
+            {kind === "evidenceLibrary" ? (
+              <LibrarySources
+                state={libraries}
+                isOn={(row) => source?.id === rowKey(row)}
+                onToggle={(row, library) => {
+                  choose(librarySource({ library, row }));
+                  setScope("all");
+                }}
+                onPasted={(held) => {
+                  choose(librarySource(held));
+                  setScope("all");
+                }}
+                scope={libraryScope}
+              />
+            ) : list.rows.length === 0 ? (
               <p className={cn(LIST, "px-4 py-8 text-center text-sm text-muted-foreground")}>{t(`noSets.${kind}`)}</p>
             ) : (
               <div className={cn(LIST, list.pager?.isStale && "pointer-events-none opacity-60")} role="radiogroup" aria-label={t("papersToScreen")}>
@@ -324,7 +379,7 @@ export function SetupView({
               </div>
             )}
           </div>
-          {list.pager?.hasPages ? (
+          {kind !== "evidenceLibrary" && list.pager?.hasPages ? (
             <PageStepper className="pt-3" page={list.pager.page} pageCount={list.pager.pageCount} canPrevious={list.pager.canPrevious} canNext={list.pager.canNext} onPrevious={turn(list.pager.previous)} onNext={turn(list.pager.next)} />
           ) : null}
         </Zone>

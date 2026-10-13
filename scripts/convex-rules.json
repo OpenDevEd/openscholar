@@ -45,7 +45,8 @@
       "MAX_FILES_PER_MESSAGE": "convex/assistant/files.ts:partsFor",
       "MAX_PROFILE_MEMBERS": "convex/sharing/items.ts",
       "MAX_LIBRARIES_PER_WORKSPACE": "convex/evidenceLibraries/mutations.ts",
-      "MAX_LIBRARY_SOURCES": "convex/evidenceLibraries/screeningRequests.ts:requestScreeningGrade"
+      "MAX_LIBRARY_SOURCES": "convex/evidenceLibraries/screeningRequests.ts:requestScreeningGrade",
+      "KEYS_PAGES": "convex/paperSets/libraryKeys.ts:keepKeys"
     },
     "refused": {
       "MAX_ACCOUNTS_PER_EMAIL": "reads one past it and refuses the invitation, naming why",
@@ -81,7 +82,9 @@
       "MAX_RATERS": "the members of an organization its averages read, and the ratings of a paper in one collection; Clerk lets a free organization have 5 members",
       "PLACES_NOTED": "the collections a removed or restored paper notes in their Activity; a paper in more is noted in the first of them",
       "MAKER_ROWS_READ": "the makers of one kind of record the Run by filter reads for members who left; one row per person who ever made one, so an organization past it lists the first of them",
-      "OPEN_HOLDS_READ": "the holds a member has open, summed to size a reply's hold under their cap; a job holds one per slot and a workspace has 40 slots, and Autumn enforces the cap whatever this reads"
+      "OPEN_HOLDS_READ": "the holds a member has open, summed to size a reply's hold under their cap; a job holds one per slot and a workspace has 40 slots, and Autumn enforces the cap whatever this reads",
+      "READ_LIBRARIES_MAX": "the libraries a person used last, and the newest grants; any other library is reached by its address",
+      "WORKSPACE_LIBRARIES_MAX": "the running libraries of each workspace a person is in, of which the list keeps the ones used last; any other is reached by its address"
     },
     "batches": {
       "ACTIVITY_STEP": "a moved item's activity rows, a step at a time; it reschedules itself until none are left in the old workspace",
@@ -107,7 +110,9 @@
       "FORGET_FILES": "a cleanup batch of attached files; it reschedules itself until nothing is left",
       "PURGE_RATINGS": "a cleanup batch of a deleted account's ratings; the account waits for the next run until none are left",
       "PURGE_GRANTS": "a cleanup batch of a deleted account's places as a guest; the account waits for the next run until none are left",
-      "FOLLOW_STEP": "a renamed or deleted item's guest rows, a step at a time; it reschedules itself until all are renamed or gone"
+      "FOLLOW_STEP": "a renamed or deleted item's guest rows, a step at a time; it reschedules itself until all are renamed or gone",
+      "PURGE_READERS": "a purged person's libraries, a step at a time; the cleanup runs again until none are left",
+      "DELETE_STEP": "a job's library keys, a step at a time; it reschedules itself until none are left"
     }
   }
 }

@@ -6,7 +6,7 @@ import { sourceMetadataFields } from "./lib/paperMetadata";
 import { paperIdentityFields } from "./lib/paperRef";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
-  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_METADATA_FIELDS, MAX_QUESTIONS,
+  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LIST_CAP, MAX_METADATA_FIELDS, MAX_QUESTIONS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
 import { screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
@@ -329,7 +329,7 @@ export default defineSchema({
 
   // The record keys a job reads from an Evidence Library, kept when it starts, a page each (./paperSets/libraryKeys.ts).
   // `part` is the job's source it belongs to: an extraction can read several.
-  paperSetKeys: defineTable({ job: v.union(v.id("screeningJobs"), v.id("extractionJobs")), part: v.number(), page: v.number(), keys: v.array(v.string()) })
+  paperSetKeys: defineTable({ job: v.union(v.id("screeningJobs"), v.id("extractionJobs")), part: v.number(), page: v.number(), keys: capped(v.array(v.string()), MAX_LIST_CAP) })
     .index("by_job_and_part_and_page", ["job", "part", "page"]),
 
   // Reader data a library still has to drop for a deleted OpenScholar account.

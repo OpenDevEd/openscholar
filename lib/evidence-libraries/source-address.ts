@@ -13,6 +13,9 @@ export type LibrarySource =
 
 /** Why an address is no source: not a web address, a reader's profile without a collection, a page that holds no records, or no record's address. */
 export type SourceAddressError = "notAddress" | "profile" | "unknownPage" | "notFound";
+/** Most records a library source gives at once: what a frozen search holds, as a complete export does (new-el LIBRARY_EXPORT_RECORD_CAP). */
+export const LIBRARY_SOURCE_MAX = 20_000;
+
 export type SourceAddress = { origin: string; source: LibrarySource } | { error: SourceAddressError };
 
 /** The search page's parameters that decide its results, as new-el's `RESULT_PARAMS` lists them. */

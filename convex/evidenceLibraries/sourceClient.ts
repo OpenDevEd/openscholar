@@ -4,11 +4,10 @@
 // person may read. A library on an older runtime answers 404 to these paths.
 import { z } from "zod";
 import { publicLibraryHeaders } from "../../lib/evidence-libraries/library-shield";
-import type { LibrarySource } from "../../lib/evidence-libraries/source-address";
+import { LIBRARY_SOURCE_MAX, type LibrarySource } from "../../lib/evidence-libraries/source-address";
 
 export const LIBRARY_CONTRACT = "1";
-/** Most keys a source gives at once, and most records one batch reads. */
-export const LIBRARY_RESOLVE_MAX = 20_000;
+/** Most records one batch reads. */
 export const LIBRARY_BATCH_MAX = 500;
 const TIMEOUT_MS = 30_000;
 
@@ -63,7 +62,7 @@ async function call<T>(fetchImpl: typeof fetch, target: LibraryTarget, path: str
   throw new LibrarySourceError(response.status >= 500 ? "unavailable" : "invalid", message, response.status);
 }
 
-const resolvedSchema = z.object({ keys: z.array(z.string()).max(LIBRARY_RESOLVE_MAX), total: z.number().int().min(0), truncated: z.boolean() });
+const resolvedSchema = z.object({ keys: z.array(z.string()).max(LIBRARY_SOURCE_MAX), total: z.number().int().min(0), truncated: z.boolean() });
 
 /** A source's record keys `first` to `last` (from 1) as `reader` may read them, in the library's order, with how many it holds. */
 export async function resolveLibrarySource(fetchImpl: typeof fetch, target: LibraryTarget, request: { reader: string | null; source: LibrarySource; first: number; last: number }) {

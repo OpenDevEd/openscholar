@@ -1567,13 +1567,15 @@
       "search": "Search",
       "collection": "Collection",
       "saved": "Saved papers",
-      "screening": "Screening"
+      "screening": "Screening",
+      "evidenceLibrary": "Evidence Library"
     },
     "noSets": {
       "search": "No saved searches yet.",
       "collection": "No collections yet.",
       "saved": "No saved papers yet.",
-      "screening": "No finished screenings yet."
+      "screening": "No finished screenings yet.",
+      "evidenceLibrary": "No Evidence Libraries yet."
     },
     "papersToScreen": "Papers to screen",
     "paperCount": "{count, plural, one {# paper} other {# papers}}",
@@ -4529,5 +4531,63 @@
   },
   "models": {
     "changeInSettings": "Change in AI settings"
+  },
+  "librarySources": {
+    "kind": "Evidence Library records",
+    "library": "Evidence Library",
+    "address": "Paste a library address",
+    "show": "Show",
+    "filter": {
+      "all": "All",
+      "yours": "Yours",
+      "shared": "Shared with you",
+      "library": "The library's"
+    },
+    "find": "Find",
+    "everyRecord": "Every record in {library}",
+    "allRecords": "All records",
+    "private": "Private",
+    "public": "Public",
+    "canEdit": "Can edit",
+    "canView": "Can view",
+    "fromAddress": "From a link",
+    "in": "In {name}",
+    "frozen": "As they stand when it starts",
+    "firstOf": "First {count, number} of {total, number}",
+    "empty": {
+      "all": "Nothing to read in {library} yet.",
+      "yours": "You have no collections in {library}.",
+      "shared": "Nobody has shared a collection in {library} with you.",
+      "library": "{library} keeps no collections of its own.",
+      "found": "Nothing matches."
+    },
+    "unread": "{library} didn't answer. Try again in a moment.",
+    "outdated": "{library} needs an update to be used here.",
+    "error": {
+      "notAddress": "That isn't an address.",
+      "notHosted": "OpenScholar doesn't run that library.",
+      "private": "That collection is private. Its owner can share it with you.",
+      "notFound": "There's nothing at that address.",
+      "profile": "Open one of their collections and copy that address.",
+      "unknownPage": "Copy the address of a search, a collection or the library.",
+      "outdated": "That library needs an update to be used here.",
+      "unreadable": "The library didn't answer. Try again."
+    },
+    "role": {
+      "owner": "Owner",
+      "editor": "Editor",
+      "creator": "Creator",
+      "viewer": "Viewer"
+    },
+    "sort": {
+      "desc": "Newest",
+      "asc": "Oldest",
+      "mostCited": "Most cited",
+      "leastCited": "Least cited",
+      "authorAZ": "Author A-Z",
+      "authorZA": "Author Z-A",
+      "titleAZ": "Title A-Z",
+      "titleZA": "Title Z-A"
+    }
   }
 }

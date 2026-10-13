@@ -8,9 +8,13 @@ import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { internalMutation, internalQuery } from "../lib/functions";
+import { LIBRARY_SOURCE_MAX } from "../../lib/evidence-libraries/source-address";
+import { MAX_LIST_CAP } from "../lib/listCaps";
 
 /** Keys a page holds: a page is a few kilobytes. */
-const KEYS_PAGE = 1_000;
+const KEYS_PAGE = MAX_LIST_CAP;
+/** Pages one source's keys take at most: a source gives at most LIBRARY_SOURCE_MAX keys. */
+const KEYS_PAGES = Math.ceil(LIBRARY_SOURCE_MAX / KEYS_PAGE);
 /** Pages a cleanup step deletes. */
 const DELETE_STEP = 20;
 
@@ -19,6 +23,7 @@ const jobValidator = v.union(v.id("screeningJobs"), v.id("extractionJobs"));
 
 /** Keeps a job's keys for one of its sources (`part`, its place among the job's sources), in their order. */
 export async function keepKeys(ctx: MutationCtx, job: Job, keys: string[], part = 0) {
+  if (keys.length > KEYS_PAGES * KEYS_PAGE) throw new Error(`A job keeps at most ${LIBRARY_SOURCE_MAX} keys of a source.`);
   for (let page = 0; page * KEYS_PAGE < keys.length; page++) await ctx.db.insert("paperSetKeys", { job, part, page, keys: keys.slice(page * KEYS_PAGE, (page + 1) * KEYS_PAGE) });
 }
 
@@ -44,8 +49,8 @@ export const keep = internalMutation({
   args: { job: v.id("extractionJobs"), part: v.number(), keys: v.array(v.string()) },
   returns: v.number(),
   handler: async (ctx, { job, part, keys }) => {
-    // A step tried again keeps the keys the first try kept: at most LIBRARY_RESOLVE_MAX of them, a few pages.
-    const kept = await ctx.db.query("paperSetKeys").withIndex("by_job_and_part_and_page", (q) => q.eq("job", job).eq("part", part)).collect();
+    // A step tried again keeps the keys the first try kept: at most LIBRARY_SOURCE_MAX of them, a few pages.
+    const kept = await ctx.db.query("paperSetKeys").withIndex("by_job_and_part_and_page", (q) => q.eq("job", job).eq("part", part)).take(KEYS_PAGES);
     if (kept.length) return kept.reduce((sum, page) => sum + page.keys.length, 0);
     await keepKeys(ctx, job, keys, part);
     return keys.length;
@@ -59,7 +64,7 @@ export const slice = internalQuery({
   handler: async (ctx, { job, part = 0, offset, count }) => {
     const first = Math.floor(offset / KEYS_PAGE);
     const last = Math.floor((offset + Math.max(count, 1) - 1) / KEYS_PAGE);
-    const pages = await ctx.db.query("paperSetKeys").withIndex("by_job_and_part_and_page", (q) => q.eq("job", job).eq("part", part).gte("page", first).lte("page", last)).collect();
+    const pages = await ctx.db.query("paperSetKeys").withIndex("by_job_and_part_and_page", (q) => q.eq("job", job).eq("part", part).gte("page", first).lte("page", last)).take(KEYS_PAGES);
     return pages.flatMap((page) => page.keys).slice(offset - first * KEYS_PAGE, offset - first * KEYS_PAGE + count);
   },
 });

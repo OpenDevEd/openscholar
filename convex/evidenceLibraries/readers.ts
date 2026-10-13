@@ -9,17 +9,15 @@ import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { createError } from "../lib/errors";
-import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
+import { assistantQuery, defineUserQuery, userQuery, workspaceQuery } from "../lib/userActions";
 import { workspacesOf } from "../workspaces/personal";
 import { findMatchingLibraryServiceCredential } from "./credentials";
 import { readEvidenceLibraryAdminLaunchTarget } from "./setupRecords";
-import { libraryListRoleValidator, readerWayValidator } from "./validators";
+import { READ_LIBRARIES_MAX, readLibrariesValidator, type libraryListRoleValidator } from "./validators";
 import { libraryOf, readLibraryRole } from "./access";
 
 /** A reader's last visit is written at most this often: the library reports one every 15 minutes while they're there. */
 const TOUCH_MS = 60 * 60 * 1000;
-/** Libraries a person's list holds at most. */
-export const READ_LIBRARIES_MAX = 50;
 /** Libraries one organization has at most, as its list reads them. */
 const WORKSPACE_LIBRARIES_MAX = 200;
 
@@ -77,7 +75,7 @@ type Role = Infer<typeof libraryListRoleValidator>;
 export type ReadLibrary = { library: Doc<"evidenceLibraries">; address: string; ways: Array<"signIn" | "handoff" | "role">; role: Role | null; faviconUrl: string | null; lastAt: number };
 
 /** The favicon a running library shows, from its live configuration. */
-async function faviconOf(ctx: Pick<QueryCtx, "db">, library: Doc<"evidenceLibraries">) {
+export async function faviconOf(ctx: Pick<QueryCtx, "db">, library: Doc<"evidenceLibraries">) {
   if (!library.activeRevisionId) return null;
   const identity = await ctx.db.query("evidenceLibraryConfigSections").withIndex("by_revisionId_and_sectionKey", (q) => q.eq("revisionId", library.activeRevisionId).eq("sectionKey", "identity")).unique();
   const favicon = (identity?.payload as { assets?: { favicon?: unknown } } | undefined)?.assets?.favicon;
@@ -127,34 +125,37 @@ export async function librariesOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">
     .slice(0, READ_LIBRARIES_MAX);
 }
 
-const readLibraryValidator = v.object({
-  libraryId: v.id("evidenceLibraries"),
-  name: v.string(),
-  address: v.string(),
-  ways: v.array(v.union(readerWayValidator, v.literal("role"))),
-  role: v.union(libraryListRoleValidator, v.null()),
-  faviconUrl: v.union(v.string(), v.null()),
-});
-
 export const listAction = defineUserQuery({
   path: "evidenceLibraries/readers:list",
   description:
     `The Evidence Libraries the person reads, last used first, at most ${READ_LIBRARIES_MAX}: each one's ID, name and address, how it is theirs (\`signIn\`: they signed in to it; \`handoff\`: they opened its records here; \`role\`: they have a role on it, which \`role\` names). ` +
     "Any other library OpenScholar runs is reached by its address.",
   args: {},
-  returns: v.array(readLibraryValidator),
+  returns: readLibrariesValidator,
   run: async (ctx, { userId }) => (await librariesOf(ctx, userId)).map(({ library, address, ways, role, faviconUrl }) => ({ libraryId: library._id, name: library.name, address, ways, role, faviconUrl })),
 });
 export const list = userQuery(listAction);
 export const listForAssistant = assistantQuery(listAction);
 
-/** Whether a library is running, with its address: what a person reads it by. */
+/** Where a running library is, for its records to open on it; null for one that isn't running. */
+export const address = workspaceQuery({
+  // Taken as text: it comes from a paper's key, which a page holds as text.
+  args: { libraryId: v.string() },
+  returns: v.union(v.null(), v.string()),
+  handler: async (ctx, _actor, args) => {
+    const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
+    const library = libraryId ? await ctx.db.get("evidenceLibraries", libraryId) : null;
+    return library ? await readEvidenceLibraryAdminLaunchTarget(ctx, library) : null;
+  },
+});
+
+/** A library that is running, as a person's list shows it: its name, address and favicon. Null for one that isn't. */
 export const running = internalQuery({
   args: { libraryId: v.id("evidenceLibraries") },
-  returns: v.union(v.null(), v.object({ name: v.string(), address: v.string() })),
+  returns: v.union(v.null(), v.object({ name: v.string(), address: v.string(), faviconUrl: v.union(v.string(), v.null()) })),
   handler: async (ctx, { libraryId }) => {
     const library = await ctx.db.get("evidenceLibraries", libraryId);
     const address = library ? await readEvidenceLibraryAdminLaunchTarget(ctx, library) : null;
-    return library && address ? { name: library.name, address } : null;
+    return library && address ? { name: library.name, address, faviconUrl: await faviconOf(ctx, library) } : null;
   },
 });

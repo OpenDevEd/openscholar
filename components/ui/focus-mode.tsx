@@ -26,7 +26,8 @@ import { useSavePaper } from "@/components/library/save-control";
 import { useRatePaper } from "@/components/rating-selector";
 import { FocusModeSettings } from "@/components/focus-mode/focus-mode-settings";
 import type { PaperResult } from "@/lib/types";
-import { paperPage, saveablePaper } from "@/lib/papers/paper-ref";
+import { saveablePaper } from "@/lib/papers/paper-ref";
+import { usePaperPage } from "@/lib/papers/use-paper-page";
 import { FocusModeClose } from "@/components/focus-mode/close-context";
 
 interface FocusModeProps {
@@ -81,7 +82,7 @@ export function FocusMode({
   const savePaper = useSavePaper(currentPaper);
   // Any paper named by its source but an upload is rated and saved (a rating saves it; an upload's file stays with its job); it opens where its source keeps it, if anywhere.
   const saveable = currentPaper ? saveablePaper(currentPaper.id) : false;
-  const page = currentPaper ? paperPage(currentPaper.id, currentPaper.primary_location?.pdf_url) : null;
+  const page = usePaperPage(currentPaper?.id, currentPaper?.primary_location?.pdf_url);
   const authorFilter = useAuthorFilter();
   const journalFilter = useJournalFilter();
   const institutionFilter = useInstitutionFilter();

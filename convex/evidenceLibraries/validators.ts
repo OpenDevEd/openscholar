@@ -1199,6 +1199,24 @@ export const assistantEditResultValidator = v.object({
 /** How a library became one of a person's: they signed in to it, or opened a hand-off from it (./readers.ts). */
 export const readerWayValidator = v.union(v.literal("signIn"), v.literal("handoff"));
 
+/** Libraries a person's list holds at most: the ones they used last. */
+export const READ_LIBRARIES_MAX = 50;
+
+/** The libraries a person reads, as their list shows them (./readers.ts `list`). */
+export const readLibrariesValidator = capped(
+  v.array(
+    v.object({
+      libraryId: v.id("evidenceLibraries"),
+      name: v.string(),
+      address: v.string(),
+      ways: capped(v.array(v.union(readerWayValidator, v.literal("role"))), 3),
+      role: v.union(libraryListRoleValidator, v.null()),
+      faviconUrl: v.union(v.string(), v.null()),
+    }),
+  ),
+  READ_LIBRARIES_MAX,
+);
+
 export const evidenceLibraryReaderFields = {
   libraryId: v.id("evidenceLibraries"),
   userId: v.id("users"),
@@ -1220,7 +1238,7 @@ export const librarySourceValidator = v.union(
   v.object({ libraryCollection: v.string() }),
   v.object({ library: v.literal(true) }),
   v.object({ search: v.string(), readerCollection: v.optional(v.string()) }),
-  v.object({ records: v.array(v.string()) }),
+  v.object({ records: capped(v.array(v.string()), LIBRARY_SOURCE_RECORDS_MAX) }),
 );
 
 /**
@@ -1241,12 +1259,18 @@ export const librarySourceRowValidator = v.object({
   parent: v.optional(v.string()),
 });
 
+/** Most sources one library lists for a person: all of it, their own and shared collections, and the library's own. */
+export const LIBRARY_ROWS_MAX = 1_000;
+
 /** A library's sources for one person, or why the library couldn't list them: it needs an update, or didn't answer. */
 export const libraryContentsValidator = v.object({
   libraryId: v.id("evidenceLibraries"),
-  rows: v.union(v.array(librarySourceRowValidator), v.null()),
+  rows: v.union(capped(v.array(librarySourceRowValidator), LIBRARY_ROWS_MAX), v.null()),
   problem: v.union(v.null(), v.literal("outdated"), v.literal("unreadable")),
 });
+
+/** What each of a person's libraries lists for them (./library.ts `sources`). */
+export const librariesContentsValidator = capped(v.array(libraryContentsValidator), READ_LIBRARIES_MAX);
 
 /** Why a pasted address is no source. */
 export const sourceAddressErrorValidator = v.union(

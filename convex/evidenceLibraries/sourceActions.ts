@@ -13,10 +13,10 @@ import { createError } from "../lib/errors";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { screeningPaperInputValidator } from "../screening/validators";
 import { paperKey } from "../../lib/papers/paper-ref";
-import { libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
+import { LIBRARY_SOURCE_MAX } from "../../lib/evidence-libraries/source-address";
+import { LIBRARY_ROWS_MAX, libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
 import {
   LIBRARY_BATCH_MAX,
-  LIBRARY_RESOLVE_MAX,
   LibrarySourceError,
   readLibraryCollection,
   readLibraryOverview,
@@ -54,7 +54,7 @@ async function asked<T>(libraryId: Id<"evidenceLibraries">, call: string, reader
     console.warn("[library sources]", { libraryId, call, reader, code: error.code, status: error.status, reason: error.message });
     if (error.code === "private") throw createError("FORBIDDEN", "This collection is private: only its owner and the people it's shared with can read it.");
     if (error.code === "not_found") throw createError("NOT_FOUND", "The library has no such collection.");
-    if (error.code === "too_many") throw createError("VALIDATION_ERROR", `A library source gives at most ${LIBRARY_RESOLVE_MAX.toLocaleString("en")} records at once.`);
+    if (error.code === "too_many") throw createError("VALIDATION_ERROR", `A library source gives at most ${LIBRARY_SOURCE_MAX.toLocaleString("en")} records at once.`);
     throw createError("EVIDENCE_LIBRARY_RUNTIME_ERROR", error.code === "index_changed" ? "The library's search changed while it was read. Try again." : error.message);
   }
 }
@@ -66,7 +66,7 @@ export const resolve = internalAction({
   handler: async (ctx, { libraryId, userId, source, first, last }): Promise<{ keys: string[]; total: number; truncated: boolean }> => {
     const target = await libraryTarget(ctx, libraryId);
     const reader = await readerOf(ctx, userId);
-    return await asked(libraryId, "sources/resolve", reader, () => resolveLibrarySource(fetch, target, { reader, source, first, last: Math.min(last, first + LIBRARY_RESOLVE_MAX - 1) }));
+    return await asked(libraryId, "sources/resolve", reader, () => resolveLibrarySource(fetch, target, { reader, source, first, last: Math.min(last, first + LIBRARY_SOURCE_MAX - 1) }));
   },
 });
 
@@ -168,6 +168,7 @@ async function contentsOf(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">, re
     const target = await libraryTarget(ctx, libraryId);
     const [overview, own, shared] = await Promise.all([readLibraryOverview(fetch, target, LIST_TIMEOUT_MS), readerCollectionsOf(target, reader, "own"), readerCollectionsOf(target, reader, "shared")]);
     const names = new Map(overview.collections.map((collection) => [collection.key, collection.name]));
+    // ponytail: a library with more collections than the list holds lists the first by name; any other is reached by its address.
     const rows: Row[] = [
       ...(overview.records ? [{ libraryId, source: { library: true as const }, what: "all" as const, label: target.name, records: overview.records }] : []),
       ...own.map((collection) => readerRow(libraryId, collection, "yours")),
@@ -176,7 +177,7 @@ async function contentsOf(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">, re
         const parent = collection.parent ? names.get(collection.parent) : undefined;
         return { libraryId, source: { libraryCollection: collection.key }, what: "library", label: collection.name, records: collection.records, ...(parent ? { parent } : {}) };
       }),
-    ];
+    ].slice(0, LIBRARY_ROWS_MAX);
     return { libraryId, rows, problem: null };
   } catch (error) {
     const code = error instanceof LibrarySourceError ? error.code : null;

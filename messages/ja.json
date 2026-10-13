@@ -1567,13 +1567,15 @@
       "search": "検索",
       "collection": "コレクション",
       "saved": "保存した論文",
-      "screening": "スクリーニング"
+      "screening": "スクリーニング",
+      "evidenceLibrary": "Evidence Library"
     },
     "noSets": {
       "search": "保存した検索はまだありません。",
       "collection": "コレクションはまだありません。",
       "saved": "保存した論文はまだありません。",
-      "screening": "完了したスクリーニングはまだありません。"
+      "screening": "完了したスクリーニングはまだありません。",
+      "evidenceLibrary": "Evidence Library はまだありません。"
     },
     "papersToScreen": "スクリーニングする論文",
     "paperCount": "{count, plural, other {# 件}}",
@@ -4529,5 +4531,63 @@
   },
   "models": {
     "changeInSettings": "AI 設定で変更"
+  },
+  "librarySources": {
+    "kind": "Evidence Library のレコード",
+    "library": "Evidence Library",
+    "address": "ライブラリのアドレスを貼り付け",
+    "show": "表示",
+    "filter": {
+      "all": "すべて",
+      "yours": "自分の",
+      "shared": "共有されたもの",
+      "library": "ライブラリのもの"
+    },
+    "find": "検索",
+    "everyRecord": "{library} のすべてのレコード",
+    "allRecords": "すべてのレコード",
+    "private": "非公開",
+    "public": "公開",
+    "canEdit": "編集可",
+    "canView": "閲覧可",
+    "fromAddress": "リンクから",
+    "in": "{name} 内",
+    "frozen": "開始時点のまま",
+    "firstOf": "{total, number} 件中の最初の {count, number} 件",
+    "empty": {
+      "all": "{library} にはまだ読むものがありません。",
+      "yours": "{library} にあなたのコレクションはありません。",
+      "shared": "{library} で共有されたコレクションはありません。",
+      "library": "{library} には独自のコレクションがありません。",
+      "found": "一致するものはありません。"
+    },
+    "unread": "{library} から応答がありません。少し待ってからもう一度お試しください。",
+    "outdated": "ここで使うには {library} の更新が必要です。",
+    "error": {
+      "notAddress": "アドレスではありません。",
+      "notHosted": "そのライブラリは OpenScholar で運営されていません。",
+      "private": "このコレクションは非公開です。オーナーが共有できます。",
+      "notFound": "そのアドレスには何もありません。",
+      "profile": "その人のコレクションを開いて、そのアドレスをコピーしてください。",
+      "unknownPage": "検索、コレクション、またはライブラリのアドレスをコピーしてください。",
+      "outdated": "ここで使うには、このライブラリの更新が必要です。",
+      "unreadable": "ライブラリから応答がありません。もう一度お試しください。"
+    },
+    "role": {
+      "owner": "オーナー",
+      "editor": "編集者",
+      "creator": "作成者",
+      "viewer": "閲覧者"
+    },
+    "sort": {
+      "desc": "新しい順",
+      "asc": "古い順",
+      "mostCited": "被引用数が多い順",
+      "leastCited": "被引用数が少ない順",
+      "authorAZ": "著者 A-Z",
+      "authorZA": "著者 Z-A",
+      "titleAZ": "タイトル A-Z",
+      "titleZA": "タイトル Z-A"
+    }
   }
 }

@@ -1567,13 +1567,15 @@
       "search": "Recherche",
       "collection": "Collection",
       "saved": "Articles enregistrés",
-      "screening": "Criblage"
+      "screening": "Criblage",
+      "evidenceLibrary": "Evidence Library"
     },
     "noSets": {
       "search": "Aucune recherche enregistrée pour l'instant.",
       "collection": "Aucune collection pour l'instant.",
       "saved": "Aucun article enregistré pour l'instant.",
-      "screening": "Aucun criblage terminé pour l'instant."
+      "screening": "Aucun criblage terminé pour l'instant.",
+      "evidenceLibrary": "Aucune Evidence Library pour l'instant."
     },
     "papersToScreen": "Articles à cribler",
     "paperCount": "{count, plural, one {# article} other {# articles}}",
@@ -4529,5 +4531,63 @@
   },
   "models": {
     "changeInSettings": "Modifier dans les paramètres IA"
+  },
+  "librarySources": {
+    "kind": "Notices d'une Evidence Library",
+    "library": "Evidence Library",
+    "address": "Collez l'adresse d'une bibliothèque",
+    "show": "Afficher",
+    "filter": {
+      "all": "Tout",
+      "yours": "Les vôtres",
+      "shared": "Partagées avec vous",
+      "library": "Celles de la bibliothèque"
+    },
+    "find": "Rechercher",
+    "everyRecord": "Toutes les notices de {library}",
+    "allRecords": "Toutes les notices",
+    "private": "Privée",
+    "public": "Publique",
+    "canEdit": "Peut modifier",
+    "canView": "Peut consulter",
+    "fromAddress": "Depuis un lien",
+    "in": "Dans {name}",
+    "frozen": "Telles qu'elles sont au lancement",
+    "firstOf": "Les {count, number} premières sur {total, number}",
+    "empty": {
+      "all": "Rien à lire dans {library} pour l'instant.",
+      "yours": "Vous n'avez aucune collection dans {library}.",
+      "shared": "Personne n'a partagé de collection de {library} avec vous.",
+      "library": "{library} n'a pas de collections à elle.",
+      "found": "Aucun résultat."
+    },
+    "unread": "{library} n'a pas répondu. Réessayez dans un instant.",
+    "outdated": "{library} doit être mise à jour pour servir ici.",
+    "error": {
+      "notAddress": "Ce n'est pas une adresse.",
+      "notHosted": "OpenScholar n'héberge pas cette bibliothèque.",
+      "private": "Cette collection est privée. La personne qui la possède peut la partager avec vous.",
+      "notFound": "Il n'y a rien à cette adresse.",
+      "profile": "Ouvrez l'une de ses collections et copiez cette adresse.",
+      "unknownPage": "Copiez l'adresse d'une recherche, d'une collection ou de la bibliothèque.",
+      "outdated": "Cette bibliothèque doit être mise à jour pour servir ici.",
+      "unreadable": "La bibliothèque n'a pas répondu. Réessayez."
+    },
+    "role": {
+      "owner": "Propriétaire",
+      "editor": "Modification",
+      "creator": "Création",
+      "viewer": "Lecture"
+    },
+    "sort": {
+      "desc": "Plus récentes",
+      "asc": "Plus anciennes",
+      "mostCited": "Plus citées",
+      "leastCited": "Moins citées",
+      "authorAZ": "Auteur A-Z",
+      "authorZA": "Auteur Z-A",
+      "titleAZ": "Titre A-Z",
+      "titleZA": "Titre Z-A"
+    }
   }
 }
