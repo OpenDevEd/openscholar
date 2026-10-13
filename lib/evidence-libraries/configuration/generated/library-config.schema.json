@@ -1118,6 +1118,14 @@
 					"default": true,
 					"type": "boolean"
 				},
+				"uncertainStudyTypes": {
+					"default": "marked",
+					"type": "string",
+					"enum": [
+						"marked",
+						"separate"
+					]
+				},
 				"years": {
 					"default": {},
 					"type": "object",

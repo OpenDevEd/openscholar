@@ -2399,7 +2399,9 @@
       "years": "Year range filter",
       "yearsHint": "Let people narrow results to a range of years.",
       "collectionsExpanded": "Open collection and topic sections by default",
-      "collectionsExpandedHint": "When off, people click a section to see its collections or topics."
+      "collectionsExpandedHint": "When off, people click a section to see its collections or topics.",
+      "uncertainStudyTypes": "Show uncertain study types apart",
+      "uncertainStudyTypesHint": "Readers see an Uncertain type in the Study types filter and on records, in place of a type the AI was less than 60% sure of. When off, the type shows with an uncertain mark."
     },
     "team": {
       "pending": "Pending"

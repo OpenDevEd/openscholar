@@ -256,6 +256,17 @@ export function SearchSection({
             })
           }
         />
+
+        <ToggleRow
+          label={t("uncertainStudyTypes")}
+          hint={t("uncertainStudyTypesHint")}
+          checked={filters.uncertainStudyTypes === "separate"}
+          onChange={(checked) =>
+            setFilters((f) => {
+              f.uncertainStudyTypes = checked ? "separate" : "marked";
+            })
+          }
+        />
       </FieldGroup>
     </SectionShell>
   );
