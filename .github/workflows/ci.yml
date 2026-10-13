@@ -345,6 +345,7 @@ jobs:
           name: playwright-report
           path: playwright-report
           if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload app logs
         if: failure() && steps.auth-environment.outputs.available == 'true'
@@ -354,6 +355,7 @@ jobs:
           name: playwright-output
           path: test-results
           if-no-files-found: ignore
+          retention-days: 7
 
   ci:
     name: CI
@@ -403,8 +405,11 @@ jobs:
           echo "$tree" > "$RUNNER_TEMP/tested-tree"
           echo "sha=$tree" >> "$GITHUB_OUTPUT"
 
+      # A record that can't be saved, such as when the organisation's artifact
+      # storage is full, only makes the push run the full suite again.
       - name: Record the tested tree
         if: steps.tree.outcome == 'success'
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           name: ci-passed-${{ steps.tree.outputs.sha }}
