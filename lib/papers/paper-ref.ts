@@ -34,7 +34,7 @@ export function parsePaperKey(key: string): PaperRef | null {
   const [source, ...parts] = key.split(":");
   if (source === "openalex" && parts.length === 1 && WORK.test(parts[0]!)) return { source, work: parts[0]! };
   if (source === "library" && parts.length === 2 && parts.every((part) => PART.test(part))) return { source, libraryId: parts[0]!, key: parts[1]! };
-  if (source === "zotero" && parts.length === 3 && (parts[0] === "user" || parts[0] === "group") && (parts[1] === "" || PART.test(parts[1]!)) && PART.test(parts[2]!)) {
+  if (source === "zotero" && parts.length === 3 && (parts[0] === "user" || parts[0] === "group") && PART.test(parts[1]!) && PART.test(parts[2]!)) {
     return { source, library: parts[0], owner: parts[1]!, key: parts[2]! };
   }
   if (source === "upload" && parts.length === 1 && PART.test(parts[0]!)) return { source, file: parts[0]! };
@@ -48,7 +48,7 @@ export function openalexWork(id: string): string | null {
 
 /** A DOI in one form, lower case and without its address; null when there is none. */
 export function normalDoi(doi: string | undefined | null): string | null {
-  const bare = doi?.trim().toLowerCase().replace(/^https?:\/\/(?:dx\.)?doi\.org\//, "").replace(/^doi:/, "");
+  const bare = doi?.trim().toLowerCase().replace(/^https?:\/\/(?:dx\.)?doi\.org\//, "").replace(/^doi:/, "").trim();
   return bare || null;
 }
 
@@ -63,7 +63,8 @@ function zoteroOwner(pdfUrl: string | undefined, library?: "user" | "group") {
 /**
  * The paper an ID stored before keys names: an OpenAlex ID in any form; `zotero:group:KEY`,
  * `zotero:user:KEY` or `zotero:KEY`, whose owner the item's PDF address gives; `upload:<storage ID>`;
- * or a key already. Null for what can't be placed.
+ * or a key already. Null for what can't be placed, a Zotero item whose owner nothing names too:
+ * item keys are only unique within their library.
  */
 export function legacyPaperRef(id: string, hints: { pdfUrl?: string } = {}): PaperRef | null {
   const keyed = parsePaperKey(id);
@@ -74,7 +75,7 @@ export function legacyPaperRef(id: string, hints: { pdfUrl?: string } = {}): Pap
   if (zotero) {
     const library = zotero[1] as "user" | "group" | undefined;
     const owned = zoteroOwner(hints.pdfUrl, library);
-    return { source: "zotero", library: owned?.library ?? library ?? "user", owner: owned?.owner ?? "", key: zotero[2]! };
+    return owned ? { source: "zotero", library: owned.library, owner: owned.owner, key: zotero[2]! } : null;
   }
   return null;
 }
