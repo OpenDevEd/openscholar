@@ -129,7 +129,7 @@ const overviewSchema = z.object({
 /** How many public records the library holds, and its own collections by name, each with the records resolving it reads. */
 export async function readLibraryOverview(fetchImpl: typeof fetch, target: LibraryTarget, timeoutMs?: number) {
   const overview = await call(fetchImpl, target, "/api/v1/openscholar/library", overviewSchema, { timeoutMs });
-  return { ...overview, collections: overview.collections.toSorted((a, b) => a.name.localeCompare(b.name)) };
+  return { ...overview, collections: [...overview.collections].sort((a, b) => a.name.localeCompare(b.name)) };
 }
 
 /** A page of the OpenScholar accounts that signed in to the library. */
