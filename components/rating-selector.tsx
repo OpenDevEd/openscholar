@@ -26,6 +26,22 @@ function RatingStarsDisplay({ count }: { count: number }) {
     </span>
   );
 }
+
+/**
+ * The choices. Radix names an option, and the trigger showing it, by the option's own text, and the stars are
+ * pictures: each says its rating in text only screen readers read.
+ */
+function RatingItems() {
+  const t = useTranslations('rating');
+  return (
+    <>
+      <SelectItem value="no-rating"><NoRatingDisplay /><span className="sr-only">{t('noRating')}</span></SelectItem>
+      {[0, 1, 2, 3, 4, 5].map((count) => (
+        <SelectItem key={count} value={String(count)}><RatingStarsDisplay count={count} /><span className="sr-only">{t('nStars', { count })}</span></SelectItem>
+      ))}
+    </>
+  );
+}
 import {
   Select,
   SelectContent,
@@ -111,13 +127,7 @@ export function RatingSelector({ paper, variant = "default" }: RatingSelectorPro
           <SelectValue placeholder={t('noRating')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="no-rating" aria-label={t('noRating')}><NoRatingDisplay /></SelectItem>
-          <SelectItem value="0" aria-label={t('nStars', { count: 0 })}><RatingStarsDisplay count={0} /></SelectItem>
-          <SelectItem value="1" aria-label={t('nStars', { count: 1 })}><RatingStarsDisplay count={1} /></SelectItem>
-          <SelectItem value="2" aria-label={t('nStars', { count: 2 })}><RatingStarsDisplay count={2} /></SelectItem>
-          <SelectItem value="3" aria-label={t('nStars', { count: 3 })}><RatingStarsDisplay count={3} /></SelectItem>
-          <SelectItem value="4" aria-label={t('nStars', { count: 4 })}><RatingStarsDisplay count={4} /></SelectItem>
-          <SelectItem value="5" aria-label={t('nStars', { count: 5 })}><RatingStarsDisplay count={5} /></SelectItem>
+          <RatingItems />
         </SelectContent>
       </Select>
     );
@@ -149,13 +159,7 @@ export function RatingSelector({ paper, variant = "default" }: RatingSelectorPro
           <SelectValue placeholder={t('noRating')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="no-rating" aria-label={t('noRating')}><NoRatingDisplay /></SelectItem>
-          <SelectItem value="0" aria-label={t('nStars', { count: 0 })}><RatingStarsDisplay count={0} /></SelectItem>
-          <SelectItem value="1" aria-label={t('nStars', { count: 1 })}><RatingStarsDisplay count={1} /></SelectItem>
-          <SelectItem value="2" aria-label={t('nStars', { count: 2 })}><RatingStarsDisplay count={2} /></SelectItem>
-          <SelectItem value="3" aria-label={t('nStars', { count: 3 })}><RatingStarsDisplay count={3} /></SelectItem>
-          <SelectItem value="4" aria-label={t('nStars', { count: 4 })}><RatingStarsDisplay count={4} /></SelectItem>
-          <SelectItem value="5" aria-label={t('nStars', { count: 5 })}><RatingStarsDisplay count={5} /></SelectItem>
+          <RatingItems />
         </SelectContent>
       </Select>
     </div>
