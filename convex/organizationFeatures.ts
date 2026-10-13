@@ -99,9 +99,9 @@ export const opens = workspaceQuery({
  * What a page loaded before 2026-10-10 is told: it asks without a workspace and reads three
  * answers. A tab left open keeps what it showed, in place of failing when this deployed: Evidence
  * Libraries and authors where any of the person's organizations has them, extraction always.
- * `get` here and `list` in authors/profiles.ts go once those tabs are gone.
+ * `get` goes once those tabs are gone.
  */
-export async function openedBefore(ctx: QueryCtx, user: Doc<"users">) {
+async function openedBefore(ctx: QueryCtx, user: Doc<"users">) {
   for (const { organization } of await readMemberOrganizations(ctx, user)) if (await planGrants(ctx, organization._id)) return true;
   return await hasDirectLibraryAccess(ctx, user);
 }

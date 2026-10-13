@@ -9,8 +9,8 @@ export const LOOK_COOKIE = "workspace-looks";
 /** The request header the proxy names the address's workspace in: its slug, or empty for the person's own. */
 export const WORKSPACE_HEADER = "x-workspace-slug";
 
-/** A workspace as the rail drew it; `extract` and `publish`: it showed Extract, and Publish, which its plan opens (Evidence Libraries). */
-export type CachedLook = { kind: "personal" | "organization"; workspaceId: string; name: string; imageUrl?: string; colour?: string; extract?: true; publish?: true };
+/** A workspace as the rail drew it; `extract` and `publish`: it showed Extract, and Publish, which its plan opens (Evidence Libraries); `author`: its plan makes author profiles. */
+export type CachedLook = { kind: "personal" | "organization"; workspaceId: string; name: string; imageUrl?: string; colour?: string; extract?: true; publish?: true; author?: true };
 /** The signed-in person, as the rail's account button shows them. */
 export type CachedMe = { name: string; imageUrl?: string };
 export type LookCache = { me?: CachedMe; looks: Record<string, CachedLook> };
@@ -50,6 +50,7 @@ export function readCache(raw: string | undefined, user: string | null | undefin
         ...(typeof value.colour === "string" && COLOUR.test(value.colour) ? { colour: value.colour } : {}),
         ...(value.extract === true ? { extract: true as const } : {}),
         ...(value.publish === true ? { publish: true as const } : {}),
+        ...(value.author === true ? { author: true as const } : {}),
       };
     }
     const me = typeof parsed.me?.name === "string" ? { name: parsed.me.name, ...photo(parsed.me.imageUrl) } : undefined;

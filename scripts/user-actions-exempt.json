@@ -140,7 +140,6 @@
     "zotero/runtimeReadActions:listPublications": "evidenceLibraries/assistant:runningPublications",
     "zotero/runtimeReadActions:readPublication": "evidenceLibraries/assistant:runningPublication",
     "zotero/runtimeReadActions:requestSourceRun": "evidenceLibraries/assistant:syncSource",
-    "authors/profiles:directory": "authors/assistant:directory",
     "authors/profiles:list": "authors/assistant:directory",
     "authors/profiles:get": "authors/assistant:profile",
     "authors/profiles:create": "authors/assistant:create",

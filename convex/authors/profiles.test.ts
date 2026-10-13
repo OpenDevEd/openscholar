@@ -166,12 +166,12 @@ describe("author profiles", () => {
     const {t, owner, editor, ids, profileId} = await setup();
     const workspaceId = (await t.run(ctx => ctx.db.get("authorProfiles", profileId)))!.workspaceId!;
     const item = {workspaceId, kind: "author" as const, id: profileId};
-    // A plan that no longer includes Evidence Libraries makes no more profiles and reads no directory; the profile it has is still its owner's to edit.
+    // A plan that no longer includes Evidence Libraries makes no more profiles; the profile it has is still its owner's to edit, and the directory is public.
     await t.run(async ctx => {
       for (const account of await ctx.db.query("billingAccounts").collect()) await ctx.db.patch("billingAccounts", account._id, {features: []});
     });
     await expect(owner.mutation(api.authors.profiles.create, {name: "Another profile"})).rejects.toThrow('"code":"FORBIDDEN"');
-    await expect(owner.query(api.authors.profiles.directory, {search: "", paginationOpts: {numItems: 10, cursor: null}})).rejects.toThrow('"code":"FORBIDDEN"');
+    for (const reader of [owner, t]) expect((await reader.query(api.authors.profiles.list, {search: "", paginationOpts: {numItems: 10, cursor: null}})).page.map(profile => profile._id)).toEqual([profileId]);
     await owner.action(api.authors.photos.save, {profileId, expectedRevision: 1, content});
     const invitationId = await t.mutation(internal.sharing.invitations.prepare, {userId: ids.owner, author: "user", ...item, email: "Editor@example.org", role: "editor"});
     const waiting = async (person: typeof editor) => (await person.query(api.authors.invitations.listInvitations, {})).page;

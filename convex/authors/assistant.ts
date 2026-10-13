@@ -35,11 +35,10 @@ export const directoryAction = defineUserQuery({
   path: "authors/assistant:directory",
   description:
     `Lists author profiles, ${AUTHORS_LISTED} a page from \`cursor\`, newest first or the ones whose name matches \`search\`: each one's ID, name, headline, affiliation, ORCID and OpenAlex author ID; \`continueCursor\` is the next page's \`cursor\` until \`isDone\`. ` +
-    "In a workspace whose plan has Evidence Libraries, as the Authors page. One profile whole is authors/assistant:profile.",
+    "Public, as the Authors page is. One profile whole is authors/assistant:profile.",
   args: { search: v.optional(v.union(v.string(), v.null())), cursor: v.optional(v.union(v.string(), v.null())) },
   returns: authorDirectoryValidator,
-  run: async (ctx, { workspaceId }, { search, cursor }) => {
-    await requireAuthorProfiles(ctx, workspaceId);
+  run: async (ctx, _actor, { search, cursor }) => {
     const read = await searchProfilePage(ctx, search ?? "", { numItems: AUTHORS_LISTED, cursor: cursor ?? null });
     return { page: read.page.map(summary), isDone: read.isDone, continueCursor: read.continueCursor };
   },

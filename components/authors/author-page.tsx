@@ -96,7 +96,7 @@ const safeUrl = (value?: string) => {
 };
 
 export default function AuthorPage({
-  profile, configuration, canEdit, member = false, atHome = false, moveFrom, canBrowseAuthors = false, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
+  profile, configuration, canEdit, member = false, atHome = false, moveFrom, onSave, accessSection, papers, publicationStatus, loadingPublications, loadingAuthors,
   openAlexAuthors, openAlexPapers: works, onSearchAuthors, openAlexError,
   hasMoreWorks, workCount, loadingWorks: fetchingWorks, onLoadMoreWorks,
 }: {
@@ -109,7 +109,6 @@ export default function AuthorPage({
   /** The page is at that workspace's address, where its members see who else has the profile open. */
   atHome?: boolean;
   moveFrom?: Id<"workspaces">;
-  canBrowseAuthors?: boolean;
   onSave: (profile: AuthorProfile, previous: AuthorProfile) => Promise<AuthorProfile>;
   accessSection: ReactNode;
   papers: AuthorPublication[];
@@ -577,7 +576,7 @@ export default function AuthorPage({
         <LibraryPageShell
           icon={PersonIcon}
           title={profile.name}
-          backHref={canBrowseAuthors ? "/authors" : undefined}
+          backHref="/authors"
           backLabel="Back to authors"
           actions={<>
             {presence}
