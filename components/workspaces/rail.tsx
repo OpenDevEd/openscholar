@@ -13,6 +13,7 @@ import { useTheme } from "next-themes";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
+  AuthorsIcon,
   BillingIcon,
   BookmarksIcon,
   EvidenceLibrariesIcon,
@@ -147,7 +148,10 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   const extractionOn = useFeatureFlagForPlan("extraction.enabled", planFeatures);
   const extractionStarts = useFeatureFlagForPlan("extraction.start", planFeatures);
   const liveExtracts = planFeatures === null ? undefined : extractionOn && extractionStarts;
-  const livePublishes = useWorkspaceFeatures().data?.evidenceLibraries;
+  const features = useWorkspaceFeatures().data;
+  const livePublishes = features?.evidenceLibraries;
+  // Kept for the Authors page's "Create author", which its plan opens.
+  const liveAuthors = features?.authors;
   // The rail's last answers, held while a switch reads the next workspace, so a section doesn't leave and come back.
   const [held, setHeld] = useState({ extracts: false, publishes: false });
   const read = { extracts: liveExtracts ?? held.extracts, publishes: livePublishes ?? held.publishes };
@@ -163,11 +167,12 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
     const was = cache.looks[lookKey(slug)];
     const extract = liveExtracts ?? was?.extract === true;
     const publish = livePublishes ?? was?.publish === true;
-    const look: CachedLook | undefined = loaded && (loaded.slug ?? null) === slug ? { kind: loaded.kind, workspaceId: loaded.workspaceId, name: loaded.name, ...(loaded.imageUrl ? { imageUrl: loaded.imageUrl } : {}), ...(loaded.colour ? { colour: loaded.colour } : {}), ...(extract ? { extract: true as const } : {}), ...(publish ? { publish: true as const } : {}) } : undefined;
+    const author = liveAuthors ?? was?.author === true;
+    const look: CachedLook | undefined = loaded && (loaded.slug ?? null) === slug ? { kind: loaded.kind, workspaceId: loaded.workspaceId, name: loaded.name, ...(loaded.imageUrl ? { imageUrl: loaded.imageUrl } : {}), ...(loaded.colour ? { colour: loaded.colour } : {}), ...(extract ? { extract: true as const } : {}), ...(publish ? { publish: true as const } : {}), ...(author ? { author: true as const } : {}) } : undefined;
     if (!look && !live) return;
     const next = writeCache(cache, userId, lookKey(slug), look, live);
     if (next && next !== raw) document.cookie = `${LOOK_COOKIE}=${next}; Path=/; Max-Age=${LOOK_KEPT_S}; SameSite=Lax`;
-  }, [userId, slug, loaded, live?.name, live?.imageUrl, liveExtracts, livePublishes]);
+  }, [userId, slug, loaded, live?.name, live?.imageUrl, liveExtracts, livePublishes, liveAuthors]);
   const { currentQuery } = useCurrentQueryStore();
   const { keywords } = useKeywordExpansionStore();
 
@@ -253,13 +258,14 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
                     })}
                   </Opening>
                 ) : null}
-                {publishes ? <Opening key="publish">{item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-libraries") || is("/authors") })}</Opening> : null}
+                {publishes ? <Opening key="publish">{item({ href: publishes, icon: EvidenceLibrariesIcon, label: t("publish"), active: is("/evidence-libraries") })}</Opening> : null}
                 {/* What's shared with you is in your own workspace (#653), which the address says from the first frame. */}
                 {slug === null ? <Opening key="shared">{item({ href: "/shared", icon: Share2, label: t("shared.nav"), active: is("/shared") })}</Opening> : null}
               </AnimatePresence>
 
               <div className="my-1.5 h-px w-8 bg-foreground/10" />
               {item({ href: "/topics", icon: TopicsIcon, label: t("explore"), active: is("/topics") })}
+              {item({ href: "/authors", icon: AuthorsIcon, label: t("authors"), active: is("/authors") })}
             </nav>
           </ScrollArea>
 

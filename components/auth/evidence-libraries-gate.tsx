@@ -13,12 +13,11 @@ import { AuthStatePanel } from "./auth-state-panel";
 
 /**
  * Opens a page of Evidence Libraries when the workspace it's in has them, or a library was
- * shared with the person there. With `authors`, a page that manages author profiles, which
- * takes the workspace's plan itself. `fallback` replaces the full-screen loader while that's
+ * shared with the person there. `fallback` replaces the full-screen loader while that's
  * checked. A page passes itself in a state that runs no queries, so its frame shows at once and
  * stays mounted when access is confirmed.
  */
-export function EvidenceLibrariesGate({ authors = false, fallback, children }: { authors?: boolean; fallback?: ReactNode; children: ReactNode }) {
+export function EvidenceLibrariesGate({ fallback, children }: { fallback?: ReactNode; children: ReactNode }) {
   const { data, phase } = useWorkspaceFeatures();
   const { retryUserSync } = useAuthReadiness();
   const t = useTranslations("auth");
@@ -28,7 +27,7 @@ export function EvidenceLibrariesGate({ authors = false, fallback, children }: {
   const item = pageItem(bareWorkspacePath(usePathname()), useSearchParams());
   const home = useItemHome(item);
   const moving = phase === "authenticated" && item !== null && (home === undefined || (home !== null && home.slug !== slug));
-  if (phase === "authenticated" && data?.[authors ? "authors" : "evidenceLibraries"] && !moving) return children;
+  if (phase === "authenticated" && data?.evidenceLibraries && !moving) return children;
 
   const variant = phase === "sync_error" ? "sync_error_retry"
     : phase === "anonymous" ? "sign_in_required"

@@ -4,6 +4,7 @@ const PUBLIC_UNAUTHENTICATED_PATHS = [
   "/",
   "/pricing",
   "/topics/:path*",
+  "/authors",
   "/privacy",
   "/cookie-policy",
   "/credits",

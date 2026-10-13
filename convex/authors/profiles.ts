@@ -1,4 +1,3 @@
-import { openedBefore } from "../organizationFeatures";
 import { hasPlanFeature } from "../billing/accounts";
 import { EVIDENCE_LIBRARIES_FEATURE } from "../../lib/billing/plans";
 import { searchTerms } from "../lib/searchText";
@@ -8,11 +7,10 @@ import { v, type Infer } from "convex/values";
 import { query, internalQuery, internalMutation } from "../lib/functions";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
-import { getCurrentUser } from "../lib/auth";
 import { createError } from "../lib/errors";
 import { authorContentFields } from "./validators";
 import { profileViewer, requireProfileAccess } from "./access";
-import { workspaceMutation, workspaceQuery } from "../lib/userActions";
+import { workspaceMutation } from "../lib/userActions";
 import { noteActivity } from "../activity/notes";
 
 export function cleanContent(content: { [K in keyof typeof authorContentFields]: string }) {
@@ -49,8 +47,8 @@ export async function createProfile(ctx: MutationCtx, createdBy: Id<"users">, wo
 const profileWithPhoto = {...schema.doc("authorProfiles").fields, photo: v.union(v.string(), v.null())};
 
 /**
- * Refuses unless `workspaceId` manages author profiles: takes a new one, or one moved into it,
- * and reads the directory. Its plan includes Evidence Libraries, which profiles are managed with;
+ * Refuses unless `workspaceId` manages author profiles: takes a new one, or one moved into it.
+ * Its plan includes Evidence Libraries, which profiles are managed with;
  * a library shared with the person isn't that. A plan is its workspace's alone.
  */
 export async function requireAuthorProfiles(ctx: QueryCtx | MutationCtx, workspaceId: Id<"workspaces">) {
@@ -90,31 +88,13 @@ export function searchProfilePage(ctx: QueryCtx, term: string, paginationOpts: P
   return query.paginate({...paginationOpts, numItems: Math.max(1, Math.min(30, Math.floor(paginationOpts.numItems)))});
 }
 
-const directoryArgs = {search: v.string(), paginationOpts: paginationOptsValidator};
-const directoryPage = paginationResultValidator(v.object(profileWithPhoto));
-async function directoryOf(ctx: QueryCtx, args: {search: string; paginationOpts: PaginationOptions}) {
-  const rows = await searchProfilePage(ctx, args.search, args.paginationOpts);
-  return {...rows, page: await Promise.all(rows.page.map(async profile => ({...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null})))};
-}
-
-/** The directory of profiles, in a workspace whose plan includes Evidence Libraries, as making one needs. A profile's own page is public (`get`). */
-export const directory = workspaceQuery({
-  args: directoryArgs,
-  returns: directoryPage,
-  handler: async (ctx, {workspaceId}, args) => {
-    await requireAuthorProfiles(ctx, workspaceId);
-    return directoryOf(ctx, args);
-  },
-});
-
-/** The directory as a page loaded before 2026-10-10 asks for it, without a workspace: see organizationFeatures.ts `openedBefore`. Goes with it. */
+/** Every profile, newest first or the ones whose name matches `search`: public, as each profile's page is (`get`). Making one takes Evidence Libraries (`create`). */
 export const list = query({
-  args: directoryArgs,
-  returns: directoryPage,
+  args: {search: v.string(), paginationOpts: paginationOptsValidator},
+  returns: paginationResultValidator(v.object(profileWithPhoto)),
   handler: async (ctx, args) => {
-    const user = await getCurrentUser(ctx);
-    if (!user || !(await openedBefore(ctx, user))) throw createError("FORBIDDEN", "None of your organizations' plans includes Evidence Libraries.");
-    return directoryOf(ctx, args);
+    const rows = await searchProfilePage(ctx, args.search, args.paginationOpts);
+    return {...rows, page: await Promise.all(rows.page.map(async profile => ({...profile, photo: profile.photoId ? await ctx.storage.getUrl(profile.photoId) : null})))};
   },
 });
 

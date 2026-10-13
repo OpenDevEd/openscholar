@@ -32,9 +32,9 @@ describe("author profiles, for the assistant", () => {
     const authors = internal.authors.assistant;
     const { profileId, name } = await t.mutation(authors.createForAssistant, { ...owner, name: "  Caitlin Mills ", approved: true });
     expect(name).toBe("Caitlin Mills");
-    // Without Evidence Libraries in its plan, a workspace makes none and has no directory.
+    // Without Evidence Libraries in its plan, a workspace makes none, and still reads the public directory.
     await expect(t.mutation(authors.createForAssistant, { ...other, name: "Someone", approved: true })).rejects.toThrow(/plan/);
-    await expect(t.query(authors.directoryForAssistant, other)).rejects.toThrow(/plan/);
+    expect((await t.query(authors.directoryForAssistant, other)).page).toEqual([expect.objectContaining({ profileId })]);
 
     expect((await t.query(authors.directoryForAssistant, { ...owner, search: "caitlin" })).page).toEqual([expect.objectContaining({ profileId, name: "Caitlin Mills" })]);
     expect(await t.query(authors.profileForAssistant, { ...owner, profileId })).toMatchObject({ profileId, name: "Caitlin Mills", role: "owner", member: true });

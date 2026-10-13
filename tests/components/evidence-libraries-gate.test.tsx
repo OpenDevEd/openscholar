@@ -53,15 +53,6 @@ it("shows the page's own fallback while access is checked and keeps it mounted w
   expect(screen.getByRole("status")).toHaveTextContent("no_access");
 });
 
-it("opens a page that manages authors on the plan itself, not on a library shared with the person", () => {
-  access.mockReturnValue({ phase: "authenticated", data: { evidenceLibraries: true, authors: false } });
-  const { rerender } = render(<EvidenceLibrariesGate authors><ProtectedContent /></EvidenceLibrariesGate>);
-  expect(screen.getByRole("status")).toHaveTextContent("no_access");
-  access.mockReturnValue({ phase: "authenticated", data: { evidenceLibraries: true, authors: true } });
-  rerender(<EvidenceLibrariesGate authors><ProtectedContent /></EvidenceLibrariesGate>);
-  expect(screen.getByText("Protected content")).toBeInTheDocument();
-});
-
 it("waits, not refuses, while a link to a library of another of the person's workspaces is on its way there", () => {
   // Opened from their own workspace, whose plan has no Evidence Libraries: the library's organization has them.
   path.value = "/evidence-libraries/library123/configuration";

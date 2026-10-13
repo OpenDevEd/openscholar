@@ -81,8 +81,6 @@ describe("what a workspace opens", () => {
     const outsider = t.withIdentity({ subject: "outsider", o: { id: "forged", rol: "org:admin" } });
     await expect(outsider.query(api.organizationFeatures.opens, { workspaceId })).rejects.toThrow();
     expect(await outsider.query(api.organizationFeatures.opens, {})).toEqual(off);
-    // The directory of authors comes with Evidence Libraries.
-    await expect(outsider.query(api.authors.profiles.directory, { search: "", paginationOpts: { numItems: 10, cursor: null } })).rejects.toThrow(/FORBIDDEN/);
   });
 });
 
