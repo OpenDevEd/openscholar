@@ -704,6 +704,23 @@ export const deleteDevelopmentTeardownBatch = internalMutation({
       await Promise.all(domains.map((row) => ctx.db.delete(row._id)));
       return { complete: false };
     }
+    // The people who read it, and what it handed over that hasn't expired yet.
+    const readers = await ctx.db
+      .query("evidenceLibraryReaders")
+      .withIndex("by_library_and_user", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    const handoffs = await ctx.db
+      .query("evidenceLibraryHandoffs")
+      .withIndex("by_libraryId", (query) =>
+        query.eq("libraryId", args.libraryId),
+      )
+      .take(BATCH_SIZE);
+    if (readers.length + handoffs.length > 0) {
+      await Promise.all([...readers, ...handoffs].map((row) => ctx.db.delete(row._id)));
+      return { complete: false };
+    }
     const routeLeases = await ctx.db
       .query("evidenceLibraryDomainRouteLeases")
       .withIndex("by_libraryId", (query) =>

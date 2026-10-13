@@ -7,7 +7,7 @@ import { internal } from "./_generated/api";
 import { stripeWebhook } from "./billing/stripeWebhook";
 import { autumnWebhook } from "./billing/autumnWebhook";
 import { clerkWebhook } from "./webhooks/clerk";
-import { checkAdminSession, checkReaderStatus, noteReaderSeen } from "./evidenceLibraries/serviceHttp";
+import { checkAdminSession, checkReaderStatus, handOff, noteReaderSeen } from "./evidenceLibraries/serviceHttp";
 import { receiveSourceStatus } from "./evidenceLibraries/sourceStatus";
 import { readCollectionItems } from "./evidenceLibraries/collectionSources";
 import { COLLECTION_INVITATION_CALLS, serveCollectionInvitations } from "./evidenceLibraries/collectionInvitations";
@@ -50,6 +50,12 @@ http.route({
   path: "/api/v1/evidence-libraries/readers/seen",
   method: "POST",
   handler: noteReaderSeen,
+});
+
+http.route({
+  path: "/api/v1/evidence-libraries/handoffs",
+  method: "POST",
+  handler: handOff,
 });
 
 // Invitations to a reader's collection in an Evidence Library, one route a call (./evidenceLibraries/collectionInvitations.ts).

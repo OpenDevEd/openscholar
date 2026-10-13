@@ -3814,6 +3814,12 @@
         "where": "Evidence Library",
         "ask": "读取一个 Evidence Library 来源"
       },
+      "readHandoff": {
+        "doing": "正在打开 Evidence Library 转来的内容",
+        "did": "已打开 Evidence Library 转来的内容",
+        "where": "Evidence Library",
+        "ask": "打开 Evidence Library 转来的内容"
+      },
       "readLibraryDraft": {
         "doing": "正在读取一个文献库的设置",
         "did": "已读取一个文献库的设置",
@@ -4570,6 +4576,7 @@
     "find": "查找",
     "everyRecord": "{library} 的全部记录",
     "allRecords": "全部记录",
+    "recordsFrom": "来自 {library} 的记录",
     "private": "私密",
     "public": "公开",
     "canEdit": "可编辑",
@@ -4613,5 +4620,38 @@
       "titleAZ": "标题 A-Z",
       "titleZA": "标题 Z-A"
     }
+  },
+  "fromLibrary": {
+    "title": "来自 {library}",
+    "gone": "没有可打开的内容",
+    "goneHint": "这个来自文献库的链接已过期。请从文献库重新打开。",
+    "problem": {
+      "notAddress": "这里没有可打开的内容。请从文献库重新打开。",
+      "notHosted": "该文献库已不在 OpenScholar 上运行。",
+      "private": "该合集是私密的。其所有者可以与你共享。",
+      "notFound": "文献库已不再有它发送的内容。",
+      "profile": "这里没有可打开的内容。请从文献库重新打开。",
+      "unknownPage": "这里没有可打开的内容。请从文献库重新打开。",
+      "outdated": "该文献库需要更新后才能在这里使用。",
+      "unreadable": "文献库没有响应。请稍后重试。"
+    },
+    "from": {
+      "smartScreening": "智能筛选",
+      "search": "一次搜索",
+      "collection": "一个合集"
+    },
+    "theRecords": "记录",
+    "sort": "排序",
+    "sortBy": {
+      "given": "按发送顺序",
+      "newest": "最新",
+      "title": "标题"
+    },
+    "open": "在 {library} 中打开",
+    "noQuestions": "没有随附问题。请在下一页添加。",
+    "screen": "筛选",
+    "extract": "提取",
+    "screenWith": "{count, plural, other {用 # 个问题筛选}}",
+    "extractWith": "{count, plural, other {用 # 个问题提取}}"
   }
 }

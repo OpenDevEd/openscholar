@@ -1,3 +1,5 @@
+import { bareWorkspacePath } from "@/lib/workspaces/paths";
+
 const PUBLIC_UNAUTHENTICATED_PATHS = [
   "/",
   "/pricing",
@@ -49,11 +51,12 @@ export function isPublicPath(pathname: string) {
  * correct before access is known (see EvidenceLibrariesGate's fallback).
  */
 const PAGES_WITH_OWN_LOADING = ["/evidence-libraries", "/authors"] as const;
-/** Every page in these sections draws its own frame while loading. */
-const SECTIONS_WITH_OWN_LOADING = ["/extraction"] as const;
+/** Every page in these sections draws its own frame while loading; a hand-off's page arrives whole from the server. */
+const SECTIONS_WITH_OWN_LOADING = ["/extraction", "/from-library"] as const;
 
 export function showsOwnLoading(pathname: string) {
-  const path = normalizePathname(pathname);
+  // An organization's page under /o/<slug> loads as the same page outside it does.
+  const path = bareWorkspacePath(normalizePathname(pathname));
   return (PAGES_WITH_OWN_LOADING as readonly string[]).includes(path)
     || SECTIONS_WITH_OWN_LOADING.some((section) => path === section || path.startsWith(`${section}/`));
 }

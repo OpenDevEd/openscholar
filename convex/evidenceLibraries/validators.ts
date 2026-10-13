@@ -7,7 +7,7 @@ import {
 } from "../../lib/evidence-libraries/configuration/section-registry";
 import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { presetKeyValidator } from "../aiModelConfig/validators";
-import { MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
+import { MAX_AUTHORS, MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
 
@@ -1239,6 +1239,35 @@ export const librarySourceValidator = v.union(
   v.object({ library: v.literal(true) }),
   v.object({ search: v.string(), readerCollection: v.optional(v.string()) }),
   v.object({ records: capped(v.array(v.string()), LIBRARY_SOURCE_RECORDS_MAX) }),
+);
+
+/** Questions a hand-off brings at most: a library's Smart screening asks up to 20. */
+export const HANDOFF_FIELDS_MAX = 20;
+/** One question a reader's Smart screening asked of every record, with what they wrote it means. */
+export const handoffFieldValidator = v.object({
+  label: v.string(),
+  type: v.union(v.literal("string"), v.literal("number"), v.literal("boolean")),
+  description: v.string(),
+});
+/** Where in the library a hand-off was made. */
+export const handoffFromValidator = v.union(v.literal("smartScreening"), v.literal("search"), v.literal("collection"));
+
+/**
+ * Records, a search or a collection a library handed to OpenScholar for a reader to screen or extract from
+ * (./handoffs.ts). It holds no permission: its source is read as whoever opens it.
+ */
+export const evidenceLibraryHandoffFields = {
+  libraryId: v.id("evidenceLibraries"),
+  from: handoffFromValidator,
+  source: librarySourceValidator,
+  fields: capped(v.array(handoffFieldValidator), HANDOFF_FIELDS_MAX),
+  expiresAt: v.number(),
+};
+
+/** The records a hand-off named, as its page lists them: in the order the library sent them. */
+export const handoffRecordsValidator = capped(
+  v.array(v.object({ key: v.string(), title: v.string(), authors: capped(v.array(v.string()), MAX_AUTHORS), year: v.union(v.number(), v.null()) })),
+  LIBRARY_SOURCE_RECORDS_MAX,
 );
 
 /**

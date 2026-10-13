@@ -30,11 +30,11 @@ export const sources = userAction(sourcesAction);
 export const sourcesForAssistant = assistantAction(sourcesAction);
 
 const libraryValidator = v.object({ libraryId: v.id("evidenceLibraries"), name: v.string(), address: v.string(), faviconUrl: v.union(v.string(), v.null()) });
-const describedValidator = v.union(v.object({ row: librarySourceRowValidator, library: libraryValidator }), v.object({ error: sourceAddressErrorValidator }));
+export const describedValidator = v.union(v.object({ row: librarySourceRowValidator, library: libraryValidator }), v.object({ error: sourceAddressErrorValidator }));
 type Described = Infer<typeof describedValidator>;
 
 /** A source of a library as the person may read it, with the library it is in; or why it is none. */
-async function described(ctx: ActionCtx, userId: Id<"users">, libraryId: Id<"evidenceLibraries">, source: Infer<typeof librarySourceValidator>): Promise<Described> {
+export async function described(ctx: ActionCtx, userId: Id<"users">, libraryId: Id<"evidenceLibraries">, source: Infer<typeof librarySourceValidator>): Promise<Described> {
   const library: { name: string; address: string; faviconUrl: string | null } | null = await ctx.runQuery(internal.evidenceLibraries.readers.running, { libraryId });
   if (!library) return { error: "notHosted" };
   const found: { row: Infer<typeof librarySourceRowValidator> } | { error: Infer<typeof sourceAddressErrorValidator> } = await ctx.runAction(internal.evidenceLibraries.sourceActions.describe, { libraryId, userId, source });

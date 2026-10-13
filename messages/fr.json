@@ -3814,6 +3814,12 @@
         "where": "Evidence Libraries",
         "ask": "Lire une source d'Evidence Library"
       },
+      "readHandoff": {
+        "doing": "Ouverture de ce qu'une Evidence Library a transmis",
+        "did": "Ce qu'une Evidence Library a transmis est ouvert",
+        "where": "Evidence Libraries",
+        "ask": "Ouvrir ce qu'une Evidence Library a transmis"
+      },
       "readLibraryDraft": {
         "doing": "Lecture des paramètres d'une bibliothèque",
         "did": "Paramètres d'une bibliothèque lus",
@@ -4198,7 +4204,7 @@
   },
   "workspaces": {
     "main": "Principal",
-    "screen": "Trier",
+    "screen": "Cribler",
     "extract": "Extraire",
     "publish": "Publier",
     "explore": "Explorer",
@@ -4570,6 +4576,7 @@
     "find": "Rechercher",
     "everyRecord": "Toutes les notices de {library}",
     "allRecords": "Toutes les notices",
+    "recordsFrom": "Notices de {library}",
     "private": "Privée",
     "public": "Publique",
     "canEdit": "Peut modifier",
@@ -4613,5 +4620,38 @@
       "titleAZ": "Titre A-Z",
       "titleZA": "Titre Z-A"
     }
+  },
+  "fromLibrary": {
+    "title": "Depuis {library}",
+    "gone": "Rien à ouvrir",
+    "goneHint": "Ce lien venu d'une bibliothèque a expiré. Ouvrez-le de nouveau depuis la bibliothèque.",
+    "problem": {
+      "notAddress": "Il n'y a rien à ouvrir ici. Ouvrez-le de nouveau depuis la bibliothèque.",
+      "notHosted": "Cette bibliothèque ne fonctionne plus sur OpenScholar.",
+      "private": "Cette collection est privée. La personne qui la possède peut la partager avec vous.",
+      "notFound": "La bibliothèque n'a plus ce qu'elle a envoyé.",
+      "profile": "Il n'y a rien à ouvrir ici. Ouvrez-le de nouveau depuis la bibliothèque.",
+      "unknownPage": "Il n'y a rien à ouvrir ici. Ouvrez-le de nouveau depuis la bibliothèque.",
+      "outdated": "Cette bibliothèque doit être mise à jour pour être utilisée ici.",
+      "unreadable": "La bibliothèque n'a pas répondu. Réessayez dans un instant."
+    },
+    "from": {
+      "smartScreening": "Criblage intelligent",
+      "search": "Une recherche",
+      "collection": "Une collection"
+    },
+    "theRecords": "Les notices",
+    "sort": "Trier",
+    "sortBy": {
+      "given": "Ordre d'envoi",
+      "newest": "Plus récentes",
+      "title": "Titre"
+    },
+    "open": "Ouvrir dans {library}",
+    "noQuestions": "Aucune question n'a été envoyée. Ajoutez-en à la page suivante.",
+    "screen": "Cribler",
+    "extract": "Extraire",
+    "screenWith": "{count, plural, one {Cribler avec # question} other {Cribler avec # questions}}",
+    "extractWith": "{count, plural, one {Extraire avec # question} other {Extraire avec # questions}}"
   }
 }

@@ -13,7 +13,7 @@ export const ADDRESS_HEADER = "x-page-address";
  * a folder under app/o/[slug] and under app, and nothing else is: paths.test.ts fails when a
  * page is added to one side only.
  */
-export const SECTIONS = ["/library", "/history", "/results", "/screening", "/extraction", "/bookmarks", "/evidence-libraries", "/authors", "/topics", "/settings", "/pricing"];
+export const SECTIONS = ["/library", "/history", "/results", "/screening", "/extraction", "/bookmarks", "/evidence-libraries", "/authors", "/topics", "/settings", "/pricing", "/from-library"];
 const within = (path: string, section: string) => path === section || path.startsWith(`${section}/`);
 
 /**

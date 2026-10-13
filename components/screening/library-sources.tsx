@@ -131,10 +131,11 @@ export function rowIcon(row: LibraryRow, libraries: Array<Pick<ReaderLibrary, "l
   return ICON[row.what];
 }
 
-/** A row's name: all of a library is every record in it, a search with no words all its records. */
+/** A row's name: all of a library is every record in it, a search with no words all its records, records a library handed over the records from it. */
 export function useRowLabel() {
   const t = useTranslations("librarySources");
-  return (row: LibraryRow) => (row.what === "search" ? row.label || t("allRecords") : row.what === "all" ? t("everyRecord", { library: row.label }) : row.label);
+  return (row: LibraryRow) =>
+    row.what === "search" ? row.label || t("allRecords") : row.what === "all" ? t("everyRecord", { library: row.label }) : row.what === "records" && "records" in row.source && row.source.records.length > 1 ? t("recordsFrom", { library: row.label }) : row.label;
 }
 
 export function LibrarySources({
@@ -343,7 +344,7 @@ export function LibrarySources({
 const FILTER_ICON: Record<FilterKind, AppIcon> = { range: CalendarDays, type: FileText, topics: TopicsIcon, institution: Building2, country: Globe, author: UserRound, collections: Folder, study: ListChecks, sort: ArrowUpDown };
 
 /** What a row is, as chips on one line that scrolls sideways when crowded. */
-function RowFacts({ row, pasted, address }: { row: LibraryRow; pasted: boolean; address: string }) {
+export function RowFacts({ row, pasted, address }: { row: LibraryRow; pasted: boolean; address: string }) {
   const t = useTranslations("librarySources");
   const chips: ReactNode[] = [];
   if (pasted) chips.push(<Chip key="pasted" icon={Link2}>{t("fromAddress")}</Chip>);

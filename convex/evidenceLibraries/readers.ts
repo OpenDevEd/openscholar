@@ -28,7 +28,7 @@ export async function noteReader(ctx: MutationCtx, libraryId: Id<"evidenceLibrar
 }
 
 /** The library whose service credential this is, or a refusal. */
-async function credentialedLibrary(ctx: Pick<QueryCtx, "db">, libraryId: string, credentialDigest: string) {
+export async function credentialedLibrary(ctx: Pick<QueryCtx, "db">, libraryId: string, credentialDigest: string) {
   const id = ctx.db.normalizeId("evidenceLibraries", libraryId);
   if (!id || !(await findMatchingLibraryServiceCredential(ctx, { libraryId: id, credentialDigest }))) throw createError("UNAUTHENTICATED", "Invalid library service credential");
   return id;

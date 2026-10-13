@@ -15,7 +15,7 @@ import { screeningPaperInputValidator } from "../screening/validators";
 import { paperKey } from "../../lib/papers/paper-ref";
 import { LIBRARY_SOURCE_MAX } from "../../lib/evidence-libraries/source-address";
 import { LIBRARY_KEYS_WINDOW } from "../paperSets/libraryKeys";
-import { LIBRARY_ROWS_MAX, libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
+import { LIBRARY_ROWS_MAX, LIBRARY_SOURCE_RECORDS_MAX, handoffRecordsValidator, libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
 import {
   LIBRARY_BATCH_MAX,
   LibrarySourceError,
@@ -97,6 +97,20 @@ export const papers = internalAction({
     const target = await libraryTarget(ctx, libraryId);
     const records = await asked(libraryId, "records/batch", null, () => readLibraryRecords(fetch, target, keys));
     return records.map((record) => libraryPaper(libraryId, target.baseUrl, record));
+  },
+});
+
+/** Records by key as the person may read them, in the order given, as a hand-off's page lists them. */
+export const listed = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), keys: v.array(v.string()) },
+  returns: handoffRecordsValidator,
+  handler: async (ctx, { libraryId, userId, keys }): Promise<Infer<typeof handoffRecordsValidator>> => {
+    const target = await libraryTarget(ctx, libraryId);
+    const reader = await readerOf(ctx, userId);
+    const found = await asked(libraryId, "sources/resolve", reader, () => resolveLibrarySource(fetch, target, { reader, source: { records: keys.slice(0, LIBRARY_SOURCE_RECORDS_MAX) }, first: 1, last: LIBRARY_SOURCE_RECORDS_MAX }));
+    const records: LibraryRecord[] = [];
+    for (let at = 0; at < found.keys.length; at += LIBRARY_BATCH_MAX) records.push(...(await asked(libraryId, "records/batch", reader, () => readLibraryRecords(fetch, target, found.keys.slice(at, at + LIBRARY_BATCH_MAX)))));
+    return records.map((record) => ({ key: record.key, title: record.title || record.key, authors: record.creators.map((creator) => creator.name).slice(0, MAX_AUTHORS), year: record.year }));
   },
 });
 
@@ -219,6 +233,8 @@ export const describe = internalAction({
       const collection = "readerCollection" in source && source.readerCollection ? await readLibraryCollection(fetch, target, source.readerCollection, reader) : null;
       if (collection && !("search" in source)) return { row: { ...readerRow(libraryId, collection, collection.access === "owner" ? "yours" : collection.access ? "shared" : "other"), records: found.total } };
       if ("records" in source) {
+        // Records a library handed over are named after it (useRowLabel); one record, after its title.
+        if (found.total && source.records.length > 1) return { row: { libraryId, source, what: "records", label: target.name, records: found.total } };
         const [record] = found.total ? await readLibraryRecords(fetch, target, found.keys) : [];
         return record ? { row: { libraryId, source, what: "records", label: record.title || record.key, records: found.total } } : { error: "notFound" };
       }
