@@ -20,25 +20,35 @@ Reader
 - Leave out the name of a method, model, dataset or instrument, and any acronym, unless the finding cannot be understood without it. When you keep one, say what it is in a few words.
 
 Shape
-- Give the edition a specific short title, a summary of one or two sentences, and a Markdown body with a heading for each subject.
+- Give the edition a specific short title, a summary of one or two sentences, and a Markdown body with a heading for each section.
 - The title and the summary are plain text: no links, no citations, no Markdown.
 - Write each heading as a second-level heading (##). Use no other heading level.
 - Do not repeat the title as a heading in the body.
-- Group the publications by subject and say how the studies under a subject relate. Do not write a title, byline or summary block for each publication.
+- After the reviews, group the single studies by subject. Do not write a title, byline or summary block for each publication.
 - A subject has one section. Put everything about it there, and never return to it under a later heading. Two headings must not cover the same subject from two angles.
-- Use at most seven sections. Fold a subject with one or two studies into the nearest broader one.
+- A section covers one subject a reader would look for, never a family of subjects such as "Learning and transfer". A study that fits no section stays out of the text; the edition's list shows it. Never widen a heading to make room for a study.
+- Use at most seven sections in all.
+- Open each subject section with one or two sentences on what its studies show together: where they agree, where they disagree, and, when the records make it plain, what none of them covered, such as a place, an age group or a long-term outcome. Cite the studies each of these sentences draws on. Then give the studies, one or two sentences each.
 - A heading names its subject in the few plain words a reader would look for, such as "Agriculture", "Flooding" or "Adaptation plans". It is a noun phrase, never a sentence, a finding or a verdict.
 - When the studies in a section are told apart by where they are set, give each country or region its own paragraph and start it with the place in bold as a run-in, such as "**Malawi.**", then the text on the same line. This is the only use of bold. Leave the run-in out of a section whose studies are not told apart by place.
 
+Choosing and describing studies
+- Name each study's design in the sentence that introduces it, from its studyType when it has one: a meta-analysis of 17 trials, a randomised trial in 40 schools, a survey of 300 teachers, interviews with 12 nurses. Give the limit its record states, such as no comparison group, one class or self-reported outcomes.
+- Report a study that found no effect, or a harm, as plainly as one that found a gain.
+- When you choose among studies, prefer ones from different countries, low- and middle-income countries among them, over several from one place.
+- A publication with openAccess true can be read without a subscription. At least half the publications you cite are open access when the period has enough of them; between two that would tell the reader as much, cite the open one.
+
 Reviews and syntheses
 - A publication whose studyType is ${SYNTHESIS_TYPES.join(", ")} is a review or synthesis: its library read it. Treat no other publication as one, whatever its title says, so the digest and the library's list of reviews and syntheses agree.
-- When the period has any, the first section is headed "Reviews and syntheses", put into the digest's language, and they are written about there and under no other heading.
-- Cite every meta-analysis and review of reviews you were given. For each, say what it pooled or gathered, as far as its record says: how many studies or participants, and which outcome. Then say what it found.
-- Then the other reviews. Cite every one when there are six or fewer. When there are more, write about the six whose records report the most and leave the rest to the edition's list, which shows every one.
-- This section is at most a third of the body, unless the meta-analyses alone need more.
+- When the period has meta-analyses, the first section is headed "Meta-analyses", put into the digest's language, and holds them alone. Cite every one. For each, say what it pooled, as far as its record says: how many studies or participants, and which outcome. Then say what it found.
+- When the period has other reviews and syntheses, the next section is headed "Reviews", put into the digest's language. Reviews of reviews come first, and every one is cited, saying what it gathered and what it found. Then systematic reviews, then the rest. Cite every review when there are six or fewer besides the reviews of reviews. When there are more, write about the six whose records report the most and leave the rest to the edition's list, which shows every one.
+- Reviews and syntheses are written about in these two sections and under no other heading, and no single study appears in them.
+- Together the two sections are at most a third of the body, unless the meta-analyses alone need more.
+
+Citing and ending
 - Cite with a normal Markdown link such as [Author, year](/lib/ABCDEFGH), using only supplied item keys. Use no other links and no images.
 - Cite a publication where a paragraph first draws on it. Do not repeat the same citation after each sentence about that publication.
-- The body ends with its last theme. Do not add a closing section or paragraph of any kind: no limits of the records, no note on missing abstracts or thin metadata, no gaps in the evidence, no suggestions for future research, no conclusion.
+- The body ends with its last theme. Do not add a closing section or paragraph of any kind: no limits of the records, no note on missing abstracts or thin metadata, no general gaps in the evidence, no suggestions for future research, no conclusion.
 - Never comment on the supplied data itself. Leave out a publication whose record says too little to write about.
 - Do not close a paragraph or a section with advice of your own. No sentence saying what planners, teachers, policymakers or researchers need to do or should do. Report a recommendation only when a record makes it, and say whose it is.
 
