@@ -38,8 +38,9 @@ const ROW = 57;
 /**
  * The libraries the person reads and what each lists for them, and where the list is: the library, the filter, the
  * words, the page, and the sources held outside the lists: the ones the form `opened` with, and the ones pasted.
- * Kept by the form, so switching kinds keeps it. Read with the rest of the form, so switching to them moves nothing;
- * a library reached only by its address is read when it is.
+ * Kept by the form, so switching kinds keeps it. The libraries read and the ones the form opened on are read with the
+ * rest of the form, so switching to them moves nothing; a library reached by a pasted address is read before its row
+ * shows, so its list comes with it.
  */
 export function useLibrarySources(opened: HeldRow[] = []) {
   const workspaceId = useWorkspace();
@@ -47,16 +48,16 @@ export function useLibrarySources(opened: HeldRow[] = []) {
   const { userId } = useAuth();
   const { data: listed } = useProtectedQuery(api.evidenceLibraries.readers.list, inWorkspace(workspaceId, {}));
   const read = useWorkspaceAction(api.evidenceLibraries.library.sources);
-  const [pasted, setPasted] = useState<HeldRow[]>([]);
-  const held = [...pasted, ...opened.filter((one) => !pasted.some((other) => rowKey(other.row) === rowKey(one.row)))];
-  const ids = listed?.map((library) => library.libraryId);
-  const extra = [...new Set(held.map((one) => one.library.libraryId))].filter((id) => !ids?.includes(id));
-  const options = { revalidateOnFocus: false } as const;
-  const known = useSWR(workspaceId && userId && ids ? ["library-sources", userId, ...ids] : null, () => (ids!.length ? read({ libraryIds: ids! }) : []), options);
-  const more = useSWR(workspaceId && userId && ids && extra.length ? ["library-sources", userId, ...extra] : null, () => read({ libraryIds: extra }), options);
+  const [pasted, setPasted] = useState<Array<{ held: HeldRow; contents: LibraryContents | null }>>([]);
+  const held = [...pasted.map((one) => one.held), ...opened.filter((one) => !pasted.some((other) => rowKey(other.held.row) === rowKey(one.row)))];
+  // The libraries of the sources the form opened with are read with the rest; one held later was read when it was pasted.
+  const [openedOn] = useState(() => opened.map((one) => one.library.libraryId));
+  const ids = listed && [...new Set([...listed.map((library) => library.libraryId), ...openedOn])];
+  const known = useSWR(workspaceId && userId && ids ? ["library-sources", userId, ...ids] : null, () => (ids!.length ? read({ libraryIds: ids! }) : []), { revalidateOnFocus: false });
   // A library that didn't answer is one that couldn't list; the form doesn't wait on it again.
-  const failed = (libraryIds: string[] = []) => libraryIds.map((libraryId) => ({ libraryId, rows: null, problem: "unreadable" as const }) as LibraryContents);
-  const contents = [...(known.data ?? (known.error ? failed(ids) : [])), ...(more.data ?? (more.error ? failed(extra) : []))];
+  const failed = (libraryId: string) => ({ libraryId, rows: null, problem: "unreadable" as const }) as LibraryContents;
+  const listedContents = known.data ?? (known.error ? (ids ?? []).map(failed) : []);
+  const contents = [...listedContents, ...pasted.flatMap((one) => (one.contents && !listedContents.some((other) => other.libraryId === one.contents!.libraryId) ? [one.contents] : []))];
   // The owners' photos are fetched with the lists, so their faces are there when the list first shows.
   for (const row of contents.flatMap((one) => one.rows ?? [])) if (row.owner?.image) preload(row.owner.image, { as: "image" });
   const libraries: ReaderLibrary[] = [...(listed ?? []), ...held.filter((one, at) => !listed?.some((library) => library.libraryId === one.library.libraryId) && held.findIndex((other) => other.library.libraryId === one.library.libraryId) === at).map(({ library }) => ({ ...library, ways: [], role: null }))];
@@ -79,8 +80,12 @@ export function useLibrarySources(opened: HeldRow[] = []) {
     page,
     setPage,
     held,
-    /** Holds a source, once, first of its library's. */
-    hold: (one: HeldRow) => setPasted((rows) => [one, ...rows.filter((other) => rowKey(other.row) !== rowKey(one.row))]),
+    /** Holds a source, once, first of its library's, once the list of a library not read yet has come. */
+    hold: async (one: HeldRow) => {
+      const libraryId = one.library.libraryId;
+      const listing = contents.some((other) => other.libraryId === libraryId) ? null : ((await read({ libraryIds: [libraryId] }).catch(() => null))?.[0] ?? failed(libraryId));
+      setPasted((rows) => [{ held: one, contents: listing ?? rows.find((other) => other.held.library.libraryId === libraryId)?.contents ?? null }, ...rows.filter((other) => rowKey(other.held.row) !== rowKey(one.row))]);
+    },
   };
 }
 export type LibrarySourceState = ReturnType<typeof useLibrarySources>;
@@ -189,7 +194,7 @@ export function LibrarySources({
       if ("error" in found) return setProblem(t(`error.${found.error}`));
       // A pasted row leads its library's list, once, and is picked.
       const one = { library: found.library, row: found.row };
-      state.hold(one);
+      await state.hold(one);
       state.setLibraryId(found.row.libraryId);
       setFilter("all");
       setWords("");
