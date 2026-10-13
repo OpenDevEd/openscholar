@@ -5,6 +5,7 @@ import { api } from "@/convex/_generated/api";
 import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
 import { searchFields, type SavedSearch } from "./research/records";
 import { authorMetadata } from "./library/paper-metadata";
+import { openalexAddress, openalexWorkOfRow, paperKeyOf } from "./papers/paper-ref";
 
 type Cell = string | number | boolean | string[];
 type Row = Record<string, Cell>;
@@ -44,7 +45,8 @@ function libraryRow(item: Doc<"libraryItems">) {
     pdfUrl: item.pdfUrl ?? "",
     workType: item.workType ?? "",
     metadataRecoveredAt: item.metadataRecoveredAt === undefined ? "" : new Date(item.metadataRecoveredAt).toISOString(),
-    openalexId: item.openalexId,
+    openalexId: openalexAddress(openalexWorkOfRow(item)) ?? "",
+    paper: paperKeyOf(item),
     publicationYear: item.publicationYear ?? "",
     rating: item.rating ?? "",
     savedAt: new Date(item.savedAt).toISOString(),
@@ -90,7 +92,7 @@ function jsonList<Item>(row: (item: Item) => Row) {
 export const exportFiles = {
   library: {
     name: (at: Date) => `library-export-${at.toISOString().slice(0, 10)}`,
-    csv: csvFile(Object.keys(libraryRow({ savedAt: 0, updatedAt: 0 } as Doc<"libraryItems">)), libraryRow),
+    csv: csvFile(Object.keys(libraryRow({ openalexId: "", savedAt: 0, updatedAt: 0 } as Doc<"libraryItems">)), libraryRow),
     json: {
       contentType: "application/json; charset=utf-8",
       start: (exportedAt: Date) => `{\n  "exportedAt": ${JSON.stringify(exportedAt.toISOString())},\n  "items": [`,

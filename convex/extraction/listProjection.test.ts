@@ -86,7 +86,7 @@ async function seedProjectionFixture(t: ReturnType<typeof convexTest>): Promise<
 
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:list-projection",
+      openalexId: "https://openalex.org/W77",
       title: "The Café Trial",
       abstract: "A study of caffeine outcomes in a randomized setting.",
       authors: ["Jane Doe", "John Roe"],
@@ -130,7 +130,7 @@ describe("paper list projection write maintenance", () => {
       await recomputePaperListProjection(ctx, paperId);
     });
     const paper = await t.run(ctx => ctx.db.get("extractionPapers", paperId));
-    expect(paper?.searchText).toBe(`${"a".repeat(399)} oa list-projection ${"b".repeat(239)}`);
+    expect(paper?.searchText).toBe(`${"a".repeat(399)} w77 ${"b".repeat(239)}`);
     expect(paper?.questionAnswerTokens).toEqual([answerToken("q1", `${"b".repeat(239)}𠮷`)]);
   });
 
@@ -155,7 +155,7 @@ describe("paper list projection write maintenance", () => {
     expect(await t.run(ctx => ctx.db.get("extractionPapers", paperId))).toEqual(before);
     await t.mutation(internal.migrations.extractionSearch.papers, { cursor: null, dryRun: false });
     const after = await t.run(ctx => ctx.db.get("extractionPapers", paperId));
-    expect(after).toEqual({ ...before, sortTitle: "مدارس المغرب", searchText: "مدارس المغرب oa list-projection 山田太郎 शिक्षा 学校教育", questionAnswerTokens: [answerToken("q1", "学校教育")] });
+    expect(after).toEqual({ ...before, sortTitle: "مدارس المغرب", searchText: "مدارس المغرب w77 山田太郎 शिक्षा 学校教育", questionAnswerTokens: [answerToken("q1", "学校教育")] });
     expect(await t.run(ctx => ctx.db.get("extractionResults", resultId))).toEqual(answer);
     await t.mutation(internal.migrations.extractionSearch.papers, { cursor: null, dryRun: false });
     expect(await t.run(ctx => ctx.db.get("extractionPapers", paperId))).toEqual(after);

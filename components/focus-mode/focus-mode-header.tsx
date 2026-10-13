@@ -21,7 +21,7 @@ import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { useEffectiveRating } from "@/components/results-contexts";
 import type { PaperResult } from "@/lib/types";
-import { workUrl } from "@/lib/openalex/work-id";
+import { paperPage, toPaperKey } from "@/lib/papers/paper-ref";
 
 export interface FocusModeHeaderProps {
   currentPaper: PaperResult;
@@ -63,8 +63,9 @@ export function FocusModeHeader({
   tAccessibility,
 }: FocusModeHeaderProps) {
   const effectiveRating = useEffectiveRating(currentPaper.id);
-  // A paper with no OpenAlex record, such as one an extraction read from Zotero, has nothing to rate, save or open there.
-  const onOpenAlex = workUrl(currentPaper.id) !== null;
+  // Any paper named by its source is rated and saved; it opens where its source keeps it, if anywhere.
+  const named = toPaperKey(currentPaper.id) !== null;
+  const page = paperPage(currentPaper.id);
   const hasTranslation = !!translatedContent && !translatedContent.noTranslationNeeded;
   const previous = (
     <Button variant="outline" size="icon-sm" onClick={onGoToPrevious} disabled={currentIndex === 0}>
@@ -105,7 +106,7 @@ export function FocusModeHeader({
           ) : null}
           <div className="ml-auto md:hidden">{close}</div>
           {/* Star rating buttons - hidden on mobile */}
-          {onOpenAlex ? (
+          {named ? (
             <div className="hidden md:flex items-center gap-0.5">
               <div className="flex items-center gap-1">
                 <button
@@ -191,7 +192,7 @@ export function FocusModeHeader({
         {/* Second row: actions. Phones show the rating and save on the left and the tools on the right. */}
         <div className="flex flex-wrap items-center gap-1 md:flex-nowrap md:justify-end md:mr-8">
           {/* Compact rating selector - only on mobile */}
-          {onOpenAlex ? (
+          {named ? (
             <div className="flex items-center gap-1 md:hidden">
               <RatingSelector paper={currentPaper} variant="compact" />
               <SaveControl paper={currentPaper} compact />
@@ -260,12 +261,12 @@ export function FocusModeHeader({
             ) : null}
             <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
             <div className="flex items-center gap-1">
-              {onOpenAlex ? (
+              {page ? (
                 <div className="flex items-center gap-1">
                   <Button
                     variant="outline"
                     size="icon-sm"
-                    onClick={() => window.open(currentPaper.id, "_blank")}
+                    onClick={() => window.open(page!, "_blank")}
                   >
                     <ExternalLink className="h-3 w-3" />
                   </Button>

@@ -16,6 +16,8 @@ import { checkRange, type SearchPaper } from "./search";
 import { authorMetadata, sourceMetadata } from "../../lib/library/paper-metadata";
 import { screeningRevision } from "../screening/accounting";
 import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
+import { paperKeyOf } from "../../lib/papers/paper-ref";
+import { findItem } from "../library/find";
 
 type PaperSet = Infer<typeof paperSetValidator>;
 export type HeldSet = Exclude<PaperSet, { kind: "search" } | { kind: "zotero" }>;
@@ -25,7 +27,8 @@ const PAGE = 100;
 const PAGE_BYTES = 8 * 1024 * 1024;
 
 const fromLibrary = (item: Doc<"libraryItems">): SearchPaper => ({
-  openalexId: item.openalexId,
+  paper: paperKeyOf(item),
+  ...(item.crossRefs ? { crossRefs: item.crossRefs } : {}),
   title: item.title,
   ...(item.abstract ? { abstract: item.abstract } : {}),
   ...sourceMetadata(item),
@@ -39,8 +42,20 @@ const fromLibrary = (item: Doc<"libraryItems">): SearchPaper => ({
 
 const fromResult = (paper: Doc<"screeningResults">): SearchPaper => ({
   ...sourceMetadata(paper),
-  openalexId: paper.openalexId, title: paper.title, abstract: paper.abstract, authors: paper.authors, publicationYear: paper.publicationYear, doi: paper.doi, venue: paper.venue, citedByCount: paper.citedByCount,
+  paper: paperKeyOf(paper), ...(paper.crossRefs ? { crossRefs: paper.crossRefs } : {}), title: paper.title, abstract: paper.abstract, authors: paper.authors, publicationYear: paper.publicationYear, doi: paper.doi, venue: paper.venue, citedByCount: paper.citedByCount,
 });
+
+/** Papers the workspace's library holds, by key, as a set reads them; a key it doesn't hold is left out. A step reads `SAVED_A_READ` at most. */
+export const saved = internalQuery({
+  args: { workspaceId: v.id("workspaces"), keys: v.array(v.string()) },
+  returns: v.array(screeningPaperInputValidator),
+  handler: async (ctx, { workspaceId, keys }) => {
+    if (keys.length > SAVED_A_READ) throw new Error(`Saved papers are read ${SAVED_A_READ} at a time.`);
+    return (await Promise.all(keys.map((key) => findItem(ctx, workspaceId, key)))).flatMap((item) => (item ? [fromLibrary(item)] : []));
+  },
+});
+// Read whole, unlike a page: at the largest a saved paper may be (about 400 KB), twenty fit well inside a transaction.
+export const SAVED_A_READ = 20;
 
 /** One page of a held set's papers, in its order. Another workspace's collection or another person's job reads as not found. */
 export const page = internalQuery({

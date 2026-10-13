@@ -162,6 +162,7 @@ vi.mock("@/lib/store", () => ({
 
 
 vi.mock("@/lib/library/library-item-to-paper-result", () => ({
+  libraryCardId: (item: { openalexId: string }) => item.openalexId,
   libraryItemToPaperResult: (item: {
     openalexId: string;
     title: string;

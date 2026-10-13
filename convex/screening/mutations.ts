@@ -1,5 +1,6 @@
 import { internalMutation } from "../lib/functions";
-import { identityFromStored } from "../lib/paperRef";
+import { identityOf } from "../lib/paperRef";
+import { paperIdOf, parsePaperKey } from "../../lib/papers/paper-ref";
 import { internal } from "../_generated/api";
 import { v, type Infer, type ObjectType } from "convex/values";
 import { sourceMetadata } from "../../lib/library/paper-metadata";
@@ -38,6 +39,8 @@ import { spendingRoom } from "../billing/memberCaps";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { personalWorkspaceOf, requireMakerOrAdmin, type InWorkspace } from "../workspaces/actor";
 import { assistantMutation, defineUserMutation, userMutation } from "../lib/userActions";
+import { requirePaperKey } from "../library/find";
+import { resultOf } from "./access";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */
 async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
@@ -187,18 +190,19 @@ export const fillScreeningJob = internalMutation({
     ended: v.boolean(),
   },
   returns: v.null(),
-  handler: async (ctx, { jobId, papers: given, read, resume, ended }) => {
+  handler: async (ctx, { jobId, papers: sent, read, resume, ended }) => {
+    const given = sent.map(keyed);
     const reading = await ctx.db.get("screeningJobs", jobId);
     if (!reading?.reading || reading.status !== "processing") return null;
     // The person may have been suspended while the papers were read.
     await requireActiveUser(ctx, reading.createdBy);
     const place = reading.readPlace ?? { read: 0, papers: 0 };
     // A paper an earlier step took already (OpenAlex can list one on two pages) is screened, and paid for, once.
-    const held = await Promise.all(given.map((paper) => ctx.db.query("screeningResults").withIndex("by_job_openalexId", (q) => q.eq("jobId", jobId).eq("openalexId", paper.openalexId)).first()));
+    const held = await Promise.all(given.map((paper) => resultOf(ctx, jobId, paper.paper)));
     const papers = given.filter((_, i) => held[i] === null);
     // Papers its search's page answered every question for cost nothing.
     const screening = (await ctx.db.get("screenings", reading.screeningId))!;
-    const reused = reading.set?.kind === "search" ? await answeredFully(ctx, screening, reading.questions.map((q) => q.question), papers.map((paper) => paper.openalexId)) : new Set<string>();
+    const reused = reading.set?.kind === "search" ? await answeredFully(ctx, screening, reading.questions.map((q) => q.question), papers.map((paper) => paperIdOf(paper.paper))) : new Set<string>();
     // The papers it took that cost credits and aren't done, so not paid for yet, and this step's: as a job made with all of them is checked.
     // Reused papers count as done only once bookkept, so taking them all as done-first can only overstate what's unpaid.
     // Read only for a job with no hold: the bookkeeping worker rewrites the progress row as papers finish, and a step that read it conflicted with it (#796).
@@ -258,6 +262,8 @@ export const searchTextOf = (paper: { title: string; authors?: string[] }) => [p
 /** Papers whose results one transaction creates: about six index reads each, well inside 4,096. */
 const CREATE_BATCH = 250;
 type PaperInput = Infer<typeof screeningPaperInputValidator>;
+/** A paper as a job holds it: named by its key, however its source gave it. */
+const keyed = (paper: PaperInput): PaperInput => ({ ...paper, paper: requirePaperKey(paper.paper) });
 
 /**
  * Creates a batch of a job's results, waiting for their person's paper slots, starts as many
@@ -266,19 +272,20 @@ type PaperInput = Infer<typeof screeningPaperInputValidator>;
  * costs nothing: the bookkeeping worker scores and counts it.
  */
 async function createResults(ctx: MutationCtx, job: Doc<"screeningJobs">, papers: PaperInput[], createdAt: number, answered?: Set<string>) {
-  const batch = papers.slice(0, CREATE_BATCH);
+  const batch = papers.slice(0, CREATE_BATCH).map(keyed);
   const screening = (await ctx.db.get("screenings", job.screeningId))!;
-  const ids = batch.map((paper) => paper.openalexId);
+  // A search's page keeps its answers under the paper's address.
+  const ids = batch.map((paper) => paperIdOf(paper.paper));
   // Given which papers are answered already, as their step found them; a later batch looks for itself.
   const reused = answered ? new Set(ids.filter((id) => answered.has(id))) : job.set?.kind === "search" ? await answeredFully(ctx, screening, job.questions.map((q) => q.question), ids) : new Set<string>();
   for (const paper of batch) {
-    const done = reused.has(paper.openalexId);
+    const done = reused.has(paperIdOf(paper.paper));
     await ctx.db.insert("screeningResults", {
       ...sourceMetadata(paper),
       jobId: job._id,
-      openalexId: paper.openalexId,
-      // The paper by its source, kept beside `openalexId` until every row has it (convex/migrations/paperIdentity.ts).
-      ...identityFromStored(paper),
+      // The paper by its source (plans/evidence-library-sources); `openalexId` holds its address until the field goes.
+      openalexId: paperIdOf(paper.paper),
+      ...identityOf(parsePaperKey(paper.paper)!, { openalexId: paper.crossRefs?.openalexId, doi: paper.doi ?? paper.crossRefs?.doi }),
       title: paper.title,
       abstract: paper.abstract,
       authors: paper.authors?.slice(0, MAX_AUTHORS),

@@ -19,6 +19,7 @@ import { convertUsdToCredits, PAPER_PDF_CREDITS } from "../../lib/pricing";
 import { PDF_PAGE_TOKENS } from "../../lib/assistant/files";
 import { paperPdf } from "../lib/paperPdfs";
 import { requirePdfModel } from "../assistant/files";
+import { paperIdOf } from "../../lib/papers/paper-ref";
 
 export const searchAction = defineUserAction({
   path: "research/papers:search",
@@ -136,7 +137,7 @@ export const getAction = defineUserAction({
     });
     const funders = (work.funders ?? []).flatMap(({ id: funder, display_name: name }) => (funder && name ? [{ name: name.slice(0, NAME_MAX), id: funder.split("/").at(-1)! }] : []));
     return {
-      id: paper.openalexId,
+      id: paperIdOf(paper.paper),
       title: paper.title,
       authors: authors.slice(0, AUTHORS_LISTED),
       ...(authors.length > AUTHORS_LISTED ? { moreAuthors: authors.length - AUTHORS_LISTED } : {}),
@@ -198,7 +199,8 @@ export const readPdfAction = defineUserAction({
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const work = await readWork<Work>(path, "id,display_name,title,doi,best_oa_location,primary_location,has_content", spender(ctx, person.clerkId));
     if (!work) throw createError("NOT_FOUND", "OpenAlex has no paper by that ID.");
-    const { openalexId, title, pdfUrl } = toPaper(work);
+    const { paper, title, pdfUrl } = toPaper(work);
+    const openalexId = paperIdOf(paper);
     // The person was asked about the paper by the title the model gave: one that isn't this ID's reads nothing.
     if (asked && !sameTitle(asked, title)) throw createError("VALIDATION_ERROR", `${id} is "${title}" in OpenAlex, not "${asked}". Check the paper's ID, and read it again.`);
     // A chat pays once for a paper's stored PDF. A read outside one pays each time.
@@ -210,7 +212,7 @@ export const readPdfAction = defineUserAction({
     if ("error" in got) throw createError(got.credits ? "INSUFFICIENT_CREDITS" : "VALIDATION_ERROR", `${got.error} Ask the person to attach its PDF to the chat.`);
     // A paper read from OpenAlex's copy alone is cited by its record, the only address of it a person can open.
     if (!got.key) throw createError("VALIDATION_ERROR", "This paper's PDF can't be kept to send. Ask the person to attach its PDF to the chat.");
-    return { id: openalexId, title, paperPdf: pdfUrl ?? workUrl(openalexId) ?? openalexId, stored: got.key };
+    return { id: openalexId, title, paperPdf: pdfUrl ?? openalexId, stored: got.key };
   },
 });
 export const readPdf = userAction(readPdfAction);

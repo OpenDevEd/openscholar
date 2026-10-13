@@ -242,7 +242,7 @@ describe("a job of any size", () => {
 
   it("a read that fails after earlier steps skips the papers they took that hadn't started", async () => {
     const { t, userId } = await setup({ saved: 0, inCollection: 0 });
-    const papers = Array.from({ length: 200 }, (_, i) => ({ openalexId: W(i + 1), title: `Paper ${i + 1}` }));
+    const papers = Array.from({ length: 200 }, (_, i) => ({ paper: W(i + 1), title: `Paper ${i + 1}` }));
     const { jobId } = await t.mutation(internal.screening.mutations.openScreeningJob, { userId, author: "user", set: { kind: "saved" }, first: 1, last: 400, papers: 400, ...job, saveTo: { kind: "none" } });
     await t.mutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: 200, ended: false });
     await t.mutation(internal.screening.mutations.failScreeningRead, { jobId, reason: "OpenAlex couldn't return these papers (503)." });
@@ -273,12 +273,12 @@ describe("a job on a search whose page already answered some papers", () => {
   it("takes them step after step for nothing, before they're counted as done, with no credits left", async () => {
     const { t, alice, userId } = await setup({ credits: 0 });
     await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: [{ search }], shortcuts: [], ratings: [] });
-    const papers = Array.from({ length: 400 }, (_, i) => ({ openalexId: W(i + 1), title: `Paper ${i + 1}` }));
+    const papers = Array.from({ length: 400 }, (_, i) => ({ paper: W(i + 1), title: `Paper ${i + 1}` }));
     await t.run(async (ctx) => {
       const rowWorkspace = await personalWorkspaceOf(ctx, userId);
       const row = (await ctx.db.query("searches").withIndex("by_workspace_and_localId", (q) => q.eq("workspaceId", rowWorkspace).eq("localId", search.id)).unique())!;
       const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), searchId: row._id, version: 0, createdAt: 1 });
-      for (const paper of papers) await answerPaper(ctx, screeningId, paper.openalexId, [{ question: "Randomized?", response: true }], "model", 1);
+      for (const paper of papers) await answerPaper(ctx, screeningId, paper.paper, [{ question: "Randomized?", response: true }], "model", 1);
     });
 
     const { jobId } = await t.mutation(internal.screening.mutations.openScreeningJob, { userId, author: "user", set: { kind: "search", searchId: search.id }, first: 1, last: 400, papers: 400, ...job, saveTo: { kind: "none" } });
@@ -294,7 +294,7 @@ describe("a job on a search whose page already answered some papers", () => {
     // Credits for the one new paper only: the two already answered cost nothing.
     const { t, alice, userId, results, answerAll, read } = await setup({ credits: PER_PAPER });
     await alice.mutation(api.research.records.importBatch, { accountId: "alice", searches: [{ search }], shortcuts: [], ratings: [] });
-    const papers = [1, 2, 3].map((i) => ({ openalexId: W(i), title: `Paper ${i}` }));
+    const papers = [1, 2, 3].map((i) => ({ paper: W(i), title: `Paper ${i}` }));
     // The search's page answered W1 (by a person) and W2 (by the model); W3 is new.
     await t.run(async (ctx) => {
       const rowWorkspace = await personalWorkspaceOf(ctx, userId);
@@ -354,7 +354,7 @@ describe("Screen all on a Zotero collection (#328)", () => {
 
     const { jobId } = await screen({ set, first: 2, last: 3, ...job, saveTo: { kind: "none" } });
     const papers = await results(jobId);
-    expect(papers.map((paper) => paper.openalexId)).toEqual(["zotero:user:ITEM0002", "zotero:user:ITEM0003"]);
+    expect(papers.map((paper) => paper.openalexId)).toEqual(["zotero:user:15294942:ITEM0002", "zotero:user:15294942:ITEM0003"]);
     expect(papers[0]).toMatchObject({ title: "Zotero paper 2", abstract: "Tutors help", authors: ["Ada Okafor"], doi: "10.1/2", venue: "A journal", publicationYear: 2021 });
     // The person's own library, that collection's items and not its sub-collections', from the second on: its first read before the job is made, then the job's.
     expect(requests.map((url) => [url.pathname, url.searchParams.get("start"), url.searchParams.get("limit")])).toEqual([

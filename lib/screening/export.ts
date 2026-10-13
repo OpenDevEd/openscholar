@@ -8,6 +8,7 @@ import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { SearchSnapshot } from "@/convex/paperSets/openalex";
 import { sourceMetadata, type PaperSourceMetadata } from "@/lib/library/paper-metadata";
+import { openalexAddress, openalexWorkOf, type CrossRefs } from "../papers/paper-ref";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,7 +47,9 @@ export interface ScreeningExportResult extends PaperSourceMetadata {
   venue?: string;
   citedByCount?: number;
   resultId?: string;
-  openalexId: string;
+  /** The paper's key (lib/papers/paper-ref.ts), and what finds it elsewhere. */
+  paper: string;
+  crossRefs?: CrossRefs;
   title: string;
   authors?: string[];
   publicationYear?: number;
@@ -105,7 +108,7 @@ function screeningExportName(job: Pick<ScreeningExportJob, "createdAt" | "status
 
 /** The columns of the results table: the paper, an answer per question, then the scoring. */
 function screeningHeaders(questions: Questions): string[] {
-  return ['Title', 'Authors', 'Year', 'DOI', 'OpenAlex ID', ...questions.map((q) => `${q.key}: ${q.question}`), 'Score', 'Stars', 'Qualified', 'Status', 'Outcome', 'Result ID', 'Model', 'Completed at', ...questions.flatMap((q) => [`${q.key}: model answer`, `${q.key}: model confidence`, `${q.key}: decided by`, `${q.key}: decided at`]), 'Authors (unparsed)', 'Venue', 'Citation count', 'Work type', 'Open access', 'Access status', 'Open access URL', 'PDF URL'];
+  return ['Title', 'Authors', 'Year', 'DOI', 'Paper', 'OpenAlex ID', ...questions.map((q) => `${q.key}: ${q.question}`), 'Score', 'Stars', 'Qualified', 'Status', 'Outcome', 'Result ID', 'Model', 'Completed at', ...questions.flatMap((q) => [`${q.key}: model answer`, `${q.key}: model confidence`, `${q.key}: decided by`, `${q.key}: decided at`]), 'Authors (unparsed)', 'Venue', 'Citation count', 'Work type', 'Open access', 'Access status', 'Open access URL', 'PDF URL'];
 }
 
 /** One result under those columns. Score and stars stay numbers, for a spreadsheet. */
@@ -115,7 +118,8 @@ function screeningCells(questions: Questions, result: ScreeningExportResult): Ar
     result.authors?.join('; ') ?? '',
     result.publicationYear?.toString() ?? '',
     result.doi ?? '',
-    result.openalexId,
+    result.paper,
+    openalexAddress(openalexWorkOf(result.paper, result.crossRefs)) ?? '',
     ...questions.map((q) => formatScreeningAnswer(result.answers?.[q.key])),
     result.score ?? '',
     result.stars ?? '',
@@ -154,7 +158,8 @@ export const screeningItems = (questions: Questions, job: Run) => {
   csv: (result: ScreeningExportResult, index: number) => `\n${csvLine([...screeningCells(questions, result), ...(index === 0 ? provenance : provenance.map((_, part) => part === 0 ? JSON.stringify({ jobId: job._id ?? null, revision: job.revision ?? null }) : ''))])}`,
   json: (result: ScreeningExportResult, index: number) =>
     `${index === 0 ? '' : ','}\n    ${indented(JSON.stringify({
-      openalexId: result.openalexId,
+      paper: result.paper,
+      openalexId: openalexAddress(openalexWorkOf(result.paper, result.crossRefs)),
       title: result.title,
       ...sourceMetadata(result),
       venue: result.venue ?? null,

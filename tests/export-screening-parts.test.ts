@@ -21,7 +21,7 @@ it('downloads a 4,500-paper job as three workbooks holding every result once', a
       if (!args.paginationOpts) return job;
       const from = Number(args.paginationOpts.cursor ?? 0);
       const to = Math.min(total, from + args.paginationOpts.numItems);
-      const page = Array.from({ length: to - from }, (_, i) => ({ openalexId: `W${from + i}`, title: `Paper ${from + i}`, status: 'completed', answers: { q1: true }, score: 1, stars: 1, qualified: true }));
+      const page = Array.from({ length: to - from }, (_, i) => ({ paper: `openalex:W${from + i}`, title: `Paper ${from + i}`, status: 'completed', answers: { q1: true }, score: 1, stars: 1, qualified: true }));
       return { page, isDone: to >= total, continueCursor: String(to) };
     }),
   } as unknown as ConvexReactClient;

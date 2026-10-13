@@ -7,13 +7,13 @@ import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
-import { readableJob } from "./access";
+import { readableJob, resultOf } from "./access";
 import { searchTerms } from "../lib/searchText";
 import { assistantMutation, assistantQuery, defineUserMutation, defineUserQuery, reversedBy, userMutation, userQuery } from "../lib/userActions";
 import { answerAt, answerPaper, paperAnswers, restoreAnswer, restoreModelAnswer } from "../research/answers";
 import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadata } from "../../lib/library/paper-metadata";
-import { workUrl } from "../../lib/openalex/work-id";
+import { pageIdOf, paperKeyOf, toPaperKey } from "../../lib/papers/paper-ref";
 import { account, answersNow, jobAnswers, shown, stood, withDeltas } from "./accounting";
 import { progressOf, shelve, withMoved } from "./bookkeeping";
 import { moveResultAnswers } from "./drain";
@@ -28,7 +28,8 @@ const PAGE_BYTES = 4 * 1024 * 1024;
 async function paperOf(ctx: Pick<QueryCtx, "db">, job: Doc<"screeningJobs">, result: Doc<"screeningResults">, outcome: Infer<typeof screeningOutcomeValidator>) {
   return {
     ...sourceMetadata(result),
-    openalexId: result.openalexId,
+    paper: paperKeyOf(result),
+    ...(result.crossRefs ? { crossRefs: result.crossRefs } : {}),
     title: result.title,
     abstract: result.abstract,
     authors: result.authors,
@@ -64,16 +65,15 @@ export const listAction = defineUserQuery({
 export const list = userQuery(listAction);
 export const listForAssistant = assistantQuery(listAction);
 
-/** A job's result for a paper, by its OpenAlex ID as the job keeps it or in its short form ("W123"), which the assistant gives as often. */
+/** A job's result for a paper, by its key or, for an OpenAlex paper, its ID in any form, which the assistant gives as often. */
 async function screened(ctx: Pick<QueryCtx, "db">, jobId: Id<"screeningJobs">, paperId: string) {
-  const byId = (openalexId: string) => ctx.db.query("screeningResults").withIndex("by_job_openalexId", (q) => q.eq("jobId", jobId).eq("openalexId", openalexId)).unique();
-  const whole = workUrl(paperId);
-  return (await byId(paperId)) ?? (whole && whole !== paperId ? await byId(whole) : null);
+  const key = toPaperKey(paperId);
+  return key ? await resultOf(ctx, jobId, key) : null;
 }
 
 export const getAction = defineUserQuery({
   path: "screening/papers:get",
-  description: "One screened paper of a screening job the person may read, as the job's list shows it: where it landed, its score, stars and the answer to every question it was scored on. `paperId` is the paper's `openalexId`.",
+  description: "One screened paper of a screening job the person may read, as the job's list shows it: where it landed, its score, stars and the answer to every question it was scored on. `paperId` is the paper's `paper` as the list gives it.",
   args: { jobId: v.id("screeningJobs"), paperId: v.string() },
   returns: v.union(v.null(), screeningJobPaperValidator),
   run: async (ctx, actor, { jobId, paperId }) => {
@@ -98,7 +98,7 @@ export const answerAction = defineUserMutation({
   description:
     "Changes one answer of a screened paper in one of the person's screening jobs: yes (true), no (false) or unclear (null), \"model\" to put back the model's own answer, or { asOf } to put it back as it was at that version of the screening's answers, with who set it. " +
     "The paper's score, stars and outcome follow, and a paper that becomes included is saved the way the job saves included papers. " +
-    "A change returns `undo`: the action to run and the arguments to run it with to put the answer back. It is refused if the answer changed again in between. `paperId` is the paper's `openalexId`, and `questionKey` the question's `key` in the job.",
+    "A change returns `undo`: the action to run and the arguments to run it with to put the answer back. It is refused if the answer changed again in between. `paperId` is the paper's `paper` as the list gives it, and `questionKey` the question's `key` in the job.",
   args: { ...answerOf, answer: v.union(v.boolean(), v.null(), v.literal("model"), asItWas), expect: v.optional(answerAsLeft) },
   returns: v.object({ outcome: screeningOutcomeValidator, undo: reversedBy("screening/papers:answer", { ...answerOf, answer: asItWas, expect: answerAsLeft }) }),
   spendsCredits: false,
@@ -113,8 +113,8 @@ export const answerAction = defineUserMutation({
     if (!question) throw createError("VALIDATION_ERROR", "This screening doesn't ask that question");
     let result = await screened(ctx, jobId, given);
     if (!result || result.status !== "completed") throw createError("VALIDATION_ERROR", "Only a screened paper's answers can be changed");
-    // Its answers are kept under the ID the job has for it, whichever form it was asked for by.
-    const paperId = result.openalexId;
+    // Its answers are kept under the ID pages have for it, whichever form it was asked for by.
+    const paperId = pageIdOf(result);
     // Answers still waiting on the result move to the job's screening first: that's where they change.
     if (result.answers) {
       await moveResultAnswers(ctx, result);

@@ -39,7 +39,7 @@ describe("getJobAndFlagsInternal — effective pdfEnabled", () => {
   it("retains an OA landing page without claiming it is a PDF, and respects PDF opt-out", async () => {
     const t = convexTest(schema);
     const { jobId } = await seed(t, { flag: true, usePdfs: true });
-    const write = () => t.mutation(internal.extraction.mutations.papers.createPaperRecords, { jobId, papers: [{ openalexId: "W7", title: "Source URL", oaUrl: "https://example.test/landing" }] });
+    const write = () => t.mutation(internal.extraction.mutations.papers.createPaperRecords, { jobId, papers: [{ paper: "W7", title: "Source URL", oaUrl: "https://example.test/landing" }] });
     const { paperIds } = await write();
     const paper = await t.run(ctx => ctx.db.get("extractionPapers", paperIds[0]));
     expect(paper).toMatchObject({ oaUrl: "https://example.test/landing", processable: true });

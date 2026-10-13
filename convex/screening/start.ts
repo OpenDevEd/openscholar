@@ -129,8 +129,8 @@ export const read = internalAction({
           // Read through the person's own Zotero account, one page of its items a step.
           const { collectionKey, groupId } = job.set;
           const through = Math.min(to, from + ZOTERO_PAGE - 1);
-          const read: { papers: Array<{ openalexId: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean } = await ctx.runAction(internal.zotero.actions.papersOf, { userId: job.userId, ...(collectionKey ? { collectionKey } : {}), ...(groupId ? { groupId } : {}), first: from, last: through });
-          const papers = read.papers.map(({ openalexId, title, abstract, authors, year, doi, venue, pdfUrl }) => ({ openalexId, title, pdfUrl, authors: authors.slice(0, MAX_AUTHORS), ...(abstract ? { abstract } : {}), ...(year === undefined ? {} : { publicationYear: year }), ...(doi ? { doi } : {}), ...(venue ? { venue } : {}) }));
+          const read: { papers: Array<{ paper: string; title: string; abstract?: string; authors: string[]; year?: number; doi?: string; venue?: string; pdfUrl: string }>; ended: boolean } = await ctx.runAction(internal.zotero.actions.papersOf, { userId: job.userId, ...(collectionKey ? { collectionKey } : {}), ...(groupId ? { groupId } : {}), first: from, last: through });
+          const papers = read.papers.map(({ paper, title, abstract, authors, year, doi, venue, pdfUrl }) => ({ paper, title, pdfUrl, authors: authors.slice(0, MAX_AUTHORS), ...(abstract ? { abstract } : {}), ...(year === undefined ? {} : { publicationYear: year }), ...(doi ? { doi } : {}), ...(venue ? { venue } : {}) }));
           const done = read.ended || through >= job.last;
           await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: through - from + 1, ended: done });
           if (done) return null;

@@ -25,12 +25,12 @@ const deps = (rows: LibraryPaper[]) => ({
 
 describe("a job's library and collection sources", () => {
   it("are read from the person's library, not the copy the browser sent, and gone papers are left out", async () => {
-    const held: LibraryPaper = { _id: "lib1", title: "Tutoring at scale", authors: ["Ada Lovelace", "Grace Hopper"], openalexId: "https://openalex.org/W1", abstract: "What the library holds", publicationYear: 2021, journal: "Journal of Tutoring", isOpenAccess: false, citedByCount: 0, workType: "preprint" };
+    const held: LibraryPaper = { _id: "lib1", title: "Tutoring at scale", authors: ["Ada Lovelace", "Grace Hopper"], paper: "openalex:W1", abstract: "What the library holds", publicationYear: 2021, journal: "Journal of Tutoring", isOpenAccess: false, citedByCount: 0, workType: "preprint" };
 
     const expanded = await expandJobSources([fromBrowser("lib1", "collection"), fromBrowser("gone", "library")], deps([held]));
 
     expect(expanded).toHaveLength(1);
-    expect(expanded[0]!.paper).toMatchObject({ title: "Tutoring at scale", authors: ["Ada Lovelace", "Grace Hopper"], abstract: "What the library holds", publicationYear: 2021, venueName: "Journal of Tutoring", openalexId: "https://openalex.org/W1", isOpenAccess: false, citedByCount: 0, workType: "preprint" });
+    expect(expanded[0]!.paper).toMatchObject({ title: "Tutoring at scale", authors: ["Ada Lovelace", "Grace Hopper"], abstract: "What the library holds", publicationYear: 2021, venueName: "Journal of Tutoring", paper: "openalex:W1", isOpenAccess: false, citedByCount: 0, workType: "preprint" });
     expect(expanded[0]!.bucketItem).toMatchObject({ source: "collection", title: "Tutoring at scale" });
     // A file the browser named isn't the library paper's.
     expect(expanded[0]!.paper.pdfUrl).toBeUndefined();
@@ -38,7 +38,7 @@ describe("a job's library and collection sources", () => {
   });
 
   it("preserves unparsed names and unknown access, and takes source URLs only from the owned record", async () => {
-    const held: LibraryPaper = { _id: "lib1", title: "Trial", openalexId: "W1", authorsUnparsed: "Smith, John, ليلى", pdfUrl: "https://example.test/owned.pdf" };
+    const held: LibraryPaper = { _id: "lib1", title: "Trial", paper: "openalex:W1", authorsUnparsed: "Smith, John, ليلى", pdfUrl: "https://example.test/owned.pdf" };
     const [expanded] = await expandJobSources([fromBrowser("lib1", "library")], deps([held]));
     expect(expanded.paper).toMatchObject({ authors: [], authorsUnparsed: "Smith, John, ليلى", pdfUrl: held.pdfUrl });
     expect(expanded.paper.isOpenAccess).toBeUndefined();

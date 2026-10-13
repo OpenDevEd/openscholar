@@ -3,6 +3,7 @@ import type { MutationCtx } from "../_generated/server";
 import { ANSWER_ITEMS_MAX, ANSWER_TEXT_MAX, ITEM_TEXT_MAX, MAX_QUESTIONS_PER_JOB } from "./validators";
 import { formatAnswerForDisplay, parseAnswerEntities } from "../../lib/extraction/analysis";
 import { digestOpaqueToken } from "../lib/opaqueTokenDigest";
+import { openalexWorkOfRow } from "../../lib/papers/paper-ref";
 
 const SEARCH_TEXT_MAX_CHARS = 6000;
 const SEARCH_TEXT_DEFAULT_PART_MAX = 240;
@@ -113,7 +114,7 @@ function buildSearchText(args: {
 
   pushPart(paper.title, 400);
   pushPart(paper.doi);
-  pushPart(paper.openalexId);
+  pushPart(openalexWorkOfRow(paper) ?? undefined);
   for (const author of paper.authors ?? []) {
     pushPart(author, 120);
   }

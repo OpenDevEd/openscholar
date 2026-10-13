@@ -14,7 +14,7 @@ import { accountOf } from "../billing/billing.test-support";
 
 const questions = [{ key: "q1", question: "Is this relevant?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] };
-const papers = (count: number, prefix: string) => Array.from({ length: count }, (_, i) => ({ openalexId: `${prefix}${i}`, title: `Paper ${i}` }));
+const papers = (count: number, prefix: string) => Array.from({ length: count }, (_, i) => ({ paper: `upload:${prefix}${i}`, title: `Paper ${i}` }));
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -63,7 +63,7 @@ describe("each person's paper slots", () => {
 
     const { started, waiting } = await papersOf(t, jobId);
     expect(started).toHaveLength(SCREENING_POOL_SIZE);
-    expect(started.map((row) => row.openalexId)).toEqual(papers(SCREENING_POOL_SIZE, "a").map((paper) => paper.openalexId));
+    expect(started.map((row) => row.openalexId)).toEqual(papers(SCREENING_POOL_SIZE, "a").map((paper) => paper.paper));
     expect(waiting).toHaveLength(50 - SCREENING_POOL_SIZE);
     expect(await running(t, ada.userId)).toBe(SCREENING_POOL_SIZE);
   });
@@ -203,7 +203,7 @@ describe("each person's paper slots", () => {
 
     await t.mutation(internal.screening.mutations.createScreeningResults, { jobId, papers: papers(2, "late"), createdAt: 3 });
 
-    const late = (await papersOf(t, jobId)).rows.filter((row) => row.openalexId.startsWith("late"));
+    const late = (await papersOf(t, jobId)).rows.filter((row) => row.openalexId.startsWith("upload:late"));
     expect(late.map((row) => [row.status, row.waitingSince, row.workId])).toEqual([["skipped", undefined, undefined], ["skipped", undefined, undefined]]);
   });
 

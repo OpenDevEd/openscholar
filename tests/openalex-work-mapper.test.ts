@@ -7,17 +7,17 @@ import { mapOpenAlexWorkToPaperData } from "../lib/openalex/work-mapper";
  */
 
 describe("mapOpenAlexWorkToPaperData — id + title", () => {
-  it("strips the https://openalex.org/ prefix from the id", () => {
+  it("names the work by its key", () => {
     const paper = mapOpenAlexWorkToPaperData({
       id: "https://openalex.org/W1234",
       display_name: "Title",
     });
-    expect(paper.openalexId).toBe("W1234");
+    expect(paper.paper).toBe("openalex:W1234");
   });
 
   it("falls back to empty string when id is missing", () => {
     const paper = mapOpenAlexWorkToPaperData({ display_name: "Title" });
-    expect(paper.openalexId).toBe("");
+    expect(paper.paper).toBe("");
   });
 
   it("falls back to 'Untitled' when display_name is missing", () => {

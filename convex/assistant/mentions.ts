@@ -11,6 +11,7 @@ import { readLibraryPage } from "../library/queries";
 import { listedSearchesAction } from "../research/records";
 import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { MENTIONS_EACH as EACH, mentionablesValidator } from "./validators";
+import { pageIdOf } from "../../lib/papers/paper-ref";
 
 const FLAG = "assistant.enabled";
 const first = { cursor: null, numItems: EACH };
@@ -43,7 +44,7 @@ export const findAction = defineUserQuery({
       // A search found by its filters alone has no query: it's named by its question, or left out when it has neither.
       searches.slice(0, EACH).map((search) => ({ kind: "search" as const, id: search.id, label: search.query.trim() || (search.questionText ?? "").trim(), count: search.count })),
       collections.map((collection) => ({ kind: "collection" as const, id: collection._id, label: collection.name, count: collection.itemCount ?? 0 })),
-      papers.page.slice(0, EACH).map((item) => ({ kind: "paper" as const, id: item.openalexId, label: item.title })),
+      papers.page.slice(0, EACH).map((item) => ({ kind: "paper" as const, id: pageIdOf(item), label: item.title })),
     ].map((group) => group.filter((record) => record.label.trim()));
     // A kind at a time, round and round, so the picker's first few hold every kind that matched.
     return Array.from({ length: EACH }, (_, at) => groups.flatMap((group) => group[at] ?? [])).flat();

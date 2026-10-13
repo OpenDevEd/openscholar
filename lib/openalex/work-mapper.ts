@@ -11,6 +11,7 @@
 import { reconstructAbstract } from "./reconstruct-abstract";
 import { trimPaperData } from "../library/trim-paper-data";
 import { sourceMetadata, type PaperSourceMetadata } from "../library/paper-metadata";
+import { toPaperKey } from "../papers/paper-ref";
 
 export type OpenAlexWork = {
   id?: string;
@@ -27,7 +28,8 @@ export type OpenAlexWork = {
 };
 
 export type PaperDataOut = PaperSourceMetadata & {
-  openalexId: string;
+  /** The work's key, `openalex:W…` (lib/papers/paper-ref.ts); empty for a work without an ID. */
+  paper: string;
   title: string;
   doi?: string;
   publicationYear?: number;
@@ -40,8 +42,6 @@ export type PaperDataOut = PaperSourceMetadata & {
   workType?: string;
 };
 
-const OPENALEX_ID_PREFIX = "https://openalex.org/";
-
 export function mapOpenAlexWorkToPaperData(work: OpenAlexWork): PaperDataOut {
   const abstract = work.abstract_inverted_index
     ? reconstructAbstract(work.abstract_inverted_index)
@@ -50,7 +50,7 @@ export function mapOpenAlexWorkToPaperData(work: OpenAlexWork): PaperDataOut {
   const paper = trimPaperData({ ...work, id: work.id ?? "", abstract });
   return {
     ...sourceMetadata(paper),
-    openalexId: work.id?.replace(OPENALEX_ID_PREFIX, "") || "",
+    paper: toPaperKey(work.id ?? "") ?? "",
     title: work.display_name || "Untitled",
     doi: work.doi || undefined,
     publicationYear: work.publication_year || undefined,

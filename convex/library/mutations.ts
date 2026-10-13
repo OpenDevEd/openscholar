@@ -245,7 +245,7 @@ export const saveToLibraryAction = defineUserMutation({
   path: "library/mutations:saveToLibrary",
   activity: ({ collectionId, title }, { undo }) => (collectionId && undo ? { kind: "collection", id: collectionId, happened: "added", count: 1, detail: title } : null),
   description:
-    "Saves a paper to the library from its whole record, as a results card has it, with or without the person's own rating of it from 0 to 5, and with `collectionId` into that collection in the same write. To save a paper by its ID alone, use library/papers:save. " +
+    "Saves a paper to the library from its whole record, as a results card has it, with the paper's key or OpenAlex ID in `paper`, with or without the person's own rating of it from 0 to 5, and with `collectionId` into that collection in the same write. To save a paper by its ID alone, use library/papers:save. " +
     "A person's rating of a paper is the same everywhere; a saved paper's rating is its people's average. " +
     "A save that added the paper or changed the person's rating returns `undo`: the action to run and the arguments to run it with to put things back. It is refused if the paper changed again in between.",
   args: { ...libraryPaper.fields, rating: v.optional(ratingArg), collectionId: v.optional(v.id("collections")) },
@@ -270,7 +270,7 @@ export const saveToLibraryForAssistant = assistantMutation(saveToLibraryAction);
 export const setLibraryRatingAction = defineUserMutation({
   path: RATE,
   description:
-    "Sets the person's own rating, from 0 to 5, of a paper in the library, or removes it (null). The paper stays saved. " +
+    "Sets the person's own rating, from 0 to 5, of a paper in the library, or removes it (null). The paper stays saved. `paper` is the paper's key, as library/queries:papers gives it in `id`, or its OpenAlex ID." +
     "A person's rating of a paper is the same everywhere, and a saved paper's rating is its people's average. " +
     "A change returns `undo`: the action to run and the arguments to run it with to put the rating back. It is refused if the rating changed again in between.",
   // `expect` is the person's rating as it should be now, and the save the paper should be on: a change since then refuses this one.
@@ -347,7 +347,7 @@ async function stillPlacing(ctx: QueryCtx, libraryItemId: Id<"libraryItems">) {
 export const removeFromLibraryAction = defineUserMutation({
   path: "library/mutations:removeFromLibrary",
   description:
-    "Removes a paper from the library, with its place in every collection; the person's own rating of it stays. " +
+    "Removes a paper from the library, with its place in every collection; the person's own rating of it stays. `paper` is the paper's key, as library/queries:papers gives it in `id`, or its OpenAlex ID." +
     "With `rating`, their own rating goes back to it too (null clears it): the undo of a save that rated the paper. " +
     "Returns `undo`: the action to run and the arguments to run it with to put the paper back, within a day.",
   // `expect` is the paper as the save being undone left it: one rated, put in a collection or saved afresh since then stays.
@@ -533,7 +533,7 @@ export const setPaperInCollectionAction = defineUserMutation({
   description:
     "Adds a paper to one of the person's collections, saving it to their library first if needed, or takes it out of the collection. Taking it out keeps it in the library. " +
     "A collection shared with the person to edit takes papers the same way: the paper is saved to that collection's own library, not the person's. " +
-    "The paper is given whole, or by its ID alone when it's already in the library. " +
+    "The paper is given whole, or by `paper` alone when it's already in the library: its key, as library/queries:papers gives it in `id`, or its OpenAlex ID. " +
     "A change returns `undo`: the action to run and the arguments to run it with to put the collection back as it was. Undoing an add leaves the paper in the library.",
   // `assignedAt` is when the paper was put in the collection. Taking it out takes only that
   // place, so one put in again since then stays. Putting it back gives it that place again.

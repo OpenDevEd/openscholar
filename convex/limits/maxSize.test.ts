@@ -528,7 +528,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
 
       const { jobId } = await createJob(as, {
         set: { kind: "search", searchId: "reused" }, saveTo: { kind: "none" },
-        papers: ids.map((openalexId, i) => ({ openalexId, title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)) })),
+        papers: ids.map((paper, i) => ({ paper, title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)) })),
         questions,
         scoringConfig: { rules: questions.map(({ key }) => ({ questionKey: key, yesPoints: 1, noPoints: 0, nullPoints: 0 })), starThresholds: [{ minScore: 1, stars: 5 }], minimumScore: 1 },
       });

@@ -6,12 +6,12 @@ import { downloadLibraryEssentialItem, downloadLibraryItem } from "@/lib/library
 import { useRatedPapers } from "@/lib/research/reads";
 import { useUIStore } from "@/lib/store";
 import type { PaperResult } from "@/lib/types";
-import { paperIdOf, paperKeyOf } from "@/lib/papers/paper-ref";
+import { paperIdOf } from "@/lib/papers/paper-ref";
 
 /** A paper as a job keeps it: what it stored when it took the paper on, whether or not OpenAlex has a record of it. */
 export type StoredPaper = {
-  openalexId: string;
-  paperKey?: string;
+  /** The paper's key (lib/papers/paper-ref.ts). */
+  paper: string;
   title: string;
   abstract?: string;
   doi?: string;
@@ -36,7 +36,7 @@ function storedPaperResult(paper: StoredPaper): PaperResult {
   };
   return {
     // An OpenAlex paper's address, so rating, saving and its OpenAlex page all key on it; a paper from elsewhere goes by its key.
-    id: paperIdOf(paperKeyOf(paper)),
+    id: paperIdOf(paper.paper),
     title: paper.title,
     abstract: paper.abstract,
     doi: paper.doi,

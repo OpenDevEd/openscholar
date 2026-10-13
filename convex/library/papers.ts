@@ -70,7 +70,7 @@ export const collectAction = defineUserMutation({
   activity: ({ collectionId, inCollection }, { undo }) => (undo ? { kind: "collection", id: collectionId, happened: inCollection ? "added" : "removed", count: 1 } : null),
   activityIn: collectionHome,
   description:
-    "Puts a paper that's in the person's library into one of their collections, or takes it out, by the paper's ID alone, as results give it. `inCollection` is true to put it in and false to take it out. " +
+    "Puts a paper that's in the person's library into one of their collections, or takes it out, by the paper's ID alone, as results give it, or its key, as library/queries:papers gives it in `id`. `inCollection` is true to put it in and false to take it out. " +
     "It takes a paper already in the library: to save one and put it in a collection, call library/papers:save with `collectionId` instead. Taking it out keeps it in the library. " +
     "A change returns `undo`: the action to run and the arguments to run it with to put the collection back as it was.",
   args: { id: v.string(), collectionId: v.id("collections"), inCollection: v.boolean() },

@@ -3,6 +3,7 @@ import type { PaperData } from "./types";
 import { buildDedupeKey } from "./dedupe";
 import { authorMetadata, sourceMetadata, type PaperSourceMetadata } from "../../lib/library/paper-metadata";
 import { createError } from "../lib/errors";
+import { openalexWorkOf, paperKey, toPaperKey, type CrossRefs } from "../../lib/papers/paper-ref";
 
 type SourceType = "history" | "zotero" | "manual" | "screening";
 
@@ -17,10 +18,11 @@ export type ExpandedSourcePaper = {
 /** A paper in the person's library, as `ownedLibraryItems` reads it. */
 export type LibraryPaper = PaperSourceMetadata & {
   _id: string;
+  paper: string;
+  crossRefs?: CrossRefs;
   title: string;
   authors?: string[];
   doi?: string;
-  openalexId: string;
   abstract?: string;
   publicationYear?: number;
   journal?: string;
@@ -52,7 +54,7 @@ function fromLibrary(item: BucketItemInput, row: LibraryPaper): BucketItemInput 
     authors: authorMetadata(row).authors ?? [],
     year: row.publicationYear,
     doi: row.doi,
-    openalexId: row.openalexId || undefined,
+    openalexId: openalexWorkOf(row.paper, row.crossRefs) ?? undefined,
     abstract: row.abstract,
     citedByCount: row.citedByCount,
     venueName: row.journal,
@@ -66,25 +68,31 @@ function paperSourceFromBucket(source: BucketItemInput["source"]): SourceType {
   return "manual";
 }
 
+/** What finds a paper's duplicates: its OpenAlex work where it has one, its DOI, or its title and year. */
+export const dedupeKeyOf = (paper: Pick<PaperData, "paper" | "crossRefs" | "doi" | "title" | "publicationYear">) =>
+  buildDedupeKey({ openalexId: openalexWorkOf(paper.paper, paper.crossRefs) ?? undefined, doi: paper.doi ?? paper.crossRefs?.doi, title: paper.title, year: paper.publicationYear });
+
+/** A picked paper's key: by its OpenAlex ID where it has one, and an upload by its file. */
+function pickedKey(item: BucketItemInput): string {
+  const key = item.openalexId ? toPaperKey(item.openalexId) : item.source === "upload" ? paperKey({ source: "upload", file: item.storageId ?? item.sourceRefId }) : null;
+  if (!key) throw createError("VALIDATION_ERROR", `"${item.title}" names no paper: pick it again.`);
+  return key;
+}
+
 function toHistoryBucketItem(
   item: BucketItemInput,
   paper: PaperData,
 ): BucketItemInput {
   return {
     ...sourceMetadata(paper),
-    bucketKey: buildDedupeKey({
-      openalexId: paper.openalexId,
-      doi: paper.doi,
-      title: paper.title,
-      year: paper.publicationYear,
-    }),
+    bucketKey: dedupeKeyOf(paper),
     source: "history",
     sourceRefId: item.sourceRefId,
     title: paper.title,
     authors: paper.authors ?? [],
     year: paper.publicationYear,
     doi: paper.doi,
-    openalexId: paper.openalexId,
+    openalexId: openalexWorkOf(paper.paper, paper.crossRefs) ?? undefined,
     abstract: paper.abstract,
     pdfUrl: paper.pdfUrl,
     citedByCount: paper.citedByCount,
@@ -102,7 +110,7 @@ async function expandHistorySource(
       {
         bucketItem: item,
         paper: {
-          openalexId: item.openalexId ?? `${item.source}:${item.sourceRefId}`,
+          paper: pickedKey(item),
           title: item.title,
           doi: item.doi,
           publicationYear: item.year,
@@ -152,12 +160,13 @@ async function expandZoteroSource(
         ? `zotero://select/users/${zoteroUserId}/items/${item.sourceRefId}`
         : undefined;
 
-  const openalexId = item.openalexId ?? `zotero:${libraryType}:${item.sourceRefId}`;
+  // A Zotero item is named by its library: its key alone is shared across people's.
+  const owner = libraryType === "group" ? item.groupId : zoteroUserId;
+  if (!owner) throw createError("ZOTERO_NOT_CONNECTED", "Connect Zotero again to read this item.");
   const bucketItem: BucketItemInput = {
     ...item,
     libraryType,
     zoteroUserId,
-    openalexId,
     pdfUrl,
   };
 
@@ -166,7 +175,8 @@ async function expandZoteroSource(
       bucketItem,
       paper: {
         ...sourceMetadata(item),
-        openalexId,
+        paper: paperKey({ source: "zotero", library: libraryType, owner, key: item.sourceRefId }),
+        ...(item.openalexId || item.doi ? { crossRefs: { ...(item.openalexId ? { openalexId: item.openalexId } : {}), ...(item.doi ? { doi: item.doi } : {}) } } : {}),
         title: item.title,
         doi: item.doi,
         publicationYear: item.year,
@@ -183,11 +193,12 @@ async function expandZoteroSource(
   ];
 }
 
-function expandDirectSource(item: BucketItemInput): ExpandedSourcePaper {
+function expandDirectSource(item: BucketItemInput, paper = pickedKey(item), crossRefs?: CrossRefs): ExpandedSourcePaper {
   return {
     bucketItem: item,
     paper: {
-      openalexId: item.openalexId ?? `${item.source}:${item.sourceRefId}`,
+      paper,
+      ...(crossRefs ? { crossRefs } : {}),
       title: item.title,
       doi: item.doi,
       publicationYear: item.year,
@@ -224,7 +235,7 @@ export async function expandJobSources(
     }
     if (item.source === "library" || item.source === "collection") {
       const row = library.get(item.sourceRefId);
-      if (row) expanded.push(expandDirectSource(fromLibrary(item, row)));
+      if (row) expanded.push(expandDirectSource(fromLibrary(item, row), row.paper, row.crossRefs));
       else console.warn(`[expandJobSources] library paper ${item.sourceRefId} is gone or not the person's; left out`);
       continue;
     }
@@ -251,12 +262,7 @@ export function dedupeExpandedSources(
   const deduped = new Map<string, ExpandedSourcePaper>();
 
   for (const item of items) {
-    const key = buildDedupeKey({
-      openalexId: item.paper.openalexId,
-      doi: item.paper.doi,
-      title: item.paper.title,
-      year: item.paper.publicationYear,
-    });
+    const key = dedupeKeyOf(item.paper);
     // An Included snapshot keeps the screened metadata and decision provenance.
     const existing = deduped.get(key);
     if (!existing || (item.sourceType === "screening" && existing.sourceType !== "screening")) {
