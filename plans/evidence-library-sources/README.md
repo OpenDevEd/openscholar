@@ -122,16 +122,28 @@ as whoever opens it), and records the library for that person when they open it.
 | Call | Answer |
 |---|---|
 | `GET /api/v1/openscholar/readers?cursor=` | `{readers: [clerkUserId], next}`: once per library, to learn the readers who signed in before this shipped |
-| `GET /api/v1/openscholar/readers/<clerkUserId>/collections?page=&pageSize=&search=` | `{rows: [{id, name, description, private, role: owner\|editor\|viewer, owner: {name, image}, count, updatedAt}], page, pages, total}`: own and shared, as the profile column orders them |
-| `GET /api/v1/openscholar/collections?reader=&readerCollection=<id>` | one reader collection by ID for that person (`403 private`, `404 not_found`) |
-| `GET /api/v1/openscholar/records?reader=&from=readerCollection:<id>\|libraryCollection:<key>\|all&cursor=&pageSize=` | `{records: [Record], next, total}`, ordered by key; `next` is the last key returned, so a read never repeats a record or skips one that was there throughout, and a record added or removed while a job reads may be in or out, as with the Zotero source |
-| `POST /api/v1/openscholar/searches/resolve` `{reader, search, readerCollection?}` | `{keys, total, truncated}`: the search page's own resolution (`readSearchKeys` in `src/lib/library-export-selection.ts`), in its sort, at most 20,000; `409 index_changed` asks again |
-| `POST /api/v1/openscholar/records/batch` `{reader, keys}` | `{records: [Record]}`, at most 500 keys, missing keys left out |
+| `GET /api/v1/openscholar/readers/<clerkUserId>/collections?list=own\|shared&page=&pageSize=` | `{rows: [{id, name, description, private, access: owner\|editor\|viewer, owner: {name, image}, count, updatedAt}], page, pages, total}`: their own (private ones too) or the ones shared with them, as the profile column orders them, up to 100 a page |
+| `GET /api/v1/openscholar/collections/<id>?reader=` | one reader collection by ID as that person may see it (`403 private`, `404 not_found`) |
+| `POST /api/v1/openscholar/sources/resolve` `{reader, source, first, last}` | `{keys, total, truncated}`: records `first` to `last` (from 1) of a source as the person may read it, in the source's order, at most 20,000. `source` is `{readerCollection}`, `{libraryCollection}`, `{library: true}`, `{search, readerCollection?}` (the search page's query string, resolved by `readSearchKeys` in its sort) or `{records}`. `409 index_changed` asks again |
+| `POST /api/v1/openscholar/records/batch` `{keys}` | `{records: [Record], unread}`, at most 500 keys and 4 MB; missing keys left out, `unread` the ones a full batch left for the next call |
 | `POST /api/v1/openscholar/records/match` `{reader, papers: [{openalexId?, doi?}]}` | `{matches: [{at, key}]}`: the records this library holds with that OpenAlex ID or DOI, at most 500 papers a call |
 | `GET /api/v1/openscholar/search?reader=&<search page parameters>&page=` | `{records: [Record], page, pages, total}`: the assistant's search, as the search page answers it |
 | `GET /api/v1/openscholar/records/<key>/files/<attachmentKey>?reader=` | the PDF, only when the library's tag rules make it downloadable (`filterPublicAttachments`), else `404` |
 | `POST /api/v1/openscholar/readers/<clerkUserId>/collections` `{name, description?, private, requestId}` | `201 {collection}`; limits as the profile has them. The same `requestId` again answers the collection it made, so a retry never makes two |
 | `POST` and `DELETE /api/v1/openscholar/readers/<clerkUserId>/collections/<id>/records` `{keys}` | `{count, changed}`; owner or editor only (`403 role`) |
+
+Changed 2026-10-13: the plan had `GET records?from=` paging a source by key while
+a job read it, and `POST searches/resolve` for searches alone. Every source is
+now turned into keys once, when the job starts (`sources/resolve`), and the job
+reads those keys a batch at a time (`records/batch`). Reason: a job reads the
+source as it stood when it started, collections as well as searches, and one
+call covers every kind of source. Proof: `convex/screening/library.test.ts`,
+`convex/extraction/library.test.ts` and new-el
+`tests/integration/openscholar-reads.test.ts`.
+
+A library's record count and its own collections, which the source picker
+shows, come from its public API (`/api/items`, `/api/collections`), which every
+runtime has.
 
 `Record` is `{key, revision, itemType, title, abstract, creators: [{name}],
 year, venue, url, crossRefs: {openalexId?, doi?}, files: [{attachmentKey,
@@ -174,7 +186,7 @@ every batch on shared dev, then narrow):
 New tables: `evidenceLibraryReaders` (`libraryId`, `userId`, `via`: signIn |
 role | handoff, `firstAt`, `lastAt`), `evidenceLibraryHandoffs` (`libraryId`,
 `source`, `fields`, `from`, `expiresAt`, `openedBy`), `paperSetKeys` (a frozen
-key list in pages of 1,000, by job and page).
+key list in pages of 1,000, by job, the job's source and page).
 
 new-el: no schema change for reads. Writes reuse `reader_collection`,
 `reader_collection_item` and `reader_collection_member` (migration 0084).
