@@ -236,6 +236,8 @@ export function SetupView({
     setEdited(next.kind === "search" ? null : questions);
   };
   const pick = (next: Kind) => {
+    // The set this kind shows is kept as picked, the one a job run again started on too, and how much of it.
+    if (source) setPickedOf((all) => ({ ...all, [kind]: source }));
     leftAt.current[kind] = { scope, range };
     setKind(next);
     // Back on a kind, its set is as the person left it; a kind not picked from yet starts on its first.

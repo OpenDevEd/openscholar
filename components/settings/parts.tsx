@@ -244,9 +244,8 @@ let firstPage = true;
 export function Enter({ ready, children }: { ready: boolean; children: ReactNode }) {
   const reduceMotion = useReducedMotion();
   const [skip] = useState(() => firstPage || Boolean(reduceMotion));
-  // Once shown it stays usable, whatever its data does after.
-  const [shown, setShown] = useState(ready);
-  if (ready && !shown) setShown(true);
+  // Usable once it has fully appeared, and from then on whatever its data does.
+  const [shown, setShown] = useState(false);
   return (
     <motion.div
       initial={skip ? { opacity: 0 } : cardEntrance.initial}
@@ -257,6 +256,7 @@ export function Enter({ ready, children }: { ready: boolean; children: ReactNode
       onAnimationStart={() => {
         firstPage = false;
       }}
+      onAnimationComplete={() => setShown(true)}
     >
       {children}
     </motion.div>
