@@ -1307,6 +1307,7 @@ export const sourceAddressErrorValidator = v.union(
   v.literal("notHosted"),
   v.literal("private"),
   v.literal("notFound"),
+  v.literal("empty"),
   v.literal("profile"),
   v.literal("unknownPage"),
   v.literal("outdated"),

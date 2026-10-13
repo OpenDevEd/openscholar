@@ -221,6 +221,8 @@ export const describe = internalAction({
     try {
       // What the library finds for the source now, as the person may read it: a library too old to be read here says so.
       const found = await resolveLibrarySource(fetch, target, { reader, source, first: 1, last: 1 });
+      // A search, collection or library that holds nothing is said so, not offered as a source; a record that isn't there is `notFound`.
+      if (!found.total && !("records" in source)) return { error: "empty" };
       if ("library" in source || "libraryCollection" in source) {
         if ("library" in source) return { row: { libraryId, source, what: "all", label: target.name, records: found.total } };
         const { collections } = await readLibraryOverview(fetch, target);
