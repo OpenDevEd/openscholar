@@ -3790,6 +3790,30 @@
         "where": "Evidence Library",
         "ask": "读取您的 Evidence Library"
       },
+      "readerLibraries": {
+        "doing": "正在读取您阅读的 Evidence Library",
+        "did": "已读取您阅读的 Evidence Library",
+        "where": "Evidence Library",
+        "ask": "读取您阅读的 Evidence Library"
+      },
+      "readerSources": {
+        "doing": "正在读取您的 Evidence Library 中为您保存的内容",
+        "did": "已读取您的 Evidence Library 中为您保存的内容",
+        "where": "Evidence Library",
+        "ask": "读取您的 Evidence Library 中为您保存的内容"
+      },
+      "readerAddress": {
+        "doing": "正在读取一个 Evidence Library 地址",
+        "did": "已读取一个 Evidence Library 地址",
+        "where": "Evidence Library",
+        "ask": "读取一个 Evidence Library 地址"
+      },
+      "readerSource": {
+        "doing": "正在读取一个 Evidence Library 来源",
+        "did": "已读取一个 Evidence Library 来源",
+        "where": "Evidence Library",
+        "ask": "读取一个 Evidence Library 来源"
+      },
       "readLibraryDraft": {
         "doing": "正在读取一个文献库的设置",
         "did": "已读取一个文献库的设置",

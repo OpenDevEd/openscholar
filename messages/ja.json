@@ -3790,6 +3790,30 @@
         "where": "Evidence Library",
         "ask": "Evidence Library の一覧を読む"
       },
+      "readerLibraries": {
+        "doing": "閲覧している Evidence Library を読んでいます",
+        "did": "閲覧している Evidence Library を読みました",
+        "where": "Evidence Library",
+        "ask": "閲覧している Evidence Library を読む"
+      },
+      "readerSources": {
+        "doing": "Evidence Library にあるあなたの資料を読んでいます",
+        "did": "Evidence Library にあるあなたの資料を読みました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library にあるあなたの資料を読む"
+      },
+      "readerAddress": {
+        "doing": "Evidence Library のアドレスを読んでいます",
+        "did": "Evidence Library のアドレスを読みました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library のアドレスを読む"
+      },
+      "readerSource": {
+        "doing": "Evidence Library のソースを読んでいます",
+        "did": "Evidence Library のソースを読みました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library のソースを読む"
+      },
       "readLibraryDraft": {
         "doing": "ライブラリの設定を読んでいます",
         "did": "ライブラリの設定を読みました",

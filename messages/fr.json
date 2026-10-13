@@ -3790,6 +3790,30 @@
         "where": "Evidence Libraries",
         "ask": "Lire vos Evidence Libraries"
       },
+      "readerLibraries": {
+        "doing": "Lecture des Evidence Libraries que vous lisez",
+        "did": "Evidence Libraries que vous lisez lues",
+        "where": "Evidence Libraries",
+        "ask": "Lire les Evidence Libraries que vous lisez"
+      },
+      "readerSources": {
+        "doing": "Lecture de ce que vos Evidence Libraries contiennent pour vous",
+        "did": "Contenu de vos Evidence Libraries lu",
+        "where": "Evidence Libraries",
+        "ask": "Lire ce que vos Evidence Libraries contiennent pour vous"
+      },
+      "readerAddress": {
+        "doing": "Lecture d'une adresse d'Evidence Library",
+        "did": "Adresse d'Evidence Library lue",
+        "where": "Evidence Libraries",
+        "ask": "Lire une adresse d'Evidence Library"
+      },
+      "readerSource": {
+        "doing": "Lecture d'une source d'Evidence Library",
+        "did": "Source d'Evidence Library lue",
+        "where": "Evidence Libraries",
+        "ask": "Lire une source d'Evidence Library"
+      },
       "readLibraryDraft": {
         "doing": "Lecture des paramètres d'une bibliothèque",
         "did": "Paramètres d'une bibliothèque lus",

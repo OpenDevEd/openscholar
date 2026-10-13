@@ -3790,6 +3790,30 @@
         "where": "Evidence Libraries",
         "ask": "अपनी Evidence Libraries पढ़ें"
       },
+      "readerLibraries": {
+        "doing": "आप जो Evidence Libraries पढ़ते हैं उन्हें पढ़ रहा है",
+        "did": "आप जो Evidence Libraries पढ़ते हैं वे पढ़ीं",
+        "where": "Evidence Libraries",
+        "ask": "आप जो Evidence Libraries पढ़ते हैं उन्हें पढ़ें"
+      },
+      "readerSources": {
+        "doing": "आपकी Evidence Libraries में आपके लिए क्या है, पढ़ रहा है",
+        "did": "आपकी Evidence Libraries में आपके लिए क्या है, पढ़ा",
+        "where": "Evidence Libraries",
+        "ask": "पढ़ें कि आपकी Evidence Libraries में आपके लिए क्या है"
+      },
+      "readerAddress": {
+        "doing": "Evidence Library का एक पता पढ़ रहा है",
+        "did": "Evidence Library का एक पता पढ़ा",
+        "where": "Evidence Libraries",
+        "ask": "Evidence Library का एक पता पढ़ें"
+      },
+      "readerSource": {
+        "doing": "Evidence Library का एक स्रोत पढ़ रहा है",
+        "did": "Evidence Library का एक स्रोत पढ़ा",
+        "where": "Evidence Libraries",
+        "ask": "Evidence Library का एक स्रोत पढ़ें"
+      },
       "readLibraryDraft": {
         "doing": "एक लाइब्रेरी की सेटिंग्स पढ़ रहा है",
         "did": "एक लाइब्रेरी की सेटिंग्स पढ़ीं",
