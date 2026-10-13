@@ -52,6 +52,13 @@ describe("SN-3 public queries resolve against a seeded job graph", () => {
     expect("papers" in res).toBe(false);
   });
 
+  test("getJobShell answers no_access to an address's ID that is no extraction's, instead of failing", async () => {
+    const { auth, ids } = await seedAndAuth();
+    for (const jobId of ["abc", ids.jobId.slice(0, -2)]) {
+      expect(await auth.query(api.extraction.queries.getJobShell, { jobId })).toEqual({ status: "no_access" });
+    }
+  });
+
   test("getJobDetails returns job questions without result-page paper rows", async () => {
     const { auth, ids } = await seedAndAuth();
     const res = await auth.query(api.extraction.queries.getJobDetails, {
