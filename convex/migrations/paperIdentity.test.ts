@@ -118,9 +118,9 @@ it("narrows: drops the rows no key names as removing or deleting them does, and 
 
       const jobId = await insertJob(ctx, { userId: ada, status: "completed", totalPapers: 2, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", paperKey: "openalex:W1", title: "W1", status: "completed", createdAt: 1 });
-      // A fixture's job goes whole, with its progress.
-      const fixtureJob = await insertJob(ctx, { userId: ada, status: "completed", totalPapers: 1, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
-      await ctx.db.insert("screeningResults", { jobId: fixtureJob, openalexId: "https://openalex.org/WOS321QA", title: "Fixture", status: "completed", createdAt: 1 });
+      // A fixture's job goes whole, with its progress, in as many steps as it takes.
+      const fixtureJob = await insertJob(ctx, { userId: ada, status: "completed", totalPapers: 250, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
+      for (let n = 0; n < 250; n++) await ctx.db.insert("screeningResults", { jobId: fixtureJob, openalexId: `https://openalex.org/WOS321QA${n}`, title: "Fixture", status: "completed", createdAt: 1 });
       const extraction = await ctx.db.insert("extractionJobs", { ...where, sourceType: "history", status: "completed", totalPapers: 1, name: "Job", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("extractionPapers", { jobId: extraction, openalexId: "https://openalex.org/W1", paperKey: "openalex:W1", title: "W1", status: "completed", processable: true });
       const fixtureExtraction = await ctx.db.insert("extractionJobs", { ...where, sourceType: "history", status: "completed", totalPapers: 1, name: "Fixture", createdAt: 1, updatedAt: 1 });

@@ -92,6 +92,17 @@ export async function purgeScreeningJob(ctx: MutationCtx, step: Step, job: Doc<"
   return await gone(ctx, step, job._id, "screeningJobs");
 }
 
+/** Deletes one screening job a step at a time, each step scheduling the next until it's gone. */
+export const purgeOneScreeningJob = internalMutation({
+  args: { jobId: v.id("screeningJobs") },
+  returns: v.null(),
+  handler: async (ctx, { jobId }): Promise<null> => {
+    const job = await ctx.db.get("screeningJobs", jobId);
+    if (job && !(await purgeScreeningJob(ctx, freshStep(), job))) await ctx.scheduler.runAfter(0, internal.workspaces.purge.purgeOneScreeningJob, { jobId });
+    return null;
+  },
+});
+
 /**
  * Reads rows `chunk` at a time and passes each to `purge`, until the query has none left (true)
  * or the step is used up or `purge` stops (false). Purged rows no longer match the query, so
