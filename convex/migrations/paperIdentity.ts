@@ -6,6 +6,9 @@ import { internalAction, internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
 import { identityFromStored } from "../lib/paperRef";
 import { toPaperKey } from "../../lib/papers/paper-ref";
+import { removeCollectionMembership } from "../library/collectionMembership";
+import { libraryCountRow } from "../library/counter";
+import { freshStep, purgeScreeningJob } from "../workspaces/purge";
 
 /**
  * Gives every saved paper, removed paper and screened or extracted paper kept before papers were
@@ -131,16 +134,28 @@ export const run = migrations.runner([
  *   npx convex run migrations/paperIdentity:narrow
  *   npx convex run migrations/paperIdentity:verify
  */
-// What one fixture holds at most: its collection places, and an extracted paper's evidence, results, facts and answers.
+// What one fixture paper holds at most: its collection places.
 const FIXTURE_ROWS = 100;
 
+// A saved paper goes as removing it does: out of its collections and its library's count.
 export const dropUnplacedPapers = migrations.define({
   table: "libraryItems",
   batchSize: 1,
   migrateOne: async (ctx, item) => {
     if (item.paperKey !== undefined) return;
-    for (const place of await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", item._id)).take(FIXTURE_ROWS)) await ctx.db.delete("libraryItemCollections", place._id);
+    for (const place of await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", item._id)).take(FIXTURE_ROWS)) await removeCollectionMembership(ctx, place);
     await ctx.db.delete("libraryItems", item._id);
+    const counted = await libraryCountRow(ctx, item.workspaceId);
+    if (counted) await ctx.db.patch("libraryCounts", counted._id, { count: Math.max(0, counted.count - 1) });
+  },
+});
+
+// A removed paper's snapshot goes as it does when its undo expires, with the places it kept.
+export const dropUnplacedRemovals = migrations.define({
+  table: "libraryRemovals",
+  batchSize: 1,
+  migrateOne: async (ctx, row) => {
+    if (row.item.paperKey === undefined) await ctx.scheduler.runAfter(0, internal.library.mutations.forgetRemoval, { removalId: row._id });
   },
 });
 
@@ -151,23 +166,24 @@ export const dropUnplacedRatings = migrations.define({
   },
 });
 
+// A screened fixture goes with its whole job, as a purge deletes one, so no tally counts a paper the job no longer has.
 export const dropUnplacedScreened = migrations.define({
   table: "screeningResults",
-  batchSize: 20,
+  batchSize: 1,
   migrateOne: async (ctx, result) => {
-    if (result.paperKey === undefined) await ctx.db.delete("screeningResults", result._id);
+    if (result.paperKey !== undefined) return;
+    const job = await ctx.db.get("screeningJobs", result.jobId);
+    if (!job) return void (await ctx.db.delete("screeningResults", result._id));
+    if (!(await purgeScreeningJob(ctx, freshStep(), job))) throw new Error(`Screening job ${job._id} is too large to delete in one step.`);
   },
 });
 
+// An extracted fixture goes with its whole job, as deleting an extraction does, queue, errors and tallies with it.
 export const dropUnplacedExtracted = migrations.define({
   table: "extractionPapers",
   batchSize: 20,
   migrateOne: async (ctx, paper) => {
-    if (paper.paperKey !== undefined) return;
-    for (const table of ["extractionEvidenceUnits", "extractionResults", "extractionPaperFacts", "extractionAnswerRows"] as const) {
-      for (const row of await ctx.db.query(table).withIndex("by_paper", (q) => q.eq("paperId", paper._id)).take(FIXTURE_ROWS)) await ctx.db.delete(table, row._id);
-    }
-    await ctx.db.delete("extractionPapers", paper._id);
+    if (paper.paperKey === undefined) await ctx.scheduler.runAfter(0, internal.extraction.mutations.internal.admin.deleteExtractionInternal, { jobId: paper.jobId });
   },
 });
 
@@ -181,7 +197,8 @@ export const forgetRemovedIds = migrations.define({
   table: "libraryRemovals",
   batchSize: 1,
   migrateOne: (_ctx, row) => {
-    if (row.item.openalexId === undefined) return;
+    // One without a key keeps its only ID until dropUnplacedRemovals' deletion takes it.
+    if (row.item.openalexId === undefined || row.item.paperKey === undefined) return;
     const { openalexId: _gone, ...item } = row.item;
     return { item };
   },
@@ -196,11 +213,12 @@ export const forgetScreenedIds = migrations.define({
 export const forgetExtractedIds = migrations.define({
   table: "extractionPapers",
   batchSize: 20,
-  migrateOne: (_ctx, paper) => (paper.openalexId !== undefined ? { openalexId: undefined } : undefined),
+  migrateOne: (_ctx, paper) => (paper.openalexId !== undefined && paper.paperKey !== undefined ? { openalexId: undefined } : undefined),
 });
 
 export const narrow = migrations.runner([
   internal.migrations.paperIdentity.dropUnplacedPapers,
+  internal.migrations.paperIdentity.dropUnplacedRemovals,
   internal.migrations.paperIdentity.dropUnplacedRatings,
   internal.migrations.paperIdentity.dropUnplacedScreened,
   internal.migrations.paperIdentity.dropUnplacedExtracted,
