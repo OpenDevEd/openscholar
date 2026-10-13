@@ -18,15 +18,16 @@ import { identityFromStored } from "../lib/paperRef";
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
+// A saved paper keeps its whole OpenAlex record (`paperData`): one a step, as migrations/paperMetadata reads them.
 export const papers = migrations.define({
   table: "libraryItems",
-  batchSize: 100,
+  batchSize: 1,
   migrateOne: (_ctx, item) => (item.paperKey === undefined ? identityFromStored(item) : undefined),
 });
 
 export const removals = migrations.define({
   table: "libraryRemovals",
-  batchSize: 100,
+  batchSize: 1,
   migrateOne: (_ctx, row) => {
     if (row.item.paperKey !== undefined) return;
     const identity = identityFromStored(row.item);
@@ -34,16 +35,16 @@ export const removals = migrations.define({
   },
 });
 
-// Screened and extracted papers hold their abstracts: smaller steps.
+// Screened and extracted papers hold their abstracts.
 export const screened = migrations.define({
   table: "screeningResults",
-  batchSize: 50,
+  batchSize: 20,
   migrateOne: (_ctx, result) => (result.paperKey === undefined ? identityFromStored(result) : undefined),
 });
 
 export const extracted = migrations.define({
   table: "extractionPapers",
-  batchSize: 50,
+  batchSize: 20,
   migrateOne: (_ctx, paper) => (paper.paperKey === undefined ? identityFromStored(paper) : undefined),
 });
 
@@ -56,13 +57,16 @@ export const run = migrations.runner([
 
 const TABLE = v.union(v.literal("libraryItems"), v.literal("libraryRemovals"), v.literal("screeningResults"), v.literal("extractionPapers"));
 const PAGE = 200;
+// A page stops early rather than read past this: saved papers can be large.
+const PAGE_BYTES = 4 * 1024 * 1024;
+const SAMPLE = 20;
 
 /** One page of a table: rows still without an identity, and of those, rows whose ID names no paper (a sample of their IDs). */
 export const verifyPage = internalQuery({
   args: { table: TABLE, cursor: v.union(v.string(), v.null()) },
   returns: v.object({ left: v.number(), unplaced: v.array(v.string()), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, { table, cursor }) => {
-    const page = await ctx.db.query(table).paginate({ cursor, numItems: PAGE });
+    const page = await ctx.db.query(table).paginate({ cursor, numItems: PAGE, maximumBytesRead: PAGE_BYTES });
     const stored = page.page.map((row) => ("item" in row ? row.item : row));
     const left = stored.filter((row) => row.paperKey === undefined);
     const unplaced = left.filter((row) => !("paperKey" in identityFromStored(row))).map((row) => row.openalexId);
@@ -75,7 +79,7 @@ export const duplicatesPage = internalQuery({
   args: { cursor: v.union(v.string(), v.null()), last: v.union(v.string(), v.null()) },
   returns: v.object({ duplicates: v.array(v.string()), last: v.union(v.string(), v.null()), isDone: v.boolean(), continueCursor: v.string() }),
   handler: async (ctx, args) => {
-    const page = await ctx.db.query("libraryItems").withIndex("by_workspace_paperKey").paginate({ cursor: args.cursor, numItems: PAGE });
+    const page = await ctx.db.query("libraryItems").withIndex("by_workspace_paperKey").paginate({ cursor: args.cursor, numItems: PAGE, maximumBytesRead: PAGE_BYTES });
     const duplicates: string[] = [];
     let last = args.last;
     for (const item of page.page) {
@@ -90,10 +94,13 @@ export const duplicatesPage = internalQuery({
 
 const tableReport = v.object({ left: v.number(), unplaced: v.number(), sample: v.array(v.string()) });
 
-/** What is still left: per table, rows without an identity and how many of them name no paper; and duplicate saved papers. All zero when done. */
+/**
+ * What is still left: per table, rows without an identity and how many of them name no paper; and how many
+ * papers a workspace saved twice, with a sample (`duplicatesPage` lists them all). All zero when done.
+ */
 export const verify = internalAction({
   args: {},
-  returns: v.object({ libraryItems: tableReport, libraryRemovals: tableReport, screeningResults: tableReport, extractionPapers: tableReport, duplicates: v.array(v.string()) }),
+  returns: v.object({ libraryItems: tableReport, libraryRemovals: tableReport, screeningResults: tableReport, extractionPapers: tableReport, duplicates: v.object({ count: v.number(), sample: v.array(v.string()) }) }),
   handler: async (ctx) => {
     const report = async (table: "libraryItems" | "libraryRemovals" | "screeningResults" | "extractionPapers") => {
       const totals = { left: 0, unplaced: 0, sample: [] as string[] };
@@ -101,15 +108,16 @@ export const verify = internalAction({
         const page: { left: number; unplaced: string[]; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.paperIdentity.verifyPage, { table, cursor });
         totals.left += page.left;
         totals.unplaced += page.unplaced.length;
-        totals.sample.push(...page.unplaced.slice(0, Math.max(0, 10 - totals.sample.length)));
+        totals.sample.push(...page.unplaced.slice(0, Math.max(0, SAMPLE - totals.sample.length)));
         if (page.isDone) return totals;
         cursor = page.continueCursor;
       }
     };
-    const duplicates: string[] = [];
+    const duplicates = { count: 0, sample: [] as string[] };
     for (let cursor: string | null = null, last: string | null = null; ;) {
       const page: { duplicates: string[]; last: string | null; isDone: boolean; continueCursor: string } = await ctx.runQuery(internal.migrations.paperIdentity.duplicatesPage, { cursor, last });
-      duplicates.push(...page.duplicates);
+      duplicates.count += page.duplicates.length;
+      duplicates.sample.push(...page.duplicates.slice(0, Math.max(0, SAMPLE - duplicates.sample.length)));
       if (page.isDone) break;
       cursor = page.continueCursor;
       last = page.last;

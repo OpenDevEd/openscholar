@@ -69,8 +69,8 @@ it("names every stored paper by its source, finds duplicates, and leaves what it
     expect(after.screeningResults.left).toBe(0);
     expect(after.extractionPapers).toEqual({ left: 1, unplaced: 1, sample: ["history:lost"] });
     // W1 is one paper saved twice in one workspace: the narrowing step has to merge it first.
-    expect(after.duplicates).toHaveLength(1);
-    expect(after.duplicates[0]).toMatch(/\|openalex:W1$/);
+    expect(after.duplicates.count).toBe(1);
+    expect(after.duplicates.sample[0]).toMatch(/\|openalex:W1$/);
   } finally {
     vi.useRealTimers();
   }
