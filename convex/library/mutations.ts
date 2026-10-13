@@ -1,4 +1,5 @@
 import { v, type Infer } from "convex/values";
+import { identityFromStored } from "../lib/paperRef";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -97,8 +98,10 @@ export async function upsertLibraryItem(
   const rate = async () => {
     if (rating !== undefined && !(options.preserveRating && (await ownRating(ctx, userId, paper.openalexId)) !== null)) await setPersonalRating(ctx, userId, paper.openalexId, rating);
   };
+  // The paper by its source, kept beside `openalexId` until every row has it (convex/migrations/paperIdentity.ts).
+  const identity = identityFromStored({ openalexId: paper.openalexId, doi: merged.doi, pdfUrl: merged.pdfUrl });
   if (existing) {
-    await ctx.db.patch("libraryItems", existing._id, { ...merged, searchableText, updatedAt: Date.now() });
+    await ctx.db.patch("libraryItems", existing._id, { ...merged, ...identity, searchableText, updatedAt: Date.now() });
     await rate();
     return existing._id;
   }
@@ -112,6 +115,7 @@ export async function upsertLibraryItem(
       metadataVersion: 2,
       // Every writer saves through here, so a paper has one row whatever form its ID came in.
       openalexId: canonical(paper.openalexId),
+      ...identity,
       searchableText,
       savedAt: now,
       updatedAt: now,
@@ -496,7 +500,7 @@ export const restoreLibraryItemAction = defineUserMutation({
       libraryItemId = existing._id;
     } else {
       // Back in the workspace Undo runs in, made by whoever first saved it, rated as its people rate it now.
-      libraryItemId = await countedWrite(ctx, { userId, workspaceId }, 1, () => ctx.db.insert("libraryItems", { ...item, workspaceId, updatedAt: Date.now() }));
+      libraryItemId = await countedWrite(ctx, { userId, workspaceId }, 1, () => ctx.db.insert("libraryItems", { ...item, ...identityFromStored(item), workspaceId, updatedAt: Date.now() }));
       await rateItem(ctx, (await ctx.db.get("libraryItems", libraryItemId))!);
     }
     // Kept until its day is over, so places still being moved off the removed paper come back too.

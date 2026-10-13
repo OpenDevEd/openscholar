@@ -1,4 +1,5 @@
 import { v, type Infer } from "convex/values";
+import { paperIdentityFields } from "../lib/paperRef";
 import { capped, MAX_AUTHORS, MAX_RATERS_KEPT } from "../lib/listCaps";
 
 export const librarySortValidator = v.union(
@@ -64,6 +65,8 @@ export const libraryItemFields = {
     workspaceId: v.id("workspaces"),
     createdBy: v.id("users"),
     openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
+    // The paper by its source (plans/evidence-library-sources); replaces `openalexId` as the key once every row has it.
+    ...paperIdentityFields,
     rating: v.optional(v.number()), // 0-5; unset when the paper was saved without rating it
     // In an organization's library `rating` is its members' average of their own ratings (#801): how many of them gave one,
     // and the first of them with what each gave, kept in step with it (convex/ratings.ts). Unset in a person's own workspace.

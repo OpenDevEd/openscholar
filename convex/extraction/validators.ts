@@ -5,6 +5,7 @@
  */
 
 import { v, type Validator } from "convex/values";
+import { paperIdentityFields } from "../lib/paperRef";
 import { sourceMetadataFields } from "../lib/paperMetadata";
 import { effortValidator } from "../aiModelConfig/validators";
 import { errorCodeValidator } from "@/lib/errors/taxonomy";
@@ -456,6 +457,8 @@ export const extractionPaperFields = {
   screeningRevision: v.optional(v.string()),
   /** The paper's identity across the job's sources (./dedupe.ts), so a paper two sources bring is saved once. */
   dedupeKey: v.optional(v.string()),
+  // The paper by its source (plans/evidence-library-sources); replaces `openalexId` once every row has it.
+  ...paperIdentityFields,
   ...sourceMetadataFields,
   citedByCount: v.optional(v.number()),
   venueName: v.optional(v.string()),
