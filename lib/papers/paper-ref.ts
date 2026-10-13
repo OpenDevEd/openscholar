@@ -80,9 +80,9 @@ export function legacyPaperRef(id: string, hints: { pdfUrl?: string } = {}): Pap
   return null;
 }
 
-/** The key of a paper named by its key or by an ID stored before keys; null when it names none. */
-export function toPaperKey(id: string): string | null {
-  const ref = legacyPaperRef(id);
+/** The key of a paper named by its key or by an ID stored before keys (with what else it was kept with, `legacyPaperRef`); null when it names none. */
+export function toPaperKey(id: string, hints: { pdfUrl?: string } = {}): string | null {
+  const ref = legacyPaperRef(id, hints);
   return ref ? paperKey(ref) : null;
 }
 
@@ -98,11 +98,18 @@ export function paperIdOf(key: string): string {
   return ref?.source === "openalex" ? `https://openalex.org/${ref.work}` : key;
 }
 
-/** Where a paper opens, by its source: its OpenAlex page, or the item in Zotero. Null for one with no page of its own. */
-export function paperPage(paper: string): string | null {
+/** Whether a paper can be saved to a library: any but an uploaded PDF, whose file stays with its job. */
+export const saveablePaper = (paper: string) => {
+  const ref = legacyPaperRef(paper);
+  return ref !== null && ref.source !== "upload";
+};
+
+/** Where a paper opens, by its source: its OpenAlex page, the item in Zotero, or an uploaded PDF's `file` where the page has it. Null for one with nowhere to open. */
+export function paperPage(paper: string, file?: string | null): string | null {
   const ref = legacyPaperRef(paper);
   if (ref?.source === "openalex") return `https://openalex.org/${ref.work}`;
   if (ref?.source === "zotero") return `zotero://select/${ref.library === "group" ? "groups" : "users"}/${ref.owner}/items/${ref.key}`;
+  if (ref?.source === "upload") return file ?? null;
   return null;
 }
 

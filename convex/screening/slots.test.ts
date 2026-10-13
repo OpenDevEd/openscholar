@@ -14,7 +14,9 @@ import { accountOf } from "../billing/billing.test-support";
 
 const questions = [{ key: "q1", question: "Is this relevant?" }];
 const scoringConfig = { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] };
-const papers = (count: number, prefix: string) => Array.from({ length: count }, (_, i) => ({ paper: `upload:${prefix}${i}`, title: `Paper ${i}` }));
+/** An OpenAlex work for each prefix and number, so jobs' papers never meet. */
+const code = (prefix: string) => [...prefix].map((letter) => letter.charCodeAt(0)).join("");
+const papers = (count: number, prefix: string) => Array.from({ length: count }, (_, i) => ({ paper: `openalex:W${code(prefix)}0${i}`, title: `Paper ${i}` }));
 
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
@@ -63,7 +65,7 @@ describe("each person's paper slots", () => {
 
     const { started, waiting } = await papersOf(t, jobId);
     expect(started).toHaveLength(SCREENING_POOL_SIZE);
-    expect(started.map((row) => row.openalexId)).toEqual(papers(SCREENING_POOL_SIZE, "a").map((paper) => paper.paper));
+    expect(started.map((row) => row.paperKey)).toEqual(papers(SCREENING_POOL_SIZE, "a").map((paper) => paper.paper));
     expect(waiting).toHaveLength(50 - SCREENING_POOL_SIZE);
     expect(await running(t, ada.userId)).toBe(SCREENING_POOL_SIZE);
   });
@@ -203,8 +205,21 @@ describe("each person's paper slots", () => {
 
     await t.mutation(internal.screening.mutations.createScreeningResults, { jobId, papers: papers(2, "late"), createdAt: 3 });
 
-    const late = (await papersOf(t, jobId)).rows.filter((row) => row.openalexId.startsWith("upload:late"));
+    const late = (await papersOf(t, jobId)).rows.filter((row) => row.paperKey?.startsWith(`openalex:W${code("late")}0`));
     expect(late.map((row) => [row.status, row.waitingSince, row.workId])).toEqual([["skipped", undefined, undefined], ["skipped", undefined, undefined]]);
+  });
+
+  it("takes the papers a reader that started before keys still sends by their old IDs, each by its key", async () => {
+    const { t, person } = await setup();
+    const ada = await person("ada");
+    const { jobId } = await createJob(ada.as, { papers: papers(1, "a"), questions, scoringConfig });
+    await t.mutation(internal.screening.mutations.createScreeningResults, {
+      jobId,
+      papers: [{ openalexId: "https://openalex.org/W7", title: "Searched" }, { openalexId: "zotero:group:KEY12345", title: "From Zotero", pdfUrl: "zotero://select/groups/42/items/KEY12345" }],
+      createdAt: 3,
+    });
+    const keys = (await papersOf(t, jobId)).rows.map((row) => row.paperKey);
+    expect(keys).toEqual(expect.arrayContaining(["openalex:W7", "zotero:group:42:KEY12345"]));
   });
 
   it("starts a later job's waiting papers in free slots however many jobs the person has", async () => {

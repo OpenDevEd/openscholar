@@ -683,6 +683,8 @@ export const paginatedPaperWithResultsValidator = v.object({
   _creationTime: v.number(),
   ...extractionPaperFields,
   results: paperResultsValidator,
+  /** An uploaded PDF's address, which opens it, for the job's own workspace. */
+  fileUrl: v.optional(v.string()),
 });
 
 /** A paper's authors, the first MAX_AUTHORS of them. */

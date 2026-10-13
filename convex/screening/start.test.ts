@@ -322,7 +322,7 @@ describe("a job on a search whose page already answered some papers", () => {
 
 describe("Screen all on a Zotero collection (#328)", () => {
   const KEY = "0".repeat(64);
-  it("reads its items through the person's own Zotero, and refuses saving them, a key in the wrong form or a person with no Zotero", async () => {
+  it("reads its items through the person's own Zotero, saves the included ones to a collection, and refuses a key in the wrong form or a person with no Zotero", async () => {
     const { t, alice, userId, screen, results, read } = await setup();
     vi.stubEnv("ENCRYPTION_KEY", KEY);
     const requests: URL[] = [];
@@ -342,8 +342,6 @@ describe("Screen all on a Zotero collection (#328)", () => {
 
     await expect(alice.action(api.screening.start.screen, { set, first: 1, last: 3, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/Zotero isn't connected/);
     await t.run((ctx) => ctx.db.insert("zoteroConnections", { userId, zoteroUserId: "15294942", encryptedApiKey: encrypt("zotero-key", KEY), keyPrefix: "zot...", username: "ada", connectedAt: 1 }));
-    // Its papers have no OpenAlex record to save them by.
-    await expect(alice.action(api.screening.start.screen, { set, first: 1, last: 3, ...job, saveTo: { kind: "new", name: "Picked" } })).rejects.toThrow(/can't be saved to a collection/);
     // A key that would change the address Zotero is asked at.
     await expect(alice.action(api.screening.start.screen, { set: { kind: "zotero", collectionKey: "../../x" }, first: 1, last: 3, ...job, saveTo: { kind: "none" } })).rejects.toThrow(/eight capital letters and digits/);
     expect(requests).toEqual([]);
@@ -352,7 +350,7 @@ describe("Screen all on a Zotero collection (#328)", () => {
     expect(await t.run((ctx) => ctx.db.query("screeningJobs").collect())).toEqual([]);
     requests.length = 0;
 
-    const { jobId } = await screen({ set, first: 2, last: 3, ...job, saveTo: { kind: "none" } });
+    const { jobId } = await screen({ set, first: 2, last: 3, ...job, saveTo: { kind: "new", name: "Picked" } });
     const papers = await results(jobId);
     expect(papers.map((paper) => paper.openalexId)).toEqual(["zotero:user:15294942:ITEM0002", "zotero:user:15294942:ITEM0003"]);
     expect(papers[0]).toMatchObject({ title: "Zotero paper 2", abstract: "Tutors help", authors: ["Ada Okafor"], doi: "10.1/2", venue: "A journal", publicationYear: 2021 });
@@ -364,7 +362,17 @@ describe("Screen all on a Zotero collection (#328)", () => {
     expect(await read(jobId)).toMatchObject({ label: "Zotero", totalPapers: 2 });
     // Each keeps where its PDF is in Zotero, for an extraction of the included ones to read.
     expect(papers[0].pdfUrl).toBe("zotero://select/users/15294942/items/ITEM0002");
-    // Screened again, the included papers of a Zotero screening still can't be saved to a collection.
-    await expect(alice.action(api.screening.start.screen, { set: { kind: "screening", jobId }, first: 1, last: 2, ...job, saveTo: { kind: "new", name: "Picked" } })).rejects.toThrow(/can't be saved to a collection/);
+    // An included Zotero paper is saved, by its key, to the library and the job's collection.
+    for (const result of papers) {
+      await t.mutation(internal.screening.mutations.handleScreeningComplete, {
+        workId: result.workId ?? "work",
+        context: { jobId, resultId: result._id },
+        result: { kind: "success", returnValue: { responses: encodeQuestionResponseMap({ "Randomized?": result.paperKey === "zotero:user:15294942:ITEM0002" }), confidences: {}, confidence: 0.8 } },
+      });
+    }
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+    const collectionId = (await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))!.targetCollectionId!;
+    const collected = await t.run(async (ctx) => Promise.all((await ctx.db.query("libraryItemCollections").withIndex("by_collection", (q) => q.eq("collectionId", collectionId)).take(10)).map(async (row) => (await ctx.db.get("libraryItems", row.libraryItemId))!)));
+    expect(collected.map((item) => [item.paperKey, item.title, item.pdfUrl])).toEqual([["zotero:user:15294942:ITEM0002", "Zotero paper 2", "zotero://select/users/15294942/items/ITEM0002"]]);
   });
 });

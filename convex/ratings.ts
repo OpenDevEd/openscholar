@@ -208,7 +208,12 @@ export async function asRaters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"or
 export async function placeRated(ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, item: Doc<"libraryItems">): Promise<{ rating?: number; count?: number }> {
   const workspace = await ctx.db.get("workspaces", item.workspaceId);
   if (workspace?.kind !== "organization") return item.rating === undefined ? {} : { rating: item.rating };
-  const rows = await ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", paperKeyOf(item))).take(MAX_RATERS);
+  const key = paperKeyOf(item);
+  const under = (id: string) => ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", id)).take(MAX_RATERS);
+  const keyed = await under(key);
+  // ponytail: ratings kept before keys are under the paper's address until migrations/paperIdentity moves them; a person's rating under the key is theirs now. Goes when the old IDs do.
+  const older = paperIdOf(key) === key ? [] : (await under(paperIdOf(key))).filter((row) => !keyed.some((rated) => rated.userId === row.userId));
+  const rows = [...keyed, ...older];
   const counted = await Promise.all(rows.map((row) => isMember(ctx, workspace.organizationId, row.userId)));
   const given = rows.flatMap((row, at) => (counted[at] ? [row.rating] : []));
   return given.length ? { rating: average(given), count: given.length } : {};

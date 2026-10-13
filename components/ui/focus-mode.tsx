@@ -26,7 +26,7 @@ import { useSavePaper } from "@/components/library/save-control";
 import { useRatePaper } from "@/components/rating-selector";
 import { FocusModeSettings } from "@/components/focus-mode/focus-mode-settings";
 import type { PaperResult } from "@/lib/types";
-import { paperPage, toPaperKey } from "@/lib/papers/paper-ref";
+import { paperPage, saveablePaper, toPaperKey } from "@/lib/papers/paper-ref";
 import { FocusModeClose } from "@/components/focus-mode/close-context";
 
 interface FocusModeProps {
@@ -79,9 +79,10 @@ export function FocusMode({
 
   const currentPaper = papers[currentIndex];
   const savePaper = useSavePaper(currentPaper);
-  // Any paper named by its source is rated and saved; it opens where its source keeps it, if anywhere.
+  // Any paper named by its source is rated, and saved but an upload; it opens where its source keeps it, if anywhere.
   const named = currentPaper ? toPaperKey(currentPaper.id) !== null : false;
-  const page = currentPaper ? paperPage(currentPaper.id) : null;
+  const saveable = currentPaper ? saveablePaper(currentPaper.id) : false;
+  const page = currentPaper ? paperPage(currentPaper.id, currentPaper.primary_location?.pdf_url) : null;
   const authorFilter = useAuthorFilter();
   const journalFilter = useJournalFilter();
   const institutionFilter = useInstitutionFilter();
@@ -339,7 +340,7 @@ export function FocusMode({
         case "b":
         case "B":
           e.preventDefault();
-          if (named) savePaper.toggle();
+          if (saveable) savePaper.toggle();
           break;
         case "s":
         case "S":
@@ -368,6 +369,7 @@ export function FocusMode({
     handleRatingChange,
     savePaper.toggle,
     named,
+    saveable,
     page,
   ]);
 

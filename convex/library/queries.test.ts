@@ -884,6 +884,19 @@ describe("saving without a rating", () => {
     expect(await asUser.query(api.library.queries.getLibraryCount, {})).toBe(1);
   });
 
+  it("saves a paper from any source but an upload, keeping what finds it elsewhere when it is saved again without it", async () => {
+    const t = convexTest(schema);
+    await seedUser(t, "clerk_user1", "user1@test.com");
+    const asUser = t.withIdentity({ subject: "clerk_user1" });
+    const fromZotero = { paper: "zotero:group:42:ABCD1234", title: "From Zotero" };
+
+    const { id } = await asUser.mutation(api.library.mutations.saveToLibrary, { ...fromZotero, crossRefs: { doi: "10.1000/Example" } });
+    await asUser.mutation(api.library.mutations.saveToLibrary, fromZotero);
+    expect(await t.run(async (ctx) => await ctx.db.get("libraryItems", id))).toMatchObject({ paperKey: "zotero:group:42:ABCD1234", crossRefs: { doi: "10.1000/example" } });
+    // An uploaded PDF's file stays with its job.
+    await expect(asUser.mutation(api.library.mutations.saveToLibrary, { paper: "upload:kg2storage", title: "Uploaded" })).rejects.toThrow(/can't be saved to a library/);
+  });
+
   it("clears a rating without removing the paper", async () => {
     const t = convexTest(schema);
     await seedUser(t, "clerk_user1", "user1@test.com");

@@ -117,7 +117,8 @@ describe("saving a paper by its ID", () => {
     expect(JSON.parse(item.paperData!)).toMatchObject({ id: "https://openalex.org/W7", abstract: "Tutoring works", authorships: [{ author: { display_name: "Ada Okafor" } }, { author: { display_name: "Ben Mwangi" } }] });
     expect(JSON.parse(item.paperData!).abstract_inverted_index).toBeUndefined();
 
-    // The same paper by its whole ID is the same saved paper: rated, with an undo that puts the rating back.
+    // The same paper by its whole ID, or by the key the library lists it under, is the same saved paper: rated, with an undo that puts the rating back.
+    expect((await ada.action(save, { id: "openalex:W7" })).libraryItemId).toBe(saved.libraryItemId);
     const rated = await ada.action(save, { id: "https://openalex.org/W7", rating: 4 });
     expect(rated).toMatchObject({ libraryItemId: saved.libraryItemId, undo: { path: "library/mutations:setLibraryRating", args: { rating: null } } });
     expect(await items()).toHaveLength(1);
@@ -171,7 +172,7 @@ describe("saving a paper by its ID", () => {
     await ada.mutation(api.library.mutations.removeFromLibrary, { paper: "W9" });
 
     // What isn't a paper's ID, a paper OpenAlex doesn't have, and a rating off the scale are refused, and save nothing.
-    await expect(ada.action(save, { id: "the third one" })).rejects.toThrow(/saved by its ID/);
+    await expect(ada.action(save, { id: "the third one" })).rejects.toThrow(/saved by its OpenAlex ID/);
     await expect(ada.action(save, { id: "W404" })).rejects.toThrow(/no paper by that ID/);
     await expect(ada.action(save, { id: "W9", rating: 9 })).rejects.toThrow(/0 to 5/);
     expect((await items()).map((row) => row.openalexId).sort()).toEqual(["https://openalex.org/W7", "https://openalex.org/W8"]);

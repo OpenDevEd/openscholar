@@ -13,12 +13,14 @@ import { readWork } from "../paperSets/openalex";
 import { spender } from "../paperSets/search";
 import { trimPaperData, type WorkInput } from "../../lib/library/trim-paper-data";
 import { OPENALEX_WORK_SELECT_FIELDS } from "../../lib/openalex/search-params";
-import { workUrl } from "../../lib/openalex/work-id";
+import { openalexAddress, openalexWorkOf, paperKeyOf } from "../../lib/papers/paper-ref";
 import { collectionHome, followed, shownOutside } from "./followed";
 import { editableCollection } from "./collectionMembership";
 import { checkSave, savedByIdValidator, setPaperInCollectionAction } from "./mutations";
 import { findItem, requirePaperKey } from "./find";
-import { paperKeyOf } from "../../lib/papers/paper-ref";
+
+/** The OpenAlex work's address an ID or key names, which this action reads; null for anything else. */
+const workOf = (id: string) => openalexAddress(openalexWorkOf(id));
 
 export const saveAction = defineUserAction({
   path: "library/papers:save",
@@ -35,15 +37,15 @@ export const saveAction = defineUserAction({
   undoable: true,
   changes: true,
   // A library may follow the collection, which shows the paper outside the account. What isn't a paper's ID asks nothing here, and is refused when it runs.
-  asksFirst: async (ctx, _actor, { id, collectionId }) => workUrl(id) !== null && collectionId != null && (await followed(ctx, collectionId)),
+  asksFirst: async (ctx, _actor, { id, collectionId }) => workOf(id) !== null && collectionId != null && (await followed(ctx, collectionId)),
   seenOutside: true,
   check: async (ctx, actor, { id, rating, collectionId }) => {
-    const openalexId = workUrl(id);
+    const openalexId = workOf(id);
     if (openalexId) await checkSave(ctx, actor, { paper: openalexId, ...(rating == null ? {} : { rating }), ...(collectionId == null ? {} : { collectionId }) });
   },
   run: async (ctx, { userId, workspaceId, author }, { id, rating, collectionId }, call) => {
-    const openalexId = workUrl(id);
-    if (!openalexId) throw createError("VALIDATION_ERROR", "A paper is saved by its ID, such as W2741809807, as results give it.");
+    const openalexId = workOf(id);
+    if (!openalexId) throw createError("VALIDATION_ERROR", "A paper is saved by its OpenAlex ID, such as W2741809807, as results give it, or its key, such as openalex:W2741809807.");
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
     const read = await readWork<WorkInput & { abstract_inverted_index?: Record<string, number[]> | null }>(openalexId.split("/").at(-1)!, OPENALEX_WORK_SELECT_FIELDS.join(","), spender(ctx, person.clerkId));

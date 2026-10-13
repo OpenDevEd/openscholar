@@ -54,8 +54,8 @@ export const saved = internalQuery({
     return (await Promise.all(keys.map((key) => findItem(ctx, workspaceId, key)))).flatMap((item) => (item ? [fromLibrary(item)] : []));
   },
 });
-// Read whole, unlike a page: at the largest a saved paper may be (about 400 KB), twenty fit well inside a transaction.
-export const SAVED_A_READ = 20;
+// Read whole, unlike a page: a saved paper is one document, at most 1 MiB, so ten stay well inside a transaction's 16 MiB.
+export const SAVED_A_READ = 10;
 
 /** One page of a held set's papers, in its order. Another workspace's collection or another person's job reads as not found. */
 export const page = internalQuery({

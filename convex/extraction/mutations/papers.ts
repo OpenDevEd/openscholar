@@ -23,7 +23,7 @@ import { recomputePaperListProjection } from "../listProjection";
 import { MAX_AUTHORS } from "../../lib/listCaps";
 import { sourceMetadataFields } from "../../lib/paperMetadata";
 import { sourceMetadata } from "../../../lib/library/paper-metadata";
-import { openalexWorkOf, openalexWorkOfRow, paperIdOf, parsePaperKey } from "../../../lib/papers/paper-ref";
+import { openalexWorkOf, openalexWorkOfRow, paperIdOf, parsePaperKey, toPaperKey } from "../../../lib/papers/paper-ref";
 import { requirePaperKey } from "../../library/find";
 
 function matchesExpectedEpoch(
@@ -52,6 +52,16 @@ const setupPaperValidator = v.object({
   sourceId: v.optional(v.string()),
   screeningRevision: v.optional(v.string()),
 });
+const { paper: _paper, crossRefs: _crossRefs, ...setupFields } = setupPaperValidator.fields;
+/** A paper as a setup step sends it: by key, or by the ID a step that started before keys still sends. ponytail: the second goes with the old IDs. */
+const sentPaperValidator = v.union(setupPaperValidator, v.object({ ...setupFields, openalexId: v.string() }));
+
+/** A paper as a job holds it: named by its key, however its source gave it. */
+function keyed(sent: Infer<typeof sentPaperValidator>): Infer<typeof setupPaperValidator> {
+  if ("paper" in sent) return { ...sent, paper: requirePaperKey(sent.paper) };
+  const { openalexId, ...paper } = sent;
+  return { ...paper, paper: requirePaperKey(toPaperKey(openalexId, { pdfUrl: paper.pdfUrl }) ?? openalexId) };
+}
 
 /**
  * Saves a step of a job's papers (#634). A paper another source already brought is saved
@@ -66,7 +76,7 @@ const setupPaperValidator = v.object({
 export const createPaperRecords = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
-    papers: v.array(setupPaperValidator),
+    papers: v.array(sentPaperValidator),
     setup: v.optional(v.object({ expectedEpoch: v.number(), next: setupPlaceValidator })),
   },
   returns: v.object({ paperIds: v.array(v.id("extractionPapers")), processableCount: v.number() }),
@@ -81,8 +91,8 @@ export const createPaperRecords = internalMutation({
     // How the step moved the job's papers, and its processable ones.
     let papers = 0;
     let processableCount = 0;
-    for (const given of args.papers) {
-      const paper = { ...given, paper: requirePaperKey(given.paper) };
+    for (const sent of args.papers) {
+      const paper = keyed(sent);
       const sanitizedPdfUrl = pdfEnabled ? paper.pdfUrl : undefined;
       const sanitizedStorageId = pdfEnabled ? paper.storageId : undefined;
       const { processable } = getProcessableFlags({

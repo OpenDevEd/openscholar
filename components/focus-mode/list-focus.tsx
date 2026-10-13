@@ -12,6 +12,8 @@ import { paperIdOf } from "@/lib/papers/paper-ref";
 export type StoredPaper = {
   /** The paper's key (lib/papers/paper-ref.ts). */
   paper: string;
+  /** An uploaded PDF's address, which opens it. */
+  fileUrl?: string;
   title: string;
   abstract?: string;
   doi?: string;
@@ -46,8 +48,8 @@ function storedPaperResult(paper: StoredPaper): PaperResult {
     authorships: paper.authors?.map((name) => ({ author: { id: "", display_name: name } })),
     authors_unparsed: paper.authorsUnparsed,
     primary_location:
-      paper.venue || paper.pdfUrl
-        ? { ...(paper.venue ? { source: { id: "", display_name: paper.venue } } : {}), ...(paper.pdfUrl ? { pdf_url: paper.pdfUrl } : {}) }
+      paper.venue || paper.pdfUrl || paper.fileUrl
+        ? { ...(paper.venue ? { source: { id: "", display_name: paper.venue } } : {}), ...(paper.pdfUrl || paper.fileUrl ? { pdf_url: paper.pdfUrl ?? paper.fileUrl } : {}) }
         : undefined,
     open_access: Object.keys(access).length ? access : undefined,
   };

@@ -1,6 +1,6 @@
 import { v, type Infer } from "convex/values";
 import { crossRefsValidator, identityFromStored, identityOf } from "../lib/paperRef";
-import { paperIdOf, paperKeyOf, parsePaperKey } from "../../lib/papers/paper-ref";
+import { paperIdOf, paperKeyOf, parsePaperKey, saveablePaper } from "../../lib/papers/paper-ref";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -92,6 +92,7 @@ export async function upsertLibraryItem(
   const { userId, workspaceId } = writer;
   const { paper: named, crossRefs, ...metadata } = paper;
   const key = requirePaperKey(named);
+  if (!saveablePaper(key)) throw createError("VALIDATION_ERROR", "An uploaded PDF stays with the job it was uploaded to: it can't be saved to a library.");
   const existing = await findItem(ctx, workspaceId, key);
   // Project only metadata: identity, system fields, ownership, dates and ratings never enter this merge.
   const before = existing ? (Object.fromEntries(Object.keys(libraryPaper.fields).filter((field) => field !== "paper" && field !== "crossRefs").map((field) => [field, existing[field as keyof typeof existing]])) as typeof metadata) : { title: "" };
@@ -105,7 +106,7 @@ export async function upsertLibraryItem(
     if (rating !== undefined && !(options.preserveRating && (await ownRating(ctx, userId, key)) !== null)) await setPersonalRating(ctx, userId, key, rating);
   };
   // The paper by its source, with what finds it elsewhere (plans/evidence-library-sources).
-  const identity = identityOf(parsePaperKey(key)!, { openalexId: crossRefs?.openalexId ?? existing?.crossRefs?.openalexId, doi: merged.doi ?? crossRefs?.doi });
+  const identity = identityOf(parsePaperKey(key)!, { openalexId: crossRefs?.openalexId ?? existing?.crossRefs?.openalexId, doi: merged.doi ?? crossRefs?.doi ?? existing?.crossRefs?.doi });
   if (existing) {
     await ctx.db.patch("libraryItems", existing._id, { ...merged, ...identity, searchableText, updatedAt: Date.now() });
     await rate();

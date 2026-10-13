@@ -98,7 +98,7 @@ export async function papersOf(ctx: ActionCtx, { userId, workspaceId }: InWorksp
   const most = Math.min(allowed ?? BULK_CEILING, BULK_CEILING);
   const tooMany = () => invalid(`The person's plan changes up to ${most.toLocaleString("en")} papers in one go. Name a range of the set with first and last, or a smaller set.`);
   if (set.kind === "ids") {
-    const keys = [...new Set(set.ids.map(toPaperKey))].filter((key): key is string => key !== null);
+    const keys = [...new Set(set.ids.map((id) => toPaperKey(id)))].filter((key): key is string => key !== null);
     if (!keys.length) throw invalid("None of these is a paper's ID, such as W2741809807, or a paper's key as a list gave it.");
     if (keys.length > most) throw tooMany();
     const ids = keys.flatMap((key) => {
