@@ -84,7 +84,7 @@ it("puts records in a collection the person edits, and its undo takes out only t
   await expect(person.action(api.evidenceLibraries.library.changeRecords, { workspaceId, libraryId, collection: READ, collectionName: "Included", keys: [keyAt(1)], change: "add" })).rejects.toThrow(/Reading list.+not.+Included/);
   expect(records()).toEqual([]);
 
-  const added = await person.action(api.evidenceLibraries.library.changeRecords, { workspaceId, libraryId, collection: READ, collectionName: "reading list", keys: [keyAt(0), keyAt(1), keyAt(2), keyAt(1), "HIDDENKY"], change: "add" });
+  const added = await person.action(api.evidenceLibraries.library.changeRecords, { workspaceId, libraryId, collection: READ, collectionName: "reading list", keys: [keyAt(0), keyAt(1), `library:${libraryId}:${keyAt(2)}`, keyAt(1), "HIDDENKY"], change: "add" });
   expect(added).toEqual({ count: 4, changed: 2, missing: ["HIDDENKY"], undo: { path: "evidenceLibraries/library:changeRecords", args: { libraryId, collection: READ, keys: [keyAt(1), keyAt(2)], change: "remove" } } });
 
   await person.action(api.evidenceLibraries.library.changeRecords, { workspaceId, ...added.undo!.args });
