@@ -159,12 +159,15 @@ every batch on shared dev, then narrow):
   `input` while a call waits for the person) and `assistantStepUndos.args`.
   Rating commands, `researchReceipts.undo` among them, name a paper in any form
   and are read through `toPaperKey`, so they stay.
-- `screeningAnswers` and `screeningAnswerHistory` keep their OpenAlex IDs: they
-  are the answers of an OpenAlex search's results page. A job on a search
-  reaches them through its papers' OpenAlex cross-reference.
-- `screeningResults.openalexId`, `extractionPapers.openalexId`,
-  `extractionJobSources.openalexId`: become `paperKey`, `ref`, `crossRefs`;
-  `zotero:` and made-up values are parsed into their real source.
+- `screeningAnswers` and `screeningAnswerHistory` keep the ID pages name a paper
+  by (`paperIdOf` its key): an OpenAlex paper's address, as a search's results
+  page answers it, and any other paper's key. A job on a search reuses its
+  page's answers through it.
+- `screeningResults.openalexId` and `extractionPapers.openalexId`: become
+  `paperKey`, `ref`, `crossRefs`; `zotero:` and made-up values are parsed into
+  their real source, and a Zotero item whose owner nothing names stays unplaced.
+  `extractionJobSources.openalexId` stays: it is a picked paper's OpenAlex
+  cross-reference, and the job names the paper by key when it reads the source.
 - Search result pages, bookmarks and history keep OpenAlex IDs: they are OpenAlex
   searches.
 
