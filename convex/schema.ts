@@ -6,7 +6,7 @@ import { sourceMetadataFields } from "./lib/paperMetadata";
 import { paperIdentityFields } from "./lib/paperRef";
 import { rateLimitTables } from "convex-helpers/server/rateLimit";
 import {
-  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_METADATA_FIELDS, MAX_QUESTIONS,
+  MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LIST_CAP, MAX_METADATA_FIELDS, MAX_QUESTIONS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
 import { screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
@@ -23,7 +23,7 @@ import {
   extractionPaperQueueFields,
   extractionQuestionFields,
   extractionResultFields, extractionAnswerRowFields, extractionPaperFactFields,
-  storedSearchFiltersValidator, librarySetValidator,
+  storedSearchFiltersValidator, librarySetValidator, evidenceLibrarySetValidator,
 } from "./extraction/validators";
 import {
   chatGenerationUsageFields,
@@ -51,6 +51,7 @@ import {
   organizationFields,
   organizationMembershipFields,
   organizationInvitationFields,
+  evidenceLibraryReaderFields,
 } from "./evidenceLibraries/validators";
 import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidators";
 import { evidenceLibraryCollectionSourceFields } from "./evidenceLibraries/collectionSourceValidators";
@@ -320,6 +321,16 @@ export default defineSchema({
   // One row per library: its Clerk OAuth application.
   evidenceLibraryOAuthClients: defineTable(evidenceLibraryOAuthClientFields)
     .index("by_libraryId", ["libraryId"]),
+
+  // The Evidence Libraries a person reads (./evidenceLibraries/readers.ts).
+  evidenceLibraryReaders: defineTable(evidenceLibraryReaderFields)
+    .index("by_library_and_user", ["libraryId", "userId"])
+    .index("by_user_and_lastAt", ["userId", "lastAt"]),
+
+  // The record keys a job reads from an Evidence Library, kept when it starts, a page each (./paperSets/libraryKeys.ts).
+  // `part` is the job's source it belongs to: an extraction can read several.
+  paperSetKeys: defineTable({ job: v.union(v.id("screeningJobs"), v.id("extractionJobs")), part: v.number(), page: v.number(), keys: capped(v.array(v.string()), MAX_LIST_CAP) })
+    .index("by_job_and_part_and_page", ["job", "part", "page"]),
 
   // Reader data a library still has to drop for a deleted OpenScholar account.
   evidenceLibraryReaderDeletions: defineTable(evidenceLibraryReaderDeletionFields)
@@ -861,6 +872,7 @@ export default defineSchema({
       v.literal("collection"),
       v.literal("zotero"),
       v.literal("upload"),
+      v.literal("evidenceLibrary"),
     ),
     sourceRefId: v.string(),
     screeningSelection: v.optional(screeningSelectionValidator),
@@ -885,6 +897,7 @@ export default defineSchema({
     // A collection's or the library's papers, a range of them, as one source (convex/extraction/validators.ts).
     librarySet: v.optional(librarySetValidator),
     zoteroSet: v.optional(v.object({ first: v.number(), last: v.number() })),
+    evidenceLibrarySet: v.optional(evidenceLibrarySetValidator),
   })
     .index("by_job_and_position", ["jobId", "position"])
     .index("by_job_and_source", ["jobId", "source"]),
@@ -907,6 +920,8 @@ export default defineSchema({
     .index("by_job", ["jobId"])
     .index("by_job_processable", ["jobId", "processable"])
     .index("by_job_dedupeKey", ["jobId", "dedupeKey"])
+    .index("by_job_and_doiKey", ["jobId", "doiKey"])
+    .index("by_job_and_titleKey", ["jobId", "titleKey"])
     // A job's processable papers in the orders its results list in.
     .index("by_job_processable_and_sortTitle", ["jobId", "processable", "sortTitle"])
     .index("by_job_processable_and_avgConfidence", ["jobId", "processable", "avgConfidence"])

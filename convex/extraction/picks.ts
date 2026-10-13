@@ -4,7 +4,8 @@
  * uploaded. The page sends any number of them; the assistant one set. Each becomes a source the
  * job stores and its setup reads (./jobSources.ts, ./actions.ts): a search as its request from
  * result `first` to `last`, a screening as its included papers at their revision, a collection's
- * or the saved papers' range as that range, and an upload as one paper.
+ * or the saved papers' range as that range, an Evidence Library source as the records the library
+ * gives for it, and an upload as one paper.
  */
 import { v, type Infer } from "convex/values";
 import type { Id } from "../_generated/dataModel";
@@ -21,6 +22,7 @@ import { checkScreeningSelection } from "./sources/screening";
 import { MAX_JOB_SOURCES } from "./jobSources";
 import { bucketItemInputValidator } from "./validators";
 import { checkZoteroIds } from "../zotero/libraryValidators";
+import { requireRunningLibrary } from "../evidenceLibraries/sources";
 
 export const paperPickValidator = v.object({ set: paperSetValidator, first: v.number(), last: v.number() });
 export const uploadPickValidator = v.object({ storageId: v.id("_storage"), title: v.string() });
@@ -75,6 +77,11 @@ async function sourceOf(ctx: QueryCtx, { workspaceId }: InWorkspace, { set, firs
     checkZoteroIds(set);
     const where = set.collectionKey ?? "library";
     return { bucketKey: `zotero:${set.groupId ?? "user"}:${where}:${first}-${last}`, source: "zotero", sourceRefId: where, title: "Zotero", authors: [], libraryType: set.groupId ? "group" : "user", ...(set.groupId ? { groupId: set.groupId } : {}), ...(set.collectionKey ? { collectionKey: set.collectionKey } : {}), zoteroSet: { first, last } };
+  }
+  // An Evidence Library's records: the library gives their keys as the job's person may read them when the job is set up (./actions.ts).
+  if (set.kind === "evidenceLibrary") {
+    const library = await requireRunningLibrary(ctx, set.libraryId);
+    return { bucketKey: `evidenceLibrary:${set.libraryId}:${JSON.stringify(set.source)}:${first}-${last}`, source: "evidenceLibrary", sourceRefId: set.libraryId, title: library.name, authors: [], evidenceLibrarySet: { libraryId: set.libraryId, source: set.source, first, last } };
   }
   // One source for the whole range: the job reads its papers a page at a time when it's set up.
   const collection = set.kind === "collection" ? await ctx.db.get("collections", set.collectionId) : null;

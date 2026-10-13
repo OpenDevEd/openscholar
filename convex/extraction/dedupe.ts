@@ -1,1 +1,1 @@
-export { buildDedupeKey, type DedupeKeyInput } from "../../lib/bucket/dedupe";
+export { buildDedupeKey, dedupeKeys, samePaper, type DedupeKeyInput } from "../../lib/bucket/dedupe";

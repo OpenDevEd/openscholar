@@ -5,7 +5,8 @@
  * - A saved-search placeholder (`source === "history"` with `searchFilters`) expands to its
  *   results `searchFilters.first` (1 when left out) to `searchFilters.limit`; one saved
  *   without a count pulls PAPER_PULL_DEFAULT.
- * - A screening expands to its included papers, and a library or collection range to its papers.
+ * - A screening expands to its included papers, a library or collection range to its papers, and
+ *   an Evidence Library range to its records `first` to `last` (fewer when the source holds fewer).
  * - Every other row (library, collection, zotero, upload, a single history paper) is one.
  *
  * The cap is measured against this sum, not the row count: one placeholder with
@@ -14,10 +15,11 @@
 import { PAPER_PULL_DEFAULT } from "../extraction/limits";
 
 export type EffectiveCountItem = {
-  source: "history" | "library" | "collection" | "zotero" | "upload" | "screening";
+  source: "history" | "library" | "collection" | "zotero" | "upload" | "screening" | "evidenceLibrary";
   screeningSelection?: { count: number };
   librarySet?: { count: number };
   zoteroSet?: { first: number; last: number };
+  evidenceLibrarySet?: { first: number; last: number };
   searchFilters?: { first?: number; limit?: number } & Record<string, unknown>;
 };
 
@@ -26,6 +28,7 @@ export function paperCountForItem(item: EffectiveCountItem): number {
   if (item.source === "screening") return item.screeningSelection?.count ?? 0;
   if (item.librarySet) return item.librarySet.count;
   if (item.zoteroSet) return Math.max(0, item.zoteroSet.last - item.zoteroSet.first + 1);
+  if (item.evidenceLibrarySet) return Math.max(0, item.evidenceLibrarySet.last - item.evidenceLibrarySet.first + 1);
   if (item.source !== "history" || !item.searchFilters) return 1;
   const raw = item.searchFilters.limit ?? PAPER_PULL_DEFAULT;
   const first = item.searchFilters.first ?? 1;

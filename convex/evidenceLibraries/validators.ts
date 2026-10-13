@@ -1195,3 +1195,91 @@ export const assistantEditResultValidator = v.object({
   problems: draftProblemsValidator,
   undo: v.optional(v.object({ path: v.literal("evidenceLibraries/assistant:editDraft"), args: v.object({ libraryId: v.id("evidenceLibraries"), changes: draftChangesValidator, unchanged: v.string() }) })),
 });
+
+/** How a library became one of a person's: they signed in to it, or opened a hand-off from it (./readers.ts). */
+export const readerWayValidator = v.union(v.literal("signIn"), v.literal("handoff"));
+
+/** Libraries a person's list holds at most: the ones they used last. */
+export const READ_LIBRARIES_MAX = 50;
+
+/** The libraries a person reads, as their list shows them (./readers.ts `list`). */
+export const readLibrariesValidator = capped(
+  v.array(
+    v.object({
+      libraryId: v.id("evidenceLibraries"),
+      name: v.string(),
+      address: v.string(),
+      ways: capped(v.array(v.union(readerWayValidator, v.literal("role"))), 3),
+      role: v.union(libraryListRoleValidator, v.null()),
+      faviconUrl: v.union(v.string(), v.null()),
+    }),
+  ),
+  READ_LIBRARIES_MAX,
+);
+
+export const evidenceLibraryReaderFields = {
+  libraryId: v.id("evidenceLibraries"),
+  userId: v.id("users"),
+  /** The last way the library became theirs here. */
+  via: readerWayValidator,
+  firstAt: v.number(),
+  lastAt: v.number(),
+};
+
+/** Most records a source named record by record holds: what a hand-off from Smart screening sends, with room to spare. */
+export const LIBRARY_SOURCE_RECORDS_MAX = 1_000;
+
+/**
+ * A source of an Evidence Library's records (lib/evidence-libraries/source-address.ts): a reader's collection, one of
+ * the library's own collections, the whole library, a search of it (its search page's query string), or records.
+ */
+export const librarySourceValidator = v.union(
+  v.object({ readerCollection: v.string() }),
+  v.object({ libraryCollection: v.string() }),
+  v.object({ library: v.literal(true) }),
+  v.object({ search: v.string(), readerCollection: v.optional(v.string()) }),
+  v.object({ records: capped(v.array(v.string()), LIBRARY_SOURCE_RECORDS_MAX) }),
+);
+
+/**
+ * One source a person can read records from, as the screening and extraction forms list it: all of a library, a
+ * collection of theirs, one shared with them or someone else's, one of the library's own, a search, or records.
+ */
+export const librarySourceRowValidator = v.object({
+  libraryId: v.id("evidenceLibraries"),
+  source: librarySourceValidator,
+  what: v.union(v.literal("all"), v.literal("yours"), v.literal("shared"), v.literal("other"), v.literal("library"), v.literal("search"), v.literal("records")),
+  label: v.string(),
+  /** How many records it holds now, as the person may read them. */
+  records: v.number(),
+  private: v.optional(v.boolean()),
+  access: v.optional(v.union(v.literal("owner"), v.literal("editor"), v.literal("viewer"))),
+  owner: v.optional(v.object({ name: v.string(), image: v.union(v.string(), v.null()) })),
+  /** The collection it is in: a library collection's parent, or the reader's collection a search is in. */
+  parent: v.optional(v.string()),
+});
+
+/** Most sources one library lists for a person: all of it, their own and shared collections, and the library's own. */
+export const LIBRARY_ROWS_MAX = 1_000;
+
+/** A library's sources for one person, or why the library couldn't list them: it needs an update, or didn't answer. */
+export const libraryContentsValidator = v.object({
+  libraryId: v.id("evidenceLibraries"),
+  rows: v.union(capped(v.array(librarySourceRowValidator), LIBRARY_ROWS_MAX), v.null()),
+  problem: v.union(v.null(), v.literal("outdated"), v.literal("unreadable")),
+});
+
+/** What each of a person's libraries lists for them (./library.ts `sources`). */
+export const librariesContentsValidator = capped(v.array(libraryContentsValidator), READ_LIBRARIES_MAX);
+
+/** Why a pasted address is no source. */
+export const sourceAddressErrorValidator = v.union(
+  v.literal("notAddress"),
+  v.literal("notHosted"),
+  v.literal("private"),
+  v.literal("notFound"),
+  v.literal("profile"),
+  v.literal("unknownPage"),
+  v.literal("outdated"),
+  v.literal("unreadable"),
+);

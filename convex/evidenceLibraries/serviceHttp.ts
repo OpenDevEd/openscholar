@@ -62,3 +62,19 @@ export const checkReaderStatus = httpAction(async (ctx, request) =>
     jsonResponse(200, {
       status: await ctx.runQuery(internal.evidenceLibraries.sessionAccess.readReaderStatus, input),
     })));
+
+/**
+ * A library tells OpenScholar a reader signed in, or is still there, so it is among their
+ * libraries (./readers.ts). Speaks the library sources contract (plans/evidence-library-sources).
+ */
+export const noteReaderSeen = httpAction(async (ctx, request) => {
+  // Every answer, a refusal too, says the contract it speaks.
+  const answer = request.headers.get("OpenScholar-Contract") !== "1"
+    ? jsonResponse(400, { error: "contract", message: "This OpenScholar speaks contract 1: send it in OpenScholar-Contract." })
+    : await answerLibraryUserRequest(request, "Library reader report", async (input) => {
+        await ctx.runMutation(internal.evidenceLibraries.readers.seen, input);
+        return new Response(null, { status: 204 });
+      });
+  answer.headers.set("OpenScholar-Contract", "1");
+  return answer;
+});

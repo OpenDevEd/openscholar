@@ -21,7 +21,8 @@ import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { useEffectiveRating } from "@/components/results-contexts";
 import type { PaperResult } from "@/lib/types";
-import { paperPage, saveablePaper } from "@/lib/papers/paper-ref";
+import { saveablePaper } from "@/lib/papers/paper-ref";
+import { usePaperPage } from "@/lib/papers/use-paper-page";
 
 export interface FocusModeHeaderProps {
   currentPaper: PaperResult;
@@ -65,7 +66,7 @@ export function FocusModeHeader({
   const effectiveRating = useEffectiveRating(currentPaper.id);
   // Any paper named by its source but an upload is rated and saved (an upload's file stays with its job); it opens where its source keeps it, if anywhere.
   const saveable = saveablePaper(currentPaper.id);
-  const page = paperPage(currentPaper.id, currentPaper.primary_location?.pdf_url);
+  const page = usePaperPage(currentPaper.id, currentPaper.primary_location?.pdf_url);
   const hasTranslation = !!translatedContent && !translatedContent.noTranslationNeeded;
   const previous = (
     <Button variant="outline" size="icon-sm" onClick={onGoToPrevious} disabled={currentIndex === 0}>

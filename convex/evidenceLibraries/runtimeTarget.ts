@@ -3,8 +3,11 @@ import type { QueryCtx } from "../_generated/server";
 import { LIBRARY_SERVICE_CREDENTIAL_KEY } from "./credentials";
 import { readEvidenceLibraryAdminLaunchTarget } from "./setupRecords";
 
-/** Callers must check the user's library permission before reading this credential. */
-export async function readLibraryRuntimeTarget(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
+/**
+ * The credential never leaves the server. A caller acting for a person either checks their permission on the library
+ * first, or asks the library as that person (./sourceActions.ts), whose own checks decide what they may read.
+ */
+export async function readLibraryRuntimeTarget(ctx: Pick<QueryCtx, "db">, library: Doc<"evidenceLibraries">) {
   const targetBaseUrl = await readEvidenceLibraryAdminLaunchTarget(ctx, library);
   if (!targetBaseUrl) return null;
   const credential = await ctx.db.query("evidenceLibraryCredentials")

@@ -30,23 +30,32 @@ export type DedupeKeyInput = {
   year?: number;
 };
 
+/** Every identifier a paper is matched to another by, strongest first: its OpenAlex work, its DOI, its title and year. */
+export function dedupeKeys(args: DedupeKeyInput): string[] {
+  const work = normalizeOpenalexId(args.openalexId);
+  const doi = normalizeDoi(args.doi);
+  const title = args.title?.trim() ? `title:${normalizeTitle(args.title)}#${args.year ? String(args.year) : ""}` : null;
+  return [work ? `openalex:${work}` : null, doi ? `doi:${doi}` : null, title].filter((key): key is string => key !== null);
+}
+
+/** A paper's strongest identifier, which the bucket keys it by. */
 export function buildDedupeKey(args: DedupeKeyInput): string {
-  const normalizedOa = normalizeOpenalexId(args.openalexId);
-  if (normalizedOa) {
-    return `openalex:${normalizedOa}`;
+  const [key] = dedupeKeys(args);
+  if (!key) throw new Error("buildDedupeKey requires at least one of openalexId, doi, or title");
+  return key;
+}
+
+/**
+ * Whether two papers' identifiers (`dedupeKeys`) say they are one paper: the strongest identifier both have agrees.
+ * A copy that shares only a DOI with another is that paper; two papers with one title and year but different DOIs are two.
+ */
+export function samePaper(a: string[], b: string[]): boolean {
+  for (const kind of ["openalex:", "doi:", "title:"]) {
+    const ours = a.find((key) => key.startsWith(kind));
+    const theirs = b.find((key) => key.startsWith(kind));
+    if (ours && theirs) return ours === theirs;
   }
-  const normalizedDoi = normalizeDoi(args.doi);
-  if (normalizedDoi) {
-    return `doi:${normalizedDoi}`;
-  }
-  if (args.title && args.title.trim()) {
-    const titleKey = normalizeTitle(args.title);
-    const yearKey = args.year ? String(args.year) : "";
-    return `title:${titleKey}#${yearKey}`;
-  }
-  throw new Error(
-    "buildDedupeKey requires at least one of openalexId, doi, or title",
-  );
+  return false;
 }
 
 /**

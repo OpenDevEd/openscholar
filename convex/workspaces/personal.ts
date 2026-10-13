@@ -2,6 +2,7 @@ import type { Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { personName } from "../lib/people";
+import { MAX_ORGANIZATIONS_PER_PERSON } from "../lib/queryBounds";
 
 // Kept apart from ./actor.ts, which reads auth: the database triggers reach these, and must load
 // without the modules that load the triggers themselves.
@@ -15,6 +16,16 @@ export async function personalWorkspaceOf(ctx: Pick<QueryCtx, "db">, userId: Id<
   const workspace = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
   if (!workspace) throw createError("NOT_FOUND", "Workspace not found");
   return workspace._id;
+}
+
+/** The workspaces a person is in: their own, and their organizations'. */
+export async function workspacesOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
+  const user = await ctx.db.get("users", userId);
+  if (!user) return [];
+  const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
+  const memberships = await ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", user.clerkId).eq("state", "active")).take(MAX_ORGANIZATIONS_PER_PERSON);
+  const organizations = await Promise.all(memberships.map((membership) => ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", membership.organizationId)).unique()));
+  return [own, ...organizations].flatMap((workspace) => (workspace ? [workspace] : []));
 }
 
 /** An organization's workspace, made with it (#650). */

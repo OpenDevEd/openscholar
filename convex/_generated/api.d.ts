@@ -133,6 +133,7 @@ import type * as evidenceLibraries_domains from "../evidenceLibraries/domains.js
 import type * as evidenceLibraries_draftVersion from "../evidenceLibraries/draftVersion.js";
 import type * as evidenceLibraries_invitationActions from "../evidenceLibraries/invitationActions.js";
 import type * as evidenceLibraries_invitations from "../evidenceLibraries/invitations.js";
+import type * as evidenceLibraries_library from "../evidenceLibraries/library.js";
 import type * as evidenceLibraries_members from "../evidenceLibraries/members.js";
 import type * as evidenceLibraries_mutations from "../evidenceLibraries/mutations.js";
 import type * as evidenceLibraries_oauthClientSync from "../evidenceLibraries/oauthClientSync.js";
@@ -150,6 +151,7 @@ import type * as evidenceLibraries_publicationValidators from "../evidenceLibrar
 import type * as evidenceLibraries_queries from "../evidenceLibraries/queries.js";
 import type * as evidenceLibraries_readerDeletionActions from "../evidenceLibraries/readerDeletionActions.js";
 import type * as evidenceLibraries_readerDeletions from "../evidenceLibraries/readerDeletions.js";
+import type * as evidenceLibraries_readers from "../evidenceLibraries/readers.js";
 import type * as evidenceLibraries_readinessClient from "../evidenceLibraries/readinessClient.js";
 import type * as evidenceLibraries_readinessSetup from "../evidenceLibraries/readinessSetup.js";
 import type * as evidenceLibraries_readinessSetupActions from "../evidenceLibraries/readinessSetupActions.js";
@@ -167,9 +169,12 @@ import type * as evidenceLibraries_sessionAccess from "../evidenceLibraries/sess
 import type * as evidenceLibraries_setupNaming from "../evidenceLibraries/setupNaming.js";
 import type * as evidenceLibraries_setupOperation from "../evidenceLibraries/setupOperation.js";
 import type * as evidenceLibraries_setupRecords from "../evidenceLibraries/setupRecords.js";
+import type * as evidenceLibraries_sourceActions from "../evidenceLibraries/sourceActions.js";
+import type * as evidenceLibraries_sourceClient from "../evidenceLibraries/sourceClient.js";
 import type * as evidenceLibraries_sourceCredentials from "../evidenceLibraries/sourceCredentials.js";
 import type * as evidenceLibraries_sourceStatus from "../evidenceLibraries/sourceStatus.js";
 import type * as evidenceLibraries_sourceStatusValidators from "../evidenceLibraries/sourceStatusValidators.js";
+import type * as evidenceLibraries_sources from "../evidenceLibraries/sources.js";
 import type * as evidenceLibraries_storageSetup from "../evidenceLibraries/storageSetup.js";
 import type * as evidenceLibraries_storageSetupActions from "../evidenceLibraries/storageSetupActions.js";
 import type * as evidenceLibraries_storageSetupClient from "../evidenceLibraries/storageSetupClient.js";
@@ -350,6 +355,7 @@ import type * as organizations_manage from "../organizations/manage.js";
 import type * as organizations_queries from "../organizations/queries.js";
 import type * as organizations_read from "../organizations/read.js";
 import type * as paperSets_held from "../paperSets/held.js";
+import type * as paperSets_libraryKeys from "../paperSets/libraryKeys.js";
 import type * as paperSets_openalex from "../paperSets/openalex.js";
 import type * as paperSets_search from "../paperSets/search.js";
 import type * as presence from "../presence.js";
@@ -577,6 +583,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/draftVersion": typeof evidenceLibraries_draftVersion;
   "evidenceLibraries/invitationActions": typeof evidenceLibraries_invitationActions;
   "evidenceLibraries/invitations": typeof evidenceLibraries_invitations;
+  "evidenceLibraries/library": typeof evidenceLibraries_library;
   "evidenceLibraries/members": typeof evidenceLibraries_members;
   "evidenceLibraries/mutations": typeof evidenceLibraries_mutations;
   "evidenceLibraries/oauthClientSync": typeof evidenceLibraries_oauthClientSync;
@@ -594,6 +601,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/queries": typeof evidenceLibraries_queries;
   "evidenceLibraries/readerDeletionActions": typeof evidenceLibraries_readerDeletionActions;
   "evidenceLibraries/readerDeletions": typeof evidenceLibraries_readerDeletions;
+  "evidenceLibraries/readers": typeof evidenceLibraries_readers;
   "evidenceLibraries/readinessClient": typeof evidenceLibraries_readinessClient;
   "evidenceLibraries/readinessSetup": typeof evidenceLibraries_readinessSetup;
   "evidenceLibraries/readinessSetupActions": typeof evidenceLibraries_readinessSetupActions;
@@ -611,9 +619,12 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/setupNaming": typeof evidenceLibraries_setupNaming;
   "evidenceLibraries/setupOperation": typeof evidenceLibraries_setupOperation;
   "evidenceLibraries/setupRecords": typeof evidenceLibraries_setupRecords;
+  "evidenceLibraries/sourceActions": typeof evidenceLibraries_sourceActions;
+  "evidenceLibraries/sourceClient": typeof evidenceLibraries_sourceClient;
   "evidenceLibraries/sourceCredentials": typeof evidenceLibraries_sourceCredentials;
   "evidenceLibraries/sourceStatus": typeof evidenceLibraries_sourceStatus;
   "evidenceLibraries/sourceStatusValidators": typeof evidenceLibraries_sourceStatusValidators;
+  "evidenceLibraries/sources": typeof evidenceLibraries_sources;
   "evidenceLibraries/storageSetup": typeof evidenceLibraries_storageSetup;
   "evidenceLibraries/storageSetupActions": typeof evidenceLibraries_storageSetupActions;
   "evidenceLibraries/storageSetupClient": typeof evidenceLibraries_storageSetupClient;
@@ -794,6 +805,7 @@ declare const fullApi: ApiFromModules<{
   "organizations/queries": typeof organizations_queries;
   "organizations/read": typeof organizations_read;
   "paperSets/held": typeof paperSets_held;
+  "paperSets/libraryKeys": typeof paperSets_libraryKeys;
   "paperSets/openalex": typeof paperSets_openalex;
   "paperSets/search": typeof paperSets_search;
   presence: typeof presence;

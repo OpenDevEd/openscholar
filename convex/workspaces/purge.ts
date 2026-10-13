@@ -41,6 +41,7 @@ export async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspac
   if (!(await each(step, (n) => ctx.db.query("screeningJobs").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), async (job) => {
     if (!(await drain(ctx, step, (n) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(n), "screeningResults"))) return false;
     if (!(await drain(ctx, step, (n) => ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", job._id)).take(n), "screeningJobProgress"))) return false;
+    if (!(await drain(ctx, step, (n) => ctx.db.query("paperSetKeys").withIndex("by_job_and_part_and_page", (q) => q.eq("job", job._id)).take(n), "paperSetKeys"))) return false;
     // A job's own screening, of no search, goes with it; a search's goes with the search.
     const screening = await ctx.db.get("screenings", job.screeningId);
     if (screening && !screening.searchId && !(await purgeScreening(ctx, step, screening._id))) return false;

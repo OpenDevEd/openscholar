@@ -41,19 +41,10 @@ import { paperPickValidator, sourcesFor, uploadPickValidator } from "../picks";
 
 function deriveSourceType(
   items: ReadonlyArray<BucketItemInput>,
-): "history" | "zotero" | "manual" | "screening" | "mixed" {
-  const kinds = new Set<"history" | "zotero" | "manual" | "screening">();
-  for (const item of items) {
-    if (item.source === "history") kinds.add("history");
-    else if (item.source === "zotero") kinds.add("zotero");
-    else if (item.source === "screening") kinds.add("screening");
-    else kinds.add("manual");
-  }
+): "history" | "zotero" | "manual" | "screening" | "evidenceLibrary" | "mixed" {
+  const kinds = new Set(items.map((item) => (item.source === "history" || item.source === "zotero" || item.source === "screening" || item.source === "evidenceLibrary" ? item.source : "manual")));
   if (kinds.size >= 2) return "mixed";
-  if (kinds.has("history")) return "history";
-  if (kinds.has("zotero")) return "zotero";
-  if (kinds.has("screening")) return "screening";
-  return "manual";
+  return kinds.values().next().value ?? "manual";
 }
 
 const startArgs = {
@@ -315,6 +306,8 @@ export const cancelExtractionAction = defineUserMutation({
     assertValidJobTransition(job.status as JobStatus, "cancelled");
     await ctx.db.patch("extractionJobs", args.jobId, { status: "cancelled", updatedAt: Date.now() });
     await cancelPaperQueueRowsForJobTx(ctx, { jobId: args.jobId });
+    // A setup stopped part-way leaves the keys an Evidence Library gave it.
+    await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job: args.jobId });
     // Its papers no longer count against the person's limit; their other jobs start in it.
     await refillWorkspace(ctx, job.workspaceId);
     await noteActivity(ctx, { workspaceId: job.workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, { kind: "extraction", id: args.jobId, happened: "stopped" });

@@ -104,13 +104,23 @@ export const saveablePaper = (paper: string) => {
   return ref !== null && ref.source !== "upload";
 };
 
-/** Where a paper opens, by its source: its OpenAlex page, the item in Zotero, or an uploaded PDF's `file` where the page has it. Null for one with nowhere to open. */
-export function paperPage(paper: string, file?: string | null): string | null {
+/**
+ * Where a paper opens, by its source: its OpenAlex page, a library record's page on its library at `libraryAddress`,
+ * the item in Zotero, or an uploaded PDF's `file` where the page has it. Null for one with nowhere to open.
+ */
+export function paperPage(paper: string, { file, libraryAddress }: { file?: string | null; libraryAddress?: string | null } = {}): string | null {
   const ref = legacyPaperRef(paper);
   if (ref?.source === "openalex") return `https://openalex.org/${ref.work}`;
+  if (ref?.source === "library") return libraryAddress ? new URL(`/lib/${encodeURIComponent(ref.key)}`, libraryAddress).href : null;
   if (ref?.source === "zotero") return `zotero://select/${ref.library === "group" ? "groups" : "users"}/${ref.owner}/items/${ref.key}`;
   if (ref?.source === "upload") return file ?? null;
   return null;
+}
+
+/** The Evidence Library a paper is a record of, if it is one. */
+export function libraryOfPaper(paper: string): string | null {
+  const ref = legacyPaperRef(paper);
+  return ref?.source === "library" ? ref.libraryId : null;
 }
 
 /** The OpenAlex work a paper is or is known as, from its key or ID and its cross-references. */

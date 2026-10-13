@@ -2,13 +2,13 @@ import type { DataModel, Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { paperIdOf, paperKeyOf, toPaperKey } from "../lib/papers/paper-ref";
 import { findItem } from "./library/find";
-import { MAX_ORGANIZATIONS_PER_PERSON } from "./lib/queryBounds";
 import { MAX_RATERS_KEPT } from "./lib/listCaps";
 import { createError } from "./lib/errors";
 import type { Change } from "convex-helpers/server/triggers";
 import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
 import { personName } from "./lib/people";
+import { workspacesOf } from "./workspaces/personal";
 
 /** The ID a rating is kept under: the paper's key (lib/papers/paper-ref.ts), however the paper was named, so every rating of it meets. */
 export const ratedPaper = (paperId: string) => toPaperKey(paperId) ?? paperId;
@@ -56,7 +56,7 @@ const rerateRef = makeFunctionReference<"mutation", { workspaceId: Id<"workspace
  */
 export async function setPersonalRating(ctx: MutationCtx, userId: Id<"users">, paperId: string, rating: number | null) {
   if (!(await writeRating(ctx, userId, undefined, paperId, rating))) return;
-  for (const workspace of await ratingWorkspaces(ctx, userId)) {
+  for (const workspace of await workspacesOf(ctx, userId)) {
     if (workspace.kind === "organization") await ctx.scheduler.runAfter(0, rerateRef, { workspaceId: workspace._id, paperId });
     else await rerate(ctx, workspace._id, paperId);
   }
@@ -73,16 +73,6 @@ export async function rerate(ctx: MutationCtx, workspaceId: Id<"workspaces">, pa
 
 /** The most members of an organization its averages read, and ratings of a paper in one collection; Clerk lets a free organization have 5 members. */
 const MAX_RATERS = 1_000;
-
-/** The workspaces whose saved papers a person's ratings count in: their own, and their organizations'. */
-async function ratingWorkspaces(ctx: Pick<QueryCtx, "db">, userId: Id<"users">) {
-  const user = await ctx.db.get("users", userId);
-  if (!user) return [];
-  const own = await ctx.db.query("workspaces").withIndex("by_userId", (q) => q.eq("userId", userId)).unique();
-  const memberships = await ctx.db.query("organizationMemberships").withIndex("by_clerkUserId_and_state", (q) => q.eq("clerkUserId", user.clerkId).eq("state", "active")).take(MAX_ORGANIZATIONS_PER_PERSON);
-  const organizations = await Promise.all(memberships.map((membership) => ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", membership.organizationId)).unique()));
-  return [own, ...organizations].flatMap((workspace) => (workspace ? [workspace] : []));
-}
 
 /** The people whose ratings count in an organization's averages: its active members. */
 async function members(ctx: Pick<QueryCtx, "db">, organizationId: Id<"organizations">) {

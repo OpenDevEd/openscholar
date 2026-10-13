@@ -150,7 +150,8 @@
     "app/actions/author-publications:readAuthorPublications": "authors/assistant:publications",
     "app/actions/topic-publications:readTopicPublications": "topics/assistant:publications",
     "topics/publications:listGroups": "topics/assistant:publications",
-    "topics/publications:listLocations": "topics/assistant:publications"
+    "topics/publications:listLocations": "topics/assistant:publications",
+    "evidenceLibraries/readers:address": "evidenceLibraries/library:source"
   },
   "manual": {
     "admins/invitations:invite": "Site administration, for OpenScholar's own admins on the admin pages.",

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildDedupeKey, dedupeBucketItems } from "@/lib/bucket/dedupe";
+import { buildDedupeKey, dedupeBucketItems, dedupeKeys, samePaper } from "@/lib/bucket/dedupe";
 
 describe("lib/bucket/dedupe", () => {
   test("uses the normalised openalexId when present", () => {
@@ -96,5 +96,21 @@ describe("lib/bucket/dedupe.dedupeBucketItems", () => {
 
   test("returns an empty array for empty input", () => {
     expect(dedupeBucketItems([])).toEqual([]);
+  });
+});
+
+describe("lib/bucket/dedupe.samePaper", () => {
+  const search = dedupeKeys({ openalexId: "W1", doi: "10.1/ABC", title: "Tutoring at scale", year: 2021 });
+
+  test("one paper when the strongest identifier both have agrees, however they were found", () => {
+    // A library record that knows only the DOI.
+    expect(samePaper(search, dedupeKeys({ doi: "https://doi.org/10.1/abc", title: "Tutoring at Scale", year: 2021 }))).toBe(true);
+    expect(samePaper(search, dedupeKeys({ title: "tutoring at  scale", year: 2021 }))).toBe(true);
+  });
+
+  test("two papers when a stronger identifier both have differs, whatever weaker ones they share", () => {
+    expect(samePaper(search, dedupeKeys({ openalexId: "W2", doi: "10.1/abc" }))).toBe(false);
+    expect(samePaper(dedupeKeys({ doi: "10.1/a", title: "Editorial", year: 2021 }), dedupeKeys({ doi: "10.1/b", title: "Editorial", year: 2021 }))).toBe(false);
+    expect(samePaper(search, dedupeKeys({ title: "Tutoring at scale", year: 2022 }))).toBe(false);
   });
 });

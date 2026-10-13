@@ -28,6 +28,7 @@ import { MAX_QUESTIONS_PER_JOB, MAX_QUESTION_TEXT_LENGTH, questionInputValidator
 import { checkRequestPapers } from "../billing/accounts";
 import { checkZoteroSet } from "../zotero/libraryValidators";
 import { noteActivity } from "../activity/notes";
+import { requireRunningLibrary } from "../evidenceLibraries/sources";
 
 
 const askedValidator = v.object({ question: v.string(), type: questionTypeValidator, description: v.optional(v.string()) });
@@ -71,8 +72,9 @@ async function checkExtraction(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
     return void (await checkRequestPapers(ctx, workspaceId, (await papersIn(ctx, { userId, workspaceId }, set)) ?? 0, "extraction"));
   }
   checkRange(first, last);
-  if (set.kind === "zotero") {
-    await checkZoteroSet(ctx, userId, set);
+  if (set.kind === "zotero" || set.kind === "evidenceLibrary") {
+    if (set.kind === "zotero") await checkZoteroSet(ctx, userId, set);
+    else await requireRunningLibrary(ctx, set.libraryId);
     return void (await checkRequestPapers(ctx, workspaceId, last - first + 1, "extraction"));
   }
   if (set.kind === "search") {
@@ -173,7 +175,7 @@ export const extractAction = defineUserAction({
   // The papers and the questions put to them.
   shown: ({ name, set, first, last, questions, usePdfs }) => ({
     name,
-    ...(set.kind === "collection" ? { collectionId: set.collectionId, first, last } : set.kind === "search" ? { search: set.searchId, first, last } : set.kind === "screening" ? { screening: set.jobId } : set.kind === "zotero" ? { zotero: set.collectionKey ?? "library", ...(set.groupId ? { group: set.groupId } : {}), first, last } : { papers: "library", first, last }),
+    ...(set.kind === "collection" ? { collectionId: set.collectionId, first, last } : set.kind === "search" ? { search: set.searchId, first, last } : set.kind === "screening" ? { screening: set.jobId } : set.kind === "zotero" ? { zotero: set.collectionKey ?? "library", ...(set.groupId ? { group: set.groupId } : {}), first, last } : set.kind === "evidenceLibrary" ? { evidenceLibrary: set.libraryId, ...set.source, first, last } : { papers: "library", first, last }),
     question: questions.map((asked) => asked.question),
     ...(usePdfs ? { usePdfs } : {}),
   }),

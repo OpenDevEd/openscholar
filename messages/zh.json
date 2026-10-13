@@ -1567,13 +1567,15 @@
       "search": "搜索",
       "collection": "合集",
       "saved": "已保存的论文",
-      "screening": "筛选"
+      "screening": "筛选",
+      "evidenceLibrary": "Evidence Library"
     },
     "noSets": {
       "search": "还没有保存的搜索。",
       "collection": "还没有合集。",
       "saved": "还没有保存的论文。",
-      "screening": "还没有已完成的筛选。"
+      "screening": "还没有已完成的筛选。",
+      "evidenceLibrary": "还没有 Evidence Library。"
     },
     "papersToScreen": "要筛选的论文",
     "paperCount": "{count, plural, other {# 篇}}",
@@ -3788,6 +3790,30 @@
         "where": "Evidence Library",
         "ask": "读取您的 Evidence Library"
       },
+      "readerLibraries": {
+        "doing": "正在读取您阅读的 Evidence Library",
+        "did": "已读取您阅读的 Evidence Library",
+        "where": "Evidence Library",
+        "ask": "读取您阅读的 Evidence Library"
+      },
+      "readerSources": {
+        "doing": "正在读取您的 Evidence Library 中为您保存的内容",
+        "did": "已读取您的 Evidence Library 中为您保存的内容",
+        "where": "Evidence Library",
+        "ask": "读取您的 Evidence Library 中为您保存的内容"
+      },
+      "readerAddress": {
+        "doing": "正在读取一个 Evidence Library 地址",
+        "did": "已读取一个 Evidence Library 地址",
+        "where": "Evidence Library",
+        "ask": "读取一个 Evidence Library 地址"
+      },
+      "readerSource": {
+        "doing": "正在读取一个 Evidence Library 来源",
+        "did": "已读取一个 Evidence Library 来源",
+        "where": "Evidence Library",
+        "ask": "读取一个 Evidence Library 来源"
+      },
       "readLibraryDraft": {
         "doing": "正在读取一个文献库的设置",
         "did": "已读取一个文献库的设置",
@@ -4529,5 +4555,63 @@
   },
   "models": {
     "changeInSettings": "在 AI 设置中更改"
+  },
+  "librarySources": {
+    "kind": "Evidence Library 记录",
+    "library": "Evidence Library",
+    "address": "粘贴文献库地址",
+    "show": "显示",
+    "filter": {
+      "all": "全部",
+      "yours": "我的",
+      "shared": "与我共享",
+      "library": "文献库自有"
+    },
+    "find": "查找",
+    "everyRecord": "{library} 的全部记录",
+    "allRecords": "全部记录",
+    "private": "私密",
+    "public": "公开",
+    "canEdit": "可编辑",
+    "canView": "可查看",
+    "fromAddress": "来自链接",
+    "in": "在 {name} 中",
+    "frozen": "以开始时的状态为准",
+    "firstOf": "{total, number} 条中的前 {count, number} 条",
+    "empty": {
+      "all": "{library} 中还没有可读的内容。",
+      "yours": "你在 {library} 中没有合集。",
+      "shared": "还没有人在 {library} 中与你共享合集。",
+      "library": "{library} 没有自己的合集。",
+      "found": "没有匹配项。"
+    },
+    "unread": "{library} 没有响应。请稍后再试。",
+    "outdated": "{library} 需要更新后才能在这里使用。",
+    "error": {
+      "notAddress": "这不是一个地址。",
+      "notHosted": "该文献库不由 OpenScholar 运行。",
+      "private": "该合集是私密的。所有者可以与你共享。",
+      "notFound": "该地址下没有内容。",
+      "profile": "打开对方的某个合集并复制其地址。",
+      "unknownPage": "请复制检索、合集或文献库的地址。",
+      "outdated": "该文献库需要更新后才能在这里使用。",
+      "unreadable": "文献库没有响应。请重试。"
+    },
+    "role": {
+      "owner": "所有者",
+      "editor": "编辑者",
+      "creator": "创建者",
+      "viewer": "查看者"
+    },
+    "sort": {
+      "desc": "最新",
+      "asc": "最早",
+      "mostCited": "被引最多",
+      "leastCited": "被引最少",
+      "authorAZ": "作者 A-Z",
+      "authorZA": "作者 Z-A",
+      "titleAZ": "标题 A-Z",
+      "titleZA": "标题 Z-A"
+    }
   }
 }

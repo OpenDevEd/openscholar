@@ -23,6 +23,8 @@ import { paperCountForItem } from "../../lib/bucket/effective-paper-count";
 import { LIBRARY_READ_BATCH } from "./queries/internal";
 import { OLD_SEARCH_MESSAGE, type BucketItemInput } from "./jobSources";
 import { heldPapers } from "../paperSets/held";
+import { keepLibraryKeys, resolveLibraryKeys } from "../evidenceLibraries/sources";
+import type { SearchPaper } from "../paperSets/search";
 import { createError } from "../lib/errors";
 import {
   EXTRACTION_PAPER_CONCURRENCY,
@@ -197,10 +199,10 @@ const SETUP_ACTION_MS = 4 * 60_000;
 
 type SetupPlace = Infer<typeof setupPlaceValidator>;
 type StepSource = { position: number; item: BucketItemInput };
-type SetupPaper = PaperDataOut & { storageId?: Id<"_storage">; sourceType: "history" | "zotero" | "manual" | "screening"; sourceId: string; screeningRevision?: string };
+type SetupPaper = PaperDataOut & { storageId?: Id<"_storage">; sourceType: "history" | "zotero" | "manual" | "screening" | "evidenceLibrary"; sourceId: string; screeningRevision?: string };
 
 /** A search or a screening reads its papers a page at a time; every other source is one paper. */
-const pagedSource = (item: BucketItemInput) => item.source === "screening" || item.librarySet !== undefined || item.zoteroSet !== undefined || (item.source === "history" && item.searchFilters !== undefined);
+const pagedSource = (item: BucketItemInput) => item.source === "screening" || item.librarySet !== undefined || item.zoteroSet !== undefined || item.evidenceLibrarySet !== undefined || (item.source === "history" && item.searchFilters !== undefined);
 
 /**
  * The next step of a job's papers from `place`, and where its setup goes on after it; null
@@ -254,6 +256,22 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
     const papers = expanded.map(({ paper, sourceType, sourceId }): SetupPaper => ({ ...paper, storageId: paper.storageId as Id<"_storage"> | undefined, sourceType, sourceId }));
     const done = read.ended || last >= range.last;
     return { papers, next: done ? onTo(position + 1) : { ...place, read: place.read + (last - first + 1) } };
+  }
+  if (item.evidenceLibrarySet) {
+    const range = item.evidenceLibrarySet;
+    // The library turns the source into keys on the first step, as the job's person may read it, and the job reads those and no others; `resume` holds how many it kept.
+    if (place.resume === undefined) {
+      const keys = await resolveLibraryKeys(ctx, { libraryId: range.libraryId, userId: job.createdBy, source: range.source, first: range.first, last: range.last });
+      const kept = keys.length > 0 && (await keepLibraryKeys(ctx, job._id, keys, { part: position, epoch: job.runEpoch ?? 0 }));
+      return { papers: [], next: kept ? { ...place, resume: String(keys.length) } : onTo(position + 1) };
+    }
+    const kept = Number(place.resume);
+    const keys: string[] = await ctx.runQuery(internal.paperSets.libraryKeys.slice, { job: job._id, part: position, offset: place.read, count: Math.min(SETUP_STEP, kept - place.read) });
+    // Records the library no longer shows are left out.
+    const read: SearchPaper[] = keys.length ? await ctx.runAction(internal.evidenceLibraries.sourceActions.papers, { libraryId: range.libraryId, keys }) : [];
+    const papers = read.map(({ venue, ...paper }): SetupPaper => ({ ...paper, venueName: venue, sourceType: "evidenceLibrary", sourceId: range.libraryId }));
+    const done = place.read + SETUP_STEP >= kept;
+    return { papers, next: done ? onTo(position + 1) : { ...place, read: place.read + SETUP_STEP } };
   }
   if (item.source === "screening") {
     const selection = item.screeningSelection;
@@ -322,6 +340,8 @@ export async function runSetupExtractionQueueJob(
       if (!control?.job.setup) return;
       place = control.job.setup;
     }
+    // Every source read, the keys an Evidence Library gave for its records go.
+    await ctx.runMutation(internal.paperSets.libraryKeys.dropRun, { job: jobId, epoch: expectedEpoch });
 
     await ctx.runMutation(
       internal.extraction.mutations.results.updateJobStatus,
@@ -368,6 +388,7 @@ export async function runSetupExtractionQueueJob(
     });
   } catch (error) {
     const classified = classifyUnknownError(error);
+    await ctx.runMutation(internal.paperSets.libraryKeys.dropRun, { job: jobId, epoch: expectedEpoch });
     await ctx.runMutation(
       internal.extraction.mutations.results.updateJobStatus,
       {

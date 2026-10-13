@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { crossRefsOf, legacyPaperRef, openalexWorkOf, paperKey, parsePaperKey, toPaperKey, type PaperRef } from "./paper-ref";
+import { crossRefsOf, legacyPaperRef, openalexWorkOf, paperKey, paperPage, parsePaperKey, toPaperKey, type PaperRef } from "./paper-ref";
 
 const refs: PaperRef[] = [
   { source: "openalex", work: "W2741809807" },
@@ -62,5 +62,13 @@ describe("naming a paper at a boundary", () => {
     expect(openalexWorkOf("https://openalex.org/W5")).toBe("W5");
     expect(openalexWorkOf("library:r1:K1234567", { openalexId: "W9" })).toBe("W9");
     expect(openalexWorkOf("upload:f")).toBeNull();
+  });
+});
+
+describe("where a paper opens", () => {
+  it("opens a library record on its library, once the library's address is known", () => {
+    expect(paperPage("library:r1:K1234567", { libraryAddress: "https://aied.example.org" })).toBe("https://aied.example.org/lib/K1234567");
+    expect(paperPage("library:r1:K1234567")).toBeNull();
+    expect(paperPage("W5")).toBe("https://openalex.org/W5");
   });
 });

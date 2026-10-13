@@ -1,6 +1,6 @@
 import type { BucketItemInput, JobSourceSearchFilters } from "./jobSources";
 import type { PaperData } from "./types";
-import { buildDedupeKey } from "./dedupe";
+import { buildDedupeKey, dedupeKeys } from "./dedupe";
 import { authorMetadata, sourceMetadata, type PaperSourceMetadata } from "../../lib/library/paper-metadata";
 import { createError } from "../lib/errors";
 import { openalexWorkOf, paperKey, toPaperKey, type CrossRefs } from "../../lib/papers/paper-ref";
@@ -68,9 +68,9 @@ function paperSourceFromBucket(source: BucketItemInput["source"]): SourceType {
   return "manual";
 }
 
-/** What finds a paper's duplicates: its OpenAlex work where it has one, its DOI, or its title and year. */
-export const dedupeKeyOf = (paper: Pick<PaperData, "paper" | "crossRefs" | "doi" | "title" | "publicationYear">) =>
-  buildDedupeKey({ openalexId: openalexWorkOf(paper.paper, paper.crossRefs) ?? undefined, doi: paper.doi ?? paper.crossRefs?.doi, title: paper.title, year: paper.publicationYear });
+/** What finds a paper's duplicates (lib/bucket/dedupe.ts): its OpenAlex work where it has one, its DOI, its title and year, strongest first. */
+export const dedupeKeysOf = (paper: Pick<PaperData, "paper" | "crossRefs" | "doi" | "title" | "publicationYear">) =>
+  dedupeKeys({ openalexId: openalexWorkOf(paper.paper, paper.crossRefs) ?? undefined, doi: paper.doi ?? paper.crossRefs?.doi, title: paper.title, year: paper.publicationYear });
 
 /** A picked paper's key: by its OpenAlex ID where it has one, and an upload by its file. */
 function pickedKey(item: BucketItemInput): string {
@@ -85,7 +85,7 @@ function toHistoryBucketItem(
 ): BucketItemInput {
   return {
     ...sourceMetadata(paper),
-    bucketKey: dedupeKeyOf(paper),
+    bucketKey: buildDedupeKey({ openalexId: openalexWorkOf(paper.paper, paper.crossRefs) ?? undefined, doi: paper.doi ?? paper.crossRefs?.doi, title: paper.title, year: paper.publicationYear }),
     source: "history",
     sourceRefId: item.sourceRefId,
     title: paper.title,
@@ -254,23 +254,6 @@ export async function expandJobSources(
   }
 
   return expanded;
-}
-
-export function dedupeExpandedSources(
-  items: ReadonlyArray<ExpandedSourcePaper>,
-): ExpandedSourcePaper[] {
-  const deduped = new Map<string, ExpandedSourcePaper>();
-
-  for (const item of items) {
-    const key = dedupeKeyOf(item.paper);
-    // An Included snapshot keeps the screened metadata and decision provenance.
-    const existing = deduped.get(key);
-    if (!existing || (item.sourceType === "screening" && existing.sourceType !== "screening")) {
-      deduped.set(key, item);
-    }
-  }
-
-  return Array.from(deduped.values());
 }
 
 /** Reads the person's library papers through `read`, a batch of `batch` ids at a time. */

@@ -10,6 +10,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { PaperSet } from "@/lib/screening/setup";
+import type { HeldRow } from "@/lib/evidence-libraries/reader-sources";
 import type { ExtractionQuestion } from "@/lib/types";
 
 /** A source picked: its set, papers `first` to `last` of the `total` it holds, and its name in the tray. */
@@ -22,6 +23,8 @@ export type PickedSource = {
   scope: "range" | "all";
   total: number;
   label: string;
+  /** An Evidence Library's source, with its library, as its list showed it. */
+  held?: HeldRow;
 };
 
 /** A PDF the person uploaded, one paper. */
