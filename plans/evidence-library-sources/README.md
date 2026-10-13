@@ -196,8 +196,10 @@ new-el: no schema change for reads. Writes reuse `reader_collection`,
 Each stage ends with targeted tests (Convex tests run under Convex limits; size
 cases where a flow reads many pages), type checks, `check:convex-rules`,
 `check:user-actions`, `check:ui-rules`, fallow in new-el, `verify shift` on
-every changed page, the cross-family review, a preview (OpenScholar on the e2e
-backend, new-el on its verify stack), the GPT-6.1 Sol QA pass and its fixes,
+every changed page, the cross-family review, a preview (OpenScholar on a
+throwaway Convex backend, since a branch that adds stored fields breaks other
+pull requests' pushes to e2e; new-el on its verify stack), the GPT-6.1 Sol QA
+pass and its fixes,
 merge on green, deployment (new-el releases first and AIED, TVET and ECCAR are
 updated one at a time), and a confirmation QA pass on shared dev.
 
