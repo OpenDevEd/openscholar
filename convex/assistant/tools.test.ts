@@ -2,6 +2,7 @@
 // The assistant's tools (#327): a reply runs registered actions as the person who sent the
 // message, each run is kept as a step, and the model reads what came of it.
 import { convexTest } from "convex-test";
+import { pageIdOf } from "../../lib/papers/paper-ref";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listMessages, saveMessages } from "@convex-dev/agent";
 import { api, components, internal } from "../_generated/api";
@@ -214,7 +215,7 @@ describe("the assistant's tools", () => {
 
     // The paper is in the sender's library, not anyone else's.
     const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
-    expect(saved).toMatchObject({ createdBy: ada, openalexId: "https://openalex.org/W1" });
+    expect(saved).toMatchObject({ createdBy: ada, paperKey: "openalex:W1" });
     expect(await steps()).toMatchObject([{ threadId, order: 0, userId: ada, toolCallId: "save", path: "library/mutations:saveToLibrary", status: "done", input: expect.stringContaining("Tutoring at scale"), subject: "Tutoring at scale", undo: { path: "library/mutations:removeFromLibrary" } }]);
     // The whole result is kept beside the step, and the model's next request holds it.
     expect(await results()).toMatchObject([{ id: saved._id }]);
@@ -239,7 +240,7 @@ describe("the assistant's tools", () => {
     vi.unstubAllEnvs();
 
     const [saved] = await t.run(async (ctx) => ctx.db.query("libraryItems").collect());
-    expect(saved).toMatchObject({ createdBy: ada, openalexId: "https://openalex.org/W7", title: "Tutoring at scale" });
+    expect(saved).toMatchObject({ createdBy: ada, paperKey: "openalex:W7", title: "Tutoring at scale" });
     // The call named the paper by its ID alone, so the step is about the paper it came back with.
     expect(await steps()).toMatchObject([{ path: "library/papers:save", status: "done", subject: "Tutoring at scale", undo: { path: "library/mutations:removeFromLibrary" } }]);
     // One result beside the step: the write ended it, and nothing ended it again.
@@ -1466,7 +1467,7 @@ describe("the assistant's tools", () => {
       return { labOrganization, lab, mine: await personalWorkspaceOf(ctx, ada), theirs: await personalWorkspaceOf(ctx, ben) };
     });
     const threadId = await asAda.mutation(api.assistant.threads.create, { workspaceId: lab, title: "Lab" });
-    const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => [item.openalexId, item.workspaceId]));
+    const saved = () => t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map((item) => [pageIdOf(item), item.workspaceId]));
 
     // As many replies as the lab has at once are being written there. Her own workspace's are apart.
     await t.run(async (ctx) => {

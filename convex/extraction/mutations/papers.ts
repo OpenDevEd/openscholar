@@ -25,7 +25,7 @@ import { recomputePaperListProjection } from "../listProjection";
 import { MAX_AUTHORS } from "../../lib/listCaps";
 import { sourceMetadataFields } from "../../lib/paperMetadata";
 import { sourceMetadata } from "../../../lib/library/paper-metadata";
-import { openalexWorkOf, openalexWorkOfRow, paperIdOf, paperKeyOf, parsePaperKey, toPaperKey } from "../../../lib/papers/paper-ref";
+import { openalexWorkOf, openalexWorkOfRow, paperKeyOf, parsePaperKey, toPaperKey } from "../../../lib/papers/paper-ref";
 import { requirePaperKey } from "../../library/find";
 
 function matchesExpectedEpoch(
@@ -173,8 +173,6 @@ function paperFields(paper: Infer<typeof setupPaperValidator>, storageId: Id<"_s
     ...sourceMetadata(paper),
     citedByCount: paper.citedByCount,
     venueName: paper.venueName,
-    // The paper by its source (plans/evidence-library-sources); `openalexId` holds its address until the field goes.
-    openalexId: paperIdOf(paper.paper),
     ...identityOf(parsePaperKey(paper.paper)!, { openalexId: paper.crossRefs?.openalexId, doi: paper.doi ?? paper.crossRefs?.doi }),
     title: paper.title,
     doi: paper.doi,

@@ -1137,8 +1137,9 @@ export default defineSchema({
   screeningResults: defineTable({
     ...sourceMetadataFields,
     jobId: v.id("screeningJobs"),
-    openalexId: v.string(),
-    // The paper by its source (plans/evidence-library-sources); replaces `openalexId` once every row has it.
+    // The ID a paper was kept under before papers were named by their source: no longer written, and gone once migrations/paperIdentity:narrow has run.
+    openalexId: v.optional(v.string()),
+    // The paper by its source (plans/evidence-library-sources).
     ...paperIdentityFields,
     title: v.string(),
     abstract: v.optional(v.string()),

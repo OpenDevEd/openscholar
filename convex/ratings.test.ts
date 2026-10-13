@@ -1,5 +1,6 @@
 // A saved paper's rating as its people's average of their own, and a collection's as its people's there (#655).
 import { convexTest } from "convex-test";
+import { pageIdOf } from "../lib/papers/paper-ref";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api } from "./_generated/api";
 import schema from "./schema";
@@ -33,7 +34,7 @@ it("rates an organization's paper with its members' average, and shows each memb
   const { alice, bob, settled, bobIs, workspaceId } = await lab();
   const shown = async (as: typeof alice) => {
     const { page } = await as.query(api.library.queries.browseLibrary, { workspaceId, sortBy: "rating", sortOrder: "desc", paginationOpts: { cursor: null, numItems: 10 } });
-    return page.map(({ openalexId, rating, myRating }) => [openalexId, rating, myRating]);
+    return page.map((item) => [pageIdOf(item), item.rating, item.myRating]);
   };
 
   // Alice saves two papers to the lab, rated. Bob rates one of them on a search card, which counts in the lab too.

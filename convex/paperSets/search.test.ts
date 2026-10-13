@@ -1,4 +1,5 @@
 import { convexTest } from "convex-test";
+import { pageIdOf, toPaperKey } from "../../lib/papers/paper-ref";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -140,7 +141,7 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(created.job?.totalPapers).toBe(301);
     expect(created.job?.snapshot).toMatchObject({ request: { sort: "relevance_score:desc" } });
     expect(created.job?.snapshot?.request.filter).toContain("randomized controlled trial");
-    expect(created.results.map((result) => result.openalexId)).toEqual(["W150", "W151", "W152"].map((id) => `https://openalex.org/${id}`));
+    expect(created.results.map((result) => pageIdOf(result))).toEqual(["W150", "W151", "W152"].map((id) => `https://openalex.org/${id}`));
     expect(created.results[0]).toMatchObject({ title: "Paper 150", abstract: "Tutoring works", authors: ["Ada Lovelace"], publicationYear: 2020 });
     // A request to count the search, and one for each page.
     expect(created.limits.find((row) => row.name === "openalex-day")?.value).toBe(20_000 - 4);
@@ -158,7 +159,7 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(pages().map(({ url }) => url.searchParams.get("cursor"))).toEqual(["*", "2"]);
     expect(pages().every(({ url }) => url.searchParams.get("sort") === "cited_by_count:desc" && url.searchParams.get("page") === null)).toBe(true);
     const [firstResult] = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1));
-    expect(firstResult?.openalexId).toBe("https://openalex.org/W250");
+    expect(firstResult && pageIdOf(firstResult)).toBe("https://openalex.org/W250");
   });
 
   it("keeps exactly the range asked for when it runs across cursor pages", async () => {
@@ -168,7 +169,7 @@ describe("Screen all on a saved search, read on the server", () => {
 
     expect(pages().map(({ url }) => url.searchParams.get("cursor"))).toEqual(["*", "2", "3"]);
     const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(300));
-    expect(results.map((result) => result.openalexId)).toEqual(Array.from({ length: 221 }, (_, i) => `https://openalex.org/W${190 + i}`));
+    expect(results.map((result) => pageIdOf(result))).toEqual(Array.from({ length: 221 }, (_, i) => `https://openalex.org/W${190 + i}`));
   });
 
   it("filters by the days picked, whatever the server's timezone", async () => {
@@ -195,7 +196,7 @@ describe("Screen all on a saved search, read on the server", () => {
       expect(JSON.parse(String(request.init?.body)).oql).toContain("tutoring");
     }
     const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
-    expect(results.map((result) => result.openalexId)).toEqual(["https://openalex.org/W2"]);
+    expect(results.map((result) => pageIdOf(result))).toEqual(["https://openalex.org/W2"]);
   });
 
   it("asks OpenAlex nothing once the account's allowance is spent", async () => {
@@ -267,15 +268,16 @@ describe("Screen all on a saved search, read on the server", () => {
   it("reads a long range into one job, each of its pages once, from the search as it was when the job began", { tags: ["size"] }, async () => {
     total = 2_500;
     const { t, screen } = await setup({ ...search, sortBy: "relevance_score:desc" });
-    const firstOf = async (jobId: Id<"screeningJobs">) => (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1)))[0]?.openalexId;
+    const firstOf = async (jobId: Id<"screeningJobs">) => (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1)))[0] as Parameters<typeof pageIdOf>[0] | undefined;
+    const firstIdOf = async (jobId: Id<"screeningJobs">) => { const first = await firstOf(jobId); return first && pageIdOf(first); };
 
     const { jobId, made } = await screen({ first: 150, last: 2_400 });
     expect(made).toMatchObject({ first: 150, last: 2_400, totalPapers: 2_251, snapshot: { request: { sort: "relevance_score:desc" } } });
-    expect(await firstOf(jobId)).toBe("https://openalex.org/W150");
+    expect(await firstIdOf(jobId)).toBe("https://openalex.org/W150");
     // Each of OpenAlex's pages asked for once, in order: a step a page.
     expect(pages().map(({ url }) => url.searchParams.get("page"))).toEqual(Array.from({ length: 12 }, (_, i) => String(i + 1)));
     for (const { url } of pages()) expect(url.searchParams.get("sort")).toBe("relevance_score:desc");
-    const ids = new Set((await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(3_000))).map((result) => result.openalexId));
+    const ids = new Set((await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(3_000))).map((result) => pageIdOf(result)));
     expect(ids.size).toBe(2_251);
   });
 
@@ -290,7 +292,7 @@ describe("Screen all on a saved search, read on the server", () => {
       new Response(JSON.stringify({ meta: { count: 2_500, next_cursor: "2" }, results: Array.from({ length: 199 }, (_, i) => work(i + 1)) })),
     ];
     const { jobId } = await screen({ first: 1, last: 2_500 });
-    const ids = (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(3_000))).map((result) => result.openalexId);
+    const ids = (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(3_000))).map((result) => pageIdOf(result));
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toContain("https://openalex.org/W201");
   });
@@ -305,7 +307,7 @@ describe("Screen all on a saved search, read on the server", () => {
     expect(pages().every(({ url }) => url.searchParams.get("page") === null && url.searchParams.get("cursor") !== null)).toBe(true);
     const cursors = pages().map(({ url }) => url.searchParams.get("cursor"));
     expect(new Set(cursors).size).toBe(cursors.length);
-    const ids = (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(300))).map((result) => result.openalexId);
+    const ids = (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(300))).map((result) => pageIdOf(result));
     expect(ids).toEqual(Array.from({ length: 200 }, (_, i) => `https://openalex.org/W${9_901 + i}`));
   });
 
@@ -322,7 +324,7 @@ describe("Screen all on a saved search, read on the server", () => {
     const { jobId, made } = await screen({ first: 1, last: 2_500 });
 
     expect(made.totalPapers).toBe(2_499);
-    const last = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job_openalexId", (q) => q.eq("jobId", jobId).eq("openalexId", "https://openalex.org/W2500")).unique());
+    const last = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job_paperKey", (q) => q.eq("jobId", jobId).eq("paperKey", toPaperKey("https://openalex.org/W2500")!)).unique());
     expect(last).not.toBeNull();
   });
 
@@ -338,7 +340,7 @@ describe("Screen all on a saved search, read on the server", () => {
     ];
     const { jobId, made } = await screen({ first: 1, last: 600 });
 
-    const ids = (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(700))).map((result) => result.openalexId);
+    const ids = (await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(700))).map((result) => pageIdOf(result));
     expect(new Set(ids).size).toBe(ids.length);
     expect(made.totalPapers).toBe(ids.length);
   });

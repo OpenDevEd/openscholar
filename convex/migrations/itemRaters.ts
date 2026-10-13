@@ -4,6 +4,7 @@ import { components, internal } from "../_generated/api";
 import type { DataModel, Doc } from "../_generated/dataModel";
 import { internalAction, internalQuery, type QueryCtx } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
+import { paperKeyOf } from "../../lib/papers/paper-ref";
 
 /**
  * Gives every rated paper in an organization's library who rated it (#801): how many members did
@@ -25,7 +26,7 @@ export const items = migrations.define({
   table: "libraryItems",
   batchSize: 200,
   migrateOne: async (ctx, item) => {
-    if (await due(ctx, item)) await ctx.scheduler.runAfter(0, internal.library.mutations.rerate, { workspaceId: item.workspaceId, paperId: item.openalexId });
+    if (await due(ctx, item)) await ctx.scheduler.runAfter(0, internal.library.mutations.rerate, { workspaceId: item.workspaceId, paperId: paperKeyOf(item) });
   },
 });
 

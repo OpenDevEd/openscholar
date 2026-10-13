@@ -1,4 +1,5 @@
 import { convexTest } from "convex-test";
+import { pageIdOf, toPaperKey } from "../../lib/papers/paper-ref";
 import { describe, it, expect, vi } from "vitest";
 import type { Id } from "../_generated/dataModel";
 import { api, internal } from "../_generated/api";
@@ -303,7 +304,7 @@ describe("createScreeningJob", () => {
     }
 
     // Verify each paper is represented
-    const openalexIds = results.map((r) => r.openalexId).sort();
+    const openalexIds = results.map((r) => pageIdOf(r)).sort();
     const expectedIds = papers.map((p) => p.paper).sort();
     expect(openalexIds).toEqual(expectedIds);
   });
@@ -432,7 +433,7 @@ describe("creating a large Screen all job", () => {
     }
     const results = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
     expect(results).toHaveLength(JOB_PAPERS);
-    expect(new Set(results.map((r) => r.openalexId)).size).toBe(JOB_PAPERS);
+    expect(new Set(results.map((r) => pageIdOf(r))).size).toBe(JOB_PAPERS);
     // The person's slots' worth start; the rest wait their turn (./slots.ts).
     expect(results.filter((r) => r.workId)).toHaveLength(SCREENING_POOL_SIZE);
     expect(results.filter((r) => r.waitingSince !== undefined)).toHaveLength(JOB_PAPERS - SCREENING_POOL_SIZE);
@@ -497,8 +498,8 @@ describe("handleScreeningComplete", () => {
         const workspaceId = await personalWorkspaceOf(ctx, user._id);
         const libraryItems = await ctx.db
           .query("libraryItems")
-          .withIndex("by_workspace_openalexId", (q) =>
-            q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W4242"),
+          .withIndex("by_workspace_paperKey", (q) =>
+            q.eq("workspaceId", workspaceId).eq("paperKey", toPaperKey("https://openalex.org/W4242")!),
           )
           .collect();
         const scheduledFunctions = await ctx.db.system
@@ -524,8 +525,8 @@ describe("handleScreeningComplete", () => {
         const workspaceId = await personalWorkspaceOf(ctx, user._id);
         const libraryItems = await ctx.db
           .query("libraryItems")
-          .withIndex("by_workspace_openalexId", (q) =>
-            q.eq("workspaceId", workspaceId).eq("openalexId", "https://openalex.org/W4242"),
+          .withIndex("by_workspace_paperKey", (q) =>
+            q.eq("workspaceId", workspaceId).eq("paperKey", toPaperKey("https://openalex.org/W4242")!),
           )
           .collect();
         const links = await ctx.db
@@ -649,8 +650,8 @@ describe("handleScreeningComplete", () => {
           const workspaceId = await personalWorkspaceOf(ctx, user._id);
           const libraryItems = await ctx.db
             .query("libraryItems")
-            .withIndex("by_workspace_openalexId", (q) =>
-              q.eq("workspaceId", workspaceId).eq("openalexId", `https://openalex.org/W${status}`),
+            .withIndex("by_workspace_paperKey", (q) =>
+              q.eq("workspaceId", workspaceId).eq("paperKey", toPaperKey(`https://openalex.org/W${status}`)!),
             )
             .collect();
           const counts = await readScreeningProgressCounts(ctx, job);

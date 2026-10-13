@@ -4,6 +4,7 @@ import { expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { madeBy } from "../workspaces/actor.test-support";
+import { paperKeyOf } from "../../lib/papers/paper-ref";
 import { ensureWorkspace } from "../workspaces/create";
 
 it("gives an organization's rated papers who rated them, and leaves a person's own and unrated ones alone", async () => {
@@ -27,7 +28,7 @@ it("gives an organization's rated papers who rated them, and leaves a person's o
       return { ada, bob };
     });
     const kept = () =>
-      t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map(({ openalexId, rating, ratingCount, ratedBy }) => [openalexId.slice(-2), rating ?? null, ratingCount ?? null, (ratedBy ?? []).map((one) => [one.userId === ada ? "ada" : one.userId === bob ? "bob" : "?", one.rating])]));
+      t.run(async (ctx) => (await ctx.db.query("libraryItems").collect()).map(({ paperKey, openalexId, rating, ratingCount, ratedBy }) => [paperKeyOf({ paperKey, openalexId }).slice(-2), rating ?? null, ratingCount ?? null, (ratedBy ?? []).map((one) => [one.userId === ada ? "ada" : one.userId === bob ? "bob" : "?", one.rating])]));
     expect(await t.action(internal.migrations.itemRaters.verify, {})).toBe(1);
     await t.mutation(internal.migrations.itemRaters.run, {});
     await t.finishAllScheduledFunctions(vi.runAllTimers);
