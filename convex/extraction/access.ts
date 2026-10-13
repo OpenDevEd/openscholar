@@ -119,11 +119,12 @@ export type ReadableJobResolution =
   | { status: "unauthenticated" }
   | { status: "no_access" };
 
-/** A job opened by its ID, for someone who may read it: a member of its workspace, or a guest of it. */
-export async function resolveJobToRead(ctx: QueryCtx, jobId: Id<"extractionJobs">): Promise<ReadableJobResolution> {
+/** A job opened by its ID, for someone who may read it: a member of its workspace, or a guest of it. Text that is no job's ID is no job. */
+export async function resolveJobToRead(ctx: QueryCtx, jobId: string): Promise<ReadableJobResolution> {
   const user = await getCurrentUser(ctx);
   if (!user) return unauthenticated();
-  const job = await ctx.db.get("extractionJobs", jobId);
+  const id = ctx.db.normalizeId("extractionJobs", jobId);
+  const job = id ? await ctx.db.get("extractionJobs", id) : null;
   if (!job) return noAccess();
   if (await actorIn(ctx, user, job.workspaceId)) return ok({ user, job, guest: null });
   const guest = await givenTo(ctx, user, job);

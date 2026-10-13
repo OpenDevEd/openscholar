@@ -32,7 +32,7 @@ import { MAX_QUESTIONS_PER_JOB } from "../validators";
 
 async function resolveReadableJob(
   ctx: QueryCtx,
-  jobId: Id<"extractionJobs">,
+  jobId: string,
 ): Promise<ReadableJobResolution> {
   const access = await resolveJobToRead(ctx, jobId);
   if (access.status !== "ok") return access;
@@ -158,7 +158,8 @@ export const getJobDetailsForAssistant = assistantQuery(getJobDetailsAction);
 
 /** The job as its page opens with it: the job, and how it's shared, so the page knows from its first read what its reader may do. */
 export const getJobShell = query({
-  args: { jobId: v.id("extractionJobs") },
+  // The page reads the ID from its address: text that is no extraction's ID answers no_access, as a job that is gone does (#836).
+  args: { jobId: v.string() },
   returns: statusResultValidator({
     job: extractionJobValidator,
     ...sharingValidators,
