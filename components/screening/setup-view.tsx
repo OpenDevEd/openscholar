@@ -13,7 +13,7 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { EASE } from "@/components/settings/model-map";
-import { ACTION_BAR, Enter, LIST, Segmented, Zone } from "@/components/settings/parts";
+import { Enter, LIST, Segmented, Zone } from "@/components/settings/parts";
 import { QueryText } from "@/components/ui/query-text";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { useGenerateScreeningQuestions } from "@/lib/ai/client/router";
@@ -629,7 +629,7 @@ export function SetupView({
           ) : null}
         </Zone>
 
-        <div className={`${ACTION_BAR} gap-4`}>
+        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
           <CreditCheck credits={credits} balance={balance} enough={enough} cap={spend.cap} />
           <div className="flex flex-wrap items-center gap-1.5">
             {slots ? <Chip icon={Gauge}>{t("atATime", { limit: slots.limit })}</Chip> : null}

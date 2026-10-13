@@ -50,8 +50,6 @@ export function Tile({ icon: Icon, tint, className }: { icon: Ico; tint: string;
 
 /** A list of rows in one rounded box. */
 export const LIST = "divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle";
-/** A form's actions, held at the foot of the screen; on a phone it stops short of the assistant's button in that corner. */
-export const ACTION_BAR = "sticky bottom-4 z-10 flex flex-wrap items-center rounded-2xl border border-border-subtle bg-background p-4 shadow-lg max-sm:[body:has([data-assistant-launcher])_&]:mr-18";
 
 /**
  * Pill switch with a sliding highlight. The highlight is measured inside the group

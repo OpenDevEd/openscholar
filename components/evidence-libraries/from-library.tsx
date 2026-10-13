@@ -14,7 +14,7 @@ import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { Chip } from "@/components/screening/parts";
 import { SourceRow } from "@/components/screening/source-row";
 import { RowFacts, rowIcon, useRowLabel } from "@/components/screening/library-sources";
-import { ACTION_BAR, LIST, Zone } from "@/components/settings/parts";
+import { LIST, Zone } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -192,7 +192,8 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
           </Zone>
 
           {/* Screening asks yes or no: offered when no questions came, or some of them are yes or no. Each button says how many questions it takes. */}
-          <div className={`${ACTION_BAR} justify-end gap-3`}>
+          {/* On a phone its buttons, at the right, stop short of the assistant's button in that corner, from the first frame. */}
+          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg max-sm:mr-18">
             {screenable ? (
               <Button variant="outline" className="min-w-44" onClick={screen} disabled={!count}>
                 <ListChecks className="text-primary" />
