@@ -56,8 +56,8 @@ const openedValidator = v.union(
     from: handoffFromValidator,
     fields: evidenceLibraryHandoffFields.fields,
     found: describedValidator,
-    /** The records it named, when asked for, it named them one by one, and the library listed them for the person. */
-    records: v.union(handoffRecordsValidator, v.null()),
+    /** The records it named, when asked for and it named them one by one; `unread` when the library couldn't list them. */
+    records: v.union(handoffRecordsValidator, v.null(), v.literal("unread")),
   }),
 );
 
@@ -75,8 +75,8 @@ export const openAction = defineUserAction({
     const handoff: Omit<Doc<"evidenceLibraryHandoffs">, "_id" | "_creationTime" | "expiresAt"> | null = await ctx.runMutation(internal.evidenceLibraries.handoffs.opened, { handoffId, userId });
     if (!handoff) return { gone: true };
     const found = await described(ctx, userId, handoff.libraryId, handoff.source);
-    // A list the library couldn't give leaves the hand-off as it is, to screen or extract from (the failure is logged where it's read).
-    const records = listing && "row" in found && "records" in handoff.source ? await ctx.runAction(internal.evidenceLibraries.sourceActions.listed, { libraryId: handoff.libraryId, userId, keys: handoff.source.records }).catch(() => null) : null;
+    // A list the library couldn't give is said so, and leaves the hand-off to screen or extract from (the failure is logged where it's read).
+    const records = listing && "row" in found && "records" in handoff.source ? await ctx.runAction(internal.evidenceLibraries.sourceActions.listed, { libraryId: handoff.libraryId, userId, keys: handoff.source.records }).catch(() => "unread" as const) : null;
     return { from: handoff.from, fields: handoff.fields, found, records };
   },
 });

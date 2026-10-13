@@ -78,7 +78,7 @@ it("hands records over with their questions, read as whoever opens them, until a
     if (new URL(String(input)).pathname === "/api/v1/openscholar/sources/resolve") return Response.json({ keys: ["BBBBBBBB"].slice(body.first - 1, body.last), total: 1, truncated: false });
     return new Response("Bad gateway", { status: 502 });
   }));
-  expect(await reader.action(api.evidenceLibraries.handoffs.open, { workspaceId: workspaceId!, handoffId, records: true })).toMatchObject({ found: { row: { records: 1 } }, records: null });
+  expect(await reader.action(api.evidenceLibraries.handoffs.open, { workspaceId: workspaceId!, handoffId, records: true })).toMatchObject({ found: { row: { records: 1 } }, records: "unread" });
 
   // The library is now one they read.
   expect((await reader.query(api.evidenceLibraries.readers.list, {})).map((library) => [library.libraryId, library.ways])).toEqual([[libraryId, ["handoff"]]]);

@@ -20,12 +20,12 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import type { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { LIBRARY_SOURCE_MAX } from "@/lib/evidence-libraries/source-address";
 import { isFrozen, rowKey, screeningQuestionsOf, setOfRow } from "@/lib/evidence-libraries/reader-sources";
 import { paperKey, paperPage } from "@/lib/papers/paper-ref";
 import { useExtractionStore } from "@/lib/store/extraction";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { useWorkspace } from "@/lib/workspaces/url";
 
 export type Opened = FunctionReturnType<typeof api.evidenceLibraries.handoffs.open>;
 type Field = Exclude<Opened, { gone: true }>["fields"][number];
@@ -36,14 +36,14 @@ const TYPE_ICON: Record<Field["type"], AppIcon> = { string: AlignLeft, number: H
 const FROM_ICON: Record<Exclude<Opened, { gone: true }>["from"], AppIcon> = { smartScreening: MessagesSquare, search: Search, collection: Folder };
 type Sort = "given" | "newest" | "title";
 
-export function FromLibrary({ handoffId, opened }: { handoffId: string; opened: Opened }) {
+/** `workspaceId` is the one the page's address is in, which the server read it in: Extract fills that workspace's draft at once. */
+export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: string; workspaceId: Id<"workspaces"> | null; opened: Opened }) {
   const t = useTranslations("fromLibrary");
   const ts = useTranslations("screeningPage");
   const te = useTranslations("extraction");
   const tl = useTranslations("librarySources");
   const tc = useTranslations("common");
   const router = useWorkspaceRouter();
-  const workspaceId = useWorkspace();
   const format = useFormatter();
   const labelOf = useRowLabel();
   const { draftJob, setSource, addQuestion, updateQuestion, setDraftJobName } = useExtractionStore();
@@ -68,7 +68,8 @@ export function FromLibrary({ handoffId, opened }: { handoffId: string; opened: 
   const yesNo = screeningQuestionsOf(fields);
   // Questions that came along and none of them yes or no leave screening nothing to ask.
   const screenable = fields.length === 0 || yesNo.length > 0;
-  const sorted = !records || sort === "given" ? (records ?? []) : [...records].sort((a, b) => (sort === "title" ? a.title.localeCompare(b.title) : (b.year ?? 0) - (a.year ?? 0)));
+  const listed = Array.isArray(records) ? records : [];
+  const sorted = sort === "given" ? listed : [...listed].sort((a, b) => (sort === "title" ? a.title.localeCompare(b.title) : (b.year ?? 0) - (a.year ?? 0)));
   const pages = Math.max(1, Math.ceil(sorted.length / PAGE));
   const shown = sorted.slice((page - 1) * PAGE, page * PAGE);
 
@@ -108,7 +109,8 @@ export function FromLibrary({ handoffId, opened }: { handoffId: string; opened: 
                 count={<Chip>{ts("paperCount", { count })}</Chip>}
               />
             </div>
-            {records?.length ? (
+            {records === "unread" ? <p className={`${LIST} mt-3 px-4 py-8 text-center text-sm text-muted-foreground`}>{tl("unread", { library: library.name })}</p> : null}
+            {listed.length ? (
               <div className="mt-3 space-y-3">
                 <div className="flex items-center justify-between gap-2 pl-1">
                   <span className="text-xs text-muted-foreground">{t("theRecords")}</span>
