@@ -93,7 +93,8 @@ const handoffSchema = z.object({
   from: z.enum(["smartScreening", "search", "collection"]),
   source: z.union([
     z.strictObject({ records: z.array(id).min(1).max(LIBRARY_SOURCE_RECORDS_MAX) }),
-    z.strictObject({ search: z.string().max(4_000), readerCollection: id.optional() }),
+    // As long a search as a library resolves (new-el src/lib/openscholar/library-reads.ts).
+    z.strictObject({ search: z.string().max(8_000), readerCollection: id.optional() }),
     z.strictObject({ readerCollection: id }),
     z.strictObject({ libraryCollection: id }),
   ]),
