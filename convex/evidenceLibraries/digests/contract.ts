@@ -23,6 +23,8 @@ export const digestRequestSchema = z.object({
     doi: z.string().max(500).nullable(),
     // What the library read it as, or an editor set. Left out for a record not read yet, and by a library that reads none.
     studyType: z.enum(STUDY_TYPES).optional(),
+    // Whether readers can read it without a subscription. Left out when the library does not know.
+    openAccess: z.boolean().optional(),
   }).strict()).min(1).max(1000),
 }).strict().superRefine((value, ctx) => {
   if (Date.parse(value.periodEnd) <= Date.parse(value.periodStart)) {
