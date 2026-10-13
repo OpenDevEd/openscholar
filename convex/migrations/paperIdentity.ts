@@ -174,7 +174,8 @@ export const dropUnplacedScreened = migrations.define({
     if (result.paperKey !== undefined) return;
     const job = await ctx.db.get("screeningJobs", result.jobId);
     if (!job) return void (await ctx.db.delete("screeningResults", result._id));
-    if (!(await purgeScreeningJob(ctx, freshStep(), job))) throw new Error(`Screening job ${job._id} is too large to delete in one step.`);
+    // A job larger than one step goes in the steps it schedules.
+    if (!(await purgeScreeningJob(ctx, freshStep(), job))) await ctx.scheduler.runAfter(0, internal.workspaces.purge.purgeOneScreeningJob, { jobId: job._id });
   },
 });
 
