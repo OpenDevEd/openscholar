@@ -5,7 +5,6 @@ const refs: PaperRef[] = [
   { source: "openalex", work: "W2741809807" },
   { source: "library", libraryId: "r176jnjsjfvmda1g2jfca8638n8en9r8", key: "27BGDU89" },
   { source: "zotero", library: "group", owner: "2129771", key: "JUDM2WBF" },
-  { source: "zotero", library: "user", owner: "", key: "ABCD1234" },
   { source: "upload", file: "kg2bq1wz0h7v9m7z8b5c3d4e5f6g7h8j" },
 ];
 
@@ -15,7 +14,7 @@ describe("paper keys", () => {
   });
 
   it("refuses what is no key", () => {
-    for (const text of ["", "W2741809807", "openalex:", "library:only-one-part", "zotero:team:1:K", "upload:", "nonsense:x"]) {
+    for (const text of ["", "W2741809807", "openalex:", "library:only-one-part", "zotero:team:1:K", "zotero:user::K", "upload:", "nonsense:x"]) {
       expect(parsePaperKey(text)).toBeNull();
     }
   });
@@ -27,10 +26,11 @@ describe("IDs stored before keys", () => {
     expect(new Set(forms.map((id) => paperKey(legacyPaperRef(id)!)))).toEqual(new Set(["openalex:W2741809807"]));
   });
 
-  it("gives a Zotero item the owner its PDF address names, and keeps it unknown without one", () => {
+  it("gives a Zotero item the owner its PDF address names, and leaves one whose owner nothing names unplaced", () => {
     expect(legacyPaperRef("zotero:group:JUDM2WBF", { pdfUrl: "zotero://select/groups/2129771/items/JUDM2WBF" })).toEqual({ source: "zotero", library: "group", owner: "2129771", key: "JUDM2WBF" });
     expect(legacyPaperRef("zotero:user:ABCD1234", { pdfUrl: "zotero://select/users/9876/items/ABCD1234" })).toEqual({ source: "zotero", library: "user", owner: "9876", key: "ABCD1234" });
-    expect(legacyPaperRef("zotero:user:ABCD1234")).toEqual({ source: "zotero", library: "user", owner: "", key: "ABCD1234" });
+    // Item keys are only unique within a library: two people's items can share one.
+    expect(legacyPaperRef("zotero:user:ABCD1234")).toBeNull();
     // Extraction once named a Zotero item by its key alone; its PDF address says whose it is.
     expect(legacyPaperRef("zotero:ABCD1234", { pdfUrl: "zotero://select/groups/55/items/ABCD1234" })).toEqual({ source: "zotero", library: "group", owner: "55", key: "ABCD1234" });
   });
@@ -50,5 +50,6 @@ describe("cross-references", () => {
     expect(crossRefsOf({ source: "openalex", work: "W1" }, { doi: "https://doi.org/10.1000/ABC" })).toEqual({ openalexId: "W1", doi: "10.1000/abc" });
     expect(crossRefsOf({ source: "library", libraryId: "r1", key: "K1234567" }, { openalexId: "https://openalex.org/W9", doi: "10.5/X" })).toEqual({ openalexId: "W9", doi: "10.5/x" });
     expect(crossRefsOf({ source: "upload", file: "f" }, { openalexId: "not an id", doi: " " })).toEqual({});
+    expect(crossRefsOf({ source: "upload", file: "f" }, { doi: "doi: 10.1000/ABC" })).toEqual({ doi: "10.1000/abc" });
   });
 });

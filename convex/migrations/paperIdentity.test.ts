@@ -6,7 +6,7 @@ import schema from "../schema";
 import { insertJob } from "../screening/createJob.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
 
-it("names every stored paper by its source, finds duplicates, and leaves what it can't place for the report", async () => {
+it("names every stored paper by its source, and leaves what it can't place for the report", async () => {
   vi.useFakeTimers();
   try {
     const t = convexTest(schema);
@@ -68,9 +68,6 @@ it("names every stored paper by its source, finds duplicates, and leaves what it
     expect(after.libraryItems).toEqual({ left: 0, unplaced: 0, sample: [] });
     expect(after.screeningResults.left).toBe(0);
     expect(after.extractionPapers).toEqual({ left: 1, unplaced: 1, sample: ["history:lost"] });
-    // W1 is one paper saved twice in one workspace: the narrowing step has to merge it first.
-    expect(after.duplicates.count).toBe(1);
-    expect(after.duplicates.sample[0]).toMatch(/\|openalex:W1$/);
   } finally {
     vi.useRealTimers();
   }
