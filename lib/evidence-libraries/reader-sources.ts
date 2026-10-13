@@ -44,3 +44,6 @@ export function filtersOf(search: string): Array<{ kind: FilterKind; value: stri
       .map((value) => ({ kind, value: kind === "type" ? typeName(value) : value })),
   );
 }
+
+/** The yes or no questions a library's hand-off brought, as screening asks them: what each asks, or its name. */
+export const screeningQuestionsOf = (fields: Array<{ label: string; type: string; description: string }>) => fields.filter((field) => field.type === "boolean").map((field) => field.description || field.label);

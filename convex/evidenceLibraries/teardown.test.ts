@@ -82,6 +82,9 @@ describe("development Evidence Library teardown", () => {
         version: "v1",
         fingerprint: "{}",
       });
+      const reader = await ctx.db.insert("users", { clerkId: "user_teardown_reader", email: "reader@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("evidenceLibraryReaders", { libraryId: fixture.created.libraryId, userId: reader, via: "signIn", firstAt: 1, lastAt: 1 });
+      await ctx.db.insert("evidenceLibraryHandoffs", { libraryId: fixture.created.libraryId, from: "search", source: { search: "search=tutoring" }, fields: [], expiresAt: Date.now() + 1_000 });
     });
     const requested = await fixture.admin.mutation(
       api.evidenceLibraries.teardown.requestDevelopmentTeardown,
@@ -130,8 +133,10 @@ describe("development Evidence Library teardown", () => {
         files: await ctx.db.system.query("_storage").collect(),
         sourceStatus: await ctx.db.query("evidenceLibrarySourceStatus").collect(),
         approvedQueries: await ctx.db.query("evidenceLibraryApprovedQueries").collect(),
+        readers: await ctx.db.query("evidenceLibraryReaders").collect(),
+        handoffs: await ctx.db.query("evidenceLibraryHandoffs").collect(),
       })),
-    ).resolves.toEqual({ jobs: [], files: [], sourceStatus: [], approvedQueries: [] });
+    ).resolves.toEqual({ jobs: [], files: [], sourceStatus: [], approvedQueries: [], readers: [], handoffs: [] });
     await expect(
       fixture.t.run((ctx) => ctx.db.get(fixture.organizationId)),
     ).resolves.toMatchObject({ state: "active" });

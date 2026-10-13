@@ -26,7 +26,8 @@ export function SourceRow({
   children,
 }: {
   on: boolean;
-  onToggle: () => void;
+  /** Without it, the row only says what the source is: one that came with the page, with nothing to pick. */
+  onToggle?: () => void;
   /** A source with no papers, which there's nothing to take from. */
   disabled?: boolean;
   /** Extraction takes any number of sources, so a row is a checkbox there; screening's is a radio. */
@@ -39,9 +40,10 @@ export function SourceRow({
   /** What opens under the row while it's picked. */
   children?: ReactNode;
 }) {
+  const Row = onToggle ? "button" : "div";
   return (
     <div className={cn("transition-colors", on && "bg-primary/5")}>
-      <button type="button" role={many ? "checkbox" : "radio"} aria-checked={on} disabled={disabled} onClick={onToggle} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50", !on && "enabled:hover:bg-muted")}>
+      <Row {...(onToggle ? { type: "button", role: many ? "checkbox" : "radio", "aria-checked": on, disabled, onClick: onToggle } : {})} className={cn("flex min-h-14 w-full items-center gap-3 px-4 py-2.5 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50", onToggle && !on && "enabled:hover:bg-muted")}>
         <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", on ? "text-primary" : "text-muted-foreground")}>
           <Icon className="size-4" />
         </span>
@@ -51,7 +53,7 @@ export function SourceRow({
         </span>
         {count}
         <PickMark on={on} />
-      </button>
+      </Row>
       <AnimatePresence initial={false}>
         {on && children ? (
           <motion.div key="open" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden">

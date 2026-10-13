@@ -3814,6 +3814,12 @@
         "where": "Evidence Libraries",
         "ask": "Read an Evidence Library source"
       },
+      "readHandoff": {
+        "doing": "Opening what an Evidence Library handed over",
+        "did": "Opened what an Evidence Library handed over",
+        "where": "Evidence Libraries",
+        "ask": "Open what an Evidence Library handed over"
+      },
       "readLibraryDraft": {
         "doing": "Reading a library’s settings",
         "did": "Read a library’s settings",
@@ -4570,6 +4576,7 @@
     "find": "Find",
     "everyRecord": "Every record in {library}",
     "allRecords": "All records",
+    "recordsFrom": "Records from {library}",
     "private": "Private",
     "public": "Public",
     "canEdit": "Can edit",
@@ -4592,6 +4599,7 @@
       "notHosted": "OpenScholar doesn't run that library.",
       "private": "That collection is private. Its owner can share it with you.",
       "notFound": "There's nothing at that address.",
+      "empty": "That search or collection holds no records.",
       "profile": "Open one of their collections and copy that address.",
       "unknownPage": "Copy the address of a search, a collection or the library.",
       "outdated": "That library needs an update to be used here.",
@@ -4613,5 +4621,39 @@
       "titleAZ": "Title A-Z",
       "titleZA": "Title Z-A"
     }
+  },
+  "fromLibrary": {
+    "title": "From {library}",
+    "gone": "Nothing to open",
+    "goneHint": "This link from a library has expired. Open it again from the library.",
+    "problem": {
+      "notAddress": "There's nothing here to open. Open it again from the library.",
+      "notHosted": "That library isn't running on OpenScholar any more.",
+      "private": "That collection is private. Its owner can share it with you.",
+      "notFound": "The library no longer has what it sent.",
+      "empty": "What the library sent holds no records now.",
+      "profile": "There's nothing here to open. Open it again from the library.",
+      "unknownPage": "There's nothing here to open. Open it again from the library.",
+      "outdated": "That library needs an update to be used here.",
+      "unreadable": "The library didn't answer. Try again in a moment."
+    },
+    "from": {
+      "smartScreening": "Smart screening",
+      "search": "A search",
+      "collection": "A collection"
+    },
+    "theRecords": "The records",
+    "sort": "Sort",
+    "sortBy": {
+      "given": "As sent",
+      "newest": "Newest",
+      "title": "Title"
+    },
+    "open": "Open in {library}",
+    "noQuestions": "No questions came with it. Add them on the next page.",
+    "screen": "Screen",
+    "extract": "Extract",
+    "screenWith": "{count, plural, one {Screen with # question} other {Screen with # questions}}",
+    "extractWith": "{count, plural, one {Extract with # question} other {Extract with # questions}}"
   }
 }

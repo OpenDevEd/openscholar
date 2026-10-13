@@ -34,11 +34,11 @@ import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
 import { ANSWER, Chip, ClippedChip, SOURCE_ICON } from "./parts";
 import { PaperScope, PickMark, SourceRow } from "./source-row";
-import { LibrarySources, useLibrarySources } from "./library-sources";
+import { LibrarySources, useLibrarySources, useRowLabel } from "./library-sources";
 import useSWR from "swr";
 import { useAuth } from "@clerk/nextjs";
 import { LIBRARY_SOURCE_MAX } from "@/lib/evidence-libraries/source-address";
-import { isFrozen, rowKey, setOfRow, type HeldRow, type LibraryRow } from "@/lib/evidence-libraries/reader-sources";
+import { isFrozen, rowKey, screeningQuestionsOf, setOfRow, type HeldRow, type LibraryRow } from "@/lib/evidence-libraries/reader-sources";
 import { CreditCheck, useSpendable } from "@/components/workspaces/credit-check";
 import { ModelsInUse } from "@/components/models/models-in-use";
 import { inWorkspace, useWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
@@ -81,12 +81,15 @@ const librarySource = (held: HeldRow): Source => ({ kind: "evidenceLibrary", id:
 
 export function SetupView({
   fromSearchId,
+  handoffId,
   again,
   waitingFor,
   onStarted,
 }: {
   /** The search whose Screen all opened this form, or the one a job to run again read. */
   fromSearchId?: string;
+  /** What an Evidence Library handed over (app/from-library): the form starts on it, with its yes or no questions. */
+  handoffId?: string;
   /** A screening to run again: the form starts on its papers, questions, scoring and destination. */
   again?: Job;
   /** The person's job a new one would start after. */
@@ -96,6 +99,8 @@ export function SetupView({
   const workspaceId = useWorkspace();
   const t = useTranslations("screeningPage");
   const tl = useTranslations("librarySources");
+  const tf = useTranslations("fromLibrary");
+  const labelOf = useRowLabel();
   const tc = useTranslations("common");
   const format = useFormatter();
   const now = useNow();
@@ -115,11 +120,16 @@ export function SetupView({
   const againLibrary = again?.set?.kind === "evidenceLibrary" ? again.set : null;
   const describe = useWorkspaceAction(api.evidenceLibraries.library.source);
   const { userId } = useAuth();
-  const ranBefore = useSWR(againLibrary && userId ? ["library-source", userId, againLibrary.libraryId, JSON.stringify(againLibrary.source)] : null, () => describe({ libraryId: againLibrary!.libraryId, source: againLibrary!.source }), { revalidateOnFocus: false });
-  const againHeld = ranBefore.data && "row" in ranBefore.data ? ranBefore.data : null;
-  // A source it ran on that can't be read now is said so, and another is never put in its place.
-  const againError = ranBefore.data && "error" in ranBefore.data ? ranBefore.data.error : null;
-  const libraries = useLibrarySources(againHeld ? [againHeld] : []);
+  const ranBefore = useSWR(againLibrary && workspaceId && userId ? ["library-source", userId, againLibrary.libraryId, JSON.stringify(againLibrary.source)] : null, () => describe({ libraryId: againLibrary!.libraryId, source: againLibrary!.source }), { revalidateOnFocus: false });
+  // A hand-off starts on its source as the person may read it now, and the questions it brought.
+  const openHandoff = useWorkspaceAction(api.evidenceLibraries.handoffs.open);
+  const handedOver = useSWR(handoffId && workspaceId && userId ? ["library-handoff", userId, handoffId] : null, () => openHandoff({ handoffId: handoffId! }), { revalidateOnFocus: false });
+  const handed = handedOver.data && !("gone" in handedOver.data) ? handedOver.data : null;
+  const startsOn = againLibrary ? ranBefore.data : handed?.found;
+  const startHeld = startsOn && "row" in startsOn ? startsOn : null;
+  // A source it ran on, or was handed, that can't be read now is said so, and another is never put in its place.
+  const startError = handedOver.error ? tf("problem.unreadable") : handedOver.data && "gone" in handedOver.data ? tf("goneHint") : startsOn && "error" in startsOn ? (handoffId ? tf(`problem.${startsOn.error}`) : tl(`error.${startsOn.error}`)) : null;
+  const libraries = useLibrarySources(startHeld ? [startHeld] : []);
   // Until one is picked, the form starts on your first collection in the library shown: a whole library is too many to start on.
   const firstOwn = libraries.library && libraries.contents.find((one) => one.libraryId === libraries.library?.libraryId)?.rows?.find((row) => row.what === "yours" && row.records > 0);
   const lists: Record<Kind, { rows: Source[]; pager?: Pick<typeof collections, "page" | "canPrevious" | "canNext" | "previous" | "next" | "hasPages" | "isStale"> & { pageCount?: number } }> = {
@@ -131,23 +141,26 @@ export function SetupView({
     },
     saved: { rows: [{ kind: "saved", id: "saved", label: t("allSavedPapers"), count: savedCount ?? 0 }] },
     screening: { rows: screenings.items.map((job: JobRow) => ({ kind: "screening", id: job._id, label: jobName(t, job, date), count: job.qualifiedPapers, called: job.name ?? job.label })), pager: screenings },
-    evidenceLibrary: { rows: againLibrary ? (againHeld ? [librarySource(againHeld)] : []) : firstOwn && libraries.library ? [librarySource({ library: libraries.library, row: firstOwn })] : [] },
+    evidenceLibrary: { rows: againLibrary || handoffId ? (startHeld ? [librarySource(startHeld)] : []) : firstOwn && libraries.library ? [librarySource({ library: libraries.library, row: firstOwn })] : [] },
   };
 
   // A screening a chat ran on a Zotero collection is run again from its chat: the page starts on a search.
-  const [kind, setKind] = useState<Kind>(again?.set && again.set.kind !== "zotero" ? again.set.kind : "search");
-  // The set picked stays picked whatever page its list shows; until one is, a job run again starts on its own set, and otherwise the first listed.
-  const [picked, setPicked] = useState<Source | null>(null);
+  const [kind, setKind] = useState<Kind>(handoffId ? "evidenceLibrary" : again?.set && again.set.kind !== "zotero" ? again.set.kind : "search");
+  // The set picked of each kind stays picked whatever page its list shows, and when the person switches kinds and comes
+  // back; until one is, a job run again starts on its own set, and otherwise the first listed.
+  const [pickedOf, setPickedOf] = useState<Partial<Record<Kind, Source>>>({});
+  const picked = pickedOf[kind] ?? null;
   const againId = again?.set && (again.set.kind === "search" ? again.set.searchId : again.set.kind === "collection" ? again.set.collectionId : again.set.kind === "screening" ? again.set.jobId : again.set.kind === "evidenceLibrary" ? rowKey(again.set) : "saved");
-  const kept = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : lists[kind].rows.find((row) => row.id === againId);
+  const kept = picked ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : lists[kind].rows.find((row) => row.id === againId);
   // A set with no papers is never the one picked, even one a job ran on that has emptied since.
   const source = kept && kept.count > 0 ? kept : lists[kind].rows.find((row) => row.count > 0);
   // Opened from a results page, it starts on the page the person was reading; run again, on the job's own papers.
-  const [scope, setScope] = useState<"all" | "page" | "range">(again?.first ? "range" : fromSearchId && !again ? "page" : again?.set && again.set.kind !== "search" ? "all" : "range");
+  const [scope, setScope] = useState<"all" | "page" | "range">(handoffId ? "all" : again?.first ? "range" : fromSearchId && !again ? "page" : again?.set && again.set.kind !== "search" ? "all" : "range");
   const [range, setRange] = useState<[number, number]>(again?.first && again.last ? [again.first, again.through ?? again.last] : [1, 300]);
   // Untouched, the questions are the selected search's own: the ones its results page screens with.
   const [edited, setEdited] = useState<Question[] | null>(again ? questionsOf(again) : null);
-  const own: Question[] = source?.kind === "search" ? source.search.screeningQuestions.map((q, i) => ({ key: `own${i}`, text: q.question, yes: 1, no: 0, unclear: 0 })) : [];
+  // A search's are its own; a hand-off's, the yes or no questions it brought.
+  const own: Question[] = (source?.kind === "search" ? source.search.screeningQuestions.map((q) => q.question) : handed ? screeningQuestionsOf(handed.fields) : []).map((text, i) => ({ key: `own${i}`, text, yes: 1, no: 0, unclear: 0 }));
   const questions = edited ?? own;
   // From the questions as they stand when the change lands: one that waits on the model mustn't undo edits made meanwhile.
   const setQuestions = (change: (questions: Question[]) => Question[]) => setEdited((current) => change(current ?? own));
@@ -189,7 +202,7 @@ export function SetupView({
   const { data: earlier } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, source?.kind === "screening" ? { jobId: source.id } : "skip"));
   const fresh = earlier ? questionsOf(earlier).filter((q) => !questions.some((x) => x.text.toLowerCase() === q.text.toLowerCase())) : [];
   // What it's called left unnamed: its papers, named from what the server keeps of them, as the rail names a screening.
-  const unnamed = !source ? t("newScreening") : source.kind === "evidenceLibrary" ? source.label || tl("allRecords") : jobName(t, { createdAt: now.getTime(), set: setOf(source), label: source.kind === "screening" ? source.called : source.label }, date);
+  const unnamed = !source ? t("newScreening") : source.kind === "evidenceLibrary" ? labelOf(source.held.row) : jobName(t, { createdAt: now.getTime(), set: setOf(source), label: source.kind === "screening" ? source.called : source.label }, date);
   // A search with no query has no name to lend the collection, so it takes the screening's.
   const defaultName = !source ? "" : source.kind === "screening" ? source.label : t("includedIn", { name: source.label.trim() || unnamed });
 
@@ -212,22 +225,31 @@ export function SetupView({
   const screen = useWorkspaceAction(api.screening.start.screen);
   const { execute: generateQuestions, isConfigured: canGenerate } = useGenerateScreeningQuestions();
 
-  /** Picks a set; a search brings its own screening questions, and each set starts on its own first papers. */
-  const choose = (next: Source) => {
+  /** How much of the set each kind had picked, as the person left it. */
+  const leftAt = useRef<Partial<Record<Kind, { scope: typeof scope; range: [number, number] }>>>({});
+  /** Picks a set; a search brings its own screening questions, and each set starts on its own first papers, or on the ones it had when picked again. */
+  const choose = (next: Source, was?: { scope: typeof scope; range: [number, number] }) => {
     picks.current++;
-    setPicked(next);
-    setRange([1, Math.min(300, next.count)]);
+    setPickedOf((all) => ({ ...all, [next.kind]: next }));
+    setRange(was?.range ?? [1, Math.min(300, next.count)]);
+    if (was) setScope(was.scope);
     setEdited(next.kind === "search" ? null : questions);
   };
   const pick = (next: Kind) => {
+    // The set this kind shows is kept as picked, the one a job run again started on too, and how much of it.
+    if (source) setPickedOf((all) => ({ ...all, [kind]: source }));
+    leftAt.current[kind] = { scope, range };
     setKind(next);
+    // Back on a kind, its set is as the person left it; a kind not picked from yet starts on its first.
+    const before = pickedOf[next];
+    if (before) return choose(before, leftAt.current[next]);
     const firstOf = lists[next].rows.find((row) => row.count > 0);
     if (firstOf) choose(firstOf);
     setScope(next === "search" ? "range" : "all");
   };
   /** Turns the list's page with the set in use held on to, so another page's first set doesn't take its place. */
   const turn = (step: () => void) => () => {
-    if (source && picked?.id !== source.id) setPicked(source);
+    if (source && picked?.id !== source.id) setPickedOf((all) => ({ ...all, [source.kind]: source }));
     step();
   };
   const addQuestion = () => {
@@ -285,7 +307,7 @@ export function SetupView({
 
   const list = lists[kind];
   // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows.
-  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.loaded && (!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
+  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.loaded && (!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
   /** How many of a library row's records a job takes, as the other sources ask it. */
   const libraryScope = (row: LibraryRow) => {
     if (source?.kind !== "evidenceLibrary" || source.id !== rowKey(row)) return null;
@@ -326,7 +348,7 @@ export function SetupView({
             {kind === "evidenceLibrary" ? (
               <LibrarySources
                 state={libraries}
-                notice={againError && !source ? tl(`error.${againError}`) : undefined}
+                notice={startError && !source ? startError : undefined}
                 isOn={(row) => source?.id === rowKey(row)}
                 onToggle={(row, library) => {
                   choose(librarySource({ library, row }));

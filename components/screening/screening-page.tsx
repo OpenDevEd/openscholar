@@ -51,7 +51,9 @@ export function ScreeningPage() {
   const date = (at: number) => format.dateTime(new Date(at), { dateStyle: "medium" });
   // Screen all on a results page opens the form with that search: /screening?search=<id>. A
   // screening shows at ?job=<id>, the form at ?job=new; with neither, the newest screening shows.
-  const [searchId] = useQueryState("search");
+  const [searchId, setSearchId] = useQueryState("search");
+  // What an Evidence Library handed over opens the form on it: /screening?handoff=<id> (app/from-library).
+  const [handoffId, setHandoffId] = useQueryState("handoff");
   const [picked, setPicked] = useQueryState("job");
 
   // In an organization, everyone's screenings or one member's (#656).
@@ -61,8 +63,8 @@ export function ScreeningPage() {
   const { data: everyone } = useProtectedQuery(api.screening.queries.countUserScreeningJobs, inWorkspace(workspaceId, {}));
   const total = runBy.by ? runBy.countOf(runBy.by) : everyone;
   // Until the person's screenings arrive, nothing says whether the form or the newest of them shows.
-  const waiting = picked === null && !searchId && jobs.isLoading;
-  const jobId = picked === "new" || waiting ? null : (picked ?? (searchId ? null : (jobs.items[0]?._id ?? null)));
+  const waiting = picked === null && !searchId && !handoffId && jobs.isLoading;
+  const jobId = picked === "new" || waiting ? null : (picked ?? (searchId || handoffId ? null : (jobs.items[0]?._id ?? null)));
   const { data: read } = useProtectedQuery(api.screening.queries.getScreeningJob, inWorkspace(workspaceId, jobId ? { jobId: jobId as Id<"screeningJobs"> } : "skip"));
   // The screening last shown stays up while the next one is read.
   const [shown, setShown] = useState<Job | null>(null);
@@ -91,6 +93,9 @@ export function ScreeningPage() {
   const [again, setAgain] = useState<Job | null>(null);
   const openForm = (from: Job | null) => {
     setAgain(from);
+    // The form starts on what it's given, not on a search or hand-off the page was opened with, as the rail's link does.
+    void setSearchId(null);
+    void setHandoffId(null);
     setPicked("new");
   };
   // The person's oldest job with papers being read: the one a new or waiting job starts after.
@@ -184,7 +189,8 @@ export function ScreeningPage() {
                   <ListEmpty icon={Unlink}>{t("lost")}</ListEmpty>
                 ) : (
                   <SetupView
-                    key={again?._id ?? searchId ?? "new"}
+                    key={again?._id ?? searchId ?? handoffId ?? "new"}
+                    handoffId={again ? undefined : (handoffId ?? undefined)}
                     fromSearchId={again ? (again.set?.kind === "search" ? again.set.searchId : undefined) : (searchId ?? undefined)}
                     again={again ?? undefined}
                     waitingFor={blockerOf(reading())?.name}
