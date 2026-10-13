@@ -8,7 +8,7 @@ import { assistantAction, defineUserAction, userAction } from "../lib/userAction
 import { createError, readConvexErrorData } from "../lib/errors";
 import { heldPapers } from "../paperSets/held";
 import { countSearch, numbered, PAGE_SIZE, type SearchSnapshot } from "../paperSets/openalex";
-import { searchPapers, snapshotOf, spender, type SavedSearchRequest } from "../paperSets/search";
+import { searchPapers, snapshotOf, spender, type SavedSearchRequest, type SearchPaper } from "../paperSets/search";
 import { checkScreening, firstZoteroPaper, papersIn, requireMinimum, screeningHold } from "./estimate";
 import { personalWorkspaceOf, type InWorkspace } from "../workspaces/actor";
 import { paperSetValidator, saveToValidator, screeningQuestionValidator, screeningScoringConfigValidator } from "./validators";
@@ -52,7 +52,13 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
   await ctx.runQuery(internal.screening.start.check, { userId, workspaceId, set, first, last: through, ...config });
   let total: number;
   let snapshot: SearchSnapshot | undefined;
-  if (set.kind === "search") {
+  let libraryKeys: string[] | undefined;
+  if (set.kind === "evidenceLibrary") {
+    // The library turns its source into keys once, as the person may read it: the job reads those and no others.
+    const resolved: { keys: string[]; total: number; truncated: boolean } = await ctx.runAction(internal.evidenceLibraries.sourceActions.resolve, { libraryId: set.libraryId, userId, source: set.source, first, last: through });
+    libraryKeys = resolved.keys;
+    total = first - 1 + resolved.keys.length;
+  } else if (set.kind === "search") {
     // Typed here: the generated API's types depend on this module, so inference would loop.
     const found: SavedSearchRequest = await ctx.runQuery(internal.paperSets.search.readSearch, { userId, workspaceId, searchId: set.searchId });
     snapshot = snapshotOf(found);
@@ -69,7 +75,7 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
   const step = call?.from ? { chatStep: call.from } : {};
   const open = (spend: { spendCap?: number; spendHold?: string }) =>
-    ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, workspaceId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...config, ...(name ? { name } : {}), papers: last - first + 1, ...step, ...spend });
+    ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, workspaceId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...(libraryKeys ? { libraryKeys: libraryKeys.slice(0, last - first + 1) } : {}), ...config, ...(name ? { name } : {}), papers: last - first + 1, ...step, ...spend });
   // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
   return spendCap === undefined ? await open({}) : await startHeld(ctx, { userId, workspaceId, credits: spendCap, kind: "screening" }, (spendHold) => open({ spendCap, spendHold }));
 }
@@ -125,6 +131,13 @@ export const read = internalAction({
           const done = ended || from + read > job.last;
           await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read, ...(resume ? { resume } : {}), ended: done });
           if (done) return null;
+        } else if (job.set.kind === "evidenceLibrary") {
+          // The keys the library gave when the job started, a step at a time.
+          const keys: string[] = await ctx.runQuery(internal.paperSets.libraryKeys.slice, { job: jobId, offset: from - job.first, count: to - from + 1 });
+          const papers: SearchPaper[] = keys.length ? await ctx.runAction(internal.evidenceLibraries.sourceActions.papers, { libraryId: job.set.libraryId, keys }) : [];
+          const done = to >= job.last;
+          await ctx.runMutation(internal.screening.mutations.fillScreeningJob, { jobId, papers, read: to - from + 1, ended: done });
+          if (done) return null;
         } else if (job.set.kind === "zotero") {
           // Read through the person's own Zotero account, one page of its items a step.
           const { collectionKey, groupId } = job.set;
@@ -176,7 +189,7 @@ export const screenAction = defineUserAction({
   // The papers, the questions put to them and where the included ones go. How each answer scores is the job's own business.
   shown: ({ set, first, last, questions, saveTo, prune, name }) => ({
     ...(name?.trim() ? { name: name.trim() } : {}),
-    ...(set.kind === "collection" ? { collectionId: set.collectionId } : set.kind === "search" ? { search: set.searchId } : set.kind === "screening" ? { screening: set.jobId } : set.kind === "zotero" ? { zotero: set.collectionKey ?? "library", ...(set.groupId ? { group: set.groupId } : {}) } : { papers: "library" }),
+    ...(set.kind === "collection" ? { collectionId: set.collectionId } : set.kind === "search" ? { search: set.searchId } : set.kind === "screening" ? { screening: set.jobId } : set.kind === "zotero" ? { zotero: set.collectionKey ?? "library", ...(set.groupId ? { group: set.groupId } : {}) } : set.kind === "evidenceLibrary" ? { evidenceLibrary: set.libraryId, ...set.source } : { papers: "library" }),
     first,
     last,
     question: questions.map((asked) => asked.question),

@@ -15,6 +15,7 @@ import { screeningPaperCredits } from "../../lib/pricing";
 import { createError } from "../lib/errors";
 import type { paperSetValidator, saveToValidator, screeningScoringConfigValidator } from "./validators";
 import { checkZoteroSet } from "../zotero/libraryValidators";
+import { requireRunningLibrary } from "../evidenceLibraries/sources";
 
 /**
  * Refuses a screening whose rules include every paper, whatever it's answered: one with no
@@ -66,7 +67,6 @@ export async function papersIn(ctx: QueryCtx, { userId, workspaceId }: InWorkspa
   return null;
 }
 
-/** Whether a set's papers come from Zotero: a Zotero set, or the included papers of a screening of one, however far back. */
 /**
  * What starting a screening refuses that can be read before the person is asked to pay for it
  * (./start.ts, ./mutations.ts `insertJob`), so that a yes is never followed by a refusal: its
@@ -79,6 +79,7 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
   if (prune && set.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
   if (set.kind === "zotero") await checkZoteroSet(ctx, userId, set);
+  if (set.kind === "evidenceLibrary") await requireRunningLibrary(ctx, set.libraryId);
   if (set.kind === "search") {
     const row = await findSearch(ctx, workspaceId, set.searchId);
     if (!row) throw createError("NOT_FOUND", "Search not found");

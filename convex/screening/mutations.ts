@@ -42,6 +42,7 @@ import { personalWorkspaceOf, requireMakerOrAdmin, type InWorkspace } from "../w
 import { assistantMutation, defineUserMutation, userMutation } from "../lib/userActions";
 import { requirePaperKey } from "../library/find";
 import { resultOf } from "./access";
+import { keepKeys } from "../paperSets/libraryKeys";
 
 /** Where the job's included papers go, as its fields: a collection, or nowhere. */
 async function destination(ctx: MutationCtx, writer: InWorkspace, saveTo: Infer<typeof saveToValidator> | undefined) {
@@ -109,7 +110,8 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
     if (set?.kind === "collection" && collection?.workspaceId !== workspaceId) throw createError("NOT_FOUND", "Collection not found");
     if (set?.kind === "screening" && (!job || !(job.workspaceId === workspaceId))) throw createError("NOT_FOUND", "Screening not found");
     // A Zotero set's collection is named in the person's Zotero, which this doesn't read: it's called by where its papers are.
-    label = collection?.name ?? job?.name ?? job?.label ?? (set?.kind === "zotero" ? "Zotero" : undefined);
+    const library = set?.kind === "evidenceLibrary" ? await ctx.db.get("evidenceLibraries", set.libraryId) : null;
+    label = collection?.name ?? job?.name ?? job?.label ?? library?.name ?? (set?.kind === "zotero" ? "Zotero" : undefined);
   }
 
   // Stamped with what Screen All runs on (read back at run by screenPaperAction).
@@ -160,15 +162,18 @@ const READ_LIMIT_MS = 15 * 60_000;
  */
 export const openScreeningJob = internalMutation({
   // `workspaceId` is optional only for a call from an action already running when this deployed (#650), which makes the job in its person's own; required again in slice 8.
-  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), papers: v.number(), ...jobSetup, first: v.number(), last: v.number() },
+  // `libraryKeys`: an Evidence Library set's record keys from `first` on, as the library gave them when the job started (../paperSets/libraryKeys.ts).
+  args: { userId: v.id("users"), workspaceId: v.optional(v.id("workspaces")), papers: v.number(), ...jobSetup, first: v.number(), last: v.number(), libraryKeys: v.optional(v.array(v.string())) },
   returns: v.object({ jobId: v.id("screeningJobs") }),
-  handler: async (ctx, { userId, workspaceId, papers, saveTo, ...setup }) => {
+  handler: async (ctx, { userId, workspaceId, papers, saveTo, libraryKeys, ...setup }) => {
     const user = await requireActiveUser(ctx, userId);
     // A new collection is made with the papers, so a job that never gets any leaves none behind.
     const later = saveTo?.kind === "new" ? saveTo.name.trim() : undefined;
     if (later === "") throw createError("VALIDATION_ERROR", "Collection name cannot be empty");
     const jobId = await insertJob(ctx, user, workspaceId ?? (await personalWorkspaceOf(ctx, userId)), { ...setup, ...(later ? {} : { saveTo }) }, { status: "processing", totalPapers: papers, reading: true, ...(later ? { newCollection: later } : {}) });
     await ctx.db.patch("screeningJobs", jobId, { readPlace: { read: 0, papers: 0 } });
+    // Kept before the job reads them.
+    if (libraryKeys) await keepKeys(ctx, jobId, libraryKeys);
     await ctx.scheduler.runAfter(0, internal.screening.start.read, { jobId });
     await ctx.scheduler.runAfter(READ_LIMIT_MS, internal.screening.mutations.failScreeningRead, { jobId, reason: "Its papers took too long to read. Run it again.", stalled: true });
     return { jobId };
@@ -230,6 +235,8 @@ export const fillScreeningJob = internalMutation({
     });
     if (affordable && papers.length) await createResults(ctx, (await ctx.db.get("screeningJobs", jobId))!, papers, now, reused);
     if (over) await finishIfDone(ctx, jobId);
+    // Done reading: an Evidence Library's keys have served.
+    if (over && reading.set?.kind === "evidenceLibrary") await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job: jobId });
     return null;
   },
 });
@@ -251,6 +258,7 @@ export const failScreeningRead = internalMutation({
     const quiet = Date.now() - job.updatedAt;
     if (stalled && quiet < READ_LIMIT_MS) return void (await ctx.scheduler.runAfter(READ_LIMIT_MS - quiet, internal.screening.mutations.failScreeningRead, { jobId, reason, stalled }));
     await ctx.db.patch("screeningJobs", jobId, { status: "failed", reading: undefined, failure: reason.slice(0, FAILURE_SHOWN), updatedAt: Date.now() });
+    if (job.set?.kind === "evidenceLibrary") await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job: jobId });
     // The papers earlier steps took stop too, as a cancelled job's do.
     if (job.readPlace?.papers) await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId, cursor: null });
     return null;
@@ -366,6 +374,7 @@ export const cancelScreeningJobAction = defineUserMutation({
     // Its papers' queued work is dropped in batches afterwards, as Firecrawl drops a cancelled
     // crawl's queue, so the pool's slots free up sooner.
     await ctx.scheduler.runAfter(0, internal.screening.mutations.endScreeningWork, { jobId: args.jobId, cursor: null });
+    if (job.set?.kind === "evidenceLibrary") await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job: args.jobId });
     await noteActivity(ctx, { workspaceId: job.workspaceId, by: actor.userId, viaAssistant: actor.author === "assistant" }, { kind: "screening", id: args.jobId, happened: "stopped" });
     await noteEnded(ctx, job);
 

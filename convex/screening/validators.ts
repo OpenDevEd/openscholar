@@ -3,6 +3,7 @@ import { MAX_AUTHORS, MAX_QUESTIONS, MAX_STARS, capped } from "../lib/listCaps";
 import { answerSourceValidator } from "../../lib/research/records";
 import { sourceMetadataFields } from "../lib/paperMetadata";
 import { crossRefsValidator } from "../lib/paperRef";
+import { librarySourceValidator } from "../evidenceLibraries/validators";
 
 /**
  * Screening question snapshot embedded in job records.
@@ -93,6 +94,8 @@ export const paperSetValidator = v.union(
   v.object({ kind: v.literal("screening"), jobId: v.id("screeningJobs") }),
   // The person's own Zotero library, or one collection of it, or a group's of theirs: read through their connected account.
   v.object({ kind: v.literal("zotero"), collectionKey: v.optional(v.string()), groupId: v.optional(v.string()) }),
+  // An Evidence Library's records as the person may read them there (plans/evidence-library-sources): its keys are kept when the job starts.
+  v.object({ kind: v.literal("evidenceLibrary"), libraryId: v.id("evidenceLibraries"), source: librarySourceValidator }),
 );
 
 /** Where a job's included papers go: nowhere, a new collection by name, or one the person has. */

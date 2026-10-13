@@ -1207,3 +1207,18 @@ export const evidenceLibraryReaderFields = {
   firstAt: v.number(),
   lastAt: v.number(),
 };
+
+/** Most records a source named record by record holds: what a hand-off from Smart screening sends, with room to spare. */
+export const LIBRARY_SOURCE_RECORDS_MAX = 1_000;
+
+/**
+ * A source of an Evidence Library's records (lib/evidence-libraries/source-address.ts): a reader's collection, one of
+ * the library's own collections, the whole library, a search of it (its search page's query string), or records.
+ */
+export const librarySourceValidator = v.union(
+  v.object({ readerCollection: v.string() }),
+  v.object({ libraryCollection: v.string() }),
+  v.object({ library: v.literal(true) }),
+  v.object({ search: v.string(), readerCollection: v.optional(v.string()) }),
+  v.object({ records: v.array(v.string()) }),
+);

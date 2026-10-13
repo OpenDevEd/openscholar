@@ -20,7 +20,7 @@ import { paperKeyOf } from "../../lib/papers/paper-ref";
 import { findItem } from "../library/find";
 
 type PaperSet = Infer<typeof paperSetValidator>;
-export type HeldSet = Exclude<PaperSet, { kind: "search" } | { kind: "zotero" }>;
+export type HeldSet = Exclude<PaperSet, { kind: "search" } | { kind: "zotero" } | { kind: "evidenceLibrary" }>;
 
 /** Papers one read takes: a saved paper holds its abstract and its whole OpenAlex record. */
 const PAGE = 100;
@@ -64,6 +64,7 @@ export const page = internalQuery({
   handler: async (ctx, { workspaceId, set, cursor, numItems, revision }) => {
     if (set.kind === "search") throw new Error("A search's papers are read from OpenAlex (./search.ts)");
     if (set.kind === "zotero") throw new Error("A Zotero set's papers are read from Zotero (../zotero/actions.ts `papersOf`)");
+    if (set.kind === "evidenceLibrary") throw new Error("A library's papers are read from the library (../evidenceLibraries/sourceActions.ts `papers`)");
     const opts = { cursor, numItems: Math.min(numItems, PAGE), maximumBytesRead: PAGE_BYTES };
     if (set.kind === "screening") {
       const job = await ctx.db.get("screeningJobs", set.jobId);
