@@ -21,7 +21,7 @@ import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { useEffectiveRating } from "@/components/results-contexts";
 import type { PaperResult } from "@/lib/types";
-import { paperPage, saveablePaper, toPaperKey } from "@/lib/papers/paper-ref";
+import { paperPage, saveablePaper } from "@/lib/papers/paper-ref";
 
 export interface FocusModeHeaderProps {
   currentPaper: PaperResult;
@@ -63,8 +63,7 @@ export function FocusModeHeader({
   tAccessibility,
 }: FocusModeHeaderProps) {
   const effectiveRating = useEffectiveRating(currentPaper.id);
-  // Any paper named by its source is rated, and saved but an upload; it opens where its source keeps it, if anywhere.
-  const named = toPaperKey(currentPaper.id) !== null;
+  // Any paper named by its source but an upload is rated and saved (an upload's file stays with its job); it opens where its source keeps it, if anywhere.
   const saveable = saveablePaper(currentPaper.id);
   const page = paperPage(currentPaper.id, currentPaper.primary_location?.pdf_url);
   const hasTranslation = !!translatedContent && !translatedContent.noTranslationNeeded;
@@ -107,7 +106,7 @@ export function FocusModeHeader({
           ) : null}
           <div className="ml-auto md:hidden">{close}</div>
           {/* Star rating buttons - hidden on mobile */}
-          {named ? (
+          {saveable ? (
             <div className="hidden md:flex items-center gap-0.5">
               <div className="flex items-center gap-1">
                 <button
@@ -180,14 +179,12 @@ export function FocusModeHeader({
                   </span>
                 </div>
               ))}
-              {saveable ? (
-                <div className="ml-3 flex items-center gap-1">
-                  <SaveControl paper={currentPaper} />
-                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded">
-                    B
-                  </span>
-                </div>
-              ) : null}
+              <div className="ml-3 flex items-center gap-1">
+                <SaveControl paper={currentPaper} />
+                <span className="text-xs text-muted-foreground bg-muted px-1 rounded">
+                  B
+                </span>
+              </div>
             </div>
           ) : null}
         </div>
@@ -195,10 +192,10 @@ export function FocusModeHeader({
         {/* Second row: actions. Phones show the rating and save on the left and the tools on the right. */}
         <div className="flex flex-wrap items-center gap-1 md:flex-nowrap md:justify-end md:mr-8">
           {/* Compact rating selector - only on mobile */}
-          {named ? (
+          {saveable ? (
             <div className="flex items-center gap-1 md:hidden">
               <RatingSelector paper={currentPaper} variant="compact" />
-              {saveable ? <SaveControl paper={currentPaper} compact /> : null}
+              <SaveControl paper={currentPaper} compact />
             </div>
           ) : null}
 

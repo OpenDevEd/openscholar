@@ -26,7 +26,7 @@ import { useSavePaper } from "@/components/library/save-control";
 import { useRatePaper } from "@/components/rating-selector";
 import { FocusModeSettings } from "@/components/focus-mode/focus-mode-settings";
 import type { PaperResult } from "@/lib/types";
-import { paperPage, saveablePaper, toPaperKey } from "@/lib/papers/paper-ref";
+import { paperPage, saveablePaper } from "@/lib/papers/paper-ref";
 import { FocusModeClose } from "@/components/focus-mode/close-context";
 
 interface FocusModeProps {
@@ -79,8 +79,7 @@ export function FocusMode({
 
   const currentPaper = papers[currentIndex];
   const savePaper = useSavePaper(currentPaper);
-  // Any paper named by its source is rated, and saved but an upload; it opens where its source keeps it, if anywhere.
-  const named = currentPaper ? toPaperKey(currentPaper.id) !== null : false;
+  // Any paper named by its source but an upload is rated and saved (a rating saves it; an upload's file stays with its job); it opens where its source keeps it, if anywhere.
   const saveable = currentPaper ? saveablePaper(currentPaper.id) : false;
   const page = currentPaper ? paperPage(currentPaper.id, currentPaper.primary_location?.pdf_url) : null;
   const authorFilter = useAuthorFilter();
@@ -323,11 +322,11 @@ export function FocusMode({
         case "x":
         case "X":
           e.preventDefault();
-          if (named) handleRatingChange(currentPaper.id, "no-rating");
+          if (saveable) handleRatingChange(currentPaper.id, "no-rating");
           break;
         case "0":
           e.preventDefault();
-          if (named) handleRatingChange(currentPaper.id, "0");
+          if (saveable) handleRatingChange(currentPaper.id, "0");
           break;
         case "1":
         case "2":
@@ -335,7 +334,7 @@ export function FocusMode({
         case "4":
         case "5":
           e.preventDefault();
-          if (named) handleRatingChange(currentPaper.id, e.key);
+          if (saveable) handleRatingChange(currentPaper.id, e.key);
           break;
         case "b":
         case "B":
@@ -368,7 +367,6 @@ export function FocusMode({
     showTranslated,
     handleRatingChange,
     savePaper.toggle,
-    named,
     saveable,
     page,
   ]);
