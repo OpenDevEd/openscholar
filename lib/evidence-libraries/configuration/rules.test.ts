@@ -1125,6 +1125,7 @@ describe("changedSectionRows for the discovery sections", () => {
     const draft = readDraft(discoveryRows);
     draft.search.fullText = true;
     draft.filters.institution.mode = "facet";
+    draft.filters.uncertainStudyTypes = "separate";
     draft.topics.enabled = true;
     const rows = changedSectionRows(draft, discoveryRows);
     expect(rows).toEqual([
@@ -1143,6 +1144,7 @@ describe("changedSectionRows for the discovery sections", () => {
         payload: {
           institution: { mode: "facet", label: "Partners" },
           collectionsExpanded: true,
+          uncertainStudyTypes: "separate",
           years: { enabled: true },
         },
       },

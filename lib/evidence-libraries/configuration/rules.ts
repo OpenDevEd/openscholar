@@ -443,8 +443,11 @@ export type SearchDraft = {
 export type FiltersDraft = {
   institution: { mode: InstitutionMode; label: string; featuredValue: string };
   collectionsExpanded: boolean;
+  /** Where a study type the AI was less than 60% sure of shows: marked beside its type, or apart as Uncertain. */
+  uncertainStudyTypes: (typeof UNCERTAIN_STUDY_TYPES)[number];
   years: { enabled: boolean };
 };
+const UNCERTAIN_STUDY_TYPES = ["marked", "separate"] as const;
 type CollectionDraft = {
   id: string;
   title?: string;
@@ -935,6 +938,7 @@ function readFilters(payload: unknown): FiltersDraft {
       featuredValue: text(institution.featuredValue),
     },
     collectionsExpanded: flag(filters.collectionsExpanded, true),
+    uncertainStudyTypes: choice(filters.uncertainStudyTypes, UNCERTAIN_STUDY_TYPES, "marked"),
     years: {
       enabled: flag(years.enabled, true),
     },
@@ -1455,6 +1459,7 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
               : undefined,
         }),
         collectionsExpanded: draft.filters.collectionsExpanded,
+        uncertainStudyTypes: draft.filters.uncertainStudyTypes,
         years: compact({ ...draft.filters.years }),
       };
     case "sources":

@@ -50,6 +50,14 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "filters.uncertainStudyTypes",
+				"values": [
+					"marked",
+					"separate"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "footer.sections[].links[].target",
 				"values": [
 					"self",
