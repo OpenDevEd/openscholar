@@ -146,10 +146,12 @@ export function SetupView({
 
   // A screening a chat ran on a Zotero collection is run again from its chat: the page starts on a search.
   const [kind, setKind] = useState<Kind>(handoffId ? "evidenceLibrary" : again?.set && again.set.kind !== "zotero" ? again.set.kind : "search");
-  // The set picked stays picked whatever page its list shows; until one is, a job run again starts on its own set, and otherwise the first listed.
-  const [picked, setPicked] = useState<Source | null>(null);
+  // The set picked of each kind stays picked whatever page its list shows, and when the person switches kinds and comes
+  // back; until one is, a job run again starts on its own set, and otherwise the first listed.
+  const [pickedOf, setPickedOf] = useState<Partial<Record<Kind, Source>>>({});
+  const picked = pickedOf[kind] ?? null;
   const againId = again?.set && (again.set.kind === "search" ? again.set.searchId : again.set.kind === "collection" ? again.set.collectionId : again.set.kind === "screening" ? again.set.jobId : again.set.kind === "evidenceLibrary" ? rowKey(again.set) : "saved");
-  const kept = picked?.kind === kind ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : lists[kind].rows.find((row) => row.id === againId);
+  const kept = picked ? (lists[kind].rows.find((row) => row.id === picked.id) ?? picked) : lists[kind].rows.find((row) => row.id === againId);
   // A set with no papers is never the one picked, even one a job ran on that has emptied since.
   const source = kept && kept.count > 0 ? kept : lists[kind].rows.find((row) => row.count > 0);
   // Opened from a results page, it starts on the page the person was reading; run again, on the job's own papers.
@@ -223,22 +225,31 @@ export function SetupView({
   const screen = useWorkspaceAction(api.screening.start.screen);
   const { execute: generateQuestions, isConfigured: canGenerate } = useGenerateScreeningQuestions();
 
-  /** Picks a set; a search brings its own screening questions, and each set starts on its own first papers. */
-  const choose = (next: Source) => {
+  /** How much of the set each kind had picked, as the person left it. */
+  const leftAt = useRef<Partial<Record<Kind, { scope: typeof scope; range: [number, number] }>>>({});
+  /** Picks a set; a search brings its own screening questions, and each set starts on its own first papers, or on the ones it had when picked again. */
+  const choose = (next: Source, was?: { scope: typeof scope; range: [number, number] }) => {
     picks.current++;
-    setPicked(next);
-    setRange([1, Math.min(300, next.count)]);
+    setPickedOf((all) => ({ ...all, [next.kind]: next }));
+    setRange(was?.range ?? [1, Math.min(300, next.count)]);
+    if (was) setScope(was.scope);
     setEdited(next.kind === "search" ? null : questions);
   };
   const pick = (next: Kind) => {
+    // The set this kind shows is kept as picked, the one a job run again started on too, and how much of it.
+    if (source) setPickedOf((all) => ({ ...all, [kind]: source }));
+    leftAt.current[kind] = { scope, range };
     setKind(next);
+    // Back on a kind, its set is as the person left it; a kind not picked from yet starts on its first.
+    const before = pickedOf[next];
+    if (before) return choose(before, leftAt.current[next]);
     const firstOf = lists[next].rows.find((row) => row.count > 0);
     if (firstOf) choose(firstOf);
     setScope(next === "search" ? "range" : "all");
   };
   /** Turns the list's page with the set in use held on to, so another page's first set doesn't take its place. */
   const turn = (step: () => void) => () => {
-    if (source && picked?.id !== source.id) setPicked(source);
+    if (source && picked?.id !== source.id) setPickedOf((all) => ({ ...all, [source.kind]: source }));
     step();
   };
   const addQuestion = () => {

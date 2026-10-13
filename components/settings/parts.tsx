@@ -238,20 +238,25 @@ let firstPage = true;
 /**
  * Every settings page enters the same way: one fade and a 10px rise, like the
  * library, topic and history pages. It waits until `ready`, so a page lays out
- * its data at full size while hidden and never grows after it appears.
+ * its data at full size while hidden and never grows after it appears. Hidden,
+ * it takes no clicks or focus: nothing on it can be changed before it shows.
  */
 export function Enter({ ready, children }: { ready: boolean; children: ReactNode }) {
   const reduceMotion = useReducedMotion();
   const [skip] = useState(() => firstPage || Boolean(reduceMotion));
+  // Usable once it has fully appeared, and from then on whatever its data does.
+  const [shown, setShown] = useState(false);
   return (
     <motion.div
       initial={skip ? { opacity: 0 } : cardEntrance.initial}
       animate={ready ? cardEntrance.animate : undefined}
       transition={skip ? { duration: 0.15 } : subtleSpring}
       aria-busy={!ready}
+      inert={!shown}
       onAnimationStart={() => {
         firstPage = false;
       }}
+      onAnimationComplete={() => setShown(true)}
     >
       {children}
     </motion.div>
