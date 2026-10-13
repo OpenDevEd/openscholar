@@ -35,7 +35,9 @@ branches `mock/library-sources` (openalex-count) and `mock/openscholar-handoff`
 - **Each side keeps its own data; the other asks as a named person, and the
   owner's own check decides.** OpenScholar never reads a library's database and
   never keeps a copy of its records, apart from the snapshot a job keeps of what
-  it screened or extracted. The library never rebuilds OpenScholar research tools.
+  it screened or extracted and a record a person saves to their OpenScholar
+  library, which keeps its metadata under the record's key as every saved paper
+  does. The library never rebuilds OpenScholar research tools.
 - **A library is a source for screening and extraction**: a reader collection
   (yours, one shared with you, or anyone's public one), one of the library's own
   collections, the whole library, a search of it (its words, filters and sort,
@@ -48,7 +50,9 @@ branches `mock/library-sources` (openalex-count) and `mock/openscholar-handoff`
   small subset of the future"). See "Paper identity".
 - **Included papers can be saved to a library collection** (yours, one you edit,
   or a new one) as well as to an OpenScholar collection, which takes papers of
-  any source.
+  any source. A library collection holds that library's records: a job's papers
+  from it, and papers from elsewhere that it holds, found by OpenAlex ID or DOI.
+  The rest are listed as not added, with why.
 - **Smart screening stays in the library.** Its results and its 25-record
   dialog hand off to OpenScholar; so do the search page (with its sort) and
   collection pages. OpenScholar's landing page offers Extract (all questions)
@@ -82,9 +86,11 @@ type PaperRef =
   `zotero:group:<groupId>:<key>`, `upload:<storageId>`. `parsePaperKey`
   reverses it; nothing else builds or splits a key.
 - `crossRefs: { openalexId?: string; doi?: string }` sits beside the ref. It
-  finds the same paper across sources (duplicate detection,
-  `lib/bucket/dedupe.ts` keeps its order: OpenAlex, then DOI, then title and
-  year) and finds a PDF through OpenScholar's own PDF lookup. It is never a key.
+  finds the same paper across sources and finds a PDF through OpenScholar's own
+  PDF lookup. It is never a key. Duplicate detection matches a paper to an
+  earlier one by any identifier they share: OpenAlex ID, DOI, then title and
+  year. `lib/bucket/dedupe.ts` keys a paper by the first of these it has, which
+  misses a copy that shares only its DOI; it changes to look up each one.
 - Opening a paper follows its source: OpenScholar's paper page for OpenAlex, the
   record's page in its library, the item in Zotero, the uploaded file.
 - OpenAlex-only features (topics, authors, citation counts, OpenAlex filters)
@@ -93,7 +99,9 @@ type PaperRef =
 
 ## The contract (owner: this section; both repositories implement it)
 
-Every call carries `contractVersion: 1`. A call about a person carries their
+Every request carries the header `OpenScholar-Contract: 1`, and every answer
+carries it back; a side that doesn't speak that version answers
+`400 contract`. A call about a person carries their
 Clerk user ID; the side that owns the data checks that person with the same
 function its own pages use. Both sides log every refusal and failure with the
 library, the call, the person and the reason (`[library sources]` prefix) in
@@ -103,8 +111,8 @@ the first version.
 
 | Call | Body | Answer |
 |---|---|---|
-| `POST /api/v1/evidence-libraries/readers/seen` | `{contractVersion, libraryId, clerkUserId}`, on every sign-in | `204` |
-| `POST /api/v1/evidence-libraries/handoffs` | `{contractVersion, libraryId, clerkUserId?, from: "smartScreening" \| "search" \| "collection", source: {records: string[]} \| {search: string} \| {readerCollection: string, search?: string} \| {libraryCollection: string}, fields: [{label, type: "string" \| "number" \| "boolean", description}]}` | `201 {handoffId, url, expiresAt}`; `400 invalid_request` |
+| `POST /api/v1/evidence-libraries/readers/seen` | `{libraryId, clerkUserId}`, on every sign-in | `204` |
+| `POST /api/v1/evidence-libraries/handoffs` | `{libraryId, clerkUserId?, from: "smartScreening" \| "search" \| "collection", source: {records: string[]} \| {search: string} \| {readerCollection: string, search?: string} \| {libraryCollection: string}, fields: [{label, type: "string" \| "number" \| "boolean", description}]}` | `201 {handoffId, url, expiresAt}`; `400 invalid_request` |
 
 A hand-off lives seven days, holds no permission (OpenScholar reads its records
 as whoever opens it), and records the library for that person when they open it.
@@ -113,20 +121,25 @@ as whoever opens it), and records the library for that person when they open it.
 
 | Call | Answer |
 |---|---|
-| `GET /api/v1/openscholar/readers?cursor=` | `{contractVersion, readers: [clerkUserId], next}`: once per library, to learn the readers who signed in before this shipped |
-| `GET /api/v1/openscholar/readers/<clerkUserId>/collections?page=&pageSize=&search=` | `{contractVersion, rows: [{id, name, description, private, role: owner\|editor\|viewer, owner: {name, image}, count, updatedAt}], page, pages, total}`: own and shared, as the profile column orders them |
+| `GET /api/v1/openscholar/readers?cursor=` | `{readers: [clerkUserId], next}`: once per library, to learn the readers who signed in before this shipped |
+| `GET /api/v1/openscholar/readers/<clerkUserId>/collections?page=&pageSize=&search=` | `{rows: [{id, name, description, private, role: owner\|editor\|viewer, owner: {name, image}, count, updatedAt}], page, pages, total}`: own and shared, as the profile column orders them |
 | `GET /api/v1/openscholar/collections?reader=&readerCollection=<id>` | one reader collection by ID for that person (`403 private`, `404 not_found`) |
-| `GET /api/v1/openscholar/records?reader=&from=readerCollection:<id>\|libraryCollection:<key>\|all&cursor=&pageSize=` | `{contractVersion, records: [Record], next, total}`, ordered by key, at most 500 a page |
-| `POST /api/v1/openscholar/searches/resolve` `{reader, search, readerCollection?}` | `{contractVersion, keys, total, truncated}`: the search page's own resolution (`readSearchKeys` in `src/lib/library-export-selection.ts`), in its sort, at most 20,000; `409 index_changed` asks again |
-| `POST /api/v1/openscholar/records/batch` `{reader, keys}` | `{contractVersion, records: [Record]}`, at most 500 keys, missing keys left out |
-| `GET /api/v1/openscholar/search?reader=&<search page parameters>&page=` | `{contractVersion, records: [Record], page, pages, total}`: the assistant's search, as the search page answers it |
+| `GET /api/v1/openscholar/records?reader=&from=readerCollection:<id>\|libraryCollection:<key>\|all&cursor=&pageSize=` | `{records: [Record], next, total}`, ordered by key; `next` is the last key returned, so a read never repeats a record or skips one that was there throughout, and a record added or removed while a job reads may be in or out, as with the Zotero source |
+| `POST /api/v1/openscholar/searches/resolve` `{reader, search, readerCollection?}` | `{keys, total, truncated}`: the search page's own resolution (`readSearchKeys` in `src/lib/library-export-selection.ts`), in its sort, at most 20,000; `409 index_changed` asks again |
+| `POST /api/v1/openscholar/records/batch` `{reader, keys}` | `{records: [Record]}`, at most 500 keys, missing keys left out |
+| `POST /api/v1/openscholar/records/match` `{reader, papers: [{openalexId?, doi?}]}` | `{matches: [{at, key}]}`: the records this library holds with that OpenAlex ID or DOI, at most 500 papers a call |
+| `GET /api/v1/openscholar/search?reader=&<search page parameters>&page=` | `{records: [Record], page, pages, total}`: the assistant's search, as the search page answers it |
 | `GET /api/v1/openscholar/records/<key>/files/<attachmentKey>?reader=` | the PDF, only when the library's tag rules make it downloadable (`filterPublicAttachments`), else `404` |
-| `POST /api/v1/openscholar/readers/<clerkUserId>/collections` `{name, description?, private}` | `201 {collection}`; limits as the profile has them |
+| `POST /api/v1/openscholar/readers/<clerkUserId>/collections` `{name, description?, private, requestId}` | `201 {collection}`; limits as the profile has them. The same `requestId` again answers the collection it made, so a retry never makes two |
 | `POST` and `DELETE /api/v1/openscholar/readers/<clerkUserId>/collections/<id>/records` `{keys}` | `{count, changed}`; owner or editor only (`403 role`) |
 
 `Record` is `{key, revision, itemType, title, abstract, creators: [{name}],
 year, venue, url, crossRefs: {openalexId?, doi?}, files: [{attachmentKey,
-filename, contentType, bytes}]}`. Every refusal answers `{error, message}`:
+filename, contentType, bytes}]}`. Its text is capped at the lengths
+OpenScholar keeps a Zotero paper's (`convex/zotero/libraryValidators.ts`: title
+500 characters, abstract 10,000, 100 creators and a venue of 300 each). A page of
+records holds at most 500 of them and at most 4 MB: the library sends fewer when
+the next would pass it. Every refusal answers `{error, message}`:
 `401` credential, `403 private | role | reader_accounts_off`, `404 not_found`,
 `409 index_changed`, `413 too_many`, `400 invalid_request | contract`, `503`.
 A library on an older runtime answers `404` to these paths; OpenScholar shows
@@ -139,9 +152,13 @@ every batch on shared dev, then narrow):
 
 - `libraryItems`: `openalexId` becomes `paperKey` (indexed, unique per
   workspace), `ref` and `crossRefs`. Every row becomes `{source: "openalex"}`
-  with its OpenAlex ID as both key and cross-reference. `libraryRemovals` and
-  `paperMetadataChanges` the same.
+  with its OpenAlex ID as both key and cross-reference. `libraryRemovals` the
+  same. `paperMetadataChanges` stays as it is: its receipts name rows, not papers.
 - `ratings.paperId`: rewritten to `paperKey` values; a rating is of any paper.
+- Stored arguments that name a paper move with it: `assistantSteps.undo` (and
+  `input` while a call waits for the person) and `assistantStepUndos.args`.
+  Rating commands, `researchReceipts.undo` among them, name a paper in any form
+  and are read through `toPaperKey`, so they stay.
 - `screeningAnswers` and `screeningAnswerHistory` keep their OpenAlex IDs: they
   are the answers of an OpenAlex search's results page. A job on a search
   reaches them through its papers' OpenAlex cross-reference.
@@ -196,7 +213,8 @@ updated one at a time), and a confirmation QA pass on shared dev.
 4. **Writes.** new-el: the collection create, add and remove calls. OpenScholar:
    "Save included papers to" a library collection (yours, one you edit, a new
    one) or an OpenScholar collection; "Remove excluded" on a library collection
-   you edit. Done when both work for every source kind.
+   you edit. new-el also answers `records/match`. Done when both work for jobs of
+   every source kind, and papers a library doesn't hold are named as not added.
 5. **The assistant.** User actions with their registry entries
    (`convex/lib/userActionRegistry.ts`): libraries, collections, search,
    records, record PDF, create collection, add and remove records, resolve an
