@@ -920,6 +920,8 @@ export default defineSchema({
     .index("by_job", ["jobId"])
     .index("by_job_processable", ["jobId", "processable"])
     .index("by_job_dedupeKey", ["jobId", "dedupeKey"])
+    .index("by_job_and_doiKey", ["jobId", "doiKey"])
+    .index("by_job_and_titleKey", ["jobId", "titleKey"])
     // A job's processable papers in the orders its results list in.
     .index("by_job_processable_and_sortTitle", ["jobId", "processable", "sortTitle"])
     .index("by_job_processable_and_avgConfidence", ["jobId", "processable", "avgConfidence"])

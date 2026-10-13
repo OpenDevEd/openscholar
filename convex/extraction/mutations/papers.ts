@@ -15,7 +15,9 @@ import type { Doc, Id } from "../../_generated/dataModel";
 import { getFlag } from "../../featureFlags/guard";
 import { getProcessableFlags } from "../content";
 import { errorCodeValidator, paperSourceTypeValidator, setupPlaceValidator } from "../validators";
-import { dedupeKeyOf } from "../expandSources";
+import { dedupeKeysOf } from "../expandSources";
+import { samePaper } from "../dedupe";
+import type { MutationCtx } from "../../lib/functions";
 import { crossRefsValidator, identityOf } from "../../lib/paperRef";
 import { isTerminalPaperStatus, markPaperTerminalTx } from "../paperLifecycle";
 import { isRetryable, type ClassifiedError } from "@/lib/errors/taxonomy";
@@ -23,7 +25,7 @@ import { recomputePaperListProjection } from "../listProjection";
 import { MAX_AUTHORS } from "../../lib/listCaps";
 import { sourceMetadataFields } from "../../lib/paperMetadata";
 import { sourceMetadata } from "../../../lib/library/paper-metadata";
-import { openalexWorkOf, openalexWorkOfRow, paperIdOf, parsePaperKey, toPaperKey } from "../../../lib/papers/paper-ref";
+import { openalexWorkOf, openalexWorkOfRow, paperIdOf, paperKeyOf, parsePaperKey, toPaperKey } from "../../../lib/papers/paper-ref";
 import { requirePaperKey } from "../../library/find";
 
 function matchesExpectedEpoch(
@@ -106,8 +108,10 @@ export const createPaperRecords = internalMutation({
       });
       // Without full texts, a paper with nothing to read isn't saved at all.
       const kept = pdfEnabled || processable;
-      const dedupeKey = dedupeKeyOf(paper);
-      const existing = await ctx.db.query("extractionPapers").withIndex("by_job_dedupeKey", (q) => q.eq("jobId", args.jobId).eq("dedupeKey", dedupeKey)).first();
+      const keys = dedupeKeysOf(paper);
+      const dedupeKey = keys[0];
+      if (!dedupeKey) throw new Error("A job's paper needs an OpenAlex ID, a DOI or a title");
+      const existing = await sameIn(ctx, args.jobId, keys);
       if (existing) {
         // Only a screening's copy takes the place of another source's, before either has run.
         if (paper.sourceType !== "screening" || existing.sourceType === "screening" || existing.status !== "pending") continue;
@@ -141,9 +145,29 @@ export const createPaperRecords = internalMutation({
   },
 });
 
+/** Papers of a job that share one identifier read at most: past a few, a shared title is several papers. */
+const SAME_KEY_READ = 5;
+
+/** The job's paper this one is, found by any identifier they share and agreed by the strongest both have (lib/bucket/dedupe.ts). */
+async function sameIn(ctx: MutationCtx, jobId: Id<"extractionJobs">, keys: string[]) {
+  for (const key of keys) {
+    const found = key.startsWith("doi:")
+      ? await ctx.db.query("extractionPapers").withIndex("by_job_and_doiKey", (q) => q.eq("jobId", jobId).eq("doiKey", key)).take(SAME_KEY_READ)
+      : key.startsWith("title:")
+        ? await ctx.db.query("extractionPapers").withIndex("by_job_and_titleKey", (q) => q.eq("jobId", jobId).eq("titleKey", key)).take(SAME_KEY_READ)
+        : await ctx.db.query("extractionPapers").withIndex("by_job_dedupeKey", (q) => q.eq("jobId", jobId).eq("dedupeKey", key)).take(SAME_KEY_READ);
+    const same = found.find((row) => samePaper(keys, dedupeKeysOf({ paper: paperKeyOf(row), crossRefs: row.crossRefs, doi: row.doi, title: row.title, publicationYear: row.publicationYear })));
+    if (same) return same;
+  }
+  return null;
+}
+
 /** A saved paper's fields, as its source gave it. */
 function paperFields(paper: Infer<typeof setupPaperValidator>, storageId: Id<"_storage"> | undefined, processable: boolean) {
+  const keys = dedupeKeysOf(paper);
   return {
+    doiKey: keys.find((key) => key.startsWith("doi:")),
+    titleKey: keys.find((key) => key.startsWith("title:")),
     ...sourceMetadata(paper),
     citedByCount: paper.citedByCount,
     venueName: paper.venueName,

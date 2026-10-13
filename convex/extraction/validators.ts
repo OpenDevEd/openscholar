@@ -464,8 +464,11 @@ void _check_extractionQuestionValidator;
 
 export const extractionPaperFields = {
   screeningRevision: v.optional(v.string()),
-  /** The paper's identity across the job's sources (./dedupe.ts), so a paper two sources bring is saved once. */
+  /** The paper's identity across the job's sources (./dedupe.ts), so a paper two sources bring is saved once: its strongest identifier. */
   dedupeKey: v.optional(v.string()),
+  /** Its DOI and its title and year as identifiers, so a copy that shares only one of them finds it too. */
+  doiKey: v.optional(v.string()),
+  titleKey: v.optional(v.string()),
   // The paper by its source (plans/evidence-library-sources); replaces `openalexId` once every row has it.
   ...paperIdentityFields,
   ...sourceMetadataFields,

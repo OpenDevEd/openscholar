@@ -8,6 +8,9 @@ import { encrypt } from "../lib/crypto";
 import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
 import { createReadySetupFixture } from "../../tests/helpers/evidence-library-setup-fixture";
+import { convexTest } from "convex-test";
+import schema from "../schema";
+import { madeBy } from "../workspaces/actor.test-support";
 
 const KEY = "1".repeat(64);
 const RECORDS = 120;
@@ -61,4 +64,27 @@ it("reads a library source's records by the keys the library gave once, as the p
   expect(asked.filter((call) => call.path.endsWith("/resolve"))).toEqual([{ path: "/api/v1/openscholar/sources/resolve", body: { reader: clerkUserId, source: set.source, first: 1, last: 500 } }]);
   expect(asked.filter((call) => call.path.endsWith("/batch")).map((call) => call.body.keys?.length)).toEqual([100, 20]);
   expect(await t.run((ctx) => ctx.db.query("paperSetKeys").collect())).toEqual([]);
+});
+
+it("saves a library record once when another source brings the same paper, matched by any identifier they share", async () => {
+  const t = convexTest(schema);
+  const jobId = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "same", email: "same@test", state: "active", createdAt: 1, updatedAt: 1 });
+    await ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: false, updatedAt: 1 });
+    return await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Same", status: "pending", runEpoch: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 }, createdAt: 1, updatedAt: 1 });
+  });
+  const abstract = "A long enough abstract for the paper to be read from it, about tutoring in primary schools.";
+  const step = async (papers: object[]) => {
+    const { setup } = (await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!;
+    await t.mutation(internal.extraction.mutations.papers.createPaperRecords, { jobId, papers: papers as never, setup: { expectedEpoch: 0, next: { ...setup!, position: setup!.position + 1 } } });
+  };
+  await step([{ paper: "openalex:W1", title: "Tutoring at scale", publicationYear: 2021, doi: "10.1/abc", abstract, sourceType: "history", sourceId: "s" }]);
+  // The library knows the record by its DOI only; another of its records is a different paper with the same title.
+  await step([
+    { paper: "library:r1:AAAAAAAA", crossRefs: { doi: "10.1/abc" }, doi: "10.1/abc", title: "Tutoring at Scale", publicationYear: 2021, abstract, sourceType: "evidenceLibrary", sourceId: "r1" },
+    { paper: "library:r1:BBBBBBBB", crossRefs: { doi: "10.1/other" }, doi: "10.1/other", title: "Tutoring at scale", publicationYear: 2021, abstract, sourceType: "evidenceLibrary", sourceId: "r1" },
+  ]);
+  const papers = await t.run((ctx) => ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
+  expect(papers.map((paper) => paper.paperKey).sort()).toEqual(["library:r1:BBBBBBBB", "openalex:W1"]);
+  expect((await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))?.setup).toMatchObject({ papers: 2, processable: 2 });
 });

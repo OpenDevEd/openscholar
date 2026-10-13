@@ -84,7 +84,8 @@
       "MAKER_ROWS_READ": "the makers of one kind of record the Run by filter reads for members who left; one row per person who ever made one, so an organization past it lists the first of them",
       "OPEN_HOLDS_READ": "the holds a member has open, summed to size a reply's hold under their cap; a job holds one per slot and a workspace has 40 slots, and Autumn enforces the cap whatever this reads",
       "READ_LIBRARIES_MAX": "the libraries a person used last, and the newest grants; any other library is reached by its address",
-      "WORKSPACE_LIBRARIES_MAX": "the running libraries of each workspace a person is in, of which the list keeps the ones used last; any other is reached by its address"
+      "WORKSPACE_LIBRARIES_MAX": "the running libraries of each workspace a person is in, of which the list keeps the ones used last; any other is reached by its address",
+      "SAME_KEY_READ": "the first papers of a job that share one identifier; a paper is one of them or none, since more than a few sharing a title are different papers"
     },
     "batches": {
       "ACTIVITY_STEP": "a moved item's activity rows, a step at a time; it reschedules itself until none are left in the old workspace",
