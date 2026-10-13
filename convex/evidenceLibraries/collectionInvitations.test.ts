@@ -124,6 +124,30 @@ describe("collection invitations for an Evidence Library", () => {
     expect((await call("read", "user_invitee", { invitationId: sent.id })).body).toEqual({ state: "gone" });
   });
 
+  it("refuses an invitation to one of the inviting reader's own addresses, and emails nothing", async () => {
+    const { t, call, invite } = await seed();
+    await t.run(async (ctx) => {
+      const owner = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "user_owner")).unique();
+      await ctx.db.patch("users", owner!._id, { verifiedEmails: ["owner@example.org", "o.second@uni.example.org"] });
+    });
+    for (const email of ["Owner@Example.org", "o.second@uni.example.org"]) {
+      expect(await call("invite", "user_owner", { collectionId: COLLECTION, collectionName: "Early literacy", email, role: "viewer" })).toEqual({ status: 400, body: { error: "own_address" } });
+    }
+    expect(mail.sendMail).not.toHaveBeenCalled();
+    expect((await call("list", "user_owner")).body).toEqual({ invitations: [] });
+    // Someone else's address is invited as before.
+    const sent = await invite();
+    expect(sent.delivery).toBe("sent");
+    // Once the reader verifies that address on their own account, it isn't sent again.
+    await t.run(async (ctx) => {
+      const owner = await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", "user_owner")).unique();
+      await ctx.db.patch("users", owner!._id, { verifiedEmails: ["owner@example.org", "invitee@example.org"] });
+    });
+    mail.sendMail.mockClear();
+    expect(await call("change", "user_owner", { invitationId: sent.id, resend: true, collectionId: COLLECTION, collectionName: "Early literacy" })).toEqual({ status: 400, body: { error: "own_address" } });
+    expect(mail.sendMail).not.toHaveBeenCalled();
+  });
+
   it("refuses an invitation someone else answered, and one that expired", async () => {
     const { call, invite } = await seed();
     const answered = await invite();
