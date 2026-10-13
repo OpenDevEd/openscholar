@@ -112,8 +112,7 @@
       "PURGE_GRANTS": "a cleanup batch of a deleted account's places as a guest; the account waits for the next run until none are left",
       "FOLLOW_STEP": "a renamed or deleted item's guest rows, a step at a time; it reschedules itself until all are renamed or gone",
       "PURGE_READERS": "a purged person's libraries, a step at a time; the cleanup runs again until none are left",
-      "DELETE_STEP": "a job's library keys, a step at a time; it reschedules itself until none are left",
-      "FIXTURE_ROWS": "what one test fixture with a made-up paper ID holds, deleted with it by migrations/paperIdentity:narrow; fixtures hold a handful"
+      "DELETE_STEP": "a job's library keys, a step at a time; it reschedules itself until none are left"
     }
   }
 }
