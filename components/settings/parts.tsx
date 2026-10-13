@@ -50,6 +50,8 @@ export function Tile({ icon: Icon, tint, className }: { icon: Ico; tint: string;
 
 /** A list of rows in one rounded box. */
 export const LIST = "divide-y divide-border-subtle overflow-hidden rounded-2xl border border-border-subtle";
+/** A form's actions, held at the foot of the screen; on a phone it stops short of the assistant's button in that corner. */
+export const ACTION_BAR = "sticky bottom-4 z-10 flex flex-wrap items-center rounded-2xl border border-border-subtle bg-background p-4 shadow-lg max-sm:[body:has([data-assistant-launcher])_&]:mr-18";
 
 /**
  * Pill switch with a sliding highlight. The highlight is measured inside the group
@@ -244,19 +246,17 @@ let firstPage = true;
 export function Enter({ ready, children }: { ready: boolean; children: ReactNode }) {
   const reduceMotion = useReducedMotion();
   const [skip] = useState(() => firstPage || Boolean(reduceMotion));
-  // Usable once it has fully appeared, and from then on whatever its data does.
-  const [shown, setShown] = useState(false);
   return (
     <motion.div
       initial={skip ? { opacity: 0 } : cardEntrance.initial}
       animate={ready ? cardEntrance.animate : undefined}
       transition={skip ? { duration: 0.15 } : subtleSpring}
       aria-busy={!ready}
-      inert={!shown}
+      // Takes no clicks while it's hidden. Not tied to its entrance's end: an entrance cut short by its data leaves none.
+      inert={!ready}
       onAnimationStart={() => {
         firstPage = false;
       }}
-      onAnimationComplete={() => setShown(true)}
     >
       {children}
     </motion.div>

@@ -151,6 +151,11 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
   const now: number = await ctx.runQuery(internal.extraction.start.figure, { userId, workspaceId, name, questions, ...(usePdfs === undefined ? {} : { usePdfs }), ...range });
   // A Zotero collection is read for its first paper before a job is made: one gone, or a group out of reach, is refused here.
   if (range.set.kind === "zotero") await firstZoteroPaper(ctx, userId, range.set, range.first);
+  // So is a library's source, as the person may read it now: one made private or emptied since the form opened is refused here.
+  if (range.set.kind === "evidenceLibrary") {
+    const read: { keys: string[] } = await ctx.runAction(internal.evidenceLibraries.sourceActions.resolve, { libraryId: range.set.libraryId, userId, source: range.set.source, first: range.first, last: range.first });
+    if (!read.keys.length) throw invalid(range.first > 1 ? "There are no papers in that range" : "That search or collection holds no records.");
+  }
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
   const job = { userId, workspaceId, author, name, sources: [range], questions: questions.map((asked, at) => ({ ...asked, key: `q_${at}` })), usePdfs: usePdfs === true, ...(call?.from ? { chatStep: call.from } : {}) };
   if (cap === undefined) return await ctx.runMutation(internal.extraction.start.begin, job);

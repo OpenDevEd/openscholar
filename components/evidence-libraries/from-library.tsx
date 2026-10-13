@@ -14,7 +14,7 @@ import { ListEmpty } from "@/components/evidence-libraries/list-controls";
 import { Chip } from "@/components/screening/parts";
 import { SourceRow } from "@/components/screening/source-row";
 import { RowFacts, rowIcon, useRowLabel } from "@/components/screening/library-sources";
-import { LIST, Zone } from "@/components/settings/parts";
+import { ACTION_BAR, LIST, Zone } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -31,7 +31,8 @@ export type Opened = FunctionReturnType<typeof api.evidenceLibraries.handoffs.op
 type Field = Exclude<Opened, { gone: true }>["fields"][number];
 
 const PAGE = 5;
-const ROW = 57;
+/** A record's row and the line under it: its title (20), the gap (2) and its authors (16) inside 10 above and below, so a short last page keeps a full one's height. */
+const ROW = 59;
 const TYPE_ICON: Record<Field["type"], AppIcon> = { string: AlignLeft, number: Hash, boolean: ToggleLeft };
 const FROM_ICON: Record<Exclude<Opened, { gone: true }>["from"], AppIcon> = { smartScreening: MessagesSquare, search: Search, collection: Folder };
 type Sort = "given" | "newest" | "title";
@@ -191,7 +192,7 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
           </Zone>
 
           {/* Screening asks yes or no: offered when no questions came, or some of them are yes or no. Each button says how many questions it takes. */}
-          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
+          <div className={`${ACTION_BAR} justify-end gap-3`}>
             {screenable ? (
               <Button variant="outline" className="min-w-44" onClick={screen} disabled={!count}>
                 <ListChecks className="text-primary" />

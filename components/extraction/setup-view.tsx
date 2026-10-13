@@ -17,7 +17,7 @@ import { AnimatedNumber, Chip, SOURCE_ICON } from "@/components/screening/parts"
 import { PaperScope, SourceRow, type Scope } from "@/components/screening/source-row";
 import { EASE } from "@/components/settings/model-map";
 import { ModelsInUse } from "@/components/models/models-in-use";
-import { Enter, LIST, Segmented, Zone } from "@/components/settings/parts";
+import { ACTION_BAR, Enter, LIST, Segmented, Zone } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { Button } from "@/components/ui/button";
 import { FilterChips } from "@/components/ui/filter-display";
@@ -421,7 +421,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
         {/* What it runs on, from AI settings: one model for written answers, and for yes or no the decision model screening uses, when it's one. */}
         {textModel ? <ModelsInUse label={t("models")} uses={[{ label: t("textModel"), model: textModel }, { label: t("yesNoModel"), model: yesNoModel ?? textModel }]} /> : null}
 
-        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
+        <div className={`${ACTION_BAR} gap-4`}>
           <CreditCheck credits={credits} balance={balance} enough={enough} cap={spend.cap} />
           {why ? (
             <TooltipHint label={why}>
