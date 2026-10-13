@@ -90,13 +90,13 @@ it("writes the digest in the background and returns it on every request until it
   expect(await t.run(ctx => ctx.db.query("users").collect())).toEqual([]);
 });
 
-it("tells the writer each publication's study type, reads none itself, and refuses the old likely-review marks", async () => {
+it("tells the writer each publication's study type and whether it is open access, reads none itself, and refuses the old likely-review marks", async () => {
   vi.stubEnv("OPENROUTER_API_KEY", "provider-test-key");
   const {request, finishGeneration} = await setup();
   const publication = (key: string, title: string, marks: object = {}) => ({key, title, creators: ["Ada Mills"], date: "2026", abstract: null, publicationType: "journalArticle", doi: null, ...marks});
   const publications = [
-    publication("ABCD2345", "Attention in classrooms", {studyType: "rct"}),
-    publication("BBBB2345", "Drought: a systematic review", {studyType: "systematic-review"}),
+    publication("ABCD2345", "Attention in classrooms", {studyType: "rct", openAccess: true}),
+    publication("BBBB2345", "Drought: a systematic review", {studyType: "systematic-review", openAccess: false}),
     // Not read yet: the library sends no type.
     publication("CCCC2345", "Rice under heat"),
   ];
@@ -107,9 +107,12 @@ it("tells the writer each publication's study type, reads none itself, and refus
   const prompt = JSON.stringify(sent.writer[0]);
   expect(prompt).toContain("its library read it");
   const supplied = (/\{\\"libraryId.*\}\]\}/.exec(prompt)?.[0] ?? "").replaceAll("\\\"", "\"");
-  expect((JSON.parse(supplied) as {publications: {key: string; studyType?: string}[]}).publications.map(entry => [entry.key, entry.studyType ?? null])).toEqual([
-    ["ABCD2345", "rct"], ["BBBB2345", "systematic-review"], ["CCCC2345", null],
+  expect((JSON.parse(supplied) as {publications: {key: string; studyType?: string; openAccess?: boolean}[]}).publications.map(entry => [entry.key, entry.studyType ?? null, entry.openAccess ?? null])).toEqual([
+    ["ABCD2345", "rct", true], ["BBBB2345", "systematic-review", false], ["CCCC2345", null, null],
   ]);
+  // The reviewer sees the same study type, so a design the digest names from it is not flagged.
+  const reviewed = (sent.reviewer[0].messages as {role: string; content: string}[]).find(message => message.role === "user")!.content;
+  expect((JSON.parse(reviewed) as {records: {key: string; studyType?: string}[]}).records).toMatchObject([{key: "ABCD2345", studyType: "rct"}]);
   const response = await request({publications});
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({digest: expect.not.objectContaining({kinds: expect.anything()})});

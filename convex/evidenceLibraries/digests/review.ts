@@ -19,7 +19,7 @@ const issueSchema = z.object({
 });
 export type DigestIssue = z.infer<typeof issueSchema>;
 
-const REVIEW_INSTRUCTIONS = `You check a research digest against the records it cites. The digest was written from each record's title and abstract and nothing else, so every statement about a paper has to be supported by that paper's record.
+const REVIEW_INSTRUCTIONS = `You check a research digest against the records it cites. The digest was written from each record's title, abstract and study type and nothing else, so every statement about a paper has to be supported by that paper's record.
 
 For each citation link, read the sentences that describe that paper: the sentence with the link, and neighbouring sentences plainly about the same paper. Compare them with the record whose key the link carries.
 
@@ -27,6 +27,8 @@ Report an issue only when one of these holds:
 - contradicts_record: a number, a sample size, the direction or size of an effect, a method, a population, a place or a finding differs from the record.
 - not_in_record: the digest states a specific fact about the paper (a number, a finding, a method, a place, who was studied) that the record does not contain.
 - another_paper: the passage describes a different study from the linked record.
+
+A record's studyType is the design its library read it as, such as a randomised trial or a survey. A design the digest gives that matches it is supported.
 
 Do not report rewording, a value rounded without changing it, a detail the digest left out, a cautious remark about what a study design can show, a sentence that links or compares papers without stating a fact about one of them, or anything about style. When in doubt, do not report.
 
@@ -50,7 +52,7 @@ ${UNSLOP_RULES}`;
 function citedRecords(markdown: string, publications: Publication[]) {
   const cited = citedKeys(markdown);
   return publications.filter(publication => cited.has(publication.key))
-    .map(({key, title, creators, date, abstract}) => ({key, title, creators: creators.slice(0, 6), date, abstract}));
+    .map(({key, title, creators, date, abstract, studyType}) => ({key, title, creators: creators.slice(0, 6), date, abstract, studyType}));
 }
 
 /** What the reviewer finds wrong, keeping only issues that quote the digest and name a record it cites. */
