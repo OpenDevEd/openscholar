@@ -120,10 +120,10 @@ export function SetupView({
   const againLibrary = again?.set?.kind === "evidenceLibrary" ? again.set : null;
   const describe = useWorkspaceAction(api.evidenceLibraries.library.source);
   const { userId } = useAuth();
-  const ranBefore = useSWR(againLibrary && userId ? ["library-source", userId, againLibrary.libraryId, JSON.stringify(againLibrary.source)] : null, () => describe({ libraryId: againLibrary!.libraryId, source: againLibrary!.source }), { revalidateOnFocus: false });
+  const ranBefore = useSWR(againLibrary && workspaceId && userId ? ["library-source", userId, againLibrary.libraryId, JSON.stringify(againLibrary.source)] : null, () => describe({ libraryId: againLibrary!.libraryId, source: againLibrary!.source }), { revalidateOnFocus: false });
   // A hand-off starts on its source as the person may read it now, and the questions it brought.
   const openHandoff = useWorkspaceAction(api.evidenceLibraries.handoffs.open);
-  const handedOver = useSWR(handoffId && userId ? ["library-handoff", userId, handoffId] : null, () => openHandoff({ handoffId: handoffId! }), { revalidateOnFocus: false });
+  const handedOver = useSWR(handoffId && workspaceId && userId ? ["library-handoff", userId, handoffId] : null, () => openHandoff({ handoffId: handoffId! }), { revalidateOnFocus: false });
   const handed = handedOver.data && !("gone" in handedOver.data) ? handedOver.data : null;
   const startsOn = againLibrary ? ranBefore.data : handed?.found;
   const startHeld = startsOn && "row" in startsOn ? startsOn : null;
