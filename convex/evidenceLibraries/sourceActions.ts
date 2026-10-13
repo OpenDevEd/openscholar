@@ -13,16 +13,18 @@ import { createError } from "../lib/errors";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { screeningPaperInputValidator } from "../screening/validators";
 import { paperKey } from "../../lib/papers/paper-ref";
-import { librarySourceValidator } from "./validators";
+import { libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
 import {
   LIBRARY_BATCH_MAX,
   LIBRARY_RESOLVE_MAX,
   LibrarySourceError,
   readLibraryCollection,
+  readLibraryOverview,
   readLibraryReaders,
   readLibraryRecords,
   readReaderCollections,
   resolveLibrarySource,
+  type LibraryCollection,
   type LibraryRecord,
   type LibraryTarget,
 } from "./sourceClient";
@@ -126,6 +128,105 @@ export const collection = internalAction({
     const target = await libraryTarget(ctx, libraryId);
     const reader = await readerOf(ctx, userId);
     return await asked(libraryId, "collections", reader, () => readLibraryCollection(fetch, target, id, reader));
+  },
+});
+
+type Row = Infer<typeof librarySourceRowValidator>;
+type Contents = Infer<typeof libraryContentsValidator>;
+
+/** How long a library's list waits for it: a form waits on the list. */
+const LIST_TIMEOUT_MS = 6_000;
+/** A person's own or shared collections in a library read at once. */
+// ponytail: one page of 100 each; a person with more lists the first 100, and pastes the address of any other.
+const COLLECTIONS_LISTED = 100;
+
+/** A reader's collection as a row: theirs, shared with them, or someone else's they may read. */
+const readerRow = (libraryId: Id<"evidenceLibraries">, collection: LibraryCollection, what: "yours" | "shared" | "other"): Row => ({
+  libraryId,
+  source: { readerCollection: collection.id },
+  what,
+  label: collection.name,
+  records: collection.count,
+  private: collection.private,
+  ...(collection.access ? { access: collection.access } : {}),
+  ...(collection.owner && what !== "yours" ? { owner: collection.owner } : {}),
+});
+
+/** A person's own or shared collections in a library; none where the library keeps no reader accounts. */
+async function readerCollectionsOf(target: LibraryTarget, reader: string, list: "own" | "shared") {
+  try {
+    return (await readReaderCollections(fetch, target, reader, { list, page: 1, pageSize: COLLECTIONS_LISTED }, LIST_TIMEOUT_MS)).rows;
+  } catch (error) {
+    if (error instanceof LibrarySourceError && error.code === "private") return [];
+    throw error;
+  }
+}
+
+/** What one library lists for a person, or why it can't: logged with the library and the reader. */
+async function contentsOf(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">, reader: string): Promise<Contents> {
+  try {
+    const target = await libraryTarget(ctx, libraryId);
+    const [overview, own, shared] = await Promise.all([readLibraryOverview(fetch, target, LIST_TIMEOUT_MS), readerCollectionsOf(target, reader, "own"), readerCollectionsOf(target, reader, "shared")]);
+    const names = new Map(overview.collections.map((collection) => [collection.key, collection.name]));
+    const rows: Row[] = [
+      ...(overview.records ? [{ libraryId, source: { library: true as const }, what: "all" as const, label: target.name, records: overview.records }] : []),
+      ...own.map((collection) => readerRow(libraryId, collection, "yours")),
+      ...shared.map((collection) => readerRow(libraryId, collection, "shared")),
+      ...overview.collections.map((collection): Row => {
+        const parent = collection.parent ? names.get(collection.parent) : undefined;
+        return { libraryId, source: { libraryCollection: collection.key }, what: "library", label: collection.name, records: collection.records, ...(parent ? { parent } : {}) };
+      }),
+    ];
+    return { libraryId, rows, problem: null };
+  } catch (error) {
+    const code = error instanceof LibrarySourceError ? error.code : null;
+    console.warn("[library sources]", { libraryId, call: "list", reader, code, status: error instanceof LibrarySourceError ? error.status : undefined, reason: error instanceof Error ? error.message : String(error) });
+    return { libraryId, rows: null, problem: code === "outdated" ? "outdated" : "unreadable" };
+  }
+}
+
+/** Every source each library lists for a person, each library asked at once; a library that fails says why, and the others list. */
+export const sources = internalAction({
+  args: { userId: v.id("users"), libraryIds: v.array(v.id("evidenceLibraries")) },
+  returns: v.array(libraryContentsValidator),
+  handler: async (ctx, { userId, libraryIds }): Promise<Contents[]> => {
+    const reader = await readerOf(ctx, userId);
+    return await Promise.all(libraryIds.map((libraryId) => contentsOf(ctx, libraryId, reader)));
+  },
+});
+
+/** A source as a row, as the person may read it, or why it is none. */
+export const describe = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), source: librarySourceValidator },
+  returns: v.union(v.object({ row: librarySourceRowValidator }), v.object({ error: sourceAddressErrorValidator })),
+  handler: async (ctx, { libraryId, userId, source }): Promise<{ row: Row } | { error: Infer<typeof sourceAddressErrorValidator> }> => {
+    const target = await libraryTarget(ctx, libraryId);
+    const reader = await readerOf(ctx, userId);
+    try {
+      if ("library" in source || "libraryCollection" in source) {
+        const overview = await readLibraryOverview(fetch, target);
+        if ("library" in source) return { row: { libraryId, source, what: "all", label: target.name, records: overview.records } };
+        const collection = overview.collections.find((one) => one.key === source.libraryCollection);
+        if (!collection) return { error: "notFound" };
+        const parent = overview.collections.find((one) => one.key === collection.parent)?.name;
+        return { row: { libraryId, source, what: "library", label: collection.name, records: collection.records, ...(parent ? { parent } : {}) } };
+      }
+      // A reader's collection the person may read, theirs or not: the library refuses a private one they aren't in.
+      const collection = "readerCollection" in source && source.readerCollection ? await readLibraryCollection(fetch, target, source.readerCollection, reader) : null;
+      if (collection && !("search" in source)) return { row: readerRow(libraryId, collection, collection.access === "owner" ? "yours" : collection.access ? "shared" : "other") };
+      // A search, in the library or in a reader's collection, and records: what the library finds for them now.
+      const found = await resolveLibrarySource(fetch, target, { reader, source, first: 1, last: 1 });
+      if ("records" in source) {
+        const [record] = found.total ? await readLibraryRecords(fetch, target, found.keys) : [];
+        return record ? { row: { libraryId, source, what: "records", label: record.title || record.key, records: found.total } } : { error: "notFound" };
+      }
+      const words = "search" in source ? (new URLSearchParams(source.search).get("search") ?? "") : "";
+      return { row: { libraryId, source, what: "search", label: words, records: found.total, ...(collection ? { parent: collection.name } : {}) } };
+    } catch (error) {
+      if (!(error instanceof LibrarySourceError)) throw error;
+      console.warn("[library sources]", { libraryId, call: "describe", reader, code: error.code, status: error.status, reason: error.message });
+      return { error: error.code === "private" ? "private" : error.code === "not_found" ? "notFound" : error.code === "outdated" ? "outdated" : "unreadable" };
+    }
   },
 });
 

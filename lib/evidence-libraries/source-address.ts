@@ -11,7 +11,9 @@ export type LibrarySource =
   | { search: string; readerCollection?: string }
   | { records: string[] };
 
-export type SourceAddress = { origin: string; source: LibrarySource } | { error: string };
+/** Why an address is no source: not a web address, a reader's profile without a collection, a page that holds no records, or no record's address. */
+export type SourceAddressError = "notAddress" | "profile" | "unknownPage" | "notFound";
+export type SourceAddress = { origin: string; source: LibrarySource } | { error: SourceAddressError };
 
 /** The search page's parameters that decide its results, as new-el's `RESULT_PARAMS` lists them. */
 const RESULT_PARAMS = ["search", "scope", "range", "institution", "country", "author", "collections", "topics", "type", "study"];
@@ -34,16 +36,16 @@ export function parseSourceAddress(address: string): SourceAddress {
   try {
     url = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(address.trim()) ? address.trim() : `https://${address.trim()}`);
   } catch {
-    return { error: "That isn't a web address." };
+    return { error: "notAddress" };
   }
-  if (url.protocol !== "https:" && url.protocol !== "http:") return { error: "That isn't a web address." };
+  if (url.protocol !== "https:" && url.protocol !== "http:") return { error: "notAddress" };
   const parts = url.pathname.split("/").filter(Boolean);
   // The library's pages may carry the reader's language first.
   if (parts.length && LOCALE.test(parts[0]!) && (parts[1] === "lib" || parts[1] === "profile")) parts.shift();
   const search = searchOf(url.searchParams);
   const origin = url.origin;
   if (parts[0] === "lib" && parts.length === 2) {
-    return RECORD_KEY.test(parts[1]!) ? { origin, source: { records: [parts[1]!] } } : { error: "That record's address isn't one the library gives." };
+    return RECORD_KEY.test(parts[1]!) ? { origin, source: { records: [parts[1]!] } } : { error: "notFound" };
   }
   if ((parts[0] === "lib" && parts.length === 1) || parts.length === 0) {
     const collections = search.getAll("collections").flatMap((value) => value.split(",")).filter(Boolean);
@@ -53,8 +55,9 @@ export function parseSourceAddress(address: string): SourceAddress {
   }
   if (parts[0] === "profile" && parts.length === 2) {
     const collectionId = url.searchParams.get("collectionId");
-    if (!collectionId) return { error: "A reader's bookmarks are theirs alone: open one of their collections and paste its address." };
+    // A reader's bookmarks are theirs alone.
+    if (!collectionId) return { error: "profile" };
     return hasResults(search) ? { origin, source: { search: search.toString(), readerCollection: collectionId } } : { origin, source: { readerCollection: collectionId } };
   }
-  return { error: "That page isn't a search, a collection or a record of the library." };
+  return { error: "unknownPage" };
 }

@@ -4,7 +4,7 @@
  * hand-off from. The ones they have a role on come from their organizations and aren't kept here.
  * A library's sources are offered from these, and any other library is reached by its address.
  */
-import { v } from "convex/values";
+import { v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation, internalQuery } from "../lib/functions";
@@ -13,7 +13,8 @@ import { assistantQuery, defineUserQuery, userQuery } from "../lib/userActions";
 import { workspacesOf } from "../workspaces/personal";
 import { findMatchingLibraryServiceCredential } from "./credentials";
 import { readEvidenceLibraryAdminLaunchTarget } from "./setupRecords";
-import { readerWayValidator } from "./validators";
+import { libraryListRoleValidator, readerWayValidator } from "./validators";
+import { libraryOf, readLibraryRole } from "./access";
 
 /** A reader's last visit is written at most this often: the library reports one every 15 minutes while they're there. */
 const TOUCH_MS = 60 * 60 * 1000;
@@ -72,31 +73,56 @@ export const noteReaders = internalMutation({
   },
 });
 
-export type ReadLibrary = { library: Doc<"evidenceLibraries">; address: string; ways: Array<"signIn" | "handoff" | "role">; lastAt: number };
+type Role = Infer<typeof libraryListRoleValidator>;
+export type ReadLibrary = { library: Doc<"evidenceLibraries">; address: string; ways: Array<"signIn" | "handoff" | "role">; role: Role | null; faviconUrl: string | null; lastAt: number };
+
+/** The favicon a running library shows, from its live configuration. */
+async function faviconOf(ctx: Pick<QueryCtx, "db">, library: Doc<"evidenceLibraries">) {
+  if (!library.activeRevisionId) return null;
+  const identity = await ctx.db.query("evidenceLibraryConfigSections").withIndex("by_revisionId_and_sectionKey", (q) => q.eq("revisionId", library.activeRevisionId).eq("sectionKey", "identity")).unique();
+  const favicon = (identity?.payload as { assets?: { favicon?: unknown } } | undefined)?.assets?.favicon;
+  return typeof favicon === "string" && favicon ? favicon : null;
+}
 
 /**
  * The libraries a person reads, last used first: the ones they signed in to or opened a hand-off
- * from, and the running libraries of their own workspace and their organizations'. Only running
- * libraries count: one being set up or turned off has nothing to read.
+ * from, and the ones they have a role on: their own workspace's, their organizations' and the ones
+ * granted to them. Only running libraries count: one being set up or turned off has nothing to read.
  */
 export async function librariesOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">): Promise<ReadLibrary[]> {
+  const user = await ctx.db.get("users", userId);
+  if (!user) return [];
   const found = new Map<Id<"evidenceLibraries">, { library: Doc<"evidenceLibraries">; ways: Set<"signIn" | "handoff" | "role">; lastAt: number }>();
+  const add = (library: Doc<"evidenceLibraries">, way: "signIn" | "handoff" | "role", lastAt: number) => {
+    const known = found.get(library._id);
+    if (known) known.ways.add(way);
+    else found.set(library._id, { library, ways: new Set([way]), lastAt });
+  };
   const rows = await ctx.db.query("evidenceLibraryReaders").withIndex("by_user_and_lastAt", (q) => q.eq("userId", userId)).order("desc").take(READ_LIBRARIES_MAX);
   for (const row of rows) {
     const library = await ctx.db.get("evidenceLibraries", row.libraryId);
-    if (library) found.set(library._id, { library, ways: new Set([row.via]), lastAt: row.lastAt });
+    if (library) add(library, row.via, row.lastAt);
   }
   for (const workspace of await workspacesOf(ctx, userId)) {
     const libraries = await ctx.db.query("evidenceLibraries").withIndex("by_workspace_and_state", (q) => q.eq("workspaceId", workspace._id).eq("state", "active")).take(WORKSPACE_LIBRARIES_MAX);
-    for (const library of libraries) {
-      const known = found.get(library._id);
-      if (known) known.ways.add("role");
-      else found.set(library._id, { library, ways: new Set(["role"]), lastAt: library._creationTime });
-    }
+    for (const library of libraries) add(library, "role", library._creationTime);
   }
-  const listed = await Promise.all([...found.values()].map(async (entry) => ({ ...entry, address: await readEvidenceLibraryAdminLaunchTarget(ctx, entry.library) })));
+  const grants = await ctx.db.query("itemAccess").withIndex("by_user_and_kind_and_grantedAt", (q) => q.eq("userId", userId).eq("kind", "library")).order("desc").take(READ_LIBRARIES_MAX);
+  for (const grant of grants) {
+    const library = await libraryOf(ctx, grant);
+    if (library?.state === "active") add(library, "role", grant.grantedAt);
+  }
+  const listed = await Promise.all(
+    [...found.values()].map(async (entry) => {
+      const address = await readEvidenceLibraryAdminLaunchTarget(ctx, entry.library);
+      if (!address) return null;
+      // An organization's member who is none of its admins views its libraries.
+      const role: Role | null = entry.ways.has("role") ? ((await readLibraryRole(ctx, entry.library, user.clerkId)) ?? "viewer") : null;
+      return { library: entry.library, address, ways: [...entry.ways], role, faviconUrl: await faviconOf(ctx, entry.library), lastAt: entry.lastAt };
+    }),
+  );
   return listed
-    .flatMap(({ library, ways, lastAt, address }) => (address ? [{ library, address, ways: [...ways], lastAt }] : []))
+    .flatMap((entry) => (entry ? [entry] : []))
     .sort((a, b) => b.lastAt - a.lastAt)
     .slice(0, READ_LIBRARIES_MAX);
 }
@@ -106,16 +132,18 @@ const readLibraryValidator = v.object({
   name: v.string(),
   address: v.string(),
   ways: v.array(v.union(readerWayValidator, v.literal("role"))),
+  role: v.union(libraryListRoleValidator, v.null()),
+  faviconUrl: v.union(v.string(), v.null()),
 });
 
 export const listAction = defineUserQuery({
   path: "evidenceLibraries/readers:list",
   description:
-    `The Evidence Libraries the person reads, last used first, at most ${READ_LIBRARIES_MAX}: each one's ID, name and address, and how it is theirs (\`signIn\`: they signed in to it; \`handoff\`: they opened its records here; \`role\`: their organization runs it). ` +
+    `The Evidence Libraries the person reads, last used first, at most ${READ_LIBRARIES_MAX}: each one's ID, name and address, how it is theirs (\`signIn\`: they signed in to it; \`handoff\`: they opened its records here; \`role\`: they have a role on it, which \`role\` names). ` +
     "Any other library OpenScholar runs is reached by its address.",
   args: {},
   returns: v.array(readLibraryValidator),
-  run: async (ctx, { userId }) => (await librariesOf(ctx, userId)).map(({ library, address, ways }) => ({ libraryId: library._id, name: library.name, address, ways })),
+  run: async (ctx, { userId }) => (await librariesOf(ctx, userId)).map(({ library, address, ways, role, faviconUrl }) => ({ libraryId: library._id, name: library.name, address, ways, role, faviconUrl })),
 });
 export const list = userQuery(listAction);
 export const listForAssistant = assistantQuery(listAction);

@@ -1222,3 +1222,40 @@ export const librarySourceValidator = v.union(
   v.object({ search: v.string(), readerCollection: v.optional(v.string()) }),
   v.object({ records: v.array(v.string()) }),
 );
+
+/**
+ * One source a person can read records from, as the screening and extraction forms list it: all of a library, a
+ * collection of theirs, one shared with them or someone else's, one of the library's own, a search, or records.
+ */
+export const librarySourceRowValidator = v.object({
+  libraryId: v.id("evidenceLibraries"),
+  source: librarySourceValidator,
+  what: v.union(v.literal("all"), v.literal("yours"), v.literal("shared"), v.literal("other"), v.literal("library"), v.literal("search"), v.literal("records")),
+  label: v.string(),
+  /** How many records it holds now, as the person may read them. */
+  records: v.number(),
+  private: v.optional(v.boolean()),
+  access: v.optional(v.union(v.literal("owner"), v.literal("editor"), v.literal("viewer"))),
+  owner: v.optional(v.object({ name: v.string(), image: v.union(v.string(), v.null()) })),
+  /** The collection it is in: a library collection's parent, or the reader's collection a search is in. */
+  parent: v.optional(v.string()),
+});
+
+/** A library's sources for one person, or why the library couldn't list them: it needs an update, or didn't answer. */
+export const libraryContentsValidator = v.object({
+  libraryId: v.id("evidenceLibraries"),
+  rows: v.union(v.array(librarySourceRowValidator), v.null()),
+  problem: v.union(v.null(), v.literal("outdated"), v.literal("unreadable")),
+});
+
+/** Why a pasted address is no source. */
+export const sourceAddressErrorValidator = v.union(
+  v.literal("notAddress"),
+  v.literal("notHosted"),
+  v.literal("private"),
+  v.literal("notFound"),
+  v.literal("profile"),
+  v.literal("unknownPage"),
+  v.literal("outdated"),
+  v.literal("unreadable"),
+);

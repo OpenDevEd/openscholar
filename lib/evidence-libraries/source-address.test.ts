@@ -21,9 +21,9 @@ describe("a pasted library address as a source", () => {
   });
 
   it("says why it can't read an address", () => {
-    expect(parseSourceAddress("https://aied.example.org/profile/reader-1")).toMatchObject({ error: expect.stringMatching(/bookmarks/) });
-    expect(parseSourceAddress("https://aied.example.org/digests/2026-10")).toMatchObject({ error: expect.any(String) });
-    expect(parseSourceAddress("ftp://aied.example.org/lib")).toMatchObject({ error: expect.any(String) });
-    expect(parseSourceAddress("https://aied.example.org/lib/lowercase")).toMatchObject({ error: expect.any(String) });
+    expect(parseSourceAddress("https://aied.example.org/profile/reader-1")).toEqual({ error: "profile" });
+    expect(parseSourceAddress("https://aied.example.org/digests/2026-10")).toEqual({ error: "unknownPage" });
+    expect(parseSourceAddress("ftp://aied.example.org/lib")).toEqual({ error: "notAddress" });
+    expect(parseSourceAddress("https://aied.example.org/lib/lowercase")).toEqual({ error: "notFound" });
   });
 });
