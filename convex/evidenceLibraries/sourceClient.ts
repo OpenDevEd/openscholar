@@ -149,17 +149,17 @@ export async function readLibraryReaders(fetchImpl: typeof fetch, target: Librar
 }
 
 /** A collection made for a person, as their profile makes one; the same `requestId` answers the one it made before. */
-export async function createReaderCollection(fetchImpl: typeof fetch, target: LibraryTarget, clerkUserId: string, collection: { name: string; private: boolean; requestId: string }) {
+export async function createReaderCollection(fetchImpl: typeof fetch, target: LibraryTarget, clerkUserId: string, collection: { name: string; description?: string; private: boolean; requestId: string }) {
   return (await call(fetchImpl, target, `/api/v1/openscholar/readers/${encodeURIComponent(clerkUserId)}/collections`, z.object({ collection: collectionSchema }), { body: collection })).collection;
 }
 
 /** Most records one change to a collection takes. */
 export const LIBRARY_CHANGE_MAX = 500;
 
-/** Puts records into a collection the person owns or edits, or takes them out; `missing` are records the library doesn't show. */
+/** Puts records into a collection the person owns or edits, or takes them out: `changed` are the keys that went in or came out, `missing` records the library doesn't show. */
 export async function changeCollectionRecords(fetchImpl: typeof fetch, target: LibraryTarget, clerkUserId: string, collectionId: string, keys: string[], change: "add" | "remove") {
   const path = `/api/v1/openscholar/readers/${encodeURIComponent(clerkUserId)}/collections/${encodeURIComponent(collectionId)}/records`;
-  return await call(fetchImpl, target, path, z.object({ count: z.number(), changed: z.number(), missing: z.array(z.string()).max(LIBRARY_CHANGE_MAX) }), { body: { keys }, method: change === "add" ? "POST" : "DELETE" });
+  return await call(fetchImpl, target, path, z.object({ count: z.number(), changed: z.array(z.string()).max(LIBRARY_CHANGE_MAX), missing: z.array(z.string()).max(LIBRARY_CHANGE_MAX) }), { body: { keys }, method: change === "add" ? "POST" : "DELETE" });
 }
 
 /** The records the library holds for papers by their OpenAlex ID or DOI: each match names the paper by its place (`at`). */

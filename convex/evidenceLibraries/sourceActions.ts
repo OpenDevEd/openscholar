@@ -106,6 +106,19 @@ export const papers = internalAction({
   },
 });
 
+/** Records `first` to `last` (from 1) of a source as the person may read them, as a job takes them, in the source's order, and how many it holds. */
+export const page = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), source: librarySourceValidator, first: v.number(), last: v.number() },
+  returns: v.object({ total: v.number(), papers: v.array(screeningPaperInputValidator) }),
+  handler: async (ctx, { libraryId, userId, source, first, last }): Promise<{ total: number; papers: Array<Infer<typeof screeningPaperInputValidator>> }> => {
+    const target = await libraryTarget(ctx, libraryId);
+    const reader = await readerOf(ctx, userId);
+    const found = await asked(libraryId, "sources/resolve", reader, () => resolveLibrarySource(fetch, target, { reader, source, first, last: Math.min(last, first + LIBRARY_BATCH_MAX - 1) }));
+    const records = found.keys.length ? await asked(libraryId, "records/batch", reader, () => readLibraryRecords(fetch, target, found.keys)) : [];
+    return { total: found.total, papers: records.map((record) => libraryPaper(libraryId, target.baseUrl, record)) };
+  },
+});
+
 /** Records by key as the person may read them, in the order given, as a hand-off's page lists them. */
 export const listed = internalAction({
   args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), keys: v.array(v.string()) },
@@ -136,14 +149,20 @@ export const destination = internalAction({
     const target = await libraryTarget(ctx, saveTo.libraryId);
     const reader = await readerOf(ctx, userId);
     if (saveTo.kind === "newLibraryCollection") {
-      const name = saveTo.name.trim();
-      if (!name) throw createError("VALIDATION_ERROR", "Name the new collection.");
-      const made = await asked(saveTo.libraryId, "readers/collections:create", reader, () => createReaderCollection(fetch, target, reader, { name, private: saveTo.private, requestId: saveTo.requestId }));
+      const made = await makeCollection(saveTo.libraryId, target, reader, saveTo);
       return { libraryId: saveTo.libraryId, collection: made.id, name: made.name };
     }
     return { libraryId: saveTo.libraryId, ...(await editableCollection(saveTo.libraryId, target, reader, saveTo.collection)) };
   },
 });
+
+/** A collection made for the person, once for its `requestId` however often it is asked for. */
+async function makeCollection(libraryId: Id<"evidenceLibraries">, target: LibraryTarget, reader: string, collection: { name: string; description?: string; private: boolean; requestId: string }) {
+  const name = collection.name.trim();
+  if (!name) throw createError("VALIDATION_ERROR", "Name the new collection.");
+  const description = collection.description?.trim();
+  return await asked(libraryId, "readers/collections:create", reader, () => createReaderCollection(fetch, target, reader, { name, ...(description ? { description } : {}), private: collection.private, requestId: collection.requestId }));
+}
 
 /** A collection of the library's the person owns or edits there, by its ID and name; one they only view is refused. */
 async function editableCollection(libraryId: Id<"evidenceLibraries">, target: LibraryTarget, reader: string, id: string) {
@@ -177,6 +196,24 @@ export const collections = internalAction({
     const target = await libraryTarget(ctx, libraryId);
     const reader = await readerOf(ctx, userId);
     return await asked(libraryId, "readers/collections", reader, () => readReaderCollections(fetch, target, reader, { list, page, pageSize }));
+  },
+});
+
+/** A collection made for a person in a library, as their profile there makes one. */
+export const createCollection = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), name: v.string(), description: v.optional(v.string()), private: v.boolean(), requestId: v.string() },
+  returns: collectionValidator,
+  handler: async (ctx, { libraryId, userId, ...collection }): Promise<Infer<typeof collectionValidator>> => await makeCollection(libraryId, await libraryTarget(ctx, libraryId), await readerOf(ctx, userId), collection),
+});
+
+/** Puts records into a collection the person owns or edits, or takes them out: the keys that changed, and the records the library doesn't show. */
+export const changeRecords = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), collection: v.string(), keys: v.array(v.string()), change: v.union(v.literal("add"), v.literal("remove")) },
+  returns: v.object({ count: v.number(), changed: v.array(v.string()), missing: v.array(v.string()) }),
+  handler: async (ctx, { libraryId, userId, collection, keys, change }): Promise<{ count: number; changed: string[]; missing: string[] }> => {
+    const target = await libraryTarget(ctx, libraryId);
+    const reader = await readerOf(ctx, userId);
+    return await asked(libraryId, `readers/collections/records:${change}`, reader, () => changeCollectionRecords(fetch, target, reader, collection, keys, change));
   },
 });
 

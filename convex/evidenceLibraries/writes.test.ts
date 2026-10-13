@@ -47,7 +47,7 @@ async function setup(name: string, access: "owner" | "viewer" = "owner") {
     if (url.pathname.endsWith("/collections") && init?.method === "POST") return Response.json({ collection: collection(MADE, { name: body.name, count: 0 }) }, { status: 201 });
     if (url.pathname.startsWith("/api/v1/openscholar/collections/")) return Response.json(collection(url.pathname.split("/").at(-1)!));
     if (url.pathname === "/api/v1/openscholar/records/match") return Response.json({ matches: (body.papers as Array<{ openalexId?: string }>).flatMap((paper, at) => (paper.openalexId === "W7" ? [{ at, key: "MATCHED1" }] : [])) });
-    if (url.pathname.endsWith("/records")) return Response.json({ count: 5, changed: 2, missing: (body.keys as string[]).filter((key) => key === "HIDDENKY") });
+    if (url.pathname.endsWith("/records")) return Response.json({ count: 5, changed: (body.keys as string[]).filter((key) => key !== "HIDDENKY"), missing: (body.keys as string[]).filter((key) => key === "HIDDENKY") });
     return new Response("Not found", { status: 404 });
   }));
   return { ...fixture, libraryId, calls, person: fixture.t.withIdentity({ subject: fixture.clerkUserId }) };

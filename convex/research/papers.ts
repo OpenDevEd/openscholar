@@ -19,7 +19,11 @@ import { convertUsdToCredits, PAPER_PDF_CREDITS } from "../../lib/pricing";
 import { PDF_PAGE_TOKENS } from "../../lib/assistant/files";
 import { paperPdf } from "../lib/paperPdfs";
 import { requirePdfModel } from "../assistant/files";
-import { paperIdOf } from "../../lib/papers/paper-ref";
+import { paperIdOf, parsePaperKey } from "../../lib/papers/paper-ref";
+import type { Id } from "../_generated/dataModel";
+import type { ActionCtx } from "../_generated/server";
+import type { ChangeCall } from "../lib/userActions";
+import type { screeningPaperInputValidator } from "../screening/validators";
 
 export const searchAction = defineUserAction({
   path: "research/papers:search",
@@ -174,7 +178,8 @@ export const readPdfAction = defineUserAction({
   path: "research/papers:readPdf",
   description:
     "Reads a paper's open-access PDF, by its ID as results give it (such as W2741809807) or its DOI, with its `title` as they give it, which the person is shown when asked: you get the PDF itself, its text, tables and figures, for the rest of this reply. " +
-    "Search results, a paper's record and the person's saved papers say `pdf` when OpenAlex knows of one; OpenAlex may still hold a copy of one without. A paper in the person's Zotero library is read from there, with zotero/library:pdf. When none can be got, ask the person to attach its PDF to the chat. " +
+    "Search results, a paper's record and the person's saved papers say `pdf` when OpenAlex knows of one; OpenAlex may still hold a copy of one without. A paper in the person's Zotero library is read from there, with zotero/library:pdf. " +
+    "An Evidence Library's record is read from the library, by its `paper` as evidenceLibraries/library:records gives it, when that says `pdf`, or else from OpenAlex's copy when it has an OpenAlex ID. When none can be got, ask the person to attach its PDF to the chat. " +
     "OpenAlex sometimes links the wrong file: check the PDF is the paper you asked for, and if it isn't, say so and use nothing from it. " +
     "Cite what you take from it by page, as a link to its address with the page: [p. 7](PDF_ADDRESS#page=7). A later reply that needs it again reads it again. " +
     "The person is asked first, with what the read may cost. One request against the person's OpenAlex allowance.",
@@ -194,6 +199,8 @@ export const readPdfAction = defineUserAction({
     return convertUsdToCredits({ usd: (PAPER_PAGES * PDF_PAGE_TOKENS * price) / 1_000_000 }) + PAPER_PDF_CREDITS;
   },
   run: async (ctx, { userId, workspaceId }, { id, title: asked }, call): Promise<Infer<typeof paperPdfValidator>> => {
+    const ref = parsePaperKey(id.trim());
+    if (ref?.source === "library") return await libraryRecordPdf(ctx, { userId, workspaceId }, ref, asked, call);
     const path = workPath(id);
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
     if (!person) throw createError("UNAUTHENTICATED", "Authentication required");
@@ -203,17 +210,34 @@ export const readPdfAction = defineUserAction({
     const openalexId = paperIdOf(paper);
     // The person was asked about the paper by the title the model gave: one that isn't this ID's reads nothing.
     if (asked && !sameTitle(asked, title)) throw createError("VALIDATION_ERROR", `${id} is "${title}" in OpenAlex, not "${asked}". Check the paper's ID, and read it again.`);
-    // A chat pays once for a paper's stored PDF. A read outside one pays each time.
-    const step = call?.stepId ?? call?.from;
-    const threadId = step ? await ctx.runQuery(internal.assistant.steps.chatOf, { stepId: step }) : null;
-    const scope = threadId ? `chat:${threadId}` : undefined;
     // The model is sent the stored copy, never the file through here.
-    const got = await paperPdf(ctx, { userId, workspaceId, scope, kind: "chat" }, { openalexId, doi: work.doi ?? undefined, url: pdfUrl ?? undefined, hasCopy: work.has_content?.pdf === true }, { maxBytes: PROVIDER_PDF_BYTES, bytes: false, charge: "self", allowHttp: true });
+    const got = await paperPdf(ctx, { userId, workspaceId, scope: await chatScope(ctx, call), kind: "chat" }, { openalexId, doi: work.doi ?? undefined, url: pdfUrl ?? undefined, hasCopy: work.has_content?.pdf === true }, { maxBytes: PROVIDER_PDF_BYTES, bytes: false, charge: "self", allowHttp: true });
     if ("error" in got) throw createError(got.credits ? "INSUFFICIENT_CREDITS" : "VALIDATION_ERROR", `${got.error} Ask the person to attach its PDF to the chat.`);
     // A paper read from OpenAlex's copy alone is cited by its record, the only address of it a person can open.
     if (!got.key) throw createError("VALIDATION_ERROR", "This paper's PDF can't be kept to send. Ask the person to attach its PDF to the chat.");
     return { id: openalexId, title, paperPdf: pdfUrl ?? openalexId, stored: got.key };
   },
 });
+/** A chat's scope for a paper's stored copy, which it pays for once; a read outside one pays each time. */
+async function chatScope(ctx: ActionCtx, call: ChangeCall | undefined) {
+  const step = call?.stepId ?? call?.from;
+  const threadId = step ? await ctx.runQuery(internal.assistant.steps.chatOf, { stepId: step }) : null;
+  return threadId ? `chat:${threadId}` : undefined;
+}
+
+/** An Evidence Library record's PDF, as the person may read the record: the library's own file, or OpenAlex's copy of the work. */
+async function libraryRecordPdf(ctx: ActionCtx, payer: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, ref: { libraryId: string; key: string }, asked: string | undefined, call: ChangeCall | undefined): Promise<Infer<typeof paperPdfValidator>> {
+  const read: { papers: Array<Infer<typeof screeningPaperInputValidator>> } = await ctx.runAction(internal.evidenceLibraries.sourceActions.page, { libraryId: ref.libraryId as Id<"evidenceLibraries">, userId: payer.userId, source: { records: [ref.key] }, first: 1, last: 1 });
+  const paper = read.papers[0];
+  if (!paper) throw createError("NOT_FOUND", "The library shows no record by that key.");
+  if (asked && !sameTitle(asked, paper.title)) throw createError("VALIDATION_ERROR", `That record is "${paper.title}" in the library, not "${asked}". Check its key, and read it again.`);
+  const openalexId = paper.crossRefs?.openalexId;
+  if (!paper.pdfUrl && !openalexId) throw createError("VALIDATION_ERROR", "The library lets readers download no PDF of this record. Ask the person to attach its PDF to the chat.");
+  const got = await paperPdf(ctx, { ...payer, scope: await chatScope(ctx, call), kind: "chat" }, { url: paper.pdfUrl, openalexId, doi: paper.crossRefs?.doi }, { maxBytes: PROVIDER_PDF_BYTES, bytes: false, charge: "self", allowHttp: true });
+  if ("error" in got) throw createError(got.credits ? "INSUFFICIENT_CREDITS" : "VALIDATION_ERROR", `${got.error} Ask the person to attach its PDF to the chat.`);
+  if (!got.key) throw createError("VALIDATION_ERROR", "This record's PDF can't be kept to send. Ask the person to attach its PDF to the chat.");
+  return { id: paper.paper, title: paper.title, paperPdf: paper.pdfUrl ?? workUrl(openalexId!) ?? paper.paper, stored: got.key };
+}
+
 export const readPdf = userAction(readPdfAction);
 export const readPdfForAssistant = assistantAction(readPdfAction);
