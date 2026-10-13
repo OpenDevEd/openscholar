@@ -14,6 +14,7 @@ import { convexTest } from "convex-test";
 import { describe, it, expect } from "vitest";
 import { api } from "../../_generated/api";
 import schema from "../../schema";
+import { paperOf } from "../../lib/paperRef.test-support";
 
 const CLERK_OWNER = "clerk_now_processing_owner";
 const OWNER_IDENTITY = {
@@ -54,13 +55,13 @@ describe("getNowProcessing", () => {
     await t.run(async (ctx) => {
       await ctx.db.insert("extractionPapers", {
         jobId,
-        openalexId: "oa:pending",
+        ...paperOf("oa:pending"),
         title: "Pending Paper",
         status: "pending" as const,
       });
       await ctx.db.insert("extractionPapers", {
         jobId,
-        openalexId: "oa:done",
+        ...paperOf("oa:done"),
         title: "Done Paper",
         status: "completed" as const,
       });
@@ -77,7 +78,7 @@ describe("getNowProcessing", () => {
     const paperId = await t.run(async (ctx) => {
       return await ctx.db.insert("extractionPapers", {
         jobId,
-        openalexId: "oa:alpha",
+        ...paperOf("oa:alpha"),
         title: "Attention is all you need",
         status: "extracting" as const,
         startedAt: now,
@@ -102,21 +103,21 @@ describe("getNowProcessing", () => {
       // tiny so the contract is about relative order, not magnitude.
       const earliest = await ctx.db.insert("extractionPapers", {
         jobId,
-        openalexId: "oa:early",
+        ...paperOf("oa:early"),
         title: "First In",
         status: "extracting" as const,
         startedAt: now - 1000,
       });
       await ctx.db.insert("extractionPapers", {
         jobId,
-        openalexId: "oa:mid",
+        ...paperOf("oa:mid"),
         title: "Middle",
         status: "extracting" as const,
         startedAt: now - 500,
       });
       await ctx.db.insert("extractionPapers", {
         jobId,
-        openalexId: "oa:late",
+        ...paperOf("oa:late"),
         title: "Latest",
         status: "extracting" as const,
         startedAt: now,
@@ -148,7 +149,7 @@ describe("getNowProcessing", () => {
         await ctx.db.patch(jobId, { status });
         await ctx.db.insert("extractionPapers", {
           jobId,
-          openalexId: "oa:lingering",
+          ...paperOf("oa:lingering"),
           title: "LLM call still in-flight post-pause",
           status: "extracting" as const,
           startedAt: now,
@@ -177,7 +178,7 @@ describe("getNowProcessing", () => {
       // Seed an in-flight paper so the null cannot be blamed on "0 rows".
       await ctx.db.insert("extractionPapers", {
         jobId,
-        openalexId: "oa:hidden",
+        ...paperOf("oa:hidden"),
         title: "Should Not Leak",
         status: "extracting" as const,
       });

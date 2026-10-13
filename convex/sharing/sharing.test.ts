@@ -10,6 +10,7 @@ import { changeAction } from "../research/records";
 import { insertJob } from "../screening/createJob.test-support";
 import { ensureWorkspace } from "../workspaces/create";
 import { personalWorkspaceOf } from "../workspaces/personal";
+import { paperOf } from "../lib/paperRef.test-support";
 
 const mail = vi.hoisted(() => ({ sendMail: vi.fn(), close: vi.fn() }));
 vi.mock("nodemailer", () => ({ default: { createTransport: () => mail } }));
@@ -256,7 +257,7 @@ it("opens a shared screening to its guest to read and export from their own work
       scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 1, stars: 5 }] },
       createdAt: 1, updatedAt: 1,
     });
-    await ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "One", status: "completed", answers: { q1: true }, score: 1, stars: 5, qualified: true, outcome: "included", createdAt: 1 });
+    await ctx.db.insert("screeningResults", { jobId, ...paperOf("https://openalex.org/W1"), title: "One", status: "completed", answers: { q1: true }, score: 1, stars: 5, qualified: true, outcome: "included", createdAt: 1 });
     return jobId;
   });
   const item = { workspaceId, kind: "screening" as const, id: jobId };
@@ -303,7 +304,7 @@ it("opens a shared extraction to its guest to read from their own workspace, wit
       workspaceId, createdBy: users.alice, name: "Sample sizes", sourceType: "history", status: "creditsExhausted", totalPapers: 1, runEpoch: 0, spendCap: 500, spendHold: "hold_1", createdAt: 1, updatedAt: 1,
       error: { code: "insufficient_credits", message: "This extraction reached the 500 credits it was allowed. Resume it to carry on past them.", at: 1 },
     });
-    const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: "W1", title: "Trial", authors: [], processable: true, status: "completed", creditsUsed: 3, admittedEstimateCredits: 5, questionsBilled: true, indexingBilled: true, sourceId: trials.id });
+    const paperId = await ctx.db.insert("extractionPapers", { jobId, ...paperOf("W1"), title: "Trial", authors: [], processable: true, status: "completed", creditsUsed: 3, admittedEstimateCredits: 5, questionsBilled: true, indexingBilled: true, sourceId: trials.id });
     return { jobId, paperId };
   });
   const item = { workspaceId, kind: "extraction" as const, id: jobId };

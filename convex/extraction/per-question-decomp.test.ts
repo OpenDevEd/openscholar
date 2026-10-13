@@ -20,6 +20,7 @@ import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
 import { readJobCounters } from "./jobCounters";
+import { paperOf } from "../lib/paperRef.test-support";
 
 async function seedJobWithPapersAndQuestions(
   t: ReturnType<typeof convexTest>,
@@ -76,7 +77,7 @@ async function seedJobWithPapersAndQuestions(
       paperIds.push(
         await ctx.db.insert("extractionPapers", {
           jobId,
-          openalexId: `oa:decomp${i}`,
+          ...paperOf(`oa:decomp${i}`),
           title: `Paper ${i}`,
           status: "extracting" as const,
         }),

@@ -6,6 +6,7 @@ import { saveQualified } from "../screening/bookkeeping";
 import { expandJobSources } from "../extraction/expandSources";
 import { personalWorkspaceOf } from "../workspaces/personal";
 import { madeBy } from "../workspaces/actor.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 it("keeps a rated paper intact through screening, repeated saves and extraction persistence", async () => {
   const t = convexTest(schema);
@@ -17,7 +18,7 @@ it("keeps a rated paper intact through screening, repeated saves and extraction 
   await t.run(async (ctx) => {
     const screeningId = await ctx.db.insert("screenings", { workspaceId: await personalWorkspaceOf(ctx, userId), version: 0, createdAt: 1 });
     const jobId = await ctx.db.insert("screeningJobs", { ...(await madeBy(ctx, userId)), screeningId, status: "completed", totalPapers: 1, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
-    const resultId = await ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W7", title: "Later title", authors: ["Wrong name"], citedByCount: 100, isOpenAccess: true, venue: "Trial journal", workType: "preprint", stars: 1, status: "completed", createdAt: 1 });
+    const resultId = await ctx.db.insert("screeningResults", { jobId, ...paperOf("https://openalex.org/W7"), title: "Later title", authors: ["Wrong name"], citedByCount: 100, isOpenAccess: true, venue: "Trial journal", workType: "preprint", stars: 1, status: "completed", createdAt: 1 });
     await saveQualified(ctx, (await ctx.db.get("screeningJobs", jobId))!, (await ctx.db.get("screeningResults", resultId))!);
   });
   await owner.mutation(api.library.mutations.saveToLibrary, { paper: "W7", title: "Partial later save" });

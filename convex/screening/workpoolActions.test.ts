@@ -8,6 +8,7 @@ import { insertJob } from "./createJob.test-support";
 import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/billing.test-support";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 vi.mock("../../lib/ai/core/batch", () => ({
   processScreeningBatch: async ({ papers }: { papers: Array<{ id: string }> }) => ({
@@ -28,7 +29,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
       scoringConfig: { rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }], starThresholds: [{ minScore: 0, stars: 1 }] },
       createdAt: 1, updatedAt: 1,
     });
-    const paper = (i: number) => ctx.db.insert("screeningResults", { jobId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, abstract: "An abstract.", status: "processing", workId: `work_${i}`, createdAt: 1 });
+    const paper = (i: number) => ctx.db.insert("screeningResults", { jobId, ...paperOf(`https://openalex.org/W${i}`), title: `Paper ${i}`, abstract: "An abstract.", status: "processing", workId: `work_${i}`, createdAt: 1 });
     return { userId, jobId, first: await paper(1), second: await paper(2) };
   });
 }
@@ -127,7 +128,7 @@ describe("charging a Screen all paper", () => {
       await seedCreditsForTest(ctx, { userId, free: 100 });
       const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
       for (const n of [1, 2]) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paperOf(`https://openalex.org/W${n}`), title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
         await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: n });
       }
       return { userId, collectionId };

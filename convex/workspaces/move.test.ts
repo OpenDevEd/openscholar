@@ -7,6 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { ensureWorkspace } from "./create";
 import { personalWorkspaceOf } from "./personal";
+import { paperOf } from "../lib/paperRef.test-support";
 
 /** Alice, an admin of the lab, and Bob, a member. */
 async function lab() {
@@ -82,7 +83,7 @@ it("takes a search's screenings with it, and leaves a search's screening to move
   expect(await alice.query(api.workspaces.move.held, { kind: "screening", id: job })).toMatch(/Move the search/);
 
   // One of its papers still being read holds the search back too.
-  const paper = await t.run((ctx) => ctx.db.insert("screeningResults", { jobId: job, openalexId: "https://openalex.org/W1", title: "W1", authors: [], citedByCount: 0, status: "processing", createdAt: 1 }));
+  const paper = await t.run((ctx) => ctx.db.insert("screeningResults", { jobId: job, ...paperOf("https://openalex.org/W1"), title: "W1", authors: [], citedByCount: 0, status: "processing", createdAt: 1 }));
   expect(await alice.query(api.workspaces.move.held, { kind: "search", id })).toMatch(/still running/);
   await t.run((ctx) => ctx.db.patch("screeningResults", paper, { status: "completed" }));
 

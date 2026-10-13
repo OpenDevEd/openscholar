@@ -4,6 +4,7 @@ import { api } from "../_generated/api";
 import schema from "../schema";
 import { madeBy } from "../workspaces/actor.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
+import { paperOf } from "../lib/paperRef.test-support";
 
 async function seedUserAndJob(
   t: ReturnType<typeof convexTest>,
@@ -33,7 +34,7 @@ async function seedUserAndJob(
     });
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: `oa:${clerkId}`,
+      ...paperOf(`oa:${clerkId}`),
       title: `Paper for ${clerkId}`,
       status: "downloading" as const,
       workId: `work_${clerkId}`,

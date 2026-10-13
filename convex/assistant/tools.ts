@@ -21,7 +21,6 @@ import { linked } from "./links";
 import { partsOf } from "./bulkPapers";
 import { BULK, DONE, MAX_ASKS, MODEL_READS, STEP_TEXT_MAX, UNDO_BULK, forModel } from "./steps";
 import { ASKED_EACH_MAX } from "./validators";
-import { toPaperKey } from "../../lib/papers/paper-ref";
 
 /**
  * Requests in a row whose actions all failed, after which a reply's next request is its
@@ -685,8 +684,7 @@ export function toolsFor(
     }
     const again = await plan(CHANGE_PAPERS, given);
     if ("error" in again) return again;
-    // Kept as keys; a step kept before keys named OpenAlex papers by their bare IDs.
-    const approved = new Set((ids ?? []).map((id) => toPaperKey(id) ?? id));
+    const approved = new Set(ids ?? []);
     // Each change names its paper in `paper`; taking one out of a collection names it inside.
     const at = (item: Record<string, unknown>) => (typeof item.paper === "string" ? item.paper : String((item.paper as { paper?: unknown } | undefined)?.paper));
     return { ...again, items: again.items.filter((item) => approved.has(at(item))) };

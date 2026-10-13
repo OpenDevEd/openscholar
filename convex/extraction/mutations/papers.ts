@@ -25,7 +25,7 @@ import { recomputePaperListProjection } from "../listProjection";
 import { MAX_AUTHORS } from "../../lib/listCaps";
 import { sourceMetadataFields } from "../../lib/paperMetadata";
 import { sourceMetadata } from "../../../lib/library/paper-metadata";
-import { openalexWorkOf, openalexWorkOfRow, paperKeyOf, parsePaperKey, toPaperKey } from "../../../lib/papers/paper-ref";
+import { openalexWorkOf, openalexWorkOfRow, parsePaperKey } from "../../../lib/papers/paper-ref";
 import { requirePaperKey } from "../../library/find";
 
 function matchesExpectedEpoch(
@@ -54,15 +54,9 @@ const setupPaperValidator = v.object({
   sourceId: v.optional(v.string()),
   screeningRevision: v.optional(v.string()),
 });
-const { paper: _paper, crossRefs: _crossRefs, ...setupFields } = setupPaperValidator.fields;
-/** A paper as a setup step sends it: by key, or by the ID a step that started before keys still sends. ponytail: the second goes with the old IDs. */
-const sentPaperValidator = v.union(setupPaperValidator, v.object({ ...setupFields, openalexId: v.string() }));
-
 /** A paper as a job holds it: named by its key, however its source gave it. */
-function keyed(sent: Infer<typeof sentPaperValidator>): Infer<typeof setupPaperValidator> {
-  if ("paper" in sent) return { ...sent, paper: requirePaperKey(sent.paper) };
-  const { openalexId, ...paper } = sent;
-  return { ...paper, paper: requirePaperKey(toPaperKey(openalexId, { pdfUrl: paper.pdfUrl }) ?? openalexId) };
+function keyed(sent: Infer<typeof setupPaperValidator>): Infer<typeof setupPaperValidator> {
+  return { ...sent, paper: requirePaperKey(sent.paper) };
 }
 
 /**
@@ -78,7 +72,7 @@ function keyed(sent: Infer<typeof sentPaperValidator>): Infer<typeof setupPaperV
 export const createPaperRecords = internalMutation({
   args: {
     jobId: v.id("extractionJobs"),
-    papers: v.array(sentPaperValidator),
+    papers: v.array(setupPaperValidator),
     setup: v.optional(v.object({ expectedEpoch: v.number(), next: setupPlaceValidator })),
   },
   returns: v.object({ paperIds: v.array(v.id("extractionPapers")), processableCount: v.number() }),
@@ -156,7 +150,7 @@ async function sameIn(ctx: MutationCtx, jobId: Id<"extractionJobs">, keys: strin
       : key.startsWith("title:")
         ? await ctx.db.query("extractionPapers").withIndex("by_job_and_titleKey", (q) => q.eq("jobId", jobId).eq("titleKey", key)).take(SAME_KEY_READ)
         : await ctx.db.query("extractionPapers").withIndex("by_job_dedupeKey", (q) => q.eq("jobId", jobId).eq("dedupeKey", key)).take(SAME_KEY_READ);
-    const same = found.find((row) => samePaper(keys, dedupeKeysOf({ paper: paperKeyOf(row), crossRefs: row.crossRefs, doi: row.doi, title: row.title, publicationYear: row.publicationYear })));
+    const same = found.find((row) => samePaper(keys, dedupeKeysOf({ paper: row.paperKey, crossRefs: row.crossRefs, doi: row.doi, title: row.title, publicationYear: row.publicationYear })));
     if (same) return same;
   }
   return null;

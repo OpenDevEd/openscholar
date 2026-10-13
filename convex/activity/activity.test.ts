@@ -9,6 +9,7 @@ import { bookkeepLater } from "../screening/bookkeeping";
 import { setupScreeningWorkpool } from "../screening/workpool.test-support";
 import { searchNote } from "../research/records";
 import type { SavedSearch, SearchEdit } from "../../lib/research/records";
+import { paperOf } from "../lib/paperRef.test-support";
 
 /** Alice and Bob in a lab, and Carol, who isn't. */
 async function lab() {
@@ -68,7 +69,7 @@ it("notes what a screening did once it ends: the papers it answered, on it and o
       const jobId = await ctx.db.insert("screeningJobs", { workspaceId, createdBy: users.alice, status: "processing", totalPapers: 2, questions, scoringConfig, screeningId, set: { kind: "collection", collectionId: read }, targetCollectionId: saveTo, name: "First pass", createdAt: 1, updatedAt: 1 });
       await ctx.db.insert("screeningJobProgress", { jobId, completed: 0, skipped: 0, failed: 0, qualified: 0 });
       for (const [i, qualified] of [[1, true], [2, false]] as const) {
-        await ctx.db.insert("screeningResults", { jobId, openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, status: "completed", createdAt: 1, completedAt: 2, qualified, score: qualified ? 1 : 0, stars: 1, answers: { q1: qualified }, confidences: { q1: 0.9 }, pendingAnswers: true, doneAt: ctx.db.vars.commitTs });
+        await ctx.db.insert("screeningResults", { jobId, ...paperOf(`https://openalex.org/W${i}`), title: `Paper ${i}`, status: "completed", createdAt: 1, completedAt: 2, qualified, score: qualified ? 1 : 0, stars: 1, answers: { q1: qualified }, confidences: { q1: 0.9 }, pendingAnswers: true, doneAt: ctx.db.vars.commitTs });
       }
       await bookkeepLater(ctx);
       return jobId;

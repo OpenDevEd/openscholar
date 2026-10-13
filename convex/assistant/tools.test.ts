@@ -33,6 +33,7 @@ import { ownActor } from "../workspaces/actor.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
 import { organizationWorkspaceOf } from "../workspaces/personal";
 import { accountOf } from "../billing/billing.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 type Part = { type: string; text?: string; toolCallId?: string; output?: { type?: string; value?: unknown } };
 type Sent = Array<{ role: string; content: string | Part[] }>;
@@ -996,7 +997,7 @@ describe("the assistant's tools", () => {
       const userId = (await ctx.db.get("assistantThreads", threadId))!.createdBy;
       const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Three papers", sortName: "three papers", itemCount: 3, createdAt: 1, updatedAt: 1 });
       for (const openalexId of ["W91", "W92", "W93"]) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId, title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paperOf(openalexId), title: openalexId, searchableText: openalexId, rating: 0, savedAt: 1, updatedAt: 1 });
         await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: 1 });
       }
       return screeningHold(ctx, await ownActor(ctx, userId), { set: { kind: "collection", collectionId }, first: 1, last: 100, questions: [], scoringConfig: { rules: [], starThresholds: [], minimumScore: 1 } });
@@ -1050,7 +1051,7 @@ describe("the assistant's tools", () => {
     const { ada, asAda, say, steps } = await chatOf(t);
     const { id: collectionId } = await asAda.mutation(api.library.collections.createCollection, { name: "Trials" });
     await t.run(async (ctx) => {
-      await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, ada)), openalexId: "https://openalex.org/W7", title: "Tutoring at scale", paperData: "{}", savedAt: 1, updatedAt: 1, searchableText: "tutoring at scale" });
+      await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, ada)), ...paperOf("https://openalex.org/W7"), title: "Tutoring at scale", paperData: "{}", savedAt: 1, updatedAt: 1, searchableText: "tutoring at scale" });
     });
     mockDoStream
       // The paper by its short ID, as results give it, and a collection of hers.

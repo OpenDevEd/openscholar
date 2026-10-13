@@ -10,6 +10,7 @@ import { fakeAutumn, fakeAutumnFetch, seedCreditsForTest } from "../billing/bill
 import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
 import { savedPapersPick } from "./picks.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 const {
   mockProviderGenerate,
@@ -165,7 +166,7 @@ describe("extraction full flow with mocked provider I/O", () => {
     await t.run(async (ctx) =>
       ctx.db.insert("libraryItems", {
         ...(await madeBy(ctx, userId)),
-        openalexId: "https://openalex.org/W9001",
+        ...paperOf("https://openalex.org/W9001"),
         title: "Abstract-only paper",
         authors: ["Fixture Author"],
         publicationYear: 2024,
@@ -300,7 +301,7 @@ describe("extraction full flow with mocked provider I/O", () => {
       const now = Date.now();
       const id = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: now, updatedAt: now });
       for (const n of [1, 2]) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: ["Fixture Author"], abstract, searchableText: `Trial ${n}`, savedAt: now + n, updatedAt: now });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paperOf(`https://openalex.org/W${n}`), title: `Trial ${n}`, authors: ["Fixture Author"], abstract, searchableText: `Trial ${n}`, savedAt: now + n, updatedAt: now });
         await ctx.db.insert("libraryItemCollections", { collectionId: id, libraryItemId, assignedAt: now + n });
       }
       return id;

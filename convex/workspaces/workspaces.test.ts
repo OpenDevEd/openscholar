@@ -10,6 +10,7 @@ import { applyOrganizationProjection } from "../webhooks/projections";
 import { installFakeAutumn } from "../billing/billing.test-support";
 import { ensureWorkspace } from "./create";
 import { runUntriggered } from "../../tests/convex-test-with-limits";
+import { paperOf } from "../lib/paperRef.test-support";
 
 const organization = (clerkOrganizationId: string, clerkUpdatedAt: number) => ({
   clerkOrganizationId,
@@ -75,18 +76,18 @@ describe("workspaces", () => {
       // A bookmark, a saved paper in a collection and a finished screening job in each workspace.
       const records = async (workspaceId: typeof mine) => {
         await ctx.db.insert("queryShortcuts", { workspaceId, createdBy: userId, data: { shorthand: "rct", expansion: "randomized", createdAt: 1 } });
-        const libraryItemId = await ctx.db.insert("libraryItems", { workspaceId, createdBy: userId, openalexId: "https://openalex.org/W1", title: "Trial", searchableText: "Trial", savedAt: 1, updatedAt: 1 });
+        const libraryItemId = await ctx.db.insert("libraryItems", { workspaceId, createdBy: userId, ...paperOf("https://openalex.org/W1"), title: "Trial", searchableText: "Trial", savedAt: 1, updatedAt: 1 });
         const collectionId = await ctx.db.insert("collections", { workspaceId, createdBy: userId, name: "Trials", sortName: "trials", itemCount: 1, createdAt: 1, updatedAt: 1 });
         await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: 1 });
         const screeningId = await ctx.db.insert("screenings", { workspaceId, version: 0, createdAt: 1 });
         const jobId = await ctx.db.insert("screeningJobs", { workspaceId, createdBy: userId, screeningId, status: "completed", totalPapers: 1, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
-        await ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "Trial", status: "completed", createdAt: 1 });
+        await ctx.db.insert("screeningResults", { jobId, ...paperOf("https://openalex.org/W1"), title: "Trial", status: "completed", createdAt: 1 });
       };
       await records(mine);
       await records(lab);
       // Their ratings: their own, and one they gave in a collection.
-      await ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W1", rating: 4 });
-      await ctx.db.insert("ratings", { userId, paperId: "https://openalex.org/W1", collectionId: (await ctx.db.query("collections").first())!._id, rating: 5 });
+      await ctx.db.insert("ratings", { userId, paperId: "openalex:W1", rating: 4 });
+      await ctx.db.insert("ratings", { userId, paperId: "openalex:W1", collectionId: (await ctx.db.query("collections").first())!._id, rating: 5 });
       return {
         lab,
         own: await ctx.db.insert("extractionJobs", { ...job, workspaceId: mine, name: "Mine" }),

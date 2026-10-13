@@ -25,6 +25,7 @@ import { screeningInputs } from "../extraction/sources/screening.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
 import { ensureWorkspace } from "../workspaces/create";
 import { organizationOfLibrary } from "../../tests/helpers/evidence-library-setup-fixture";
+import { paperOf } from "../lib/paperRef.test-support";
 
 /** seedLibrary's papers: rating (i % 5) + 1, published 1990 + (i % 35), saved at 1_700_000_000_000 + i, all in its collection. */
 const seededLibrary = (items: number) => Array.from({ length: items }, (_, i) => ({ rating: (i % 5) + 1, year: 1990 + (i % 35), savedAt: 1_700_000_000_000 + i }));
@@ -41,7 +42,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       const created = await start();
       expect(await snapshot(created.jobId)).toMatchObject({ totalPapers: 1000, processableCount: 1000 });
       const saved = await papers(created.jobId);
-      expect(saved.map(p => p.openalexId)).toEqual(Array.from({ length: 1000 }, (_, i) => `https://openalex.org/W${i}`));
+      expect(saved.map(p => p.paperKey)).toEqual(Array.from({ length: 1000 }, (_, i) => `openalex:W${i}`));
       expect(saved.every(p => p.screeningRevision === decided && p.abstract?.length === 2000)).toBe(true);
     } finally { vi.useRealTimers(); }
   }, 300_000);
@@ -388,7 +389,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       createdAt: 1, updatedAt: 1,
     }));
     await insertMany(t, "screeningResults", Array.from({ length: 1_000 }, (_, i) => ({
-      jobId, openalexId: `https://openalex.org/W${i}`, title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), publicationYear: 2020, doi: `10.1234/${i}`,
+      jobId, ...paperOf(`openalex:W${i}`), title: text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), publicationYear: 2020, doi: `10.1234/${i}`,
       status: "completed", answers: Object.fromEntries(questions.map(({ key }, q) => [key, (i + q) % 3 === 0 ? null : (i + q) % 2 === 0])), score: 25, stars: 5, qualified: true, createdAt: 1,
     })), 250);
 
@@ -461,7 +462,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
     });
     const answers = questions.map(({ question }) => ({ question, answer: true, setBy: "model" as const, updatedAt: 1, model: { answer: true, confidence: 0.9, at: 1 } }));
     const ids = Array.from({ length: 120 }, (_, i) => `https://openalex.org/W${i}`);
-    await insertMany(t, "screeningResults", ids.map((openalexId, i) => ({ jobId, openalexId, title: i === 119 ? `needle ${text(150, i)}` : text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), status: "completed", score: 50, stars: 5, qualified: true, outcome: "included", counted: { qualified: true, outcome: "included", answers: Object.fromEntries(questions.map(({ key }) => [key, true])) }, answersVersion: 1, createdAt: 1 })).map((row) => ({ ...row, searchText: searchTextOf(row) })), 60);
+    await insertMany(t, "screeningResults", ids.map((id, i) => ({ jobId, ...paperOf(id), title: i === 119 ? `needle ${text(150, i)}` : text(160, i), abstract: text(2_000, i), authors: Array.from({ length: 8 }, (_, a) => text(24, a)), status: "completed", score: 50, stars: 5, qualified: true, outcome: "included", counted: { qualified: true, outcome: "included", answers: Object.fromEntries(questions.map(({ key }) => [key, true])) }, answersVersion: 1, createdAt: 1 })).map((row) => ({ ...row, searchText: searchTextOf(row) })), 60);
     await insertMany(t, "screeningAnswers", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1 })), 60);
     await insertMany(t, "screeningAnswerHistory", ids.map((paperId) => ({ screeningId, paperId, answers, version: 1, at: 1 })), 60);
 
@@ -497,7 +498,7 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       const job = await t.run((ctx) => ctx.db.get("screeningJobs", jobId));
       expect(job).toMatchObject({ totalPapers: 1_000, first: 9_001, last: 10_000 });
       const [first] = await t.run((ctx) => ctx.db.query("screeningResults").withIndex("by_job", (q) => q.eq("jobId", jobId)).take(1));
-      expect(first.openalexId).toBe("https://openalex.org/W999");
+      expect(first.paperKey).toBe("openalex:W999");
     } finally {
       vi.useRealTimers();
     }
@@ -622,12 +623,12 @@ describe("at the largest sizes the product allows", { tags: ["size"] }, () => {
       const lab = await t.run(async (ctx) => {
         const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_large", name: "Large", slug: "org_large", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
         const workspaceId = await ensureWorkspace(ctx, { kind: "organization", organizationId });
-        await ctx.db.insert("libraryItems", { workspaceId, createdBy: userIds[0], openalexId: "https://openalex.org/W1", title: "Rated by everyone", searchableText: "Rated by everyone", savedAt: 1, updatedAt: 1 });
+        await ctx.db.insert("libraryItems", { workspaceId, createdBy: userIds[0], ...paperOf("https://openalex.org/W1"), title: "Rated by everyone", searchableText: "Rated by everyone", savedAt: 1, updatedAt: 1 });
         return { organizationId, workspaceId };
       });
       await insertMany(t, "organizationMemberships", members.map((clerkUserId) => ({ organizationId: lab.organizationId, clerkMembershipId: `orgmem_${clerkUserId}`, clerkUserId, role: "org:member", state: "active", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 })), 250, { triggered: false });
       // Every member has rated it 1 to 5.
-      const ratings = userIds.map((userId, i) => ({ userId, paperId: "https://openalex.org/W1", rating: (i % 5) + 1 }));
+      const ratings = userIds.map((userId, i) => ({ userId, paperId: "openalex:W1", rating: (i % 5) + 1 }));
       await insertMany(t, "ratings", ratings, 250);
 
       // The first member changes theirs to 5: the lab's copy takes the new average.

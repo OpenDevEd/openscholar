@@ -1,5 +1,5 @@
 import type { PaperWithResults, Question } from './filtering';
-import { openalexAddress, openalexWorkOfRow, paperKeyOf } from "../papers/paper-ref";
+import { openalexAddress, openalexWorkOfRow } from "../papers/paper-ref";
 
 export class ExtractionExportError extends Error {
   constructor(readonly code: "exportChanged" | "excelCellLimit" | "excelRowLimit" | "searchTooBroad") { super(code); }
@@ -94,7 +94,7 @@ function exportRecord(papers: PaperWithResults[], questions: Question[], options
     questions: questions.map(q => ({ key: q.key, question: q.question, type: q.type, description: q.description ?? null })),
     papers: papers.map(paper => ({
       id: paper._id,
-      paper: paperKeyOf(paper),
+      paper: paper.paperKey,
       openalexId: openalexAddress(openalexWorkOfRow(paper)),
       title: paper.title,
       doi: paper.doi ?? null,

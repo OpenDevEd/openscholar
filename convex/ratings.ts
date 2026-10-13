@@ -1,6 +1,6 @@
 import type { DataModel, Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
-import { paperIdOf, paperKeyOf, toPaperKey } from "../lib/papers/paper-ref";
+import { toPaperKey } from "../lib/papers/paper-ref";
 import { findItem } from "./library/find";
 import { MAX_RATERS_KEPT } from "./lib/listCaps";
 import { createError } from "./lib/errors";
@@ -26,9 +26,7 @@ export function requireRating(rating: number) {
 /** A person's rating of a paper within a collection, which the collection's people see, or with no collection their own, the same everywhere (#655). */
 async function ratingRow(ctx: Pick<QueryCtx, "db">, userId: Id<"users">, collectionId: Id<"collections"> | undefined, paperId: string) {
   const key = ratedPaper(paperId);
-  const under = (id: string) => ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId).eq("collectionId", collectionId).eq("paperId", id)).unique();
-  // ponytail: a rating of an OpenAlex paper kept before keys is under its address until migrations/paperIdentity moves it; goes when the old IDs do.
-  return (await under(key)) ?? (key.startsWith("openalex:") ? await under(paperIdOf(key)) : null);
+  return await ctx.db.query("ratings").withIndex("by_user_and_collection_and_paper", (q) => q.eq("userId", userId).eq("collectionId", collectionId).eq("paperId", key)).unique();
 }
 /** A person's own rating of a paper, the same everywhere. */
 export const personalRatingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users">, paperId: string) => ratingRow(ctx, userId, undefined, paperId);
@@ -198,12 +196,7 @@ export async function asRaters(ctx: Pick<QueryCtx, "db">, organizationId: Id<"or
 export async function placeRated(ctx: Pick<QueryCtx, "db">, collectionId: Id<"collections">, item: Doc<"libraryItems">): Promise<{ rating?: number; count?: number }> {
   const workspace = await ctx.db.get("workspaces", item.workspaceId);
   if (workspace?.kind !== "organization") return item.rating === undefined ? {} : { rating: item.rating };
-  const key = paperKeyOf(item);
-  const under = (id: string) => ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", id)).take(MAX_RATERS);
-  const keyed = await under(key);
-  // ponytail: ratings kept before keys are under the paper's address until migrations/paperIdentity moves them; a person's rating under the key is theirs now. Goes when the old IDs do.
-  const older = paperIdOf(key) === key ? [] : (await under(paperIdOf(key))).filter((row) => !keyed.some((rated) => rated.userId === row.userId));
-  const rows = [...keyed, ...older];
+  const rows = await ctx.db.query("ratings").withIndex("by_collection_and_paper", (q) => q.eq("collectionId", collectionId).eq("paperId", item.paperKey)).take(MAX_RATERS);
   const counted = await Promise.all(rows.map((row) => isMember(ctx, workspace.organizationId, row.userId)));
   const given = rows.flatMap((row, at) => (counted[at] ? [row.rating] : []));
   return given.length ? { rating: average(given), count: given.length } : {};
@@ -227,7 +220,7 @@ export const collectionRatingRow = (ctx: Pick<QueryCtx, "db">, userId: Id<"users
 
 /** Sets a person's rating of a paper in a collection, or clears it with null, and the collection's average of it. */
 export async function setCollectionRating(ctx: MutationCtx, userId: Id<"users">, place: Doc<"libraryItemCollections">, item: Doc<"libraryItems">, rating: number | null) {
-  if (await writeRating(ctx, userId, place.collectionId, paperKeyOf(item), rating)) await ratePlace(ctx, place, item);
+  if (await writeRating(ctx, userId, place.collectionId, item.paperKey, rating)) await ratePlace(ctx, place, item);
 }
 
 /** Deletes a step of a deleted collection's ratings. Returns whether all are gone. */
@@ -239,7 +232,7 @@ export async function purgeCollectionRatings(ctx: MutationCtx, collectionId: Id<
 
 /** Brings a saved paper's rating in step with its workspace's people's ratings of it, and in an organization who gave it. */
 export async function rateItem(ctx: MutationCtx, item: Doc<"libraryItems">) {
-  const { rating, count, by } = await workspaceRated(ctx, item.workspaceId, paperKeyOf(item));
+  const { rating, count, by } = await workspaceRated(ctx, item.workspaceId, item.paperKey);
   const same = rating === item.rating && count === item.ratingCount && JSON.stringify(by ?? null) === JSON.stringify(item.ratedBy ?? null);
   if (!same) await ctx.db.patch("libraryItems", item._id, { rating, ratingCount: count, ratedBy: by });
 }

@@ -1,6 +1,7 @@
 import type { Doc } from "../../convex/_generated/dataModel";
 import type { PaperWithResults, Question } from "../../lib/extraction/filtering";
 import { mockId } from "../factories";
+import { paperOf } from "../../convex/lib/paperRef.test-support";
 
 export const exportJob: Doc<"extractionJobs"> = {
   _id: mockId("extractionJobs", "export"), _creationTime: 1, workspaceId: mockId("workspaces", "export"), createdBy: mockId("users", "export"),
@@ -18,7 +19,7 @@ const paperId = mockId("extractionPapers", "export");
 const quote = "No adverse events were reported.";
 const common = { _creationTime: 1, jobId: exportJob._id, paperId, citations: [], citationStatus: "best_effort" as const, status: "completed" as const, processedAt: 123, model: "openai/gpt-6-luna", provider: "openrouter" };
 export const exportPapers: PaperWithResults[] = [{
-  _id: paperId, _creationTime: 1, jobId: exportJob._id, openalexId: "https://openalex.org/W123", title: 'Trial, "تعليم"\nSecond line', doi: "10.1234/qa", publicationYear: 2024,
+  _id: paperId, _creationTime: 1, jobId: exportJob._id, ...paperOf("https://openalex.org/W123"), title: 'Trial, "تعليم"\nSecond line', doi: "10.1234/qa", publicationYear: 2024,
   authors: ["García, Ana", "المكتبة الوطنية", "王明"], status: "completed",
   sourceType: "screening", sourceId: "screening-origin", screeningRevision: "2:completed:3",
   results: [

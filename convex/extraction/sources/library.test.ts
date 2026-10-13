@@ -5,6 +5,7 @@ import schema from "../../schema";
 import type { Id } from "../../_generated/dataModel";
 import { MAX_SELECTED_PAPERS } from "../../lib/listCaps";
 import { madeBy } from "../../workspaces/actor.test-support";
+import { paperOf } from "../../lib/paperRef.test-support";
 
 const identity = {
   subject: "clerk_lib",
@@ -51,7 +52,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
     for (const title of titles) {
       const id = await ctx.db.insert("libraryItems", {
         userId,
-        openalexId: `https://openalex.org/W${title.length}`,
+        ...paperOf(`https://openalex.org/W${title.length}`),
         rating: 5,
         title,
         searchableText: title.toLowerCase(),
@@ -87,7 +88,7 @@ async function seed(t: ReturnType<typeof convexTest>) {
     }
     await ctx.db.insert("libraryItems", {
       userId: otherUserId,
-      openalexId: "https://openalex.org/Wother",
+      ...paperOf("https://openalex.org/Wother"),
       rating: 0,
       title: "Not Mine",
       searchableText: "not mine",
@@ -315,7 +316,7 @@ describe("extraction.sources.library.listAllIds with collectionId", () => {
     await t.run(async (ctx) => {
       const made = await madeBy(ctx, userId);
       for (let i = 0; i < MAX_SELECTED_PAPERS + 5; i++) {
-        const libraryItemId = await ctx.db.insert("libraryItems", { ...made, openalexId: `https://openalex.org/Wmany${i}`, rating: 3, title: `Many ${i}`, searchableText: "many papers", savedAt: i, updatedAt: i });
+        const libraryItemId = await ctx.db.insert("libraryItems", { ...made, ...paperOf(`https://openalex.org/Wmany${i}`), rating: 3, title: `Many ${i}`, searchableText: "many papers", savedAt: i, updatedAt: i });
         if (i % 2 === 0) await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: i });
       }
     });

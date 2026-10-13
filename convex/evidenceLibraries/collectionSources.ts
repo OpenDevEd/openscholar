@@ -11,7 +11,7 @@ import {
   type QueryCtx,
 } from "../lib/functions";
 import { internal } from "../_generated/api";
-import { openalexWorkOf, paperKeyOf } from "../../lib/papers/paper-ref";
+import { openalexWorkOf } from "../../lib/papers/paper-ref";
 import { writeAuditLogRecord } from "../lib/audit";
 import { requireAuth } from "../lib/auth";
 import { createError, readConvexErrorData } from "../lib/errors";
@@ -186,7 +186,7 @@ export const readForLibrary = internalQuery({
       page.page.map(async (membership) => {
         const libraryItem = await ctx.db.get("libraryItems", membership.libraryItemId);
         return libraryItem
-          ? [{ itemId: libraryItem._id, openalexId: openalexWorkOf(paperKeyOf(libraryItem), libraryItem.crossRefs), doi: libraryItem.doi ?? libraryItem.crossRefs?.doi ?? null }]
+          ? [{ itemId: libraryItem._id, openalexId: openalexWorkOf(libraryItem.paperKey, libraryItem.crossRefs), doi: libraryItem.doi ?? libraryItem.crossRefs?.doi ?? null }]
           : [];
       }),
     );

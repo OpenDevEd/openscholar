@@ -1,10 +1,10 @@
 import type { Doc } from "@/convex/_generated/dataModel";
 import type { PaperResult } from "@/lib/types/search.types";
 import { authorMetadata, paperRecord } from "./paper-metadata";
-import { paperIdOf, paperKeyOf } from "@/lib/papers/paper-ref";
+import { paperIdOf } from "@/lib/papers/paper-ref";
 
 /** The ID a saved paper's card goes by: an OpenAlex paper's address, as search results name it, or another paper's key. */
-export const libraryCardId = (item: Pick<Doc<"libraryItems">, "paperKey" | "openalexId">) => paperIdOf(paperKeyOf(item));
+export const libraryCardId = (item: Pick<Doc<"libraryItems">, "paperKey">) => paperIdOf(item.paperKey);
 
 /** Saved fields fill the card's retained OpenAlex record without inventing source facts. */
 export function libraryItemToPaperResult(item: Doc<"libraryItems">): PaperResult {

@@ -3,6 +3,7 @@ import { expect, it } from "vitest";
 import { internal } from "../_generated/api";
 import schema from "../schema";
 import { madeBy } from "../workspaces/actor.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 it("finds every item missing paperData by walking every page, not only the first", async () => {
   const t = convexTest(schema);
@@ -10,7 +11,7 @@ it("finds every item missing paperData by walking every page, not only the first
     const userId = await ctx.db.insert("users", {clerkId: "backfill", email: "backfill@example.org", state: "active", createdAt: 1, updatedAt: 1 });
     const ids = [];
     for (let i = 0; i < 60; i++) {
-      const id = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${i}`, rating: 0, title: `Paper ${i}`, searchableText: `paper ${i}`, savedAt: i, updatedAt: i, ...(i < 50 ? { paperData: "{}" } : {}) });
+      const id = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paperOf(`https://openalex.org/W${i}`), rating: 0, title: `Paper ${i}`, searchableText: `paper ${i}`, savedAt: i, updatedAt: i, ...(i < 50 ? { paperData: "{}" } : {}) });
       if (i >= 50) ids.push(id);
     }
     return ids;

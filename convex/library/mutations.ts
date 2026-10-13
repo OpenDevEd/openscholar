@@ -1,6 +1,6 @@
 import { v, type Infer } from "convex/values";
-import { crossRefsValidator, identityFromStored, identityOf } from "../lib/paperRef";
-import { paperKeyOf, parsePaperKey, saveablePaper } from "../../lib/papers/paper-ref";
+import { crossRefsValidator, identityOf } from "../lib/paperRef";
+import { parsePaperKey, saveablePaper } from "../../lib/papers/paper-ref";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -375,7 +375,7 @@ export const removeFromLibraryAction = defineUserMutation({
     if (args.expect) {
       const places = await livePlaces(ctx, item._id).take(2);
       const asSaved = args.expect.collectionId === undefined ? places.length === 0 : places.length === 1 && places[0].collectionId === args.expect.collectionId && places[0].assignedAt === args.expect.assignedAt;
-      if (!asSaved || item.savedAt !== args.expect.savedAt || (await ownRating(ctx, userId, paperKeyOf(item))) !== args.expect.rating) {
+      if (!asSaved || item.savedAt !== args.expect.savedAt || (await ownRating(ctx, userId, item.paperKey)) !== args.expect.rating) {
         throw createError("CONFLICT", "This paper has changed since then, so it was left in the library.");
       }
     }
@@ -387,7 +387,7 @@ export const removeFromLibraryAction = defineUserMutation({
     // Its places in collections: this batch now, the rest in the batches it schedules.
     if (await movePlaces(ctx, removalId)) await ctx.scheduler.runAfter(0, internal.library.mutations.movePlacesLater, { removalId });
     await countedWrite(ctx, { userId, workspaceId }, -1, () => ctx.db.delete("libraryItems", item._id));
-    if (args.rating !== undefined) await setPersonalRating(ctx, userId, paperKeyOf(item), args.rating);
+    if (args.rating !== undefined) await setPersonalRating(ctx, userId, item.paperKey, args.rating);
     await ctx.scheduler.runAt(expiresAt, internal.library.mutations.forgetRemoval, { removalId });
     await noteActivity(ctx, { workspaceId, by: userId, viaAssistant: author === "assistant" }, left.map(({ collectionId }) => placeNote(collectionId, "removed", item.title)));
     return { undo: { path: RESTORE, args: { removalId } } };
@@ -501,14 +501,14 @@ export const restoreLibraryItemAction = defineUserMutation({
     // Its day is over even if the cleanup hasn't reached it yet.
     if (!removal || removal.workspaceId !== workspaceId || removal.restoredAs !== undefined || removal.expiresAt <= Date.now()) throw createError("NOT_FOUND", "This removal can no longer be undone.");
     const { item } = removal;
-    const existing = await findItem(ctx, workspaceId, paperKeyOf(item));
+    const existing = await findItem(ctx, workspaceId, item.paperKey);
     let libraryItemId: Id<"libraryItems">;
     if (existing) {
       // Saved again before Undo: that copy stays.
       libraryItemId = existing._id;
     } else {
       // Back in the workspace Undo runs in, made by whoever first saved it, rated as its people rate it now.
-      libraryItemId = await countedWrite(ctx, { userId, workspaceId }, 1, () => ctx.db.insert("libraryItems", { ...item, ...(item.paperKey ? {} : identityFromStored(item)), workspaceId, updatedAt: Date.now() }));
+      libraryItemId = await countedWrite(ctx, { userId, workspaceId }, 1, () => ctx.db.insert("libraryItems", { ...item, workspaceId, updatedAt: Date.now() }));
       await rateItem(ctx, (await ctx.db.get("libraryItems", libraryItemId))!);
     }
     // Kept until its day is over, so places still being moved off the removed paper come back too.
@@ -556,7 +556,7 @@ export const setPaperInCollectionAction = defineUserMutation({
     if (!whole && paper.savedAt !== undefined && item && item.savedAt !== paper.savedAt) throw createError("CONFLICT", "This paper was removed and saved again since then, so the collection was left as it is.");
     // Only a change has an undo, so undoing never touches a paper that was already in, or already
     // out. It names the save and the place in the collection it's for.
-    const reverse = (at: number) => ({ undo: { path: IN_COLLECTION, args: { paper: { paper: paperKeyOf(item!), savedAt: item!.savedAt }, collectionId, inCollection: !inCollection, assignedAt: at } } });
+    const reverse = (at: number) => ({ undo: { path: IN_COLLECTION, args: { paper: { paper: item!.paperKey, savedAt: item!.savedAt }, collectionId, inCollection: !inCollection, assignedAt: at } } });
     if (inCollection) {
       if (!item) throw createError("NOT_FOUND", "This paper is no longer in the library.");
       const at = await addCollectionMembership(ctx, { collection, item, assignedAt });

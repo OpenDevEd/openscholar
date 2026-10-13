@@ -2,7 +2,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { internalQuery } from "../_generated/server";
 import { internalMutation } from "../lib/functions";
-import { openalexWorkOf, paperKeyOf } from "../../lib/papers/paper-ref";
+import { openalexWorkOf } from "../../lib/papers/paper-ref";
 
 /**
  * One page of library items, and which of them have no paperData yet and are known to OpenAlex,
@@ -20,7 +20,7 @@ export const getItemsMissingPaperData = internalQuery({
     const page = await ctx.db.query("libraryItems").order("asc").paginate(args.paginationOpts);
     return {
       items: page.page.flatMap((item) => {
-        const work = item.paperData ? null : openalexWorkOf(paperKeyOf(item), item.crossRefs);
+        const work = item.paperData ? null : openalexWorkOf(item.paperKey, item.crossRefs);
         return work ? [{ _id: item._id, work }] : [];
       }),
       isDone: page.isDone,

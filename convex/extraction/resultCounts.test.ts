@@ -8,6 +8,7 @@ import schema from "../schema";
 import { seedAccount } from "../lib/maxSize.test-support";
 import { countMismatches } from "./counts.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 type Test = ReturnType<typeof convexTest>;
 const verify = async (t: Test) => ({ mismatches: await countMismatches(t) });
@@ -25,7 +26,7 @@ async function seedJob(t: Test, userId: Id<"users">) {
     const jobId = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), sourceType: "history", status: "extracting", totalPapers: 3, runEpoch: 0, name: "Counted", createdAt: 1, updatedAt: 1 });
     const papers = [];
     for (const status of ["completed", "failed", "extracting"] as const) {
-      papers.push(await ctx.db.insert("extractionPapers", { jobId, openalexId: `oa:${status}`, title: status, status }));
+      papers.push(await ctx.db.insert("extractionPapers", { jobId, ...paperOf(`oa:${status}`), title: status, status }));
     }
     const result = (paperId: Id<"extractionPapers">, questionKey: string, fields: typeof completed | ReturnType<typeof failed>) =>
       ctx.db.insert("extractionResults", { jobId, paperId, questionKey, citations: [], billed: false, attemptCount: 1, processedAt: 1, ...fields });

@@ -6,6 +6,7 @@ import schema from "../schema";
 import { collectionSortName } from "./collections";
 import type { Doc, Id } from "../_generated/dataModel";
 import { personalWorkspaceOf } from "../workspaces/personal";
+import { paperOf } from "../lib/paperRef.test-support";
 
 // Helper: create a user directly in the mock DB, return user doc
 async function seedUser(
@@ -60,7 +61,7 @@ async function seedLibraryItem(
 
     const id = await ctx.db.insert("libraryItems", {
       userId,
-      openalexId: overrides.openalexId ?? `https://openalex.org/W${now}`,
+      ...paperOf(overrides.openalexId ?? `https://openalex.org/W${now}`),
       rating: overrides.rating ?? 3,
       title,
       authors,
@@ -431,9 +432,9 @@ describe("listCollections", () => {
 
     const flags = async (openalexId: string) =>
       (await asUser1.query(api.library.collections.listCollections, { ...firstPage(10), paper: openalexId })).page.map((c) => [c.name, c.containsItem]);
-    expect(await flags(mine!.openalexId)).toEqual([["Holding", true], ["Other", false]]);
+    expect(await flags(mine!.paperKey)).toEqual([["Holding", true], ["Other", false]]);
     // Someone else's saved paper, and a paper nobody saved.
-    expect(await flags(theirs!.openalexId)).toEqual([["Holding", false], ["Other", false]]);
+    expect(await flags(theirs!.paperKey)).toEqual([["Holding", false], ["Other", false]]);
     expect(await flags("https://openalex.org/W404")).toEqual([["Holding", false], ["Other", false]]);
   });
 

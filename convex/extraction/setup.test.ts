@@ -8,6 +8,7 @@ import schema from "../schema";
 import { writeJobSources } from "./jobSources";
 import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 const abstract = "A long enough abstract for the paper to be read from it, about tutoring in primary schools.";
 
@@ -20,7 +21,7 @@ it("reads a collection's range as one source, a page at a time, and runs every p
     await ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: false, updatedAt: 1 });
     const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: "trials", itemCount: papers, createdAt: 1, updatedAt: 1 });
     for (let i = 0; i < papers; i++) {
-      const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${i}`, title: `Paper ${i}`, abstract, searchableText: "x", savedAt: i, updatedAt: 1 });
+      const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paperOf(`https://openalex.org/W${i}`), title: `Paper ${i}`, abstract, searchableText: "x", savedAt: i, updatedAt: 1 });
       await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: 1 });
     }
     const id = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Range", status: "pending", runEpoch: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 }, createdAt: 1, updatedAt: 1 });

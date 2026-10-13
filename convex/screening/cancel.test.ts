@@ -9,6 +9,7 @@ import { SCREENING_POOL_SIZE, screeningPool } from "../workpool";
 import {
   seedCreditsForTest,
 } from "../billing/billing.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 // Helper: create a user directly in the mock DB
 async function seedUser(
@@ -95,7 +96,7 @@ async function seedScreeningResult(
     const status = overrides.status ?? "completed";
     return await ctx.db.insert("screeningResults", {
       jobId,
-      openalexId: overrides.openalexId ?? "oa:test1",
+      ...paperOf(overrides.openalexId ?? "oa:test1"),
       title: overrides.title ?? "Test Paper",
       status,
       ...(overrides.answers !== undefined ? { answers: overrides.answers } : {}),

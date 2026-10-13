@@ -76,13 +76,6 @@ export const screeningPaperInputValidator = v.object({
   citedByCount: v.optional(v.number()),
 });
 
-const { paper: _paper, crossRefs: _crossRefs, ...paperInputFields } = screeningPaperInputValidator.fields;
-/**
- * A paper as a job's reader sends it: by key, or by the ID a reader that started before keys
- * still sends. ponytail: the second goes with the old IDs, once no job read before keys is left.
- */
-export const sentPaperValidator = v.union(screeningPaperInputValidator, v.object({ ...paperInputFields, openalexId: v.string() }));
-
 /**
  * The papers a job reads (#341), resolved on the server: a saved search by its ID in the
  * browser, a collection, every saved paper, or an earlier job's included papers.

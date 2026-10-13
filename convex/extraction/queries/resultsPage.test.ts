@@ -8,6 +8,7 @@ import { catchUp } from "../../lib/catchUp.test-support";
 import { readExtractionExport } from "../../../lib/extraction/export";
 import { buildQuestionAnswerToken, recomputePaperListProjection } from "../listProjection";
 import { madeBy } from "../../workspaces/actor.test-support";
+import { paperOf } from "../../lib/paperRef.test-support";
 
 const CLERK_OWNER = "clerk_results_page_owner";
 const OWNER_IDENTITY = {
@@ -66,7 +67,7 @@ async function seedJobWithProjectionCorpus(t: ReturnType<typeof convexTest>) {
 
       const paperId = await ctx.db.insert("extractionPapers", {
         jobId,
-        openalexId: `oa:${i}`,
+        ...paperOf(`oa:${i}`),
         title,
         processable: true,
         status: "completed" as const,
@@ -295,7 +296,7 @@ describe("listJobResults", () => {
       await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
       const jobId = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Works", sourceType: "history", status: "completed", totalPapers: 3, usePdfs: false, createdAt: 1, updatedAt: 1 });
       for (const [work, title] of [["W4256188672", "Rethinking School Feeding"], ["W2", "School Feeding: Outcomes and Costs"], ["W3", "Global School Feeding Sourcebook"]] as const) {
-        const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: `https://openalex.org/${work}`, paperKey: `openalex:${work}`, title, doi: `https://doi.org/10.1/${work}`, processable: true, status: "completed" });
+        const paperId = await ctx.db.insert("extractionPapers", { jobId, ...paperOf(`https://openalex.org/${work}`), paperKey: `openalex:${work}`, title, doi: `https://doi.org/10.1/${work}`, processable: true, status: "completed" });
         await recomputePaperListProjection(ctx, paperId);
       }
       return jobId;

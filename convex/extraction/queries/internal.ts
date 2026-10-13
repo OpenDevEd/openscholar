@@ -35,7 +35,6 @@ import { MAX_QUESTIONS_PER_JOB } from "../validators";
 import { personalWorkspaceOf } from "../../workspaces/actor";
 import { extractionPricing } from "../../ai/serverModel";
 import { extractionPaperCredits } from "../../../lib/pricing";
-import { paperKeyOf } from "../../../lib/papers/paper-ref";
 import { crossRefsValidator } from "../../lib/paperRef";
 
 export const getJobInternal = internalQuery({
@@ -285,7 +284,7 @@ export const ownedLibraryItems = internalQuery({
     return rows.flatMap((row) =>
       row && row.workspaceId === workspaceId
         ? [{
-            _id: row._id, paper: paperKeyOf(row), ...(row.crossRefs ? { crossRefs: row.crossRefs } : {}), title: row.title, authors: row.authors, doi: row.doi, abstract: row.abstract,
+            _id: row._id, paper: row.paperKey, ...(row.crossRefs ? { crossRefs: row.crossRefs } : {}), title: row.title, authors: row.authors, doi: row.doi, abstract: row.abstract,
             publicationYear: row.publicationYear, journal: row.journal, citedByCount: row.citedByCount, workType: row.workType,
             authorsUnparsed: row.authorsUnparsed, isOpenAccess: row.isOpenAccess, oaStatus: row.oaStatus, oaUrl: row.oaUrl, pdfUrl: row.pdfUrl,
           }]

@@ -1,5 +1,6 @@
 import type { convexTest } from "convex-test";
 import type { Id } from "../../_generated/dataModel";
+import { paperOf } from "../../lib/paperRef.test-support";
 
 /**
  * Seed a full extraction job graph across active child tables.
@@ -67,7 +68,7 @@ export async function seedFullJobGraph(t: ReturnType<typeof convexTest>) {
 
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:test1",
+      ...paperOf("oa:test1"),
       title: "Test Paper",
       status: "completed" as const,
       processable: true,

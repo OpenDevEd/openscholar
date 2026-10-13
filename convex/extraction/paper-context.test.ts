@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { madeBy } from "../workspaces/actor.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 async function seedPaperContextFixture(t: ReturnType<typeof convexTest>) {
   return await t.run(async (ctx) => {
@@ -34,7 +35,7 @@ async function seedPaperContextFixture(t: ReturnType<typeof convexTest>) {
     });
     const paperId = await ctx.db.insert("extractionPapers", {
       jobId,
-      openalexId: "oa:paper-context",
+      ...paperOf("oa:paper-context"),
       title: "Paper Context",
       status: "extracting" as const,
       processable: true,
@@ -138,7 +139,7 @@ describe("paper extraction context", () => {
       });
       return await ctx.db.insert("extractionPapers", {
         jobId: otherJobId,
-        openalexId: "oa:other",
+        ...paperOf("oa:other"),
         title: "Other Paper",
         status: "pending" as const,
       });

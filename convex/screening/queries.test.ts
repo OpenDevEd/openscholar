@@ -4,6 +4,7 @@ import type { Id } from "../_generated/dataModel";
 import { api } from "../_generated/api";
 import schema from "../schema";
 import { countResult, insertJob } from "./createJob.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 function createScreeningTest() {
   const t = convexTest(schema);
@@ -80,7 +81,7 @@ async function seedScreeningResult(
   return await t.run(async (ctx) => {
     const resultId = await ctx.db.insert("screeningResults", {
       jobId,
-      openalexId: overrides.openalexId ?? "https://openalex.org/W123",
+      ...paperOf(overrides.openalexId ?? "https://openalex.org/W123"),
       title: overrides.title ?? "Test Paper",
       status: overrides.status ?? "completed",
       ...(overrides.answers !== undefined
@@ -233,7 +234,7 @@ describe("listScreeningResults", () => {
     await t.run(async (ctx) => {
       await ctx.db.insert("screeningResults", {
         jobId,
-        openalexId: "https://openalex.org/W999",
+        ...paperOf("https://openalex.org/W999"),
         title: "Failed Paper",
         status: "failed",
         createdAt: Date.now(),

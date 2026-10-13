@@ -22,6 +22,7 @@ import { JOBS_DOCKED } from "./validators";
 import { erroringOnAbortDoStream, finishingDoStream, hangingDoStream, pacedDeltasThenHangDoStream, waitFor } from "./turn.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
 import { accountOf } from "../billing/billing.test-support";
+import { paperOf } from "../lib/paperRef.test-support";
 
 const { mockDoStream, modelIdsSeen, fetchMock } = vi.hoisted(() => ({ mockDoStream: vi.fn(), modelIdsSeen: [] as unknown[], fetchMock: vi.fn() }));
 vi.stubGlobal("fetch", fetchMock);
@@ -902,7 +903,7 @@ describe("a job a reply started", () => {
     expect(await asAda.query(api.assistant.jobs.card, { threadId, stepId })).toMatchObject({ mine: true });
     // Starting, it isn't waiting; a paper of it in Ada's queue, behind her other papers, is.
     expect((await asAda.query(api.assistant.jobs.card, { threadId, stepId }))!.card).not.toHaveProperty("waiting");
-    const queued = await t.run(async (ctx) => ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", title: "Trial 1", status: "processing", waitingWorkspace: await personalWorkspaceOf(ctx, ada), createdAt: 1 }));
+    const queued = await t.run(async (ctx) => ctx.db.insert("screeningResults", { jobId, ...paperOf("https://openalex.org/W1"), title: "Trial 1", status: "processing", waitingWorkspace: await personalWorkspaceOf(ctx, ada), createdAt: 1 }));
     expect((await asAda.query(api.assistant.jobs.card, { threadId, stepId }))!.card).toMatchObject({ waiting: { done: 0, total: 0 } });
     await t.run((ctx) => ctx.db.delete("screeningResults", queued));
 

@@ -6,6 +6,7 @@ import schema from "../schema";
 import { setupScreeningWorkpool } from "./workpool.test-support";
 import { madeBy } from "../workspaces/actor.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
+import { paperOf } from "../lib/paperRef.test-support";
 
 // Each paper answered for 1 credit's worth of tokens.
 vi.mock("../../lib/ai/core/batch", () => ({
@@ -33,7 +34,7 @@ it("runs a request as one job under the one figure the person approved: one hold
     await seedCreditsForTest(ctx, { userId, free: 100 });
     const collectionId = await ctx.db.insert("collections", { ...(await madeBy(ctx, userId)), name: "Trials", sortName: ("Trials").toLowerCase(), itemCount: 2, createdAt: 1, updatedAt: 1 });
     for (const n of [1, 2]) {
-      const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), openalexId: `https://openalex.org/W${n}`, title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
+      const libraryItemId = await ctx.db.insert("libraryItems", { ...(await madeBy(ctx, userId)), ...paperOf(`https://openalex.org/W${n}`), title: `Trial ${n}`, authors: [], abstract: "An abstract.", searchableText: `Trial ${n}`, savedAt: n, updatedAt: 1 });
       await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId, assignedAt: n });
     }
     // The chat and the step of its reply that started the screening.

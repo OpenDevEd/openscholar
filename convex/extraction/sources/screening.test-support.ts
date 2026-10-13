@@ -7,6 +7,7 @@ import { insertJob } from "../../screening/createJob.test-support";
 import type { FunctionArgs } from "convex/server";
 import type { Id } from "../../_generated/dataModel";
 import { setupExtractionPaperWorkpool } from "../queue/workpool.test-support";
+import { paperOf } from "../../lib/paperRef.test-support";
 
 type Pick = FunctionArgs<typeof api.extraction.mutations.startJob>["sources"][number];
 type Upload = NonNullable<FunctionArgs<typeof api.extraction.mutations.startJob>["uploads"]>[number];
@@ -26,7 +27,7 @@ export async function screeningInputs(count = 2) {
     });
   });
   await insertMany(t, "screeningResults", Array.from({ length: count }, (_, i) => ({
-    jobId, openalexId: `https://openalex.org/W${i}`, title: `Study ${i}`, abstract: text(2_000, i), authors: ["Piper, B.", "ليلى"], publicationYear: 2024, venue: "Education Research", doi: `10.1234/${i}`, citedByCount: 0,
+    jobId, ...paperOf(`openalex:W${i}`), title: `Study ${i}`, abstract: text(2_000, i), authors: ["Piper, B.", "ليلى"], publicationYear: 2024, venue: "Education Research", doi: `10.1234/${i}`, citedByCount: 0,
     status: "completed", answers: { q1: true, q2: true }, score: 1, stars: 5, qualified: true, outcome: "included",
     counted: { qualified: true, outcome: "included", answers: { q1: true, q2: true } }, createdAt: 1,
   })), 100);

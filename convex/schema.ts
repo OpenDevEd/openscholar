@@ -928,7 +928,6 @@ export default defineSchema({
     .index("by_job_status", ["jobId", "status"])
     // A job's papers of one status from the earliest started; `by_job_status` reads them as they were added.
     .index("by_job_status_and_startedAt", ["jobId", "status", "startedAt"])
-    .index("by_openalex", ["openalexId"])
     .index("by_paperKey", ["paperKey"])
     .index("by_work", ["workId"])
     .index("by_status_completedAt", ["status", "completedAt"])
@@ -1133,8 +1132,6 @@ export default defineSchema({
   screeningResults: defineTable({
     ...sourceMetadataFields,
     jobId: v.id("screeningJobs"),
-    // The ID a paper was kept under before papers were named by their source: no longer written, and gone once migrations/paperIdentity:narrow has run.
-    openalexId: v.optional(v.string()),
     // The paper by its source (plans/evidence-library-sources).
     ...paperIdentityFields,
     title: v.string(),
@@ -1207,8 +1204,6 @@ export default defineSchema({
     errorMessage: v.optional(v.string()),
   })
     .index("by_job", ["jobId"])
-    .index("by_job_openalexId", ["jobId", "openalexId"])
-    .index("by_openalexId", ["openalexId"])
     .index("by_job_paperKey", ["jobId", "paperKey"])
     .index("by_paperKey", ["paperKey"])
     // A job's papers of one outcome, in the order the job took them.
@@ -1258,7 +1253,6 @@ export default defineSchema({
   // ═══════════════════════════════════════════════════════════════
   libraryItems: defineTable(libraryItemFields)
     .index("by_workspace", ["workspaceId"])
-    .index("by_workspace_openalexId", ["workspaceId", "openalexId"])
     .index("by_workspace_paperKey", ["workspaceId", "paperKey"])
     .index("by_workspace_rating", ["workspaceId", "rating"])
     .index("by_workspace_savedAt", ["workspaceId", "savedAt"])

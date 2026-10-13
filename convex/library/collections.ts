@@ -22,7 +22,6 @@ import { countOf } from "../lib/listCounts";
 import { guestRole, itemGuestsOf } from "../sharing/items";
 import { guestRoleValidator, sharedFromValidator } from "../sharing/validators";
 import { workspaceFrom } from "../workspaces/personal";
-import { paperKeyOf } from "../../lib/papers/paper-ref";
 
 /** Most collections one page holds. */
 const COLLECTIONS_PAGE_MAX = 50;
@@ -192,7 +191,7 @@ export const setCollectionRatingAction = defineUserMutation({
     const item = await ctx.db.get("libraryItems", libraryItemId);
     const place = item && (await placeOf(ctx, collectionId, libraryItemId));
     if (!item || !place) throw createError("NOT_FOUND", "This paper isn't in the collection.");
-    const was = (await collectionRatingRow(ctx, userId, collectionId, paperKeyOf(item)))?.rating ?? null;
+    const was = (await collectionRatingRow(ctx, userId, collectionId, item.paperKey))?.rating ?? null;
     if (expect !== undefined && was !== expect) throw createError("CONFLICT", "This rating has changed since then, so it was left as it is.");
     if (was === rating) return {};
     await setRating(ctx, userId, place, item, rating);
@@ -219,7 +218,7 @@ export const ratersAction = defineUserQuery({
       const workspace = await ctx.db.get("workspaces", workspaceId);
       // Every member's rating comes in the first page, read from the members and not from everyone who rated the paper: asked for past it, there is no more.
       if (workspace?.kind !== "organization" || paginationOpts.cursor !== null) return { page: [], isDone: true, continueCursor: "" };
-      return { page: (await everyRater(ctx, workspace.organizationId, paperKeyOf(item), userId)).map(shownRater), isDone: true, continueCursor: "" };
+      return { page: (await everyRater(ctx, workspace.organizationId, item.paperKey, userId)).map(shownRater), isDone: true, continueCursor: "" };
     }
     const collection = await ctx.db.get("collections", collectionId);
     // Its workspace's members read them, and so does a guest of it, from their own workspace.
@@ -229,7 +228,7 @@ export const ratersAction = defineUserQuery({
     if (!item || item.workspaceId !== collection.workspaceId || !(await placeOf(ctx, collectionId, libraryItemId))) throw createError("NOT_FOUND", "This paper isn't in the collection.");
     const organizationId = await organizationOfCollection(ctx, collectionId);
     if (!organizationId) return { page: [], isDone: true, continueCursor: "" };
-    const read = await collectionRatingsOf(ctx, collectionId, paperKeyOf(item)).paginate(paginationOpts);
+    const read = await collectionRatingsOf(ctx, collectionId, item.paperKey).paginate(paginationOpts);
     return { ...read, page: (await asRaters(ctx, organizationId, read.page, userId)).map(shownRater) };
   },
 });
