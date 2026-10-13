@@ -110,6 +110,9 @@ it("tells the writer each publication's study type and whether it is open access
   expect((JSON.parse(supplied) as {publications: {key: string; studyType?: string; openAccess?: boolean}[]}).publications.map(entry => [entry.key, entry.studyType ?? null, entry.openAccess ?? null])).toEqual([
     ["ABCD2345", "rct", true], ["BBBB2345", "systematic-review", false], ["CCCC2345", null, null],
   ]);
+  // The reviewer sees the same study type, so a design the digest names from it is not flagged.
+  const reviewed = (sent.reviewer[0].messages as {role: string; content: string}[]).find(message => message.role === "user")!.content;
+  expect((JSON.parse(reviewed) as {records: {key: string; studyType?: string}[]}).records).toMatchObject([{key: "ABCD2345", studyType: "rct"}]);
   const response = await request({publications});
   expect(response.status).toBe(200);
   expect(await response.json()).toEqual({digest: expect.not.objectContaining({kinds: expect.anything()})});

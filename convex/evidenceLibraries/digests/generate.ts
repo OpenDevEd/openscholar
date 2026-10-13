@@ -17,7 +17,7 @@ Sources
 Reader
 - Write for a researcher who reads this in a hurry and may work in another field. Say what was studied, where, and what was found, in plain words.
 - The body is 900 to 1,400 words, which that reader finishes in five minutes. Choose the publications that tell them most and leave the others to the edition's list. Give a study one or two sentences, not every figure its record reports.
-- Leave out the name of a method, model, dataset or instrument, and any acronym, unless the finding cannot be understood without it. When you keep one, say what it is in a few words.
+- Leave out the name of a method, model, dataset or instrument, and any acronym, unless the finding cannot be understood without it. When you keep one, say what it is in a few words. A study's design, such as a randomised trial or a survey, is not such a name: always give it, as below.
 
 Shape
 - Give the edition a specific short title, a summary of one or two sentences, and a Markdown body with a heading for each section.
