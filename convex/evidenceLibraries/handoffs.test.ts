@@ -60,7 +60,7 @@ it("hands records over with their questions, read as whoever opens them, until a
   }));
   const reader = t.withIdentity({ subject: "user_reader" });
   const workspaceId = await reader.query(api.workspaces.queries.personal, {});
-  const opened = await reader.action(api.evidenceLibraries.handoffs.open, { workspaceId: workspaceId!, handoffId });
+  const opened = await reader.action(api.evidenceLibraries.handoffs.open, { workspaceId: workspaceId!, handoffId, records: true });
   expect(opened).toMatchObject({
     from: "smartScreening",
     fields: handoff.fields,
@@ -69,6 +69,17 @@ it("hands records over with their questions, read as whoever opens them, until a
   });
   // Read as the person who opened it, not the one who made it.
   expect(asked.filter((call) => call.path === "/api/v1/openscholar/sources/resolve").map((call) => call.body.reader)).toEqual(["user_reader", "user_reader"]);
+  // The screening form asks for the source alone, and a list the library can't give still leaves the hand-off to start from.
+  asked.length = 0;
+  expect(await reader.action(api.evidenceLibraries.handoffs.open, { workspaceId: workspaceId!, handoffId })).toMatchObject({ found: { row: { records: 1 } }, records: null });
+  expect(asked.map((call) => call.path)).toEqual(["/api/v1/openscholar/sources/resolve"]);
+  vi.stubGlobal("fetch", vi.fn(async (input: string | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body ?? "{}"));
+    if (new URL(String(input)).pathname === "/api/v1/openscholar/sources/resolve") return Response.json({ keys: ["BBBBBBBB"].slice(body.first - 1, body.last), total: 1, truncated: false });
+    return new Response("Bad gateway", { status: 502 });
+  }));
+  expect(await reader.action(api.evidenceLibraries.handoffs.open, { workspaceId: workspaceId!, handoffId, records: true })).toMatchObject({ found: { row: { records: 1 } }, records: null });
+
   // The library is now one they read.
   expect((await reader.query(api.evidenceLibraries.readers.list, {})).map((library) => [library.libraryId, library.ways])).toEqual([[libraryId, ["handoff"]]]);
 

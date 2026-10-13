@@ -17,6 +17,6 @@ export default async function FromLibraryPage({ params }: { params: Promise<{ id
     return await fetchQuery(api.workspaces.queries.personal, {}, { token });
   };
   const workspaceId = token ? await (slug ? fetchQuery(api.workspaces.queries.bySlug, { slug }, { token }) : own()) : null;
-  const opened = workspaceId ? await fetchAction(api.evidenceLibraries.handoffs.open, { workspaceId, handoffId: id }, { token }) : ({ gone: true } as const);
+  const opened = workspaceId ? await fetchAction(api.evidenceLibraries.handoffs.open, { workspaceId, handoffId: id, records: true }, { token }) : ({ gone: true } as const);
   return <FromLibrary handoffId={id} opened={opened} />;
 }

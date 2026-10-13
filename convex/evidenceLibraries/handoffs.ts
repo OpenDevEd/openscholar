@@ -56,24 +56,27 @@ const openedValidator = v.union(
     from: handoffFromValidator,
     fields: evidenceLibraryHandoffFields.fields,
     found: describedValidator,
-    /** The records it named, when it named them one by one and the person may read its source. */
+    /** The records it named, when asked for, it named them one by one, and the library listed them for the person. */
     records: v.union(handoffRecordsValidator, v.null()),
   }),
 );
 
 export const openAction = defineUserAction({
   path: "evidenceLibraries/handoffs:open",
-  description: "A hand-off a library made, as the person opening it may read its source, with the questions it brought; `gone` once it has expired.",
-  args: { handoffId: v.string() },
+  description:
+    "A hand-off a library made, as the person opening it may read its source, with the questions it brought; `gone` once it has expired. " +
+    "With `records`, a hand-off of records lists them (title, authors, year).",
+  args: { handoffId: v.string(), records: v.optional(v.boolean()) },
   returns: openedValidator,
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, { userId }, { handoffId }): Promise<Infer<typeof openedValidator>> => {
+  run: async (ctx, { userId }, { handoffId, records: listing }): Promise<Infer<typeof openedValidator>> => {
     const handoff: Omit<Doc<"evidenceLibraryHandoffs">, "_id" | "_creationTime" | "expiresAt"> | null = await ctx.runMutation(internal.evidenceLibraries.handoffs.opened, { handoffId, userId });
     if (!handoff) return { gone: true };
     const found = await described(ctx, userId, handoff.libraryId, handoff.source);
-    const records = "row" in found && "records" in handoff.source ? await ctx.runAction(internal.evidenceLibraries.sourceActions.listed, { libraryId: handoff.libraryId, userId, keys: handoff.source.records }) : null;
+    // A list the library couldn't give leaves the hand-off as it is, to screen or extract from (the failure is logged where it's read).
+    const records = listing && "row" in found && "records" in handoff.source ? await ctx.runAction(internal.evidenceLibraries.sourceActions.listed, { libraryId: handoff.libraryId, userId, keys: handoff.source.records }).catch(() => null) : null;
     return { from: handoff.from, fields: handoff.fields, found, records };
   },
 });
