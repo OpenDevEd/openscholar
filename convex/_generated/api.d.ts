@@ -150,6 +150,7 @@ import type * as evidenceLibraries_publicationValidators from "../evidenceLibrar
 import type * as evidenceLibraries_queries from "../evidenceLibraries/queries.js";
 import type * as evidenceLibraries_readerDeletionActions from "../evidenceLibraries/readerDeletionActions.js";
 import type * as evidenceLibraries_readerDeletions from "../evidenceLibraries/readerDeletions.js";
+import type * as evidenceLibraries_readers from "../evidenceLibraries/readers.js";
 import type * as evidenceLibraries_readinessClient from "../evidenceLibraries/readinessClient.js";
 import type * as evidenceLibraries_readinessSetup from "../evidenceLibraries/readinessSetup.js";
 import type * as evidenceLibraries_readinessSetupActions from "../evidenceLibraries/readinessSetupActions.js";
@@ -594,6 +595,7 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/queries": typeof evidenceLibraries_queries;
   "evidenceLibraries/readerDeletionActions": typeof evidenceLibraries_readerDeletionActions;
   "evidenceLibraries/readerDeletions": typeof evidenceLibraries_readerDeletions;
+  "evidenceLibraries/readers": typeof evidenceLibraries_readers;
   "evidenceLibraries/readinessClient": typeof evidenceLibraries_readinessClient;
   "evidenceLibraries/readinessSetup": typeof evidenceLibraries_readinessSetup;
   "evidenceLibraries/readinessSetupActions": typeof evidenceLibraries_readinessSetupActions;

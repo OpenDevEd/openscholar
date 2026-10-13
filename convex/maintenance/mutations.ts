@@ -8,6 +8,7 @@ import { purgeSpending } from "../assistant/spending";
 import { purgeFiles } from "../assistant/files";
 import { dropWorkspace, purgeWorkspace } from "../workspaces/purge";
 import { purgeRatings } from "../ratings";
+import { purgeReaders } from "../evidenceLibraries/readers";
 import { purgeGrants } from "../sharing/upkeep";
 
 // Retention period for deleted users (30 days)
@@ -95,6 +96,11 @@ export const cleanupDeletedUsers = internalMutation({
         }
         // Their ratings are theirs alone: their own, and the ones they gave in collections.
         if (!(await purgeRatings(ctx, user._id))) {
+          deferred = true;
+          continue; // Skip user delete, process on next run
+        }
+        // The Evidence Libraries they read.
+        if (!(await purgeReaders(ctx, user._id))) {
           deferred = true;
           continue; // Skip user delete, process on next run
         }

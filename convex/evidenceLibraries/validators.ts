@@ -1195,3 +1195,15 @@ export const assistantEditResultValidator = v.object({
   problems: draftProblemsValidator,
   undo: v.optional(v.object({ path: v.literal("evidenceLibraries/assistant:editDraft"), args: v.object({ libraryId: v.id("evidenceLibraries"), changes: draftChangesValidator, unchanged: v.string() }) })),
 });
+
+/** How a library became one of a person's: they signed in to it, or opened a hand-off from it (./readers.ts). */
+export const readerWayValidator = v.union(v.literal("signIn"), v.literal("handoff"));
+
+export const evidenceLibraryReaderFields = {
+  libraryId: v.id("evidenceLibraries"),
+  userId: v.id("users"),
+  /** The last way the library became theirs here. */
+  via: readerWayValidator,
+  firstAt: v.number(),
+  lastAt: v.number(),
+};

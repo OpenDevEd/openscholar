@@ -51,6 +51,7 @@ import {
   organizationFields,
   organizationMembershipFields,
   organizationInvitationFields,
+  evidenceLibraryReaderFields,
 } from "./evidenceLibraries/validators";
 import { evidenceLibraryZoteroGroupFields } from "./zotero/libraryGroupValidators";
 import { evidenceLibraryCollectionSourceFields } from "./evidenceLibraries/collectionSourceValidators";
@@ -320,6 +321,15 @@ export default defineSchema({
   // One row per library: its Clerk OAuth application.
   evidenceLibraryOAuthClients: defineTable(evidenceLibraryOAuthClientFields)
     .index("by_libraryId", ["libraryId"]),
+
+  // The Evidence Libraries a person reads (./evidenceLibraries/readers.ts).
+  evidenceLibraryReaders: defineTable(evidenceLibraryReaderFields)
+    .index("by_library_and_user", ["libraryId", "userId"])
+    .index("by_user_and_lastAt", ["userId", "lastAt"]),
+
+  // The record keys a job reads from an Evidence Library, kept when it starts, a page each (./paperSets/libraryKeys.ts).
+  paperSetKeys: defineTable({ job: v.union(v.id("screeningJobs"), v.id("extractionJobs")), page: v.number(), keys: v.array(v.string()) })
+    .index("by_job_and_page", ["job", "page"]),
 
   // Reader data a library still has to drop for a deleted OpenScholar account.
   evidenceLibraryReaderDeletions: defineTable(evidenceLibraryReaderDeletionFields)
