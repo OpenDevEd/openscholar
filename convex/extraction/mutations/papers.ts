@@ -109,8 +109,7 @@ export const createPaperRecords = internalMutation({
       // Without full texts, a paper with nothing to read isn't saved at all.
       const kept = pdfEnabled || processable;
       const keys = dedupeKeysOf(paper);
-      const dedupeKey = keys[0];
-      if (!dedupeKey) throw new Error("A job's paper needs an OpenAlex ID, a DOI or a title");
+      if (!keys.length) throw new Error("A job's paper needs an OpenAlex ID, a DOI or a title");
       const existing = await sameIn(ctx, args.jobId, keys);
       if (existing) {
         // Only a screening's copy takes the place of another source's, before either has run.
@@ -128,7 +127,7 @@ export const createPaperRecords = internalMutation({
         continue;
       }
       if (!kept) continue;
-      const paperId = await ctx.db.insert("extractionPapers", { ...paperFields(paper, sanitizedStorageId, processable), jobId: args.jobId, dedupeKey, status: "pending" });
+      const paperId = await ctx.db.insert("extractionPapers", { ...paperFields(paper, sanitizedStorageId, processable), jobId: args.jobId, status: "pending" });
       paperIds.push(paperId);
       papers += 1;
       if (processable) processableCount += 1;
@@ -146,6 +145,7 @@ export const createPaperRecords = internalMutation({
 });
 
 /** Papers of a job that share one identifier read at most: past a few, a shared title is several papers. */
+// ponytail: a paper shares a title and year with more than five others whose stronger identifiers differ from its own only in a pathological job; it is then read twice.
 const SAME_KEY_READ = 5;
 
 /** The job's paper this one is, found by any identifier they share and agreed by the strongest both have (lib/bucket/dedupe.ts). */
@@ -166,6 +166,8 @@ async function sameIn(ctx: MutationCtx, jobId: Id<"extractionJobs">, keys: strin
 function paperFields(paper: Infer<typeof setupPaperValidator>, storageId: Id<"_storage"> | undefined, processable: boolean) {
   const keys = dedupeKeysOf(paper);
   return {
+    // A screening's copy that takes another's place may know the paper better: its identifiers move with it.
+    dedupeKey: keys[0],
     doiKey: keys.find((key) => key.startsWith("doi:")),
     titleKey: keys.find((key) => key.startsWith("title:")),
     ...sourceMetadata(paper),

@@ -10,6 +10,7 @@ import { internal } from "../_generated/api";
 import { internalMutation, internalQuery } from "../lib/functions";
 import { LIBRARY_SOURCE_MAX } from "../../lib/evidence-libraries/source-address";
 import { MAX_LIST_CAP } from "../lib/listCaps";
+import { TERMINAL_JOB_STATUSES, type JobStatus } from "../extraction/stateMachine";
 
 /** Keys a page holds: a page is a few kilobytes. */
 const KEYS_PAGE = MAX_LIST_CAP;
@@ -44,11 +45,30 @@ export const drop = internalMutation({
   },
 });
 
-/** Keeps an extraction source's keys as its setup first reads it (../extraction/actions.ts), and says how many it keeps. */
+/** Whether an extraction's setup run `epoch` is still the one going on: a job stopped, ended or set off again since has another. */
+async function runGoesOn(ctx: MutationCtx, job: Id<"extractionJobs">, epoch: number) {
+  const row = await ctx.db.get("extractionJobs", job);
+  return row !== null && (row.runEpoch ?? 0) === epoch && !TERMINAL_JOB_STATUSES.has(row.status as JobStatus);
+}
+
+/** Drops an extraction's keys once its setup run `epoch` has read them, or failed: never the keys of a run that took its place. */
+export const dropRun = internalMutation({
+  args: { job: v.id("extractionJobs"), epoch: v.number() },
+  returns: v.null(),
+  handler: async (ctx, { job, epoch }) => {
+    const row = await ctx.db.get("extractionJobs", job);
+    if (row && (row.runEpoch ?? 0) !== epoch) return null;
+    if (!(await dropKeys(ctx, job))) await ctx.scheduler.runAfter(0, internal.paperSets.libraryKeys.drop, { job });
+    return null;
+  },
+});
+
+/** Keeps an extraction source's keys as its setup run `epoch` first reads it (../extraction/actions.ts), and says how many it keeps: none for a run that has stopped since. */
 export const keep = internalMutation({
-  args: { job: v.id("extractionJobs"), part: v.number(), keys: v.array(v.string()) },
+  args: { job: v.id("extractionJobs"), epoch: v.number(), part: v.number(), keys: v.array(v.string()) },
   returns: v.number(),
-  handler: async (ctx, { job, part, keys }) => {
+  handler: async (ctx, { job, epoch, part, keys }) => {
+    if (!(await runGoesOn(ctx, job, epoch))) return 0;
     // A step tried again keeps the keys the first try kept: at most LIBRARY_SOURCE_MAX of them, a few pages.
     const kept = await ctx.db.query("paperSetKeys").withIndex("by_job_and_part_and_page", (q) => q.eq("job", job).eq("part", part)).take(KEYS_PAGES);
     if (kept.length) return kept.reduce((sum, page) => sum + page.keys.length, 0);

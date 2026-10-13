@@ -204,19 +204,19 @@ export const describe = internalAction({
     const target = await libraryTarget(ctx, libraryId);
     const reader = await readerOf(ctx, userId);
     try {
+      // What the library finds for the source now, as the person may read it: a library too old to be read here says so.
+      const found = await resolveLibrarySource(fetch, target, { reader, source, first: 1, last: 1 });
       if ("library" in source || "libraryCollection" in source) {
-        const overview = await readLibraryOverview(fetch, target);
-        if ("library" in source) return { row: { libraryId, source, what: "all", label: target.name, records: overview.records } };
-        const collection = overview.collections.find((one) => one.key === source.libraryCollection);
+        if ("library" in source) return { row: { libraryId, source, what: "all", label: target.name, records: found.total } };
+        const { collections } = await readLibraryOverview(fetch, target);
+        const collection = collections.find((one) => one.key === source.libraryCollection);
         if (!collection) return { error: "notFound" };
-        const parent = overview.collections.find((one) => one.key === collection.parent)?.name;
-        return { row: { libraryId, source, what: "library", label: collection.name, records: collection.records, ...(parent ? { parent } : {}) } };
+        const parent = collections.find((one) => one.key === collection.parent)?.name;
+        return { row: { libraryId, source, what: "library", label: collection.name, records: found.total, ...(parent ? { parent } : {}) } };
       }
       // A reader's collection the person may read, theirs or not: the library refuses a private one they aren't in.
       const collection = "readerCollection" in source && source.readerCollection ? await readLibraryCollection(fetch, target, source.readerCollection, reader) : null;
-      if (collection && !("search" in source)) return { row: readerRow(libraryId, collection, collection.access === "owner" ? "yours" : collection.access ? "shared" : "other") };
-      // A search, in the library or in a reader's collection, and records: what the library finds for them now.
-      const found = await resolveLibrarySource(fetch, target, { reader, source, first: 1, last: 1 });
+      if (collection && !("search" in source)) return { row: { ...readerRow(libraryId, collection, collection.access === "owner" ? "yours" : collection.access ? "shared" : "other"), records: found.total } };
       if ("records" in source) {
         const [record] = found.total ? await readLibraryRecords(fetch, target, found.keys) : [];
         return record ? { row: { libraryId, source, what: "records", label: record.title || record.key, records: found.total } } : { error: "notFound" };

@@ -32,7 +32,8 @@ function searchOf(params: URLSearchParams) {
   return kept;
 }
 
-const hasResults = (params: URLSearchParams) => RESULT_PARAMS.some((name) => params.get(name));
+/** Whether the page's address picks or orders its records: a sort alone is a search, so its order is kept. */
+const isSearch = (params: URLSearchParams) => KEPT_PARAMS.some((name) => params.get(name));
 
 export function parseSourceAddress(address: string): SourceAddress {
   let url: URL;
@@ -52,15 +53,15 @@ export function parseSourceAddress(address: string): SourceAddress {
   }
   if ((parts[0] === "lib" && parts.length === 1) || parts.length === 0) {
     const collections = search.getAll("collections").flatMap((value) => value.split(",")).filter(Boolean);
-    const onlyCollection = collections.length === 1 && RESULT_PARAMS.every((name) => name === "collections" || !search.get(name));
+    const onlyCollection = collections.length === 1 && KEPT_PARAMS.every((name) => name === "collections" || !search.get(name));
     if (onlyCollection) return { origin, source: { libraryCollection: collections[0]! } };
-    return hasResults(search) ? { origin, source: { search: search.toString() } } : { origin, source: { library: true } };
+    return isSearch(search) ? { origin, source: { search: search.toString() } } : { origin, source: { library: true } };
   }
   if (parts[0] === "profile" && parts.length === 2) {
     const collectionId = url.searchParams.get("collectionId");
     // A reader's bookmarks are theirs alone.
     if (!collectionId) return { error: "profile" };
-    return hasResults(search) ? { origin, source: { search: search.toString(), readerCollection: collectionId } } : { origin, source: { readerCollection: collectionId } };
+    return isSearch(search) ? { origin, source: { search: search.toString(), readerCollection: collectionId } } : { origin, source: { readerCollection: collectionId } };
   }
   return { error: "unknownPage" };
 }

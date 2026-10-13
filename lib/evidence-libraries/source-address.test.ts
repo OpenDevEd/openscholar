@@ -9,7 +9,10 @@ describe("a pasted library address as a source", () => {
     });
     expect(parseSourceAddress("aied.example.org/lib")).toEqual({ origin: "https://aied.example.org", source: { library: true } });
     expect(parseSourceAddress("https://aied.example.org/")).toEqual({ origin: "https://aied.example.org", source: { library: true } });
-    expect(parseSourceAddress("https://aied.example.org/lib?collections=ABCD1234&sort=asc")).toEqual({ origin: "https://aied.example.org", source: { libraryCollection: "ABCD1234" } });
+    expect(parseSourceAddress("https://aied.example.org/lib?collections=ABCD1234")).toEqual({ origin: "https://aied.example.org", source: { libraryCollection: "ABCD1234" } });
+    // An order is kept: taking the first N takes the ones the page showed first.
+    expect(parseSourceAddress("https://aied.example.org/lib?collections=ABCD1234&sort=asc")).toEqual({ origin: "https://aied.example.org", source: { search: "collections=ABCD1234&sort=asc" } });
+    expect(parseSourceAddress("https://aied.example.org/lib?sort=desc")).toEqual({ origin: "https://aied.example.org", source: { search: "sort=desc" } });
     // Two collections, or a collection with words, are a search.
     expect(parseSourceAddress("https://aied.example.org/lib?collections=ABCD1234,EFGH5678")).toMatchObject({ source: { search: "collections=ABCD1234%2CEFGH5678" } });
   });

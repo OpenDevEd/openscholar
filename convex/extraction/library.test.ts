@@ -88,3 +88,42 @@ it("saves a library record once when another source brings the same paper, match
   expect(papers.map((paper) => paper.paperKey).sort()).toEqual(["library:r1:BBBBBBBB", "openalex:W1"]);
   expect((await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))?.setup).toMatchObject({ papers: 2, processable: 2 });
 });
+
+it("keeps and drops a library source's keys only for the setup run going on", async () => {
+  const t = convexTest(schema);
+  const job = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "runs", email: "runs@test", state: "active", createdAt: 1, updatedAt: 1 });
+    return await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Runs", status: "pending", runEpoch: 1, setup: { position: 0, read: 0, papers: 0, processable: 0 }, createdAt: 1, updatedAt: 1 });
+  });
+  const kept = () => t.run((ctx) => ctx.db.query("paperSetKeys").collect());
+  // A run that was paused and set off again since keeps nothing, and its failure leaves the new run's keys alone.
+  expect(await t.mutation(internal.paperSets.libraryKeys.keep, { job, epoch: 0, part: 0, keys: ["AAAAAAAA"] })).toBe(0);
+  expect(await t.mutation(internal.paperSets.libraryKeys.keep, { job, epoch: 1, part: 0, keys: ["BBBBBBBB"] })).toBe(1);
+  await t.mutation(internal.paperSets.libraryKeys.dropRun, { job, epoch: 0 });
+  expect((await kept()).map((page) => page.keys)).toEqual([["BBBBBBBB"]]);
+  // A job stopped while the library answered keeps nothing either.
+  await t.run((ctx) => ctx.db.patch("extractionJobs", job, { status: "cancelled" }));
+  expect(await t.mutation(internal.paperSets.libraryKeys.keep, { job, epoch: 1, part: 1, keys: ["CCCCCCCC"] })).toBe(0);
+  await t.mutation(internal.paperSets.libraryKeys.dropRun, { job, epoch: 1 });
+  expect(await kept()).toEqual([]);
+});
+
+it("a screening's copy that takes a paper's place brings its identifiers, so a later copy finds it by them", async () => {
+  const t = convexTest(schema);
+  const jobId = await t.run(async (ctx) => {
+    const userId = await ctx.db.insert("users", { clerkId: "moved", email: "moved@test", state: "active", createdAt: 1, updatedAt: 1 });
+    await ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: false, updatedAt: 1 });
+    return await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Moved", status: "pending", runEpoch: 0, setup: { position: 0, read: 0, papers: 0, processable: 0 }, createdAt: 1, updatedAt: 1 });
+  });
+  const abstract = "A long enough abstract for the paper to be read from it, about tutoring in primary schools.";
+  const step = async (papers: object[]) => {
+    const { setup } = (await t.run((ctx) => ctx.db.get("extractionJobs", jobId)))!;
+    await t.mutation(internal.extraction.mutations.papers.createPaperRecords, { jobId, papers: papers as never, setup: { expectedEpoch: 0, next: { ...setup!, position: setup!.position + 1 } } });
+  };
+  await step([{ paper: "library:r1:AAAAAAAA", crossRefs: { doi: "10.1/abc" }, doi: "10.1/abc", title: "Tutoring at scale", publicationYear: 2021, abstract, sourceType: "evidenceLibrary", sourceId: "r1" }]);
+  await step([{ paper: "library:r1:AAAAAAAA", crossRefs: { openalexId: "W1", doi: "10.1/abc" }, doi: "10.1/abc", title: "Tutoring at scale", publicationYear: 2021, abstract, sourceType: "screening", sourceId: "job", screeningRevision: "r1" }]);
+  // OpenAlex's copy, under another title and with no DOI, is the same paper.
+  await step([{ paper: "openalex:W1", title: "Tutoring at Scale: a trial", publicationYear: 2021, abstract, sourceType: "history", sourceId: "s" }]);
+  const papers = await t.run((ctx) => ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
+  expect(papers.map((paper) => [paper.paperKey, paper.sourceType])).toEqual([["library:r1:AAAAAAAA", "screening"]]);
+});

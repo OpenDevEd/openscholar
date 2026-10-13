@@ -261,7 +261,7 @@ async function readStep(ctx: ActionCtx, job: Doc<"extractionJobs">, clerkId: str
     // The library turns the source into keys on the first step, as the job's person may read it, and the job reads those and no others; `resume` holds how many it kept.
     if (place.resume === undefined) {
       const resolved: { keys: string[] } = await ctx.runAction(internal.evidenceLibraries.sourceActions.resolve, { libraryId: range.libraryId, userId: job.createdBy, source: range.source, first: range.first, last: range.last });
-      const kept: number = await ctx.runMutation(internal.paperSets.libraryKeys.keep, { job: job._id, part: position, keys: resolved.keys.slice(0, range.last - range.first + 1) });
+      const kept: number = await ctx.runMutation(internal.paperSets.libraryKeys.keep, { job: job._id, epoch: job.runEpoch ?? 0, part: position, keys: resolved.keys.slice(0, range.last - range.first + 1) });
       return { papers: [], next: kept ? { ...place, resume: String(kept) } : onTo(position + 1) };
     }
     const kept = Number(place.resume);
@@ -340,7 +340,7 @@ export async function runSetupExtractionQueueJob(
       place = control.job.setup;
     }
     // Every source read, the keys an Evidence Library gave for its records go.
-    await ctx.runMutation(internal.paperSets.libraryKeys.drop, { job: jobId });
+    await ctx.runMutation(internal.paperSets.libraryKeys.dropRun, { job: jobId, epoch: expectedEpoch });
 
     await ctx.runMutation(
       internal.extraction.mutations.results.updateJobStatus,
@@ -387,7 +387,7 @@ export async function runSetupExtractionQueueJob(
     });
   } catch (error) {
     const classified = classifyUnknownError(error);
-    await ctx.runMutation(internal.paperSets.libraryKeys.drop, { job: jobId });
+    await ctx.runMutation(internal.paperSets.libraryKeys.dropRun, { job: jobId, epoch: expectedEpoch });
     await ctx.runMutation(
       internal.extraction.mutations.results.updateJobStatus,
       {

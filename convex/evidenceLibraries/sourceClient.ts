@@ -121,24 +121,15 @@ export async function readLibraryCollection(fetchImpl: typeof fetch, target: Lib
   return await call(fetchImpl, target, `/api/v1/openscholar/collections/${encodeURIComponent(id)}`, collectionSchema, { params: { reader: reader ?? undefined } });
 }
 
-const publicCountSchema = z.object({ totalItems: z.number().int().min(0) });
-const publicCollectionsSchema = z.object({
-  collections: z.array(z.object({ key: z.string(), name: z.string().nullable(), title: z.string().nullish(), numItems: z.number().nullable(), parentCollection: z.string().nullable(), deleted: z.number().nullish() })),
+const overviewSchema = z.object({
+  records: z.number().int().min(0),
+  collections: z.array(z.object({ key: z.string(), name: z.string(), parent: z.string().nullable(), records: z.number().int().min(0) })),
 });
-/** A collection the library keeps of its own, as its public pages list it. */
-export type LibraryOwnCollection = { key: string; name: string; records: number; parent: string | null };
 
-/** How many records the library shows, and its own collections by name, as its public API lists them. */
+/** How many public records the library holds, and its own collections by name, each with the records resolving it reads. */
 export async function readLibraryOverview(fetchImpl: typeof fetch, target: LibraryTarget, timeoutMs?: number) {
-  const [items, listed] = await Promise.all([
-    call(fetchImpl, target, "/api/items", publicCountSchema, { params: { page: "1", perPage: "1" }, timeoutMs }),
-    call(fetchImpl, target, "/api/collections", publicCollectionsSchema, { timeoutMs }),
-  ]);
-  const collections = listed.collections
-    .filter((collection) => !collection.deleted)
-    .map((collection): LibraryOwnCollection => ({ key: collection.key, name: collection.title || collection.name || collection.key, records: collection.numItems ?? 0, parent: collection.parentCollection }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-  return { records: items.totalItems, collections };
+  const overview = await call(fetchImpl, target, "/api/v1/openscholar/library", overviewSchema, { timeoutMs });
+  return { ...overview, collections: overview.collections.toSorted((a, b) => a.name.localeCompare(b.name)) };
 }
 
 /** A page of the OpenScholar accounts that signed in to the library. */

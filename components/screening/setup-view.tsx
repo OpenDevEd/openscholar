@@ -36,6 +36,7 @@ import { ANSWER, Chip, ClippedChip, SOURCE_ICON } from "./parts";
 import { PaperScope, PickMark, SourceRow } from "./source-row";
 import { LibrarySources, useLibrarySources } from "./library-sources";
 import useSWR from "swr";
+import { useAuth } from "@clerk/nextjs";
 import { LIBRARY_SOURCE_MAX } from "@/lib/evidence-libraries/source-address";
 import { isFrozen, rowKey, setOfRow, type HeldRow, type LibraryRow } from "@/lib/evidence-libraries/reader-sources";
 import { CreditCheck, useSpendable } from "@/components/workspaces/credit-check";
@@ -113,7 +114,8 @@ export function SetupView({
   // A library screening run again starts on its source as the library holds it now.
   const againLibrary = again?.set?.kind === "evidenceLibrary" ? again.set : null;
   const describe = useWorkspaceAction(api.evidenceLibraries.library.source);
-  const ranBefore = useSWR(againLibrary ? ["library-source", againLibrary.libraryId, JSON.stringify(againLibrary.source)] : null, () => describe({ libraryId: againLibrary!.libraryId, source: againLibrary!.source }), { revalidateOnFocus: false });
+  const { userId } = useAuth();
+  const ranBefore = useSWR(againLibrary && userId ? ["library-source", userId, againLibrary.libraryId, JSON.stringify(againLibrary.source)] : null, () => describe({ libraryId: againLibrary!.libraryId, source: againLibrary!.source }), { revalidateOnFocus: false });
   const againHeld = ranBefore.data && "row" in ranBefore.data ? ranBefore.data : null;
   const libraries = useLibrarySources(againHeld ? [againHeld] : []);
   // Until one is picked, the form starts on your first collection in the library shown: a whole library is too many to start on.

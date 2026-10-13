@@ -124,8 +124,9 @@ as whoever opens it), and records the library for that person when they open it.
 | `GET /api/v1/openscholar/readers?cursor=` | `{readers: [clerkUserId], next}`: once per library, to learn the readers who signed in before this shipped |
 | `GET /api/v1/openscholar/readers/<clerkUserId>/collections?list=own\|shared&page=&pageSize=` | `{rows: [{id, name, description, private, access: owner\|editor\|viewer, owner: {name, image}, count, updatedAt}], page, pages, total}`: their own (private ones too) or the ones shared with them, as the profile column orders them, up to 100 a page |
 | `GET /api/v1/openscholar/collections/<id>?reader=` | one reader collection by ID as that person may see it (`403 private`, `404 not_found`) |
-| `POST /api/v1/openscholar/sources/resolve` `{reader, source, first, last}` | `{keys, total, truncated}`: records `first` to `last` (from 1) of a source as the person may read it, in the source's order, at most 20,000. `source` is `{readerCollection}`, `{libraryCollection}`, `{library: true}`, `{search, readerCollection?}` (the search page's query string, resolved by `readSearchKeys` in its sort) or `{records}`. `409 index_changed` asks again |
-| `POST /api/v1/openscholar/records/batch` `{keys}` | `{records: [Record], unread}`, at most 500 keys and 4 MB; missing keys left out, `unread` the ones a full batch left for the next call |
+| `GET /api/v1/openscholar/library` | `{records, collections: [{key, name, parent, records}]}`: the public records the library holds, and its own collections, each counted as resolving it reads (its sub-collections' records too) |
+| `POST /api/v1/openscholar/sources/resolve` `{reader, source, first, last}` | `{keys, total, truncated}`: records `first` to `last` (from 1) of a source as the person may read it, in the source's order, at most 20,000. `source` is `{readerCollection}`, `{libraryCollection}`, `{library: true}`, `{search, readerCollection?}` (the search page's query string, resolved by `readSearchKeys` in its sort) or `{records}`. Any window of up to 20,000 of a source can be asked for. `409 index_changed` asks again |
+| `POST /api/v1/openscholar/records/batch` `{keys}` | `{records: [Record], unread}`, public records only, at most 500 keys and 4 MB; missing keys left out, `unread` the ones a full batch left for the next call |
 | `POST /api/v1/openscholar/records/match` `{reader, papers: [{openalexId?, doi?}]}` | `{matches: [{at, key}]}`: the records this library holds with that OpenAlex ID or DOI, at most 500 papers a call |
 | `GET /api/v1/openscholar/search?reader=&<search page parameters>&page=` | `{records: [Record], page, pages, total}`: the assistant's search, as the search page answers it |
 | `GET /api/v1/openscholar/records/<key>/files/<attachmentKey>?reader=` | the PDF, only when the library's tag rules make it downloadable (`filterPublicAttachments`), else `404` |
@@ -140,10 +141,6 @@ source as it stood when it started, collections as well as searches, and one
 call covers every kind of source. Proof: `convex/screening/library.test.ts`,
 `convex/extraction/library.test.ts` and new-el
 `tests/integration/openscholar-reads.test.ts`.
-
-A library's record count and its own collections, which the source picker
-shows, come from its public API (`/api/items`, `/api/collections`), which every
-runtime has.
 
 `Record` is `{key, revision, itemType, title, abstract, creators: [{name}],
 year, venue, url, crossRefs: {openalexId?, doi?}, files: [{attachmentKey,

@@ -9,6 +9,7 @@
 import { useState, type ClipboardEvent, type ReactNode } from "react";
 import { preload } from "react-dom";
 import useSWR from "swr";
+import { useAuth } from "@clerk/nextjs";
 import { AnimatePresence, motion } from "motion/react";
 import { useFormatter, useTranslations } from "next-intl";
 import { ArrowUpDown, Building2, CalendarDays, EvidenceLibrariesIcon, Eye, FileText, Folder, Globe, Link2, ListChecks, Lock, Pencil, Search, TopicsIcon, TriangleAlert, UserRound, type AppIcon } from "@/components/icons";
@@ -42,15 +43,17 @@ const ROW = 57;
  */
 export function useLibrarySources(opened: HeldRow[] = []) {
   const workspaceId = useWorkspace();
+  // What a library lists is the person's own: it is kept under who they are, and never shown to someone signed in after them.
+  const { userId } = useAuth();
   const { data: listed } = useProtectedQuery(api.evidenceLibraries.readers.list, inWorkspace(workspaceId, {}));
   const read = useWorkspaceAction(api.evidenceLibraries.library.sources);
   const [pasted, setPasted] = useState<HeldRow[]>([]);
   const held = [...pasted, ...opened.filter((one) => !pasted.some((other) => rowKey(other.row) === rowKey(one.row)))];
   const ids = listed?.map((library) => library.libraryId);
   const extra = [...new Set(held.map((one) => one.library.libraryId))].filter((id) => !ids?.includes(id));
-  const options = { revalidateOnFocus: false, keepPreviousData: true } as const;
-  const known = useSWR(workspaceId && ids ? ["library-sources", ...ids] : null, () => (ids!.length ? read({ libraryIds: ids! }) : []), options);
-  const more = useSWR(workspaceId && ids && extra.length ? ["library-sources", ...extra] : null, () => read({ libraryIds: extra }), options);
+  const options = { revalidateOnFocus: false } as const;
+  const known = useSWR(workspaceId && userId && ids ? ["library-sources", userId, ...ids] : null, () => (ids!.length ? read({ libraryIds: ids! }) : []), options);
+  const more = useSWR(workspaceId && userId && ids && extra.length ? ["library-sources", userId, ...extra] : null, () => read({ libraryIds: extra }), options);
   // A library that didn't answer is one that couldn't list; the form doesn't wait on it again.
   const failed = (libraryIds: string[] = []) => libraryIds.map((libraryId) => ({ libraryId, rows: null, problem: "unreadable" as const }) as LibraryContents);
   const contents = [...(known.data ?? (known.error ? failed(ids) : [])), ...(more.data ?? (more.error ? failed(extra) : []))];
