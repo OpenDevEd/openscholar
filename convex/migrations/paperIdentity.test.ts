@@ -94,3 +94,58 @@ it("names every stored paper by its source, moves ratings and kept undos to it, 
     vi.useRealTimers();
   }
 });
+
+it("narrows: drops the rows no key names, with what hangs on them, and the old ID from every other row", async () => {
+  vi.useFakeTimers();
+  try {
+    const t = convexTest(schema);
+    await t.run(async (ctx) => {
+      const ada = await ctx.db.insert("users", { clerkId: "ada", email: "ada@example.org", state: "active", createdAt: 1, updatedAt: 1 });
+      const where = await madeBy(ctx, ada);
+      const saved = (fields: Record<string, unknown>) => ctx.db.insert("libraryItems", { ...where, title: "Saved", searchableText: "saved", savedAt: 1, updatedAt: 1, ...fields });
+      const keyed = await saved({ openalexId: "https://openalex.org/W1", paperKey: "openalex:W1", ref: { source: "openalex", work: "W1" } });
+      const fixture = await saved({ openalexId: "W_PLAN05_1" });
+      const collectionId = await ctx.db.insert("collections", { ...where, name: "Trials", sortName: "trials", itemCount: 2, createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId: keyed, assignedAt: 1 });
+      await ctx.db.insert("libraryItemCollections", { collectionId, libraryItemId: fixture, assignedAt: 1 });
+      const item = (await ctx.db.get("libraryItems", keyed))!;
+      const { _id, _creationTime, workspaceId, ...kept } = item;
+      await ctx.db.insert("libraryRemovals", { workspaceId, item: kept, itemId: keyed, expiresAt: 10 });
+      await ctx.db.insert("ratings", { userId: ada, paperId: "openalex:W1", rating: 4 });
+      await ctx.db.insert("ratings", { userId: ada, paperId: "W_PLAN05_1", rating: 2 });
+
+      const jobId = await insertJob(ctx, { userId: ada, status: "completed", totalPapers: 2, questions: [], scoringConfig: { rules: [], starThresholds: [] }, createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/W1", paperKey: "openalex:W1", title: "W1", status: "completed", createdAt: 1 });
+      await ctx.db.insert("screeningResults", { jobId, openalexId: "https://openalex.org/WOS321QA", title: "Fixture", status: "completed", createdAt: 1 });
+      const extraction = await ctx.db.insert("extractionJobs", { ...where, sourceType: "history", status: "completed", totalPapers: 2, name: "Job", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("extractionPapers", { jobId: extraction, openalexId: "https://openalex.org/W1", paperKey: "openalex:W1", title: "W1", status: "completed", processable: true });
+      const lost = await ctx.db.insert("extractionPapers", { jobId: extraction, openalexId: "library:os321-fixture", title: "Fixture", status: "completed", processable: true });
+      await ctx.db.insert("extractionResults", { jobId: extraction, paperId: lost, questionKey: "q", answer: "x", citations: [], citationStatus: "best_effort", confidence: 0.5, status: "completed", processedAt: 1 });
+    });
+
+    await t.mutation(internal.migrations.paperIdentity.narrow, {});
+    await t.finishAllScheduledFunctions(vi.runAllTimers);
+
+    const rows = await t.run(async (ctx) => ({
+      saved: (await ctx.db.query("libraryItems").collect()).map(({ openalexId, paperKey }) => ({ openalexId, paperKey })),
+      places: (await ctx.db.query("libraryItemCollections").collect()).length,
+      removed: (await ctx.db.query("libraryRemovals").collect()).map(({ item }) => ({ openalexId: item.openalexId, paperKey: item.paperKey })),
+      ratings: (await ctx.db.query("ratings").collect()).map(({ paperId }) => paperId),
+      screened: (await ctx.db.query("screeningResults").collect()).map(({ openalexId, paperKey }) => ({ openalexId, paperKey })),
+      extracted: (await ctx.db.query("extractionPapers").collect()).map(({ openalexId, paperKey }) => ({ openalexId, paperKey })),
+      results: (await ctx.db.query("extractionResults").collect()).length,
+    }));
+    expect(rows).toEqual({
+      saved: [{ openalexId: undefined, paperKey: "openalex:W1" }],
+      places: 1,
+      removed: [{ openalexId: undefined, paperKey: "openalex:W1" }],
+      ratings: ["openalex:W1"],
+      screened: [{ openalexId: undefined, paperKey: "openalex:W1" }],
+      extracted: [{ openalexId: undefined, paperKey: "openalex:W1" }],
+      results: 0,
+    });
+    expect(await t.action(internal.migrations.paperIdentity.verify, {})).toMatchObject({ libraryItems: { left: 0 }, screeningResults: { left: 0 }, extractionPapers: { left: 0 }, ratings: { left: 0 } });
+  } finally {
+    vi.useRealTimers();
+  }
+});

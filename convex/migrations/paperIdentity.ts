@@ -20,7 +20,7 @@ import { toPaperKey } from "../../lib/papers/paper-ref";
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
-// A saved paper keeps its whole OpenAlex record (`paperData`): one a step, as migrations/paperMetadata reads them.
+// A saved paper keeps its whole OpenAlex record (`paperData`): one a step.
 export const papers = migrations.define({
   table: "libraryItems",
   batchSize: 1,
@@ -122,6 +122,94 @@ export const run = migrations.runner([
   internal.migrations.paperIdentity.bulkUndos,
 ]);
 
+/**
+ * Narrowing (1c): a row whose ID names no paper is a test fixture with a made-up ID (`verify` lists them; on shared dev
+ * all belong to test accounts). It goes, with what hangs on it, so every row has a key before the key is required.
+ * Then the old `openalexId` field goes from every row that has its key.
+ *
+ *   npx convex run migrations/paperIdentity:narrow '{"dryRun": true}'
+ *   npx convex run migrations/paperIdentity:narrow
+ *   npx convex run migrations/paperIdentity:verify
+ */
+// What one fixture holds at most: its collection places, and an extracted paper's evidence, results, facts and answers.
+const FIXTURE_ROWS = 100;
+
+export const dropUnplacedPapers = migrations.define({
+  table: "libraryItems",
+  batchSize: 1,
+  migrateOne: async (ctx, item) => {
+    if (item.paperKey !== undefined) return;
+    for (const place of await ctx.db.query("libraryItemCollections").withIndex("by_item", (q) => q.eq("libraryItemId", item._id)).take(FIXTURE_ROWS)) await ctx.db.delete("libraryItemCollections", place._id);
+    await ctx.db.delete("libraryItems", item._id);
+  },
+});
+
+export const dropUnplacedRatings = migrations.define({
+  table: "ratings",
+  migrateOne: async (ctx, row) => {
+    if (toPaperKey(row.paperId) !== row.paperId) await ctx.db.delete("ratings", row._id);
+  },
+});
+
+export const dropUnplacedScreened = migrations.define({
+  table: "screeningResults",
+  batchSize: 20,
+  migrateOne: async (ctx, result) => {
+    if (result.paperKey === undefined) await ctx.db.delete("screeningResults", result._id);
+  },
+});
+
+export const dropUnplacedExtracted = migrations.define({
+  table: "extractionPapers",
+  batchSize: 20,
+  migrateOne: async (ctx, paper) => {
+    if (paper.paperKey !== undefined) return;
+    for (const table of ["extractionEvidenceUnits", "extractionResults", "extractionPaperFacts", "extractionAnswerRows"] as const) {
+      for (const row of await ctx.db.query(table).withIndex("by_paper", (q) => q.eq("paperId", paper._id)).take(FIXTURE_ROWS)) await ctx.db.delete(table, row._id);
+    }
+    await ctx.db.delete("extractionPapers", paper._id);
+  },
+});
+
+export const forgetPaperIds = migrations.define({
+  table: "libraryItems",
+  batchSize: 1,
+  migrateOne: (_ctx, item) => (item.openalexId !== undefined ? { openalexId: undefined } : undefined),
+});
+
+export const forgetRemovedIds = migrations.define({
+  table: "libraryRemovals",
+  batchSize: 1,
+  migrateOne: (_ctx, row) => {
+    if (row.item.openalexId === undefined) return;
+    const { openalexId: _gone, ...item } = row.item;
+    return { item };
+  },
+});
+
+export const forgetScreenedIds = migrations.define({
+  table: "screeningResults",
+  batchSize: 20,
+  migrateOne: (_ctx, result) => (result.openalexId !== undefined ? { openalexId: undefined } : undefined),
+});
+
+export const forgetExtractedIds = migrations.define({
+  table: "extractionPapers",
+  batchSize: 20,
+  migrateOne: (_ctx, paper) => (paper.openalexId !== undefined ? { openalexId: undefined } : undefined),
+});
+
+export const narrow = migrations.runner([
+  internal.migrations.paperIdentity.dropUnplacedPapers,
+  internal.migrations.paperIdentity.dropUnplacedRatings,
+  internal.migrations.paperIdentity.dropUnplacedScreened,
+  internal.migrations.paperIdentity.dropUnplacedExtracted,
+  internal.migrations.paperIdentity.forgetPaperIds,
+  internal.migrations.paperIdentity.forgetRemovedIds,
+  internal.migrations.paperIdentity.forgetScreenedIds,
+  internal.migrations.paperIdentity.forgetExtractedIds,
+]);
+
 const TABLE = v.union(v.literal("libraryItems"), v.literal("libraryRemovals"), v.literal("screeningResults"), v.literal("extractionPapers"), v.literal("ratings"));
 const PAGE = 200;
 // A page stops early rather than read past this: saved papers can be large.
@@ -140,7 +228,7 @@ export const verifyPage = internalQuery({
     }
     const stored = (page.page as Array<Doc<"libraryItems" | "libraryRemovals" | "screeningResults" | "extractionPapers">>).map((row) => ("item" in row ? row.item : row));
     const left = stored.filter((row) => row.paperKey === undefined);
-    const unplaced = left.filter((row) => !("paperKey" in identityFromStored(row))).map((row) => row.openalexId);
+    const unplaced = left.filter((row) => !("paperKey" in identityFromStored(row))).map((row) => row.openalexId ?? "");
     return { left: left.length, unplaced, isDone: page.isDone, continueCursor: page.continueCursor };
   },
 });

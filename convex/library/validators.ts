@@ -64,8 +64,9 @@ export const libraryPapersValidator = v.object({
 export const libraryItemFields = {
     workspaceId: v.id("workspaces"),
     createdBy: v.id("users"),
-    openalexId: v.string(), // e.g. "https://openalex.org/W1234567890"
-    // The paper by its source (plans/evidence-library-sources); replaces `openalexId` as the key once every row has it.
+    // The ID a paper was kept under before papers were named by their source: no longer written, and gone once migrations/paperIdentity:narrow has run.
+    openalexId: v.optional(v.string()),
+    // The paper by its source (plans/evidence-library-sources).
     ...paperIdentityFields,
     rating: v.optional(v.number()), // 0-5; unset when the paper was saved without rating it
     // In an organization's library `rating` is its members' average of their own ratings (#801): how many of them gave one,

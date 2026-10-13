@@ -1,5 +1,6 @@
 // A saved paper's rating as its people's average of their own (#655).
 import { convexTest } from "convex-test";
+import { paperKeyOf } from "../../lib/papers/paper-ref";
 import { expect, it, vi } from "vitest";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -34,7 +35,7 @@ it("makes a rating kept only in the library its rater's own, keeps one they have
     const state = () =>
       t.run(async (ctx) => ({
         own: (await ctx.db.query("ratings").collect()).map(({ userId, paperId, rating }) => [userId === ada ? "ada" : "bob", paperId.slice(-2), rating]).sort(),
-        saved: (await ctx.db.query("libraryItems").collect()).map(({ createdBy, openalexId, rating }) => [createdBy === bob ? "bob" : "ada", openalexId.slice(-2), rating ?? null]).sort(),
+        saved: (await ctx.db.query("libraryItems").collect()).map((item) => [item.createdBy === bob ? "bob" : "ada", paperKeyOf(item).slice(-2), item.rating ?? null]).sort(),
       }));
     const run = async (reset: boolean) => {
       await t.mutation(internal.migrations.adoptLibraryRatings.run, reset ? { reset } : {});

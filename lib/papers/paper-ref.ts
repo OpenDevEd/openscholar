@@ -86,8 +86,8 @@ export function toPaperKey(id: string, hints: { pdfUrl?: string } = {}): string 
   return ref ? paperKey(ref) : null;
 }
 
-/** A stored paper's key: the one it keeps, or for one kept before keys, the one its ID gives. */
-export const paperKeyOf = (row: { paperKey?: string; openalexId: string }) => row.paperKey ?? toPaperKey(row.openalexId) ?? row.openalexId;
+/** A stored paper's key: the one it keeps, or for a test fixture kept before keys, until migrations/paperIdentity:narrow drops it, the one its old ID gives. */
+export const paperKeyOf = (row: { paperKey?: string; openalexId?: string }) => row.paperKey ?? toPaperKey(row.openalexId ?? "") ?? row.openalexId ?? "";
 
 /**
  * The ID pages and `openalexId` fields name a paper by while the field remains: an OpenAlex paper's
@@ -131,10 +131,10 @@ export function openalexWorkOf(paper: string, crossRefs?: CrossRefs): string | n
 }
 
 /** The ID a stored paper goes by on pages and in a screening's answers (`paperIdOf` its key). */
-export const pageIdOf = (row: { paperKey?: string; openalexId: string }) => paperIdOf(paperKeyOf(row));
+export const pageIdOf = (row: { paperKey?: string; openalexId?: string }) => paperIdOf(paperKeyOf(row));
 
 /** The OpenAlex work a stored paper is or is known as. */
-export const openalexWorkOfRow = (row: { paperKey?: string; openalexId: string; crossRefs?: CrossRefs }) => openalexWorkOf(paperKeyOf(row), row.crossRefs);
+export const openalexWorkOfRow = (row: { paperKey?: string; openalexId?: string; crossRefs?: CrossRefs }) => openalexWorkOf(paperKeyOf(row), row.crossRefs);
 
 /** An OpenAlex work's address, as OpenAlex and exports name it. */
 export const openalexAddress = (work: string | null) => (work ? `https://openalex.org/${work}` : null);

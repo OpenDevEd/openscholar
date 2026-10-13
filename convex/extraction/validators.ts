@@ -475,7 +475,8 @@ export const extractionPaperFields = {
   citedByCount: v.optional(v.number()),
   venueName: v.optional(v.string()),
   jobId: v.id("extractionJobs"),
-  openalexId: v.string(),
+  // The ID a paper was kept under before papers were named by their source: no longer written, and gone once migrations/paperIdentity:narrow has run.
+  openalexId: v.optional(v.string()),
   title: v.string(),
   doi: v.optional(v.string()),
   publicationYear: v.optional(v.number()),

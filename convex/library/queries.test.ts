@@ -1,4 +1,5 @@
 import { convexTest } from "convex-test";
+import { toPaperKey } from "../../lib/papers/paper-ref";
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { ConvexError } from "convex/values";
 import type { Id } from "../_generated/dataModel";
@@ -948,7 +949,7 @@ describe("saving without a rating", () => {
     await expect(asUser.mutation(api.library.mutations.restoreLibraryItem, removed.undo!.args)).rejects.toThrow(/no longer be undone/);
 
     const restored = await t.run(async (ctx) => await ctx.db.get("libraryItems", restoredId));
-    expect(restored).toMatchObject({ openalexId: paper.paper, rating: 5, savedAt });
+    expect(restored).toMatchObject({ paperKey: toPaperKey(paper.paper), rating: 5, savedAt });
     const holding = await asUser.query(api.library.collections.listCollections, { paginationOpts: { cursor: null, numItems: 10 }, paper: paper.paper });
     expect(holding.page.filter((c) => c.containsItem).map((c) => c._id)).toEqual([collectionId]);
     const collection = await t.run(async (ctx) => await ctx.db.get("collections", collectionId));
@@ -1030,7 +1031,7 @@ describe("saving without a rating", () => {
     const ratings = async () =>
       await t.run(async (ctx) => {
         const own = (await personalRatingRow(ctx, user!._id, paper.paper))?.rating ?? null;
-        const saved = (await ctx.db.query("libraryItems").collect()).find((item) => item.openalexId === paper.paper);
+        const saved = (await ctx.db.query("libraryItems").collect()).find((item) => item.paperKey === toPaperKey(paper.paper));
         return { own, library: saved ? (saved.rating ?? null) : "not saved" };
       });
 

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { pageIdOf } from "../../../lib/papers/paper-ref";
 import { api, internal } from "../../_generated/api";
 import { screeningInputs } from "./screening.test-support";
 import { seedFeatureUser } from "../../organizationFeatures.test-support";
@@ -19,21 +20,21 @@ describe("extraction from Included screening papers", () => {
     const first = await start(libraryFirst ? inputs.reverse() : inputs);
     expect(await snapshot(first.jobId)).toMatchObject({ totalPapers: 2, processableCount: 2 });
     const frozen = await papers(first.jobId);
-    expect(frozen.map(p => p.openalexId)).toEqual(["https://openalex.org/W0", "https://openalex.org/W1"]);
+    expect(frozen.map(p => pageIdOf(p))).toEqual(["https://openalex.org/W0", "https://openalex.org/W1"]);
     expect(frozen[0]).toMatchObject({ title: "Study 0", authors: ["Piper, B.", "ليلى"], venueName: "Education Research", citedByCount: 0, sourceType: "screening", sourceId: jobId, screeningRevision: decided });
     const changed = await as.mutation(api.screening.papers.answer, { jobId, paperId: "https://openalex.org/W0", questionKey: "q1", answer: false });
     // A copy of the job reads the decisions it was started with, which have changed; a new job reads them as they are.
     await expect(as.mutation(api.extraction.mutations.duplicateJob, { jobId: first.jobId })).rejects.toThrow(/decisions changed/);
     const second = await start();
     await snapshot(second.jobId);
-    expect((await papers(second.jobId)).map(p => p.openalexId)).toEqual(["https://openalex.org/W1"]);
+    expect((await papers(second.jobId)).map(p => pageIdOf(p))).toEqual(["https://openalex.org/W1"]);
     expect(await papers(first.jobId)).toEqual(frozen);
     expect(await t.run(ctx => ctx.db.get("libraryItems", libraryId))).toMatchObject({ rating: 4, title: "Separately saved paper" });
     expect(changed.undo).toBeDefined();
     await as.mutation(api.screening.papers.answer, changed.undo!.args);
     const third = await start();
     await snapshot(third.jobId);
-    expect((await papers(third.jobId)).map(p => p.openalexId)).toEqual(frozen.map(p => p.openalexId));
+    expect((await papers(third.jobId)).map(p => pageIdOf(p))).toEqual(frozen.map(p => pageIdOf(p)));
   });
 
   it("rejects same-count edits between selection, pagination and capture before saving any papers", async () => {
@@ -92,7 +93,7 @@ describe("extraction from Included screening papers", () => {
     const sources = await t.run(ctx => ctx.db.query("extractionJobSources").withIndex("by_job_and_position", q => q.eq("jobId", created.jobId)).take(2));
     expect(sources[0].screeningSelection).toMatchObject({ first: 2, last: 3, count: 2 });
     expect(await snapshot(created.jobId)).toMatchObject({ totalPapers: 2 });
-    expect((await papers(created.jobId)).map(p => p.openalexId)).toEqual(["https://openalex.org/W1", "https://openalex.org/W2"]);
+    expect((await papers(created.jobId)).map(p => pageIdOf(p))).toEqual(["https://openalex.org/W1", "https://openalex.org/W2"]);
   });
 
   it("refuses capture while a screening is processing", async () => {
