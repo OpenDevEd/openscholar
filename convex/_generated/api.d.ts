@@ -116,7 +116,6 @@ import type * as evidenceLibraries_deploymentSetupActions from "../evidenceLibra
 import type * as evidenceLibraries_digests_citations from "../evidenceLibraries/digests/citations.js";
 import type * as evidenceLibraries_digests_contract from "../evidenceLibraries/digests/contract.js";
 import type * as evidenceLibraries_digests_generate from "../evidenceLibraries/digests/generate.js";
-import type * as evidenceLibraries_digests_kinds from "../evidenceLibraries/digests/kinds.js";
 import type * as evidenceLibraries_digests_manual from "../evidenceLibraries/digests/manual.js";
 import type * as evidenceLibraries_digests_manualActions from "../evidenceLibraries/digests/manualActions.js";
 import type * as evidenceLibraries_digests_review from "../evidenceLibraries/digests/review.js";
@@ -313,7 +312,6 @@ import type * as library_queries from "../library/queries.js";
 import type * as library_sortName from "../library/sortName.js";
 import type * as library_validators from "../library/validators.js";
 import type * as maintenance_mutations from "../maintenance/mutations.js";
-import type * as migrations_adoptLibraryRatings from "../migrations/adoptLibraryRatings.js";
 import type * as migrations_assistantJobs from "../migrations/assistantJobs.js";
 import type * as migrations_calendarDayDates from "../migrations/calendarDayDates.js";
 import type * as migrations_clearModelWebSearchPrice from "../migrations/clearModelWebSearchPrice.js";
@@ -322,7 +320,6 @@ import type * as migrations_extractionEvidence from "../migrations/extractionEvi
 import type * as migrations_extractionFacets from "../migrations/extractionFacets.js";
 import type * as migrations_extractionSearch from "../migrations/extractionSearch.js";
 import type * as migrations_forgetPersonCounts from "../migrations/forgetPersonCounts.js";
-import type * as migrations_itemRaters from "../migrations/itemRaters.js";
 import type * as migrations_makerCounts from "../migrations/makerCounts.js";
 import type * as migrations_memberSpending from "../migrations/memberSpending.js";
 import type * as migrations_moveSearchHistory from "../migrations/moveSearchHistory.js";
@@ -332,8 +329,6 @@ import type * as migrations_pagedAccountLists from "../migrations/pagedAccountLi
 import type * as migrations_pagedExtractionJobs from "../migrations/pagedExtractionJobs.js";
 import type * as migrations_pagedLibraryList from "../migrations/pagedLibraryList.js";
 import type * as migrations_pagedLibraryVersions from "../migrations/pagedLibraryVersions.js";
-import type * as migrations_paperIdentity from "../migrations/paperIdentity.js";
-import type * as migrations_paperMetadata from "../migrations/paperMetadata.js";
 import type * as migrations_placeRatings from "../migrations/placeRatings.js";
 import type * as migrations_recordApprovedQueries from "../migrations/recordApprovedQueries.js";
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
@@ -566,7 +561,6 @@ declare const fullApi: ApiFromModules<{
   "evidenceLibraries/digests/citations": typeof evidenceLibraries_digests_citations;
   "evidenceLibraries/digests/contract": typeof evidenceLibraries_digests_contract;
   "evidenceLibraries/digests/generate": typeof evidenceLibraries_digests_generate;
-  "evidenceLibraries/digests/kinds": typeof evidenceLibraries_digests_kinds;
   "evidenceLibraries/digests/manual": typeof evidenceLibraries_digests_manual;
   "evidenceLibraries/digests/manualActions": typeof evidenceLibraries_digests_manualActions;
   "evidenceLibraries/digests/review": typeof evidenceLibraries_digests_review;
@@ -763,7 +757,6 @@ declare const fullApi: ApiFromModules<{
   "library/sortName": typeof library_sortName;
   "library/validators": typeof library_validators;
   "maintenance/mutations": typeof maintenance_mutations;
-  "migrations/adoptLibraryRatings": typeof migrations_adoptLibraryRatings;
   "migrations/assistantJobs": typeof migrations_assistantJobs;
   "migrations/calendarDayDates": typeof migrations_calendarDayDates;
   "migrations/clearModelWebSearchPrice": typeof migrations_clearModelWebSearchPrice;
@@ -772,7 +765,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/extractionFacets": typeof migrations_extractionFacets;
   "migrations/extractionSearch": typeof migrations_extractionSearch;
   "migrations/forgetPersonCounts": typeof migrations_forgetPersonCounts;
-  "migrations/itemRaters": typeof migrations_itemRaters;
   "migrations/makerCounts": typeof migrations_makerCounts;
   "migrations/memberSpending": typeof migrations_memberSpending;
   "migrations/moveSearchHistory": typeof migrations_moveSearchHistory;
@@ -782,8 +774,6 @@ declare const fullApi: ApiFromModules<{
   "migrations/pagedExtractionJobs": typeof migrations_pagedExtractionJobs;
   "migrations/pagedLibraryList": typeof migrations_pagedLibraryList;
   "migrations/pagedLibraryVersions": typeof migrations_pagedLibraryVersions;
-  "migrations/paperIdentity": typeof migrations_paperIdentity;
-  "migrations/paperMetadata": typeof migrations_paperMetadata;
   "migrations/placeRatings": typeof migrations_placeRatings;
   "migrations/recordApprovedQueries": typeof migrations_recordApprovedQueries;
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
