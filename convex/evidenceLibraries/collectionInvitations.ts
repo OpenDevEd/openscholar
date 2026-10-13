@@ -9,7 +9,8 @@
  * with `contractVersion: 1`, at `/api/v1/evidence-libraries/collection-invitations/<call>`:
  *
  * - `invite` {collectionId, collectionName, email, role}: keeps an invitation and emails it, or
- *   sends one to the same address again. Answers with it as `list` shows it.
+ *   sends one to the same address again. Answers with it as `list` shows it. One of the reader's own
+ *   addresses is refused: the collection is theirs already.
  * - `list`: the reader's invitations still waiting, to their collections in this library.
  * - `change` {invitationId, role | cancel | resend with collectionId and collectionName}: one of the reader's
  *   waiting invitations. Sending again uses the collection's name as it is now.
@@ -40,11 +41,11 @@ import { libraryEmailSender } from "./invitations";
 const WEEK = 7 * 86_400_000;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-const REFUSALS = ["invalid_email", "rate_limited", "too_many_invitations", "not_found", "answered", "expired", "other_address"] as const;
+const REFUSALS = ["invalid_email", "own_address", "rate_limited", "too_many_invitations", "not_found", "answered", "expired", "other_address"] as const;
 type Refusal = (typeof REFUSALS)[number];
 const refusedValidator = v.object({ refused: v.union(...REFUSALS.map((refusal) => v.literal(refusal))) });
 const REFUSAL_STATUS: Record<Refusal, number> = {
-  invalid_email: 400, rate_limited: 429, too_many_invitations: 409, not_found: 404, answered: 409, expired: 410, other_address: 403,
+  invalid_email: 400, own_address: 400, rate_limited: 429, too_many_invitations: 409, not_found: 404, answered: 409, expired: 410, other_address: 403,
 };
 const refused = (refusal: Refusal) => ({ refused: refusal });
 
@@ -116,6 +117,7 @@ export const prepare = internalMutation({
     const { library, reader } = await callerOf(ctx, args);
     const email = args.email.trim().toLowerCase();
     if (email.length > 254 || !EMAIL.test(email)) return refused("invalid_email");
+    if (addressesOf(reader).includes(email)) return refused("own_address");
     if (!(await rateLimit(ctx, { name: "item-invitation", key: String(reader._id) })).ok) return refused("rate_limited");
     const item = itemOf(library._id, collectionId);
     const found = await invitationTo(ctx, item, email);
