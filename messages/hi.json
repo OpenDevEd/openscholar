@@ -1654,6 +1654,11 @@
       "role": "{name} में नहीं जोड़ सकते: अब आप इसे केवल देख सकते हैं",
       "notFound": "{name} अब {library} में नहीं है",
       "unreadable": "{library} ने जवाब नहीं दिया: कुछ लेख नहीं जोड़े गए"
+    },
+    "pruneProblem": {
+      "role": "{name} से लेख नहीं हटा सकते: अब आप इसे केवल देख सकते हैं",
+      "notFound": "{name} अब {library} में नहीं है",
+      "unreadable": "{library} ने जवाब नहीं दिया: कुछ लेख नहीं हटाए गए"
     }
   },
   "connectionsPage": {

@@ -37,7 +37,7 @@ import { PaperScope, PickMark, SourceRow } from "./source-row";
 import { LibrarySelect, LibrarySources, useLibrarySources, useRowLabel } from "./library-sources";
 import useSWR from "swr";
 import { useAuth } from "@clerk/nextjs";
-import { LIBRARY_SOURCE_MAX } from "@/lib/evidence-libraries/source-address";
+import { LIBRARY_COLLECTION_NAME_MAX, LIBRARY_SOURCE_MAX, fittingCollectionName } from "@/lib/evidence-libraries/source-address";
 import { isFrozen, rowKey, screeningQuestionsOf, setOfRow, type HeldRow, type LibraryRow } from "@/lib/evidence-libraries/reader-sources";
 import { CreditCheck, useSpendable } from "@/components/workspaces/credit-check";
 import { ModelsInUse } from "@/components/models/models-in-use";
@@ -213,6 +213,10 @@ export function SetupView({
   const unnamed = !source ? t("newScreening") : source.kind === "evidenceLibrary" ? labelOf(source.held.row) : jobName(t, { createdAt: now.getTime(), set: setOf(source), label: source.kind === "screening" ? source.called : source.label }, date);
   // A search with no query has no name to lend the collection, so it takes the screening's.
   const defaultName = !source ? "" : source.kind === "screening" ? source.label : t("includedIn", { name: source.label.trim() || unnamed });
+  // A library takes a shorter name: the same one where it fits, else the source's own.
+  const libraryDefaultName = source ? fittingCollectionName(defaultName, source.label.trim() || unnamed) : "";
+  // A name typed for a workspace collection is cut to fit when the papers go to a library instead.
+  const libraryName = (newName ?? libraryDefaultName).slice(0, LIBRARY_COLLECTION_NAME_MAX);
 
   const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
@@ -314,7 +318,7 @@ export function SetupView({
         saveTo:
           destIn === "library" && destLibrary
             ? libraryTarget === "new"
-              ? { kind: "newLibraryCollection", libraryId: destLibrary.libraryId, name, private: libraryPrivate, requestId }
+              ? { kind: "newLibraryCollection", libraryId: destLibrary.libraryId, name: libraryName.trim() || libraryDefaultName, private: libraryPrivate, requestId }
               : { kind: "libraryCollection", libraryId: destLibrary.libraryId, collection: libraryTarget }
             : target === "none" ? { kind: "none" } : target === "new" ? { kind: "new", name } : { kind: "collection", collectionId: target },
         ...(prunable && prune ? { prune: true } : {}),
@@ -650,9 +654,10 @@ export function SetupView({
                   <DestinationRow on={libraryTarget === "new"} onPick={() => setLibraryDest("new")} icon={FolderPlus} facts={<Chip>{t("new")}</Chip>}>
                     <span className="flex min-w-0 flex-1 items-center gap-3">
                       <Input
-                        value={newName ?? defaultName}
+                        value={libraryName}
                         onChange={(e) => setNewName(e.target.value)}
                         onFocus={() => setLibraryDest("new")}
+                        maxLength={LIBRARY_COLLECTION_NAME_MAX}
                         aria-label={t("newCollectionIn", { library: destLibrary.name })}
                         placeholder={t("nameNewCollection")}
                         className="h-8 flex-1"

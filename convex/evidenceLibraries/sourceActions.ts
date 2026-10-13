@@ -13,7 +13,7 @@ import { createError } from "../lib/errors";
 import { MAX_AUTHORS } from "../lib/listCaps";
 import { screeningPaperInputValidator } from "../screening/validators";
 import { paperKey } from "../../lib/papers/paper-ref";
-import { LIBRARY_SOURCE_MAX } from "../../lib/evidence-libraries/source-address";
+import { LIBRARY_COLLECTION_DESCRIPTION_MAX, LIBRARY_COLLECTION_NAME_MAX, LIBRARY_SOURCE_MAX } from "../../lib/evidence-libraries/source-address";
 import { LIBRARY_KEYS_WINDOW } from "../paperSets/libraryKeys";
 import { libraryDestinationValidator } from "../screening/validators";
 import { LIBRARY_ROWS_MAX, LIBRARY_SOURCE_RECORDS_MAX, handoffRecordsValidator, libraryContentsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
@@ -160,7 +160,9 @@ export const destination = internalAction({
 async function makeCollection(libraryId: Id<"evidenceLibraries">, target: LibraryTarget, reader: string, collection: { name: string; description?: string; private: boolean; requestId: string }) {
   const name = collection.name.trim();
   if (!name) throw createError("VALIDATION_ERROR", "Name the new collection.");
+  if (name.length > LIBRARY_COLLECTION_NAME_MAX) throw createError("VALIDATION_ERROR", `A library collection's name is at most ${LIBRARY_COLLECTION_NAME_MAX} characters.`);
   const description = collection.description?.trim();
+  if (description && description.length > LIBRARY_COLLECTION_DESCRIPTION_MAX) throw createError("VALIDATION_ERROR", `A library collection's description is at most ${LIBRARY_COLLECTION_DESCRIPTION_MAX} characters.`);
   return await asked(libraryId, "readers/collections:create", reader, () => createReaderCollection(fetch, target, reader, { name, ...(description ? { description } : {}), private: collection.private, requestId: collection.requestId }));
 }
 
@@ -352,6 +354,9 @@ export const backfillReaders = internalAction({
 /** How often a library that didn't answer is asked again for a job's writes, and how long it waits between. */
 const WRITE_ATTEMPTS = 5;
 const WRITE_RETRY_MS = 60_000;
+/** How long writes queued while a batch was out wait for others, so they go in one call. */
+const WRITE_GATHER_MS = 5_000;
+type Problem = "role" | "notFound" | "unreadable";
 
 /**
  * Writes a batch of a screening's queued library changes (./writes.ts), as the person who started the job: a paper
@@ -362,15 +367,24 @@ export const flushWrites = internalAction({
   args: { job: v.id("screeningJobs"), attempt: v.number() },
   returns: v.null(),
   handler: async (ctx, { job, attempt }) => {
-    const { userId, rows, more } = await ctx.runQuery(internal.evidenceLibraries.writes.batch, { job });
-    if (!rows.length || !userId) return null;
+    const { userId, destination, rows, gone, more } = await ctx.runQuery(internal.evidenceLibraries.writes.batch, { job });
+    // Writes whose job or paper is gone go with nothing written.
+    if (!rows.length || !userId) {
+      const waiting = gone.length > 0 && (await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: gone }));
+      if (waiting) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.flushWrites, { job, attempt: 0 });
+      return null;
+    }
     const reader = await readerOf(ctx, userId);
-    const done: Array<{ id: Id<"libraryWrites">; result: Id<"screeningResults">; write?: "added" | "missing" }> = [];
-    let problem: "role" | "notFound" | "unreadable" | undefined;
+    const done: Array<{ id: Id<"libraryWrites">; result: Id<"screeningResults">; write?: "added" | "missing" }> = [...gone];
+    let removed = 0;
+    let problem: Problem | undefined;
+    let pruneProblem: Problem | undefined;
     const groups = new Map<string, typeof rows>();
-    for (const row of rows) groups.set(`${row.libraryId}|${row.collection}|${row.change}`, [...(groups.get(`${row.libraryId}|${row.collection}|${row.change}`) ?? []), row]);
+    for (const row of rows) groups.set(`${row.libraryId}|${row.collection}|${row.change}|${row.prune}`, [...(groups.get(`${row.libraryId}|${row.collection}|${row.change}|${row.prune}`) ?? []), row]);
     for (const group of groups.values()) {
-      const { libraryId, collection, change } = group[0]!;
+      const { libraryId, collection, change, prune } = group[0]!;
+      // Only the collection its included papers go to says which of them it took.
+      const toDestination = change === "add" && !prune && destination?.libraryId === libraryId && destination.collection === collection;
       try {
         const target = await libraryTarget(ctx, libraryId);
         const keyOf = new Map<string, string>();
@@ -381,26 +395,31 @@ export const flushWrites = internalAction({
           for (const { at, key } of matches) if (asking[at]) keyOf.set(asking[at].paperKey, key);
         }
         const keys = [...new Set(group.flatMap((row) => keyOf.get(row.paperKey) ?? []))];
-        const changed = keys.length ? await changeCollectionRecords(fetch, target, reader, collection, keys, change) : { missing: [] as string[] };
+        const changed = keys.length ? await changeCollectionRecords(fetch, target, reader, collection, keys, change) : { changed: [] as string[], missing: [] as string[] };
+        // A pruned paper counts as removed once it has left, and no longer once it's back.
+        if (prune) removed += (change === "remove" ? 1 : -1) * group.filter((row) => changed.changed.includes(keyOf.get(row.paperKey) ?? "")).length;
         for (const row of group) {
           const key = keyOf.get(row.paperKey);
-          done.push({ id: row.id, result: row.result, ...(change === "add" ? { write: key && !changed.missing.includes(key) ? ("added" as const) : ("missing" as const) } : {}) });
+          done.push({ id: row.id, result: row.result, ...(toDestination ? { write: key && !changed.missing.includes(key) ? ("added" as const) : ("missing" as const) } : {}) });
         }
       } catch (error) {
         if (!(error instanceof LibrarySourceError)) throw error;
         console.warn("[library sources]", { libraryId, call: `writes:${change}`, reader, job, code: error.code, status: error.status, reason: error.message });
         if (error.code === "unavailable" && attempt + 1 < WRITE_ATTEMPTS) {
           // Asked again later, with what this batch already wrote kept.
-          if (done.length) await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: done });
+          if (done.length) await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: done, removed });
           await ctx.scheduler.runAfter(WRITE_RETRY_MS, internal.evidenceLibraries.sourceActions.flushWrites, { job, attempt: attempt + 1 });
           return null;
         }
-        problem = error.code === "role" || error.code === "not_reader" || error.code === "private" ? "role" : error.code === "not_found" ? "notFound" : "unreadable";
+        const why: Problem = error.code === "role" || error.code === "not_reader" || error.code === "private" ? "role" : error.code === "not_found" ? "notFound" : "unreadable";
+        if (prune) pruneProblem = why;
+        else problem = why;
         for (const row of group) done.push({ id: row.id, result: row.result });
       }
     }
-    await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: done, ...(problem ? { problem } : {}) });
-    if (more) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.flushWrites, { job, attempt: 0 });
+    const waiting = await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: done, removed, ...(problem ? { problem } : {}), ...(pruneProblem ? { pruneProblem } : {}) });
+    // Papers that moved while this batch was out wait for the next, which nothing else would start.
+    if (more || waiting) await ctx.scheduler.runAfter(more ? 0 : WRITE_GATHER_MS, internal.evidenceLibraries.sourceActions.flushWrites, { job, attempt: 0 });
     return null;
   },
 });

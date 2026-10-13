@@ -1654,6 +1654,11 @@
       "role": "Can't add to {name}: you can only view it now",
       "notFound": "{name} is no longer in {library}",
       "unreadable": "{library} didn't answer: some papers weren't added"
+    },
+    "pruneProblem": {
+      "role": "Can't remove papers from {name}: you can only view it now",
+      "notFound": "{name} is no longer in {library}",
+      "unreadable": "{library} didn't answer: some papers weren't removed"
     }
   },
   "connectionsPage": {

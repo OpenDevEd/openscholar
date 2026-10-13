@@ -233,7 +233,9 @@ async function libraryRecordPdf(ctx: ActionCtx, payer: { userId: Id<"users">; wo
   if (asked && !sameTitle(asked, paper.title)) throw createError("VALIDATION_ERROR", `That record is "${paper.title}" in the library, not "${asked}". Check its key, and read it again.`);
   const openalexId = paper.crossRefs?.openalexId;
   if (!paper.pdfUrl && !openalexId) throw createError("VALIDATION_ERROR", "The library lets readers download no PDF of this record. Ask the person to attach its PDF to the chat.");
-  const got = await paperPdf(ctx, { ...payer, scope: await chatScope(ctx, call), kind: "chat" }, { url: paper.pdfUrl, openalexId, doi: paper.crossRefs?.doi }, { maxBytes: PROVIDER_PDF_BYTES, bytes: false, charge: "self", allowHttp: true });
+  // The library's own file when it has one, and nothing else in its place, so the page citations open the PDF read.
+  const from = paper.pdfUrl ? { url: paper.pdfUrl } : { openalexId, doi: paper.crossRefs?.doi };
+  const got = await paperPdf(ctx, { ...payer, scope: await chatScope(ctx, call), kind: "chat" }, from, { maxBytes: PROVIDER_PDF_BYTES, bytes: false, charge: "self", allowHttp: true });
   if ("error" in got) throw createError(got.credits ? "INSUFFICIENT_CREDITS" : "VALIDATION_ERROR", `${got.error} Ask the person to attach its PDF to the chat.`);
   if (!got.key) throw createError("VALIDATION_ERROR", "This record's PDF can't be kept to send. Ask the person to attach its PDF to the chat.");
   return { id: paper.paper, title: paper.title, paperPdf: paper.pdfUrl ?? workUrl(openalexId!) ?? paper.paper, stored: got.key };

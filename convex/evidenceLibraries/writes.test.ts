@@ -38,6 +38,8 @@ async function setup(name: string, access: "owner" | "viewer" = "owner") {
     await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: [], syncedAt: 1, createdAt: 1, updatedAt: 1 });
   });
   const calls: Call[] = [];
+  // What runs while a write to a collection is out, once.
+  const hooks: { during?: () => Promise<void>; refuse?: boolean } = {};
   const collection = (id: string, extra: Record<string, unknown> = {}) => ({ id, name: id === MADE ? "Included from tutoring" : "Reading list", description: null, private: true, count: 3, access, owner: { name: "Ada", image: null }, ...extra });
   vi.stubGlobal("fetch", vi.fn(async (input: string | URL, init?: RequestInit) => {
     const url = new URL(String(input));
@@ -47,10 +49,18 @@ async function setup(name: string, access: "owner" | "viewer" = "owner") {
     if (url.pathname.endsWith("/collections") && init?.method === "POST") return Response.json({ collection: collection(MADE, { name: body.name, count: 0 }) }, { status: 201 });
     if (url.pathname.startsWith("/api/v1/openscholar/collections/")) return Response.json(collection(url.pathname.split("/").at(-1)!));
     if (url.pathname === "/api/v1/openscholar/records/match") return Response.json({ matches: (body.papers as Array<{ openalexId?: string }>).flatMap((paper, at) => (paper.openalexId === "W7" ? [{ at, key: "MATCHED1" }] : [])) });
-    if (url.pathname.endsWith("/records")) return Response.json({ count: 5, changed: (body.keys as string[]).filter((key) => key !== "HIDDENKY"), missing: (body.keys as string[]).filter((key) => key === "HIDDENKY") });
+    if (url.pathname.endsWith("/records")) {
+      const during = hooks.during;
+      hooks.during = undefined;
+      await during?.();
+      if (url.pathname.endsWith(`/collections/${READ}/records`) && hooks.refuse) return Response.json({ error: "role", message: "You can only view this collection." }, { status: 403 });
+      // The new collection's library shows no CCCCCCCC; the collection read holds every record.
+      const shown = (key: string) => key !== "HIDDENKY" && !(key === "CCCCCCCC" && url.pathname.includes(MADE));
+      return Response.json({ count: 5, changed: (body.keys as string[]).filter(shown), missing: (body.keys as string[]).filter((key) => !shown(key)) });
+    }
     return new Response("Not found", { status: 404 });
   }));
-  return { ...fixture, libraryId, calls, person: fixture.t.withIdentity({ subject: fixture.clerkUserId }) };
+  return { ...fixture, libraryId, calls, hooks, person: fixture.t.withIdentity({ subject: fixture.clerkUserId }) };
 }
 
 /** A result of the job as an included paper. */
@@ -98,7 +108,7 @@ it("refuses to save to a collection the person may only view, and takes excluded
   await expect(viewer.person.action(api.screening.start.screen, { set: { kind: "evidenceLibrary", libraryId: viewer.libraryId, source: { library: true } }, first: 1, last: 3, questions, scoringConfig, saveTo })).rejects.toThrow(/only view/);
   await expect(viewer.person.action(api.screening.start.screen, { set: { kind: "evidenceLibrary", libraryId: viewer.libraryId, source: { readerCollection: READ } }, first: 1, last: 3, questions, scoringConfig, saveTo: { kind: "none" }, prune: true })).rejects.toThrow(/only view/);
 
-  const { t, libraryId, calls, person } = await setup("libwrites-prune");
+  const { t, libraryId, calls, hooks, person } = await setup("libwrites-prune");
   const { jobId } = await person.action(api.screening.start.screen, { set: { kind: "evidenceLibrary", libraryId, source: { readerCollection: READ } }, first: 1, last: 3, questions, scoringConfig, saveTo: { kind: "none" }, prune: true });
   expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ prune: true, pruneName: "Reading list" });
   const left = await t.run(async (ctx) => {
@@ -109,4 +119,73 @@ it("refuses to save to a collection the person may only view, and takes excluded
   await t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId, attempt: 0 });
   expect(calls.find((call) => call.method === "DELETE")).toMatchObject({ path: expect.stringContaining(`/collections/${READ}/records`), body: { keys: ["BBBBBBBB"] } });
   expect(await t.run((ctx) => ctx.db.get("screeningResults", left))).toMatchObject({ pruned: true });
+  // Counted removed once the library confirms it.
+  const progress = () => t.run(async (ctx) => (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique())!);
+  expect((await progress()).removed).toBe(1);
+
+  // Taken off the collection before the next paper leaves: that one isn't counted, and the job says why.
+  hooks.refuse = true;
+  await t.run(async (ctx) => {
+    const id = await ctx.db.insert("screeningResults", { jobId, paperKey: `library:${libraryId}:CCCCCCCC`, ref: { source: "library", libraryId, key: "CCCCCCCC" }, title: "C", authors: [], status: "completed", outcome: "excluded", qualified: false, createdAt: 1 });
+    await shelve(ctx, (await ctx.db.get("screeningJobs", jobId))!, (await ctx.db.get("screeningResults", id))!, { becameIncluded: false, left: true });
+  });
+  await t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId, attempt: 0 });
+  expect((await progress()).removed).toBe(1);
+  expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ libraryPruneProblem: "role" });
+  expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.libraryWriteProblem).toBeUndefined();
+});
+
+it("writes a paper that moved while a batch was out, and only the collection the papers go to says which it took", async () => {
+  const { t, libraryId, hooks, person } = await setup("libwrites-moves");
+  const saveTo = { kind: "newLibraryCollection" as const, libraryId, name: "Included", private: true, requestId: "form-2" };
+  const { jobId } = await person.action(api.screening.start.screen, { set: { kind: "evidenceLibrary", libraryId, source: { readerCollection: READ } }, first: 1, last: 3, questions, scoringConfig, saveTo, prune: true });
+  const flush = () => t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId, attempt: 0 });
+  const written = (id: Id<"screeningResults">) => t.run(async (ctx) => (await ctx.db.get("screeningResults", id))?.libraryWrite ?? null);
+  const move = (id: Id<"screeningResults">, outcome: "included" | "excluded") =>
+    t.run(async (ctx) => {
+      await ctx.db.patch("screeningResults", id, { outcome, qualified: outcome === "included" });
+      await shelve(ctx, (await ctx.db.get("screeningJobs", jobId))!, (await ctx.db.get("screeningResults", id))!, { becameIncluded: outcome === "included", left: outcome === "excluded" });
+    });
+
+  // The job's flush waiting on its timer, run in its place: false when none waits.
+  const scheduledFlush = async () => {
+    const waiting = await t.run(async (ctx) => {
+      const found = (await ctx.db.system.query("_scheduled_functions").collect()).filter((fn) => fn.name.includes("flushWrites") && fn.state.kind === "pending" && (fn.args[0] as { job?: string }).job === jobId);
+      for (const fn of found) await ctx.scheduler.cancel(fn._id);
+      return found.length > 0;
+    });
+    if (waiting) await flush();
+    return waiting;
+  };
+
+  // A paper included while the first batch is out goes in with the next, which the first starts.
+  const first = await included(t, jobId, `library:${libraryId}:AAAAAAAA`, { source: "library", libraryId, key: "AAAAAAAA" });
+  let late: Id<"screeningResults"> | undefined;
+  hooks.during = async () => {
+    late = await included(t, jobId, `library:${libraryId}:BBBBBBBB`, { source: "library", libraryId, key: "BBBBBBBB" });
+  };
+  expect(await scheduledFlush()).toBe(true);
+  expect(await written(first)).toBe("added");
+  expect(await written(late!)).toBeNull();
+  expect(await scheduledFlush()).toBe(true);
+  expect(await written(late!)).toBe("added");
+
+  // A record the new collection's library doesn't show stays missing from it when it comes back to the collection read.
+  const back = await included(t, jobId, `library:${libraryId}:CCCCCCCC`, { source: "library", libraryId, key: "CCCCCCCC" });
+  await flush();
+  expect(await written(back)).toBe("missing");
+  await move(back, "excluded");
+  await move(back, "included");
+  await flush();
+  expect(await written(back)).toBe("missing");
+
+  // One that comes to be left out is no longer listed, or counted, as missing from it.
+  const workspaceId = (await person.query(api.workspaces.queries.personal, {}))!;
+  const missing = async () => ({
+    listed: (await person.query(api.screening.papers.list, { workspaceId, jobId, outcome: "included", notInLibrary: true, paginationOpts: { cursor: null, numItems: 10 } })).page.map((paper) => paper.paper),
+    counted: (await person.query(api.screening.queries.getScreeningJob, { workspaceId, jobId }))?.libraryMissing,
+  });
+  expect(await missing()).toEqual({ listed: [`library:${libraryId}:CCCCCCCC`], counted: 1 });
+  await move(back, "excluded");
+  expect(await missing()).toEqual({ listed: [], counted: 0 });
 });

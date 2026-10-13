@@ -109,6 +109,8 @@ export const libraryDestinationValidator = v.object({ libraryId: v.id("evidenceL
 
 /** How a paper went to a library collection: put in, or not, because the library holds no record of it. */
 export const libraryWriteValidator = v.union(v.literal("added"), v.literal("missing"));
+/** Why a job's writes to a library collection stopped: the person can no longer change it, it's gone, or the library didn't answer. */
+export const libraryWriteProblemValidator = v.union(v.literal("role"), v.literal("notFound"), v.literal("unreadable"));
 
 /**
  * Where a screened paper landed: included at the job's minimum score; unclear when its

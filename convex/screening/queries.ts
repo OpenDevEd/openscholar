@@ -9,6 +9,7 @@ import { holdOpen } from "../billing/spend";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   paperSetValidator,
+  libraryWriteProblemValidator,
   saveToValidator,
   screeningAnswersValidator,
   screeningDecisionSourcesValidator,
@@ -223,7 +224,9 @@ export const getScreeningJobAction = defineUserQuery({
       libraryDestination: v.optional(v.object({ libraryId: v.id("evidenceLibraries"), collection: v.string(), name: v.string(), library: v.string(), address: v.union(v.string(), v.null()) })),
       libraryAdded: v.optional(v.number()),
       libraryMissing: v.optional(v.number()),
-      libraryWriteProblem: v.optional(v.union(v.literal("role"), v.literal("notFound"), v.literal("unreadable"))),
+      libraryWriteProblem: v.optional(libraryWriteProblemValidator),
+      // Why taking papers out of the library collection it read stopped, with that library's name.
+      libraryPruneProblem: v.optional(v.object({ problem: libraryWriteProblemValidator, library: v.string() })),
       // Credits its counted papers cost, of the most they were expected to when it started.
       // No `spent` for a job from before jobs kept what they cost. Its workspace's alone: a guest gets none.
       credits: v.optional(v.object({ spent: v.optional(v.number()), estimate: v.number() })),
@@ -259,6 +262,7 @@ export const getScreeningJobAction = defineUserQuery({
           ...(job.set ? { saved: kept?.saved ?? 0, removed: kept?.removed ?? 0 } : {}),
           ...(job.libraryDestination ? await libraryDestinationOf(ctx, job.libraryDestination, kept) : {}),
           ...(job.libraryWriteProblem ? { libraryWriteProblem: job.libraryWriteProblem } : {}),
+          ...(job.libraryPruneProblem && job.set?.kind === "evidenceLibrary" ? { libraryPruneProblem: { problem: job.libraryPruneProblem, library: (await ctx.db.get("evidenceLibraries", job.set.libraryId))?.name ?? "" } } : {}),
           credits: { spent: kept?.credits ?? (job.set ? 0 : undefined), estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0, screeningPaperCredits(await pricingOf(ctx, job.serverModelId))).credits },
           guests: await countOf(ctx, itemGuestsOf(job._id)),
         };

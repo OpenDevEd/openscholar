@@ -60,7 +60,7 @@ export const listAction = defineUserQuery({
     const page = await (needle
       ? ctx.db.query("screeningResults").withSearchIndex("search_text", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId).eq("outcome", outcome); return notInLibrary ? found.eq("libraryWrite", "missing") : found; }).paginate(opts)
       : notInLibrary
-        ? ctx.db.query("screeningResults").withIndex("by_job_and_libraryWrite", (q) => q.eq("jobId", jobId).eq("libraryWrite", "missing")).paginate(opts)
+        ? ctx.db.query("screeningResults").withIndex("by_job_and_libraryWrite_and_outcome", (q) => q.eq("jobId", jobId).eq("libraryWrite", "missing").eq("outcome", outcome)).paginate(opts)
         : ctx.db.query("screeningResults").withIndex("by_job_and_outcome", (q) => q.eq("jobId", jobId).eq("outcome", outcome)).paginate(opts));
     return { ...page, page: await Promise.all(page.page.map((result) => paperOf(ctx, job, result, outcome))) };
   },

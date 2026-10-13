@@ -1654,6 +1654,11 @@
       "role": "Impossible d'ajouter à {name} : vous ne pouvez plus que la consulter",
       "notFound": "{name} n'existe plus dans {library}",
       "unreadable": "{library} n'a pas répondu : des articles n'ont pas été ajoutés"
+    },
+    "pruneProblem": {
+      "role": "Impossible de retirer des articles de {name} : vous ne pouvez plus que la consulter",
+      "notFound": "{name} n'existe plus dans {library}",
+      "unreadable": "{library} n'a pas répondu : des articles n'ont pas été retirés"
     }
   },
   "connectionsPage": {

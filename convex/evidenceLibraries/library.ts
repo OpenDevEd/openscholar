@@ -11,7 +11,7 @@ import { linkLabel } from "../assistant/links";
 import { createError } from "../lib/errors";
 import { assistantAction, defineChangingAction, defineUserAction, reversedBy, userAction } from "../lib/userActions";
 import type { screeningPaperInputValidator } from "../screening/validators";
-import { parseSourceAddress } from "../../lib/evidence-libraries/source-address";
+import { LIBRARY_COLLECTION_DESCRIPTION_MAX, LIBRARY_COLLECTION_NAME_MAX, parseSourceAddress } from "../../lib/evidence-libraries/source-address";
 import { paperPage, parsePaperKey } from "../../lib/papers/paper-ref";
 import { LIBRARY_CHANGE_MAX } from "./sourceClient";
 import { ABSTRACT_SHOWN, AUTHORS_SHOWN, READ_LIBRARIES_MAX, RECORDS_PAGE, librariesContentsValidator, libraryContentsValidator, libraryRecordValidator, libraryRecordsValidator, librarySourceRowValidator, librarySourceValidator, sourceAddressErrorValidator } from "./validators";
@@ -139,7 +139,7 @@ const collectionMadeValidator = v.object({ id: v.string(), name: v.string(), des
 export const createCollectionAction = defineChangingAction({
   path: "evidenceLibraries/library:createCollection",
   description:
-    "Makes a collection for the person in an Evidence Library, as their profile page there makes one: private, unless `public` is true, when anyone who visits the library can find it. Returns it with its `id`, which evidenceLibraries/library:changeRecords puts records in. " +
+    `Makes a collection for the person in an Evidence Library, as their profile page there makes one, named in at most ${LIBRARY_COLLECTION_NAME_MAX} characters, with a description of at most ${LIBRARY_COLLECTION_DESCRIPTION_MAX}: private, unless \`public\` is true, when anyone who visits the library can find it. Returns it with its \`id\`, which evidenceLibraries/library:changeRecords puts records in. ` +
     "They rename, share or delete it on the library. Refused in a library they never signed in to.",
   args: { libraryId: v.id("evidenceLibraries"), name: v.string(), description: v.optional(v.string()), public: v.optional(v.boolean()) },
   returns: collectionMadeValidator,

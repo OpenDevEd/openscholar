@@ -1654,6 +1654,11 @@
       "role": "无法添加到 {name}：你现在只能查看它",
       "notFound": "{name} 已不在 {library} 中",
       "unreadable": "{library} 没有响应：部分论文未添加"
+    },
+    "pruneProblem": {
+      "role": "无法从 {name} 移除论文：你现在只能查看它",
+      "notFound": "{name} 已不在 {library} 中",
+      "unreadable": "{library} 没有响应：部分论文未移除"
     }
   },
   "connectionsPage": {

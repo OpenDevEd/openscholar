@@ -9,7 +9,7 @@ import {
   MAX_AUTHORS, MAX_COUNT_BUCKETS, MAX_LIST_CAP, MAX_METADATA_FIELDS, MAX_QUESTIONS,
   MAX_TOPIC_KEYWORDS, capped,
 } from "./lib/listCaps";
-import { libraryDestinationValidator, libraryWriteValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
+import { libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { activityFields } from "./activity/validators";
 import { itemAccessFields, itemInvitationFields } from "./sharing/validators";
@@ -337,7 +337,8 @@ export default defineSchema({
     .index("by_job_and_part_and_page", ["job", "part", "page"]),
 
   // Papers waiting to go into, or come out of, a library collection for a screening (./evidenceLibraries/writes.ts).
-  libraryWrites: defineTable({ job: v.id("screeningJobs"), result: v.id("screeningResults"), change: v.union(v.literal("add"), v.literal("remove")), libraryId: v.id("evidenceLibraries"), collection: v.string() })
+  // `prune`: the paper leaves, or comes back to, the collection the job read, which counts as removed once the library confirms it.
+  libraryWrites: defineTable({ job: v.id("screeningJobs"), result: v.id("screeningResults"), change: v.union(v.literal("add"), v.literal("remove")), libraryId: v.id("evidenceLibraries"), collection: v.string(), prune: v.optional(v.literal(true)) })
     .index("by_job", ["job"])
     .index("by_result", ["result"]),
 
@@ -1104,8 +1105,10 @@ export default defineSchema({
     unsaved: v.optional(v.literal(true)),
     // The Evidence Library collection its included papers go to instead (./evidenceLibraries/writes.ts).
     libraryDestination: v.optional(libraryDestinationValidator),
-    // Why its library writes stopped: the person can no longer change the collection, or it's gone.
-    libraryWriteProblem: v.optional(v.union(v.literal("role"), v.literal("notFound"), v.literal("unreadable"))),
+    // Why its library writes stopped, to the collection its included papers go to and to the one it prunes: the person
+    // can no longer change it, it's gone, or the library didn't answer.
+    libraryWriteProblem: v.optional(libraryWriteProblemValidator),
+    libraryPruneProblem: v.optional(libraryWriteProblemValidator),
     // Papers that end excluded or failed leave the collection it read (`set`).
     prune: v.optional(v.literal(true)),
     // That collection's name, for a reader's collection in a library, whose name lives there.
@@ -1226,7 +1229,7 @@ export default defineSchema({
     // A job's papers of one outcome, in the order the job took them.
     .index("by_job_and_outcome", ["jobId", "outcome"])
     // A job's papers by how they went to its library collection: the ones the library holds no record of.
-    .index("by_job_and_libraryWrite", ["jobId", "libraryWrite"])
+    .index("by_job_and_libraryWrite_and_outcome", ["jobId", "libraryWrite", "outcome"])
     // A job's papers the model is reading: processing, and no longer waiting for a slot.
     .index("by_job_and_status_and_waitingWorkspace", ["jobId", "status", "waitingWorkspace"])
     .index("by_waitingWorkspace_and_waitingSince", ["waitingWorkspace", "waitingSince"])

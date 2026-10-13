@@ -1654,6 +1654,11 @@
       "role": "{name} に追加できません: 今は閲覧のみです",
       "notFound": "{name} はもう {library} にありません",
       "unreadable": "{library} が応答しませんでした: 一部の論文は追加されていません"
+    },
+    "pruneProblem": {
+      "role": "{name} から論文を外せません: 今は閲覧のみです",
+      "notFound": "{name} はもう {library} にありません",
+      "unreadable": "{library} が応答しませんでした: 一部の論文は外されていません"
     }
   },
   "connectionsPage": {

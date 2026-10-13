@@ -234,6 +234,7 @@ export function JobView({
                 {libraryDest ? <ClippedChip icon={FolderPlus} className="text-foreground">{t.rich("savedToLibrary", { count: job.libraryAdded ?? 0, name: libraryDest.name, library: libraryDest.library, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</ClippedChip> : null}
                 {libraryDest && job.libraryMissing ? <Chip icon={TriangleAlert}>{t.rich("notInLibrary", { count: job.libraryMissing, library: libraryDest.library, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</Chip> : null}
                 {libraryDest && job.libraryWriteProblem ? <ClippedChip icon={CircleX} className="text-destructive">{t(`libraryProblem.${job.libraryWriteProblem}`, { name: libraryDest.name, library: libraryDest.library })}</ClippedChip> : null}
+                {pruned && job.libraryPruneProblem ? <ClippedChip icon={CircleX} className="text-destructive">{t(`pruneProblem.${job.libraryPruneProblem.problem}`, { name: pruned, library: job.libraryPruneProblem.library })}</ClippedChip> : null}
                 {!savedTo && !pruned && !libraryDest ? <Chip icon={Ban}>{t("noCollectionChanged")}</Chip> : null}
               </div>
             )}
