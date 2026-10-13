@@ -8,6 +8,7 @@
  * reads each question's tallies (../tallies.ts).
  */
 
+import { openalexWorkOf } from "../../../lib/papers/paper-ref";
 import { getStatusFilterOptionIds } from "../../../lib/extraction/status-filter-options";
 import type { QueryCtx } from "../../_generated/server";
 import { compareValues, getDocumentSize, v, type Infer } from "convex/values";
@@ -66,7 +67,8 @@ async function normalizeResultsFilters(filters: ResultsPageFilters) {
     filters.confidenceRange,
   );
 
-  const searchQuery = normalizeProjectionText(filters.searchQuery);
+  // An OpenAlex work in any of its forms is searched as its ID: an address's words match every paper's DOI address too.
+  const searchQuery = normalizeProjectionText(openalexWorkOf(filters.searchQuery.trim()) ?? filters.searchQuery);
   return {
     searchQuery,
     emptySearch: Boolean(filters.searchQuery.trim()) && !searchQuery,

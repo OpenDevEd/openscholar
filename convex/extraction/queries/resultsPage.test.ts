@@ -7,6 +7,7 @@ import { foldCounts } from "../counts.test-support";
 import { catchUp } from "../../lib/catchUp.test-support";
 import { readExtractionExport } from "../../../lib/extraction/export";
 import { buildQuestionAnswerToken, recomputePaperListProjection } from "../listProjection";
+import { madeBy } from "../../workspaces/actor.test-support";
 
 const CLERK_OWNER = "clerk_results_page_owner";
 const OWNER_IDENTITY = {
@@ -285,6 +286,26 @@ describe("listJobResults", () => {
     const rare = await listResults(auth, jobId, { filters: { ...DEFAULT_FILTERS, searchQuery: "rare" } });
     expect(rare.page.map((paper) => [paper.title, paper.results.map((result) => result.answer)])).toEqual([["Rare Search Match", ["Target answer"]]]);
     expect(rare.isDone).toBe(true);
+  });
+
+  it("finds a paper by its OpenAlex work in any form it's written in", async () => {
+    const t = convexTest(schema);
+    const jobId = await t.run(async (ctx) => {
+      const userId = await ctx.db.insert("users", { clerkId: CLERK_OWNER, email: "results-page@test.com", state: "active", createdAt: 1, updatedAt: 1 });
+      await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
+      const jobId = await ctx.db.insert("extractionJobs", { ...(await madeBy(ctx, userId)), name: "Works", sourceType: "history", status: "completed", totalPapers: 3, usePdfs: false, createdAt: 1, updatedAt: 1 });
+      for (const [work, title] of [["W4256188672", "Rethinking School Feeding"], ["W2", "School Feeding: Outcomes and Costs"], ["W3", "Global School Feeding Sourcebook"]] as const) {
+        const paperId = await ctx.db.insert("extractionPapers", { jobId, openalexId: `https://openalex.org/${work}`, paperKey: `openalex:${work}`, title, doi: `https://doi.org/10.1/${work}`, processable: true, status: "completed" });
+        await recomputePaperListProjection(ctx, paperId);
+      }
+      return jobId;
+    });
+    await catchUp(t);
+    const auth = t.withIdentity(OWNER_IDENTITY);
+    // Every paper's DOI is an address too: the address of one work finds that work alone.
+    for (const searchQuery of ["W4256188672", "openalex:W4256188672", "https://openalex.org/W4256188672"]) {
+      expect(titles((await listResults(auth, jobId, { filters: { ...DEFAULT_FILTERS, searchQuery } })).page)).toEqual(["Rethinking School Feeding"]);
+    }
   });
 
   it("shows someone else nothing of the job", async () => {
