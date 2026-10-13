@@ -329,7 +329,7 @@ export default defineSchema({
     .index("by_user_and_lastAt", ["userId", "lastAt"]),
 
   // What a library handed over for a reader to screen or extract from, until it expires (./evidenceLibraries/handoffs.ts).
-  evidenceLibraryHandoffs: defineTable(evidenceLibraryHandoffFields),
+  evidenceLibraryHandoffs: defineTable(evidenceLibraryHandoffFields).index("by_libraryId", ["libraryId"]),
 
   // The record keys a job reads from an Evidence Library, kept when it starts, a page each (./paperSets/libraryKeys.ts).
   // `part` is the job's source it belongs to: an extraction can read several.

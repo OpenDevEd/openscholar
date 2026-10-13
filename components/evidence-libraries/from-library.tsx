@@ -97,7 +97,6 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
             <div className={LIST}>
               <SourceRow
                 on
-                onToggle={() => undefined}
                 icon={rowIcon(row, [library])}
                 label={label}
                 detail={

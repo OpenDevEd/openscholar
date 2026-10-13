@@ -37,15 +37,15 @@ export const expire = internalMutation({
   },
 });
 
-/** A hand-off not yet expired, its library noted as one the person opening it reads. */
+/** A hand-off not yet expired; opened by the person, its library is noted as one they read. */
 export const opened = internalMutation({
-  args: { handoffId: v.string(), userId: v.id("users") },
+  args: { handoffId: v.string(), userId: v.id("users"), note: v.boolean() },
   returns: v.union(v.null(), v.object({ libraryId: v.id("evidenceLibraries"), ...handed })),
-  handler: async (ctx, { handoffId, userId }) => {
+  handler: async (ctx, { handoffId, userId, note }) => {
     const id = ctx.db.normalizeId("evidenceLibraryHandoffs", handoffId);
     const handoff = id ? await ctx.db.get("evidenceLibraryHandoffs", id) : null;
     if (!handoff || handoff.expiresAt <= Date.now()) return null;
-    await noteReader(ctx, handoff.libraryId, userId, "handoff");
+    if (note) await noteReader(ctx, handoff.libraryId, userId, "handoff");
     return { libraryId: handoff.libraryId, from: handoff.from, source: handoff.source, fields: handoff.fields };
   },
 });
@@ -65,14 +65,14 @@ export const openAction = defineUserAction({
   path: "evidenceLibraries/handoffs:open",
   description:
     "A hand-off a library made, as the person opening it may read its source, with the questions it brought; `gone` once it has expired. " +
-    "With `records`, a hand-off of records lists them (title, authors, year).",
+    "With `records`, a hand-off of records lists them (title, authors, year). The assistant reading it doesn't add the library to the person's list; the person opening its link does.",
   args: { handoffId: v.string(), records: v.optional(v.boolean()) },
   returns: openedValidator,
   spendsCredits: false,
   outsideEffect: false,
   undoable: true,
-  run: async (ctx, { userId }, { handoffId, records: listing }): Promise<Infer<typeof openedValidator>> => {
-    const handoff: Omit<Doc<"evidenceLibraryHandoffs">, "_id" | "_creationTime" | "expiresAt"> | null = await ctx.runMutation(internal.evidenceLibraries.handoffs.opened, { handoffId, userId });
+  run: async (ctx, { userId, author }, { handoffId, records: listing }): Promise<Infer<typeof openedValidator>> => {
+    const handoff: Omit<Doc<"evidenceLibraryHandoffs">, "_id" | "_creationTime" | "expiresAt"> | null = await ctx.runMutation(internal.evidenceLibraries.handoffs.opened, { handoffId, userId, note: author === "user" });
     if (!handoff) return { gone: true };
     const found = await described(ctx, userId, handoff.libraryId, handoff.source);
     // A list the library couldn't give is said so, and leaves the hand-off to screen or extract from (the failure is logged where it's read).

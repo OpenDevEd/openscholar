@@ -1,3 +1,5 @@
+import { bareWorkspacePath } from "@/lib/workspaces/paths";
+
 const PUBLIC_UNAUTHENTICATED_PATHS = [
   "/",
   "/pricing",
@@ -53,7 +55,8 @@ const PAGES_WITH_OWN_LOADING = ["/evidence-libraries", "/authors"] as const;
 const SECTIONS_WITH_OWN_LOADING = ["/extraction", "/from-library"] as const;
 
 export function showsOwnLoading(pathname: string) {
-  const path = normalizePathname(pathname);
+  // An organization's page under /o/<slug> loads as the same page outside it does.
+  const path = bareWorkspacePath(normalizePathname(pathname));
   return (PAGES_WITH_OWN_LOADING as readonly string[]).includes(path)
     || SECTIONS_WITH_OWN_LOADING.some((section) => path === section || path.startsWith(`${section}/`));
 }

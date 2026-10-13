@@ -51,9 +51,9 @@ export function ScreeningPage() {
   const date = (at: number) => format.dateTime(new Date(at), { dateStyle: "medium" });
   // Screen all on a results page opens the form with that search: /screening?search=<id>. A
   // screening shows at ?job=<id>, the form at ?job=new; with neither, the newest screening shows.
-  const [searchId] = useQueryState("search");
+  const [searchId, setSearchId] = useQueryState("search");
   // What an Evidence Library handed over opens the form on it: /screening?handoff=<id> (app/from-library).
-  const [handoffId] = useQueryState("handoff");
+  const [handoffId, setHandoffId] = useQueryState("handoff");
   const [picked, setPicked] = useQueryState("job");
 
   // In an organization, everyone's screenings or one member's (#656).
@@ -93,6 +93,9 @@ export function ScreeningPage() {
   const [again, setAgain] = useState<Job | null>(null);
   const openForm = (from: Job | null) => {
     setAgain(from);
+    // The form starts on what it's given, not on a search or hand-off the page was opened with, as the rail's link does.
+    void setSearchId(null);
+    void setHandoffId(null);
     setPicked("new");
   };
   // The person's oldest job with papers being read: the one a new or waiting job starts after.
