@@ -59,9 +59,10 @@ branches `mock/library-sources` (openalex-count) and `mock/openscholar-handoff`
   and Screen (yes or no questions only, as their description), and offers Screen
   only when no questions came or at least one is yes or no.
 - **The assistant** lists a person's libraries and their collections, searches a
-  library, reads records and their PDFs, creates library collections and adds or
-  removes records, resolves a pasted library address, and starts screenings and
-  extractions on library sources with the usual cost approval.
+  library, reads records and their PDFs, creates library collections (and undoes
+  one while it is as made) and adds or removes records, resolves a pasted
+  library address, and starts screenings and extractions on library sources
+  with the usual cost approval.
 - **No plan gate.** Library sources work on every plan; the workspace's credits
   pay for the job. A person's reader collections show in every workspace.
 - **One complete build** ("do not lobotomize the milestone"), in the stages
@@ -132,6 +133,7 @@ as whoever opens it), and records the library for that person when they open it.
 | `GET /api/v1/openscholar/records/<key>/files/<attachmentKey>?reader=` | the PDF, only when the library's tag rules make it downloadable (`filterPublicAttachments`), else `404` |
 | `POST /api/v1/openscholar/readers/<clerkUserId>/collections` `{name, description?, private, requestId}` | `201 {collection}`; limits as the profile has them. The same `requestId` again answers the collection it made, so a retry never makes two |
 | `POST` and `DELETE /api/v1/openscholar/readers/<clerkUserId>/collections/<id>/records` `{keys}` | `{count, changed}`; owner or editor only (`403 role`) |
+| `DELETE /api/v1/openscholar/readers/<clerkUserId>/collections/<id>` `{expect?: {name, records}}` | `{deleted: true}`; owner only (`403 role`, `404 not_found` for anyone it isn't shared with). Its records stay bookmarked and its waiting invitations are cancelled. With `expect`, only while the collection still has that name and holds that many records, read under a lock; otherwise `409 changed` and it stays. Added 2026-10-14 for the assistant's Undo of a collection it made |
 
 Changed 2026-10-13: the plan had `GET records?from=` paging a source by key while
 a job read it, and `POST searches/resolve` for searches alone. Every source is

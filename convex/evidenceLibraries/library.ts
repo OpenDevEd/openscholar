@@ -138,19 +138,22 @@ export const records = userAction(recordsAction);
 export const recordsForAssistant = assistantAction(recordsAction);
 
 const collectionMadeValidator = v.object({ id: v.string(), name: v.string(), description: v.union(v.string(), v.null()), private: v.boolean(), records: v.number() });
+const DELETE_COLLECTION = "evidenceLibraries/library:deleteCollection" as const;
+const expectValidator = v.object({ name: v.string(), records: v.number() });
+const deleteArgs = { libraryId: v.id("evidenceLibraries"), collection: v.string(), collectionName: v.optional(v.string()), expect: v.optional(expectValidator) };
 
 export const createCollectionAction = defineChangingAction({
   path: "evidenceLibraries/library:createCollection",
   description:
-    `Makes a collection for the person in an Evidence Library, as their profile page there makes one, named in at most ${LIBRARY_COLLECTION_NAME_MAX} characters, with a description of at most ${LIBRARY_COLLECTION_DESCRIPTION_MAX}: private, unless \`public\` is true, when anyone who visits the library can find it. Returns it with its \`id\`, which evidenceLibraries/library:changeRecords puts records in. ` +
-    "They rename, share or delete it on the library. Refused in a library they never signed in to.",
+    `Makes a collection for the person in an Evidence Library, as their profile page there makes one, named in at most ${LIBRARY_COLLECTION_NAME_MAX} characters, with a description of at most ${LIBRARY_COLLECTION_DESCRIPTION_MAX}: private, unless \`public\` is true, when anyone who visits the library can find it. Returns it with its \`id\`, which evidenceLibraries/library:changeRecords puts records in, and \`undo\`, which deletes it while it is still as made. ` +
+    "They rename or share it on the library. Refused in a library they never signed in to.",
   args: { libraryId: v.id("evidenceLibraries"), name: v.string(), description: v.optional(v.string()), public: v.optional(v.boolean()) },
-  returns: collectionMadeValidator,
+  returns: v.object({ ...collectionMadeValidator.fields, undo: reversedBy(DELETE_COLLECTION, { libraryId: v.id("evidenceLibraries"), collection: v.string(), expect: expectValidator }) }),
   spendsCredits: false,
-  // It's made on another site, which nothing here takes back.
+  // It's made on another site, where whoever it's shared with, or anyone for a public one, sees it.
   outsideEffect: true,
-  undoable: false,
-  run: async (ctx, { userId }, { libraryId, name, description, public: shown }, call): Promise<Infer<typeof collectionMadeValidator>> => {
+  undoable: true,
+  run: async (ctx, { userId }, { libraryId, name, description, public: shown }, call) => {
     // The step it is makes one collection however often it's tried.
     const step = call?.stepId ?? call?.from;
     const made: { id: string; name: string; description: string | null; private: boolean; count: number } = await ctx.runAction(internal.evidenceLibraries.sourceActions.createCollection, {
@@ -161,11 +164,40 @@ export const createCollectionAction = defineChangingAction({
       private: shown !== true,
       requestId: step ? `assistant:${step}` : crypto.randomUUID(),
     });
-    return { id: made.id, name: made.name, description: made.description, private: made.private, records: made.count };
+    // Undone only while it is as asked for (the library trims the name): renamed or filled since, even before a retry
+    // of this step got its answer, it stays.
+    const undo = { path: DELETE_COLLECTION, args: { libraryId, collection: made.id, expect: { name: name.trim(), records: 0 } } };
+    return { id: made.id, name: made.name, description: made.description, private: made.private, records: made.count, undo };
   },
 });
 export const createCollection = userAction(createCollectionAction);
 export const createCollectionForAssistant = assistantAction(createCollectionAction);
+
+export const deleteCollectionAction = defineChangingAction({
+  path: DELETE_COLLECTION,
+  description:
+    "Deletes a collection the person owns in an Evidence Library, as their profile page there does: its records stay in their bookmarks there, and whoever it was shared with loses it. " +
+    "`collectionName` is its name, which the person is shown when asked. `expect` ({ name, records }), which an undo passes, deletes it only while it still has that name and holds that many records. Refused for a collection they don't own.",
+  args: deleteArgs,
+  returns: v.object({}),
+  spendsCredits: false,
+  // Whoever the collection is shared with, or anyone for a public one, loses it.
+  outsideEffect: true,
+  undoable: false,
+  shown: ({ libraryId, collection, collectionName }) => ({ libraryId, collection: collectionName ?? collection }),
+  run: async (ctx, { userId }, { libraryId, collection, collectionName, expect }) => {
+    // The person was asked about the collection by the name the model gave: one that isn't this collection's stays.
+    // With `expect`, the library holds the collection to that name as it deletes it.
+    if (collectionName) {
+      const found: string = expect?.name ?? (await ctx.runAction(internal.evidenceLibraries.sourceActions.collection, { libraryId, userId, id: collection })).name;
+      if (found.trim().toLowerCase() !== collectionName.trim().toLowerCase()) throw createError("VALIDATION_ERROR", `That collection is "${found}", not "${collectionName}". Check its ID, and ask again.`);
+    }
+    await ctx.runAction(internal.evidenceLibraries.sourceActions.deleteCollection, { libraryId, userId, collection, ...(expect ? { expect } : {}) });
+    return {};
+  },
+});
+export const deleteCollection = userAction(deleteCollectionAction);
+export const deleteCollectionForAssistant = assistantAction(deleteCollectionAction);
 
 const CHANGE_RECORDS = "evidenceLibraries/library:changeRecords" as const;
 const changeArgs = { libraryId: v.id("evidenceLibraries"), collection: v.string(), collectionName: v.optional(v.string()), keys: v.array(v.string()), change: v.union(v.literal("add"), v.literal("remove")) };

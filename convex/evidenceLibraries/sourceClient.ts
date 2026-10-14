@@ -18,7 +18,7 @@ export type LibraryTarget = { baseUrl: string; credential: string };
 /** Why a library read failed, in words a person can act on. */
 export class LibrarySourceError extends Error {
   constructor(
-    readonly code: "outdated" | "refused" | "private" | "not_found" | "too_many" | "index_changed" | "invalid" | "unavailable" | "role" | "not_reader",
+    readonly code: "outdated" | "refused" | "private" | "not_found" | "too_many" | "index_changed" | "invalid" | "unavailable" | "role" | "not_reader" | "changed",
     message: string,
     readonly status?: number,
   ) {
@@ -61,7 +61,7 @@ async function call<T>(fetchImpl: typeof fetch, target: LibraryTarget, path: str
   if (code === "too_many") throw new LibrarySourceError("too_many", message, response.status);
   if (code === "index_changed") throw new LibrarySourceError("index_changed", message, response.status);
   if (code === "contract") throw new LibrarySourceError("outdated", "This library needs an update to be used here.", response.status);
-  if (code === "role" || code === "not_reader") throw new LibrarySourceError(code, message, response.status);
+  if (code === "role" || code === "not_reader" || code === "changed") throw new LibrarySourceError(code, message, response.status);
   throw new LibrarySourceError(response.status >= 500 ? "unavailable" : "invalid", message, response.status);
 }
 
@@ -160,6 +160,15 @@ export const LIBRARY_CHANGE_MAX = 500;
 export async function changeCollectionRecords(fetchImpl: typeof fetch, target: LibraryTarget, clerkUserId: string, collectionId: string, keys: string[], change: "add" | "remove") {
   const path = `/api/v1/openscholar/readers/${encodeURIComponent(clerkUserId)}/collections/${encodeURIComponent(collectionId)}/records`;
   return await call(fetchImpl, target, path, z.object({ count: z.number(), changed: z.array(z.string()).max(LIBRARY_CHANGE_MAX), missing: z.array(z.string()).max(LIBRARY_CHANGE_MAX) }), { body: { keys }, method: change === "add" ? "POST" : "DELETE" });
+}
+
+/**
+ * Deletes a collection the person owns, as their profile does: its records stay in their bookmarks. With `expect`, only
+ * while it still has that name and holds that many records; one changed since is refused (`changed`) and stays.
+ */
+export async function deleteReaderCollection(fetchImpl: typeof fetch, target: LibraryTarget, clerkUserId: string, collectionId: string, expect?: { name: string; records: number }) {
+  const path = `/api/v1/openscholar/readers/${encodeURIComponent(clerkUserId)}/collections/${encodeURIComponent(collectionId)}`;
+  await call(fetchImpl, target, path, z.object({ deleted: z.literal(true) }), { body: expect ? { expect } : {}, method: "DELETE" });
 }
 
 /** The records the library holds for papers by their OpenAlex ID or DOI: each match names the paper by its place (`at`). */

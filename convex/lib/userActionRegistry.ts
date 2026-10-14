@@ -51,7 +51,7 @@ import { addMemberAction as libraryAddMemberAction, changeRoleAction as libraryC
 import { createAction as authorCreateAction, directoryAction as authorDirectoryAction, editorsAction as authorEditorsAction, invitationsAction as authorInvitationsAction, profileAction as authorProfileAction, publicationsAction as authorPublicationsAction } from "../authors/assistant";
 import { publicationsAction as topicPublicationsAction } from "../topics/assistant";
 import { listAction as readLibrariesAction } from "../evidenceLibraries/readers";
-import { addressAction as readerSourceAddressAction, changeRecordsAction as readerChangeRecordsAction, createCollectionAction as readerCreateCollectionAction, recordsAction as readerRecordsAction, sourceAction as readerSourceAction, sourcesAction as readerSourcesAction } from "../evidenceLibraries/library";
+import { addressAction as readerSourceAddressAction, changeRecordsAction as readerChangeRecordsAction, createCollectionAction as readerCreateCollectionAction, deleteCollectionAction as readerDeleteCollectionAction, recordsAction as readerRecordsAction, sourceAction as readerSourceAction, sourcesAction as readerSourcesAction } from "../evidenceLibraries/library";
 import { openAction as libraryHandoffAction } from "../evidenceLibraries/handoffs";
 import { collectionsAction as zoteroCollectionsAction, groupsAction as zoteroGroupsAction, itemsAction as zoteroItemsAction, pdfAction as zoteroPdfAction } from "../zotero/library";
 
@@ -74,6 +74,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   readerSourceAction,
   readerRecordsAction,
   readerCreateCollectionAction,
+  readerDeleteCollectionAction,
   readerChangeRecordsAction,
   libraryHandoffAction,
   libraryDraftAction,

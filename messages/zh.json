@@ -3845,6 +3845,15 @@
         "doingMany": "正在 Evidence Library 中创建 {count, number} 个合集",
         "didMany": "已在 Evidence Library 中创建 {count, number} 个合集"
       },
+      "deleteLibraryCollection": {
+        "doing": "正在删除 Evidence Library 中的合集",
+        "did": "已删除 Evidence Library 中的合集",
+        "where": "Evidence Library",
+        "ask": "删除 Evidence Library 中的合集",
+        "askMany": "删除 Evidence Library 中的 {count, number} 个合集",
+        "doingMany": "正在删除 Evidence Library 中的 {count, number} 个合集",
+        "didMany": "已删除 Evidence Library 中的 {count, number} 个合集"
+      },
       "changeLibraryRecords": {
         "doing": "正在更改 Evidence Library 合集",
         "did": "已更改 Evidence Library 合集",
