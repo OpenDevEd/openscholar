@@ -74,6 +74,8 @@ it("reads a library search a page at a time, and records by key whole, each with
 
   const named = await person.action(api.evidenceLibraries.library.records, { workspaceId, libraryId, source: { records: [keyAt(3)] } });
   expect(named.records[0]?.abstract).toBe("a".repeat(900));
+  // Another library's record isn't read here by its key alone.
+  await expect(person.action(api.evidenceLibraries.library.records, { workspaceId, libraryId, source: { records: [`library:r1another0000000000000000000000:${keyAt(3)}`] } })).rejects.toThrow(/another Evidence Library/);
 });
 
 it("puts records in a collection the person edits, and its undo takes out only the ones that went in", async () => {

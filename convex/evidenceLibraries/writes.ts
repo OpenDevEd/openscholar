@@ -25,7 +25,7 @@ export async function queueLibraryWrite(ctx: MutationCtx, job: Doc<"screeningJob
     if (earlier.collection === to.collection) await ctx.db.delete("libraryWrites", earlier._id);
   }
   await ctx.db.insert("libraryWrites", { job: job._id, result: result._id, change, libraryId: to.libraryId, collection: to.collection, ...(prune ? { prune: true as const } : {}) });
-  if (!waiting) await ctx.scheduler.runAfter(GATHER_MS, internal.evidenceLibraries.sourceActions.flushWrites, { job: job._id, attempt: 0 });
+  if (!waiting) await ctx.scheduler.runAfter(GATHER_MS, internal.evidenceLibraries.sourceActions.flushWrites, { job: job._id });
 }
 
 /**
@@ -46,6 +46,7 @@ const queuedValidator = v.object({
   libraryId: v.id("evidenceLibraries"),
   collection: v.string(),
   prune: v.boolean(),
+  attempts: v.number(),
   paperKey: v.string(),
   ref: paperRefValidator,
   crossRefs: v.optional(crossRefsValidator),
@@ -68,7 +69,7 @@ export const batch = internalQuery({
     const gone = [];
     for (const row of queued.slice(0, LIBRARY_CHANGE_MAX)) {
       const result = await ctx.db.get("screeningResults", row.result);
-      if (owner && result?.paperKey && result.ref) rows.push({ id: row._id, result: row.result, change: row.change, libraryId: row.libraryId, collection: row.collection, prune: row.prune === true, paperKey: result.paperKey, ref: result.ref, ...(result.crossRefs ? { crossRefs: result.crossRefs } : {}) });
+      if (owner && result?.paperKey && result.ref) rows.push({ id: row._id, result: row.result, change: row.change, libraryId: row.libraryId, collection: row.collection, prune: row.prune === true, attempts: row.attempts ?? 0, paperKey: result.paperKey, ref: result.ref, ...(result.crossRefs ? { crossRefs: result.crossRefs } : {}) });
       else gone.push({ id: row._id, result: row.result });
     }
     const destination = owner?.libraryDestination ? { libraryId: owner.libraryDestination.libraryId, collection: owner.libraryDestination.collection } : null;
@@ -87,11 +88,17 @@ export const written = internalMutation({
     job: v.id("screeningJobs"),
     rows: v.array(v.object({ id: v.id("libraryWrites"), result: v.id("screeningResults"), write: v.optional(libraryWriteValidator) })),
     removed: v.optional(v.number()),
+    // Writes whose library didn't answer, to be asked again.
+    retried: v.optional(v.array(v.id("libraryWrites"))),
     problem: v.optional(libraryWriteProblemValidator),
     pruneProblem: v.optional(libraryWriteProblemValidator),
   },
   returns: v.boolean(),
-  handler: async (ctx, { job, rows, removed = 0, problem, pruneProblem }) => {
+  handler: async (ctx, { job, rows, removed = 0, retried = [], problem, pruneProblem }) => {
+    for (const id of retried) {
+      const row = await ctx.db.get("libraryWrites", id);
+      if (row) await ctx.db.patch("libraryWrites", id, { attempts: (row.attempts ?? 0) + 1 });
+    }
     let added = 0;
     let missing = 0;
     for (const row of rows) {

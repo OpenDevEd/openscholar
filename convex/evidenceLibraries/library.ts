@@ -99,9 +99,12 @@ function recordOf(paper: Infer<typeof screeningPaperInputValidator>, address: st
 }
 
 /** A record's key in its library, given as the key or as the paper OpenScholar names it (`library:<libraryId>:<key>`). */
-function recordKey(value: string) {
+function recordKey(libraryId: Id<"evidenceLibraries">, value: string) {
   const ref = parsePaperKey(value.trim());
-  return ref?.source === "library" ? ref.key : value.trim();
+  if (ref?.source !== "library") return value.trim();
+  // Another library's record isn't this one's, whatever its key is here.
+  if (ref.libraryId !== libraryId) throw createError("VALIDATION_ERROR", `${value.trim()} is a record of another Evidence Library: use that library's ID with it.`);
+  return ref.key;
 }
 
 /** A library that is running, by its name and address; one that isn't is refused. */
@@ -125,7 +128,7 @@ export const recordsAction = defineUserAction({
   run: async (ctx, { userId }, { libraryId, source, start }): Promise<Infer<typeof libraryRecordsValidator>> => {
     const library = await runningLibrary(ctx, libraryId);
     const from = Math.max(0, Math.floor(start ?? 0));
-    const asked = "records" in source ? { records: source.records.map(recordKey) } : source;
+    const asked = "records" in source ? { records: source.records.map((key) => recordKey(libraryId, key)) } : source;
     const read: { total: number; papers: Array<Infer<typeof screeningPaperInputValidator>> } = await ctx.runAction(internal.evidenceLibraries.sourceActions.page, { libraryId, userId, source: asked, first: from + 1, last: from + RECORDS_PAGE });
     const whole = "records" in source;
     return { total: read.total, records: read.papers.map((paper) => recordOf(paper, library.address, whole)), ...(from + RECORDS_PAGE < read.total ? { next: from + RECORDS_PAGE } : {}) };
@@ -180,7 +183,7 @@ export const changeRecordsAction = defineChangingAction({
   undoable: true,
   shown: ({ libraryId, collection, collectionName, keys, change }) => ({ libraryId, collection: collectionName ?? collection, change, records: new Set(keys).size }),
   run: async (ctx, { userId }, { libraryId, collection, collectionName, keys, change }) => {
-    const unique = [...new Set(keys.map(recordKey))];
+    const unique = [...new Set(keys.map((key) => recordKey(libraryId, key)))];
     if (unique.length === 0) throw createError("VALIDATION_ERROR", "Give the keys of the records to change.");
     if (unique.length > LIBRARY_CHANGE_MAX) throw createError("VALIDATION_ERROR", `A change takes at most ${LIBRARY_CHANGE_MAX} records: make it in parts.`);
     // The person was asked about the collection by the name the model gave: one that isn't this collection's changes nothing.

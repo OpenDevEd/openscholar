@@ -39,7 +39,7 @@ async function setup(name: string, access: "owner" | "viewer" = "owner") {
   });
   const calls: Call[] = [];
   // What runs while a write to a collection is out, once.
-  const hooks: { during?: () => Promise<void>; refuse?: boolean } = {};
+  const hooks: { during?: () => Promise<void>; refuse?: boolean; down?: string } = {};
   const collection = (id: string, extra: Record<string, unknown> = {}) => ({ id, name: id === MADE ? "Included from tutoring" : "Reading list", description: null, private: true, count: 3, access, owner: { name: "Ada", image: null }, ...extra });
   vi.stubGlobal("fetch", vi.fn(async (input: string | URL, init?: RequestInit) => {
     const url = new URL(String(input));
@@ -54,6 +54,7 @@ async function setup(name: string, access: "owner" | "viewer" = "owner") {
       hooks.during = undefined;
       await during?.();
       if (url.pathname.endsWith(`/collections/${READ}/records`) && hooks.refuse) return Response.json({ error: "role", message: "You can only view this collection." }, { status: 403 });
+      if (hooks.down && url.pathname.endsWith(`/collections/${hooks.down}/records`)) return new Response("Service unavailable", { status: 503 });
       // The new collection's library shows no CCCCCCCC; the collection read holds every record.
       const shown = (key: string) => key !== "HIDDENKY" && !(key === "CCCCCCCC" && url.pathname.includes(MADE));
       return Response.json({ count: 5, changed: (body.keys as string[]).filter(shown), missing: (body.keys as string[]).filter((key) => !shown(key)) });
@@ -87,7 +88,7 @@ it("makes a new collection in the library once, puts the included papers there, 
   const unmatched = await included(t, jobId, "openalex:W9", { source: "openalex", work: "W9" }, { openalexId: "W9" });
   const hidden = await included(t, jobId, `library:${libraryId}:HIDDENKY`, { source: "library", libraryId, key: "HIDDENKY" });
   expect(await t.run((ctx) => ctx.db.query("libraryWrites").collect())).toHaveLength(4);
-  await t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId, attempt: 0 });
+  await t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId });
 
   const added = calls.find((call) => call.method === "POST" && call.path.endsWith(`/collections/${MADE}/records`));
   expect((added?.body?.keys as string[]).toSorted()).toEqual(["AAAAAAAA", "HIDDENKY", "MATCHED1"]);
@@ -107,6 +108,10 @@ it("refuses to save to a collection the person may only view, and takes excluded
   const saveTo = { kind: "libraryCollection" as const, libraryId: viewer.libraryId, collection: READ };
   await expect(viewer.person.action(api.screening.start.screen, { set: { kind: "evidenceLibrary", libraryId: viewer.libraryId, source: { library: true } }, first: 1, last: 3, questions, scoringConfig, saveTo })).rejects.toThrow(/only view/);
   await expect(viewer.person.action(api.screening.start.screen, { set: { kind: "evidenceLibrary", libraryId: viewer.libraryId, source: { readerCollection: READ } }, first: 1, last: 3, questions, scoringConfig, saveTo: { kind: "none" }, prune: true })).rejects.toThrow(/only view/);
+  // Refused for the collection it prunes before a new one is made for its included papers: none is left behind.
+  const newOne = { kind: "newLibraryCollection" as const, libraryId: viewer.libraryId, name: "Included", private: true, requestId: "form-3" };
+  await expect(viewer.person.action(api.screening.start.screen, { set: { kind: "evidenceLibrary", libraryId: viewer.libraryId, source: { readerCollection: READ } }, first: 1, last: 3, questions, scoringConfig, saveTo: newOne, prune: true })).rejects.toThrow(/only view/);
+  expect(viewer.calls.filter((call) => call.method === "POST" && call.path.endsWith("/collections"))).toEqual([]);
 
   const { t, libraryId, calls, hooks, person } = await setup("libwrites-prune");
   const { jobId } = await person.action(api.screening.start.screen, { set: { kind: "evidenceLibrary", libraryId, source: { readerCollection: READ } }, first: 1, last: 3, questions, scoringConfig, saveTo: { kind: "none" }, prune: true });
@@ -116,7 +121,7 @@ it("refuses to save to a collection the person may only view, and takes excluded
     await shelve(ctx, (await ctx.db.get("screeningJobs", jobId))!, (await ctx.db.get("screeningResults", id))!, { becameIncluded: false, left: true });
     return id;
   });
-  await t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId, attempt: 0 });
+  await t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId });
   expect(calls.find((call) => call.method === "DELETE")).toMatchObject({ path: expect.stringContaining(`/collections/${READ}/records`), body: { keys: ["BBBBBBBB"] } });
   expect(await t.run((ctx) => ctx.db.get("screeningResults", left))).toMatchObject({ pruned: true });
   // Counted removed once the library confirms it.
@@ -129,7 +134,7 @@ it("refuses to save to a collection the person may only view, and takes excluded
     const id = await ctx.db.insert("screeningResults", { jobId, paperKey: `library:${libraryId}:CCCCCCCC`, ref: { source: "library", libraryId, key: "CCCCCCCC" }, title: "C", authors: [], status: "completed", outcome: "excluded", qualified: false, createdAt: 1 });
     await shelve(ctx, (await ctx.db.get("screeningJobs", jobId))!, (await ctx.db.get("screeningResults", id))!, { becameIncluded: false, left: true });
   });
-  await t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId, attempt: 0 });
+  await t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId });
   expect((await progress()).removed).toBe(1);
   expect(await t.run((ctx) => ctx.db.get("screeningJobs", jobId))).toMatchObject({ libraryPruneProblem: "role" });
   expect((await t.run((ctx) => ctx.db.get("screeningJobs", jobId)))?.libraryWriteProblem).toBeUndefined();
@@ -139,7 +144,7 @@ it("writes a paper that moved while a batch was out, and only the collection the
   const { t, libraryId, hooks, person } = await setup("libwrites-moves");
   const saveTo = { kind: "newLibraryCollection" as const, libraryId, name: "Included", private: true, requestId: "form-2" };
   const { jobId } = await person.action(api.screening.start.screen, { set: { kind: "evidenceLibrary", libraryId, source: { readerCollection: READ } }, first: 1, last: 3, questions, scoringConfig, saveTo, prune: true });
-  const flush = () => t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId, attempt: 0 });
+  const flush = () => t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId });
   const written = (id: Id<"screeningResults">) => t.run(async (ctx) => (await ctx.db.get("screeningResults", id))?.libraryWrite ?? null);
   const move = (id: Id<"screeningResults">, outcome: "included" | "excluded") =>
     t.run(async (ctx) => {
@@ -188,4 +193,43 @@ it("writes a paper that moved while a batch was out, and only the collection the
   expect(await missing()).toEqual({ listed: [`library:${libraryId}:CCCCCCCC`], counted: 1 });
   await move(back, "excluded");
   expect(await missing()).toEqual({ listed: [], counted: 0 });
+});
+
+it("asks a library that didn't answer again for its own writes while the rest go out, and writes nothing for an account suspended since", async () => {
+  const { t, libraryId, calls, hooks, person, clerkUserId } = await setup("libwrites-retry");
+  const saveTo = { kind: "newLibraryCollection" as const, libraryId, name: "Included", private: true, requestId: "form-4" };
+  const { jobId } = await person.action(api.screening.start.screen, { set: { kind: "evidenceLibrary", libraryId, source: { readerCollection: READ } }, first: 1, last: 3, questions, scoringConfig, saveTo, prune: true });
+  const flush = () => t.action(internal.evidenceLibraries.sourceActions.flushWrites, { job: jobId });
+  const progress = () => t.run(async (ctx) => (await ctx.db.query("screeningJobProgress").withIndex("by_job", (q) => q.eq("jobId", jobId)).unique())!);
+  const waiting = () => t.run((ctx) => ctx.db.query("libraryWrites").collect());
+
+  const kept = await included(t, jobId, `library:${libraryId}:AAAAAAAA`, { source: "library", libraryId, key: "AAAAAAAA" });
+  await t.run(async (ctx) => {
+    const id = await ctx.db.insert("screeningResults", { jobId, paperKey: `library:${libraryId}:BBBBBBBB`, ref: { source: "library", libraryId, key: "BBBBBBBB" }, title: "B", authors: [], status: "completed", outcome: "excluded", qualified: false, createdAt: 1 });
+    await shelve(ctx, (await ctx.db.get("screeningJobs", jobId))!, (await ctx.db.get("screeningResults", id))!, { becameIncluded: false, left: true });
+  });
+  // The collection read doesn't answer: the new one gets its paper, and the paper leaving waits, counted once.
+  hooks.down = READ;
+  await flush();
+  expect(await t.run(async (ctx) => (await ctx.db.get("screeningResults", kept))?.libraryWrite)).toBe("added");
+  expect(await waiting()).toMatchObject([{ change: "remove", collection: READ, attempts: 1 }]);
+  expect((await progress()).removed ?? 0).toBe(0);
+  hooks.down = undefined;
+  await flush();
+  // Asked twice: the try it didn't answer, and the one that took it out.
+  expect(calls.filter((call) => call.method === "DELETE").map((call) => call.body)).toEqual([{ keys: ["BBBBBBBB"] }, { keys: ["BBBBBBBB"] }]);
+  expect((await progress()).removed).toBe(1);
+  expect(await waiting()).toEqual([]);
+
+  // Its account suspended, what it queues next is never sent.
+  await t.run(async (ctx) => {
+    const user = (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique())!;
+    await ctx.db.patch("users", user._id, { state: "suspended" });
+  });
+  const sent = calls.length;
+  const late = await included(t, jobId, `library:${libraryId}:CCCCCCCC`, { source: "library", libraryId, key: "CCCCCCCC" });
+  await flush();
+  expect(calls.slice(sent)).toEqual([]);
+  expect(await waiting()).toEqual([]);
+  expect(await t.run(async (ctx) => (await ctx.db.get("screeningResults", late))?.libraryWrite ?? null)).toBeNull();
 });

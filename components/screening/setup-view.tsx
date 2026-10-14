@@ -121,6 +121,8 @@ export function SetupView({
   const describe = useWorkspaceAction(api.evidenceLibraries.library.source);
   const { userId } = useAuth();
   const ranBefore = useSWR(againLibrary && workspaceId && userId ? ["library-source", userId, againLibrary.libraryId, JSON.stringify(againLibrary.source)] : null, () => describe({ libraryId: againLibrary!.libraryId, source: againLibrary!.source }), { revalidateOnFocus: false });
+  const againDest = again?.libraryDestination;
+  const savedDest = useSWR(againDest && workspaceId && userId ? ["library-source", userId, againDest.libraryId, JSON.stringify({ readerCollection: againDest.collection })] : null, () => describe({ libraryId: againDest!.libraryId, source: { readerCollection: againDest!.collection } }), { revalidateOnFocus: false });
   // A hand-off starts on its source as the person may read it now, and the questions it brought.
   const openHandoff = useWorkspaceAction(api.evidenceLibraries.handoffs.open);
   const handedOver = useSWR(handoffId && workspaceId && userId ? ["library-handoff", userId, handoffId] : null, () => openHandoff({ handoffId: handoffId! }), { revalidateOnFocus: false });
@@ -227,7 +229,11 @@ export function SetupView({
   const destLibrary = libraries.libraries.find((one) => one.libraryId === (destLibraryId ?? (source?.kind === "evidenceLibrary" ? source.held.library.libraryId : undefined))) ?? libraries.libraries[0];
   const isSourceRow = (row: LibraryRow) => source?.kind === "evidenceLibrary" && source.id === rowKey(row);
   // The person's collections there they can change: their own, and the ones shared with them to edit, never the one it reads.
-  const changeable = (libraries.contents.find((one) => one.libraryId === destLibrary?.libraryId)?.rows ?? []).filter((row) => (row.what === "yours" || (row.what === "shared" && row.access === "editor")) && !isSourceRow(row));
+  const editable = (row: LibraryRow) => (row.what === "yours" || (row.what !== "library" && row.access === "editor")) && !isSourceRow(row);
+  const listedChangeable = (libraries.contents.find((one) => one.libraryId === destLibrary?.libraryId)?.rows ?? []).filter(editable);
+  // Run again, it keeps the collection it saved to, read as the person may change it now, even one past the first the library lists.
+  const savedRow = savedDest.data && "row" in savedDest.data && savedDest.data.row.libraryId === destLibrary?.libraryId && editable(savedDest.data.row) ? savedDest.data.row : null;
+  const changeable = savedRow && !listedChangeable.some((row) => rowKey(row) === rowKey(savedRow)) ? [savedRow, ...listedChangeable] : listedChangeable;
   const libraryDestPages = Math.max(1, Math.ceil(changeable.length / DESTINATION_PAGE));
   const libraryDestAt = Math.min(libraryDestPage, libraryDestPages);
   const libraryTarget = libraryDest === "new" || changeable.some((row) => "readerCollection" in row.source && row.source.readerCollection === libraryDest) ? libraryDest : "new";
@@ -336,7 +342,7 @@ export function SetupView({
 
   const list = lists[kind];
   // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows.
-  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.loaded && (!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
+  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.loaded && (!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && (!againDest || savedDest.data !== undefined || savedDest.error !== undefined) && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
   /** How many of a library row's records a job takes, as the other sources ask it. */
   const libraryScope = (row: LibraryRow) => {
     if (source?.kind !== "evidenceLibrary" || source.id !== rowKey(row)) return null;

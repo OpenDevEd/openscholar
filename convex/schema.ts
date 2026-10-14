@@ -338,7 +338,8 @@ export default defineSchema({
 
   // Papers waiting to go into, or come out of, a library collection for a screening (./evidenceLibraries/writes.ts).
   // `prune`: the paper leaves, or comes back to, the collection the job read, which counts as removed once the library confirms it.
-  libraryWrites: defineTable({ job: v.id("screeningJobs"), result: v.id("screeningResults"), change: v.union(v.literal("add"), v.literal("remove")), libraryId: v.id("evidenceLibraries"), collection: v.string(), prune: v.optional(v.literal(true)) })
+  // `attempts`: times its library didn't answer it.
+  libraryWrites: defineTable({ job: v.id("screeningJobs"), result: v.id("screeningResults"), change: v.union(v.literal("add"), v.literal("remove")), libraryId: v.id("evidenceLibraries"), collection: v.string(), prune: v.optional(v.literal(true)), attempts: v.optional(v.number()) })
     .index("by_job", ["job"])
     .index("by_result", ["result"]),
 

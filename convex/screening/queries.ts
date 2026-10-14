@@ -262,6 +262,8 @@ export const getScreeningJobAction = defineUserQuery({
           ...(job.set ? { saved: kept?.saved ?? 0, removed: kept?.removed ?? 0 } : {}),
           ...(job.libraryDestination ? await libraryDestinationOf(ctx, job.libraryDestination, kept) : {}),
           ...(job.libraryWriteProblem ? { libraryWriteProblem: job.libraryWriteProblem } : {}),
+          // The reader's collection it prunes, by its name there: the person's own, which a guest isn't told of.
+          ...(job.pruneName ? { pruneName: job.pruneName } : {}),
           ...(job.libraryPruneProblem && job.set?.kind === "evidenceLibrary" ? { libraryPruneProblem: { problem: job.libraryPruneProblem, library: (await ctx.db.get("evidenceLibraries", job.set.libraryId))?.name ?? "" } } : {}),
           credits: { spent: kept?.credits ?? (job.set ? 0 : undefined), estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0, screeningPaperCredits(await pricingOf(ctx, job.serverModelId))).credits },
           guests: await countOf(ctx, itemGuestsOf(job._id)),
@@ -272,7 +274,6 @@ export const getScreeningJobAction = defineUserQuery({
       ...own,
       unsaved: job.unsaved,
       prune: job.prune,
-      ...(job.pruneName ? { pruneName: job.pruneName } : {}),
       outcomes: { included: counts.qualifiedCount, unclear, excluded: Math.max(0, counts.completedCount - counts.qualifiedCount - unclear), failed: counts.failedCount },
       tallies: kept?.tallies,
       _id: job._id,

@@ -34,13 +34,20 @@ import {
   type LibraryTarget,
 } from "./sourceClient";
 
-/** A running library's address and credential, or why it can't be read. */
-async function libraryTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">): Promise<LibraryTarget & { name: string }> {
+/** A running library's address and credential; null for one that isn't running. */
+async function runningTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">): Promise<(LibraryTarget & { name: string }) | null> {
   const found: { name: string; targetBaseUrl: string; encryptedMachineCredential: string } | null = await ctx.runQuery(internal.evidenceLibraries.sources.target, { libraryId });
-  if (!found) throw createError("EVIDENCE_LIBRARY_RUNTIME_ERROR", "This Evidence Library isn't running, so its records can't be read.");
+  if (!found) return null;
   const encryptionKey = process.env.ENCRYPTION_KEY;
   if (!encryptionKey) throw createError("API_KEY_ENCRYPTION_KEY_MISSING", "Encryption key not configured");
   return { name: found.name, baseUrl: found.targetBaseUrl, credential: decrypt(found.encryptedMachineCredential, encryptionKey) };
+}
+
+/** A running library's address and credential, or why it can't be read. */
+async function libraryTarget(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">): Promise<LibraryTarget & { name: string }> {
+  const target = await runningTarget(ctx, libraryId);
+  if (!target) throw createError("EVIDENCE_LIBRARY_RUNTIME_ERROR", "This Evidence Library isn't running, so its records can't be read.");
+  return target;
 }
 
 /** The Clerk user ID a library knows a person by. */
@@ -364,18 +371,21 @@ type Problem = "role" | "notFound" | "unreadable";
  * DOI, and one it holds none of is `missing`. A library that didn't answer is asked again a few times.
  */
 export const flushWrites = internalAction({
-  args: { job: v.id("screeningJobs"), attempt: v.number() },
+  args: { job: v.id("screeningJobs") },
   returns: v.null(),
-  handler: async (ctx, { job, attempt }) => {
+  handler: async (ctx, { job }) => {
     const { userId, destination, rows, gone, more } = await ctx.runQuery(internal.evidenceLibraries.writes.batch, { job });
-    // Writes whose job or paper is gone go with nothing written.
-    if (!rows.length || !userId) {
-      const waiting = gone.length > 0 && (await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: gone }));
-      if (waiting) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.flushWrites, { job, attempt: 0 });
+    const reader: string | null = userId ? await ctx.runQuery(internal.evidenceLibraries.sources.readerOf, { userId }) : null;
+    // Writes whose job or paper is gone go with nothing written, and so do all of a job whose account can no longer act:
+    // nothing is written as someone suspended or deleted since.
+    if (!rows.length || !reader) {
+      const settled = [...gone, ...(reader ? [] : rows.map(({ id, result }) => ({ id, result })))];
+      const waiting = settled.length > 0 && (await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: settled }));
+      if (waiting) await ctx.scheduler.runAfter(0, internal.evidenceLibraries.sourceActions.flushWrites, { job });
       return null;
     }
-    const reader = await readerOf(ctx, userId);
     const done: Array<{ id: Id<"libraryWrites">; result: Id<"screeningResults">; write?: "added" | "missing" }> = [...gone];
+    const retried: Array<Id<"libraryWrites">> = [];
     let removed = 0;
     let problem: Problem | undefined;
     let pruneProblem: Problem | undefined;
@@ -386,7 +396,9 @@ export const flushWrites = internalAction({
       // Only the collection its included papers go to says which of them it took.
       const toDestination = change === "add" && !prune && destination?.libraryId === libraryId && destination.collection === collection;
       try {
-        const target = await libraryTarget(ctx, libraryId);
+        // A library taken down since has no collection to write to.
+        const target = await runningTarget(ctx, libraryId);
+        if (!target) throw new LibrarySourceError("not_found", "This Evidence Library isn't running any more.");
         const keyOf = new Map<string, string>();
         for (const row of group) if (row.ref.source === "library" && row.ref.libraryId === libraryId) keyOf.set(row.paperKey, row.ref.key);
         const asking = group.filter((row) => !keyOf.has(row.paperKey) && (row.crossRefs?.openalexId || row.crossRefs?.doi));
@@ -405,11 +417,10 @@ export const flushWrites = internalAction({
       } catch (error) {
         if (!(error instanceof LibrarySourceError)) throw error;
         console.warn("[library sources]", { libraryId, call: `writes:${change}`, reader, job, code: error.code, status: error.status, reason: error.message });
-        if (error.code === "unavailable" && attempt + 1 < WRITE_ATTEMPTS) {
-          // Asked again later, with what this batch already wrote kept.
-          if (done.length) await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: done, removed });
-          await ctx.scheduler.runAfter(WRITE_RETRY_MS, internal.evidenceLibraries.sourceActions.flushWrites, { job, attempt: attempt + 1 });
-          return null;
+        // A library that didn't answer is asked again later, each write up to WRITE_ATTEMPTS times; the other groups go on.
+        if (error.code === "unavailable" && Math.max(...group.map((row) => row.attempts)) + 1 < WRITE_ATTEMPTS) {
+          retried.push(...group.map((row) => row.id));
+          continue;
         }
         const why: Problem = error.code === "role" || error.code === "not_reader" || error.code === "private" ? "role" : error.code === "not_found" ? "notFound" : "unreadable";
         if (prune) pruneProblem = why;
@@ -417,9 +428,9 @@ export const flushWrites = internalAction({
         for (const row of group) done.push({ id: row.id, result: row.result });
       }
     }
-    const waiting = await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: done, removed, ...(problem ? { problem } : {}), ...(pruneProblem ? { pruneProblem } : {}) });
-    // Papers that moved while this batch was out wait for the next, which nothing else would start.
-    if (more || waiting) await ctx.scheduler.runAfter(more ? 0 : WRITE_GATHER_MS, internal.evidenceLibraries.sourceActions.flushWrites, { job, attempt: 0 });
+    const waiting = await ctx.runMutation(internal.evidenceLibraries.writes.written, { job, rows: done, removed, retried, ...(problem ? { problem } : {}), ...(pruneProblem ? { pruneProblem } : {}) });
+    // Papers that moved while this batch was out wait for the next, which nothing else would start; one asked again waits a minute.
+    if (more || waiting) await ctx.scheduler.runAfter(retried.length ? WRITE_RETRY_MS : more ? 0 : WRITE_GATHER_MS, internal.evidenceLibraries.sourceActions.flushWrites, { job });
     return null;
   },
 });

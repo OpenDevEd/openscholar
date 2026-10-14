@@ -73,10 +73,11 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
   if (set.kind === "zotero") await firstZoteroPaper(ctx, userId, set, first);
   // No further than the set goes: papers past its last are never asked for.
   const last = Math.min(through, total);
-  // A library collection it saves to, or takes papers out of, is one the person changes there: checked, or made, before the job is.
+  // A library collection it saves to, or takes papers out of, is one the person changes there: checked, or made, before
+  // the job is. The one it prunes is checked first, so a refusal never leaves a new collection behind.
   const saveTo = config.saveTo;
-  const libraryDestination = saveTo?.kind === "libraryCollection" || saveTo?.kind === "newLibraryCollection" ? await ctx.runAction(internal.evidenceLibraries.sourceActions.destination, { userId, saveTo }) : undefined;
   const pruneName = config.prune && set.kind === "evidenceLibrary" && "readerCollection" in set.source && set.source.readerCollection ? await ctx.runAction(internal.evidenceLibraries.sourceActions.requireEditable, { userId, libraryId: set.libraryId, collection: set.source.readerCollection }) : undefined;
+  const libraryDestination = saveTo?.kind === "libraryCollection" || saveTo?.kind === "newLibraryCollection" ? await ctx.runAction(internal.evidenceLibraries.sourceActions.destination, { userId, saveTo }) : undefined;
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
   const step = call?.from ? { chatStep: call.from } : {};
   const keys = libraryKeys?.slice(0, last - first + 1);
@@ -196,6 +197,10 @@ export const screenAction = defineUserAction({
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
+  // One that writes to an Evidence Library collection asks first, however much the chat allows: whoever the collection
+  // is shared with, or anyone for a public one, sees what it puts in or takes out.
+  asksFirst: async (_ctx, _actor, { set, saveTo, prune }) => saveTo.kind === "libraryCollection" || saveTo.kind === "newLibraryCollection" || (prune === true && set.kind === "evidenceLibrary"),
+  seenOutside: true,
   estimate: (ctx, actor, args) => screeningHold(ctx, actor, args),
   // The papers, the questions put to them and where the included ones go. How each answer scores is the job's own business.
   shown: ({ set, first, last, questions, saveTo, prune, name }) => ({
@@ -204,7 +209,9 @@ export const screenAction = defineUserAction({
     first,
     last,
     question: questions.map((asked) => asked.question),
-    ...(saveTo.kind === "new" || saveTo.kind === "newLibraryCollection" ? { saveTo: saveTo.name } : saveTo.kind === "collection" ? { saveTo: saveTo.collectionId } : saveTo.kind === "libraryCollection" ? { saveTo: saveTo.collection, evidenceLibrary: saveTo.libraryId } : {}),
+    ...(saveTo.kind === "new" ? { saveTo: saveTo.name } : saveTo.kind === "collection" ? { saveTo: saveTo.collectionId } : {}),
+    // A library collection with the library it's in, which may not be the one the papers come from.
+    ...(saveTo.kind === "newLibraryCollection" ? { saveTo: saveTo.name, saveToLibrary: saveTo.libraryId } : saveTo.kind === "libraryCollection" ? { saveTo: saveTo.collection, saveToLibrary: saveTo.libraryId } : {}),
     ...(prune ? { prune } : {}),
   }),
   // Typed here: the generated API's types depend on this module, so inference would loop.
