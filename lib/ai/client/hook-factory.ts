@@ -108,8 +108,8 @@ export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
     const { configFor, onCredits } = useKeyConfigs(isAuthenticated, creditsEnabled)
     // Setup checks the task this hook usually runs; a search hook's task depends on its call.
     const defaultTask = typeof options.task === 'function' ? options.task({} as TParams) : options.task
-    // Presets run on credits; paying with your own key is part of Custom.
-    const apiKeyMode = onCredits ? 'credits' : chosenMode
+    // Presets run on credits; paying with your own key is part of Custom. Signed out, only a key can pay.
+    const apiKeyMode = onCredits ? 'credits' : isAuthenticated ? chosenMode : 'local'
     const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, useWorkspaceScope())
     const figures = useOptionalAuthQuery(api.ai.estimates.mine, inWorkspace(useWorkspace(), {}))
     const isConfigured = useMemo(

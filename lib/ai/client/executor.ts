@@ -1,7 +1,11 @@
+import { APICallError, RetryError } from 'ai'
 import { getProviderModel } from '../server/providers'
+import { getProviderConfig } from '@/lib/ai-models'
 import {
   executeAIOperation,
   AIApiKeyRequiredError,
+  AIKeyError,
+  AIKeyUnreachableError,
   processScreeningBatch,
   processTranslationBatch,
 } from '../core'
@@ -32,6 +36,19 @@ export interface AIConfig {
   apiKey: string
   model: string
   effort?: Effort
+}
+
+/**
+ * A failure on the person's own key as the provider put it: a refused call carries the
+ * provider's message, and a call the browser couldn't make says so. Anything else passes through.
+ */
+function keyError(error: unknown, provider: AIProvider): unknown {
+  const { name } = getProviderConfig(provider)
+  for (let e: unknown = error; e instanceof Error; e = RetryError.isInstance(e) ? e.lastError : e.cause) {
+    if (APICallError.isInstance(e)) return new AIKeyError(name, e.message, e)
+    if (e instanceof TypeError) return new AIKeyUnreachableError(name, e)
+  }
+  return error
 }
 
 function createClientExecutor<TParams, TOutput, TResult>(
@@ -91,7 +108,7 @@ function createClientExecutor<TParams, TOutput, TResult>(
       } catch {
         // Fire-and-forget
       }
-      throw error
+      throw keyError(error, config.provider)
     }
   }
 }
@@ -194,7 +211,7 @@ export async function generateBatchScreeningResponses(
         errorCode: extractErrorCode(error),
       })
     } catch { /* fire-and-forget */ }
-    throw error
+    throw keyError(error, config.provider)
   }
 }
 
@@ -260,6 +277,6 @@ export async function generateBatchTranslations(
         errorCode: extractErrorCode(error),
       })
     } catch { /* fire-and-forget */ }
-    throw error
+    throw keyError(error, config.provider)
   }
 }

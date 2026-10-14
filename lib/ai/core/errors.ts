@@ -61,6 +61,22 @@ export class AIProviderError extends AIError {
   }
 }
 
+/** A call on the person's own key that the provider refused, in the provider's words. */
+export class AIKeyError extends AIError {
+  constructor(provider: string, details: string, cause?: Error) {
+    super(`${provider}: ${details}`, 'AI_KEY_ERROR', cause)
+    this.name = 'AIKeyError'
+  }
+}
+
+/** A call on the person's own key that never reached the provider: offline, or blocked by the browser. */
+export class AIKeyUnreachableError extends AIError {
+  constructor(provider: string, cause?: Error) {
+    super(`${provider} couldn't be reached`, 'AI_KEY_UNREACHABLE', cause)
+    this.name = 'AIKeyUnreachableError'
+  }
+}
+
 export class AIMaxRetriesExceededError extends AIError {
   constructor(attempts: number, lastError?: Error) {
     super(
