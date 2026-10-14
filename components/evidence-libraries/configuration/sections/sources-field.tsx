@@ -38,7 +38,7 @@ import {
 } from "@/convex/zotero/sourceEntry";
 import { useWorkspace } from "@/lib/workspaces/url";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
-import { getConvexSiteUrl } from "@/lib/convex-site";
+import { useZoteroSignIn } from "@/lib/hooks/use-zotero-sign-in";
 import type {
   EvidenceSourceEntry,
   OpenScholarCollectionSourceEntry,
@@ -533,23 +533,14 @@ function AccountPanel({
     | undefined;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
-  const startOAuth = useAction(api.zotero.actions.startOAuth);
+  const signIn = useZoteroSignIn();
   const disconnect = useMutation(api.zotero.mutations.disconnect);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const connected = account?.connected === true;
 
   async function connect() {
-    const convexSite = getConvexSiteUrl();
-    if (!convexSite) {
-      toast.error(t("connectAccountFailed"));
-      return;
-    }
     try {
-      const result = await startOAuth({
-        callbackUrl: `${convexSite}/api/zotero/callback`,
-        returnTo: `${window.location.pathname}${window.location.search}`,
-      });
-      window.location.href = result.authorizeUrl;
+      await signIn();
     } catch {
       toast.error(t("connectAccountFailed"));
     }

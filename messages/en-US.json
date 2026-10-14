@@ -1672,7 +1672,14 @@
     "created": "Created {time}",
     "lastUsed": "Last used {time}",
     "apps": "apps",
-    "revokeApp": "Revoke {app}"
+    "revokeApp": "Revoke {app}",
+    "integrations": "Integrations",
+    "zoteroAbout": "Use your libraries and groups in chats and Evidence Libraries",
+    "zoteroKeeps": "Evidence Libraries keep syncing the groups they have",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "connectedTime": "Connected {time}",
+    "disconnectFailed": "Could not disconnect Zotero. Try again."
   },
   "evidenceLibraryInstitutions": {
     "picker": {

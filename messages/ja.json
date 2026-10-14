@@ -1672,7 +1672,14 @@
     "created": "作成 {time}",
     "lastUsed": "最終使用 {time}",
     "apps": "件のアプリ",
-    "revokeApp": "{app} を取り消す"
+    "revokeApp": "{app} を取り消す",
+    "integrations": "連携",
+    "zoteroAbout": "チャットと Evidence Libraries でライブラリとグループを使えます",
+    "zoteroKeeps": "Evidence Libraries は既存のグループの同期を続けます",
+    "connect": "接続",
+    "disconnect": "接続を解除",
+    "connectedTime": "{time}に接続",
+    "disconnectFailed": "Zotero の接続を解除できませんでした。もう一度お試しください。"
   },
   "evidenceLibraryInstitutions": {
     "picker": {
