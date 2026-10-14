@@ -240,20 +240,25 @@ let firstPage = true;
  * library, topic and history pages. It waits until `ready`, so a page lays out
  * its data at full size while hidden and never grows after it appears. Hidden,
  * it takes no clicks or focus: nothing on it can be changed before it shows.
- * Once shown it stays shown, whatever its data does after.
+ * Once shown it stays shown, whatever its data does after. With `collapsed`, it takes no room
+ * while hidden and opens to its full height as it fades in: for data that arrives in pieces inside
+ * a frame that is already showing, which would otherwise grow with each piece.
  */
-export function Enter({ ready, children }: { ready: boolean; children: ReactNode }) {
+export function Enter({ ready, collapsed = false, children }: { ready: boolean; collapsed?: boolean; children: ReactNode }) {
   const reduceMotion = useReducedMotion();
   const [skip] = useState(() => firstPage || Boolean(reduceMotion));
   const [shown, setShown] = useState(ready);
   if (ready && !shown) setShown(true);
-  const hidden = skip ? { opacity: 0 } : cardEntrance.initial;
+  const start = skip ? { opacity: 0 } : cardEntrance.initial;
+  const hidden = collapsed ? { ...start, height: 0, overflow: "hidden" } : start;
+  // Clipped only while it opens, so its menus and focus rings aren't cut off after.
+  const visible = collapsed ? { ...cardEntrance.animate, height: "auto", transitionEnd: { overflow: "visible" } } : cardEntrance.animate;
   return (
     <motion.div
       initial={hidden}
       // Hidden by what it animates to, not only where it starts: inside an AnimatePresence that skips first entrances
       // (the screening page's), a start alone is passed over and the page would show before its data is in.
-      animate={shown ? cardEntrance.animate : hidden}
+      animate={shown ? visible : hidden}
       transition={skip ? { duration: 0.15 } : subtleSpring}
       aria-busy={!ready}
       inert={!shown}

@@ -16,8 +16,6 @@ import {
 import {
   getStoredConsent,
   storeConsent,
-  hasConsentDecision,
-  CONSENT_UPDATED_EVENT,
 } from "@/lib/consent-storage";
 import { PolicyLinks } from "@/components/legal-links";
 import { subtleSpring } from "@/lib/animation-config";
@@ -208,27 +206,13 @@ export function CookieConsentBanner() {
 
 const COOKIE_PREFERENCES_EVENT = "openscholar-open-cookie-preferences";
 
+/** In the footer from the first frame, so the links beside it never move; before a decision it opens the same choice the banner offers. */
 export function CookiePreferencesTrigger() {
   const t = useTranslations("footer");
-  const [mounted, setMounted] = useState(false);
-  const [hasDecision, setHasDecision] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    setHasDecision(hasConsentDecision());
-  }, []);
-
-  useEffect(() => {
-    const handler = () => setHasDecision(true);
-    window.addEventListener(CONSENT_UPDATED_EVENT, handler);
-    return () => window.removeEventListener(CONSENT_UPDATED_EVENT, handler);
-  }, []);
 
   const handleClick = () => {
     window.dispatchEvent(new CustomEvent(COOKIE_PREFERENCES_EVENT));
   };
-
-  if (!mounted || !hasDecision) return null;
 
   return (
     <button

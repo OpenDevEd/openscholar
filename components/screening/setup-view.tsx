@@ -342,7 +342,7 @@ export function SetupView({
 
   const list = lists[kind];
   // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows.
-  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.loaded && (!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && (!againDest || savedDest.data !== undefined || savedDest.error !== undefined) && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
+  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.loaded && (!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && (!againDest || savedDest.data !== undefined || savedDest.error !== undefined) && spend.loaded && slots !== undefined && models.presetModel !== undefined && (models.organization ? !models.organization.loading : models.settings !== undefined) && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
   /** How many of a library row's records a job takes, as the other sources ask it. */
   const libraryScope = (row: LibraryRow) => {
     if (source?.kind !== "evidenceLibrary" || source.id !== rowKey(row)) return null;
@@ -368,7 +368,7 @@ export function SetupView({
   };
 
   return (
-    <Enter ready={ready}>
+    <Enter ready={ready} collapsed>
       <div className="space-y-8 pb-24">
         {/* Its name heads the page, written where it shows. */}
         <div className="space-y-1">

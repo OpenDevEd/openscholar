@@ -51,7 +51,7 @@ export function isPublicPath(pathname: string) {
  * route gate skips its full-screen loader for them. Each one must stay
  * correct before access is known (see EvidenceLibrariesGate's fallback).
  */
-const PAGES_WITH_OWN_LOADING = ["/evidence-libraries", "/authors"] as const;
+const PAGES_WITH_OWN_LOADING = ["/evidence-libraries", "/authors", "/screening"] as const;
 /** Every page in these sections draws its own frame while loading; a hand-off's page arrives whole from the server. */
 const SECTIONS_WITH_OWN_LOADING = ["/extraction", "/from-library"] as const;
 

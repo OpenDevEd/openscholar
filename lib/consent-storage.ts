@@ -41,7 +41,3 @@ export function storeConsent(choice: "granted" | "denied"): void {
   localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify(record));
   window.dispatchEvent(new CustomEvent(CONSENT_UPDATED_EVENT));
 }
-
-export function hasConsentDecision(): boolean {
-  return getStoredConsent() !== null;
-}
