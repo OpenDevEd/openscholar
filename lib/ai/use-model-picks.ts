@@ -9,6 +9,7 @@ import { toMapModel, usePresetModels, type MapModel, type PresetPick } from "@/c
 import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
+import { useAIConfigStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import type { Effort } from "@/lib/ai/core/call-options";
@@ -24,7 +25,8 @@ type Pick = { task: AiTask; modelId: Id<"models">; effort?: Effort };
  * picks, read and written the same way wherever a model is picked. Picking a model for a
  * task saves it as a Custom pick, which keeps what every other task was running.
  * In an organization everything runs on its preset, which only its admins change (#651):
- * `organization` says so, and there's no Custom there.
+ * `organization` says so, and there's no Custom there. Signed out there are no presets: it's
+ * all Custom, kept in this browser, starting from the default preset's picks.
  */
 export function useModelPicks() {
   const t = useTranslations("settingsAi");
@@ -47,8 +49,9 @@ export function useModelPicks() {
   const workspace = useCurrentWorkspace();
   const organization = useWorkspaceSlug() !== undefined ? { name: workspace?.name ?? "", admin: workspace?.role === "admin", loading: workspace === undefined } : null;
   const setAiPreset = useWorkspaceMutation(api.organizations.manage.setAiPreset);
-  // Presets need credits; without them the user's own keys are all there is.
-  const choice: ModelChoice = organization ? (workspace?.aiPreset ?? DEFAULT_PRESET) : effectiveChoice(creditsEnabled, settings?.choice);
+  const { picks: browserPicks, setPicks } = useAIConfigStore();
+  // Presets need credits, and credits an account; without them the user's own keys are all there is.
+  const choice: ModelChoice = organization ? (workspace?.aiPreset ?? DEFAULT_PRESET) : signedIn ? effectiveChoice(creditsEnabled, settings?.choice) : "custom";
   // An organization's admins pick its preset; nobody picks their own models there.
   const chooseHere = async ({ choice: next }: { choice: ModelChoice }) => {
     if (!organization) return await choose({ choice: next });
@@ -57,6 +60,7 @@ export function useModelPicks() {
 
   // A task with no live Custom pick runs on the preset it falls back to, as on the server.
   const customModel = (task: AiTask) => {
+    if (!signedIn) return browserPicks[task] ?? presetModel?.(DEFAULT_PRESET, task) ?? null;
     const pick = settings?.custom.find((c) => c.task === task);
     return pick?.model ? toMapModel(pick.model, pick.effort) : (presetModel?.(fallbackPreset(settings?.choice), task) ?? null);
   };
@@ -75,7 +79,9 @@ export function useModelPicks() {
     if (!organization && requireSignIn()) saveCustom({ picks }).catch(fail("model change"));
   };
   const pickAll = (tasks: AiTask[], model: MapModel, effort?: Effort) =>
-    setCustom(tasks.map((task) => ({ task, modelId: model._id!, ...(effort && { effort }) })));
+    signedIn
+      ? setCustom(tasks.map((task) => ({ task, modelId: model._id!, ...(effort && { effort }) })))
+      : setPicks(Object.fromEntries(tasks.map((task) => [task, { ...model, effort }])));
   // What each preset runs for these tasks; picking one copies those picks into Custom.
   const presetPicks = (tasks: AiTask[]): PresetPick[] =>
     PRESET_KEYS.map((id) => {

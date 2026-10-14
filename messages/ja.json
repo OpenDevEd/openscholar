@@ -3015,7 +3015,9 @@
     "noModels": "モデルが見つかりません",
     "free": "無料",
     "signInToPick": "モデルを選ぶにはサインインしてください",
-    "signInToUseCredits": "クレジットを使うにはサインインしてください",
+    "signInToUse": "サインインして使う",
+    "useOwnKey": "自分のキーを使う",
+    "keyUnreachable": "{provider} に接続できませんでした。接続を確認して、もう一度お試しください。",
     "creditsOff": "クレジットはオフです",
     "creditsOffDescription": "代わりに自分のキーで支払ってください。",
     "tasks": {

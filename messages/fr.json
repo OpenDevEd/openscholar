@@ -3015,7 +3015,9 @@
     "noModels": "Aucun modèle trouvé",
     "free": "Gratuit",
     "signInToPick": "Connectez-vous pour choisir un modèle",
-    "signInToUseCredits": "Connectez-vous pour utiliser des crédits",
+    "signInToUse": "Se connecter pour l'utiliser",
+    "useOwnKey": "Utiliser ma clé",
+    "keyUnreachable": "{provider} est injoignable. Vérifiez votre connexion et réessayez.",
     "creditsOff": "Les crédits sont désactivés",
     "creditsOffDescription": "Payez plutôt avec votre propre clé.",
     "tasks": {

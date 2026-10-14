@@ -3015,7 +3015,9 @@
     "noModels": "未找到模型",
     "free": "免费",
     "signInToPick": "登录后选择模型",
-    "signInToUseCredits": "登录后使用积分",
+    "signInToUse": "登录后使用",
+    "useOwnKey": "使用我的密钥",
+    "keyUnreachable": "无法连接到 {provider}。请检查网络连接后重试。",
     "creditsOff": "积分已关闭",
     "creditsOffDescription": "请改用你自己的密钥支付。",
     "tasks": {

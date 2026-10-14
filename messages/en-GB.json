@@ -3015,7 +3015,9 @@
     "noModels": "No models found",
     "free": "Free",
     "signInToPick": "Sign in to pick a model",
-    "signInToUseCredits": "Sign in to use credits",
+    "signInToUse": "Sign in to use",
+    "useOwnKey": "Use my key",
+    "keyUnreachable": "{provider} couldn't be reached. Check your connection and try again.",
     "creditsOff": "Credits are off",
     "creditsOffDescription": "Pay with your own key instead.",
     "tasks": {
