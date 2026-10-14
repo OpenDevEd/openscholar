@@ -16,6 +16,7 @@ export type ToastErrorMessageKey =
   | "aiPlanEntitlement"
   | "aiApiKeyRequired"
   | "aiProviderError"
+  | "aiKeyUnreachable"
   | "aiValidationError"
   | "aiMaxRetriesExceeded"
   | "apiKeyInvalidFormat"
@@ -96,6 +97,7 @@ const MESSAGE_KEY_BY_CODE: Record<string, ToastErrorMessageKey> = {
   AI_PLAN_ENTITLEMENT: "aiPlanEntitlement",
   AI_API_KEY_REQUIRED: "aiApiKeyRequired",
   AI_PROVIDER_ERROR: "aiProviderError",
+  AI_KEY_UNREACHABLE: "aiKeyUnreachable",
   AI_VALIDATION_ERROR: "aiValidationError",
   AI_MAX_RETRIES_EXCEEDED: "aiMaxRetriesExceeded",
   API_KEY_INVALID_FORMAT: "apiKeyInvalidFormat",

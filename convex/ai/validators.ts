@@ -1,8 +1,14 @@
 import { v } from "convex/values";
 import { MAX_BATCH_PAPERS, MAX_QUESTIONS, capped } from "../lib/listCaps";
 
-/** The papers of a batch that failed, each with why: at most the batch. */
-const batchErrorsValidator = capped(v.array(v.object({ paperId: v.string(), error: v.string() })), MAX_BATCH_PAPERS);
+/**
+ * The papers of a batch that failed, each with why: at most the batch. `onKey` marks a failure on the
+ * person's own key, which only the browser's run of the same batch sets (lib/ai/client/executor.ts).
+ */
+const batchErrorsValidator = capped(
+  v.array(v.object({ paperId: v.string(), error: v.string(), onKey: v.optional(v.boolean()) })),
+  MAX_BATCH_PAPERS,
+);
 
 /** What a batch translation returns, keyed by paper ID. */
 export const batchTranslationsValidator = v.object({

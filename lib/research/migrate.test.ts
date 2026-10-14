@@ -72,7 +72,7 @@ describe("local research import acknowledgement", () => {
 
   it("retries a failed import with the same IDs and keeps settings and API keys local", async () => {
     const id = seed();
-    useAIConfigStore.getState().setApiKey("test-user-owned-key");
+    useAIConfigStore.getState().setApiKey("openrouter", "test-user-owned-key");
     useUIStore.getState().setHistoryViewMode("grid-2");
     const keyBefore = localStorage.getItem("ai-config-store");
     const settingsBefore = localStorage.getItem("ui-store");

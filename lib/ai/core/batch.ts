@@ -35,7 +35,12 @@ export interface BatchProcessorConfig<TItem, TConfigInput, TOutput, TResult> {
   formatResult: (output: TOutput, item: TItem) => TResult
   /** Function to extract item ID for result mapping */
   getItemId: (item: TItem) => string
+  /** How a failed item is told; its message by default. */
+  failure?: Failure
 }
+
+type Failure = (error: unknown) => Omit<BatchError, 'paperId'>
+const messageOf: Failure = (error) => ({ error: error instanceof Error ? error.message : String(error) })
 
 interface ItemTrackingData {
   latencyMs: number
@@ -62,9 +67,9 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
   items: TItem[],
   config: BatchProcessorConfig<TItem, TConfigInput, TOutput, TResult>
 ): Promise<BatchProcessorResult<TResult>> {
-  const { model, effort, toConfigInput, getOperationConfig, formatResult, getItemId } = config
+  const { model, effort, toConfigInput, getOperationConfig, formatResult, getItemId, failure } = config
 
-  return settleBatch(items, getItemId, async (item) => {
+  return settleBatch(items, getItemId, failure, async (item) => {
     const operationConfig = getOperationConfig(toConfigInput(item))
 
     const start = Date.now()
@@ -88,6 +93,7 @@ export async function processBatch<TItem, TConfigInput, TOutput, TResult>(
 async function settleBatch<TItem, TResult>(
   items: TItem[],
   getItemId: (item: TItem) => string,
+  failure: Failure = messageOf,
   run: (item: TItem) => Promise<{ result: TResult; usage: Usage; tracking: ItemTrackingData }>,
 ): Promise<BatchProcessorResult<TResult>> {
   const results: Record<string, TResult> = {}
@@ -106,7 +112,7 @@ async function settleBatch<TItem, TResult>(
       usageByItemId[itemId] = usage
       trackingByItemId[itemId] = tracking
     } else {
-      errors.push({ paperId: itemId, error: settled.reason instanceof Error ? settled.reason.message : String(settled.reason) })
+      errors.push({ paperId: itemId, ...failure(settled.reason) })
     }
   })
 
@@ -130,6 +136,7 @@ export interface ScreeningBatchConfig {
   decisionsKey?: string
   /** Groups a job's Jev calls in OpenRouter's logs. */
   sessionId?: string
+  failure?: Failure
 }
 
 /** A paper's screening, keeping the confidence in each answer; the overall figure is their mean. */
@@ -141,13 +148,13 @@ function screeningResult(responses: Record<string, boolean | null>, confidences:
 export async function processScreeningBatch(
   config: ScreeningBatchConfig
 ): Promise<BatchProcessorResult<ScreeningResultData>> {
-  const { model, effort, papers, questions, decisionsKey, sessionId } = config
+  const { model, effort, papers, questions, decisionsKey, sessionId, failure } = config
   const modelSlug = typeof model === 'string' ? model : model.modelId
 
   // Jev answers every question about a paper in one decisions call.
   if (isDecisionModel(modelSlug)) {
     if (!decisionsKey) throw new Error('Jev needs an OpenRouter key')
-    return settleBatch(papers, (paper) => paper.id, async (paper) => {
+    return settleBatch(papers, (paper) => paper.id, failure, async (paper) => {
       const start = Date.now()
       const state = paperState({ title: paper.title, abstract: paper.abstract || 'No abstract available' }, questions)
       const { answers, usage } = await decideYesNo({ apiKey: decisionsKey, model: modelSlug, state, questions, sessionId })
@@ -181,6 +188,7 @@ export async function processScreeningBatch(
       getOperationConfig: getScreeningResponsesConfig,
       formatResult: (output) => screeningResult(output.responses, output.confidences),
       getItemId: (paper) => paper.id,
+      failure,
     }
   )
 }

@@ -1,7 +1,12 @@
+import { APICallError, RetryError } from 'ai'
 import { getProviderModel } from '../server/providers'
+import { getProviderConfig } from '@/lib/ai-models'
+import { DecisionsError } from '../decisions'
 import {
   executeAIOperation,
   AIApiKeyRequiredError,
+  AIKeyError,
+  AIKeyUnreachableError,
   processScreeningBatch,
   processTranslationBatch,
 } from '../core'
@@ -32,6 +37,26 @@ export interface AIConfig {
   apiKey: string
   model: string
   effort?: Effort
+}
+
+/**
+ * A failure on the person's own key as the provider put it: a refused call carries the
+ * provider's message, and a call the browser couldn't make says so. Anything else passes through.
+ */
+function keyError(error: unknown, provider: AIProvider): unknown {
+  const { name } = getProviderConfig(provider)
+  for (let e: unknown = error; e instanceof Error; e = RetryError.isInstance(e) ? e.lastError : e.cause) {
+    if (APICallError.isInstance(e)) return new AIKeyError(name, e.message, e)
+    if (e instanceof DecisionsError) return new AIKeyError(name, e.detail, e)
+    if (e instanceof TypeError) return new AIKeyUnreachableError(name, e)
+  }
+  return error
+}
+
+/** A paper that failed on the key: the provider's words when it answered, else as it came, which the screening alert classifies. */
+const keyFailure = (provider: AIProvider) => (error: unknown) => {
+  const told = keyError(error, provider)
+  return told instanceof AIKeyError ? { error: told.message, onKey: true } : { error: error instanceof Error ? error.message : String(error) }
 }
 
 function createClientExecutor<TParams, TOutput, TResult>(
@@ -91,7 +116,7 @@ function createClientExecutor<TParams, TOutput, TResult>(
       } catch {
         // Fire-and-forget
       }
-      throw error
+      throw keyError(error, config.provider)
     }
   }
 }
@@ -160,6 +185,7 @@ export async function generateBatchScreeningResponses(
       papers,
       questions,
       ...(config.provider === 'openrouter' && { decisionsKey: config.apiKey }),
+      failure: keyFailure(config.provider),
     })
 
     const entries: AITrackingEntry[] = Object.entries(trackingByItemId).map(
@@ -194,7 +220,7 @@ export async function generateBatchScreeningResponses(
         errorCode: extractErrorCode(error),
       })
     } catch { /* fire-and-forget */ }
-    throw error
+    throw keyError(error, config.provider)
   }
 }
 
@@ -260,6 +286,6 @@ export async function generateBatchTranslations(
         errorCode: extractErrorCode(error),
       })
     } catch { /* fire-and-forget */ }
-    throw error
+    throw keyError(error, config.provider)
   }
 }

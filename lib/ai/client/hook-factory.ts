@@ -55,13 +55,13 @@ function mapExecutionError(reason: AIExecutionErrorReason): Error {
 }
 
 /**
- * How each task runs on the user's own keys: the pick they run on (Custom's,
- * else their preset's, else the default preset's, as on the server), on
- * whichever saved key can run that model. Signed-in users on a preset, or
- * whose settings are still loading, run on credits.
+ * How each task runs on the user's own keys: the pick they run on (signed out,
+ * this browser's; signed in, Custom's, else their preset's; else the default
+ * preset's, as on the server), on whichever saved key can run that model.
+ * Signed-in users on a preset, or whose settings are still loading, run on credits.
  */
-function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
-  const { provider, apiKey, providerApiKeys } = useAIConfigStore()
+function useKeyConfigs(isAuthenticated: boolean, signedOut: boolean, creditsEnabled: boolean) {
+  const { provider, apiKey, providerApiKeys, picks } = useAIConfigStore()
   // An organization's work runs on its preset, on its credits: no one's own keys (#651). Known from
   // the address, so nothing runs on someone's own key while the organization loads.
   const inOrganization = useWorkspaceSlug() !== undefined
@@ -73,12 +73,14 @@ function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
     const choice = effectiveChoice(creditsEnabled, saved)
     const presetPicks = presets?.[choice === 'custom' ? fallbackPreset(saved) : choice]
     const configFor = (task: AiTask): AIConfig => {
+      const browser = signedOut ? picks[task] : undefined
       const custom = choice === 'custom' ? settings.data?.custom.find((p) => p.task === task) : undefined
       const pick = custom?.model ? custom : presetPicks?.find((p) => p.task === task)
-      const slug = pick?.model?.modelId
+      const slug = browser?.id ?? pick?.model?.modelId
+      const effort = browser ? browser.effort : (pick?.effort ?? undefined)
       const key = slug ? keyFor(slug, keys) : null
       return slug && key
-        ? { provider: key, apiKey: keys[key]!, model: keyModelId(slug, key), effort: pick?.effort ?? undefined }
+        ? { provider: key, apiKey: keys[key]!, model: keyModelId(slug, key), effort }
         : { provider: 'openrouter', apiKey: '', model: '' }
     }
     const loading = isAuthenticated && settings.settlement !== 'ready'
@@ -86,7 +88,7 @@ function useKeyConfigs(isAuthenticated: boolean, creditsEnabled: boolean) {
       configFor,
       onCredits: isAuthenticated && (inOrganization || (creditsEnabled && (loading || choice !== 'custom'))),
     }
-  }, [provider, apiKey, providerApiKeys, settings.data, settings.settlement, presets, isAuthenticated, creditsEnabled, inOrganization])
+  }, [provider, apiKey, providerApiKeys, picks, settings.data, settings.settlement, presets, isAuthenticated, signedOut, creditsEnabled, inOrganization])
 }
 
 export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
@@ -104,12 +106,14 @@ export function createAIHook<TArgs extends Record<string, unknown>, TResult>(
     const { apiKeyMode: chosenMode } = useAIConfigStore()
     const { phase } = useAuthReadiness()
     const isAuthenticated = phase === 'authenticated'
+    // Known to be signed out, not still signing in: a signed-in person never runs on keys meant for signed out.
+    const signedOut = phase === 'anonymous'
     const creditsEnabled = useFeatureFlag("credits.enabled")
-    const { configFor, onCredits } = useKeyConfigs(isAuthenticated, creditsEnabled)
+    const { configFor, onCredits } = useKeyConfigs(isAuthenticated, signedOut, creditsEnabled)
     // Setup checks the task this hook usually runs; a search hook's task depends on its call.
     const defaultTask = typeof options.task === 'function' ? options.task({} as TParams) : options.task
-    // Presets run on credits; paying with your own key is part of Custom.
-    const apiKeyMode = onCredits ? 'credits' : chosenMode
+    // Presets run on credits; paying with your own key is part of Custom. Signed out, only a key can pay.
+    const apiKeyMode = onCredits ? 'credits' : signedOut ? 'local' : chosenMode
     const creditsQuery = useOptionalAuthQuery(api.billing.accounts.mine, useWorkspaceScope())
     const figures = useOptionalAuthQuery(api.ai.estimates.mine, inWorkspace(useWorkspace(), {}))
     const isConfigured = useMemo(

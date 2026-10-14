@@ -27,6 +27,8 @@ import {
 interface ScreeningError {
   paperId: string;
   error: string;
+  /** It failed on the person's own key, and `error` is the provider's own words. */
+  onKey?: boolean;
 }
 
 interface ScreeningErrorAlertProps {
@@ -67,11 +69,11 @@ const ICONS: Partial<Record<ChatErrorClass, AppIcon>> = {
 
 function pickWorstEnvelope(
   errors: ScreeningError[],
-): ChatErrorEnvelope | null {
+): { envelope: ChatErrorEnvelope; source: ScreeningError } | null {
   if (errors.length === 0) return null;
-  const envelopes: ChatErrorEnvelope[] = errors.map((e) => {
-    const classified = classifyUnknownError(e.error);
-    return {
+  const picked = errors.map((source) => {
+    const classified = classifyUnknownError(source.error);
+    const envelope: ChatErrorEnvelope = {
       version: 1,
       class: classified.code,
       message: classified.message,
@@ -79,12 +81,13 @@ function pickWorstEnvelope(
         ? { httpStatus: classified.httpStatus }
         : {}),
     };
+    return { envelope, source };
   });
   for (const cls of CLASS_PRIORITY) {
-    const found = envelopes.find((e) => e.class === cls);
+    const found = picked.find((p) => p.envelope.class === cls);
     if (found) return found;
   }
-  return envelopes[0];
+  return picked[0]!;
 }
 
 export function ScreeningErrorAlert({
@@ -95,9 +98,10 @@ export function ScreeningErrorAlert({
   const tErrors = useTranslations("errors");
   const tc = useTranslations("common");
   const tToast = useTranslations("toast");
-  const envelope = useMemo(() => pickWorstEnvelope(errors), [errors]);
+  const worst = useMemo(() => pickWorstEnvelope(errors), [errors]);
 
-  if (!envelope) return null;
+  if (!worst) return null;
+  const { envelope, source } = worst;
 
   const Icon = ICONS[envelope.class] ?? AlertCircleIcon;
 
@@ -112,7 +116,8 @@ export function ScreeningErrorAlert({
       <AlertTitle>{tErrors(`title.${envelope.class}` as never)}</AlertTitle>
       <AlertDescription>
         <span className="mb-2 block">
-          {tErrors(`body.${envelope.class}` as never)}
+          {/* On the person's own key the provider's words say more than our account's, and it isn't our billing. */}
+          {source.onKey ? source.error : tErrors(`body.${envelope.class}` as never)}
         </span>
         <div className="flex flex-wrap gap-2">
           {canRetry && (
@@ -127,7 +132,7 @@ export function ScreeningErrorAlert({
               {tc("retry")}
             </Button>
           )}
-          {envelope.class === "insufficient_credits" && (
+          {envelope.class === "insufficient_credits" && !source.onKey && (
             <Button
               asChild
               type="button"

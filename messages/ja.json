@@ -697,6 +697,7 @@
     "aiPlanEntitlement": "このAI機能には上位プランが必要です。",
     "aiApiKeyRequired": "サインインして無料クレジットを取得するか、設定でAPIキーを追加してください。",
     "aiProviderError": "AIプロバイダーは現在利用できません。再試行してください。",
+    "aiKeyUnreachable": "キーのAIプロバイダーに接続できませんでした。接続を確認して、もう一度お試しください。",
     "aiValidationError": "AI応答を検証できませんでした。再試行してください。",
     "aiMaxRetriesExceeded": "AI生成を完了できませんでした。再試行してください。",
     "apiKeyInvalidFormat": "APIキーの形式が無効です。",
@@ -3016,7 +3017,9 @@
     "noModels": "モデルが見つかりません",
     "free": "無料",
     "signInToPick": "モデルを選ぶにはサインインしてください",
-    "signInToUseCredits": "クレジットを使うにはサインインしてください",
+    "signInToUse": "サインインして使う",
+    "useOwnKey": "自分のキーを使う",
+    "keyUnreachable": "{provider} に接続できませんでした。接続を確認して、もう一度お試しください。",
     "creditsOff": "クレジットはオフです",
     "creditsOffDescription": "代わりに自分のキーで支払ってください。",
     "tasks": {

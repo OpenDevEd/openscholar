@@ -697,6 +697,7 @@
     "aiPlanEntitlement": "Cette fonctionnalité IA nécessite un plan supérieur.",
     "aiApiKeyRequired": "Connectez-vous pour des crédits gratuits, ou ajoutez une clé API dans les paramètres.",
     "aiProviderError": "Le fournisseur IA est indisponible pour le moment. Réessayez.",
+    "aiKeyUnreachable": "Le fournisseur IA de votre clé est injoignable. Vérifiez votre connexion et réessayez.",
     "aiValidationError": "La réponse IA n'a pas pu être validée. Réessayez.",
     "aiMaxRetriesExceeded": "La génération IA n'a pas pu aboutir. Réessayez.",
     "apiKeyInvalidFormat": "Le format de la clé API semble invalide.",
@@ -3016,7 +3017,9 @@
     "noModels": "Aucun modèle trouvé",
     "free": "Gratuit",
     "signInToPick": "Connectez-vous pour choisir un modèle",
-    "signInToUseCredits": "Connectez-vous pour utiliser des crédits",
+    "signInToUse": "Se connecter pour l'utiliser",
+    "useOwnKey": "Utiliser ma clé",
+    "keyUnreachable": "{provider} est injoignable. Vérifiez votre connexion et réessayez.",
     "creditsOff": "Les crédits sont désactivés",
     "creditsOffDescription": "Payez plutôt avec votre propre clé.",
     "tasks": {

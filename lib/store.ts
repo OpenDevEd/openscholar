@@ -7,7 +7,6 @@ import type {
   QuestionHistoryEntry,
   ScreeningQuestionEntry,
   ScreeningResponses,
-  AIProvider,
   AIKeyMode,
   SearchResult,
   ViewMode,
@@ -16,6 +15,9 @@ import type {
   ExtractionSortBy,
   BookmarkData,
 } from './types';
+import type { AiTask } from './ai/tasks';
+import { KEY_PROVIDERS, type KeyProvider } from './ai/keys';
+import type { MapModel } from '@/components/settings/model-map';
 import { MIN_YEAR } from './constants';
 import { bindResearchStore } from './research/binding';
 import { historySummary, importSearchRecord, withQuestion } from './research/records';
@@ -158,16 +160,19 @@ export interface KeywordExpansionState {
 
 interface AIConfigState {
   /** The provider whose key the settings page is editing. */
-  provider: AIProvider
+  provider: KeyProvider
   /** That provider's key. */
   apiKey: string
   apiKeyMode: AIKeyMode
   /** Every saved key, by provider. */
   providerApiKeys: Record<string, string>
-  setProvider: (provider: AIProvider) => void
-  setApiKey: (apiKey: string) => void
+  /** What each browser task runs on while signed out, where there's no account to keep it in. */
+  picks: Partial<Record<AiTask, MapModel>>
+  setProvider: (provider: KeyProvider) => void
+  /** Saves a provider's key; named, so a key checked while the page moved on lands where it was typed. */
+  setApiKey: (provider: KeyProvider, apiKey: string) => void
   setApiKeyMode: (mode: AIKeyMode) => void
-  clearConfig: () => void
+  setPicks: (picks: Partial<Record<AiTask, MapModel>>) => void
 }
 
 export const localRatingsStore = create<RatingsState>()(
@@ -833,6 +838,7 @@ export const useAIConfigStore = create<AIConfigState>()(
       apiKey: '',
       apiKeyMode: 'smart',
       providerApiKeys: {},
+      picks: {},
       setProvider: (provider) =>
         set((state) => {
           const providerApiKeys = { ...(state.providerApiKeys ?? {}) };
@@ -844,28 +850,32 @@ export const useAIConfigStore = create<AIConfigState>()(
             providerApiKeys,
           };
         }),
-      setApiKey: (apiKey) =>
+      setApiKey: (provider, apiKey) =>
         set((state) => ({
-          apiKey,
+          ...(provider === state.provider && { apiKey }),
           providerApiKeys: {
             ...(state.providerApiKeys ?? {}),
-            [state.provider]: apiKey,
+            [provider]: apiKey,
           },
         })),
       setApiKeyMode: (apiKeyMode) => set({ apiKeyMode }),
-      clearConfig: () => set({ provider: 'openrouter', apiKey: '', apiKeyMode: 'smart', providerApiKeys: {} }),
+      setPicks: (picks) => set((state) => ({ picks: { ...state.picks, ...picks } })),
     }),
     {
       name: 'ai-config-storage',
-      version: 6,
-      // Keeps the saved keys and pay mode; older fields (a single key model, budgets) are dropped.
+      version: 7,
+      // Keeps the saved keys, pay mode and picks; older fields (a single key model, budgets) are dropped,
+      // and a provider keys are no longer offered for (DeepSeek, Azure) gives way to OpenRouter.
       migrate: (persistedState: unknown) => {
-        const state = persistedState as Partial<Pick<AIConfigState, 'provider' | 'apiKey' | 'apiKeyMode' | 'providerApiKeys'>>;
+        const state = persistedState as Partial<Pick<AIConfigState, 'apiKey' | 'apiKeyMode' | 'providerApiKeys' | 'picks'>> & { provider?: string };
+        const providerApiKeys = state.providerApiKeys ?? {};
+        const offered = KEY_PROVIDERS.find((p) => p === state.provider);
         return {
-          provider: state.provider ?? 'openrouter',
-          apiKey: state.apiKey ?? '',
+          provider: offered ?? 'openrouter',
+          apiKey: offered ? (state.apiKey ?? '') : (providerApiKeys.openrouter ?? ''),
           apiKeyMode: state.apiKeyMode ?? 'smart',
-          providerApiKeys: state.providerApiKeys ?? {},
+          providerApiKeys,
+          picks: state.picks ?? {},
         };
       },
     }

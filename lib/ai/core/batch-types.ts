@@ -18,6 +18,8 @@ export interface BatchPaper {
 export interface BatchError {
   paperId: string
   error: string
+  /** It failed on the person's own key, and `error` is the provider's own words. */
+  onKey?: boolean
 }
 
 interface BatchResult<TData> {

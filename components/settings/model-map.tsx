@@ -200,6 +200,7 @@ export function RoutingMap({
   renderNode,
   wrapTask,
   wrapBrowserLabel,
+  cloudAside,
 }: {
   routing: Routing;
   hover: Hover;
@@ -210,6 +211,8 @@ export function RoutingMap({
   wrapTask?: (task: AiTask, row: ReactNode) => ReactNode;
   /** Turns the browser tasks' label into a control, such as how they're paid for. */
   wrapBrowserLabel?: (label: ReactNode) => ReactNode;
+  /** Sits beside the cloud tasks' label, such as a way to unlock them. */
+  cloudAside?: ReactNode;
 }) {
   const tm = useTranslations("settingsAi");
   const { edges, nodes, tops, height, colorOf } = routing;
@@ -226,14 +229,18 @@ export function RoutingMap({
 
   const taskRow = (task: AiTask) => {
     const Icon = TASK_ICONS[task];
+    // A task with no model doesn't run here, so it's grayed and there's nothing to pick.
+    const runs = edges.some((e) => e.task === task);
+    const pick = runs ? wrapTask : undefined;
     const row = (
       <div
         onMouseEnter={() => setHover({ task })}
         onMouseLeave={() => setHover(null)}
         className={cn(
           "flex h-11 w-full items-center gap-3 rounded-l-xl pl-3 text-left transition-colors",
+          !runs && "text-muted-foreground/60",
           hover?.task === task && "bg-inset",
-          wrapTask && "cursor-pointer",
+          pick && "cursor-pointer",
         )}
       >
         <span className="flex shrink-0 transition-colors" style={{ color: taskColor(task) }}>
@@ -242,10 +249,10 @@ export function RoutingMap({
         <span className={cn("truncate text-sm font-medium transition-colors", hover && !edges.some((e) => e.task === task && lit(e)) && "text-muted-foreground")}>
           {tm(`tasks.${task}`)}
         </span>
-        {wrapTask ? <ChevronsUpDown className="ml-auto mr-2 size-3.5 shrink-0 text-muted-foreground/60" /> : null}
+        {pick ? <ChevronsUpDown className="ml-auto mr-2 size-3.5 shrink-0 text-muted-foreground/60" /> : null}
       </div>
     );
-    return <div key={task}>{wrapTask ? wrapTask(task, row) : row}</div>;
+    return <div key={task}>{pick ? pick(task, row) : row}</div>;
   };
 
   return (
@@ -258,8 +265,9 @@ export function RoutingMap({
         transition={reduceMotion ? { duration: 0 } : { duration: 0.45, ease: EASE }}
       >
         <div>
-          <div className="flex items-center pl-3 text-xs font-medium text-muted-foreground" style={{ height: LABEL }}>
+          <div className="flex items-center justify-between gap-2 whitespace-nowrap pl-3 text-xs font-medium text-muted-foreground" style={{ height: LABEL }}>
             {tm("cloudOnly")}
+            {cloudAside}
           </div>
           {CLOUD_TASKS.map(taskRow)}
           <div style={{ height: GAP }} />
@@ -292,7 +300,11 @@ export function RoutingMap({
         </svg>
 
         <div className="relative">
-          <div className="flex items-center gap-1.5 pl-1 text-xs font-medium text-muted-foreground" style={{ height: LABEL }}>
+          {/* Named only when something runs there; the row stays, so the cards keep their places. */}
+          <div
+            className={cn("flex items-center gap-1.5 pl-1 text-xs font-medium text-muted-foreground", !nodes.some((n) => n.paidBy === "credits") && "invisible")}
+            style={{ height: LABEL }}
+          >
             <Cloud className="size-3.5" /> {tm("openScholarCloud")}
           </div>
           <AnimatePresence initial={false}>

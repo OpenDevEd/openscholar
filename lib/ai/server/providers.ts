@@ -41,7 +41,8 @@ export async function getProviderModel(
     }
     case 'anthropic': {
       const { createAnthropic } = await import('@ai-sdk/anthropic')
-      return createAnthropic(baseOptions)(modelId)
+      // A browser key calls Anthropic directly, and Anthropic refuses browser calls without this header.
+      return createAnthropic({ ...baseOptions, headers: { 'anthropic-dangerous-direct-browser-access': 'true' } })(modelId)
     }
     case 'openrouter': {
       const { createOpenRouter } = await import('@openrouter/ai-sdk-provider')
