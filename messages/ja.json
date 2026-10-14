@@ -17,6 +17,7 @@
   },
   "common": {
     "search": "検索",
+    "searchPapers": "論文を検索",
     "home": "ホーム",
     "bookmarks": "ブックマーク",
     "history": "履歴",

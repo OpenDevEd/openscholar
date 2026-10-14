@@ -5,6 +5,7 @@ import {parseAsString, useQueryState} from "nuqs";
 import {useState} from "react";
 import { ArrowUpRight, HealthSciencesIcon, LifeSciencesIcon, PhysicalSciencesIcon, SearchX, SocialSciencesIcon, TopicsIcon, type AppIcon } from "@/components/icons";
 import {LibraryPageShell} from "@/components/evidence-libraries/library-page-shell";
+import {useExploreHeader} from "./explore-header";
 import {LIST_FILTER, LIST_TILE, ListEmpty, ListSearch} from "@/components/evidence-libraries/list-controls";
 import {catalogAncestors, catalogChildren, catalogNode, searchCatalogTopics} from "@/lib/topics/search";
 import {cn} from "@/lib/utils";
@@ -16,6 +17,7 @@ const DOMAIN_ICONS: Record<string, AppIcon> = {"domains/1": LifeSciencesIcon, "d
 /** Browses the catalog that ships with the app, so choosing and searching never wait on the server. */
 export function TopicList() {
   const t = useTranslations("topics");
+  const explore = useExploreHeader("topics");
   const [search, setSearch] = useQueryState("q", parseAsString.withDefault(""));
   const [domain, setDomain] = useQueryState("domain", parseAsString.withDefault("all"));
   const [field, setField] = useQueryState("field", parseAsString.withDefault("all"));
@@ -33,7 +35,7 @@ export function TopicList() {
   const topics = matches.slice(0, count);
   const more = matches.length > count;
   const clear = () => {void setSearch(""); void setDomain("all"); void setField("all"); void setSubfield("all");};
-  return <LibraryPageShell icon={TopicsIcon} title={t("title")} filters={<>
+  return <LibraryPageShell {...explore} filters={<>
     <ListSearch aria-label={t("find")} placeholder={t("findPlaceholder")} className="w-56" value={search} maxLength={200} onChange={event => void setSearch(event.target.value)} />
     <Select value={domain} onValueChange={value => {void setDomain(value); void setField("all"); void setSubfield("all");}}><SelectTrigger size="sm" aria-label={t("domain")} className={cn("w-40", LIST_FILTER)}><SelectValue placeholder={t("allDomains")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allDomains")}</SelectItem>{domains.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>
     <Select value={field} onValueChange={value => {void setField(value); void setSubfield("all");}}><SelectTrigger size="sm" aria-label={t("field")} className={cn("w-44", LIST_FILTER)}><SelectValue placeholder={t("allFields")} /></SelectTrigger><SelectContent><SelectItem value="all">{t("allFields")}</SelectItem>{fields.map(node => <SelectItem key={node.id} value={node.id}>{node.name}</SelectItem>)}</SelectContent></Select>

@@ -13,7 +13,6 @@ import { useTheme } from "next-themes";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
-  AuthorsIcon,
   BillingIcon,
   BookmarksIcon,
   EvidenceLibrariesIcon,
@@ -264,8 +263,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
               </AnimatePresence>
 
               <div className="my-1.5 h-px w-8 bg-foreground/10" />
-              {item({ href: "/topics", icon: TopicsIcon, label: t("explore"), active: is("/topics") })}
-              {item({ href: "/authors", icon: AuthorsIcon, label: t("authors"), active: is("/authors") })}
+              {item({ href: "/topics", icon: TopicsIcon, label: t("explore"), active: is("/topics") || is("/authors") })}
             </nav>
           </ScrollArea>
 

@@ -17,6 +17,7 @@
   },
   "common": {
     "search": "Search",
+    "searchPapers": "Search papers",
     "home": "Home",
     "bookmarks": "Bookmarks",
     "history": "History",
