@@ -187,10 +187,11 @@ describe("createScreeningJob", () => {
     const { jobId } = await createJob(asUser, {
       papers: makePapers(1),
       questions: defaultQuestions,
-      scoringConfig: { ...defaultScoringConfig, rules: [{ questionKey: "q1", yesPoints: 2, noPoints: 8, nullPoints: 9, required: true }] },
+      // A question can have several rules; one of them being required makes the question required.
+      scoringConfig: { ...defaultScoringConfig, rules: [{ questionKey: "q1", yesPoints: 2, noPoints: 8, nullPoints: 9, required: true }, { questionKey: "q1", yesPoints: 1, noPoints: 3, nullPoints: 4 }] },
     });
     const job = await t.run((ctx) => ctx.db.get("screeningJobs", jobId));
-    expect(job?.scoringConfig.rules).toEqual([{ questionKey: "q1", yesPoints: 2, noPoints: 0, nullPoints: 0, required: true }]);
+    expect(job?.scoringConfig.rules).toEqual([{ questionKey: "q1", yesPoints: 2, noPoints: 0, nullPoints: 0, required: true }, { questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0 }]);
   });
 
   it("succeeds when user has a completed job (not blocking)", async () => {
