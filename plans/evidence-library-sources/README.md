@@ -172,8 +172,8 @@ OpenScholar keeps a Zotero paper's (`convex/zotero/libraryValidators.ts`: title
 500 characters, abstract 10,000, 100 creators and a venue of 300 each). A page of
 records holds at most 500 of them and at most 4 MB: the library sends fewer when
 the next would pass it. Every refusal answers `{error, message}`:
-`401` credential, `403 private | role | reader_accounts_off`, `404 not_found`,
-`409 index_changed`, `413 too_many`, `400 invalid_request | contract`, `503`.
+`401` credential, `403 private | role | reader_accounts_off`,
+`404 not_found | not_reader`, `409 index_changed`, `413 too_many`, `400 invalid_request | contract`, `503`.
 A library on an older runtime answers `404` to these paths; OpenScholar shows
 "This library needs an update to be used here" with a link for its owners.
 
