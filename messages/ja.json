@@ -3830,6 +3830,30 @@
         "where": "Evidence Library",
         "ask": "Evidence Library のソースを読む"
       },
+      "readerRecords": {
+        "doing": "Evidence Library のレコードを読んでいます",
+        "did": "Evidence Library のレコードを読みました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library のレコードを読む"
+      },
+      "newLibraryCollection": {
+        "doing": "Evidence Library にコレクションを作成しています",
+        "did": "Evidence Library にコレクションを作成しました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library にコレクションを作成",
+        "askMany": "Evidence Library に {count, number} 件のコレクションを作成",
+        "doingMany": "Evidence Library に {count, number} 件のコレクションを作成しています",
+        "didMany": "Evidence Library に {count, number} 件のコレクションを作成しました"
+      },
+      "changeLibraryRecords": {
+        "doing": "Evidence Library のコレクションを変更しています",
+        "did": "Evidence Library のコレクションを変更しました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library のコレクションを変更",
+        "askMany": "Evidence Library の {count, number} 件のコレクションを変更",
+        "doingMany": "Evidence Library の {count, number} 件のコレクションを変更しています",
+        "didMany": "Evidence Library の {count, number} 件のコレクションを変更しました"
+      },
       "readHandoff": {
         "doing": "Evidence Library から渡された内容を開いています",
         "did": "Evidence Library から渡された内容を開きました",

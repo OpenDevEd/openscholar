@@ -3830,6 +3830,30 @@
         "where": "Evidence Library",
         "ask": "读取一个 Evidence Library 来源"
       },
+      "readerRecords": {
+        "doing": "正在读取 Evidence Library 记录",
+        "did": "已读取 Evidence Library 记录",
+        "where": "Evidence Library",
+        "ask": "读取 Evidence Library 记录"
+      },
+      "newLibraryCollection": {
+        "doing": "正在 Evidence Library 中创建合集",
+        "did": "已在 Evidence Library 中创建合集",
+        "where": "Evidence Library",
+        "ask": "在 Evidence Library 中创建合集",
+        "askMany": "在 Evidence Library 中创建 {count, number} 个合集",
+        "doingMany": "正在 Evidence Library 中创建 {count, number} 个合集",
+        "didMany": "已在 Evidence Library 中创建 {count, number} 个合集"
+      },
+      "changeLibraryRecords": {
+        "doing": "正在更改 Evidence Library 合集",
+        "did": "已更改 Evidence Library 合集",
+        "where": "Evidence Library",
+        "ask": "更改 Evidence Library 合集",
+        "askMany": "更改 {count, number} 个 Evidence Library 合集",
+        "doingMany": "正在更改 {count, number} 个 Evidence Library 合集",
+        "didMany": "已更改 {count, number} 个 Evidence Library 合集"
+      },
       "readHandoff": {
         "doing": "正在打开 Evidence Library 转来的内容",
         "did": "已打开 Evidence Library 转来的内容",

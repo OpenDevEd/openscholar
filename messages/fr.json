@@ -3830,6 +3830,30 @@
         "where": "Evidence Libraries",
         "ask": "Lire une source d'Evidence Library"
       },
+      "readerRecords": {
+        "doing": "Lecture de notices d'Evidence Library",
+        "did": "Notices d'Evidence Library lues",
+        "where": "Evidence Libraries",
+        "ask": "Lire des notices d'Evidence Library"
+      },
+      "newLibraryCollection": {
+        "doing": "Création d'une collection dans une Evidence Library",
+        "did": "Collection créée dans une Evidence Library",
+        "where": "Evidence Libraries",
+        "ask": "Créer une collection dans une Evidence Library",
+        "askMany": "Créer {count, plural, one {# collection} other {# collections}} dans une Evidence Library",
+        "doingMany": "Création de {count, plural, one {# collection} other {# collections}} dans une Evidence Library",
+        "didMany": "{count, plural, one {# collection créée} other {# collections créées}} dans une Evidence Library"
+      },
+      "changeLibraryRecords": {
+        "doing": "Modification d'une collection d'Evidence Library",
+        "did": "Collection d'Evidence Library modifiée",
+        "where": "Evidence Libraries",
+        "ask": "Modifier une collection d'Evidence Library",
+        "askMany": "Modifier {count, plural, one {# collection d'Evidence Library} other {# collections d'Evidence Library}}",
+        "doingMany": "Modification de {count, plural, one {# collection d'Evidence Library} other {# collections d'Evidence Library}}",
+        "didMany": "{count, plural, one {# collection d'Evidence Library modifiée} other {# collections d'Evidence Library modifiées}}"
+      },
       "readHandoff": {
         "doing": "Ouverture de ce qu'une Evidence Library a transmis",
         "did": "Ce qu'une Evidence Library a transmis est ouvert",

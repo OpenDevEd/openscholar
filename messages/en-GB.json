@@ -3830,6 +3830,30 @@
         "where": "Evidence Libraries",
         "ask": "Read an Evidence Library source"
       },
+      "readerRecords": {
+        "doing": "Reading Evidence Library records",
+        "did": "Read Evidence Library records",
+        "where": "Evidence Libraries",
+        "ask": "Read Evidence Library records"
+      },
+      "newLibraryCollection": {
+        "doing": "Making a collection in an Evidence Library",
+        "did": "Made a collection in an Evidence Library",
+        "where": "Evidence Libraries",
+        "ask": "Make a collection in an Evidence Library",
+        "askMany": "Make {count, plural, one {# collection} other {# collections}} in an Evidence Library",
+        "doingMany": "Making {count, plural, one {# collection} other {# collections}} in an Evidence Library",
+        "didMany": "Made {count, plural, one {# collection} other {# collections}} in an Evidence Library"
+      },
+      "changeLibraryRecords": {
+        "doing": "Changing an Evidence Library collection",
+        "did": "Changed an Evidence Library collection",
+        "where": "Evidence Libraries",
+        "ask": "Change an Evidence Library collection",
+        "askMany": "Change {count, plural, one {# Evidence Library collection} other {# Evidence Library collections}}",
+        "doingMany": "Changing {count, plural, one {# Evidence Library collection} other {# Evidence Library collections}}",
+        "didMany": "Changed {count, plural, one {# Evidence Library collection} other {# Evidence Library collections}}"
+      },
       "readHandoff": {
         "doing": "Opening what an Evidence Library handed over",
         "did": "Opened what an Evidence Library handed over",

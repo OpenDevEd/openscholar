@@ -3830,6 +3830,30 @@
         "where": "Evidence Libraries",
         "ask": "Evidence Library का एक स्रोत पढ़ें"
       },
+      "readerRecords": {
+        "doing": "Evidence Library के रिकॉर्ड पढ़ रहा है",
+        "did": "Evidence Library के रिकॉर्ड पढ़े",
+        "where": "Evidence Libraries",
+        "ask": "Evidence Library के रिकॉर्ड पढ़ें"
+      },
+      "newLibraryCollection": {
+        "doing": "Evidence Library में एक संग्रह बना रहा है",
+        "did": "Evidence Library में एक संग्रह बनाया",
+        "where": "Evidence Libraries",
+        "ask": "Evidence Library में एक संग्रह बनाएँ",
+        "askMany": "Evidence Library में {count, number} संग्रह बनाएँ",
+        "doingMany": "Evidence Library में {count, number} संग्रह बना रहा है",
+        "didMany": "Evidence Library में {count, number} संग्रह बनाए"
+      },
+      "changeLibraryRecords": {
+        "doing": "Evidence Library का एक संग्रह बदल रहा है",
+        "did": "Evidence Library का एक संग्रह बदला",
+        "where": "Evidence Libraries",
+        "ask": "Evidence Library का एक संग्रह बदलें",
+        "askMany": "Evidence Library के {count, number} संग्रह बदलें",
+        "doingMany": "Evidence Library के {count, number} संग्रह बदल रहा है",
+        "didMany": "Evidence Library के {count, number} संग्रह बदले"
+      },
       "readHandoff": {
         "doing": "Evidence Library से भेजी गई सामग्री खोल रहा है",
         "did": "Evidence Library से भेजी गई सामग्री खोली",
