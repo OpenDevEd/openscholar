@@ -29,6 +29,7 @@
     "assistant/spending:setTool": "Whether web searches or reads of attached files run in a chat without the person being asked. The assistant doesn't allow its own.",
     "assistant/threads:newChatModel": "The model the panel shows for a chat that does not exist yet. The assistant works inside a chat, which reads its own model through assistant/threads:get.",
     "assistant/undo:run": "Undoes a step the assistant took, by running the reversing action the step kept. The assistant runs that action itself.",
+    "assistant/undo:runAction": "Undoes a step the assistant took whose change reached outside the account, by running the reversing action the step kept. The assistant runs that action itself.",
     "billing/accounts:myLimits": "What the person's plan allows, for the extraction page to size its bucket. Every start checks the plan itself (convex/billing/accounts.ts `planLimit`).",
     "billing/accounts:refreshMine": "The billing page's refresh of the account from Autumn after a purchase. The assistant reads the account through billing/usage:plan.",
     "billing/catalog:get": "The plan catalog the billing pages render from Autumn's copy.",

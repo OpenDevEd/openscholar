@@ -178,7 +178,7 @@ export const defineChangingAction = <Args extends PropertyValidators, Returns ex
     changes: true,
     run: async (ctx, actor, args, call) => {
       const result = await entry.run(ctx, actor, args, call);
-      if (call?.stepId) await ctx.runMutation(internal.assistant.steps.read, { stepId: call.stepId, result: JSON.stringify(result ?? DONE) });
+      if (call?.stepId) await ctx.runMutation(internal.assistant.steps.read, { stepId: call.stepId, result: JSON.stringify(result ?? DONE), action: true });
       return result;
     },
   });

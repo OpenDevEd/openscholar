@@ -97,11 +97,11 @@ export function forModel(value: unknown) {
 }
 
 /** The command that reverses a change, when its result carries one (#342) short enough to keep. */
-export function undoOf(result: unknown) {
+export function undoOf(result: unknown, { action = false } = {}) {
   const undo = result && typeof result === "object" && "undo" in result ? (result as { undo?: { path?: unknown; args?: unknown } }).undo : undefined;
   if (!undo || typeof undo.path !== "string") return undefined;
   const args = JSON.stringify(undo.args ?? {});
-  return args.length <= STEP_TEXT_MAX ? { path: undo.path, args } : undefined;
+  return args.length <= STEP_TEXT_MAX ? { path: undo.path, args, ...(action ? { action: true as const } : {}) } : undefined;
 }
 
 /** What a result is, for its step's card: the title or the name of the one thing it returns. */
@@ -165,11 +165,11 @@ function sourcesOf(result: unknown) {
     .map((one) => ({ title: cut(String(one.title ?? one.url), 200), url: cut(String(one.url), 2_000), excerpt: cut(String(one.excerpt ?? ""), 300) }));
 }
 
-export async function endStep(ctx: MutationCtx, stepId: Id<"assistantSteps">, result: unknown) {
+export async function endStep(ctx: MutationCtx, stepId: Id<"assistantSteps">, result: unknown, { action = false } = {}) {
   const step = await ctx.db.get("assistantSteps", stepId);
   // Its chat was deleted while it ran.
   if (!step) return;
-  const [undo, count] = [undoOf(result), countOf(result)];
+  const [undo, count] = [undoOf(result, { action }), countOf(result)];
   // A call that names a paper by its ID alone is about the paper it returned.
   const subject = step.subject ? undefined : namedBy(result);
   // A web search keeps what it found, for the reply's citations and its list of sources (#648).
@@ -275,11 +275,11 @@ export async function aboutOf(ctx: Pick<QueryCtx, "db">, workspaceId: Id<"worksp
 
 /** A step that read something ends with its result, as does a change an action made outside and kept (organizations/manage.ts). A change written here ends its own (`endStep`). */
 export const read = internalMutation({
-  // `result` is what the action returned, as JSON.
-  args: { stepId: v.id("assistantSteps"), result: v.string() },
+  // `result` is what the action returned, as JSON. `action`: an action that changed something outside ended it, and its undo is one too.
+  args: { stepId: v.id("assistantSteps"), result: v.string(), action: v.optional(v.literal(true)) },
   returns: v.null(),
-  handler: async (ctx, { stepId, result }) => {
-    await endStep(ctx, stepId, JSON.parse(result));
+  handler: async (ctx, { stepId, result, action }) => {
+    await endStep(ctx, stepId, JSON.parse(result), { action: action === true });
     return null;
   },
 });

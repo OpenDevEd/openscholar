@@ -707,6 +707,8 @@ const stepValidator = v.object({
   error: v.optional(v.string()),
   /** Whether the person reading can undo it (./undo.ts): it returned what reverses it (#342), it was done for them, and it isn't undone yet. */
   canUndo: v.boolean(),
+  /** Its undo reaches outside the account, and runs on its own (./undo.ts `runAction`). */
+  undoAction: v.optional(v.literal(true)),
   undone: v.boolean(),
   at: v.number(),
 });
@@ -997,6 +999,7 @@ function shownStep(
     ...(asked ? { details: asked.details, ...(asked.each ? { each: asked.each } : {}) } : {}),
     ...(step.error ? { error: step.error } : {}),
     canUndo: step.undo !== undefined && step.userId === userId && step.undone !== true,
+    ...(step.undo?.action ? { undoAction: true as const } : {}),
     undone: step.undone === true,
     at: step.startedAt,
   };

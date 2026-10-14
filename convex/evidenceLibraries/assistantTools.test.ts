@@ -92,3 +92,22 @@ it("puts records in a collection the person edits, and its undo takes out only t
   await person.action(api.evidenceLibraries.library.changeRecords, { workspaceId, ...added.undo!.args });
   expect(records().at(-1)).toMatchObject({ method: "DELETE", body: { keys: [keyAt(1), keyAt(2)] } });
 });
+
+it("undoes a change to a library collection from its step's card, as the person it was made for", async () => {
+  const { t, libraryId, calls, person, workspaceId, clerkUserId } = await setup("libtools-undo");
+  const { threadId, stepId } = await t.run(async (ctx) => {
+    await ctx.db.insert("featureFlags", { key: "assistant.enabled", enabled: true, updatedAt: 1 });
+    const userId = (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique())!._id;
+    const threadId = await ctx.db.insert("assistantThreads", { workspaceId, createdBy: userId, title: "Reading list", agentThreadId: "agent", lastMessageAt: 1, createdAt: 1, updatedAt: 1 });
+    // The assistant took K0000001 out of the collection; its undo puts it back, through the library.
+    const undo = { path: "evidenceLibraries/library:changeRecords", args: JSON.stringify({ libraryId, collection: READ, keys: [keyAt(1)], change: "add" }), action: true as const };
+    const stepId = await ctx.db.insert("assistantSteps", { threadId, workspaceId, order: 0, userId, toolCallId: "call", path: "evidenceLibraries/library:changeRecords", input: "{}", status: "done", undo, startedAt: 1, endedAt: 1 });
+    return { threadId, stepId };
+  });
+  // Undo's one transaction can't reach the library: the card sends it to the action that can.
+  await expect(person.mutation(api.assistant.undo.run, { threadId, stepIds: [stepId] })).rejects.toThrow(/can no longer be undone/);
+  await person.action(api.assistant.undo.runAction, { threadId, stepIds: [stepId] });
+  expect(calls.filter((call) => call.path.endsWith(`/collections/${READ}/records`)).at(-1)).toMatchObject({ method: "POST", body: { keys: [keyAt(1)] } });
+  expect(await t.run((ctx) => ctx.db.get("assistantSteps", stepId))).toMatchObject({ undone: true });
+  await expect(person.action(api.assistant.undo.runAction, { threadId, stepIds: [stepId] })).rejects.toThrow(/nothing left to undo/);
+});

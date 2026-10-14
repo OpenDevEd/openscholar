@@ -20,6 +20,7 @@ import { PDF_PAGE_TOKENS } from "../../lib/assistant/files";
 import { paperPdf } from "../lib/paperPdfs";
 import { requirePdfModel } from "../assistant/files";
 import { paperIdOf, parsePaperKey } from "../../lib/papers/paper-ref";
+import { parseSourceAddress } from "../../lib/evidence-libraries/source-address";
 import type { Id } from "../_generated/dataModel";
 import type { ActionCtx } from "../_generated/server";
 import type { ChangeCall } from "../lib/userActions";
@@ -112,7 +113,7 @@ function workPath(id: string) {
   // A DOI goes into the address as it is, so one that would change the address isn't taken: a "?" or "#", or a ".." that climbs out of the work's path.
   const doi = given.match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?(10\.\d{4,9}\/[^\s?#]+)$/i)?.[1];
   if (doi && !doi.split("/").some((part) => part === "." || part === "..")) return `https://doi.org/${doi}`;
-  throw createError("VALIDATION_ERROR", "A paper is read by its ID, such as W2741809807, or its DOI.");
+  throw createError("VALIDATION_ERROR", "A paper is read by its ID, such as W2741809807, or its DOI; an Evidence Library's record by its `paper` as evidenceLibraries/library:records gives it (library:<libraryId>:<key>), or its page's address on the library.");
 }
 
 export const getAction = defineUserAction({
@@ -179,7 +180,7 @@ export const readPdfAction = defineUserAction({
   description:
     "Reads a paper's open-access PDF, by its ID as results give it (such as W2741809807) or its DOI, with its `title` as they give it, which the person is shown when asked: you get the PDF itself, its text, tables and figures, for the rest of this reply. " +
     "Search results, a paper's record and the person's saved papers say `pdf` when OpenAlex knows of one; OpenAlex may still hold a copy of one without. A paper in the person's Zotero library is read from there, with zotero/library:pdf. " +
-    "An Evidence Library's record is read from the library, by its `paper` as evidenceLibraries/library:records gives it, when that says `pdf`, or else from OpenAlex's copy when it has an OpenAlex ID. When none can be got, ask the person to attach its PDF to the chat. " +
+    "An Evidence Library's record is read from the library, by its `paper` as evidenceLibraries/library:records gives it or by its page's address on the library, when that says `pdf`, or else from OpenAlex's copy when it has an OpenAlex ID. When none can be got, ask the person to attach its PDF to the chat. " +
     "OpenAlex sometimes links the wrong file: check the PDF is the paper you asked for, and if it isn't, say so and use nothing from it. " +
     "Cite what you take from it by page, as a link to its address with the page: [p. 7](PDF_ADDRESS#page=7). A later reply that needs it again reads it again. " +
     "The person is asked first, with what the read may cost. One request against the person's OpenAlex allowance.",
@@ -199,7 +200,7 @@ export const readPdfAction = defineUserAction({
     return convertUsdToCredits({ usd: (PAPER_PAGES * PDF_PAGE_TOKENS * price) / 1_000_000 }) + PAPER_PDF_CREDITS;
   },
   run: async (ctx, { userId, workspaceId }, { id, title: asked }, call): Promise<Infer<typeof paperPdfValidator>> => {
-    const ref = parsePaperKey(id.trim());
+    const ref = parsePaperKey(id.trim()) ?? (await libraryRecordAt(ctx, id));
     if (ref?.source === "library") return await libraryRecordPdf(ctx, { userId, workspaceId }, ref, asked, call);
     const path = workPath(id);
     const person: { clerkId: string } | null = await ctx.runQuery(internal.users.internal.getUserById, { userId });
@@ -218,6 +219,14 @@ export const readPdfAction = defineUserAction({
     return { id: openalexId, title, paperPdf: pdfUrl ?? openalexId, stored: got.key };
   },
 });
+/** A record of a library OpenScholar runs, from its page's address (`<library>/lib/<key>`); null for any other address. */
+async function libraryRecordAt(ctx: ActionCtx, address: string): Promise<{ source: "library"; libraryId: string; key: string } | null> {
+  const parsed = parseSourceAddress(address.trim().slice(0, 4_000));
+  if ("error" in parsed || !("records" in parsed.source) || parsed.source.records.length !== 1) return null;
+  const libraryId: Id<"evidenceLibraries"> | null = await ctx.runQuery(internal.evidenceLibraries.sources.at, { origin: parsed.origin });
+  return libraryId ? { source: "library", libraryId, key: parsed.source.records[0]! } : null;
+}
+
 /** A chat's scope for a paper's stored copy, which it pays for once; a read outside one pays each time. */
 async function chatScope(ctx: ActionCtx, call: ChangeCall | undefined) {
   const step = call?.stepId ?? call?.from;
