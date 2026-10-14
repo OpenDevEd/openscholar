@@ -230,7 +230,7 @@ export const changeRecords = internalAction({
 
 /** Deletes a collection the person owns, once it is as `expect` says when given. */
 export const deleteCollection = internalAction({
-  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), collection: v.string(), expect: v.optional(v.object({ name: v.string(), records: v.number() })) },
+  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), collection: v.string(), expect: v.optional(v.object({ name: v.string(), description: v.union(v.string(), v.null()), private: v.boolean(), records: v.number(), members: v.number() })) },
   returns: v.null(),
   handler: async (ctx, { libraryId, userId, collection, expect }): Promise<null> => {
     const target = await libraryTarget(ctx, libraryId);

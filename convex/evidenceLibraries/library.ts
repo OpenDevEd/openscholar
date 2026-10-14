@@ -139,7 +139,8 @@ export const recordsForAssistant = assistantAction(recordsAction);
 
 const collectionMadeValidator = v.object({ id: v.string(), name: v.string(), description: v.union(v.string(), v.null()), private: v.boolean(), records: v.number() });
 const DELETE_COLLECTION = "evidenceLibraries/library:deleteCollection" as const;
-const expectValidator = v.object({ name: v.string(), records: v.number() });
+// A collection as it was made: everything its owner can change, which an undo expects it still to be.
+const expectValidator = v.object({ name: v.string(), description: v.union(v.string(), v.null()), private: v.boolean(), records: v.number(), members: v.number() });
 const deleteArgs = { libraryId: v.id("evidenceLibraries"), collection: v.string(), collectionName: v.optional(v.string()), expect: v.optional(expectValidator) };
 
 export const createCollectionAction = defineChangingAction({
@@ -164,9 +165,10 @@ export const createCollectionAction = defineChangingAction({
       private: shown !== true,
       requestId: step ? `assistant:${step}` : crypto.randomUUID(),
     });
-    // Undone only while it is as asked for (the library trims the name): renamed or filled since, even before a retry
-    // of this step got its answer, it stays.
-    const undo = { path: DELETE_COLLECTION, args: { libraryId, collection: made.id, expect: { name: name.trim(), records: 0 } } };
+    // Undone only while it is as asked for (the library trims the name and description): changed since in any way, even
+    // before a retry of this step got its answer, it stays.
+    const asMade = { name: name.trim(), description: description?.trim() || null, private: shown !== true, records: 0, members: 0 };
+    const undo = { path: DELETE_COLLECTION, args: { libraryId, collection: made.id, expect: asMade } };
     return { id: made.id, name: made.name, description: made.description, private: made.private, records: made.count, undo };
   },
 });
@@ -177,7 +179,7 @@ export const deleteCollectionAction = defineChangingAction({
   path: DELETE_COLLECTION,
   description:
     "Deletes a collection the person owns in an Evidence Library, as their profile page there does: its records stay in their bookmarks there, and whoever it was shared with loses it. " +
-    "`collectionName` is its name, which the person is shown when asked. `expect` ({ name, records }), which an undo passes, deletes it only while it still has that name and holds that many records. Refused for a collection they don't own.",
+    "`collectionName` is its name, which the person is shown when asked. `expect` ({ name, description, private, records, members }), which an undo passes, deletes it only while it is still so. Refused for a collection they don't own.",
   args: deleteArgs,
   returns: v.object({}),
   spendsCredits: false,

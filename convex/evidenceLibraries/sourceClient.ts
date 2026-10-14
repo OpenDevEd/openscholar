@@ -164,9 +164,9 @@ export async function changeCollectionRecords(fetchImpl: typeof fetch, target: L
 
 /**
  * Deletes a collection the person owns, as their profile does: its records stay in their bookmarks. With `expect`, only
- * while it still has that name and holds that many records; one changed since is refused (`changed`) and stays.
+ * while it is still so (everything its owner can change); one changed since is refused (`changed`) and stays.
  */
-export async function deleteReaderCollection(fetchImpl: typeof fetch, target: LibraryTarget, clerkUserId: string, collectionId: string, expect?: { name: string; records: number }) {
+export async function deleteReaderCollection(fetchImpl: typeof fetch, target: LibraryTarget, clerkUserId: string, collectionId: string, expect?: { name: string; description: string | null; private: boolean; records: number; members: number }) {
   const path = `/api/v1/openscholar/readers/${encodeURIComponent(clerkUserId)}/collections/${encodeURIComponent(collectionId)}`;
   await call(fetchImpl, target, path, z.object({ deleted: z.literal(true) }), { body: expect ? { expect } : {}, method: "DELETE" });
 }

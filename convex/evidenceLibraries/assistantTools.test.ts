@@ -125,22 +125,23 @@ it("makes a collection whose undo deletes it while it is as made, and leaves one
   const deletes = () => calls.filter((call) => call.method === "DELETE" && call.path.endsWith(`/collections/${MADE}`));
 
   const collection = await person.action(api.evidenceLibraries.library.createCollection, { workspaceId, libraryId, name: "Included" });
-  expect(collection.undo).toEqual({ path: "evidenceLibraries/library:deleteCollection", args: { libraryId, collection: MADE, expect: { name: "Included", records: 0 } } });
+  const asMade = { name: "Included", description: null, private: true, records: 0, members: 0 };
+  expect(collection.undo).toEqual({ path: "evidenceLibraries/library:deleteCollection", args: { libraryId, collection: MADE, expect: asMade } });
 
   // Renamed on the library since: the undo is refused, and the collection stays.
   made.name = "Mine now";
   await expect(person.action(api.evidenceLibraries.library.deleteCollection, { workspaceId, ...collection.undo!.args })).rejects.toThrow(/changed since.+Mine now/);
   made.name = "Included";
   await person.action(api.evidenceLibraries.library.deleteCollection, { workspaceId, ...collection.undo!.args });
-  expect(deletes().map((call) => call.body)).toEqual([{ expect: { name: "Included", records: 0 } }, { expect: { name: "Included", records: 0 } }]);
+  expect(deletes().map((call) => call.body)).toEqual([{ expect: asMade }, { expect: asMade }]);
 
   // Made again by a retry of its step after a rename, its undo still holds it to the name asked for.
   made.name = "Mine now";
-  const retried = await person.action(api.evidenceLibraries.library.createCollection, { workspaceId, libraryId, name: " Included " });
-  expect(retried.undo?.args.expect).toEqual({ name: "Included", records: 0 });
+  const retried = await person.action(api.evidenceLibraries.library.createCollection, { workspaceId, libraryId, name: " Included ", description: " For the review ", public: true });
+  expect(retried.undo?.args.expect).toEqual({ name: "Included", description: "For the review", private: false, records: 0, members: 0 });
 
   // Asked by name, a delete of another collection deletes nothing, whatever it is told to expect.
   await expect(person.action(api.evidenceLibraries.library.deleteCollection, { workspaceId, libraryId, collection: READ, collectionName: "Included" })).rejects.toThrow(/Reading list.+not.+Included/);
-  await expect(person.action(api.evidenceLibraries.library.deleteCollection, { workspaceId, libraryId, collection: READ, collectionName: "Included", expect: { name: "Reading list", records: 3 } })).rejects.toThrow(/Reading list.+not.+Included/);
+  await expect(person.action(api.evidenceLibraries.library.deleteCollection, { workspaceId, libraryId, collection: READ, collectionName: "Included", expect: { ...asMade, name: "Reading list", records: 3 } })).rejects.toThrow(/Reading list.+not.+Included/);
   expect(calls.filter((call) => call.method === "DELETE" && call.path.endsWith(`/collections/${READ}`))).toEqual([]);
 });
