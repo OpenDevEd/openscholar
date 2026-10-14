@@ -42,6 +42,7 @@ import { isFrozen, rowKey, screeningQuestionsOf, setOfRow, type HeldRow, type Li
 import { CreditCheck, useSpendable } from "@/components/workspaces/credit-check";
 import { ModelsInUse } from "@/components/models/models-in-use";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { inWorkspace, useWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
@@ -276,8 +277,13 @@ export function SetupView({
     if (before) return choose(before, leftAt.current[next]);
     const firstOf = lists[next].rows.find((row) => row.count > 0);
     if (firstOf) choose(firstOf);
-    // Nothing to pick yet, such as a library still listing: the questions stay as they were.
-    else setEdited(next === "search" ? null : questions);
+    // Nothing to pick yet, such as a library still listing: the questions stay as they were, questions being written
+    // for the last set don't land here, and the set that arrives starts on its first papers, as choose() does.
+    else {
+      picks.current++;
+      setRange([1, 300]);
+      setEdited(next === "search" ? null : questions);
+    }
     setScope(next === "search" ? "range" : "all");
   };
   /** Turns the list's page with the set in use held on to, so another page's first set doesn't take its place. */
@@ -663,6 +669,7 @@ export function SetupView({
                   setLibraryDestPage(1);
                 }}
               />
+              <AutoHeight>
               <div style={libraryDestPages > 1 ? { minHeight: (DESTINATION_PAGE + 1) * SOURCE_ROW + 1 } : undefined}>
                 <div className={LIST} role="radiogroup" aria-label={t("saveIncludedTo")}>
                   <DestinationRow on={libraryTarget === "new"} onPick={() => setLibraryDest("new")} icon={FolderPlus} facts={<Chip>{t("new")}</Chip>}>
@@ -698,6 +705,7 @@ export function SetupView({
                   })}
                 </div>
               </div>
+              </AutoHeight>
               {libraryDestPages > 1 ? (
                 <PageStepper page={libraryDestAt} pageCount={libraryDestPages} canPrevious={libraryDestAt > 1} canNext={libraryDestAt < libraryDestPages} onPrevious={() => setLibraryDestPage(libraryDestAt - 1)} onNext={() => setLibraryDestPage(libraryDestAt + 1)} />
               ) : null}

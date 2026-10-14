@@ -15,6 +15,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { ArrowUpDown, Building2, CalendarDays, EvidenceLibrariesIcon, Eye, FileText, Folder, Globe, Link2, ListChecks, Lock, Pencil, Search, TopicsIcon, TriangleAlert, UserRound, type AppIcon } from "@/components/icons";
 import { LibraryImage } from "@/components/evidence-libraries/library-image";
 import { ListLoading } from "@/components/evidence-libraries/list-controls";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { faceOf } from "@/components/workspaces/run-by";
 import { EASE } from "@/components/settings/model-map";
 import { LIST } from "@/components/settings/parts";
@@ -326,7 +327,8 @@ export function LibrarySources({
             </div>
           </div>
 
-          {/* A full page's height while there are pages, so the pager stays put on a short last page. */}
+          {/* A full page's height while there are pages, so the pager stays put on a short last page; its rows slide in over the spinner when the library answers after the tab opened. */}
+          <AutoHeight>
           <div style={pages > 1 ? { minHeight: PAGE * ROW + 1 } : undefined}>
             {!state.loaded ? (
               <div className={LIST}><ListLoading compact label={tc("loading")} /></div>
@@ -354,6 +356,7 @@ export function LibrarySources({
               </div>
             )}
           </div>
+          </AutoHeight>
           {pages > 1 ? <PageStepper page={at} pageCount={pages} canPrevious={at > 1} canNext={at < pages} onPrevious={() => setPage(at - 1)} onNext={() => setPage(at + 1)} /> : null}
         </>
       ) : (
