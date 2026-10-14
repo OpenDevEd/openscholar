@@ -38,8 +38,8 @@ export function CreditCheck({ credits, balance, enough, cap }: { credits: number
   const workspace = useCurrentWorkspace();
   const organization = workspace?.kind === "organization" ? workspace : undefined;
   return (
-    <div className="min-w-48 flex-1 space-y-1.5">
-      <p className="flex items-center justify-between gap-3 text-xs">
+    <div className="min-w-fit flex-1 space-y-1.5">
+      <p className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs">
         <span className="flex shrink-0 items-center gap-1.5 font-medium">
           <Coins className="size-3.5 text-primary" />
           <span>{t.rich("upToCredits", { n: () => <AnimatedNumber value={credits} /> })}</span>

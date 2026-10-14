@@ -452,7 +452,7 @@ export function SetupView({
             // What the papers come from decides the shortcuts: a search's questions are its own (one
             // screening per search) and it can write more from its research question; an earlier
             // screening has questions to reuse.
-            <span className="flex min-w-0 items-center gap-1">
+            <span className="flex min-w-0 flex-wrap items-center gap-1">
               {source?.kind === "search" ? <Chip icon={ListChecks}>{t("sharedWithResults")}</Chip> : null}
               {source?.kind === "screening" ? (
                 // The screening's name can be a whole query: it's cut to the room there is, and shown in full on hover.
@@ -516,7 +516,8 @@ export function SetupView({
 
         <Zone label={t("keep")}>
           <div className={cn("space-y-3 rounded-2xl border p-4 transition-colors duration-300", unscored ? "border-dashed border-border" : "border-border-subtle bg-inset")}>
-            <div className="flex items-center gap-3">
+            {/* On a phone the words take the row beside the icon, and the button or the points go on a line of their own. */}
+            <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:flex">
               <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300", unscored ? "bg-muted text-muted-foreground/60" : "bg-success/15 ink-success")}>
                 <CircleCheck className="size-5" />
               </span>
@@ -525,9 +526,9 @@ export function SetupView({
                 <span className="block text-xs text-muted-foreground">{unscored ? t("pointsDecide") : t("pointsAddUp")}</span>
               </span>
               {unscored ? (
-                <Button variant="outline" size="sm" className="h-8 shrink-0" onClick={() => questionInput.current?.focus()}><Plus />{t("addAQuestion")}</Button>
+                <Button variant="outline" size="sm" className="col-span-2 h-8 shrink-0" onClick={() => questionInput.current?.focus()}><Plus />{t("addAQuestion")}</Button>
               ) : (
-                <span className="flex shrink-0 items-center gap-1">
+                <span className="col-start-2 flex shrink-0 items-center gap-1">
                   <Button variant="ghost" size="icon" className="size-8" aria-label={t("onePointFewer")} disabled={threshold <= 0} onClick={() => setMinScore(threshold - 1)}><Minus /></Button>
                   <Input
                     type="number"
@@ -586,7 +587,7 @@ export function SetupView({
                 className="[&_[data-slot=slider-range]]:bg-primary/60 [&_[data-slot=slider-track]]:h-2"
               />
             )}
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid gap-2 sm:grid-cols-5">
               {stars.map((value, i) => (
                 <label key={i} className={cn("flex items-center gap-2 rounded-xl py-1.5 pl-2.5 pr-1.5 transition-colors duration-300", unscored ? "bg-foreground/[0.02]" : "bg-foreground/[0.04]")}>
                   <span className="flex flex-1 items-center gap-0.5" aria-hidden>
@@ -737,7 +738,7 @@ export function SetupView({
             it (below 1320px). On a phone its Start button wraps to the left, clear of it, and the bar keeps its width. */}
         <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg sm:max-[82.5rem]:mr-18">
           <CreditCheck credits={credits} balance={balance} enough={enough} cap={spend.cap} />
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 empty:hidden max-sm:basis-full">
             {slots ? <Chip icon={Gauge}>{t("atATime", { limit: slots.limit })}</Chip> : null}
             {waitingFor ? (
               <ClippedChip icon={Hourglass} className="max-w-56">{t("after", { name: waitingFor })}</ClippedChip>
