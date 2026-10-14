@@ -14,6 +14,7 @@ import { COLLECTION_INVITATION_CALLS, serveCollectionInvitations } from "./evide
 import { download as downloadExport } from "./exports";
 import { upload as uploadAssistantFile, uploadOptions as uploadAssistantFileOptions } from "./assistant/files";
 import { requireAppUrl } from "./lib/env";
+import { zoteroReturnUrl } from "./zotero/signInReturn";
 import {
   handleChatCompletions,
   handleModelsV1,
@@ -75,46 +76,23 @@ http.route({
   handler: receiveSourceStatus,
 });
 
-// Zotero OAuth callback
+// Zotero sends the person here after they approve the key or not; they go back to the page they started on.
 http.route({
   path: "/api/zotero/callback",
   method: "GET",
   handler: httpAction(async (ctx, request) => {
     const url = new URL(request.url);
-    const oauthToken = url.searchParams.get("oauth_token");
-    const oauthVerifier = url.searchParams.get("oauth_verifier");
-
-    if (!oauthToken || !oauthVerifier) {
-      return new Response("Missing OAuth parameters", { status: 400 });
-    }
-
-    const frontendUrl = requireAppUrl();
-    try {
-      const result = await ctx.runAction(internal.zotero.actions.completeOAuth, {
-        oauthToken,
-        oauthVerifier,
+    const result = await ctx
+      .runAction(internal.zotero.actions.completeOAuth, {
+        oauthToken: url.searchParams.get("oauth_token") ?? undefined,
+        oauthVerifier: url.searchParams.get("oauth_verifier") ?? undefined,
+      })
+      .catch((error: unknown) => {
+        console.error("Zotero OAuth callback error:", error);
+        return { returnTo: undefined, error: "failed" as const };
       });
-
-      if (!result.success) {
-        return Response.redirect(
-          `${frontendUrl}/?zotero_error=${encodeURIComponent(result.error || "Unknown error")}`,
-          302,
-        );
-      }
-
-      const returnPath = result.returnTo ?? "/";
-      const separator = returnPath.includes("?") ? "&" : "?";
-      return Response.redirect(
-        `${frontendUrl}${returnPath}${separator}zotero_connected=true`,
-        302,
-      );
-    } catch (error) {
-      console.error("Zotero OAuth callback error:", error);
-      return Response.redirect(
-        `${frontendUrl}/?zotero_error=${encodeURIComponent("OAuth failed")}`,
-        302,
-      );
-    }
+    if (result.error) console.warn(`Zotero sign-in didn't finish: ${result.error}`);
+    return Response.redirect(zoteroReturnUrl(requireAppUrl(), result), 302);
   }),
 });
 

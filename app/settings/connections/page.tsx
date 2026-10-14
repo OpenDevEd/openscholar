@@ -163,6 +163,7 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
   const now = useNow({ updateInterval: 60_000 });
   const toast = useAppToast();
   const signIn = useZoteroSignIn();
+  const failed = !account.connected && signIn.failed;
   const disconnect = useMutation(api.zotero.mutations.disconnect);
   const [step, setStep] = useState<"idle" | "confirm" | "busy">("idle");
 
@@ -170,7 +171,7 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
     setStep("busy");
     try {
       // The page goes to Zotero from here, so the spinner stays until it leaves.
-      await signIn();
+      await signIn.start();
     } catch (error) {
       toast.zotero.failed(error);
       setStep("idle");
@@ -187,8 +188,10 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
     }
   };
 
-  // The line under the name: what Zotero is for, the account it's connected to, or what disconnecting leaves in place.
-  const line = !account.connected ? (
+  // The line under the name: what Zotero is for, why the last sign-in failed, the account it's connected to, or what disconnecting leaves in place.
+  const line = failed ? (
+    <span className="truncate text-destructive">{tc("zoteroSignInFailed")}</span>
+  ) : !account.connected ? (
     <span className="truncate">{t("zoteroAbout")}</span>
   ) : step === "confirm" ? (
     <span className="truncate">{t("zoteroKeeps")}</span>
@@ -204,7 +207,7 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
       <Tile icon={ZoteroIcon} tint="#cc2936" />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold">Zotero</p>
-        <Swap id={`${account.connected}-${step === "confirm"}`} className="flex min-w-0 items-center text-xs text-muted-foreground">
+        <Swap id={`${account.connected}-${step === "confirm"}-${failed}`} className="flex min-w-0 items-center text-xs text-muted-foreground">
           {line}
         </Swap>
       </div>

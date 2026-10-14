@@ -446,6 +446,7 @@ import type * as zotero_runtimeReadActions from "../zotero/runtimeReadActions.js
 import type * as zotero_runtimeReadClient from "../zotero/runtimeReadClient.js";
 import type * as zotero_runtimeReadValidators from "../zotero/runtimeReadValidators.js";
 import type * as zotero_runtimeReads from "../zotero/runtimeReads.js";
+import type * as zotero_signInReturn from "../zotero/signInReturn.js";
 import type * as zotero_sourceEntry from "../zotero/sourceEntry.js";
 
 import type {
@@ -893,6 +894,7 @@ declare const fullApi: ApiFromModules<{
   "zotero/runtimeReadClient": typeof zotero_runtimeReadClient;
   "zotero/runtimeReadValidators": typeof zotero_runtimeReadValidators;
   "zotero/runtimeReads": typeof zotero_runtimeReads;
+  "zotero/signInReturn": typeof zotero_signInReturn;
   "zotero/sourceEntry": typeof zotero_sourceEntry;
 }>;
 

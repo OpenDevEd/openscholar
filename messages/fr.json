@@ -78,6 +78,7 @@
     "loadingAccountControls": "Chargement des contrôles du compte",
     "noResultsFound": "Aucun résultat trouvé",
     "somethingWentWrong": "Une erreur s'est produite",
+    "zoteroSignInFailed": "La connexion à Zotero n'a pas abouti. Réessayez.",
     "payNow": "Payer maintenant",
     "general": "Général",
     "ai": "IA",

@@ -174,7 +174,9 @@ export function SourcesField({
   );
   const removeGroup = useMutation(api.zotero.libraryGroups.removeZoteroGroup);
   const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [connectionsOpen, setConnectionsOpen] = useState(false);
+  const zoteroSignIn = useZoteroSignIn();
+  // A Zotero sign-in that started in this dialog and didn't finish comes back to it open, with the reason.
+  const [connectionsOpen, setConnectionsOpen] = useState(zoteroSignIn.failed);
   const [connectionTab, setConnectionTab] = useState("zotero");
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addButton = useRef<HTMLButtonElement>(null);
@@ -405,7 +407,13 @@ export function SourcesField({
           </GroupPicker>
         </div>
 
-        <Dialog open={connectionsOpen} onOpenChange={setConnectionsOpen}>
+        <Dialog
+          open={connectionsOpen}
+          onOpenChange={(open) => {
+            setConnectionsOpen(open);
+            if (!open && zoteroSignIn.failed) zoteroSignIn.dismiss();
+          }}
+        >
           <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-xl">
             <DialogHeader>
               <DialogTitle>{t("connectionsTitle")}</DialogTitle>
@@ -427,7 +435,7 @@ export function SourcesField({
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="zotero" className="space-y-5">
-                <AccountPanel account={account.data} />
+                <AccountPanel account={account.data} signIn={zoteroSignIn} />
                 <Disclosure
                   open={advancedOpen}
                   onOpenChange={setAdvancedOpen}
@@ -526,21 +534,23 @@ export function SourcesField({
 
 function AccountPanel({
   account,
+  signIn,
 }: {
   account:
     | { connected: true; zoteroUserId: string; username?: string }
     | { connected: false }
     | undefined;
+  signIn: ReturnType<typeof useZoteroSignIn>;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
-  const signIn = useZoteroSignIn();
+  const tc = useTranslations("common");
   const disconnect = useMutation(api.zotero.mutations.disconnect);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const connected = account?.connected === true;
 
   async function connect() {
     try {
-      await signIn();
+      await signIn.start();
     } catch {
       toast.error(t("connectAccountFailed"));
     }
@@ -566,9 +576,13 @@ function AccountPanel({
               })
             : t("notConnected")}
         </p>
-        <p className="text-xs text-muted-foreground">
-          {connected ? t("accountHeading") : t("notConnectedHint")}
-        </p>
+        {!connected && signIn.failed ? (
+          <p className="text-xs text-destructive">{tc("zoteroSignInFailed")}</p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {connected ? t("accountHeading") : t("notConnectedHint")}
+          </p>
+        )}
       </div>
       <div className="shrink-0">
         {connected ? (

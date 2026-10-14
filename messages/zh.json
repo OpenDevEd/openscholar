@@ -78,6 +78,7 @@
     "loadingAccountControls": "加载账户控件",
     "noResultsFound": "未找到结果",
     "somethingWentWrong": "出现错误",
+    "zoteroSignInFailed": "Zotero 登录未完成。请重试。",
     "payNow": "立即支付",
     "general": "通用",
     "ai": "AI",

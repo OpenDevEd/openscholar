@@ -296,31 +296,26 @@ export const startOAuth = action({
   },
 });
 
+type SignInResult = { returnTo?: string; error?: "cancelled" | "expired" | "failed" };
+
 /**
- * Complete OAuth flow - exchange request token for access token.
+ * Completes a Zotero sign-in: exchanges the request token for the person's API key and saves
+ * the connection. Returns the page the sign-in started on, and why it failed when it did.
  */
 export const completeOAuth = internalAction({
   args: {
-    oauthToken: v.string(),
-    oauthVerifier: v.string(),
+    oauthToken: v.optional(v.string()),
+    oauthVerifier: v.optional(v.string()),
   },
   returns: v.object({
-    success: v.boolean(),
-    error: v.optional(v.string()),
     returnTo: v.optional(v.string()),
+    error: v.optional(v.union(v.literal("cancelled"), v.literal("expired"), v.literal("failed"))),
   }),
-  handler: async (
-    ctx,
-    { oauthToken, oauthVerifier },
-  ): Promise<{ success: boolean; error?: string; returnTo?: string }> => {
-    const consumerKey = process.env.ZOTERO_CLIENT_KEY;
-    const consumerSecret = process.env.ZOTERO_CLIENT_SECRET;
+  handler: async (ctx, { oauthToken, oauthVerifier }): Promise<SignInResult> => {
+    // Zotero comes back without its token or verifier when the person doesn't approve the key.
+    if (!oauthToken) return { error: "cancelled" };
 
-    if (!consumerKey || !consumerSecret) {
-      return { success: false, error: "Zotero OAuth credentials not configured" };
-    }
-
-    // Get stored request token
+    // The request token is used once, whatever happens next.
     const stored: {
       tokenSecret: string;
       userId: Id<"users">;
@@ -330,10 +325,18 @@ export const completeOAuth = internalAction({
     });
 
     if (!stored) {
-      return { success: false, error: "OAuth session expired or invalid" };
+      return { error: "expired" };
     }
 
     const { tokenSecret, userId, returnTo } = stored;
+    if (!oauthVerifier) return { returnTo, error: "cancelled" };
+
+    const consumerKey = process.env.ZOTERO_CLIENT_KEY;
+    const consumerSecret = process.env.ZOTERO_CLIENT_SECRET;
+    if (!consumerKey || !consumerSecret) {
+      console.error("Zotero OAuth credentials not configured");
+      return { returnTo, error: "failed" };
+    }
 
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const nonce = generateNonce();
@@ -370,8 +373,8 @@ export const completeOAuth = internalAction({
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("Zotero access token failed:", text);
-      return { success: false, error: "Failed to complete Zotero authorization" };
+      console.error("Zotero access token failed:", response.status, text);
+      return { returnTo, error: "failed" };
     }
 
     const responseText = await response.text();
@@ -387,13 +390,14 @@ export const completeOAuth = internalAction({
         hasUsername: !!username,
         responseText,
       });
-      return { success: false, error: "Invalid response from Zotero" };
+      return { returnTo, error: "failed" };
     }
 
     // Encrypt the access token before saving
     const encryptionKey = process.env.ENCRYPTION_KEY;
     if (!encryptionKey) {
-      throw createError("API_KEY_ENCRYPTION_KEY_MISSING", "Encryption key not configured");
+      console.error("Zotero sign-in can't save the key: ENCRYPTION_KEY is not set");
+      return { returnTo, error: "failed" };
     }
     const encryptedApiKey = encrypt(accessToken, encryptionKey);
     const keyPrefix = getKeyPrefix(accessToken);
@@ -407,7 +411,7 @@ export const completeOAuth = internalAction({
       username: username || undefined,
     });
 
-    return { success: true, returnTo };
+    return { returnTo };
   },
 });
 

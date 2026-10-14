@@ -76,6 +76,7 @@
     "loadingAccountControls": "Loading account controls",
     "noResultsFound": "No results found",
     "somethingWentWrong": "Something went wrong",
+    "zoteroSignInFailed": "The Zotero sign-in didn't finish. Try again.",
     "payNow": "Pay now",
     "general": "General",
     "ai": "AI",

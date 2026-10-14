@@ -78,6 +78,7 @@
     "loadingAccountControls": "खाता नियंत्रण लोड हो रहे हैं",
     "noResultsFound": "कोई परिणाम नहीं मिला",
     "somethingWentWrong": "कुछ गलत हो गया",
+    "zoteroSignInFailed": "Zotero साइन-इन पूरा नहीं हुआ। फिर से कोशिश करें।",
     "payNow": "अभी भुगतान करें",
     "general": "सामान्य",
     "ai": "AI",
