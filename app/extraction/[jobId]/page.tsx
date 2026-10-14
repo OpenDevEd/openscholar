@@ -765,7 +765,8 @@ export default function JobDetailPage() {
                       <ListEmpty
                         icon={FileText}
                         // One that has ended has no more to bring: only a job still going promises results.
-                        description={job.status === "completed" || job.status === "failed" || job.status === "cancelled" ? tPdf('noResultsDescription') : tPdf('resultsWillAppear')}
+                        // A job that failed before reading a paper says why, as its papers' source answered.
+                        description={job.status === "failed" && job.error?.message ? job.error.message : job.status === "completed" || job.status === "failed" || job.status === "cancelled" ? tPdf('noResultsDescription') : tPdf('resultsWillAppear')}
                       >
                         {tc('noResultsFound')}
                       </ListEmpty>

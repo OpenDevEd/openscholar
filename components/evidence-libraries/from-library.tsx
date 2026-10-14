@@ -31,7 +31,8 @@ export type Opened = FunctionReturnType<typeof api.evidenceLibraries.handoffs.op
 type Field = Exclude<Opened, { gone: true }>["fields"][number];
 
 const PAGE = 5;
-const ROW = 57;
+/** A record's row and the line under it: its title (20), the gap (2) and its authors (16) inside 10 above and below, so a short last page keeps a full one's height. */
+const ROW = 59;
 const TYPE_ICON: Record<Field["type"], AppIcon> = { string: AlignLeft, number: Hash, boolean: ToggleLeft };
 const FROM_ICON: Record<Exclude<Opened, { gone: true }>["from"], AppIcon> = { smartScreening: MessagesSquare, search: Search, collection: Folder };
 type Sort = "given" | "newest" | "title";
@@ -191,7 +192,9 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
           </Zone>
 
           {/* Screening asks yes or no: offered when no questions came, or some of them are yes or no. Each button says how many questions it takes. */}
-          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
+          {/* Its buttons, at the right, stop short of the assistant's button in the screen's corner from the first frame (the
+              button arrives after the page): below 1320px the page's column reaches that corner. */}
+          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg max-[82.5rem]:mr-18">
             {screenable ? (
               <Button variant="outline" className="min-w-44" onClick={screen} disabled={!count}>
                 <ListChecks className="text-primary" />

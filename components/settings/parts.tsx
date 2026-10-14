@@ -244,19 +244,17 @@ let firstPage = true;
 export function Enter({ ready, children }: { ready: boolean; children: ReactNode }) {
   const reduceMotion = useReducedMotion();
   const [skip] = useState(() => firstPage || Boolean(reduceMotion));
-  // Usable once it has fully appeared, and from then on whatever its data does.
-  const [shown, setShown] = useState(false);
   return (
     <motion.div
       initial={skip ? { opacity: 0 } : cardEntrance.initial}
       animate={ready ? cardEntrance.animate : undefined}
       transition={skip ? { duration: 0.15 } : subtleSpring}
       aria-busy={!ready}
-      inert={!shown}
+      // Takes no clicks while it's hidden. Not tied to its entrance's end: an entrance cut short by its data leaves none.
+      inert={!ready}
       onAnimationStart={() => {
         firstPage = false;
       }}
-      onAnimationComplete={() => setShown(true)}
     >
       {children}
     </motion.div>

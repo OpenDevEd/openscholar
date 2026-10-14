@@ -42,7 +42,7 @@ import type { ExtractionQuestionType } from "@/lib/types/extraction.types";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
+import { inWorkspace, useWorkspace, useWorkspaceAction, useWorkspaceMutation } from "@/lib/workspaces/url";
 import { PdfUpload } from "./pdf-upload";
 import { LibrarySources, useLibrarySources, useRowLabel } from "@/components/screening/library-sources";
 import { LIBRARY_SOURCE_MAX } from "@/lib/evidence-libraries/source-address";
@@ -210,6 +210,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
   const enough = credits <= balance;
   const over = total > paperLimit;
   const startJob = useWorkspaceMutation(api.extraction.mutations.startJob);
+  const describeSource = useWorkspaceAction(api.evidenceLibraries.library.source);
   const [starting, startTransition] = useTransition();
   const why = !total ? t("whyPickPapers") : !draftJob.questions.length ? t("whyAddQuestion") : over ? t("whyPlanPapers", { count: paperLimit }) : estimate === undefined ? null : !enough ? t("whyCredits") : null;
   const start = () =>
@@ -217,6 +218,13 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
       const name = draftJob.name.trim() || t("untitledJob");
       const questions = draftJob.questions.map((q, i) => ({ key: q.key || `q_${i}`, question: q.question, type: q.type, description: q.description }));
       try {
+        // A library's source is read again as the person may read it now: one made private or emptied since the form
+        // opened is refused here, with the library's reason, before a job is made.
+        for (const { set } of sources) {
+          if (set.kind !== "evidenceLibrary") continue;
+          const found = await describeSource({ libraryId: set.libraryId, source: set.source });
+          if ("error" in found) throw new Error(tl(`error.${found.error}`));
+        }
         const { jobId } = await startJob({ name, sources: sources.map(({ set, first, last }) => ({ set, first, last })), uploads: uploads.map(({ storageId, title }) => ({ storageId, title })), questions, usePdfs: draftJob.usePdfs });
         router.push(`/extraction/${jobId}`);
         if (workspaceId) clearDraftJob(workspaceId);
@@ -421,7 +429,9 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
         {/* What it runs on, from AI settings: one model for written answers, and for yes or no the decision model screening uses, when it's one. */}
         {textModel ? <ModelsInUse label={t("models")} uses={[{ label: t("textModel"), model: textModel }, { label: t("yesNoModel"), model: yesNoModel ?? textModel }]} /> : null}
 
-        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
+        {/* Stops short of the assistant's button in the screen's corner from the first frame, where the page's column reaches
+            it (below 1320px). On a phone its Start button wraps to the left, clear of it, and the bar keeps its width. */}
+        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg sm:max-[82.5rem]:mr-18">
           <CreditCheck credits={credits} balance={balance} enough={enough} cap={spend.cap} />
           {why ? (
             <TooltipHint label={why}>

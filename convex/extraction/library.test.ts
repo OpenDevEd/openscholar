@@ -2,7 +2,8 @@
 // library once for the source's keys, as the person who started the job, keeps them, and reads the
 // records by key a step at a time.
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { internal } from "../_generated/api";
+import { api, internal } from "../_generated/api";
+import { SERVER_MODEL_SLUG } from "../ai/config";
 import { seedCreditsForTest } from "../billing/billing.test-support";
 import { encrypt } from "../lib/crypto";
 import { setupExtractionPaperWorkpool } from "./queue/workpool.test-support";
@@ -126,4 +127,32 @@ it("a screening's copy that takes a paper's place brings its identifiers, so a l
   await step([{ paper: "openalex:W1", title: "Tutoring at Scale: a trial", publicationYear: 2021, abstract, sourceType: "history", sourceId: "s" }]);
   const papers = await t.run((ctx) => ctx.db.query("extractionPapers").withIndex("by_job", (q) => q.eq("jobId", jobId)).collect());
   expect(papers.map((paper) => [paper.paperKey, paper.sourceType])).toEqual([["library:r1:AAAAAAAA", "screening"]]);
+});
+
+it("refuses to start on a library source the person can no longer read, or one that holds nothing, before any job is made", async () => {
+  const { t, created, clerkUserId } = await createReadySetupFixture("libextract-refused");
+  const libraryId = created.libraryId;
+  vi.stubEnv("ENCRYPTION_KEY", KEY);
+  await t.run(async (ctx) => {
+    const credential = (await ctx.db.query("evidenceLibraryCredentials").withIndex("by_libraryId", (q) => q.eq("libraryId", libraryId)).collect()).find((row) => row.credentialKey === "library-service")!;
+    await ctx.db.patch("evidenceLibraryCredentials", credential._id, { encryptedValue: encrypt("machine-secret", KEY) });
+    await ctx.db.insert("featureFlags", { key: "extraction.pdf", enabled: false, updatedAt: 1 });
+    await ctx.db.insert("featureFlags", { key: "extraction.enabled", enabled: true, updatedAt: 1 });
+    await ctx.db.insert("featureFlags", { key: "extraction.start", enabled: true, updatedAt: 1 });
+    await ctx.db.insert("models", { modelId: SERVER_MODEL_SLUG, name: "Server model", provider: "test", inputPricePerMillion: 0.1, outputPricePerMillion: 0.5, costMarkup: 1.3, isServed: true, sortOrder: 1, supportedParameters: [], syncedAt: 1, createdAt: 1, updatedAt: 1 });
+    await seedCreditsForTest(ctx, { userId: (await ctx.db.query("users").withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkUserId)).unique())!._id, free: 1_000_000 });
+  });
+  // The collection was made private since the form opened; the search finds nothing now.
+  vi.stubGlobal("fetch", vi.fn(async (input: string | URL, init?: RequestInit) => {
+    const body = JSON.parse(String(init?.body ?? "{}"));
+    if (new URL(String(input)).pathname !== "/api/v1/openscholar/sources/resolve") return new Response("Not found", { status: 404 });
+    return "search" in body.source ? Response.json({ keys: [], total: 0, truncated: false }) : Response.json({ error: "private", message: "This collection is private." }, { status: 403 });
+  }));
+  const person = t.withIdentity({ subject: clerkUserId });
+  const workspaceId = (await person.query(api.workspaces.queries.personal, {}))!;
+  const extract = (source: { readerCollection: string } | { search: string }) =>
+    person.action(api.extraction.start.extract, { workspaceId, name: "From the library", set: { kind: "evidenceLibrary", libraryId, source }, first: 1, last: 1, questions: [{ question: "Where was it done?", type: "string" }] });
+  await expect(extract({ readerCollection: "6f1c2a7e-0000-4000-8000-000000000001" })).rejects.toThrow(/private/);
+  await expect(extract({ search: "search=zzzz" })).rejects.toThrow(/holds no records/);
+  expect(await t.run((ctx) => ctx.db.query("extractionJobs").collect())).toEqual([]);
 });
