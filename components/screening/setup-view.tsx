@@ -453,7 +453,7 @@ export function SetupView({
             // screening per search) and it can write more from its research question; an earlier
             // screening has questions to reuse.
             <span className="flex min-w-0 flex-wrap items-center gap-1">
-              {source?.kind === "search" ? <Chip icon={ListChecks}>{t("sharedWithResults")}</Chip> : null}
+              {source?.kind === "search" ? <ClippedChip icon={ListChecks}>{t("sharedWithResults")}</ClippedChip> : null}
               {source?.kind === "screening" ? (
                 // The screening's name can be a whole query: it's cut to the room there is, and shown in full on hover.
                 <TooltipHint label={fresh.length || !earlier ? t("importQuestions", { count: fresh.length, name: source.label }) : t("importedFrom", { name: source.label })} onlyWhenClipped>
@@ -563,7 +563,7 @@ export function SetupView({
         </Zone>
 
         <Zone label={t("stars")}>
-          <div className={cn("space-y-4 rounded-2xl border p-4 transition-colors duration-300", unscored ? "border-dashed border-border" : "border-border-subtle bg-inset")}>
+          <div className={cn("@container space-y-4 rounded-2xl border p-4 transition-colors duration-300", unscored ? "border-dashed border-border" : "border-border-subtle bg-inset")}>
             <div className="flex items-center gap-3">
               <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300", unscored ? "bg-muted text-muted-foreground/60" : "bg-primary/15 text-primary")}>
                 <Star className="size-5" />
@@ -587,7 +587,8 @@ export function SetupView({
                 className="[&_[data-slot=slider-range]]:bg-primary/60 [&_[data-slot=slider-track]]:h-2"
               />
             )}
-            <div className="grid gap-2 sm:grid-cols-5">
+            {/* Five across once a five-star cell (about 8rem) fits in each. */}
+            <div className="grid gap-2 @min-[43rem]:grid-cols-5">
               {stars.map((value, i) => (
                 <label key={i} className={cn("flex items-center gap-2 rounded-xl py-1.5 pl-2.5 pr-1.5 transition-colors duration-300", unscored ? "bg-foreground/[0.02]" : "bg-foreground/[0.04]")}>
                   <span className="flex flex-1 items-center gap-0.5" aria-hidden>
