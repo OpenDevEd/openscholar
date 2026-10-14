@@ -177,6 +177,22 @@ describe("createScreeningJob", () => {
     ).rejects.toThrow();
   });
 
+  it("keeps no points for a required question's No and Unclear, whatever the caller sent", async () => {
+    const t = convexTest(schema);
+    setupScreeningWorkpool(t);
+    const user = await seedUser(t, "clerk_test");
+    await seedCredits(t, user._id, 100, 0);
+    const asUser = t.withIdentity({ subject: "clerk_test" });
+
+    const { jobId } = await createJob(asUser, {
+      papers: makePapers(1),
+      questions: defaultQuestions,
+      scoringConfig: { ...defaultScoringConfig, rules: [{ questionKey: "q1", yesPoints: 2, noPoints: 8, nullPoints: 9, required: true }] },
+    });
+    const job = await t.run((ctx) => ctx.db.get("screeningJobs", jobId));
+    expect(job?.scoringConfig.rules).toEqual([{ questionKey: "q1", yesPoints: 2, noPoints: 0, nullPoints: 0, required: true }]);
+  });
+
   it("succeeds when user has a completed job (not blocking)", async () => {
     const t = convexTest(schema);
     setupScreeningWorkpool(t);

@@ -27,8 +27,8 @@ export function scoringOf(questions: Question[], minimumScore: number, stars: nu
   return {
     questions: questions.map((q, i) => ({ key: `q${i}`, question: q.text })),
     scoringConfig: {
-      // A required question's No and Unclear boxes are hidden, so the points left in them count for nothing.
-      rules: questions.map((q, i) => (q.required ? { questionKey: `q${i}`, yesPoints: q.yes, noPoints: 0, nullPoints: 0, required: true } : { questionKey: `q${i}`, yesPoints: q.yes, noPoints: q.no, nullPoints: q.unclear })),
+      // The job keeps no points for a required question's No and Unclear (convex/screening/mutations.ts).
+      rules: questions.map((q, i) => ({ questionKey: `q${i}`, yesPoints: q.yes, noPoints: q.no, nullPoints: q.unclear, ...(q.required ? { required: true } : {}) })),
       // Highest rating first: thresholds at the same score give the paper the most stars among them.
       starThresholds: stars.map((minScore, i) => ({ minScore, stars: i + 1 })).reverse(),
       minimumScore,

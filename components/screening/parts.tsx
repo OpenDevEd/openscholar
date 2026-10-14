@@ -4,7 +4,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
-import { Check, CircleHelp, Star, TriangleAlert, X, type AppIcon } from "@/components/icons";
+import { Asterisk, Check, CircleHelp, Star, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,12 @@ export const ANSWER: Record<Answer, { icon: AppIcon; className: string }> = {
 
 /** Where a screening's papers came from, each with its kind's icon (components/record-kinds.ts). */
 export const SOURCE_ICON: Record<PaperSet["kind"], AppIcon> = { search: RECORD_KINDS.search.icon, collection: RECORD_KINDS.collection.icon, saved: RECORD_KINDS.savedPapers.icon, screening: RECORD_KINDS.screening.icon, zotero: ZoteroIcon, evidenceLibrary: RECORD_KINDS.library.icon };
+
+/** After a required question's text: a paper not answered yes there is never included. */
+export function RequiredMark() {
+  const t = useTranslations("screeningPage");
+  return <Asterisk role="img" aria-label={t("required")} strokeWidth={2.5} className="ml-1 inline size-3.5 align-[-0.125em] text-primary" />;
+}
 
 /** One answer as a small square with its sign; `label` names its question. */
 export function AnswerMark({ answer, changed, label }: { answer: Answer; changed?: boolean; label: string }) {

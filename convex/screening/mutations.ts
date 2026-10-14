@@ -130,6 +130,8 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
     ...state,
     screeningId,
     ...args,
+    // A required question's No and Unclear count for nothing, whoever asked for the job.
+    scoringConfig: { ...args.scoringConfig, rules: args.scoringConfig.rules.map((rule) => (rule.required ? { ...rule, noPoints: 0, nullPoints: 0 } : rule)) },
     ...(name?.trim() ? { name: name.trim() } : {}),
     ...(set ? { set } : {}),
     ...(label ? { label } : {}),
