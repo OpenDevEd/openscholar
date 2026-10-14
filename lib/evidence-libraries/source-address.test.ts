@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSourceAddress } from "./source-address";
+import { fittingCollectionName, parseSourceAddress } from "./source-address";
 
 describe("a pasted library address as a source", () => {
   it("reads the search page as a search with its filters and sort, a whole library or one collection", () => {
@@ -29,4 +29,10 @@ describe("a pasted library address as a source", () => {
     expect(parseSourceAddress("ftp://aied.example.org/lib")).toEqual({ error: "notAddress" });
     expect(parseSourceAddress("https://aied.example.org/lib/lowercase")).toEqual({ error: "notFound" });
   });
+});
+
+it("names a new library collection within the library's 24 characters", () => {
+  expect(fittingCollectionName("Included in tutoring", "tutoring")).toBe("Included in tutoring");
+  expect(fittingCollectionName("Included in Randomized trials", "Randomized trials")).toBe("Randomized trials");
+  expect(fittingCollectionName("Included in a very long search name", "a very long search name here")).toBe("a very long search name…");
 });

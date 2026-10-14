@@ -13,7 +13,7 @@ import { taskPricing } from "../ai/serverModel";
 import { checkRequestPapers } from "../billing/accounts";
 import { screeningPaperCredits } from "../../lib/pricing";
 import { createError } from "../lib/errors";
-import type { paperSetValidator, saveToValidator, screeningScoringConfigValidator } from "./validators";
+import { prunable, type paperSetValidator, type saveToValidator, type screeningScoringConfigValidator } from "./validators";
 import { checkZoteroSet } from "../zotero/libraryValidators";
 import { requireRunningLibrary } from "../evidenceLibraries/sources";
 
@@ -77,7 +77,7 @@ export async function checkScreening(ctx: QueryCtx, { userId, workspaceId }: InW
   requireMinimum(scoringConfig);
   if (questions.length > MAX_QUESTIONS) throw createError("VALIDATION_ERROR", `A screening asks up to ${MAX_QUESTIONS} questions.`);
   if (!Number.isSafeInteger(first) || !Number.isSafeInteger(last) || first < 1 || last < first) throw createError("VALIDATION_ERROR", "Pick papers from 1 up, with the first before the last");
-  if (prune && set.kind !== "collection") throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
+  if (prune && !prunable(set)) throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
   if (set.kind === "zotero") await checkZoteroSet(ctx, userId, set);
   if (set.kind === "evidenceLibrary") await requireRunningLibrary(ctx, set.libraryId);
   if (set.kind === "search") {

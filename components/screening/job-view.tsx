@@ -5,7 +5,7 @@ import { useConvex } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
 import {
-  AlertTriangle, Ban, ChevronDown, CircleX, Clock, Coins, Copy, Download, FileSearch, FolderMinus, FolderPlus, Gauge, Hourglass, Layers, Loader2, Quote, Search, Square, Undo2,
+  AlertTriangle, Ban, ChevronDown, CircleX, Clock, Coins, Copy, Download, FileSearch, FolderMinus, FolderPlus, Gauge, Hourglass, Layers, Loader2, Quote, Search, Square, TriangleAlert, Undo2,
 } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -103,7 +103,9 @@ export function JobView({
   // Where included papers went: a collection while it exists, the library alone for a job from the results page's old dialog.
   // A guest is told neither: both are of a library that isn't theirs.
   const savedTo = guest || job.unsaved ? undefined : (job.targetCollectionName ?? (job.targetCollectionId ? undefined : t("theLibrary")));
-  const pruned = !guest && job.prune ? job.label : undefined;
+  const pruned = !guest && job.prune ? (job.pruneName ?? job.label) : undefined;
+  // The Evidence Library collection its included papers go to instead: the person's own there, which a guest isn't told of.
+  const libraryDest = guest ? undefined : job.libraryDestination;
   const { spent, estimate } = job.credits ?? { spent: undefined, estimate: 0 };
 
   const exportAs = async (kind: "csv" | "json" | "xlsx") => {
@@ -229,7 +231,11 @@ export function JobView({
                 {/* A job from before these were kept counts them from its outcomes. */}
                 {savedTo ? <ClippedChip icon={FolderPlus} className="text-foreground">{t.rich("savedTo", { count: job.saved ?? counts.included, name: savedTo, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</ClippedChip> : null}
                 {pruned ? <ClippedChip icon={FolderMinus} className="text-foreground">{t.rich("removedFrom", { count: job.removed ?? counts.excluded + counts.failed, name: pruned, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</ClippedChip> : null}
-                {!savedTo && !pruned ? <Chip icon={Ban}>{t("noCollectionChanged")}</Chip> : null}
+                {libraryDest ? <ClippedChip icon={FolderPlus} className="text-foreground">{t.rich("savedToLibrary", { count: job.libraryAdded ?? 0, name: libraryDest.name, library: libraryDest.library, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</ClippedChip> : null}
+                {libraryDest && job.libraryMissing ? <Chip icon={TriangleAlert}>{t.rich("notInLibrary", { count: job.libraryMissing, library: libraryDest.library, n: (chunks) => <span className="font-semibold">{chunks}</span> })}</Chip> : null}
+                {libraryDest && job.libraryWriteProblem ? <ClippedChip icon={CircleX} className="text-destructive">{t(`libraryProblem.${job.libraryWriteProblem}`, { name: libraryDest.name, library: libraryDest.library })}</ClippedChip> : null}
+                {pruned && job.libraryPruneProblem ? <ClippedChip icon={CircleX} className="text-destructive">{t(`pruneProblem.${job.libraryPruneProblem.problem}`, { name: pruned, library: job.libraryPruneProblem.library })}</ClippedChip> : null}
+                {!savedTo && !pruned && !libraryDest ? <Chip icon={Ban}>{t("noCollectionChanged")}</Chip> : null}
               </div>
             )}
             {spent === undefined ? null : (
@@ -245,9 +251,10 @@ export function JobView({
             )}
           </div>
           )}
-          {active && (savedTo || pruned) ? (
+          {active && (savedTo || pruned || libraryDest) ? (
             <div className="flex flex-wrap items-center gap-1.5 border-t border-border-subtle pt-4">
               {savedTo ? <ClippedChip icon={FolderPlus}>{t("savesTo", { name: savedTo })}</ClippedChip> : null}
+              {libraryDest ? <ClippedChip icon={FolderPlus}>{t("savesToLibrary", { name: libraryDest.name, library: libraryDest.library })}</ClippedChip> : null}
               {pruned ? <ClippedChip icon={FolderMinus}>{t("removesFrom", { name: pruned })}</ClippedChip> : null}
             </div>
           ) : null}
@@ -308,13 +315,17 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
   // The paper whose answers were just changed stays in the list, even once its outcome is
   // another's, until something else is touched: another paper, an outcome, a page, the search.
   const [held, setHeld] = useState<Held | null>(null);
-  const list = useCursorPage(api.screening.papers.list, inWorkspace(workspaceId, { jobId: job._id, outcome: tab, ...(text ? { text } : {}) }), PAGE_SIZE);
+  // Its included papers its library collection didn't take, the library holding no record of them, on their own.
+  const missing = job.libraryDestination ? (job.libraryMissing ?? 0) : 0;
+  const [notInLibrary, setNotInLibrary] = useState(false);
+  const onlyMissing = notInLibrary && tab === "included" && missing > 0;
+  const list = useCursorPage(api.screening.papers.list, inWorkspace(workspaceId, { jobId: job._id, outcome: tab, ...(text ? { text } : {}), ...(onlyMissing ? { notInLibrary: true } : {}) }), PAGE_SIZE);
   // The held paper as it stands now, read on its own: its outcome's list no longer holds it.
   const { data: current } = useProtectedQuery(api.screening.papers.get, inWorkspace(workspaceId, held ? { jobId: job._id, paperId: held.paper.paper } : "skip"));
   const answer = useWorkspaceMutation(api.screening.papers.answer);
 
   // The list the papers on screen belong to: it moves on to the one asked for once its papers have arrived.
-  const asked = `${tab}\n${text}\n${list.page}`;
+  const asked = `${tab}\n${text}\n${list.page}\n${onlyMissing}`;
   const [shownList, setShownList] = useState(list.isLoading ? "" : asked);
   if (!list.isLoading && !list.isStale && shownList !== asked) setShownList(asked);
   // What it was asked with, which an empty list's message names until the next one arrives.
@@ -327,7 +338,7 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
         [...list.items.slice(0, held.index), heldPaper, ...list.items.slice(held.index)]
       : list.items.map((paper) => (heldPaper && paper.paper === heldPaper.paper ? heldPaper : paper));
   // A search's matches aren't counted on the server, so its pager shows the page alone.
-  const count = job.outcomes[tab];
+  const count = onlyMissing ? missing : job.outcomes[tab];
   const pageCount = text ? undefined : Math.max(1, Math.ceil(count / PAGE_SIZE));
   const hasPages = list.isLoading ? !text && count > PAGE_SIZE : list.hasPages;
 
@@ -345,9 +356,27 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
     <Zone
       label={t("papers")}
       aside={
-        <div className="relative w-56">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input value={query} onChange={(e) => { setHeld(null); setQuery(e.target.value); }} placeholder={t("findPaper")} aria-label={t("findPaper")} className="h-8 rounded-full pl-8 text-sm" />
+        <div className="flex items-center gap-2">
+          {missing && job.libraryDestination ? (
+            <Button
+              size="sm"
+              variant={onlyMissing ? "secondary" : "ghost"}
+              aria-pressed={onlyMissing}
+              className="h-8 rounded-full"
+              onClick={() => {
+                setHeld(null);
+                setNotInLibrary(!onlyMissing);
+                setTab("included");
+              }}
+            >
+              <TriangleAlert className="size-3.5" />
+              {t("notInLibraryFilter", { library: job.libraryDestination.library })}
+            </Button>
+          ) : null}
+          <div className="relative w-56">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input value={query} onChange={(e) => { setHeld(null); setQuery(e.target.value); }} placeholder={t("findPaper")} aria-label={t("findPaper")} className="h-8 rounded-full pl-8 text-sm" />
+          </div>
         </div>
       }
     >

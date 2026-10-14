@@ -15,6 +15,15 @@ export type LibrarySource =
 export type SourceAddressError = "notAddress" | "profile" | "unknownPage" | "notFound";
 /** Most records a library source gives at once: what a frozen search holds, as a complete export does (new-el LIBRARY_EXPORT_RECORD_CAP). */
 export const LIBRARY_SOURCE_MAX = 20_000;
+/** The longest name and description a library takes for a reader's collection (new-el READER_COLLECTION_NAME_LIMIT and _DESCRIPTION_LIMIT). */
+export const LIBRARY_COLLECTION_NAME_MAX = 24;
+export const LIBRARY_COLLECTION_DESCRIPTION_MAX = 200;
+/** A name a library takes for a new collection: the first of `names` that fits, or the last cut short. */
+export function fittingCollectionName(...names: string[]) {
+  const fits = names.map((name) => name.trim()).find((name) => name && name.length <= LIBRARY_COLLECTION_NAME_MAX);
+  const last = names.at(-1)?.trim() ?? "";
+  return fits ?? `${last.slice(0, LIBRARY_COLLECTION_NAME_MAX - 1).trimEnd()}…`;
+}
 
 export type SourceAddress = { origin: string; source: LibrarySource } | { error: SourceAddressError };
 

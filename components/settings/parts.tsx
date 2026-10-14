@@ -240,18 +240,23 @@ let firstPage = true;
  * library, topic and history pages. It waits until `ready`, so a page lays out
  * its data at full size while hidden and never grows after it appears. Hidden,
  * it takes no clicks or focus: nothing on it can be changed before it shows.
+ * Once shown it stays shown, whatever its data does after.
  */
 export function Enter({ ready, children }: { ready: boolean; children: ReactNode }) {
   const reduceMotion = useReducedMotion();
   const [skip] = useState(() => firstPage || Boolean(reduceMotion));
+  const [shown, setShown] = useState(ready);
+  if (ready && !shown) setShown(true);
+  const hidden = skip ? { opacity: 0 } : cardEntrance.initial;
   return (
     <motion.div
-      initial={skip ? { opacity: 0 } : cardEntrance.initial}
-      animate={ready ? cardEntrance.animate : undefined}
+      initial={hidden}
+      // Hidden by what it animates to, not only where it starts: inside an AnimatePresence that skips first entrances
+      // (the screening page's), a start alone is passed over and the page would show before its data is in.
+      animate={shown ? cardEntrance.animate : hidden}
       transition={skip ? { duration: 0.15 } : subtleSpring}
       aria-busy={!ready}
-      // Takes no clicks while it's hidden. Not tied to its entrance's end: an entrance cut short by its data leaves none.
-      inert={!ready}
+      inert={!shown}
       onAnimationStart={() => {
         firstPage = false;
       }}

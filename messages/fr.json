@@ -1643,7 +1643,23 @@
     "showAnswers": "Afficher les réponses pour {title}",
     "hideAnswers": "Masquer les réponses pour {title}",
     "yesOrNo": "Oui ou non",
-    "lost": "Ce criblage a été supprimé ou n'est plus partagé avec vous"
+    "lost": "Ce criblage a été supprimé ou n'est plus partagé avec vous",
+    "inOpenScholar": "OpenScholar",
+    "newCollectionIn": "Nom de la nouvelle collection dans {library}",
+    "savedToLibrary": "<n>{count, number}</n> ajoutés à {name} dans {library}",
+    "notInLibrary": "<n>{count, number}</n> absents de {library}",
+    "savesToLibrary": "Ajoute les articles inclus à {name} dans {library}",
+    "notInLibraryFilter": "Absents de {library}",
+    "libraryProblem": {
+      "role": "Impossible d'ajouter à {name} : vous ne pouvez plus que la consulter",
+      "notFound": "{name} n'existe plus dans {library}",
+      "unreadable": "{library} n'a pas répondu : des articles n'ont pas été ajoutés"
+    },
+    "pruneProblem": {
+      "role": "Impossible de retirer des articles de {name} : vous ne pouvez plus que la consulter",
+      "notFound": "{name} n'existe plus dans {library}",
+      "unreadable": "{library} n'a pas répondu : des articles n'ont pas été retirés"
+    }
   },
   "connectionsPage": {
     "connectedApps": "Applications connectées",
@@ -3813,6 +3829,30 @@
         "did": "Source d'Evidence Library lue",
         "where": "Evidence Libraries",
         "ask": "Lire une source d'Evidence Library"
+      },
+      "readerRecords": {
+        "doing": "Lecture de notices d'Evidence Library",
+        "did": "Notices d'Evidence Library lues",
+        "where": "Evidence Libraries",
+        "ask": "Lire des notices d'Evidence Library"
+      },
+      "newLibraryCollection": {
+        "doing": "Création d'une collection dans une Evidence Library",
+        "did": "Collection créée dans une Evidence Library",
+        "where": "Evidence Libraries",
+        "ask": "Créer une collection dans une Evidence Library",
+        "askMany": "Créer {count, plural, one {# collection} other {# collections}} dans une Evidence Library",
+        "doingMany": "Création de {count, plural, one {# collection} other {# collections}} dans une Evidence Library",
+        "didMany": "{count, plural, one {# collection créée} other {# collections créées}} dans une Evidence Library"
+      },
+      "changeLibraryRecords": {
+        "doing": "Modification d'une collection d'Evidence Library",
+        "did": "Collection d'Evidence Library modifiée",
+        "where": "Evidence Libraries",
+        "ask": "Modifier une collection d'Evidence Library",
+        "askMany": "Modifier {count, plural, one {# collection d'Evidence Library} other {# collections d'Evidence Library}}",
+        "doingMany": "Modification de {count, plural, one {# collection d'Evidence Library} other {# collections d'Evidence Library}}",
+        "didMany": "{count, plural, one {# collection d'Evidence Library modifiée} other {# collections d'Evidence Library modifiées}}"
       },
       "readHandoff": {
         "doing": "Ouverture de ce qu'une Evidence Library a transmis",

@@ -73,13 +73,18 @@ async function start(ctx: ActionCtx, { userId, workspaceId }: InWorkspace, autho
   if (set.kind === "zotero") await firstZoteroPaper(ctx, userId, set, first);
   // No further than the set goes: papers past its last are never asked for.
   const last = Math.min(through, total);
+  // A library collection it saves to, or takes papers out of, is one the person changes there: checked, or made, before
+  // the job is. The one it prunes is checked first, so a refusal never leaves a new collection behind.
+  const saveTo = config.saveTo;
+  const pruneName = config.prune && set.kind === "evidenceLibrary" && "readerCollection" in set.source && set.source.readerCollection ? await ctx.runAction(internal.evidenceLibraries.sourceActions.requireEditable, { userId, libraryId: set.libraryId, collection: set.source.readerCollection }) : undefined;
+  const libraryDestination = saveTo?.kind === "libraryCollection" || saveTo?.kind === "newLibraryCollection" ? await ctx.runAction(internal.evidenceLibraries.sourceActions.destination, { userId, saveTo }) : undefined;
   // A job the assistant started keeps the step it started from, so its chat hears when it ends.
   const step = call?.from ? { chatStep: call.from } : {};
   const keys = libraryKeys?.slice(0, last - first + 1);
   // A Convex array holds 8,192 values: the job is made with the first window of its keys, and the start keeps the rest before it reads.
   const more = keys !== undefined && keys.length > LIBRARY_KEYS_WINDOW;
   const open = (spend: { spendCap?: number; spendHold?: string }) =>
-    ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, workspaceId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...(keys ? { libraryKeys: keys.slice(0, LIBRARY_KEYS_WINDOW), readLater: more } : {}), ...config, ...(name ? { name } : {}), papers: last - first + 1, ...step, ...spend });
+    ctx.runMutation(internal.screening.mutations.openScreeningJob, { userId, workspaceId, author, set, first, last, ...(snapshot ? { snapshot } : {}), ...(keys ? { libraryKeys: keys.slice(0, LIBRARY_KEYS_WINDOW), readLater: more } : {}), ...config, ...(libraryDestination ? { libraryDestination } : {}), ...(pruneName ? { pruneName } : {}), ...(name ? { name } : {}), papers: last - first + 1, ...step, ...spend });
   // What the person approved is held once, and the job's papers are charged under the hold (../billing/charge.ts): the job is made with both, or not at all.
   const started = spendCap === undefined ? await open({}) : await startHeld(ctx, { userId, workspaceId, credits: spendCap, kind: "screening" }, (spendHold) => open({ spendCap, spendHold }));
   if (more && (await keepLibraryKeys(ctx, started.jobId, keys, { from: LIBRARY_KEYS_WINDOW }))) await ctx.runMutation(internal.screening.mutations.beginReading, { jobId: started.jobId });
@@ -183,14 +188,19 @@ export const screenAction = defineUserAction({
   path: "screening/start:screen",
   description:
     "Screens papers `first` to `last` (from 1) of a paper set: one of the person's saved searches, in its results page's order and rating filter; one of their collections or all their saved papers, newest saved first; " +
-    "the included papers of an earlier screening; or the items of the person's own Zotero library, a collection of it (not its sub-collections) or a group's, in Zotero's order (`kind: \"zotero\"`, found with zotero/library:collections). Answers the questions for each paper and scores them by the rules. A search's answers show on its page, and papers that page already answered every question for keep their answers and cost nothing. " +
+    "the included papers of an earlier screening; the items of the person's own Zotero library, a collection of it (not its sub-collections) or a group's, in Zotero's order (`kind: \"zotero\"`, found with zotero/library:collections); or an Evidence Library's records as the person may read them, in the source's order (`kind: \"evidenceLibrary\"`, with a `source` as evidenceLibraries/library:sources or :address gives it: the whole library, a collection, a search or records). Answers the questions for each paper and scores them by the rules. A search's answers show on its page, and papers that page already answered every question for keep their answers and cost nothing. " +
     "The job is made at once and its papers are read after, a step at a time, however many: until then the job is `reading`, and one whose papers can't be read ends `failed`, with why in its `failure`. " +
-    "Included papers go to `saveTo`. With `prune`, papers of a collection that end excluded or failed leave it. Give it a `name` when the person names it; without one it goes by its papers' set. Spends credits.",
+    "Included papers go to `saveTo`: nowhere, a new or existing collection of the workspace, a collection in an Evidence Library the person owns or edits there (`libraryCollection`, its ID as evidenceLibraries/library:sources lists it), or a new one of theirs there (`newLibraryCollection`, made once for its `requestId`); a library collection takes the papers the library holds a record of, and the job names the rest. " +
+    "With `prune`, papers of a collection (the workspace's, or a reader's library collection the person edits) that end excluded or failed leave it. Give it a `name` when the person names it; without one it goes by its papers' set. Spends credits.",
   args: { set: paperSetValidator, first: v.number(), last: v.number(), ...jobArgs, saveTo: saveToValidator, prune: v.optional(v.boolean()), name: v.optional(v.string()) },
   returns: v.object({ jobId: v.id("screeningJobs") }),
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
+  // One that writes to an Evidence Library collection asks first, however much the chat allows: whoever the collection
+  // is shared with, or anyone for a public one, sees what it puts in or takes out.
+  asksFirst: async (_ctx, _actor, { set, saveTo, prune }) => saveTo.kind === "libraryCollection" || saveTo.kind === "newLibraryCollection" || (prune === true && set.kind === "evidenceLibrary"),
+  seenOutside: true,
   estimate: (ctx, actor, args) => screeningHold(ctx, actor, args),
   // The papers, the questions put to them and where the included ones go. How each answer scores is the job's own business.
   shown: ({ set, first, last, questions, saveTo, prune, name }) => ({
@@ -200,6 +210,8 @@ export const screenAction = defineUserAction({
     last,
     question: questions.map((asked) => asked.question),
     ...(saveTo.kind === "new" ? { saveTo: saveTo.name } : saveTo.kind === "collection" ? { saveTo: saveTo.collectionId } : {}),
+    // A library collection with the library it's in, which may not be the one the papers come from.
+    ...(saveTo.kind === "newLibraryCollection" ? { saveTo: saveTo.name, saveToLibrary: saveTo.libraryId } : saveTo.kind === "libraryCollection" ? { saveTo: saveTo.collection, saveToLibrary: saveTo.libraryId } : {}),
     ...(prune ? { prune } : {}),
   }),
   // Typed here: the generated API's types depend on this module, so inference would loop.

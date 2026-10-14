@@ -1241,6 +1241,30 @@ export const librarySourceValidator = v.union(
   v.object({ records: capped(v.array(v.string()), LIBRARY_SOURCE_RECORDS_MAX) }),
 );
 
+/** Most records one read of a library gives the assistant (evidenceLibraries/library:records). */
+export const RECORDS_PAGE = 25;
+/** Characters of an abstract a page of records gives; records read by key give all of it. */
+export const ABSTRACT_SHOWN = 600;
+/** First authors a record lists. */
+export const AUTHORS_SHOWN = 5;
+
+export const libraryRecordValidator = v.object({
+  paper: v.string(),
+  key: v.string(),
+  title: v.string(),
+  authors: capped(v.array(v.string()), AUTHORS_SHOWN),
+  moreAuthors: v.optional(v.number()),
+  year: v.optional(v.number()),
+  venue: v.optional(v.string()),
+  type: v.optional(v.string()),
+  doi: v.optional(v.string()),
+  openalexId: v.optional(v.string()),
+  abstract: v.optional(v.string()),
+  pdf: v.boolean(),
+  link: v.optional(v.string()),
+});
+export const libraryRecordsValidator = v.object({ total: v.number(), records: capped(v.array(libraryRecordValidator), RECORDS_PAGE), next: v.optional(v.number()) });
+
 /** Questions a hand-off brings at most: a library's Smart screening asks up to 20. */
 export const HANDOFF_FIELDS_MAX = 20;
 /** One question a reader's Smart screening asked of every record, with what they wrote it means. */

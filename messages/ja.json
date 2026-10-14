@@ -1643,7 +1643,23 @@
     "showAnswers": "{title} の回答を表示",
     "hideAnswers": "{title} の回答を隠す",
     "yesOrNo": "はい／いいえ",
-    "lost": "このスクリーニングは削除されたか、共有が解除されました"
+    "lost": "このスクリーニングは削除されたか、共有が解除されました",
+    "inOpenScholar": "OpenScholar",
+    "newCollectionIn": "{library} の新しいコレクションの名前",
+    "savedToLibrary": "<n>{count, number}</n> 件を {library} の {name} に追加",
+    "notInLibrary": "<n>{count, number}</n> 件は {library} にありません",
+    "savesToLibrary": "採用した論文を {library} の {name} に追加します",
+    "notInLibraryFilter": "{library} にないもの",
+    "libraryProblem": {
+      "role": "{name} に追加できません: 今は閲覧のみです",
+      "notFound": "{name} はもう {library} にありません",
+      "unreadable": "{library} が応答しませんでした: 一部の論文は追加されていません"
+    },
+    "pruneProblem": {
+      "role": "{name} から論文を外せません: 今は閲覧のみです",
+      "notFound": "{name} はもう {library} にありません",
+      "unreadable": "{library} が応答しませんでした: 一部の論文は外されていません"
+    }
   },
   "connectionsPage": {
     "connectedApps": "接続済みアプリ",
@@ -3813,6 +3829,30 @@
         "did": "Evidence Library のソースを読みました",
         "where": "Evidence Library",
         "ask": "Evidence Library のソースを読む"
+      },
+      "readerRecords": {
+        "doing": "Evidence Library のレコードを読んでいます",
+        "did": "Evidence Library のレコードを読みました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library のレコードを読む"
+      },
+      "newLibraryCollection": {
+        "doing": "Evidence Library にコレクションを作成しています",
+        "did": "Evidence Library にコレクションを作成しました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library にコレクションを作成",
+        "askMany": "Evidence Library に {count, number} 件のコレクションを作成",
+        "doingMany": "Evidence Library に {count, number} 件のコレクションを作成しています",
+        "didMany": "Evidence Library に {count, number} 件のコレクションを作成しました"
+      },
+      "changeLibraryRecords": {
+        "doing": "Evidence Library のコレクションを変更しています",
+        "did": "Evidence Library のコレクションを変更しました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library のコレクションを変更",
+        "askMany": "Evidence Library の {count, number} 件のコレクションを変更",
+        "doingMany": "Evidence Library の {count, number} 件のコレクションを変更しています",
+        "didMany": "Evidence Library の {count, number} 件のコレクションを変更しました"
       },
       "readHandoff": {
         "doing": "Evidence Library から渡された内容を開いています",

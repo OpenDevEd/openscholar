@@ -1643,7 +1643,23 @@
     "showAnswers": "{title} के उत्तर दिखाएँ",
     "hideAnswers": "{title} के उत्तर छिपाएँ",
     "yesOrNo": "हाँ या नहीं",
-    "lost": "यह स्क्रीनिंग हटा दी गई है या अब आपके साथ साझा नहीं है"
+    "lost": "यह स्क्रीनिंग हटा दी गई है या अब आपके साथ साझा नहीं है",
+    "inOpenScholar": "OpenScholar",
+    "newCollectionIn": "{library} में नए संग्रह का नाम",
+    "savedToLibrary": "<n>{count, number}</n> {library} के {name} में जोड़े गए",
+    "notInLibrary": "<n>{count, number}</n> {library} में नहीं हैं",
+    "savesToLibrary": "शामिल लेख {library} के {name} में जोड़े जाते हैं",
+    "notInLibraryFilter": "{library} में नहीं",
+    "libraryProblem": {
+      "role": "{name} में नहीं जोड़ सकते: अब आप इसे केवल देख सकते हैं",
+      "notFound": "{name} अब {library} में नहीं है",
+      "unreadable": "{library} ने जवाब नहीं दिया: कुछ लेख नहीं जोड़े गए"
+    },
+    "pruneProblem": {
+      "role": "{name} से लेख नहीं हटा सकते: अब आप इसे केवल देख सकते हैं",
+      "notFound": "{name} अब {library} में नहीं है",
+      "unreadable": "{library} ने जवाब नहीं दिया: कुछ लेख नहीं हटाए गए"
+    }
   },
   "connectionsPage": {
     "connectedApps": "कनेक्टेड ऐप्स",
@@ -3813,6 +3829,30 @@
         "did": "Evidence Library का एक स्रोत पढ़ा",
         "where": "Evidence Libraries",
         "ask": "Evidence Library का एक स्रोत पढ़ें"
+      },
+      "readerRecords": {
+        "doing": "Evidence Library के रिकॉर्ड पढ़ रहा है",
+        "did": "Evidence Library के रिकॉर्ड पढ़े",
+        "where": "Evidence Libraries",
+        "ask": "Evidence Library के रिकॉर्ड पढ़ें"
+      },
+      "newLibraryCollection": {
+        "doing": "Evidence Library में एक संग्रह बना रहा है",
+        "did": "Evidence Library में एक संग्रह बनाया",
+        "where": "Evidence Libraries",
+        "ask": "Evidence Library में एक संग्रह बनाएँ",
+        "askMany": "Evidence Library में {count, number} संग्रह बनाएँ",
+        "doingMany": "Evidence Library में {count, number} संग्रह बना रहा है",
+        "didMany": "Evidence Library में {count, number} संग्रह बनाए"
+      },
+      "changeLibraryRecords": {
+        "doing": "Evidence Library का एक संग्रह बदल रहा है",
+        "did": "Evidence Library का एक संग्रह बदला",
+        "where": "Evidence Libraries",
+        "ask": "Evidence Library का एक संग्रह बदलें",
+        "askMany": "Evidence Library के {count, number} संग्रह बदलें",
+        "doingMany": "Evidence Library के {count, number} संग्रह बदल रहा है",
+        "didMany": "Evidence Library के {count, number} संग्रह बदले"
       },
       "readHandoff": {
         "doing": "Evidence Library से भेजी गई सामग्री खोल रहा है",

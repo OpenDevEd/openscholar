@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { AiIcon, Ban, Camera, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
+import { AiIcon, Ban, Camera, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Lock, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -34,10 +34,10 @@ import { cn } from "@/lib/utils";
 import { jobName } from "./job-view";
 import { ANSWER, Chip, ClippedChip, SOURCE_ICON } from "./parts";
 import { PaperScope, PickMark, SourceRow } from "./source-row";
-import { LibrarySources, useLibrarySources, useRowLabel } from "./library-sources";
+import { LibrarySelect, LibrarySources, useLibrarySources, useRowLabel } from "./library-sources";
 import useSWR from "swr";
 import { useAuth } from "@clerk/nextjs";
-import { LIBRARY_SOURCE_MAX } from "@/lib/evidence-libraries/source-address";
+import { LIBRARY_COLLECTION_NAME_MAX, LIBRARY_SOURCE_MAX, fittingCollectionName } from "@/lib/evidence-libraries/source-address";
 import { isFrozen, rowKey, screeningQuestionsOf, setOfRow, type HeldRow, type LibraryRow } from "@/lib/evidence-libraries/reader-sources";
 import { CreditCheck, useSpendable } from "@/components/workspaces/credit-check";
 import { ModelsInUse } from "@/components/models/models-in-use";
@@ -121,6 +121,8 @@ export function SetupView({
   const describe = useWorkspaceAction(api.evidenceLibraries.library.source);
   const { userId } = useAuth();
   const ranBefore = useSWR(againLibrary && workspaceId && userId ? ["library-source", userId, againLibrary.libraryId, JSON.stringify(againLibrary.source)] : null, () => describe({ libraryId: againLibrary!.libraryId, source: againLibrary!.source }), { revalidateOnFocus: false });
+  const againDest = again?.libraryDestination;
+  const savedDest = useSWR(againDest && workspaceId && userId ? ["library-source", userId, againDest.libraryId, JSON.stringify({ readerCollection: againDest.collection })] : null, () => describe({ libraryId: againDest!.libraryId, source: { readerCollection: againDest!.collection } }), { revalidateOnFocus: false });
   // A hand-off starts on its source as the person may read it now, and the questions it brought.
   const openHandoff = useWorkspaceAction(api.evidenceLibraries.handoffs.open);
   const handedOver = useSWR(handoffId && workspaceId && userId ? ["library-handoff", userId, handoffId] : null, () => openHandoff({ handoffId: handoffId! }), { revalidateOnFocus: false });
@@ -129,7 +131,9 @@ export function SetupView({
   const startHeld = startsOn && "row" in startsOn ? startsOn : null;
   // A source it ran on, or was handed, that can't be read now is said so, and another is never put in its place.
   const startError = handedOver.error ? tf("problem.unreadable") : handedOver.data && "gone" in handedOver.data ? tf("goneHint") : startsOn && "error" in startsOn ? (handoffId ? tf(`problem.${startsOn.error}`) : tl(`error.${startsOn.error}`)) : null;
-  const libraries = useLibrarySources(startHeld ? [startHeld] : []);
+  // What the form opens on is known once the hand-off or the run before has answered, if it opens on either.
+  const openedKnown = againLibrary ? ranBefore.data !== undefined || ranBefore.error !== undefined : !handoffId || handedOver.data !== undefined || handedOver.error !== undefined;
+  const libraries = useLibrarySources(startHeld ? [startHeld] : [], { settled: openedKnown });
   // Until one is picked, the form starts on your first collection in the library shown: a whole library is too many to start on.
   const firstOwn = libraries.library && libraries.contents.find((one) => one.libraryId === libraries.library?.libraryId)?.rows?.find((row) => row.what === "yours" && row.records > 0);
   const lists: Record<Kind, { rows: Source[]; pager?: Pick<typeof collections, "page" | "canPrevious" | "canNext" | "previous" | "next" | "hasPages" | "isStale"> & { pageCount?: number } }> = {
@@ -177,6 +181,14 @@ export function SetupView({
   const [title, setTitle] = useState(again?.name ?? "");
   const [newName, setNewName] = useState<string | null>(null);
   const [prune, setPrune] = useState(again?.prune ?? false);
+  // Where included papers go: one of the workspace's collections, or one of the person's in an Evidence Library.
+  const [destIn, setDestIn] = useState<"openscholar" | "library">(again?.libraryDestination ? "library" : "openscholar");
+  const [destLibraryId, setDestLibraryId] = useState<string | null>(again?.libraryDestination?.libraryId ?? null);
+  // A library collection by its ID, or a new one of theirs, made once however often the start is tried.
+  const [libraryDest, setLibraryDest] = useState<string>(again?.libraryDestination?.collection ?? "new");
+  const [libraryPrivate, setLibraryPrivate] = useState(true);
+  const [libraryDestPage, setLibraryDestPage] = useState(1);
+  const [requestId] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
 
   // A range can reach the last paper: one job takes however many.
@@ -205,10 +217,28 @@ export function SetupView({
   const unnamed = !source ? t("newScreening") : source.kind === "evidenceLibrary" ? labelOf(source.held.row) : jobName(t, { createdAt: now.getTime(), set: setOf(source), label: source.kind === "screening" ? source.called : source.label }, date);
   // A search with no query has no name to lend the collection, so it takes the screening's.
   const defaultName = !source ? "" : source.kind === "screening" ? source.label : t("includedIn", { name: source.label.trim() || unnamed });
+  // A library takes a shorter name: the same one where it fits, else the source's own.
+  const libraryDefaultName = source ? fittingCollectionName(defaultName, source.label.trim() || unnamed) : "";
+  // A name typed for a workspace collection is cut to fit when the papers go to a library instead.
+  const libraryName = (newName ?? libraryDefaultName).slice(0, LIBRARY_COLLECTION_NAME_MAX);
 
   const destinations = useCursorPage(api.library.collections.listCollections, inWorkspace(workspaceId, {}), DESTINATION_PAGE);
   // A collection can't be its own destination; picking it as the source moves the pick to a new one.
   const target = source?.kind === "collection" && dest === source.id ? "new" : dest;
+  // The library it saves to: the one picked, else the one its papers come from, else the person's first.
+  const destLibrary = libraries.libraries.find((one) => one.libraryId === (destLibraryId ?? (source?.kind === "evidenceLibrary" ? source.held.library.libraryId : undefined))) ?? libraries.libraries[0];
+  const isSourceRow = (row: LibraryRow) => source?.kind === "evidenceLibrary" && source.id === rowKey(row);
+  // The person's collections there they can change: their own, and the ones shared with them to edit, never the one it reads.
+  const editable = (row: LibraryRow) => (row.what === "yours" || (row.what !== "library" && row.access === "editor")) && !isSourceRow(row);
+  const listedChangeable = (libraries.contents.find((one) => one.libraryId === destLibrary?.libraryId)?.rows ?? []).filter(editable);
+  // Run again, it keeps the collection it saved to, read as the person may change it now, even one past the first the library lists.
+  const savedRow = savedDest.data && "row" in savedDest.data && savedDest.data.row.libraryId === destLibrary?.libraryId && editable(savedDest.data.row) ? savedDest.data.row : null;
+  const changeable = savedRow && !listedChangeable.some((row) => rowKey(row) === rowKey(savedRow)) ? [savedRow, ...listedChangeable] : listedChangeable;
+  const libraryDestPages = Math.max(1, Math.ceil(changeable.length / DESTINATION_PAGE));
+  const libraryDestAt = Math.min(libraryDestPage, libraryDestPages);
+  const libraryTarget = libraryDest === "new" || changeable.some((row) => "readerCollection" in row.source && row.source.readerCollection === libraryDest) ? libraryDest : "new";
+  // Papers can leave the collection it reads: one of the workspace's, or a reader's in a library the person owns or edits.
+  const prunable = source?.kind === "collection" || (source?.kind === "evidenceLibrary" && "readerCollection" in source.held.row.source && !("search" in source.held.row.source) && (source.held.row.what === "yours" || source.held.row.access === "editor"));
 
   const models = useModelPicks();
   const model = models.modelOf("screenAll");
@@ -293,8 +323,13 @@ export function SetupView({
         first,
         last,
         ...scoringOf(questions, threshold, stars),
-        saveTo: target === "none" ? { kind: "none" } : target === "new" ? { kind: "new", name } : { kind: "collection", collectionId: target },
-        ...(source.kind === "collection" && prune ? { prune: true } : {}),
+        saveTo:
+          destIn === "library" && destLibrary
+            ? libraryTarget === "new"
+              ? { kind: "newLibraryCollection", libraryId: destLibrary.libraryId, name: libraryName.trim() || libraryDefaultName, private: libraryPrivate, requestId }
+              : { kind: "libraryCollection", libraryId: destLibrary.libraryId, collection: libraryTarget }
+            : target === "none" ? { kind: "none" } : target === "new" ? { kind: "new", name } : { kind: "collection", collectionId: target },
+        ...(prunable && prune ? { prune: true } : {}),
         // The server names a library's screening after the library; the form's name for it is what it showed.
         ...(title.trim() ? { name: title.trim() } : source.kind === "evidenceLibrary" ? { name: unnamed } : {}),
       });
@@ -307,7 +342,7 @@ export function SetupView({
 
   const list = lists[kind];
   // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows.
-  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.loaded && (!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
+  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.loaded && (!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && (!againDest || savedDest.data !== undefined || savedDest.error !== undefined) && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
   /** How many of a library row's records a job takes, as the other sources ask it. */
   const libraryScope = (row: LibraryRow) => {
     if (source?.kind !== "evidenceLibrary" || source.id !== rowKey(row)) return null;
@@ -579,8 +614,23 @@ export function SetupView({
         {/* What it screens with, as AI settings set it: changed there, not here (#689). */}
         {model ? <ModelsInUse label={t("model")} uses={[{ label: t("yesOrNo"), model }]} /> : null}
 
-        <Zone label={t("collections")}>
-          {source?.kind === "collection" ? (
+        <Zone
+          label={t("collections")}
+          aside={
+            libraries.libraries.length ? (
+              <Segmented
+                value={destIn}
+                onChange={setDestIn}
+                label={t("saveIncludedTo")}
+                options={[
+                  { id: "openscholar", label: t("inOpenScholar") },
+                  { id: "library", label: tl("library") },
+                ]}
+              />
+            ) : null
+          }
+        >
+          {prunable && source ? (
             <label className="mb-3 flex min-h-14 cursor-pointer items-center gap-3 rounded-2xl border border-border-subtle px-4 py-2.5">
               <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg bg-inset", prune ? "text-primary" : "text-muted-foreground")}>
                 <FolderMinus className="size-4" />
@@ -596,6 +646,58 @@ export function SetupView({
               <Switch checked={prune} onCheckedChange={setPrune} aria-label={t("pruneFrom", { name: source.label })} />
             </label>
           ) : null}
+          {destIn === "library" && destLibrary ? (
+            <div className="space-y-3">
+              <LibrarySelect
+                libraries={libraries.libraries}
+                value={destLibrary.libraryId}
+                onChange={(libraryId) => {
+                  setDestLibraryId(libraryId);
+                  setLibraryDest("new");
+                  setLibraryDestPage(1);
+                }}
+              />
+              <div style={libraryDestPages > 1 ? { minHeight: (DESTINATION_PAGE + 1) * SOURCE_ROW + 1 } : undefined}>
+                <div className={LIST} role="radiogroup" aria-label={t("saveIncludedTo")}>
+                  <DestinationRow on={libraryTarget === "new"} onPick={() => setLibraryDest("new")} icon={FolderPlus} facts={<Chip>{t("new")}</Chip>}>
+                    <span className="flex min-w-0 flex-1 items-center gap-3">
+                      <Input
+                        value={libraryName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        onFocus={() => setLibraryDest("new")}
+                        maxLength={LIBRARY_COLLECTION_NAME_MAX}
+                        aria-label={t("newCollectionIn", { library: destLibrary.name })}
+                        placeholder={t("nameNewCollection")}
+                        className="h-8 flex-1"
+                      />
+                      <label className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+                        <Lock className="size-3.5" />
+                        {tl("private")}
+                        <Switch checked={libraryPrivate} onCheckedChange={setLibraryPrivate} aria-label={tl("private")} />
+                      </label>
+                    </span>
+                  </DestinationRow>
+                  {changeable.slice((libraryDestAt - 1) * DESTINATION_PAGE, libraryDestAt * DESTINATION_PAGE).map((row) => {
+                    const id = "readerCollection" in row.source ? (row.source.readerCollection ?? "") : "";
+                    return (
+                      <DestinationRow
+                        key={id}
+                        on={libraryTarget === id}
+                        onPick={() => setLibraryDest(id)}
+                        icon={row.private ? Lock : Folder}
+                        name={t("addTo", { name: row.label })}
+                        facts={<Chip>{t("paperCount", { count: row.records })}</Chip>}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+              {libraryDestPages > 1 ? (
+                <PageStepper page={libraryDestAt} pageCount={libraryDestPages} canPrevious={libraryDestAt > 1} canNext={libraryDestAt < libraryDestPages} onPrevious={() => setLibraryDestPage(libraryDestAt - 1)} onNext={() => setLibraryDestPage(libraryDestAt + 1)} />
+              ) : null}
+            </div>
+          ) : (
+          <>
           <div style={destinations.hasPages ? { minHeight: (DESTINATION_PAGE + 2) * SOURCE_ROW + 1 } : undefined}>
             <div className={cn(LIST, destinations.isStale && "pointer-events-none opacity-60")} role="radiogroup" aria-label={t("saveIncludedTo")}>
               <DestinationRow on={target === "none"} onPick={() => setDest("none")} icon={Ban} name={t("dontSave")} />
@@ -627,6 +729,8 @@ export function SetupView({
               onNext={destinations.next}
             />
           ) : null}
+          </>
+          )}
         </Zone>
 
         {/* Stops short of the assistant's button in the screen's corner from the first frame, where the page's column reaches

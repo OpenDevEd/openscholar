@@ -1,3 +1,4 @@
+import { readEvidenceLibraryAdminLaunchTarget } from "../evidenceLibraries/setupRecords";
 import { query, internalQuery, type QueryCtx } from "../_generated/server";
 import { v } from "convex/values";
 import { sourceMetadataFields } from "../lib/paperMetadata";
@@ -8,6 +9,7 @@ import { holdOpen } from "../billing/spend";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   paperSetValidator,
+  libraryWriteProblemValidator,
   saveToValidator,
   screeningAnswersValidator,
   screeningDecisionSourcesValidator,
@@ -213,9 +215,18 @@ export const getScreeningJobAction = defineUserQuery({
       targetCollectionName: v.optional(v.string()),
       unsaved: v.optional(v.literal(true)),
       prune: v.optional(v.literal(true)),
+      pruneName: v.optional(v.string()),
       // Papers it saved, and papers it took from the collection it read. Missing for a job from before these were kept.
       saved: v.optional(v.number()),
       removed: v.optional(v.number()),
+      // The Evidence Library collection its included papers go to, with its library's name and address; how many went
+      // in, how many the library holds no record of, and why its writes stopped, if they did.
+      libraryDestination: v.optional(v.object({ libraryId: v.id("evidenceLibraries"), collection: v.string(), name: v.string(), library: v.string(), address: v.union(v.string(), v.null()) })),
+      libraryAdded: v.optional(v.number()),
+      libraryMissing: v.optional(v.number()),
+      libraryWriteProblem: v.optional(libraryWriteProblemValidator),
+      // Why taking papers out of the library collection it read stopped, with that library's name.
+      libraryPruneProblem: v.optional(v.object({ problem: libraryWriteProblemValidator, library: v.string() })),
       // Credits its counted papers cost, of the most they were expected to when it started.
       // No `spent` for a job from before jobs kept what they cost. Its workspace's alone: a guest gets none.
       credits: v.optional(v.object({ spent: v.optional(v.number()), estimate: v.number() })),
@@ -249,6 +260,11 @@ export const getScreeningJobAction = defineUserQuery({
           ...(target ? { targetCollectionName: target.name } : job.newCollection ? { targetCollectionName: job.newCollection } : {}),
           targetCollectionId: job.targetCollectionId,
           ...(job.set ? { saved: kept?.saved ?? 0, removed: kept?.removed ?? 0 } : {}),
+          ...(job.libraryDestination ? await libraryDestinationOf(ctx, job.libraryDestination, kept) : {}),
+          ...(job.libraryWriteProblem ? { libraryWriteProblem: job.libraryWriteProblem } : {}),
+          // The reader's collection it prunes, by its name there: the person's own, which a guest isn't told of.
+          ...(job.pruneName ? { pruneName: job.pruneName } : {}),
+          ...(job.libraryPruneProblem && job.set?.kind === "evidenceLibrary" ? { libraryPruneProblem: { problem: job.libraryPruneProblem, library: (await ctx.db.get("evidenceLibraries", job.set.libraryId))?.name ?? "" } } : {}),
           credits: { spent: kept?.credits ?? (job.set ? 0 : undefined), estimate: estimateScreening(job.totalPapers - (job.reused ?? 0), 0, screeningPaperCredits(await pricingOf(ctx, job.serverModelId))).credits },
           guests: await countOf(ctx, itemGuestsOf(job._id)),
         };
@@ -278,6 +294,13 @@ export const getScreeningJobAction = defineUserQuery({
     };
   },
 });
+/** A job's library collection as its page names it, with how many papers went in and how many the library holds no record of. */
+async function libraryDestinationOf(ctx: QueryCtx, destination: NonNullable<Doc<"screeningJobs">["libraryDestination"]>, kept: Doc<"screeningJobProgress"> | null) {
+  const library = await ctx.db.get("evidenceLibraries", destination.libraryId);
+  const address = library ? await readEvidenceLibraryAdminLaunchTarget(ctx, library) : null;
+  return { libraryDestination: { ...destination, library: library?.name ?? "", address }, libraryAdded: kept?.libraryAdded ?? 0, libraryMissing: kept?.libraryMissing ?? 0 };
+}
+
 export const getScreeningJob = userQuery(getScreeningJobAction, { signedOut: null });
 export const getScreeningJobForAssistant = assistantQuery(getScreeningJobAction);
 

@@ -1643,7 +1643,23 @@
     "showAnswers": "Show the answers for {title}",
     "hideAnswers": "Hide the answers for {title}",
     "yesOrNo": "Yes or no",
-    "lost": "This screening was deleted or is no longer shared with you"
+    "lost": "This screening was deleted or is no longer shared with you",
+    "inOpenScholar": "OpenScholar",
+    "newCollectionIn": "Name of the new collection in {library}",
+    "savedToLibrary": "<n>{count, number}</n> added to {name} in {library}",
+    "notInLibrary": "<n>{count, number}</n> not in {library}",
+    "savesToLibrary": "Adds included papers to {name} in {library}",
+    "notInLibraryFilter": "Not in {library}",
+    "libraryProblem": {
+      "role": "Can't add to {name}: you can only view it now",
+      "notFound": "{name} is no longer in {library}",
+      "unreadable": "{library} didn't answer: some papers weren't added"
+    },
+    "pruneProblem": {
+      "role": "Can't remove papers from {name}: you can only view it now",
+      "notFound": "{name} is no longer in {library}",
+      "unreadable": "{library} didn't answer: some papers weren't removed"
+    }
   },
   "connectionsPage": {
     "connectedApps": "Connected apps",
@@ -3813,6 +3829,30 @@
         "did": "Read an Evidence Library source",
         "where": "Evidence Libraries",
         "ask": "Read an Evidence Library source"
+      },
+      "readerRecords": {
+        "doing": "Reading Evidence Library records",
+        "did": "Read Evidence Library records",
+        "where": "Evidence Libraries",
+        "ask": "Read Evidence Library records"
+      },
+      "newLibraryCollection": {
+        "doing": "Making a collection in an Evidence Library",
+        "did": "Made a collection in an Evidence Library",
+        "where": "Evidence Libraries",
+        "ask": "Make a collection in an Evidence Library",
+        "askMany": "Make {count, plural, one {# collection} other {# collections}} in an Evidence Library",
+        "doingMany": "Making {count, plural, one {# collection} other {# collections}} in an Evidence Library",
+        "didMany": "Made {count, plural, one {# collection} other {# collections}} in an Evidence Library"
+      },
+      "changeLibraryRecords": {
+        "doing": "Changing an Evidence Library collection",
+        "did": "Changed an Evidence Library collection",
+        "where": "Evidence Libraries",
+        "ask": "Change an Evidence Library collection",
+        "askMany": "Change {count, plural, one {# Evidence Library collection} other {# Evidence Library collections}}",
+        "doingMany": "Changing {count, plural, one {# Evidence Library collection} other {# Evidence Library collections}}",
+        "didMany": "Changed {count, plural, one {# Evidence Library collection} other {# Evidence Library collections}}"
       },
       "readHandoff": {
         "doing": "Opening what an Evidence Library handed over",

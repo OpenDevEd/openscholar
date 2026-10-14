@@ -85,5 +85,10 @@ export const at = internalQuery({
 export const readerOf = internalQuery({
   args: { userId: v.id("users") },
   returns: v.union(v.null(), v.string()),
-  handler: async (ctx, { userId }) => (await ctx.db.get("users", userId))?.clerkId ?? null,
+  // Only an account that can still act: a library is never asked anything as one suspended or deleted since, as a job's
+  // writes queued before would.
+  handler: async (ctx, { userId }) => {
+    const user = await ctx.db.get("users", userId);
+    return user?.state === "active" ? user.clerkId : null;
+  },
 });

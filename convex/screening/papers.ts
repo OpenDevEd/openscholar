@@ -48,17 +48,20 @@ export const listAction = defineUserQuery({
   path: "screening/papers:list",
   description:
     "Lists the papers of a screening job the person may read (one of their workspace's, or one shared with them) that landed in one outcome (included, unclear, excluded or failed), a page at a time in the order the job took them, " +
-    "each with its score, stars and the answer to every question it was scored on. Given `text`, the papers whose title or authors best match its words, best first.",
-  args: { jobId: v.id("screeningJobs"), outcome: screeningOutcomeValidator, text: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+    "each with its score, stars and the answer to every question it was scored on. Given `text`, the papers whose title or authors best match its words, best first. " +
+    "With `notInLibrary`, only the included papers its Evidence Library collection didn't take, the library holding no record of them.",
+  args: { jobId: v.id("screeningJobs"), outcome: screeningOutcomeValidator, text: v.optional(v.string()), notInLibrary: v.optional(v.boolean()), paginationOpts: paginationOptsValidator },
   returns: paginationResultValidator(screeningJobPaperValidator),
-  run: async (ctx, actor, { jobId, outcome, text, paginationOpts }) => {
+  run: async (ctx, actor, { jobId, outcome, text, notInLibrary, paginationOpts }) => {
     const job = await readableJob(ctx, actor, jobId);
     if (!job) return { page: [], isDone: true, continueCursor: "" };
     const opts = { ...paginationOpts, numItems: Math.min(paginationOpts.numItems, PAGE_MAX), maximumBytesRead: PAGE_BYTES };
     const needle = searchTerms(text);
     const page = await (needle
-      ? ctx.db.query("screeningResults").withSearchIndex("search_text", (q) => q.search("searchText", needle).eq("jobId", jobId).eq("outcome", outcome)).paginate(opts)
-      : ctx.db.query("screeningResults").withIndex("by_job_and_outcome", (q) => q.eq("jobId", jobId).eq("outcome", outcome)).paginate(opts));
+      ? ctx.db.query("screeningResults").withSearchIndex("search_text", (q) => { const found = q.search("searchText", needle).eq("jobId", jobId).eq("outcome", outcome); return notInLibrary ? found.eq("libraryWrite", "missing") : found; }).paginate(opts)
+      : notInLibrary
+        ? ctx.db.query("screeningResults").withIndex("by_job_and_libraryWrite_and_outcome", (q) => q.eq("jobId", jobId).eq("libraryWrite", "missing").eq("outcome", outcome)).paginate(opts)
+        : ctx.db.query("screeningResults").withIndex("by_job_and_outcome", (q) => q.eq("jobId", jobId).eq("outcome", outcome)).paginate(opts));
     return { ...page, page: await Promise.all(page.page.map((result) => paperOf(ctx, job, result, outcome))) };
   },
 });
