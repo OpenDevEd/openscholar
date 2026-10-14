@@ -192,8 +192,9 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
           </Zone>
 
           {/* Screening asks yes or no: offered when no questions came, or some of them are yes or no. Each button says how many questions it takes. */}
-          {/* On a phone its buttons, at the right, stop short of the assistant's button in that corner, from the first frame. */}
-          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg max-sm:mr-18">
+          {/* Its buttons, at the right, stop short of the assistant's button in the screen's corner from the first frame (the
+              button arrives after the page): below 1320px the page's column reaches that corner. */}
+          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg max-[82.5rem]:mr-18">
             {screenable ? (
               <Button variant="outline" className="min-w-44" onClick={screen} disabled={!count}>
                 <ListChecks className="text-primary" />

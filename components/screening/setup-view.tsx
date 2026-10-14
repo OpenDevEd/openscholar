@@ -629,7 +629,9 @@ export function SetupView({
           ) : null}
         </Zone>
 
-        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg">
+        {/* Stops short of the assistant's button in the screen's corner from the first frame, where the page's column reaches
+            it (below 1320px). On a phone its Start button wraps to the left, clear of it, and the bar keeps its width. */}
+        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg sm:max-[82.5rem]:mr-18">
           <CreditCheck credits={credits} balance={balance} enough={enough} cap={spend.cap} />
           <div className="flex flex-wrap items-center gap-1.5">
             {slots ? <Chip icon={Gauge}>{t("atATime", { limit: slots.limit })}</Chip> : null}
