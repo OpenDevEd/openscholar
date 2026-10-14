@@ -12,3 +12,5 @@ export type AuthorPublication = {
   cover?: string; pages?: number; url: string;
   library: {id: string; name: string; url: string; icon?: string};
 };
+/** Profiles per page of the Authors list: the server sends the first with the page, the browser reads the rest. */
+export const AUTHOR_PAGE_SIZE = 20;

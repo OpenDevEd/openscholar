@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import useSWR from "swr";
 import useSWRInfinite from "swr/infinite";
-import { ArrowUpRight, BookOpen, ChevronRight, Copy, Network, TopicsIcon } from "@/components/icons";
+import { ArrowUpRight, BookOpen, ChevronRight, Copy, Network, Search, TopicsIcon } from "@/components/icons";
 import { toast } from "sonner";
 import { readTopic, readTopicWorks } from "@/app/actions/topics";
 import { LibraryPageShell } from "@/components/evidence-libraries/library-page-shell";
@@ -15,6 +15,7 @@ import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { PaperCard } from "@/components/paper-card";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { FocusMode } from "@/components/ui/focus-mode";
 import { downloadLibraryItem, downloadLibraryEssentialItem } from "@/lib/library/download-handlers";
 import { useUIStore } from "@/lib/store";
@@ -47,6 +48,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
   const isFocusModeOpen = useUIStore(state => state.isFocusModeOpen);
 
   return <LibraryPageShell icon={TopicsIcon} title={topic.name} backHref="/topics" backLabel={t("back")} actions={<>
+    <TooltipHint label={tc("searchPapers")}><Button variant="outline" size="sm" className="w-8 px-0" aria-label={tc("searchPapers")} asChild><Link href={buildShareableUrl("", { area: [topic.id], sort: "cited_by_count:desc" })}><Search aria-hidden /></Link></Button></TooltipHint>
     <Button variant="outline" size="sm" className={BAR_ACTION} onClick={async () => {
       try { await navigator.clipboard.writeText(location.href); toast.success(t("linkCopied")); }
       catch { toast.error(t("copyFailed")); }

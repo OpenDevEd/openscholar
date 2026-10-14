@@ -17,6 +17,7 @@
   },
   "common": {
     "search": "Rechercher",
+    "searchPapers": "Rechercher des articles",
     "home": "Accueil",
     "bookmarks": "Favoris",
     "history": "Historique",

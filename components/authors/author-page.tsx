@@ -58,6 +58,7 @@ import {
   Tooltip,
   TooltipTrigger,
   TooltipContent,
+  TooltipHint,
 } from "@/components/ui/tooltip";
 import { ButtonGroup } from "@/components/ui/button-group";
 
@@ -85,6 +86,8 @@ import { readProfileAuthor } from "@/app/actions/authors";
 import {PublicationListItem, PublicationMetadata} from "@/components/evidence-libraries/publication-list-item";
 import type {AuthorProfile, OpenAlexMatch, AuthorPublication} from "./types";
 import { OpenAlexLimitedError, unlessLimited } from "@/lib/openalex/limited";
+import { authorFilterValue } from "@/lib/openalex/author-filter";
+import { buildShareableUrl } from "@/lib/search-params";
 
 const safeUrl = (value?: string) => {
   try {
@@ -124,6 +127,7 @@ export default function AuthorPage({
   const profileId = profile.id;
   const tm = useTranslations("workspaces.move");
   const ta = useTranslations("workspaces.activity");
+  const tc = useTranslations("common");
   const [moving, setMoving] = useState(false);
   const [activity, setActivity] = useState(false);
   // Either mode of the page keeps the person in the profile's room. First in the bar's right-hand group, so faces arriving move nothing.
@@ -134,6 +138,8 @@ export default function AuthorPage({
   const loadingWorks = fetchingWorks || rated.loading;
   const profileHref = `/authors/${profileId}`;
   const configurationHref = `/authors/${profileId}/configuration`;
+  // Their papers by their OpenAlex record once the profile is linked to one, otherwise by their name as written.
+  const searchAuthor = authorFilterValue(profile.openalex || profile.name);
   const photoInput = useRef<HTMLInputElement>(null);
   const isFocusModeOpen = useUIStore((state) => state.isFocusModeOpen);
   const [draft, setDraft] = useState<AuthorProfile | null>(() =>
@@ -592,6 +598,13 @@ export default function AuthorPage({
                 <span className={BAR_LABEL}>{tm("move")}</span>
               </Button>
             ) : null}
+            {searchAuthor && <TooltipHint label={tc("searchPapers")}>
+              <Button variant="outline" size="sm" className="w-8 px-0" aria-label={tc("searchPapers")} asChild>
+                <Link href={buildShareableUrl("", { author: [searchAuthor], sort: "cited_by_count:desc" })}>
+                  <Search aria-hidden />
+                </Link>
+              </Button>
+            </TooltipHint>}
             <Button
               variant="outline"
               size="sm"
