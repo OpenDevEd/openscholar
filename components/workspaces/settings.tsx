@@ -579,7 +579,7 @@ export function WorkspaceMembers() {
                         <Segmented
                           label={t("roleOf", { name: member.name })}
                           value={member.role}
-                          onChange={(next) => void attempt(`role:${member.userId}`, () => setRole({ userId: member.userId, role: next }))}
+                          onChange={(next) => void attempt(`role:${member.userId}`, () => setRole({ memberId: member.userId, role: next }))}
                           options={roleOptions}
                         />
                         <IconButton small label={t("removeName", { name: member.name })} icon={<X className="size-3.5" />} onClick={() => setRemoving({ userId: member.userId, name: member.name, ...(member.keepsSeat ? { keepsSeat: true as const } : {}) })} />
@@ -649,7 +649,7 @@ export function WorkspaceMembers() {
               disabled={busy !== null}
               onClick={(e) => {
                 e.preventDefault();
-                if (removing) void attempt("remove", () => removeMember({ userId: removing.userId })).then(() => setRemoving(null));
+                if (removing) void attempt("remove", () => removeMember({ memberId: removing.userId })).then(() => setRemoving(null));
               }}
             >
               {t("remove")}

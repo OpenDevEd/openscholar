@@ -144,7 +144,7 @@ function Share({ close, access, kind, id, name, link, note }: Item & Linked & { 
             avatar: <IdentityAvatar name={person.name || person.email} imageUrl={person.imageUrl} className="size-9" />,
             name: person.name || person.email,
             detail: person.email,
-            pick: () => void add({ kind, id, userId: person.userId, role: "viewer" }).catch(failed),
+            pick: () => void add({ kind, id, personId: person.userId, role: "viewer" }).catch(failed),
           })),
           more: candidates.status === "CanLoadMore" || candidates.status === "LoadingMore" ? { loading: candidates.status === "LoadingMore", load: () => candidates.loadMore(SUGGESTED) } : undefined,
           invite: (email) => void invite({ kind, id, email, role: "viewer" }).catch(failed),
