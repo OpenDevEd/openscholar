@@ -15,6 +15,8 @@ export interface ScoringRule {
   yesPoints: number;
   noPoints: number;
   nullPoints: number;
+  /** A paper not answered yes here is never included, whatever its points. */
+  required?: boolean;
 }
 
 export interface StarThreshold {
@@ -117,26 +119,36 @@ export function scorePaper(
   config: ScoringConfig
 ): ScoringResult {
   const score = computeScore(answers, config.rules);
+  // Short of a required yes, the paper keeps its score but gets no stars and isn't included.
+  if (missesRequired(answers, config.rules)) return { score, stars: 0, qualified: false };
   const stars = computeStarRating(score, config.starThresholds);
   const qualified = isQualified(score, config.minimumScore);
   return { score, stars, qualified };
+}
+
+/** Whether a required question wasn't answered yes. */
+function missesRequired(answers: Record<string, boolean | null>, rules: ScoringRule[]) {
+  return rules.some((rule) => rule.required && answers[rule.questionKey] !== true);
 }
 
 /** Where a screened paper lands. A paper the model couldn't read is `failed`, which no score decides. */
 export type ScoredOutcome = "included" | "unclear" | "excluded";
 
 /**
- * Included at the minimum score. Unclear when it's under it but its unclear answers,
+ * Excluded when a required question is answered no. Included at the minimum score with every
+ * required question answered yes. Unclear when it's under it but its unclear answers,
  * settled the best way the rules allow, would take it there: those are the papers worth a
  * second look. Excluded otherwise.
  */
 export function outcomeOf(answers: Record<string, boolean | null>, config: ScoringConfig): ScoredOutcome {
-  if (isQualified(computeScore(answers, config.rules), config.minimumScore)) return "included";
-  // A question with several rules settles one way for all of them.
+  const required = new Set(config.rules.filter((rule) => rule.required).map((rule) => rule.questionKey));
+  if ([...required].some((key) => answers[key] === false)) return "excluded";
+  if (!missesRequired(answers, config.rules) && isQualified(computeScore(answers, config.rules), config.minimumScore)) return "included";
+  // A question with several rules settles one way for all of them; a required one, only as yes.
   const best = [...new Set(config.rules.map((rule) => rule.questionKey))].reduce((sum, key) => {
     const points = (field: "yesPoints" | "noPoints" | "nullPoints") => config.rules.reduce((total, rule) => total + (rule.questionKey === key ? rule[field] : 0), 0);
     const answer = answers[key];
-    return sum + (answer === true ? points("yesPoints") : answer === false ? points("noPoints") : Math.max(points("yesPoints"), points("noPoints"), points("nullPoints")));
+    return sum + (answer === true || (answer !== false && required.has(key)) ? points("yesPoints") : answer === false ? points("noPoints") : Math.max(points("yesPoints"), points("noPoints"), points("nullPoints")));
   }, 0);
   return isQualified(best, config.minimumScore) ? "unclear" : "excluded";
 }
