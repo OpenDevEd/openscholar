@@ -142,6 +142,29 @@ call covers every kind of source. Proof: `convex/screening/library.test.ts`,
 `convex/extraction/library.test.ts` and new-el
 `tests/integration/openscholar-reads.test.ts`.
 
+Changed 2026-10-14, as built:
+
+- `GET search` was not built. The assistant reads a search as the `{search}`
+  source, through `sources/resolve` and then `records/batch`
+  (`evidenceLibraries/library:records`). Reason: one way to read every kind of
+  source, searches included, and no second copy of the library's search.
+- `GET records/<key>/files/<attachmentKey>` was not built. A record's PDF is the
+  library's public download address, `/api/item/<key>/download/<attachmentKey>`,
+  for the files `records/batch` lists (`libraryPaper` in
+  `convex/evidenceLibraries/sourceActions.ts`). Reason: the record's `files` are
+  already only the downloadable ones (`filterPublicAttachments`).
+- The records change answers `{count, changed: [key], missing: [key]}`.
+  `changed` lists the keys that went in or came out, so the assistant's undo
+  reverses exactly those, and `missing` names the records the library doesn't
+  show. It refuses `403 role` and `404 not_reader`, and reads the role and the
+  records' visibility in the transaction that writes.
+- `records/match` also matches an OpenAlex work merged into a kept record as a
+  repeat, compares DOIs with the library's `normalizeDoi` rules, and picks the
+  first record by key when several share a DOI.
+
+Proof: `convex/evidenceLibraries/writes.test.ts`, `assistantTools.test.ts`, and
+new-el `tests/integration/openscholar-writes.test.ts`.
+
 `Record` is `{key, revision, itemType, title, abstract, creators: [{name}],
 year, venue, url, crossRefs: {openalexId?, doi?}, files: [{attachmentKey,
 filename, contentType, bytes}]}`. Its text is capped at the lengths
@@ -149,8 +172,8 @@ OpenScholar keeps a Zotero paper's (`convex/zotero/libraryValidators.ts`: title
 500 characters, abstract 10,000, 100 creators and a venue of 300 each). A page of
 records holds at most 500 of them and at most 4 MB: the library sends fewer when
 the next would pass it. Every refusal answers `{error, message}`:
-`401` credential, `403 private | role | reader_accounts_off`, `404 not_found`,
-`409 index_changed`, `413 too_many`, `400 invalid_request | contract`, `503`.
+`401` credential, `403 private | role | reader_accounts_off`,
+`404 not_found | not_reader`, `409 index_changed`, `413 too_many`, `400 invalid_request | contract`, `503`.
 A library on an older runtime answers `404` to these paths; OpenScholar shows
 "This library needs an update to be used here" with a link for its owners.
 
