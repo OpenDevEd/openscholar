@@ -57,7 +57,7 @@ export default function ConnectionsPage() {
       <div className="space-y-8">
         {/* Services you connect your account to. Each new one is a row in this list. */}
         <Zone label={t("integrations")}>
-          <ul className={LIST}>
+          <ul className={`${LIST} @container/integrations`}>
             <ZoteroRow account={zotero} />
           </ul>
         </Zone>
@@ -209,15 +209,15 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
         </Swap>
       </div>
       {account.connected ? (
-        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+        // A narrow list keeps the account name and the buttons, and leaves out when it was connected.
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground @max-[32rem]/integrations:hidden">
           {t("connectedTime", { time: format.relativeTime(account.connectedAt, now) })}
         </span>
       ) : null}
       <Swap id={account.connected ? (step === "confirm" ? "confirm" : "connected") : "not-connected"} className="flex w-40 shrink-0 justify-end gap-1">
         {!account.connected ? (
-          <Button size="sm" disabled={step === "busy"} onClick={connect}>
-            {step === "busy" ? <Spinner /> : null}
-            {t("connect")}
+          <Button size="sm" className="relative" disabled={step === "busy"} onClick={connect}>
+            <Working busy={step === "busy"}>{t("connect")}</Working>
           </Button>
         ) : step === "confirm" ? (
           <>
@@ -229,13 +229,22 @@ function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.
             </Button>
           </>
         ) : (
-          <Button variant="outline" size="sm" disabled={step === "busy"} onClick={() => setStep("confirm")}>
-            {step === "busy" ? <Spinner /> : null}
-            {t("disconnect")}
+          <Button variant="outline" size="sm" className="relative" disabled={step === "busy"} onClick={() => setStep("confirm")}>
+            <Working busy={step === "busy"}>{t("disconnect")}</Working>
           </Button>
         )}
       </Swap>
     </li>
+  );
+}
+
+/** A button's label that a spinner covers while it works, so the button keeps its width. */
+function Working({ busy, children }: { busy: boolean; children: ReactNode }) {
+  return (
+    <>
+      <span className={busy ? "invisible" : undefined}>{children}</span>
+      {busy ? <Spinner className="absolute" /> : null}
+    </>
   );
 }
 
