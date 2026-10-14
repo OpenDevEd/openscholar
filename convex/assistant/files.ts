@@ -413,7 +413,7 @@ export async function withFiles(ctx: Pick<ActionCtx, "storage" | "runQuery" | "r
             if (part.type === "tool-result" && paper) {
               const said = JSON.stringify(paper.shown);
               if (!read.pdfs) return { ...part, output: { type: "text", value: `${said}\n[This PDF can't be shown to the model this chat now runs on, which doesn't read PDFs.]` } };
-              if (fresh === undefined || at < fresh) return { ...part, output: { type: "text", value: `${said}\n[You read this paper's PDF in an earlier reply: what you took from it and cited then was read from it, and stands, cited by its \`paperPdf\` address above with the page. It isn't in view now: to take more from it, read it again with research_papers_readPdf.]` } };
+              if (fresh === undefined || at < fresh) return { ...part, output: { type: "text", value: `${said}\n[You read this paper's PDF in an earlier reply: what you took from it and cited then was read from it, and stands: cite it again as you did then. It isn't in view now: to take more from it, read it again with research_papers_readPdf.]` } };
               if (!paperPdfs.download) {
                 paperPdfs.linked?.();
                 return { ...part, output: { type: "content", value: [{ type: "text", text: said }, { type: "file", mediaType: "application/pdf", data: { type: "url", url: new URL(await storedLink(paper.stored)) }, filename: "paper.pdf" }] } };

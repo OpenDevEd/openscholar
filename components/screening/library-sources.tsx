@@ -60,10 +60,7 @@ export function useLibrarySources(opened: HeldRow[] = [], { settled = true }: { 
   // A library that didn't answer is one that couldn't list; the form doesn't wait on it again.
   const failed = (libraryId: string) => ({ libraryId, rows: null, problem: "unreadable" as const }) as LibraryContents;
   const listedContents = known.data ?? (known.error ? (ids ?? []).map(failed) : []);
-  // A library read again when a source of it was held is newer than the list read before: it stands in for it.
-  const fresher = new Map<string, LibraryContents>();
-  for (const one of pasted) if (one.contents && !fresher.has(one.contents.libraryId)) fresher.set(one.contents.libraryId, one.contents);
-  const contents = [...listedContents.map((one) => fresher.get(one.libraryId) ?? one), ...[...fresher.values()].filter((one) => !listedContents.some((other) => other.libraryId === one.libraryId))];
+  const contents = [...listedContents, ...pasted.flatMap((one) => (one.contents && !listedContents.some((other) => other.libraryId === one.contents!.libraryId) ? [one.contents] : []))];
   // The owners' photos are fetched with the lists, so their faces are there when the list first shows.
   for (const row of contents.flatMap((one) => one.rows ?? [])) if (row.owner?.image) preload(row.owner.image, { as: "image" });
   const libraries: ReaderLibrary[] = [...(listed ?? []), ...held.filter((one, at) => !listed?.some((library) => library.libraryId === one.library.libraryId) && held.findIndex((other) => other.library.libraryId === one.library.libraryId) === at).map(({ library }) => ({ ...library, ways: [], role: null }))];
@@ -92,10 +89,12 @@ export function useLibrarySources(opened: HeldRow[] = [], { settled = true }: { 
      */
     hold: async (one: HeldRow) => {
       const libraryId = one.library.libraryId;
-      const known = contents.find((other) => other.libraryId === libraryId);
-      const stale = known !== undefined && "readerCollection" in one.row.source && !known.rows?.some((row) => rowKey(row) === rowKey(one.row));
-      const reread = known && !stale ? null : ((await read({ libraryIds: [libraryId] }).catch(() => null))?.[0] ?? null);
-      const listing = reread ?? (known ? null : failed(libraryId));
+      const listed = contents.find((other) => other.libraryId === libraryId);
+      const stale = listed !== undefined && "readerCollection" in one.row.source && !listed.rows?.some((row) => rowKey(row) === rowKey(one.row));
+      const reread = listed && !stale ? null : ((await read({ libraryIds: [libraryId] }).catch(() => null))?.[0] ?? null);
+      // A library already listed takes the newer list in its place, where later reads of the list replace it in turn.
+      if (listed && reread) void known.mutate((all) => all?.map((other) => (other.libraryId === libraryId ? reread : other)), { revalidate: false });
+      const listing = listed ? null : (reread ?? failed(libraryId));
       setPasted((rows) => [{ held: one, contents: listing ?? rows.find((other) => other.held.library.libraryId === libraryId)?.contents ?? null }, ...rows.filter((other) => rowKey(other.held.row) !== rowKey(one.row))]);
     },
   };
