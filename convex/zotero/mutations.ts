@@ -40,7 +40,8 @@ export const storeRequestToken = internalMutation({
 });
 
 /**
- * Get stored request token for OAuth callback.
+ * Takes the stored request token for the OAuth callback; it is used once, expired or not.
+ * An expired one still says which page the sign-in started on.
  */
 export const getRequestToken = internalMutation({
   args: {
@@ -51,6 +52,7 @@ export const getRequestToken = internalMutation({
       tokenSecret: v.string(),
       userId: v.id("users"),
       returnTo: v.optional(v.string()),
+      expired: v.boolean(),
     }),
     v.null()
   ),
@@ -61,18 +63,13 @@ export const getRequestToken = internalMutation({
       .first();
 
     if (!stored) return null;
-    if (stored.expiresAt < Date.now()) {
-      await ctx.db.delete("zoteroOAuthTokens", stored._id);
-      return null;
-    }
-
-    // Delete the token after retrieval (one-time use)
     await ctx.db.delete("zoteroOAuthTokens", stored._id);
 
     return {
       tokenSecret: stored.tokenSecret,
       userId: stored.userId,
       returnTo: stored.returnTo,
+      expired: stored.expiresAt < Date.now(),
     };
   },
 });

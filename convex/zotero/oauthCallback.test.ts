@@ -7,7 +7,7 @@ import schema from "../schema";
 
 const KEY = "0".repeat(64);
 const APP = "https://app.example.com";
-let zoteroAnswers: "key" | "refuses" = "key";
+let zoteroAnswers: "key" | "refuses" | "unreachable" = "key";
 
 beforeEach(() => {
   zoteroAnswers = "key";
@@ -16,23 +16,24 @@ beforeEach(() => {
   vi.stubEnv("ZOTERO_CLIENT_KEY", "client-key");
   vi.stubEnv("ZOTERO_CLIENT_SECRET", "client-secret");
   // Zotero's access-token exchange, the only outside call.
-  vi.stubGlobal("fetch", vi.fn(async () =>
-    zoteroAnswers === "key"
+  vi.stubGlobal("fetch", vi.fn(async () => {
+    if (zoteroAnswers === "unreachable") throw new TypeError("fetch failed");
+    return zoteroAnswers === "key"
       ? new Response("oauth_token=granted&oauth_token_secret=zotero-api-key&userID=15294942&username=ada", { status: 200 })
-      : new Response("Invalid verifier", { status: 401 }),
-  ));
+      : new Response("oauth_problem=verifier_invalid", { status: 401 });
+  }));
 });
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
 });
 
-/** Someone who started a Zotero sign-in from `returnTo`. */
-async function started(returnTo: string) {
+/** Someone who started a Zotero sign-in from `returnTo`, `expiresIn` ms before it expires. */
+async function started(returnTo: string, expiresIn = 60_000) {
   const t = convexTest(schema);
   const userId = await t.run(async (ctx) => {
     const id = await ctx.db.insert("users", { clerkId: "ada", email: "ada@example.com", state: "active", createdAt: 1, updatedAt: 1 });
-    await ctx.db.insert("zoteroOAuthTokens", { token: "request-token", tokenSecret: "request-secret", userId: id, expiresAt: Date.now() + 60_000, returnTo });
+    await ctx.db.insert("zoteroOAuthTokens", { token: "request-token", tokenSecret: "request-secret", userId: id, expiresAt: Date.now() + expiresIn, returnTo });
     return id;
   });
   const connection = () => t.run((ctx) => ctx.db.query("zoteroConnections").withIndex("by_user", (q) => q.eq("userId", userId)).first());
@@ -53,11 +54,19 @@ describe("Zotero's sign-in callback", () => {
     expect(decrypt(saved!.encryptedApiKey, KEY)).toBe("zotero-api-key");
   });
 
-  it("returns to the page the sign-in started on with the error when Zotero refuses the exchange", async () => {
+  it.each(["refuses", "unreachable"] as const)("returns to the page the sign-in started on with the error when Zotero %s", async (answer) => {
     const { t, connection } = await started("/evidence-libraries/lib1/configuration?section=sources");
-    zoteroAnswers = "refuses";
+    zoteroAnswers = answer;
     expect(back(await t.fetch("/api/zotero/callback?oauth_token=request-token&oauth_verifier=verifier"))).toBe(
       `${APP}/evidence-libraries/lib1/configuration?section=sources&zotero_error=failed`,
+    );
+    expect(await connection()).toBeNull();
+  });
+
+  it("returns a sign-in that took too long to the page it started on", async () => {
+    const { t, connection } = await started("/evidence-libraries/lib1/configuration", -1);
+    expect(back(await t.fetch("/api/zotero/callback?oauth_token=request-token&oauth_verifier=verifier"))).toBe(
+      `${APP}/evidence-libraries/lib1/configuration?zotero_error=expired`,
     );
     expect(await connection()).toBeNull();
   });
