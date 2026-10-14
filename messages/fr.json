@@ -1384,7 +1384,7 @@
     "paymentMethod": "Moyen de paiement"
   },
   "libraryPage": {
-    "title": "Votre bibliothèque",
+    "title": "Bibliothèque",
     "paperCount": "{count, plural, =0 {Aucun article} one {1 article} other {# articles}} dans votre bibliothèque",
     "searchPlaceholder": "Rechercher par titre, auteur ou résumé...",
     "sortBy": "Trier par",
@@ -1405,8 +1405,8 @@
     "nextPage": "Suivant",
     "ratingFilter": "Filtrer par note minimale",
     "loadMore": "Charger plus",
-    "emptyLibraryTitle": "Votre bibliothèque est vide",
-    "emptyLibraryDescription": "Commencez à noter des articles depuis les résultats de recherche pour construire votre bibliothèque.",
+    "emptyLibraryTitle": "Cette bibliothèque est vide",
+    "emptyLibraryDescription": "Commencez à noter des articles depuis les résultats de recherche pour construire cette bibliothèque.",
     "emptyLibraryCta": "Rechercher des articles",
     "noResultsTitle": "Aucun article ne correspond à votre recherche ou vos filtres",
     "clearFilters": "Effacer les filtres",
@@ -3272,7 +3272,7 @@
         "where": "Notes"
       },
       "saved": {
-        "doing": "Vérification de votre bibliothèque",
+        "doing": "Vérification de la bibliothèque",
         "did": "Bibliothèque vérifiée",
         "where": "Bibliothèque"
       },

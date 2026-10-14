@@ -1384,7 +1384,7 @@
     "paymentMethod": "Payment method"
   },
   "libraryPage": {
-    "title": "Your Library",
+    "title": "Library",
     "paperCount": "{count, plural, =0 {No papers} one {1 paper} other {# papers}} in your library",
     "searchPlaceholder": "Search by title, author, or abstract...",
     "sortBy": "Sort by",
@@ -1405,8 +1405,8 @@
     "nextPage": "Next",
     "ratingFilter": "Rating",
     "loadMore": "Load more",
-    "emptyLibraryTitle": "Your library is empty",
-    "emptyLibraryDescription": "Start rating papers from search results to build your library.",
+    "emptyLibraryTitle": "This library is empty",
+    "emptyLibraryDescription": "Start rating papers from search results to build this library.",
     "emptyLibraryCta": "Search papers",
     "noResultsTitle": "No papers match your search or filters",
     "clearFilters": "Clear filters",
@@ -3272,8 +3272,8 @@
         "where": "Ratings"
       },
       "saved": {
-        "doing": "Checking your library",
-        "did": "Checked your library",
+        "doing": "Checking the library",
+        "did": "Checked the library",
         "where": "Library"
       },
       "save": {
