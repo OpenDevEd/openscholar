@@ -340,7 +340,7 @@ describe("the assistant's tools", () => {
     const asked = (await asAda.query(api.assistant.replies.messages, { threadId, paginationOpts: firstPage })).page.find((item) => item.role === "step" && item.status === "asking");
     expect(asked).toMatchObject({ canAnswer: true, details: expect.arrayContaining([{ name: "collection", value: "Published" }, { name: "title", value: "Tutoring at scale" }, { name: "inCollection", value: "true" }]) });
     // It would run with Ada's access, so only she can allow it.
-    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: ben, role: "editor" });
+    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, personId: ben, role: "editor" });
     const asking = (await steps()).find((step) => step.status === "asking")!;
     await expect(asBen.mutation(api.assistant.replies.answer, { threadId, stepIds: [asking._id], allow: true })).rejects.toThrow(/Only the person/);
     // He sees that it waits, and nothing of what it would do.
@@ -482,7 +482,7 @@ describe("the assistant's tools", () => {
     const t = convexTest(schema);
     const { home, asAda, asBen, ben, threadId, say, steps } = await chatOf(t);
     await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: ben, free: 100_000 }));
-    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: ben, role: "editor" });
+    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, personId: ben, role: "editor" });
     mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { paper: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
     await asAda.mutation(api.assistant.undo.run, { threadId, stepIds: [(await steps())[0]._id] });
@@ -1413,7 +1413,7 @@ describe("the assistant's tools", () => {
   it("pause a reply at the credits its sender lets one spend, carry it on for as much again from where it stands, and keep what it cost among their last", async () => {
     const t = convexTest(schema);
     const { home, ada, ben, asAda, asBen, threadId, thread, settled } = await chatOf(t);
-    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: ben, role: "editor" });
+    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, personId: ben, role: "editor" });
     // A limit is a whole number of credits from 1.
     for (const limit of [0, 1.5, -3]) await expect(asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit })).rejects.toThrow(/whole number/);
     await asAda.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
@@ -1506,7 +1506,7 @@ describe("the assistant's tools", () => {
     expect(fakeAutumn.balance(ada)).toBe(adaBefore);
 
     // Shared with Ben, who isn't in the lab, what his reply saves is his own.
-    await asAda.mutation(api.sharing.guests.add, { workspaceId: lab, kind: "chat", id: threadId, userId: ben, role: "editor" });
+    await asAda.mutation(api.sharing.guests.add, { workspaceId: lab, kind: "chat", id: threadId, personId: ben, role: "editor" });
     mockDoStream.mockImplementationOnce(calling({ id: "save2", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { paper: "https://openalex.org/W2", title: "His paper" } } })).mockImplementationOnce(finishingDoStream(["Saved."]));
     await asBen.mutation(api.assistant.replies.send, { threadId, text: "Save W2" });
     await finishReply(t, threadId);
@@ -1586,7 +1586,7 @@ describe("the assistant's tools", () => {
   it("keep nothing for a sender whose account is gone when their paused reply is stopped", async () => {
     const t = convexTest(schema);
     const { home, ben, asAda, asBen, threadId, thread } = await chatOf(t);
-    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: ben, role: "editor" });
+    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, personId: ben, role: "editor" });
     await t.run(async (ctx) => seedCreditsForTest(ctx, { userId: ben, free: 100_000 }));
     await asBen.mutation(api.assistant.spending.setReplyLimit, { threadId, limit: 1 });
     mockDoStream.mockImplementation(async () => calling({ id: `c${requests.length}`, name: "library_collections_listCollections", input: { paginationOpts: { cursor: null, numItems: (requests.length % 3) + 1 } } })());
@@ -1779,7 +1779,7 @@ describe("the assistant's tools", () => {
   it("are undone by the person they ran for, once, and by no one else in the chat", async () => {
     const t = convexTest(schema);
     const { home, asAda, asBen, threadId, say, steps, shown } = await chatOf(t);
-    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, userId: (await t.run(async (ctx) => (await ctx.db.query("users").collect()).find((user) => user.clerkId === "ben")))!._id, role: "editor" });
+    await asAda.mutation(api.sharing.guests.add, { workspaceId: home.ada, kind: "chat", id: threadId, personId: (await t.run(async (ctx) => (await ctx.db.query("users").collect()).find((user) => user.clerkId === "ben")))!._id, role: "editor" });
     mockDoStream.mockImplementationOnce(calling({ id: "save", name: "run_action", input: { name: "library/mutations:saveToLibrary", arguments: { paper: "https://openalex.org/W1", title: "Tutoring at scale" } } })).mockImplementationOnce(finishingDoStream(["Saved it."]));
     await say("Save that paper");
     const [step] = await steps();

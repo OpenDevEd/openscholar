@@ -83,10 +83,18 @@ export function useLibrarySources(opened: HeldRow[] = [], { settled = true }: { 
     page,
     setPage,
     held,
-    /** Holds a source, once, first of its library's, once the list of a library not read yet has come. */
+    /**
+     * Holds a source, once, first of its library's, once the list of a library not read yet has come. A reader's
+     * collection its library's list doesn't have, shared with them since that was read, reads the list again.
+     */
     hold: async (one: HeldRow) => {
       const libraryId = one.library.libraryId;
-      const listing = contents.some((other) => other.libraryId === libraryId) ? null : ((await read({ libraryIds: [libraryId] }).catch(() => null))?.[0] ?? failed(libraryId));
+      const listed = contents.find((other) => other.libraryId === libraryId);
+      const stale = listed !== undefined && "readerCollection" in one.row.source && !listed.rows?.some((row) => rowKey(row) === rowKey(one.row));
+      const reread = listed && !stale ? null : ((await read({ libraryIds: [libraryId] }).catch(() => null))?.[0] ?? null);
+      // A library already listed takes the newer list in its place, where later reads of the list replace it in turn.
+      if (listed && reread) void known.mutate((all) => all?.map((other) => (other.libraryId === libraryId ? reread : other)), { revalidate: false });
+      const listing = listed ? null : (reread ?? failed(libraryId));
       setPasted((rows) => [{ held: one, contents: listing ?? rows.find((other) => other.held.library.libraryId === libraryId)?.contents ?? null }, ...rows.filter((other) => rowKey(other.held.row) !== rowKey(one.row))]);
     },
   };

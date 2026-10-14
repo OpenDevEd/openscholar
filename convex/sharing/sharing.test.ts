@@ -66,16 +66,16 @@ async function lab(guests?: number) {
 it("gives a colleague an item at once, and no one a stranger's, a member's or another workspace's", async () => {
   const { t, alice, bob, carol, item, guestsOf, users, workspaceId } = await lab();
 
-  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  await alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "viewer" });
   expect(await guestsOf()).toEqual([{ userId: users.carol, role: "viewer", name: "Trials" }]);
   const activity = await t.run((ctx) => ctx.db.query("activity").withIndex("by_workspace_and_item", (q) => q.eq("workspaceId", workspaceId).eq("item", `collection:${item.id}`)).collect());
   expect(activity.map(({ happened, detail }) => [happened, detail])).toContainEqual(["shared", "Carol"]);
 
   // Dave shares no organization with Alice, Bob is in the lab already, and Bob shares none with Carol.
-  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.dave, role: "viewer" })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
-  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.bob, role: "viewer" })).rejects.toMatchObject({ data: { code: "CONFLICT" } });
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, personId: users.dave, role: "viewer" })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, personId: users.bob, role: "viewer" })).rejects.toMatchObject({ data: { code: "CONFLICT" } });
   // A guest acts in their own workspace, where the item isn't: they can't share it on.
-  await expect(carol.mutation(api.sharing.guests.add, { kind: "collection", id: item.id, userId: users.dave, role: "viewer" })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
+  await expect(carol.mutation(api.sharing.guests.add, { kind: "collection", id: item.id, personId: users.dave, role: "viewer" })).rejects.toMatchObject({ data: { code: "NOT_FOUND" } });
   // The assistant is told so before it asks her about an invitation that could never go: a yes is never followed by a refusal.
   const carolOwn = await t.run((ctx) => personalWorkspaceOf(ctx, users.carol));
   const refused = (userId: Id<"users">, from: Id<"workspaces">) => t.query(internal.assistant.asking.check, { userId, workspaceId: from, path: "sharing/invitations:invite", input: JSON.stringify({ kind: "collection", id: item.id, email: "dave@example.org", role: "viewer" }) });
@@ -100,7 +100,7 @@ it("lets a guest who edits a collection put papers in it and take them out, in t
   const offered = async (who: typeof carol) => (await who.query(api.sharing.shared.editableCollections, { paper: paper.paper, paginationOpts: { cursor: null, numItems: 20 } })).page;
 
   // A viewer reads it, and someone it isn't shared with has nothing of it.
-  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  await alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "viewer" });
   await expect(put(carol)).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
   await expect(put(dave)).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
   expect(await held()).toBe(0);
@@ -151,13 +151,13 @@ it("holds an item to the guests its workspace's plan allows, invitations still w
   expect(mail.sendMail).toHaveBeenCalledTimes(1);
   expect(await invitationsOf()).toEqual([{ email: "eve@example.org", role: "viewer", state: "pending" }]);
   // The one place is the invitation's.
-  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" })).rejects.toThrow(/allows 1 guest /);
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "viewer" })).rejects.toThrow(/allows 1 guest /);
   await expect(invite("frank@example.org")).rejects.toThrow(/allows 1 guest /);
   // Sending it again takes no second place.
   await invite("eve@example.org");
 
   await alice.mutation(api.sharing.guests.remove, { ...item, guest: { email: "eve@example.org" } });
-  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  await alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "viewer" });
   expect(await guestsOf()).toHaveLength(1);
   await expect(invite("frank@example.org")).rejects.toThrow(/allows 1 guest /);
 });
@@ -185,12 +185,12 @@ it("makes an invitation the place of whoever accepts it with the invited address
   expect(await dave.action(api.sharing.invitations.respond, { invitationId, accept: true })).toEqual({ kind: "collection", id: item.id });
   expect(await guestsOf()).toHaveLength(1);
   // It was the item's one place, and still is: nobody else fits.
-  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" })).rejects.toThrow(/allows 1 guest /);
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "viewer" })).rejects.toThrow(/allows 1 guest /);
 });
 
 it("keeps a guest's row to the item's name, and leaves none of an item that's deleted", async () => {
   const { t, alice, item, guestsOf, invitationsOf, users } = await lab();
-  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  await alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "viewer" });
   await alice.action(api.sharing.invitations.invite, { ...item, email: "eve@example.org", role: "viewer" });
 
   await alice.mutation(api.library.collections.renameCollection, { workspaceId: item.workspaceId, collectionId: item.id, name: "Coaching trials" });
@@ -207,7 +207,7 @@ it("opens a shared collection to its guest from their own workspace, and to nobo
   const { t, alice, carol, dave, item, users, club } = await lab();
   const { id: saved } = await alice.mutation(api.library.mutations.saveToLibrary, { workspaceId: item.workspaceId, paper: "https://openalex.org/W1", title: "One", collectionId: item.id });
   await alice.mutation(api.library.collections.setCollectionRating, { workspaceId: item.workspaceId, collectionId: item.id, libraryItemId: saved, rating: 4, expect: null });
-  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  await alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "viewer" });
   const view = { sortBy: "savedAt" as const, sortOrder: "desc" as const, collectionId: item.id };
   const titles = async (as: typeof carol, workspaceId?: Id<"workspaces">) => (await as.query(api.library.queries.browseLibrary, { ...view, ...(workspaceId ? { workspaceId } : {}), paginationOpts: { cursor: null, numItems: 10 } })).page.map((paper) => paper.title);
 
@@ -262,8 +262,8 @@ it("opens a shared screening to its guest to read and export from their own work
   });
   const item = { workspaceId, kind: "screening" as const, id: jobId };
   // A screening is shared to view only.
-  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "editor" })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
-  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "editor" })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
+  await alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "viewer" });
 
   // Its members read what it cost and how many guests it has. Carol, from her own workspace, reads whose it is and nothing of what it cost.
   expect(await alice.query(api.screening.queries.getScreeningJob, { workspaceId, jobId })).toMatchObject({ name: "Pilot", guests: 1, credits: expect.any(Object) });
@@ -309,8 +309,8 @@ it("opens a shared extraction to its guest to read from their own workspace, wit
   });
   const item = { workspaceId, kind: "extraction" as const, id: jobId };
   // An extraction is shared to view only.
-  await expect(alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "editor" })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
-  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  await expect(alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "editor" })).rejects.toMatchObject({ data: { code: "VALIDATION_ERROR" } });
+  await alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "viewer" });
 
   // Its page's first read tells a member how many guests it has, and Carol whose it is. Hers leaves out what the job holds and may spend.
   expect(await alice.query(api.extraction.queries.getJobShell, { jobId })).toMatchObject({ status: "ok", guests: 1, job: { spendCap: 500, spendHold: "hold_1", error: { code: "insufficient_credits" } } });
@@ -363,7 +363,7 @@ it("opens a shared search to its guest from their own workspace by its document'
   const requery = (query: string) => ({ kind: "query" as const, query, field: "title_and_abstract" as const });
 
   // To view: what's shared with her lists it by its document's ID, which is what she reads it by.
-  await alice.mutation(api.sharing.guests.add, { ...item, userId: users.carol, role: "viewer" });
+  await alice.mutation(api.sharing.guests.add, { ...item, personId: users.carol, role: "viewer" });
   const [listed] = (await carol.query(api.sharing.shared.list, { workspaceId: carolOwn, sort: "recent", paginationOpts: { cursor: null, numItems: 10 } })).page;
   expect(listed).toMatchObject({ kind: "search", name: "school feeding ml...", role: "viewer" });
   const shared = listed!.id;
@@ -415,7 +415,7 @@ it("closes what a deleted account shared from its own workspace, though its data
   const { t, alice, carol, dave, users } = await lab();
   const workspaceId = await t.run((ctx) => personalWorkspaceOf(ctx, users.alice));
   const { id } = await alice.mutation(api.library.collections.createCollection, { workspaceId, name: "Mine" });
-  await alice.mutation(api.sharing.guests.add, { workspaceId, kind: "collection", id, userId: users.carol, role: "viewer" });
+  await alice.mutation(api.sharing.guests.add, { workspaceId, kind: "collection", id, personId: users.carol, role: "viewer" });
   await alice.action(api.sharing.invitations.invite, { workspaceId, kind: "collection", id, email: "dave@example.org", role: "viewer" });
   const shared = { kind: undefined, text: "", sort: "recent" as const, paginationOpts: { cursor: null, numItems: 10 } };
   expect((await carol.query(api.sharing.shared.list, shared)).page.map((row) => row.name)).toEqual(["Mine"]);

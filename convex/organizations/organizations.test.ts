@@ -172,18 +172,24 @@ describe("an organization", () => {
     expect((await aliceAs.query(api.organizations.queries.invitations, { ...inLab, ...page })).page).toEqual([]);
 
     // A member changes no one's role. The only admin can't leave, or stop being one, until someone else is an admin.
-    await expect(bobAs.action(api.organizations.manage.setRole, { ...inLab, userId: bob, role: "admin" })).rejects.toThrow(/Only an admin/);
+    await expect(bobAs.action(api.organizations.manage.setRole, { ...inLab, memberId: bob, role: "admin" })).rejects.toThrow(/Only an admin/);
     const alice = (await aliceAs.query(api.organizations.queries.members, { ...inLab, ...page })).page.find((member) => member.you)!.userId;
     await expect(aliceAs.action(api.organizations.manage.leave, inLab)).rejects.toThrow(/only admin/);
-    await expect(aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: alice, role: "member" })).rejects.toThrow(/only admin/);
-    const { undo } = await aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: bob, role: "admin" });
-    expect(undo).toEqual({ path: "organizations/manage:setRole", args: { userId: bob, role: "member", expect: "admin" } });
+    await expect(aliceAs.action(api.organizations.manage.setRole, { ...inLab, memberId: alice, role: "member" })).rejects.toThrow(/only admin/);
+    const { undo } = await aliceAs.action(api.organizations.manage.setRole, { ...inLab, memberId: bob, role: "admin" });
+    expect(undo).toEqual({ path: "organizations/manage:setRole", args: { memberId: bob, role: "member", expect: "admin" } });
     // Its undo, once his role was changed again since, leaves it as it is now.
-    await aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: bob, role: "member" });
+    await aliceAs.action(api.organizations.manage.setRole, { ...inLab, memberId: bob, role: "member" });
     await expect(aliceAs.action(api.organizations.manage.setRole, { ...inLab, ...undo!.args })).rejects.toThrow(/changed since/);
-    await aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: bob, role: "admin" });
+    await aliceAs.action(api.organizations.manage.setRole, { ...inLab, memberId: bob, role: "admin" });
+    // The assistant, acting for her, changes the member's role, not hers.
+    const role = async () => (await aliceAs.query(api.organizations.queries.members, { ...inLab, ...page })).page.find((member) => member.userId === bob)!.role;
+    await t.action(internal.organizations.manage.setRoleForAssistant, { ...inLab, userId: alice, memberId: bob, role: "member", approved: true });
+    expect(await role()).toBe("member");
+    await t.action(internal.organizations.manage.setRoleForAssistant, { ...inLab, userId: alice, memberId: bob, role: "admin", approved: true });
+    expect(await role()).toBe("admin");
     // Making herself a member has no undo: she couldn't make anyone an admin after it.
-    expect((await aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: alice, role: "member" })).undo).toBeUndefined();
+    expect((await aliceAs.action(api.organizations.manage.setRole, { ...inLab, memberId: alice, role: "member" })).undo).toBeUndefined();
     await aliceAs.action(api.organizations.manage.leave, inLab);
     expect((await aliceAs.query(api.organizations.queries.workspaces, page)).page.map(({ name }) => name)).toEqual(["Alice"]);
     // What she left is no longer hers to act in.
@@ -323,14 +329,14 @@ describe("an organization", () => {
     const alice = (await members()).page.find((member) => member.you)!.userId;
 
     const changes = await Promise.allSettled([
-      aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: bob, role: "member" }),
-      bobAs.action(api.organizations.manage.setRole, { ...inLab, userId: alice, role: "member" }),
+      aliceAs.action(api.organizations.manage.setRole, { ...inLab, memberId: bob, role: "member" }),
+      bobAs.action(api.organizations.manage.setRole, { ...inLab, memberId: alice, role: "member" }),
     ]);
     expect(changes.map((change) => change.status).sort()).toEqual(["fulfilled", "rejected"]);
     expect((await members()).page.filter((member) => member.role === "admin")).toHaveLength(1);
     // The hold is gone with the change: the admin left makes the other one again.
     const admin = changes[0].status === "fulfilled" ? aliceAs : bobAs;
-    await admin.action(api.organizations.manage.setRole, { ...inLab, userId: changes[0].status === "fulfilled" ? bob : alice, role: "admin" });
+    await admin.action(api.organizations.manage.setRole, { ...inLab, memberId: changes[0].status === "fulfilled" ? bob : alice, role: "admin" });
     expect((await members()).page.filter((member) => member.role === "admin")).toHaveLength(2);
   });
 
@@ -426,7 +432,7 @@ describe("an organization", () => {
     await join("msg_first");
     // Some time passes before she removes him, as it does.
     await new Promise((resolve) => setTimeout(resolve, 20));
-    await aliceAs.action(api.organizations.manage.removeMember, { ...inLab, userId: bob });
+    await aliceAs.action(api.organizations.manage.removeMember, { ...inLab, memberId: bob });
     expect((await bobAs.query(api.organizations.queries.workspaces, page)).page.map(({ name }) => name)).toEqual(["Bob"]);
     // Invited back and joined again: the earlier removal is older than the new membership.
     await aliceAs.action(api.organizations.manage.invite, { ...inLab, emails: ["bob@example.org"], role: "member" });

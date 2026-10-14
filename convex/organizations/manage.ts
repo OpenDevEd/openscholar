@@ -288,24 +288,24 @@ export const setRoleAction = defineChangingAction({
     "Makes a member of the organization the person is in an admin or a member; an admin of it does this. Admins invite and remove members, change roles, and change the organization's settings. " +
     "An organization always keeps one admin. Returns `undo`, which puts the role back, unless the person made themselves a member, after which they can't change roles.",
   // `expect`, which an undo passes, is the role they should have now: one changed since refuses the undo.
-  args: { userId: v.id("users"), role: ROLE, expect: v.optional(ROLE) },
-  returns: v.object({ undo: reversedBy(SET_ROLE, { userId: v.id("users"), role: ROLE, expect: ROLE }) }),
+  args: { memberId: v.id("users"), role: ROLE, expect: v.optional(ROLE) },
+  returns: v.object({ undo: reversedBy(SET_ROLE, { memberId: v.id("users"), role: ROLE, expect: ROLE }) }),
   spendsCredits: false,
   // It changes what another person can do.
   outsideEffect: true,
   undoable: true,
-  run: async (ctx, actor, { userId, role, expect }) => {
+  run: async (ctx, actor, { memberId, role, expect }) => {
     const key = clerkSecretKey();
     const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: true });
-    const was = await memberRole(ctx, actor.workspaceId, userId);
+    const was = await memberRole(ctx, actor.workspaceId, memberId);
     if (expect !== undefined && was !== expect) throw createError("CONFLICT", `Their role changed since: they're ${was === "admin" ? "an admin" : "a member"} now, and stay so.`);
     if (was === role) return {};
-    const target = await changeMember(ctx, actor.workspaceId, clerkUserId, userId, clerkRole(role), async (target) => {
+    const target = await changeMember(ctx, actor.workspaceId, clerkUserId, memberId, clerkRole(role), async (target) => {
       const membership = await clerk(key, "PATCH", `/organizations/${organization.clerkOrganizationId}/memberships/${target}`, { role: clerkRole(role) });
       await keep(ctx, key, "organizationMembership.updated", membership);
     });
     // An admin who made themselves a member can't make anyone an admin again, themselves included.
-    return target === clerkUserId ? {} : { undo: { path: SET_ROLE, args: { userId, role: was, expect: role } } };
+    return target === clerkUserId ? {} : { undo: { path: SET_ROLE, args: { memberId, role: was, expect: role } } };
   },
 });
 export const setRole = userAction(setRoleAction);
@@ -346,14 +346,14 @@ export const removeMemberAction = defineChangingAction({
   description:
     "Removes someone from the organization the person is in; an admin of it does this. What they made stays the organization's. An organization always keeps one admin. " +
     "To leave an organization themselves, the person uses organizations/manage:leave.",
-  args: { userId: v.id("users") },
+  args: { memberId: v.id("users") },
   returns: v.null(),
   spendsCredits: false,
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, actor, { userId }) => {
+  run: async (ctx, actor, { memberId }) => {
     if (actor.role !== "admin") throw createError("FORBIDDEN", "Only an admin of the organization removes its members.");
-    await endMembership(ctx, actor, userId);
+    await endMembership(ctx, actor, memberId);
     return null;
   },
 });

@@ -412,7 +412,7 @@ export function ShareSheet({ threadId, title, role, onBack }: { threadId: Thread
                         avatar: <IdentityAvatar name={shownName(person)} imageUrl={person.imageUrl} className="size-9" />,
                         name: shownName(person),
                         detail: person.name ? person.email : undefined,
-                        pick: () => void add({ ...item, userId: person.userId, role: "viewer" }).catch(failed),
+                        pick: () => void add({ ...item, personId: person.userId, role: "viewer" }).catch(failed),
                       })),
                 more: found.status === "CanLoadMore" || found.status === "LoadingMore" ? { loading: found.status === "LoadingMore", load: () => found.loadMore(CANDIDATES_PER_PAGE) } : undefined,
                 invite: (email) => void invite({ ...item, email, role: "viewer" }).catch(failed),

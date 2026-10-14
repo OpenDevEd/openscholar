@@ -156,16 +156,26 @@ export type UserAction =
   | { kind: "query"; path: string; description: string; args: PropertyValidators }
   | ({ kind: "mutation" | "action"; path: string; description: string; args: PropertyValidators; changes?: true } & Labels & AsksFirst<PropertyValidators> & Estimates<PropertyValidators> & Checks<PropertyValidators> & Shows<PropertyValidators>);
 
+/**
+ * An entry's own arguments, refused when one has a name the assistant's twin takes for itself (`changeArgs`): the twin
+ * would overwrite it with the sender's, as it did a member's `userId` on organizations/manage:setRole.
+ */
+function ownArgs<Entry extends { path: string; args: PropertyValidators }>(entry: Entry) {
+  const taken = Object.keys(entry.args).filter((name) => name in changeArgs);
+  if (taken.length) throw new Error(`${entry.path} takes ${taken.join(", ")}, which the assistant's twin of every action takes for itself: name it something else.`);
+  return entry;
+}
+
 /** Entries are written with these so their argument and result types are inferred. */
 export const defineUserQuery = <Args extends PropertyValidators, Returns extends GenericValidator>(
   entry: Omit<UserQuery<Args, Returns>, "kind">,
-): UserQuery<Args, Returns> => ({ kind: "query", ...entry });
+): UserQuery<Args, Returns> => ({ kind: "query", ...ownArgs(entry) });
 export const defineUserMutation = <Args extends PropertyValidators, Returns extends GenericValidator>(
   entry: Omit<UserMutation<Args, Returns>, "kind">,
-): UserMutation<Args, Returns> => ({ kind: "mutation", ...entry });
+): UserMutation<Args, Returns> => ({ kind: "mutation", ...ownArgs(entry) });
 export const defineUserAction = <Args extends PropertyValidators, Returns extends GenericValidator>(
   entry: Omit<UserActionEntry<Args, Returns>, "kind">,
-): UserActionEntry<Args, Returns> => ({ kind: "action", ...entry });
+): UserActionEntry<Args, Returns> => ({ kind: "action", ...ownArgs(entry) });
 
 /**
  * An action that changes something outside, such as Clerk or Autumn, and keeps the change here:

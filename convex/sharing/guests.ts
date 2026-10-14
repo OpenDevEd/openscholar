@@ -34,16 +34,16 @@ export const addAction = defineUserMutation({
     `Gives someone outside the workspace one of its items, ${ROLES}, or changes what they may do. Any member of the item's workspace can, for a person in one of their own organizations; ` +
     "anyone else is invited by email (sharing/invitations:invite). The item shows under that person's Shared with me, and what they run on it uses their own credits. " +
     "The workspace's plan allows so many guests on each item, invitations still waiting included.",
-  args: { kind: sharedKindValidator, id: v.string(), userId: v.id("users"), role: guestRoleValidator },
+  args: { kind: sharedKindValidator, id: v.string(), personId: v.id("users"), role: guestRoleValidator },
   returns: v.null(),
   spendsCredits: false,
   // Someone else gains access to the item.
   outsideEffect: true,
   undoable: false,
-  run: async (ctx, actor, { kind, id, userId, role }) => {
+  run: async (ctx, actor, { kind, id, personId, role }) => {
     requireRole(kind, role);
     const shared = await sharedIn(ctx, actor, kind, id);
-    const [sharer, person] = await Promise.all([ctx.db.get("users", actor.userId), ctx.db.get("users", userId)]);
+    const [sharer, person] = await Promise.all([ctx.db.get("users", actor.userId), ctx.db.get("users", personId)]);
     if (!sharer || person?.state !== "active") throw createError("NOT_FOUND", "Person not found");
     if (await holds(ctx, shared, person)) throw createError("CONFLICT", "They're in this workspace, so they have it already.");
     // Never a stranger by ID: someone in one of the sharer's organizations.
