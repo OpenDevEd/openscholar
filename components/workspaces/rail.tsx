@@ -16,6 +16,7 @@ import {
   BillingIcon,
   BookmarksIcon,
   EvidenceLibrariesIcon,
+  ExploreIcon,
   ExtractionIcon,
   HistoryIcon,
   LibraryIcon,
@@ -27,7 +28,6 @@ import {
   SettingsIcon,
   Share2,
   Sun,
-  TopicsIcon,
   type AppIcon,
 } from "@/components/icons";
 import { SHEET_SPRING as CARD_SPRING } from "@/lib/motion";
@@ -263,7 +263,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
               </AnimatePresence>
 
               <div className="my-1.5 h-px w-8 bg-foreground/10" />
-              {item({ href: "/topics", icon: TopicsIcon, label: t("explore"), active: is("/topics") || is("/authors") })}
+              {item({ href: "/topics", icon: ExploreIcon, label: t("explore"), active: is("/topics") || is("/authors") })}
             </nav>
           </ScrollArea>
 
