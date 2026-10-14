@@ -1603,6 +1603,8 @@
     "question": "问题",
     "pointsFor": "{answer}的分数，问题 {number}",
     "removeQuestion": "删除问题",
+    "required": "必填",
+    "notIncluded": "不纳入",
     "addQuestionPlaceholder": "添加一个可用是或否回答的问题",
     "add": "添加",
     "keep": "保留",

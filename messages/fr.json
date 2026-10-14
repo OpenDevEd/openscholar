@@ -1603,6 +1603,8 @@
     "question": "Question",
     "pointsFor": "Points pour {answer}, question {number}",
     "removeQuestion": "Supprimer la question",
+    "required": "Obligatoire",
+    "notIncluded": "Non incluse",
     "addQuestionPlaceholder": "Ajouter une question à réponse oui ou non",
     "add": "Ajouter",
     "keep": "Garder",

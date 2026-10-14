@@ -304,6 +304,28 @@ describe("outcomeOf", () => {
   });
 });
 
+describe("a required question", () => {
+  const config = {
+    rules: [{ questionKey: "q1", yesPoints: 1, noPoints: 0, nullPoints: 0, required: true }, { questionKey: "q2", yesPoints: 2, noPoints: 0, nullPoints: 0 }],
+    starThresholds: [{ minScore: 1, stars: 3 }],
+    minimumScore: 2,
+  };
+  it("excludes a paper answered no, with no stars, whatever its points", () => {
+    expect(outcomeOf({ q1: false, q2: true }, config)).toBe("excluded");
+    expect(scorePaper({ q1: false, q2: true }, config)).toEqual({ score: 2, stars: 0, qualified: false });
+    expect(outcomeOf({ q1: false, q2: true }, { ...config, minimumScore: undefined })).toBe("excluded");
+  });
+  it("leaves a paper answered unclear unclear when a yes would include it, and excluded when not even that would", () => {
+    expect(outcomeOf({ q1: null, q2: true }, config)).toBe("unclear");
+    expect(scorePaper({ q1: null, q2: true }, config)).toEqual({ score: 2, stars: 0, qualified: false });
+    expect(outcomeOf({ q1: null, q2: false }, config)).toBe("excluded");
+  });
+  it("includes a paper answered yes by its points", () => {
+    expect(outcomeOf({ q1: true, q2: true }, config)).toBe("included");
+    expect(outcomeOf({ q1: true, q2: false }, config)).toBe("excluded");
+  });
+});
+
 describe("tallied", () => {
   it("adds and takes away a paper's answers, one row a question in the job's order", () => {
     const one = tallied(undefined, ["q1", "q2"], { q1: true, q2: null }, 1);

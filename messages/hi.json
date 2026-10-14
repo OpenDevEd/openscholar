@@ -1603,6 +1603,8 @@
     "question": "प्रश्न",
     "pointsFor": "{answer} के अंक, प्रश्न {number}",
     "removeQuestion": "प्रश्न हटाएं",
+    "required": "आवश्यक",
+    "notIncluded": "शामिल नहीं",
     "addQuestionPlaceholder": "हां या नहीं उत्तर वाला प्रश्न जोड़ें",
     "add": "जोड़ें",
     "keep": "रखें",

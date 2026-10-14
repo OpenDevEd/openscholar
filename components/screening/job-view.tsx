@@ -29,7 +29,7 @@ import { getErrorMessage, useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { ListFocus, openListFocus } from "@/components/focus-mode/list-focus";
 import { PaperTitle } from "@/components/focus-mode/paper-title";
-import { ANSWER, AnimatedNumber, AnswerMark, Chip, ClippedChip, Meter, OUTCOME, OutcomeBar, ProgressRing, SOURCE_ICON, Stars } from "./parts";
+import { ANSWER, AnimatedNumber, AnswerMark, Chip, ClippedChip, Meter, OUTCOME, OutcomeBar, ProgressRing, RequiredMark, SOURCE_ICON, Stars } from "./parts";
 import { inWorkspace, useWorkspace, useWorkspaceMutation } from "@/lib/workspaces/url";
 
 /** The chip on a paper about to move to another outcome, in that outcome's colour. */
@@ -271,7 +271,7 @@ export function JobView({
             return (
               <div key={q.key} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
                 <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-medium tabular-nums">{i + 1}</span>
-                <p className="min-w-0 flex-1 text-sm">{q.text}</p>
+                <p className="min-w-0 flex-1 text-sm">{q.text}{q.required ? <RequiredMark /> : null}</p>
                 <div className="flex w-full items-center gap-4 @2xl:w-auto">
                   <div className="flex h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-foreground/10 @2xl:w-40 @2xl:flex-none">
                     {(["yes", "unclear", "no"] as const).map((a) => (
@@ -516,7 +516,7 @@ function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Pape
           return (
             <li key={q.key} className="grid grid-cols-[1.25rem_minmax(0,1fr)_2rem] items-center gap-x-3 gap-y-1 py-1.5 md:grid-cols-[1.25rem_minmax(0,1fr)_auto_5.5rem_2rem]">
               <span className="text-xs font-medium tabular-nums text-muted-foreground">{i + 1}</span>
-              <p className="text-sm">{q.text}</p>
+              <p className="text-sm">{q.text}{q.required ? <RequiredMark /> : null}</p>
               {/* Under the question on a narrow screen; in the row's own columns on a wide one. */}
               <div className="col-span-2 col-start-2 row-start-2 flex items-center justify-between gap-2 md:contents">
                 <div role="radiogroup" aria-label={t("answerTo", { number: i + 1 })} className="flex gap-1">

@@ -84,6 +84,12 @@ const jobSetup = {
 };
 type JobSetup = ObjectType<typeof jobSetup>;
 
+/** `rules` with a required question's No and Unclear worth nothing, whoever asked for the job: on every rule of it, one of which being required makes it required. */
+function withRequiredZeroed(rules: JobSetup["scoringConfig"]["rules"]) {
+  const required = new Set(rules.filter((rule) => rule.required).map((rule) => rule.questionKey));
+  return rules.map((rule) => (required.has(rule.questionKey) ? { ...rule, noPoints: 0, nullPoints: 0 } : rule));
+}
+
 /**
  * Makes a job's row for `user`, with its progress row: finds the screening its answers go to,
  * names it after its set, and stamps it with the model Screen all runs on.
@@ -130,6 +136,7 @@ async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"
     ...state,
     screeningId,
     ...args,
+    scoringConfig: { ...args.scoringConfig, rules: withRequiredZeroed(args.scoringConfig.rules) },
     ...(name?.trim() ? { name: name.trim() } : {}),
     ...(set ? { set } : {}),
     ...(label ? { label } : {}),

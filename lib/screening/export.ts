@@ -30,6 +30,7 @@ export interface ScreeningExportJob {
       yesPoints: number;
       noPoints: number;
       nullPoints: number;
+      required?: boolean;
     }>;
     starThresholds: Array<{
       minScore: number;
@@ -306,6 +307,7 @@ export async function generateScreeningXLSXWorkbook(
     'Yes Points',
     'No Points',
     'Null Points',
+    'Required',
   ]);
   job.scoringConfig.rules.forEach((rule) => {
     summarySheet.addRow([
@@ -313,6 +315,7 @@ export async function generateScreeningXLSXWorkbook(
       rule.yesPoints,
       rule.noPoints,
       rule.nullPoints,
+      rule.required ? 'Yes' : 'No',
     ]);
   });
   summarySheet.addRow([]); // spacer

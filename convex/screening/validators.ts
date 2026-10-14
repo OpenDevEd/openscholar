@@ -25,6 +25,8 @@ export const screeningScoringRuleValidator = v.object({
   yesPoints: v.number(),
   noPoints: v.number(),
   nullPoints: v.number(),
+  // A paper not answered yes here is never included, whatever its points.
+  required: v.optional(v.boolean()),
 });
 
 /**

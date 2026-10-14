@@ -3,7 +3,7 @@
 import { useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
-import { AiIcon, Ban, Camera, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Lock, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
+import { AiIcon, Asterisk, Ban, Camera, CircleCheck, CircleHelp, Folder, FolderMinus, FolderPlus, Gauge, Hourglass, ListChecks, Lock, Minus, Plus, Star, Trash2, TriangleAlert, type AppIcon, X } from "@/components/icons";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { useResearchStatus } from "@/lib/research/provider";
 import { useWatchedSearch } from "@/lib/research/reads";
 import { useSearchList } from "@/lib/research/search-list";
-import { ANSWERS, defaultStars, maxScore, questionsOf, scoringOf, type Job, type JobRow, type PaperSet, type Question } from "@/lib/screening/setup";
+import { ANSWERS, defaultStars, maxScore, questionsOf, scoringOf, type Answer, type Job, type JobRow, type PaperSet, type Question } from "@/lib/screening/setup";
 import { useSearchHistoryStore } from "@/lib/store";
 import { getErrorMessage, useAppToast } from "@/lib/toast";
 import type { SearchResult } from "@/lib/types";
@@ -322,6 +322,7 @@ export function SetupView({
     }
   };
   const points = (key: string, answer: "yes" | "no" | "unclear", value: number) => setQuestions((qs) => qs.map((q) => (q.key === key ? { ...q, [answer]: value } : q)));
+  const toggleRequired = (key: string) => setQuestions((qs) => qs.map((q) => (q.key === key ? { ...q, required: !q.required } : q)));
   const start = async () => {
     if (!source) return;
     setBusy(true);
@@ -485,7 +486,7 @@ export function SetupView({
         >
           <div className={LIST}>
             {/* On a narrow screen a question takes a line of its own, with its points under it. */}
-            <div className="grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_2rem] items-center gap-3 px-4 py-2 text-xs text-muted-foreground sm:grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem]">
+            <div className="grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_2rem_2rem] items-center gap-3 px-4 py-2 text-xs text-muted-foreground sm:grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem_2rem]">
               <span />
               <span className="hidden sm:block">{t("question")}</span>
               {ANSWERS.map((a) => {
@@ -493,9 +494,14 @@ export function SetupView({
                 return <span key={a} className="flex items-center justify-center gap-1"><Icon className={cn("size-3", TINT[a].icon)} />{t(`answer.${a}`)}</span>;
               })}
               <span />
+              <span />
             </div>
             <AnimatePresence initial={false}>
-              {questions.map((q, i) => (
+              {questions.map((q, i) => {
+                const box = (a: Answer) => (
+                  <Input type="number" value={q[a]} onChange={(e) => points(q.key, a, Number(e.target.value))} aria-label={t("pointsFor", { answer: t(`answer.${a}`), number: i + 1 })} className={cn("h-8 border-transparent px-1 text-center text-sm font-medium tabular-nums shadow-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none", TINT[a].input)} />
+                );
+                return (
                 <motion.div
                   key={q.key}
                   layout="position"
@@ -504,18 +510,30 @@ export function SetupView({
                   exit={{ opacity: 0, height: 0, transition: { duration: 0.25, ease: EASE } }}
                   className="overflow-hidden"
                 >
-                  <div className="grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_2rem] items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem]">
+                  <div className="grid grid-cols-[1.5rem_repeat(3,minmax(0,1fr))_2rem_2rem] items-center gap-x-3 gap-y-2 px-4 py-2.5 sm:grid-cols-[1.5rem_1fr_repeat(3,4rem)_2rem_2rem]">
                     <span className="flex size-6 items-center justify-center rounded-md bg-muted text-xs font-medium tabular-nums">{i + 1}</span>
-                    <p className="col-span-4 min-w-0 text-sm sm:col-span-1">{q.text}</p>
-                    {ANSWERS.map((a, column) => (
-                      <Input key={a} type="number" value={q[a]} onChange={(e) => points(q.key, a, Number(e.target.value))} aria-label={t("pointsFor", { answer: t(`answer.${a}`), number: i + 1 })} className={cn("h-8 border-transparent px-1 text-center text-sm font-medium tabular-nums shadow-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none", column === 0 && "col-start-2 sm:col-start-auto", TINT[a].input)} />
-                    ))}
+                    <p className="col-span-5 min-w-0 text-sm sm:col-span-1">{q.text}</p>
+                    <div className="col-start-2 sm:col-start-auto">{box("yes")}</div>
+                    {/* A required question's No or Unclear includes no paper, whatever its points: the two boxes give way to that. */}
+                    <motion.div key={q.required ? "required" : "points"} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.2, ease: EASE }} className="col-span-2 grid grid-cols-2 gap-3">
+                      {q.required ? (
+                        <span className="col-span-2 flex h-8 items-center justify-center gap-1.5 rounded-md border border-dashed border-foreground/15 text-xs text-muted-foreground">
+                          <Ban className="size-3.5" />{t("notIncluded")}
+                        </span>
+                      ) : (
+                        <>{box("no")}{box("unclear")}</>
+                      )}
+                    </motion.div>
+                    <TooltipHint label={t("required")}>
+                      <Button variant="ghost" size="icon" aria-pressed={Boolean(q.required)} aria-label={t("required")} onClick={() => toggleRequired(q.key)} className={cn("size-8", q.required ? "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary" : "text-muted-foreground")}><Asterisk strokeWidth={2.5} /></Button>
+                    </TooltipHint>
                     <TooltipHint label={t("removeQuestion")}>
                       <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" aria-label={t("removeQuestion")} onClick={() => setQuestions((qs) => qs.filter((x) => x.key !== q.key))}><Trash2 /></Button>
                     </TooltipHint>
                   </div>
                 </motion.div>
-              ))}
+                );
+              })}
             </AnimatePresence>
             <div className="flex items-center gap-2 px-4 py-2.5">
               <Input ref={questionInput} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addQuestion()} placeholder={t("addQuestionPlaceholder")} className="h-9 flex-1" />
