@@ -453,7 +453,7 @@ export function SetupView({
             // screening per search) and it can write more from its research question; an earlier
             // screening has questions to reuse.
             <span className="flex min-w-0 flex-wrap items-center gap-1">
-              {source?.kind === "search" ? <ClippedChip icon={ListChecks}>{t("sharedWithResults")}</ClippedChip> : null}
+              {source?.kind === "search" ? <Chip icon={ListChecks} className="h-auto min-h-6 shrink whitespace-normal py-1">{t("sharedWithResults")}</Chip> : null}
               {source?.kind === "screening" ? (
                 // The screening's name can be a whole query: it's cut to the room there is, and shown in full on hover.
                 <TooltipHint label={fresh.length || !earlier ? t("importQuestions", { count: fresh.length, name: source.label }) : t("importedFrom", { name: source.label })} onlyWhenClipped>
@@ -528,7 +528,7 @@ export function SetupView({
               {unscored ? (
                 <Button variant="outline" size="sm" className="col-span-2 h-8 shrink-0" onClick={() => questionInput.current?.focus()}><Plus />{t("addAQuestion")}</Button>
               ) : (
-                <span className="col-start-2 flex shrink-0 items-center gap-1">
+                <span className="col-span-2 flex flex-wrap items-center gap-1">
                   <Button variant="ghost" size="icon" className="size-8" aria-label={t("onePointFewer")} disabled={threshold <= 0} onClick={() => setMinScore(threshold - 1)}><Minus /></Button>
                   <Input
                     type="number"
