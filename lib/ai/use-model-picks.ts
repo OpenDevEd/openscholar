@@ -34,6 +34,8 @@ export function useModelPicks() {
   const toast = useAppToast();
   const { phase } = useAuthReadiness();
   const signedIn = phase === "authenticated";
+  // Known to be signed out, as the executor reads it: not signing in, and not a failed sign-in sync.
+  const signedOut = phase === "anonymous";
   const goToSignIn = useSignInRedirect();
   const subscriptionState = useSharedSubscriptionState();
   const creditsEnabled = useFeatureFlagForPlan("credits.enabled", subscriptionState.planFeatures);
@@ -51,7 +53,7 @@ export function useModelPicks() {
   const setAiPreset = useWorkspaceMutation(api.organizations.manage.setAiPreset);
   const { picks: browserPicks, setPicks } = useAIConfigStore();
   // Presets need credits, and credits an account; without them the user's own keys are all there is.
-  const choice: ModelChoice = organization ? (workspace?.aiPreset ?? DEFAULT_PRESET) : signedIn ? effectiveChoice(creditsEnabled, settings?.choice) : "custom";
+  const choice: ModelChoice = organization ? (workspace?.aiPreset ?? DEFAULT_PRESET) : signedOut ? "custom" : effectiveChoice(creditsEnabled, settings?.choice);
   // An organization's admins pick its preset; nobody picks their own models there.
   const chooseHere = async ({ choice: next }: { choice: ModelChoice }) => {
     if (!organization) return await choose({ choice: next });
@@ -60,7 +62,7 @@ export function useModelPicks() {
 
   // A task with no live Custom pick runs on the preset it falls back to, as on the server.
   const customModel = (task: AiTask) => {
-    if (!signedIn) return browserPicks[task] ?? presetModel?.(DEFAULT_PRESET, task) ?? null;
+    if (signedOut) return browserPicks[task] ?? presetModel?.(DEFAULT_PRESET, task) ?? null;
     const pick = settings?.custom.find((c) => c.task === task);
     return pick?.model ? toMapModel(pick.model, pick.effort) : (presetModel?.(fallbackPreset(settings?.choice), task) ?? null);
   };
@@ -79,9 +81,9 @@ export function useModelPicks() {
     if (!organization && requireSignIn()) saveCustom({ picks }).catch(fail("model change"));
   };
   const pickAll = (tasks: AiTask[], model: MapModel, effort?: Effort) =>
-    signedIn
-      ? setCustom(tasks.map((task) => ({ task, modelId: model._id!, ...(effort && { effort }) })))
-      : setPicks(Object.fromEntries(tasks.map((task) => [task, { ...model, effort }])));
+    signedOut
+      ? setPicks(Object.fromEntries(tasks.map((task) => [task, { ...model, effort }])))
+      : setCustom(tasks.map((task) => ({ task, modelId: model._id!, ...(effort && { effort }) })));
   // What each preset runs for these tasks; picking one copies those picks into Custom.
   const presetPicks = (tasks: AiTask[]): PresetPick[] =>
     PRESET_KEYS.map((id) => {
@@ -92,5 +94,5 @@ export function useModelPicks() {
       return { id, models: picked.map((p) => p.model), onSelect: () => setCustom(picked.map(({ model: _, ...pick }) => pick)) };
     });
 
-  return { signedIn, goToSignIn, creditsEnabled, presetModel, settings, choose: chooseHere, choice, modelsOf, modelOf: modelsOf(choice), fail, requireSignIn, pickAll, presetPicks, organization };
+  return { signedIn, signedOut, goToSignIn, creditsEnabled, presetModel, settings, choose: chooseHere, choice, modelsOf, modelOf: modelsOf(choice), fail, requireSignIn, pickAll, presetPicks, organization };
 }

@@ -46,12 +46,12 @@ export default function AISettingsPage() {
   const tc = useTranslations("common");
   const toast = useAppToast();
   const { provider, setProvider, apiKey, setApiKey, providerApiKeys, apiKeyMode, setApiKeyMode } = useAIConfigStore();
-  const { signedIn, goToSignIn, creditsEnabled, presetModel, settings, choose, choice, modelsOf, modelOf, fail, requireSignIn, pickAll, presetPicks, organization } = useModelPicks();
+  const { signedIn, signedOut, goToSignIn, creditsEnabled, presetModel, settings, choose, choice, modelsOf, modelOf, fail, requireSignIn, pickAll, presetPicks, organization } = useModelPicks();
   const workspace = useCurrentWorkspace();
   const [hover, setHover] = useState<Hover>(null);
   const [payOpen, setPayOpen] = useState(false);
   // Signed out, saving a key moves tasks it can't run onto models it can, picked from the catalog.
-  const catalog = useQuery(api.models.queries.listCatalogOptions, signedIn ? "skip" : {});
+  const catalog = useQuery(api.models.queries.listCatalogOptions, signedOut ? {} : "skip");
 
   const scope = useWorkspaceScope();
   const account = useOptionalAuthQuery(api.billing.accounts.mine, creditsEnabled && scope !== "skip" ? scope : "skip");
@@ -106,7 +106,7 @@ export default function AISettingsPage() {
   // OpenRouter's key runs every model; another provider's runs what its own list for the key has.
   const saveKey = (to: KeyProvider, key: string, served: string[]) => {
     setApiKey(to, key);
-    if (signedIn || !key || !catalog || to === "openrouter") return;
+    if (!signedOut || !key || !catalog || to === "openrouter") return;
     const saved = { ...keys, [to]: key };
     for (const task of BROWSER_TASKS) {
       const current = modelOf(task);
@@ -146,7 +146,7 @@ export default function AISettingsPage() {
           </div>
         ) : null}
         {/* Presets run on credits, which need an account: signed out it's Custom alone. */}
-        {signedIn ? (
+        {!signedOut ? (
           <div className={cn(organization && !organization.admin && "pointer-events-none opacity-60")} aria-disabled={organization ? !organization.admin : undefined}>
             <PresetSwitch
               withCustom={!organization}
@@ -170,11 +170,11 @@ export default function AISettingsPage() {
           browserLabel={t(`browserLabel.${browserOn}`)}
           browserActive={browserOn === "local"}
           cloudAside={
-            signedIn ? undefined : (
+            signedOut ? (
               <button type="button" onClick={goToSignIn} className={LABEL_ACTION}>
                 {t("signInToUse")} <ArrowRight className="size-3" />
               </button>
-            )
+            ) : undefined
           }
           wrapBrowserLabel={
             onKeys
@@ -182,15 +182,15 @@ export default function AISettingsPage() {
                   <PayMenu
                     open={payOpen}
                     onOpenChange={setPayOpen}
-                    pay={signedIn ? pay : undefined}
+                    pay={signedOut ? undefined : pay}
                     onPay={choosePay}
-                    provider={provider as KeyProvider}
+                    provider={provider}
                     keys={keys}
                     apiKey={apiKey}
                     onProvider={setProvider}
                     onSave={saveKey}
                     // Signed out, a saved key may move tasks onto other models, which needs the catalog first.
-                    canSave={signedIn || catalog !== undefined}
+                    canSave={!signedOut || catalog !== undefined}
                   >
                     {label}
                   </PayMenu>
@@ -212,7 +212,7 @@ export default function AISettingsPage() {
               current={modelOf(task) ?? undefined}
               onChange={(m, effort) => pickAll([task], m, effort)}
               efforts
-              presets={signedIn ? presetPicks([task]) : undefined}
+              presets={signedOut ? undefined : presetPicks([task])}
               tasks={[task]}
               trigger={
                 <button type="button" className="w-full rounded-l-xl">
@@ -227,7 +227,7 @@ export default function AISettingsPage() {
                 current={n.model}
                 onChange={(m, effort) => pickAll(n.tasks, m, effort)}
                 efforts
-                presets={signedIn ? presetPicks(n.tasks) : undefined}
+                presets={signedOut ? undefined : presetPicks(n.tasks)}
                 tasks={n.tasks}
                 trigger={<NodeCard model={n.model} paidBy={n.paidBy} interactive note={note(n)} />}
               />
@@ -368,6 +368,8 @@ function KeyInput({
             aria-invalid={problem ? true : undefined}
             placeholder={t("apiKey", { provider: name })}
             value={draft}
+            // Held while its check runs, so what's saved is what was checked.
+            readOnly={checking}
             onChange={(e) => {
               setDraft(e.target.value);
               setProblem(null);

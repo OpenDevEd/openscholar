@@ -2,7 +2,7 @@ import { isVariant, toNativeModelId } from './native-model-id'
 import { usableFor, type AiTask } from './tasks'
 
 /** Providers a user can save a browser key for. OpenRouter's key runs every model. */
-const KEY_PROVIDERS = ['openai', 'google', 'anthropic', 'openrouter'] as const
+export const KEY_PROVIDERS = ['openai', 'google', 'anthropic', 'openrouter'] as const
 export type KeyProvider = (typeof KEY_PROVIDERS)[number]
 
 const vendorOf = (modelSlug: string) => modelSlug.split('/')[0] as KeyProvider
@@ -65,7 +65,12 @@ export async function checkKey(provider: KeyProvider, key: string): Promise<{ ok
   const response = await fetch(url, { headers }).catch(() => null)
   if (!response) return { ok: false }
   const body = (await response.json().catch(() => null)) as ModelList | null
-  if (!response.ok) return { ok: false, reason: body?.error?.message ?? `HTTP ${response.status}` }
+  if (!response.ok) {
+    const reason = body?.error?.message ?? `HTTP ${response.status}`
+    // An OpenAI restricted key can be allowed to run models without being allowed to list them: it's a working key.
+    if (provider === 'openai' && /missing scopes/i.test(reason)) return { ok: true, served: [] }
+    return { ok: false, reason }
+  }
   // OpenAI and Anthropic list `data[].id`; Google lists `models[].name` as `models/<id>`; OpenRouter's `data` is the key itself.
   const listed = Array.isArray(body?.data) ? body.data.map((m: { id: string }) => m.id) : body?.models?.map((m) => m.name.replace(/^models\//, ''))
   return { ok: true, served: listed ?? [] }

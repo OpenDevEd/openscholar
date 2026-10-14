@@ -199,12 +199,14 @@ export function classifyUnknownError(err: unknown): ClassifiedError {
   }
   const errName = err instanceof Error ? err.name : "";
 
-  // 4. Network failures: TypeError "fetch failed" + node-style transport errors.
+  // 4. Network failures: TypeError "fetch failed" + node-style transport errors, and a browser's
+  // own words for a fetch that never reached the server, which arrive as plain strings from batches
+  // (Chrome "Failed to fetch", Safari "Load failed", Firefox "NetworkError when attempting to fetch resource.").
   if (errName === "TypeError" && /fetch failed/i.test(message)) {
     return finalize("network", message, { context });
   }
   if (
-    /\bnetwork( request)? failed\b|socket hang up|ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN/i.test(
+    /\bnetwork( request)? failed\b|socket hang up|ENOTFOUND|ECONNRESET|ETIMEDOUT|EAI_AGAIN|^failed to fetch$|^load failed$|^networkerror when attempting to fetch resource/i.test(
       message,
     )
   ) {

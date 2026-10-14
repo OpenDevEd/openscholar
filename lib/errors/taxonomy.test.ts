@@ -102,6 +102,12 @@ describe("classifyUnknownError — fingerprint cascade", () => {
     ).toBe("network");
   });
 
+  it("R8: a browser's failed-fetch message, passed on as a string by a batch → network", () => {
+    for (const message of ["Failed to fetch", "Load failed", "NetworkError when attempting to fetch resource."]) {
+      expect(classifyUnknownError(message).code).toBe("network");
+    }
+  });
+
   it("R9: httpStatus 429 → rate_limit", () => {
     const result = classifyUnknownError(
       Object.assign(new Error("Too many requests"), { statusCode: 429 }),
