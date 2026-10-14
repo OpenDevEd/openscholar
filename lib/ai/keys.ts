@@ -24,17 +24,22 @@ type Price = { inputPricePerMillion: number; outputPricePerMillion: number }
 type KeyOption = Price & { modelId: string; intelligenceIndex?: number; createdOnOpenRouter?: number; supportedParameters?: string[] }
 const cost = (model: Price) => model.inputPricePerMillion + model.outputPricePerMillion
 
-/** Whether a provider's own model list has a model: by its id, or a dated release of it (`claude-sonnet-4-5-20250929`). */
-const lists = (served: string[], id: string) => served.some((s) => s === id || (s.startsWith(`${id}-`) && /^\d/.test(s.slice(id.length + 1))))
+/**
+ * Whether a key's provider serves a model, by its own list for the key: the model's id there, or a dated
+ * release of it (`claude-sonnet-4-5-20250929`). Not every model under a provider's name runs there (`openai/gpt-oss-20b`).
+ */
+export const serves = (served: string[], modelSlug: string, provider: KeyProvider) => {
+  const id = keyModelId(modelSlug, provider)
+  return served.some((s) => s === id || (s.startsWith(`${id}-`) && /^\d/.test(s.slice(id.length + 1))))
+}
 
 /**
  * What a task moves to when no saved key can run its model: the smartest model the new key
- * serves for the task at no more than the old one cost, else its cheapest. `served` is the
- * provider's own list for the key, since not every model under its name runs there (`openai/gpt-oss-20b`).
+ * serves for the task at no more than the old one cost, else its cheapest.
  */
 export function modelForKey<T extends KeyOption>(task: AiTask, current: Price, provider: KeyProvider, catalog: T[], served: string[]): T | undefined {
   const options = catalog.filter(
-    (model) => keyFor(model.modelId, { [provider]: provider }) === provider && lists(served, keyModelId(model.modelId, provider)) && usableFor(model, task),
+    (model) => keyFor(model.modelId, { [provider]: provider }) === provider && serves(served, model.modelId, provider) && usableFor(model, task),
   )
   const within = options.filter((model) => cost(model) <= cost(current))
   if (!within.length) return options.toSorted((a, b) => cost(a) - cost(b))[0]

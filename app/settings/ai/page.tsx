@@ -18,7 +18,7 @@ import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { resolveCreditsAvailability } from "@/lib/credits/availability";
 import { useAppToast } from "@/lib/toast";
 import { AI_TASKS, BROWSER_TASKS, type AiTask, type ModelChoice } from "@/lib/ai/tasks";
-import { checkKey, keyFor, modelForKey, type KeyProvider } from "@/lib/ai/keys";
+import { checkKey, keyFor, modelForKey, serves, type KeyProvider } from "@/lib/ai/keys";
 import type { AIKeyMode } from "@/lib/types/ai.types";
 import { Enter, Segmented, type Ico } from "@/components/settings/parts";
 import {
@@ -103,13 +103,15 @@ export default function AISettingsPage() {
     setPayOpen(true);
   };
   // Signed out the picks are only where things started, so a task no saved key can run moves to a model the new key can.
+  // OpenRouter's key runs every model; another provider's runs what its own list for the key has.
   const saveKey = (to: KeyProvider, key: string, served: string[]) => {
     setApiKey(to, key);
-    if (signedIn || !key || !catalog) return;
+    if (signedIn || !key || !catalog || to === "openrouter") return;
     const saved = { ...keys, [to]: key };
     for (const task of BROWSER_TASKS) {
       const current = modelOf(task);
-      if (!current || keyFor(current.id, saved)) continue;
+      const runsOn = current && keyFor(current.id, saved);
+      if (!current || (runsOn && (runsOn !== to || serves(served, current.id, to)))) continue;
       const next = modelForKey(task, current, to, catalog, served);
       if (next) pickAll([task], toMapModel(next), current.effort && next.reasoningEfforts?.includes(current.effort) ? current.effort : undefined);
     }
@@ -187,6 +189,8 @@ export default function AISettingsPage() {
                     apiKey={apiKey}
                     onProvider={setProvider}
                     onSave={saveKey}
+                    // Signed out, a saved key may move tasks onto other models, which needs the catalog first.
+                    canSave={signedIn || catalog !== undefined}
                   >
                     {label}
                   </PayMenu>
@@ -252,7 +256,7 @@ export default function AISettingsPage() {
 
 /** The browser tasks' label as a control: how they're paid for, and the keys they can run on. */
 function PayMenu({
-  open, onOpenChange, pay, onPay, provider, keys, apiKey, onProvider, onSave, children,
+  open, onOpenChange, pay, onPay, provider, keys, apiKey, onProvider, onSave, canSave, children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -264,6 +268,7 @@ function PayMenu({
   apiKey: string;
   onProvider: (p: KeyProvider) => void;
   onSave: (provider: KeyProvider, key: string, served: string[]) => void;
+  canSave: boolean;
   children: ReactNode;
 }) {
   const t = useTranslations("settingsAi");
@@ -316,7 +321,7 @@ function PayMenu({
             </button>
           ))}
         </div>
-        <KeyInput key={provider} provider={provider} saved={apiKey} onSave={onSave} />
+        <KeyInput key={provider} provider={provider} saved={apiKey} onSave={onSave} canSave={canSave} />
       </PopoverContent>
     </Popover>
   );
@@ -326,7 +331,14 @@ function PayMenu({
  * Password field with save; remounts per provider so a draft never leaks to another key.
  * A key is saved once its provider takes it (a free call listing its models); an empty field removes the key.
  */
-function KeyInput({ provider, saved, onSave }: { provider: KeyProvider; saved: string; onSave: (provider: KeyProvider, key: string, served: string[]) => void }) {
+function KeyInput({
+  provider, saved, onSave, canSave,
+}: {
+  provider: KeyProvider;
+  saved: string;
+  onSave: (provider: KeyProvider, key: string, served: string[]) => void;
+  canSave: boolean;
+}) {
   const t = useTranslations("settingsAi");
   const { name, apiKeyUrl } = getProviderConfig(provider);
   const [draft, setDraft] = useState(saved);
@@ -361,7 +373,7 @@ function KeyInput({ provider, saved, onSave }: { provider: KeyProvider; saved: s
               setProblem(null);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && dirty && !checking) void save();
+              if (e.key === "Enter" && dirty && !checking && canSave) void save();
             }}
             className="h-10 pr-10 font-mono text-sm"
           />
@@ -377,7 +389,7 @@ function KeyInput({ provider, saved, onSave }: { provider: KeyProvider; saved: s
             </a>
           </TooltipHint>
         </div>
-        <Button className="h-10 w-24 gap-1.5" variant={dirty || !draft ? "default" : "secondary"} disabled={!dirty || checking} onClick={() => void save()}>
+        <Button className="h-10 w-24 gap-1.5" variant={dirty || !draft ? "default" : "secondary"} disabled={!dirty || checking || !canSave} onClick={() => void save()}>
           {checking ? <Spinner className="size-3.5" /> : dirty || !draft ? <Save className="size-3.5" /> : <Check className="size-3.5" />} {dirty || !draft ? t("save") : t("saved")}
         </Button>
       </div>
