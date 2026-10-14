@@ -14,6 +14,8 @@ import { AnimatePresence, motion } from "motion/react";
 import { useFormatter, useTranslations } from "next-intl";
 import { ArrowUpDown, Building2, CalendarDays, EvidenceLibrariesIcon, Eye, FileText, Folder, Globe, Link2, ListChecks, Lock, Pencil, Search, TopicsIcon, TriangleAlert, UserRound, type AppIcon } from "@/components/icons";
 import { LibraryImage } from "@/components/evidence-libraries/library-image";
+import { ListLoading } from "@/components/evidence-libraries/list-controls";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { faceOf } from "@/components/workspaces/run-by";
 import { EASE } from "@/components/settings/model-map";
 import { LIST } from "@/components/settings/parts";
@@ -73,6 +75,8 @@ export function useLibrarySources(opened: HeldRow[] = [], { settled = true }: { 
   return {
     libraries,
     contents,
+    // Which libraries the person reads: a query, there with the rest of the form. What each lists is read from the libraries themselves, which can take seconds.
+    librariesKnown: listed !== undefined,
     loaded: listed !== undefined && openedOn !== null && (known.data !== undefined || known.error !== undefined),
     library,
     setLibraryId,
@@ -201,6 +205,7 @@ export function LibrarySources({
 }) {
   const t = useTranslations("librarySources");
   const ts = useTranslations("screeningPage");
+  const tc = useTranslations("common");
   const labelOf = useRowLabel();
   const resolveAddress = useWorkspaceAction(api.evidenceLibraries.library.address);
   const { libraries, library, contents, filter, setFilter, words, setWords, page, setPage, held } = state;
@@ -322,9 +327,12 @@ export function LibrarySources({
             </div>
           </div>
 
-          {/* A full page's height while there are pages, so the pager stays put on a short last page. */}
+          {/* A full page's height while there are pages, so the pager stays put on a short last page; its rows slide in over the spinner when the library answers after the tab opened. */}
+          <AutoHeight>
           <div style={pages > 1 ? { minHeight: PAGE * ROW + 1 } : undefined}>
-            {read?.problem && !(filter === "all" && here.length) ? (
+            {!state.loaded ? (
+              <div className={LIST}><ListLoading compact label={tc("loading")} /></div>
+            ) : read?.problem && !(filter === "all" && here.length) ? (
               <p className={cn(LIST, "px-4 py-8 text-center text-sm text-muted-foreground")}>{t(read.problem === "outdated" ? "outdated" : "unread", { library: library.name })}</p>
             ) : shown.length === 0 ? (
               <p className={cn(LIST, "px-4 py-8 text-center text-sm text-muted-foreground")}>{needle ? t("empty.found") : t(`empty.${filter}`, { library: library.name })}</p>
@@ -348,6 +356,7 @@ export function LibrarySources({
               </div>
             )}
           </div>
+          </AutoHeight>
           {pages > 1 ? <PageStepper page={at} pageCount={pages} canPrevious={at > 1} canNext={at < pages} onPrevious={() => setPage(at - 1)} onNext={() => setPage(at + 1)} /> : null}
         </>
       ) : (

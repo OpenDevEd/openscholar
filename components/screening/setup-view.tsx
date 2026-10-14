@@ -41,6 +41,8 @@ import { LIBRARY_COLLECTION_NAME_MAX, LIBRARY_SOURCE_MAX, fittingCollectionName 
 import { isFrozen, rowKey, screeningQuestionsOf, setOfRow, type HeldRow, type LibraryRow } from "@/lib/evidence-libraries/reader-sources";
 import { CreditCheck, useSpendable } from "@/components/workspaces/credit-check";
 import { ModelsInUse } from "@/components/models/models-in-use";
+import { ListLoading } from "@/components/evidence-libraries/list-controls";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { inWorkspace, useWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 
 /** Points boxes take their answer's colour, so a row reads at a glance. */
@@ -275,6 +277,13 @@ export function SetupView({
     if (before) return choose(before, leftAt.current[next]);
     const firstOf = lists[next].rows.find((row) => row.count > 0);
     if (firstOf) choose(firstOf);
+    // Nothing to pick yet, such as a library still listing: the questions stay as they were, questions being written
+    // for the last set don't land here, and the set that arrives starts on its first papers, as choose() does.
+    else {
+      picks.current++;
+      setRange([1, 300]);
+      setEdited(next === "search" ? null : questions);
+    }
     setScope(next === "search" ? "range" : "all");
   };
   /** Turns the list's page with the set in use held on to, so another page's first set doesn't take its place. */
@@ -341,8 +350,9 @@ export function SetupView({
   };
 
   const list = lists[kind];
-  // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows.
-  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.loaded && (!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && (!againDest || savedDest.data !== undefined || savedDest.error !== undefined) && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
+  // Laid out once everything it sizes itself from has arrived, so nothing grows after it shows. What each Evidence Library
+  // lists comes from the libraries themselves and can take seconds: the form waits for it only when it opens on a library.
+  const ready = !searches.isLoading && !collections.isLoading && !screenings.isLoading && !destinations.isLoading && savedCount !== undefined && libraries.librariesKnown && (libraries.loaded || (kind !== "evidenceLibrary" && destIn !== "library")) &&(!againLibrary || ranBefore.data !== undefined || ranBefore.error !== undefined) && (!handoffId || handedOver.data !== undefined || handedOver.error !== undefined) && (!againDest || savedDest.data !== undefined || savedDest.error !== undefined) && spend.loaded && slots !== undefined && (!fromSearchId || from !== undefined || watched === "missing" || watched === "failed");
   /** How many of a library row's records a job takes, as the other sources ask it. */
   const libraryScope = (row: LibraryRow) => {
     if (source?.kind !== "evidenceLibrary" || source.id !== rowKey(row)) return null;
@@ -659,6 +669,7 @@ export function SetupView({
                   setLibraryDestPage(1);
                 }}
               />
+              <AutoHeight>
               <div style={libraryDestPages > 1 ? { minHeight: (DESTINATION_PAGE + 1) * SOURCE_ROW + 1 } : undefined}>
                 <div className={LIST} role="radiogroup" aria-label={t("saveIncludedTo")}>
                   <DestinationRow on={libraryTarget === "new"} onPick={() => setLibraryDest("new")} icon={FolderPlus} facts={<Chip>{t("new")}</Chip>}>
@@ -679,7 +690,7 @@ export function SetupView({
                       </label>
                     </span>
                   </DestinationRow>
-                  {changeable.slice((libraryDestAt - 1) * DESTINATION_PAGE, libraryDestAt * DESTINATION_PAGE).map((row) => {
+                  {!libraries.loaded ? <ListLoading compact label={tc("loading")} /> : changeable.slice((libraryDestAt - 1) * DESTINATION_PAGE, libraryDestAt * DESTINATION_PAGE).map((row) => {
                     const id = "readerCollection" in row.source ? (row.source.readerCollection ?? "") : "";
                     return (
                       <DestinationRow
@@ -694,6 +705,7 @@ export function SetupView({
                   })}
                 </div>
               </div>
+              </AutoHeight>
               {libraryDestPages > 1 ? (
                 <PageStepper page={libraryDestAt} pageCount={libraryDestPages} canPrevious={libraryDestAt > 1} canNext={libraryDestAt < libraryDestPages} onPrevious={() => setLibraryDestPage(libraryDestAt - 1)} onNext={() => setLibraryDestPage(libraryDestAt + 1)} />
               ) : null}
