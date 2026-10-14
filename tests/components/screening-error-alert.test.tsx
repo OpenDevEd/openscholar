@@ -126,4 +126,17 @@ describe("<ScreeningErrorAlert>", () => {
       container.querySelector('[data-action="open-billing"]'),
     ).toBeNull();
   });
+
+  it("tells a failure on the person's own key in the provider's words, never sending them to OpenScholar billing", () => {
+    // Classed as a credits failure, as a provider's own "out of credit" can be: the key's account isn't ours to top up.
+    const { container } = render(
+      <ScreeningErrorAlert
+        errors={[{ paperId: "p1", error: "INSUFFICIENT_CREDITS: no credit left on this OpenRouter key", onKey: true }]}
+        onRetry={() => {}}
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveAttribute("data-error-code", "insufficient_credits");
+    expect(screen.getByText(/no credit left on this OpenRouter key/)).toBeInTheDocument();
+    expect(container.querySelector('[data-action="open-billing"]')).toBeNull();
+  });
 });

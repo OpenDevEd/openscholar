@@ -1,6 +1,7 @@
 import { APICallError, RetryError } from 'ai'
 import { getProviderModel } from '../server/providers'
 import { getProviderConfig } from '@/lib/ai-models'
+import { DecisionsError } from '../decisions'
 import {
   executeAIOperation,
   AIApiKeyRequiredError,
@@ -46,9 +47,16 @@ function keyError(error: unknown, provider: AIProvider): unknown {
   const { name } = getProviderConfig(provider)
   for (let e: unknown = error; e instanceof Error; e = RetryError.isInstance(e) ? e.lastError : e.cause) {
     if (APICallError.isInstance(e)) return new AIKeyError(name, e.message, e)
+    if (e instanceof DecisionsError) return new AIKeyError(name, e.detail, e)
     if (e instanceof TypeError) return new AIKeyUnreachableError(name, e)
   }
   return error
+}
+
+/** A paper that failed on the key: the provider's words when it answered, else as it came, which the screening alert classifies. */
+const keyFailure = (provider: AIProvider) => (error: unknown) => {
+  const told = keyError(error, provider)
+  return told instanceof AIKeyError ? { error: told.message, onKey: true } : { error: error instanceof Error ? error.message : String(error) }
 }
 
 function createClientExecutor<TParams, TOutput, TResult>(
@@ -177,6 +185,7 @@ export async function generateBatchScreeningResponses(
       papers,
       questions,
       ...(config.provider === 'openrouter' && { decisionsKey: config.apiKey }),
+      failure: keyFailure(config.provider),
     })
 
     const entries: AITrackingEntry[] = Object.entries(trackingByItemId).map(

@@ -10,11 +10,20 @@ const DECISIONS_URL = 'https://openrouter.ai/api/alpha/decisions'
 /** Models answered through the Decisions API rather than text generation. */
 export const isDecisionModel = (modelSlug: string) => modelSlug.startsWith('typesafe/jev')
 
-/** A failed decisions call, with the HTTP status the error classifier reads. */
-class DecisionsError extends Error {
-  constructor(readonly status: number, detail: string) {
+/** A failed decisions call, with the HTTP status the error classifier reads and OpenRouter's reason. */
+export class DecisionsError extends Error {
+  constructor(readonly status: number, readonly detail: string) {
     super(`Jev decision failed (${status}): ${detail}`)
     this.name = 'DecisionsError'
+  }
+}
+
+/** OpenRouter's own message in an error body, else the body. */
+function reasonIn(body: string) {
+  try {
+    return (JSON.parse(body) as { error?: { message?: string } }).error?.message ?? body
+  } catch {
+    return body
   }
 }
 
@@ -102,7 +111,7 @@ export async function decideYesNo({
     signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) : AbortSignal.timeout(TIMEOUT_MS),
   })
   if (!response.ok) {
-    throw new DecisionsError(response.status, (await response.text().catch(() => '')).slice(0, 500))
+    throw new DecisionsError(response.status, reasonIn(await response.text().catch(() => '')).slice(0, 500))
   }
   const data = (await response.json()) as DecisionsResponse
   const answers = questions.map((_, i): YesNo => {
