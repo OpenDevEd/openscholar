@@ -106,8 +106,8 @@ it("undoes a change to a library collection from its step's card, as the person 
   });
   // Undo's one transaction can't reach the library: the card sends it to the action that can.
   await expect(person.mutation(api.assistant.undo.run, { threadId, stepIds: [stepId] })).rejects.toThrow(/can no longer be undone/);
-  await person.action(api.assistant.undo.runAction, { threadId, stepId });
+  await person.action(api.assistant.undo.runAction, { threadId, stepIds: [stepId] });
   expect(calls.filter((call) => call.path.endsWith(`/collections/${READ}/records`)).at(-1)).toMatchObject({ method: "POST", body: { keys: [keyAt(1)] } });
   expect(await t.run((ctx) => ctx.db.get("assistantSteps", stepId))).toMatchObject({ undone: true });
-  await expect(person.action(api.assistant.undo.runAction, { threadId, stepId })).rejects.toThrow(/nothing left to undo/);
+  await expect(person.action(api.assistant.undo.runAction, { threadId, stepIds: [stepId] })).rejects.toThrow(/nothing left to undo/);
 });

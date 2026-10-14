@@ -287,23 +287,25 @@ export const setRoleAction = defineChangingAction({
   description:
     "Makes a member of the organization the person is in an admin or a member; an admin of it does this. Admins invite and remove members, change roles, and change the organization's settings. " +
     "An organization always keeps one admin. Returns `undo`, which puts the role back, unless the person made themselves a member, after which they can't change roles.",
-  args: { userId: v.id("users"), role: ROLE },
-  returns: v.object({ undo: reversedBy(SET_ROLE, { userId: v.id("users"), role: ROLE }) }),
+  // `expect`, which an undo passes, is the role they should have now: one changed since refuses the undo.
+  args: { userId: v.id("users"), role: ROLE, expect: v.optional(ROLE) },
+  returns: v.object({ undo: reversedBy(SET_ROLE, { userId: v.id("users"), role: ROLE, expect: ROLE }) }),
   spendsCredits: false,
   // It changes what another person can do.
   outsideEffect: true,
   undoable: true,
-  run: async (ctx, actor, { userId, role }) => {
+  run: async (ctx, actor, { userId, role, expect }) => {
     const key = clerkSecretKey();
     const { clerkUserId, organization } = await inOrganization(ctx, actor, { adminOnly: true });
     const was = await memberRole(ctx, actor.workspaceId, userId);
+    if (expect !== undefined && was !== expect) throw createError("CONFLICT", `Their role changed since: they're ${was === "admin" ? "an admin" : "a member"} now, and stay so.`);
     if (was === role) return {};
     const target = await changeMember(ctx, actor.workspaceId, clerkUserId, userId, clerkRole(role), async (target) => {
       const membership = await clerk(key, "PATCH", `/organizations/${organization.clerkOrganizationId}/memberships/${target}`, { role: clerkRole(role) });
       await keep(ctx, key, "organizationMembership.updated", membership);
     });
     // An admin who made themselves a member can't make anyone an admin again, themselves included.
-    return target === clerkUserId ? {} : { undo: { path: SET_ROLE, args: { userId, role: was } } };
+    return target === clerkUserId ? {} : { undo: { path: SET_ROLE, args: { userId, role: was, expect: role } } };
   },
 });
 export const setRole = userAction(setRoleAction);
@@ -377,20 +379,22 @@ export const leaveForAssistant = assistantAction(leaveAction);
 export const renameAction = defineChangingAction({
   path: "organizations/manage:rename",
   description: "Renames the organization the person is in; an admin of it does this. Returns `undo`, which puts the name back.",
-  args: { name: nameArg },
-  returns: v.object({ undo: reversedBy("organizations/manage:rename", { name: nameArg }) }),
+  // `expect`, which an undo passes, is the name it should have now: a rename since refuses the undo.
+  args: { name: nameArg, expect: v.optional(nameArg) },
+  returns: v.object({ undo: reversedBy("organizations/manage:rename", { name: nameArg, expect: nameArg }) }),
   spendsCredits: false,
   // Every member sees the new name.
   outsideEffect: true,
   undoable: true,
-  run: async (ctx, actor, { name }) => {
+  run: async (ctx, actor, { name, expect }) => {
     const key = clerkSecretKey();
     const { organization } = await inOrganization(ctx, actor, { adminOnly: true });
+    if (expect !== undefined && organization.name !== expect) throw createError("CONFLICT", `The organization was renamed since: it's ${organization.name} now, and stays so.`);
     const renamed = requireName(name);
     if (renamed === organization.name) return {};
     const updated = await clerk(key, "PATCH", `/organizations/${organization.clerkOrganizationId}`, { name: renamed });
     await keep(ctx, key, "organization.updated", updated);
-    return { undo: { path: "organizations/manage:rename" as const, args: { name: organization.name } } };
+    return { undo: { path: "organizations/manage:rename" as const, args: { name: organization.name, expect: renamed } } };
   },
 });
 export const rename = userAction(renameAction);

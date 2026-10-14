@@ -131,27 +131,30 @@ export const keepCap = internalMutation({
 });
 
 const capArgs = { memberId: v.id("users"), cap: v.union(v.number(), v.null()) };
+// `expect`, which an undo passes, is the cap the member should have now: one changed since refuses the undo.
+const undoCapArgs = { ...capArgs, expect: v.optional(v.union(v.number(), v.null())) };
 
 export const setCapAction = defineChangingAction({
   path: SET_CAP,
   description:
     `Sets how many of the organization's credits a member may spend each calendar month (UTC), or takes the cap off with null; an admin does this, on the Team plan. Up to ${MAX_MEMBER_CAP.toLocaleString("en")} credits. ` +
     "What they spent this month counts against it at once: past it, their replies and jobs are refused until next month or a higher cap. Returns `undo`, which puts the cap back as it was.",
-  args: capArgs,
-  returns: v.object({ undo: reversedBy(SET_CAP, capArgs) }),
+  args: undoCapArgs,
+  returns: v.object({ undo: reversedBy(SET_CAP, undoCapArgs) }),
   spendsCredits: false,
   // It changes what another person can spend.
   outsideEffect: true,
   undoable: true,
-  run: async (ctx, { userId, workspaceId, role }, { memberId, cap }) => {
+  run: async (ctx, { userId, workspaceId, role }, { memberId, cap, expect }) => {
     if (cap !== null && (!Number.isInteger(cap) || cap < 1 || cap > MAX_MEMBER_CAP)) {
       throw createError("VALIDATION_ERROR", `A cap is a whole number of credits from 1 to ${MAX_MEMBER_CAP.toLocaleString("en")}.`);
     }
     const target: { customerId: string; entityId: string; was: number | null } = await ctx.runQuery(internal.billing.caps.capTarget, { workspaceId, role, memberId });
+    if (expect !== undefined && target.was !== expect) throw createError("CONFLICT", "This member's cap changed since: it's left as it is now.");
     if (target.was === cap) return {};
     await autumn.setCap(target.customerId, target.entityId, cap);
     await ctx.runMutation(internal.billing.caps.keepCap, { workspaceId, memberId, setBy: userId, cap });
-    return { undo: { path: SET_CAP, args: { memberId, cap: target.was } } };
+    return { undo: { path: SET_CAP, args: { memberId, cap: target.was, expect: cap } } };
   },
 });
 export const setCap = userAction(setCapAction);

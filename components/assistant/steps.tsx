@@ -512,8 +512,9 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
     try {
       const inside = undoable.filter((one) => !one.undoAction).map((one) => one.id as Id<"assistantSteps">);
       if (inside.length) await undo({ threadId, stepIds: inside });
-      // A change outside the account is put back on its own, the last made first.
-      for (const one of undoable.filter((step) => step.undoAction).toSorted((a, b) => b.at - a.at)) await undoOutside({ threadId, stepId: one.id as Id<"assistantSteps"> });
+      // Changes outside the account are put back on their own, the last made first (convex/assistant/undo.ts `runAction`).
+      const outside = undoable.filter((one) => one.undoAction).map((one) => one.id as Id<"assistantSteps">);
+      if (outside.length) await undoOutside({ threadId, stepIds: outside });
     } catch (error) {
       toast.error(t("steps.undoFailed"), getErrorMessage(error, ""));
     } finally {

@@ -177,7 +177,11 @@ describe("an organization", () => {
     await expect(aliceAs.action(api.organizations.manage.leave, inLab)).rejects.toThrow(/only admin/);
     await expect(aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: alice, role: "member" })).rejects.toThrow(/only admin/);
     const { undo } = await aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: bob, role: "admin" });
-    expect(undo).toEqual({ path: "organizations/manage:setRole", args: { userId: bob, role: "member" } });
+    expect(undo).toEqual({ path: "organizations/manage:setRole", args: { userId: bob, role: "member", expect: "admin" } });
+    // Its undo, once his role was changed again since, leaves it as it is now.
+    await aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: bob, role: "member" });
+    await expect(aliceAs.action(api.organizations.manage.setRole, { ...inLab, ...undo!.args })).rejects.toThrow(/changed since/);
+    await aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: bob, role: "admin" });
     // Making herself a member has no undo: she couldn't make anyone an admin after it.
     expect((await aliceAs.action(api.organizations.manage.setRole, { ...inLab, userId: alice, role: "member" })).undo).toBeUndefined();
     await aliceAs.action(api.organizations.manage.leave, inLab);
@@ -186,7 +190,7 @@ describe("an organization", () => {
     await expect(aliceAs.query(api.organizations.queries.members, { ...inLab, ...page })).rejects.toThrow(/not found/);
 
     // Bob renames it, with an undo, and can't delete it while it has an Evidence Library.
-    expect((await bobAs.action(api.organizations.manage.rename, { ...inLab, name: "Learning Lab" })).undo).toEqual({ path: "organizations/manage:rename", args: { name: "Lab" } });
+    expect((await bobAs.action(api.organizations.manage.rename, { ...inLab, name: "Learning Lab" })).undo).toEqual({ path: "organizations/manage:rename", args: { name: "Lab", expect: "Learning Lab" } });
     const libraryId = await t.run((ctx) => ctx.db.insert("evidenceLibraries", { workspaceId: lab.workspaceId, name: "Library", slug: "library", state: "active", createdByClerkUserId: "bob", updatedByClerkUserId: "bob", createdAt: 1, updatedAt: 1 }));
     await expect(bobAs.action(api.organizations.manage.deleteOrganization, inLab)).rejects.toThrow(/Evidence Library, Library/);
     await t.run((ctx) => ctx.db.delete("evidenceLibraries", libraryId));
