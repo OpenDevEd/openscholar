@@ -7,6 +7,7 @@ import { createReadySetupFixture } from "../../tests/helpers/evidence-library-se
 
 const KEY = "1".repeat(64);
 const READ = "6f1c2a7e-0000-4000-8000-000000000001";
+const MADE = "6f1c2a7e-0000-4000-8000-000000000002";
 const keyAt = (at: number) => `K${String(at).padStart(7, "0")}`;
 
 beforeEach(() => vi.useFakeTimers());
@@ -27,6 +28,8 @@ async function setup(name: string) {
     await ctx.db.patch("evidenceLibraryCredentials", credential._id, { encryptedValue: encrypt("machine-secret", KEY) });
   });
   const calls: Call[] = [];
+  // The collection the person makes, as the library holds it now: its name changes when they rename it there.
+  const made = { name: "Included" };
   // A search of 30 records, each with a long abstract, the even ones with a PDF; the collection holds the first already.
   vi.stubGlobal("fetch", vi.fn(async (input: string | URL, init?: RequestInit) => {
     const url = new URL(String(input));
@@ -42,6 +45,11 @@ async function setup(name: string) {
         unread: [],
       });
     }
+    if (url.pathname.endsWith("/collections") && init?.method === "POST") return Response.json({ collection: { id: MADE, name: made.name, description: null, private: true, count: 0, access: "owner" } }, { status: 201 });
+    if (url.pathname.endsWith(`/collections/${MADE}`) && init?.method === "DELETE") {
+      if (body.expect && body.expect.name !== made.name) return Response.json({ error: "changed", message: `The collection changed since: it is "${made.name}" now and holds 0 records, so it stays.` }, { status: 409 });
+      return Response.json({ deleted: true });
+    }
     if (url.pathname.startsWith("/api/v1/openscholar/collections/")) return Response.json({ id: READ, name: "Reading list", description: null, private: true, count: 3, access: "owner" });
     if (url.pathname.endsWith("/records")) {
       const keys = body.keys as string[];
@@ -52,7 +60,7 @@ async function setup(name: string) {
   }));
   const person = fixture.t.withIdentity({ subject: fixture.clerkUserId });
   const workspaceId = (await person.query(api.workspaces.queries.personal, {}))!;
-  return { ...fixture, libraryId, calls, person, workspaceId };
+  return { ...fixture, libraryId, calls, made, person, workspaceId };
 }
 
 it("reads a library search a page at a time, and records by key whole, each with its link on the library", async () => {
@@ -110,4 +118,30 @@ it("undoes a change to a library collection from its step's card, as the person 
   expect(calls.filter((call) => call.path.endsWith(`/collections/${READ}/records`)).at(-1)).toMatchObject({ method: "POST", body: { keys: [keyAt(1)] } });
   expect(await t.run((ctx) => ctx.db.get("assistantSteps", stepId))).toMatchObject({ undone: true });
   await expect(person.action(api.assistant.undo.runAction, { threadId, stepIds: [stepId] })).rejects.toThrow(/nothing left to undo/);
+});
+
+it("makes a collection whose undo deletes it while it is as made, and leaves one changed since", async () => {
+  const { libraryId, calls, made, person, workspaceId } = await setup("libtools-made");
+  const deletes = () => calls.filter((call) => call.method === "DELETE" && call.path.endsWith(`/collections/${MADE}`));
+
+  const collection = await person.action(api.evidenceLibraries.library.createCollection, { workspaceId, libraryId, name: "Included" });
+  const asMade = { name: "Included", description: null, private: true, records: 0, members: 0 };
+  expect(collection.undo).toEqual({ path: "evidenceLibraries/library:deleteCollection", args: { libraryId, collection: MADE, expect: asMade } });
+
+  // Renamed on the library since: the undo is refused, and the collection stays.
+  made.name = "Mine now";
+  await expect(person.action(api.evidenceLibraries.library.deleteCollection, { workspaceId, ...collection.undo!.args })).rejects.toThrow(/changed since.+Mine now/);
+  made.name = "Included";
+  await person.action(api.evidenceLibraries.library.deleteCollection, { workspaceId, ...collection.undo!.args });
+  expect(deletes().map((call) => call.body)).toEqual([{ expect: asMade }, { expect: asMade }]);
+
+  // Made again by a retry of its step after a rename, its undo still holds it to the name asked for.
+  made.name = "Mine now";
+  const retried = await person.action(api.evidenceLibraries.library.createCollection, { workspaceId, libraryId, name: " Included ", description: " For the review ", public: true });
+  expect(retried.undo?.args.expect).toEqual({ name: "Included", description: "For the review", private: false, records: 0, members: 0 });
+
+  // Asked by name, a delete of another collection deletes nothing, whatever it is told to expect.
+  await expect(person.action(api.evidenceLibraries.library.deleteCollection, { workspaceId, libraryId, collection: READ, collectionName: "Included" })).rejects.toThrow(/Reading list.+not.+Included/);
+  await expect(person.action(api.evidenceLibraries.library.deleteCollection, { workspaceId, libraryId, collection: READ, collectionName: "Included", expect: { ...asMade, name: "Reading list", records: 3 } })).rejects.toThrow(/Reading list.+not.+Included/);
+  expect(calls.filter((call) => call.method === "DELETE" && call.path.endsWith(`/collections/${READ}`))).toEqual([]);
 });

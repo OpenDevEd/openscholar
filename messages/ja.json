@@ -3845,6 +3845,15 @@
         "doingMany": "Evidence Library に {count, number} 件のコレクションを作成しています",
         "didMany": "Evidence Library に {count, number} 件のコレクションを作成しました"
       },
+      "deleteLibraryCollection": {
+        "doing": "Evidence Library のコレクションを削除しています",
+        "did": "Evidence Library のコレクションを削除しました",
+        "where": "Evidence Library",
+        "ask": "Evidence Library のコレクションを削除",
+        "askMany": "Evidence Library の {count, number} 件のコレクションを削除",
+        "doingMany": "Evidence Library の {count, number} 件のコレクションを削除しています",
+        "didMany": "Evidence Library の {count, number} 件のコレクションを削除しました"
+      },
       "changeLibraryRecords": {
         "doing": "Evidence Library のコレクションを変更しています",
         "did": "Evidence Library のコレクションを変更しました",

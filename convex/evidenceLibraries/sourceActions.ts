@@ -22,6 +22,7 @@ import {
   LibrarySourceError,
   changeCollectionRecords,
   createReaderCollection,
+  deleteReaderCollection,
   matchLibraryRecords,
   readLibraryCollection,
   readLibraryOverview,
@@ -69,6 +70,7 @@ async function asked<T>(libraryId: Id<"evidenceLibraries">, call: string, reader
     if (error.code === "too_many") throw createError("VALIDATION_ERROR", `A library source gives at most ${LIBRARY_SOURCE_MAX.toLocaleString("en")} records at once.`);
     if (error.code === "role") throw createError("FORBIDDEN", "You can only view this collection: its owner can let you edit it.");
     if (error.code === "not_reader") throw createError("FORBIDDEN", "Sign in to this library once to keep collections there.");
+    if (error.code === "changed") throw createError("CONFLICT", error.message);
     throw createError("EVIDENCE_LIBRARY_RUNTIME_ERROR", error.code === "index_changed" ? "The library's search changed while it was read. Try again." : error.message);
   }
 }
@@ -223,6 +225,18 @@ export const changeRecords = internalAction({
     const target = await libraryTarget(ctx, libraryId);
     const reader = await readerOf(ctx, userId);
     return await asked(libraryId, `readers/collections/records:${change}`, reader, () => changeCollectionRecords(fetch, target, reader, collection, keys, change));
+  },
+});
+
+/** Deletes a collection the person owns, once it is as `expect` says when given. */
+export const deleteCollection = internalAction({
+  args: { libraryId: v.id("evidenceLibraries"), userId: v.id("users"), collection: v.string(), expect: v.optional(v.object({ name: v.string(), description: v.union(v.string(), v.null()), private: v.boolean(), records: v.number(), members: v.number() })) },
+  returns: v.null(),
+  handler: async (ctx, { libraryId, userId, collection, expect }): Promise<null> => {
+    const target = await libraryTarget(ctx, libraryId);
+    const reader = await readerOf(ctx, userId);
+    await asked(libraryId, "readers/collections:delete", reader, () => deleteReaderCollection(fetch, target, reader, collection, expect));
+    return null;
   },
 });
 

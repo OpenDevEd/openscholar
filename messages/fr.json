@@ -3845,6 +3845,15 @@
         "doingMany": "Création de {count, plural, one {# collection} other {# collections}} dans une Evidence Library",
         "didMany": "{count, plural, one {# collection créée} other {# collections créées}} dans une Evidence Library"
       },
+      "deleteLibraryCollection": {
+        "doing": "Suppression d'une collection dans une Evidence Library",
+        "did": "Collection supprimée dans une Evidence Library",
+        "where": "Evidence Libraries",
+        "ask": "Supprimer une collection dans une Evidence Library",
+        "askMany": "Supprimer {count, plural, one {# collection} other {# collections}} dans une Evidence Library",
+        "doingMany": "Suppression de {count, plural, one {# collection} other {# collections}} dans une Evidence Library",
+        "didMany": "{count, plural, one {# collection supprimée} other {# collections supprimées}} dans une Evidence Library"
+      },
       "changeLibraryRecords": {
         "doing": "Modification d'une collection d'Evidence Library",
         "did": "Collection d'Evidence Library modifiée",

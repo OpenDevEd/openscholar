@@ -3845,6 +3845,15 @@
         "doingMany": "Evidence Library में {count, number} संग्रह बना रहा है",
         "didMany": "Evidence Library में {count, number} संग्रह बनाए"
       },
+      "deleteLibraryCollection": {
+        "doing": "Evidence Library में एक संग्रह हटा रहा है",
+        "did": "Evidence Library में एक संग्रह हटाया",
+        "where": "Evidence Libraries",
+        "ask": "Evidence Library में एक संग्रह हटाएँ",
+        "askMany": "Evidence Library में {count, number} संग्रह हटाएँ",
+        "doingMany": "Evidence Library में {count, number} संग्रह हटा रहा है",
+        "didMany": "Evidence Library में {count, number} संग्रह हटाए"
+      },
       "changeLibraryRecords": {
         "doing": "Evidence Library का एक संग्रह बदल रहा है",
         "did": "Evidence Library का एक संग्रह बदला",
