@@ -78,6 +78,7 @@
     "loadingAccountControls": "खाता नियंत्रण लोड हो रहे हैं",
     "noResultsFound": "कोई परिणाम नहीं मिला",
     "somethingWentWrong": "कुछ गलत हो गया",
+    "zoteroSignInFailed": "Zotero साइन-इन पूरा नहीं हुआ। फिर से कोशिश करें।",
     "payNow": "अभी भुगतान करें",
     "general": "सामान्य",
     "ai": "AI",
@@ -1672,7 +1673,14 @@
     "created": "बनाया गया {time}",
     "lastUsed": "अंतिम उपयोग {time}",
     "apps": "ऐप",
-    "revokeApp": "{app} रद्द करें"
+    "revokeApp": "{app} रद्द करें",
+    "integrations": "इंटीग्रेशन",
+    "zoteroAbout": "अपनी लाइब्रेरी और ग्रुप चैट और Evidence Libraries में इस्तेमाल करें",
+    "zoteroKeeps": "Evidence Libraries अपने ग्रुप सिंक करती रहेंगी",
+    "connect": "कनेक्ट करें",
+    "disconnect": "डिस्कनेक्ट करें",
+    "connectedTime": "{time} कनेक्ट किया",
+    "disconnectFailed": "Zotero डिस्कनेक्ट नहीं हो सका। फिर से कोशिश करें।"
   },
   "evidenceLibraryInstitutions": {
     "picker": {

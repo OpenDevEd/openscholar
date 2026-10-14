@@ -78,6 +78,7 @@
     "loadingAccountControls": "加载账户控件",
     "noResultsFound": "未找到结果",
     "somethingWentWrong": "出现错误",
+    "zoteroSignInFailed": "Zotero 登录未完成。请重试。",
     "payNow": "立即支付",
     "general": "通用",
     "ai": "AI",
@@ -1672,7 +1673,14 @@
     "created": "创建于 {time}",
     "lastUsed": "最后使用 {time}",
     "apps": "个应用",
-    "revokeApp": "撤销 {app}"
+    "revokeApp": "撤销 {app}",
+    "integrations": "集成",
+    "zoteroAbout": "在聊天和 Evidence Libraries 中使用你的文库和群组",
+    "zoteroKeeps": "Evidence Libraries 会继续同步已有的群组",
+    "connect": "连接",
+    "disconnect": "断开连接",
+    "connectedTime": "{time}连接",
+    "disconnectFailed": "无法断开 Zotero。请重试。"
   },
   "evidenceLibraryInstitutions": {
     "picker": {

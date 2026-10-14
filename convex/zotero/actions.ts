@@ -296,120 +296,98 @@ export const startOAuth = action({
   },
 });
 
+type SignInResult = { returnTo?: string; error?: "cancelled" | "expired" | "failed" };
+
 /**
- * Complete OAuth flow - exchange request token for access token.
+ * Completes a Zotero sign-in: exchanges the request token for the person's API key and saves
+ * the connection. Returns the page the sign-in started on, and why it failed when it did.
  */
 export const completeOAuth = internalAction({
   args: {
-    oauthToken: v.string(),
-    oauthVerifier: v.string(),
+    oauthToken: v.optional(v.string()),
+    oauthVerifier: v.optional(v.string()),
   },
   returns: v.object({
-    success: v.boolean(),
-    error: v.optional(v.string()),
     returnTo: v.optional(v.string()),
+    error: v.optional(v.union(v.literal("cancelled"), v.literal("expired"), v.literal("failed"))),
   }),
-  handler: async (
-    ctx,
-    { oauthToken, oauthVerifier },
-  ): Promise<{ success: boolean; error?: string; returnTo?: string }> => {
-    const consumerKey = process.env.ZOTERO_CLIENT_KEY;
-    const consumerSecret = process.env.ZOTERO_CLIENT_SECRET;
+  handler: async (ctx, { oauthToken, oauthVerifier }): Promise<SignInResult> => {
+    // Zotero comes back without its token or verifier when the person doesn't approve the key.
+    if (!oauthToken) return { error: "cancelled" };
 
-    if (!consumerKey || !consumerSecret) {
-      return { success: false, error: "Zotero OAuth credentials not configured" };
-    }
-
-    // Get stored request token
+    // The request token is used once, whatever happens next.
     const stored: {
       tokenSecret: string;
       userId: Id<"users">;
       returnTo?: string;
+      expired: boolean;
     } | null = await ctx.runMutation(internal.zotero.mutations.getRequestToken, {
       token: oauthToken,
     });
 
-    if (!stored) {
-      return { success: false, error: "OAuth session expired or invalid" };
-    }
-
+    if (!stored) return { error: "expired" };
     const { tokenSecret, userId, returnTo } = stored;
+    if (stored.expired) return { returnTo, error: "expired" };
+    if (!oauthVerifier) return { returnTo, error: "cancelled" };
 
-    const timestamp = Math.floor(Date.now() / 1000).toString();
-    const nonce = generateNonce();
-
-    // OAuth parameters for access token
-    const oauthParams: Record<string, string> = {
-      oauth_consumer_key: consumerKey,
-      oauth_token: oauthToken,
-      oauth_signature_method: "HMAC-SHA1",
-      oauth_timestamp: timestamp,
-      oauth_nonce: nonce,
-      oauth_version: "1.0",
-      oauth_verifier: oauthVerifier,
-    };
-
-    // Generate signature with token secret
-    const signature = generateOAuthSignature(
-      "POST",
-      ZOTERO_ACCESS_TOKEN_URL,
-      oauthParams,
-      consumerSecret,
-      tokenSecret
-    );
-    oauthParams.oauth_signature = signature;
-
-    // Exchange for access token
-    const response = await fetch(ZOTERO_ACCESS_TOKEN_URL, {
-      method: "POST",
-      headers: {
-        Authorization: generateOAuthHeader(oauthParams),
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("Zotero access token failed:", text);
-      return { success: false, error: "Failed to complete Zotero authorization" };
+    try {
+      await saveZoteroKey(ctx, { oauthToken, oauthVerifier, tokenSecret, userId });
+      return { returnTo };
+    } catch (error) {
+      console.error("Zotero sign-in failed:", error);
+      return { returnTo, error: "failed" };
     }
-
-    const responseText = await response.text();
-    const responseParams = new URLSearchParams(responseText);
-    const accessToken = responseParams.get("oauth_token_secret"); // API key is in token_secret
-    const zoteroUserId = responseParams.get("userID");
-    const username = responseParams.get("username");
-
-    if (!accessToken || !zoteroUserId) {
-      console.error("Zotero access token response missing fields", {
-        hasAccessToken: !!accessToken,
-        hasUserId: !!zoteroUserId,
-        hasUsername: !!username,
-        responseText,
-      });
-      return { success: false, error: "Invalid response from Zotero" };
-    }
-
-    // Encrypt the access token before saving
-    const encryptionKey = process.env.ENCRYPTION_KEY;
-    if (!encryptionKey) {
-      throw createError("API_KEY_ENCRYPTION_KEY_MISSING", "Encryption key not configured");
-    }
-    const encryptedApiKey = encrypt(accessToken, encryptionKey);
-    const keyPrefix = getKeyPrefix(accessToken);
-
-    // Save connection with encrypted key
-    await ctx.runMutation(internal.zotero.mutations.saveConnection, {
-      userId,
-      zoteroUserId,
-      encryptedApiKey,
-      keyPrefix,
-      username: username || undefined,
-    });
-
-    return { success: true, returnTo };
   },
 });
+
+/** Exchanges a request token the person approved for their Zotero API key and saves it. Throws, with the reason, when it can't. */
+async function saveZoteroKey(
+  ctx: ActionCtx,
+  { oauthToken, oauthVerifier, tokenSecret, userId }: { oauthToken: string; oauthVerifier: string; tokenSecret: string; userId: Id<"users"> },
+) {
+  const consumerKey = process.env.ZOTERO_CLIENT_KEY;
+  const consumerSecret = process.env.ZOTERO_CLIENT_SECRET;
+  if (!consumerKey || !consumerSecret) throw new Error("Zotero OAuth credentials not configured");
+
+  const oauthParams: Record<string, string> = {
+    oauth_consumer_key: consumerKey,
+    oauth_token: oauthToken,
+    oauth_signature_method: "HMAC-SHA1",
+    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
+    oauth_nonce: generateNonce(),
+    oauth_version: "1.0",
+    oauth_verifier: oauthVerifier,
+  };
+  oauthParams.oauth_signature = generateOAuthSignature("POST", ZOTERO_ACCESS_TOKEN_URL, oauthParams, consumerSecret, tokenSecret);
+
+  const response = await fetch(ZOTERO_ACCESS_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      Authorization: generateOAuthHeader(oauthParams),
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+  });
+  const responseText = await response.text();
+  if (!response.ok) throw new Error(`Zotero refused the access token exchange: ${response.status} ${responseText}`);
+
+  const responseParams = new URLSearchParams(responseText);
+  const accessToken = responseParams.get("oauth_token_secret"); // The API key is the token secret.
+  const zoteroUserId = responseParams.get("userID");
+  const username = responseParams.get("username");
+  if (!accessToken || !zoteroUserId) {
+    throw new Error(`Zotero's access token response is incomplete: key ${accessToken ? "present" : "missing"}, user ID ${zoteroUserId ? "present" : "missing"}`);
+  }
+
+  const encryptionKey = process.env.ENCRYPTION_KEY;
+  if (!encryptionKey) throw new Error("ENCRYPTION_KEY is not set, so the key can't be saved");
+  await ctx.runMutation(internal.zotero.mutations.saveConnection, {
+    userId,
+    zoteroUserId,
+    encryptedApiKey: encrypt(accessToken, encryptionKey),
+    keyPrefix: getKeyPrefix(accessToken),
+    username: username || undefined,
+  });
+}
 
 
 type ZoteroPage<T> = { page: T[]; next?: number };

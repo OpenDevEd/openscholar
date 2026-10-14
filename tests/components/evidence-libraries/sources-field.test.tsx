@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useState } from "react";
+import { NuqsTestingAdapter, type UrlUpdateEvent } from "nuqs/adapters/testing";
 import { SourcesField } from "@/components/evidence-libraries/configuration/sections/sources-field";
 import type { TagRules } from "@/components/evidence-libraries/configuration/sections/tag-rules";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -211,27 +212,33 @@ function Harness({
   initial = [],
   onChange = vi.fn(),
   aiReady = false,
+  searchParams = "",
+  onUrlUpdate,
 }: {
   initial?: EvidenceSourceEntry[];
   onChange?: (value: EvidenceSourceEntry[]) => void;
   aiReady?: boolean;
+  searchParams?: string;
+  onUrlUpdate?: (event: UrlUpdateEvent) => void;
 }) {
   const [value, setValue] = useState(initial);
   const [tags, setTags] = useState<TagRules>({});
   return (
-    <TooltipProvider>
-      <SourcesField
-        libraryId={libraryId}
-        value={value}
-        onChange={(next) => {
-          setValue(next);
-          onChange(next);
-        }}
-        tags={tags}
-        onTagsChange={setTags}
-        aiReady={aiReady}
-      />
-    </TooltipProvider>
+    <NuqsTestingAdapter searchParams={searchParams} onUrlUpdate={onUrlUpdate}>
+      <TooltipProvider>
+        <SourcesField
+          libraryId={libraryId}
+          value={value}
+          onChange={(next) => {
+            setValue(next);
+            onChange(next);
+          }}
+          tags={tags}
+          onTagsChange={setTags}
+          aiReady={aiReady}
+        />
+      </TooltipProvider>
+    </NuqsTestingAdapter>
   );
 }
 
@@ -374,6 +381,17 @@ describe("<SourcesField>", () => {
       callbackUrl: "https://lane.convex.site/api/zotero/callback",
       returnTo: expect.stringMatching(/^\//),
     });
+  });
+
+  it("comes back from a Zotero sign-in that didn't finish with the connections open and the reason, which closing them clears", async () => {
+    queries({ connected: false });
+    const onUrlUpdate = vi.fn<(event: UrlUpdateEvent) => void>();
+    render(<Harness searchParams="?section=sources&zotero_error=failed" onUrlUpdate={onUrlUpdate} />);
+    const dialog = screen.getByRole("dialog", { name: `${ns}.connectionsTitle` });
+    expect(within(dialog).getByText("common.zoteroSignInFailed")).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled());
+    expect(onUrlUpdate.mock.lastCall![0].queryString).toBe("?section=sources");
   });
 
   it("ticks several groups in the picker and connects each one into the section", async () => {

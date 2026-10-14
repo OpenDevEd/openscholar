@@ -1,17 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useMutation } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion } from "motion/react";
 import posthog from "posthog-js";
 import { useFormatter, useNow, useTranslations } from "next-intl";
-import { AppWindow, Globe, KeyRound, Plug, Trash2 } from "@/components/icons";
+import { AppWindow, Globe, KeyRound, PersonIcon, Plug, Trash2 } from "@/components/icons";
+import { ZoteroIcon } from "@/components/icons/zotero-icon";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
+import { useZoteroSignIn } from "@/lib/hooks/use-zotero-sign-in";
+import { useAppToast } from "@/lib/toast";
 import { Enter, LIST, Paged, Tile, Zone } from "@/components/settings/parts";
 import { inWorkspace, useWorkspace } from "@/lib/workspaces/url";
 import { WorkspaceTag } from "@/components/workspaces/parts";
@@ -29,11 +34,12 @@ export default function ConnectionsPage() {
   const active = useCursorPage(api.wallet.queries.listKeys, inWorkspace(workspaceId, { active: true }), PER_PAGE);
   const revoked = useCursorPage(api.wallet.queries.listKeys, inWorkspace(workspaceId, { active: false }), PER_PAGE);
   const { data: counts } = useProtectedQuery(api.wallet.queries.countKeys, inWorkspace(workspaceId, {}));
+  const { data: zotero } = useProtectedQuery(api.zotero.queries.getConnectionStatus, {});
   const revokeKey = useMutation(api.wallet.mutations.revokeKey);
   const [confirm, setConfirm] = useState<Id<"walletKeys"> | null>(null);
   const [revoking, setRevoking] = useState<Id<"walletKeys"> | null>(null);
 
-  if (active.isLoading || revoked.isLoading || !counts) return <Enter ready={false}>{null}</Enter>;
+  if (active.isLoading || revoked.isLoading || !counts || !zotero) return <Enter ready={false}>{null}</Enter>;
 
   const revoke = async (walletKeyId: Id<"walletKeys">) => {
     posthog.capture("api_key_revoked", { app_name: active.items.find((k) => k._id === walletKeyId)?.appName });
@@ -49,6 +55,13 @@ export default function ConnectionsPage() {
   return (
     <Enter ready>
       <div className="space-y-8">
+        {/* Services you connect your account to. Each new one is a row in this list. */}
+        <Zone label={t("integrations")}>
+          <ul className={`${LIST} @container/integrations`}>
+            <ZoteroRow account={zotero} />
+          </ul>
+        </Zone>
+
         <Zone label={t("connectedApps")}>
           {active.items.length === 0 && !active.hasPages ? (
             <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-border px-6 py-10 text-center">
@@ -139,5 +152,110 @@ export default function ConnectionsPage() {
         ) : null}
       </div>
     </Enter>
+  );
+}
+
+/** Your Zotero account: the assistant and your Evidence Libraries read your libraries and groups through it. */
+function ZoteroRow({ account }: { account: FunctionReturnType<typeof api.zotero.queries.getConnectionStatus> }) {
+  const t = useTranslations("connectionsPage");
+  const tc = useTranslations("common");
+  const format = useFormatter();
+  const now = useNow({ updateInterval: 60_000 });
+  const toast = useAppToast();
+  const signIn = useZoteroSignIn();
+  const failed = !account.connected && signIn.failed;
+  const disconnect = useMutation(api.zotero.mutations.disconnect);
+  const [step, setStep] = useState<"idle" | "confirm" | "busy">("idle");
+
+  const connect = async () => {
+    setStep("busy");
+    try {
+      // The page goes to Zotero from here, so the spinner stays until it leaves.
+      await signIn.start();
+    } catch (error) {
+      toast.zotero.failed(error);
+      setStep("idle");
+    }
+  };
+  const leave = async () => {
+    setStep("busy");
+    try {
+      await disconnect({});
+    } catch {
+      toast.error(t("disconnectFailed"));
+    } finally {
+      setStep("idle");
+    }
+  };
+
+  // The line under the name: what Zotero is for, why the last sign-in failed, the account it's connected to, or what disconnecting leaves in place.
+  const line = failed ? (
+    <span className="truncate text-destructive">{tc("zoteroSignInFailed")}</span>
+  ) : !account.connected ? (
+    <span className="truncate">{t("zoteroAbout")}</span>
+  ) : step === "confirm" ? (
+    <span className="truncate">{t("zoteroKeeps")}</span>
+  ) : (
+    <span className="inline-flex min-w-0 items-center gap-1">
+      <PersonIcon className="size-3 shrink-0" />
+      <span className="truncate">{account.username ?? account.zoteroUserId}</span>
+    </span>
+  );
+
+  return (
+    <li className="flex items-center gap-3 p-3" data-zotero={account.connected ? "connected" : "not-connected"}>
+      <Tile icon={ZoteroIcon} tint="#cc2936" />
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-semibold">Zotero</p>
+        <Swap id={`${account.connected}-${step === "confirm"}-${failed}`} className="flex min-w-0 items-center text-xs text-muted-foreground">
+          {line}
+        </Swap>
+      </div>
+      {account.connected ? (
+        // A narrow list keeps the account name and the buttons, and leaves out when it was connected.
+        <span className="shrink-0 text-xs tabular-nums text-muted-foreground @max-[32rem]/integrations:hidden">
+          {t("connectedTime", { time: format.relativeTime(account.connectedAt, now) })}
+        </span>
+      ) : null}
+      <Swap id={account.connected ? (step === "confirm" ? "confirm" : "connected") : "not-connected"} className="flex w-40 shrink-0 justify-end gap-1">
+        {!account.connected ? (
+          <Button size="sm" className="relative" disabled={step === "busy"} onClick={connect}>
+            <Working busy={step === "busy"}>{t("connect")}</Working>
+          </Button>
+        ) : step === "confirm" ? (
+          <>
+            <Button variant="ghost" size="sm" onClick={() => setStep("idle")}>
+              {tc("cancel")}
+            </Button>
+            <Button variant="destructive" size="sm" onClick={leave}>
+              {t("disconnect")}
+            </Button>
+          </>
+        ) : (
+          <Button variant="outline" size="sm" className="relative" disabled={step === "busy"} onClick={() => setStep("confirm")}>
+            <Working busy={step === "busy"}>{t("disconnect")}</Working>
+          </Button>
+        )}
+      </Swap>
+    </li>
+  );
+}
+
+/** A button's label that a spinner covers while it works, so the button keeps its width. */
+function Working({ busy, children }: { busy: boolean; children: ReactNode }) {
+  return (
+    <>
+      <span className={busy ? "invisible" : undefined}>{children}</span>
+      {busy ? <Spinner className="absolute" /> : null}
+    </>
+  );
+}
+
+/** Fades its contents in when `id` changes, so a row's state swaps in place without a jump. */
+function Swap({ id, className, children }: { id: string; className: string; children: ReactNode }) {
+  return (
+    <motion.div key={id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18, ease: [0.32, 0.72, 0, 1] }} className={className}>
+      {children}
+    </motion.div>
   );
 }

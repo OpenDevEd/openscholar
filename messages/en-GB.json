@@ -76,6 +76,7 @@
     "loadingAccountControls": "Loading account controls",
     "noResultsFound": "No results found",
     "somethingWentWrong": "Something went wrong",
+    "zoteroSignInFailed": "The Zotero sign-in didn't finish. Try again.",
     "payNow": "Pay now",
     "general": "General",
     "ai": "AI",
@@ -1672,7 +1673,14 @@
     "created": "Created {time}",
     "lastUsed": "Last used {time}",
     "apps": "apps",
-    "revokeApp": "Revoke {app}"
+    "revokeApp": "Revoke {app}",
+    "integrations": "Integrations",
+    "zoteroAbout": "Use your libraries and groups in chats and Evidence Libraries",
+    "zoteroKeeps": "Evidence Libraries keep syncing the groups they have",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "connectedTime": "Connected {time}",
+    "disconnectFailed": "Could not disconnect Zotero. Try again."
   },
   "evidenceLibraryInstitutions": {
     "picker": {

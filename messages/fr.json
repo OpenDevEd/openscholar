@@ -78,6 +78,7 @@
     "loadingAccountControls": "Chargement des contrôles du compte",
     "noResultsFound": "Aucun résultat trouvé",
     "somethingWentWrong": "Une erreur s'est produite",
+    "zoteroSignInFailed": "La connexion à Zotero n'a pas abouti. Réessayez.",
     "payNow": "Payer maintenant",
     "general": "Général",
     "ai": "IA",
@@ -1672,7 +1673,14 @@
     "created": "Créée {time}",
     "lastUsed": "Dernière utilisation {time}",
     "apps": "applications",
-    "revokeApp": "Révoquer {app}"
+    "revokeApp": "Révoquer {app}",
+    "integrations": "Intégrations",
+    "zoteroAbout": "Utilisez vos bibliothèques et groupes dans les discussions et les Evidence Libraries",
+    "zoteroKeeps": "Les Evidence Libraries continuent de synchroniser leurs groupes",
+    "connect": "Connecter",
+    "disconnect": "Déconnecter",
+    "connectedTime": "Connecté {time}",
+    "disconnectFailed": "Impossible de déconnecter Zotero. Réessayez."
   },
   "evidenceLibraryInstitutions": {
     "picker": {
