@@ -42,7 +42,7 @@ const ROW = 57;
  * rest of the form, so switching to them moves nothing; a library reached by a pasted address is read before its row
  * shows, so its list comes with it.
  */
-export function useLibrarySources(opened: HeldRow[] = []) {
+export function useLibrarySources(opened: HeldRow[] = [], { settled = true }: { settled?: boolean } = {}) {
   const workspaceId = useWorkspace();
   // What a library lists is the person's own: it is kept under who they are, and never shown to someone signed in after them.
   const { userId } = useAuth();
@@ -50,9 +50,12 @@ export function useLibrarySources(opened: HeldRow[] = []) {
   const read = useWorkspaceAction(api.evidenceLibraries.library.sources);
   const [pasted, setPasted] = useState<Array<{ held: HeldRow; contents: LibraryContents | null }>>([]);
   const held = [...pasted.map((one) => one.held), ...opened.filter((one) => !pasted.some((other) => rowKey(other.held.row) === rowKey(one.row)))];
-  // The libraries of the sources the form opened with are read with the rest; one held later was read when it was pasted.
-  const [openedOn] = useState(() => opened.map((one) => one.library.libraryId));
-  const ids = listed && [...new Set([...listed.map((library) => library.libraryId), ...openedOn])];
+  // The libraries of the sources the form opened with are read with the rest, once the form knows them (`settled`: a
+  // hand-off's source comes after the form opens), so they list when it shows; one held later was read when it was pasted.
+  const [openedOn, setOpenedOn] = useState(() => (settled ? opened.map((one) => one.library.libraryId) : null));
+  if (openedOn === null && settled) setOpenedOn(opened.map((one) => one.library.libraryId));
+  // Asked for by which libraries they are, not the order the list has them in, which opening a hand-off changes.
+  const ids = listed && openedOn && [...new Set([...listed.map((library) => library.libraryId), ...openedOn])].toSorted();
   const known = useSWR(workspaceId && userId && ids ? ["library-sources", userId, ...ids] : null, () => (ids!.length ? read({ libraryIds: ids! }) : []), { revalidateOnFocus: false });
   // A library that didn't answer is one that couldn't list; the form doesn't wait on it again.
   const failed = (libraryId: string) => ({ libraryId, rows: null, problem: "unreadable" as const }) as LibraryContents;
@@ -70,7 +73,7 @@ export function useLibrarySources(opened: HeldRow[] = []) {
   return {
     libraries,
     contents,
-    loaded: listed !== undefined && (known.data !== undefined || known.error !== undefined),
+    loaded: listed !== undefined && openedOn !== null && (known.data !== undefined || known.error !== undefined),
     library,
     setLibraryId,
     filter,

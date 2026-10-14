@@ -129,7 +129,9 @@ export function SetupView({
   const startHeld = startsOn && "row" in startsOn ? startsOn : null;
   // A source it ran on, or was handed, that can't be read now is said so, and another is never put in its place.
   const startError = handedOver.error ? tf("problem.unreadable") : handedOver.data && "gone" in handedOver.data ? tf("goneHint") : startsOn && "error" in startsOn ? (handoffId ? tf(`problem.${startsOn.error}`) : tl(`error.${startsOn.error}`)) : null;
-  const libraries = useLibrarySources(startHeld ? [startHeld] : []);
+  // What the form opens on is known once the hand-off or the run before has answered, if it opens on either.
+  const openedKnown = againLibrary ? ranBefore.data !== undefined || ranBefore.error !== undefined : !handoffId || handedOver.data !== undefined || handedOver.error !== undefined;
+  const libraries = useLibrarySources(startHeld ? [startHeld] : [], { settled: openedKnown });
   // Until one is picked, the form starts on your first collection in the library shown: a whole library is too many to start on.
   const firstOwn = libraries.library && libraries.contents.find((one) => one.libraryId === libraries.library?.libraryId)?.rows?.find((row) => row.what === "yours" && row.records > 0);
   const lists: Record<Kind, { rows: Source[]; pager?: Pick<typeof collections, "page" | "canPrevious" | "canNext" | "previous" | "next" | "hasPages" | "isStale"> & { pageCount?: number } }> = {
