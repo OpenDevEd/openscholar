@@ -218,8 +218,11 @@ export const assistantStepFields = {
   status: v.union(v.literal("running"), v.literal("done"), v.literal("failed"), v.literal("asking"), v.literal("allowed"), v.literal("declined")),
   /** Why it failed, as the model was told. */
   error: v.optional(v.string()),
-  /** What reverses it: the action to run, and its arguments as JSON. */
-  undo: v.optional(v.object({ path: v.string(), args: v.string() })),
+  /**
+   * What reverses it: the action to run, and its arguments as JSON. `action` when that is an action reaching outside the
+   * account (an Evidence Library, Clerk, Autumn), which runs on its own rather than in Undo's one transaction (./undo.ts).
+   */
+  undo: v.optional(v.object({ path: v.string(), args: v.string(), action: v.optional(v.literal(true)) })),
   /** Set once its undo has run. */
   undone: v.optional(v.boolean()),
   startedAt: v.number(),

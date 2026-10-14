@@ -445,7 +445,10 @@ export function toolsFor(
     if (entry.spendsCredits) {
       // Asked with the most it holds, unless they allowed that much in this chat. With no estimate there's nothing to ask with, and the call is refused.
       const held = await hold(entry, input);
-      return held !== null && "credits" in held && !held.covered;
+      if (held === null || !("credits" in held)) return false;
+      if (!held.covered) return true;
+      // What the chat allows covers what it costs, not what others would see: a call that asks first asks all the same.
+      return entry.asksFirst !== undefined && (await ctx.runQuery(internal.assistant.asking.first, { userId, workspaceId, path: entry.path, input: JSON.stringify(input) }));
     }
     if (runsWithoutAsking(entry) && !(await ctx.runQuery(internal.assistant.asking.first, { userId, workspaceId, path: entry.path, input: JSON.stringify(input) }))) return false;
     // A change the person would be asked about is tried first, and undone: what would refuse it is told to the model instead of asked about.

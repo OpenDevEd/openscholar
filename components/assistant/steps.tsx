@@ -14,7 +14,7 @@ import { readSharedOql } from "@/lib/search-params";
 import { paramsToSearchResult } from "@/lib/search-params/converters";
 import { parseSearchParamsFromUrl } from "@/lib/search-params/parsers";
 import { useFormatter, useTranslations } from "next-intl";
-import { useMutation, usePaginatedQuery } from "convex/react";
+import { useAction, useMutation, usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, AuthorsIcon, Check, ChevronDown, CircleAlert, Coins, Compass, FileSearch, Globe, Plus, Undo2, X, type AppIcon } from "@/components/icons";
@@ -499,16 +499,21 @@ function RunMap({ threadId, steps, earlier }: { threadId: Id<"assistantThreads">
   const counted = (count: number) => format.number(count, count >= 1000 ? { notation: "compact", maximumFractionDigits: 1 } : undefined);
   const reduceMotion = useReducedMotion();
   const undo = useMutation(api.assistant.undo.run);
+  const undoOutside = useAction(api.assistant.undo.runAction);
   const toast = useAppToast();
   const { title: stepTitle, saysMany } = useStepTitle();
   // The steps being undone, whose Undo rests until the chat shows them undone.
   const [undoing, setUndoing] = useState<ReadonlySet<string>>(new Set());
   /** Undoes these steps together, the last made first (convex/assistant/undo.ts): a card's Undo does its whole run, a line's its own step. One that can't be undone leaves them all as they are. */
   const undoSteps = async (some: StepItem[]) => {
-    const ids = some.filter((one) => one.canUndo).map((one) => one.id);
+    const undoable = some.filter((one) => one.canUndo);
+    const ids = undoable.map((one) => one.id);
     setUndoing((all) => new Set([...all, ...ids]));
     try {
-      await undo({ threadId, stepIds: ids as Id<"assistantSteps">[] });
+      const inside = undoable.filter((one) => !one.undoAction).map((one) => one.id as Id<"assistantSteps">);
+      if (inside.length) await undo({ threadId, stepIds: inside });
+      // A change outside the account is put back on its own, the last made first.
+      for (const one of undoable.filter((step) => step.undoAction).toSorted((a, b) => b.at - a.at)) await undoOutside({ threadId, stepId: one.id as Id<"assistantSteps"> });
     } catch (error) {
       toast.error(t("steps.undoFailed"), getErrorMessage(error, ""));
     } finally {

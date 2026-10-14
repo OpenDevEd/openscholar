@@ -4,10 +4,13 @@
  */
 import { makeFunctionReference } from "convex/server";
 import { v } from "convex/values";
+import { internal } from "../_generated/api";
+import type { Doc, Id } from "../_generated/dataModel";
+import type { MutationCtx } from "../_generated/server";
 import { requireFeature } from "../featureFlags/guard";
 import { requireAuth } from "../lib/auth";
 import { createError } from "../lib/errors";
-import { mutation } from "../lib/functions";
+import { action, internalMutation, internalQuery, mutation } from "../lib/functions";
 import { USER_ACTIONS } from "../lib/userActionRegistry";
 import { assistantPath } from "../lib/userActions";
 import { requireThread } from "./access";
@@ -37,22 +40,75 @@ export const run = mutation({
     // ended in the same moment go by which started later, as the later of two such changes is the one that builds on the other.
     // All in this one transaction, so a run is undone whole or, where one of its changes can't be, not at all.
     steps.sort((a, b) => (b.endedAt ?? b.startedAt) - (a.endedAt ?? a.startedAt) || b._creationTime - a._creationTime);
-    let { undone = [], undoneMore = [] } = thread;
     for (const step of steps) {
       const entry = USER_ACTIONS.find((candidate) => candidate.path === step.undo.path);
+      // One whose undo reaches outside runs on its own (`runAction`).
       if (!entry || entry.kind !== "mutation") throw createError("NOT_FOUND", "This can no longer be undone.");
       // The reversing action refuses on its own when the record has changed since (its `expect`).
       await ctx.runMutation(makeFunctionReference<"mutation">(assistantPath(entry.path)), { ...JSON.parse(step.undo.args), ...(entry.retryKey ? { [entry.retryKey]: `undo:${step._id}` } : {}), userId, workspaceId: step.workspaceId, approved: true });
-      await ctx.db.patch("assistantSteps", step._id, { undone: true });
-      // The assistant is told with this person's next message (./replies.ts). Past what the chat keeps, the earliest goes, counted for whoever's it was and not forgotten.
-      undone = [...undone, { userId, stepId: step._id }];
-      const dropped = undone.length > UNDONE_TOLD ? undone.shift() : undefined;
-      if (dropped) {
-        const counted = undoneMore.find((kept) => kept.userId === dropped.userId);
-        undoneMore = [...undoneMore.filter((kept) => kept !== counted), { userId: dropped.userId, count: (counted?.count ?? 0) + 1 }].slice(-UNDONE_TOLD);
-      }
     }
-    await ctx.db.patch("assistantThreads", threadId, { undone, ...(undoneMore.length ? { undoneMore } : {}) });
+    await noteUndone(ctx, thread, userId, steps);
+    return null;
+  },
+});
+
+/** Marks steps undone, and keeps them for the assistant to be told with this person's next message (./replies.ts). */
+async function noteUndone(ctx: MutationCtx, thread: Doc<"assistantThreads">, userId: Id<"users">, steps: Array<Pick<Doc<"assistantSteps">, "_id">>) {
+  let { undone = [], undoneMore = [] } = thread;
+  for (const step of steps) {
+    await ctx.db.patch("assistantSteps", step._id, { undone: true });
+    // Past what the chat keeps, the earliest goes, counted for whoever's it was and not forgotten.
+    undone = [...undone, { userId, stepId: step._id }];
+    const dropped = undone.length > UNDONE_TOLD ? undone.shift() : undefined;
+    if (dropped) {
+      const counted = undoneMore.find((kept) => kept.userId === dropped.userId);
+      undoneMore = [...undoneMore.filter((kept) => kept !== counted), { userId: dropped.userId, count: (counted?.count ?? 0) + 1 }].slice(-UNDONE_TOLD);
+    }
+  }
+  await ctx.db.patch("assistantThreads", thread._id, { undone, ...(undoneMore.length ? { undoneMore } : {}) });
+}
+
+/** A step whose undo reaches outside, as the person asking may undo it: its reversal, and where it runs. */
+export const outsideUndo = internalQuery({
+  args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps") },
+  returns: v.object({ userId: v.id("users"), workspaceId: v.id("workspaces"), path: v.string(), args: v.string() }),
+  handler: async (ctx, { threadId, stepId }) => {
+    const userId = (await requireAuth(ctx))._id;
+    await requireFeature(ctx, "assistant.enabled", userId);
+    await requireThread(ctx, userId, threadId);
+    const step = await ctx.db.get("assistantSteps", stepId);
+    if (!step || step.threadId !== threadId) throw createError("NOT_FOUND", "That step isn't in this chat.");
+    if (step.userId !== userId) throw createError("FORBIDDEN", "Only the person this was done for can undo it.");
+    if (!step.undo?.action || step.undone) throw createError("CONFLICT", "There's nothing left to undo here.");
+    return { userId, workspaceId: step.workspaceId, path: step.undo.path, args: step.undo.args };
+  },
+});
+
+/** Marks a step undone once its reversal outside has run, unless it was undone meanwhile. */
+export const outsideUndone = internalMutation({
+  args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps"), userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { threadId, stepId, userId }) => {
+    const [thread, step] = await Promise.all([ctx.db.get("assistantThreads", threadId), ctx.db.get("assistantSteps", stepId)]);
+    if (thread && step && !step.undone) await noteUndone(ctx, thread, userId, [step]);
+    return null;
+  },
+});
+
+/**
+ * Undo for a step whose change reached outside the account (an Evidence Library's collection, Clerk, Autumn): its
+ * reversing action, as the person it was done for, which an action runs and no single transaction holds. Its step is
+ * marked undone once that has run; one that fails stays as it was, with why.
+ */
+export const runAction = action({
+  args: { threadId: v.id("assistantThreads"), stepId: v.id("assistantSteps") },
+  returns: v.null(),
+  handler: async (ctx, { threadId, stepId }) => {
+    const found: { userId: Id<"users">; workspaceId: Id<"workspaces">; path: string; args: string } = await ctx.runQuery(internal.assistant.undo.outsideUndo, { threadId, stepId });
+    const entry = USER_ACTIONS.find((candidate) => candidate.path === found.path);
+    if (!entry || entry.kind !== "action") throw createError("NOT_FOUND", "This can no longer be undone.");
+    await ctx.runAction(makeFunctionReference<"action">(assistantPath(entry.path)), { ...JSON.parse(found.args), userId: found.userId, workspaceId: found.workspaceId, approved: true });
+    await ctx.runMutation(internal.assistant.undo.outsideUndone, { threadId, stepId, userId: found.userId });
     return null;
   },
 });

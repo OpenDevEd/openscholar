@@ -952,6 +952,19 @@ describe("the assistant's tools", () => {
     expect(listed).toMatchObject({ page: [{ action: "screening/start:screen", credits: 3 * perPaper }], isDone: false });
     expect((await asAda.query(api.assistant.spending.jobs, { threadId, paginationOpts: { cursor: listed.continueCursor, numItems: 5 } })).page).toHaveLength(1);
 
+    // One that saves to an Evidence Library collection asks all the same, though the allowance covers what it costs:
+    // whoever the collection is shared with sees what it puts there. A no starts nothing.
+    const libraryId = await t.run(async (ctx) => ctx.db.insert("evidenceLibraries", { workspaceId: await personalWorkspaceOf(ctx, ada), name: "Tutoring library", slug: "tutoring-library", state: "active", createdByClerkUserId: "ada", updatedByClerkUserId: "ada", createdAt: 1, updatedAt: 1 }));
+    const toLibrary = screen("to-library");
+    mockDoStream.mockImplementationOnce(calling({ ...toLibrary, input: { ...toLibrary.input, arguments: { ...toLibrary.input.arguments, saveTo: { kind: "libraryCollection", libraryId, collection: "6f1c2a7e-0000-4000-8000-000000000001" } } } }));
+    await sayUntilAsked("Screen them into my library collection");
+    const libraryAsk = (await steps()).find((step) => step.status === "asking");
+    expect(libraryAsk).toMatchObject({ path: "screening/start:screen" });
+    mockDoStream.mockImplementationOnce(finishingDoStream(["Left as it is."]));
+    await asAda.mutation(api.assistant.replies.answer, { threadId, stepIds: [libraryAsk!._id], allow: false });
+    await settled();
+    expect(await jobs()).toBe(2);
+
     // A yes while her balance can't cover what the call holds starts nothing, and keeps no allowance: it waits for credits.
     await asAda.mutation(api.assistant.spending.setAllowance, { threadId, allowance: null });
     mockDoStream.mockImplementationOnce(calling(screen("short")));
