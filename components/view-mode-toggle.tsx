@@ -7,7 +7,7 @@ import type { ViewMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { TooltipHint } from "@/components/ui/tooltip";
 
-/** A small group of icon buttons that picks one way to show something. Every view switch uses it. */
+/** A small group of icon buttons that picks one way to show something. Every view switch uses it. A phone or tablet has one view per list (usePhoneView), so the switch hides there. */
 export function IconSwitch<T extends string>({ label, value, onChange, options }: {
   label: string;
   value: T;
@@ -15,7 +15,7 @@ export function IconSwitch<T extends string>({ label, value, onChange, options }
   options: { value: T; icon: ComponentType<{ className?: string }>; label: string }[];
 }) {
   return (
-    <div role="group" aria-label={label} className="flex shrink-0 items-center gap-0.5 rounded-md bg-inset p-0.5">
+    <div role="group" aria-label={label} data-view-switch className="flex shrink-0 items-center gap-0.5 rounded-md bg-inset p-0.5 max-lg:hidden">
       {options.map(({ value: option, icon: Icon, label: optionLabel }) => (
         <TooltipHint key={option} label={optionLabel}>
           <button

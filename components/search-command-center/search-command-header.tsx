@@ -37,7 +37,6 @@ import { useSearchOptional } from "@/lib/search";
 import { ModeTabs } from "./components/mode-tabs";
 import { ViewModeSwitch } from "@/components/view-mode-toggle";
 import { useUIStore } from "@/lib/store";
-import { useIsTablet } from "@/lib/hooks";
 import type { CommandCenterMode } from "./types";
 import { cn } from "@/lib/utils";
 
@@ -98,7 +97,6 @@ export function SearchCommandHeader({
       }
     : null;
   const getShareableUrl = search?.getShareableUrl ?? (() => "");
-  const isMobile = useIsTablet();
   const { viewMode, setViewMode } = useUIStore();
   // A phone has no room for the bar's icons: downloading and sharing share one menu, shown below md as useIsMobile counts a phone.
   const downloads = [
@@ -148,7 +146,7 @@ export function SearchCommandHeader({
         {/* Who else has the search open (#657): first in this right-aligned group, so arriving faces move none of its controls. */}
         {hasActivity && searchId ? <ItemPresence kind="search" id={searchId} /> : null}
         {/* View mode toggle - desktop only */}
-        {!isMobile && <ViewModeSwitch value={viewMode} onChange={setViewMode} />}
+        <ViewModeSwitch value={viewMode} onChange={setViewMode} />
 
         {/* On a phone: one menu with the downloads and the share link */}
         {!queryOnly ? (

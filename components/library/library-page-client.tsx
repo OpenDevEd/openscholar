@@ -12,7 +12,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
-import { useIsTablet } from "@/lib/hooks";
+import { usePhoneView } from "@/lib/hooks";
 import {
   endOfDayTimestampFromParam,
   dateToParam,
@@ -206,13 +206,8 @@ export function LibraryPageClient() {
   const pageItems = paged.items;
 
   const { isFocusModeOpen } = useUIStore();
-  const isMobile = useIsTablet();
   const isLoading = paged.isLoading;
-
-  // Force list-detail on mobile
-  const effectiveViewMode: ViewMode = isMobile
-    ? "list-detail"
-    : (params.view as ViewMode);
+  const effectiveViewMode = usePhoneView(params.view as ViewMode, "list-detail");
 
   // Convert library items to PaperResult[] for PaperCard/FocusMode
   const paperResults = useMemo(

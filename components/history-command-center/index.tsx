@@ -8,6 +8,7 @@ import Link from "@/components/workspace-link";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { localSearchHistoryStore, useSearchHistoryStore, useUIStore } from "@/lib/store";
+import { usePhoneView } from "@/lib/hooks";
 import { restoreFromHistory } from "@/lib/search/actions";
 import {
   downloadAsFile,
@@ -83,11 +84,13 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   const { ready: listReady, error, retry } = useResearchStatus();
   const settingsReady = usePersistedStoreReady(useUIStore);
   const {
-    historyViewMode,
+    historyViewMode: pickedView,
     setHistoryViewMode,
     historySortBy,
     setHistorySortBy,
   } = useUIStore();
+  // On a phone or tablet each entry is a card of its own: the only view with room for its chips.
+  const historyViewMode = usePhoneView(pickedView, "grid-2");
   // Read a page at a time: the page number can't be jumped to, so it stays out of the URL.
   // In an organization, everyone's searches or one member's (#656); a chooser lists them all.
   const runBy = useRunBy("searches");
@@ -235,10 +238,10 @@ export function HistoryCommandCenter({ pick }: HistoryCommandCenterProps = {}) {
   );
 
   // A chooser sits in its host's frame with its own toolbar; the page puts its controls in the page bar.
-  if (pick) return <CommandCenterContainer><CommandCenterToolbar viewMode={historyViewMode} onViewModeChange={setHistoryViewMode} {...filters} />{list}</CommandCenterContainer>;
+  if (pick) return <CommandCenterContainer><CommandCenterToolbar viewMode={pickedView} onViewModeChange={setHistoryViewMode} {...filters} />{list}</CommandCenterContainer>;
   return <HistoryPageFrame
     intro={runBy.filter}
-    tabs={<ViewModeSwitch value={historyViewMode} onChange={setHistoryViewMode} />}
+    tabs={<ViewModeSwitch value={pickedView} onChange={setHistoryViewMode} />}
     filters={<CommandCenterFilters {...filters} />}
     actions={<CommandCenterFileActions
       disabled={!listReady}

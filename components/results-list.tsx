@@ -39,7 +39,7 @@ import { generateMissingScreeningCombinationsByPaper } from "@/lib/screening-uti
 import { ScreeningContext, TranslationContext } from "@/components/results-contexts";
 import { QueryMatchProvider } from "@/components/query-highlight";
 import { FocusMode } from "./ui/focus-mode";
-import { useIsTablet } from "@/lib/hooks";
+import { usePhoneView } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
 import { useBatchTranslation } from "@/hooks/use-batch-translation";
 import { ScreeningErrorAlert } from "@/components/screening/screening-error-alert";
@@ -313,10 +313,7 @@ export function ResultsList({
   }, []);
 
   const { isFocusModeOpen, focusModeIndex, viewMode } = useUIStore();
-  const isMobile = useIsTablet();
-  
-  // Force list-detail on mobile
-  const effectiveViewMode: ViewMode = isMobile ? "list-detail" : viewMode;
+  const effectiveViewMode = usePhoneView(viewMode, "list-detail");
 
   useEffect(() => {
     setTimeout(() => {

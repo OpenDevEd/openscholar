@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { format } from "date-fns";
 import { create } from "zustand";
@@ -25,19 +25,12 @@ const useQueryHistoryIndexStore = create<{
 }));
 
 function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
-
-  useEffect(() => {
+  const subscribe = useCallback((onChange: () => void) => {
     const media = window.matchMedia(query);
-    setMatches(media.matches);
-    
-    const listener = () => setMatches(media.matches);
-    media.addEventListener("change", listener);
-    
-    return () => media.removeEventListener("change", listener);
+    media.addEventListener("change", onChange);
+    return () => media.removeEventListener("change", onChange);
   }, [query]);
-
-  return matches;
+  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false);
 }
 
 // Mobile detection hook using standard breakpoint
@@ -47,6 +40,11 @@ export function useIsMobile(): boolean {
 
 export function useIsTablet(): boolean {
   return useMediaQuery("(max-width: 1023px)");
+}
+
+/** The view a list shows: the one picked, or on a phone or tablet the one that fits it. View switches hide at the same width. */
+export function usePhoneView<T extends string>(picked: T, phone: T): T {
+  return useIsTablet() ? phone : picked;
 }
 
 // Custom hook to handle query changes without keyword expansion

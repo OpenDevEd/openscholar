@@ -71,7 +71,7 @@ import { NowProcessing } from "@/components/extraction/now-processing";
 import { MixedSuccessSummary } from "@/components/extraction/mixed-success-summary";
 import { RetrySummary } from "@/components/extraction/retry-summary";
 import { useSelection } from "@/lib/hooks/use-selection";
-import { useIsMobile } from "@/lib/hooks";
+import { useIsMobile, usePhoneView } from "@/lib/hooks";
 import { useUrlState } from "@/lib/hooks/use-url-state";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import { openAnswerKey, type OpenAnswer } from "@/components/extraction/answer-panel";
@@ -110,12 +110,14 @@ export default function JobDetailPage() {
   const viewModeSerialize = useCallback((v: 'table' | 'cards' | 'split') => v, []);
   const viewModeDeserialize = useCallback((v: string) => v as 'table' | 'cards' | 'split', []);
 
-  const [viewMode, setViewMode] = useUrlState<'table' | 'cards' | 'split'>(
+  const [pickedView, setViewMode] = useUrlState<'table' | 'cards' | 'split'>(
     'view',
     'table',
     viewModeSerialize,
     viewModeDeserialize
   );
+  // A phone or tablet has no room for the table's columns or the split's two panes: it shows cards.
+  const viewMode = usePhoneView(pickedView, "cards");
 
   // Plan-04: per-paper Credits column visibility. URL-backed so refresh
   // and deep-links preserve the user's chosen column set.
@@ -503,7 +505,7 @@ export default function JobDetailPage() {
                   label={statusLabel}
                 />
               }
-              tabs={<ResultsViewSwitch value={viewMode} onChange={setViewMode} />}
+              tabs={<ResultsViewSwitch value={pickedView} onChange={setViewMode} />}
               filters={
                 <ResultsFilters
                   filters={filters}
