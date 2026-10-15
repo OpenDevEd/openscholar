@@ -265,7 +265,8 @@ export function SetupView({
     setPickedOf((all) => ({ ...all, [next.kind]: next }));
     setRange(was?.range ?? [1, Math.min(300, next.count)]);
     if (was) setScope(was.scope);
-    setEdited(next.kind === "search" ? null : questions);
+    // A search picked again, coming back from another kind, keeps the questions as the person left them.
+    setEdited(next.kind === "search" && !was ? null : questions);
   };
   const pick = (next: Kind) => {
     // The set this kind shows is kept as picked, the one a job run again started on too, and how much of it.
