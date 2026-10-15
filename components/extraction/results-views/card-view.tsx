@@ -171,7 +171,7 @@ export const CardView = memo(function CardView({
   };
 
   return (
-    <ul className="grid gap-4 p-4 md:p-6 @4xl:grid-cols-2">
+    <ul className="grid grid-cols-1 gap-4 p-4 md:p-6 @4xl:grid-cols-2">
       {papers.map((paper, index) => (
         <PaperCard
           key={paper._id}
