@@ -37,7 +37,8 @@ const WorkspacesContext = createContext<Workspaces | null>(null);
 export function WorkspacesProvider({ children }: { children: ReactNode }) {
   const read = useProtectedPaginatedQuery(api.organizations.queries.workspaces, inWorkspace(useWorkspace(), {}), { initialNumItems: LISTED });
   const workspaces = {
-    list: read.status === "LoadingFirstPage" ? undefined : read.results,
+    // Waiting for sign-in is not yet read too: its empty results aren't the person's workspaces.
+    list: read.status === "LoadingFirstPage" || read.status === "Deferred" ? undefined : read.results,
     more: read.status === "CanLoadMore" || read.status === "LoadingMore",
     loading: read.status === "LoadingMore",
     loadMore: () => read.loadMore(LISTED),
@@ -47,7 +48,7 @@ export function WorkspacesProvider({ children }: { children: ReactNode }) {
 
 /**
  * The workspaces the person can switch to, their own first, a page at a time: `list` is
- * undefined while the first page loads, and `more` says there are more for `loadMore` to read.
+ * undefined until the first page is read, and `more` says there are more for `loadMore` to read.
  */
 export function useWorkspaces(): Workspaces {
   const workspaces = use(WorkspacesContext);

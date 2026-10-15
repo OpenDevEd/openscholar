@@ -5,7 +5,7 @@ import { api } from "@/convex/_generated/api";
 
 // Where an Evidence Library's "Open in OpenScholar" lands (plans/evidence-library-sources): the hand-off read on the
 // server as the person opening it, in their own workspace or an organization's under /o/<slug>, so it's there from
-// the first frame.
+// the first frame, with the workspaces it can go to.
 export default async function FromLibraryPage({ params }: { params: Promise<{ id: string; slug?: string }> }) {
   const { id, slug } = await params;
   const token = (await (await auth()).getToken({ template: "convex" })) ?? undefined;
@@ -17,6 +17,12 @@ export default async function FromLibraryPage({ params }: { params: Promise<{ id
     return await fetchQuery(api.workspaces.queries.personal, {}, { token });
   };
   const workspaceId = token ? await (slug ? fetchQuery(api.workspaces.queries.bySlug, { slug }, { token }) : own()) : null;
-  const opened = workspaceId ? await fetchAction(api.evidenceLibraries.handoffs.open, { workspaceId, handoffId: id, records: true }, { token }) : ({ gone: true } as const);
-  return <FromLibrary handoffId={id} workspaceId={workspaceId} opened={opened} />;
+  const [opened, workspaces, here] = workspaceId
+    ? await Promise.all([
+        fetchAction(api.evidenceLibraries.handoffs.open, { workspaceId, handoffId: id, records: true }, { token }),
+        fetchQuery(api.organizations.queries.workspaces, { workspaceId, paginationOpts: { cursor: null, numItems: 20 } }, { token }),
+        fetchQuery(api.organizations.queries.workspace, { workspaceId }, { token }),
+      ])
+    : ([{ gone: true } as const, null, null] as const);
+  return <FromLibrary handoffId={id} opened={opened} here={here} workspaces={{ list: workspaces?.page ?? [], more: workspaces ? !workspaces.isDone : false }} />;
 }

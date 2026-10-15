@@ -5,6 +5,7 @@
 // screening asked, which extraction takes as they are and screening takes where they're yes or no.
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { FunctionReturnType } from "convex/server";
 import { useFormatter, useTranslations } from "next-intl";
 import { AiIcon, AlignLeft, ArrowUpRight, Folder, Hash, ListChecks, MessagesSquare, Search, ToggleLeft, Unlink, type AppIcon } from "@/components/icons";
@@ -17,6 +18,8 @@ import { RowFacts, rowIcon, useRowLabel } from "@/components/screening/library-s
 import { LIST, Zone } from "@/components/settings/parts";
 import { PageStepper } from "@/components/shared/page-stepper";
 import { Button } from "@/components/ui/button";
+import { WorkspaceTag, type WorkspaceRow } from "@/components/workspaces/parts";
+import { usePickable, WorkspacePicker, type ServerRead } from "@/components/workspaces/workspace-picker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TooltipHint } from "@/components/ui/tooltip";
 import type { api } from "@/convex/_generated/api";
@@ -25,7 +28,7 @@ import { LIBRARY_SOURCE_MAX } from "@/lib/evidence-libraries/source-address";
 import { isFrozen, rowKey, screeningQuestionsOf, setOfRow } from "@/lib/evidence-libraries/reader-sources";
 import { paperKey, paperPage } from "@/lib/papers/paper-ref";
 import { useExtractionStore } from "@/lib/store/extraction";
-import { useWorkspaceRouter } from "@/lib/workspaces/href";
+import { workspaceHref } from "@/lib/workspaces/href";
 
 export type Opened = FunctionReturnType<typeof api.evidenceLibraries.handoffs.open>;
 type Field = Exclude<Opened, { gone: true }>["fields"][number];
@@ -37,19 +40,30 @@ const TYPE_ICON: Record<Field["type"], AppIcon> = { string: AlignLeft, number: H
 const FROM_ICON: Record<Exclude<Opened, { gone: true }>["from"], AppIcon> = { smartScreening: MessagesSquare, search: Search, collection: Folder };
 type Sort = "given" | "newest" | "title";
 
-/** `workspaceId` is the one the page's address is in, which the server read it in: Extract fills that workspace's draft at once. */
-export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: string; workspaceId: Id<"workspaces"> | null; opened: Opened }) {
+/**
+ * `here` is the workspace the page's address is in, which the server read it in, and `workspaces` the first page of
+ * the ones the person can take it to, as the server read them. Screen and Extract go into the one picked, so someone
+ * without credits in their own takes it to an organization's before the form is filled, not after.
+ */
+export function FromLibrary({ handoffId, opened, here, workspaces }: { handoffId: string; opened: Opened; here: WorkspaceRow | null; workspaces: ServerRead }) {
   const t = useTranslations("fromLibrary");
   const ts = useTranslations("screeningPage");
   const te = useTranslations("extraction");
   const tl = useTranslations("librarySources");
   const tc = useTranslations("common");
-  const router = useWorkspaceRouter();
+  const tw = useTranslations("workspaces");
+  const router = useRouter();
   const format = useFormatter();
   const labelOf = useRowLabel();
   const { draftJob, setSource, addQuestion, updateQuestion, setDraftJobName } = useExtractionStore();
   const [sort, setSort] = useState<Sort>("given");
   const [page, setPage] = useState(1);
+  const [picked, setPicked] = useState(here?.workspaceId);
+  const all = usePickable(workspaces, here);
+  const target = all.list.find((workspace) => workspace.workspaceId === picked);
+  // One workspace leaves nothing to pick.
+  const choosing = all.list.length > 1 || all.more;
+  const go = (path: string) => target && router.push(workspaceHref(target.kind === "organization" ? target.slug : undefined, path));
 
   const why = "gone" in opened ? t("goneHint") : "error" in opened.found ? t(`problem.${opened.found.error}`) : null;
   if ("gone" in opened || "error" in opened.found) {
@@ -75,8 +89,8 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
   const shown = sorted.slice((page - 1) * PAGE, page * PAGE);
 
   const extract = () => {
-    if (!workspaceId) return;
-    setSource(workspaceId, { key: rowKey(row), set: setOfRow(row), label, total: count, first: 1, last: count, scope: "all", held: { library, row } });
+    if (!target) return;
+    setSource(target.workspaceId, { key: rowKey(row), set: setOfRow(row), label, total: count, first: 1, last: count, scope: "all", held: { library, row } });
     // A question already in the draft takes the type and meaning the library sent.
     for (const field of fields) {
       const asked = draftJob.questions.find((q) => q.question.toLowerCase() === field.label.toLowerCase());
@@ -85,15 +99,21 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
       else addQuestion({ question: field.label, ...change });
     }
     if (!draftJob.name.trim()) setDraftJobName(label);
-    router.push("/extraction/new");
+    go("/extraction/new");
   };
   // Screening asks yes or no: a yes or no question comes along as what it asks, the others stay behind.
-  const screen = () => router.push(`/screening?handoff=${encodeURIComponent(handoffId)}`);
+  const screen = () => go(`/screening?handoff=${encodeURIComponent(handoffId)}`);
 
   return (
     <PageWrapper>
       <LibraryPageShell icon={null} image={library.faviconUrl} title={t("title", { library: library.name })} backHref="/screening" backLabel={tc("cancel")} allowOverflow>
         <div className="space-y-8 p-4 pb-24 sm:p-6">
+          {choosing ? (
+            <Zone label={tw("workspace")}>
+              <WorkspacePicker value={picked} onChange={setPicked} read={workspaces} include={here} />
+            </Zone>
+          ) : null}
+
           <Zone label={ts("papers")} aside={<Chip icon={FROM_ICON[from]}>{t(`from.${from}`)}</Chip>}>
             <div className={LIST}>
               <SourceRow
@@ -194,7 +214,13 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
           {/* Screening asks yes or no: offered when no questions came, or some of them are yes or no. Each button says how many questions it takes. */}
           {/* Its buttons, at the right, stop short of the assistant's button in the screen's corner from the first frame (the
               button arrives after the page): below 1320px the page's column reaches that corner. */}
+          {/* The workspace picked, at the left, stays in sight once the picker has scrolled away. */}
           <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg max-[82.5rem]:mr-18">
+            {choosing && target ? (
+              <span className="mr-auto flex min-w-0">
+                <WorkspaceTag workspace={target} strong />
+              </span>
+            ) : null}
             {screenable ? (
               <Button variant="outline" className="min-w-44" onClick={screen} disabled={!count}>
                 <ListChecks className="text-primary" />

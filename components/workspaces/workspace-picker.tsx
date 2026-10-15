@@ -10,15 +10,29 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { cn } from "@/lib/utils";
 import { useWorkspaces, WorkspaceTile, type WorkspaceRow } from "./parts";
 
-/** `except` leaves one out, such as the one an item is moving from; `detail` says what each line under its name says, its credits unless given. */
-export function WorkspacePicker({ value, onChange, disabled = false, except, detail }: { value: Id<"workspaces"> | undefined; onChange: (workspaceId: Id<"workspaces">) => void; disabled?: boolean; except?: Id<"workspaces">; detail?: (workspace: WorkspaceRow) => string }) {
+/** The workspaces a picker lists: the page's own once read, the server's `read` until then, and `include` wherever it is, as the one an address is in may be past the pages read. */
+export function usePickable(read?: ServerRead, include?: WorkspaceRow | null) {
+  const workspaces = useWorkspaces();
+  const list = workspaces.list ?? read?.list ?? [];
+  return {
+    ...workspaces,
+    list: include && !list.some((workspace) => workspace.workspaceId === include.workspaceId) ? [...list, include] : list,
+    more: workspaces.list ? workspaces.more : !!read?.more,
+  };
+}
+
+/** A first page of workspaces read on the server, so a picker has it from the first frame. */
+export type ServerRead = { list: WorkspaceRow[]; more: boolean };
+
+/** `except` leaves one out, such as the one an item is moving from; `detail` says what each line under its name says, its credits unless given; `read` and `include` as `usePickable` takes them. */
+export function WorkspacePicker({ value, onChange, disabled = false, except, detail, read, include }: { value: Id<"workspaces"> | undefined; onChange: (workspaceId: Id<"workspaces">) => void; disabled?: boolean; except?: Id<"workspaces">; detail?: (workspace: WorkspaceRow) => string; read?: ServerRead; include?: WorkspaceRow | null }) {
   const t = useTranslations("workspaces");
   const tc = useTranslations("common");
   const format = useFormatter();
-  const workspaces = useWorkspaces();
+  const workspaces = usePickable(read, include);
   return (
     <div role="radiogroup" aria-label={t("workspace")} className={LIST}>
-      {(workspaces.list ?? []).filter((workspace) => workspace.workspaceId !== except).map((workspace) => {
+      {workspaces.list.filter((workspace) => workspace.workspaceId !== except).map((workspace) => {
         const on = workspace.workspaceId === value;
         return (
           <button
