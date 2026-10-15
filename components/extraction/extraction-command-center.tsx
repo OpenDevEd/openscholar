@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Database, Plus, ExtractionIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/lib/store";
+import { usePhoneView } from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 import { COMMAND_CENTER_ITEMS_PER_PAGE } from "@/lib/constants/view-modes";
 import type { ExtractionSortBy } from "@/lib/types";
@@ -57,11 +58,13 @@ export function ExtractionCommandCenter() {
   const text = useDebouncedValue(searchFilter.trim(), 300);
 
   const {
-    extractionViewMode,
+    extractionViewMode: pickedView,
     setExtractionViewMode,
     extractionSortBy,
     setExtractionSortBy,
   } = useUIStore();
+  // On a phone or tablet each job is a card of its own: the only view with room for its chips.
+  const extractionViewMode = usePhoneView(pickedView, "grid-2");
 
   // Read a page at a time, sorted and filtered on the server: the page number can't be jumped to, so it stays out of the URL.
   // In an organization, everyone's extractions or one member's (#656).
@@ -80,7 +83,7 @@ export function ExtractionCommandCenter() {
       intro={runBy.filter}
       icon={ExtractionIcon}
       title={tc("extraction")}
-      tabs={<ViewModeSwitch value={extractionViewMode} onChange={setExtractionViewMode} />}
+      tabs={<ViewModeSwitch value={pickedView} onChange={setExtractionViewMode} />}
       filters={<CommandCenterFilters
         sortOptions={SORT_OPTIONS}
         currentSort={extractionSortBy}

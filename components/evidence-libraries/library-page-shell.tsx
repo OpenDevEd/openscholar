@@ -77,12 +77,13 @@ export function LibraryPageShell({
           {intro ? <div className="border-b border-border-subtle">{intro}</div> : null}
           {tabs || cardFilters ? (
             <Collapse className={cardToolbar}>
-              <div className="flex flex-wrap items-center gap-x-3 border-b border-border-subtle p-4">
-                {tabs ? <div className="-mx-1 max-w-full overflow-x-auto px-1 @3xl:hidden">{tabs}</div> : null}
+              <div className="group/toolbar flex flex-wrap items-center gap-x-3 border-b border-border-subtle p-4">
+                {/* A view switch hides on a phone or tablet, and takes its row with it. */}
+                {tabs ? <div className="-mx-1 max-w-full overflow-x-auto px-1 @3xl:hidden max-lg:has-[[data-view-switch]]:hidden">{tabs}</div> : null}
                 {cardFilters ? (
                   <Collapse className={cn("w-full min-w-0 @lg:w-auto @lg:flex-1", filters ? OPEN : CLOSED)}>
                     {/* Filters sit beside the tabs in equal columns. On a phone they go two to a row, and a lone or leading filter takes the full row. */}
-                    <div className={cn("grid gap-2 [&>*]:w-full [&_input]:w-full @max-lg:grid-cols-2 @max-lg:[&>:only-child]:col-span-2 @max-lg:[&>:first-child:nth-last-child(3)]:col-span-2", tabs && "pt-3 @lg:pt-0", filtersInCard ? "@lg:ml-auto @lg:w-64" : "@lg:grid-flow-col @lg:auto-cols-fr")}>
+                    <div className={cn("grid gap-2 [&>*]:w-full [&_input]:w-full @max-lg:grid-cols-2 @max-lg:[&>:only-child]:col-span-2 @max-lg:[&>:first-child:nth-last-child(3)]:col-span-2", tabs && "pt-3 @lg:pt-0 max-lg:group-has-[[data-view-switch]]/toolbar:pt-0", filtersInCard ? "@lg:ml-auto @lg:w-64" : "@lg:grid-flow-col @lg:auto-cols-fr")}>
                       {cardFilters}
                     </div>
                   </Collapse>

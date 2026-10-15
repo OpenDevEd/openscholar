@@ -104,27 +104,27 @@ export function LibraryCommandCenter({
             clearButtonClassName="h-7 w-7 rounded-lg"
           />
           <ViewModeSwitch value={viewMode} onChange={onViewModeChange} />
-          {hasExportableResults && (
-            <DropdownMenu>
-              <TooltipHint label={t("exportLibrary")}>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                    aria-label={t("exportLibrary")}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-              </TooltipHint>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={onExportCSV}>{t("exportAsCSV")}</DropdownMenuItem>
-                <DropdownMenuItem onClick={onExportJSON}>{t("exportAsJSON")}</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          {/* There from the first frame, so the search beside it doesn't narrow when the records arrive. */}
+          <DropdownMenu>
+            <TooltipHint label={t("exportLibrary")}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                  aria-label={t("exportLibrary")}
+                  disabled={!hasExportableResults}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+            </TooltipHint>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onExportCSV}>{t("exportAsCSV")}</DropdownMenuItem>
+              <DropdownMenuItem onClick={onExportJSON}>{t("exportAsJSON")}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </CommandCenterContainer>

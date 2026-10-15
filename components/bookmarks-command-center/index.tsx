@@ -10,6 +10,7 @@ import {
   useKeywordExpansionStore,
   useUIStore,
 } from "@/lib/store";
+import { usePhoneView } from "@/lib/hooks";
 import { downloadExport } from "@/lib/export";
 import { useWorkspace } from "@/lib/workspaces/url";
 import {
@@ -97,11 +98,13 @@ export function BookmarksCommandCenter() {
   const { ready: listReady, error, retry } = useResearchStatus();
   const settingsReady = usePersistedStoreReady(useUIStore);
   const {
-    bookmarkViewMode,
+    bookmarkViewMode: pickedView,
     setBookmarkViewMode,
     bookmarkSortBy,
     setBookmarkSortBy,
   } = useUIStore();
+  // On a phone or tablet each bookmark is a card of its own: the only view with room for its chips.
+  const bookmarkViewMode = usePhoneView(pickedView, "grid-2");
   // Read a page at a time: the page number can't be jumped to, so it stays out of the URL.
   // In an organization, everyone's bookmarks or one member's (#656).
   const runBy = useRunBy("queryShortcuts", { label: "addedBy" });
@@ -185,7 +188,7 @@ export function BookmarksCommandCenter() {
   return (
     <BookmarksPageFrame
       intro={runBy.filter}
-      tabs={<ViewModeSwitch value={bookmarkViewMode} onChange={setBookmarkViewMode} />}
+      tabs={<ViewModeSwitch value={pickedView} onChange={setBookmarkViewMode} />}
       filters={<CommandCenterFilters
         sortOptions={SORT_OPTIONS}
         currentSort={bookmarkSortBy}

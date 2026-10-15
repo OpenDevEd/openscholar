@@ -732,3 +732,21 @@
     transform: translateX(300%);
   }
 }
+
+/* iOS Safari zooms the page into a field whose text is under 16px when it gets focus. Only iOS
+   reads -webkit-touch-callout. The sizes under 16px are 16px inside a field, so a field sized with
+   one of them reads 16px and a larger field keeps its size. */
+@layer base {
+  @supports (-webkit-touch-callout: none) {
+    input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]),
+    textarea,
+    select,
+    [contenteditable="true"] {
+      --text-3xs: 1rem;
+      --text-2xs: 1rem;
+      --text-xs: 1rem;
+      --text-sm: 1rem;
+      font-size: max(1rem, 1em);
+    }
+  }
+}

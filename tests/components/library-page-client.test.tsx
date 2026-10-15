@@ -141,7 +141,7 @@ vi.mock("@/lib/hooks/use-debounced-value", () => ({
 }));
 
 vi.mock("@/lib/hooks", () => ({
-  useIsTablet: () => false,
+  usePhoneView: (picked: string) => picked,
 }));
 
 vi.mock("@/lib/confirmation", () => ({
