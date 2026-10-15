@@ -62,3 +62,16 @@ it("shows who else has a workspace's whole library open, and keeps out anyone ou
   await expect(carol.mutation(api.presence.heartbeat, { ...library, sessionId: "carol-tab" })).rejects.toThrow();
   await expect(carol.mutation(api.presence.heartbeat, { workspaceId: carolOwn, kind: "library", id: workspaceId, sessionId: "carol-tab" })).rejects.toThrow(/isn't in this workspace/);
 });
+
+it("shows who else in the workspace is reading a paper, and only there", async () => {
+  const { alice, bob, carol, workspaceId, carolOwn } = await lab();
+  const paper = { kind: "paper" as const, id: "openalex:W2741809807" };
+  await alice.mutation(api.presence.heartbeat, { workspaceId, ...paper, sessionId: "alice-tab" });
+  expect((await bob.query(api.presence.here, { workspaceId, ...paper, ...page })).page.map((person) => person.name)).toEqual(["Alice"]);
+  // Carol reading the same paper in her own workspace is in a room of its own.
+  await carol.mutation(api.presence.heartbeat, { workspaceId: carolOwn, ...paper, sessionId: "carol-tab" });
+  expect((await bob.query(api.presence.here, { workspaceId, ...paper, ...page })).page.map((person) => person.name)).toEqual(["Alice"]);
+  await expect(carol.query(api.presence.here, { workspaceId, ...paper, ...page })).rejects.toThrow();
+  // A room is only for a paper's key.
+  await expect(alice.mutation(api.presence.heartbeat, { workspaceId, kind: "paper", id: "W2741809807", sessionId: "alice-tab" })).rejects.toThrow(/isn't in this workspace/);
+});

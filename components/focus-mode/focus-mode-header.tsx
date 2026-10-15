@@ -21,7 +21,8 @@ import { RatingSelector } from "@/components/rating-selector";
 import { SaveControl } from "@/components/library/save-control";
 import { useEffectiveRating } from "@/components/results-contexts";
 import type { PaperResult } from "@/lib/types";
-import { saveablePaper } from "@/lib/papers/paper-ref";
+import { saveablePaper, toPaperKey } from "@/lib/papers/paper-ref";
+import { ItemPresence } from "@/components/workspaces/presence";
 import { usePaperPage } from "@/lib/papers/use-paper-page";
 
 export interface FocusModeHeaderProps {
@@ -66,6 +67,8 @@ export function FocusModeHeader({
   const effectiveRating = useEffectiveRating(currentPaper.id);
   // Any paper named by its source but an upload is rated and saved (an upload's file stays with its job); it opens where its source keeps it, if anywhere.
   const saveable = saveablePaper(currentPaper.id);
+  // Who else in the workspace is reading it is read by the paper's key, wherever they opened it.
+  const key = toPaperKey(currentPaper.id, { pdfUrl: currentPaper.primary_location?.pdf_url });
   const page = usePaperPage(currentPaper.id, currentPaper.primary_location?.pdf_url);
   const hasTranslation = !!translatedContent && !translatedContent.noTranslationNeeded;
   const previous = (
@@ -105,7 +108,11 @@ export function FocusModeHeader({
               </div>
             </>
           ) : null}
-          <div className="ml-auto md:hidden">{close}</div>
+          {/* Who else is reading it sits beside Close on a phone and first among the tools on a wider screen, where it keeps the person in the paper's room; here it only reads. Faces arriving grow into the free space, so nothing moves. */}
+          <div className="ml-auto flex items-center gap-2 md:hidden">
+            {key ? <ItemPresence kind="paper" id={key} join={false} /> : null}
+            {close}
+          </div>
           {/* Star rating buttons - hidden on mobile */}
           {saveable ? (
             <div className="hidden md:flex items-center gap-0.5">
@@ -202,6 +209,11 @@ export function FocusModeHeader({
 
           {/* The tools stay together, so a row too narrow for them moves them to a line of their own. */}
           <div className="ml-auto flex items-center gap-1 md:ml-0">
+            {key ? (
+              <span className="mr-2 hidden md:flex">
+                <ItemPresence kind="paper" id={key} />
+              </span>
+            ) : null}
             <div className="flex items-center gap-1">
               {/* Shown while the paper is translating or once it has a translation; a paper already in the reader's language has nothing to switch. */}
               {hasTranslation || isTranslating ? (

@@ -1,9 +1,9 @@
 "use client";
 
-// Who else has an item open (#657), in its first row beside Activity: their photos, each ringed and
-// rippling as a chat's members are while they're in it. An item's page keeps the person in its room
-// while it's open; a list only reads who's in each. A person's own workspace is theirs alone, so
-// it has none.
+// Who else has an item open (#657), in its first row beside Activity, or the paper focus mode shows:
+// their photos, each ringed and rippling as a chat's members are while they're in it. An item's page
+// keeps the person in its room while it's open; a list only reads who's in each. A person's own
+// workspace is theirs alone, so it has none.
 
 import { useMutation } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -25,9 +25,10 @@ const NAMED = 8;
 
 /**
  * `join`: the item's own page, which puts the person in its room; a list leaves it off and only reads.
- * `kind` "library", with the workspace's ID, is its library's page with no collection open.
+ * `kind` "library", with the workspace's ID, is its library's page with no collection open, and
+ * "paper", with a paper's key, the paper focus mode shows.
  */
-export function ItemPresence({ kind, id, join = true }: { kind: ItemKind | "library"; id: string; join?: boolean }) {
+export function ItemPresence({ kind, id, join = true }: { kind: ItemKind | "library" | "paper"; id: string; join?: boolean }) {
   const t = useTranslations("workspaces.presence");
   const format = useFormatter();
   const workspaceId = useWorkspace();
