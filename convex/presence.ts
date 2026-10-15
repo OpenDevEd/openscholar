@@ -2,9 +2,12 @@
  * Who has an item open (#324, #657): a room per item, which the page or panel with it open keeps
  * the person in with a heartbeat. A chat's room is its ID; any other item's is its workspace and
  * its Activity key. A workspace's whole library, its page with no collection open, has a room too,
- * whose ID is the workspace's. Only people who can open an item join its room or read who's in it, and a room
- * names people only, never what they're looking at inside the item. Who is in a chat's room is read
- * through the list of chats (./assistant/threads.ts), which checks the reader can open the chat.
+ * whose ID is the workspace's. So does a paper someone is reading in focus mode, by its workspace
+ * and its key, wherever in the workspace they opened it: papers are public, so anyone in the
+ * workspace may join or read it. Only people who can open an item join its room or read who's in
+ * it, and a room names people only, never what they're looking at inside the item. Who is in a
+ * chat's room is read through the list of chats (./assistant/threads.ts), which checks the reader
+ * can open the chat.
  */
 import { Presence } from "@convex-dev/presence";
 import { v } from "convex/values";
@@ -22,18 +25,21 @@ import { itemIn } from "./activity/queries";
 import { itemKey, itemKindValidator, type ItemKind } from "./activity/validators";
 import { requireThread } from "./assistant/access";
 import { PRESENCE_HEARTBEAT_MS } from "../lib/assistant/presence";
+import { parsePaperKey } from "../lib/papers/paper-ref";
 
 const presence = new Presence<string, Id<"users">>(components.presence);
 
-/** What a room is for: an item, or a workspace's whole library. */
-type Place = ItemKind | "library";
-const placeValidator = v.union(itemKindValidator, v.literal("library"));
+/** What a room is for: an item, a workspace's whole library, or a paper by its key (lib/papers/paper-ref.ts). */
+type Place = ItemKind | "library" | "paper";
+const placeValidator = v.union(itemKindValidator, v.literal("library"), v.literal("paper"));
 
 /** An item's room: its workspace and its key, apart from chats' rooms, which are their IDs. */
-const roomOf = (workspaceId: Id<"workspaces">, kind: Place, id: string) => (kind === "library" ? `${workspaceId}|library` : `${workspaceId}|${itemKey(kind, id)}`);
+const roomOf = (workspaceId: Id<"workspaces">, kind: Place, id: string) =>
+  kind === "library" ? `${workspaceId}|library` : kind === "paper" ? `${workspaceId}|paper:${id}` : `${workspaceId}|${itemKey(kind, id)}`;
 
-/** Whether the place is the workspace's: a library is the workspace's own, by its ID. */
-const placeIn = async (ctx: QueryCtx, workspaceId: Id<"workspaces">, kind: Place, id: string) => (kind === "library" ? id === workspaceId : await itemIn(ctx, workspaceId, kind, id));
+/** Whether the place is the workspace's: a library is the workspace's own, by its ID, and every paper is any workspace's. */
+const placeIn = async (ctx: QueryCtx, workspaceId: Id<"workspaces">, kind: Place, id: string) =>
+  kind === "library" ? id === workspaceId : kind === "paper" ? parsePaperKey(id) !== null : await itemIn(ctx, workspaceId, kind, id);
 
 /** The most of an item's room one read names; its row shows a few and the tooltip the rest. */
 const HERE_READ = 8;
