@@ -432,6 +432,7 @@ vi.mock("@/lib/feature-flags/hook", () => ({
 
 vi.mock("@/lib/hooks", () => ({
   useIsMobile: () => false,
+  usePhoneView: (picked: string) => picked,
 }));
 
 vi.mock("@/lib/hooks/use-url-state", () => ({
