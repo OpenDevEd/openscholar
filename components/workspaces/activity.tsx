@@ -77,15 +77,15 @@ export function ItemBar({ kind, id, name, started, className, share, guest }: { 
   );
 }
 
-/** An item's Move button (#654), and the dialog it opens. */
+/** An item's Move button (#654), and the dialog it opens. On a phone the item's buttons are icons, so who ran it keeps its room. */
 export function MoveButton({ kind, id, name }: { kind: Movable; id: string; name: string }) {
   const t = useTranslations("workspaces.move");
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" className="h-8 shrink-0 max-sm:w-8 max-sm:px-0" onClick={() => setOpen(true)}>
         <Move />
-        {t("move")}
+        <span className="max-sm:sr-only">{t("move")}</span>
       </Button>
       <MoveDialog open={open} onOpenChange={setOpen} kind={kind} id={id} name={name} />
     </>
@@ -98,9 +98,9 @@ export function ActivityButton({ kind, id, name }: { kind: ItemKind; id: string;
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="ghost" size="sm" className="h-8 shrink-0" onClick={() => setOpen(true)}>
+      <Button variant="ghost" size="sm" className="h-8 shrink-0 max-sm:w-8 max-sm:px-0" onClick={() => setOpen(true)}>
         <History />
-        {t("title")}
+        <span className="max-sm:sr-only">{t("title")}</span>
       </Button>
       <ActivitySheet open={open} onOpenChange={setOpen} kind={kind} id={id} name={name} />
     </>

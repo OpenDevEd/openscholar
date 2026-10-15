@@ -70,9 +70,9 @@ export function ShareButton({ guests, compact = false, className, open: given, o
   const button = (
     // The dialog's own trigger, so closing it gives the keyboard back to the button.
     <DialogTrigger asChild>
-      <Button variant="outline" size="sm" className={cn("h-8 shrink-0", compact && !guests && "w-8 px-0", className)} aria-label={t(`shareThis.${item.kind}`)}>
+      <Button variant="outline" size="sm" className={cn("h-8 shrink-0", !guests && (compact ? "w-8 px-0" : "max-sm:w-8 max-sm:px-0"), className)} aria-label={t(`shareThis.${item.kind}`)}>
         <Share2 />
-        {compact ? null : t("share")}
+        {compact ? null : <span className="max-sm:sr-only">{t("share")}</span>}
         {guests ? <span className="ml-0.5 rounded-full bg-muted px-1.5 text-2xs tabular-nums">{guests}</span> : null}
       </Button>
     </DialogTrigger>
