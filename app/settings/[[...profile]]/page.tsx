@@ -276,7 +276,8 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
 
   return (
     <section className="space-y-5">
-      <div className="flex items-end justify-between gap-6">
+      {/* On a phone the button wraps under the heading instead of squeezing it. */}
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <h2 className="text-lg font-semibold">{t("whereSignedIn")}</h2>
         {others.length > 0 ? (
           <Button variant="outline" disabled={busy !== null} onClick={() =>
