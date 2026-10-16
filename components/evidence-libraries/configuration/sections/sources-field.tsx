@@ -291,8 +291,7 @@ export function SourcesField({
                 busy={busyGroupId === entry.groupId}
                 canReconnect={connected}
                 live={liveFor(entry.key, !entry.enabled, "Zotero")}
-                tags={tags}
-                onTagsChange={onTagsChange}
+                libraryPublishTags={tags.publish ?? DEFAULT_TAG_RULES.publish}
                 onPatch={(patch) => patchEntry(entry.groupId, patch)}
                 onReconnect={() => reconnect(entry.groupId)}
                 onRemove={() => setRemoveTarget({ kind: "zotero", groupId: entry.groupId })}
@@ -641,8 +640,7 @@ function GroupRow({
   busy,
   canReconnect,
   live,
-  tags,
-  onTagsChange,
+  libraryPublishTags,
   onPatch,
   onReconnect,
   onRemove,
@@ -652,22 +650,23 @@ function GroupRow({
   busy: boolean;
   canReconnect: boolean;
   live: SourceLive | null;
-  tags: TagRules;
-  onTagsChange: (tags: TagRules) => void;
+  /** Mock: where a group's own publish tags start, until they are saved on the source. */
+  libraryPublishTags: string[];
   onPatch: (patch: Partial<ZoteroSourceEntry>) => void;
   onReconnect: () => void;
   onRemove: () => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
-  // Mock: the choice isn't saved yet; the real one is a setting on the source beside downloadPdfs.
+  // Mock: neither is saved yet; the real ones are settings on the source beside downloadPdfs.
   const [publishing, setPublishing] = useState<PdfPublishing>("tagged");
+  const [publishTags, setPublishTags] = useState(libraryPublishTags);
   const pdfs = sourcePdfs({
     downloadPdfs: entry.settings.downloadPdfs,
     onDownloadPdfsChange: (downloadPdfs) => onPatch({ settings: { downloadPdfs } }),
     publishing,
     onPublishingChange: setPublishing,
-    tags,
-    onTagsChange,
+    tags: publishTags,
+    onTagsChange: setPublishTags,
   });
   const paused = !entry.enabled;
   const health: GroupHealth = paused ? "paused" : "connected";
