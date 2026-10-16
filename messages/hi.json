@@ -2328,6 +2328,16 @@
       "openScholarCollection": "OpenScholar संग्रह",
       "openScholarCollectionHint": "अपने किसी संग्रह का अनुसरण करें",
       "pdfs": "PDF",
+      "pdfPublishing": {
+        "label": "PDF प्रकाशन",
+        "tagged": "टैग वाले PDF",
+        "taggedDetail": "केवल वे जिन पर प्रकाशन टैग है",
+        "every": "हर PDF",
+        "everyDetail": "टैग हो या न हो",
+        "tags": "प्रकाशन टैग",
+        "taggedHint": "Zotero में इनमें से किसी भी टैग वाला PDF, नोट या लिंक प्रकाशित होता है।",
+        "everyHint": "PDF को टैग की ज़रूरत नहीं है। नोट और लिंक को अब भी इनमें से एक टैग चाहिए।"
+      },
       "collectionDeleted": "यह संग्रह OpenScholar में हटा दिया गया।",
       "removeCollectionTitle": "यह संग्रह हटाएँ?",
       "collectionConnectFailed": "यह संग्रह नहीं जोड़ा जा सका।",

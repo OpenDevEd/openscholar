@@ -2328,6 +2328,16 @@
       "openScholarCollection": "Collection OpenScholar",
       "openScholarCollectionHint": "Suivre une de vos collections",
       "pdfs": "PDF",
+      "pdfPublishing": {
+        "label": "Publication des PDF",
+        "tagged": "PDF avec étiquette",
+        "taggedDetail": "Seulement ceux qui ont une étiquette de publication",
+        "every": "Tous les PDF",
+        "everyDetail": "Avec ou sans étiquette",
+        "tags": "Étiquettes de publication",
+        "taggedHint": "Un PDF, une note ou un lien qui porte l’une de ces étiquettes dans Zotero est publié.",
+        "everyHint": "Les PDF n’en ont pas besoin. Les notes et les liens ont toujours besoin de l’une de ces étiquettes."
+      },
       "collectionDeleted": "Cette collection a été supprimée dans OpenScholar.",
       "removeCollectionTitle": "Retirer cette collection ?",
       "collectionConnectFailed": "Impossible d’ajouter cette collection.",

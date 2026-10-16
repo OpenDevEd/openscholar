@@ -2328,6 +2328,16 @@
       "openScholarCollection": "OpenScholar コレクション",
       "openScholarCollectionHint": "自分のコレクションを追跡",
       "pdfs": "PDF",
+      "pdfPublishing": {
+        "label": "PDF の公開",
+        "tagged": "タグ付きの PDF",
+        "taggedDetail": "公開タグがあるものだけ",
+        "every": "すべての PDF",
+        "everyDetail": "タグの有無を問わない",
+        "tags": "公開タグ",
+        "taggedHint": "Zotero でこれらのタグのいずれかが付いた PDF、メモ、リンクが公開されます。",
+        "everyHint": "PDF にタグは不要です。メモとリンクには引き続きこれらのタグのいずれかが必要です。"
+      },
       "collectionDeleted": "このコレクションは OpenScholar で削除されました。",
       "removeCollectionTitle": "このコレクションを削除しますか？",
       "collectionConnectFailed": "このコレクションを追加できませんでした。",

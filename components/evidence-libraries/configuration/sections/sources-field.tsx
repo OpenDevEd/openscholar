@@ -69,6 +69,7 @@ import {
 } from "./openalex-sources";
 import { errorMessage, SourceRow, SourceSwitch } from "./source-row";
 import { SourceScreeningProvider, sourceScreening } from "./source-screening";
+import { type PdfPublishing, sourcePdfs } from "./source-pdfs";
 import {
   CollectionSourceIcon,
   CollectionSourceRow,
@@ -290,6 +291,8 @@ export function SourcesField({
                 busy={busyGroupId === entry.groupId}
                 canReconnect={connected}
                 live={liveFor(entry.key, !entry.enabled, "Zotero")}
+                tags={tags}
+                onTagsChange={onTagsChange}
                 onPatch={(patch) => patchEntry(entry.groupId, patch)}
                 onReconnect={() => reconnect(entry.groupId)}
                 onRemove={() => setRemoveTarget({ kind: "zotero", groupId: entry.groupId })}
@@ -638,6 +641,8 @@ function GroupRow({
   busy,
   canReconnect,
   live,
+  tags,
+  onTagsChange,
   onPatch,
   onReconnect,
   onRemove,
@@ -647,11 +652,23 @@ function GroupRow({
   busy: boolean;
   canReconnect: boolean;
   live: SourceLive | null;
+  tags: TagRules;
+  onTagsChange: (tags: TagRules) => void;
   onPatch: (patch: Partial<ZoteroSourceEntry>) => void;
   onReconnect: () => void;
   onRemove: () => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
+  // Mock: the choice isn't saved yet; the real one is a setting on the source beside downloadPdfs.
+  const [publishing, setPublishing] = useState<PdfPublishing>("tagged");
+  const pdfs = sourcePdfs({
+    downloadPdfs: entry.settings.downloadPdfs,
+    onDownloadPdfsChange: (downloadPdfs) => onPatch({ settings: { downloadPdfs } }),
+    publishing,
+    onPublishingChange: setPublishing,
+    tags,
+    onTagsChange,
+  });
   const paused = !entry.enabled;
   const health: GroupHealth = paused ? "paused" : "connected";
   const canWrite = group?.scopes.write === true;
@@ -700,7 +717,7 @@ function GroupRow({
       onToggle={() => onPatch({ enabled: paused })}
       onRemove={onRemove}
       description={!canWrite && group ? t("writebackUnavailable") : undefined}
-      details={screening.band}
+      details={<>{screening.band}{pdfs.band}</>}
       controls={
         <>
           {screening.control}
@@ -722,11 +739,7 @@ function GroupRow({
             disabledReason={canWrite ? undefined : t("writebackUnavailable")}
             onCheckedChange={(writebackEnabled) => onPatch({ writebackEnabled })}
           />
-          <SourceSwitch
-            label={t("pdfs")}
-            checked={entry.settings.downloadPdfs}
-            onCheckedChange={(downloadPdfs) => onPatch({ settings: { downloadPdfs } })}
-          />
+          {pdfs.control}
         </>
       }
     />
