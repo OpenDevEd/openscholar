@@ -13,6 +13,7 @@ import { useTheme } from "next-themes";
 import { useFormatter, useTranslations } from "next-intl";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import {
+  AiIcon,
   BillingIcon,
   BookmarksIcon,
   EvidenceLibrariesIcon,
@@ -21,6 +22,7 @@ import {
   HistoryIcon,
   LibraryIcon,
   ListChecks,
+  LogIn,
   LogOut,
   Monitor,
   Moon,
@@ -31,9 +33,10 @@ import {
   type AppIcon,
 } from "@/components/icons";
 import { SHEET_SPRING as CARD_SPRING } from "@/lib/motion";
-import { AuthButton } from "@/components/auth-button";
 import { KeywordExpansionPreview } from "@/components/keyword-expansion-preview";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { useQueryHighlight } from "@/components/query-highlight";
+import { Switch } from "@/components/ui/switch";
 import { LogoMark } from "@/components/logo";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { EASE } from "@/components/settings/model-map";
@@ -45,7 +48,8 @@ import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useWorkspaceFeatures } from "@/lib/workspaces/use-workspace-features";
-import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
+import { useFeatureFlag, useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
+import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { findPlan } from "@/lib/billing/catalog";
 import { useQueryShortcuts } from "@/lib/research/reads";
@@ -192,6 +196,8 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   // Signing out waits for the account card to close: open, it would sit there as Clerk empties it. Once asked for,
   // the card doesn't open again, so nothing cancels its closing, and signing out starts once.
   const [signOutStep, setSignOutStep] = useState<"asked" | "started" | null>(null);
+  // Clerk can finish signing out without reloading the page: the button then opens the signed-out card.
+  if (signOutStep === "started" && !signedIn) setSignOutStep(null);
   const [creating, setCreating] = useState(false);
   const reduceMotion = useReducedMotion();
   const workspaceTrigger = useRef<HTMLButtonElement>(null);
@@ -289,7 +295,7 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
           transition={CARD_SPRING}
           style={{ transformOrigin: "50% calc(56px - 50vh)" }}
         >
-          <AccountButton ref={accountTrigger} me={me} signedIn={signedIn} open={card === "account"} onOpen={() => signOutStep === null && setCard("account")} />
+          <AccountButton ref={accountTrigger} me={signedIn ? me : undefined} open={card === "account"} onOpen={() => signOutStep === null && setCard("account")} />
         </motion.div>
       </div>
 
@@ -343,22 +349,31 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
         }
         head={
           <motion.span layoutId="rail-account-avatar" layoutDependency={card === "account"} transition={CARD_SPRING} className="flex rounded-full">
-            <IdentityAvatar name={me?.name ?? ""} imageUrl={me?.imageUrl} className="size-10" />
+            <IdentityAvatar name={signedIn ? (me?.name ?? "") : ""} imageUrl={signedIn ? me?.imageUrl : undefined} className="size-10" />
           </motion.span>
         }
       >
-        <AccountCard
-          me={me}
-          workspace={loaded}
-          onNavigate={() => {
-            setCard(null);
-            onClose?.();
-          }}
-          onSignOut={() => {
-            setSignOutStep("asked");
-            setCard(null);
-          }}
-        />
+        {signedIn ? (
+          <AccountCard
+            me={me}
+            workspace={loaded}
+            onNavigate={() => {
+              setCard(null);
+              onClose?.();
+            }}
+            onSignOut={() => {
+              setSignOutStep("asked");
+              setCard(null);
+            }}
+          />
+        ) : (
+          <GuestCard
+            onNavigate={() => {
+              setCard(null);
+              onClose?.();
+            }}
+          />
+        )}
       </RailCard>
       <CreateOrganization open={creating} onOpenChange={setCreating} />
     </ShownWorkspace.Provider>
@@ -391,10 +406,17 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
   const t = useTranslations("workspaces");
   const reduceMotion = useReducedMotion();
   const enter = from === "bottom" ? 36 : -36;
+  // How far a card taller than the window is scrolled: the head, outside it, goes up and out with its row.
+  const [scrolled, setScrolled] = useState(0);
   // Stable, so it focuses the card once, as it mounts, and not again as it renders.
   const focusOnOpen = useCallback((node: HTMLDivElement | null) => node?.focus({ preventScroll: true }), []);
   return (
-    <AnimatePresence onExitComplete={onClosed}>
+    <AnimatePresence
+      onExitComplete={() => {
+        setScrolled(0);
+        onClosed?.();
+      }}
+    >
       {open ? (
         <>
           <motion.button
@@ -440,7 +462,7 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
                 }
               }}
               className={cn(
-                "pointer-events-auto overflow-hidden rounded-[22px] border border-border/60 bg-popover p-1.5 text-popover-foreground outline-none dark:border-white/[0.06]",
+                "pointer-events-auto max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain rounded-[22px] border border-border/60 bg-popover p-1.5 text-popover-foreground outline-none dark:border-white/[0.06]",
                 "shadow-[0_24px_64px_-16px_rgb(0_0_0/0.35),0_8px_24px_-12px_rgb(0_0_0/0.2)] dark:shadow-[0_24px_64px_-12px_rgb(0_0_0/0.8)]",
               )}
               style={{ transformOrigin: from === "bottom" ? "2.25rem 100%" : "2.25rem 0%" }}
@@ -448,10 +470,13 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: enter * 0.6, scale: 0.92, transition: { duration: 0.24, ease: EASE } }}
               transition={CARD_SPRING}
+              onScroll={(e) => setScrolled(e.currentTarget.scrollTop)}
             >
               {children}
             </motion.div>
-            <div className="pointer-events-none absolute left-4 top-4">{head}</div>
+            <div className="pointer-events-none absolute left-4 top-4" style={scrolled ? { transform: `translateY(${-scrolled}px)`, opacity: Math.max(0, 1 - scrolled / 24) } : undefined}>
+              {head}
+            </div>
           </div>
         </>
       ) : null}
@@ -563,15 +588,9 @@ function RailItem({
 
 /** You, at the foot of the rail. While the account card is up, your photo is in the card. */
 /** The person's photo at the foot of the rail, or Sign in. `signedIn` and `me` hold from the first frame, as the server knew them, until Clerk loads. */
-const AccountButton = React.forwardRef<HTMLButtonElement, { me: CachedMe | undefined; signedIn: boolean; open: boolean; onOpen: () => void }>(function AccountButton({ me, signedIn, open, onOpen }, ref) {
+/** Your photo at the foot of the rail, or a person icon signed out. Either opens the account card. */
+const AccountButton = React.forwardRef<HTMLButtonElement, { me: CachedMe | undefined; open: boolean; onOpen: () => void }>(function AccountButton({ me, open, onOpen }, ref) {
   const t = useTranslations("workspaces");
-  if (!signedIn) {
-    return (
-      <div className="pt-2">
-        <AuthButton />
-      </div>
-    );
-  }
   const name = me?.name ?? "";
   return (
     <Tooltip delayDuration={0} open={open ? false : undefined}>
@@ -584,7 +603,7 @@ const AccountButton = React.forwardRef<HTMLButtonElement, { me: CachedMe | undef
           )}
         </button>
       </TooltipTrigger>
-      <TooltipContent side="right">{name}</TooltipContent>
+      <TooltipContent side="right">{name || t("account")}</TooltipContent>
     </Tooltip>
   );
 });
@@ -599,7 +618,6 @@ function AccountCard({ me, workspace, onNavigate, onSignOut }: { me: CachedMe | 
   const tc = useTranslations("common");
   const format = useFormatter();
   const { user } = useUser();
-  const { theme, setTheme } = useTheme();
   const { account, catalog, resolvedPlan } = useSubscriptionState();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
   const email = user?.primaryEmailAddress?.emailAddress;
@@ -649,29 +667,81 @@ function AccountCard({ me, workspace, onNavigate, onSignOut }: { me: CachedMe | 
           {t("planAndCredits")}
         </MenuLink>
       </div>
-      <div className="space-y-2 border-t border-border/60 px-1 pb-1 pt-2">
-        <Segmented
-          label={t("theme")}
-          fill
-          value={(theme ?? "system") as "light" | "dark" | "system"}
-          onChange={setTheme}
-          options={[
-            { id: "light", label: t("light"), icon: Sun },
-            { id: "dark", label: t("dark"), icon: Moon },
-            { id: "system", label: t("auto"), icon: Monitor },
-          ]}
-        />
-        <div className="flex items-center justify-between gap-2 pl-1.5">
-          <span className="text-xs text-muted-foreground">{tc("language")}</span>
-          <LanguageSwitcher isCollapsed={false} />
-        </div>
-      </div>
+      <Preferences />
       <div className="border-t border-border/60 pt-1">
         <button type="button" onClick={onSignOut} className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
           <LogOut className="size-4" /> {t("signOut")}
         </button>
       </div>
     </>
+  );
+}
+
+/**
+ * The account card signed out: Sign in where your name would be, then AI configuration and the
+ * same preferences as signed in.
+ */
+function GuestCard({ onNavigate }: { onNavigate: () => void }) {
+  const tc = useTranslations("common");
+  const tai = useTranslations("aiSettings");
+  const goToSignIn = useSignInRedirect();
+  const creditsEnabled = useFeatureFlag("credits.enabled");
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate();
+          goToSignIn();
+        }}
+        className="flex w-full items-start gap-3 rounded-2xl px-2.5 py-2.5 text-left transition-colors hover:bg-muted"
+      >
+        {/* The photo flying in lands at the row's top, so the row lines up with it however its text wraps. */}
+        <span aria-hidden className="size-10 shrink-0 rounded-full" />
+        <span className="flex min-h-10 min-w-0 flex-1 flex-col justify-center">
+          <span className="block text-[15px] font-semibold leading-tight tracking-tight">{tc("signIn")}</span>
+          {creditsEnabled ? <span className="mt-0.5 block text-xs leading-snug text-muted-foreground">{tc("signInCreditsDescription")}</span> : null}
+        </span>
+        <LogIn className="mt-3 size-4 shrink-0 text-muted-foreground" />
+      </button>
+      <div className="space-y-px pt-1">
+        <MenuLink href="/settings/ai" icon={AiIcon} onClick={onNavigate}>
+          {tai("aiConfiguration")}
+        </MenuLink>
+      </div>
+      <Preferences />
+    </>
+  );
+}
+
+/** Theme, language and query highlighting, the same signed in or out. */
+function Preferences() {
+  const t = useTranslations("workspaces");
+  const tc = useTranslations("common");
+  const { theme, setTheme } = useTheme();
+  const highlight = useQueryHighlight();
+  return (
+    <div className="space-y-2 border-t border-border/60 px-1 pb-1 pt-2">
+      <Segmented
+        label={t("theme")}
+        fill
+        value={(theme ?? "system") as "light" | "dark" | "system"}
+        onChange={setTheme}
+        options={[
+          { id: "light", label: t("light"), icon: Sun },
+          { id: "dark", label: t("dark"), icon: Moon },
+          { id: "system", label: t("auto"), icon: Monitor },
+        ]}
+      />
+      <div className="flex items-center justify-between gap-2 pl-1.5">
+        <span className="text-xs text-muted-foreground">{tc("language")}</span>
+        <LanguageSwitcher isCollapsed={false} />
+      </div>
+      <label className="flex h-8 cursor-pointer items-center justify-between gap-2 pl-1.5 pr-2">
+        <span className="text-xs text-muted-foreground">{tc("highlightSearchTerms")}</span>
+        <Switch checked={highlight.on} onCheckedChange={highlight.setOn} />
+      </label>
+    </div>
   );
 }
 

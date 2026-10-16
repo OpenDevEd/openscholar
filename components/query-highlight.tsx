@@ -1,10 +1,11 @@
 "use client";
 
-import { createContext, useContext, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import {
   highlightSegments,
   parseBooleanQuery,
+  QUERY_HIGHLIGHT_COOKIE,
   queryMatcher,
   type QueryMatcher,
   type QueryToken,
@@ -29,6 +30,28 @@ function useShortcutExpansions() {
   const keywords = useKeywordExpansionStore((state) => state.keywords);
   return useMemo(() => shortcutExpansions(keywords), [keywords]);
 }
+
+// ---------- On or off ----------
+
+const QueryHighlightContext = createContext<{ on: boolean; setOn: (on: boolean) => void }>({ on: true, setOn: () => {} });
+
+/** Whether queries and results are highlighted. Off is kept in a cookie, so it holds signed in or out. */
+export function QueryHighlightProvider({ initial, children }: { initial: boolean; children: ReactNode }) {
+  const [on, setOnState] = useState(initial);
+  const value = useMemo(
+    () => ({
+      on,
+      setOn: (next: boolean) => {
+        setOnState(next);
+        document.cookie = `${QUERY_HIGHLIGHT_COOKIE}=${next ? "on" : "off"}; Path=/; Max-Age=31536000; SameSite=Lax`;
+      },
+    }),
+    [on],
+  );
+  return <QueryHighlightContext.Provider value={value}>{children}</QueryHighlightContext.Provider>;
+}
+
+export const useQueryHighlight = () => useContext(QueryHighlightContext);
 
 // ---------- The query ----------
 
@@ -61,6 +84,8 @@ function tokenClass(token: QueryToken, coloured: boolean): string | undefined {
 export function HighlightedQuery({ query }: { query: string }) {
   const expansions = useShortcutExpansions();
   const { tokens, conceptCount } = useMemo(() => parseBooleanQuery(query, expansions), [query, expansions]);
+  const { on } = useQueryHighlight();
+  if (!on) return <>{query}</>;
   // A plain keyword query is one concept: it stays in the normal text colour.
   const coloured = conceptCount > 1;
 
@@ -132,9 +157,10 @@ const QueryMatchContext = createContext<QueryMatcher | null>(null);
 /** Gives the result cards inside it the searched query to highlight. OQL queries highlight nothing. */
 export function QueryMatchProvider({ query, field, children }: { query: string; field: string; children: ReactNode }) {
   const expansions = useShortcutExpansions();
+  const { on } = useQueryHighlight();
   const matcher = useMemo(
-    () => (field === OQL_FIELD || !query.trim() ? null : queryMatcher(query, expansions)),
-    [query, field, expansions],
+    () => (!on || field === OQL_FIELD || !query.trim() ? null : queryMatcher(query, expansions)),
+    [on, query, field, expansions],
   );
   return <QueryMatchContext.Provider value={matcher}>{children}</QueryMatchContext.Provider>;
 }

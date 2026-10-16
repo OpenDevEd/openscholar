@@ -10,6 +10,9 @@ import { expandShortcuts, shortcutNameOf, type ShortcutExpansions } from "@/lib/
  * shortcut (`name...`) is one concept, whatever its expansion holds.
  */
 
+/** The browser's choice to turn query highlighting off, read by the layout so the first frame matches it. */
+export const QUERY_HIGHLIGHT_COOKIE = "query-highlight";
+
 type QueryTokenKind = "space" | "open" | "close" | "and" | "or" | "not" | "term" | "phrase";
 
 export interface QueryToken {

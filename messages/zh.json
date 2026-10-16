@@ -36,6 +36,7 @@
     "upgrade": "升级",
     "signIn": "登录",
     "signInCreditsDescription": "登录后可直接使用 OpenScholar 的 AI 积分",
+    "highlightSearchTerms": "高亮搜索词",
     "signOut": "退出",
     "results": "结果",
     "filters": "筛选",
@@ -75,7 +76,6 @@
     "signInToSubscribe": "登录以订阅",
     "upgradeTo": "升级到 {plan}",
     "mostPopular": "最受欢迎",
-    "loadingAccountControls": "加载账户控件",
     "noResultsFound": "未找到结果",
     "somethingWentWrong": "出现错误",
     "zoteroSignInFailed": "Zotero 登录未完成。请重试。",
@@ -352,8 +352,7 @@
     "useOwnApiKey": "使用自己的 API 密钥"
   },
   "aiSettings": {
-    "aiConfiguration": "AI 配置",
-    "configurePreferences": "配置您的 AI 提供商和模型偏好"
+    "aiConfiguration": "AI 配置"
   },
   "billingPage": {
     "upgradePlan": "升级计划",

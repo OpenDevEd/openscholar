@@ -36,6 +36,7 @@
     "upgrade": "Upgrade",
     "signIn": "Sign in",
     "signInCreditsDescription": "Sign in to use credits for AI directly from OpenScholar",
+    "highlightSearchTerms": "Highlight search terms",
     "signOut": "Sign out",
     "results": "Results",
     "filters": "Filters",
@@ -75,7 +76,6 @@
     "signInToSubscribe": "Sign in to subscribe",
     "upgradeTo": "Upgrade to {plan}",
     "mostPopular": "Most popular",
-    "loadingAccountControls": "Loading account controls",
     "noResultsFound": "No results found",
     "somethingWentWrong": "Something went wrong",
     "zoteroSignInFailed": "The Zotero sign-in didn't finish. Try again.",
@@ -352,8 +352,7 @@
     "useOwnApiKey": "Use your own API key"
   },
   "aiSettings": {
-    "aiConfiguration": "AI configuration",
-    "configurePreferences": "Configure your AI provider and model preferences"
+    "aiConfiguration": "AI configuration"
   },
   "billingPage": {
     "upgradePlan": "Upgrade plan",
