@@ -45,33 +45,48 @@ describe("<TooltipHint> on focus", () => {
     return screen.getByRole("button");
   }
 
-  it("opens when the keyboard moves focus to its button", async () => {
-    renderButton();
-
-    await userEvent.tab();
-
-    expect(await screen.findByRole("tooltip")).toHaveTextContent("Settings");
-  });
-
-  // Safari moves focus to buttons with Option+Tab.
-  it("opens when Option+Tab moves focus to its button", async () => {
-    const button = renderButton();
-
-    await userEvent.keyboard("{Alt>}{Tab}{/Alt}");
-    act(() => button.focus());
-
-    expect(await screen.findByRole("tooltip")).toHaveTextContent("Settings");
-  });
+  async function tap() {
+    await userEvent.pointer({ keys: "[TouchA]", target: document.body });
+  }
 
   // A phone's sheet focuses its first button as it opens, and a menu gives focus back as it closes.
   // Nothing on a touch screen would close a hint opened then.
   it("stays shut when a script moves focus after a tap", async () => {
     const button = renderButton();
 
-    await userEvent.pointer({ keys: "[TouchA]", target: document.body });
+    await tap();
     act(() => button.focus());
 
     expect(button).toHaveFocus();
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+  });
+
+  it("opens when the keyboard moves focus to its button after a tap", async () => {
+    renderButton();
+
+    await tap();
+    await userEvent.tab();
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Settings");
+  });
+
+  // Safari moves focus to buttons with Option+Tab.
+  it("opens when Option+Tab moves focus to its button after a tap", async () => {
+    const button = renderButton();
+
+    await tap();
+    await userEvent.keyboard("{Alt>}{Tab}{/Alt}");
+    act(() => button.focus());
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Settings");
+  });
+
+  // A screen reader can move focus without sending a key or pointer event.
+  it("opens when focus arrives with no key press or tap before it", async () => {
+    const button = renderButton();
+
+    act(() => button.focus());
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Settings");
   });
 });

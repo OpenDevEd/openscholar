@@ -5,7 +5,7 @@ import { HoverCard as HoverCardPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
-import { keyboardFocusOnly } from "@/components/ui/tooltip"
+import { ignoreFocusAfterPointer } from "@/components/ui/tooltip"
 
 function HoverCard({
   ...props
@@ -20,7 +20,7 @@ function HoverCardTrigger({
   return (
     <HoverCardPrimitive.Trigger
       data-slot="hover-card-trigger"
-      onFocus={keyboardFocusOnly(onFocus)}
+      onFocus={ignoreFocusAfterPointer(onFocus)}
       {...props}
     />
   )

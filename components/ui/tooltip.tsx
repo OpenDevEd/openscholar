@@ -9,6 +9,7 @@ function TooltipProvider({
   delayDuration = 0,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Provider>) {
+  React.useEffect(trackPointerPresses, [])
   return (
     <TooltipPrimitive.Provider
       data-slot="tooltip-provider"
@@ -31,7 +32,7 @@ function TooltipTrigger({
   return (
     <TooltipPrimitive.Trigger
       data-slot="tooltip-trigger"
-      onFocus={keyboardFocusOnly(onFocus)}
+      onFocus={ignoreFocusAfterPointer(onFocus)}
       {...props}
     />
   )
@@ -39,40 +40,43 @@ function TooltipTrigger({
 
 /**
  * Radix opens a hint on any focus, including focus a script moves: a sheet
- * focusing its first button, or a menu giving focus back as it closes. Here
- * only focus that follows a key press opens one. On a touch screen nothing
- * leaves the button to close a hint opened that way, so it stayed up.
+ * focusing its first button, or a menu giving focus back as it closes. After
+ * a tap or a click, such focus opens nothing here. On a touch screen nothing
+ * leaves the button to close a hint opened that way, so it stayed up. Focus
+ * from the keyboard, or from a screen reader that sends no key or pointer
+ * event, still opens one.
  */
-function keyboardFocusOnly<T extends Element>(
+function ignoreFocusAfterPointer<T extends Element>(
   onFocus?: React.FocusEventHandler<T>
 ): React.FocusEventHandler<T> {
   return (event) => {
     onFocus?.(event)
     // Radix skips its own handler once the default is prevented.
-    if (!pressedKeyLast) event.preventDefault()
+    if (pointedLast) event.preventDefault()
   }
 }
 
 // `:focus-visible` can't tell: after a tap, Safari counts a script's focus as
 // keyboard focus, because a tap focuses no button. React Aria tracks the last
 // input the same way.
-let pressedKeyLast = false
-if (typeof document !== "undefined") {
-  document.addEventListener(
-    "keydown",
-    (event) => {
-      // Not a shortcut. Option+Tab moves focus in Safari, so Alt counts.
-      pressedKeyLast = !event.metaKey && !event.ctrlKey
-    },
-    true
-  )
-  document.addEventListener(
-    "pointerdown",
-    () => {
-      pressedKeyLast = false
-    },
-    true
-  )
+let pointedLast = false
+
+/** Follows the document's key and pointer presses while the provider is mounted. */
+function trackPointerPresses() {
+  pointedLast = false
+  const pointed = () => {
+    pointedLast = true
+  }
+  const pressed = (event: KeyboardEvent) => {
+    // Not a shortcut. Option+Tab moves focus in Safari, so Alt counts.
+    if (!event.metaKey && !event.ctrlKey) pointedLast = false
+  }
+  document.addEventListener("pointerdown", pointed, true)
+  document.addEventListener("keydown", pressed, true)
+  return () => {
+    document.removeEventListener("pointerdown", pointed, true)
+    document.removeEventListener("keydown", pressed, true)
+  }
 }
 
 function TooltipContent({
@@ -149,4 +153,4 @@ function isClipped(element: HTMLElement | null) {
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, TooltipHint, keyboardFocusOnly }
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, TooltipHint, ignoreFocusAfterPointer }
