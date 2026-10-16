@@ -113,14 +113,13 @@ const HEALTH_TONE: Record<GroupHealth, StatusTone> = {
   paused: "neutral",
 };
 
-// Displayed in the mock's order, not the schema's.
+// Displayed in the mock's order, not the schema's. Publish tags belong to each Zotero group, under its PDFs switch.
 const TAG_RULE_ORDER: TagRuleKey[] = [
   "hidden",
   "internal",
   "comingSoon",
   "description",
   "redirects",
-  "publish",
 ];
 
 /** The group id from a zotero.org group link, or null for anything else. */
