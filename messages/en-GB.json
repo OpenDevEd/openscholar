@@ -36,6 +36,8 @@
     "upgrade": "Upgrade",
     "signIn": "Sign in",
     "signInCreditsDescription": "Sign in to use credits for AI directly from OpenScholar",
+    "highlightSearchTerms": "Highlight search terms",
+    "highlightSearchTermsDescription": "Colours boolean queries and marks matches in results",
     "signOut": "Sign out",
     "results": "Results",
     "filters": "Filters",

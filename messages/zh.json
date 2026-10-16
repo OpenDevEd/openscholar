@@ -36,6 +36,8 @@
     "upgrade": "升级",
     "signIn": "登录",
     "signInCreditsDescription": "登录后可直接使用 OpenScholar 的 AI 积分",
+    "highlightSearchTerms": "高亮搜索词",
+    "highlightSearchTermsDescription": "为布尔查询着色，并在结果中标记匹配项",
     "signOut": "退出",
     "results": "结果",
     "filters": "筛选",

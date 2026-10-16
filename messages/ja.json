@@ -36,6 +36,8 @@
     "upgrade": "アップグレード",
     "signIn": "サインイン",
     "signInCreditsDescription": "OpenScholarでAIクレジットを直接使用するにはサインインしてください",
+    "highlightSearchTerms": "検索語をハイライト",
+    "highlightSearchTermsDescription": "ブール検索を色分けし、結果内の一致箇所をマークします",
     "signOut": "サインアウト",
     "results": "結果",
     "filters": "フィルター",

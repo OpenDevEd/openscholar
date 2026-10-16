@@ -34,6 +34,8 @@ import { SHEET_SPRING as CARD_SPRING } from "@/lib/motion";
 import { AuthButton } from "@/components/auth-button";
 import { KeywordExpansionPreview } from "@/components/keyword-expansion-preview";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { useQueryHighlight } from "@/components/query-highlight";
+import { Switch } from "@/components/ui/switch";
 import { LogoMark } from "@/components/logo";
 import { useAuthReadiness } from "@/components/providers/convex-provider";
 import { EASE } from "@/components/settings/model-map";
@@ -586,6 +588,7 @@ function AccountCard({ me, workspace, onNavigate, onSignOut }: { me: CachedMe | 
   const format = useFormatter();
   const { user } = useUser();
   const { theme, setTheme } = useTheme();
+  const highlight = useQueryHighlight();
   const { account, catalog, resolvedPlan } = useSubscriptionState();
   const plan = usePlanOf(workspace ?? { kind: "personal", name: "" });
   const email = user?.primaryEmailAddress?.emailAddress;
@@ -648,6 +651,10 @@ function AccountCard({ me, workspace, onNavigate, onSignOut }: { me: CachedMe | 
           <span className="text-xs text-muted-foreground">{tc("language")}</span>
           <LanguageSwitcher isCollapsed={false} />
         </div>
+        <label className="flex h-8 cursor-pointer items-center justify-between gap-2 pl-1.5 pr-2">
+          <span className="text-xs text-muted-foreground">{tc("highlightSearchTerms")}</span>
+          <Switch checked={highlight.on} onCheckedChange={highlight.setOn} />
+        </label>
       </div>
       <div className="border-t border-border/60 pt-1">
         <button type="button" onClick={onSignOut} className="flex h-9 w-full items-center gap-2.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">

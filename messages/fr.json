@@ -36,6 +36,8 @@
     "upgrade": "Mettre à niveau",
     "signIn": "Se connecter",
     "signInCreditsDescription": "Connectez-vous pour utiliser les crédits IA directement depuis OpenScholar",
+    "highlightSearchTerms": "Surligner les termes de recherche",
+    "highlightSearchTermsDescription": "Colore les requêtes booléennes et marque les correspondances dans les résultats",
     "signOut": "Se déconnecter",
     "results": "Résultats",
     "filters": "Filtres",
