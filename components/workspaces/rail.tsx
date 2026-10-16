@@ -420,9 +420,23 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
               // autoFocus only focuses form controls.
               ref={focusOnOpen}
               onKeyDown={(e) => {
+                // A key in a picker the card opened in a portal, such as the language list, is the picker's.
+                if (!e.currentTarget.contains(e.target as Node)) return;
                 if (e.key === "Escape") {
                   e.stopPropagation();
                   onClose();
+                }
+                // Tab stays in the card, as in a dialog: from its last control to its first, and back.
+                if (e.key === "Tab") {
+                  const controls = [...e.currentTarget.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex='-1'])")];
+                  const first = controls[0];
+                  const last = controls.at(-1);
+                  if (!first || !last) return;
+                  const at = document.activeElement;
+                  if (e.shiftKey ? at === first || at === e.currentTarget : at === last) {
+                    e.preventDefault();
+                    (e.shiftKey ? last : first).focus();
+                  }
                 }
               }}
               className={cn(
@@ -608,22 +622,25 @@ function AccountCard({ me, workspace, onNavigate, onSignOut }: { me: CachedMe | 
           <span className="mt-0.5 block h-4 truncate text-xs text-muted-foreground">{email ? <span className="animate-in fade-in-0 duration-200">{email}</span> : null}</span>
         </span>
       </div>
-      {hasCredits ? (
-        <Opening instant={creditsFromStart}>
-          <Link href={billing} onClick={onNavigate} className="mx-1 mb-1 block space-y-2 rounded-2xl bg-foreground/[0.04] px-3 pb-3 pt-2.5 transition-colors hover:bg-foreground/[0.07]">
-            <span className="flex items-baseline justify-between gap-2">
-              <span className="text-xl font-semibold tabular-nums tracking-tight">{format.number(credits)}</span>
-              <span className="truncate text-xs text-muted-foreground">{t("planFor", { plan: plan.name, workspace: workspace.name })}</span>
-            </span>
-            {/* Against the month's credits, on a plan that grants them each month. */}
-            {share !== null ? (
-              <span className="block h-1 overflow-hidden rounded-full bg-foreground/[0.08]">
-                <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${share * 100}%` }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
+      {/* Its own presence, so the card closing doesn't fold it: the photo flying back lands on the button only if the card keeps its height. */}
+      <AnimatePresence>
+        {hasCredits ? (
+          <Opening key="credits" instant={creditsFromStart}>
+            <Link href={billing} onClick={onNavigate} className="mx-1 mb-1 block space-y-2 rounded-2xl bg-foreground/[0.04] px-3 pb-3 pt-2.5 transition-colors hover:bg-foreground/[0.07]">
+              <span className="flex items-baseline justify-between gap-2">
+                <span className="text-xl font-semibold tabular-nums tracking-tight">{format.number(credits)}</span>
+                <span className="truncate text-xs text-muted-foreground">{t("planFor", { plan: plan.name, workspace: workspace.name })}</span>
               </span>
-            ) : null}
-          </Link>
-        </Opening>
-      ) : null}
+              {/* Against the month's credits, on a plan that grants them each month. */}
+              {share !== null ? (
+                <span className="block h-1 overflow-hidden rounded-full bg-foreground/[0.08]">
+                  <motion.span className="block h-full rounded-full bg-primary" initial={{ width: 0 }} animate={{ width: `${share * 100}%` }} transition={{ duration: 0.7, ease: EASE, delay: 0.15 }} />
+                </span>
+              ) : null}
+            </Link>
+          </Opening>
+        ) : null}
+      </AnimatePresence>
       <div className="space-y-px pt-1">
         <MenuLink href="/settings" icon={SettingsIcon} onClick={onNavigate}>
           {tc("settings")}
