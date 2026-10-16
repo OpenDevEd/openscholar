@@ -61,7 +61,8 @@ if (typeof document !== "undefined") {
   document.addEventListener(
     "keydown",
     (event) => {
-      pressedKeyLast = !event.metaKey && !event.ctrlKey && !event.altKey
+      // Not a shortcut. Option+Tab moves focus in Safari, so Alt counts.
+      pressedKeyLast = !event.metaKey && !event.ctrlKey
     },
     true
   )

@@ -53,6 +53,16 @@ describe("<TooltipHint> on focus", () => {
     expect(await screen.findByRole("tooltip")).toHaveTextContent("Settings");
   });
 
+  // Safari moves focus to buttons with Option+Tab.
+  it("opens when Option+Tab moves focus to its button", async () => {
+    const button = renderButton();
+
+    await userEvent.keyboard("{Alt>}{Tab}{/Alt}");
+    act(() => button.focus());
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Settings");
+  });
+
   // A phone's sheet focuses its first button as it opens, and a menu gives focus back as it closes.
   // Nothing on a touch screen would close a hint opened then.
   it("stays shut when a script moves focus after a tap", async () => {
