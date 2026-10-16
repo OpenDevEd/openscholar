@@ -37,7 +37,6 @@
     "signIn": "サインイン",
     "signInCreditsDescription": "OpenScholarでAIクレジットを直接使用するにはサインインしてください",
     "highlightSearchTerms": "検索語をハイライト",
-    "highlightSearchTermsDescription": "ブール検索を色分けし、結果内の一致箇所をマークします",
     "signOut": "サインアウト",
     "results": "結果",
     "filters": "フィルター",
@@ -77,7 +76,6 @@
     "signInToSubscribe": "サインインして購読",
     "upgradeTo": "{plan} にアップグレード",
     "mostPopular": "最も人気",
-    "loadingAccountControls": "アカウントコントロールを読み込み中",
     "noResultsFound": "結果が見つかりません",
     "somethingWentWrong": "問題が発生しました",
     "zoteroSignInFailed": "Zotero のサインインが完了しませんでした。もう一度お試しください。",
@@ -354,8 +352,7 @@
     "useOwnApiKey": "自分のAPIキーを使用"
   },
   "aiSettings": {
-    "aiConfiguration": "AI設定",
-    "configurePreferences": "AIプロバイダーとモデルの設定"
+    "aiConfiguration": "AI設定"
   },
   "billingPage": {
     "upgradePlan": "プランをアップグレード",

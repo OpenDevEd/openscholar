@@ -47,7 +47,6 @@ export { DocumentTextIcon as FileText } from "@solar-icons/react/bold-duotone/do
 export { ChatSquareIcon as MessageSquare } from "@solar-icons/react/bold-duotone/chat-square";
 export { GlobalIcon as GlobeIcon, GlobalIcon as Globe } from "@solar-icons/react/bold-duotone/global";
 export { PaletteIcon } from "@solar-icons/react/bold-duotone/palette";
-export { TextSelectionIcon as HighlightIcon } from "@solar-icons/react/bold-duotone/text-selection";
 export { Buildings2Icon as BuildingsIcon, Buildings2Icon as Building2 } from "@solar-icons/react/bold-duotone/buildings-2";
 export { HamburgerMenuIcon as MenuIcon } from "@solar-icons/react/bold-duotone/hamburger-menu";
 export { PanelBottomIcon as FooterIcon } from "@solar-icons/react/bold-duotone/panel-bottom";

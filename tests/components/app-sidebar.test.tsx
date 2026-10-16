@@ -66,7 +66,6 @@ vi.mock("@/lib/store", () => ({
 }));
 vi.mock("@/components/logo", () => ({ LogoMark: () => <span /> }));
 vi.mock("@/components/language-switcher", () => ({ LanguageSwitcher: () => null }));
-vi.mock("@/components/auth-button", () => ({ AuthButton: () => null }));
 vi.mock("@/components/keyword-expansion-preview", () => ({ KeywordExpansionPreview: () => null }));
 vi.mock("@/components/ui/tooltip", () => ({
   Tooltip: ({ children }: React.PropsWithChildren) => <>{children}</>,

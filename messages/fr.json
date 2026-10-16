@@ -37,7 +37,6 @@
     "signIn": "Se connecter",
     "signInCreditsDescription": "Connectez-vous pour utiliser les crédits IA directement depuis OpenScholar",
     "highlightSearchTerms": "Surligner les termes de recherche",
-    "highlightSearchTermsDescription": "Colore les requêtes booléennes et marque les correspondances dans les résultats",
     "signOut": "Se déconnecter",
     "results": "Résultats",
     "filters": "Filtres",
@@ -77,7 +76,6 @@
     "signInToSubscribe": "Connectez-vous pour vous abonner",
     "upgradeTo": "Passer au forfait {plan}",
     "mostPopular": "Le plus populaire",
-    "loadingAccountControls": "Chargement des contrôles du compte",
     "noResultsFound": "Aucun résultat trouvé",
     "somethingWentWrong": "Une erreur s'est produite",
     "zoteroSignInFailed": "La connexion à Zotero n'a pas abouti. Réessayez.",
@@ -354,8 +352,7 @@
     "useOwnApiKey": "Utiliser votre propre clé API"
   },
   "aiSettings": {
-    "aiConfiguration": "Configuration IA",
-    "configurePreferences": "Configurez votre fournisseur IA et vos préférences de modèle"
+    "aiConfiguration": "Configuration IA"
   },
   "billingPage": {
     "upgradePlan": "Passer à un forfait supérieur",
