@@ -5,6 +5,7 @@ import { HoverCard as HoverCardPrimitive } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 import { HoldWhileClosing, TrackOpen, useClosing } from "@/components/ui/hold-while-closing"
+import { keyboardFocusOnly } from "@/components/ui/tooltip"
 
 function HoverCard({
   ...props
@@ -13,10 +14,15 @@ function HoverCard({
 }
 
 function HoverCardTrigger({
+  onFocus,
   ...props
 }: React.ComponentProps<typeof HoverCardPrimitive.Trigger>) {
   return (
-    <HoverCardPrimitive.Trigger data-slot="hover-card-trigger" {...props} />
+    <HoverCardPrimitive.Trigger
+      data-slot="hover-card-trigger"
+      onFocus={keyboardFocusOnly(onFocus)}
+      {...props}
+    />
   )
 }
 

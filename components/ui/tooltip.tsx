@@ -25,9 +25,53 @@ function Tooltip({
 }
 
 function TooltipTrigger({
+  onFocus,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Trigger>) {
-  return <TooltipPrimitive.Trigger data-slot="tooltip-trigger" {...props} />
+  return (
+    <TooltipPrimitive.Trigger
+      data-slot="tooltip-trigger"
+      onFocus={keyboardFocusOnly(onFocus)}
+      {...props}
+    />
+  )
+}
+
+/**
+ * Radix opens a hint on any focus, including focus a script moves: a sheet
+ * focusing its first button, or a menu giving focus back as it closes. Here
+ * only focus that follows a key press opens one. On a touch screen nothing
+ * leaves the button to close a hint opened that way, so it stayed up.
+ */
+function keyboardFocusOnly<T extends Element>(
+  onFocus?: React.FocusEventHandler<T>
+): React.FocusEventHandler<T> {
+  return (event) => {
+    onFocus?.(event)
+    // Radix skips its own handler once the default is prevented.
+    if (!pressedKeyLast) event.preventDefault()
+  }
+}
+
+// `:focus-visible` can't tell: after a tap, Safari counts a script's focus as
+// keyboard focus, because a tap focuses no button. React Aria tracks the last
+// input the same way.
+let pressedKeyLast = false
+if (typeof document !== "undefined") {
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      pressedKeyLast = !event.metaKey && !event.ctrlKey && !event.altKey
+    },
+    true
+  )
+  document.addEventListener(
+    "pointerdown",
+    () => {
+      pressedKeyLast = false
+    },
+    true
+  )
 }
 
 function TooltipContent({
@@ -104,4 +148,4 @@ function isClipped(element: HTMLElement | null) {
   )
 }
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, TooltipHint }
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, TooltipHint, keyboardFocusOnly }

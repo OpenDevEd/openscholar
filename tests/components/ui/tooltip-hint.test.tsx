@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { screen } from "@testing-library/react";
+import { act, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 import { TooltipHint } from "@/components/ui/tooltip";
@@ -32,5 +32,36 @@ describe("<TooltipHint onlyWhenClipped>", () => {
     await userEvent.hover(title);
 
     expect(await screen.findByRole("tooltip")).toHaveTextContent("A long paper title");
+  });
+});
+
+describe("<TooltipHint> on focus", () => {
+  function renderButton() {
+    render(
+      <TooltipHint label="Settings">
+        <button type="button">S</button>
+      </TooltipHint>,
+    );
+    return screen.getByRole("button");
+  }
+
+  it("opens when the keyboard moves focus to its button", async () => {
+    renderButton();
+
+    await userEvent.tab();
+
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Settings");
+  });
+
+  // A phone's sheet focuses its first button as it opens, and a menu gives focus back as it closes.
+  // Nothing on a touch screen would close a hint opened then.
+  it("stays shut when a script moves focus after a tap", async () => {
+    const button = renderButton();
+
+    await userEvent.pointer({ keys: "[TouchA]", target: document.body });
+    act(() => button.focus());
+
+    expect(button).toHaveFocus();
+    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
   });
 });
