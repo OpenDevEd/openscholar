@@ -196,6 +196,8 @@ export function SidebarContent({ firstWorkspace, onClose }: { firstWorkspace: Fi
   // Signing out waits for the account card to close: open, it would sit there as Clerk empties it. Once asked for,
   // the card doesn't open again, so nothing cancels its closing, and signing out starts once.
   const [signOutStep, setSignOutStep] = useState<"asked" | "started" | null>(null);
+  // Clerk can finish signing out without reloading the page: the button then opens the signed-out card.
+  if (signOutStep === "started" && !signedIn) setSignOutStep(null);
   const [creating, setCreating] = useState(false);
   const reduceMotion = useReducedMotion();
   const workspaceTrigger = useRef<HTMLButtonElement>(null);
@@ -404,10 +406,17 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
   const t = useTranslations("workspaces");
   const reduceMotion = useReducedMotion();
   const enter = from === "bottom" ? 36 : -36;
+  // How far a card taller than the window is scrolled: the head, outside it, goes up and out with its row.
+  const [scrolled, setScrolled] = useState(0);
   // Stable, so it focuses the card once, as it mounts, and not again as it renders.
   const focusOnOpen = useCallback((node: HTMLDivElement | null) => node?.focus({ preventScroll: true }), []);
   return (
-    <AnimatePresence onExitComplete={onClosed}>
+    <AnimatePresence
+      onExitComplete={() => {
+        setScrolled(0);
+        onClosed?.();
+      }}
+    >
       {open ? (
         <>
           <motion.button
@@ -439,7 +448,7 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
                 }
               }}
               className={cn(
-                "pointer-events-auto overflow-hidden rounded-[22px] border border-border/60 bg-popover p-1.5 text-popover-foreground outline-none dark:border-white/[0.06]",
+                "pointer-events-auto max-h-[calc(100dvh-1rem)] overflow-y-auto overscroll-contain rounded-[22px] border border-border/60 bg-popover p-1.5 text-popover-foreground outline-none dark:border-white/[0.06]",
                 "shadow-[0_24px_64px_-16px_rgb(0_0_0/0.35),0_8px_24px_-12px_rgb(0_0_0/0.2)] dark:shadow-[0_24px_64px_-12px_rgb(0_0_0/0.8)]",
               )}
               style={{ transformOrigin: from === "bottom" ? "2.25rem 100%" : "2.25rem 0%" }}
@@ -447,10 +456,13 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: enter * 0.6, scale: 0.92, transition: { duration: 0.24, ease: EASE } }}
               transition={CARD_SPRING}
+              onScroll={(e) => setScrolled(e.currentTarget.scrollTop)}
             >
               {children}
             </motion.div>
-            <div className="pointer-events-none absolute left-4 top-4">{head}</div>
+            <div className="pointer-events-none absolute left-4 top-4" style={scrolled ? { transform: `translateY(${-scrolled}px)`, opacity: Math.max(0, 1 - scrolled / 24) } : undefined}>
+              {head}
+            </div>
           </div>
         </>
       ) : null}
