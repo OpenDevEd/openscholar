@@ -424,6 +424,18 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
                   e.stopPropagation();
                   onClose();
                 }
+                // Tab stays in the card, as in a dialog: from its last control to its first, and back.
+                if (e.key === "Tab") {
+                  const controls = [...e.currentTarget.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex='-1'])")];
+                  const first = controls[0];
+                  const last = controls.at(-1);
+                  if (!first || !last) return;
+                  const at = document.activeElement;
+                  if (e.shiftKey ? at === first || at === e.currentTarget : at === last) {
+                    e.preventDefault();
+                    (e.shiftKey ? last : first).focus();
+                  }
+                }
               }}
               className={cn(
                 "pointer-events-auto overflow-hidden rounded-[22px] border border-border/60 bg-popover p-1.5 text-popover-foreground outline-none dark:border-white/[0.06]",
