@@ -2328,6 +2328,16 @@
       "openScholarCollection": "OpenScholar collection",
       "openScholarCollectionHint": "Follow one of your collections",
       "pdfs": "PDFs",
+      "pdfPublishing": {
+        "label": "PDF publishing",
+        "tagged": "Tagged PDFs",
+        "taggedDetail": "Only those with a publish tag",
+        "every": "Every PDF",
+        "everyDetail": "Tagged or not",
+        "tags": "Publish tags",
+        "taggedHint": "A PDF, note or link with any of these tags in Zotero is published.",
+        "everyHint": "PDFs don't need one. Notes and links still need one of these tags."
+      },
       "collectionDeleted": "This collection was deleted in OpenScholar.",
       "removeCollectionTitle": "Remove this collection?",
       "collectionConnectFailed": "Could not add this collection.",

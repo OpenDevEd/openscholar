@@ -44,6 +44,8 @@ export { Tuning2Icon as SwitchesIcon, Tuning2Icon as SlidersHorizontal, Tuning2I
 export { BoxIcon as ModelsIcon, BoxIcon as Boxes } from "@solar-icons/react/bold-duotone/box";
 export { ShieldUserIcon as AdminsIcon } from "@solar-icons/react/bold-duotone/shield-user";
 export { DocumentTextIcon as FileText } from "@solar-icons/react/bold-duotone/document-text";
+export { TagIcon as Tag } from "@solar-icons/react/bold-duotone/tag";
+export { DocumentsIcon as Documents } from "@solar-icons/react/bold-duotone/documents";
 export { ChatSquareIcon as MessageSquare } from "@solar-icons/react/bold-duotone/chat-square";
 export { GlobalIcon as GlobeIcon, GlobalIcon as Globe } from "@solar-icons/react/bold-duotone/global";
 export { PaletteIcon } from "@solar-icons/react/bold-duotone/palette";

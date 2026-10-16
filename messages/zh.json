@@ -2328,6 +2328,16 @@
       "openScholarCollection": "OpenScholar 合集",
       "openScholarCollectionHint": "关注你的一个合集",
       "pdfs": "PDF",
+      "pdfPublishing": {
+        "label": "PDF 发布",
+        "tagged": "带标签的 PDF",
+        "taggedDetail": "仅限带有发布标签的",
+        "every": "所有 PDF",
+        "everyDetail": "无论有无标签",
+        "tags": "发布标签",
+        "taggedHint": "在 Zotero 中带有任一这些标签的 PDF、笔记或链接会被发布。",
+        "everyHint": "PDF 不需要标签。笔记和链接仍需要其中一个标签。"
+      },
       "collectionDeleted": "该合集已在 OpenScholar 中删除。",
       "removeCollectionTitle": "移除此合集？",
       "collectionConnectFailed": "无法添加此合集。",
