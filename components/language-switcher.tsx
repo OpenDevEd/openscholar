@@ -65,8 +65,9 @@ export function LanguageSwitcher({ isCollapsed }: LanguageSwitcherProps) {
     );
   }
 
+  // Modal, so Tab stays in the list while it's open: it opens in a portal, outside the account card that keeps Tab in itself.
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover modal open={open} onOpenChange={setOpen}>
       <motion.div
         tabIndex={-1}
         whileHover={{ scale: 1.05 }}

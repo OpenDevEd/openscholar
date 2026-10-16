@@ -420,6 +420,8 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
               // autoFocus only focuses form controls.
               ref={focusOnOpen}
               onKeyDown={(e) => {
+                // A key in a picker the card opened in a portal, such as the language list, is the picker's.
+                if (!e.currentTarget.contains(e.target as Node)) return;
                 if (e.key === "Escape") {
                   e.stopPropagation();
                   onClose();
