@@ -146,52 +146,55 @@ export function WorkspaceMenu({ shown, all, shared, onDone, onSwitch, onCreate }
         </span>
       </div>
 
-      {others.length ? (
-        <Opening instant={listed}>
-          <p className="flex h-6 items-center border-t border-border/60 px-2.5 pt-2 text-[11px] font-medium text-muted-foreground">{t("switchTo")}</p>
-          <ul role="listbox" aria-label={t("otherWorkspaces")} className="space-y-px pt-1">
-            {others.map((workspace) => (
-              <li key={workspace.workspaceId} role="option" aria-selected={false}>
-                <button
-                  type="button"
-                  onClick={() => onSwitch(workspace.slug, workspace)}
-                  className={cn(ROW, "h-11")}
-                >
-                  <Framed>
-                    <WorkspaceTile workspace={workspace} size="md" home />
-                  </Framed>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13px] font-semibold leading-tight">{workspace.name}</span>
-                    <span className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                      <span className="font-medium">
-                        <PlanName workspace={workspace} />
+      {/* Its own presence, so the card closing doesn't fold the list as it goes. */}
+      <AnimatePresence>
+        {others.length ? (
+          <Opening key="others" instant={listed}>
+            <p className="flex h-6 items-center border-t border-border/60 px-2.5 pt-2 text-[11px] font-medium text-muted-foreground">{t("switchTo")}</p>
+            <ul role="listbox" aria-label={t("otherWorkspaces")} className="space-y-px pt-1">
+              {others.map((workspace) => (
+                <li key={workspace.workspaceId} role="option" aria-selected={false}>
+                  <button
+                    type="button"
+                    onClick={() => onSwitch(workspace.slug, workspace)}
+                    className={cn(ROW, "h-11")}
+                  >
+                    <Framed>
+                      <WorkspaceTile workspace={workspace} size="md" home />
+                    </Framed>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-semibold leading-tight">{workspace.name}</span>
+                      <span className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span className="font-medium">
+                          <PlanName workspace={workspace} />
+                        </span>
+                        <RoleOf workspace={workspace} />
                       </span>
-                      <RoleOf workspace={workspace} />
                     </span>
-                  </span>
-                  {workspace.kind === "personal" && shared ? (
-                    <TooltipHint label={t("sharedWithYou", { count: shared })}>
-                      <span className="fade-enter flex shrink-0 items-center gap-1 pr-1 text-[11px] tabular-nums text-muted-foreground">
-                        <Share2 aria-hidden className="size-3" />
-                        <span aria-hidden>{shared}</span>
-                        {/* The row is one button: its name says the count, which the tooltip only shows on hover. */}
-                        <span className="sr-only">{t("sharedWithYou", { count: shared })}</span>
-                      </span>
-                    </TooltipHint>
-                  ) : null}
-                </button>
-              </li>
-            ))}
-            {all.more ? (
-              <li>
-                <button type="button" disabled={all.loading} onClick={all.loadMore} className={cn(ROW, "h-9 justify-center text-xs font-medium text-muted-foreground disabled:opacity-60")}>
-                  {tc("showMore")}
-                </button>
-              </li>
-            ) : null}
-          </ul>
-        </Opening>
-      ) : null}
+                    {workspace.kind === "personal" && shared ? (
+                      <TooltipHint label={t("sharedWithYou", { count: shared })}>
+                        <span className="fade-enter flex shrink-0 items-center gap-1 pr-1 text-[11px] tabular-nums text-muted-foreground">
+                          <Share2 aria-hidden className="size-3" />
+                          <span aria-hidden>{shared}</span>
+                          {/* The row is one button: its name says the count, which the tooltip only shows on hover. */}
+                          <span className="sr-only">{t("sharedWithYou", { count: shared })}</span>
+                        </span>
+                      </TooltipHint>
+                    ) : null}
+                  </button>
+                </li>
+              ))}
+              {all.more ? (
+                <li>
+                  <button type="button" disabled={all.loading} onClick={all.loadMore} className={cn(ROW, "h-9 justify-center text-xs font-medium text-muted-foreground disabled:opacity-60")}>
+                    {tc("showMore")}
+                  </button>
+                </li>
+              ) : null}
+            </ul>
+          </Opening>
+        ) : null}
+      </AnimatePresence>
 
       <AnimatePresence initial={false}>
         {(invitations?.page ?? []).map((invitation) => (
