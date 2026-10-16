@@ -66,8 +66,10 @@ export function ItemBar({ kind, id, name, started, className, share, guest }: { 
       ) : (
         <>
           {by ? <PersonTag name={by.name} imageUrl={by.imageUrl} you={by.you} before={t(started)} /> : null}
-          <span className="flex-1" />
-          <ItemPresence kind={kind} id={id} />
+          {/* One element pushes the rest right, so an empty room costs no gap that who started it needs on a phone. */}
+          <span className="ml-auto flex">
+            <ItemPresence kind={kind} id={id} />
+          </span>
           <ActivityButton kind={kind} id={id} name={name} />
           <MoveButton kind={kind} id={id} name={name} />
           {share}
