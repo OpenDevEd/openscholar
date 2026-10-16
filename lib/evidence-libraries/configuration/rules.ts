@@ -23,7 +23,7 @@ import {
   readLink,
 } from "./links";
 import { resolveSchemaPointer } from "./section-registry";
-import type { ZoteroSourceEntry } from "@/convex/zotero/sourceEntry";
+import { DEFAULT_ZOTERO_PUBLISH_TAGS, type ZoteroPdfPublishing, type ZoteroSourceEntry } from "@/convex/zotero/sourceEntry";
 import {
   collectionSourceKey,
   type EvidenceSourceEntry,
@@ -37,6 +37,7 @@ import {
   TAG_RULE_KEYS,
   type TagRuleKey,
   type TagRules,
+  pdfPublishingIssue,
   tagRuleIssue,
 } from "@/components/evidence-libraries/configuration/sections/tag-rules";
 import { isHandEntered } from "./home-people";
@@ -113,6 +114,7 @@ type SectionProblem =
   | "defaultScope"
   | "featuredInstitution"
   | "tagRules"
+  | "pdfPublishing"
   | "featureDependency"
   | "languages"
   | "posthog"
@@ -965,6 +967,14 @@ function readScreening(value: unknown): { screening?: SourceScreeningSettings } 
   };
 }
 
+function readPdfPublishing(payload: unknown): ZoteroPdfPublishing {
+  const rule = record(payload);
+  const tags = Array.isArray(rule.tags)
+    ? rule.tags.filter((tag): tag is string => typeof tag === "string")
+    : [...DEFAULT_ZOTERO_PUBLISH_TAGS];
+  return { mode: rule.mode === "every" ? "every" : "tagged", tags };
+}
+
 function readSources(payload: unknown): EvidenceSourceEntry[] {
   return list(payload)
     .map((entry) => record(entry))
@@ -1028,7 +1038,7 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
         groupId,
         enabled: flag(row.enabled, true),
         writebackEnabled: flag(row.writebackEnabled, false),
-        settings: { downloadPdfs: flag(settings.downloadPdfs, true) },
+        settings: { downloadPdfs: flag(settings.downloadPdfs, true), pdfPublishing: readPdfPublishing(settings.pdfPublishing) },
         ...readScreening(row.screening),
       };
       return [parsed];
@@ -1906,6 +1916,9 @@ export function sectionProblems(
         )
       ) {
         problems.push("tagRules");
+      }
+      if (draft.sources.some((source) => source.provider === "zotero" && pdfPublishingIssue(source.settings.pdfPublishing) !== null)) {
+        problems.push("pdfPublishing");
       }
       break;
     case "features":

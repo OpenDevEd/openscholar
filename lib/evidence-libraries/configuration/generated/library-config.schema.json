@@ -1522,6 +1522,32 @@
 									"downloadPdfs": {
 										"default": true,
 										"type": "boolean"
+									},
+									"pdfPublishing": {
+										"type": "object",
+										"properties": {
+											"mode": {
+												"type": "string",
+												"enum": [
+													"tagged",
+													"every"
+												]
+											},
+											"tags": {
+												"maxItems": 10,
+												"type": "array",
+												"items": {
+													"type": "string",
+													"minLength": 1,
+													"maxLength": 128
+												}
+											}
+										},
+										"required": [
+											"mode",
+											"tags"
+										],
+										"additionalProperties": false
 									}
 								},
 								"additionalProperties": false

@@ -5,11 +5,12 @@ import {
 } from "../../../convex/evidenceLibraries/sectionPayload";
 import { EXPORT_FORMATS, readDraft, type SectionRow } from "./rules";
 import { AI_PROVIDER } from "./ai";
+import { DEFAULT_ZOTERO_PUBLISH_TAGS } from "../../../convex/zotero/sourceEntry";
 import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 10 as const;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 11 as const;
 const MAX_CHANGED_POINTERS = 100;
 
 type OwnerConfigurationSnapshotRow = {
@@ -585,6 +586,29 @@ function migrateVersionNineToTen(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+/**
+ * Each Zotero group gets its own PDF rule. Saved groups keep publishing the PDFs the library's publish tags published;
+ * the library's tags stay for the records it makes itself.
+ */
+function migrateVersionTenToEleven(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 11;
+  const content = next.sections.find((row) => row.sectionKey === "content")?.payload;
+  const libraryTags = isRecord(content) && isRecord(content.tags) ? content.tags.publish : undefined;
+  const tags = Array.isArray(libraryTags) ? libraryTags : [...DEFAULT_ZOTERO_PUBLISH_TAGS];
+  for (const row of next.sections) {
+    if (row.sectionKey !== "sources" || !Array.isArray(row.payload)) continue;
+    row.payload = row.payload.map((source) =>
+      isRecord(source) && source.provider === "zotero" && isRecord(source.settings) && source.settings.pdfPublishing === undefined
+        ? { ...source, settings: { ...source.settings, pdfPublishing: { mode: "tagged", tags: [...tags] } } }
+        : source,
+    );
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [
   {
     sectionKey: "ai",
@@ -666,6 +690,14 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 9,
     to: 10,
     migrate: migrateVersionNineToTen,
+    defaultRows: [
+      ...disabledAiDefaults,
+      { sectionKey: "topics", payload: () => ({ enabled: false }) },
+    ],
+  },  {
+    from: 10,
+    to: 11,
+    migrate: migrateVersionTenToEleven,
     defaultRows: [
       ...disabledAiDefaults,
       { sectionKey: "topics", payload: () => ({ enabled: false }) },

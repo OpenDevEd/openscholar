@@ -17,7 +17,7 @@ describe("zoteroSourceEntry", () => {
       groupId: "42",
       enabled: true,
       writebackEnabled: false,
-      settings: { downloadPdfs: true },
+      settings: { downloadPdfs: true, pdfPublishing: { mode: "tagged", tags: ["_publish", "publishPDF"] } },
     });
   });
 });

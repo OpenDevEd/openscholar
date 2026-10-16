@@ -106,11 +106,12 @@ describe("owner configuration migrations", () => {
         },
       ],
     });
-    expect(result.snapshot.ownerConfigurationVersion).toBe(10);
+    expect(result.snapshot.ownerConfigurationVersion).toBe(CURRENT_OWNER_CONFIGURATION_VERSION);
     const off = { enabled: false, subject: "", keptOut: ["not-about"] };
+    const pdfPublishing = { mode: "tagged", tags: ["_publish", "publishPDF"] };
     expect(result.snapshot.sections.find((row) => row.sectionKey === "sources")?.payload).toEqual([
-      { ...zotero("42"), settings: { downloadPdfs: true }, screening: off },
-      { ...zotero("77"), settings: { downloadPdfs: false }, screening: off },
+      { ...zotero("42"), settings: { downloadPdfs: true, pdfPublishing }, screening: off },
+      { ...zotero("77"), settings: { downloadPdfs: false, pdfPublishing }, screening: off },
     ]);
   });
 
@@ -155,6 +156,26 @@ describe("owner configuration migrations", () => {
     });
     const sources = snapshot.sections.find((row) => row.sectionKey === "sources")?.payload as { screening: unknown }[];
     expect(sources.map((source) => source.screening)).toEqual([{ enabled: false, subject: "", keptOut: ["not-about"] }, screened]);
+  });
+
+  it("gives each saved Zotero group the library's publish tags as its own, and keeps a rule already set", () => {
+    const every = { mode: "every", tags: [] };
+    const zotero = (groupId: string, settings: Record<string, unknown>) =>
+      ({ key: `zotero-${groupId}`, provider: "zotero", groupId, enabled: true, writebackEnabled: false, settings });
+    const { snapshot } = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 10,
+      sections: [
+        { sectionKey: "content", payload: { tags: { publish: ["approved"] }, openAccessLabel: "open" } },
+        { sectionKey: "sources", payload: [zotero("42", { downloadPdfs: true }), zotero("77", { downloadPdfs: true, pdfPublishing: every })] },
+      ],
+    });
+    const sources = snapshot.sections.find((row) => row.sectionKey === "sources")?.payload as { settings: unknown }[];
+    expect(sources.map((source) => source.settings)).toEqual([
+      { downloadPdfs: true, pdfPublishing: { mode: "tagged", tags: ["approved"] } },
+      { downloadPdfs: true, pdfPublishing: every },
+    ]);
+    // The library's own tags stay, for the records it makes itself.
+    expect(snapshot.sections.find((row) => row.sectionKey === "content")?.payload).toMatchObject({ tags: { publish: ["approved"] } });
   });
 
   it("adds an Identity assets container without changing its other values", () => {
@@ -398,6 +419,7 @@ describe("owner configuration migrations", () => {
       [7, 8],
       [8, 9],
       [9, 10],
+      [10, 11],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -638,6 +660,7 @@ describe("owner configuration migrations", () => {
       [7, 8],
       [8, 9],
       [9, 10],
+      [10, 11],
     ]);
   });
 

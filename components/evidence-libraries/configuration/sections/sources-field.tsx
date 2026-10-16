@@ -69,7 +69,7 @@ import {
 } from "./openalex-sources";
 import { errorMessage, SourceRow, SourceSwitch } from "./source-row";
 import { SourceScreeningProvider, sourceScreening } from "./source-screening";
-import { type PdfPublishing, sourcePdfs } from "./source-pdfs";
+import { sourcePdfs } from "./source-pdfs";
 import {
   CollectionSourceIcon,
   CollectionSourceRow,
@@ -114,13 +114,13 @@ const HEALTH_TONE: Record<GroupHealth, StatusTone> = {
 };
 
 // Displayed in the mock's order, not the schema's. Publish tags belong to each Zotero group, under its PDFs switch.
-const TAG_RULE_ORDER: TagRuleKey[] = [
+const TAG_RULE_ORDER = [
   "hidden",
   "internal",
   "comingSoon",
   "description",
   "redirects",
-];
+] as const satisfies readonly TagRuleKey[];
 
 /** The group id from a zotero.org group link, or null for anything else. */
 function groupIdFromLink(value: string): string | null {
@@ -290,7 +290,6 @@ export function SourcesField({
                 busy={busyGroupId === entry.groupId}
                 canReconnect={connected}
                 live={liveFor(entry.key, !entry.enabled, "Zotero")}
-                libraryPublishTags={tags.publish ?? DEFAULT_TAG_RULES.publish}
                 onPatch={(patch) => patchEntry(entry.groupId, patch)}
                 onReconnect={() => reconnect(entry.groupId)}
                 onRemove={() => setRemoveTarget({ kind: "zotero", groupId: entry.groupId })}
@@ -639,7 +638,6 @@ function GroupRow({
   busy,
   canReconnect,
   live,
-  libraryPublishTags,
   onPatch,
   onReconnect,
   onRemove,
@@ -649,23 +647,16 @@ function GroupRow({
   busy: boolean;
   canReconnect: boolean;
   live: SourceLive | null;
-  /** Mock: where a group's own publish tags start, until they are saved on the source. */
-  libraryPublishTags: string[];
   onPatch: (patch: Partial<ZoteroSourceEntry>) => void;
   onReconnect: () => void;
   onRemove: () => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
-  // Mock: neither is saved yet; the real ones are settings on the source beside downloadPdfs.
-  const [publishing, setPublishing] = useState<PdfPublishing>("tagged");
-  const [publishTags, setPublishTags] = useState(libraryPublishTags);
   const pdfs = sourcePdfs({
     downloadPdfs: entry.settings.downloadPdfs,
-    onDownloadPdfsChange: (downloadPdfs) => onPatch({ settings: { downloadPdfs } }),
-    publishing,
-    onPublishingChange: setPublishing,
-    tags: publishTags,
-    onTagsChange: setPublishTags,
+    onDownloadPdfsChange: (downloadPdfs) => onPatch({ settings: { ...entry.settings, downloadPdfs } }),
+    publishing: entry.settings.pdfPublishing,
+    onPublishingChange: (pdfPublishing) => onPatch({ settings: { ...entry.settings, pdfPublishing } }),
   });
   const paused = !entry.enabled;
   const health: GroupHealth = paused ? "paused" : "connected";
@@ -685,7 +676,7 @@ function GroupRow({
         },
         {
           key: "records",
-          label: t("recordsLabel"),
+          label: t("zoteroItemsLabel"),
           value: group.itemCount.toLocaleString(),
         },
         ...(group.connectedByZoteroUsername

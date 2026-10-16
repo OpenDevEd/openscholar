@@ -1809,7 +1809,8 @@
       "languages": "Offer at least one language and pick the default from the offered ones.",
       "posthog": "Enter the PostHog host (https://...) and a project key that starts with phc_.",
       "google": "Use a measurement ID like G-XXXXXXXXXX.",
-      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters.",
+      "tagRules": "Fix the tag rules: at most 10 tags per rule, each up to 128 characters.",
+      "pdfPublishing": "Give each Zotero group that publishes tagged PDFs at least one publish tag, at most 10, each up to 128 characters.",
       "posthogUiHost": "The session recordings address needs a full address that starts with https://.",
       "consentVersion": "The consent version is a whole number, 1 or higher.",
       "aiKey": "Add your OpenRouter key.",
@@ -2219,6 +2220,7 @@
       "public": "Public",
       "private": "Private",
       "recordsLabel": "Records",
+      "zoteroItemsLabel": "Zotero items",
       "connectedBy": "Connected by",
       "groupIdLabel": "Group",
       "writeback": "Write back",
@@ -2277,7 +2279,7 @@
         "paused": "Paused"
       },
       "tagRulesHeading": "Zotero tag rules",
-      "tagRulesIntro": "Tags on a Zotero record change how the library treats it.",
+      "tagRulesIntro": "Tags in Zotero change how the library treats a record. Hide tags work on its notes and attachments too.",
       "tagPlaceholder": "Add a tag…",
       "tagRules": {
         "hidden": {
@@ -2300,10 +2302,6 @@
           "label": "Redirect rules",
           "hint": "Records that redirect to another page."
         },
-        "publish": {
-          "label": "Publish the PDF",
-          "hint": "Records with these tags publish their PDF."
-        },
         "issues": {
           "publishEmpty": "Keep at least one publish tag.",
           "tooMany": "Use at most 10 tags.",
@@ -2316,7 +2314,7 @@
         "search": "Search groups…",
         "noGroups": "Your Zotero account has no groups.",
         "colGroup": "Group",
-        "colItems": "Records",
+        "colItems": "Items",
         "added": "Added",
         "noMatch": "No group matches.",
         "cancel": "Cancel",

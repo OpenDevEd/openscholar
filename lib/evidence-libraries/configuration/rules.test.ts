@@ -1059,7 +1059,7 @@ describe("readDraft for the discovery sections", () => {
         groupId: "42",
         enabled: true,
         writebackEnabled: true,
-        settings: { downloadPdfs: true },
+        settings: { downloadPdfs: true, pdfPublishing: { mode: "tagged", tags: ["_publish", "publishPDF"] } },
       },
     ]);
     expect(draft.content.tags).toEqual({ publish: ["_publish"], hidden: [] });

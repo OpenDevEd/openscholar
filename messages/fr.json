@@ -1809,7 +1809,8 @@
       "languages": "Offer at least one language and pick the default from the offered ones.",
       "posthog": "Enter the PostHog host (https://...) and a project key that starts with phc_.",
       "google": "Use a measurement ID like G-XXXXXXXXXX.",
-      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters.",
+      "tagRules": "Corrigez les règles de tags : 10 tags au plus par règle, de 128 caractères au plus chacun.",
+      "pdfPublishing": "Donnez à chaque groupe Zotero qui publie les PDF tagués au moins un tag de publication, 10 au plus, de 128 caractères au plus chacun.",
       "posthogUiHost": "The session recordings address needs a full address that starts with https://.",
       "consentVersion": "The consent version is a whole number, 1 or higher.",
       "aiKey": "Add your OpenRouter key.",
@@ -2219,6 +2220,7 @@
       "public": "Public",
       "private": "Private",
       "recordsLabel": "Records",
+      "zoteroItemsLabel": "Éléments Zotero",
       "connectedBy": "Connected by",
       "groupIdLabel": "Group",
       "writeback": "Write back",
@@ -2277,7 +2279,7 @@
         "paused": "Paused"
       },
       "tagRulesHeading": "Zotero tag rules",
-      "tagRulesIntro": "Tags on a Zotero record change how the library treats it.",
+      "tagRulesIntro": "Les tags Zotero changent la façon dont la bibliothèque traite une notice. Les tags de masquage s'appliquent aussi à ses notes et pièces jointes.",
       "tagPlaceholder": "Add a tag…",
       "tagRules": {
         "hidden": {
@@ -2300,10 +2302,6 @@
           "label": "Redirect rules",
           "hint": "Records that redirect to another page."
         },
-        "publish": {
-          "label": "Publish the PDF",
-          "hint": "Records with these tags publish their PDF."
-        },
         "issues": {
           "publishEmpty": "Keep at least one publish tag.",
           "tooMany": "Use at most 10 tags.",
@@ -2316,7 +2314,7 @@
         "search": "Search groups…",
         "noGroups": "Your Zotero account has no groups.",
         "colGroup": "Group",
-        "colItems": "Records",
+        "colItems": "Éléments",
         "added": "Added",
         "noMatch": "No group matches.",
         "cancel": "Cancel",
