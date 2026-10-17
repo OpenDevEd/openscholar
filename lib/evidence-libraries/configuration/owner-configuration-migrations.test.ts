@@ -178,6 +178,18 @@ describe("owner configuration migrations", () => {
     expect(snapshot.sections.find((row) => row.sectionKey === "content")?.payload).toMatchObject({ tags: { publish: ["approved"] } });
   });
 
+  it("leaves out of each Zotero group's publish tags the ones that are also hide or internal tags", () => {
+    const { snapshot } = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 10,
+      sections: [
+        { sectionKey: "content", payload: { tags: { publish: ["approved", "Hide"], hidden: ["hide"] }, openAccessLabel: "open" } },
+        { sectionKey: "sources", payload: [{ key: "zotero-42", provider: "zotero", groupId: "42", enabled: true, writebackEnabled: false, settings: { downloadPdfs: true } }] },
+      ],
+    });
+    const [source] = snapshot.sections.find((row) => row.sectionKey === "sources")?.payload as { settings: unknown }[];
+    expect(source!.settings).toEqual({ downloadPdfs: true, pdfPublishing: { mode: "tagged", tags: ["approved"] } });
+  });
+
   it("adds an Identity assets container without changing its other values", () => {
     const identity = {
       name: "Climate",
