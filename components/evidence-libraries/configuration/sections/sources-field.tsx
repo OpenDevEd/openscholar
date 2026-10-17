@@ -85,6 +85,7 @@ import {
 import { Disclosure } from "../disclosure-button";
 import {
   DEFAULT_TAG_RULES,
+  blockedPublishTags,
   type TagRuleKey,
   type TagRules,
   tagRuleIssue,
@@ -289,6 +290,7 @@ export function SourcesField({
                 group={byGroupId.get(entry.groupId)}
                 busy={busyGroupId === entry.groupId}
                 canReconnect={connected}
+                blockedPublishTags={blockedPublishTags(tags)}
                 live={liveFor(entry.key, !entry.enabled, "Zotero")}
                 onPatch={(patch) => patchEntry(entry.groupId, patch)}
                 onReconnect={() => reconnect(entry.groupId)}
@@ -637,6 +639,7 @@ function GroupRow({
   group,
   busy,
   canReconnect,
+  blockedPublishTags,
   live,
   onPatch,
   onReconnect,
@@ -646,6 +649,7 @@ function GroupRow({
   group: ConnectedGroup | undefined;
   busy: boolean;
   canReconnect: boolean;
+  blockedPublishTags: string[];
   live: SourceLive | null;
   onPatch: (patch: Partial<ZoteroSourceEntry>) => void;
   onReconnect: () => void;
@@ -656,6 +660,7 @@ function GroupRow({
     downloadPdfs: entry.settings.downloadPdfs,
     onDownloadPdfsChange: (downloadPdfs) => onPatch({ settings: { ...entry.settings, downloadPdfs } }),
     publishing: entry.settings.pdfPublishing,
+    blockedTags: blockedPublishTags,
     onPublishingChange: (pdfPublishing) => onPatch({ settings: { ...entry.settings, pdfPublishing } }),
   });
   const paused = !entry.enabled;

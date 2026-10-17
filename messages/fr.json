@@ -1810,7 +1810,7 @@
       "posthog": "Enter the PostHog host (https://...) and a project key that starts with phc_.",
       "google": "Use a measurement ID like G-XXXXXXXXXX.",
       "tagRules": "Corrigez les règles de tags : 10 tags au plus par règle, de 128 caractères au plus chacun.",
-      "pdfPublishing": "Donnez à chaque groupe Zotero qui publie les PDF tagués au moins un tag de publication, 10 au plus, de 128 caractères au plus chacun.",
+      "pdfPublishing": "Corrigez les tags de publication de chaque groupe Zotero : au moins un pour les PDF tagués, 10 au plus, de 128 caractères au plus, chacun une seule fois et jamais un tag de masquage ou interne.",
       "posthogUiHost": "The session recordings address needs a full address that starts with https://.",
       "consentVersion": "The consent version is a whole number, 1 or higher.",
       "aiKey": "Add your OpenRouter key.",
@@ -2305,7 +2305,9 @@
         "issues": {
           "publishEmpty": "Keep at least one publish tag.",
           "tooMany": "Use at most 10 tags.",
-          "tooLong": "Each tag must be 128 characters or fewer."
+          "tooLong": "Each tag must be 128 characters or fewer.",
+          "duplicate": "Indiquez chaque tag une seule fois.",
+          "hiddenClash": "Un tag de publication ne peut pas être aussi un tag de masquage ou interne."
         }
       },
       "picker": {

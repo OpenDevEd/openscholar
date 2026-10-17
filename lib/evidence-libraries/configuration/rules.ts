@@ -37,6 +37,7 @@ import {
   TAG_RULE_KEYS,
   type TagRuleKey,
   type TagRules,
+  blockedPublishTags,
   pdfPublishingIssue,
   tagRuleIssue,
 } from "@/components/evidence-libraries/configuration/sections/tag-rules";
@@ -967,15 +968,16 @@ function readScreening(value: unknown): { screening?: SourceScreeningSettings } 
   };
 }
 
-function readPdfPublishing(payload: unknown): ZoteroPdfPublishing {
+// A source saved without a rule publishes as the library reads it: tagged, with the library's publish tags.
+function readPdfPublishing(payload: unknown, libraryTags: readonly string[]): ZoteroPdfPublishing {
   const rule = record(payload);
   const tags = Array.isArray(rule.tags)
     ? rule.tags.filter((tag): tag is string => typeof tag === "string")
-    : [...DEFAULT_ZOTERO_PUBLISH_TAGS];
+    : [...libraryTags];
   return { mode: rule.mode === "every" ? "every" : "tagged", tags };
 }
 
-function readSources(payload: unknown): EvidenceSourceEntry[] {
+function readSources(payload: unknown, libraryPublishTags: readonly string[]): EvidenceSourceEntry[] {
   return list(payload)
     .map((entry) => record(entry))
     .flatMap((row): EvidenceSourceEntry[] => {
@@ -1038,7 +1040,7 @@ function readSources(payload: unknown): EvidenceSourceEntry[] {
         groupId,
         enabled: flag(row.enabled, true),
         writebackEnabled: flag(row.writebackEnabled, false),
-        settings: { downloadPdfs: flag(settings.downloadPdfs, true), pdfPublishing: readPdfPublishing(settings.pdfPublishing) },
+        settings: { downloadPdfs: flag(settings.downloadPdfs, true), pdfPublishing: readPdfPublishing(settings.pdfPublishing, libraryPublishTags) },
         ...readScreening(row.screening),
       };
       return [parsed];
@@ -1118,6 +1120,7 @@ function readHome(payload: unknown): HomeDraft {
 
 /** Builds the page draft from the saved rows. Missing rows get defaults. */
 export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
+  const content = readContent(payloadOf(rows, "content"));
   return {
     identity: readIdentity(payloadOf(rows, "identity")),
     theme: readTheme(payloadOf(rows, "theme")),
@@ -1135,8 +1138,8 @@ export function readDraft(rows: readonly SectionRow[]): ConfigurationDraft {
     search: readSearch(payloadOf(rows, "search")),
     filters: readFilters(payloadOf(rows, "filters")),
     topics: readTopics(payloadOf(rows, "topics")),
-    sources: readSources(payloadOf(rows, "sources")),
-    content: readContent(payloadOf(rows, "content")),
+    sources: readSources(payloadOf(rows, "sources"), content.tags.publish ?? DEFAULT_ZOTERO_PUBLISH_TAGS),
+    content,
     citations: {
       showUrl: flag(record(payloadOf(rows, "citations")).showUrl, false),
     },
@@ -1917,7 +1920,7 @@ export function sectionProblems(
       ) {
         problems.push("tagRules");
       }
-      if (draft.sources.some((source) => source.provider === "zotero" && pdfPublishingIssue(source.settings.pdfPublishing) !== null)) {
+      if (draft.sources.some((source) => source.provider === "zotero" && pdfPublishingIssue(source.settings.pdfPublishing, blockedPublishTags(draft.content.tags)) !== null)) {
         problems.push("pdfPublishing");
       }
       break;

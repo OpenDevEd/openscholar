@@ -1810,7 +1810,7 @@
       "posthog": "Enter the PostHog host (https://...) and a project key that starts with phc_.",
       "google": "Use a measurement ID like G-XXXXXXXXXX.",
       "tagRules": "请修正标签规则：每条规则最多 10 个标签，每个不超过 128 个字符。",
-      "pdfPublishing": "为每个发布带标签 PDF 的 Zotero 群组设置至少一个发布标签，最多 10 个，每个不超过 128 个字符。",
+      "pdfPublishing": "请修正每个 Zotero 群组的发布标签：带标签的 PDF 至少需要一个，最多 10 个，每个不超过 128 个字符，不重复，且不能是隐藏或内部标签。",
       "posthogUiHost": "The session recordings address needs a full address that starts with https://.",
       "consentVersion": "The consent version is a whole number, 1 or higher.",
       "aiKey": "Add your OpenRouter key.",
@@ -2305,7 +2305,9 @@
         "issues": {
           "publishEmpty": "Keep at least one publish tag.",
           "tooMany": "Use at most 10 tags.",
-          "tooLong": "Each tag must be 128 characters or fewer."
+          "tooLong": "Each tag must be 128 characters or fewer.",
+          "duplicate": "每个标签只列一次。",
+          "hiddenClash": "发布标签不能同时是隐藏标签或内部标签。"
         }
       },
       "picker": {
