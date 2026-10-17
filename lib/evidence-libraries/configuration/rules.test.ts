@@ -21,7 +21,9 @@ import {
   SCHEMA_LIMITS,
   THEME_DEFAULTS,
   type ConfigurationDraft,
+  type SectionRow,
 } from "./rules";
+import type { ZoteroSourceEntry } from "@/convex/zotero/sourceEntry";
 import { validateOwnerSections } from "./owner-rules";
 
 const brandRows = [
@@ -123,6 +125,14 @@ describe("readDraft", () => {
     });
     expect(draft.theme.colors.accent).toBe(THEME_DEFAULTS.colors.accent);
     expect(draft.institutions).toEqual([]);
+  });
+
+  it("reads a Zotero source saved without a PDF rule as the library publishes it, with the library's publish tags", () => {
+    const zotero = { key: "zotero-42", provider: "zotero", groupId: "42", enabled: true, writebackEnabled: false, settings: { downloadPdfs: true } };
+    const pdfPublishing = (content: SectionRow[]) =>
+      (readDraft([{ sectionKey: "sources", payload: [zotero] }, ...content]).sources[0] as ZoteroSourceEntry).settings.pdfPublishing;
+    expect(pdfPublishing([{ sectionKey: "content", payload: { tags: { publish: ["approved"] } } }])).toEqual({ mode: "tagged", tags: ["approved"] });
+    expect(pdfPublishing([])).toEqual({ mode: "tagged", tags: ["_publish", "publishPDF"] });
   });
 
   it("keeps each source's screening when a saved draft is read, and reads a source saved before screening as having none", () => {
@@ -1059,7 +1069,7 @@ describe("readDraft for the discovery sections", () => {
         groupId: "42",
         enabled: true,
         writebackEnabled: true,
-        settings: { downloadPdfs: true },
+        settings: { downloadPdfs: true, pdfPublishing: { mode: "tagged", tags: ["_publish"] } },
       },
     ]);
     expect(draft.content.tags).toEqual({ publish: ["_publish"], hidden: [] });

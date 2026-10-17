@@ -1809,7 +1809,8 @@
       "languages": "Offer at least one language and pick the default from the offered ones.",
       "posthog": "Enter the PostHog host (https://...) and a project key that starts with phc_.",
       "google": "Use a measurement ID like G-XXXXXXXXXX.",
-      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters.",
+      "tagRules": "请修正标签规则：每条规则最多 10 个标签，每个不超过 128 个字符。",
+      "pdfPublishing": "请修正每个 Zotero 群组的发布标签：带标签的 PDF 至少需要一个，最多 10 个，每个不超过 128 个字符，不重复，且不能是隐藏或内部标签。",
       "posthogUiHost": "The session recordings address needs a full address that starts with https://.",
       "consentVersion": "The consent version is a whole number, 1 or higher.",
       "aiKey": "Add your OpenRouter key.",
@@ -2219,6 +2220,7 @@
       "public": "Public",
       "private": "Private",
       "recordsLabel": "Records",
+      "zoteroItemsLabel": "Zotero 条目",
       "connectedBy": "Connected by",
       "groupIdLabel": "Group",
       "writeback": "Write back",
@@ -2277,7 +2279,7 @@
         "paused": "Paused"
       },
       "tagRulesHeading": "Zotero tag rules",
-      "tagRulesIntro": "Tags on a Zotero record change how the library treats it.",
+      "tagRulesIntro": "Zotero 中的标签决定资料库如何处理一条记录。隐藏标签同样作用于它的笔记和附件。",
       "tagPlaceholder": "Add a tag…",
       "tagRules": {
         "hidden": {
@@ -2300,14 +2302,12 @@
           "label": "Redirect rules",
           "hint": "Records that redirect to another page."
         },
-        "publish": {
-          "label": "Publish the PDF",
-          "hint": "Records with these tags publish their PDF."
-        },
         "issues": {
           "publishEmpty": "Keep at least one publish tag.",
           "tooMany": "Use at most 10 tags.",
-          "tooLong": "Each tag must be 128 characters or fewer."
+          "tooLong": "Each tag must be 128 characters or fewer.",
+          "duplicate": "每个标签只列一次。",
+          "hiddenClash": "发布标签不能同时是隐藏标签或内部标签。"
         }
       },
       "picker": {
@@ -2316,7 +2316,7 @@
         "search": "Search groups…",
         "noGroups": "Your Zotero account has no groups.",
         "colGroup": "Group",
-        "colItems": "Records",
+        "colItems": "条目",
         "added": "Added",
         "noMatch": "No group matches.",
         "cancel": "Cancel",
@@ -2328,6 +2328,16 @@
       "openScholarCollection": "OpenScholar 合集",
       "openScholarCollectionHint": "关注你的一个合集",
       "pdfs": "PDF",
+      "pdfPublishing": {
+        "label": "PDF 发布",
+        "tagged": "带标签的 PDF",
+        "taggedDetail": "仅限带有发布标签的",
+        "every": "所有 PDF",
+        "everyDetail": "无论有无标签",
+        "tags": "发布标签",
+        "taggedHint": "在 Zotero 中带有任一这些标签的 PDF、笔记或链接会被发布。",
+        "everyHint": "PDF 不需要标签。笔记和链接仍需要其中一个标签。"
+      },
       "collectionDeleted": "该合集已在 OpenScholar 中删除。",
       "removeCollectionTitle": "移除此合集？",
       "collectionConnectFailed": "无法添加此合集。",

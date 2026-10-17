@@ -300,6 +300,14 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "sources[].settings.pdfPublishing.mode",
+				"values": [
+					"tagged",
+					"every"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "theme.defaultMode",
 				"values": [
 					"light",

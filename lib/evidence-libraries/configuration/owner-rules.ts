@@ -16,6 +16,11 @@ import {
   isPlatformSection,
 } from "./section-registry";
 import { isHandEntered, publicPhoto } from "./home-people";
+import {
+  type TagRuleIssue,
+  blockedPublishTags,
+  pdfPublishingIssue,
+} from "../../../components/evidence-libraries/configuration/sections/tag-rules";
 
 // Drafts never carry keys or passwords; the platform adds them at assembly.
 // A missing write-only value is therefore not a draft problem. The same goes
@@ -244,6 +249,36 @@ export function validateOwnerSection(
   return { valid: issues.length === 0, issues };
 }
 
+const PDF_PUBLISHING_MESSAGES: Record<TagRuleIssue, string> = {
+  publishEmpty: "Keep at least one publish tag for tagged PDFs.",
+  tooMany: "Use at most 10 publish tags.",
+  tooLong: "Each publish tag must be 128 characters or fewer.",
+  duplicate: "List each publish tag once.",
+  hiddenClash: "A publish tag can't also be a hide or internal tag.",
+};
+
+/**
+ * Each Zotero source's PDF rule, as the runtime refines it. The hide and internal tags live in the content row, so
+ * the clash with them is checked only when that row is in the set; activation always validates the complete set.
+ */
+function pdfPublishingIssues(
+  sources: unknown,
+  content: unknown,
+): ValidationIssue[] {
+  if (!Array.isArray(sources)) return [];
+  const contentTags = objectValue(objectValue(content)?.tags);
+  const blocked = contentTags ? blockedPublishTags(contentTags) : [];
+  return sources.flatMap((source, index): ValidationIssue[] => {
+    const rule = objectValue(objectValue(objectValue(source)?.settings)?.pdfPublishing);
+    if (objectValue(source)?.provider !== "zotero" || !rule || !Array.isArray(rule.tags)) return [];
+    const tags = rule.tags.filter((tag): tag is string => typeof tag === "string");
+    const issue = pdfPublishingIssue({ mode: rule.mode === "every" ? "every" : "tagged", tags }, blocked);
+    return issue
+      ? [{ pointer: `/sources/${index}/settings/pdfPublishing/tags`, section: "sources", keyword: "pdfPublishing", message: PDF_PUBLISHING_MESSAGES[issue] }]
+      : [];
+  });
+}
+
 export function validateOwnerSections(
   rows: readonly OwnerSectionRow[],
   options: OwnerRuleOptions = {},
@@ -299,6 +334,15 @@ export function validateOwnerSections(
         false,
         options.allowedAiModels,
         options.modelCatalogReady,
+      ),
+    );
+  }
+  const sourcesRow = rows.find((row) => row.sectionKey === "sources");
+  if (sourcesRow) {
+    issues.push(
+      ...pdfPublishingIssues(
+        sourcesRow.payload,
+        rows.find((row) => row.sectionKey === "content")?.payload,
       ),
     );
   }

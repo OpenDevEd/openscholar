@@ -1809,7 +1809,8 @@
       "languages": "Offer at least one language and pick the default from the offered ones.",
       "posthog": "Enter the PostHog host (https://...) and a project key that starts with phc_.",
       "google": "Use a measurement ID like G-XXXXXXXXXX.",
-      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters.",
+      "tagRules": "Fix the tag rules: at most 10 tags per rule, each up to 128 characters.",
+      "pdfPublishing": "Fix each Zotero group's publish tags: tagged PDFs need at least one, at most 10, each up to 128 characters, listed once and never a hide or internal tag.",
       "posthogUiHost": "The session recordings address needs a full address that starts with https://.",
       "consentVersion": "The consent version is a whole number, 1 or higher.",
       "aiKey": "Add your OpenRouter key.",
@@ -2219,6 +2220,7 @@
       "public": "Public",
       "private": "Private",
       "recordsLabel": "Records",
+      "zoteroItemsLabel": "Zotero items",
       "connectedBy": "Connected by",
       "groupIdLabel": "Group",
       "writeback": "Write back",
@@ -2277,7 +2279,7 @@
         "paused": "Paused"
       },
       "tagRulesHeading": "Zotero tag rules",
-      "tagRulesIntro": "Tags on a Zotero record change how the library treats it.",
+      "tagRulesIntro": "Tags in Zotero change how the library treats a record. Hide tags work on its notes and attachments too.",
       "tagPlaceholder": "Add a tag…",
       "tagRules": {
         "hidden": {
@@ -2300,14 +2302,12 @@
           "label": "Redirect rules",
           "hint": "Records that redirect to another page."
         },
-        "publish": {
-          "label": "Publish the PDF",
-          "hint": "Records with these tags publish their PDF."
-        },
         "issues": {
           "publishEmpty": "Keep at least one publish tag.",
           "tooMany": "Use at most 10 tags.",
-          "tooLong": "Each tag must be 128 characters or fewer."
+          "tooLong": "Each tag must be 128 characters or fewer.",
+          "duplicate": "List each tag once.",
+          "hiddenClash": "A publish tag can't also be a hide or internal tag."
         }
       },
       "picker": {
@@ -2316,7 +2316,7 @@
         "search": "Search groups…",
         "noGroups": "Your Zotero account has no groups.",
         "colGroup": "Group",
-        "colItems": "Records",
+        "colItems": "Items",
         "added": "Added",
         "noMatch": "No group matches.",
         "cancel": "Cancel",
@@ -2328,6 +2328,16 @@
       "openScholarCollection": "OpenScholar collection",
       "openScholarCollectionHint": "Follow one of your collections",
       "pdfs": "PDFs",
+      "pdfPublishing": {
+        "label": "PDF publishing",
+        "tagged": "Tagged PDFs",
+        "taggedDetail": "Only those with a publish tag",
+        "every": "Every PDF",
+        "everyDetail": "Tagged or not",
+        "tags": "Publish tags",
+        "taggedHint": "A PDF, note or link with any of these tags in Zotero is published.",
+        "everyHint": "PDFs don't need one. Notes and links still need one of these tags."
+      },
       "collectionDeleted": "This collection was deleted in OpenScholar.",
       "removeCollectionTitle": "Remove this collection?",
       "collectionConnectFailed": "Could not add this collection.",

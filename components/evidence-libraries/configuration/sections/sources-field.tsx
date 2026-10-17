@@ -69,6 +69,7 @@ import {
 } from "./openalex-sources";
 import { errorMessage, SourceRow, SourceSwitch } from "./source-row";
 import { SourceScreeningProvider, sourceScreening } from "./source-screening";
+import { sourcePdfs } from "./source-pdfs";
 import {
   CollectionSourceIcon,
   CollectionSourceRow,
@@ -84,6 +85,7 @@ import {
 import { Disclosure } from "../disclosure-button";
 import {
   DEFAULT_TAG_RULES,
+  blockedPublishTags,
   type TagRuleKey,
   type TagRules,
   tagRuleIssue,
@@ -112,15 +114,14 @@ const HEALTH_TONE: Record<GroupHealth, StatusTone> = {
   paused: "neutral",
 };
 
-// Displayed in the mock's order, not the schema's.
-const TAG_RULE_ORDER: TagRuleKey[] = [
+// Displayed in the mock's order, not the schema's. Publish tags belong to each Zotero group, under its PDFs switch.
+const TAG_RULE_ORDER = [
   "hidden",
   "internal",
   "comingSoon",
   "description",
   "redirects",
-  "publish",
-];
+] as const satisfies readonly TagRuleKey[];
 
 /** The group id from a zotero.org group link, or null for anything else. */
 function groupIdFromLink(value: string): string | null {
@@ -289,6 +290,7 @@ export function SourcesField({
                 group={byGroupId.get(entry.groupId)}
                 busy={busyGroupId === entry.groupId}
                 canReconnect={connected}
+                blockedPublishTags={blockedPublishTags(tags)}
                 live={liveFor(entry.key, !entry.enabled, "Zotero")}
                 onPatch={(patch) => patchEntry(entry.groupId, patch)}
                 onReconnect={() => reconnect(entry.groupId)}
@@ -637,6 +639,7 @@ function GroupRow({
   group,
   busy,
   canReconnect,
+  blockedPublishTags,
   live,
   onPatch,
   onReconnect,
@@ -646,12 +649,20 @@ function GroupRow({
   group: ConnectedGroup | undefined;
   busy: boolean;
   canReconnect: boolean;
+  blockedPublishTags: string[];
   live: SourceLive | null;
   onPatch: (patch: Partial<ZoteroSourceEntry>) => void;
   onReconnect: () => void;
   onRemove: () => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.sources");
+  const pdfs = sourcePdfs({
+    downloadPdfs: entry.settings.downloadPdfs,
+    onDownloadPdfsChange: (downloadPdfs) => onPatch({ settings: { ...entry.settings, downloadPdfs } }),
+    publishing: entry.settings.pdfPublishing,
+    blockedTags: blockedPublishTags,
+    onPublishingChange: (pdfPublishing) => onPatch({ settings: { ...entry.settings, pdfPublishing } }),
+  });
   const paused = !entry.enabled;
   const health: GroupHealth = paused ? "paused" : "connected";
   const canWrite = group?.scopes.write === true;
@@ -670,7 +681,7 @@ function GroupRow({
         },
         {
           key: "records",
-          label: t("recordsLabel"),
+          label: t("zoteroItemsLabel"),
           value: group.itemCount.toLocaleString(),
         },
         ...(group.connectedByZoteroUsername
@@ -700,7 +711,7 @@ function GroupRow({
       onToggle={() => onPatch({ enabled: paused })}
       onRemove={onRemove}
       description={!canWrite && group ? t("writebackUnavailable") : undefined}
-      details={screening.band}
+      details={<>{screening.band}{pdfs.band}</>}
       controls={
         <>
           {screening.control}
@@ -722,11 +733,7 @@ function GroupRow({
             disabledReason={canWrite ? undefined : t("writebackUnavailable")}
             onCheckedChange={(writebackEnabled) => onPatch({ writebackEnabled })}
           />
-          <SourceSwitch
-            label={t("pdfs")}
-            checked={entry.settings.downloadPdfs}
-            onCheckedChange={(downloadPdfs) => onPatch({ settings: { downloadPdfs } })}
-          />
+          {pdfs.control}
         </>
       }
     />

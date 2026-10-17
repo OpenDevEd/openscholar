@@ -293,6 +293,27 @@ describe("validateOwnerSection home rules", () => {
 });
 
 describe("validateOwnerSections", () => {
+  test("refuses a Zotero PDF rule the library would refuse, and a publish tag that is also hidden whatever its case", () => {
+    const zotero = (pdfPublishing: unknown) => ({
+      key: "zotero-42", provider: "zotero", groupId: "42", enabled: true, writebackEnabled: false,
+      settings: { downloadPdfs: true, pdfPublishing },
+    });
+    const issues = (pdfPublishing: unknown, content?: unknown) =>
+      validateOwnerSections([
+        { sectionKey: "sources", payload: [zotero(pdfPublishing)] },
+        ...(content ? [{ sectionKey: "content" as const, payload: content }] : []),
+      ]).issues.filter((issue) => issue.keyword === "pdfPublishing");
+    const pointer = "/sources/0/settings/pdfPublishing/tags";
+
+    expect(issues({ mode: "tagged", tags: [] })).toEqual([expect.objectContaining({ pointer })]);
+    expect(issues({ mode: "every", tags: [] })).toEqual([]);
+    expect(issues({ mode: "tagged", tags: ["approved", "approved"] })).toEqual([expect.objectContaining({ pointer })]);
+    const content = { tags: { hidden: ["hide"], internal: ["staff"] }, openAccessLabel: "open" };
+    expect(issues({ mode: "tagged", tags: ["HIDE"] }, content)).toEqual([expect.objectContaining({ pointer })]);
+    expect(issues({ mode: "every", tags: ["Staff"] }, content)).toEqual([expect.objectContaining({ pointer })]);
+    expect(issues({ mode: "tagged", tags: ["approved"] }, content)).toEqual([]);
+  });
+
   test("accepts export switches and refuses the old file addresses", () => {
     expect(
       validateOwnerSections([{ sectionKey: "exports", payload: { ris: true, bibtex: false, atom: true } }]).issues,

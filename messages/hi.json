@@ -1809,7 +1809,8 @@
       "languages": "Offer at least one language and pick the default from the offered ones.",
       "posthog": "Enter the PostHog host (https://...) and a project key that starts with phc_.",
       "google": "Use a measurement ID like G-XXXXXXXXXX.",
-      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters.",
+      "tagRules": "टैग नियम ठीक करें: हर नियम में अधिकतम 10 टैग, हर टैग अधिकतम 128 अक्षर।",
+      "pdfPublishing": "हर Zotero समूह के प्रकाशन टैग ठीक करें: टैग वाले PDF के लिए कम से कम एक, अधिकतम 10, हर टैग अधिकतम 128 अक्षर, हर टैग एक बार, और कोई भी छिपाने वाला या आंतरिक टैग नहीं।",
       "posthogUiHost": "The session recordings address needs a full address that starts with https://.",
       "consentVersion": "The consent version is a whole number, 1 or higher.",
       "aiKey": "Add your OpenRouter key.",
@@ -2219,6 +2220,7 @@
       "public": "Public",
       "private": "Private",
       "recordsLabel": "Records",
+      "zoteroItemsLabel": "Zotero आइटम",
       "connectedBy": "Connected by",
       "groupIdLabel": "Group",
       "writeback": "Write back",
@@ -2277,7 +2279,7 @@
         "paused": "Paused"
       },
       "tagRulesHeading": "Zotero tag rules",
-      "tagRulesIntro": "Tags on a Zotero record change how the library treats it.",
+      "tagRulesIntro": "Zotero के टैग तय करते हैं कि लाइब्रेरी किसी रिकॉर्ड के साथ क्या करे। छिपाने वाले टैग उसके नोट्स और अटैचमेंट पर भी लागू होते हैं।",
       "tagPlaceholder": "Add a tag…",
       "tagRules": {
         "hidden": {
@@ -2300,14 +2302,12 @@
           "label": "Redirect rules",
           "hint": "Records that redirect to another page."
         },
-        "publish": {
-          "label": "Publish the PDF",
-          "hint": "Records with these tags publish their PDF."
-        },
         "issues": {
           "publishEmpty": "Keep at least one publish tag.",
           "tooMany": "Use at most 10 tags.",
-          "tooLong": "Each tag must be 128 characters or fewer."
+          "tooLong": "Each tag must be 128 characters or fewer.",
+          "duplicate": "हर टैग एक ही बार लिखें।",
+          "hiddenClash": "प्रकाशन टैग छिपाने वाला या आंतरिक टैग नहीं हो सकता।"
         }
       },
       "picker": {
@@ -2316,7 +2316,7 @@
         "search": "Search groups…",
         "noGroups": "Your Zotero account has no groups.",
         "colGroup": "Group",
-        "colItems": "Records",
+        "colItems": "आइटम",
         "added": "Added",
         "noMatch": "No group matches.",
         "cancel": "Cancel",
@@ -2328,6 +2328,16 @@
       "openScholarCollection": "OpenScholar संग्रह",
       "openScholarCollectionHint": "अपने किसी संग्रह का अनुसरण करें",
       "pdfs": "PDF",
+      "pdfPublishing": {
+        "label": "PDF प्रकाशन",
+        "tagged": "टैग वाले PDF",
+        "taggedDetail": "केवल वे जिन पर प्रकाशन टैग है",
+        "every": "हर PDF",
+        "everyDetail": "टैग हो या न हो",
+        "tags": "प्रकाशन टैग",
+        "taggedHint": "Zotero में इनमें से किसी भी टैग वाला PDF, नोट या लिंक प्रकाशित होता है।",
+        "everyHint": "PDF को टैग की ज़रूरत नहीं है। नोट और लिंक को अब भी इनमें से एक टैग चाहिए।"
+      },
       "collectionDeleted": "यह संग्रह OpenScholar में हटा दिया गया।",
       "removeCollectionTitle": "यह संग्रह हटाएँ?",
       "collectionConnectFailed": "यह संग्रह नहीं जोड़ा जा सका।",

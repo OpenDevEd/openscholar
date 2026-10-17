@@ -8,10 +8,16 @@ export type ZoteroSourceEntry = {
   groupId: string;
   enabled: boolean;
   writebackEnabled: boolean;
-  /** Whether the group adds its tagged PDFs. */
-  settings: { downloadPdfs: boolean };
+  /** Whether the group adds PDFs, and which: those with one of its publish tags, or every one. */
+  settings: { downloadPdfs: boolean; pdfPublishing: ZoteroPdfPublishing };
   screening?: SourceScreeningSettings;
 };
+
+/** The group's publish tags also make its notes and links public, whichever PDFs are published. */
+export type ZoteroPdfPublishing = { mode: "tagged" | "every"; tags: string[] };
+
+/** The publish tags a new group starts with, the runtime's own defaults. */
+export const DEFAULT_ZOTERO_PUBLISH_TAGS = ["_publish", "publishPDF"];
 
 export function zoteroSourceKey(groupId: string): string {
   return `zotero-${groupId}`;
@@ -24,6 +30,6 @@ export function zoteroSourceEntry(groupId: string): ZoteroSourceEntry {
     groupId,
     enabled: true,
     writebackEnabled: false,
-    settings: { downloadPdfs: true },
+    settings: { downloadPdfs: true, pdfPublishing: { mode: "tagged", tags: [...DEFAULT_ZOTERO_PUBLISH_TAGS] } },
   };
 }

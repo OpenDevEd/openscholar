@@ -8,7 +8,7 @@ import { SourcesField } from "@/components/evidence-libraries/configuration/sect
 import type { TagRules } from "@/components/evidence-libraries/configuration/sections/tag-rules";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Id } from "@/convex/_generated/dataModel";
-import { zoteroSourceEntry } from "@/convex/zotero/sourceEntry";
+import { type ZoteroSourceEntry, zoteroSourceEntry } from "@/convex/zotero/sourceEntry";
 import type {
   EvidenceSourceEntry,
   OpenAlexSourceEntry,
@@ -284,12 +284,12 @@ describe("<SourcesField>", () => {
 
     await userEvent.click(zoteroPdfs!);
     expect(onChange).toHaveBeenLastCalledWith([
-      { ...zoteroSourceEntry("42"), settings: { downloadPdfs: false } },
+      { ...zoteroSourceEntry("42"), settings: { ...zoteroSourceEntry("42").settings, downloadPdfs: false } },
       openAlexSource,
     ]);
     await userEvent.click(openAlexPdfs!);
     expect(onChange).toHaveBeenLastCalledWith([
-      { ...zoteroSourceEntry("42"), settings: { downloadPdfs: false } },
+      { ...zoteroSourceEntry("42"), settings: { ...zoteroSourceEntry("42").settings, downloadPdfs: false } },
       { ...openAlexSource, settings: { ...openAlexSource.settings, downloadPdfs: true } },
     ]);
   });
@@ -591,24 +591,34 @@ describe("<SourcesField>", () => {
     await waitFor(() => expect(onChange).toHaveBeenLastCalledWith([]));
   });
 
-  it("keeps the tag rules folded in Connections and edits them as chips", async () => {
+  it("saves which PDFs a Zotero group publishes, and its own publish tags, on that group", async () => {
+    queries({ connected: true, groups: [group42] });
+    const onChange = vi.fn();
+    render(<Harness initial={[zoteroSourceEntry("42")]} onChange={onChange} />);
+    const saved = () => (onChange.mock.lastCall![0] as ZoteroSourceEntry[])[0]!.settings;
+
+    await userEvent.click(screen.getByRole("radio", { name: new RegExp(`${ns}.pdfPublishing.every`) }));
+    expect(saved()).toEqual({ downloadPdfs: true, pdfPublishing: { mode: "every", tags: ["_publish", "publishPDF"] } });
+
+    for (const chip of ["_publish", "publishPDF"])
+      await userEvent.click(screen.getByRole("button", { name: `evidenceLibraryConfiguration.fields.removeChip {"value":"${chip}"}` }));
+    // Every PDF publishes without a tag, so the group may keep none.
+    expect(saved().pdfPublishing).toEqual({ mode: "every", tags: [] });
+    expect(screen.queryByText(`${ns}.tagRules.issues.publishEmpty`)).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("radio", { name: new RegExp(`${ns}.pdfPublishing.tagged`) }));
+    expect(screen.getByText(`${ns}.tagRules.issues.publishEmpty`)).toBeInTheDocument();
+    await userEvent.type(screen.getByRole("textbox", { name: `${ns}.pdfPublishing.tags` }), "approved{enter}");
+    expect(saved()).toEqual({ downloadPdfs: true, pdfPublishing: { mode: "tagged", tags: ["approved"] } });
+  });
+
+  it("keeps the publish tags out of Connections' tag rules", async () => {
     queries({ connected: true });
     render(<Harness />);
     await userEvent.click(screen.getByRole("button", { name: `${ns}.connections` }));
-    expect(
-      screen.queryByRole("textbox", { name: `${ns}.tagRules.publish.label` }),
-    ).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: `${ns}.tagRulesHeading` }));
-    const publish = screen.getByRole("textbox", { name: `${ns}.tagRules.publish.label` });
-    expect(screen.getByText("_publish")).toBeInTheDocument();
-    await userEvent.type(publish, "open{enter}");
-    expect(screen.getByText("open")).toBeInTheDocument();
-    for (const chip of ["_publish", "publishPDF", "open"]) {
-      await userEvent.click(
-        screen.getByRole("button", { name: `evidenceLibraryConfiguration.fields.removeChip {"value":"${chip}"}` }),
-      );
-    }
-    expect(screen.getByText(`${ns}.tagRules.issues.publishEmpty`)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: `${ns}.tagRules.hidden.label` })).toBeInTheDocument();
+    expect(screen.queryByText("_publish")).not.toBeInTheDocument();
   });
 });
 

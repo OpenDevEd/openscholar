@@ -1809,7 +1809,8 @@
       "languages": "Offer at least one language and pick the default from the offered ones.",
       "posthog": "Enter the PostHog host (https://...) and a project key that starts with phc_.",
       "google": "Use a measurement ID like G-XXXXXXXXXX.",
-      "tagRules": "Fix the tag rules: keep at least one publish tag, at most 10 tags per rule, each up to 128 characters.",
+      "tagRules": "タグルールを修正してください。1 ルールあたり最大 10 個、各 128 文字以内です。",
+      "pdfPublishing": "各 Zotero グループの公開タグを修正してください。タグ付き PDF には 1 個以上、最大 10 個、各 128 文字以内、重複なしで、非表示タグや内部タグは使えません。",
       "posthogUiHost": "The session recordings address needs a full address that starts with https://.",
       "consentVersion": "The consent version is a whole number, 1 or higher.",
       "aiKey": "Add your OpenRouter key.",
@@ -2219,6 +2220,7 @@
       "public": "Public",
       "private": "Private",
       "recordsLabel": "Records",
+      "zoteroItemsLabel": "Zotero のアイテム",
       "connectedBy": "Connected by",
       "groupIdLabel": "Group",
       "writeback": "Write back",
@@ -2277,7 +2279,7 @@
         "paused": "Paused"
       },
       "tagRulesHeading": "Zotero tag rules",
-      "tagRulesIntro": "Tags on a Zotero record change how the library treats it.",
+      "tagRulesIntro": "Zotero のタグで、ライブラリがレコードをどう扱うかが決まります。非表示タグはノートと添付ファイルにも効きます。",
       "tagPlaceholder": "Add a tag…",
       "tagRules": {
         "hidden": {
@@ -2300,14 +2302,12 @@
           "label": "Redirect rules",
           "hint": "Records that redirect to another page."
         },
-        "publish": {
-          "label": "Publish the PDF",
-          "hint": "Records with these tags publish their PDF."
-        },
         "issues": {
           "publishEmpty": "Keep at least one publish tag.",
           "tooMany": "Use at most 10 tags.",
-          "tooLong": "Each tag must be 128 characters or fewer."
+          "tooLong": "Each tag must be 128 characters or fewer.",
+          "duplicate": "同じタグは 1 回だけ指定してください。",
+          "hiddenClash": "公開タグを非表示タグや内部タグと同じにはできません。"
         }
       },
       "picker": {
@@ -2316,7 +2316,7 @@
         "search": "Search groups…",
         "noGroups": "Your Zotero account has no groups.",
         "colGroup": "Group",
-        "colItems": "Records",
+        "colItems": "アイテム",
         "added": "Added",
         "noMatch": "No group matches.",
         "cancel": "Cancel",
@@ -2328,6 +2328,16 @@
       "openScholarCollection": "OpenScholar コレクション",
       "openScholarCollectionHint": "自分のコレクションを追跡",
       "pdfs": "PDF",
+      "pdfPublishing": {
+        "label": "PDF の公開",
+        "tagged": "タグ付きの PDF",
+        "taggedDetail": "公開タグがあるものだけ",
+        "every": "すべての PDF",
+        "everyDetail": "タグの有無を問わない",
+        "tags": "公開タグ",
+        "taggedHint": "Zotero でこれらのタグのいずれかが付いた PDF、メモ、リンクが公開されます。",
+        "everyHint": "PDF にタグは不要です。メモとリンクには引き続きこれらのタグのいずれかが必要です。"
+      },
       "collectionDeleted": "このコレクションは OpenScholar で削除されました。",
       "removeCollectionTitle": "このコレクションを削除しますか？",
       "collectionConnectFailed": "このコレクションを追加できませんでした。",
