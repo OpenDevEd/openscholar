@@ -236,6 +236,38 @@ export function SearchSection({
         ) : null}
 
         <ToggleRow
+          label={t("sourcesFilter")}
+          hint={t("sourcesFilterHint")}
+          checked={filters.sources.enabled}
+          onChange={(checked) =>
+            setFilters((f) => {
+              f.sources.enabled = checked;
+            })
+          }
+        />
+        {filters.sources.enabled ? (
+          <Field
+            label={t("sourcesLabel")}
+            hint={t("sourcesLabelHint")}
+            className="max-w-sm"
+          >
+            {(id) => (
+              <Input
+                id={id}
+                className="bg-background"
+                maxLength={SCHEMA_LIMITS.filters.sourcesLabel}
+                value={filters.sources.label}
+                onChange={(e) =>
+                  setFilters((f) => {
+                    f.sources.label = e.target.value;
+                  })
+                }
+              />
+            )}
+          </Field>
+        ) : null}
+
+        <ToggleRow
           label={t("years")}
           hint={t("yearsHint")}
           checked={filters.years.enabled}
