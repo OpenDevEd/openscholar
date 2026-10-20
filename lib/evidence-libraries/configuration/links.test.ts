@@ -4,6 +4,7 @@ import {
   collectionHref,
   hrefFor,
   linkPayload,
+  linkProblems,
   readLink,
   targetFor,
 } from "./links";
@@ -91,6 +92,12 @@ describe("readLink and linkPayload", () => {
       target: "blank",
       visible: true,
     });
+  });
+
+  it("reads the evidence map as a page, not a broken address", () => {
+    const draft = readLink({ id: "nav_4", label: "Visualise", href: "/evidence", target: "self" });
+    expect(draft.target).toEqual({ kind: "page", page: "evidence" });
+    expect(linkProblems(draft)).toEqual([]);
   });
 
   it("never asks for a new tab on a page link", () => {

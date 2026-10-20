@@ -14,6 +14,7 @@ export const BUILT_IN_PAGES = [
   { key: "library", path: "/lib" },
   { key: "digests", path: "/digests" },
   { key: "map", path: "/map" },
+  { key: "evidence", path: "/evidence" },
   { key: "contact", path: "/contact" },
   { key: "privacy", path: "/privacy" },
   { key: "cookiePolicy", path: "/cookie-policy" },
