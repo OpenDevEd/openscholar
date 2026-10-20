@@ -75,19 +75,19 @@ export async function reviewLibraryDigest(digest: {summary: string; markdown: st
   let checked = digest;
   try {
     const issues = await reviewDigest(digest.markdown, request.publications, signal);
-    if (!issues.length) return digest;
+    if (!issues.length) return {...digest, repairs: []};
     checked = {summary: digest.summary, markdown: withoutSentences(digest.markdown, issues)};
     const correction = await reviseDigest({...digest, locale: request.locale}, issues, request.publications, signal);
-    const revised = (await repairCitations(levelled(correction.markdown), request.publications, signal)).markdown;
+    const {markdown: revised, repairs} = await repairCitations(levelled(correction.markdown), request.publications, signal);
     const cited = citedKeys(revised);
     if (issues.some(issue => !cited.has(issue.key))) throw new Error("The correction dropped a flagged sentence's citation");
     const remaining = await reviewDigest(revised, request.publications, signal);
     console.info("Library digest reviewed", {...job, flagged: issues.map(({key, problem}) => ({key, problem})), removed: remaining.map(({key, problem}) => ({key, problem}))});
     const kept = withoutSentences(revised, remaining);
-    return CITES.test(kept) ? {summary: tidy(correction.summary), markdown: kept} : checked;
+    return CITES.test(kept) ? {summary: tidy(correction.summary), markdown: kept, repairs} : {...checked, repairs: []};
   } catch (error) {
     console.error("Library digest review did not finish; keeping the digest without the sentences it flagged", {...job, error});
-    return CITES.test(checked.markdown) ? checked : digest;
+    return {...(CITES.test(checked.markdown) ? checked : digest), repairs: []};
   }
 }
 
@@ -114,5 +114,5 @@ export async function writeLibraryDigest(request: DigestRequest, signal?: AbortS
   const {markdown: cited, repairs} = await repairCitations(levelled(written.markdown), request.publications, signal);
   if (repairs.length) console.info("Library digest citations repaired", {libraryId: request.libraryId, editionId: request.editionId, repairs});
   if (!CITES.test(cited)) throw new Error("Digest output cites no supplied publication");
-  return {title: tidy(written.title), summary: tidy(written.summary), markdown: cited, model: DIGEST_MODEL, reasoning: DIGEST_REASONING};
+  return {digest: {title: tidy(written.title), summary: tidy(written.summary), markdown: cited, model: DIGEST_MODEL, reasoning: DIGEST_REASONING}, repairs};
 }
