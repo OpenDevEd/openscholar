@@ -149,7 +149,10 @@ async function openDomainBeforeChange(host: string) {
   try {
     return await openPinnedDomainClient({ host });
   } catch (error) {
-    if (error instanceof DomainEgressUnavailable) throw new DomainLookupPending();
+    if (error instanceof DomainEgressUnavailable) {
+      console.warn("[evidence-library] the new address's records could not be read; waiting to try again", { host, error });
+      throw new DomainLookupPending();
+    }
     throw error;
   }
 }
