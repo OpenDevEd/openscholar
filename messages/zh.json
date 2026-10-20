@@ -1972,6 +1972,7 @@
         "library": "Library",
         "digests": "文库摘要",
         "map": "Map",
+        "evidence": "Evidence map",
         "contact": "Contact",
         "privacy": "Privacy",
         "cookiePolicy": "Cookie policy",
