@@ -21,7 +21,7 @@ import {
   type CoolifyConfigurationUpdateResult,
   type CoolifyDeployment,
 } from "./coolifyClient";
-import { DomainEgressRefused } from "./domainEgress";
+import { DomainEgressRefused, DomainEgressUnavailable } from "./domainEgress";
 import { openOwnProxyClient, openPinnedDomainClient } from "./domainEgressNode";
 import {
   activateLibraryRuntimeConfiguration,
@@ -133,6 +133,30 @@ type ConfigurationDeploymentTarget = NonNullable<
  * another proxy, or one whose records were deleted, must not fail a
  * deployment that has already happened.
  */
+/** A lookup of the new address failed before anything changed, so the deployment can wait and try again. */
+class DomainLookupPending extends Error {
+  constructor() {
+    super("The domain's records could not be read");
+    this.name = "DomainLookupPending";
+  }
+}
+
+/**
+ * Reads the new address's records before anything changes. A lookup can fail for a while after the records are
+ * created, so that failure waits like other short outages; one after the library took the change must roll back.
+ */
+async function openDomainBeforeChange(host: string) {
+  try {
+    return await openPinnedDomainClient({ host });
+  } catch (error) {
+    if (error instanceof DomainEgressUnavailable) {
+      console.warn("[evidence-library] the new address's records could not be read; waiting to try again", { host, error });
+      throw new DomainLookupPending();
+    }
+    throw error;
+  }
+}
+
 async function openLibraryAddressClient(readiness: {
   targetBaseUrl: string;
   platformBaseUrl: string;
@@ -549,9 +573,7 @@ export const runConfigurationDeployment = internalAction({
         if (nextOrigin !== liveOrigin && nextOrigin !== platformOrigin) {
           const answer = await probeEvidenceLibraryAddress({
             targetBaseUrl: nextOrigin,
-            fetchImpl: await openPinnedDomainClient({
-              host: new URL(nextOrigin).hostname,
-            }),
+            fetchImpl: await openDomainBeforeChange(new URL(nextOrigin).hostname),
           });
           if (
             answer.state !== "ours" ||
@@ -661,7 +683,7 @@ export const runConfigurationDeployment = internalAction({
           nextOrigin !== new URL(prepared.continuity.liveOrigin).origin &&
           nextOrigin !== new URL(target.targetBaseUrl).origin
         ) {
-          await openPinnedDomainClient({ host: new URL(nextOrigin).hostname });
+          await openDomainBeforeChange(new URL(nextOrigin).hostname);
         }
         // A runtime update points the app at the new commit first, so the
         // configuration write and the deployment both see that commit.
@@ -853,6 +875,7 @@ export const runConfigurationDeployment = internalAction({
       // readiness instead of failing.
       if (
         isRetryableReadinessError(error) ||
+        error instanceof DomainLookupPending ||
         (error instanceof CoolifyClientError &&
           error.code === "COOLIFY_UNAVAILABLE") ||
         isRetryableOAuthClientError(error) ||
@@ -918,6 +941,8 @@ export const runConfigurationDeployment = internalAction({
           : error instanceof DomainEgressRefused
             ? // Written for the owner: it says what is wrong with their domain.
               { code: "DOMAIN_REFUSED", message: error.message }
+          : error instanceof DomainLookupPending
+            ? { code: "DOMAIN_LOOKUP_UNAVAILABLE", message: "The domain's records could not be read. Try again in a few minutes." }
           : error instanceof ConfigurationAssemblyError
             ? {
                 code: "CONFIGURATION_ASSEMBLY_FAILED",
