@@ -56,11 +56,13 @@ const CUSTOM_HOST = "evidence.example.org";
 const domainRecords = vi.hoisted(() => ({
   pointElsewhere: false,
   unreadable: false,
+  proxyUnreadable: false,
   throughOwnProxy: 0,
 }));
 afterEach(() => {
   domainRecords.pointElsewhere = false;
   domainRecords.unreadable = false;
+  domainRecords.proxyUnreadable = false;
   domainRecords.throughOwnProxy = 0;
 });
 vi.mock("./domainEgressNode", async () => {
@@ -75,15 +77,19 @@ vi.mock("./domainEgressNode", async () => {
       }
       return globalThis.fetch;
     },
-    openOwnProxyClient: async () =>
-      (async (input: RequestInfo | URL, init?: RequestInit) => {
+    openOwnProxyClient: async () => {
+      if (domainRecords.proxyUnreadable) {
+        throw new DomainEgressUnavailable("Our proxy's address could not be read");
+      }
+      return (async (input: RequestInfo | URL, init?: RequestInit) => {
         domainRecords.throughOwnProxy += 1;
         try {
           return await globalThis.fetch(input, init);
         } finally {
           domainRecords.throughOwnProxy -= 1;
         }
-      }) as typeof fetch,
+      }) as typeof fetch;
+    },
   };
 });
 
@@ -1445,6 +1451,26 @@ describe("Evidence Library configuration deployment", () => {
       { libraryId: fixture.created.libraryId },
     );
     expect(listed.canonicalAddress).toBe(customAddress);
+  });
+
+  it("rolls back, rather than waiting, when a lookup fails after the library took the change", async () => {
+    const { fixture, network, run } = await switchCustomDomain(
+      "canonical-on-late-lookup",
+      "active",
+      "on",
+    );
+    // The new address answers before the switch; reading it after the switch fails.
+    const activate = network.requests.length;
+    domainRecords.proxyUnreadable = true;
+    await expect(run()).resolves.toEqual({ status: "failed" });
+    const after = network.requests.slice(activate);
+    expect(after.some(({ method, url }) => method === "PUT" && url.pathname === "/api/openscholar/configuration")).toBe(true);
+    expect(after.some(({ method, url }) => method === "DELETE" && url.pathname === "/api/openscholar/configuration")).toBe(true);
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.canonicalAddress).toBe(fixture.created.publicAddress);
   });
 
   it("waits out a busy runtime rather than trying the other address", async () => {
