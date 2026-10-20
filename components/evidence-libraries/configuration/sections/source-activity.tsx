@@ -90,7 +90,7 @@ function Phase({
           <Icon aria-hidden className="size-3.5" />
         )}
       </span>
-      <span className={cn(compact && (state === "done" || state === "waiting") && "@max-md/sources:sr-only")}>{label}</span>
+      <span className={cn(compact && (state === "done" || state === "waiting") && "@max-[calc(28rem+2rem+4px)]/settings:sr-only")}>{label}</span>
     </span>
   );
 }
