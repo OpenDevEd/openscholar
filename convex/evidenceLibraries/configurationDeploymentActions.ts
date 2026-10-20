@@ -21,7 +21,7 @@ import {
   type CoolifyConfigurationUpdateResult,
   type CoolifyDeployment,
 } from "./coolifyClient";
-import { DomainEgressRefused } from "./domainEgress";
+import { DomainEgressRefused, DomainEgressUnavailable } from "./domainEgress";
 import { openOwnProxyClient, openPinnedDomainClient } from "./domainEgressNode";
 import {
   activateLibraryRuntimeConfiguration,
@@ -853,6 +853,9 @@ export const runConfigurationDeployment = internalAction({
       // readiness instead of failing.
       if (
         isRetryableReadinessError(error) ||
+        // The new address's records could not be read: a lookup can fail for a while after they are created, and
+        // nothing has changed by then.
+        error instanceof DomainEgressUnavailable ||
         (error instanceof CoolifyClientError &&
           error.code === "COOLIFY_UNAVAILABLE") ||
         isRetryableOAuthClientError(error) ||
@@ -918,6 +921,8 @@ export const runConfigurationDeployment = internalAction({
           : error instanceof DomainEgressRefused
             ? // Written for the owner: it says what is wrong with their domain.
               { code: "DOMAIN_REFUSED", message: error.message }
+          : error instanceof DomainEgressUnavailable
+            ? { code: "DOMAIN_LOOKUP_UNAVAILABLE", message: "The domain's records could not be read. Try again in a few minutes." }
           : error instanceof ConfigurationAssemblyError
             ? {
                 code: "CONFIGURATION_ASSEMBLY_FAILED",

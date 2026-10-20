@@ -55,18 +55,23 @@ function stubFetch(fetchImpl: typeof fetch) {
 const CUSTOM_HOST = "evidence.example.org";
 const domainRecords = vi.hoisted(() => ({
   pointElsewhere: false,
+  unreadable: false,
   throughOwnProxy: 0,
 }));
 afterEach(() => {
   domainRecords.pointElsewhere = false;
+  domainRecords.unreadable = false;
   domainRecords.throughOwnProxy = 0;
 });
 vi.mock("./domainEgressNode", async () => {
-  const { DomainEgressRefused } = await import("./domainEgress");
+  const { DomainEgressRefused, DomainEgressUnavailable } = await import("./domainEgress");
   return {
     openPinnedDomainClient: async () => {
       if (domainRecords.pointElsewhere) {
         throw new DomainEgressRefused("That domain no longer points at us");
+      }
+      if (domainRecords.unreadable) {
+        throw new DomainEgressUnavailable("That domain could not be read");
       }
       return globalThis.fetch;
     },
@@ -1422,6 +1427,24 @@ describe("Evidence Library configuration deployment", () => {
       code: "DOMAIN_REFUSED",
       message: "That domain no longer points at us",
     });
+  });
+
+  it("waits out a domain whose records cannot be read for a moment, then switches onto it", async () => {
+    // A record a minute old can still fail a lookup; nothing has changed yet, so the switch waits and tries again.
+    const { customAddress, fixture, run } = await switchCustomDomain(
+      "canonical-on-unreadable",
+      "active",
+      "on",
+    );
+    domainRecords.unreadable = true;
+    await expect(run()).resolves.toEqual({ pollCount: 1, status: "running" });
+    domainRecords.unreadable = false;
+    await expect(run()).resolves.toEqual({ status: "succeeded" });
+    const listed = await fixture.admin.query(
+      api.evidenceLibraries.domains.listDomains,
+      { libraryId: fixture.created.libraryId },
+    );
+    expect(listed.canonicalAddress).toBe(customAddress);
   });
 
   it("waits out a busy runtime rather than trying the other address", async () => {
