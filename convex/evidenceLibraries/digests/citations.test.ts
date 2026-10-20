@@ -31,13 +31,14 @@ it("moves a link that names another author to that author's record, and unlinks 
     publication("HYPH1234", ["Villy Mik\u2010Meyer", "Emma Doyle"], "2026", "Flood risk models"),
     publication("NOTE1234", ["*Martin Khaemba Kotiano1, Dr. Patrick Okanga2"], "2026", "TVET graduates in Yambio"),
     publication("ANON1234", [], "2026", "A report with no named author"),
+    publication("SPAC1234", ["Fadimatu Jalal - Eddeen"], "2026", "Financial inclusion and poverty"),
   ];
   const {markdown, repairs} = await repairCitations(
-    "Meals help [Okafor, 2025](/lib/ABCD2345). Scoring [Phillips et al., 2026](/lib/QWER7890). Floods [Mik-Meyer et al., 2026](/lib/HYPH1234). Work [Kotiano et al., 2026](/lib/NOTE1234). Unsigned [Ministry of Education, 2026](/lib/ANON1234). Bracketed [Mills [2026]](/lib/ABCD2345). Unnamed [the framework](/lib/ABCD2345).",
+    "Meals help [Okafor, 2025](/lib/ABCD2345). Scoring [Phillips et al., 2026](/lib/QWER7890). Floods [Mik-Meyer et al., 2026](/lib/HYPH1234). Work [Kotiano et al., 2026](/lib/NOTE1234). Unsigned [Ministry of Education, 2026](/lib/ANON1234). Bracketed [Mills [2026]](/lib/ABCD2345). Unnamed [the framework](/lib/ABCD2345). Inclusion [Jalal-Eddeen et al., 2026](/lib/SPAC1243).",
     stored,
   );
-  expect(markdown).toBe("Meals help [Okafor, 2025](/lib/QWER7890). Scoring Phillips et al., 2026. Floods [Mik-Meyer et al., 2026](/lib/HYPH1234). Work [Kotiano et al., 2026](/lib/NOTE1234). Unsigned [Ministry of Education, 2026](/lib/ANON1234). Bracketed [Mills [2026]](/lib/ABCD2345). Unnamed [the framework](/lib/ABCD2345).");
-  expect(repairs.map(repair => repair.method).sort()).toEqual(["author", "unlinked"]);
+  expect(markdown).toBe("Meals help [Okafor, 2025](/lib/QWER7890). Scoring Phillips et al., 2026. Floods [Mik-Meyer et al., 2026](/lib/HYPH1234). Work [Kotiano et al., 2026](/lib/NOTE1234). Unsigned [Ministry of Education, 2026](/lib/ANON1234). Bracketed [Mills [2026]](/lib/ABCD2345). Unnamed [the framework](/lib/ABCD2345). Inclusion [Jalal-Eddeen et al., 2026](/lib/SPAC1234).");
+  expect(repairs.map(repair => repair.method).sort()).toEqual(["author", "typo", "unlinked"]);
   expect(provider).not.toHaveBeenCalled();
 });
 

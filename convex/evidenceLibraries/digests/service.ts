@@ -5,8 +5,9 @@ import type { ActionCtx } from "../../_generated/server";
 import { internal } from "../../_generated/api";
 import type { Id } from "../../_generated/dataModel";
 import { authenticateLibraryServiceCredential } from "../credentials";
-import { evidenceLibraryDigestResultValidator } from "../validators";
+import { digestCitationRepairValidator, evidenceLibraryDigestJobFields, evidenceLibraryDigestResultValidator } from "../validators";
 import { rateLimit } from "../../lib/rateLimit";
+import { MAX_DIGEST_CITATION_REPAIRS } from "../../lib/listCaps";
 import { createError, readConvexErrorData } from "../../lib/errors";
 import { jsonResponse, readBearerCredential } from "../../lib/libraryServiceHttp";
 import { digestOpaqueToken } from "../../lib/opaqueTokenDigest";
@@ -108,13 +109,22 @@ export const readJob = internalQuery({
 });
 
 export const finish = internalMutation({
-  args: {jobId: v.id("evidenceLibraryDigestJobs"), result: v.union(v.null(), evidenceLibraryDigestResultValidator)},
+  args: {
+    jobId: v.id("evidenceLibraryDigestJobs"),
+    result: v.union(v.null(), evidenceLibraryDigestResultValidator),
+    citationRepairs: evidenceLibraryDigestJobFields.citationRepairs,
+  },
   returns: v.null(),
-  handler: async (ctx, {jobId, result}) => {
+  handler: async (ctx, {jobId, result, citationRepairs}) => {
     const job = await ctx.db.get("evidenceLibraryDigestJobs", jobId);
     if (!job || job.status !== "pending") return null;
     if (job.requestId) await ctx.storage.delete(job.requestId);
-    await ctx.db.patch("evidenceLibraryDigestJobs", jobId, result ? {status: "succeeded", result, requestId: undefined} : {status: "failed", requestId: undefined});
+    await ctx.db.patch("evidenceLibraryDigestJobs", jobId, result ? {
+      status: "succeeded",
+      result,
+      citationRepairs: citationRepairs && {written: citationRepairs.written.slice(0, MAX_DIGEST_CITATION_REPAIRS), corrected: citationRepairs.corrected.slice(0, MAX_DIGEST_CITATION_REPAIRS)},
+      requestId: undefined,
+    } : {status: "failed", requestId: undefined});
     return null;
   },
 });
@@ -132,20 +142,21 @@ export const run = internalAction({
     const started = Date.now();
     const job = await ctx.runQuery(internal.evidenceLibraries.digests.service.readJob, {jobId});
     if (!job?.requestId) return null;
-    let written: Awaited<ReturnType<typeof writeLibraryDigest>>;
+    let written: Awaited<ReturnType<typeof writeLibraryDigest>>["digest"];
+    let repairs: Awaited<ReturnType<typeof writeLibraryDigest>>["repairs"];
     try {
       const request = await storedRequest(ctx, job.requestId);
-      written = await writeLibraryDigest(request, AbortSignal.timeout(WRITING_ACTION_MS - (Date.now() - started)));
+      ({digest: written, repairs} = await writeLibraryDigest(request, AbortSignal.timeout(WRITING_ACTION_MS - (Date.now() - started))));
     } catch (error) {
       console.error("Library digest generation failed", {libraryId: job.libraryId, editionId: job.editionId, error});
       await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: null});
       return null;
     }
     try {
-      await ctx.scheduler.runAfter(0, internal.evidenceLibraries.digests.service.check, {jobId, written});
+      await ctx.scheduler.runAfter(0, internal.evidenceLibraries.digests.service.check, {jobId, written, repairs});
     } catch (error) {
       console.error("Library digest review could not be queued; keeping the digest as written", {libraryId: job.libraryId, editionId: job.editionId, error});
-      await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: written});
+      await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result: written, citationRepairs: {written: repairs, corrected: []}});
     }
     return null;
   },
@@ -153,18 +164,21 @@ export const run = internalAction({
 
 /** Has what the writer wrote reviewed, then finishes the job. A review that cannot run never costs the digest. */
 export const check = internalAction({
-  args: {jobId: v.id("evidenceLibraryDigestJobs"), written: evidenceLibraryDigestResultValidator},
+  args: {jobId: v.id("evidenceLibraryDigestJobs"), written: evidenceLibraryDigestResultValidator, repairs: v.array(digestCitationRepairValidator)},
   returns: v.null(),
-  handler: async (ctx, {jobId, written}) => {
+  handler: async (ctx, {jobId, written, repairs}) => {
     const job = await ctx.runQuery(internal.evidenceLibraries.digests.service.readJob, {jobId});
     if (!job?.requestId) return null;
     let result = written;
+    let corrected: typeof repairs = [];
     try {
-      result = {...written, ...await reviewLibraryDigest({summary: written.summary, markdown: written.markdown}, await storedRequest(ctx, job.requestId))};
+      const {repairs: correctionRepairs, ...reviewed} = await reviewLibraryDigest({summary: written.summary, markdown: written.markdown}, await storedRequest(ctx, job.requestId));
+      result = {...written, ...reviewed};
+      corrected = correctionRepairs;
     } catch (error) {
       console.error("Library digest review did not start; keeping the digest as written", {libraryId: job.libraryId, editionId: job.editionId, error});
     }
-    await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result});
+    await ctx.runMutation(internal.evidenceLibraries.digests.service.finish, {jobId, result, citationRepairs: {written: repairs, corrected}});
     return null;
   },
 });

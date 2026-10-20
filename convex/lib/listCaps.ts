@@ -174,6 +174,8 @@ export const MAX_ANSWER_ITEMS = 8;
 export const MAX_CITATIONS = 50;
 /** AI tasks one preset or person picks a model for (lib/ai/tasks.ts AI_TASKS). */
 export const MAX_AI_TASKS = 50;
+/** Citation repairs one digest job keeps per stage (digests/service.ts finish keeps the first of these). */
+export const MAX_DIGEST_CITATION_REPAIRS = 200;
 /** DNS records one custom domain needs (dnsClient.ts reads at most 64 answers). */
 export const MAX_DNS_RECORDS = 64;
 /** Sections of an Evidence Library configuration. */

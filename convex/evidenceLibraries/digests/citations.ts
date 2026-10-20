@@ -1,7 +1,9 @@
+import type { Infer } from "convex/values";
 import type { DigestRequest } from "./contract";
+import type { digestCitationRepairValidator } from "../validators";
 
 type Publication = DigestRequest["publications"][number];
-export type CitationRepair = {text: string; href: string; key: string | null; method: "typo" | "author" | "jev" | "unlinked"; verified?: number};
+export type CitationRepair = Infer<typeof digestCitationRepairValidator>;
 
 const JEV_URL = "https://openrouter.ai/api/alpha/decisions";
 const JEV_MODEL = "~typesafe/jev-latest";
@@ -17,8 +19,11 @@ const CITATION = /^\/lib\/([A-Z0-9]{8})$/;
 
 // Apostrophes and hyphens fold too: digest text has plain ones, a creator's name may not.
 const fold = (value: string) => value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[\u2018\u2019]/g, "'").replace(/[\u2010-\u2015\u2212]/g, "-").toLowerCase();
-/** The names in a creator as stored, which can carry footnote marks and several people: "*Martin Kotiano1, Dr. P. Okanga2". */
-const nameParts = (creator: string): string[] => fold(creator).match(/[\p{L}'-]+/gu) ?? [];
+/**
+ * The names in a creator as stored, which can carry footnote marks and several people: "*Martin Kotiano1, Dr. P. Okanga2".
+ * A hyphen may be stored with spaces around it, as in "Jalal - Eddeen", and still joins one name.
+ */
+const nameParts = (creator: string): string[] => fold(creator).replace(/\s*-\s*/g, "-").match(/[\p{L}'-]+/gu) ?? [];
 const words = (value: string) => new Set(fold(value).match(/[a-z]{4,}/g) ?? []);
 
 /** The first author's surname and the year from link text such as "Mills et al., 2026". */

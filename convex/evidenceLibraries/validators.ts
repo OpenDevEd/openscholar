@@ -7,7 +7,7 @@ import {
 } from "../../lib/evidence-libraries/configuration/section-registry";
 import { MAX_LIBRARY_MEMBERS, MAX_PENDING_INVITATIONS_PER_LIBRARY, MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL } from "../lib/queryBounds";
 import { presetKeyValidator } from "../aiModelConfig/validators";
-import { MAX_AUTHORS, MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
+import { MAX_AUTHORS, MAX_CONFIGURATION_ISSUES, MAX_CONFIG_SECTIONS, MAX_DIGEST_CITATION_REPAIRS, MAX_DNS_RECORDS, MAX_LIBRARY_DOMAINS, MAX_REDIRECT_URIS, MAX_RELEASES, MAX_RELEASE_CHANGES, MAX_RELEASE_NOTES, MAX_SECTION_PAYLOAD_BYTES, capped, sized } from "../lib/listCaps";
 
 export type { SectionKey };
 
@@ -578,6 +578,19 @@ export const evidenceLibraryDigestResultValidator = v.object({
   reasoning: v.string(),
 });
 
+/** One citation the digest check changed: relinked by a key typo, by the cited author, by Jev's verified pick, or left as plain text. */
+export const digestCitationRepairValidator = v.object({
+  text: v.string(),
+  href: v.string(),
+  key: v.union(v.string(), v.null()),
+  method: v.union(v.literal("typo"), v.literal("author"), v.literal("jev"), v.literal("unlinked")),
+  verified: v.optional(v.number()),
+});
+const digestCitationRepairsValidator = v.object({
+  written: capped(v.array(digestCitationRepairValidator), MAX_DIGEST_CITATION_REPAIRS),
+  corrected: capped(v.array(digestCitationRepairValidator), MAX_DIGEST_CITATION_REPAIRS),
+});
+
 export const evidenceLibraryDigestJobFields = {
   libraryId: v.id("evidenceLibraries"),
   editionId: v.string(),
@@ -587,6 +600,9 @@ export const evidenceLibraryDigestJobFields = {
   status: v.union(v.literal("pending"), v.literal("succeeded"), v.literal("failed")),
   startedAt: v.number(),
   result: v.optional(evidenceLibraryDigestResultValidator),
+  // What the citation check changed in the writer's text and in its correction after review, kept so an unlinked
+  // citation can be explained after the logs are gone.
+  citationRepairs: v.optional(digestCitationRepairsValidator),
 };
 
 /** The commits and the release notes one software check holds, capped as the release row stores them. */
