@@ -1114,6 +1114,23 @@
 					},
 					"additionalProperties": false
 				},
+				"sources": {
+					"default": {},
+					"type": "object",
+					"properties": {
+						"enabled": {
+							"default": true,
+							"type": "boolean"
+						},
+						"label": {
+							"default": "sources",
+							"type": "string",
+							"minLength": 1,
+							"maxLength": 60
+						}
+					},
+					"additionalProperties": false
+				},
 				"collectionsExpanded": {
 					"default": true,
 					"type": "boolean"

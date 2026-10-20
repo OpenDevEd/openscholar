@@ -114,6 +114,7 @@ type SectionProblem =
   | "searchScopes"
   | "defaultScope"
   | "featuredInstitution"
+  | "sourcesLabel"
   | "tagRules"
   | "pdfPublishing"
   | "featureDependency"
@@ -220,6 +221,7 @@ export const SCHEMA_LIMITS = {
   },
   filters: {
     institutionLabel: schemaNumber("/filters/institution/label", "maxLength"),
+    sourcesLabel: schemaNumber("/filters/sources/label", "maxLength"),
   },
   home: {
     intro: schemaNumber("/home/intro", "maxLength"),
@@ -445,6 +447,8 @@ export type SearchDraft = {
 };
 export type FiltersDraft = {
   institution: { mode: InstitutionMode; label: string; featuredValue: string };
+  /** Readers filter by the library's sources, once it has two or more, under this heading. */
+  sources: { enabled: boolean; label: string };
   collectionsExpanded: boolean;
   /** Where a study type the AI was less than 60% sure of shows: marked beside its type, or apart as Uncertain. */
   uncertainStudyTypes: (typeof UNCERTAIN_STUDY_TYPES)[number];
@@ -930,6 +934,7 @@ function readSearch(payload: unknown): SearchDraft {
 function readFilters(payload: unknown): FiltersDraft {
   const filters = record(payload);
   const institution = record(filters.institution);
+  const sources = record(filters.sources);
   const years = record(filters.years);
   return {
     institution: {
@@ -939,6 +944,10 @@ function readFilters(payload: unknown): FiltersDraft {
         schemaDefault("/filters/institution/label"),
       ),
       featuredValue: text(institution.featuredValue),
+    },
+    sources: {
+      enabled: flag(sources.enabled, true),
+      label: text(sources.label, schemaDefault("/filters/sources/label")),
     },
     collectionsExpanded: flag(filters.collectionsExpanded, true),
     uncertainStudyTypes: choice(filters.uncertainStudyTypes, UNCERTAIN_STUDY_TYPES, "marked"),
@@ -1471,6 +1480,7 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
               ? optional(draft.filters.institution.featuredValue)
               : undefined,
         }),
+        sources: { ...draft.filters.sources },
         collectionsExpanded: draft.filters.collectionsExpanded,
         uncertainStudyTypes: draft.filters.uncertainStudyTypes,
         years: compact({ ...draft.filters.years }),
@@ -1909,6 +1919,9 @@ export function sectionProblems(
         !filters.institution.featuredValue.trim()
       ) {
         problems.push("featuredInstitution");
+      }
+      if (filters.sources.enabled && !filters.sources.label.trim()) {
+        problems.push("sourcesLabel");
       }
       break;
     }

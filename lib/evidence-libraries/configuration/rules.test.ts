@@ -1089,6 +1089,7 @@ describe("readDraft for the discovery sections", () => {
       featuredValue: "",
     });
     expect(draft.filters.years).toEqual({ enabled: true });
+    expect(draft.filters.sources).toEqual({ enabled: true, label: "sources" });
     expect(draft.sources).toEqual([]);
     expect(draft.content.tags).toEqual({});
   });
@@ -1105,6 +1106,14 @@ describe("sectionProblems for the discovery sections", () => {
     ]);
     draft.search.scopes = [];
     expect(sectionProblems(draft, "search")[0]).toBe("searchScopes");
+  });
+
+  it("flags a blank sources heading only while the sources filter is on", () => {
+    const draft = readDraft(discoveryRows);
+    draft.filters.sources.label = "  ";
+    expect(sectionProblems(draft, "search")).toEqual(["sourcesLabel"]);
+    draft.filters.sources.enabled = false;
+    expect(sectionProblems(draft, "search")).toEqual([]);
   });
 
   it("ignores the pin when the institution mode is plain", () => {
@@ -1136,6 +1145,7 @@ describe("changedSectionRows for the discovery sections", () => {
     draft.search.fullText = true;
     draft.filters.institution.mode = "facet";
     draft.filters.uncertainStudyTypes = "separate";
+    draft.filters.sources.label = "Topic areas";
     draft.topics.enabled = true;
     const rows = changedSectionRows(draft, discoveryRows);
     expect(rows).toEqual([
@@ -1153,6 +1163,7 @@ describe("changedSectionRows for the discovery sections", () => {
         sectionKey: "filters",
         payload: {
           institution: { mode: "facet", label: "Partners" },
+          sources: { enabled: true, label: "Topic areas" },
           collectionsExpanded: true,
           uncertainStudyTypes: "separate",
           years: { enabled: true },

@@ -190,6 +190,17 @@ describe("owner configuration migrations", () => {
     expect(source!.settings).toEqual({ downloadPdfs: true, pdfPublishing: { mode: "tagged", tags: ["approved"] } });
   });
 
+  it("gives a saved filters row the sources filter readers get today, and keeps one already set", () => {
+    const filters = (payload: Record<string, unknown>) =>
+      migrateOwnerConfiguration({ ownerConfigurationVersion: 11, sections: [{ sectionKey: "filters", payload }] })
+        .snapshot.sections.find((row) => row.sectionKey === "filters")?.payload;
+    expect(filters({ institution: { mode: "facet", label: "Partners" } })).toMatchObject({
+      institution: { mode: "facet", label: "Partners" },
+      sources: { enabled: true, label: "sources" },
+    });
+    expect(filters({ sources: { enabled: false, label: "Searches" } })).toMatchObject({ sources: { enabled: false, label: "Searches" } });
+  });
+
   it("adds an Identity assets container without changing its other values", () => {
     const identity = {
       name: "Climate",
@@ -325,7 +336,7 @@ describe("owner configuration migrations", () => {
         },
         {
           sectionKey: "filters",
-          payload: { years: { enabled: true } },
+          payload: { sources: { enabled: true, label: "sources" }, years: { enabled: true } },
         },
         {
           sectionKey: "features",
@@ -347,6 +358,7 @@ describe("owner configuration migrations", () => {
       "/features/authorLocation",
       "/ai",
       "/topics",
+      "/filters/sources",
     ]);
   });
 
@@ -432,6 +444,7 @@ describe("owner configuration migrations", () => {
       [8, 9],
       [9, 10],
       [10, 11],
+      [11, 12],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -673,6 +686,7 @@ describe("owner configuration migrations", () => {
       [8, 9],
       [9, 10],
       [10, 11],
+      [11, 12],
     ]);
   });
 
