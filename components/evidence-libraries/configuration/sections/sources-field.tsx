@@ -273,9 +273,10 @@ export function SourcesField({
     );
   }
 
+  // Width checks in the list answer to the settings box, 2rem + 4px wider than it: the card's padding and border.
   return (
     <SourceScreeningProvider value={{ libraryId, workspaceId, aiReady }}>
-      <div className="@container/sources space-y-4" data-library-sources>
+      <div className="space-y-4" data-library-sources>
         {value.length === 0 ? (
           <EmptyList>{t("noSources")}</EmptyList>
         ) : (
@@ -328,7 +329,7 @@ export function SourcesField({
                 onClick={() => setConnectionsOpen(true)}
               >
                 <Settings2 />
-                <span className="hidden @min-[24rem]/sources:inline">
+                <span className="hidden @min-[calc(24rem+2rem+4px)]/settings:inline">
                   {t("connections")}
                 </span>
               </Button>

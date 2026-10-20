@@ -65,12 +65,13 @@ export function SourceRow({
     },
     { key: "remove", label: tc("remove"), icon: Trash2, onClick: onRemove, disabled },
   ];
+  // Its width checks answer to the settings box, 4rem + 6px wider than a row's content: the card's and the row's padding, the card's and the list's border.
   return (
     <li
-      className={cn("@container/source space-y-3 p-4", paused && "bg-inset")}
+      className={cn("space-y-3 p-4", paused && "bg-inset")}
       {...rest}
     >
-      <div className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 @min-[24rem]/source:grid-cols-[2rem_minmax(0,1fr)_auto]">
+      <div className="grid grid-cols-[2rem_minmax(0,1fr)] items-start gap-x-3 gap-y-2 @min-[calc(24rem+4rem+6px)]/settings:grid-cols-[2rem_minmax(0,1fr)_auto]">
         <span
           className="flex size-8 shrink-0 items-center justify-center rounded-md bg-muted"
           aria-hidden
@@ -91,7 +92,7 @@ export function SourceRow({
           </div>
           <p className="text-xs text-muted-foreground">{provider}</p>
         </div>
-        <div className="col-start-2 flex items-center justify-end gap-0.5 @min-[24rem]/source:col-start-auto">
+        <div className="col-start-2 flex items-center justify-end gap-0.5 @min-[calc(24rem+4rem+6px)]/settings:col-start-auto">
           {actions.map(
             ({ key, label, icon: Icon, onClick, disabled: actionDisabled }) => (
               <Tooltip key={key}>

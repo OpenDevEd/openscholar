@@ -305,7 +305,7 @@ function ScreeningBand({ sourceKey, screening, onChange, report }: {
               <span className={cn("flex min-w-0 items-center gap-3 transition-opacity", !stays && "opacity-55")}>
                 <span className="shrink-0 font-medium">{label}</span>
                 {example ? (
-                  <span className="flex min-w-0 items-center gap-1 text-muted-foreground @max-lg/source:hidden">
+                  <span className="flex min-w-0 items-center gap-1 text-muted-foreground @max-[calc(32rem+4rem+6px)]/settings:hidden">
                     <FileText aria-hidden className="size-3.5 shrink-0 self-center" />
                     <TooltipHint label={example} onlyWhenClipped><span className="min-w-0 truncate">{example}</span></TooltipHint>
                   </span>

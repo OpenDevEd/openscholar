@@ -681,6 +681,9 @@ function Workspace({
                   would be lost without a word, so no section can be changed until the save or activation is back. */}
               {/* The column spaces its children; the sections are this box's children now, so it spaces them the same. */}
               {/* Read-only, every control is off, the custom ones through ReadOnlyContext, and the values stay readable to everyone, a screen reader included (#653). */}
+              {/* Cards size themselves against this box, outside the fieldset: Chromium stops drawing a size container
+                  inside a fieldset after some updates, which emptied the Sources card on phones. */}
+              <div className="@container/settings">
               <fieldset disabled={!editable} className="min-w-0 space-y-4" inert={saving || activating} aria-busy={saving || activating || undefined}>
                 <ReadOnlyContext value={!editable}>
                 <CollectionFactsProvider
@@ -721,6 +724,7 @@ function Workspace({
                 ) : null}
                 </ReadOnlyContext>
               </fieldset>
+              </div>
       </ConfigurationLayout>
     </FileUploadsProvider>
   );
