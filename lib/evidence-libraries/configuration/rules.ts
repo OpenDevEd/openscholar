@@ -114,6 +114,7 @@ type SectionProblem =
   | "searchScopes"
   | "defaultScope"
   | "featuredInstitution"
+  | "sourcesLabel"
   | "tagRules"
   | "pdfPublishing"
   | "featureDependency"
@@ -1918,6 +1919,9 @@ export function sectionProblems(
         !filters.institution.featuredValue.trim()
       ) {
         problems.push("featuredInstitution");
+      }
+      if (filters.sources.enabled && !filters.sources.label.trim()) {
+        problems.push("sourcesLabel");
       }
       break;
     }

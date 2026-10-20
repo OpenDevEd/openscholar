@@ -14,7 +14,7 @@ import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 11 as const;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 12 as const;
 const MAX_CHANGED_POINTERS = 100;
 
 type OwnerConfigurationSnapshotRow = {
@@ -622,6 +622,19 @@ function migrateVersionTenToEleven(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+/** Libraries offer a sources filter under a heading they name; saved ones keep the runtime's default, on, as "sources". */
+function migrateVersionElevenToTwelve(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 12;
+  for (const row of next.sections) {
+    if (row.sectionKey !== "filters" || !isRecord(row.payload)) continue;
+    row.payload = { sources: { enabled: true, label: "sources" }, ...row.payload };
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [
   {
     sectionKey: "ai",
@@ -711,6 +724,15 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 10,
     to: 11,
     migrate: migrateVersionTenToEleven,
+    defaultRows: [
+      ...disabledAiDefaults,
+      { sectionKey: "topics", payload: () => ({ enabled: false }) },
+    ],
+  },
+  {
+    from: 11,
+    to: 12,
+    migrate: migrateVersionElevenToTwelve,
     defaultRows: [
       ...disabledAiDefaults,
       { sectionKey: "topics", payload: () => ({ enabled: false }) },

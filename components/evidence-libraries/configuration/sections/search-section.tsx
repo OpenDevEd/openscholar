@@ -250,6 +250,7 @@ export function SearchSection({
             label={t("sourcesLabel")}
             hint={t("sourcesLabelHint")}
             className="max-w-sm"
+            error={!filters.sources.label.trim() ? t("sourcesLabelError") : null}
           >
             {(id) => (
               <Input

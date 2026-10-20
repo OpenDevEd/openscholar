@@ -1108,6 +1108,14 @@ describe("sectionProblems for the discovery sections", () => {
     expect(sectionProblems(draft, "search")[0]).toBe("searchScopes");
   });
 
+  it("flags a blank sources heading only while the sources filter is on", () => {
+    const draft = readDraft(discoveryRows);
+    draft.filters.sources.label = "  ";
+    expect(sectionProblems(draft, "search")).toEqual(["sourcesLabel"]);
+    draft.filters.sources.enabled = false;
+    expect(sectionProblems(draft, "search")).toEqual([]);
+  });
+
   it("ignores the pin when the institution mode is plain", () => {
     const draft = readDraft(discoveryRows);
     draft.filters.years.enabled = false;
