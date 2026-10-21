@@ -43,7 +43,7 @@ import type {
   EvidenceSourceEntry,
   OpenScholarCollectionSourceEntry,
 } from "@/lib/evidence-libraries/configuration/sources";
-import { ChipInput, EmptyList, MetaList, Panel } from "../fields";
+import { ChipInput, EmptyList, HintedMenuItem, MetaList, Panel } from "../fields";
 import { FieldError } from "../section-card";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import {
@@ -57,7 +57,6 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -359,52 +358,36 @@ export function SourcesField({
               >
                 {connected ? (
                   <DialogTrigger asChild>
-                    <DropdownMenuItem
+                    <HintedMenuItem
                       onSelect={(event) => event.preventDefault()}
-                    >
-                      <ZoteroIcon className="size-4 text-[#cc2936]" />
-                      <span>
-                        {t("zoteroGroup")}
-                        <span className="block text-xs text-muted-foreground">
-                          {t("zoteroGroupHint")}
-                        </span>
-                      </span>
-                    </DropdownMenuItem>
+                      icon={<ZoteroIcon className="size-4 text-[#cc2936]" />}
+                      label={t("zoteroGroup")}
+                      hint={t("zoteroGroupHint")}
+                    />
                   </DialogTrigger>
                 ) : (
-                  <DropdownMenuItem
+                  <HintedMenuItem
                     onSelect={() => {
                       setConnectionTab("zotero");
                       setConnectionsOpen(true);
                     }}
-                  >
-                    <ZoteroIcon className="size-4 text-[#cc2936]" />
-                    <span>
-                      {t("zoteroGroup")}
-                      <span className="block text-xs text-muted-foreground">
-                        {t("zoteroConnectFirst")}
-                      </span>
-                    </span>
-                  </DropdownMenuItem>
+                    icon={<ZoteroIcon className="size-4 text-[#cc2936]" />}
+                    label={t("zoteroGroup")}
+                    hint={t("zoteroConnectFirst")}
+                  />
                 )}
-                <DropdownMenuItem onSelect={() => openalex.setEditing("new")}>
-                  <OpenAlexIcon className="size-4" />
-                  <span>
-                    {t("openAlexSearch")}
-                    <span className="block text-xs text-muted-foreground">
-                      {t("openAlexSearchHint")}
-                    </span>
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => collections.open()}>
-                  <CollectionSourceIcon />
-                  <span>
-                    {t("openScholarCollection")}
-                    <span className="block text-xs text-muted-foreground">
-                      {t("openScholarCollectionHint")}
-                    </span>
-                  </span>
-                </DropdownMenuItem>
+                <HintedMenuItem
+                  onSelect={() => openalex.setEditing("new")}
+                  icon={<OpenAlexIcon className="size-4" />}
+                  label={t("openAlexSearch")}
+                  hint={t("openAlexSearchHint")}
+                />
+                <HintedMenuItem
+                  onSelect={() => collections.open()}
+                  icon={<CollectionSourceIcon />}
+                  label={t("openScholarCollection")}
+                  hint={t("openScholarCollectionHint")}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           </GroupPicker>

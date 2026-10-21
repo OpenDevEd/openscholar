@@ -36,10 +36,11 @@ import {
   X,
 } from "@/components/icons";
 import { useTranslations } from "next-intl";
-import { Children, type ReactNode, useId, useState } from "react";
+import { Children, type ComponentProps, type ReactNode, useId, useState } from "react";
 import { type DropzoneState, useDropzone } from "react-dropzone";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -1027,6 +1028,28 @@ export function Panel({
   );
 }
 
+/**
+ * A menu item with a line under its name. Its icon sits on the name's line, not centred between the two, so a hint
+ * that wraps never moves it.
+ */
+export function HintedMenuItem({
+  icon,
+  label,
+  hint,
+  className,
+  ...props
+}: Omit<ComponentProps<typeof DropdownMenuItem>, "children"> & { icon: ReactNode; label: ReactNode; hint: ReactNode }) {
+  return (
+    <DropdownMenuItem className={cn("items-start", className)} {...props}>
+      <span className="flex h-5 shrink-0 items-center">{icon}</span>
+      <span className="min-w-0">
+        {label}
+        <span className="block text-xs text-muted-foreground">{hint}</span>
+      </span>
+    </DropdownMenuItem>
+  );
+}
+
 /** Panel content laid out as "text on the left, action on the right". */
 export function PanelRow({
   tone,
@@ -1045,7 +1068,8 @@ export function PanelRow({
 }) {
   return (
     <Panel tone={tone} className={cn("flex flex-wrap items-center gap-3", className)} {...rest}>
-      {leading}
+      {/* The leading icon sits on the title's line, not centred against the title and its hint. */}
+      {leading ? <span className="flex h-5 shrink-0 items-center self-start">{leading}</span> : null}
       <div className="min-w-0 flex-1 space-y-0.5">
         <p className="text-sm font-medium">{title}</p>
         {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}

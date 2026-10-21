@@ -10,7 +10,7 @@ import { ChevronDown, CollectionsIcon, Plus, RotateCcw, SourcesIcon, Tag } from 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipHint, TooltipTrigger } from "@/components/ui/tooltip";
 import { Paged, pagerOf } from "@/components/settings/parts";
 import { api } from "@/convex/_generated/api";
@@ -20,7 +20,7 @@ import type { NavIcon } from "@/lib/evidence-libraries/configuration/links";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { cn } from "@/lib/utils";
 import { Disclosure } from "../disclosure-button";
-import { ColourField, ColourSwatch, EmptyList, FieldGroup, InlineSwitch, ListRow, move, SortableList } from "../fields";
+import { ColourField, ColourSwatch, EmptyList, FieldGroup, HintedMenuItem, InlineSwitch, ListRow, move, SortableList } from "../fields";
 import { Field, SectionCard } from "../section-card";
 import { IconPreview, NavbarIconPicker } from "./navbar-icon-picker";
 import { localPickerSource, PICKER_PAGE_SIZE, type PickerHandle, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
@@ -184,28 +184,22 @@ export function CardTagsSection({ libraryId, draft }: { libraryId: Id<"evidenceL
                   <ChevronDown className="size-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
-                <DropdownMenuItem onSelect={() => picker.current?.open()}>
-                  <CollectionsIcon className="size-4" />
-                  <span>
-                    {tt("addCollection")}
-                    <span className="block text-xs text-muted-foreground">{tt("addCollectionHint")}</span>
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem
+              <DropdownMenuContent align="end" className="w-80">
+                <HintedMenuItem
+                  onSelect={() => picker.current?.open()}
+                  icon={<CollectionsIcon className="size-4" />}
+                  label={tt("addCollection")}
+                  hint={tt("addCollectionHint")}
+                />
+                <HintedMenuItem
                   disabled={!libraryHasSources || sourcesAdded}
                   onSelect={() =>
                     setSources((current) => [...current, { id: "sources", from: "sources", enabled: true, name: "", icon: "", color: "", members: {} }])
                   }
-                >
-                  <SourcesIcon className="size-4" />
-                  <span>
-                    {tt("addSources")}
-                    <span className="block text-xs text-muted-foreground">
-                      {sourcesAdded ? tt("sourcesAdded") : libraryHasSources ? tt("addSourcesHint") : tt("sourcesNeedTwo")}
-                    </span>
-                  </span>
-                </DropdownMenuItem>
+                  icon={<SourcesIcon className="size-4" />}
+                  label={tt("addSources")}
+                  hint={sourcesAdded ? tt("sourcesAdded") : libraryHasSources ? tt("addSourcesHint") : tt("sourcesNeedTwo")}
+                />
               </DropdownMenuContent>
             </DropdownMenu>
             <RemotePickerDialog
