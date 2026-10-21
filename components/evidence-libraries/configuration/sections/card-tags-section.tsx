@@ -48,7 +48,10 @@ type ListAction = (args: {
 /** The tag a card shows when nothing sets an icon. */
 const DEFAULT_ICON = "Folder01Icon";
 const MEMBERS_PER_PAGE = 8;
-const MEMBER_ROW_HEIGHT = 53;
+// A row is one line on a wide card and two on a narrow one (tag above, controls below), 1px divider included. A list
+// with pages keeps a full page's height at either size, so a short last page doesn't move the pager.
+const MEMBER_ROW = "h-[88px] @md/settings:h-[52px]";
+const FULL_PAGE = "min-h-[713px] @md/settings:min-h-[425px]";
 
 // The two libraries the card mock runs on, set up the same way here.
 const SEEDS: Record<string, TagSource[]> = {
@@ -90,8 +93,9 @@ const SEEDS: Record<string, TagSource[]> = {
 };
 
 // ponytail: reads every collection, 50 at a time, to find subcollections; the real build asks for one parent's.
-const catalogues = new Map<string, Promise<CatalogueRow[]>>();
-function catalogue(libraryId: string, list: ListAction): Promise<CatalogueRow[]> {
+const catalogues = new Map<string, Promise<CatalogueRow[] | null>>();
+/** The library's whole collection list, or null when it could not be read; a retry reads it again. */
+function catalogue(libraryId: string, list: ListAction): Promise<CatalogueRow[] | null> {
   let promise = catalogues.get(libraryId);
   if (!promise) {
     promise = (async () => {
@@ -103,8 +107,7 @@ function catalogue(libraryId: string, list: ListAction): Promise<CatalogueRow[]>
         if (page.isDone || page.reason) return rows;
         cursor = page.continueCursor;
       }
-    })();
-    promise.catch(() => catalogues.delete(libraryId));
+    })().catch(() => null);
     catalogues.set(libraryId, promise);
   }
   return promise;
@@ -142,7 +145,12 @@ export function CardTagsSection({ libraryId, draft }: { libraryId: Id<"evidenceL
   const list = useAction(api.zotero.runtimeReadActions.listCollections) as ListAction;
   const [sources, setSources] = useState<TagSource[]>(() => SEEDS[libraryId] ?? []);
   // The list is read once, when the page opens, so a collection's subcollections are there when it is opened.
+  const [, setAttempt] = useState(0);
   const rows = catalogue(libraryId, list);
+  const retry = () => {
+    catalogues.delete(libraryId);
+    setAttempt((attempt) => attempt + 1);
+  };
   const libraryHasSources = draft.sources.filter((source) => source.enabled).length > 1;
   const sourcesAdded = sources.some((source) => source.from === "sources");
   const picker = useRef<PickerHandle>(null);
@@ -153,6 +161,7 @@ export function CardTagsSection({ libraryId, draft }: { libraryId: Id<"evidenceL
   // library can hold many of the same name (USAID has a "By Topic" in every website).
   const readPage: PickerSource = async (input) => {
     const all = await rows;
+    if (!all) throw new Error("The library's collections could not be read.");
     const title = new Map(all.map((row) => [row.id, row.title]));
     const parents = all
       .filter((row) => row.hasChildren)
@@ -243,6 +252,7 @@ export function CardTagsSection({ libraryId, draft }: { libraryId: Id<"evidenceL
                   draft={draft}
                   libraryId={libraryId}
                   rows={rows}
+                  retry={retry}
                   onChange={(change) => update(source.id, change)}
                 />
               </ListRow>
@@ -259,12 +269,14 @@ function TagSourceRow({
   draft,
   libraryId,
   rows,
+  retry,
   onChange,
 }: {
   source: TagSource;
   draft: ConfigurationDraft;
   libraryId: Id<"evidenceLibraries">;
-  rows: Promise<CatalogueRow[]>;
+  rows: Promise<CatalogueRow[] | null>;
+  retry: () => void;
   onChange: (change: (source: TagSource) => TagSource) => void;
 }) {
   const tt = useTranslations("evidenceLibraryConfiguration.cardTags");
@@ -319,7 +331,7 @@ function TagSourceRow({
             </div>
           }
         >
-          <Members source={source} draft={draft} libraryId={libraryId} rows={rows} onChange={onChange} />
+          <Members source={source} draft={draft} libraryId={libraryId} rows={rows} retry={retry} onChange={onChange} />
         </Suspense>
       </Disclosure>
     </>
@@ -333,7 +345,8 @@ function Members(props: {
   source: TagSource;
   draft: ConfigurationDraft;
   libraryId: Id<"evidenceLibraries">;
-  rows: Promise<CatalogueRow[]>;
+  rows: Promise<CatalogueRow[] | null>;
+  retry: () => void;
   onChange: (change: (source: TagSource) => TagSource) => void;
 }) {
   return props.source.from === "collection" ? <CollectionMembers {...props} /> : <SourceMembers {...props} />;
@@ -342,13 +355,27 @@ function Members(props: {
 function CollectionMembers({
   source,
   rows,
+  retry,
   onChange,
 }: {
   source: TagSource;
-  rows: Promise<CatalogueRow[]>;
+  rows: Promise<CatalogueRow[] | null>;
+  retry: () => void;
   onChange: (change: (source: TagSource) => TagSource) => void;
 }) {
-  const members = use(rows)
+  const t = useTranslations("evidenceLibraryConfiguration");
+  const all = use(rows);
+  if (!all) {
+    return (
+      <div className="flex items-center gap-3 pl-1 text-sm text-muted-foreground">
+        {t("collections.failed")}
+        <Button type="button" variant="outline" size="sm" onClick={retry}>
+          {t("retry")}
+        </Button>
+      </div>
+    );
+  }
+  const members = all
     .filter((row) => row.parentId === source.collection?.id)
     .map((row) => ({ key: row.id, name: row.title }));
   return <MemberList source={source} members={members} onChange={onChange} />;
@@ -399,53 +426,55 @@ function MemberList({
     });
   return (
     <div className="pt-1">
-      <Paged pager={pager} rowHeight={MEMBER_ROW_HEIGHT} label={tt("membersLabel")}>
-        <ul className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background">
-          {shown.map((member) => {
-            const own = source.members[member.key] ?? {};
-            const look = lookOf(source, member.key);
-            return (
-              // A narrow card gives the tag its own line, so its name is never cut to nothing.
-              <li key={member.key} className="flex flex-wrap items-center justify-end gap-2 px-3 py-2 @md/settings:h-[52px] @md/settings:flex-nowrap @md/settings:py-0" data-member={member.key}>
-                <div className="min-w-0 basis-full @md/settings:flex-1 @md/settings:basis-auto">
-                  <TagPreview name={member.name} look={look} />
-                </div>
-                <NavbarIconPicker
-                  id={`member-icon-${member.key}`}
-                  value={(own.icon ?? "") as NavIcon | ""}
-                  placeholder={tt("sameAsAll")}
-                  compact={{ label: tt("memberIcon", { name: member.name }), shown: source.icon || DEFAULT_ICON }}
-                  onChange={(icon) => setMember(member.key, { icon })}
-                />
-                <ColourSwatch
-                  value={own.color ?? ""}
-                  optional
-                  inherited={source.color}
-                  label={tt("memberColour", { name: member.name })}
-                  onChange={(color) => setMember(member.key, { color })}
-                />
-                {own.icon || own.color ? (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        aria-label={tt("useAllLook")}
-                        onClick={() => setMember(member.key, { icon: "", color: "" })}
-                      >
-                        <RotateCcw className="size-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{tt("useAllLook")}</TooltipContent>
-                  </Tooltip>
-                ) : (
-                  <span className="size-9 shrink-0" aria-hidden />
-                )}
-              </li>
-            );
-          })}
-        </ul>
+      <Paged pager={pager} rowHeight={0} label={tt("membersLabel")}>
+        <div className={pager.pages > 1 ? FULL_PAGE : undefined}>
+          <ul className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background">
+            {shown.map((member) => {
+              const own = source.members[member.key] ?? {};
+              const look = lookOf(source, member.key);
+              return (
+                // A narrow card gives the tag its own line, so its name is never cut to nothing.
+                <li key={member.key} className={cn("flex flex-wrap items-center justify-end gap-x-2 gap-y-1.5 px-3 py-2 @md/settings:flex-nowrap @md/settings:py-0", MEMBER_ROW)} data-member={member.key}>
+                  <div className="min-w-0 basis-full @md/settings:flex-1 @md/settings:basis-auto">
+                    <TagPreview name={member.name} look={look} />
+                  </div>
+                  <NavbarIconPicker
+                    id={`member-icon-${member.key}`}
+                    value={(own.icon ?? "") as NavIcon | ""}
+                    placeholder={tt("sameAsAll")}
+                    compact={{ label: tt("memberIcon", { name: member.name }), shown: source.icon || DEFAULT_ICON }}
+                    onChange={(icon) => setMember(member.key, { icon })}
+                  />
+                  <ColourSwatch
+                    value={own.color ?? ""}
+                    optional
+                    inherited={source.color}
+                    label={tt("memberColour", { name: member.name })}
+                    onChange={(color) => setMember(member.key, { color })}
+                  />
+                  {own.icon || own.color ? (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={tt("useAllLook")}
+                          onClick={() => setMember(member.key, { icon: "", color: "" })}
+                        >
+                          <RotateCcw className="size-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{tt("useAllLook")}</TooltipContent>
+                    </Tooltip>
+                  ) : (
+                    <span className="size-9 shrink-0" aria-hidden />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </Paged>
     </div>
   );
