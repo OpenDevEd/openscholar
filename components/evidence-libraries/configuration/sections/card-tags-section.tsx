@@ -207,7 +207,8 @@ export function CardTagsSection({ libraryId, draft }: { libraryId: Id<"evidenceL
               onConfirm={(picked) =>
                 setSources((current) => [
                   ...current,
-                  { id: picked[0]!.id, from: "collection", collections: picked, enabled: true, name: "", icon: "", color: "", members: {} },
+                  // Its own id: its collections change, and one taken out may come back in another entry.
+                  { id: crypto.randomUUID(), from: "collection", collections: picked, enabled: true, name: "", icon: "", color: "", members: {} },
                 ])
               }
             />
@@ -443,7 +444,8 @@ function MemberList({
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
   // A long list (every website's topics) is found by name; a short one shows whole.
-  const searchable = members.length > MEMBERS_PER_PAGE;
+  // A search in use stays up even once the list is short, so its query can still be cleared.
+  const searchable = members.length > MEMBERS_PER_PAGE || query !== "";
   const text = query.trim().toLowerCase();
   const matching = text ? members.filter((member) => member.name.toLowerCase().includes(text)) : members;
   const pager = pagerOf(matching.length, MEMBERS_PER_PAGE, page, setPage);
