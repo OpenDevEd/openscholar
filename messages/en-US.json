@@ -2733,12 +2733,12 @@
       "description": "Tags on each record's card naming where it belongs, such as its website or its topic area. Clicking one shows the records that share it.",
       "fromHeading": "Tags come from",
       "fromHint": "Cards show them in this order: three at most, then a count that opens the rest. Drag to change the order.",
-      "addCollection": "A collection's subcollections",
+      "addCollection": "Subcollections of collections",
       "addSources": "The library's sources",
       "sourcesNeedTwo": "Needs two sources or more.",
       "empty": "Cards show no tags yet.",
       "remove": "Stop tagging from this",
-      "subcollectionsOf": "Subcollections of {name}",
+      "subcollectionsOf": "Subcollections of",
       "theSources": "The library's sources",
       "onCards": "On cards",
       "nameLabel": "Name",
@@ -2754,16 +2754,21 @@
       "memberColour": "Colour for {name}",
       "useAllLook": "Use the shared icon and colour",
       "picker": {
-        "title": "Tag cards from a collection",
-        "description": "Each record is tagged with the subcollections of it that it sits in. Only collections with subcollections are listed.",
+        "title": "Tag cards from collections",
+        "description": "A record is tagged with the subcollections of these that it sits in. Pick several to make one set of tags from them, such as every website's topics.",
         "used": "Added",
         "colInside": "Inside"
       },
       "defaultIcon": "Folder, the default",
       "add": "Add",
-      "addCollectionHint": "Each record is tagged with the ones it sits in.",
+      "addCollectionHint": "Pick one or more. The same subcollection name in several is one tag.",
       "addSourcesHint": "Each record is tagged with the sources that found it.",
-      "sourcesAdded": "Already added."
+      "sourcesAdded": "Already added.",
+      "titleIn": "{title} in",
+      "addMore": "Add",
+      "removeCollection": "Remove {name}",
+      "searchMembers": "Search {count} tags",
+      "noMemberMatch": "No tag matches."
     }
   },
   "topics": {

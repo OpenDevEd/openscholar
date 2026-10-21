@@ -5,8 +5,8 @@
 
 import { useAction } from "convex/react";
 import { useTranslations } from "next-intl";
-import { type CSSProperties, Suspense, use, useRef, useState } from "react";
-import { ChevronDown, CollectionsIcon, Plus, RotateCcw, SourcesIcon, Tag } from "@/components/icons";
+import { type CSSProperties, Fragment, type ReactNode, type Ref, Suspense, use, useRef, useState } from "react";
+import { ChevronDown, CollectionsIcon, Plus, RotateCcw, Search, SourcesIcon, Tag, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -26,15 +26,20 @@ import { IconPreview, NavbarIconPicker } from "./navbar-icon-picker";
 import { localPickerSource, PICKER_PAGE_SIZE, type PickerHandle, type PickerSource, RemotePickerDialog } from "./remote-picker-dialog";
 
 type Look = { icon: string; color: string };
-/** Where one set of card tags comes from: a collection's subcollections, or the library's sources. */
+/** One collection whose subcollections are tags: its name in the database, and the name of the one it sits in. */
+type ChosenCollection = { id: string; title: string; inside?: string };
+/**
+ * Where one set of card tags comes from: the subcollections of one or more collections, or the library's sources.
+ * Subcollections of the same name are one tag, so every website's "Gender" topic is one "Gender".
+ */
 type TagSource = {
   id: string;
   from: "collection" | "sources";
-  /** The collection whose subcollections are the tags, and its name in the database. */
-  collection?: { id: string; title: string };
+  collections?: ChosenCollection[];
   enabled: boolean;
   /** Heads these tags where a card lists them all; empty uses the database name. */
   name: string;
+  /** A member's own look: a subcollection's by its name, a source's by its key. */
   members: Record<string, Partial<Look>>;
 } & Look;
 
@@ -57,21 +62,25 @@ const FULL_PAGE = "min-h-[713px] @md/settings:min-h-[425px]";
 const SEEDS: Record<string, TagSource[]> = {
   r17az8jepnyqwss11yz50smkqd8gc3dk: [
     {
-      id: "NFQ6KV5Z", from: "collection", collection: { id: "NFQ6KV5Z", title: "Websites" }, enabled: true, name: "",
+      id: "NFQ6KV5Z", from: "collection", collections: [{ id: "NFQ6KV5Z", title: "Websites" }], enabled: true, name: "",
       icon: "Globe02Icon", color: "#5B6B8C",
       members: {
-        Z7SD5EIE: { icon: "Plant02Icon", color: "#4D8B2F" },
-        K6ZERYYV: { icon: "Leaf01Icon", color: "#18946B" },
-        "98LGAWTP": { icon: "SunCloud02Icon", color: "#0F8FA3" },
-        "8JGX6FB7": { icon: "Mortarboard02Icon", color: "#6D5BD0" },
-        CRE3BK22: { icon: "DropletIcon", color: "#2878D6" },
-        W4YNNTFP: { icon: "Store01Icon", color: "#C06A12" },
-        HNP5TFRJ: { icon: "UserGroupIcon", color: "#C2417E" },
+        Agrilinks: { icon: "Plant02Icon", color: "#4D8B2F" },
+        BiodiversityLinks: { icon: "Leaf01Icon", color: "#18946B" },
+        "Climate Links": { icon: "SunCloud02Icon", color: "#0F8FA3" },
+        EducationLinks: { icon: "Mortarboard02Icon", color: "#6D5BD0" },
+        "Global Waters": { icon: "DropletIcon", color: "#2878D6" },
+        Marketlinks: { icon: "Store01Icon", color: "#C06A12" },
+        YouthPower: { icon: "UserGroupIcon", color: "#C2417E" },
       },
     },
     {
-      id: "HUBCB9IQ", from: "collection", collection: { id: "HUBCB9IQ", title: "By Topic" }, enabled: true, name: "Agrilinks topics",
-      icon: "Tag01Icon", color: "", members: {},
+      id: "topics", from: "collection", enabled: true, name: "Topics", icon: "Tag01Icon", color: "", members: {},
+      collections: [
+        ["HUBCB9IQ", "Agrilinks"], ["4IMYBU28", "Climate Links"], ["J9XKW835", "DRG Links"], ["BSNWI5HR", "EducationLinks"],
+        ["YI3P6X4D", "GenderLinks"], ["PHVY35DT", "Global Waters"], ["GFAARPGJ", "LandLinks"], ["MG7ZAF4M", "Marketlinks"],
+        ["BF7CZ3WJ", "ResilienceLinks"], ["VEDRLCZD", "Urban Links"], ["A4SDVPIX", "YouthPower"],
+      ].map(([id, inside]) => ({ id, title: "By Topic", inside })),
     },
   ],
   r177scvhy5cm45bdxheejxhvvd8gnn6g: [
@@ -156,18 +165,7 @@ export function CardTagsSection({ libraryId, draft }: { libraryId: Id<"evidenceL
   const picker = useRef<PickerHandle>(null);
   const update = (id: string, change: (source: TagSource) => TagSource) =>
     setSources((current) => current.map((source) => (source.id === id ? change(source) : source)));
-
-  // Only a collection with subcollections can tag cards. The list already read names the one each sits in, since a
-  // library can hold many of the same name (USAID has a "By Topic" in every website).
-  const readPage: PickerSource = async (input) => {
-    const all = await rows;
-    if (!all) throw new Error("The library's collections could not be read.");
-    const title = new Map(all.map((row) => [row.id, row.title]));
-    const parents = all
-      .filter((row) => row.hasChildren)
-      .map((row) => ({ id: row.id, title: row.title, meta: row.parentId ? title.get(row.parentId) : undefined, count: row.count }));
-    return localPickerSource(parents, PICKER_PAGE_SIZE)(input);
-  };
+  const usedIds = sources.flatMap((source) => (source.collections ?? []).map((collection) => collection.id));
 
   return (
     <SectionCard id="sec-cardTags" icon={Tag} title={t("sections.cardTags")} description={tt("description")}>
@@ -202,28 +200,14 @@ export function CardTagsSection({ libraryId, draft }: { libraryId: Id<"evidenceL
                 />
               </DropdownMenuContent>
             </DropdownMenu>
-            <RemotePickerDialog
+            <CollectionPicker
               ref={picker}
-              mode="multi"
-              title={tt("picker.title")}
-              description={tt("picker.description")}
-              searchLabel={t("collections.picker.search")}
-              columns={{ title: t("collections.picker.colTitle"), meta: tt("picker.colInside"), count: t("collections.picker.colRecords") }}
-              source={readPage}
-              usedIds={sources.flatMap((source) => (source.collection ? [source.collection.id] : []))}
-              usedLabel={tt("picker.used")}
-              loadingLabel={t("collections.loading")}
-              failedLabel={t("collections.failed")}
-              emptyLabel={t("collections.noneInDatabase")}
-              noMatchLabel={t("collections.picker.noMatch")}
-              notSetUpLabel={t("collections.notSetUp")}
-              confirmLabel={(count) => t("collections.picker.addPicked", { count })}
+              rows={rows}
+              usedIds={usedIds}
               onConfirm={(picked) =>
                 setSources((current) => [
                   ...current,
-                  ...picked.map((row): TagSource => ({
-                    id: row.id, from: "collection", collection: { id: row.id, title: row.title }, enabled: true, name: "", icon: "", color: "", members: {},
-                  })),
+                  { id: picked[0]!.id, from: "collection", collections: picked, enabled: true, name: "", icon: "", color: "", members: {} },
                 ])
               }
             />
@@ -247,6 +231,7 @@ export function CardTagsSection({ libraryId, draft }: { libraryId: Id<"evidenceL
                   libraryId={libraryId}
                   rows={rows}
                   retry={retry}
+                  usedIds={usedIds}
                   onChange={(change) => update(source.id, change)}
                 />
               </ListRow>
@@ -264,6 +249,7 @@ function TagSourceRow({
   libraryId,
   rows,
   retry,
+  usedIds,
   onChange,
 }: {
   source: TagSource;
@@ -271,20 +257,66 @@ function TagSourceRow({
   libraryId: Id<"evidenceLibraries">;
   rows: Promise<CatalogueRow[] | null>;
   retry: () => void;
+  usedIds: string[];
   onChange: (change: (source: TagSource) => TagSource) => void;
 }) {
   const tt = useTranslations("evidenceLibraryConfiguration.cardTags");
   const [open, setOpen] = useState(false);
-  const databaseName = source.collection?.title ?? draft.filters.sources.label;
+  const collections = source.collections ?? [];
+  const databaseName = collections[0]?.title ?? draft.filters.sources.label;
   const Icon = source.from === "collection" ? CollectionsIcon : SourcesIcon;
   return (
     <>
-      <div className="flex items-center gap-2">
-        <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        <span className="min-w-0 flex-1 text-sm font-medium">
-          {source.from === "collection" ? tt("subcollectionsOf", { name: databaseName }) : tt("theSources")}
+      {/* The line reads as a sentence: "Subcollections of By Topic in Agrilinks, Climate Links…", each a removable chip. */}
+      <div className="flex items-start gap-2">
+        <span className="flex h-7 shrink-0 items-center">
+          <Icon className="size-4 text-muted-foreground" aria-hidden />
         </span>
-        <div className="shrink-0">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 text-sm font-medium">
+          {source.from === "collection" ? (
+            <>
+              <span className="flex h-7 items-center">{tt("subcollectionsOf")}</span>
+              {Object.entries(Object.groupBy(collections, (collection) => collection.title)).map(([title, same]) =>
+                same![0]!.inside ? (
+                  <Fragment key={title}>
+                    <span className="flex h-7 items-center">{tt("titleIn", { title })}</span>
+                    {same!.map((collection) => (
+                      <CollectionChip
+                        key={collection.id}
+                        label={collection.inside!}
+                        removable={collections.length > 1}
+                        onRemove={() => onChange((s) => ({ ...s, collections: s.collections!.filter((other) => other.id !== collection.id) }))}
+                      />
+                    ))}
+                  </Fragment>
+                ) : (
+                  same!.map((collection) => (
+                    <CollectionChip
+                      key={collection.id}
+                      label={collection.title}
+                      removable={collections.length > 1}
+                      onRemove={() => onChange((s) => ({ ...s, collections: s.collections!.filter((other) => other.id !== collection.id) }))}
+                    />
+                  ))
+                ),
+              )}
+              <CollectionPicker
+                rows={rows}
+                usedIds={usedIds}
+                trigger={
+                  <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground">
+                    <Plus className="size-3.5" />
+                    {tt("addMore")}
+                  </Button>
+                }
+                onConfirm={(picked) => onChange((s) => ({ ...s, collections: [...(s.collections ?? []), ...picked] }))}
+              />
+            </>
+          ) : (
+            <span className="flex h-7 items-center">{tt("theSources")}</span>
+          )}
+        </div>
+        <div className="-my-1 shrink-0">
           <InlineSwitch label={tt("onCards")} checked={source.enabled} onChange={(enabled) => onChange((s) => ({ ...s, enabled }))} />
         </div>
       </div>
@@ -369,9 +401,10 @@ function CollectionMembers({
       </div>
     );
   }
-  const members = all
-    .filter((row) => row.parentId === source.collection?.id)
-    .map((row) => ({ key: row.id, name: row.title }));
+  // Subcollections of the same name under different collections are one tag.
+  const parents = new Set((source.collections ?? []).map((collection) => collection.id));
+  const names = [...new Set(all.filter((row) => row.parentId && parents.has(row.parentId)).map((row) => row.title))];
+  const members = names.sort((a, b) => a.localeCompare(b)).map((name) => ({ key: name, name }));
   return <MemberList source={source} members={members} onChange={onChange} />;
 }
 
@@ -408,8 +441,13 @@ function MemberList({
 }) {
   const tt = useTranslations("evidenceLibraryConfiguration.cardTags");
   const [page, setPage] = useState(1);
-  const pager = pagerOf(members.length, MEMBERS_PER_PAGE, page, setPage);
-  const shown = members.slice((pager.page - 1) * MEMBERS_PER_PAGE, pager.page * MEMBERS_PER_PAGE);
+  const [query, setQuery] = useState("");
+  // A long list (every website's topics) is found by name; a short one shows whole.
+  const searchable = members.length > MEMBERS_PER_PAGE;
+  const text = query.trim().toLowerCase();
+  const matching = text ? members.filter((member) => member.name.toLowerCase().includes(text)) : members;
+  const pager = pagerOf(matching.length, MEMBERS_PER_PAGE, page, setPage);
+  const shown = matching.slice((pager.page - 1) * MEMBERS_PER_PAGE, pager.page * MEMBERS_PER_PAGE);
   const setMember = (key: string, look: Partial<Look>) =>
     onChange((s) => {
       const own = { ...s.members[key], ...look };
@@ -419,11 +457,30 @@ function MemberList({
       return { ...s, members };
     });
   return (
-    <div className="pt-1">
+    <div className="space-y-2 pt-1">
+      {searchable ? (
+        <div className="relative max-w-sm">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+          <Input
+            type="search"
+            aria-label={tt("searchMembers", { count: members.length })}
+            placeholder={tt("searchMembers", { count: members.length })}
+            className="bg-background pl-9"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+      ) : null}
       <Paged pager={pager} rowHeight={0} label={tt("membersLabel")}>
         <div className={pager.pages > 1 ? FULL_PAGE : undefined}>
           <ul className="divide-y divide-border-subtle overflow-hidden rounded-lg border border-border-subtle bg-background">
-            {shown.map((member) => {
+            {shown.length === 0 ? (
+              <li className={cn("flex items-center px-3 text-sm text-muted-foreground", MEMBER_ROW)}>{tt("noMemberMatch")}</li>
+            ) : null}
+            {shown.map((member, index) => {
               const own = source.members[member.key] ?? {};
               const look = lookOf(source, member.key);
               return (
@@ -433,7 +490,7 @@ function MemberList({
                     <TagPreview name={member.name} look={look} />
                   </div>
                   <NavbarIconPicker
-                    id={`member-icon-${member.key}`}
+                    id={`member-icon-${source.id}-${pager.page}-${index}`}
                     value={(own.icon ?? "") as NavIcon | ""}
                     placeholder={tt("sameAsAll")}
                     compact={{ label: tt("memberIcon", { name: member.name }), shown: source.icon || DEFAULT_ICON }}
@@ -471,5 +528,80 @@ function MemberList({
         </div>
       </Paged>
     </div>
+  );
+}
+
+/** A collection an entry takes subcollections from, removable while another is left. */
+function CollectionChip({ label, removable, onRemove }: { label: string; removable: boolean; onRemove: () => void }) {
+  const tt = useTranslations("evidenceLibraryConfiguration.cardTags");
+  return (
+    <span className="inline-flex h-7 items-center gap-1 rounded-md border border-border-subtle bg-background pr-1 pl-2 text-xs font-medium">
+      {label}
+      {removable ? (
+        <button
+          type="button"
+          aria-label={tt("removeCollection", { name: label })}
+          onClick={onRemove}
+          className="grid size-5 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+        >
+          <X className="size-3" />
+        </button>
+      ) : (
+        <span className="w-1" aria-hidden />
+      )}
+    </span>
+  );
+}
+
+/**
+ * Picks collections that have subcollections, from the list already read. It names the collection each sits in,
+ * since a library can hold many of the same name (USAID has a "By Topic" in every website).
+ */
+function CollectionPicker({
+  rows,
+  usedIds,
+  trigger,
+  ref,
+  onConfirm,
+}: {
+  rows: Promise<CatalogueRow[] | null>;
+  usedIds: string[];
+  trigger?: ReactNode;
+  ref?: Ref<PickerHandle>;
+  onConfirm: (picked: ChosenCollection[]) => void;
+}) {
+  const t = useTranslations("evidenceLibraryConfiguration");
+  const tt = useTranslations("evidenceLibraryConfiguration.cardTags");
+  const readPage: PickerSource = async (input) => {
+    const all = await rows;
+    if (!all) throw new Error("The library's collections could not be read.");
+    const title = new Map(all.map((row) => [row.id, row.title]));
+    const parents = all
+      .filter((row) => row.hasChildren)
+      .map((row) => ({ id: row.id, title: row.title, meta: row.parentId ? title.get(row.parentId) : undefined, count: row.count }));
+    return localPickerSource(parents, PICKER_PAGE_SIZE)(input);
+  };
+  return (
+    <RemotePickerDialog
+      ref={ref}
+      trigger={trigger}
+      mode="multi"
+      title={tt("picker.title")}
+      description={tt("picker.description")}
+      searchLabel={t("collections.picker.search")}
+      columns={{ title: t("collections.picker.colTitle"), meta: tt("picker.colInside"), count: t("collections.picker.colRecords") }}
+      source={readPage}
+      usedIds={usedIds}
+      usedLabel={tt("picker.used")}
+      loadingLabel={t("collections.loading")}
+      failedLabel={t("collections.failed")}
+      emptyLabel={t("collections.noneInDatabase")}
+      noMatchLabel={t("collections.picker.noMatch")}
+      notSetUpLabel={t("collections.notSetUp")}
+      confirmLabel={(count) => t("collections.picker.addPicked", { count })}
+      onConfirm={(picked) => {
+        if (picked.length) onConfirm(picked.map((row) => ({ id: row.id, title: row.title, inside: row.meta })));
+      }}
+    />
   );
 }
