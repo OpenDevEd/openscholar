@@ -1759,7 +1759,8 @@
       "versions": "Versions",
       "ai": "AI",
       "domain": "Domain",
-      "publication": "Publishing"
+      "publication": "Publishing",
+      "cardTags": "Card tags"
     },
     "sectionState": {
       "complete": "Complete",
@@ -1845,7 +1846,8 @@
       "dragHandle": "Drag to reorder",
       "uploadFailed": "The file could not be uploaded. Try again.",
       "view": "View",
-      "textFile": "Uploaded text"
+      "textFile": "Uploaded text",
+      "noColour": "No colour"
     },
     "identity": {
       "description": "The name people see, the address they visit, and how the library looks when shared.",
@@ -2726,7 +2728,43 @@
       "confirmAction": "Change the address"
     },
     "retry": "Try again",
-    "retryError": "That could not be started. Try again."
+    "retryError": "That could not be started. Try again.",
+    "cardTags": {
+      "description": "Tags on each record's card naming where it belongs, such as its website or its topic area. Clicking one shows the records that share it.",
+      "fromHeading": "Tags come from",
+      "fromHint": "Cards show them in this order: three at most, then a count that opens the rest. Drag to change the order.",
+      "addCollection": "A collection's subcollections",
+      "addSources": "The library's sources",
+      "sourcesNeedTwo": "Needs two sources or more.",
+      "empty": "Cards show no tags yet.",
+      "remove": "Stop tagging from this",
+      "subcollectionsOf": "Subcollections of {name}",
+      "theSources": "The library's sources",
+      "onCards": "On cards",
+      "nameLabel": "Name",
+      "nameHint": "Heads these tags where a card lists them all. Leave empty to use the database name.",
+      "iconLabel": "Icon",
+      "colourLabel": "Colour",
+      "eachSubcollection": "Each subcollection",
+      "eachSource": "Each source",
+      "loadingMembers": "Loading…",
+      "membersLabel": "tags",
+      "sameAsAll": "Same as the rest",
+      "memberIcon": "Icon for {name}",
+      "memberColour": "Colour for {name}",
+      "useAllLook": "Use the shared icon and colour",
+      "picker": {
+        "title": "Tag cards from a collection",
+        "description": "Each record is tagged with the subcollections of it that it sits in. Only collections with subcollections are listed.",
+        "used": "Added",
+        "colInside": "Inside"
+      },
+      "defaultIcon": "Folder, the default",
+      "add": "Add",
+      "addCollectionHint": "Each record is tagged with the ones it sits in.",
+      "addSourcesHint": "Each record is tagged with the sources that found it.",
+      "sourcesAdded": "Already added."
+    }
   },
   "topics": {
     "title": "Topics",

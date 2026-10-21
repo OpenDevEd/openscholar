@@ -64,12 +64,15 @@ export function NavbarIconPicker({
   value,
   onChange,
   placeholder,
+  compact,
 }: {
   id: string;
   value: NavIcon | "";
   onChange: (icon: NavIcon | "") => void;
   /** What the trigger and the clearing row say while no icon is chosen. */
   placeholder?: string;
+  /** The icon alone, for a value in a row; this names the button. */
+  compact?: { label: string; shown?: string };
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.links");
   return (
@@ -77,7 +80,19 @@ export function NavbarIconPicker({
       mode="single"
       value={value}
       onChoose={(row) => onChange(row?.id ?? "")}
-      trigger={
+      trigger={compact ? (
+        <Button
+          id={id}
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label={compact.label}
+          className={value ? "bg-background" : "border-dashed bg-background text-muted-foreground"}
+        >
+          {/* With none of its own, the icon it shows is the one it takes from above. */}
+          {value || compact.shown ? <IconPreview iconId={value || compact.shown!} className={value ? "size-4" : "size-4 opacity-50"} /> : null}
+        </Button>
+      ) : (
         <Button
           id={id}
           type="button"
@@ -105,7 +120,7 @@ export function NavbarIconPicker({
             className="shrink-0 opacity-50"
           />
         </Button>
-      }
+      )}
       title={t("iconPicker.title")}
       description={t("iconPicker.description")}
       searchLabel={t("iconPicker.search")}

@@ -393,6 +393,7 @@ export function ColourField({
   value,
   onChange,
   contrastAgainst,
+  optional,
   className,
 }: {
   label: ReactNode;
@@ -401,10 +402,11 @@ export function ColourField({
   onChange: (value: string) => void;
   /** Background colours; warns when the colour fails WCAG AA (4.5:1) on all of them. */
   contrastAgainst?: string[];
+  /** Empty is a valid answer: no colour. */
+  optional?: boolean;
   className?: string;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.fields");
-  const tp = useTranslations("evidenceLibraryConfiguration.theme.presets");
   const valid = HEX_COLOUR.test(value);
   // Warn only when the colour fails on every background, like the runtime check.
   const backgrounds = contrastAgainst ?? [];
@@ -416,55 +418,18 @@ export function ColourField({
     <Field
       label={label}
       hint={hint}
-      error={!valid ? t("badHex") : null}
+      error={!valid && !(optional && value === "") ? t("badHex") : null}
       className={className}
     >
       {(id, invalid) => (
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={t("pickColour")}
-                  className="size-9 shrink-0 rounded-md border border-border-subtle shadow-xs"
-                  style={{ background: valid ? value : "transparent" }}
-                />
-              </PopoverTrigger>
-              <PopoverContent align="start" className="flex w-64 flex-col gap-3">
-                <input
-                  type="color"
-                  aria-label={t("pickColour")}
-                  value={valid ? value.slice(0, 7) : "#000000"}
-                  onChange={(e) => onChange(e.target.value)}
-                  className="h-10 w-full cursor-pointer rounded-md border border-border-subtle bg-background p-0.5"
-                />
-                <div className="grid grid-cols-8 gap-1.5">
-                  {COLOUR_PRESETS.map((p) => (
-                    <Tooltip key={p.key}>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          aria-label={tp(p.key)}
-                          onClick={() => onChange(p.colors.accent)}
-                          className="flex size-6 items-center justify-center rounded-md border border-border-subtle"
-                          style={{ background: p.colors.accent }}
-                        >
-                          {p.colors.accent.toLowerCase() === value.toLowerCase() ? (
-                            <Check className="h-3 w-3 text-white" />
-                          ) : null}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{tp(p.key)}</TooltipContent>
-                    </Tooltip>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <ColourSwatch value={value} onChange={onChange} optional={optional} />
             <Input
               id={id}
               className="bg-background font-mono text-sm"
               value={value}
+              placeholder={optional ? t("noColour") : undefined}
               aria-invalid={invalid || undefined}
               onChange={(e) => onChange(e.target.value)}
             />
@@ -477,6 +442,89 @@ export function ColourField({
         </div>
       )}
     </Field>
+  );
+}
+
+/**
+ * The colour swatch that opens the picker and the presets. Alone, for a value in a row; `ColourField` puts the hex
+ * beside it. An optional colour offers "No colour", and shows none as a dashed empty swatch.
+ */
+export function ColourSwatch({
+  value,
+  onChange,
+  optional,
+  inherited,
+  label,
+  className,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  optional?: boolean;
+  /** The colour an empty value takes from elsewhere, shown faintly behind the dashed edge. */
+  inherited?: string;
+  /** The swatch's name, when it stands alone without the hex field's label. */
+  label?: string;
+  className?: string;
+}) {
+  const t = useTranslations("evidenceLibraryConfiguration.fields");
+  const tp = useTranslations("evidenceLibraryConfiguration.theme.presets");
+  const valid = HEX_COLOUR.test(value);
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={label ?? t("pickColour")}
+          className={cn(
+            "size-9 shrink-0 rounded-md border shadow-xs",
+            valid ? "border-border-subtle" : "border-dashed border-border bg-background",
+            className,
+          )}
+          style={
+            valid
+              ? { background: value }
+              : inherited && HEX_COLOUR.test(inherited)
+                ? { background: `color-mix(in oklab, ${inherited} 40%, transparent)` }
+                : undefined
+          }
+        />
+      </PopoverTrigger>
+      <PopoverContent align="start" className="flex w-64 flex-col gap-3">
+        <input
+          type="color"
+          aria-label={t("pickColour")}
+          value={valid ? value.slice(0, 7) : "#000000"}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-10 w-full cursor-pointer rounded-md border border-border-subtle bg-background p-0.5"
+        />
+        <div className="grid grid-cols-8 gap-1.5">
+          {COLOUR_PRESETS.map((p) => (
+            <Tooltip key={p.key}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={tp(p.key)}
+                  onClick={() => onChange(p.colors.accent)}
+                  className="flex size-6 items-center justify-center rounded-md border border-border-subtle"
+                  style={{ background: p.colors.accent }}
+                >
+                  {p.colors.accent.toLowerCase() === value.toLowerCase() ? (
+                    <Check className="h-3 w-3 text-white" />
+                  ) : null}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>{tp(p.key)}</TooltipContent>
+            </Tooltip>
+          ))}
+        </div>
+        {optional ? (
+          <Button type="button" variant="outline" size="sm" disabled={value === ""} onClick={() => onChange("")}>
+            <X />
+            {t("noColour")}
+          </Button>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   );
 }
 

@@ -33,11 +33,12 @@ import {
   TrashIcon,
   type AppIcon,
   AiIcon,
+  Tag,
 } from "@/components/icons";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useTranslations } from "next-intl";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
-import { type ReactNode, useState } from "react";
+import { Fragment, type ReactNode, useState } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -95,6 +96,7 @@ import { AnalyticsSection } from "./sections/analytics-section";
 import { CitationsSection } from "./sections/citations-section";
 import { CollectionFactsProvider } from "./sections/collection-facts";
 import { CollectionsSection } from "./sections/collections-section";
+import { CardTagsSection } from "./sections/card-tags-section";
 import { ContactSection } from "./sections/contact-section";
 import { DangerSection } from "./sections/danger-section";
 import { PublicationSection } from "./sections/publication-section";
@@ -146,13 +148,13 @@ function isOperationRunning(operation: Operation): boolean {
 }
 
 /** Rail entries: the page cards in their groups, then versions, the team and the danger zone. */
-type RailKey = PageSectionKey | "publication" | "domain" | "versions" | "team" | "danger";
+type RailKey = PageSectionKey | "cardTags" | "publication" | "domain" | "versions" | "team" | "danger";
 const RAIL_GROUPS: {
   key: "brand" | "content" | "discovery" | "platform" | "team" | "danger";
   sections: readonly RailKey[];
 }[] = [
   { key: "brand", sections: ["identity", "theme", "institutions"] },
-  { key: "content", sections: ["home", "navigation", "footer", "contact", "collections"] },
+  { key: "content", sections: ["home", "navigation", "footer", "contact", "collections", "cardTags"] },
   { key: "discovery", sections: ["search", "citations", "features", "sources", "ai"] },
   { key: "platform", sections: ["languages", "analytics", "publication", "domain", "versions"] },
   { key: "team", sections: ["team"] },
@@ -168,6 +170,7 @@ const SECTION_ICONS: Record<RailKey, AppIcon> = {
   footer: FooterIcon,
   contact: MailIcon,
   collections: CollectionsIcon,
+  cardTags: Tag,
   search: SearchIcon,
   sources: SourcesIcon,
   citations: QuoteIcon,
@@ -222,7 +225,7 @@ function isPageSection(value: string): value is PageSectionKey {
 }
 
 const RAIL_KEYS: readonly RailKey[] = [
-  ...PAGE_SECTION_KEYS,
+  ...PAGE_SECTION_KEYS.flatMap((key): RailKey[] => (key === "collections" ? [key, "cardTags"] : [key])),
   "publication",
   "domain",
   "versions",
@@ -694,15 +697,17 @@ function Workspace({
                     {PAGE_SECTION_KEYS.map((key) => {
                       const Section = SECTION_COMPONENTS[key];
                       return (
-                        <Section
-                          // A card whose values were replaced by saved rows starts again, as it would on a fresh page.
-                          key={`${key}:${work.drawn[key] ?? 0}`}
-                          libraryId={libraryId}
-                          draft={draft}
-                          saved={saved}
-                          patch={patch}
-                          reset={reset}
-                        />
+                        <Fragment key={`${key}:${work.drawn[key] ?? 0}`}>
+                          {/* A card whose values were replaced by saved rows starts again, as it would on a fresh page. */}
+                          <Section
+                            libraryId={libraryId}
+                            draft={draft}
+                            saved={saved}
+                            patch={patch}
+                            reset={reset}
+                          />
+                          {key === "collections" ? <CardTagsSection libraryId={libraryId} draft={draft} /> : null}
+                        </Fragment>
                       );
                     })}
                   </SaveNoticesProvider>
