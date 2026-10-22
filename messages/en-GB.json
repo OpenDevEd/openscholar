@@ -1851,6 +1851,8 @@
       "description": "The name people see, the address they visit, and how the library looks when shared.",
       "nameLabel": "Name",
       "nameError": "Enter a name for the library.",
+      "showNameLabel": "Name beside the logo",
+      "showNameHint": "Turn off when the logo already spells the library's name.",
       "shortNameLabel": "Short name",
       "shortNameHint": "Used in export file names, email subjects, and when the site is pinned as an app.",
       "shortNameError": "Enter a short name for the library.",

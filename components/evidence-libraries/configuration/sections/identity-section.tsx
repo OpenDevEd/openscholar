@@ -2,6 +2,7 @@
 
 import { Copy, GlobeIcon } from "@/components/icons";
 import { useTranslations } from "next-intl";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import {
   ReadOnlyValue,
   FieldGroup,
   SortableList,
+  ToggleRow,
   UploadField,
 } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
@@ -24,6 +26,7 @@ const LIMITS = SCHEMA_LIMITS.identity;
 
 export function IdentitySection({ draft, saved, patch, reset }: SectionProps) {
   const t = useTranslations("evidenceLibraryConfiguration.identity");
+  const [showName, setShowName] = useState(true);
   const identity = draft.identity;
 
   function copyAddress() {
@@ -61,6 +64,9 @@ export function IdentitySection({ draft, saved, patch, reset }: SectionProps) {
           />
         )}
       </Field>
+
+      {/* MOCK (header name): kept in this page and never saved; the real build reads and writes `identity.showName`. */}
+      <ToggleRow label={t("showNameLabel")} hint={t("showNameHint")} checked={showName} onChange={setShowName} />
 
       <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
         <Field
