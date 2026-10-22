@@ -2496,7 +2496,8 @@
         "noRecordsYet": "अभी कोई रिकॉर्ड नहीं",
         "tickedAtFirst": "शुरू में चुना हुआ",
         "prefixMeaning": "इससे शुरू होने वाले सभी टैग",
-        "prefixTags": "इसमें आने वाले टैग"
+        "prefixTags": "इसमें आने वाले टैग",
+        "prefixMore": "और भी"
       }
     },
     "team": {

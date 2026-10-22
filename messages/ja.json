@@ -2496,7 +2496,8 @@
         "noRecordsYet": "まだレコードはありません",
         "tickedAtFirst": "最初からチェック",
         "prefixMeaning": "これで始まるすべてのタグ",
-        "prefixTags": "含まれるタグ"
+        "prefixTags": "含まれるタグ",
+        "prefixMore": "ほかにもあります"
       }
     },
     "team": {

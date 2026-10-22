@@ -2496,7 +2496,8 @@
         "noRecordsYet": "No records yet",
         "tickedAtFirst": "Checked at first",
         "prefixMeaning": "Every tag that starts with it",
-        "prefixTags": "Tags it brings in"
+        "prefixTags": "Tags it brings in",
+        "prefixMore": "And more"
       }
     },
     "team": {

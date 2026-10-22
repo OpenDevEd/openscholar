@@ -11,7 +11,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { Segmented } from "@/components/settings/parts";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import type { TagFilterDraft, TagFilterOptionDraft } from "@/lib/evidence-libraries/configuration/rules";
+import { SCHEMA_LIMITS, type TagFilterDraft, type TagFilterOptionDraft } from "@/lib/evidence-libraries/configuration/rules";
 import { cn } from "@/lib/utils";
 import { AddButton, EmptyList, FieldGroup, InlineSwitch, ListRow, move, NestedList, SortableList } from "../fields";
 import { Field } from "../section-card";
@@ -25,24 +25,26 @@ type ListTags = (args: {
   sort?: "count" | "name";
   direction?: "asc" | "desc";
 }) => Promise<TagPage>;
-/** Tags containing an entry's text with their record counts, or null when they could not be read; `complete` when one page held them all. */
+/** Tags and their record counts, or null when they could not be read; `complete` when the read held every match. */
 type TagCounts = { counts: Map<string, number>; complete: boolean } | null;
 
 const SORTS: readonly PickerSort[] = [
   { value: "count", column: "count", direction: "desc" },
   { value: "name", column: "title", direction: "asc" },
 ];
+const LIMITS = SCHEMA_LIMITS.filters;
 
 const tagCountReads = new Map<string, Promise<TagCounts>>();
 /**
- * An entry's counts: one page of the library's tags containing its text, read once per library and entry, so a
- * tag's count and a prefix's tags are there when the row renders.
+ * One page of tags, most used first, read once per library and text: with no text, the library's most used tags, which
+ * the rows' counts come from; with a prefix, the tags it brings in. A page is all a count needs: an entry is named
+ * because it is used, and a long prefix list says it goes on.
  */
-function tagCounts(libraryId: Id<"evidenceLibraries">, list: ListTags, value: string): Promise<TagCounts> {
-  const key = `${libraryId}\u0000${value}`;
+function tagCounts(libraryId: Id<"evidenceLibraries">, list: ListTags, query: string): Promise<TagCounts> {
+  const key = `${libraryId}\u0000${query}`;
   let read = tagCountReads.get(key);
   if (!read) {
-    read = list({ libraryId, query: value, paginationOpts: { cursor: null, numItems: 200 } })
+    read = list({ libraryId, query: query || undefined, paginationOpts: { cursor: null, numItems: PICKER_PAGE_SIZE } })
       .then((page) => ({ counts: new Map(page.page.map((row) => [row.name, row.count])), complete: page.isDone }))
       .catch(() => null);
     tagCountReads.set(key, read);
@@ -74,7 +76,8 @@ export function TagFiltersField({
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.search.tagFilters");
   const list = useAction(api.zotero.runtimeReadActions.listTags) as ListTags;
-  const countsOf = (value: string) => tagCounts(libraryId, list, value);
+  const libraryCounts = tagCounts(libraryId, list, "");
+  const prefixCounts = (prefix: string) => tagCounts(libraryId, list, prefix);
   const update = (id: string, change: (filter: TagFilterDraft) => TagFilterDraft) =>
     onChange((current) => current.map((filter) => (filter.id === id ? change(filter) : filter)));
   const add = () =>
@@ -100,7 +103,7 @@ export function TagFiltersField({
   };
 
   return (
-    <FieldGroup title={t("heading")} hint={t("hint")} action={<AddButton onClick={add}>{t("add")}</AddButton>}>
+    <FieldGroup title={t("heading")} hint={t("hint")} action={<AddButton onClick={add} disabled={filters.length >= LIMITS.tagFilters}>{t("add")}</AddButton>}>
       {filters.length === 0 ? (
         <EmptyList>{t("empty")}</EmptyList>
       ) : (
@@ -115,7 +118,8 @@ export function TagFiltersField({
               <TagFilterRow
                 filter={filter}
                 taken={filters.filter((other) => other.id !== filter.id).map((other) => other.id)}
-                countsOf={countsOf}
+                libraryCounts={libraryCounts}
+                prefixCounts={prefixCounts}
                 source={source}
                 onChange={(change) => update(filter.id, change)}
               />
@@ -130,14 +134,16 @@ export function TagFiltersField({
 function TagFilterRow({
   filter,
   taken,
-  countsOf,
+  libraryCounts,
+  prefixCounts,
   source,
   onChange,
 }: {
   filter: TagFilterDraft;
   /** Other filters' address names, which this one can't take. */
   taken: string[];
-  countsOf: (value: string) => Promise<TagCounts>;
+  libraryCounts: Promise<TagCounts>;
+  prefixCounts: (prefix: string) => Promise<TagCounts>;
   source: PickerSource;
   onChange: (change: (filter: TagFilterDraft) => TagFilterDraft) => void;
 }) {
@@ -147,11 +153,12 @@ function TagFilterRow({
   const named = filter.options.filter((option) => !option.prefix).map((option) => option.value);
   const addOption = (option: TagFilterOptionDraft) =>
     onChange((f) => (f.options.some((o) => optionId(o) === optionId(option)) ? f : { ...f, options: [...f.options, option] }));
-  // A filter keeps the address name it got from its first name, so links readers shared keep working.
-  const rename = (label: string) =>
+  // A new filter takes its address name from its first name once the field is left, so the row isn't rebuilt while
+  // the owner types; it keeps that name after, so links readers shared keep working.
+  const settleId = () =>
     onChange((f) => {
-      const fresh = /^filter-\d+$/u.test(f.id) && slug(label);
-      return { ...f, label, id: fresh && !taken.includes(fresh) ? fresh : f.id };
+      const fresh = /^filter-\d+$/u.test(f.id) && slug(f.label);
+      return fresh && /^[a-z]/u.test(fresh) && !taken.includes(fresh) ? { ...f, id: fresh } : f;
     });
 
   return (
@@ -159,7 +166,7 @@ function TagFilterRow({
       <div className="flex items-start gap-3">
         <Field label={t("name")} className="min-w-0 flex-1">
           {(id) => (
-            <Input id={id} className="bg-background" maxLength={60} value={filter.label} placeholder={t("namePlaceholder")} onChange={(e) => rename(e.target.value)} />
+            <Input id={id} className="bg-background" maxLength={60} value={filter.label} placeholder={t("namePlaceholder")} onChange={(e) => onChange((f) => ({ ...f, label: e.target.value }))} onBlur={settleId} />
           )}
         </Field>
         <div className="mt-6 shrink-0">
@@ -195,12 +202,13 @@ function TagFilterRow({
                 }
               >
                 {option.prefix ? (
-                  <PrefixEntry filter={filter} option={option} named={named} counts={countsOf(option.value)} />
+                  <PrefixEntry filter={filter} option={option} named={named} counts={prefixCounts(option.value)} />
                 ) : (
                   <TagEntry
                     filter={filter}
                     option={option}
-                    counts={countsOf(option.value)}
+                    counts={libraryCounts}
+                    defaultsFull={filter.defaults.length >= LIMITS.tagFilterDefaults}
                     onLabel={(label) => onChange((f) => ({ ...f, options: f.options.map((o) => (optionId(o) === optionId(option) ? { ...o, label } : o)) }))}
                     onDefault={(on) => onChange((f) => ({ ...f, defaults: on ? [...f.defaults, option.value] : f.defaults.filter((tag) => tag !== option.value) }))}
                   />
@@ -230,6 +238,7 @@ function TagFilterRow({
         notSetUpLabel={t("notSetUp")}
         newLabel={(typed) => t("useTyped", { tag: typed })}
         prefix={{ label: (typed) => t("usePrefix", { prefix: typed }), onChoose: (typed) => addOption({ value: typed, prefix: true, label: "" }) }}
+        typedMax={LIMITS.tagFilterTag}
       />
     </>
   );
@@ -263,12 +272,15 @@ function TagEntry({
   filter,
   option,
   counts,
+  defaultsFull,
   onLabel,
   onDefault,
 }: {
   filter: TagFilterDraft;
   option: TagFilterOptionDraft;
   counts: Promise<TagCounts>;
+  /** The filter has as many tags ticked at first as it can hold, so only ticked ones can change. */
+  defaultsFull: boolean;
   onLabel: (label: string) => void;
   onDefault: (on: boolean) => void;
 }) {
@@ -291,7 +303,12 @@ function TagEntry({
         <RecordCount tag={option.value} counts={counts} />
       </Suspense>
       <div className="flex h-8 shrink-0 items-center gap-2">
-        <Checkbox id={id} checked={filter.defaults.includes(option.value)} onCheckedChange={(next) => onDefault(next === true)} />
+        <Checkbox
+          id={id}
+          checked={filter.defaults.includes(option.value)}
+          disabled={defaultsFull && !filter.defaults.includes(option.value)}
+          onCheckedChange={(next) => onDefault(next === true)}
+        />
         <Label htmlFor={id} className="text-xs font-normal">
           {t("tickedAtFirst")}
         </Label>
@@ -324,13 +341,14 @@ function PrefixTags({ filter, prefix, named, counts }: { filter: TagFilterDraft;
   const matches = [...(read?.counts ?? [])].filter(([tag]) => tag.startsWith(prefix)).sort((left, right) => right[1] - left[1]);
   if (matches.length === 0) return null;
   return (
-    <ul className="flex animate-in fade-in flex-wrap gap-1.5" aria-label={t("prefixTags")}>
+    <ul className="flex animate-in fade-in flex-wrap items-center gap-1.5" aria-label={t("prefixTags")}>
       {matches.map(([tag, count]) => (
         <li key={tag} className={cn("inline-flex h-7 items-center gap-2 rounded-md border border-border-subtle px-2 text-xs", named.includes(tag) && "text-muted-foreground")}>
           <span className="font-medium">{readerLabel(filter, tag)}</span>
           <span className="tabular-nums text-muted-foreground">{count}</span>
         </li>
       ))}
+      {read?.complete ? null : <li className="px-1 text-xs text-muted-foreground">{t("prefixMore")}</li>}
     </ul>
   );
 }

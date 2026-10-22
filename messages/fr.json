@@ -2496,7 +2496,8 @@
         "noRecordsYet": "Aucune notice pour l'instant",
         "tickedAtFirst": "Cochée au départ",
         "prefixMeaning": "Toutes les étiquettes qui commencent ainsi",
-        "prefixTags": "Étiquettes concernées"
+        "prefixTags": "Étiquettes concernées",
+        "prefixMore": "Et d'autres"
       }
     },
     "team": {

@@ -223,6 +223,9 @@ export const SCHEMA_LIMITS = {
   filters: {
     institutionLabel: schemaNumber("/filters/institution/label", "maxLength"),
     sourcesLabel: schemaNumber("/filters/sources/label", "maxLength"),
+    tagFilters: schemaNumber("/filters/tagFilters", "maxItems"),
+    tagFilterDefaults: schemaNumber("/filters/tagFilters/*/defaults", "maxItems"),
+    tagFilterTag: schemaNumber("/filters/tagFilters/*/options/*/value", "maxLength"),
   },
   home: {
     intro: schemaNumber("/home/intro", "maxLength"),
