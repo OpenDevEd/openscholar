@@ -41,11 +41,27 @@
 			},
 			{
 				"allowCustom": false,
+				"path": "filters.collectionsMatch.default",
+				"values": [
+					"all",
+					"any"
+				]
+			},
+			{
+				"allowCustom": false,
 				"path": "filters.institution.mode",
 				"values": [
 					"hidden",
 					"facet",
 					"facet-with-featured-value"
+				]
+			},
+			{
+				"allowCustom": false,
+				"path": "filters.tagFilters[].placement",
+				"values": [
+					"card",
+					"picker"
 				]
 			},
 			{

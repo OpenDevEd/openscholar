@@ -378,6 +378,9 @@ describe("owner configuration migrations", () => {
       "/ai",
       "/topics",
       "/filters/sources",
+      "/filters/tagFilters",
+      "/filters/collectionsMatch",
+      "/filters/studyTypes",
     ]);
   });
 
