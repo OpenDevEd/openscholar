@@ -37,7 +37,7 @@ const SORTS: readonly PickerSort[] = [
   { value: "name", column: "title", direction: "asc" },
 ];
 
-/** AIME's filters as the client asked for them, on the library the mock runs on. */
+/** AIME's filters as the client asked for them; every library opens with them in the mock. */
 export const MOCK_TAG_FILTERS: Record<string, TagFilterDraft[]> = {
   [VERIFY_LIBRARY]: [
     {
@@ -73,7 +73,7 @@ const slug = (text: string) =>
 /** The library's tag filters: each a name, where readers find it, its tags or prefixes, and the tags ticked at first. */
 export function TagFiltersField({ libraryId }: { libraryId: string }) {
   const t = useTranslations("evidenceLibraryConfiguration.search.tagFilters");
-  const [filters, setFilters] = useState<TagFilterDraft[]>(() => MOCK_TAG_FILTERS[libraryId] ?? []);
+  const [filters, setFilters] = useState<TagFilterDraft[]>(() => MOCK_TAG_FILTERS[libraryId] ?? MOCK_TAG_FILTERS[VERIFY_LIBRARY]);
   const update = (id: string, change: (filter: TagFilterDraft) => TagFilterDraft) =>
     setFilters((current) => current.map((filter) => (filter.id === id ? change(filter) : filter)));
   const add = () =>

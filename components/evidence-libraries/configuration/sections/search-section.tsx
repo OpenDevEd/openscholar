@@ -25,7 +25,7 @@ import { Field, FieldError } from "../section-card";
 import { ChoiceChips, FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { FeaturedInstitutionPicker } from "./institution-pickers";
-import { MOCK_TAG_FILTERS, TagFiltersField } from "./tag-filters-field";
+import { TagFiltersField } from "./tag-filters-field";
 import { SearchIcon } from "@/components/icons";
 
 export function SearchSection({
@@ -40,7 +40,7 @@ export function SearchSection({
   const featuredMode = filters.institution.mode === "facet-with-featured-value";
   // MOCK (tag filters): kept in this page and never saved; the real build reads and writes `filters.collectionsMatch`.
   const [collectionsMatch, setCollectionsMatch] = useState(() =>
-    MOCK_TAG_FILTERS[libraryId] ? { default: "any" as "any" | "all", readerSwitch: true } : { default: "all" as "any" | "all", readerSwitch: false },
+    ({ default: "any" as "any" | "all", readerSwitch: true }),
   );
 
   // Some features need a search option or filter; they switch off with it.
