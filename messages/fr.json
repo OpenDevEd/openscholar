@@ -1818,7 +1818,8 @@
       "aiModel": "Choose the model that answers questions.",
       "aiModelUnknown": "That model is not one your library software offers. Choose another.",
       "homeStepName": "Donnez un nom à chaque étape de texte seul.",
-      "homeLimit": "Un texte de la page d'accueil dépasse la longueur autorisée, ou une liste a trop d'entrées. Raccourcissez-le."
+      "homeLimit": "Un texte de la page d'accueil dépasse la longueur autorisée, ou une liste a trop d'entrées. Raccourcissez-le.",
+      "tagFilters": "Chaque filtre d'étiquettes a besoin d'un nom, et chaque entrée d'une étiquette."
     },
     "fields": {
       "optional": "optional",
@@ -1871,7 +1872,9 @@
       "partnerName": "Partner name",
       "partnerPlaceholder": "Partner name",
       "shareImageLabel": "Share image",
-      "shareImageHint": "Used when the library is shared on social media. PNG, JPG or WEBP."
+      "shareImageHint": "Used when the library is shared on social media. PNG, JPG or WEBP.",
+      "showNameLabel": "Nom à côté du logo",
+      "showNameHint": "Désactivez-le si le logo contient déjà le nom de la bibliothèque."
     },
     "theme": {
       "description": "Layout, fonts, logos, and colours for the public site.",
@@ -2447,7 +2450,55 @@
       "collectionsExpanded": "Open collection and topic sections by default",
       "collectionsExpandedHint": "When off, people click a section to see its collections or topics.",
       "uncertainStudyTypes": "Show uncertain study types apart",
-      "uncertainStudyTypesHint": "Readers see an Uncertain type in the Study types filter and on records, in place of a type the AI was less than 60% sure of. When off, the type shows with an uncertain mark."
+      "uncertainStudyTypesHint": "Readers see an Uncertain type in the Study types filter and on records, in place of a type the AI was less than 60% sure of. When off, the type shows with an uncertain mark.",
+      "collectionsMatch": "Collections cochées",
+      "collectionsMatchHint": "Une collection cochée dans une collection cochée restreint toujours à celle-ci.",
+      "collectionsMatchAny": "Ou",
+      "collectionsMatchAnyDetail": "Notices dans au moins une",
+      "collectionsMatchAll": "Et",
+      "collectionsMatchAllDetail": "Notices dans chacune",
+      "collectionsMatchSwitch": "Les lecteurs peuvent changer",
+      "collectionsMatchSwitchHint": "Affiche Ou et Et au-dessus des collections.",
+      "studyTypes": "Filtre par type d'étude",
+      "studyTypesHint": "Les lecteurs filtrent selon le type d'étude lu par l'IA pour chaque notice. Les notices gardent leur étiquette de type dans tous les cas.",
+      "tagFilters": {
+        "heading": "Filtres d'étiquettes",
+        "hint": "Des filtres faits d'étiquettes Zotero. Cocher plusieurs étiquettes d'un filtre affiche les notices qui portent l'une d'elles, et des filtres différents se restreignent mutuellement.",
+        "add": "Ajouter un filtre",
+        "empty": "Aucun filtre d'étiquettes",
+        "remove": "Retirer le filtre",
+        "name": "Nom",
+        "namePlaceholder": "Filtre sans nom",
+        "onSite": "Sur le site",
+        "showAs": "Afficher comme",
+        "card": "Carte",
+        "cardDetail": "Sa propre carte à côté des résultats",
+        "picker": "Plus de filtres",
+        "pickerDetail": "Un sélecteur sous Plus de filtres",
+        "tags": "Étiquettes",
+        "addTag": "Ajouter une étiquette",
+        "removeTag": "Retirer l'étiquette",
+        "pickerTitle": "Ajouter une étiquette à {name}",
+        "pickerDescription": "Les étiquettes de la bibliothèque, les plus utilisées d'abord. Saisissez une étiquette qu'aucune notice ne porte encore, ou prenez votre saisie comme préfixe.",
+        "pickerSearch": "Rechercher des étiquettes",
+        "colTag": "Étiquette",
+        "colRecords": "Notices",
+        "used": "Ajoutée",
+        "loading": "Lecture des étiquettes",
+        "failed": "Les étiquettes de la bibliothèque n'ont pas pu être lues",
+        "noTags": "La bibliothèque n'a pas encore d'étiquettes",
+        "noMatch": "Aucune étiquette ne correspond",
+        "notSetUp": "Les étiquettes apparaissent une fois la bibliothèque configurée",
+        "useTyped": "Ajouter \"{tag}\"",
+        "usePrefix": "Toutes les étiquettes commençant par \"{prefix}\"",
+        "labelFor": "Ce que voient les lecteurs pour {tag}",
+        "records": "{count, plural, one {# notice} other {# notices}}",
+        "noRecordsYet": "Aucune notice pour l'instant",
+        "tickedAtFirst": "Cochée au départ",
+        "prefixMeaning": "Toutes les étiquettes qui commencent ainsi",
+        "prefixTags": "Étiquettes concernées",
+        "prefixMore": "Et d'autres"
+      }
     },
     "team": {
       "pending": "Pending"

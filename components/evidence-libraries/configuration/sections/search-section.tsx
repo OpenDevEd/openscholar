@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Segmented } from "@/components/settings/parts";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -23,6 +24,7 @@ import { Field, FieldError } from "../section-card";
 import { ChoiceChips, FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { FeaturedInstitutionPicker } from "./institution-pickers";
+import { TagFiltersField } from "./tag-filters-field";
 import { SearchIcon } from "@/components/icons";
 
 export function SearchSection({
@@ -290,6 +292,46 @@ export function SearchSection({
           }
         />
 
+        <Field label={t("collectionsMatch")} hint={t("collectionsMatchHint")}>
+          {() => (
+            <Segmented
+              fill
+              label={t("collectionsMatch")}
+              value={filters.collectionsMatch.default}
+              onChange={(value) =>
+                setFilters((f) => {
+                  f.collectionsMatch.default = value;
+                })
+              }
+              options={[
+                { id: "any", label: t("collectionsMatchAny"), below: <span className="text-xs font-normal text-muted-foreground">{t("collectionsMatchAnyDetail")}</span> },
+                { id: "all", label: t("collectionsMatchAll"), below: <span className="text-xs font-normal text-muted-foreground">{t("collectionsMatchAllDetail")}</span> },
+              ]}
+            />
+          )}
+        </Field>
+        <ToggleRow
+          label={t("collectionsMatchSwitch")}
+          hint={t("collectionsMatchSwitchHint")}
+          checked={filters.collectionsMatch.readerSwitch}
+          onChange={(checked) =>
+            setFilters((f) => {
+              f.collectionsMatch.readerSwitch = checked;
+            })
+          }
+        />
+
+        <ToggleRow
+          label={t("studyTypes")}
+          hint={t("studyTypesHint")}
+          checked={filters.studyTypes.enabled}
+          onChange={(checked) =>
+            setFilters((f) => {
+              f.studyTypes.enabled = checked;
+            })
+          }
+        />
+
         <ToggleRow
           label={t("uncertainStudyTypes")}
           hint={t("uncertainStudyTypesHint")}
@@ -301,6 +343,16 @@ export function SearchSection({
           }
         />
       </FieldGroup>
+
+      <TagFiltersField
+        libraryId={libraryId}
+        filters={filters.tagFilters}
+        onChange={(change) =>
+          setFilters((f) => {
+            f.tagFilters = change(f.tagFilters);
+          })
+        }
+      />
     </SectionShell>
   );
 }

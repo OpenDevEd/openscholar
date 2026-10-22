@@ -1818,7 +1818,8 @@
       "aiModel": "Choose the model that answers questions.",
       "aiModelUnknown": "That model is not one your library software offers. Choose another.",
       "homeStepName": "请为每个纯文本步骤填写名称。",
-      "homeLimit": "首页的某些文字超出了长度限制，或某个列表的条目过多。请缩短。"
+      "homeLimit": "首页的某些文字超出了长度限制，或某个列表的条目过多。请缩短。",
+      "tagFilters": "每个标签筛选都需要名称，每个条目都需要标签。"
     },
     "fields": {
       "optional": "optional",
@@ -1871,7 +1872,9 @@
       "partnerName": "Partner name",
       "partnerPlaceholder": "Partner name",
       "shareImageLabel": "Share image",
-      "shareImageHint": "Used when the library is shared on social media. PNG, JPG or WEBP."
+      "shareImageHint": "Used when the library is shared on social media. PNG, JPG or WEBP.",
+      "showNameLabel": "徽标旁的名称",
+      "showNameHint": "徽标已包含图书馆名称时请关闭。"
     },
     "theme": {
       "description": "Layout, fonts, logos, and colours for the public site.",
@@ -2447,7 +2450,55 @@
       "collectionsExpanded": "Open collection and topic sections by default",
       "collectionsExpandedHint": "When off, people click a section to see its collections or topics.",
       "uncertainStudyTypes": "Show uncertain study types apart",
-      "uncertainStudyTypesHint": "Readers see an Uncertain type in the Study types filter and on records, in place of a type the AI was less than 60% sure of. When off, the type shows with an uncertain mark."
+      "uncertainStudyTypesHint": "Readers see an Uncertain type in the Study types filter and on records, in place of a type the AI was less than 60% sure of. When off, the type shows with an uncertain mark.",
+      "collectionsMatch": "已勾选的合集",
+      "collectionsMatchHint": "在已勾选合集内勾选的合集始终会缩小到该合集。",
+      "collectionsMatchAny": "或",
+      "collectionsMatchAnyDetail": "至少在其中一个中的记录",
+      "collectionsMatchAll": "且",
+      "collectionsMatchAllDetail": "在每一个中的记录",
+      "collectionsMatchSwitch": "读者可以切换",
+      "collectionsMatchSwitchHint": "在合集上方显示“或”和“且”。",
+      "studyTypes": "研究类型筛选",
+      "studyTypesHint": "读者按 AI 为每条记录读取的研究类型筛选。无论如何，记录都保留类型标签。",
+      "tagFilters": {
+        "heading": "标签筛选",
+        "hint": "由 Zotero 标签组成的筛选。在一个筛选中勾选多个标签会显示带有其中任一标签的记录，不同筛选会相互缩小范围。",
+        "add": "添加筛选",
+        "empty": "没有标签筛选",
+        "remove": "移除筛选",
+        "name": "名称",
+        "namePlaceholder": "未命名筛选",
+        "onSite": "在网站上",
+        "showAs": "显示为",
+        "card": "卡片",
+        "cardDetail": "结果旁的独立卡片",
+        "picker": "更多筛选",
+        "pickerDetail": "更多筛选下的选择器",
+        "tags": "标签",
+        "addTag": "添加标签",
+        "removeTag": "移除标签",
+        "pickerTitle": "为 {name} 添加标签",
+        "pickerDescription": "图书馆的标签，最常用的在前。可输入还没有记录使用的标签，或将输入内容作为前缀。",
+        "pickerSearch": "搜索标签",
+        "colTag": "标签",
+        "colRecords": "记录",
+        "used": "已添加",
+        "loading": "正在读取标签",
+        "failed": "无法读取图书馆的标签",
+        "noTags": "图书馆还没有标签",
+        "noMatch": "没有匹配的标签",
+        "notSetUp": "图书馆设置后会显示标签",
+        "useTyped": "添加\"{tag}\"",
+        "usePrefix": "所有以\"{prefix}\"开头的标签",
+        "labelFor": "读者看到的 {tag}",
+        "records": "{count} 条记录",
+        "noRecordsYet": "还没有记录",
+        "tickedAtFirst": "默认勾选",
+        "prefixMeaning": "所有以此开头的标签",
+        "prefixTags": "包含的标签",
+        "prefixMore": "还有更多"
+      }
     },
     "team": {
       "pending": "Pending"

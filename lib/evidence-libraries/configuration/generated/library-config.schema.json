@@ -39,6 +39,10 @@
 					"type": "string",
 					"maxLength": 300
 				},
+				"showName": {
+					"default": true,
+					"type": "boolean"
+				},
 				"baseUrl": {
 					"type": "string",
 					"minLength": 1,
@@ -1087,6 +1091,99 @@
 			"default": {},
 			"type": "object",
 			"properties": {
+				"tagFilters": {
+					"default": [],
+					"maxItems": 8,
+					"type": "array",
+					"items": {
+						"type": "object",
+						"properties": {
+							"id": {
+								"type": "string",
+								"pattern": "^[a-z][a-z0-9-]{0,31}$"
+							},
+							"label": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 60
+							},
+							"enabled": {
+								"default": true,
+								"type": "boolean"
+							},
+							"placement": {
+								"default": "card",
+								"type": "string",
+								"enum": [
+									"card",
+									"picker"
+								]
+							},
+							"options": {
+								"default": [],
+								"maxItems": 100,
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"value": {
+											"type": "string",
+											"minLength": 1,
+											"maxLength": 128
+										},
+										"prefix": {
+											"default": false,
+											"type": "boolean"
+										},
+										"label": {
+											"type": "string",
+											"minLength": 1,
+											"maxLength": 80
+										}
+									},
+									"required": [
+										"value"
+									],
+									"additionalProperties": false
+								}
+							},
+							"defaults": {
+								"default": [],
+								"maxItems": 20,
+								"type": "array",
+								"items": {
+									"type": "string",
+									"minLength": 1,
+									"maxLength": 128
+								}
+							}
+						},
+						"required": [
+							"id",
+							"label"
+						],
+						"additionalProperties": false
+					}
+				},
+				"collectionsMatch": {
+					"default": {},
+					"type": "object",
+					"properties": {
+						"default": {
+							"default": "all",
+							"type": "string",
+							"enum": [
+								"all",
+								"any"
+							]
+						},
+						"readerSwitch": {
+							"default": false,
+							"type": "boolean"
+						}
+					},
+					"additionalProperties": false
+				},
 				"institution": {
 					"default": {},
 					"type": "object",
@@ -1144,6 +1241,17 @@
 					]
 				},
 				"years": {
+					"default": {},
+					"type": "object",
+					"properties": {
+						"enabled": {
+							"default": true,
+							"type": "boolean"
+						}
+					},
+					"additionalProperties": false
+				},
+				"studyTypes": {
 					"default": {},
 					"type": "object",
 					"properties": {

@@ -115,6 +115,7 @@ type SectionProblem =
   | "defaultScope"
   | "featuredInstitution"
   | "sourcesLabel"
+  | "tagFilters"
   | "tagRules"
   | "pdfPublishing"
   | "featureDependency"
@@ -222,6 +223,9 @@ export const SCHEMA_LIMITS = {
   filters: {
     institutionLabel: schemaNumber("/filters/institution/label", "maxLength"),
     sourcesLabel: schemaNumber("/filters/sources/label", "maxLength"),
+    tagFilters: schemaNumber("/filters/tagFilters", "maxItems"),
+    tagFilterDefaults: schemaNumber("/filters/tagFilters/*/defaults", "maxItems"),
+    tagFilterTag: schemaNumber("/filters/tagFilters/*/options/*/value", "maxLength"),
   },
   home: {
     intro: schemaNumber("/home/intro", "maxLength"),
@@ -376,6 +380,8 @@ type FundingPartner = { id: string; name: string };
 type IdentityDraft = {
   name: string;
   shortName: string;
+  /** The name beside the header logo; off for a logo that already spells it. */
+  showName: boolean;
   baseUrl: string;
   tagline: string;
   description: string;
@@ -445,7 +451,25 @@ export type SearchDraft = {
   scopes: SearchScope[];
   defaultScope: SearchScope;
 };
+/** One entry of a tag filter: a tag, or every tag starting with a prefix, which readers see without the prefix. */
+export type TagFilterOptionDraft = { value: string; prefix: boolean; label: string };
+/** A filter readers tick Zotero tags in, shown as a card or a picker under More filters, with tags ticked at first. */
+export type TagFilterDraft = {
+  id: string;
+  label: string;
+  enabled: boolean;
+  placement: "card" | "picker";
+  options: TagFilterOptionDraft[];
+  defaults: string[];
+};
+export type CollectionsMatch = "any" | "all";
+
 export type FiltersDraft = {
+  tagFilters: TagFilterDraft[];
+  /** Whether ticked collections show records in any (Or) or all (And) of them, and whether readers can switch. */
+  collectionsMatch: { default: CollectionsMatch; readerSwitch: boolean };
+  /** The Study types card beside the results. */
+  studyTypes: { enabled: boolean };
   institution: { mode: InstitutionMode; label: string; featuredValue: string };
   /** Readers filter by the library's sources, once it has two or more, under this heading. */
   sources: { enabled: boolean; label: string };
@@ -713,6 +737,7 @@ function readIdentity(payload: unknown): IdentityDraft {
   return {
     name: text(identity.name),
     shortName: text(identity.shortName),
+    showName: flag(identity.showName, true),
     baseUrl: text(identity.baseUrl),
     tagline: text(identity.tagline),
     description: text(identity.description),
@@ -936,7 +961,14 @@ function readFilters(payload: unknown): FiltersDraft {
   const institution = record(filters.institution);
   const sources = record(filters.sources);
   const years = record(filters.years);
+  const collectionsMatch = record(filters.collectionsMatch);
   return {
+    tagFilters: list(filters.tagFilters).map(readTagFilter),
+    collectionsMatch: {
+      default: choice(collectionsMatch.default, ["any", "all"] as const, "all"),
+      readerSwitch: flag(collectionsMatch.readerSwitch, false),
+    },
+    studyTypes: { enabled: flag(record(filters.studyTypes).enabled, true) },
     institution: {
       mode: choice(institution.mode, INSTITUTION_MODES, "facet"),
       label: text(
@@ -954,6 +986,21 @@ function readFilters(payload: unknown): FiltersDraft {
     years: {
       enabled: flag(years.enabled, true),
     },
+  };
+}
+
+function readTagFilter(value: unknown): TagFilterDraft {
+  const filter = record(value);
+  return {
+    id: text(filter.id),
+    label: text(filter.label),
+    enabled: flag(filter.enabled, true),
+    placement: choice(filter.placement, ["card", "picker"] as const, "card"),
+    options: list(filter.options).map((entry) => {
+      const option = record(entry);
+      return { value: text(option.value), prefix: flag(option.prefix, false), label: text(option.label) };
+    }),
+    defaults: list(filter.defaults).map((tag) => text(tag)).filter(Boolean),
   };
 }
 
@@ -1271,6 +1318,8 @@ function identityPayload(identity: IdentityDraft) {
   return compact({
     name: identity.name,
     shortName: identity.shortName,
+    // On is the runtime's default; leaving it out keeps the row readable by library software from before the switch.
+    showName: identity.showName ? undefined : false,
     baseUrl: identity.baseUrl,
     tagline: optional(identity.tagline),
     description: optional(identity.description),
@@ -1481,6 +1530,13 @@ function rowPayload(draft: ConfigurationDraft, rowKey: RowKey): unknown {
               : undefined,
         }),
         sources: { ...draft.filters.sources },
+        tagFilters: draft.filters.tagFilters.map((filter) => ({
+          ...filter,
+          options: filter.options.map((option) => compact({ value: option.value, prefix: option.prefix, label: optional(option.label) })),
+          defaults: [...filter.defaults],
+        })),
+        collectionsMatch: { ...draft.filters.collectionsMatch },
+        studyTypes: { ...draft.filters.studyTypes },
         collectionsExpanded: draft.filters.collectionsExpanded,
         uncertainStudyTypes: draft.filters.uncertainStudyTypes,
         years: compact({ ...draft.filters.years }),
@@ -1922,6 +1978,9 @@ export function sectionProblems(
       }
       if (filters.sources.enabled && !filters.sources.label.trim()) {
         problems.push("sourcesLabel");
+      }
+      if (filters.tagFilters.some((filter) => !filter.label.trim() || filter.options.some((option) => !option.value.trim()))) {
+        problems.push("tagFilters");
       }
       break;
     }

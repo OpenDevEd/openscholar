@@ -190,6 +190,19 @@ describe("owner configuration migrations", () => {
     expect(source!.settings).toEqual({ downloadPdfs: true, pdfPublishing: { mode: "tagged", tags: ["approved"] } });
   });
 
+  it("gives a saved filters row no tag filters, collections matching all and the study types filter, keeping ones already set", () => {
+    const filters = (payload: Record<string, unknown>) =>
+      migrateOwnerConfiguration({ ownerConfigurationVersion: 12, sections: [{ sectionKey: "filters", payload }] })
+        .snapshot.sections.find((row) => row.sectionKey === "filters")?.payload;
+    expect(filters({ sources: { enabled: true, label: "sources" } })).toMatchObject({
+      sources: { enabled: true, label: "sources" },
+      tagFilters: [],
+      collectionsMatch: { default: "all", readerSwitch: false },
+      studyTypes: { enabled: true },
+    });
+    expect(filters({ studyTypes: { enabled: false } })).toMatchObject({ studyTypes: { enabled: false } });
+  });
+
   it("gives a saved filters row the sources filter readers get today, and keeps one already set", () => {
     const filters = (payload: Record<string, unknown>) =>
       migrateOwnerConfiguration({ ownerConfigurationVersion: 11, sections: [{ sectionKey: "filters", payload }] })
@@ -336,7 +349,13 @@ describe("owner configuration migrations", () => {
         },
         {
           sectionKey: "filters",
-          payload: { sources: { enabled: true, label: "sources" }, years: { enabled: true } },
+          payload: {
+            tagFilters: [],
+            collectionsMatch: { default: "all", readerSwitch: false },
+            studyTypes: { enabled: true },
+            sources: { enabled: true, label: "sources" },
+            years: { enabled: true },
+          },
         },
         {
           sectionKey: "features",
@@ -359,6 +378,9 @@ describe("owner configuration migrations", () => {
       "/ai",
       "/topics",
       "/filters/sources",
+      "/filters/tagFilters",
+      "/filters/collectionsMatch",
+      "/filters/studyTypes",
     ]);
   });
 
@@ -445,6 +467,7 @@ describe("owner configuration migrations", () => {
       [9, 10],
       [10, 11],
       [11, 12],
+      [12, 13],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -687,6 +710,7 @@ describe("owner configuration migrations", () => {
       [9, 10],
       [10, 11],
       [11, 12],
+      [12, 13],
     ]);
   });
 

@@ -219,6 +219,13 @@ describe("changedSectionRows", () => {
     expect(isDirty(savedDraft(), savedRows)).toBe(false);
   });
 
+  it("writes the name beside the logo only when it is turned off", () => {
+    const draft = savedDraft();
+    draft.identity.showName = false;
+    expect(changedSectionRows(draft, savedRows)[0]?.payload).toMatchObject({ showName: false });
+    expect(readDraft(changedSectionRows(draft, savedRows)).identity.showName).toBe(false);
+  });
+
   it("sends only the section that changed, without empty optional values", () => {
     const draft = savedDraft();
     draft.identity.name = "Renamed";
@@ -1090,6 +1097,9 @@ describe("readDraft for the discovery sections", () => {
     });
     expect(draft.filters.years).toEqual({ enabled: true });
     expect(draft.filters.sources).toEqual({ enabled: true, label: "sources" });
+    expect(draft.filters.tagFilters).toEqual([]);
+    expect(draft.filters.collectionsMatch).toEqual({ default: "all", readerSwitch: false });
+    expect(draft.filters.studyTypes).toEqual({ enabled: true });
     expect(draft.sources).toEqual([]);
     expect(draft.content.tags).toEqual({});
   });
@@ -1114,6 +1124,17 @@ describe("sectionProblems for the discovery sections", () => {
     expect(sectionProblems(draft, "search")).toEqual(["sourcesLabel"]);
     draft.filters.sources.enabled = false;
     expect(sectionProblems(draft, "search")).toEqual([]);
+  });
+
+  it("flags a tag filter without a name, or an entry without a tag", () => {
+    const draft = readDraft(discoveryRows);
+    draft.filters.tagFilters = [{ id: "status", label: "Status", enabled: true, placement: "card", options: [{ value: "Reviewed", prefix: false, label: "" }], defaults: [] }];
+    expect(sectionProblems(draft, "search")).toEqual([]);
+    draft.filters.tagFilters[0]!.label = " ";
+    expect(sectionProblems(draft, "search")).toEqual(["tagFilters"]);
+    draft.filters.tagFilters[0]!.label = "Status";
+    draft.filters.tagFilters[0]!.options[0]!.value = "";
+    expect(sectionProblems(draft, "search")).toEqual(["tagFilters"]);
   });
 
   it("ignores the pin when the institution mode is plain", () => {
@@ -1146,6 +1167,17 @@ describe("changedSectionRows for the discovery sections", () => {
     draft.filters.institution.mode = "facet";
     draft.filters.uncertainStudyTypes = "separate";
     draft.filters.sources.label = "Topic areas";
+    draft.filters.tagFilters = [
+      {
+        id: "domain",
+        label: "Domain",
+        enabled: true,
+        placement: "picker",
+        options: [{ value: "Domain: ", prefix: true, label: "" }, { value: "Domain: AIG", prefix: false, label: "Item Generation" }],
+        defaults: ["Domain: AIG"],
+      },
+    ];
+    draft.filters.collectionsMatch = { default: "any", readerSwitch: true };
     draft.topics.enabled = true;
     const rows = changedSectionRows(draft, discoveryRows);
     expect(rows).toEqual([
@@ -1164,6 +1196,19 @@ describe("changedSectionRows for the discovery sections", () => {
         payload: {
           institution: { mode: "facet", label: "Partners" },
           sources: { enabled: true, label: "Topic areas" },
+          // A label left empty stays out, so readers see the tag without its prefix.
+          tagFilters: [
+            {
+              id: "domain",
+              label: "Domain",
+              enabled: true,
+              placement: "picker",
+              options: [{ value: "Domain: ", prefix: true }, { value: "Domain: AIG", prefix: false, label: "Item Generation" }],
+              defaults: ["Domain: AIG"],
+            },
+          ],
+          collectionsMatch: { default: "any", readerSwitch: true },
+          studyTypes: { enabled: true },
           collectionsExpanded: true,
           uncertainStudyTypes: "separate",
           years: { enabled: true },

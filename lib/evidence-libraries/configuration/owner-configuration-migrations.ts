@@ -14,7 +14,7 @@ import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 12 as const;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 13 as const;
 const MAX_CHANGED_POINTERS = 100;
 
 type OwnerConfigurationSnapshotRow = {
@@ -635,6 +635,27 @@ function migrateVersionElevenToTwelve(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+/**
+ * Libraries gain tag filters, collections that can match any, and switches for the study types filter and the name
+ * beside the logo. Saved ones keep what readers get today: no tag filters, collections matching all, both shown.
+ */
+function migrateVersionTwelveToThirteen(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 13;
+  for (const row of next.sections) {
+    if (row.sectionKey !== "filters" || !isRecord(row.payload)) continue;
+    row.payload = {
+      tagFilters: [],
+      collectionsMatch: { default: "all", readerSwitch: false },
+      studyTypes: { enabled: true },
+      ...row.payload,
+    };
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [
   {
     sectionKey: "ai",
@@ -733,6 +754,15 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 11,
     to: 12,
     migrate: migrateVersionElevenToTwelve,
+    defaultRows: [
+      ...disabledAiDefaults,
+      { sectionKey: "topics", payload: () => ({ enabled: false }) },
+    ],
+  },
+  {
+    from: 12,
+    to: 13,
+    migrate: migrateVersionTwelveToThirteen,
     defaultRows: [
       ...disabledAiDefaults,
       { sectionKey: "topics", payload: () => ({ enabled: false }) },
