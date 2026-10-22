@@ -1,6 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useState } from "react";
+import { Segmented } from "@/components/settings/parts";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -23,6 +25,7 @@ import { Field, FieldError } from "../section-card";
 import { ChoiceChips, FieldGroup, ToggleRow } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
 import { FeaturedInstitutionPicker } from "./institution-pickers";
+import { MOCK_TAG_FILTERS, TagFiltersField } from "./tag-filters-field";
 import { SearchIcon } from "@/components/icons";
 
 export function SearchSection({
@@ -35,6 +38,10 @@ export function SearchSection({
   const t = useTranslations("evidenceLibraryConfiguration.search");
   const { search, filters } = draft;
   const featuredMode = filters.institution.mode === "facet-with-featured-value";
+  // MOCK (tag filters): kept in this page and never saved; the real build reads and writes `filters.collectionsMatch`.
+  const [collectionsMatch, setCollectionsMatch] = useState(() =>
+    MOCK_TAG_FILTERS[libraryId] ? { default: "any" as "any" | "all", readerSwitch: true } : { default: "all" as "any" | "all", readerSwitch: false },
+  );
 
   // Some features need a search option or filter; they switch off with it.
   const setSearch = <K extends keyof SearchDraft>(
@@ -290,6 +297,27 @@ export function SearchSection({
           }
         />
 
+        <Field label={t("collectionsMatch")} hint={t("collectionsMatchHint")}>
+          {() => (
+            <Segmented
+              fill
+              label={t("collectionsMatch")}
+              value={collectionsMatch.default}
+              onChange={(value) => setCollectionsMatch((current) => ({ ...current, default: value }))}
+              options={[
+                { id: "any", label: t("collectionsMatchAny"), below: <span className="text-xs font-normal text-muted-foreground">{t("collectionsMatchAnyDetail")}</span> },
+                { id: "all", label: t("collectionsMatchAll"), below: <span className="text-xs font-normal text-muted-foreground">{t("collectionsMatchAllDetail")}</span> },
+              ]}
+            />
+          )}
+        </Field>
+        <ToggleRow
+          label={t("collectionsMatchSwitch")}
+          hint={t("collectionsMatchSwitchHint")}
+          checked={collectionsMatch.readerSwitch}
+          onChange={(readerSwitch) => setCollectionsMatch((current) => ({ ...current, readerSwitch }))}
+        />
+
         <ToggleRow
           label={t("uncertainStudyTypes")}
           hint={t("uncertainStudyTypesHint")}
@@ -301,6 +329,8 @@ export function SearchSection({
           }
         />
       </FieldGroup>
+
+      <TagFiltersField libraryId={libraryId} />
     </SectionShell>
   );
 }

@@ -1,0 +1,790 @@
+[
+{
+"tag": "Selected",
+"count": 542
+},
+{
+"tag": "Reviewed",
+"count": 244
+},
+{
+"tag": "Not Reviewed",
+"count": 212
+},
+{
+"tag": "Domain: Automated Scoring",
+"count": 203
+},
+{
+"tag": "Domain: AIG",
+"count": 198
+},
+{
+"tag": "/unread",
+"count": 159
+},
+{
+"tag": "Computer Science - Computation and Language",
+"count": 143
+},
+{
+"tag": "Domain: Feedback",
+"count": 138
+},
+{
+"tag": "Computer Science - Artificial Intelligence",
+"count": 129
+},
+{
+"tag": "Reviewed-Rejected",
+"count": 79
+},
+{
+"tag": "AIMEcon",
+"count": 77
+},
+{
+"tag": "Computer Science - Computers and Society",
+"count": 43
+},
+{
+"tag": "Computer Science - Machine Learning",
+"count": 43
+},
+{
+"tag": "Source: Open Source",
+"count": 39
+},
+{
+"tag": "FOS: Computer and information sciences",
+"count": 35
+},
+{
+"tag": "Computation and Language (cs.CL)",
+"count": 27
+},
+{
+"tag": "Computer Science - Human-Computer Interaction",
+"count": 26
+},
+{
+"tag": "Research Method: Qualitative",
+"count": 23
+},
+{
+"tag": "Educational Area: Student Learning",
+"count": 21
+},
+{
+"tag": "Evidence: Improve a process",
+"count": 21
+},
+{
+"tag": "Artificial Intelligence (cs.AI)",
+"count": 18
+},
+{
+"tag": "Location: Asia",
+"count": 17
+},
+{
+"tag": "Research Design: Other Research Design",
+"count": 17
+},
+{
+"tag": "Educational Area: Assessment Tools & Processes",
+"count": 16
+},
+{
+"tag": "Location: Americas",
+"count": 13
+},
+{
+"tag": "AI: ChatGPT",
+"count": 12
+},
+{
+"tag": "Research Method: Quantitative",
+"count": 10
+},
+{
+"tag": "Artificial intelligence",
+"count": 9
+},
+{
+"tag": "Evidence: Self-reported Student Behaviour/ Attitude",
+"count": 9
+},
+{
+"tag": "Evidence: Student Learning Outcomes",
+"count": 9
+},
+{
+"tag": "Location: Europe",
+"count": 9
+},
+{
+"tag": "ChatGPT",
+"count": 8
+},
+{
+"tag": "Computers and Society (cs.CY)",
+"count": 8
+},
+{
+"tag": "Evidence: Saving Teacher Time",
+"count": 8
+},
+{
+"tag": "Machine Learning (cs.LG)",
+"count": 8
+},
+{
+"tag": "Research Method: Mixed Methods",
+"count": 8
+},
+{
+"tag": "Location: Africa",
+"count": 7
+},
+{
+"tag": "Computer Science - Software Engineering",
+"count": 6
+},
+{
+"tag": "Educational Area: Quality Teaching/Learning Materials",
+"count": 6
+},
+{
+"tag": "Evidence: Self-reported Teacher Behaviour/ Attitude",
+"count": 6
+},
+{
+"tag": "Journal Article",
+"count": 6
+},
+{
+"tag": "Physics - Physics Education",
+"count": 6
+},
+{
+"tag": "Research Design: Systematic Review",
+"count": 6
+},
+{
+"tag": "Computer Science - Information Retrieval",
+"count": 5
+},
+{
+"tag": "Conference Paper",
+"count": 5
+},
+{
+"tag": "Generative AI",
+"count": 5
+},
+{
+"tag": "Research Design: Non-systematic Review",
+"count": 5
+},
+{
+"tag": "Research Design: Qualitative Exploratory",
+"count": 5
+},
+{
+"tag": "Source: Closed Source",
+"count": 5
+},
+{
+"tag": "AI",
+"count": 4
+},
+{
+"tag": "education",
+"count": 4
+},
+{
+"tag": "Human-Computer Interaction (cs.HC)",
+"count": 4
+},
+{
+"tag": "Large language models",
+"count": 4
+},
+{
+"tag": "math",
+"count": 4
+},
+{
+"tag": "Pre-Print",
+"count": 4
+},
+{
+"tag": "Research Design: Interview/ focus group",
+"count": 4
+},
+{
+"tag": "Reviewed- Rejected",
+"count": 4
+},
+{
+"tag": "Computer Science - Computer Vision and Pattern Recognition",
+"count": 3
+},
+{
+"tag": "Computers and the Internet",
+"count": 3
+},
+{
+"tag": "Educational Area: Data Quality & EMIS",
+"count": 3
+},
+{
+"tag": "Educational Area: Inclusion",
+"count": 3
+},
+{
+"tag": "Evidence: Gaps in Current Research",
+"count": 3
+},
+{
+"tag": "fairness",
+"count": 3
+},
+{
+"tag": "language learning",
+"count": 3
+},
+{
+"tag": "learning analytics",
+"count": 3
+},
+{
+"tag": "LLM",
+"count": 3
+},
+{
+"tag": "OpenAI Labs",
+"count": 3
+},
+{
+"tag": "Research Design: Case Study",
+"count": 3
+},
+{
+"tag": "Research Method: No research methods used",
+"count": 3
+},
+{
+"tag": "tutoring",
+"count": 3
+},
+{
+"tag": "AI: Analytics",
+"count": 2
+},
+{
+"tag": "Automated writing evaluation",
+"count": 2
+},
+{
+"tag": "Computer Science - Computational Engineering, Finance, and Science",
+"count": 2
+},
+{
+"tag": "Computer Science - Programming Languages",
+"count": 2
+},
+{
+"tag": "Conference Presentation",
+"count": 2
+},
+{
+"tag": "education technology",
+"count": 2
+},
+{
+"tag": "Educational Area: Continuous Professional Development",
+"count": 2
+},
+{
+"tag": "Educational Area: Language of Instruction",
+"count": 2
+},
+{
+"tag": "Educational Area: Positive Learning Environment",
+"count": 2
+},
+{
+"tag": "Educational Area: Teach",
+"count": 2
+},
+{
+"tag": "Evidence: Measured Student Behaviour",
+"count": 2
+},
+{
+"tag": "fine-tune",
+"count": 2
+},
+{
+"tag": "Language and Literacy Education",
+"count": 2
+},
+{
+"tag": "LLMs",
+"count": 2
+},
+{
+"tag": "natural language processing",
+"count": 2
+},
+{
+"tag": "Research Design: Non-experimental design",
+"count": 2
+},
+{
+"tag": "Research Design: Quasi-experimental design",
+"count": 2
+},
+{
+"tag": "Research Design: Randomised Control Trial",
+"count": 2
+},
+{
+"tag": "Statistics - Methodology",
+"count": 2
+},
+{
+"tag": "technology",
+"count": 2
+},
+{
+"tag": "Writing",
+"count": 2
+},
+{
+"tag": "A.1",
+"count": 1
+},
+{
+"tag": "AI Literacy",
+"count": 1
+},
+{
+"tag": "AI tutors",
+"count": 1
+},
+{
+"tag": "AI: Chatbot",
+"count": 1
+},
+{
+"tag": "AI: Speech Recognition",
+"count": 1
+},
+{
+"tag": "Altman, Samuel H",
+"count": 1
+},
+{
+"tag": "Anthropic AI LLC",
+"count": 1
+},
+{
+"tag": "Artificial intelligence-feedback",
+"count": 1
+},
+{
+"tag": "Artificial intelligence–based learning",
+"count": 1
+},
+{
+"tag": "Assertion",
+"count": 1
+},
+{
+"tag": "audio-neutral-informative",
+"count": 1
+},
+{
+"tag": "Automatic question generation",
+"count": 1
+},
+{
+"tag": "Books and Literature",
+"count": 1
+},
+{
+"tag": "Brockman, Greg",
+"count": 1
+},
+{
+"tag": "Bullshit",
+"count": 1
+},
+{
+"tag": "Calculators",
+"count": 1
+},
+{
+"tag": "CALL",
+"count": 1
+},
+{
+"tag": "Company Report",
+"count": 1
+},
+{
+"tag": "Composition (Language arts)",
+"count": 1
+},
+{
+"tag": "Computational Complexity (cs.CC)",
+"count": 1
+},
+{
+"tag": "Computer Science - Cryptography and Security",
+"count": 1
+},
+{
+"tag": "Computer Vision and Pattern Recognition (cs.CV)",
+"count": 1
+},
+{
+"tag": "Content",
+"count": 1
+},
+{
+"tag": "Context understanding",
+"count": 1
+},
+{
+"tag": "conversational agents",
+"count": 1
+},
+{
+"tag": "Conversational AI",
+"count": 1
+},
+{
+"tag": "Copyrights and Copyright Violations",
+"count": 1
+},
+{
+"tag": "Corporate Social Responsibility",
+"count": 1
+},
+{
+"tag": "corpus linguistics",
+"count": 1
+},
+{
+"tag": "Data processing",
+"count": 1
+},
+{
+"tag": "Data-Mining and Database Marketing",
+"count": 1
+},
+{
+"tag": "digital writing",
+"count": 1
+},
+{
+"tag": "DONE",
+"count": 1
+},
+{
+"tag": "Economics - General Economics",
+"count": 1
+},
+{
+"tag": "Education (K-12)",
+"count": 1
+},
+{
+"tag": "Educational applications",
+"count": 1
+},
+{
+"tag": "Educational Area: Assess & Review",
+"count": 1
+},
+{
+"tag": "Educational Area: Leadership of T&L",
+"count": 1
+},
+{
+"tag": "Educational Area: Pre-service Teacher Education",
+"count": 1
+},
+{
+"tag": "Educational Area: Quality Curriculum",
+"count": 1
+},
+{
+"tag": "Educational Area: Teacher Learning",
+"count": 1
+},
+{
+"tag": "Educational tests and measurements",
+"count": 1
+},
+{
+"tag": "empirical",
+"count": 1
+},
+{
+"tag": "equity",
+"count": 1
+},
+{
+"tag": "Essay",
+"count": 1
+},
+{
+"tag": "Essays",
+"count": 1
+},
+{
+"tag": "Evaluation",
+"count": 1
+},
+{
+"tag": "experimental study",
+"count": 1
+},
+{
+"tag": "Facebook Inc",
+"count": 1
+},
+{
+"tag": "feedback",
+"count": 1
+},
+{
+"tag": "Frankfurt",
+"count": 1
+},
+{
+"tag": "Google Inc",
+"count": 1
+},
+{
+"tag": "GPT-3.5",
+"count": 1
+},
+{
+"tag": "GPT-4",
+"count": 1
+},
+{
+"tag": "GPT4",
+"count": 1
+},
+{
+"tag": "Grading and marking (Students)",
+"count": 1
+},
+{
+"tag": "Higher education",
+"count": 1
+},
+{
+"tag": "Human Capital Development",
+"count": 1
+},
+{
+"tag": "Human-AI Collaboration",
+"count": 1
+},
+{
+"tag": "human-AI interaction",
+"count": 1
+},
+{
+"tag": "Human-AI partnership",
+"count": 1
+},
+{
+"tag": "Human-AI tutoring",
+"count": 1
+},
+{
+"tag": "human-feedback",
+"count": 1
+},
+{
+"tag": "hybrid intelligence",
+"count": 1
+},
+{
+"tag": "I.2.7",
+"count": 1
+},
+{
+"tag": "inclusion",
+"count": 1
+},
+{
+"tag": "Instagram Inc",
+"count": 1
+},
+{
+"tag": "Intelligence",
+"count": 1
+},
+{
+"tag": "Interdisciplinary studies",
+"count": 1
+},
+{
+"tag": "K.4",
+"count": 1
+},
+{
+"tag": "Khan Academy",
+"count": 1
+},
+{
+"tag": "Knowledge building",
+"count": 1
+},
+{
+"tag": "Language model",
+"count": 1
+},
+{
+"tag": "Learning",
+"count": 1
+},
+{
+"tag": "literacy",
+"count": 1
+},
+{
+"tag": "Llama2",
+"count": 1
+},
+{
+"tag": "Location: Worldwide",
+"count": 1
+},
+{
+"tag": "machine learning",
+"count": 1
+},
+{
+"tag": "Machine Learning (stat.ML)",
+"count": 1
+},
+{
+"tag": "Math tutoring",
+"count": 1
+},
+{
+"tag": "Mathematics",
+"count": 1
+},
+{
+"tag": "Mathematics - History and Overview",
+"count": 1
+},
+{
+"tag": "Meta Platforms Inc",
+"count": 1
+},
+{
+"tag": "meta-analysis",
+"count": 1
+},
+{
+"tag": "ml",
+"count": 1
+},
+{
+"tag": "Mobile Applications",
+"count": 1
+},
+{
+"tag": "multilingual",
+"count": 1
+},
+{
+"tag": "Multiple-choice question",
+"count": 1
+},
+{
+"tag": "natural language processing (NLP)",
+"count": 1
+},
+{
+"tag": "NCME 2025",
+"count": 1
+},
+{
+"tag": "Perceptions",
+"count": 1
+},
+{
+"tag": "Privacy",
+"count": 1
+},
+{
+"tag": "Research",
+"count": 1
+},
+{
+"tag": "research paper",
+"count": 1
+},
+{
+"tag": "risks",
+"count": 1
+},
+{
+"tag": "secondary school",
+"count": 1
+},
+{
+"tag": "skill tagging",
+"count": 1
+},
+{
+"tag": "Social Media",
+"count": 1
+},
+{
+"tag": "Social validity",
+"count": 1
+},
+{
+"tag": "Statistics - Other Statistics",
+"count": 1
+},
+{
+"tag": "Systematic review",
+"count": 1
+},
+{
+"tag": "technical",
+"count": 1
+},
+{
+"tag": "validity",
+"count": 1
+},
+{
+"tag": "Video Recordings, Downloads and Streaming",
+"count": 1
+},
+{
+"tag": "YouTube.com",
+"count": 1
+},
+{
+"tag": "Zuckerberg, Mark E",
+"count": 1
+}
+]
