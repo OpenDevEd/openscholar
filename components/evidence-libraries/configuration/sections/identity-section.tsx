@@ -16,6 +16,7 @@ import {
   ReadOnlyValue,
   FieldGroup,
   SortableList,
+  ToggleRow,
   UploadField,
 } from "../fields";
 import { SectionShell, type SectionProps } from "../section-shell";
@@ -61,6 +62,18 @@ export function IdentitySection({ draft, saved, patch, reset }: SectionProps) {
           />
         )}
       </Field>
+
+      <ToggleRow
+        label={t("showNameLabel")}
+        hint={t("showNameHint")}
+        checked={identity.showName}
+        onChange={(checked) =>
+          patch((d) => {
+            d.identity.showName = checked;
+            return d;
+          })
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 [&>*]:min-w-0">
         <Field

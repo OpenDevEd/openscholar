@@ -1818,7 +1818,8 @@
       "aiModel": "Choose the model that answers questions.",
       "aiModelUnknown": "That model is not one your library software offers. Choose another.",
       "homeStepName": "हर केवल-पाठ चरण को एक नाम दें।",
-      "homeLimit": "होम पेज का कोई पाठ तय सीमा से लंबा है, या किसी सूची में बहुत अधिक प्रविष्टियाँ हैं। उसे छोटा करें।"
+      "homeLimit": "होम पेज का कोई पाठ तय सीमा से लंबा है, या किसी सूची में बहुत अधिक प्रविष्टियाँ हैं। उसे छोटा करें।",
+      "tagFilters": "हर टैग फ़िल्टर को एक नाम चाहिए, और हर प्रविष्टि को एक टैग।"
     },
     "fields": {
       "optional": "optional",
@@ -1871,7 +1872,9 @@
       "partnerName": "Partner name",
       "partnerPlaceholder": "Partner name",
       "shareImageLabel": "Share image",
-      "shareImageHint": "Used when the library is shared on social media. PNG, JPG or WEBP."
+      "shareImageHint": "Used when the library is shared on social media. PNG, JPG or WEBP.",
+      "showNameLabel": "लोगो के पास नाम",
+      "showNameHint": "जब लोगो में पहले से लाइब्रेरी का नाम हो, तब इसे बंद करें।"
     },
     "theme": {
       "description": "Layout, fonts, logos, and colours for the public site.",
@@ -2447,7 +2450,54 @@
       "collectionsExpanded": "Open collection and topic sections by default",
       "collectionsExpandedHint": "When off, people click a section to see its collections or topics.",
       "uncertainStudyTypes": "Show uncertain study types apart",
-      "uncertainStudyTypesHint": "Readers see an Uncertain type in the Study types filter and on records, in place of a type the AI was less than 60% sure of. When off, the type shows with an uncertain mark."
+      "uncertainStudyTypesHint": "Readers see an Uncertain type in the Study types filter and on records, in place of a type the AI was less than 60% sure of. When off, the type shows with an uncertain mark.",
+      "collectionsMatch": "चुने गए संग्रह",
+      "collectionsMatchHint": "चुने गए संग्रह के अंदर चुना गया संग्रह हमेशा उसी तक सीमित करता है।",
+      "collectionsMatchAny": "या",
+      "collectionsMatchAnyDetail": "कम से कम एक में रिकॉर्ड",
+      "collectionsMatchAll": "और",
+      "collectionsMatchAllDetail": "हर एक में रिकॉर्ड",
+      "collectionsMatchSwitch": "पाठक बदल सकते हैं",
+      "collectionsMatchSwitchHint": "संग्रहों के ऊपर या और और दिखाता है।",
+      "studyTypes": "अध्ययन प्रकार फ़िल्टर",
+      "studyTypesHint": "पाठक हर रिकॉर्ड के लिए AI द्वारा पढ़े गए अध्ययन प्रकार से फ़िल्टर करते हैं। रिकॉर्ड पर प्रकार का लेबल दोनों तरह रहता है।",
+      "tagFilters": {
+        "heading": "टैग फ़िल्टर",
+        "hint": "Zotero टैग से बने फ़िल्टर। एक फ़िल्टर में कई टैग चुनने पर उनमें से किसी के भी रिकॉर्ड दिखते हैं, और अलग फ़िल्टर एक-दूसरे को सीमित करते हैं।",
+        "add": "फ़िल्टर जोड़ें",
+        "empty": "कोई टैग फ़िल्टर नहीं",
+        "remove": "फ़िल्टर हटाएँ",
+        "name": "नाम",
+        "namePlaceholder": "बिना नाम का फ़िल्टर",
+        "onSite": "साइट पर",
+        "showAs": "इस रूप में दिखाएँ",
+        "card": "कार्ड",
+        "cardDetail": "नतीजों के पास अपना कार्ड",
+        "picker": "और फ़िल्टर",
+        "pickerDetail": "और फ़िल्टर के नीचे एक चयनकर्ता",
+        "tags": "टैग",
+        "addTag": "टैग जोड़ें",
+        "removeTag": "टैग हटाएँ",
+        "pickerTitle": "{name} में टैग जोड़ें",
+        "pickerDescription": "लाइब्रेरी के टैग, सबसे ज़्यादा इस्तेमाल वाले पहले। ऐसा टैग लिखें जो अभी किसी रिकॉर्ड पर नहीं है, या लिखे हुए को उपसर्ग मानें।",
+        "pickerSearch": "टैग खोजें",
+        "colTag": "टैग",
+        "colRecords": "रिकॉर्ड",
+        "used": "जोड़ा गया",
+        "loading": "टैग पढ़े जा रहे हैं",
+        "failed": "लाइब्रेरी के टैग पढ़े नहीं जा सके",
+        "noTags": "लाइब्रेरी में अभी कोई टैग नहीं है",
+        "noMatch": "कोई टैग मेल नहीं खाता",
+        "notSetUp": "लाइब्रेरी सेट होने पर टैग दिखेंगे",
+        "useTyped": "\"{tag}\" जोड़ें",
+        "usePrefix": "\"{prefix}\" से शुरू होने वाले सभी टैग",
+        "labelFor": "{tag} के लिए पाठक क्या देखते हैं",
+        "records": "{count, plural, one {# रिकॉर्ड} other {# रिकॉर्ड}}",
+        "noRecordsYet": "अभी कोई रिकॉर्ड नहीं",
+        "tickedAtFirst": "शुरू में चुना हुआ",
+        "prefixMeaning": "इससे शुरू होने वाले सभी टैग",
+        "prefixTags": "इसमें आने वाले टैग"
+      }
     },
     "team": {
       "pending": "Pending"

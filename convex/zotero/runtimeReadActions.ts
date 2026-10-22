@@ -24,6 +24,7 @@ import {
   readRuntimeCollectionsByIds,
   readRuntimeHomeQuestions,
   readRuntimeInstitutions,
+  readRuntimeTags,
   readRuntimeReviewedPublications,
   requestRuntimeScreeningGrade,
   requestRuntimeSourceRun,
@@ -155,6 +156,18 @@ const listInstitutionsRead = async (ctx: ActionCtx, args: ObjectType<typeof list
     ),
   );
 export const listInstitutions = action({ args: listInstitutionsArgs, returns: listInstitutionsReturns, handler: listInstitutionsRead });
+
+/** The tags on the library's public records with their record counts, for the tag filter settings' search. */
+export const listTags = action({
+  args: listInstitutionsArgs,
+  returns: listInstitutionsReturns,
+  handler: async (ctx, args): Promise<RuntimePage<RuntimeInstitution>> =>
+    pageOf(
+      await readRuntime<RuntimeInstitutionsPage>(ctx, args, "view", (target) =>
+        readRuntimeTags(fetch, { ...target, query: args.query, sort: args.sort, direction: args.direction, ...asked(args.paginationOpts) }),
+      ),
+    ),
+});
 /** The same, for the person the assistant acts for (../evidenceLibraries/assistant.ts). */
 export const listInstitutionsFor = internalAction({ args: { ...listInstitutionsArgs, actingAs: v.id("users") }, returns: listInstitutionsReturns, handler: listInstitutionsRead });
 

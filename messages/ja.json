@@ -1818,7 +1818,8 @@
       "aiModel": "Choose the model that answers questions.",
       "aiModelUnknown": "That model is not one your library software offers. Choose another.",
       "homeStepName": "テキストのみのステップにはすべて名前を付けてください。",
-      "homeLimit": "ホームページのテキストが長すぎるか、リストの項目が多すぎます。短くしてください。"
+      "homeLimit": "ホームページのテキストが長すぎるか、リストの項目が多すぎます。短くしてください。",
+      "tagFilters": "タグフィルターには名前が、各項目にはタグが必要です。"
     },
     "fields": {
       "optional": "optional",
@@ -1871,7 +1872,9 @@
       "partnerName": "Partner name",
       "partnerPlaceholder": "Partner name",
       "shareImageLabel": "Share image",
-      "shareImageHint": "Used when the library is shared on social media. PNG, JPG or WEBP."
+      "shareImageHint": "Used when the library is shared on social media. PNG, JPG or WEBP.",
+      "showNameLabel": "ロゴの横の名前",
+      "showNameHint": "ロゴにライブラリ名が含まれている場合はオフにします。"
     },
     "theme": {
       "description": "Layout, fonts, logos, and colours for the public site.",
@@ -2447,7 +2450,54 @@
       "collectionsExpanded": "Open collection and topic sections by default",
       "collectionsExpandedHint": "When off, people click a section to see its collections or topics.",
       "uncertainStudyTypes": "Show uncertain study types apart",
-      "uncertainStudyTypesHint": "Readers see an Uncertain type in the Study types filter and on records, in place of a type the AI was less than 60% sure of. When off, the type shows with an uncertain mark."
+      "uncertainStudyTypesHint": "Readers see an Uncertain type in the Study types filter and on records, in place of a type the AI was less than 60% sure of. When off, the type shows with an uncertain mark.",
+      "collectionsMatch": "チェックしたコレクション",
+      "collectionsMatchHint": "チェックしたコレクション内でチェックしたコレクションは、常にそこへ絞り込みます。",
+      "collectionsMatchAny": "または",
+      "collectionsMatchAnyDetail": "少なくとも一つに含まれるレコード",
+      "collectionsMatchAll": "かつ",
+      "collectionsMatchAllDetail": "すべてに含まれるレコード",
+      "collectionsMatchSwitch": "読者が切り替えられる",
+      "collectionsMatchSwitchHint": "コレクションの上に「または」と「かつ」を表示します。",
+      "studyTypes": "研究タイプのフィルター",
+      "studyTypesHint": "読者は AI が各レコードについて読み取った研究タイプで絞り込めます。タイプのラベルはどちらでも表示されます。",
+      "tagFilters": {
+        "heading": "タグフィルター",
+        "hint": "Zotero のタグで作るフィルター。一つのフィルターで複数のタグをチェックすると、そのいずれかを持つレコードが表示され、別のフィルター同士は互いに絞り込みます。",
+        "add": "フィルターを追加",
+        "empty": "タグフィルターはありません",
+        "remove": "フィルターを削除",
+        "name": "名前",
+        "namePlaceholder": "名前のないフィルター",
+        "onSite": "サイトに表示",
+        "showAs": "表示方法",
+        "card": "カード",
+        "cardDetail": "結果の横に専用のカード",
+        "picker": "その他のフィルター",
+        "pickerDetail": "その他のフィルターの下の選択欄",
+        "tags": "タグ",
+        "addTag": "タグを追加",
+        "removeTag": "タグを削除",
+        "pickerTitle": "{name} にタグを追加",
+        "pickerDescription": "ライブラリのタグ（使用数の多い順）。まだどのレコードにもないタグを入力するか、入力した文字を接頭辞として使えます。",
+        "pickerSearch": "タグを検索",
+        "colTag": "タグ",
+        "colRecords": "レコード",
+        "used": "追加済み",
+        "loading": "タグを読み込んでいます",
+        "failed": "ライブラリのタグを読み込めませんでした",
+        "noTags": "ライブラリにはまだタグがありません",
+        "noMatch": "一致するタグはありません",
+        "notSetUp": "ライブラリの設定後にタグが表示されます",
+        "useTyped": "\"{tag}\" を追加",
+        "usePrefix": "\"{prefix}\" で始まるすべてのタグ",
+        "labelFor": "{tag} の読者向け表示",
+        "records": "{count} 件のレコード",
+        "noRecordsYet": "まだレコードはありません",
+        "tickedAtFirst": "最初からチェック",
+        "prefixMeaning": "これで始まるすべてのタグ",
+        "prefixTags": "含まれるタグ"
+      }
     },
     "team": {
       "pending": "Pending"

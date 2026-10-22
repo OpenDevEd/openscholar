@@ -88,6 +88,7 @@
     "workspaces/queries:memberAt": "Whether the person is still a member of the organization a page's address names, for a page left open to leave it. The assistant acts in its chat's workspace.",
     "workspaces/queries:personal": "The workspace a page outside an organization's address is in, for the page's own calls. The assistant acts in its chat's workspace.",
     "zotero/actions:startOAuth": "Starts Zotero's OAuth redirect, which only the person's browser can complete.",
+    "zotero/runtimeReadActions:listTags": "The tag filter settings' search of the library's tags. The assistant reads the library's records and their tags with evidenceLibraries/library:records.",
     "zotero/runtimeReadActions:readHomeQuestions": "The configuration page's preview of the questions the running library asks on its home page.",
     "zotero/runtimeReadActions:resolveLibraryCollections": "Names the collections the configuration page's links point at, from the running library."
   },

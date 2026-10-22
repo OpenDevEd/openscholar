@@ -124,6 +124,8 @@ type SingleProps = CommonProps & {
   noneLabel?: string;
   /** Offers a row that uses the typed text when nothing matches it. */
   newLabel?: (typed: string) => string;
+  /** Offers, whenever text is typed, a row that takes it as a prefix: every value starting with it. */
+  prefix?: { label: (typed: string) => string; onChoose: (typed: string) => void };
 };
 
 export function RemotePickerDialog(props: MultiProps | SingleProps) {
@@ -426,6 +428,17 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                     chosen={props.value === ""}
                     label={props.noneLabel}
                     onChoose={() => choose(null)}
+                  />
+                ) : null}
+                {typed && props.mode === "single" && props.prefix ? (
+                  <ChoiceRow
+                    columnCount={columnCount}
+                    chosen={false}
+                    label={props.prefix.label(typed)}
+                    onChoose={() => {
+                      props.prefix!.onChoose(typed);
+                      reset(false);
+                    }}
                   />
                 ) : null}
                 {typedIsNew && props.mode === "single" && props.newLabel ? (

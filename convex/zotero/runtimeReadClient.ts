@@ -277,31 +277,35 @@ export async function readRuntimeCollections(
   return readPage(body, readCollection, "collection list", input.pageSize ?? RUNTIME_READ_PAGE_SIZE);
 }
 
-export async function readRuntimeInstitutions(
-  fetchImpl: typeof fetch,
-  input: {
-    baseUrl: string;
-    credential: string;
-    query?: string;
-    cursor?: string;
-    sort?: RuntimeInstitutionSort;
-    direction?: RuntimeSortDirection;
-    pageSize?: number;
-  },
-): Promise<RuntimeInstitutionsPage> {
-  const body = await runtimeGet(
-    fetchImpl,
-    input,
-    "/api/openscholar/institutions",
-    {
-      query: input.query,
-      cursor: input.cursor,
-      sort: input.sort,
-      direction: input.direction,
-      pageSize: String(input.pageSize ?? RUNTIME_READ_PAGE_SIZE),
-    },
-  );
-  return readPage(body, readInstitution, "institution list", input.pageSize ?? RUNTIME_READ_PAGE_SIZE);
+type NameCountInput = {
+  baseUrl: string;
+  credential: string;
+  query?: string;
+  cursor?: string;
+  sort?: RuntimeInstitutionSort;
+  direction?: RuntimeSortDirection;
+  pageSize?: number;
+};
+
+/** One page of names on the library's records with how many records carry each: institutions, or tags. */
+async function readRuntimeNameCounts(fetchImpl: typeof fetch, input: NameCountInput, path: string, label: string): Promise<RuntimeInstitutionsPage> {
+  const body = await runtimeGet(fetchImpl, input, path, {
+    query: input.query,
+    cursor: input.cursor,
+    sort: input.sort,
+    direction: input.direction,
+    pageSize: String(input.pageSize ?? RUNTIME_READ_PAGE_SIZE),
+  });
+  return readPage(body, readInstitution, label, input.pageSize ?? RUNTIME_READ_PAGE_SIZE);
+}
+
+export function readRuntimeInstitutions(fetchImpl: typeof fetch, input: NameCountInput): Promise<RuntimeInstitutionsPage> {
+  return readRuntimeNameCounts(fetchImpl, input, "/api/openscholar/institutions", "institution list");
+}
+
+/** The tags on the library's public records and their counts, for the tag filter settings. */
+export function readRuntimeTags(fetchImpl: typeof fetch, input: NameCountInput): Promise<RuntimeInstitutionsPage> {
+  return readRuntimeNameCounts(fetchImpl, input, "/api/openscholar/tags", "tag list");
 }
 
 /** The most ids one call may ask about, as the runtime allows. */
