@@ -226,6 +226,7 @@ export const SCHEMA_LIMITS = {
     tagFilters: schemaNumber("/filters/tagFilters", "maxItems"),
     tagFilterDefaults: schemaNumber("/filters/tagFilters/*/defaults", "maxItems"),
     tagFilterTag: schemaNumber("/filters/tagFilters/*/options/*/value", "maxLength"),
+    tagFilterOptions: schemaNumber("/filters/tagFilters/*/options", "maxItems"),
   },
   home: {
     intro: schemaNumber("/home/intro", "maxLength"),
@@ -297,6 +298,10 @@ const defaultScopes = (fullText: boolean): SearchScope[] =>
 export const EMAIL = schemaPattern("/contact/email");
 /** A phone number in international format, as the runtime requires. */
 export const PHONE = schemaPattern("/contact/phone");
+/** A tag filter's address name the runtime accepts: never the name of one of its search options. */
+export const TAG_FILTER_ID = schemaPattern("/filters/tagFilters/*/id");
+/** A tag a tag filter can hold: never "*", the address's mark for a filter a reader emptied. */
+export const TAG_FILTER_TAG = schemaPattern("/filters/tagFilters/*/options/*/value");
 
 export const THEME_LAYOUTS = schemaEnum<"small" | "wide">("/theme/layout");
 type ThemeLayout = (typeof THEME_LAYOUTS)[number];

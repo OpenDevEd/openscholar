@@ -2,7 +2,7 @@
 
 import { useAction } from "convex/react";
 import { useTranslations } from "next-intl";
-import { Suspense, use, useRef } from "react";
+import { Suspense, use, useRef, useState } from "react";
 import { Filter, LayoutList, Tag } from "@/components/icons";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import { TooltipHint } from "@/components/ui/tooltip";
 import { Segmented } from "@/components/settings/parts";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { SCHEMA_LIMITS, type TagFilterDraft, type TagFilterOptionDraft } from "@/lib/evidence-libraries/configuration/rules";
+import { SCHEMA_LIMITS, TAG_FILTER_ID, TAG_FILTER_TAG, type TagFilterDraft, type TagFilterOptionDraft } from "@/lib/evidence-libraries/configuration/rules";
 import { cn } from "@/lib/utils";
 import { AddButton, EmptyList, FieldGroup, InlineSwitch, ListRow, move, NestedList, SortableList } from "../fields";
 import { Field } from "../section-card";
@@ -52,6 +52,9 @@ function tagCounts(libraryId: Id<"evidenceLibraries">, list: ListTags, query: st
   return read;
 }
 
+/** A typed tag or prefix the contract accepts in a tag filter. */
+const acceptsTag = (typed: string) => typed.length <= LIMITS.tagFilterTag && TAG_FILTER_TAG.test(typed);
+
 const slug = (text: string) =>
   text.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/gu, "-").replace(/^-+|-+$/gu, "").slice(0, 32);
 const optionId = (option: TagFilterOptionDraft) => `${option.prefix ? "prefix" : "tag"}:${option.value}`;
@@ -80,11 +83,18 @@ export function TagFiltersField({
   const prefixCounts = (prefix: string) => tagCounts(libraryId, list, prefix);
   const update = (id: string, change: (filter: TagFilterDraft) => TagFilterDraft) =>
     onChange((current) => current.map((filter) => (filter.id === id ? change(filter) : filter)));
+  // A row keeps its key when its filter's address name settles, so the click that left the name field still lands.
+  const [rowKeys, setRowKeys] = useState<Record<string, string>>({});
+  const rowKey = (id: string) => rowKeys[id] ?? id;
+  const rename = (id: string, fresh: string) => {
+    setRowKeys((keys) => ({ ...keys, [fresh]: keys[id] ?? id }));
+    update(id, (filter) => ({ ...filter, id: fresh }));
+  };
   const add = () =>
     onChange((current) => {
       // A new filter's address name only has to be unique; it takes the first name the owner types.
       let n = current.length + 1;
-      while (current.some((filter) => filter.id === `filter-${n}`)) n += 1;
+      while (current.some((filter) => filter.id === `filter-${n}` || rowKey(filter.id) === `filter-${n}`)) n += 1;
       return [...current, { id: `filter-${n}`, label: "", enabled: true, placement: "card", options: [], defaults: [] }];
     });
   const source: PickerSource = async ({ query, cursor, sort, direction }) => {
@@ -110,7 +120,7 @@ export function TagFiltersField({
         <SortableList ids={filters.map((filter) => filter.id)} onMove={(from, to) => onChange((current) => move(current, from, to))}>
           {filters.map((filter) => (
             <ListRow
-              key={filter.id}
+              key={rowKey(filter.id)}
               id={filter.id}
               removeLabel={t("remove")}
               onRemove={() => onChange((current) => current.filter((other) => other.id !== filter.id))}
@@ -122,6 +132,7 @@ export function TagFiltersField({
                 prefixCounts={prefixCounts}
                 source={source}
                 onChange={(change) => update(filter.id, change)}
+                onRename={(fresh) => rename(filter.id, fresh)}
               />
             </ListRow>
           ))}
@@ -138,6 +149,7 @@ function TagFilterRow({
   prefixCounts,
   source,
   onChange,
+  onRename,
 }: {
   filter: TagFilterDraft;
   /** Other filters' address names, which this one can't take. */
@@ -146,6 +158,8 @@ function TagFilterRow({
   prefixCounts: (prefix: string) => Promise<TagCounts>;
   source: PickerSource;
   onChange: (change: (filter: TagFilterDraft) => TagFilterDraft) => void;
+  /** Gives a new filter its address name. */
+  onRename: (id: string) => void;
 }) {
   const t = useTranslations("evidenceLibraryConfiguration.search.tagFilters");
   const picker = useRef<PickerHandle>(null);
@@ -153,13 +167,12 @@ function TagFilterRow({
   const named = filter.options.filter((option) => !option.prefix).map((option) => option.value);
   const addOption = (option: TagFilterOptionDraft) =>
     onChange((f) => (f.options.some((o) => optionId(o) === optionId(option)) ? f : { ...f, options: [...f.options, option] }));
-  // A new filter takes its address name from its first name once the field is left, so the row isn't rebuilt while
-  // the owner types; it keeps that name after, so links readers shared keep working.
-  const settleId = () =>
-    onChange((f) => {
-      const fresh = /^filter-\d+$/u.test(f.id) && slug(f.label);
-      return fresh && /^[a-z]/u.test(fresh) && !taken.includes(fresh) ? { ...f, id: fresh } : f;
-    });
+  // A new filter takes its address name from its first name once the field is left, not while the owner types; it keeps
+  // that name after, so links readers shared keep working. A name the contract refuses, a search option's, leaves it as is.
+  const settleId = () => {
+    const fresh = /^filter-\d+$/u.test(filter.id) && slug(filter.label);
+    if (fresh && TAG_FILTER_ID.test(fresh) && !taken.includes(fresh)) onRename(fresh);
+  };
 
   return (
     <>
@@ -183,7 +196,7 @@ function TagFilterRow({
           { id: "picker", label: t("picker"), icon: Filter, below: below(t("pickerDetail")) },
         ]}
       />
-      <NestedList label={t("tags")} addLabel={t("addTag")} onAdd={() => picker.current?.open()}>
+      <NestedList label={t("tags")} addLabel={t("addTag")} onAdd={() => picker.current?.open()} disabled={filter.options.length >= LIMITS.tagFilterOptions}>
         {filter.options.length > 0 ? (
           <SortableList className="space-y-1" ids={filter.options.map(optionId)} onMove={(from, to) => onChange((f) => ({ ...f, options: move(f.options, from, to) }))}>
             {filter.options.map((option) => (
@@ -238,7 +251,8 @@ function TagFilterRow({
         notSetUpLabel={t("notSetUp")}
         newLabel={(typed) => t("useTyped", { tag: typed })}
         prefix={{ label: (typed) => t("usePrefix", { prefix: typed }), onChoose: (typed) => addOption({ value: typed, prefix: true, label: "" }) }}
-        typedMax={LIMITS.tagFilterTag}
+        typedAccepts={acceptsTag}
+        rowFilter={(row) => acceptsTag(row.id)}
       />
     </>
   );
@@ -248,7 +262,7 @@ function TagFilterRow({
 function TagChip({ children }: { children: string }) {
   return (
     <TooltipHint label={children} onlyWhenClipped>
-      <span className="inline-flex h-7 max-w-48 min-w-0 items-center gap-1.5 rounded-md bg-muted px-2 font-mono text-xs">
+      <span className="inline-flex h-7 max-w-full min-w-0 items-center gap-1.5 rounded-md bg-muted px-2 font-mono text-xs">
         <Tag className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         <span className="truncate">{children}</span>
       </span>
@@ -288,7 +302,7 @@ function TagEntry({
   const id = `${filter.id}-${option.value}`;
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 @2xl/settings:flex-nowrap">
-      <div className="w-48 shrink-0">
+      <div className="w-48 min-w-0">
         <TagChip>{option.value}</TagChip>
       </div>
       <Input
@@ -323,7 +337,7 @@ function PrefixEntry({ filter, option, named, counts }: { filter: TagFilterDraft
   return (
     <div className="flex min-w-0 flex-col gap-2">
       <div className="flex h-8 items-center gap-x-3">
-        <div className="w-48 shrink-0">
+        <div className="w-48 min-w-0">
           <TagChip>{`${option.value}…`}</TagChip>
         </div>
         <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground">{t("prefixMeaning")}</span>

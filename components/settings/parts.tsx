@@ -152,7 +152,8 @@ export function Segmented<T extends string>({
               <span className="truncate">{o.label}</span>
             </span>
             {o.detail ? <span className="@max-[40rem]/segments:hidden">{o.detail}</span> : null}
-            {o.below ? <span className="flex">{o.below}</span> : null}
+            {/* The line under a label wraps where the segment is narrow, rather than running into the next one. */}
+            {o.below ? <span className="flex whitespace-normal">{o.below}</span> : null}
           </button>
         );
       })}
