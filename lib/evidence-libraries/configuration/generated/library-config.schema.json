@@ -1100,7 +1100,7 @@
 						"properties": {
 							"id": {
 								"type": "string",
-								"pattern": "^[a-z][a-z0-9-]{0,31}$"
+								"pattern": "^(?!(?:tags|match|collections|topics|sources|type|study|search|scope|range|institution|country|author|page|sort)$)[a-z][a-z0-9-]{0,31}$"
 							},
 							"label": {
 								"type": "string",
@@ -1129,7 +1129,8 @@
 										"value": {
 											"type": "string",
 											"minLength": 1,
-											"maxLength": 128
+											"maxLength": 128,
+											"pattern": "^(?!\\s*\\*\\s*$)"
 										},
 										"prefix": {
 											"default": false,
@@ -1154,7 +1155,8 @@
 								"items": {
 									"type": "string",
 									"minLength": 1,
-									"maxLength": 128
+									"maxLength": 128,
+									"pattern": "^(?!\\s*\\*\\s*$)"
 								}
 							}
 						},
