@@ -85,7 +85,11 @@ export function TagFiltersField({
     onChange((current) => current.map((filter) => (filter.id === id ? change(filter) : filter)));
   // A row keeps its key when its filter's address name settles, so the click that left the name field still lands.
   const [rowKeys, setRowKeys] = useState<Record<string, string>>({});
-  const rowKey = (id: string) => rowKeys[id] ?? id;
+  // A key a filter took back, as when Reset brings back the one renamed away from it, stays that filter's own.
+  const rowKey = (id: string) => {
+    const key = rowKeys[id];
+    return key && !filters.some((filter) => filter.id === key) ? key : id;
+  };
   const rename = (id: string, fresh: string) => {
     setRowKeys((keys) => ({ ...keys, [fresh]: keys[id] ?? id }));
     update(id, (filter) => ({ ...filter, id: fresh }));
