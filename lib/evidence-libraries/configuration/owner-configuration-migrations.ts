@@ -3,7 +3,7 @@ import {
   assertNoCredentialMaterial,
   validateSectionPayload,
 } from "../../../convex/evidenceLibraries/sectionPayload";
-import { EXPORT_FORMATS, readDraft, type SectionRow } from "./rules";
+import { EXPORT_FORMATS, readDraft, TAG_FILTER_ID, TAG_FILTER_TAG, type SectionRow } from "./rules";
 import { AI_PROVIDER } from "./ai";
 import { DEFAULT_ZOTERO_PUBLISH_TAGS } from "../../../convex/zotero/sourceEntry";
 import {
@@ -14,7 +14,7 @@ import { SECTION_REGISTRY, type SectionKey } from "./section-registry";
 import { type ValidationIssue } from "./generated-validation";
 import { type OwnerSectionRow, validateOwnerSections } from "./owner-rules";
 
-export const CURRENT_OWNER_CONFIGURATION_VERSION = 13 as const;
+export const CURRENT_OWNER_CONFIGURATION_VERSION = 14 as const;
 const MAX_CHANGED_POINTERS = 100;
 
 type OwnerConfigurationSnapshotRow = {
@@ -656,6 +656,41 @@ function migrateVersionTwelveToThirteen(
   return completeOwnerConfigurationSnapshot(next);
 }
 
+/**
+ * A tag filter's address name can't be a search option's, and a tag filter can't hold "*", the address's mark for a filter a
+ * reader emptied. The runtime always refused both at activation, but drafts and revisions saved them. A saved filter with
+ * such a name takes the first free `filter-N`, and such a tag or default is dropped.
+ */
+function migrateVersionThirteenToFourteen(
+  snapshot: OwnerConfigurationMigrationSnapshot,
+): OwnerConfigurationMigrationSnapshot {
+  const next = cloneJson(snapshot);
+  next.ownerConfigurationVersion = 14;
+  const accepted = (tag: unknown) => typeof tag !== "string" || TAG_FILTER_TAG.test(tag);
+  for (const row of next.sections) {
+    if (row.sectionKey !== "filters" || !isRecord(row.payload) || !Array.isArray(row.payload.tagFilters)) continue;
+    const filters: unknown[] = row.payload.tagFilters;
+    const taken = new Set(filters.flatMap((filter) => (isRecord(filter) ? [filter.id] : [])));
+    row.payload.tagFilters = filters.map((filter) => {
+      if (!isRecord(filter)) return filter;
+      let id = filter.id;
+      if (typeof id === "string" && !TAG_FILTER_ID.test(id)) {
+        let n = 1;
+        while (taken.has(`filter-${n}`)) n += 1;
+        id = `filter-${n}`;
+        taken.add(id);
+      }
+      return {
+        ...filter,
+        id,
+        ...(Array.isArray(filter.options) ? { options: filter.options.filter((option) => !isRecord(option) || accepted(option.value)) } : {}),
+        ...(Array.isArray(filter.defaults) ? { defaults: filter.defaults.filter(accepted) } : {}),
+      };
+    });
+  }
+  return completeOwnerConfigurationSnapshot(next);
+}
+
 const disabledAiDefaults: OwnerConfigurationDefaultRow[] = [
   {
     sectionKey: "ai",
@@ -763,6 +798,15 @@ export const OWNER_CONFIGURATION_MIGRATIONS: OwnerConfigurationMigration[] = [
     from: 12,
     to: 13,
     migrate: migrateVersionTwelveToThirteen,
+    defaultRows: [
+      ...disabledAiDefaults,
+      { sectionKey: "topics", payload: () => ({ enabled: false }) },
+    ],
+  },
+  {
+    from: 13,
+    to: 14,
+    migrate: migrateVersionThirteenToFourteen,
     defaultRows: [
       ...disabledAiDefaults,
       { sectionKey: "topics", payload: () => ({ enabled: false }) },
