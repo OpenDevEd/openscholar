@@ -129,8 +129,8 @@ type SingleProps = CommonProps & {
    * text as typed, spaces included, since "Domain: " and "Domain:" match different values.
    */
   prefix?: { label: (typed: string) => string; onChoose: (typed: string) => void };
-  /** The longest typed value the new and prefix rows accept. */
-  typedMax?: number;
+  /** Whether the new and prefix rows can offer a typed value: within the contract's length and pattern. */
+  typedAccepts?: (typed: string) => boolean;
 };
 
 export function RemotePickerDialog(props: MultiProps | SingleProps) {
@@ -435,7 +435,7 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                     onChoose={() => choose(null)}
                   />
                 ) : null}
-                {typed && props.mode === "single" && props.prefix && query.length <= (props.typedMax ?? Infinity) ? (
+                {typed && props.mode === "single" && props.prefix && (props.typedAccepts?.(query) ?? true) ? (
                   <ChoiceRow
                     columnCount={columnCount}
                     chosen={false}
@@ -446,11 +446,13 @@ export function RemotePickerDialog(props: MultiProps | SingleProps) {
                     }}
                   />
                 ) : null}
-                {typedIsNew && props.mode === "single" && props.newLabel && typed.length <= (props.typedMax ?? Infinity) ? (
+                {typedIsNew && props.mode === "single" && props.newLabel && (props.typedAccepts?.(typed) ?? true) ? (
+                  // A typed name already in use reads as in use, as the listed rows do, rather than offered again.
                   <ChoiceRow
                     columnCount={columnCount}
                     chosen={false}
-                    label={props.newLabel(typed)}
+                    label={used.has(typed) ? typed : props.newLabel(typed)}
+                    usedLabel={used.has(typed) ? usedLabel : undefined}
                     onChoose={() => choose({ id: typed, title: typed })}
                   />
                 ) : null}
@@ -646,30 +648,38 @@ function ChoiceRow({
   columnCount,
   chosen,
   label,
+  usedLabel,
   onChoose,
 }: {
   columnCount: number;
   chosen: boolean;
   label: string;
+  /** Set where the choice is already in use: it can't be picked again and says so. */
+  usedLabel?: string;
   onChoose: () => void;
 }) {
+  const act = usedLabel ? () => {} : onChoose;
   return (
     <TableRow
       data-picker-row
       tabIndex={-1}
-      className={cn(ARRIVES, "cursor-pointer", chosen && "bg-primary/5")}
-      onClick={onChoose}
+      aria-disabled={usedLabel ? true : undefined}
+      className={cn(ARRIVES, usedLabel ? "cursor-default opacity-60" : "cursor-pointer", chosen && "bg-primary/5")}
+      onClick={act}
       onKeyDown={(event) => {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
-        onChoose();
+        act();
       }}
     >
       <TableCell>
         <Check className={chosen ? "h-4 w-4" : "h-4 w-4 opacity-0"} aria-hidden />
       </TableCell>
       <TableCell colSpan={columnCount} className="font-medium">
-        {label}
+        <span className="flex items-center justify-between gap-3">
+          {label}
+          {usedLabel ? <StatusChip tone="neutral">{usedLabel}</StatusChip> : null}
+        </span>
       </TableCell>
     </TableRow>
   );

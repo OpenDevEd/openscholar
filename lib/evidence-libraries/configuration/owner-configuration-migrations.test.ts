@@ -190,6 +190,30 @@ describe("owner configuration migrations", () => {
     expect(source!.settings).toEqual({ downloadPdfs: true, pdfPublishing: { mode: "tagged", tags: ["approved"] } });
   });
 
+  it("gives a saved tag filter named after a search option a free address name, and drops its * tags, so it still loads", () => {
+    const { snapshot } = migrateOwnerConfiguration({
+      ownerConfigurationVersion: 13,
+      sections: [
+        {
+          sectionKey: "filters",
+          payload: {
+            tagFilters: [
+              { id: "type", label: "Type", options: [{ value: "*" }, { value: "Reviewed" }], defaults: ["*", "Reviewed"] },
+              { id: "filter-1", label: "状态" },
+              { id: "status", label: "Status" },
+            ],
+          },
+        },
+      ],
+    });
+    const filters = snapshot.sections.find((row) => row.sectionKey === "filters")?.payload as { tagFilters: unknown[] };
+    expect(filters.tagFilters).toEqual([
+      { id: "filter-2", label: "Type", options: [{ value: "Reviewed" }], defaults: ["Reviewed"] },
+      { id: "filter-1", label: "状态" },
+      { id: "status", label: "Status" },
+    ]);
+  });
+
   it("gives a saved filters row no tag filters, collections matching all and the study types filter, keeping ones already set", () => {
     const filters = (payload: Record<string, unknown>) =>
       migrateOwnerConfiguration({ ownerConfigurationVersion: 12, sections: [{ sectionKey: "filters", payload }] })
@@ -468,6 +492,7 @@ describe("owner configuration migrations", () => {
       [10, 11],
       [11, 12],
       [12, 13],
+      [13, 14],
     ]);
     expect(
       validateOwnerConfigurationMigrationRegistry(
@@ -711,6 +736,7 @@ describe("owner configuration migrations", () => {
       [10, 11],
       [11, 12],
       [12, 13],
+      [13, 14],
     ]);
   });
 

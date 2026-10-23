@@ -225,6 +225,7 @@ export const ownerConfigurationVersionValidator = v.union(
   v.literal(11),
   v.literal(12),
   v.literal(13),
+  v.literal(14),
 );
 export const draftOwnerConfigurationVersionValidator = v.union(
   v.literal(3),
@@ -238,8 +239,9 @@ export const draftOwnerConfigurationVersionValidator = v.union(
   v.literal(11),
   v.literal(12),
   v.literal(13),
+  v.literal(14),
 );
-export const currentOwnerConfigurationVersionValidator = v.literal(13);
+export const currentOwnerConfigurationVersionValidator = v.literal(14);
 
 export const evidenceLibraryStateValidator = v.union(
   v.literal("provisioning"),
