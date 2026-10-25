@@ -127,14 +127,19 @@ const TEXT_LINES: Record<string, (text: string, lasted: number) => string> = {
   "brief-text": (text, lasted) => `text showed for only ${lasted}ms: "${text}"`,
 };
 
+const ELEMENT_LINES: Record<"brief-element" | "late-content" | "picture-pop", (from: string, to: string, lasted: number, name: string) => string> = {
+  "brief-element": (from, _to, lasted, name) => `${from} element showed for only ${lasted}ms: ${name}`,
+  "late-content": (_from, to, lasted, name) => `${to} popped in ${lasted}ms after its dialog opened, without fading in: ${name}`,
+  "picture-pop": (_from, to, lasted, name) => `${to} picture appeared at once after ${lasted}ms on screen without it, instead of fading in: ${name}`,
+};
+
 async function itemFor(page: Page, finding: Finding, start: number): Promise<Item> {
   const when = `+${Math.round(finding.from - start)}ms`;
   const lasted = Math.round(finding.to - finding.from);
   if (finding.kind === "shift") return shiftItem(page, finding, when);
-  if (finding.kind === "brief-element" || finding.kind === "late-content") {
+  if (finding.kind === "brief-element" || finding.kind === "late-content" || finding.kind === "picture-pop") {
     const [key, name] = await Promise.all([read<string>(page, `window.__verify.key(${finding.id})`), read<string>(page, `window.__verify.describe(${finding.id})`)]);
-    const line = finding.kind === "brief-element" ? `${when} element showed for only ${lasted}ms: ${name}` : `+${Math.round(finding.to - start)}ms popped in ${lasted}ms after its dialog opened, without fading in: ${name}`;
-    return { kind: finding.kind, keys: [key], line };
+    return { kind: finding.kind, keys: [key], line: ELEMENT_LINES[finding.kind](when, `+${Math.round(finding.to - start)}ms`, lasted, name) };
   }
   return { kind: finding.kind, keys: [finding.text], line: `${when} ${TEXT_LINES[finding.kind](finding.text, lasted)}` };
 }
@@ -169,14 +174,17 @@ function delay(activity: Activity, slow: number, send: () => unknown) {
   }, slow);
 }
 
-/** Data arrives late, the way it does on a slow connection, so a page that only holds still on fast data shows it. */
+/**
+ * Data and pictures arrive late, the way they do on a slow connection, so a page that only holds still on fast data
+ * shows it, and a picture that appears at once instead of fading in is seen.
+ */
 async function slowDown(context: BrowserContext, slow: number, activity: Activity) {
   await context.routeWebSocket(/\/api\/.*\/sync/, (socket) => {
     const remote = socket.connectToServer();
     remote.onMessage((message) => delay(activity, slow, () => socket.send(message)));
   });
   await context.route("**/*", (route) => {
-    if (["fetch", "xhr"].includes(route.request().resourceType())) setTimeout(() => void route.fallback().catch(() => {}), slow);
+    if (["fetch", "xhr", "image"].includes(route.request().resourceType())) setTimeout(() => void route.fallback().catch(() => {}), slow);
     else void route.fallback();
   });
 }
@@ -209,12 +217,13 @@ export async function cacheFonts(context: BrowserContext, browserName: string) {
   await context.route(WEB_FONTS, (route) => serveFont(route, browserName));
 }
 
-// Next prefetches linked pages in the background and Chromium never reports
-// some of those finished; they are not this page's data.
+// The page's data and pictures, which a run waits for. Next prefetches linked
+// pages in the background and Chromium never reports some of those finished;
+// they are not this page's.
 function isData(request: Request): boolean {
   const headers = request.headers();
   const prefetch = headers["next-router-prefetch"] !== undefined || headers["next-router-segment-prefetch"] !== undefined;
-  return ["fetch", "xhr"].includes(request.resourceType()) && !prefetch && !IGNORED_TRAFFIC.test(request.url());
+  return ["fetch", "xhr", "image"].includes(request.resourceType()) && !prefetch && !IGNORED_TRAFFIC.test(request.url());
 }
 
 /** An action whose request fails can still leave a page that looks fine. */
@@ -225,7 +234,7 @@ function serverError(response: Response, origin: string): Item | null {
   return { kind: "http", keys: [`http ${response.status()} ${url.pathname}`], line: `a request to ${url.pathname} answered HTTP ${response.status()}` };
 }
 
-/** Counts the page's data requests as pending until they finish, and collects errors into `errors`. */
+/** Counts the page's data and picture requests as pending until they finish, and collects errors into `errors`. */
 function watch(page: Page, origin: string, activity: Activity, errors: Item[]) {
   page.on("request", (request) => {
     if (!isData(request)) return;

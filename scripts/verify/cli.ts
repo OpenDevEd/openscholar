@@ -367,7 +367,7 @@ Options for shift and shot:
                            Steps run in each browser and again on the comparison site: keep them
                            to interactions that save nothing.
   --browser <list>         chromium,firefox (shift default) or one of them.
-  --slow <ms>              Delay for every server message (shift default 600, 0 to turn off).
+  --slow <ms>              Delay for every server message and picture (shift default 600, 0 to turn off).
   --allow <selector>       An element whose movement is intended, such as an expanding panel.
   --width <px> --height <px>  Viewport, default 1440x900. Use 390 x 844 for a phone.
   --as <email>             Sign in as this existing development user instead of the verify user.
