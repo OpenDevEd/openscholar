@@ -344,10 +344,22 @@ export function recorder(config: { allow: string }) {
     }
   }
 
+  // Whether any of a picture shows inside every frame around it that cuts off what is outside it, across and down.
+  function uncovered(image: HTMLElement): boolean {
+    let { top, bottom, left, right } = image.getBoundingClientRect();
+    for (let parent = image.parentElement; parent; parent = parent.parentElement) {
+      const { overflowX, overflowY } = getComputedStyle(parent);
+      const frame = parent.getBoundingClientRect();
+      if (/hidden|clip|auto|scroll/.test(overflowY)) [top, bottom] = [Math.max(top, frame.top), Math.min(bottom, frame.bottom)];
+      if (/hidden|clip|auto|scroll/.test(overflowX)) [left, right] = [Math.max(left, frame.left), Math.min(right, frame.right)];
+    }
+    return bottom > top && right > left;
+  }
+
   // A picture off screen, or cut off by a frame around it, is forgotten, so one scrolled or opened to, already loaded, is new.
   function watchPictures(frame: Frame, t: number) {
     for (const image of document.images) {
-      if (measurable(image) && onScreen(image) && showing(image, document.body, true) > 0) watchPicture(frame, image, t);
+      if (measurable(image) && onScreen(image) && uncovered(image)) watchPicture(frame, image, t);
       else pictures.delete(image);
     }
   }
