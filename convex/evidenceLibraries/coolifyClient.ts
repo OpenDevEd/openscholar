@@ -16,6 +16,9 @@ const MAX_DEPLOYMENTS = 100;
 // Coolify sends each deployment with its logs, often over 50 KB, so the list is read in small pages.
 const DEPLOYMENT_PAGE_SIZE = 10;
 const MAX_SERVED_RESOURCES = 1_000;
+// Coolify lists whole resources, about 33 KB an application: 71 applications came to 2.4 MB in October 2026. A list
+// is held to MAX_SERVED_RESOURCES of them, so it may be that many times a resource's share.
+const MAX_LISTING_BYTES = MAX_SERVED_RESOURCES * 64 * 1024;
 const ENVIRONMENT_READBACK_DELAYS_MS = [100, 250, 500, 1_000] as const;
 // Coolify deletes an application in the background. Wait up to about 60 s.
 const APPLICATION_DELETE_DELAYS_MS = [
@@ -153,6 +156,8 @@ type CoolifyRequest = {
   allowConflict?: boolean;
   body?: Record<string, unknown>;
   expectedStatus: number;
+  /** How much the answer may hold; MAX_RESPONSE_BYTES unless the request reads a whole list. */
+  maxBytes?: number;
   method: "GET" | "POST" | "PATCH" | "DELETE";
   path: string;
 };
@@ -486,10 +491,11 @@ async function requestCoolify(
       );
     }
     try {
+      const maxBytes = request.maxBytes ?? MAX_RESPONSE_BYTES;
       const declaredLength = Number(response.headers.get("content-length"));
       if (
         Number.isFinite(declaredLength) &&
-        declaredLength > MAX_RESPONSE_BYTES
+        declaredLength > maxBytes
       ) {
         invalidResponse("Coolify returned too much data");
       }
@@ -501,7 +507,7 @@ async function requestCoolify(
         const { done, value } = await reader.read();
         if (done) break;
         bytes += value.byteLength;
-        if (bytes > MAX_RESPONSE_BYTES) {
+        if (bytes > maxBytes) {
           await reader.cancel();
           invalidResponse("Coolify returned too much data");
         }
@@ -1576,11 +1582,13 @@ export function createCoolifyClient(input: {
       const [applications, services] = await Promise.all([
         requestCoolify(client, {
           expectedStatus: 200,
+          maxBytes: MAX_LISTING_BYTES,
           method: "GET",
           path: "/api/v1/applications",
         }),
         requestCoolify(client, {
           expectedStatus: 200,
+          maxBytes: MAX_LISTING_BYTES,
           method: "GET",
           path: "/api/v1/services",
         }),
