@@ -16,9 +16,11 @@ const MAX_DEPLOYMENTS = 100;
 // Coolify sends each deployment with its logs, often over 50 KB, so the list is read in small pages.
 const DEPLOYMENT_PAGE_SIZE = 10;
 const MAX_SERVED_RESOURCES = 1_000;
-// Coolify lists whole resources, about 33 KB an application: 71 applications came to 2.4 MB in October 2026. A list
-// is held to MAX_SERVED_RESOURCES of them, so it may be that many times a resource's share.
-const MAX_LISTING_BYTES = MAX_SERVED_RESOURCES * 64 * 1024;
+// Coolify lists whole resources, about 33 KB an application: 71 applications came to 2.4 MB in October 2026. The
+// applications and services lists are read at once, and each is held several times over while it is decoded and
+// parsed, so the cap keeps two of them well inside the 512 MB a Node action has.
+// ponytail: about 490 applications fit; past that, read the lists one after the other or stream out the host fields.
+const MAX_LISTING_BYTES = 16 * 1024 * 1024;
 const ENVIRONMENT_READBACK_DELAYS_MS = [100, 250, 500, 1_000] as const;
 // Coolify deletes an application in the background. Wait up to about 60 s.
 const APPLICATION_DELETE_DELAYS_MS = [

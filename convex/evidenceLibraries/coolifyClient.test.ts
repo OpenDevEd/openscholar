@@ -1823,6 +1823,21 @@ describe("Coolify Evidence Library client", () => {
     expect(hosts.has("library-99.opendev.space")).toBe(true);
   });
 
+  it("refuses a list too large for the action's memory before reading it", async () => {
+    const fetchImpl: typeof fetch = vi.fn(
+      async () =>
+        new Response("[]", {
+          status: 200,
+          headers: { "content-length": String(17 * 1024 * 1024), "content-type": "application/json" },
+        }),
+    );
+
+    await expect(createClient(fetchImpl).listServedHosts()).rejects.toMatchObject({
+      code: "COOLIFY_INVALID_RESPONSE",
+      message: "Coolify returned too much data",
+    });
+  });
+
   it("refuses to answer which hosts are served when Coolify cannot be reached", async () => {
     const fetchImpl: typeof fetch = vi.fn(async () => {
       throw new Error("offline");
