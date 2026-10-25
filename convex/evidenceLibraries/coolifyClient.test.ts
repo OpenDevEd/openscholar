@@ -1807,6 +1807,22 @@ describe("Coolify Evidence Library client", () => {
     ]);
   });
 
+  it("reads a list of applications larger than one resource's answer may be", async () => {
+    // Coolify sends whole applications, about 33 KB each: 71 of them came to 2.4 MB.
+    const applications = Array.from({ length: 100 }, (_, index) => ({
+      fqdn: `https://library-${index}.opendev.space`,
+      docker_compose_raw: "x".repeat(32 * 1024),
+    }));
+    const fetchImpl: typeof fetch = vi.fn(async (input) =>
+      Response.json(new URL(String(input)).pathname === "/api/v1/applications" ? applications : []),
+    );
+
+    const hosts = await createClient(fetchImpl).listServedHosts();
+
+    expect(hosts.size).toBe(100);
+    expect(hosts.has("library-99.opendev.space")).toBe(true);
+  });
+
   it("refuses to answer which hosts are served when Coolify cannot be reached", async () => {
     const fetchImpl: typeof fetch = vi.fn(async () => {
       throw new Error("offline");
