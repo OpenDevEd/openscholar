@@ -118,6 +118,7 @@ export function recorder(config: { allow: string }) {
     overlayTextRemoved: string[];
     deltas: Map<number, number[]>;
     positions: Map<Element, number[]>;
+    pictures: { id: number; hiddenSince: number; inside?: number }[];
   };
 
   function position(frame: Frame, element: Element | null): number[] {
@@ -317,6 +318,40 @@ export function recorder(config: { allow: string }) {
     forget(frame, seen);
   }
 
+  // How much of a picture shows: none until it has loaded or while it is hidden, then its opacity with every parent's.
+  function showingPicture(image: HTMLImageElement): number {
+    if (!image.complete || image.naturalWidth === 0 || getComputedStyle(image).visibility !== "visible") return 0;
+    let opacity = 1;
+    for (let node: Element | null = image; node; node = node.parentElement) opacity *= Number(getComputedStyle(node).opacity);
+    return opacity;
+  }
+
+  // Each picture on screen: how much showed last frame, and since when it hasn't been showing.
+  type Seen = { showed: number; hiddenSince: number };
+  const pictures = new WeakMap<HTMLImageElement, Seen>();
+  // A picture starts not showing when it hides, and stays so until it shows.
+  const hiddenFrom = (last: Seen | undefined, showed: number, t: number) => (showed < 0.2 && last && last.showed >= 0.2 ? t : (last?.hiddenSince ?? t));
+
+  // A picture that goes from not showing to fully showing in one frame. One fading in passes through the values between.
+  function watchPicture(frame: Frame, image: HTMLImageElement, t: number) {
+    const showed = showingPicture(image);
+    const last = pictures.get(image);
+    pictures.set(image, { showed, hiddenSince: hiddenFrom(last, showed, t) });
+    if (last && last.showed < 0.2 && showed > 0.8) {
+      const id = idFor(image);
+      noteOverlay(image, id);
+      frame.pictures.push({ id, hiddenSince: last.hiddenSince, ...inside(id) });
+    }
+  }
+
+  // A picture off screen, or cut off by a frame around it, is forgotten, so one scrolled or opened to, already loaded, is new.
+  function watchPictures(frame: Frame, t: number) {
+    for (const image of document.images) {
+      if (measurable(image) && onScreen(image) && showing(image, document.body, true) > 0) watchPicture(frame, image, t);
+      else pictures.delete(image);
+    }
+  }
+
   function record(frame: Frame) {
     if (!mutated) return measureAll(frame);
     allowed = new Set(document.querySelectorAll(config.allow));
@@ -327,11 +362,14 @@ export function recorder(config: { allow: string }) {
 
   function tick() {
     const t = performance.now();
-    const frame: Frame = { moved: [], added: [], opened: [], fresh: new Set(), removed: [], textAdded: [], textRemoved: [], overlayTextAdded: [], overlayTextRemoved: [], deltas: new Map(), positions: new Map() };
-    if (document.body) record(frame);
-    const { moved, added, opened, removed, textAdded, textRemoved, overlayTextAdded, overlayTextRemoved } = frame;
-    if ([moved, added, opened, removed, textAdded, textRemoved].some((list) => list.length > 0)) {
-      state.frames.push({ t, moved, added, opened, removed, textAdded, textRemoved, overlayTextAdded, overlayTextRemoved });
+    const frame: Frame = { moved: [], added: [], opened: [], fresh: new Set(), removed: [], textAdded: [], textRemoved: [], overlayTextAdded: [], overlayTextRemoved: [], deltas: new Map(), positions: new Map(), pictures: [] };
+    if (document.body) {
+      record(frame);
+      watchPictures(frame, t);
+    }
+    const { moved, added, opened, removed, textAdded, textRemoved, overlayTextAdded, overlayTextRemoved, pictures: popped } = frame;
+    if ([moved, added, opened, removed, textAdded, textRemoved, popped].some((list) => list.length > 0)) {
+      state.frames.push({ t, moved, added, opened, removed, textAdded, textRemoved, overlayTextAdded, overlayTextRemoved, pictures: popped });
       state.lastChange = t;
     }
     requestAnimationFrame(tick);

@@ -29,6 +29,10 @@ export type Frame = {
   // The same lines, counted only in what the open dialogs, sheets, popovers and menus show.
   overlayTextAdded?: string[];
   overlayTextRemoved?: string[];
+  // Pictures that went from not showing (unloaded, or hidden by their own
+  // opacity or a parent's) to fully showing in this one frame, with when they
+  // were last seen not showing while on screen.
+  pictures?: { id: number; hiddenSince: number; inside?: number }[];
 };
 
 // A load phase starts with navigation; everything after `baseline` (fonts
@@ -43,7 +47,8 @@ export type Finding =
   | { kind: "text-flash"; text: string; from: number; to: number }
   | { kind: "brief-text"; text: string; from: number; to: number }
   | { kind: "brief-element"; id: number; from: number; to: number }
-  | { kind: "late-content"; id: number; from: number; to: number };
+  | { kind: "late-content"; id: number; from: number; to: number }
+  | { kind: "picture-pop"; id: number; from: number; to: number };
 
 // Frames closer than this belong to one burst, such as one animated resize.
 const BURST_GAP_MS = 120;
@@ -56,6 +61,8 @@ const MIN_FLASH_AREA = 400;
 
 // The first moments after a dialog appears belong to its opening.
 const OPENING_MS = 150;
+// A picture that shows within this long of its place appearing loaded in time; one that took longer was waited for.
+const PICTURE_WAIT_MS = 150;
 
 const sameBox = (a: Box, b: Box) => a.every((value, index) => Math.abs(value - b[index]) <= 2);
 
@@ -265,6 +272,15 @@ function arrivals(frames: Frame[]): Finding[] {
   return findings;
 }
 
+/** A picture someone saw missing, then all at once, instead of fading in. */
+function picturePops(frames: Frame[], since: number): Finding[] {
+  return frames.flatMap((frame) =>
+    (frame.pictures ?? [])
+      .filter((picture) => frame.t >= since && frame.t - picture.hiddenSince >= PICTURE_WAIT_MS)
+      .map((picture): Finding => ({ kind: "picture-pop", id: picture.id, from: picture.hiddenSince, to: frame.t })),
+  );
+}
+
 /**
  * An overlay opened while the page loads: what moved in it after it opened,
  * what blinked in it, and what popped into it. The page behind is still
@@ -276,10 +292,10 @@ function analyzeEarly(frames: Frame[], since: number): Finding[] {
   const opened = new Map<number, number>();
   for (const frame of frames) for (const id of frame.opened ?? []) opened.set(id, frame.t);
   const inside = (entry: { inside?: number }) => opened.has(entry.inside ?? -1);
-  const overlays = frames.map((frame): Frame => ({ ...frame, moved: frame.moved.filter(inside), added: frame.added.filter(inside), removed: frame.removed.filter(inside), textAdded: frame.overlayTextAdded ?? [], textRemoved: frame.overlayTextRemoved ?? [] }));
+  const overlays = frames.map((frame): Frame => ({ ...frame, moved: frame.moved.filter(inside), added: frame.added.filter(inside), removed: frame.removed.filter(inside), textAdded: frame.overlayTextAdded ?? [], textRemoved: frame.overlayTextRemoved ?? [], pictures: frame.pictures?.filter(inside) }));
   const late = (frame: Frame, move: Move) => frame.t - opened.get(move.inside!)! > OPENING_MS;
   const shifts = bursts(overlays.filter(changed)).map((burst) => shift(burst, late)).filter((finding): finding is Finding => finding !== null);
-  return [...shifts, ...textBlinks(overlays, since), ...elementBlinks(overlays, since), ...arrivals(frames)].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
+  return [...shifts, ...textBlinks(overlays, since), ...elementBlinks(overlays, since), ...arrivals(frames), ...picturePops(overlays, since)].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
 }
 
 /** The problems a person would see in one phase: movement after the page or the response settled, and blinks. */
@@ -293,7 +309,7 @@ export function analyzePhase(frames: Frame[], phase: Phase): Finding[] {
   const shifts = late.map((burst) => shift(burst)).filter((finding): finding is Finding => finding !== null);
   // Only what an action opened is judged for late content: a page still loading fills in by design.
   const popped = phase.kind === "step" ? arrivals(frames.filter((frame) => frame.t >= since)) : [];
-  return [...shifts, ...textBlinks(frames, since), ...elementBlinks(frames, since), ...popped].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
+  return [...shifts, ...textBlinks(frames, since), ...elementBlinks(frames, since), ...popped, ...picturePops(frames, since)].sort((a, b) => a.from - b.from || a.kind.localeCompare(b.kind));
 }
 
 /**

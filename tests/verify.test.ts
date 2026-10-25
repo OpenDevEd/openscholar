@@ -262,6 +262,22 @@ describe("analyzePhase after an action", () => {
   });
 });
 
+describe("analyzePhase on pictures", () => {
+  const load = { name: "load", kind: "load" as const, start: 0, baseline: 100 };
+  const step = { name: "search", kind: "step" as const, start: 1_000 };
+
+  it("reports a picture that was missing on screen, then there all at once", () => {
+    expect(analyzePhase([frame(820, { pictures: [{ id: 9, hiddenSince: 220 }] })], load)).toEqual([{ kind: "picture-pop", id: 9, from: 220, to: 820 }]);
+    // A card kept for the next result, whose new cover appears at once.
+    expect(analyzePhase([frame(1_700, { pictures: [{ id: 9, hiddenSince: 1_080 }] })], step)).toEqual([{ kind: "picture-pop", id: 9, from: 1_080, to: 1_700 }]);
+  });
+
+  it("accepts a picture that shows as soon as its place does, and one shown before the page settled", () => {
+    expect(analyzePhase([frame(300, { pictures: [{ id: 9, hiddenSince: 220 }] })], load)).toEqual([]);
+    expect(analyzePhase([frame(90, { pictures: [{ id: 9, hiddenSince: 20 }] })], { ...load, baseline: 400 })).toEqual([]);
+  });
+});
+
 describe("analyzePhase on a step taken while the page loads", () => {
   const early = { name: "early click Workspace", kind: "early" as const, start: 0 };
   const opening = frame(400, { opened: [10], added: [{ id: 10, box: [8, 8, 300, 120] }] });
@@ -270,6 +286,11 @@ describe("analyzePhase on a step taken while the page loads", () => {
 
   it("leaves the page behind the overlay to the load check", () => {
     expect(analyzePhase([opening, behind], early)).toEqual([]);
+  });
+
+  it("reports a picture that appears at once in the open overlay, but not one on the page behind", () => {
+    const pictures = frame(1_300, { pictures: [{ id: 12, hiddenSince: 450, inside: 10 }, { id: 3, hiddenSince: 450 }] });
+    expect(analyzePhase([opening, behind, pictures], early)).toEqual([{ kind: "picture-pop", id: 12, from: 450, to: 1_300 }]);
   });
 
   it("reports rows that land in the open overlay in one frame, and the jump they give it", () => {
