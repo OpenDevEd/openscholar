@@ -28,6 +28,8 @@ interface SearchInputProps {
   disabled: boolean;
   /** Shows the line under the box: the switch to research mode, or what research mode does. */
   hints: boolean;
+  /** Mock: the Keywords and Question switch sits in the box's bottom bar instead of above the box. */
+  toggleInBox?: boolean;
   className?: string;
 }
 
@@ -38,6 +40,7 @@ export function SearchInput({
   isEnhancing,
   disabled,
   hints,
+  toggleInBox = false,
   className,
 }: SearchInputProps) {
   const t = useTranslations("home");
@@ -110,13 +113,15 @@ export function SearchInput({
         )}
       >
         {/* Mode Toggle */}
-        <div className="flex justify-center">
-          <ModeToggle
-            mode={effectiveMode}
-            onModeChange={handleModeChange}
-            disabled={disabled}
-          />
-        </div>
+        {!toggleInBox && (
+          <div className="flex justify-center">
+            <ModeToggle
+              mode={effectiveMode}
+              onModeChange={handleModeChange}
+              disabled={disabled}
+            />
+          </div>
+        )}
 
         {/* The box and its hint share the last place, so a hidden hint leaves no gap under the box. */}
         <div>
@@ -153,7 +158,10 @@ export function SearchInput({
             </div>
 
             {/* Bottom Action Bar */}
-            <div className="flex flex-wrap items-center justify-end md:justify-between p-3 gap-4">
+            <div className={cn("flex flex-wrap items-center p-3 gap-4", toggleInBox ? "justify-between" : "justify-end md:justify-between")}>
+              {toggleInBox ? (
+                <ModeToggle mode={effectiveMode} onModeChange={handleModeChange} disabled={disabled} />
+              ) : (
               <div className="text-xs text-muted-foreground hidden md:flex flex-wrap items-center gap-2 shrink-0">
                 <span className="px-1.5 py-0.5 rounded-md bg-inset border border-border-subtle font-mono">
                   {t("enterKey")}
@@ -165,6 +173,7 @@ export function SearchInput({
                 </span>
                 {t("newLine")}
               </div>
+              )}
 
               <Button
                 type="button"

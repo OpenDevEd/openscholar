@@ -87,7 +87,7 @@ function Suggestions({ promise, onPick, working, disabled }: { promise: Promise<
           >
             <AiIcon working={working && picked === suggestion.question} className="mt-0.5 size-4 shrink-0" />
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-              <span className="text-sm font-medium text-foreground text-balance">{suggestion.question}</span>
+              <span className="text-sm font-medium text-foreground text-pretty">{suggestion.question}</span>
               <TooltipHint label={suggestion.from} onlyWhenClipped>
                 <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                   <History className="size-3.5 shrink-0" aria-hidden />
