@@ -53,7 +53,7 @@ const abstractOf = (index: Work["abstract_inverted_index"]) => {
 export const run = internalAction({
   args: runArgs,
   returns: v.null(),
-  handler: async (ctx, { overviewId, startedAt, request, instruction, modelId, effort }) => {
+  handler: async (ctx, { overviewId, startedAt, locale, request, instruction, modelId, effort }) => {
     const start = await ctx.runMutation(internal.research.overviews.startRun, { overviewId, startedAt });
     if (!start) return null;
     const { userId, workspaceId, paid } = start;
@@ -74,7 +74,7 @@ export const run = internalAction({
       const years = z.object({ from: z.number().int().optional(), to: z.number().int().optional() }).optional().describe("Only papers published in these years, both included.");
       const result = streamText({
         model,
-        system: SYSTEM(new Date().getUTCFullYear()),
+        system: SYSTEM(new Date().getUTCFullYear(), new Intl.DisplayNames(["en"], { type: "language" }).of(locale) ?? "English"),
         prompt: `What the person wants to know about this search: ${instruction}`,
         stopWhen: isStepCount(STEPS),
         maxRetries: 1,
@@ -160,11 +160,13 @@ export const run = internalAction({
   },
 });
 
-const SYSTEM = (year: number) => `You write the short AI overview shown above a list of research papers in OpenScholar. It reads the whole search the person ran in OpenAlex, through the lens they picked, and answers what the lens asks.
+const SYSTEM = (year: number, language: string) => `You write the short AI overview shown above a list of research papers in OpenScholar. It reads the whole search the person ran in OpenAlex, through the lens they picked, and answers what the lens asks.
 
 Get every number from the tools: count for how papers divide (by year, country, type and more), papers for the papers themselves. Never state a number a tool didn't give you. Make one to four tool calls, then write.
 
-Write two to four short paragraphs of plain prose, under 150 words in all. Name only the few numbers that carry the point; a chart shows the rest. No headings, lists, bold, italics or other Markdown. Open with the finding itself.
+Write in ${language}: two to four short paragraphs of plain prose, under 150 words in all. Name only the few numbers that carry the point; a chart shows the rest. No headings, lists, bold, italics or other Markdown. Open with the finding itself. Keep the chart markers and paper links exactly as described below, in any language.
+
+Every claim must hold for every figure it covers. Check it against the counts before you write it: "more than 100 a year since 2015" is true only if every one of those years is above 100, so name the range or the exception instead. Say how much something changed with its two figures ("from 56 to 80"), never with a word for a ratio ("doubled") unless the figures are that ratio.
 
 Place a chart by writing its marker alone on its own line, after the paragraph it supports: [chart:ID] for a count, [chart:ID:change] for a count by year drawn as the change on the year before. Use at most two, and only IDs the tools returned. The papers you cite are listed under the overview on their own, so there's no need to list them.
 

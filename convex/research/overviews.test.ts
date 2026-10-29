@@ -83,7 +83,7 @@ describe("AI overviews of a search", () => {
   });
 
   it("reads a written overview again for a search with the same request, and writes it anew only when asked", async () => {
-    const { t, search, ensure, stored, setPerDay } = await setup();
+    const { t, as, scope, home, search, ensure, stored, setPerDay } = await setup();
     await setPerDay(5);
     const id = await search("teacher training");
     await ensure(id);
@@ -93,6 +93,9 @@ describe("AI overviews of a search", () => {
     expect(await ensure(await search("teacher training"))).toBe("written");
     expect(await ensure(id, { again: true })).toBe("started");
     expect(await stored()).toHaveLength(1);
+    // Read in another language, it's another overview, written in that language.
+    expect(await as("alice").mutation(api.research.overviews.ensure, { ...scope("alice", home), searchId: id, lens: "overview", locale: "fr" })).toBe("started");
+    expect((await stored()).map((one) => one.lens).sort()).toEqual(["overview", "overview~fr"]);
   });
 
   it("gives back the overview a failed run counted, and ends a run that never finishes", async () => {
