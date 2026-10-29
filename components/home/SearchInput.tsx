@@ -7,6 +7,7 @@ import { TEXTAREA_CLASS } from "@/components/ui/textarea";
 import { RichTextarea } from "rich-textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { ModeToggle, SearchMode } from "./ModeToggle";
 import { detectSearchMode } from "@/lib/search/detect-mode";
 import { queryRenderer, useQueryFieldStyle } from "@/components/query-highlight";
@@ -25,6 +26,8 @@ interface SearchInputProps {
   onSubmit: (e: React.FormEvent, mode: SearchMode) => void;
   isEnhancing: boolean;
   disabled: boolean;
+  /** Shows the line under the box: the switch to research mode, or what research mode does. */
+  hints: boolean;
   className?: string;
 }
 
@@ -34,6 +37,7 @@ export function SearchInput({
   onSubmit,
   isEnhancing,
   disabled,
+  hints,
   className,
 }: SearchInputProps) {
   const t = useTranslations("home");
@@ -114,6 +118,8 @@ export function SearchInput({
           />
         </div>
 
+        {/* The box and its hint share the last place, so a hidden hint leaves no gap under the box. */}
+        <div>
         {/* Input Container */}
         <motion.div
           layout
@@ -256,7 +262,10 @@ export function SearchInput({
           </div>
         </motion.div>
 
-        {/* Unified hint area - single AnimatePresence, same height to prevent layout shift */}
+        {/* Unified hint area - single AnimatePresence, same height to prevent layout shift. Left out for someone who has searched; it slides open for someone who hasn't. */}
+        <AutoHeight>
+        {hints && (
+        <div className="pt-6">
         <motion.div
           layout
           className="relative flex justify-center items-center h-11"
@@ -293,6 +302,10 @@ export function SearchInput({
             )}
           </AnimatePresence>
         </motion.div>
+        </div>
+        )}
+        </AutoHeight>
+        </div>
       </div>
     </LayoutGroup>
   );

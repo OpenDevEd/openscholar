@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { AmbientBackground } from "@/components/home/AmbientBackground";
 import { HomeHero } from "@/components/home/HomeHero";
 import { SearchInput } from "@/components/home/SearchInput";
-import { SuggestedSearches } from "@/components/home/SuggestedSearches";
+import { SuggestedSearches, useMySearches } from "@/components/home/SuggestedSearches";
 import { AutoHeight } from "@/components/ui/auto-height";
 import { SearchMode } from "@/components/home/ModeToggle";
 import { detectSearchMode } from "@/lib/search/detect-mode";
@@ -57,6 +57,7 @@ function PageContent() {
     useEnhanceSearchQuery();
 
   const createSearchFilters = useCreateSearchFilters();
+  const mySearches = useMySearches();
 
   const handleSearchSubmit = async (e: React.FormEvent | undefined, mode: SearchMode, text = currentQuery) => {
     // If the event comes from a form submission, prevent default
@@ -132,10 +133,13 @@ function PageContent() {
             onSubmit={handleSearchSubmit}
             isEnhancing={isEnhancingQuestion}
             disabled={isFormDisabled}
+            // Only someone who hasn't searched yet needs telling about research mode.
+            hints={mySearches?.length === 0}
             className="w-full"
           />
           <AutoHeight>
             <SuggestedSearches
+              searches={mySearches}
               working={isEnhancingQuestion}
               disabled={isFormDisabled || leaving}
               onPick={(question) => {

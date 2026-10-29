@@ -3,6 +3,7 @@
 import { Suspense, use, useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
 import { useLocale } from "next-intl";
+import { useStore } from "zustand";
 import { api } from "@/convex/_generated/api";
 import { suggestSearches, type SearchSuggestion } from "@/app/actions/search-suggestions";
 import { AiIcon, ArrowRight, History } from "@/components/icons";
@@ -11,7 +12,8 @@ import { EASE } from "@/components/settings/model-map";
 import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
-import { useResearchScope } from "@/lib/research/reads";
+import { useResearchPhase, useResearchScope } from "@/lib/research/reads";
+import { localSearchHistoryStore } from "@/lib/store";
 
 // ponytail: mock cache, one generation per workspace and set of searches for the tab's life; the real version stores them in Convex.
 const generated = new Map<string, Promise<SearchSuggestion[]>>();
@@ -32,16 +34,28 @@ function suggestionsFor(workspaceId: string, searches: string[], language: strin
 }
 
 /**
- * Research questions written from the person's own recent searches in this workspace. The page
- * slides its frame open when they arrive and the rows fade in.
+ * The texts of the person's own latest searches, newest first: the account's in this workspace
+ * signed in, this browser's signed out. Undefined until they're read.
  */
-export function SuggestedSearches({ onPick, working, disabled }: { onPick: (question: string) => void; working: boolean; disabled: boolean }) {
+export function useMySearches(): string[] | undefined {
+  const phase = useResearchPhase();
   const scope = useResearchScope();
-  const language = localeToLanguageCode(useLocale());
   const { data: me } = useOptionalAuthQuery(api.users.queries.me, {});
   const recent = useCursorPage(api.research.records.listedSearches, me && scope ? { ...scope, sort: "recent", by: me._id } : "skip", 10);
-  const searches = recent.items.map((search) => search.latestQuestion || search.query).filter(Boolean);
-  if (!scope || recent.isLoading || !searches.length) return null;
+  const local = useStore(localSearchHistoryStore, (state) => state.searchHistory);
+  if (phase === "anonymous") return local.map((search) => search.latestQuestion || search.query).filter(Boolean);
+  if (!scope || recent.isLoading) return undefined;
+  return recent.items.map((search) => search.latestQuestion || search.query).filter(Boolean);
+}
+
+/**
+ * Research questions written from the person's own recent searches in this workspace. The page
+ * slides its frame open when they arrive and the rows fade in. Signed out there's no workspace, so none.
+ */
+export function SuggestedSearches({ searches, onPick, working, disabled }: { searches: string[] | undefined; onPick: (question: string) => void; working: boolean; disabled: boolean }) {
+  const scope = useResearchScope();
+  const language = localeToLanguageCode(useLocale());
+  if (!scope || !searches?.length) return null;
   return (
     <Suspense fallback={null}>
       <Suggestions promise={suggestionsFor(scope.workspaceId, searches, language)} onPick={onPick} working={working} disabled={disabled} />
@@ -54,7 +68,7 @@ function Suggestions({ promise, onPick, working, disabled }: { promise: Promise<
   const reduceMotion = useReducedMotion();
   const [picked, setPicked] = useState<string>();
   return (
-    <ul className="flex flex-col gap-0.5 pt-3">
+    <ul className="flex flex-col gap-0.5 pt-5">
       {suggestions.map((suggestion, index) => (
         <motion.li
           key={suggestion.question}
