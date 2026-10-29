@@ -5,23 +5,23 @@
 
 import { useState } from "react";
 import { motion, useReducedMotion } from "motion/react";
-import type { Group, TopPaper } from "@/app/actions/overview-mock";
+import type { Group, Paper } from "@/lib/ai-overview-mock/openalex";
 import { EASE } from "@/components/settings/model-map";
 import { cn } from "@/lib/utils";
 
 const grow = (reduce: boolean | null, i: number) => (reduce ? { duration: 0 } : { duration: 0.5, ease: EASE, delay: i * 0.015 });
 
 /** Papers per year as bars; the hovered year names itself in the corner. */
-export function YearBars({ groups }: { groups: Group[] }) {
+export function YearBars({ groups, label = "Papers per year" }: { groups: Group[]; label?: string }) {
   const reduce = useReducedMotion();
   const [hover, setHover] = useState<Group | null>(null);
   const max = Math.max(1, ...groups.map((g) => g.count));
   const shown = hover ?? groups.reduce((best, g) => (g.count > best.count ? g : best), groups[0]);
   if (!groups.length) return null;
   return (
-    <figure className="rounded-xl bg-inset px-4 pt-3 pb-2.5" aria-label="Papers per year">
+    <figure className="rounded-xl bg-inset px-4 pt-3 pb-2.5" aria-label={label}>
       <figcaption className="flex items-baseline justify-between text-xs">
-        <span className="font-medium text-foreground">Papers per year</span>
+        <span className="font-medium text-foreground">{label}</span>
         <span className="tabular-nums text-muted-foreground">
           <span className="font-semibold text-foreground">{shown.count.toLocaleString("en")}</span> in {shown.key}
         </span>
@@ -84,12 +84,12 @@ export function ChangeBars({ groups }: { groups: Group[] }) {
 }
 
 /** Share of papers per group, as rows with a bar each. */
-export function ShareBars({ groups, total }: { groups: Group[]; total: number }) {
+export function ShareBars({ groups, total, label }: { groups: Group[]; total: number; label: string }) {
   const reduce = useReducedMotion();
   const max = Math.max(1, ...groups.map((g) => g.count));
   return (
-    <figure className="rounded-xl bg-inset px-4 py-3" aria-label="Share of papers by country">
-      <figcaption className="text-xs font-medium text-foreground">Share of papers by country</figcaption>
+    <figure className="rounded-xl bg-inset px-4 py-3" aria-label={label}>
+      <figcaption className="text-xs font-medium text-foreground">{label}</figcaption>
       <ul className="mt-2.5 space-y-1.5">
         {groups.map((g, i) => (
           <li key={g.key} className="grid grid-cols-[9rem_1fr_2.5rem] items-center gap-3 text-xs">
@@ -106,7 +106,7 @@ export function ShareBars({ groups, total }: { groups: Group[]; total: number })
 }
 
 /** The papers a lens points to, with their citations as bars against the first. */
-export function PaperRows({ papers }: { papers: TopPaper[] }) {
+export function PaperRows({ papers }: { papers: Paper[] }) {
   const reduce = useReducedMotion();
   const max = Math.max(1, ...papers.map((p) => p.cited));
   return (
