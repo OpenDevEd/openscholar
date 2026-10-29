@@ -21,8 +21,10 @@ export const searchSuggestionFields = {
   workspaceId: v.id("workspaces"),
   userId: v.id("users"),
   suggestions: suggestionsValidator,
-  /** When the refresh a search asked for runs; a later search moves it, and only the run it names writes. */
+  /** When the refresh a search asked for runs; a later search moves it, and starting it clears it. */
   dueAt: v.optional(v.number()),
-  /** Set while a new set is being written, so the page dims the last one. */
-  generating: v.boolean(),
+  /** The search that asked last: it's always among those a set is written from, however old it is. */
+  askedBy: v.optional(v.id("searches")),
+  /** The run writing a set now, by the `dueAt` it started for: the page dims the last set meanwhile, and only that run may store one. */
+  running: v.optional(v.number()),
 };

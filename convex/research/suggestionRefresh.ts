@@ -25,10 +25,10 @@ const asked = (data: DataModel["searches"]["document"]["data"]) => {
 export async function refreshOnSearch(ctx: MutationCtx, change: Change<DataModel, "searches">) {
   if (!change.newDoc) return;
   if (change.oldDoc && asked(change.oldDoc.data) === asked(change.newDoc.data)) return;
-  const { workspaceId, createdBy: userId } = change.newDoc;
+  const { workspaceId, createdBy: userId, _id: askedBy } = change.newDoc;
   const dueAt = Date.now() + REFRESH_DELAY_MS;
   const row = await ctx.db.query("searchSuggestions").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).unique();
-  if (row) await ctx.db.patch("searchSuggestions", row._id, { dueAt });
-  else await ctx.db.insert("searchSuggestions", { workspaceId, userId, suggestions: [], dueAt, generating: false });
+  if (row) await ctx.db.patch("searchSuggestions", row._id, { dueAt, askedBy });
+  else await ctx.db.insert("searchSuggestions", { workspaceId, userId, suggestions: [], dueAt, askedBy });
   await ctx.scheduler.runAt(dueAt, refresh, { workspaceId, userId, dueAt });
 }

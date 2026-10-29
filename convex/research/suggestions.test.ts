@@ -38,7 +38,7 @@ async function setup() {
   const search = (query: string, workspaceId?: Id<"workspaces">) => asAlice.mutation(api.research.searches.create, { query, ...(workspaceId && { workspaceId }) });
   const row = (workspaceId = ids.home) => t.run((ctx) => ctx.db.query("searchSuggestions").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", ids.alice)).unique());
   const start = (dueAt: number, workspaceId = ids.home) => t.mutation(internal.research.suggestions.startRefresh, { workspaceId, userId: ids.alice, dueAt });
-  const finish = (question: string, workspaceId = ids.home) => t.mutation(internal.research.suggestions.finishRefresh, { workspaceId, userId: ids.alice, suggestions: [{ question, from: "q" }] });
+  const finish = (dueAt: number, question: string, workspaceId = ids.home) => t.mutation(internal.research.suggestions.finishRefresh, { workspaceId, userId: ids.alice, dueAt, suggestions: [{ question, from: "q" }] });
   const setPerDay = (perDay: number) => t.run(async (ctx) => {
     const account = await accountOf(ctx, ids.alice);
     await ctx.db.patch("billingAccounts", account!._id, { limits: { suggestions_per_day: perDay } });
@@ -60,7 +60,36 @@ describe("suggested searches", () => {
     expect(await start(first)).toBeNull();
     // The second writes from both, newest first, at the model's lowest effort.
     expect(await start(second)).toEqual({ searches: ["tutoring outcomes", "teacher training"], modelId: expect.any(String), effort: "none" });
-    expect((await row())!.generating).toBe(true);
+    expect((await row())!.running).toBe(second);
+    // A second job for the same refresh, as an import schedules, starts nothing.
+    expect(await start(second)).toBeNull();
+  });
+
+  it("stores only the set of the run writing now, and dims the last set until that one finishes", async () => {
+    const { asAlice, search, row, start, finish, home } = await setup();
+    await search("teacher training");
+    const first = (await row())!.dueAt!;
+    await start(first);
+    vi.advanceTimersByTime(REFRESH_DELAY_MS);
+    await search("tutoring outcomes");
+    const second = (await row())!.dueAt!;
+    await start(second);
+    // The first run finishing late neither stores its set nor ends the second.
+    await finish(first, "From the first run?");
+    expect(await asAlice.query(api.research.suggestions.mine, { accountId: "alice", workspaceId: home })).toEqual({ suggestions: [], refreshing: true });
+    await finish(second, "From the second run?");
+    expect(await asAlice.query(api.research.suggestions.mine, { accountId: "alice", workspaceId: home })).toEqual({ suggestions: [{ question: "From the second run?", from: "q" }], refreshing: false });
+  });
+
+  it("writes from a search asked something new however old it is", async () => {
+    const { asAlice, search, row, start } = await setup();
+    const { id } = await search("the oldest search");
+    for (let n = 0; n < 10; n++) await search(`newer search ${n}`);
+    await start((await row())!.dueAt!);
+    await asAlice.mutation(api.research.searches.update, { id, changes: [{ setting: "query", value: "the oldest search, asked again" }] });
+    const { searches } = (await start((await row())!.dueAt!))!;
+    expect(searches[0]).toBe("the oldest search, asked again");
+    expect(searches).toHaveLength(10);
   });
 
   it("writes no more sets a day than the workspace's plan allows, and keeps the last one past it", async () => {
@@ -68,12 +97,14 @@ describe("suggested searches", () => {
     await setPerDay(2);
     for (const query of ["one", "two"]) {
       await search(query);
-      expect(await start((await row())!.dueAt!)).not.toBeNull();
-      await finish(`After ${query}?`);
+      const dueAt = (await row())!.dueAt!;
+      expect(await start(dueAt)).not.toBeNull();
+      await finish(dueAt, `After ${query}?`);
     }
     await search("three");
     expect(await start((await row())!.dueAt!)).toBeNull();
-    expect(await row()).toMatchObject({ generating: false, suggestions: [{ question: "After two?" }] });
+    expect(await row()).toMatchObject({ suggestions: [{ question: "After two?" }] });
+    expect((await row())!.running).toBeUndefined();
     // A day later the plan's number is back.
     vi.advanceTimersByTime(24 * 60 * 60 * 1000);
     await search("four");
@@ -85,14 +116,15 @@ describe("suggested searches", () => {
     await setPerDay(0);
     await search("teacher training");
     expect(await start((await row())!.dueAt!)).toBeNull();
-    expect((await row())!.generating).toBe(false);
+    expect((await row())!.running).toBeUndefined();
   });
 
   it("shows each person in a workspace only their own set, and none of it in another workspace", async () => {
     const { t, asAlice, search, row, start, finish, team, home } = await setup();
     await search("teacher training", team);
-    await start((await row(team))!.dueAt!, team);
-    await finish("Which programmes work?", team);
+    const dueAt = (await row(team))!.dueAt!;
+    await start(dueAt, team);
+    await finish(dueAt, "Which programmes work?", team);
     expect(await asAlice.query(api.research.suggestions.mine, { accountId: "alice", workspaceId: team })).toEqual({ suggestions: [{ question: "Which programmes work?", from: "q" }], refreshing: false });
     expect(await t.withIdentity({ subject: "bob" }).query(api.research.suggestions.mine, { accountId: "bob", workspaceId: team })).toBeNull();
     expect(await asAlice.query(api.research.suggestions.mine, { accountId: "alice", workspaceId: home })).toBeNull();

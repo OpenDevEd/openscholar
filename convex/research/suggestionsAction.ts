@@ -22,10 +22,10 @@ export const refresh = internalAction({
       const { output, usage } = await executeAIOperation({ model, effort: start.effort, ...getSuggestSearchesConfig({ searches: start.searches }) });
       const suggestions = output.suggestions.flatMap(({ question, from }) => (start.searches[from] === undefined ? [] : [{ question, from: start.searches[from] }]));
       console.log(JSON.stringify({ event: "search-suggestions", workspaceId, userId, model: modelSlug, effort: start.effort ?? null, searches: start.searches.length, written: suggestions.length, ms: Date.now() - began, usage }));
-      await ctx.runMutation(internal.research.suggestions.finishRefresh, { workspaceId, userId, suggestions });
+      await ctx.runMutation(internal.research.suggestions.finishRefresh, { workspaceId, userId, dueAt, suggestions });
     } catch (error) {
       console.error(JSON.stringify({ event: "search-suggestions-failed", workspaceId, userId, ms: Date.now() - began, error: error instanceof Error ? `${error.name}: ${error.message}` : String(error) }));
-      await ctx.runMutation(internal.research.suggestions.finishRefresh, { workspaceId, userId });
+      await ctx.runMutation(internal.research.suggestions.finishRefresh, { workspaceId, userId, dueAt });
     }
     return null;
   },

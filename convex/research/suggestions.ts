@@ -31,7 +31,7 @@ export const mineAction = defineUserQuery({
   returns: v.union(v.null(), v.object({ suggestions: suggestionsValidator, refreshing: v.boolean() })),
   run: async (ctx, { userId, workspaceId }) => {
     const row = await rowOf(ctx, workspaceId, userId);
-    return row ? { suggestions: row.suggestions, refreshing: row.generating } : null;
+    return row ? { suggestions: row.suggestions, refreshing: row.running !== undefined } : null;
   },
 });
 export const mine = accountQuery(mineAction);
@@ -39,7 +39,8 @@ export const mineForAssistant = assistantQuery(mineAction);
 
 /**
  * Starts the refresh a search asked for at `dueAt`, if it's still the latest one asked for and the
- * plan allows another set today: marks the set as being written and returns what to write it from.
+ * plan allows another set today. Starting takes it, so a second job for the same `dueAt` (an import
+ * schedules several) finds nothing to start. Returns what to write the set from.
  */
 export const startRefresh = internalMutation({
   args: { workspaceId: v.id("workspaces"), userId: v.id("users"), dueAt: v.number() },
@@ -47,38 +48,39 @@ export const startRefresh = internalMutation({
   handler: async (ctx, { workspaceId, userId, dueAt }) => {
     const row = await rowOf(ctx, workspaceId, userId);
     if (!row || row.dueAt !== dueAt) return null;
-    const searches = (await ctx.db.query("searches").withIndex("by_workspace_and_createdBy_and_createdAt", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", userId)).order("desc").take(RECENT_SEARCHES))
-      .map((row) => { const search = currentSearch(row.data); return (search.latestQuestion || search.query).trim().slice(0, SEARCH_MAX); })
-      .filter((text, index, all) => text && all.indexOf(text) === index);
+    await ctx.db.patch("searchSuggestions", row._id, { dueAt: undefined });
+    const asked = row.askedBy ? await ctx.db.get("searches", row.askedBy) : null;
+    const newest = await ctx.db.query("searches").withIndex("by_workspace_and_createdBy_and_createdAt", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", userId)).order("desc").take(RECENT_SEARCHES);
+    // The search that asked first, however old it is, then the newest others.
+    const searches = [...(asked ? [asked] : []), ...newest]
+      .map((search) => { const current = currentSearch(search.data); return (current.latestQuestion || current.query).trim().slice(0, SEARCH_MAX); })
+      .filter((text, index, all) => text && all.indexOf(text) === index)
+      .slice(0, RECENT_SEARCHES);
     const pick = await presetPick(ctx, "cheap", "questionToQuery");
     const perDay = await planLimit(ctx, workspaceId, "suggestions_per_day");
-    if (!searches.length || !pick || perDay === 0) return await done(ctx, row._id);
+    if (!searches.length || !pick || perDay === 0) return null;
     if (perDay !== undefined) {
       const { ok } = await rateLimit(ctx, { name: "search-suggestions", key: `${userId}:${workspaceId}`, config: { kind: "token bucket", rate: perDay, period: DAY, capacity: perDay } });
       // Past the plan's number for today, the last set stays.
-      if (!ok) return await done(ctx, row._id);
+      if (!ok) return null;
     }
-    await ctx.db.patch("searchSuggestions", row._id, { generating: true });
+    // ponytail: a run that dies without finishing leaves the set dimmed until the next search starts another.
+    await ctx.db.patch("searchSuggestions", row._id, { running: dueAt });
     // The lowest effort the model takes, whatever the preset sets.
     const effort = (await ctx.db.get("models", pick.modelId))?.reasoningEfforts?.[0];
     return { searches, modelId: pick.modelId, ...(effort && { effort }) };
   },
 });
 
-async function done(ctx: MutationCtx, id: Id<"searchSuggestions">) {
-  await ctx.db.patch("searchSuggestions", id, { generating: false });
-  return null;
-}
-
-/** Stores a new set, or with none, only ends the refresh and keeps the last set. */
+/** Stores the set the run started for `dueAt` wrote, or with none only ends it; a run a later one replaced stores nothing. */
 export const finishRefresh = internalMutation({
-  args: { workspaceId: v.id("workspaces"), userId: v.id("users"), suggestions: v.optional(v.array(suggestionValidator)) },
+  args: { workspaceId: v.id("workspaces"), userId: v.id("users"), dueAt: v.number(), suggestions: v.optional(v.array(suggestionValidator)) },
   returns: v.null(),
-  handler: async (ctx, { workspaceId, userId, suggestions }) => {
+  handler: async (ctx, { workspaceId, userId, dueAt, suggestions }) => {
     const row = await rowOf(ctx, workspaceId, userId);
-    if (!row) return null;
+    if (row?.running !== dueAt) return null;
     const kept = suggestions?.slice(0, SUGGESTIONS_SHOWN).map(({ question, from }) => ({ question: question.trim().slice(0, QUESTION_MAX), from: from.slice(0, FROM_MAX) }));
-    await ctx.db.patch("searchSuggestions", row._id, { generating: false, ...(kept?.length && { suggestions: kept }) });
+    await ctx.db.patch("searchSuggestions", row._id, { running: undefined, ...(kept?.length && { suggestions: kept }) });
     return null;
   },
 });
