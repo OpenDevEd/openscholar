@@ -4786,5 +4786,94 @@
     "extract": "Extract",
     "screenWith": "{count, plural, one {Screen with # question} other {Screen with # questions}}",
     "extractWith": "{count, plural, one {Extract with # question} other {Extract with # questions}}"
+  },
+  "overview": {
+    "label": "AI overview",
+    "lens": "Lens",
+    "lenses": {
+      "overview": "Overview",
+      "trend": "Year by year",
+      "where": "Where it comes from",
+      "read": "What to read first"
+    },
+    "newLens": "New lens",
+    "options": "Lens options",
+    "copy": "Copy overview",
+    "writeAgain": "Write again",
+    "editLens": "Edit lens",
+    "share": "Share with workspace",
+    "stopSharing": "Stop sharing",
+    "deleteLens": "Delete lens",
+    "hideLens": "Remove from my lenses",
+    "fold": "Show or hide overview",
+    "step": {
+      "reading": "Reading the results",
+      "writing": "Writing",
+      "count": "Counting papers by {by}",
+      "countIn": "Counting papers by {by} in {from}–{to}",
+      "cited": "Reading the most cited papers",
+      "newest": "Reading the newest papers",
+      "relevance": "Reading the closest matches"
+    },
+    "read": {
+      "both": "Counted papers by {by}, read {papers, plural, one {# paper} other {# papers}}",
+      "counted": "Counted papers by {by}",
+      "papers": "Read {papers, plural, one {# paper} other {# papers}}",
+      "none": "Read the results"
+    },
+    "by": {
+      "year": "year",
+      "language": "language",
+      "type": "type",
+      "openAccess": "open access",
+      "country": "country",
+      "author": "author",
+      "institution": "institution",
+      "funder": "funder",
+      "journal": "journal",
+      "field": "field",
+      "sdg": "SDG"
+    },
+    "chart": {
+      "perYear": "Papers per year",
+      "perYearIn": "Papers per year in {from}–{to}",
+      "change": "Change on the year before",
+      "share": "Share of papers by {by}",
+      "shareIn": "Share of papers by {by} in {from}–{to}",
+      "freeToRead": "Free to read",
+      "notFree": "Not free"
+    },
+    "ask": {
+      "write": "Write overview",
+      "reads": "Reads all {count} results",
+      "go": "Free and automatic on Go",
+      "back": "Free overviews back at {time}",
+      "pro": "{count} a day on Pro",
+      "noCredits": "No credits left",
+      "getCredits": "Get credits",
+      "limit": "Today's {count} paid overviews are used. More at {time}"
+    },
+    "left": "{left} of {perDay} free overviews left today",
+    "noneLeft": "No free overviews left today. They're back at {time}",
+    "failed": {
+      "credits": "There weren't enough credits for this overview.",
+      "failed": "The overview couldn't be written.",
+      "timeout": "The overview took too long."
+    },
+    "tryAgain": "Try again",
+    "unavailable": "A search written in OQL can't be counted, so it has no overview.",
+    "dialog": {
+      "newTitle": "New lens",
+      "editTitle": "Edit lens",
+      "description": "An overview of every search, written for what you want to know.",
+      "name": "Name",
+      "namePlaceholder": "Year by year",
+      "instruction": "What to look at",
+      "instructionPlaceholder": "How output changes from year to year, and which years stand out",
+      "share": "Share with this workspace",
+      "cancel": "Cancel",
+      "save": "Save",
+      "add": "Add lens"
+    }
   }
 }

@@ -4786,5 +4786,94 @@
     "extract": "Extraire",
     "screenWith": "{count, plural, one {Cribler avec # question} other {Cribler avec # questions}}",
     "extractWith": "{count, plural, one {Extraire avec # question} other {Extraire avec # questions}}"
+  },
+  "overview": {
+    "label": "Aperçu IA",
+    "lens": "Angle",
+    "lenses": {
+      "overview": "Aperçu",
+      "trend": "Année par année",
+      "where": "D'où elle vient",
+      "read": "À lire d'abord"
+    },
+    "newLens": "Nouvel angle",
+    "options": "Options de l'angle",
+    "copy": "Copier l'aperçu",
+    "writeAgain": "Réécrire",
+    "editLens": "Modifier l'angle",
+    "share": "Partager avec l'espace de travail",
+    "stopSharing": "Ne plus partager",
+    "deleteLens": "Supprimer l'angle",
+    "hideLens": "Retirer de mes angles",
+    "fold": "Afficher ou masquer l'aperçu",
+    "step": {
+      "reading": "Lecture des résultats",
+      "writing": "Rédaction",
+      "count": "Comptage des articles par {by}",
+      "countIn": "Comptage des articles par {by} de {from} à {to}",
+      "cited": "Lecture des articles les plus cités",
+      "newest": "Lecture des articles les plus récents",
+      "relevance": "Lecture des articles les plus proches"
+    },
+    "read": {
+      "both": "Articles comptés par {by}, {papers, plural, one {# article lu} other {# articles lus}}",
+      "counted": "Articles comptés par {by}",
+      "papers": "{papers, plural, one {# article lu} other {# articles lus}}",
+      "none": "Résultats lus"
+    },
+    "by": {
+      "year": "année",
+      "language": "langue",
+      "type": "type",
+      "openAccess": "libre accès",
+      "country": "pays",
+      "author": "auteur",
+      "institution": "institution",
+      "funder": "financeur",
+      "journal": "revue",
+      "field": "domaine",
+      "sdg": "ODD"
+    },
+    "chart": {
+      "perYear": "Articles par an",
+      "perYearIn": "Articles par an de {from} à {to}",
+      "change": "Variation sur l'année précédente",
+      "share": "Part des articles par {by}",
+      "shareIn": "Part des articles par {by} de {from} à {to}",
+      "freeToRead": "En libre accès",
+      "notFree": "Payant"
+    },
+    "ask": {
+      "write": "Rédiger l'aperçu",
+      "reads": "Lit les {count} résultats",
+      "go": "Gratuit et automatique avec Go",
+      "back": "Aperçus gratuits de retour à {time}",
+      "pro": "{count} par jour avec Pro",
+      "noCredits": "Plus de crédits",
+      "getCredits": "Obtenir des crédits",
+      "limit": "Les {count} aperçus payants du jour sont utilisés. D'autres à {time}"
+    },
+    "left": "{left} aperçus gratuits sur {perDay} restants aujourd'hui",
+    "noneLeft": "Plus d'aperçus gratuits aujourd'hui. Ils reviennent à {time}",
+    "failed": {
+      "credits": "Il n'y avait pas assez de crédits pour cet aperçu.",
+      "failed": "L'aperçu n'a pas pu être rédigé.",
+      "timeout": "L'aperçu a pris trop de temps."
+    },
+    "tryAgain": "Réessayer",
+    "unavailable": "Une recherche écrite en OQL ne peut pas être comptée, elle n'a donc pas d'aperçu.",
+    "dialog": {
+      "newTitle": "Nouvel angle",
+      "editTitle": "Modifier l'angle",
+      "description": "Un aperçu de chaque recherche, rédigé selon ce que vous voulez savoir.",
+      "name": "Nom",
+      "namePlaceholder": "Année par année",
+      "instruction": "Ce qu'il faut examiner",
+      "instructionPlaceholder": "Comment la production évolue d'une année à l'autre, et quelles années se démarquent",
+      "share": "Partager avec cet espace de travail",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "add": "Ajouter l'angle"
+    }
   }
 }

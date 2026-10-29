@@ -43,6 +43,8 @@ import { usePhoneView } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
 import { useBatchTranslation } from "@/hooks/use-batch-translation";
 import { ScreeningErrorAlert } from "@/components/screening/screening-error-alert";
+import { AiOverview } from "@/components/ai-overview/overview-card";
+import { useCitedFocus } from "@/components/ai-overview/focus";
 
 interface PapersListProps {
   results: PaperResult[];
@@ -313,6 +315,11 @@ export function ResultsList({
   }, []);
 
   const { isFocusModeOpen, focusModeIndex, viewMode } = useUIStore();
+  // Opened from the AI overview (#967), focus mode steps through the papers it cites instead of the
+  // results. The list it opened on is held until it opens again, so it stays the same while it slides out.
+  const cited = useCitedFocus((s) => s.papers);
+  const [focusFrom, setFocusFrom] = useState<{ open: boolean; cited: PaperResult[] | null }>({ open: false, cited: null });
+  if (isFocusModeOpen !== focusFrom.open) setFocusFrom({ open: isFocusModeOpen, cited: isFocusModeOpen ? cited : focusFrom.cited });
   const effectiveViewMode = usePhoneView(viewMode, "list-detail");
 
   useEffect(() => {
@@ -516,8 +523,11 @@ export function ResultsList({
     >
       <FocusMode
         isOpen={isFocusModeOpen && !preview}
-        onClose={() => useUIStore.getState().setIsFocusModeOpen(false)}
-        papers={filteredResults}
+        onClose={() => {
+          useUIStore.getState().setIsFocusModeOpen(false);
+          useCitedFocus.setState({ papers: null });
+        }}
+        papers={focusFrom.cited ?? filteredResults}
         onDownloadItem={onDownloadItem}
         onDownloadEssentialItem={onDownloadEssentialItem}
       />
@@ -537,6 +547,8 @@ export function ResultsList({
             queryOnly={preview}
           />
         </div>
+
+        {!preview && searchId && results.length > 0 ? <AiOverview searchId={searchId} /> : null}
 
         {/* Inline alert for batch-screening errors. Sits above the
             results area so the user sees it whether the screening panel

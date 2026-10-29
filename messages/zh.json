@@ -4786,5 +4786,94 @@
     "extract": "提取",
     "screenWith": "{count, plural, other {用 # 个问题筛选}}",
     "extractWith": "{count, plural, other {用 # 个问题提取}}"
+  },
+  "overview": {
+    "label": "AI 概览",
+    "lens": "视角",
+    "lenses": {
+      "overview": "概览",
+      "trend": "逐年变化",
+      "where": "研究来源",
+      "read": "先读什么"
+    },
+    "newLens": "新视角",
+    "options": "视角选项",
+    "copy": "复制概览",
+    "writeAgain": "重新撰写",
+    "editLens": "编辑视角",
+    "share": "与工作区共享",
+    "stopSharing": "停止共享",
+    "deleteLens": "删除视角",
+    "hideLens": "从我的列表移除",
+    "fold": "显示或隐藏概览",
+    "step": {
+      "reading": "正在阅读结果",
+      "writing": "正在撰写",
+      "count": "正在按{by}统计论文",
+      "countIn": "正在按{by}统计 {from}–{to} 的论文",
+      "cited": "正在阅读被引最多的论文",
+      "newest": "正在阅读最新的论文",
+      "relevance": "正在阅读最相关的论文"
+    },
+    "read": {
+      "both": "已按{by}统计论文，阅读了 {papers} 篇论文",
+      "counted": "已按{by}统计论文",
+      "papers": "阅读了 {papers} 篇论文",
+      "none": "已阅读结果"
+    },
+    "by": {
+      "year": "年份",
+      "language": "语言",
+      "type": "类型",
+      "openAccess": "开放获取",
+      "country": "国家",
+      "author": "作者",
+      "institution": "机构",
+      "funder": "资助方",
+      "journal": "期刊",
+      "field": "领域",
+      "sdg": "SDG"
+    },
+    "chart": {
+      "perYear": "每年论文数",
+      "perYearIn": "{from}–{to} 每年论文数",
+      "change": "较上一年的变化",
+      "share": "按{by}的论文占比",
+      "shareIn": "{from}–{to} 按{by}的论文占比",
+      "freeToRead": "可免费阅读",
+      "notFree": "非免费"
+    },
+    "ask": {
+      "write": "撰写概览",
+      "reads": "阅读全部 {count} 条结果",
+      "go": "Go 套餐免费自动撰写",
+      "back": "免费概览将于 {time} 恢复",
+      "pro": "Pro 每天 {count} 篇",
+      "noCredits": "积分已用完",
+      "getCredits": "获取积分",
+      "limit": "今天的 {count} 篇付费概览已用完。{time} 后可再用"
+    },
+    "left": "今天剩余 {left} 篇免费概览（共 {perDay} 篇）",
+    "noneLeft": "今天没有免费概览了。将于 {time} 恢复",
+    "failed": {
+      "credits": "积分不足，无法撰写这篇概览。",
+      "failed": "概览未能撰写。",
+      "timeout": "概览耗时过长。"
+    },
+    "tryAgain": "重试",
+    "unavailable": "用 OQL 写的检索无法统计，因此没有概览。",
+    "dialog": {
+      "newTitle": "新视角",
+      "editTitle": "编辑视角",
+      "description": "按你想了解的内容撰写每次检索的概览。",
+      "name": "名称",
+      "namePlaceholder": "逐年变化",
+      "instruction": "要看什么",
+      "instructionPlaceholder": "每年的论文数量如何变化，哪些年份比较突出",
+      "share": "与此工作区共享",
+      "cancel": "取消",
+      "save": "保存",
+      "add": "添加视角"
+    }
   }
 }
