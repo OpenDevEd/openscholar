@@ -19,7 +19,7 @@ import { digestOpaqueToken } from "@/convex/lib/opaqueTokenDigest";
 import { MAX_FILES_PER_MESSAGE, MAX_IMAGE_BYTES, MAX_IMAGE_MB, MAX_PDF_BYTES, MAX_PDF_MB, MAX_TEXT_BYTES, MAX_TEXT_MB, isPdf, isText, PDF_CHUNK_BYTES, textTypeOf } from "@/lib/assistant/files";
 import { getErrorMessage } from "@/lib/toast/use-app-toast";
 import { cn } from "@/lib/utils";
-import { FadeRow } from "./parts";
+import { FadeRow } from "@/components/ui/fade-row";
 
 /** A file in a draft: on its way up, in, or refused with the reason. */
 export type Attachment = {

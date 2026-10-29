@@ -4,6 +4,7 @@
 // invitation's email links to. They sit in your own workspace, and work you run on them uses
 // your own credits.
 
+import { FadeRow } from "@/components/ui/fade-row";
 import { useDeferredValue, useState } from "react";
 import { useRouter } from "next/navigation";
 import { usePaginatedQuery } from "convex/react";
@@ -85,7 +86,7 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
       }
       intro={
         <div className="space-y-3 px-4 py-3">
-          <div className="flex h-8 gap-1.5 overflow-x-auto mask-r-from-[calc(100%-2rem)] pr-8 [scrollbar-width:none]">
+          <FadeRow scrolls scrollbar="none" className="flex h-8 gap-1.5 pr-8">
             {counts ? (
               <>
                 <KindChip on={kind === null} onClick={() => setKind(null)} count={counts.total}>
@@ -102,7 +103,7 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
                 })}
               </>
             ) : null}
-          </div>
+          </FadeRow>
           <p className="flex h-6 flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
             {t("runUses")}
             {workspace ? (

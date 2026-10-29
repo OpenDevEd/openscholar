@@ -7,6 +7,7 @@
 // part per source, filling towards the papers the plan reads in one extraction, over a chip for
 // each source to take it out again.
 
+import { FadeRow } from "@/components/ui/fade-row";
 import { useState, useTransition, type ReactNode } from "react";
 import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { AnimatePresence, Reorder, motion, useDragControls } from "motion/react";
@@ -290,9 +291,9 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
                       icon={KIND.search.icon}
                       label={<QueryText query={search.query} />}
                       detail={
-                        <span className="block min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
+                        <FadeRow as="span" scrolls className="block">
                           <FilterChips filters={{ ...search, field: undefined, sortBy: undefined }} size="compact" singleLine />
-                        </span>
+                        </FadeRow>
                       }
                       count={<Chip>{ts("paperCount", { count: search.count ?? 0 })}</Chip>}
                     >
@@ -484,7 +485,7 @@ function Tray({ groups, total, limit, onRemove }: { groups: Group[]; total: numb
         </span>
       </div>
       {groups.length ? (
-        <div className="flex min-w-0 gap-1.5 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)] pb-0.5">
+        <FadeRow scrolls className="flex gap-1.5 pb-0.5">
           <AnimatePresence initial={false}>
             {groups.map((group) => {
               const Icon = KIND[group.kind].icon;
@@ -502,7 +503,7 @@ function Tray({ groups, total, limit, onRemove }: { groups: Group[]; total: numb
               );
             })}
           </AnimatePresence>
-        </div>
+        </FadeRow>
       ) : (
         <p className="text-xs text-muted-foreground">{t("trayEmpty")}</p>
       )}

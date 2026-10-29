@@ -25,6 +25,7 @@ import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { EASE } from "@/components/settings/model-map";
 import { useSpendable } from "@/components/workspaces/credit-check";
 import { AutoHeight } from "@/components/ui/auto-height";
+import { FadeRow } from "@/components/ui/fade-row";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Pills } from "@/components/ui/pills";
@@ -139,7 +140,7 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
     <section aria-label={t("label")} className="mb-6 rounded-2xl border border-border-subtle bg-card shadow-surface">
       <header className="flex items-center gap-2 pt-3 pr-3 pb-2.5 pl-4">
         <AiIcon size={18} working={working} className="shrink-0" />
-        <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] mask-r-from-[calc(100%-2rem)]">
+        <FadeRow scrolls scrollbar="none" className="flex-1">
           <div className="w-max">
             <Pills
               label={t("lens")}
@@ -148,7 +149,7 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
               options={view.lenses.map((one) => ({ id: one.id, label: one.builtIn ? t(`lenses.${one.builtIn}`) : (one.name ?? ""), icon: one.shared ? Users : undefined }))}
             />
           </div>
-        </div>
+        </FadeRow>
         {view.perDay ? <CapRing left={freeLeft ?? 0} perDay={view.perDay} /> : null}
         {/* Named in words where there's room, so it needs no tooltip. */}
         <button type="button" aria-label={t("newLens")} onClick={() => setEditing({ lens: null })} className="flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground sm:px-2.5">
@@ -397,9 +398,21 @@ function CiteChip({ cite, overview, onOpen }: { cite: Cite; overview: Overview; 
   if (!paper) return cite.text;
   return (
     <TooltipHint label={paper.year ? `${paper.title} (${paper.year})` : paper.title}>
-      <button type="button" onClick={() => onOpen(cite.id)} className={cn(RECORD_CHIP, "text-sm hover:underline")} style={recordChipStyle("var(--primary)")}>
+      {/* Inline, not a button, so a long title wraps with the sentence it's in instead of standing as a block. */}
+      <span
+        role="button"
+        tabIndex={0}
+        onClick={() => onOpen(cite.id)}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          onOpen(cite.id);
+        }}
+        className={cn(RECORD_CHIP, "cursor-pointer text-sm outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring/50")}
+        style={recordChipStyle("var(--primary)")}
+      >
         {cite.text}
-      </button>
+      </span>
     </TooltipHint>
   );
 }

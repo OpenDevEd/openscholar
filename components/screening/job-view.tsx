@@ -1,5 +1,6 @@
 "use client";
 
+import { FadeRow } from "@/components/ui/fade-row";
 import { useState } from "react";
 import { useConvex } from "convex/react";
 import { useFormatter, useTranslations } from "next-intl";
@@ -135,14 +136,14 @@ export function JobView({
             <StatusChip className="shrink-0 whitespace-nowrap" tone={TONE[phase]} icon={phase === "waiting" ? Hourglass : "tone"}>{phase === "creditsExhausted" && job.capped ? t("phase.capped") : t(`phase.${phase}`)}</StatusChip>
           </div>
           {/* One line of facts and, for a search, its filters: it scrolls sideways under a fading edge. */}
-          <div className="min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
+          <FadeRow scrolls>
             <div className="flex w-max items-center gap-1.5">
               {SourceIcon && source ? <Chip icon={SourceIcon}>{source}</Chip> : null}
               <Chip icon={Layers}><span>{t.rich("donePapers", { total, n: () => <AnimatedNumber value={done} /> })}</span></Chip>
               <Chip icon={Clock}>{format.dateTime(new Date(job.createdAt), { dateStyle: "medium", timeStyle: "short" })}</Chip>
               {search ? <FilterChips filters={{ ...search, field: undefined, sortBy: undefined }} size="compact" singleLine /> : null}
             </div>
-          </div>
+          </FadeRow>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {/* A screening of the person's Zotero is run again from a chat: the page has no Zotero to pick. */}
