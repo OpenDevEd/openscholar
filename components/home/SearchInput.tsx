@@ -136,8 +136,10 @@ export function SearchInput({
           )}
         >
           <div className="relative overflow-hidden rounded-xl bg-field transition-shadow group focus-within:ring-1 focus-within:ring-primary/30">
-            {/* A flex box, so rich-textarea's inline wrapper adds no line gap below the field. */}
-            <div className="flex">
+            {/* A flex box, so rich-textarea's inline wrapper adds no line gap below the field. It holds the field's
+                minimum height itself: rich-textarea draws its first frame at zero size until it has measured, and the
+                box's layout animation stretched that jump into a grow. */}
+            <div className="flex min-h-[80px] sm:min-h-[100px]">
               <RichTextarea
                 ref={textareaRef}
                 name="query"
