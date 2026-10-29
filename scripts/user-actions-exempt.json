@@ -1,5 +1,6 @@
 {
   "plumbing": {
+    "app/actions/search-suggestions:suggestSearches": "The home page writing suggested searches from the person's own recent ones, on our key. The assistant suggests searches in its reply.",
     "ai/actions:enhanceSearchQuery": "The search page's AI query writer. The assistant writes a query itself and checks how many it finds with research/papers:count.",
     "ai/actions:generateBatchTranslations": "The results page translating the papers on screen. The assistant translates in its reply.",
     "ai/actions:generateExtractionQuestions": "The extraction page suggesting questions. The assistant writes its own questions to extraction/start:extract.",

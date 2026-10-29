@@ -22,6 +22,8 @@ function suggestionsFor(workspaceId: string, searches: string[], language: strin
     // Started after this render: a server action updates the router, which React refuses mid-render.
     promise = new Promise<void>((resolve) => queueMicrotask(resolve)).then(() => suggestSearches(searches, language)).catch((error) => {
       console.error("Search suggestions failed:", error);
+      // The next visit tries again.
+      generated.delete(key);
       return [];
     });
     generated.set(key, promise);
@@ -38,7 +40,7 @@ export function SuggestedSearches({ onPick, working, disabled }: { onPick: (ques
   const language = localeToLanguageCode(useLocale());
   const { data: me } = useOptionalAuthQuery(api.users.queries.me, {});
   const recent = useCursorPage(api.research.records.listedSearches, me && scope ? { ...scope, sort: "recent", by: me._id } : "skip", 10);
-  const searches = recent.items.map((search) => search.questionText || search.query).filter(Boolean);
+  const searches = recent.items.map((search) => search.latestQuestion || search.query).filter(Boolean);
   if (!scope || recent.isLoading || !searches.length) return null;
   return (
     <Suspense fallback={null}>
