@@ -22,7 +22,7 @@ const INSTRUCTIONS = (language: string) => [
 
 /**
  * Mock: three research questions written from a person's recent searches, on the Cheap preset's
- * model and our own key, so no credits are spent. The real version runs in Convex after each
+ * model at its lowest effort and our own key, so no credits are spent. The real version runs in Convex after each
  * saved search and stores the result per workspace and person, so the home page reads it at once.
  */
 export async function suggestSearches(searches: string[], language: string): Promise<SearchSuggestion[]> {
@@ -38,7 +38,8 @@ export async function suggestSearches(searches: string[], language: string): Pro
     buildPrompts: (input) => ({ system: INSTRUCTIONS(language), prompt: input.map((text, index) => `${index}. ${text}`).join("\n") }),
     repairStrategy: { type: "full-json" },
     temperature: 0.7,
-    effort: pick.effort ?? undefined,
+    // The lowest effort the model takes, whatever the preset sets: sorted lowest first, "none" left out where reasoning can't be turned off.
+    effort: pick.model.reasoningEfforts?.[0],
   });
   return output.suggestions
     .filter((entry) => recent[entry.from] !== undefined)
