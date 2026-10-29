@@ -13,7 +13,7 @@ import { backfillFrom } from "../research/suggestionRefresh";
  */
 const migrations = new Migrations<DataModel>(components.migrations, { internalMutation });
 
-// A search holds its whole query and history: 25 of the largest stay well within a transaction's reads.
-export const backfill = migrations.define({ table: "searches", batchSize: 25, migrateOne: backfillFrom });
+// A search can be about 700 KB with its query and history: five of the largest stay well within a transaction's 16 MiB of reads, as in ./searchText.ts.
+export const backfill = migrations.define({ table: "searches", batchSize: 5, migrateOne: backfillFrom });
 
 export const run = migrations.runner(internal.migrations.searchSuggestions.backfill);
