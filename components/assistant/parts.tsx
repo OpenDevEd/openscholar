@@ -37,31 +37,3 @@ export function IconButton({ label, shortcut, icon, onClick, small }: { label: s
   );
 }
 
-/**
- * One line that may run past its end: it fades there while more of it is to the right, and
- * not once it all fits or it's scrolled to its end. `scrolls`: the line scrolls sideways;
- * otherwise what runs past stays cut, and the full record is a hover away.
- */
-export function FadeRow({ scrolls = false, className, children }: { scrolls?: boolean; className?: string; children: ReactNode }) {
-  const row = useRef<HTMLDivElement>(null);
-  const [more, setMore] = useState(false);
-  // A ResizeObserver and the row's scroll: what's past its end changes with its width, its content and how far it's scrolled.
-  useEffect(() => {
-    const element = row.current;
-    if (!element) return;
-    const measure = () => setMore(element.scrollLeft + element.clientWidth < element.scrollWidth - 1);
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    if (element.firstElementChild) observer.observe(element.firstElementChild);
-    element.addEventListener("scroll", measure, { passive: true });
-    return () => {
-      observer.disconnect();
-      element.removeEventListener("scroll", measure);
-    };
-  }, []);
-  return (
-    <div ref={row} className={cn("min-w-0", scrolls ? "scrollbar-hover overflow-x-auto" : "overflow-hidden", more && "mask-r-from-[calc(100%-1.5rem)]", className)}>
-      {children}
-    </div>
-  );
-}

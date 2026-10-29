@@ -1,5 +1,6 @@
 "use client";
 
+import { FadeRow } from "@/components/ui/fade-row";
 import { useRef, useState, type ReactNode } from "react";
 import { useFormatter, useLocale, useNow, useTranslations } from "next-intl";
 import { AnimatePresence, motion } from "motion/react";
@@ -424,9 +425,9 @@ export function SetupView({
                       detail={
                         // As on a search's history card: one row that scrolls sideways under a fading edge.
                         s.kind === "search" ? (
-                          <span className="block min-w-0 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">
+                          <FadeRow as="span" scrolls className="block">
                             <FilterChips filters={{ ...s.search, field: undefined, sortBy: undefined }} size="compact" singleLine />
-                          </span>
+                          </FadeRow>
                         ) : null
                       }
                       count={<Chip>{t("paperCount", { count: s.count })}</Chip>}

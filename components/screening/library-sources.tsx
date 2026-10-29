@@ -6,6 +6,7 @@
 // collections are rows under it; and the address of any library OpenScholar runs, pasted beside the
 // picker, becomes a row of its own: a search, a collection, someone's collection or a record.
 
+import { FadeRow } from "@/components/ui/fade-row";
 import { useState, type ClipboardEvent, type ReactNode } from "react";
 import { preload } from "react-dom";
 import useSWR from "swr";
@@ -382,5 +383,9 @@ export function RowFacts({ row, pasted, address }: { row: LibraryRow; pasted: bo
   if (row.parent) chips.push(<Chip key="parent" icon={Folder}>{t("in", { name: row.parent })}</Chip>);
   if ("search" in row.source) for (const { kind, value } of filtersOf(row.source.search)) chips.push(<Chip key={`${kind}:${value}`} icon={FILTER_ICON[kind]}>{kind === "sort" ? t(`sort.${value}` as "sort.desc") : value}</Chip>);
   if (!chips.length) return null;
-  return <span className="flex min-w-0 gap-1 overflow-x-auto scrollbar-hover mask-r-from-[calc(100%-2rem)]">{chips}</span>;
+  return (
+    <FadeRow as="span" scrolls className="flex gap-1">
+      {chips}
+    </FadeRow>
+  );
 }
