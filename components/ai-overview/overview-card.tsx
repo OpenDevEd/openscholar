@@ -69,15 +69,15 @@ function subscribeEnsure(convex: ReturnType<typeof useConvex>) {
   };
 }
 
-export function AiOverview({ searchId }: { searchId: string }) {
+export function AiOverview({ searchId, total }: { searchId: string; total: number }) {
   const scope = useResearchScope();
   const { data: view } = useProtectedQuery(api.research.overviews.view, scope ?? "skip");
   // Signed out there's no account to keep lenses in, and no overview.
   if (!scope || !view) return null;
-  return <Card scope={scope} view={view} searchId={searchId} />;
+  return <Card scope={scope} view={view} searchId={searchId} total={total} />;
 }
 
-function Card({ scope, view, searchId }: { scope: Scope; view: View; searchId: string }) {
+function Card({ scope, view, searchId, total }: { scope: Scope; view: View; searchId: string; total: number }) {
   const t = useTranslations("overview");
   const toast = useAppToast();
   const convex = useConvex();
@@ -98,7 +98,12 @@ function Card({ scope, view, searchId }: { scope: Scope; view: View; searchId: s
   const freeLeft = view.perDay === null ? null : Math.max(0, view.perDay - freeUsed);
   const free = freeLeft === null || freeLeft > 0;
 
-  const { data: shown } = useProtectedQuery(api.research.overviews.get, view.collapsed ? "skip" : { ...scope, searchId, lens: lens.id });
+  const { data: read } = useProtectedQuery(api.research.overviews.get, view.collapsed ? "skip" : { ...scope, searchId, lens: lens.id });
+  // While the next lens's overview is read, a card that had none to show keeps what it showed (Write overview, or why
+  // there's none), so it doesn't empty and come back. One that had an overview keeps it dimmed below instead.
+  const [kept, setKept] = useState(read);
+  if (read !== undefined && read !== kept) setKept(read);
+  const shown = read ?? (!view.collapsed && kept && !kept.overview ? kept : undefined);
   const overview = shown?.available ? shown.overview : null;
   // A search the workspace doesn't have, such as one shared with the person as a guest, has no overview here.
   const missing = shown?.reason === "missing";
@@ -222,7 +227,7 @@ function Card({ scope, view, searchId }: { scope: Scope; view: View; searchId: s
                 )}
               </>
             ) : (
-              <Ask view={view} freePlan={view.perDay === 0} paidUsed={paidUsed} onWrite={() => void run({ pay: true })} />
+              <Ask view={view} total={total} freePlan={view.perDay === 0} paidUsed={paidUsed} onWrite={() => void run({ pay: true })} />
             )}
           </div>
         )}
@@ -260,7 +265,7 @@ function ReadText({ overview }: { overview: Overview }) {
  * An overview that waits to be asked for, and what it costs: on a plan without free ones, and once the day's free ones
  * are used. With no credits left, or the day's paid ones used, the button can't start one and says why.
  */
-function Ask({ view, freePlan, paidUsed, onWrite }: { view: View; freePlan: boolean; paidUsed: number; onWrite: () => void }) {
+function Ask({ view, total, freePlan, paidUsed, onWrite }: { view: View; total: number; freePlan: boolean; paidUsed: number; onWrite: () => void }) {
   const t = useTranslations("overview.ask");
   const href = useWorkspaceHref();
   const format = useFormatter();
@@ -291,7 +296,7 @@ function Ask({ view, freePlan, paidUsed, onWrite }: { view: View; freePlan: bool
       ) : (
         button
       )}
-      <span className="text-sm text-muted-foreground">{atLimit ? reason : freePlan ? t("go") : t("back", { time })}</span>
+      <span className="text-sm text-muted-foreground">{atLimit ? reason : freePlan ? t("reads", { count: format.number(total) }) : t("back", { time })}</span>
       {noCredits && !atLimit ? (
         <Link href={href("/settings/billing")} className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
           <Coins className="size-4" /> {t("getCredits")}
