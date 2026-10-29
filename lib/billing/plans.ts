@@ -60,6 +60,7 @@ export const ORGANIZATION_PLANS: readonly string[] = [ORGANIZATION_PLAN, TEAM_PL
  * - uploads_per_hour: files a person may attach to assistant chats in an hour (#647).
  * - guests: people outside a workspace each of its items may be shared with, invitations still waiting included (#653).
  * - suggestions_per_day: sets of suggested searches written for a person on the home page in a day (#964); 0 turns them off.
+ * - overviews_per_day: AI overviews of a search written free for a person in a day (#967); past it, and at 0, each one is asked for and paid in credits.
  */
-export const PLAN_LIMITS = ["collections", "concurrency", "assistant_replies", "request_papers", "bulk_papers", "uploads_per_hour", "guests", "suggestions_per_day"] as const;
+export const PLAN_LIMITS = ["collections", "concurrency", "assistant_replies", "request_papers", "bulk_papers", "uploads_per_hour", "guests", "suggestions_per_day", "overviews_per_day"] as const;
 export type PlanLimit = (typeof PLAN_LIMITS)[number];
