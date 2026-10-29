@@ -27,7 +27,7 @@ const sizeOf = (row: object) => 2 * JSON.stringify(row).length;
 
 /**
  * Deletes a step's worth of what's in a purged workspace (#650, #651): its screening jobs,
- * searches with their revisions, history and answers, bookmarks, collections with their
+ * searches with their revisions, history, answers and suggested searches, bookmarks, collections with their
  * ratings, saved papers with their places, its screening slots, its people's assistant
  * spending there and its items' activity. An author profile stays in the directory, owned by nobody, as one whose owner
  * was purged before workspaces is. Chats, extraction jobs and counts have their own purges.
@@ -47,6 +47,7 @@ export async function purgeWorkspace(ctx: MutationCtx, workspaceId: Id<"workspac
     return await gone(ctx, step, search._id, "searches");
   }))) return false;
 
+  if (!(await drain(ctx, step, (n) => ctx.db.query("searchSuggestions").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId)).take(n), "searchSuggestions"))) return false;
   if (!(await drain(ctx, step, (n) => ctx.db.query("queryShortcuts").withIndex("by_workspace", (q) => q.eq("workspaceId", workspaceId)).take(n), "queryShortcuts"))) return false;
 
   if (!(await each(step, (n) => ctx.db.query("collections").withIndex("by_workspace_sortName", (q) => q.eq("workspaceId", workspaceId)).take(n), async (collection) => {

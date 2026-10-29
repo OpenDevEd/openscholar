@@ -12,6 +12,8 @@ import {
   buildTranslateQueryPrompts,
   buildTranslatePaperContentPrompts,
   buildScreeningResponsesPrompts,
+  suggestSearchesSchema,
+  buildSuggestSearchesPrompts,
   validateOqlQuery,
   validateQuery,
 } from './index'
@@ -22,6 +24,7 @@ import {
   TranslateQueryInput,
   TranslatePaperContentInput,
   GenerateScreeningResponsesInput,
+  SuggestSearchesInput,
 } from './types'
 import type { RepairStrategy } from './execute'
 
@@ -169,5 +172,17 @@ export function getScreeningResponsesConfig(
     input,
     repairStrategy: { type: 'full-json' },
     temperature: 0.1,
+  }
+}
+
+export function getSuggestSearchesConfig(
+  input: SuggestSearchesInput
+): OperationConfig<SuggestSearchesInput, z.infer<typeof suggestSearchesSchema>> {
+  return {
+    schema: suggestSearchesSchema,
+    buildPrompts: (input) => buildSuggestSearchesPrompts(input),
+    input,
+    repairStrategy: { type: 'full-json' },
+    temperature: 0.7,
   }
 }

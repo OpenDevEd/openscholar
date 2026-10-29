@@ -4,6 +4,7 @@
  * function built from a registry entry is missing here.
  */
 import { answersOfAction, changeAction, countSearchesAction, getSearchAction, listedSearchesAction, ratingsAction, ratingsOfAction, revisionsAction, searchHistoryAction, searchHistoryEntryAction, countShortcutsAction, listedShortcutsAction, shortcutsOfAction } from "../research/records";
+import { mineAction as suggestionsAction } from "../research/suggestions";
 import { createAction as searchCreateAction, deleteAction as searchDeleteAction, removeAction as searchRemoveAction, restoreAction as searchRestoreAction, resultsAction as searchResultsAction, updateAction as searchUpdateAction } from "../research/searches";
 import { countAction as paperCountAction, getAction as paperGetAction, readPdfAction as paperPdfAction, searchAction as paperSearchAction } from "../research/papers";
 import { findAction as lookupFindAction, namesAction as lookupNamesAction } from "../research/lookup";
@@ -136,6 +137,7 @@ export const USER_ACTIONS: readonly UserAction[] = [
   extractionFailureCountAction,
   listedSearchesAction,
   countSearchesAction,
+  suggestionsAction,
   getSearchAction,
   searchCreateAction,
   searchUpdateAction,

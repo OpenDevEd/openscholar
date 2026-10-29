@@ -7,6 +7,7 @@ import { TEXTAREA_CLASS } from "@/components/ui/textarea";
 import { RichTextarea } from "rich-textarea";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { ModeToggle, SearchMode } from "./ModeToggle";
 import { detectSearchMode } from "@/lib/search/detect-mode";
 import { queryRenderer, useQueryFieldStyle } from "@/components/query-highlight";
@@ -25,6 +26,8 @@ interface SearchInputProps {
   onSubmit: (e: React.FormEvent, mode: SearchMode) => void;
   isEnhancing: boolean;
   disabled: boolean;
+  /** Shows the line under the box: the switch to research mode, or what research mode does. */
+  hints: boolean;
   className?: string;
 }
 
@@ -34,6 +37,7 @@ export function SearchInput({
   onSubmit,
   isEnhancing,
   disabled,
+  hints,
   className,
 }: SearchInputProps) {
   const t = useTranslations("home");
@@ -101,19 +105,10 @@ export function SearchInput({
     <LayoutGroup id="home-search">
       <div
         className={cn(
-          "w-full max-w-2xl mx-auto space-y-6 relative z-10",
+          "w-full max-w-2xl mx-auto relative z-10",
           className,
         )}
       >
-        {/* Mode Toggle */}
-        <div className="flex justify-center">
-          <ModeToggle
-            mode={effectiveMode}
-            onModeChange={handleModeChange}
-            disabled={disabled}
-          />
-        </div>
-
         {/* Input Container */}
         <motion.div
           layout
@@ -125,8 +120,10 @@ export function SearchInput({
           )}
         >
           <div className="relative overflow-hidden rounded-xl bg-field transition-shadow group focus-within:ring-1 focus-within:ring-primary/30">
-            {/* A flex box, so rich-textarea's inline wrapper adds no line gap below the field. */}
-            <div className="flex">
+            {/* A flex box, so rich-textarea's inline wrapper adds no line gap below the field. It holds the field's
+                minimum height itself: rich-textarea draws its first frame at zero size until it has measured, and the
+                box's layout animation stretched that jump into a grow. */}
+            <div className="flex min-h-[80px] sm:min-h-[100px]">
               <RichTextarea
                 ref={textareaRef}
                 name="query"
@@ -147,26 +144,18 @@ export function SearchInput({
             </div>
 
             {/* Bottom Action Bar */}
-            <div className="flex flex-wrap items-center justify-end md:justify-between p-3 gap-4">
-              <div className="text-xs text-muted-foreground hidden md:flex flex-wrap items-center gap-2 shrink-0">
-                <span className="px-1.5 py-0.5 rounded-md bg-inset border border-border-subtle font-mono">
-                  {t("enterKey")}
-                </span>
-                {t("toSubmit")}
-                <span className="mx-1 opacity-20">|</span>
-                <span className="px-1.5 py-0.5 rounded-md bg-inset border border-border-subtle font-mono">
-                  {t("shiftEnterKey")}
-                </span>
-                {t("newLine")}
-              </div>
+            <div className="flex items-center justify-between p-3 gap-3">
+              <ModeToggle mode={effectiveMode} onModeChange={handleModeChange} disabled={disabled} />
 
+              {/* On a phone it shows its icon alone, so it fits on the switch's row; the label stays its name. */}
               <Button
                 type="button"
                 onClick={handleSubmit}
                 disabled={disabled}
                 size="lg"
+                aria-label={isEnhancing ? tc("processing") : effectiveMode === "research" ? t("researchButton") : tc("search")}
                 className={cn(
-                  "rounded-xl px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2 overflow-hidden",
+                  "rounded-xl px-3.5 sm:px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2 overflow-hidden",
                   effectiveMode === "research"
                     ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
                     : "bg-foreground hover:bg-foreground/90 text-background",
@@ -175,7 +164,7 @@ export function SearchInput({
                 {isEnhancing ? (
                   <>
                     <AiIcon working className="h-4 w-4 shrink-0" />
-                    {tc("processing")}
+                    <span className="hidden sm:inline">{tc("processing")}</span>
                   </>
                 ) : (
                   <motion.div
@@ -213,6 +202,7 @@ export function SearchInput({
                             animate="animate"
                             exit="exit"
                             transition={submitMorphTransition}
+                            className="hidden sm:inline"
                           >
                             {t("researchButton")}
                           </motion.span>
@@ -243,6 +233,7 @@ export function SearchInput({
                             animate="animate"
                             exit="exit"
                             transition={submitMorphTransition}
+                            className="hidden sm:inline"
                           >
                             {tc("search")}
                           </motion.span>
@@ -256,7 +247,10 @@ export function SearchInput({
           </div>
         </motion.div>
 
-        {/* Unified hint area - single AnimatePresence, same height to prevent layout shift */}
+        {/* Unified hint area - single AnimatePresence, same height to prevent layout shift. Left out for someone who has searched; it slides open for someone who hasn't. */}
+        <AutoHeight>
+        {hints && (
+        <div className="pt-6">
         <motion.div
           layout
           className="relative flex justify-center items-center h-11"
@@ -293,6 +287,9 @@ export function SearchInput({
             )}
           </AnimatePresence>
         </motion.div>
+        </div>
+        )}
+        </AutoHeight>
       </div>
     </LayoutGroup>
   );
