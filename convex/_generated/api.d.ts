@@ -336,6 +336,7 @@ import type * as migrations_recordApprovedQueries from "../migrations/recordAppr
 import type * as migrations_revokeDeletedOrganizationMemberships from "../migrations/revokeDeletedOrganizationMemberships.js";
 import type * as migrations_screeningOutcomes from "../migrations/screeningOutcomes.js";
 import type * as migrations_screeningSearch from "../migrations/screeningSearch.js";
+import type * as migrations_searchSuggestions from "../migrations/searchSuggestions.js";
 import type * as migrations_searchText from "../migrations/searchText.js";
 import type * as migrations_teamLists from "../migrations/teamLists.js";
 import type * as migrations_versionChangedSections from "../migrations/versionChangedSections.js";
@@ -788,6 +789,7 @@ declare const fullApi: ApiFromModules<{
   "migrations/revokeDeletedOrganizationMemberships": typeof migrations_revokeDeletedOrganizationMemberships;
   "migrations/screeningOutcomes": typeof migrations_screeningOutcomes;
   "migrations/screeningSearch": typeof migrations_screeningSearch;
+  "migrations/searchSuggestions": typeof migrations_searchSuggestions;
   "migrations/searchText": typeof migrations_searchText;
   "migrations/teamLists": typeof migrations_teamLists;
   "migrations/versionChangedSections": typeof migrations_versionChangedSections;

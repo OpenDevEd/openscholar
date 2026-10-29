@@ -21,14 +21,31 @@ const asked = (data: DataModel["searches"]["document"]["data"]) => {
   return search.latestQuestion || search.query;
 };
 
+/** Asks for a person's set in a workspace to be written `delay` from now: a later ask moves it. */
+async function askForRefresh(ctx: MutationCtx, workspaceId: Id<"workspaces">, userId: Id<"users">, delay: number, askedBy?: Id<"searches">) {
+  const dueAt = Date.now() + delay;
+  const row = await ctx.db.query("searchSuggestions").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).unique();
+  if (row) await ctx.db.patch("searchSuggestions", row._id, { dueAt, ...(askedBy && { askedBy }) });
+  else await ctx.db.insert("searchSuggestions", { workspaceId, userId, suggestions: [], dueAt, ...(askedBy && { askedBy }) });
+  await ctx.scheduler.runAt(dueAt, refresh, { workspaceId, userId, dueAt });
+}
+
 /** A new search, or a search asked something new, moves its maker's next refresh to a minute from now. */
 export async function refreshOnSearch(ctx: MutationCtx, change: Change<DataModel, "searches">) {
   if (!change.newDoc) return;
   if (change.oldDoc && asked(change.oldDoc.data) === asked(change.newDoc.data)) return;
-  const { workspaceId, createdBy: userId, _id: askedBy } = change.newDoc;
-  const dueAt = Date.now() + REFRESH_DELAY_MS;
-  const row = await ctx.db.query("searchSuggestions").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).unique();
-  if (row) await ctx.db.patch("searchSuggestions", row._id, { dueAt, askedBy });
-  else await ctx.db.insert("searchSuggestions", { workspaceId, userId, suggestions: [], dueAt, askedBy });
-  await ctx.scheduler.runAt(dueAt, refresh, { workspaceId, userId, dueAt });
+  await askForRefresh(ctx, change.newDoc.workspaceId, change.newDoc.createdBy, REFRESH_DELAY_MS, change.newDoc._id);
+}
+
+/** Spread of the backfill's refreshes, so its sets aren't all written at once. */
+export const BACKFILL_SPREAD_MS = 10 * 60_000;
+
+/**
+ * Asks for a set for the maker of a search saved before suggested searches existed, once per person
+ * and workspace: a person who has a set, or one already asked for, is left as they are.
+ */
+export async function backfillFrom(ctx: MutationCtx, search: DataModel["searches"]["document"]) {
+  const row = await ctx.db.query("searchSuggestions").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", search.workspaceId).eq("userId", search.createdBy)).unique();
+  if (row) return;
+  await askForRefresh(ctx, search.workspaceId, search.createdBy, Math.floor(Math.random() * BACKFILL_SPREAD_MS));
 }
