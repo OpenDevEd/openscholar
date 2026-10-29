@@ -6,7 +6,7 @@ import schema from "../schema";
 import { seedCreditsForTest, accountOf, grantPlanFeaturesForTest } from "../billing/billing.test-support";
 import { seedOrganizationFeatures } from "../organizationFeatures.test-support";
 import { personalWorkspaceOf } from "../workspaces/personal";
-import { REFRESH_DELAY_MS } from "./suggestionRefresh";
+import { BACKFILL_SPREAD_MS, REFRESH_DELAY_MS, backfillFrom } from "./suggestionRefresh";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -138,5 +138,28 @@ describe("suggested searches", () => {
     expect(await asAlice.query(api.research.suggestions.mine, { accountId: "alice", workspaceId: team })).toEqual({ suggestions: [{ question: "Which programmes work?", from: "q" }], refreshing: false });
     expect(await t.withIdentity({ subject: "bob" }).query(api.research.suggestions.mine, { accountId: "bob", workspaceId: team })).toBeNull();
     expect(await asAlice.query(api.research.suggestions.mine, { accountId: "alice", workspaceId: home })).toBeNull();
+  });
+
+  it("backfills one refresh per person and workspace for searches made before suggestions, once however often it runs", async () => {
+    const { t, search, team, home } = await setup();
+    const asBob = t.withIdentity({ subject: "bob" });
+    await search("one");
+    await search("two");
+    await search("three", team);
+    await asBob.mutation(api.research.searches.create, { query: "bob's", workspaceId: team });
+    // As if they were saved before suggested searches existed.
+    await t.run(async (ctx) => {
+      for (const row of await ctx.db.query("searchSuggestions").collect()) await ctx.db.delete("searchSuggestions", row._id);
+      for (const job of await ctx.db.system.query("_scheduled_functions").collect()) if (job.name.startsWith("research/suggestionsAction")) await ctx.scheduler.cancel(job._id);
+    });
+    const backfill = () => t.run(async (ctx) => { for (const row of await ctx.db.query("searches").collect()) await backfillFrom(ctx, row); });
+    const queued = () => t.run(async (ctx) => (await ctx.db.system.query("_scheduled_functions").collect()).filter((job) => job.name.startsWith("research/suggestionsAction") && job.state.kind === "pending"));
+    await backfill();
+    const rows = await t.run((ctx) => ctx.db.query("searchSuggestions").collect());
+    expect(rows.map((row) => row.workspaceId).sort()).toEqual([home, team, team].sort());
+    expect(rows.every((row) => row.dueAt! - Date.now() < BACKFILL_SPREAD_MS)).toBe(true);
+    expect(await queued()).toHaveLength(3);
+    await backfill();
+    expect(await queued()).toHaveLength(3);
   });
 });
