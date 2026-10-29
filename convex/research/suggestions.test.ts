@@ -89,12 +89,12 @@ describe("suggested searches", () => {
   });
 
   it("shows each person in a workspace only their own set, and none of it in another workspace", async () => {
-    const { t, asAlice, search, row, start, finish, team } = await setup();
+    const { t, asAlice, search, row, start, finish, team, home } = await setup();
     await search("teacher training", team);
     await start((await row(team))!.dueAt!, team);
     await finish("Which programmes work?", team);
     expect(await asAlice.query(api.research.suggestions.mine, { accountId: "alice", workspaceId: team })).toEqual({ suggestions: [{ question: "Which programmes work?", from: "q" }], refreshing: false });
     expect(await t.withIdentity({ subject: "bob" }).query(api.research.suggestions.mine, { accountId: "bob", workspaceId: team })).toBeNull();
-    expect(await asAlice.query(api.research.suggestions.mine, { accountId: "alice" })).toBeNull();
+    expect(await asAlice.query(api.research.suggestions.mine, { accountId: "alice", workspaceId: home })).toBeNull();
   });
 });
