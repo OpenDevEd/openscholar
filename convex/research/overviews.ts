@@ -96,10 +96,11 @@ function digest(text: string) {
   return `${half(1)}${half(2)}`;
 }
 
-/** The search the person reads on its results page, and its OpenAlex request; null for one OpenAlex can't count. */
+/** The search the person reads on its results page, and its OpenAlex request; null for one OpenAlex can't count or the workspace doesn't have. */
 async function searchFor(ctx: QueryCtx, actor: Pick<Acting, "workspaceId" | "userId">, searchId: string) {
   const row = await findSearch(ctx, actor.workspaceId, searchId);
-  if (!row) throw createError("NOT_FOUND", "Search not found");
+  // One the workspace doesn't have, such as a search shared with the person as a guest, has no overview here.
+  if (!row) return null;
   const { request } = await requestOf(ctx, actor, currentSearch(row.data), row.revision);
   // OpenAlex doesn't group a search written in OQL, and every overview counts.
   if (!request || request.oql) return null;
@@ -150,13 +151,15 @@ export const viewForAssistant = assistantQuery(viewAction);
 export const getAction = defineUserQuery({
   path: "research/overviews:get",
   description:
-    "The AI overview of a search through a lens, by the search's ID as its results page shows it and the lens's ID: its text, with charts as [chart:ID] lines drawing `counts` and papers cited as [words](paper:ID) from `lists`. `status` is running while it's written, then done or failed. Null when none has been written; `available` is false for a search OpenAlex can't count, written in OQL. research/overviews:ensure writes one.",
+    "The AI overview of a search through a lens, by the search's ID as its results page shows it and the lens's ID: its text, with charts as [chart:ID] lines drawing `counts` and papers cited as [words](paper:ID) from `lists`. `status` is running while it's written, then done or failed. Null when none has been written; `available` is false for a search OpenAlex can't count, written in OQL, or one this workspace doesn't have. research/overviews:ensure writes one.",
   args: { searchId: v.string(), lens: v.string() },
   returns: overviewShownValidator,
   run: async (ctx, actor, { searchId, lens }) => {
     const search = await searchFor(ctx, actor, searchId);
     if (!search) return { available: false, overview: null };
-    const stored = await storedOf(ctx, actor.workspaceId, search.key, (await lensFor(ctx, actor, lens)).key);
+    // A lens taken off the list in another tab is read until the page hears of it: nothing is written for it.
+    const found = await lensFor(ctx, actor, lens).catch(() => null);
+    const stored = found ? await storedOf(ctx, actor.workspaceId, search.key, found.key) : null;
     return {
       available: true,
       overview: stored ? { status: stored.status, ...(stored.step ? { step: stored.step } : {}), text: stored.text, counts: stored.counts, lists: stored.lists, paid: stored.paid, ...(stored.error ? { error: stored.error } : {}) } : null,
