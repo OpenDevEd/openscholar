@@ -16,16 +16,16 @@ export function HomeHero() {
     : { delay: 0.3, duration: 0.6 };
 
   return (
-    <div className="flex flex-col items-center text-center gap-6 mb-8 sm:mb-12 relative z-10 w-full max-w-4xl mx-auto px-4">
+    <div className="flex flex-col items-center text-center relative z-10 w-full max-w-4xl mx-auto px-4">
       {/* Main Title with inline Logo */}
       <div className="space-y-2">
-        <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-foreground flex items-baseline justify-center">
+        <h1 className="font-bold tracking-tight text-foreground flex items-baseline justify-center">
           <motion.span
             initial={shouldReduceMotion ? false : { y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={logoTransition}
           >
-            <Logo size="xl" clickable={false} context="home" />
+            <Logo size="lg" clickable={false} context="home" />
           </motion.span>
         </h1>
 
@@ -33,7 +33,7 @@ export function HomeHero() {
           initial={shouldReduceMotion ? false : { y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={taglineTransition}
-          className="text-base sm:text-lg md:text-xl text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed"
+          className="text-sm sm:text-base text-muted-foreground font-medium max-w-2xl mx-auto text-balance"
         >
           {t("tagline")}
         </motion.p>
