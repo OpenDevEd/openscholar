@@ -33,7 +33,7 @@ export function HomeHero() {
           initial={shouldReduceMotion ? false : { y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={taglineTransition}
-          className="text-sm sm:text-base text-muted-foreground font-medium max-w-2xl mx-auto"
+          className="text-sm sm:text-base text-muted-foreground font-medium max-w-2xl mx-auto text-balance"
         >
           {t("tagline")}
         </motion.p>

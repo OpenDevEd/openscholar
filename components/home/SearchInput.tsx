@@ -28,8 +28,6 @@ interface SearchInputProps {
   disabled: boolean;
   /** Shows the line under the box: the switch to research mode, or what research mode does. */
   hints: boolean;
-  /** Mock: the Keywords and Question switch sits in the box's bottom bar instead of above the box. */
-  toggleInBox?: boolean;
   className?: string;
 }
 
@@ -40,7 +38,6 @@ export function SearchInput({
   isEnhancing,
   disabled,
   hints,
-  toggleInBox = false,
   className,
 }: SearchInputProps) {
   const t = useTranslations("home");
@@ -108,23 +105,10 @@ export function SearchInput({
     <LayoutGroup id="home-search">
       <div
         className={cn(
-          "w-full max-w-2xl mx-auto space-y-6 relative z-10",
+          "w-full max-w-2xl mx-auto relative z-10",
           className,
         )}
       >
-        {/* Mode Toggle */}
-        {!toggleInBox && (
-          <div className="flex justify-center">
-            <ModeToggle
-              mode={effectiveMode}
-              onModeChange={handleModeChange}
-              disabled={disabled}
-            />
-          </div>
-        )}
-
-        {/* The box and its hint share the last place, so a hidden hint leaves no gap under the box. */}
-        <div>
         {/* Input Container */}
         <motion.div
           layout
@@ -160,30 +144,18 @@ export function SearchInput({
             </div>
 
             {/* Bottom Action Bar */}
-            <div className={cn("flex flex-wrap items-center p-3 gap-4", toggleInBox ? "justify-between" : "justify-end md:justify-between")}>
-              {toggleInBox ? (
-                <ModeToggle mode={effectiveMode} onModeChange={handleModeChange} disabled={disabled} />
-              ) : (
-              <div className="text-xs text-muted-foreground hidden md:flex flex-wrap items-center gap-2 shrink-0">
-                <span className="px-1.5 py-0.5 rounded-md bg-inset border border-border-subtle font-mono">
-                  {t("enterKey")}
-                </span>
-                {t("toSubmit")}
-                <span className="mx-1 opacity-20">|</span>
-                <span className="px-1.5 py-0.5 rounded-md bg-inset border border-border-subtle font-mono">
-                  {t("shiftEnterKey")}
-                </span>
-                {t("newLine")}
-              </div>
-              )}
+            <div className="flex items-center justify-between p-3 gap-3">
+              <ModeToggle mode={effectiveMode} onModeChange={handleModeChange} disabled={disabled} />
 
+              {/* On a phone it shows its icon alone, so it fits on the switch's row; the label stays its name. */}
               <Button
                 type="button"
                 onClick={handleSubmit}
                 disabled={disabled}
                 size="lg"
+                aria-label={isEnhancing ? tc("processing") : effectiveMode === "research" ? t("researchButton") : tc("search")}
                 className={cn(
-                  "rounded-xl px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2 overflow-hidden",
+                  "rounded-xl px-3.5 sm:px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2 overflow-hidden",
                   effectiveMode === "research"
                     ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
                     : "bg-foreground hover:bg-foreground/90 text-background",
@@ -192,7 +164,7 @@ export function SearchInput({
                 {isEnhancing ? (
                   <>
                     <AiIcon working className="h-4 w-4 shrink-0" />
-                    {tc("processing")}
+                    <span className="hidden sm:inline">{tc("processing")}</span>
                   </>
                 ) : (
                   <motion.div
@@ -230,6 +202,7 @@ export function SearchInput({
                             animate="animate"
                             exit="exit"
                             transition={submitMorphTransition}
+                            className="hidden sm:inline"
                           >
                             {t("researchButton")}
                           </motion.span>
@@ -260,6 +233,7 @@ export function SearchInput({
                             animate="animate"
                             exit="exit"
                             transition={submitMorphTransition}
+                            className="hidden sm:inline"
                           >
                             {tc("search")}
                           </motion.span>
@@ -316,7 +290,6 @@ export function SearchInput({
         </div>
         )}
         </AutoHeight>
-        </div>
       </div>
     </LayoutGroup>
   );

@@ -3,7 +3,6 @@
 
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import dynamic from "next/dynamic";
-import { useSearchParams } from "next/navigation";
 import { useUIStore, useCurrentQueryStore } from "@/lib/store";
 import { useAppToast } from "@/lib/toast";
 import { useQueryChangeHandler, useCreateSearchFilters } from "@/lib/hooks";
@@ -59,8 +58,6 @@ function PageContent() {
 
   const createSearchFilters = useCreateSearchFilters();
   const mySearches = useMySearches();
-  // Mock: ?hero=inline puts the mode switch in the box; anything else keeps it above.
-  const hero = useSearchParams().get("hero");
 
   const handleSearchSubmit = async (e: React.FormEvent | undefined, mode: SearchMode, text = currentQuery) => {
     // If the event comes from a form submission, prevent default
@@ -138,7 +135,6 @@ function PageContent() {
             disabled={isFormDisabled}
             // Only someone who hasn't searched yet needs telling about research mode.
             hints={mySearches?.length === 0}
-            toggleInBox={hero === "inline"}
             className="w-full"
           />
           <AutoHeight>
