@@ -548,7 +548,7 @@ export function ResultsList({
           />
         </div>
 
-        {!preview && searchId && results.length > 0 ? <AiOverview searchId={searchId} /> : null}
+        {!preview && searchId && results.length > 0 ? <AiOverview searchId={searchId} total={totalCount} /> : null}
 
         {/* Inline alert for batch-screening errors. Sits above the
             results area so the user sees it whether the screening panel
