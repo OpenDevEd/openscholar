@@ -199,11 +199,11 @@ export const ensureAction = defineUserMutation({
     if (!pick) throw createError("VALIDATION_ERROR", "No model writes overviews right now. Try again later.");
     await ctx.db.patch("overviewPrefs", prefs._id, { day, ...(free ? { free: counts.free + 1, paid: counts.paid } : { free: counts.free, paid: counts.paid + 1 }) });
     const startedAt = Date.now();
-    const fields = { askedBy: actor.userId, paid: !free, status: "running" as const, startedAt, text: "", counts: [], lists: [] };
+    const fields = { askedBy: actor.userId, paid: !free, day, status: "running" as const, startedAt, text: "", counts: [], lists: [] };
     let overviewId = stored?._id;
     if (overviewId) await ctx.db.patch("searchOverviews", overviewId, { ...fields, step: undefined, error: undefined });
     else overviewId = await ctx.db.insert("searchOverviews", { workspaceId: actor.workspaceId, request: search.key, lens: lens.key, ...fields });
-    await ctx.scheduler.runAfter(0, internal.research.overviewsAction.run, { overviewId, request: search.request, instruction: lens.instruction, modelId: pick.modelId, ...(pick.effort ? { effort: pick.effort } : {}) });
+    await ctx.scheduler.runAfter(0, internal.research.overviewsAction.run, { overviewId, startedAt, request: search.request, instruction: lens.instruction, modelId: pick.modelId, ...(pick.effort ? { effort: pick.effort } : {}) });
     await ctx.scheduler.runAfter(RUN_MS, internal.research.overviews.expire, { overviewId, startedAt });
     return "started";
   },
@@ -268,7 +268,9 @@ export const removeLensAction = defineUserMutation({
       await ctx.db.patch("overviewShared", sharedRow._id, { lenses: sharedRow.lenses.filter((lens) => lens.id !== id) });
       await ctx.db.patch("overviewPrefs", prefs._id, open);
     } else if (BUILT_IN.has(id) || sharedRow?.lenses.some((lens) => lens.id === id)) {
-      await ctx.db.patch("overviewPrefs", prefs._id, { hidden: [...new Set([...prefs.hidden, id])], ...open });
+      // Only lenses that still exist stay hidden, so shared lenses that come and go never fill the list.
+      const exists = new Set([...BUILT_IN.keys(), ...(sharedRow?.lenses ?? []).map((lens) => lens.id)]);
+      await ctx.db.patch("overviewPrefs", prefs._id, { hidden: [...new Set([...prefs.hidden.filter((one) => exists.has(one)), id])], ...open });
     } else throw createError("NOT_FOUND", "That lens isn't on your list.");
     return null;
   },
@@ -294,25 +296,34 @@ export const setViewAction = defineUserMutation({
 export const setView = accountMutation(setViewAction);
 export const setViewForAssistant = assistantMutation(setViewAction);
 
-/** What the run reads to write an overview, while it's still running: who asked, in which workspace, and whether they pay. */
+/**
+ * The row, while the run that started at `startedAt` is the one writing it: Write again, or a retry after a run timed
+ * out, starts a newer run on the same row, and the older one's writes are dropped.
+ */
+async function runningRow(ctx: MutationCtx, overviewId: Id<"searchOverviews">, startedAt: number) {
+  const row = await ctx.db.get("searchOverviews", overviewId);
+  return row?.status === "running" && row.startedAt === startedAt ? row : null;
+}
+
+/** What the run reads to write an overview, while it's still the one running: who asked, in which workspace, and whether they pay. */
 export const startRun = internalMutation({
-  args: { overviewId: v.id("searchOverviews") },
+  args: { overviewId: v.id("searchOverviews"), startedAt: v.number() },
   returns: v.union(v.null(), v.object({ userId: v.id("users"), workspaceId: v.id("workspaces"), clerkId: v.string(), paid: v.boolean() })),
-  handler: async (ctx, { overviewId }) => {
-    const row = await ctx.db.get("searchOverviews", overviewId);
+  handler: async (ctx, { overviewId, startedAt }) => {
+    const row = await runningRow(ctx, overviewId, startedAt);
     const user = row ? await ctx.db.get("users", row.askedBy) : null;
-    if (row?.status !== "running" || !user) return null;
+    if (!row || !user) return null;
     return { userId: row.askedBy, workspaceId: row.workspaceId, clerkId: user.clerkId, paid: row.paid };
   },
 });
 
 /** What the run has done so far, while it's still running: its step, its whole lines, and a count or a list it read. */
 export const progress = internalMutation({
-  args: { overviewId: v.id("searchOverviews"), step: v.optional(v.string()), text: v.optional(v.string()), count: v.optional(overviewCountValidator), list: v.optional(overviewListValidator) },
+  args: { overviewId: v.id("searchOverviews"), startedAt: v.number(), step: v.optional(v.string()), text: v.optional(v.string()), count: v.optional(overviewCountValidator), list: v.optional(overviewListValidator) },
   returns: v.null(),
-  handler: async (ctx, { overviewId, step, text, count, list }) => {
-    const row = await ctx.db.get("searchOverviews", overviewId);
-    if (row?.status !== "running") return null;
+  handler: async (ctx, { overviewId, startedAt, step, text, count, list }) => {
+    const row = await runningRow(ctx, overviewId, startedAt);
+    if (!row) return null;
     await ctx.db.patch("searchOverviews", overviewId, {
       ...(step !== undefined ? { step: step.slice(0, 60) } : {}),
       ...(text !== undefined ? { text: text.slice(0, TEXT_MAX) } : {}),
@@ -323,26 +334,27 @@ export const progress = internalMutation({
   },
 });
 
-/** Ends a run with its text, or with what failed; one that failed gives the person back the overview it counted. */
-async function finish(ctx: MutationCtx, overviewId: Id<"searchOverviews">, { text, error }: { text?: string; error?: Infer<typeof overviewErrorValidator> }) {
-  const row = await ctx.db.get("searchOverviews", overviewId);
-  if (row?.status !== "running") return;
+/**
+ * Ends the run that started at `startedAt` with its text, or with what failed, and says whether it was still the one
+ * running. One that failed gives back the overview it counted, on the day it counted it.
+ */
+async function finish(ctx: MutationCtx, overviewId: Id<"searchOverviews">, startedAt: number, { text, error }: { text?: string; error?: Infer<typeof overviewErrorValidator> }) {
+  const row = await runningRow(ctx, overviewId, startedAt);
+  if (!row) return false;
   if (error === undefined) {
     await ctx.db.patch("searchOverviews", overviewId, { status: "done", step: undefined, text: (text ?? row.text).slice(0, TEXT_MAX) });
-    return;
+    return true;
   }
   await ctx.db.patch("searchOverviews", overviewId, { status: "failed", step: undefined, error });
   const prefs = await prefsOf(ctx, row.workspaceId, row.askedBy);
-  if (prefs?.day === today()) await ctx.db.patch("overviewPrefs", prefs._id, row.paid ? { paid: Math.max(0, (prefs.paid ?? 1) - 1) } : { free: Math.max(0, (prefs.free ?? 1) - 1) });
+  if (prefs && prefs.day === row.day) await ctx.db.patch("overviewPrefs", prefs._id, row.paid ? { paid: Math.max(0, (prefs.paid ?? 1) - 1) } : { free: Math.max(0, (prefs.free ?? 1) - 1) });
+  return true;
 }
 
 export const finishRun = internalMutation({
-  args: { overviewId: v.id("searchOverviews"), text: v.optional(v.string()), error: v.optional(overviewErrorValidator) },
-  returns: v.null(),
-  handler: async (ctx, { overviewId, ...end }) => {
-    await finish(ctx, overviewId, end);
-    return null;
-  },
+  args: { overviewId: v.id("searchOverviews"), startedAt: v.number(), text: v.optional(v.string()), error: v.optional(overviewErrorValidator) },
+  returns: v.boolean(),
+  handler: async (ctx, { overviewId, startedAt, ...end }) => finish(ctx, overviewId, startedAt, end),
 });
 
 /** A run still going RUN_MS after it started has died without saying so: it's ended as failed. A newer run on the row is left alone. */
@@ -350,10 +362,9 @@ export const expire = internalMutation({
   args: { overviewId: v.id("searchOverviews"), startedAt: v.number() },
   returns: v.null(),
   handler: async (ctx, { overviewId, startedAt }) => {
-    const row = await ctx.db.get("searchOverviews", overviewId);
-    if (row?.status === "running" && row.startedAt === startedAt) await finish(ctx, overviewId, { error: "timeout" });
+    await finish(ctx, overviewId, startedAt, { error: "timeout" });
     return null;
   },
 });
 
-export const runArgs = { overviewId: v.id("searchOverviews"), request: searchRequestValidator, instruction: v.string(), modelId: v.id("models"), effort: v.optional(effortValidator) };
+export const runArgs = { overviewId: v.id("searchOverviews"), startedAt: v.number(), request: searchRequestValidator, instruction: v.string(), modelId: v.id("models"), effort: v.optional(effortValidator) };

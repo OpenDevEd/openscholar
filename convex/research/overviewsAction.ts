@@ -53,15 +53,15 @@ const abstractOf = (index: Work["abstract_inverted_index"]) => {
 export const run = internalAction({
   args: runArgs,
   returns: v.null(),
-  handler: async (ctx, { overviewId, request, instruction, modelId, effort }) => {
-    const start = await ctx.runMutation(internal.research.overviews.startRun, { overviewId });
+  handler: async (ctx, { overviewId, startedAt, request, instruction, modelId, effort }) => {
+    const start = await ctx.runMutation(internal.research.overviews.startRun, { overviewId, startedAt });
     if (!start) return null;
     const { userId, workspaceId, paid } = start;
     const chargeId = `overview:${overviewId}:${Date.now()}`;
     const began = Date.now();
     let held = false;
     let settled = false;
-    const progress = (update: { step?: string; text?: string; count?: object; list?: object }) => ctx.runMutation(internal.research.overviews.progress, { overviewId, ...update } as never);
+    const progress = (update: { step?: string; text?: string; count?: object; list?: object }) => ctx.runMutation(internal.research.overviews.progress, { overviewId, startedAt, ...update } as never);
     try {
       const { model, modelSlug, pricing } = await resolveOpenRouterModel(ctx, modelId);
       if (paid) {
@@ -133,20 +133,24 @@ export const run = internalAction({
           console.error(JSON.stringify({ event: "search-overview-tool-failed", overviewId, tool: part.toolName, error: String(part.error) }));
         } else if (part.type === "error") throw part.error;
       }
+      // An overview read nothing of the search when every count and paper read failed (OpenAlex refused, say): what the
+      // model wrote then rests on nothing, so it isn't kept or charged, and the person gets the overview back.
+      if (!text.trim() || counts + lists === 0) throw new Error(`Nothing read or written: ${counts} counts, ${lists} lists, ${text.length} characters`);
       const usage = usageOf({ usage: await result.totalUsage });
       // On our own provider key OpenRouter reports what it charges, nothing, not what the call cost: then it's the tokens at the model's price.
       if (!usd) usd = calculateCostInDollars({ inputTokens: usage.inputTokens, outputTokens: usage.outputTokens }, pricing);
       const credits = paid ? convertUsdToCredits({ usd }) || 1 : 0;
-      if (paid) {
+      // Charged only when this run is still the one writing the overview: one a newer run replaced is released instead.
+      const kept = await ctx.runMutation(internal.research.overviews.finishRun, { overviewId, startedAt, text: text.trim() });
+      if (paid && kept) {
         await settleCredits(ctx, { userId, workspaceId, chargeId, credits, usage: { kind: "search", description: "AI overview", model: modelSlug, ...tokenDetails(usage), costUsd: usd } });
         settled = true;
       }
-      await ctx.runMutation(internal.research.overviews.finishRun, { overviewId, text: text.trim() });
       console.log(JSON.stringify({ event: "search-overview", overviewId, workspaceId, userId, model: modelSlug, effort: effort ?? null, paid, credits, usd, counts, lists, chars: text.length, ms: Date.now() - began, usage }));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(JSON.stringify({ event: "search-overview-failed", overviewId, workspaceId, userId, paid, ms: Date.now() - began, error: error instanceof Error ? `${error.name}: ${message}` : message }));
-      await ctx.runMutation(internal.research.overviews.finishRun, { overviewId, error: held || !paid ? "failed" : "credits" });
+      await ctx.runMutation(internal.research.overviews.finishRun, { overviewId, startedAt, error: held || !paid ? "failed" : "credits" });
     } finally {
       if (held && !settled) await releaseCredits(ctx, { chargeId }).catch(() => {});
     }

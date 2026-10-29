@@ -88,7 +88,7 @@ describe("AI overviews of a search", () => {
     const id = await search("teacher training");
     await ensure(id);
     const [row] = await stored();
-    await t.mutation(internal.research.overviews.finishRun, { overviewId: row._id, text: "Written." });
+    await t.mutation(internal.research.overviews.finishRun, { overviewId: row._id, startedAt: row.startedAt, text: "Written." });
     // Another search asking the same of OpenAlex reads the same overview.
     expect(await ensure(await search("teacher training"))).toBe("written");
     expect(await ensure(id, { again: true })).toBe("started");
@@ -101,7 +101,7 @@ describe("AI overviews of a search", () => {
     const id = await search("teacher training");
     await ensure(id);
     const [row] = await stored();
-    await t.mutation(internal.research.overviews.finishRun, { overviewId: row._id, error: "failed" });
+    await t.mutation(internal.research.overviews.finishRun, { overviewId: row._id, startedAt: row.startedAt, error: "failed" });
     expect(await view()).toMatchObject({ free: 0 });
     // Tried again, it starts: the day's free one wasn't spent.
     expect(await ensure(id)).toBe("started");
@@ -111,6 +111,27 @@ describe("AI overviews of a search", () => {
     expect((await stored())[0].status).toBe("running");
     await t.mutation(internal.research.overviews.expire, { overviewId: running._id, startedAt: running.startedAt });
     expect((await stored())[0]).toMatchObject({ status: "failed", error: "timeout" });
+  });
+
+  it("drops what a run a newer one replaced writes, and gives a failed run's overview back only on the day it was counted", async () => {
+    const { t, search, ensure, view, stored, setPerDay } = await setup();
+    await setPerDay(5);
+    const id = await search("teacher training");
+    await ensure(id);
+    const [first] = await stored();
+    vi.advanceTimersByTime(1_000);
+    // Write again starts a newer run on the same row: the older one's text and end are dropped.
+    await t.mutation(internal.research.overviews.finishRun, { overviewId: first._id, startedAt: first.startedAt, text: "First." });
+    expect(await ensure(id, { again: true })).toBe("started");
+    const [second] = await stored();
+    await t.mutation(internal.research.overviews.progress, { overviewId: first._id, startedAt: first.startedAt, text: "Stale line.\n" });
+    expect(await t.mutation(internal.research.overviews.finishRun, { overviewId: first._id, startedAt: first.startedAt, text: "Stale." })).toBe(false);
+    expect((await stored())[0]).toMatchObject({ status: "running", text: "" });
+    // The newer run, failing after midnight, leaves the new day's count alone.
+    vi.setSystemTime(new Date("2026-10-30T00:00:05Z"));
+    await ensure(await search("school meals"));
+    await t.mutation(internal.research.overviews.finishRun, { overviewId: second._id, startedAt: second.startedAt, error: "failed" });
+    expect(await view()).toMatchObject({ day: "2026-10-30", free: 1 });
   });
 
   it("keeps a person's lenses theirs, shares one with the workspace, and lets others hide but not change it", async () => {
@@ -127,6 +148,12 @@ describe("AI overviews of a search", () => {
     expect((await view("bob", team)).lenses.map((lens) => lens.id)).not.toContain(shared);
     expect((await view("alice", team)).lenses.map((lens) => lens.id)).toContain(shared);
     await expect(as("bob").mutation(api.research.overviews.removeLens, { ...scope("bob", team), id: "overview" })).rejects.toThrow();
+    // Hidden lenses that no longer exist are forgotten, so shared lenses that come and go never fill the list.
+    for (let n = 0; n < 30; n++) {
+      const churn = await as("alice").mutation(api.research.overviews.saveLens, { ...scope("alice", team), name: `Churn ${n}`, instruction: "Anything.", shared: true });
+      await as("bob").mutation(api.research.overviews.removeLens, { ...scope("bob", team), id: churn });
+      await as("alice").mutation(api.research.overviews.removeLens, { ...scope("alice", team), id: churn });
+    }
     // Edited, its version moves on, so an overview written for the old words isn't shown for the new ones.
     await as("alice").mutation(api.research.overviews.saveLens, { ...scope("alice", team), id: shared, name: "Methods", instruction: "Which study designs, and how large.", shared: true });
     expect((await view("alice", team)).lenses.find((lens) => lens.id === shared)).toMatchObject({ version: 2, instruction: "Which study designs, and how large." });

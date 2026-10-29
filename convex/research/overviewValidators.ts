@@ -91,6 +91,8 @@ export const searchOverviewFields = {
   askedBy: v.id("users"),
   /** Paid with credits rather than free. */
   paid: v.boolean(),
+  /** The day, in UTC, it was counted against: a failed run gives it back only on that day's count. */
+  day: v.string(),
   status: overviewStatusValidator,
   /** When the run writing it started: a run that dies never says it ended, so it's ended this long after. */
   startedAt: v.number(),
