@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { AmbientBackground } from "@/components/home/AmbientBackground";
 import { HomeHero } from "@/components/home/HomeHero";
 import { SearchInput } from "@/components/home/SearchInput";
+import { SuggestedSearches } from "@/components/home/SuggestedSearches";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { SearchMode } from "@/components/home/ModeToggle";
 import { detectSearchMode } from "@/lib/search/detect-mode";
 
@@ -56,24 +58,22 @@ function PageContent() {
 
   const createSearchFilters = useCreateSearchFilters();
 
-  const handleSearchSubmit = async (e: React.FormEvent, mode: SearchMode) => {
+  const handleSearchSubmit = async (e: React.FormEvent | undefined, mode: SearchMode, text = currentQuery) => {
     // If the event comes from a form submission, prevent default
-    if (e && e.preventDefault) {
-      e.preventDefault();
-    }
+    e?.preventDefault();
     if (leaving) return;
 
     setLoadingResultIndex(null);
 
-    let searchQuery = currentQuery;
-    let originalQuery = currentQuery;
+    let searchQuery = text;
+    let originalQuery = text;
 
     // Check if we need to do AI enhancement (Research Mode)
     // Research mode is triggered if manually selected OR if query is detected as a question.
     // A blank submission has no question to convert, so it lists every work.
     const isResearchMode =
-      currentQuery.trim() !== "" &&
-      (mode === "research" || detectSearchMode(currentQuery, locale) === "research");
+      text.trim() !== "" &&
+      (mode === "research" || detectSearchMode(text, locale) === "research");
 
     if (isResearchMode) {
       try {
@@ -125,14 +125,26 @@ function PageContent() {
       <div className="w-full max-w-4xl flex flex-col items-center gap-6 sm:gap-8 relative z-10">
         <HomeHero />
 
-        <SearchInput
-          query={currentQuery}
-          onQueryChange={setCurrentQuery}
-          onSubmit={handleSearchSubmit}
-          isEnhancing={isEnhancingQuestion}
-          disabled={isFormDisabled}
-          className="w-full max-w-2xl"
-        />
+        <div className="w-full max-w-2xl">
+          <SearchInput
+            query={currentQuery}
+            onQueryChange={setCurrentQuery}
+            onSubmit={handleSearchSubmit}
+            isEnhancing={isEnhancingQuestion}
+            disabled={isFormDisabled}
+            className="w-full"
+          />
+          <AutoHeight>
+            <SuggestedSearches
+              working={isEnhancingQuestion}
+              disabled={isFormDisabled || leaving}
+              onPick={(question) => {
+                setCurrentQuery(question);
+                void handleSearchSubmit(undefined, "research", question);
+              }}
+            />
+          </AutoHeight>
+        </div>
       </div>
     </div>
   );
