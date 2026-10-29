@@ -43,6 +43,7 @@ import { usePhoneView } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
 import { useBatchTranslation } from "@/hooks/use-batch-translation";
 import { ScreeningErrorAlert } from "@/components/screening/screening-error-alert";
+import { AiOverview } from "@/components/ai-overview/overview-card";
 
 interface PapersListProps {
   results: PaperResult[];
@@ -537,6 +538,8 @@ export function ResultsList({
             queryOnly={preview}
           />
         </div>
+
+        {!preview && results.length > 0 ? <AiOverview /> : null}
 
         {/* Inline alert for batch-screening errors. Sits above the
             results area so the user sees it whether the screening panel
