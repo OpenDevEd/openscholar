@@ -96,14 +96,17 @@ function digest(text: string) {
   return `${half(1)}${half(2)}`;
 }
 
-/** The search the person reads on its results page, and its OpenAlex request; null for one OpenAlex can't count or the workspace doesn't have. */
+/**
+ * The search the person reads on its results page, and its OpenAlex request, or why it has no overview: the workspace
+ * doesn't have it (a search shared with the person as a guest), it's written in OQL, which OpenAlex doesn't group, or
+ * its results are filtered by the person's ratings, which OpenAlex can't count.
+ */
 async function searchFor(ctx: QueryCtx, actor: Pick<Acting, "workspaceId" | "userId">, searchId: string) {
   const row = await findSearch(ctx, actor.workspaceId, searchId);
-  // One the workspace doesn't have, such as a search shared with the person as a guest, has no overview here.
-  if (!row) return null;
-  const { request } = await requestOf(ctx, actor, currentSearch(row.data), row.revision);
-  // OpenAlex doesn't group a search written in OQL, and every overview counts.
-  if (!request || request.oql) return null;
+  if (!row) return { reason: "missing" as const };
+  const { request, ratingRange } = await requestOf(ctx, actor, currentSearch(row.data), row.revision);
+  if (!request || request.oql) return { reason: "oql" as const };
+  if (ratingRange) return { reason: "ratings" as const };
   return { request, key: digest(JSON.stringify([request.search ?? "", request.filter ?? ""])) };
 }
 
@@ -151,12 +154,12 @@ export const viewForAssistant = assistantQuery(viewAction);
 export const getAction = defineUserQuery({
   path: "research/overviews:get",
   description:
-    "The AI overview of a search through a lens, by the search's ID as its results page shows it and the lens's ID: its text, with charts as [chart:ID] lines drawing `counts` and papers cited as [words](paper:ID) from `lists`. `status` is running while it's written, then done or failed. Null when none has been written; `available` is false for a search OpenAlex can't count, written in OQL, or one this workspace doesn't have. research/overviews:ensure writes one.",
+    "The AI overview of a search through a lens, by the search's ID as its results page shows it and the lens's ID: its text, with charts as [chart:ID] lines drawing `counts` and papers cited as [words](paper:ID) from `lists`. `status` is running while it's written, then done or failed. Null when none has been written; `available` is false, with its `reason`, for a search this workspace doesn't have, one written in OQL, or one filtered by the person's ratings. research/overviews:ensure writes one.",
   args: { searchId: v.string(), lens: v.string() },
   returns: overviewShownValidator,
   run: async (ctx, actor, { searchId, lens }) => {
     const search = await searchFor(ctx, actor, searchId);
-    if (!search) return { available: false, overview: null };
+    if ("reason" in search) return { available: false, reason: search.reason, overview: null };
     // A lens taken off the list in another tab is read until the page hears of it: nothing is written for it.
     const found = await lensFor(ctx, actor, lens).catch(() => null);
     const stored = found ? await storedOf(ctx, actor.workspaceId, search.key, found.key) : null;
@@ -174,7 +177,7 @@ const ensured = v.union(v.literal("written"), v.literal("writing"), v.literal("s
 export const ensureAction = defineUserMutation({
   path: "research/overviews:ensure",
   description:
-    "Has the AI overview of a search through a lens written, if it isn't yet: `written` or `writing` when it is, `started` when this starts it. Free while the plan's overviews a day last; past them, or on a plan without them, it's `ask` unless `pay` is true, which pays for it in credits, up to 20 a day (`limit` past that). `again` writes it anew, as Write again does. `unavailable` for a search written in OQL. Read it with research/overviews:get.",
+    "Has the AI overview of a search through a lens written, if it isn't yet: `written` or `writing` when it is, `started` when this starts it. Free while the plan's overviews a day last; past them, or on a plan without them, it's `ask` unless `pay` is true, which pays for it in credits, up to 20 a day (`limit` past that). `again` writes it anew, as Write again does. `unavailable` for a search written in OQL or filtered by the person's ratings. Read it with research/overviews:get.",
   args: { searchId: v.string(), lens: v.string(), pay: v.optional(v.boolean()), again: v.optional(v.boolean()) },
   returns: ensured,
   spendsCredits: true,
@@ -183,7 +186,7 @@ export const ensureAction = defineUserMutation({
   estimate: async (ctx, _actor, { pay }) => (pay ? ((await paidCredits(ctx)) ?? 0) : 0),
   run: async (ctx, actor, { searchId, lens: lensId, pay, again }): Promise<Infer<typeof ensured>> => {
     const search = await searchFor(ctx, actor, searchId);
-    if (!search) return "unavailable";
+    if ("reason" in search) return "unavailable";
     const lens = await lensFor(ctx, actor, lensId);
     const stored = await storedOf(ctx, actor.workspaceId, search.key, lens.key);
     if (stored?.status === "running") return "writing";

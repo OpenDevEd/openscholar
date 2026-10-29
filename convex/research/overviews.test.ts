@@ -159,6 +159,14 @@ describe("AI overviews of a search", () => {
     expect((await view("alice", team)).lenses.find((lens) => lens.id === shared)).toMatchObject({ version: 2, instruction: "Which study designs, and how large." });
   });
 
+  it("writes none for a search filtered by the person's ratings, which OpenAlex can't count", async () => {
+    const { as, scope, ensure, stored, home } = await setup();
+    const { id } = await as("alice").mutation(api.research.searches.create, { query: "teacher training", workspaceId: home, ratedOnly: true });
+    expect(await ensure(id)).toBe("unavailable");
+    expect(await as("alice").query(api.research.overviews.get, { ...scope("alice", home), searchId: id, lens: "overview" })).toEqual({ available: false, reason: "ratings", overview: null });
+    expect(await stored()).toHaveLength(0);
+  });
+
   it("keeps folded and the open lens per person, and refuses a lens that isn't on their list", async () => {
     const { as, scope, view, home } = await setup();
     await as("alice").mutation(api.research.overviews.setView, { ...scope("alice", home), open: "trend", collapsed: true });

@@ -4861,7 +4861,10 @@
       "timeout": "L'aperçu a pris trop de temps."
     },
     "tryAgain": "Réessayer",
-    "unavailable": "Une recherche écrite en OQL ne peut pas être comptée, elle n'a donc pas d'aperçu.",
+    "unavailable": {
+      "oql": "Une recherche écrite en OQL ne peut pas être comptée, elle n'a donc pas d'aperçu.",
+      "ratings": "Un aperçu lit toute la recherche, il n'est donc pas rédigé tant que les résultats sont filtrés par vos notes."
+    },
     "dialog": {
       "newTitle": "Nouvel angle",
       "editTitle": "Modifier l'angle",

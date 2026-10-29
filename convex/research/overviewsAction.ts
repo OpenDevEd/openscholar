@@ -98,7 +98,9 @@ export const run = internalAction({
             inputSchema: z.object({ sort: z.enum(["cited", "newest", "relevance"]), count: z.number().int().min(1).max(PAPERS_KEPT), years }),
             execute: async ({ sort, count, years: span }) => {
               await progress({ step: `papers:${sort}` });
-              const sorted = sort === "relevance" ? within(request, span) : { ...within(request, span), sort: SORTS[sort] };
+              // The closest matches are by relevance, whatever the results page is sorted by; a search with no words has none.
+              const text = Boolean(request.search) || /\.search(\.exact)?:/.test(request.filter ?? "");
+              const sorted = { ...within(request, span), sort: sort === "relevance" ? (text ? "relevance_score:desc" : SORTS.cited) : SORTS[sort] };
               const works = await readSearchWorks<Work>(sorted, { first: 1, last: count, select: "id,display_name,publication_year,cited_by_count,abstract_inverted_index" }, spend);
               const papers = works.map((work) => ({ id: work.id.split("/").at(-1)!, title: work.display_name ?? "", ...(work.publication_year ? { year: work.publication_year } : {}), cited: work.cited_by_count ?? 0 }));
               const id = `p${++lists}`;

@@ -100,6 +100,8 @@ function Card({ scope, view, searchId }: { scope: Scope; view: View; searchId: s
 
   const { data: shown } = useProtectedQuery(api.research.overviews.get, view.collapsed ? "skip" : { ...scope, searchId, lens: lens.id });
   const overview = shown?.available ? shown.overview : null;
+  // A search the workspace doesn't have, such as one shared with the person as a guest, has no overview here.
+  const missing = shown?.reason === "missing";
   // Free, an overview nothing has written is started as the card shows it.
   const { error: startError } = useSWRSubscription(shown?.available && !overview && free ? (["ai-overview", scope, searchId, lens.id] as [string, Scope, string, string]) : null, subscribeEnsure(convex));
   const working = Boolean(shown?.available && ((!overview && free && !startError) || overview?.status === "running"));
@@ -124,6 +126,7 @@ function Card({ scope, view, searchId }: { scope: Scope; view: View; searchId: s
     }
   };
 
+  if (missing) return null;
   return (
     <section aria-label={t("label")} className="mb-6 rounded-2xl border border-border-subtle bg-card shadow-surface">
       <header className="flex items-center gap-2 pt-3 pr-3 pb-2.5 pl-4">
@@ -190,7 +193,7 @@ function Card({ scope, view, searchId }: { scope: Scope; view: View; searchId: s
         {view.collapsed || (!shown && !showing) ? null : (
           <div className="px-4 pb-4">
             {shown && !shown.available ? (
-              <p className="text-sm text-muted-foreground">{t("unavailable")}</p>
+              <p className="text-sm text-muted-foreground">{t(shown.reason === "ratings" ? "unavailable.ratings" : "unavailable.oql")}</p>
             ) : overview?.status === "failed" ? (
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                 <span className="flex-1">{t(`failed.${overview.error ?? "failed"}`)}</span>

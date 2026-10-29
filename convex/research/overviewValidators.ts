@@ -135,6 +135,8 @@ export const overviewViewValidator = v.object({
 });
 export const overviewShownValidator = v.object({
   available: v.boolean(),
+  /** Why it has none: the workspace doesn't have the search, it's written in OQL, or it's filtered by the person's ratings. */
+  reason: v.optional(v.union(v.literal("missing"), v.literal("oql"), v.literal("ratings"))),
   overview: v.union(
     v.null(),
     v.object({

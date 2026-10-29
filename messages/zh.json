@@ -4861,7 +4861,10 @@
       "timeout": "概览耗时过长。"
     },
     "tryAgain": "重试",
-    "unavailable": "用 OQL 写的检索无法统计，因此没有概览。",
+    "unavailable": {
+      "oql": "用 OQL 写的检索无法统计，因此没有概览。",
+      "ratings": "概览会阅读整个检索，因此在按你的评分筛选结果时不会撰写。"
+    },
     "dialog": {
       "newTitle": "新视角",
       "editTitle": "编辑视角",

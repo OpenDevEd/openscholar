@@ -4861,7 +4861,10 @@
       "timeout": "The overview took too long."
     },
     "tryAgain": "Try again",
-    "unavailable": "A search written in OQL can't be counted, so it has no overview.",
+    "unavailable": {
+      "oql": "A search written in OQL can't be counted, so it has no overview.",
+      "ratings": "An overview reads the whole search, so none is written while the results are filtered by your ratings."
+    },
     "dialog": {
       "newTitle": "New lens",
       "editTitle": "Edit lens",
