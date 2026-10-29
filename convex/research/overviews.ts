@@ -22,6 +22,7 @@ import { searchRequestValidator } from "../paperSets/openalex";
 import { currentSearch } from "../../lib/research/records";
 import { CALL_TOKENS, estimateCredits } from "../../lib/pricing/estimate";
 import { findSearch } from "./records";
+import { defaultLocale, locales } from "../../i18n/config";
 import {
   BUILT_IN_LENSES,
   COUNTS_KEPT,
@@ -110,6 +111,11 @@ async function searchFor(ctx: QueryCtx, actor: Pick<Acting, "workspaceId" | "use
   return { request, key: digest(JSON.stringify([request.search ?? "", request.filter ?? ""])) };
 }
 
+/** The languages the app speaks, which an overview is written in: the page's. */
+const localeValidator = v.union(...locales.map((locale) => v.literal(locale)));
+/** The key an overview is stored by: its lens, and the language it's written in. One in American English keeps the bare lens key. */
+const inLanguage = (lens: string, locale: string | undefined) => (!locale || locale === defaultLocale ? lens : `${lens}~${locale}`);
+
 const storedOf = (ctx: QueryCtx, workspaceId: Id<"workspaces">, request: string, lens: string) =>
   ctx.db.query("searchOverviews").withIndex("by_workspace_and_request_and_lens", (q) => q.eq("workspaceId", workspaceId).eq("request", request).eq("lens", lens)).unique();
 
@@ -154,15 +160,15 @@ export const viewForAssistant = assistantQuery(viewAction);
 export const getAction = defineUserQuery({
   path: "research/overviews:get",
   description:
-    "The AI overview of a search through a lens, by the search's ID as its results page shows it and the lens's ID: its text, with charts as [chart:ID] lines drawing `counts` and papers cited as [words](paper:ID) from `lists`. `status` is running while it's written, then done or failed. Null when none has been written; `available` is false, with its `reason`, for a search this workspace doesn't have, one written in OQL, or one filtered by the person's ratings. research/overviews:ensure writes one.",
-  args: { searchId: v.string(), lens: v.string() },
+    "The AI overview of a search through a lens, in a language (`locale`, American English when left out), by the search's ID as its results page shows it and the lens's ID: its text, with charts as [chart:ID] lines drawing `counts` and papers cited as [words](paper:ID) from `lists`. `status` is running while it's written, then done or failed. Null when none has been written; `available` is false, with its `reason`, for a search this workspace doesn't have, one written in OQL, or one filtered by the person's ratings. research/overviews:ensure writes one.",
+  args: { searchId: v.string(), lens: v.string(), locale: v.optional(localeValidator) },
   returns: overviewShownValidator,
-  run: async (ctx, actor, { searchId, lens }) => {
+  run: async (ctx, actor, { searchId, lens, locale }) => {
     const search = await searchFor(ctx, actor, searchId);
     if ("reason" in search) return { available: false, reason: search.reason, overview: null };
     // A lens taken off the list in another tab is read until the page hears of it: nothing is written for it.
     const found = await lensFor(ctx, actor, lens).catch(() => null);
-    const stored = found ? await storedOf(ctx, actor.workspaceId, search.key, found.key) : null;
+    const stored = found ? await storedOf(ctx, actor.workspaceId, search.key, inLanguage(found.key, locale)) : null;
     return {
       available: true,
       overview: stored ? { status: stored.status, ...(stored.step ? { step: stored.step } : {}), text: stored.text, counts: stored.counts, lists: stored.lists, paid: stored.paid, ...(stored.error ? { error: stored.error } : {}) } : null,
@@ -177,18 +183,19 @@ const ensured = v.union(v.literal("written"), v.literal("writing"), v.literal("s
 export const ensureAction = defineUserMutation({
   path: "research/overviews:ensure",
   description:
-    "Has the AI overview of a search through a lens written, if it isn't yet: `written` or `writing` when it is, `started` when this starts it. Free while the plan's overviews a day last; past them, or on a plan without them, it's `ask` unless `pay` is true, which pays for it in credits, up to 20 a day (`limit` past that). `again` writes it anew, as Write again does. `unavailable` for a search written in OQL or filtered by the person's ratings. Read it with research/overviews:get.",
-  args: { searchId: v.string(), lens: v.string(), pay: v.optional(v.boolean()), again: v.optional(v.boolean()) },
+    "Has the AI overview of a search through a lens written, in the page's language (`locale`, American English when left out), if it isn't yet: `written` or `writing` when it is, `started` when this starts it. Free while the plan's overviews a day last; past them, or on a plan without them, it's `ask` unless `pay` is true, which pays for it in credits, up to 20 a day (`limit` past that). `again` writes it anew, as Write again does. `unavailable` for a search written in OQL or filtered by the person's ratings. Read it with research/overviews:get.",
+  args: { searchId: v.string(), lens: v.string(), locale: v.optional(localeValidator), pay: v.optional(v.boolean()), again: v.optional(v.boolean()) },
   returns: ensured,
   spendsCredits: true,
   outsideEffect: false,
   undoable: false,
   estimate: async (ctx, _actor, { pay }) => (pay ? ((await paidCredits(ctx)) ?? 0) : 0),
-  run: async (ctx, actor, { searchId, lens: lensId, pay, again }): Promise<Infer<typeof ensured>> => {
+  run: async (ctx, actor, { searchId, lens: lensId, locale, pay, again }): Promise<Infer<typeof ensured>> => {
     const search = await searchFor(ctx, actor, searchId);
     if ("reason" in search) return "unavailable";
     const lens = await lensFor(ctx, actor, lensId);
-    const stored = await storedOf(ctx, actor.workspaceId, search.key, lens.key);
+    const key = inLanguage(lens.key, locale);
+    const stored = await storedOf(ctx, actor.workspaceId, search.key, key);
     if (stored?.status === "running") return "writing";
     if (stored?.status === "done" && !again) return "written";
     const prefs = await ownPrefs(ctx, actor);
@@ -205,8 +212,8 @@ export const ensureAction = defineUserMutation({
     const fields = { askedBy: actor.userId, paid: !free, day, status: "running" as const, startedAt, text: "", counts: [], lists: [] };
     let overviewId = stored?._id;
     if (overviewId) await ctx.db.patch("searchOverviews", overviewId, { ...fields, step: undefined, error: undefined });
-    else overviewId = await ctx.db.insert("searchOverviews", { workspaceId: actor.workspaceId, request: search.key, lens: lens.key, ...fields });
-    await ctx.scheduler.runAfter(0, internal.research.overviewsAction.run, { overviewId, startedAt, request: search.request, instruction: lens.instruction, modelId: pick.modelId, ...(pick.effort ? { effort: pick.effort } : {}) });
+    else overviewId = await ctx.db.insert("searchOverviews", { workspaceId: actor.workspaceId, request: search.key, lens: key, ...fields });
+    await ctx.scheduler.runAfter(0, internal.research.overviewsAction.run, { overviewId, startedAt, request: search.request, instruction: lens.instruction, locale: locale ?? defaultLocale, modelId: pick.modelId, ...(pick.effort ? { effort: pick.effort } : {}) });
     await ctx.scheduler.runAfter(RUN_MS, internal.research.overviews.expire, { overviewId, startedAt });
     return "started";
   },
@@ -370,4 +377,5 @@ export const expire = internalMutation({
   },
 });
 
-export const runArgs = { overviewId: v.id("searchOverviews"), startedAt: v.number(), request: searchRequestValidator, instruction: v.string(), modelId: v.id("models"), effort: v.optional(effortValidator) };
+// `locale` is optional for runs scheduled before it existed; they write in American English.
+export const runArgs = { overviewId: v.id("searchOverviews"), startedAt: v.number(), locale: v.optional(localeValidator), request: searchRequestValidator, instruction: v.string(), modelId: v.id("models"), effort: v.optional(effortValidator) };

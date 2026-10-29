@@ -3,7 +3,8 @@
 // The charts an AI overview (#967) places between its paragraphs. Each draws a count the model read, so the
 // numbers are OpenAlex's, never ones it typed.
 
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
+import { TooltipHint } from "@/components/ui/tooltip";
 import { motion, useReducedMotion } from "motion/react";
 import type { Infer } from "convex/values";
 import type { overviewCountValidator, overviewPaperValidator } from "@/convex/research/overviewValidators";
@@ -15,18 +16,50 @@ type Paper = Infer<typeof overviewPaperValidator>;
 
 const grow = (reduce: boolean | null, i: number) => (reduce ? { duration: 0 } : { duration: 0.5, ease: EASE, delay: i * 0.015 });
 
+/**
+ * The year a bar chart names in its corner: the hovered one, or with the chart focused the one the arrow keys moved to,
+ * else `fallback`. One tab stop for the whole chart, so a keyboard doesn't stop at every bar.
+ */
+function useYears(groups: Group[], fallback: Group | undefined) {
+  // By its year, so a count that's read again while the chart is focused keeps the year picked.
+  const [hovered, setHovered] = useState<string | null>(null);
+  const shown = groups.find((group) => group.key === hovered) ?? fallback;
+  const setHover = (group: Group | null) => setHovered(group?.key ?? null);
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : event.key === "Home" ? -groups.length : event.key === "End" ? groups.length : 0;
+    if (!step) return;
+    event.preventDefault();
+    const at = shown ? groups.findIndex((group) => group.key === shown.key) : -1;
+    setHover(groups[Math.min(groups.length - 1, Math.max(0, at + step))]);
+  };
+  return { shown, setHover, focus: { tabIndex: 0, onKeyDown, onBlur: () => setHover(null) } };
+}
+
+/** Every year and its figure, for a screen reader: the bars are drawn, not read. */
+const YearList = ({ groups, format }: { groups: Group[]; format: (group: Group) => string }) => (
+  <ul className="sr-only">
+    {groups.map((group) => (
+      <li key={group.key}>
+        {group.key}: {format(group)}
+      </li>
+    ))}
+  </ul>
+);
+
+const FOCUS = "outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
+
 /** Papers per year as bars; the hovered year names itself in the corner. */
 export function YearBars({ groups, label }: { groups: Group[]; label: string }) {
   const reduce = useReducedMotion();
-  const [hover, setHover] = useState<Group | null>(null);
   const max = Math.max(1, ...groups.map((g) => g.count));
-  const shown = hover ?? groups.reduce((best, g) => (g.count > best.count ? g : best), groups[0]);
-  if (!groups.length) return null;
+  const { shown, setHover, focus } = useYears(groups, groups.reduce<Group | undefined>((best, g) => (!best || g.count > best.count ? g : best), undefined));
+  if (!groups.length || !shown) return null;
   return (
-    <figure className="rounded-xl bg-inset px-4 pt-3 pb-2.5" aria-label={label}>
+    <figure className={cn("rounded-xl bg-inset px-4 pt-3 pb-2.5", FOCUS)} aria-label={label} {...focus}>
+      <YearList groups={groups} format={(group) => group.count.toLocaleString("en")} />
       <figcaption className="flex items-baseline justify-between text-xs">
         <span className="font-medium text-foreground">{label}</span>
-        <span className="w-32 shrink-0 text-right tabular-nums text-muted-foreground">
+        <span aria-live="polite" className="w-32 shrink-0 text-right tabular-nums text-muted-foreground">
           {/* The number ends the line, flush right, so it keeps its place as the hovered year changes. */}
           {shown.key}
           <span className="ml-2 inline-block min-w-12 text-right font-semibold text-foreground">{shown.count.toLocaleString("en")}</span>
@@ -36,7 +69,7 @@ export function YearBars({ groups, label }: { groups: Group[]; label: string }) 
         {groups.map((g, i) => (
           <div key={g.key} className="flex h-full flex-1 items-end" onPointerEnter={() => setHover(g)}>
             <motion.div
-              className={cn("w-full origin-bottom rounded-t-[3px] transition-colors", g === shown ? "bg-primary" : "bg-primary/35")}
+              className={cn("w-full origin-bottom rounded-t-[3px] transition-colors", g.key === shown.key ? "bg-primary" : "bg-primary/35")}
               style={{ height: `${Math.max(2, (g.count / max) * 100)}%` }}
               initial={{ scaleY: 0 }}
               animate={{ scaleY: 1 }}
@@ -56,15 +89,15 @@ export function YearBars({ groups, label }: { groups: Group[]; label: string }) 
 /** Change on the year before, in percent, above and below a zero line. */
 export function ChangeBars({ groups, label }: { groups: Group[]; label: string }) {
   const reduce = useReducedMotion();
-  const [hover, setHover] = useState<Group | null>(null);
   const max = Math.max(1, ...groups.map((g) => Math.abs(g.count)));
-  if (!groups.length) return null;
-  const shown = hover ?? groups.at(-1)!;
+  const { shown, setHover, focus } = useYears(groups, groups.at(-1));
+  if (!groups.length || !shown) return null;
   return (
-    <figure className="rounded-xl bg-inset px-4 pt-3 pb-2.5" aria-label={label}>
+    <figure className={cn("rounded-xl bg-inset px-4 pt-3 pb-2.5", FOCUS)} aria-label={label} {...focus}>
+      <YearList groups={groups} format={(group) => `${group.count > 0 ? "+" : ""}${group.count}%`} />
       <figcaption className="flex items-baseline justify-between text-xs">
         <span className="font-medium text-foreground">{label}</span>
-        <span className="w-32 shrink-0 text-right tabular-nums text-muted-foreground">
+        <span aria-live="polite" className="w-32 shrink-0 text-right tabular-nums text-muted-foreground">
           {shown.key}
           <span className="ml-2 inline-block min-w-12 text-right font-semibold text-foreground">
             {shown.count > 0 ? "+" : ""}
@@ -76,11 +109,11 @@ export function ChangeBars({ groups, label }: { groups: Group[]; label: string }
         {groups.map((g, i) => (
           <div key={g.key} className="flex flex-1 flex-col" onPointerEnter={() => setHover(g)}>
             <div className="flex flex-1 items-end">
-              {g.count > 0 ? <motion.div className={cn("w-full origin-bottom rounded-t-[3px]", g === shown ? "bg-primary" : "bg-primary/35")} style={{ height: `${(g.count / max) * 100}%` }} initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={grow(reduce, i)} /> : null}
+              {g.count > 0 ? <motion.div className={cn("w-full origin-bottom rounded-t-[3px]", g.key === shown.key ? "bg-primary" : "bg-primary/35")} style={{ height: `${(g.count / max) * 100}%` }} initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={grow(reduce, i)} /> : null}
             </div>
             <div className="h-px bg-border" />
             <div className="flex flex-1 items-start">
-              {g.count < 0 ? <motion.div className={cn("w-full origin-top rounded-b-[3px]", g === shown ? "bg-destructive" : "bg-destructive/35")} style={{ height: `${(-g.count / max) * 100}%` }} initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={grow(reduce, i)} /> : null}
+              {g.count < 0 ? <motion.div className={cn("w-full origin-top rounded-b-[3px]", g.key === shown.key ? "bg-destructive" : "bg-destructive/35")} style={{ height: `${(-g.count / max) * 100}%` }} initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={grow(reduce, i)} /> : null}
             </div>
           </div>
         ))}
@@ -103,7 +136,10 @@ export function ShareBars({ groups, total, label }: { groups: Group[]; total: nu
       <ul className="mt-2.5 space-y-1.5">
         {groups.map((g, i) => (
           <li key={g.key} className="grid grid-cols-[9rem_1fr_2.5rem] items-center gap-3 text-xs">
-            <span className="truncate text-foreground">{g.name}</span>
+            {/* A name cut short shows whole on hover. */}
+            <TooltipHint label={g.name} onlyWhenClipped>
+              <span className="truncate text-foreground">{g.name}</span>
+            </TooltipHint>
             <span className="h-2 overflow-hidden rounded-full bg-foreground/[0.06]">
               <motion.span className="block h-full origin-left rounded-full bg-primary/70" style={{ width: `${(g.count / max) * 100}%` }} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={grow(reduce, i * 3)} />
             </span>

@@ -16,6 +16,7 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import type { Grouping } from "@/convex/research/searchValidators";
+import type { Locale } from "@/i18n/config";
 import { readCitedPapers } from "@/app/actions/overview-papers";
 import { AiIcon, ChevronDown, Coins, Copy, MoreHorizontal, Pencil, Plus, RefreshCw, Trash2, UpgradeIcon, Users } from "@/components/icons";
 import { WorkingText } from "@/components/assistant/parts";
@@ -60,8 +61,8 @@ const thisYear = new Date().getUTCFullYear();
  * reload finds it written or writing. Folded, the key is null and nothing is asked for.
  */
 function subscribeEnsure(convex: ReturnType<typeof useConvex>) {
-  return ([, scope, searchId, lens]: [string, Scope, string, string], { next }: { next: (error?: Error | null, data?: string) => void }) => {
-    convex.mutation(api.research.overviews.ensure, { ...scope, searchId, lens }).then(
+  return ([, scope, searchId, lens, locale]: [string, Scope, string, string, Locale], { next }: { next: (error?: Error | null, data?: string) => void }) => {
+    convex.mutation(api.research.overviews.ensure, { ...scope, searchId, lens, locale }).then(
       (state) => next(null, state),
       (error: unknown) => next(error instanceof Error ? error : new Error(String(error))),
     );
@@ -79,6 +80,8 @@ export function AiOverview({ searchId, total }: { searchId: string; total: numbe
 
 function Card({ scope, view, searchId, total }: { scope: Scope; view: View; searchId: string; total: number }) {
   const t = useTranslations("overview");
+  // Overviews are written in the page's language, and kept apart for each.
+  const locale = useLocale() as Locale;
   const toast = useAppToast();
   const convex = useConvex();
   const format = useFormatter();
@@ -98,7 +101,7 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
   const freeLeft = view.perDay === null ? null : Math.max(0, view.perDay - freeUsed);
   const free = freeLeft === null || freeLeft > 0;
 
-  const { data: read } = useProtectedQuery(api.research.overviews.get, view.collapsed ? "skip" : { ...scope, searchId, lens: lens.id });
+  const { data: read } = useProtectedQuery(api.research.overviews.get, view.collapsed ? "skip" : { ...scope, searchId, lens: lens.id, locale });
   // While the next lens's overview is read, a card that had none to show keeps what it showed (Write overview, or why
   // there's none), so it doesn't empty and come back. One that had an overview keeps it dimmed below instead.
   const [kept, setKept] = useState(read);
@@ -108,14 +111,14 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
   // A search the workspace doesn't have, such as one shared with the person as a guest, has no overview here.
   const missing = shown?.reason === "missing";
   // Free, an overview nothing has written is started as the card shows it.
-  const { error: startError } = useSWRSubscription(shown?.available && !overview && free ? (["ai-overview", scope, searchId, lens.id] as [string, Scope, string, string]) : null, subscribeEnsure(convex));
+  const { error: startError } = useSWRSubscription(shown?.available && !overview && free ? (["ai-overview", scope, searchId, lens.id, locale] as [string, Scope, string, string, Locale]) : null, subscribeEnsure(convex));
   const working = Boolean(shown?.available && ((!overview && free && !startError) || overview?.status === "running"));
   // Between lenses or searches the new overview's read is in flight: the last one stays, dimmed, until it's known.
   const loading = !view.collapsed && shown === undefined;
 
   // The last overview written stays, dimmed, until the next one is whole, so the card never empties and a chart never
   // gives way to a half-written paragraph. The first one shows its paragraphs as they're written.
-  const key = `${searchId}:${lens.id}:${lens.version}`;
+  const key = `${searchId}:${lens.id}:${lens.version}:${locale}`;
   const [last, setLast] = useState<{ key: string; overview: Overview } | null>(null);
   if (overview?.status === "done" && last?.key !== key) setLast({ key, overview });
   const live = overview && overview.status !== "failed" && overview.text && (overview.status === "done" || !last) ? { key, overview } : null;
@@ -124,7 +127,7 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
 
   const run = async (args: { pay?: boolean; again?: boolean }) => {
     try {
-      const state = await ensure({ ...scope, searchId, lens: lens.id, ...args });
+      const state = await ensure({ ...scope, searchId, lens: lens.id, locale, ...args });
       if (state === "limit") toast.error(t("label"), t("ask.limit", { count: view.paidPerDay, time: format.dateTime(nextDay(), { hour: "numeric", minute: "2-digit" }) }));
     } catch (error) {
       toast.error(t("label"), getErrorMessage(error, ""));
