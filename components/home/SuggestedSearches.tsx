@@ -9,26 +9,50 @@ import { suggestSearches, type SearchSuggestion } from "@/app/actions/search-sug
 import { AiIcon, ArrowRight, History } from "@/components/icons";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { EASE } from "@/components/settings/model-map";
-import { useOptionalAuthQuery } from "@/lib/auth/use-auth-query";
+import { useOptionalAuthQuery, useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useCursorPage } from "@/lib/hooks/use-cursor-page";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { useResearchPhase, useResearchScope } from "@/lib/research/reads";
 import { localSearchHistoryStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import { useWorkspaceScope } from "@/lib/workspaces/url";
 
-// ponytail: mock cache, one generation per workspace and set of searches for the tab's life; the real version stores them in Convex.
-const generated = new Map<string, Promise<SearchSuggestion[]>>();
-function suggestionsFor(workspaceId: string, searches: string[], language: string) {
-  const key = JSON.stringify([workspaceId, language, searches]);
-  let promise = generated.get(key);
+/** Mock: generations a day per plan. The real numbers are an Autumn plan limit (`suggestions_per_day`), enforced in Convex with a token bucket. */
+const MOCK_PER_DAY: Record<string, number> = { free: 5, free_organization: 5, go: 20, pro: 50, team: 50 };
+
+type Stored = { searches: string[]; suggestions: SearchSuggestion[]; day: string; count: number };
+const today = () => new Date().toDateString();
+// ponytail: mock store in this browser, per workspace and person; the real version stores the set in Convex.
+function readStored(key: string): Stored | undefined {
+  try {
+    return JSON.parse(localStorage.getItem(key) ?? "null") ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const generating = new Map<string, Promise<SearchSuggestion[]>>();
+/** One generation per set of searches; it saves the set and counts it against today's limit. */
+const generationId = (key: string, searches: string[], language: string) => JSON.stringify([key, language, searches]);
+function generate(key: string, searches: string[], language: string) {
+  const id = generationId(key, searches, language);
+  let promise = generating.get(id);
   if (!promise) {
     // Started after this render: a server action updates the router, which React refuses mid-render.
-    promise = new Promise<void>((resolve) => queueMicrotask(resolve)).then(() => suggestSearches(searches, language)).catch((error) => {
-      console.error("Search suggestions failed:", error);
-      // The next visit tries again.
-      generated.delete(key);
-      return [];
-    });
-    generated.set(key, promise);
+    promise = new Promise<void>((resolve) => queueMicrotask(resolve))
+      .then(() => suggestSearches(searches, language))
+      .then((suggestions) => {
+        const before = readStored(key);
+        localStorage.setItem(key, JSON.stringify({ searches, suggestions, day: today(), count: before?.day === today() ? before.count + 1 : 1 } satisfies Stored));
+        return suggestions;
+      })
+      .catch((error) => {
+        console.error("Search suggestions failed:", error);
+        // The next visit tries again; until then the last set stays.
+        generating.delete(id);
+        return readStored(key)?.suggestions ?? [];
+      });
+    generating.set(id, promise);
   }
   return promise;
 }
@@ -49,26 +73,43 @@ export function useMySearches(): string[] | undefined {
 }
 
 /**
- * Research questions written from the person's own recent searches in this workspace. The page
- * slides its frame open when they arrive and the rows fade in. Signed out there's no workspace, so none.
+ * Research questions written from the person's own recent searches in this workspace. The last set
+ * shows at once; a new one is written when the searches have changed and the plan's daily number
+ * isn't used up, with the last set dimmed meanwhile. Signed out there's no workspace, so none.
  */
 export function SuggestedSearches({ searches, onPick, working, disabled }: { searches: string[] | undefined; onPick: (question: string) => void; working: boolean; disabled: boolean }) {
   const scope = useResearchScope();
   const language = localeToLanguageCode(useLocale());
-  if (!scope || !searches?.length) return null;
-  return (
-    <Suspense fallback={null}>
-      <Suggestions promise={suggestionsFor(scope.workspaceId, searches, language)} onPick={onPick} working={working} disabled={disabled} />
-    </Suspense>
-  );
+  const { data: account } = useProtectedQuery(api.billing.accounts.mine, useWorkspaceScope());
+  if (!scope || searches?.length === 0) return null;
+  const key = `home-suggestions:${scope.workspaceId}:${scope.accountId}`;
+  const stored = readStored(key);
+  const perDay = account === undefined ? undefined : (MOCK_PER_DAY[account?.plan ?? "free"] ?? MOCK_PER_DAY.free);
+  const used = stored?.day === today() ? stored.count : 0;
+  const changed = searches !== undefined && JSON.stringify(stored?.searches) !== JSON.stringify(searches);
+  const list = (suggestions: SearchSuggestion[], dimmed = false) => <Suggestions suggestions={suggestions} dimmed={dimmed} onPick={onPick} working={working} disabled={disabled} />;
+  // A generation this visit started stays the list's source, so the list isn't remounted once the set is stored.
+  const started = searches && generating.get(generationId(key, searches, language));
+  if (searches && (started || (changed && perDay !== undefined && used < perDay))) {
+    return (
+      <Suspense fallback={stored ? list(stored.suggestions, true) : null}>
+        <Generated promise={started || generate(key, searches, language)} render={list} />
+      </Suspense>
+    );
+  }
+  return stored ? list(stored.suggestions) : null;
 }
 
-function Suggestions({ promise, onPick, working, disabled }: { promise: Promise<SearchSuggestion[]>; onPick: (question: string) => void; working: boolean; disabled: boolean }) {
-  const suggestions = use(promise);
+function Generated({ promise, render }: { promise: Promise<SearchSuggestion[]>; render: (suggestions: SearchSuggestion[]) => React.ReactNode }) {
+  return render(use(promise));
+}
+
+function Suggestions({ suggestions, dimmed, onPick, working, disabled }: { suggestions: SearchSuggestion[]; dimmed: boolean; onPick: (question: string) => void; working: boolean; disabled: boolean }) {
   const reduceMotion = useReducedMotion();
   const [picked, setPicked] = useState<string>();
   return (
-    <ul className="flex flex-col gap-0.5 pt-5">
+    // Last set, dimmed and inert while a new one is written.
+    <ul inert={dimmed} aria-busy={dimmed} className={cn("flex flex-col gap-0.5 pt-5 transition-opacity duration-300", dimmed && "opacity-50")}>
       {suggestions.map((suggestion, index) => (
         <motion.li
           key={suggestion.question}
