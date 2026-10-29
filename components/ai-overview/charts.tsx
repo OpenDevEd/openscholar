@@ -21,13 +21,15 @@ const grow = (reduce: boolean | null, i: number) => (reduce ? { duration: 0 } : 
  * else `fallback`. One tab stop for the whole chart, so a keyboard doesn't stop at every bar.
  */
 function useYears(groups: Group[], fallback: Group | undefined) {
-  const [hover, setHover] = useState<Group | null>(null);
-  const shown = hover ?? fallback;
+  // By its year, so a count that's read again while the chart is focused keeps the year picked.
+  const [hovered, setHovered] = useState<string | null>(null);
+  const shown = groups.find((group) => group.key === hovered) ?? fallback;
+  const setHover = (group: Group | null) => setHovered(group?.key ?? null);
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     const step = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : event.key === "Home" ? -groups.length : event.key === "End" ? groups.length : 0;
     if (!step) return;
     event.preventDefault();
-    const at = shown ? groups.indexOf(shown) : -1;
+    const at = shown ? groups.findIndex((group) => group.key === shown.key) : -1;
     setHover(groups[Math.min(groups.length - 1, Math.max(0, at + step))]);
   };
   return { shown, setHover, focus: { tabIndex: 0, onKeyDown, onBlur: () => setHover(null) } };
@@ -67,7 +69,7 @@ export function YearBars({ groups, label }: { groups: Group[]; label: string }) 
         {groups.map((g, i) => (
           <div key={g.key} className="flex h-full flex-1 items-end" onPointerEnter={() => setHover(g)}>
             <motion.div
-              className={cn("w-full origin-bottom rounded-t-[3px] transition-colors", g === shown ? "bg-primary" : "bg-primary/35")}
+              className={cn("w-full origin-bottom rounded-t-[3px] transition-colors", g.key === shown.key ? "bg-primary" : "bg-primary/35")}
               style={{ height: `${Math.max(2, (g.count / max) * 100)}%` }}
               initial={{ scaleY: 0 }}
               animate={{ scaleY: 1 }}
@@ -107,11 +109,11 @@ export function ChangeBars({ groups, label }: { groups: Group[]; label: string }
         {groups.map((g, i) => (
           <div key={g.key} className="flex flex-1 flex-col" onPointerEnter={() => setHover(g)}>
             <div className="flex flex-1 items-end">
-              {g.count > 0 ? <motion.div className={cn("w-full origin-bottom rounded-t-[3px]", g === shown ? "bg-primary" : "bg-primary/35")} style={{ height: `${(g.count / max) * 100}%` }} initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={grow(reduce, i)} /> : null}
+              {g.count > 0 ? <motion.div className={cn("w-full origin-bottom rounded-t-[3px]", g.key === shown.key ? "bg-primary" : "bg-primary/35")} style={{ height: `${(g.count / max) * 100}%` }} initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={grow(reduce, i)} /> : null}
             </div>
             <div className="h-px bg-border" />
             <div className="flex flex-1 items-start">
-              {g.count < 0 ? <motion.div className={cn("w-full origin-top rounded-b-[3px]", g === shown ? "bg-destructive" : "bg-destructive/35")} style={{ height: `${(-g.count / max) * 100}%` }} initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={grow(reduce, i)} /> : null}
+              {g.count < 0 ? <motion.div className={cn("w-full origin-top rounded-b-[3px]", g.key === shown.key ? "bg-destructive" : "bg-destructive/35")} style={{ height: `${(-g.count / max) * 100}%` }} initial={{ scaleY: 0 }} animate={{ scaleY: 1 }} transition={grow(reduce, i)} /> : null}
             </div>
           </div>
         ))}

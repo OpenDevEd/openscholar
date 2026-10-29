@@ -377,4 +377,5 @@ export const expire = internalMutation({
   },
 });
 
-export const runArgs = { overviewId: v.id("searchOverviews"), startedAt: v.number(), locale: localeValidator, request: searchRequestValidator, instruction: v.string(), modelId: v.id("models"), effort: v.optional(effortValidator) };
+// `locale` is optional for runs scheduled before it existed; they write in American English.
+export const runArgs = { overviewId: v.id("searchOverviews"), startedAt: v.number(), locale: v.optional(localeValidator), request: searchRequestValidator, instruction: v.string(), modelId: v.id("models"), effort: v.optional(effortValidator) };

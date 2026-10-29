@@ -74,7 +74,7 @@ export const run = internalAction({
       const years = z.object({ from: z.number().int().optional(), to: z.number().int().optional() }).optional().describe("Only papers published in these years, both included.");
       const result = streamText({
         model,
-        system: SYSTEM(new Date().getUTCFullYear(), new Intl.DisplayNames(["en"], { type: "language" }).of(locale) ?? "English"),
+        system: SYSTEM(new Date().getUTCFullYear(), new Intl.DisplayNames(["en"], { type: "language" }).of(locale ?? "en-US") ?? "English"),
         prompt: `What the person wants to know about this search: ${instruction}`,
         stopWhen: isStepCount(STEPS),
         maxRetries: 1,
