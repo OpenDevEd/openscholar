@@ -5,6 +5,7 @@
  */
 import { answersOfAction, changeAction, countSearchesAction, getSearchAction, listedSearchesAction, ratingsAction, ratingsOfAction, revisionsAction, searchHistoryAction, searchHistoryEntryAction, countShortcutsAction, listedShortcutsAction, shortcutsOfAction } from "../research/records";
 import { mineAction as suggestionsAction } from "../research/suggestions";
+import { ensureAction as overviewEnsureAction, getAction as overviewGetAction, removeLensAction as overviewRemoveLensAction, saveLensAction as overviewSaveLensAction, setViewAction as overviewSetViewAction, viewAction as overviewViewAction } from "../research/overviews";
 import { createAction as searchCreateAction, deleteAction as searchDeleteAction, removeAction as searchRemoveAction, restoreAction as searchRestoreAction, resultsAction as searchResultsAction, updateAction as searchUpdateAction } from "../research/searches";
 import { countAction as paperCountAction, getAction as paperGetAction, readPdfAction as paperPdfAction, searchAction as paperSearchAction } from "../research/papers";
 import { findAction as lookupFindAction, namesAction as lookupNamesAction } from "../research/lookup";
@@ -138,6 +139,12 @@ export const USER_ACTIONS: readonly UserAction[] = [
   listedSearchesAction,
   countSearchesAction,
   suggestionsAction,
+  overviewViewAction,
+  overviewGetAction,
+  overviewEnsureAction,
+  overviewSaveLensAction,
+  overviewRemoveLensAction,
+  overviewSetViewAction,
   getSearchAction,
   searchCreateAction,
   searchUpdateAction,

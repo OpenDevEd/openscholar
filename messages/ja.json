@@ -4786,5 +4786,97 @@
     "extract": "抽出",
     "screenWith": "{count, plural, other {# 件の質問でスクリーニング}}",
     "extractWith": "{count, plural, other {# 件の質問で抽出}}"
+  },
+  "overview": {
+    "label": "AI概要",
+    "lens": "観点",
+    "lenses": {
+      "overview": "概要",
+      "trend": "年ごとの推移",
+      "where": "研究の出どころ",
+      "read": "最初に読むもの"
+    },
+    "newLens": "新しい観点",
+    "options": "観点のオプション",
+    "copy": "概要をコピー",
+    "writeAgain": "書き直す",
+    "editLens": "観点を編集",
+    "share": "ワークスペースと共有",
+    "stopSharing": "共有をやめる",
+    "deleteLens": "観点を削除",
+    "hideLens": "自分のリストから外す",
+    "fold": "概要を表示または非表示",
+    "step": {
+      "reading": "結果を読んでいます",
+      "writing": "書いています",
+      "count": "{by}ごとに論文を数えています",
+      "countIn": "{from}–{to}の論文を{by}ごとに数えています",
+      "cited": "最も引用された論文を読んでいます",
+      "newest": "最新の論文を読んでいます",
+      "relevance": "最も近い論文を読んでいます"
+    },
+    "read": {
+      "both": "{by}ごとに論文を数え、{papers}件の論文を読みました",
+      "counted": "{by}ごとに論文を数えました",
+      "papers": "{papers}件の論文を読みました",
+      "none": "結果を読みました"
+    },
+    "by": {
+      "year": "年",
+      "language": "言語",
+      "type": "種類",
+      "openAccess": "オープンアクセス",
+      "country": "国",
+      "author": "著者",
+      "institution": "機関",
+      "funder": "資金提供者",
+      "journal": "ジャーナル",
+      "field": "分野",
+      "sdg": "SDG"
+    },
+    "chart": {
+      "perYear": "年ごとの論文数",
+      "perYearIn": "{from}–{to}の年ごとの論文数",
+      "change": "前年からの変化",
+      "share": "{by}ごとの論文の割合",
+      "shareIn": "{from}–{to}の{by}ごとの論文の割合",
+      "freeToRead": "無料で読める",
+      "notFree": "有料"
+    },
+    "ask": {
+      "write": "概要を書く",
+      "reads": "{count}件の結果をすべて読みます",
+      "go": "Goなら無料で自動",
+      "back": "無料の概要は{time}に戻ります",
+      "pro": "Proなら1日{count}件",
+      "noCredits": "クレジットがありません",
+      "getCredits": "クレジットを入手",
+      "limit": "今日の有料の概要{count}件を使いました。{time}にまた使えます"
+    },
+    "left": "今日の無料の概要は残り{left}件（{perDay}件中）",
+    "noneLeft": "今日の無料の概要は残っていません。{time}に戻ります",
+    "failed": {
+      "credits": "この概要に必要なクレジットが足りませんでした。",
+      "failed": "概要を書けませんでした。",
+      "timeout": "概要に時間がかかりすぎました。"
+    },
+    "tryAgain": "もう一度試す",
+    "unavailable": {
+      "oql": "OQLで書かれた検索は数えられないため、概要はありません。",
+      "ratings": "概要は検索全体を読むため、結果を自分の評価で絞り込んでいる間は書かれません。"
+    },
+    "dialog": {
+      "newTitle": "新しい観点",
+      "editTitle": "観点を編集",
+      "description": "知りたいことに合わせて書かれる、すべての検索の概要です。",
+      "name": "名前",
+      "namePlaceholder": "年ごとの推移",
+      "instruction": "見るところ",
+      "instructionPlaceholder": "年ごとに論文数がどう変わり、どの年が目立つか",
+      "share": "このワークスペースと共有",
+      "cancel": "キャンセル",
+      "save": "保存",
+      "add": "観点を追加"
+    }
   }
 }
