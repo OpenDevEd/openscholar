@@ -13,6 +13,7 @@ import { libraryDestinationValidator, libraryWriteProblemValidator, libraryWrite
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { activityFields } from "./activity/validators";
 import { searchSuggestionFields } from "./research/suggestionValidators";
+import { overviewPrefsFields, overviewSharedFields, searchOverviewFields } from "./research/overviewValidators";
 import { itemAccessFields, itemInvitationFields } from "./sharing/validators";
 import {
   errorCodeValidator,
@@ -97,6 +98,11 @@ export default defineSchema({
   }).index("by_search_and_revision", ["searchId", "revision"]),
   // Each person's suggested searches in a workspace, for the home page (#964; ./research/suggestionValidators.ts).
   searchSuggestions: defineTable(searchSuggestionFields).index("by_workspace_and_user", ["workspaceId", "userId"]),
+  // AI overviews of a search (#967; ./research/overviewValidators.ts): each person's lenses and view, a workspace's shared
+  // lenses, and the overviews written, by the search's request and the lens.
+  overviewPrefs: defineTable(overviewPrefsFields).index("by_workspace_and_user", ["workspaceId", "userId"]),
+  overviewShared: defineTable(overviewSharedFields).index("by_workspace", ["workspaceId"]),
+  searchOverviews: defineTable(searchOverviewFields).index("by_workspace_and_request_and_lens", ["workspaceId", "request", "lens"]),
   // A search's earlier queries and research questions, in the order they were made (#354).
   searchHistory: defineTable({
     searchId: v.id("searches"), kind: v.union(v.literal("query"), v.literal("question")),

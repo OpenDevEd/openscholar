@@ -23,6 +23,8 @@ export const CALL_TOKENS = {
   helper: { input: 2_000, output: 1_500 },
   /** What a chat reply's first request reads and writes: a conversation of some length. */
   chatMessage: { input: 20_000, output: 1_000 },
+  /** One AI overview of a search (#967), all its steps: measured on 2026-10-29 on Claude Haiku 5.5 at medium effort at most 13,887 in and 1,504 out. */
+  overview: { input: 16_000, output: 1_800 },
   /** The most one request of a chat reply reads, the conversation before it's summarized (convex/assistant/context.ts `COMPACT_AT_TOKENS`), and writes. */
   chatRequest: { input: 50_000, output: 4_000 },
 } as const satisfies Record<string, CallTokens>;
