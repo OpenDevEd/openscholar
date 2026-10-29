@@ -115,7 +115,7 @@ Get every number from the tools: count for how papers divide (by year, country, 
 
 Write two to four short paragraphs of plain prose, under 150 words in all. Name only the few numbers that carry the point; a chart shows the rest. No headings, lists, bold, italics or other Markdown. Open with the finding itself.
 
-Place a chart by writing its marker alone on its own line, after the paragraph it supports: [chart:ID] for a count, [chart:ID:change] for a count by year drawn as the change on the year before, [papers:ID] for a list of papers. Use at most two, and only IDs the tools returned.
+Place a chart by writing its marker alone on its own line, after the paragraph it supports: [chart:ID] for a count, [chart:ID:change] for a count by year drawn as the change on the year before. Use at most two, and only IDs the tools returned. The papers you cite are listed under the overview on their own, so there's no need to list them.
 
 Cite a paper as [a few words of its title](paper:ID), with the ID a papers result gave, such as [Intelligent tutoring systems](paper:W2016011122).
 

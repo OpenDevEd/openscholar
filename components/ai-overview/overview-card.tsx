@@ -25,7 +25,7 @@ import { useWorkspaceHref } from "@/lib/workspaces/href";
 import { ChangeBars, PaperRows, ShareBars, YearBars } from "./charts";
 import { LensDialog } from "./lens-dialog";
 import { DAILY_CAP, PRO_CAP, useLenses, type Lens } from "./lenses";
-import { blocksOf, isWritten, plainText, subscribeRun, type Block, type Cite, type Run } from "./run";
+import { blocksOf, citedPapers, isWritten, plainText, subscribeRun, type Block, type Cite, type Run } from "./run";
 
 const thisYear = new Date().getFullYear();
 
@@ -57,7 +57,7 @@ export function AiOverview() {
 
   return (
     <section aria-label="AI overview" className="mb-6 rounded-2xl border border-border-subtle bg-card shadow-surface">
-      <header className="flex items-center gap-2 py-2.5 pr-2.5 pl-4">
+      <header className="flex items-center gap-2 pt-3 pr-3 pb-2.5 pl-4">
         <AiIcon size={18} working={working} className="shrink-0" />
         <div className="min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] mask-r-from-[calc(100%-2rem)]">
           <div className="w-max">
@@ -126,7 +126,7 @@ export function AiOverview() {
 
       <AutoHeight>
         {collapsed ? null : (
-          <div className="px-5 pb-4">
+          <div className="px-4 pb-4">
             {working || shown ? (
               // One line for the whole run: its steps while it works, then what it read. A grid stretches the label across
               // the line, so it keeps its width as its words change.
@@ -170,8 +170,9 @@ function resetsAt() {
  */
 function Ask({ total, capped, noCredits, onGenerate }: { total: number; capped: boolean; noCredits: boolean; onGenerate: () => void }) {
   const href = useWorkspaceHref();
+  // A pill as tall as the lens pills above it.
   const button = (
-    <Button size="sm" variant="ai" onClick={onGenerate} disabled={noCredits}>
+    <Button variant="ai" onClick={onGenerate} disabled={noCredits} className="h-9 rounded-full px-4">
       Write overview
       <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
         <Coins className="size-3.5" /> 2
@@ -179,11 +180,11 @@ function Ask({ total, capped, noCredits, onGenerate }: { total: number; capped: 
     </Button>
   );
   return (
-    <div className="flex flex-wrap items-center gap-3 py-1">
+    <div className="flex flex-wrap items-center gap-3">
       {noCredits ? (
         <TooltipHint label="No credits left">
           {/* A disabled button takes no pointer, so its reason hangs on a wrapper that does. */}
-          <span tabIndex={0} className="inline-flex rounded-md">
+          <span tabIndex={0} className="inline-flex rounded-full">
             {button}
           </span>
         </TooltipHint>
@@ -206,6 +207,8 @@ function Ask({ total, capped, noCredits, onGenerate }: { total: number; capped: 
 
 function Written({ blocks, run }: { blocks: Block[]; run: Run }) {
   const reduce = useReducedMotion();
+  // The papers it cites, listed under it once it's whole, so the list never grows row by row while it's written.
+  const cited = run.done ? citedPapers(blocks, run) : [];
   return (
     <div className="space-y-3">
       {blocks.map((block, i) => (
@@ -213,6 +216,11 @@ function Written({ blocks, run }: { blocks: Block[]; run: Run }) {
           <BlockView block={block} run={run} />
         </motion.div>
       ))}
+      {cited.length ? (
+        <motion.div initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: EASE }}>
+          <PaperRows papers={cited} />
+        </motion.div>
+      ) : null}
     </div>
   );
 }
@@ -221,10 +229,6 @@ const GROUP_LABEL: Record<string, string> = { year: "year", country: "country", 
 
 function BlockView({ block, run }: { block: Block; run: Run }) {
   if (block.kind === "text") return <p className="text-[0.9375rem] leading-relaxed text-foreground">{block.parts.map((part, i) => (typeof part === "string" ? part : <CiteChip key={i} cite={part} run={run} />))}</p>;
-  if (block.kind === "papers") {
-    const list = run.lists[block.id];
-    return list ? <PaperRows papers={list.papers} /> : null;
-  }
   const count = run.counts[block.id];
   if (!count) return null;
   const span = count.years ? ` in ${count.years.from ?? ""}–${count.years.to ?? ""}` : "";

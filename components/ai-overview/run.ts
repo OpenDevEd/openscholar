@@ -73,9 +73,9 @@ export function subscribeRun([, runKey, body]: [string, string, string], { next 
 }
 
 export type Cite = { id: string; text: string };
-export type Block = { kind: "text"; parts: Array<string | Cite> } | { kind: "chart"; id: string; change: boolean } | { kind: "papers"; id: string };
+export type Block = { kind: "text"; parts: Array<string | Cite> } | { kind: "chart"; id: string; change: boolean };
 
-const MARKER = /\[(chart|papers):(\w+)(:change)?\]/g;
+const MARKER = /\[chart:(\w+)(:change)?\]/g;
 const CITE = /\[([^\]]+)\]\(paper:(W\d+)\)/g;
 
 /** A paragraph's words, with each cited paper as a chip. */
@@ -101,9 +101,16 @@ function textBlock(line: string): Block[] {
 export function blocksOf(text: string, writing: boolean): Block[] {
   const body = (writing ? text.slice(0, text.lastIndexOf("\n") + 1) : text).replace(/\*\*|__/g, "");
   return body.split(/\n+/).flatMap((line): Block[] => {
-    const markers = [...line.matchAll(MARKER)].map((m): Block => (m[1] === "chart" ? { kind: "chart", id: m[2], change: Boolean(m[3]) } : { kind: "papers", id: m[2] }));
+    const markers = [...line.matchAll(MARKER)].map((m): Block => ({ kind: "chart", id: m[1], change: Boolean(m[2]) }));
     return [...textBlock(line.replace(MARKER, "")), ...markers];
   });
+}
+
+/** The papers an overview cites, each once, in the order it first cites them, as its papers results gave them. */
+export function citedPapers(blocks: Block[], run: Run) {
+  const known = new Map(Object.values(run.lists).flatMap((l) => l.papers.map((p) => [p.id, p] as const)));
+  const ids = [...new Set(blocks.flatMap((b) => (b.kind === "text" ? b.parts.flatMap((p) => (typeof p === "string" ? [] : [p.id])) : [])))];
+  return ids.flatMap((id) => (known.has(id) ? [known.get(id)!] : []));
 }
 
 /** The overview as text to paste: its paragraphs, with each cited paper's words. */
