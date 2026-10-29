@@ -9,7 +9,7 @@ import { useState } from "react";
 import Link from "next/link";
 import useSWRSubscription from "swr/subscription";
 import { motion, useReducedMotion } from "motion/react";
-import { AiIcon, ChevronDown, Coins, Copy, MoreHorizontal, Pencil, Plus, RefreshCw, Trash2, UpgradeIcon, Users } from "@/components/icons";
+import { AiIcon, Check, ChevronDown, Coins, Copy, MoreHorizontal, Pencil, Plus, RefreshCw, Trash2, UpgradeIcon, Users } from "@/components/icons";
 import { IconButton, WorkingText } from "@/components/assistant/parts";
 import { RECORD_CHIP, recordChipStyle } from "@/components/assistant/mentions";
 import { EASE } from "@/components/settings/model-map";
@@ -24,14 +24,17 @@ import { cn } from "@/lib/utils";
 import { useWorkspaceHref } from "@/lib/workspaces/href";
 import { ChangeBars, PaperRows, ShareBars, YearBars } from "./charts";
 import { LensDialog } from "./lens-dialog";
-import { DAILY_CAP, useLenses, type Lens } from "./lenses";
-import { blocksOf, plainText, subscribeRun, type Block, type Cite, type Run } from "./run";
+import { DAILY_CAP, PRO_CAP, useLenses, type Lens } from "./lenses";
+import { blocksOf, isWritten, plainText, subscribeRun, type Block, type Cite, type Run } from "./run";
 
 const thisYear = new Date().getFullYear();
 
 export function AiOverview() {
   const search = useSearch();
-  const { lenses, open, collapsed, usedToday, freePlan: free, setFreePlan, pick, remove, toggle } = useLenses();
+  const { lenses, open, collapsed, usedToday, freePlan: free, setFreePlan, noCredits, setNoCredits, setUsedToday, pick, remove, toggle } = useLenses();
+  // Once the day's free overviews are used, Go and above work as the free plan does until the cap resets: an overview
+  // waits for Write overview and costs credits. One already written opens again either way.
+  const capped = !free && usedToday >= DAILY_CAP;
   const lens = lenses.find((l) => l.id === open) ?? lenses[0];
   const query = search.params.q;
   const filters = search.toSearchFilters();
@@ -39,7 +42,7 @@ export function AiOverview() {
   const runKey = JSON.stringify([lens.id, lens.instruction, query, filters, nonce]);
   const [requested, setRequested] = useState<ReadonlySet<string>>(new Set());
   const [editing, setEditing] = useState<{ lens: Lens | null } | null>(null);
-  const wanted = !free || requested.has(runKey);
+  const wanted = !(free || capped) || requested.has(runKey) || isWritten(runKey);
   const { data: run, error } = useSWRSubscription(wanted ? ["ai-overview", runKey, JSON.stringify({ query, filters, lens: { name: lens.name, instruction: lens.instruction } })] : null, subscribeRun);
   const working = wanted && !error && !run?.done;
   const blocks = run ? blocksOf(run.text, !run.done) : [];
@@ -101,7 +104,15 @@ export function AiOverview() {
             ) : null}
             <DropdownMenuSeparator />
             <DropdownMenuItem onSelect={() => setFreePlan(!free)}>
-              <UpgradeIcon /> {free ? "Mock: show Go plan" : "Mock: show free plan"}
+              {free ? <Check /> : <UpgradeIcon />} Mock: free plan
+            </DropdownMenuItem>
+            {free ? null : (
+              <DropdownMenuItem onSelect={() => setUsedToday(capped ? 9 : DAILY_CAP)}>
+                {capped ? <Check /> : <UpgradeIcon />} Mock: free overviews used up
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onSelect={() => setNoCredits(!noCredits)}>
+              {noCredits ? <Check /> : <Coins />} Mock: no credits left
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -135,7 +146,7 @@ export function AiOverview() {
                 <Written key={shown.key} blocks={shownBlocks} run={shown.run} />
               </div>
             ) : !wanted ? (
-              <Ask total={search.totalCount} onGenerate={() => setRequested((s) => new Set(s).add(runKey))} />
+              <Ask total={search.totalCount} capped={capped} noCredits={noCredits} onGenerate={() => setRequested((s) => new Set(s).add(runKey))} />
             ) : null}
           </div>
         )}
@@ -146,21 +157,49 @@ export function AiOverview() {
   );
 }
 
-/** The free plan's start: the overview waits to be asked for, and says what it costs. */
-function Ask({ total, onGenerate }: { total: number; onGenerate: () => void }) {
+/** When the day's free overviews come back: midnight UTC, when Autumn resets a daily limit, in the person's own time. */
+function resetsAt() {
+  const now = new Date();
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(next);
+}
+
+/**
+ * An overview that waits to be asked for, and what it costs: on the free plan, and on Go and above once the day's
+ * free overviews are used. With no credits left the button can't start one and says why.
+ */
+function Ask({ total, capped, noCredits, onGenerate }: { total: number; capped: boolean; noCredits: boolean; onGenerate: () => void }) {
   const href = useWorkspaceHref();
+  const button = (
+    <Button size="sm" variant="ai" onClick={onGenerate} disabled={noCredits}>
+      Write overview
+      <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
+        <Coins className="size-3.5" /> 2
+      </span>
+    </Button>
+  );
   return (
     <div className="flex flex-wrap items-center gap-3 py-1">
-      <Button size="sm" variant="ai" onClick={onGenerate}>
-        <AiIcon size={14} /> Write overview
-        <span className="flex items-center gap-1 text-xs text-muted-foreground tabular-nums">
-          <Coins className="size-3.5" /> 2
-        </span>
-      </Button>
-      <span className="text-sm text-muted-foreground">Reads all {total.toLocaleString("en")} results</span>
-      <Link href={href("/pricing")} className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
-        <UpgradeIcon className="size-4" /> Free and automatic on Go
-      </Link>
+      {noCredits ? (
+        <TooltipHint label="No credits left">
+          {/* A disabled button takes no pointer, so its reason hangs on a wrapper that does. */}
+          <span tabIndex={0} className="inline-flex rounded-md">
+            {button}
+          </span>
+        </TooltipHint>
+      ) : (
+        button
+      )}
+      <span className="text-sm text-muted-foreground">{capped ? `Free overviews back at ${resetsAt()}` : noCredits ? "No credits left" : `Reads all ${total.toLocaleString("en")} results`}</span>
+      {noCredits && capped ? (
+        <Link href={href("/settings/billing")} className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+          <Coins className="size-4" /> Get credits
+        </Link>
+      ) : (
+        <Link href={href("/pricing")} className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+          <UpgradeIcon className="size-4" /> {capped ? `${PRO_CAP} a day on Pro` : "Free and automatic on Go"}
+        </Link>
+      )}
     </div>
   );
 }
@@ -216,9 +255,10 @@ function CiteChip({ cite, run }: { cite: Cite; run: Run }) {
 
 function CapRing({ usedToday }: { usedToday: number }) {
   const left = Math.max(0, DAILY_CAP - usedToday);
+  const label = left ? `${left} of ${DAILY_CAP} free overviews left today` : `No free overviews left today. They're back at ${resetsAt()}`;
   return (
-    <TooltipHint label={`${left} of ${DAILY_CAP} free overviews left today`}>
-      <span tabIndex={0} className="relative flex size-6 shrink-0 items-center justify-center text-[10px] font-medium tabular-nums text-muted-foreground" aria-label={`${left} of ${DAILY_CAP} free overviews left today`}>
+    <TooltipHint label={label}>
+      <span tabIndex={0} className={cn("relative flex size-6 shrink-0 items-center justify-center text-[10px] font-medium tabular-nums", left ? "text-muted-foreground" : "text-destructive")} aria-label={label}>
         <Ring value={left / DAILY_CAP} color="var(--primary)" />
         {left}
       </span>

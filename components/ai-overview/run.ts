@@ -33,6 +33,9 @@ function apply(run: Run, event: OverviewEvent): Run {
 /** Runs written in full this visit, so going back to a lens or a search shows it again without a new run. */
 const finished = new Map<string, Run>();
 
+/** Whether this visit has a run for the key written in full: it opens again for free, whatever the plan or the cap. */
+export const isWritten = (runKey: string) => finished.has(runKey);
+
 /** A useSWRSubscription source: the key's run, from the cache or from a new request. */
 export function subscribeRun([, runKey, body]: [string, string, string], { next }: SWRSubscriptionOptions<Run, Error>) {
   const cached = finished.get(runKey);

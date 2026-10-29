@@ -22,8 +22,10 @@ export function YearBars({ groups, label = "Papers per year" }: { groups: Group[
     <figure className="rounded-xl bg-inset px-4 pt-3 pb-2.5" aria-label={label}>
       <figcaption className="flex items-baseline justify-between text-xs">
         <span className="font-medium text-foreground">{label}</span>
-        <span className="tabular-nums text-muted-foreground">
-          <span className="font-semibold text-foreground">{shown.count.toLocaleString("en")}</span> in {shown.key}
+        <span className="w-32 shrink-0 text-right tabular-nums text-muted-foreground">
+          {/* The number ends the line, flush right, so it keeps its place as the hovered year changes. */}
+          {shown.key}
+          <span className="ml-2 font-semibold text-foreground">{shown.count.toLocaleString("en")}</span>
         </span>
       </figcaption>
       <div className="mt-2 flex h-24 items-end gap-[3px]" onPointerLeave={() => setHover(null)}>
@@ -58,8 +60,12 @@ export function ChangeBars({ groups }: { groups: Group[] }) {
     <figure className="rounded-xl bg-inset px-4 pt-3 pb-2.5" aria-label="Change on the year before">
       <figcaption className="flex items-baseline justify-between text-xs">
         <span className="font-medium text-foreground">Change on the year before</span>
-        <span className="tabular-nums text-muted-foreground">
-          <span className="font-semibold text-foreground">{shown.count > 0 ? "+" : ""}{shown.count}%</span> in {shown.key}
+        <span className="w-32 shrink-0 text-right tabular-nums text-muted-foreground">
+          {shown.key}
+          <span className="ml-2 font-semibold text-foreground">
+            {shown.count > 0 ? "+" : ""}
+            {shown.count}%
+          </span>
         </span>
       </figcaption>
       <div className="mt-2 flex h-20 gap-1.5" onPointerLeave={() => setHover(null)}>

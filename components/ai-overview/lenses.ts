@@ -19,6 +19,8 @@ const SEEDED: Lens[] = [
 
 /** Overviews a person on Go or above gets free each day before their credits are used. */
 export const DAILY_CAP = 25;
+/** Pro's daily free overviews, named where Go's run out. */
+export const PRO_CAP = 100;
 
 type State = {
   lenses: Lens[];
@@ -28,6 +30,11 @@ type State = {
   /** Mock only: shows the free plan, where an overview waits for Generate. */
   freePlan: boolean;
   setFreePlan: (freePlan: boolean) => void;
+  /** Mock only: the workspace has no credits left. */
+  noCredits: boolean;
+  setNoCredits: (noCredits: boolean) => void;
+  /** Mock only: uses up today's free overviews, or gives them back. */
+  setUsedToday: (usedToday: number) => void;
   pick: (id: string) => void;
   save: (lens: Omit<Lens, "id" | "mine"> & { id?: string }) => void;
   remove: (id: string) => void;
@@ -44,6 +51,9 @@ export const useLenses = create<State>()(
       usedToday: 9,
       freePlan: false,
       setFreePlan: (freePlan) => set({ freePlan }),
+      noCredits: false,
+      setNoCredits: (noCredits) => set({ noCredits }),
+      setUsedToday: (usedToday) => set({ usedToday }),
       pick: (open) => set({ open }),
       save: ({ id, ...lens }) =>
         set((state) => {
