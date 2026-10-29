@@ -6,8 +6,8 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { isStepCount, streamText, tool } from "ai";
 import { z } from "zod";
-import type { SearchFilters } from "@/lib/types";
-import { countBy, GROUPINGS, listPapers, type Grouping } from "@/lib/ai-overview-mock/openalex";
+import type { PaperResult, SearchFilters } from "@/lib/types";
+import { countBy, GROUPINGS, listPapers, type Grouping, type Paper } from "@/lib/ai-overview-mock/openalex";
 
 /** The Cheap preset's chat model on shared dev (aiModelConfig `preset.cheap.chat`, 2026-10-29). */
 const MODEL = "anthropic/claude-haiku-5.5";
@@ -15,7 +15,7 @@ const MODEL = "anthropic/claude-haiku-5.5";
 export type OverviewEvent =
   | { t: "step"; label: string }
   | { t: "count"; id: string; by: Grouping; total: number; groups: Array<{ key: string; name: string; count: number }>; years?: { from?: number; to?: number } }
-  | { t: "papers"; id: string; papers: Array<{ id: string; title: string; year: number | null; cited: number }> }
+  | { t: "papers"; id: string; papers: Array<Paper & { work: PaperResult }> }
   | { t: "text"; text: string }
   | { t: "done" }
   | { t: "error"; message: string };
@@ -72,8 +72,8 @@ export async function POST(request: Request) {
                 send({ t: "step", label: sort === "cited" ? "Reading the most cited papers" : sort === "newest" ? "Reading the newest papers" : "Reading the closest matches" });
                 const papers = await listPapers(query, filters, sort, count, span);
                 const id = `p${++lists}`;
-                send({ t: "papers", id, papers: papers.map(({ abstract: _abstract, ...paper }) => paper) });
-                return { list: id, papers };
+                send({ t: "papers", id, papers: papers.map(({ read: { abstract: _abstract, ...paper }, work }) => ({ ...paper, work })) });
+                return { list: id, papers: papers.map(({ read }) => read) };
               },
             }),
           },
@@ -117,6 +117,6 @@ Write two to four short paragraphs of plain prose, under 150 words in all. Name 
 
 Place a chart by writing its marker alone on its own line, after the paragraph it supports: [chart:ID] for a count, [chart:ID:change] for a count by year drawn as the change on the year before. Use at most two, and only IDs the tools returned. The papers you cite are listed under the overview on their own, so there's no need to list them.
 
-Cite a paper as [a few words of its title](paper:ID), with the ID a papers result gave, such as [Intelligent tutoring systems](paper:W2016011122).
+Every paper you mention is a citation: [a few words of its title](paper:ID), with the ID a papers result gave, such as [Intelligent tutoring systems](paper:W2016011122). Never name a paper in quotes or by its title alone; a person opens a cited paper from its link.
 
 ${year} isn't over, so leave it out of comparisons between years or say it's partial. A paper with authors in several countries counts once for each.`;

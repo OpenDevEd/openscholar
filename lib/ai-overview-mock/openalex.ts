@@ -3,12 +3,14 @@
 // through research/papers:count and research/papers:search, as the assistant does.
 
 import { createSearchParameters } from "@/lib/utils";
-import type { SearchFilters } from "@/lib/types";
+import type { PaperResult, SearchFilters } from "@/lib/types";
 import { openAlexFetch } from "@/lib/openalex/fetch";
 import { worksUrl } from "@/lib/openalex/works-url";
 
 export type Group = { key: string; name: string; count: number };
-export type Paper = { id: string; title: string; year: number | null; cited: number; abstract?: string };
+export type Paper = { id: string; title: string; year: number | null; cited: number };
+/** A paper as the model reads it: the start of its abstract, so it can say what the paper found. */
+export type ReadPaper = Paper & { abstract?: string };
 
 /** The groupings the model can count by, as OpenAlex names them. */
 export const GROUPINGS = {
@@ -32,7 +34,7 @@ export type PaperSort = keyof typeof SORTS;
 type Body = {
   meta?: { count?: number };
   group_by?: Array<{ key: string; key_display_name?: string; count: number }>;
-  results?: Array<{ id: string; display_name?: string; publication_year?: number; cited_by_count?: number; abstract_inverted_index?: Record<string, number[]> | null }>;
+  results?: Array<{ id: string; display_name?: string; publication_year?: number; cited_by_count?: number; abstract_inverted_index?: Record<string, number[]> | null; [field: string]: unknown }>;
 };
 
 /** The search's parameters, narrowed to a span of years when one is given. */
@@ -63,16 +65,25 @@ const abstractOf = (index: Record<string, number[]> | null | undefined) => {
   if (!index) return undefined;
   const words: string[] = [];
   for (const [word, places] of Object.entries(index)) for (const place of places) words[place] = word;
-  return words.join(" ").slice(0, 700);
+  return words.join(" ");
 };
 
-export async function listPapers(query: string, filters: SearchFilters, sort: PaperSort, count: number, years?: { from?: number; to?: number }): Promise<Paper[]> {
+/**
+ * Up to 10 of the search's papers: for the model, what it needs to cite them; for the card, each whole OpenAlex
+ * record as the results list has one, so a cited paper opens in focus mode with everything a result card shows.
+ */
+export async function listPapers(query: string, filters: SearchFilters, sort: PaperSort, count: number, years?: { from?: number; to?: number }): Promise<Array<{ read: ReadPaper; work: PaperResult }>> {
   const { search, filter } = parameters(query, filters, years);
   const body = await ask(
     worksUrl({ search, filter, sortBy: sort === "relevance" && !search ? undefined : { field: SORTS[sort], order: "desc" } } as never, {
       "per-page": String(Math.min(10, Math.max(1, count))),
-      select: "id,display_name,publication_year,cited_by_count,abstract_inverted_index",
     }),
   );
-  return (body.results ?? []).map((w) => ({ id: w.id.split("/").at(-1)!, title: w.display_name ?? "", year: w.publication_year ?? null, cited: w.cited_by_count ?? 0, abstract: abstractOf(w.abstract_inverted_index) }));
+  return (body.results ?? []).map(({ abstract_inverted_index, ...work }) => {
+    const abstract = abstractOf(abstract_inverted_index);
+    return {
+      read: { id: work.id.split("/").at(-1)!, title: work.display_name ?? "", year: work.publication_year ?? null, cited: work.cited_by_count ?? 0, abstract: abstract?.slice(0, 700) },
+      work: { ...work, ...(abstract ? { abstract } : {}) } as unknown as PaperResult,
+    };
+  });
 }

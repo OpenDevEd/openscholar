@@ -23,7 +23,9 @@ import { useSearch } from "@/lib/search";
 import { cn } from "@/lib/utils";
 import { useWorkspaceHref } from "@/lib/workspaces/href";
 import { ChangeBars, PaperRows, ShareBars, YearBars } from "./charts";
+import { openCited } from "./focus";
 import { LensDialog } from "./lens-dialog";
+import { SkeletonBar } from "@/components/library/library-item-skeleton";
 import { DAILY_CAP, PRO_CAP, useLenses, type Lens } from "./lenses";
 import { blocksOf, citedPapers, isWritten, plainText, subscribeRun, type Block, type Cite, type Run } from "./run";
 
@@ -134,6 +136,16 @@ export function AiOverview() {
                 {working ? <WorkingText>{run?.step ?? "Reading the results"}</WorkingText> : <span>{shown ? readOf(shown.run) : null}</span>}
               </p>
             ) : null}
+            {working && !shown ? (
+              // Lines at the text's own height while nothing is written yet; the first paragraph takes their place.
+              <div aria-hidden>
+                {["w-full", "w-[94%]", "w-3/5"].map((width) => (
+                  <div key={width} className="flex h-[1.5234rem] items-center">
+                    <SkeletonBar className={width} />
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {failure ? (
               <div className="flex items-center gap-3 py-1 text-sm text-muted-foreground">
                 <span className="flex-1">The overview didn&apos;t finish: {failure}</span>
@@ -208,17 +220,18 @@ function Ask({ total, capped, noCredits, onGenerate }: { total: number; capped: 
 function Written({ blocks, run }: { blocks: Block[]; run: Run }) {
   const reduce = useReducedMotion();
   // The papers it cites, listed under it once it's whole, so the list never grows row by row while it's written.
-  const cited = run.done ? citedPapers(blocks, run) : [];
+  const cited = citedPapers(blocks, run);
+  const open = (id: string) => openCited(cited.map((p) => p.work), cited.findIndex((p) => p.id === id));
   return (
     <div className="space-y-3">
       {blocks.map((block, i) => (
         <motion.div key={i} initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: EASE }}>
-          <BlockView block={block} run={run} />
+          <BlockView block={block} run={run} onCite={open} />
         </motion.div>
       ))}
-      {cited.length ? (
+      {run.done && cited.length ? (
         <motion.div initial={reduce ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, ease: EASE }}>
-          <PaperRows papers={cited} />
+          <PaperRows papers={cited} onOpen={(i) => openCited(cited.map((p) => p.work), i)} />
         </motion.div>
       ) : null}
     </div>
@@ -227,8 +240,8 @@ function Written({ blocks, run }: { blocks: Block[]; run: Run }) {
 
 const GROUP_LABEL: Record<string, string> = { year: "year", country: "country", type: "type", field: "field", topic: "topic", openAccess: "open access", journal: "journal", institution: "institution", funder: "funder", language: "language", sdg: "SDG" };
 
-function BlockView({ block, run }: { block: Block; run: Run }) {
-  if (block.kind === "text") return <p className="text-[0.9375rem] leading-relaxed text-foreground">{block.parts.map((part, i) => (typeof part === "string" ? part : <CiteChip key={i} cite={part} run={run} />))}</p>;
+function BlockView({ block, run, onCite }: { block: Block; run: Run; onCite: (id: string) => void }) {
+  if (block.kind === "text") return <p className="text-[0.9375rem] leading-relaxed text-foreground">{block.parts.map((part, i) => (typeof part === "string" ? part : <CiteChip key={i} cite={part} run={run} onOpen={onCite} />))}</p>;
   const count = run.counts[block.id];
   if (!count) return null;
   const span = count.years ? ` in ${count.years.from ?? ""}–${count.years.to ?? ""}` : "";
@@ -243,16 +256,20 @@ function BlockView({ block, run }: { block: Block; run: Run }) {
   return <ShareBars groups={groups.slice(0, 8)} total={count.total} label={`Share of papers by ${GROUP_LABEL[count.by] ?? count.by}${span}`} />;
 }
 
-/** A cited paper as the assistant's record chip, in the words the model chose; the full title shows on hover. */
-function CiteChip({ cite, run }: { cite: Cite; run: Run }) {
+/**
+ * A cited paper as the assistant's record chip, in the words the model chose; the full title shows on hover, and a
+ * click opens it in focus mode. A paper no tool returned stays plain words: there's nothing to open.
+ */
+function CiteChip({ cite, run, onOpen }: { cite: Cite; run: Run; onOpen: (id: string) => void }) {
   const paper = Object.values(run.lists)
     .flatMap((l) => l.papers)
     .find((p) => p.id === cite.id);
+  if (!paper) return cite.text;
   return (
-    <TooltipHint label={paper ? `${paper.title} (${paper.year})` : undefined}>
-      <a href={`https://openalex.org/works/${cite.id}`} target="_blank" rel="noreferrer" className={cn(RECORD_CHIP, "text-sm hover:underline")} style={recordChipStyle("var(--primary)")}>
+    <TooltipHint label={`${paper.title} (${paper.year})`}>
+      <button type="button" onClick={() => onOpen(cite.id)} className={cn(RECORD_CHIP, "text-sm hover:underline")} style={recordChipStyle("var(--primary)")}>
         {cite.text}
-      </a>
+      </button>
     </TooltipHint>
   );
 }

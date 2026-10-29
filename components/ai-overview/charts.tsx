@@ -111,15 +111,15 @@ export function ShareBars({ groups, total, label }: { groups: Group[]; total: nu
   );
 }
 
-/** The papers a lens points to, with their citations as bars against the first. */
-export function PaperRows({ papers }: { papers: Paper[] }) {
+/** The papers an overview cites, with their citations as bars against the most cited. Each row opens its paper. */
+export function PaperRows({ papers, onOpen }: { papers: Paper[]; onOpen: (index: number) => void }) {
   const reduce = useReducedMotion();
   const max = Math.max(1, ...papers.map((p) => p.cited));
   return (
     <ol className="divide-y divide-border-subtle overflow-hidden rounded-xl bg-inset">
       {papers.map((paper, i) => (
         <li key={paper.id}>
-          <a href={`https://openalex.org/works/${paper.id}`} target="_blank" rel="noreferrer" className="grid grid-cols-[1fr_7rem] items-center gap-4 px-4 py-2.5 text-sm hover:bg-foreground/[0.03]">
+          <button type="button" onClick={() => onOpen(i)} className="grid w-full grid-cols-[1fr_7rem] items-center gap-4 px-4 py-2.5 text-left text-sm hover:bg-foreground/[0.03]">
             <span className="min-w-0">
               <span className="line-clamp-1 font-medium text-foreground">{paper.title}</span>
               <span className="text-xs tabular-nums text-muted-foreground">{paper.year}</span>
@@ -130,7 +130,7 @@ export function PaperRows({ papers }: { papers: Paper[] }) {
               </span>
               <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">{paper.cited.toLocaleString("en")}</span>
             </span>
-          </a>
+          </button>
         </li>
       ))}
     </ol>
