@@ -92,6 +92,16 @@ describe("suggested searches", () => {
     expect(searches).toHaveLength(10);
   });
 
+  it("leaves out a search moved to another workspace since it asked", async () => {
+    const { t, search, row, start, team } = await setup();
+    await search("teacher training");
+    await search("a search that moves");
+    const { askedBy, dueAt } = (await row())!;
+    // Moved before the refresh runs (../workspaces/move.ts moves a search by its workspace).
+    await t.run((ctx) => ctx.db.patch("searches", askedBy!, { workspaceId: team }));
+    expect((await start(dueAt!))!.searches).toEqual(["teacher training"]);
+  });
+
   it("writes no more sets a day than the workspace's plan allows, and keeps the last one past it", async () => {
     const { search, row, start, finish, setPerDay } = await setup();
     await setPerDay(2);

@@ -49,7 +49,9 @@ export const startRefresh = internalMutation({
     const row = await rowOf(ctx, workspaceId, userId);
     if (!row || row.dueAt !== dueAt) return null;
     await ctx.db.patch("searchSuggestions", row._id, { dueAt: undefined });
-    const asked = row.askedBy ? await ctx.db.get("searches", row.askedBy) : null;
+    // Only while it's still this person's search in this workspace: one moved since belongs to another.
+    const askedBy = row.askedBy ? await ctx.db.get("searches", row.askedBy) : null;
+    const asked = askedBy?.workspaceId === workspaceId && askedBy.createdBy === userId ? askedBy : null;
     const newest = await ctx.db.query("searches").withIndex("by_workspace_and_createdBy_and_createdAt", (q) => q.eq("workspaceId", workspaceId).eq("createdBy", userId)).order("desc").take(RECENT_SEARCHES);
     // The search that asked first, however old it is, then the newest others.
     const searches = [...(asked ? [asked] : []), ...newest]
