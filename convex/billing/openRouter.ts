@@ -3,6 +3,7 @@
  * settles the turns that stop or fail after OpenRouter started a generation: the
  * generation record is looked up with retries, and its cost is charged.
  */
+import { openRouterUsageCost } from "../../lib/ai/pick-provider-cost";
 import { internalAction, type ActionCtx } from "../_generated/server";
 import { v, type ObjectType } from "convex/values";
 import { internal } from "../_generated/api";
@@ -69,7 +70,8 @@ export function normalizeOpenRouterGeneration(
 
   const generationId = asString(record.id);
   const model = asString(record.model);
-  const totalCostUsd = asNumber(record.total_cost);
+  // On our own provider key `total_cost` is OpenRouter's fee alone; what the provider charged is added, as for a whole reply.
+  const totalCostUsd = openRouterUsageCost({ cost: record.total_cost, is_byok: record.is_byok, cost_details: { upstream_inference_cost: record.upstream_inference_cost } });
 
   if (!generationId) {
     throw new Error("OpenRouter generation payload is missing id");
@@ -77,7 +79,7 @@ export function normalizeOpenRouterGeneration(
   if (!model) {
     throw new Error("OpenRouter generation payload is missing model");
   }
-  if (totalCostUsd === null || totalCostUsd < 0) {
+  if (totalCostUsd === null) {
     throw new Error("OpenRouter generation payload is missing total_cost");
   }
 

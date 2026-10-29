@@ -37,6 +37,14 @@ describe("OpenRouter billing helpers", () => {
     });
   });
 
+  // A reply stopped or failed mid-stream is settled from its generation record. On our own provider key its
+  // `total_cost` is OpenRouter's fee alone, so the provider's charge is added; on OpenRouter's credits it's all of it.
+  it("charges a stopped reply on our own key what the provider billed", () => {
+    const base = { id: "gen_1", model: "anthropic/claude-haiku-5.5", native_tokens_prompt: 100, native_tokens_completion: 10 };
+    expect(normalizeOpenRouterGeneration({ ...base, total_cost: 0, upstream_inference_cost: 0.01, is_byok: true }).totalCostUsd).toBeCloseTo(0.01, 9);
+    expect(normalizeOpenRouterGeneration({ ...base, total_cost: 0.0000293, upstream_inference_cost: 0.0000293, is_byok: false }).totalCostUsd).toBeCloseTo(0.0000293, 12);
+  });
+
   it("rejects incomplete OpenRouter generation payloads", () => {
     expect(() =>
       normalizeOpenRouterGeneration({
