@@ -315,8 +315,8 @@ export function ResultsList({
   }, []);
 
   const { isFocusModeOpen, focusModeIndex, viewMode } = useUIStore();
-  // Opened from the AI overview (#967), focus mode steps through the papers it cites instead of the
-  // results. The list it opened on is held until it opens again, so it stays the same while it slides out.
+  // Opened from the AI overview (#967), focus mode steps through the papers it cites instead of the results, and
+  // takes their whole records once they're read. The list is held after it closes, so it stays the same while it slides out.
   const cited = useCitedFocus((s) => s.papers);
   const [focusFrom, setFocusFrom] = useState<{ open: boolean; cited: PaperResult[] | null }>({ open: false, cited: null });
   if (isFocusModeOpen !== focusFrom.open) setFocusFrom({ open: isFocusModeOpen, cited: isFocusModeOpen ? cited : focusFrom.cited });
@@ -527,7 +527,7 @@ export function ResultsList({
           useUIStore.getState().setIsFocusModeOpen(false);
           useCitedFocus.setState({ papers: null });
         }}
-        papers={focusFrom.cited ?? filteredResults}
+        papers={(isFocusModeOpen ? cited : focusFrom.cited) ?? filteredResults}
         onDownloadItem={onDownloadItem}
         onDownloadEssentialItem={onDownloadEssentialItem}
       />

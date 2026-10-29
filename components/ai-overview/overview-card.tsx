@@ -36,7 +36,7 @@ import type { PaperResult } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useWorkspaceHref } from "@/lib/workspaces/href";
 import { ChangeBars, PaperRows, ShareBars, YearBars } from "./charts";
-import { openCited } from "./focus";
+import { openCited, useCitedFocus } from "./focus";
 import { LensDialog, type Lens } from "./lens-dialog";
 import { blocksOf, citedPapers, plainText, type Block, type Cite } from "./text";
 
@@ -53,7 +53,12 @@ const nextDay = () => {
 };
 const thisYear = new Date().getUTCFullYear();
 
-/** Runs the open lens's overview once nothing is written for it, on a plan where it's free: a Convex mutation is the outside system. */
+/**
+ * Asks Convex to write the open lens's overview once nothing is written for it, on a plan where it's free. It's a
+ * subscription to the server's work for what's on screen, the way useQuery is to its data: SWR starts it when the card
+ * shows a lens that has none, never again for the same key, and the mutation is idempotent, so a second card or a
+ * reload finds it written or writing. Folded, the key is null and nothing is asked for.
+ */
 function subscribeEnsure(convex: ReturnType<typeof useConvex>) {
   return ([, scope, searchId, lens]: [string, Scope, string, string], { next }: { next: (error?: Error | null, data?: string) => void }) => {
     convex.mutation(api.research.overviews.ensure, { ...scope, searchId, lens }).then(
@@ -98,6 +103,8 @@ function Card({ scope, view, searchId }: { scope: Scope; view: View; searchId: s
   // Free, an overview nothing has written is started as the card shows it.
   const { error: startError } = useSWRSubscription(shown?.available && !overview && free ? (["ai-overview", scope, searchId, lens.id] as [string, Scope, string, string]) : null, subscribeEnsure(convex));
   const working = Boolean(shown?.available && ((!overview && free && !startError) || overview?.status === "running"));
+  // Between lenses or searches the new overview's read is in flight: the last one stays, dimmed, until it's known.
+  const loading = !view.collapsed && shown === undefined;
 
   // The last overview written stays, dimmed, until the next one is whole, so the card never empties and a chart never
   // gives way to a half-written paragraph. The first one shows its paragraphs as they're written.
@@ -105,7 +112,7 @@ function Card({ scope, view, searchId }: { scope: Scope; view: View; searchId: s
   const [last, setLast] = useState<{ key: string; overview: Overview } | null>(null);
   if (overview?.status === "done" && last?.key !== key) setLast({ key, overview });
   const live = overview && overview.status !== "failed" && overview.text && (overview.status === "done" || !last) ? { key, overview } : null;
-  const showing = live ?? (working ? last : null);
+  const showing = live ?? (working || loading ? last : null);
   const blocks = showing ? blocksOf(showing.overview.text) : [];
 
   const run = async (args: { pay?: boolean; again?: boolean }) => {
@@ -180,9 +187,9 @@ function Card({ scope, view, searchId }: { scope: Scope; view: View; searchId: s
       </header>
 
       <AutoHeight>
-        {view.collapsed || !shown ? null : (
+        {view.collapsed || (!shown && !showing) ? null : (
           <div className="px-4 pb-4">
-            {!shown.available ? (
+            {shown && !shown.available ? (
               <p className="text-sm text-muted-foreground">{t("unavailable")}</p>
             ) : overview?.status === "failed" ? (
               <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
@@ -305,7 +312,14 @@ function Written({ blocks, overview }: { blocks: Block[]; overview: Overview }) 
   const cited = citedPapers(blocks, overview.lists);
   // The cited papers' whole records, for focus mode to open with everything a result card shows; read once it's written.
   const ids = cited.map((paper) => paper.id);
-  const { data: records } = useSWR(overview.status === "done" && ids.length ? ["ai-overview-cited", ...ids] : null, () => readCitedPapers(ids), { revalidateOnFocus: false });
+  const { data: records } = useSWR(overview.status === "done" && ids.length ? ["ai-overview-cited", ...ids] : null, () => readCitedPapers(ids), {
+    revalidateOnFocus: false,
+    // Focus mode opened on these papers before their records were read takes the whole records once they are.
+    onSuccess: (read) => {
+      const open = useCitedFocus.getState().papers;
+      if (Array.isArray(read) && read.length === ids.length && open?.every((paper, i) => paper.id === read[i].id)) useCitedFocus.setState({ papers: read });
+    },
+  });
   const works = Array.isArray(records) ? records : null;
   const open = (index: number) => {
     // Until the records are read, a paper opens with what the overview knows of it.
@@ -339,15 +353,28 @@ function Chart({ block, overview, t }: { block: Extract<Block, { kind: "chart" }
   if (!count) return null;
   const span = count.years && (count.years.from || count.years.to) ? { from: String(count.years.from ?? ""), to: String(count.years.to ?? "") } : null;
   if (count.by === "year") {
-    // A year still running is left out: its count only grows.
-    const full = count.groups.filter((group) => Number(group.key) < thisYear);
+    // A year still running is left out: its count only grows. A year OpenAlex returns nothing for had no papers, so
+    // the years run on without gaps and each change is on the calendar year before.
+    const full = everyYear(count.groups.filter((group) => Number(group.key) < thisYear));
     if (!block.change) return <YearBars groups={full.slice(-20)} label={span ? t("perYearIn", span) : t("perYear")} />;
-    const change = full.slice(1).map((group, i) => ({ ...group, count: full[i].count ? Math.round(((group.count - full[i].count) / full[i].count) * 100) : 0 })).slice(-12);
+    // A change is only a percentage of a year that had papers: the chart starts after the last year that had none.
+    const since = full.findLastIndex((group) => group.count === 0) + 1;
+    const counted = full.slice(since);
+    const change = counted.slice(1).map((group, i) => ({ ...group, count: Math.round(((group.count - counted[i].count) / counted[i].count) * 100) })).slice(-12);
     return <ChangeBars groups={change} label={t("change")} />;
   }
   const groups = count.by === "openAccess" ? count.groups.map((group) => ({ ...group, name: group.key === "true" ? t("freeToRead") : t("notFree") })) : count.groups;
   const by = tb(count.by);
   return <ShareBars groups={groups.slice(0, 8)} total={count.total} label={span ? t("shareIn", { by, ...span }) : t("share", { by })} />;
+}
+
+/** Years from the first to the last a count has, with none left out: a year it doesn't have had no papers. */
+function everyYear(groups: Overview["counts"][number]["groups"]) {
+  if (!groups.length) return groups;
+  const byYear = new Map(groups.map((group) => [Number(group.key), group]));
+  const first = Number(groups[0].key);
+  const last = Number(groups.at(-1)!.key);
+  return Array.from({ length: last - first + 1 }, (_, i) => byYear.get(first + i) ?? { key: String(first + i), name: String(first + i), count: 0 });
 }
 
 /**
