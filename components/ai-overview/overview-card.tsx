@@ -123,7 +123,12 @@ export function AiOverview() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <IconButton label={collapsed ? "Show overview" : "Hide overview"} icon={<ChevronDown className={cn("size-4 transition-transform duration-300", !collapsed && "rotate-180")} />} onClick={toggle} />
+        {/* One name in both states, so its tooltip doesn't change words as it closes on the click. */}
+        <TooltipHint label="Show or hide overview">
+          <button type="button" aria-label="Show or hide overview" aria-expanded={!collapsed} onClick={toggle} className="flex size-8 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
+            <ChevronDown className={cn("size-4 transition-transform duration-300", !collapsed && "rotate-180")} />
+          </button>
+        </TooltipHint>
       </header>
 
       <AutoHeight>
