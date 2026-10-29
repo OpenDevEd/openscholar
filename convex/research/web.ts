@@ -11,6 +11,7 @@ import { releaseCredits, reserveCredits, settleCredits } from "../billing/charge
 import { createError } from "../lib/errors";
 import { assistantAction, defineUserAction, userAction } from "../lib/userActions";
 import { convertUsdToCredits } from "../../lib/pricing";
+import { openRouterUsageCost } from "../../lib/ai/pick-provider-cost";
 import { WEB_RESULTS_MAX, webResultsValidator } from "./searchValidators";
 import { WEB_SEARCH_ENGINE, WEB_SEARCH_HOLD_USD, WEB_SEARCH_MAX_RESULTS, WEB_SEARCH_MODEL, WEB_SEARCH_MODEL_TOKENS } from "../../lib/pricing/web-search";
 
@@ -26,7 +27,7 @@ const RETRY_MS = [1_000, 2_000];
 
 /** One search: the pages it found, and what OpenRouter says it cost. Logged in full when it fails, so a failure says why. */
 async function searchWeb(query: string): Promise<{ results: Result[]; usd: number | null }> {
-  type Body = { choices?: Array<{ message?: { annotations?: Annotation[] } }>; usage?: { cost?: number }; error?: unknown } | null;
+  type Body = { choices?: Array<{ message?: { annotations?: Annotation[] } }>; usage?: { cost?: number; cost_details?: { upstream_inference_cost?: number | null } }; error?: unknown } | null;
   let body: Body;
   for (let attempt = 0; ; attempt += 1) {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -56,7 +57,8 @@ async function searchWeb(query: string): Promise<{ results: Result[]; usd: numbe
     seen.add(cited.url);
     return [{ title: cited.title?.trim() || cited.url, url: cited.url, excerpt: (cited.content ?? "").replace(/\s+/g, " ").trim().slice(0, EXCERPT_CHARS) }];
   });
-  return { results: results.slice(0, WEB_RESULTS_MAX), usd: typeof body.usage?.cost === "number" ? body.usage.cost : null };
+  // What the search cost, the provider's charge included when it ran on our own key.
+  return { results: results.slice(0, WEB_RESULTS_MAX), usd: openRouterUsageCost(body.usage) };
 }
 
 export const searchAction = defineUserAction({
