@@ -113,6 +113,8 @@ export const run = internalAction({
       let text = "";
       let stored = 0;
       let usd = 0;
+      // OpenRouter's cost for every step, or tokens at the model's price when a step didn't report one.
+      let reported = true;
       let writing = false;
       for await (const part of result.stream) {
         if (part.type === "text-delta" && part.text) {
@@ -130,7 +132,9 @@ export const run = internalAction({
           if (text && !text.endsWith("\n")) text += "\n";
           writing = false;
         } else if (part.type === "finish-step") {
-          usd += pickProviderCostUsd(part.providerMetadata) ?? 0;
+          const cost = pickProviderCostUsd(part.providerMetadata);
+          if (cost === null) reported = false;
+          else usd += cost;
         } else if (part.type === "tool-error") {
           console.error(JSON.stringify({ event: "search-overview-tool-failed", overviewId, tool: part.toolName, error: String(part.error) }));
         } else if (part.type === "error") throw part.error;
@@ -139,8 +143,7 @@ export const run = internalAction({
       // model wrote then rests on nothing, so it isn't kept or charged, and the person gets the overview back.
       if (!text.trim() || counts + lists === 0) throw new Error(`Nothing read or written: ${counts} counts, ${lists} lists, ${text.length} characters`);
       const usage = usageOf({ usage: await result.totalUsage });
-      // On our own provider key OpenRouter reports what it charges, nothing, not what the call cost: then it's the tokens at the model's price.
-      if (!usd) usd = calculateCostInDollars({ inputTokens: usage.inputTokens, outputTokens: usage.outputTokens }, pricing);
+      if (!reported) usd = calculateCostInDollars({ inputTokens: usage.inputTokens, outputTokens: usage.outputTokens }, pricing);
       const credits = paid ? convertUsdToCredits({ usd }) || 1 : 0;
       // Charged only when this run is still the one writing the overview: one a newer run replaced is released instead.
       const kept = await ctx.runMutation(internal.research.overviews.finishRun, { overviewId, startedAt, text: text.trim() });

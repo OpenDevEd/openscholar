@@ -1,4 +1,5 @@
 import type { Usage } from './core/types'
+import { openRouterUsageCost } from './pick-provider-cost'
 
 /**
  * TypeSafe's Jev answers typed questions about a text instead of writing text.
@@ -76,7 +77,7 @@ const YES_NO_CRITERIA = {
 type ChoiceAnswer = { type: 'choice'; choice: string; confidence?: number; probabilities?: Record<string, number> }
 type DecisionsResponse = {
   answers: Record<string, ChoiceAnswer | { type: string }>
-  usage: { input_tokens: number; output_tokens: number; cost?: number }
+  usage: { input_tokens: number; output_tokens: number; cost?: number; cost_details?: { upstream_inference_cost?: number | null } }
 }
 
 /** Ask Jev yes/no questions about one text in one call; answers come back in question order. */
@@ -131,7 +132,8 @@ export async function decideYesNo({
     usage: {
       inputTokens: data.usage.input_tokens,
       outputTokens: data.usage.output_tokens,
-      ...(typeof data.usage.cost === 'number' && { costUsd: data.usage.cost }),
+      // What the call cost, the provider's charge included when it ran on our own key.
+      ...(openRouterUsageCost(data.usage) !== null && { costUsd: openRouterUsageCost(data.usage)! }),
     },
   }
 }
