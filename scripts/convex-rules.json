@@ -84,7 +84,8 @@
       "OPEN_HOLDS_READ": "the holds a member has open, summed to size a reply's hold under their cap; a job holds one per slot and a workspace has 40 slots, and Autumn enforces the cap whatever this reads",
       "READ_LIBRARIES_MAX": "the libraries a person used last, the first ones their roles give, and the newest grants; any other library is reached by its address",
       "SAME_KEY_READ": "the first papers of a job that share one identifier; a paper is one of them or none, since more than a few sharing a title are different papers",
-      "DOMAIN_CLAIMS_READ": "the claims of one host; a host is served for one library, and claimed by a few at most"
+      "DOMAIN_CLAIMS_READ": "the claims of one host; a host is served for one library, and claimed by a few at most",
+      "RECENT_SEARCHES": "the person's newest searches in a workspace, which their suggested searches are written from; older ones don't count"
     },
     "batches": {
       "ACTIVITY_STEP": "a moved item's activity rows, a step at a time; it reschedules itself until none are left in the old workspace",

@@ -70,3 +70,12 @@ export const toExtractionQuestions = (output: z.infer<typeof extractionQuestions
     ...(description ? { description } : {}),
   })),
 })
+
+export const suggestSearchesSchema = z.object({
+  suggestions: z.array(
+    z.object({
+      question: z.string().describe('One research question, a plain sentence under 80 characters ending with a question mark.'),
+      from: z.number().describe('The number of the search the question builds on.'),
+    })
+  ),
+})

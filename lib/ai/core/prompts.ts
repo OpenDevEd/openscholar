@@ -1,4 +1,4 @@
-import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, GenerateExtractionQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput } from './types'
+import type { EnhanceSearchQueryInput, GenerateScreeningQuestionsInput, GenerateExtractionQuestionsInput, TranslateQueryInput, TranslatePaperContentInput, GenerateScreeningResponsesInput, SuggestSearchesInput } from './types'
 import { getLanguageName } from './languages'
 
 const OQL_RULES = `OpenAlex Query Language (OQL) rules:
@@ -331,5 +331,17 @@ ${input.existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
 4. Are not duplicates of existing questions
 5. Include optional descriptions for complex questions
 ${languageName ? `\n\nMANDATORY: Generate all questions in ${languageName} only.` : ""}`,
+  }
+}
+
+export function buildSuggestSearchesPrompts(input: SuggestSearchesInput) {
+  return {
+    system: `You suggest the next research questions a researcher could search for in a scholarly search engine.
+You get their recent searches, newest first, numbered from 0. Some are plain questions, some boolean keyword queries.
+Write exactly 3 research questions that build on them: a related angle, a narrower population or setting, an outcome or method they have not searched yet.
+Each question is one plain sentence under 80 characters, ends with a question mark, and is not a rewording of a search they already ran.
+Prefer the newest searches. Set \`from\` to the number of the search each question builds on.
+Write the questions in the language their recent searches are written in.`,
+    prompt: input.searches.map((text, index) => `${index}. ${text}`).join('\n'),
   }
 }

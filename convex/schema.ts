@@ -12,6 +12,7 @@ import {
 import { libraryDestinationValidator, libraryWriteProblemValidator, libraryWriteValidator, screeningAnswersValidator, screeningDecisionSourcesValidator, paperSetValidator, screeningAuthorsValidator, screeningOutcomeValidator, screeningQuestionsValidator, screeningScoringConfigValidator, screeningTalliesValidator } from "./screening/validators";
 import { searchSnapshotValidator } from "./paperSets/openalex";
 import { activityFields } from "./activity/validators";
+import { searchSuggestionFields } from "./research/suggestionValidators";
 import { itemAccessFields, itemInvitationFields } from "./sharing/validators";
 import {
   errorCodeValidator,
@@ -94,6 +95,8 @@ export default defineSchema({
     // The screening version this revision saw; its answers are the history up to it.
     answersVersion: v.optional(v.number()),
   }).index("by_search_and_revision", ["searchId", "revision"]),
+  // Each person's suggested searches in a workspace, for the home page (#964; ./research/suggestionValidators.ts).
+  searchSuggestions: defineTable(searchSuggestionFields).index("by_workspace_and_user", ["workspaceId", "userId"]),
   // A search's earlier queries and research questions, in the order they were made (#354).
   searchHistory: defineTable({
     searchId: v.id("searches"), kind: v.union(v.literal("query"), v.literal("question")),

@@ -20,6 +20,7 @@ import { tallyAnswerChange } from "../extraction/tallies";
 import { adminText, jobText, keepSearchText, keepTextOfUser, memberText, searchText, shortcutText } from "./searchText";
 import { ADMIN_LIST, countList, libraryVersionList, walletKeyList, workspaceLibrariesOf } from "./listCounts";
 import { followShared, itemGuestsOf, sharedWithOf } from "../sharing/items";
+import { refreshOnSearch } from "../research/suggestionRefresh";
 
 export const triggers = new Triggers<DataModel>();
 
@@ -34,6 +35,8 @@ triggers.register("extractionPaperErrors", countPaperErrorChange);
 triggers.register("extractionPapers", countPaperChange);
 triggers.register("evidenceLibraryConfigSections", recordRevisionApprovedQueries);
 triggers.register("searches", countChange("searches"));
+// A search asks for its maker's suggested searches to be written again (../research/suggestionRefresh.ts).
+triggers.register("searches", refreshOnSearch);
 triggers.register("queryShortcuts", countChange("queryShortcuts"));
 triggers.register("screeningJobs", countChange("screeningJobs"));
 triggers.register("screeningJobs", settleEndedJob<Id<"screeningJobs">>(makeFunctionReference("screening/start:settleHold")));

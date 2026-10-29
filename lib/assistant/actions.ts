@@ -52,6 +52,7 @@ const ACTIONS: Record<string, { kind: Kind; words: Words; searching?: boolean }>
   "research/papers:readPdf": { kind: "file", words: "readPaperPdf", searching: true },
   "research/records:listedSearches": { kind: "search", words: "searches" },
   "research/records:countSearches": { kind: "search", words: "searches" },
+  "research/suggestions:mine": { kind: "search", words: "searches" },
   "research/records:getSearch": { kind: "search", words: "search" },
   "research/records:searchHistory": { kind: "search", words: "searchHistory" },
   "research/searches:create": { kind: "search", words: "newSearch" },

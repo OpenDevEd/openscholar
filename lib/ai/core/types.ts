@@ -10,6 +10,11 @@ export interface EnhanceSearchQueryInput {
   task?: SearchTask
 }
 
+export interface SuggestSearchesInput {
+  /** The person's recent searches, newest first: each its latest question, or its query. */
+  searches: string[]
+}
+
 export interface GenerateScreeningQuestionsInput {
   researchQuestion: string
   existingQuestions: string[]
