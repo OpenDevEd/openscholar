@@ -143,8 +143,8 @@ export function SearchInput({
               </RichTextarea>
             </div>
 
-            {/* Bottom Action Bar */}
-            <div className="flex items-center justify-between p-3 gap-3">
+            {/* Bottom Action Bar. It wraps where the switch and Search don't fit side by side (a narrow phone, larger text), so Search stays in the box. */}
+            <div className="flex flex-wrap items-center justify-between p-3 gap-3">
               <ModeToggle mode={effectiveMode} onModeChange={handleModeChange} disabled={disabled} />
 
               {/* On a phone it shows its icon alone, so it fits on the switch's row; the label stays its name. */}
@@ -155,7 +155,7 @@ export function SearchInput({
                 size="lg"
                 aria-label={isEnhancing ? tc("processing") : effectiveMode === "research" ? t("researchButton") : tc("search")}
                 className={cn(
-                  "rounded-xl px-3.5 sm:px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2 overflow-hidden",
+                  "ml-auto rounded-xl px-3.5 sm:px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2 overflow-hidden",
                   effectiveMode === "research"
                     ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
                     : "bg-foreground hover:bg-foreground/90 text-background",
