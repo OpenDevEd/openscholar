@@ -286,7 +286,7 @@ export const TableView = memo(function TableView({
               <TableHead key={q.key} className="whitespace-normal">
                 <div className="flex items-center gap-1.5">
                   <TooltipHint label={q.question} onlyWhenClipped>
-                    <span className="line-clamp-1">{q.question}</span>
+                    <span dir="auto" className="line-clamp-1">{q.question}</span>
                   </TooltipHint>
                   {q.description && (
                     <Popover>

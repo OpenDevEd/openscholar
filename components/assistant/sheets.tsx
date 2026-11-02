@@ -10,7 +10,8 @@ import type { FunctionReturnType } from "convex/server";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { ArrowRight, Check, ChevronLeft, CircleCheck, CircleHelp, CirclePause, Coins, Loader2, Lock, MessageSquare, Move, Radio, Search, Share2, ShieldCheck, SquarePen, UserRound } from "@/components/icons";
 import { Pills } from "@/components/ui/pills";
-import { useFormatter, useNow, useTranslations } from "next-intl";
+import { useFormatter, useNow, useTranslations, useLocale } from "next-intl";
+import { isRightToLeft } from "@/lib/i18n/locale-map";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { EASE } from "@/components/settings/model-map";
@@ -51,11 +52,13 @@ export type OpenSheet =
 type Role = "owner" | "write" | "read";
 
 
-/** Where a card sits with `depth` cards on top of it: smaller, and nudged left so its edge shows. */
-export const stackedUnder = (depth: number) => ({ scale: 1 - depth * 0.07, x: depth * -22 });
+/** Where a card sits with `depth` cards on top of it: smaller, and nudged towards the reading start so its edge shows. */
+export const stackedUnder = (depth: number, locale: string) => ({ scale: 1 - depth * 0.07, x: depth * (isRightToLeft(locale) ? 22 : -22) });
 
 /** One stacked layer. `depth` counts the sheets above it; 0 is the top. */
 export function Sheet({ index, depth, children }: { index: number; depth: number; children: ReactNode }) {
+  const locale = useLocale();
+  const offstage = isRightToLeft(locale) ? "calc(-100% - 24px)" : "calc(100% + 24px)";
   return (
     <motion.div
       role="dialog"
@@ -64,10 +67,10 @@ export function Sheet({ index, depth, children }: { index: number; depth: number
       // eslint-disable-next-line jsx-a11y/no-autofocus -- a new sheet takes focus, like a dialog
       autoFocus
       className="absolute inset-0 flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card shadow-[-18px_0_48px_-18px_rgb(0_0_0/0.55)] outline-none"
-      style={{ transformOrigin: "0% 50%", zIndex: 20 + index }}
-      initial={{ x: "calc(100% + 24px)", scale: 1 }}
-      animate={stackedUnder(depth)}
-      exit={{ x: "calc(100% + 24px)", scale: 1 }}
+      style={{ transformOrigin: isRightToLeft(locale) ? "100% 50%" : "0% 50%", zIndex: 20 + index }}
+      initial={{ x: offstage, scale: 1 }}
+      animate={stackedUnder(depth, locale)}
+      exit={{ x: offstage, scale: 1 }}
       transition={SHEET_SPRING}
     >
       {children}

@@ -1,0 +1,936 @@
+{
+ "locale": "hi-IN",
+ "actionBlocked": {
+  "subtitle": "आपकी सुरक्षा के लिए, यह अनुरोध पूरा नहीं किया जा सका।",
+  "title": "हम यह अनुरोध पूरा नहीं कर सके",
+  "traceIdLabel": "संदर्भ"
+ },
+ "backButton": "वापस",
+ "badge__activePlan": "सक्रिय",
+ "badge__banned": "प्रतिबंधित",
+ "badge__canceledEndsAt": "रद्द, समाप्त {{ date | shortDate('hi-IN') }}",
+ "badge__currentPlan": "वर्तमान योजना",
+ "badge__default": "डिफ़ॉल्ट",
+ "badge__deprovisioned": "पहुँच हटाई गई",
+ "badge__endsAt": "समाप्त {{ date | shortDate('hi-IN') }}",
+ "badge__expired": "समाप्त",
+ "badge__freeTrial": "निःशुल्क परीक्षण",
+ "badge__otherImpersonatorDevice": "अन्य प्रतिरूपण उपकरण",
+ "badge__pastDueAt": "बकाया {{ date | shortDate('hi-IN') }}",
+ "badge__pastDuePlan": "बकाया",
+ "badge__primary": "प्राथमिक",
+ "badge__renewsAt": "नवीनीकरण {{ date | shortDate('hi-IN') }}",
+ "badge__requiresAction": "कार्रवाई की आवश्यकता है",
+ "badge__startsAt": "आरंभ {{ date | shortDate('hi-IN') }}",
+ "badge__thisDevice": "यह उपकरण",
+ "badge__trialEndsAt": "परीक्षण समाप्त {{ date | shortDate('hi-IN') }}",
+ "badge__unverified": "असत्यापित",
+ "badge__upcomingPlan": "आगामी",
+ "badge__userDevice": "उपयोगकर्ता उपकरण",
+ "badge__you": "आप",
+ "createOrganization": {
+  "formButtonSubmit": "संगठन बनाएँ",
+  "invitePage": {
+   "formButtonReset": "छोड़ें"
+  },
+  "title": "संगठन बनाएँ"
+ },
+ "dates": {
+  "lastDay": "कल {{ date | timeString('hi-IN') }} बजे",
+  "next6Days": "{{ date | weekday('hi-IN','long') }} को {{ date | timeString('hi-IN') }} बजे",
+  "nextDay": "कल {{ date | timeString('hi-IN') }} बजे",
+  "numeric": "{{ date | numeric('hi-IN') }}",
+  "previous6Days": "पिछले {{ date | weekday('hi-IN','long') }} को {{ date | timeString('hi-IN') }} बजे",
+  "sameDay": "आज {{ date | timeString('hi-IN') }} बजे"
+ },
+ "dividerText": "या",
+ "footerActionLink__alternativePhoneCodeProvider": "इसके बजाय SMS के माध्यम से कोड भेजें",
+ "footerActionLink__useAnotherMethod": "दूसरी विधि का उपयोग करें",
+ "footerPageLink__help": "सहायता",
+ "footerPageLink__privacy": "गोपनीयता",
+ "footerPageLink__terms": "शर्तें",
+ "formButtonPrimary": "जारी रखें",
+ "formButtonPrimary__verify": "सत्यापित करें",
+ "formFieldAction__forgotPassword": "पासवर्ड भूल गए?",
+ "formFieldAction__hidePassword": "पासवर्ड छिपाएँ",
+ "formFieldAction__showPassword": "पासवर्ड दिखाएँ",
+ "formFieldError__matchingPasswords": "पासवर्ड मेल खाते हैं।",
+ "formFieldError__notMatchingPasswords": "पासवर्ड मेल नहीं खाते।",
+ "formFieldError__verificationLinkExpired": "सत्यापन लिंक समाप्त हो गया है। कृपया एक नया लिंक अनुरोध करें।",
+ "formFieldHintText__optional": "वैकल्पिक",
+ "formFieldHintText__slug": "स्लग एक मानव-पठनीय आईडी है जो अद्वितीय होनी चाहिए। इसका उपयोग अक्सर URL में किया जाता है।",
+ "formFieldInputPlaceholder__apiKeyDescription": "बताएँ कि आप यह कुंजी क्यों बना रहे हैं",
+ "formFieldInputPlaceholder__apiKeyExpirationDate": "तिथि चुनें",
+ "formFieldInputPlaceholder__apiKeyName": "अपनी सीक्रेट कुंजी का नाम दर्ज करें",
+ "formFieldInputPlaceholder__backupCode": "बैकअप कोड दर्ज करें",
+ "formFieldInputPlaceholder__confirmDeletionUserAccount": "खाता हटाएं",
+ "formFieldInputPlaceholder__emailAddress": "अपना ईमेल पता दर्ज करें",
+ "formFieldInputPlaceholder__emailAddress_username": "ईमेल या उपयोगकर्ता नाम दर्ज करें",
+ "formFieldInputPlaceholder__emailAddresses": "example@email.com, example2@email.com",
+ "formFieldInputPlaceholder__firstName": "पहला नाम",
+ "formFieldInputPlaceholder__lastName": "अंतिम नाम",
+ "formFieldInputPlaceholder__organizationDomain": "example.com",
+ "formFieldInputPlaceholder__organizationDomainEmailAddress": "you@example.com",
+ "formFieldInputPlaceholder__organizationName": "संगठन का नाम",
+ "formFieldInputPlaceholder__organizationSlug": "my-org",
+ "formFieldInputPlaceholder__password": "अपना पासवर्ड दर्ज करें",
+ "formFieldInputPlaceholder__phoneNumber": "अपना फोन नंबर दर्ज करें",
+ "formFieldInputPlaceholder__signUpPassword": "पासवर्ड बनाएँ",
+ "formFieldInputPlaceholder__username": "अपना उपयोगकर्ता नाम दर्ज करें",
+ "formFieldInput__emailAddress_format": "उदाहरण प्रारूप: name@example.com",
+ "formFieldLabel__apiKey": "API कुंजी",
+ "formFieldLabel__apiKeyDescription": "विवरण",
+ "formFieldLabel__apiKeyExpiration": "समाप्ति",
+ "formFieldLabel__apiKeyName": "गुप्त कुंजी का नाम",
+ "formFieldLabel__automaticInvitations": "इस डोमेन के लिए स्वचालित आमंत्रण सक्षम करें",
+ "formFieldLabel__backupCode": "बैकअप कोड",
+ "formFieldLabel__confirmDeletion": "पुष्टिकरण",
+ "formFieldLabel__confirmPassword": "पासवर्ड की पुष्टि करें",
+ "formFieldLabel__currentPassword": "वर्तमान पासवर्ड",
+ "formFieldLabel__emailAddress": "ईमेल पता",
+ "formFieldLabel__emailAddress_username": "ईमेल पता या उपयोगकर्ता नाम",
+ "formFieldLabel__emailAddresses": "ईमेल पते",
+ "formFieldLabel__firstName": "पहला नाम",
+ "formFieldLabel__lastName": "अंतिम नाम",
+ "formFieldLabel__newPassword": "नया पासवर्ड",
+ "formFieldLabel__organizationDomain": "डोमेन",
+ "formFieldLabel__organizationDomainDeletePending": "लंबित आमंत्रण और सुझाव हटाएं",
+ "formFieldLabel__organizationDomainEmailAddress": "सत्यापन ईमेल पता",
+ "formFieldLabel__organizationDomainEmailAddressDescription": "इस डोमेन के तहत एक ईमेल पता दर्ज करें ताकि कोड प्राप्त करें और इस डोमेन को सत्यापित करें।",
+ "formFieldLabel__organizationName": "नाम",
+ "formFieldLabel__organizationSlug": "स्लग",
+ "formFieldLabel__passkeyName": "पासकी का नाम",
+ "formFieldLabel__password": "पासवर्ड",
+ "formFieldLabel__phoneNumber": "फोन नंबर",
+ "formFieldLabel__role": "भूमिका",
+ "formFieldLabel__signOutOfOtherSessions": "अन्य सभी उपकरणों से साइन आउट करें",
+ "formFieldLabel__username": "उपयोगकर्ता नाम",
+ "identityPreviewEditButton__emailAddress": "ईमेल पता संपादित करें",
+ "identityPreviewEditButton__identifier": "पहचानकर्ता संपादित करें",
+ "identityPreviewEditButton__phoneNumber": "फ़ोन नंबर संपादित करें",
+ "lastAuthenticationStrategy": "अंतिम समय प्रयोग हुआ",
+ "maintenanceMode": "हम वर्तमान में रखरखाव कर रहे हैं, लेकिन चिंता न करें, इसमें कुछ मिनटों से अधिक समय नहीं लगना चाहिए।",
+ "membershipRole__admin": "व्यवस्थापक",
+ "membershipRole__basicMember": "सदस्य",
+ "membershipRole__guestMember": "अतिथि",
+ "paginationButton__next": "अगला",
+ "paginationButton__previous": "पिछला",
+ "paginationRowText__displaying": "प्रदर्शित",
+ "paginationRowText__of": "का",
+ "reverification": {
+  "alternativeMethods": {
+   "actionLink": "सहायता प्राप्त करें",
+   "actionText": "इनमें से कोई भी नहीं है?",
+   "blockButton__backupCode": "बैकअप कोड का उपयोग करें",
+   "blockButton__emailCode": "{{identifier}} पर ईमेल कोड",
+   "blockButton__passkey": "अपनी पासकी का उपयोग करें",
+   "blockButton__password": "अपने पासवर्ड के साथ जारी रखें",
+   "blockButton__phoneCode": "{{identifier}} पर SMS कोड भेजें",
+   "blockButton__totp": "अपने प्रमाणकर्ता ऐप का उपयोग करें",
+   "getHelp": {
+    "blockButton__emailSupport": "ईमेल सहायता",
+    "content": "यदि आपको अपने खाते का सत्यापन करने में समस्या हो रही है, तो हमें ईमेल करें और हम जितनी जल्दी हो सके पहुंच बहाल करने के लिए आपके साथ काम करेंगे।",
+    "title": "सहायता प्राप्त करें"
+   },
+   "subtitle": "समस्याओं का सामना कर रहे हैं? सत्यापन के लिए आप इनमें से किसी भी विधि का उपयोग कर सकते हैं।",
+   "title": "दूसरी विधि का उपयोग करें"
+  },
+  "backupCodeMfa": {
+   "subtitle": "दो-चरण प्रमाणीकरण सेट करते समय प्राप्त बैकअप कोड दर्ज करें",
+   "title": "बैकअप कोड दर्ज करें"
+  },
+  "emailCode": {
+   "formTitle": "सत्यापन कोड",
+   "resendButton": "कोड नहीं मिला? फिर से भेजें",
+   "subtitle": "जारी रखने के लिए अपने ईमेल पर भेजे गए कोड को दर्ज करें",
+   "title": "सत्यापन आवश्यक है"
+  },
+  "noAvailableMethods": {
+   "message": "सत्यापन जारी नहीं रख सकते। कोई उपयुक्त प्रमाणीकरण कारक कॉन्फ़िगर नहीं है",
+   "subtitle": "एक त्रुटि हुई",
+   "title": "आपके खाते का सत्यापन नहीं किया जा सकता"
+  },
+  "passkey": {
+   "blockButton__passkey": "अपनी पासकी का उपयोग करें",
+   "subtitle": "अपनी पासकी का उपयोग करके आपकी पहचान की पुष्टि होती है। आपका डिवाइस आपके फिंगरप्रिंट, चेहरे या स्क्रीन लॉक के लिए पूछ सकता है।",
+   "title": "अपनी पासकी का उपयोग करें"
+  },
+  "password": {
+   "actionLink": "दूसरी विधि का उपयोग करें",
+   "subtitle": "जारी रखने के लिए अपना वर्तमान पासवर्ड दर्ज करें",
+   "title": "सत्यापन आवश्यक है"
+  },
+  "phoneCode": {
+   "formTitle": "सत्यापन कोड",
+   "resendButton": "कोड नहीं मिला? फिर से भेजें",
+   "subtitle": "जारी रखने के लिए अपने फोन पर भेजे गए कोड को दर्ज करें",
+   "title": "सत्यापन आवश्यक है"
+  },
+  "phoneCodeMfa": {
+   "formTitle": "सत्यापन कोड",
+   "resendButton": "कोड नहीं मिला? फिर से भेजें",
+   "subtitle": "जारी रखने के लिए अपने फोन पर भेजे गए कोड को दर्ज करें",
+   "title": "सत्यापन आवश्यक है"
+  },
+  "totpMfa": {
+   "formTitle": "सत्यापन कोड",
+   "subtitle": "जारी रखने के लिए अपने प्रमाणकर्ता ऐप द्वारा जनरेट किए गए कोड को दर्ज करें",
+   "title": "सत्यापन आवश्यक है"
+  }
+ },
+ "searchInput": {
+  "action__clear": "खोज साफ़ करें"
+ },
+ "signIn": {
+  "accountSwitcher": {
+   "action__addAccount": "खाता जोड़ें",
+   "action__signOutAll": "सभी खातों से साइन आउट करें",
+   "subtitle": "वह खाता चुनें जिसके साथ आप जारी रखना चाहते हैं।",
+   "title": "एक खाता चुनें"
+  },
+  "alternativeMethods": {
+   "actionLink": "सहायता प्राप्त करें",
+   "actionText": "इनमें से कोई भी नहीं है?",
+   "blockButton__backupCode": "बैकअप कोड का उपयोग करें",
+   "blockButton__emailCode": "{{identifier}} पर ईमेल कोड",
+   "blockButton__emailLink": "{{identifier}} पर ईमेल लिंक",
+   "blockButton__passkey": "अपनी पासकी से साइन इन करें",
+   "blockButton__password": "अपने पासवर्ड से साइन इन करें",
+   "blockButton__phoneCode": "{{identifier}} पर SMS कोड भेजें",
+   "blockButton__totp": "अपने प्रमाणकर्ता ऐप का उपयोग करें",
+   "getHelp": {
+    "blockButton__emailSupport": "ईमेल सहायता",
+    "content": "यदि आपको अपने खाते में साइन इन करने में समस्या हो रही है, तो हमें ईमेल करें और हम जितनी जल्दी हो सके पहुंच बहाल करने के लिए आपके साथ काम करेंगे।",
+    "title": "सहायता प्राप्त करें"
+   },
+   "subtitle": "समस्याओं का सामना कर रहे हैं? साइन इन करने के लिए आप इनमें से किसी भी विधि का उपयोग कर सकते हैं।",
+   "title": "दूसरी विधि का उपयोग करें"
+  },
+  "alternativePhoneCodeProvider": {
+   "formTitle": "सत्यापन कोड",
+   "resendButton": "कोड प्राप्त नहीं हुआ? पुनः भेजें",
+   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "title": "अपना {{provider}} जाँचें"
+  },
+  "backupCodeMfa": {
+   "subtitle": "आपका बैकअप कोड वही है जो आपको दो-चरण प्रमाणीकरण सेट करते समय मिला था।",
+   "title": "बैकअप कोड दर्ज करें"
+  },
+  "emailCode": {
+   "formTitle": "सत्यापन कोड",
+   "resendButton": "कोड नहीं मिला? फिर से भेजें",
+   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "title": "अपना ईमेल जांचें"
+  },
+  "emailCodeMfa": {
+   "formTitle": "अपना ईमेल जांचें",
+   "resendButton": "कोड नहीं मिला? फिर से भेजें",
+   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "title": "अपना ईमेल जांचें"
+  },
+  "emailLink": {
+   "clientMismatch": {
+    "subtitle": "जारी रखने के लिए, सत्यापन लिंक को उस डिवाइस और ब्राउज़र पर खोलें जिससे आपने साइन-अप शुरू किया था",
+    "title": "यह सत्यापन लिंक इस डिवाइस के लिए अमान्य है"
+   },
+   "expired": {
+    "subtitle": "जारी रखने के लिए मूल टैब पर वापस जाएं।",
+    "title": "यह सत्यापन लिंक समाप्त हो गया है"
+   },
+   "failed": {
+    "subtitle": "जारी रखने के लिए मूल टैब पर वापस जाएं।",
+    "title": "यह सत्यापन लिंक अमान्य है"
+   },
+   "formSubtitle": "अपने ईमेल पते पर भेजे गए सत्यापन लिंक का उपयोग करें",
+   "formTitle": "सत्यापन लिंक",
+   "loading": {
+    "subtitle": "आप जल्द ही पुनर्निर्देशित किए जाएंगे",
+    "title": "साइन इन हो रहा है..."
+   },
+   "resendButton": "लिंक नहीं मिला? फिर से भेजें",
+   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "title": "अपना ईमेल जांचें",
+   "unusedTab": {
+    "title": "आप इस टैब को बंद कर सकते हैं"
+   },
+   "verified": {
+    "subtitle": "आप जल्द ही पुनर्निर्देशित किए जाएंगे",
+    "title": "सफलतापूर्वक साइन इन हो गया"
+   },
+   "verifiedSwitchTab": {
+    "subtitle": "जारी रखने के लिए मूल टैब पर वापस जाएं",
+    "subtitleNewTab": "जारी रखने के लिए नए खोले गए टैब पर वापस जाएं",
+    "titleNewTab": "दूसरे टैब पर साइन इन हो गया"
+   },
+   "verifiedTransferable": {
+    "subtitle": "जारी रखने के लिए मूल टैब पर लौटें",
+    "title": "ईमेल सत्यापित हुआ"
+   }
+  },
+  "emailLinkMfa": {
+   "formSubtitle": "अपने ईमेल पर भेजे गए सत्यापन लिंक का उपयोग करें",
+   "resendButton": "लिंक नहीं मिला? पुनः भेजें",
+   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "title": "अपना ईमेल जांचें"
+  },
+  "enterpriseConnections": {
+   "subtitle": "वह एंटरप्राइज़ खाता चुनें जिसके साथ आप जारी रखना चाहते हैं।",
+   "title": "अपना एंटरप्राइज़ खाता चुनें"
+  },
+  "enterpriseSSO": {
+   "formButtonPrimary": "SSO से जारी रखें"
+  },
+  "forgotPassword": {
+   "formTitle": "पासवर्ड रीसेट कोड",
+   "resendButton": "कोड नहीं मिला? फिर से भेजें",
+   "subtitle": "अपना पासवर्ड रीसेट करने के लिए",
+   "subtitle_email": "पहले, अपने ईमेल पते पर भेजा गया कोड दर्ज करें",
+   "subtitle_phone": "पहले, अपने फोन पर भेजा गया कोड दर्ज करें",
+   "title": "पासवर्ड रीसेट करें"
+  },
+  "forgotPasswordAlternativeMethods": {
+   "blockButton__resetPassword": "अपना पासवर्ड रीसेट करें",
+   "label__alternativeMethods": "या, दूसरी विधि से साइन इन करें",
+   "title": "पासवर्ड भूल गए?"
+  },
+  "newDeviceVerificationNotice": "आप एक नए डिवाइस से साइन इन कर रहे हैं। हम आपके खाते को सुरक्षित रखने के लिए सत्यापन मांग रहे हैं।",
+  "noAvailableMethods": {
+   "message": "साइन इन जारी नहीं रख सकते। कोई उपलब्ध प्रमाणीकरण कारक नहीं है।",
+   "subtitle": "एक त्रुटि हुई",
+   "title": "साइन इन नहीं कर सकते"
+  },
+  "passkey": {
+   "subtitle": "अपनी पासकी का उपयोग करके पुष्टि होती है कि यह आप ही हैं। आपका डिवाइस आपके फिंगरप्रिंट, चेहरे या स्क्रीन लॉक के लिए पूछ सकता है।",
+   "title": "अपनी पासकी का उपयोग करें"
+  },
+  "password": {
+   "actionLink": "दूसरी विधि का उपयोग करें",
+   "subtitle": "अपने खाते से जुड़ा पासवर्ड दर्ज करें",
+   "title": "अपना पासवर्ड दर्ज करें"
+  },
+  "passwordCompromised": {
+   "title": "पासवर्ड से समझौता हुआ"
+  },
+  "passwordPwned": {
+   "title": "पासवर्ड समझौता हो गया"
+  },
+  "passwordUntrusted": {
+   "title": "पासवर्ड अविश्वसनीय"
+  },
+  "phoneCode": {
+   "formTitle": "सत्यापन कोड",
+   "resendButton": "कोड नहीं मिला? फिर से भेजें",
+   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "title": "अपना फोन जांचें"
+  },
+  "phoneCodeMfa": {
+   "formTitle": "सत्यापन कोड",
+   "resendButton": "कोड नहीं मिला? फिर से भेजें",
+   "subtitle": "जारी रखने के लिए, कृपया अपने फोन पर भेजे गए सत्यापन कोड को दर्ज करें",
+   "title": "अपना फोन जांचें"
+  },
+  "protectCheck": {
+   "loading": "लोड हो रहा है…",
+   "retryButton": "फिर से कोशिश करें",
+   "subtitle": "कृपया प्रतीक्षा करें, जब तक हम आपके अनुरोध की पुष्टि करते हैं।",
+   "title": "आपके अनुरोध की पुष्टि की जा रही है"
+  },
+  "resetPassword": {
+   "formButtonPrimary": "पासवर्ड रीसेट करें",
+   "requiredMessage": "सुरक्षा कारणों से, आपका पासवर्ड रीसेट करना आवश्यक है।",
+   "successMessage": "आपका पासवर्ड सफलतापूर्वक बदल दिया गया है। आपको साइन इन किया जा रहा है, कृपया एक क्षण प्रतीक्षा करें।",
+   "title": "नया पासवर्ड सेट करें"
+  },
+  "resetPasswordMfa": {
+   "detailsLabel": "आपका पासवर्ड रीसेट करने से पहले हमें आपकी पहचान सत्यापित करनी होगी।"
+  },
+  "ssoBypass": {
+   "actionLink": "SSO का उपयोग नहीं कर सकते?",
+   "code": {
+    "resendButton": "कोड नहीं मिला? फिर से भेजें",
+    "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+    "title": "अपना ईमेल जाँचें"
+   },
+   "notice": "आपके संगठन में सिंगल साइन-ऑन ज़रूरी है। इसके बिना जारी रखने पर यह दर्ज किया जाएगा।"
+  },
+  "start": {
+   "actionLink": "साइन अप करें",
+   "actionLink__join_waitlist": "प्रतीक्षा सूची में शामिल हों",
+   "actionLink__use_email": "ईमेल का उपयोग करें",
+   "actionLink__use_email_username": "ईमेल या उपयोगकर्ता नाम का उपयोग करें",
+   "actionLink__use_passkey": "इसके बजाय पासकी का उपयोग करें",
+   "actionLink__use_phone": "फोन का उपयोग करें",
+   "actionLink__use_username": "उपयोगकर्ता नाम का उपयोग करें",
+   "actionText": "खाता नहीं है?",
+   "actionText__join_waitlist": "जल्दी पहुंच चाहते हैं?",
+   "alternativePhoneCodeProvider": {
+    "actionLink": "दूसरी विधि का उपयोग करें",
+    "label": "{{provider}} फ़ोन नंबर",
+    "subtitle": "{{provider}} पर सत्यापन कोड प्राप्त करने के लिए अपना फ़ोन नंबर दर्ज करें।",
+    "title": "{{provider}} के साथ {{applicationName}} में साइन इन करें"
+   },
+   "subtitle": "वापस आने पर स्वागत है! जारी रखने के लिए कृपया साइन इन करें",
+   "title": "{{applicationName}} में साइन इन करें",
+   "titleCombined": "{{applicationName}} पर जारी रखें"
+  },
+  "totpMfa": {
+   "formTitle": "सत्यापन कोड",
+   "subtitle": "जारी रखने के लिए, कृपया अपने प्रमाणकर्ता ऐप द्वारा जनरेट किए गए कोड को दर्ज करें",
+   "title": "दो-चरण सत्यापन"
+  },
+  "web3Solana": {
+   "subtitle": "साइन इन करने के लिए नीचे एक वॉलेट चुनें",
+   "title": "Solana के साथ साइन इन करें"
+  }
+ },
+ "signInEnterPasswordTitle": "अपना पासवर्ड दर्ज करें",
+ "signUp": {
+  "alternativePhoneCodeProvider": {
+   "resendButton": "कोड प्राप्त नहीं हुआ? पुनः भेजें",
+   "subtitle": "अपने {{provider}} पर भेजा गया सत्यापन कोड दर्ज करें",
+   "title": "अपना {{provider}} सत्यापित करें"
+  },
+  "continue": {
+   "actionLink": "साइन इन करें",
+   "actionText": "पहले से ही खाता है?",
+   "subtitle": "जारी रखने के लिए कृपया शेष विवरण भरें।",
+   "title": "अधूरे फ़ील्ड भरें"
+  },
+  "emailCode": {
+   "formSubtitle": "अपने ईमेल पते पर भेजा गया सत्यापन कोड दर्ज करें",
+   "formTitle": "सत्यापन कोड",
+   "resendButton": "कोड नहीं मिला? फिर से भेजें",
+   "subtitle": "अपने ईमेल पर भेजा गया सत्यापन कोड दर्ज करें",
+   "title": "अपना ईमेल सत्यापित करें"
+  },
+  "emailLink": {
+   "clientMismatch": {
+    "subtitle": "जारी रखने के लिए, सत्यापन लिंक को उस डिवाइस और ब्राउज़र पर खोलें जिससे आपने साइन-अप शुरू किया था",
+    "title": "यह सत्यापन लिंक इस डिवाइस के लिए अमान्य है"
+   },
+   "formSubtitle": "अपने ईमेल पते पर भेजे गए सत्यापन लिंक का उपयोग करें",
+   "formTitle": "सत्यापन लिंक",
+   "loading": {
+    "title": "साइन अप हो रहा है..."
+   },
+   "resendButton": "लिंक नहीं मिला? फिर से भेजें",
+   "subtitle": "{{applicationName}} पर जारी रखने के लिए",
+   "title": "अपना ईमेल सत्यापित करें",
+   "verified": {
+    "title": "सफलतापूर्वक साइन अप हो गया"
+   },
+   "verifiedSwitchTab": {
+    "subtitle": "जारी रखने के लिए नए खोले गए टैब पर वापस जाएं",
+    "subtitleNewTab": "जारी रखने के लिए पिछले टैब पर वापस जाएं",
+    "title": "सफलतापूर्वक ईमेल सत्यापित किया गया"
+   }
+  },
+  "enterpriseConnections": {
+   "subtitle": "वह एंटरप्राइज़ खाता चुनें जिसके साथ आप जारी रखना चाहते हैं।",
+   "title": "अपना एंटरप्राइज़ खाता चुनें"
+  },
+  "legalConsent": {
+   "checkbox": {
+    "label__onlyPrivacyPolicy": "मैं {{ privacyPolicyLink || link(\"गोपनीयता नीति\") }} से सहमत हूं",
+    "label__onlyTermsOfService": "मैं {{ termsOfServiceLink || link(\"सेवा की शर्तें\") }} से सहमत हूं",
+    "label__termsOfServiceAndPrivacyPolicy": "मैं {{ termsOfServiceLink || link(\"सेवा की शर्तें\") }} और {{ privacyPolicyLink || link(\"गोपनीयता नीति\") }} से सहमत हूं"
+   },
+   "continue": {
+    "subtitle": "जारी रखने के लिए कृपया शर्तों को पढ़ें और स्वीकार करें",
+    "title": "कानूनी सहमति"
+   }
+  },
+  "phoneCode": {
+   "formSubtitle": "अपने फोन नंबर पर भेजा गया सत्यापन कोड दर्ज करें",
+   "formTitle": "सत्यापन कोड",
+   "resendButton": "कोड नहीं मिला? फिर से भेजें",
+   "subtitle": "अपने फोन पर भेजा गया सत्यापन कोड दर्ज करें",
+   "title": "अपना फोन सत्यापित करें"
+  },
+  "protectCheck": {
+   "loading": "लोड हो रहा है…",
+   "retryButton": "फिर से कोशिश करें",
+   "subtitle": "कृपया प्रतीक्षा करें, जब तक हम आपके अनुरोध की पुष्टि करते हैं।",
+   "title": "आपके अनुरोध की पुष्टि की जा रही है"
+  },
+  "restrictedAccess": {
+   "actionLink": "साइन इन करें",
+   "actionText": "पहले से ही खाता है?",
+   "blockButton__emailSupport": "ईमेल सहायता",
+   "blockButton__joinWaitlist": "प्रतीक्षा सूची में शामिल हों",
+   "subtitle": "साइन अप वर्तमान में अक्षम हैं। यदि आपका मानना है कि आपके पास पहुंच होनी चाहिए, तो कृपया सहायता से संपर्क करें।",
+   "subtitleWaitlist": "साइन अप वर्तमान में अक्षम हैं। जब हम लॉन्च करें तो सबसे पहले जानने के लिए, प्रतीक्षा सूची में शामिल हों।",
+   "title": "पहुंच सीमित है"
+  },
+  "start": {
+   "actionLink": "साइन इन करें",
+   "actionLink__use_email": "इसके बजाय ईमेल का उपयोग करें",
+   "actionLink__use_phone": "इसके बजाय फोन का उपयोग करें",
+   "actionText": "पहले से ही खाता है?",
+   "alternativePhoneCodeProvider": {
+    "actionLink": "दूसरी विधि का उपयोग करें",
+    "label": "{{provider}} फ़ोन नंबर",
+    "subtitle": "{{provider}} पर सत्यापन कोड प्राप्त करने के लिए अपना फ़ोन नंबर दर्ज करें।",
+    "title": "{{provider}} के साथ {{applicationName}} में साइन अप करें"
+   },
+   "subtitle": "स्वागत है! आरंभ करने के लिए कृपया विवरण भरें।",
+   "subtitleCombined": "स्वागत है! आरंभ करने के लिए कृपया विवरण भरें।",
+   "title": "अपना खाता बनाएं",
+   "titleCombined": "अपना खाता बनाएं"
+  },
+  "web3Solana": {
+   "subtitle": "साइन अप करने के लिए नीचे एक वॉलेट चुनें",
+   "title": "Solana के साथ साइन अप करें"
+  }
+ },
+ "socialButtonsBlockButton": "{{provider|titleize}} के साथ जारी रखें",
+ "socialButtonsBlockButtonManyInView": "{{provider|titleize}}",
+ "unstable__errors": {
+  "action_blocked": "यह कार्रवाई पूरी नहीं हो सकी। कृपया बाद में फिर से कोशिश करें, या समस्या बनी रहे तो सहायता से संपर्क करें।",
+  "already_a_member_in_organization": "{{email}} पहले से ही संगठन का सदस्य है।",
+  "api_key_name_already_exists": "API कुंजी का यह नाम पहले से मौजूद है।",
+  "api_key_usage_exceeded": "आपकी उपयोग सीमा पूरी हो चुकी है। किसी भुगतान वाली योजना पर जाकर आप यह सीमा हटा सकते हैं।",
+  "avatar_file_size_exceeded": "फ़ाइल का आकार 10MB की अधिकतम सीमा से अधिक है। कृपया एक छोटी फ़ाइल चुनें।",
+  "avatar_file_type_invalid": "फ़ाइल प्रकार समर्थित नहीं है। कृपया JPG, PNG, GIF या WEBP छवि अपलोड करें।",
+  "captcha_unavailable": "असफल बॉट सत्यापन के कारण साइन अप असफल रहा। पुनः प्रयास करने के लिए कृपया पृष्ठ को रिफ्रेश करें या अधिक सहायता के लिए सपोर्ट से संपर्क करें।",
+  "form_new_password_matches_current": "नया पासवर्ड वर्तमान पासवर्ड के समान नहीं हो सकता।",
+  "form_password_length_too_short": "आपका पासवर्ड बहुत छोटा है। इसमें कम से कम 8 अक्षर होने चाहिए।",
+  "form_password_matches_identifier": "पासवर्ड आपके ईमेल पते, फ़ोन नंबर या उपयोगकर्ता नाम जैसा नहीं हो सकता। खाते की सुरक्षा के लिए कोई दूसरा पासवर्ड उपयोग करें।",
+  "form_password_not_strong_enough": "आपका पासवर्ड पर्याप्त मजबूत नहीं है।",
+  "form_password_pwned": "यह पासवर्ड डेटा उल्लंघन के हिस्से के रूप में पाया गया है और इसका उपयोग नहीं किया जा सकता, कृपया इसके बजाय दूसरा पासवर्ड आज़माएं।",
+  "form_password_pwned__sign_in": "यह पासवर्ड डेटा उल्लंघन के हिस्से के रूप में पाया गया है और इसका उपयोग नहीं किया जा सकता, कृपया अपना पासवर्ड रीसेट करें।",
+  "form_password_untrusted__sign_in": "आपके पासवर्ड से समझौता हो सकता है। अपने खाते की सुरक्षा के लिए, कृपया किसी वैकल्पिक साइन-इन विधि के साथ जारी रखें। साइन इन करने के बाद आपको अपना पासवर्ड रीसेट करना होगा।",
+  "form_username_invalid_length": "आपका उपयोगकर्ता नाम {{min_length}} और {{max_length}} अक्षरों के बीच होना चाहिए।",
+  "form_username_needs_non_number_char": "आपके उपयोगकर्ता नाम में कम से कम एक गैर-संख्यात्मक वर्ण होना चाहिए।",
+  "insufficient_seats_change_plan": "आपके संगठन में इतने सदस्यों को आमंत्रित करने के लिए पर्याप्त सीटें नहीं हैं। कृपया ऐसी योजना चुनें जिसमें आप जितने सदस्यों को आमंत्रित करना चाहते हैं, उतनी सीटें हों।",
+  "insufficient_seats_contact_support": "आपके संगठन में इतने सदस्यों को आमंत्रित करने के लिए पर्याप्त सीटें नहीं हैं। कृपया सहायता से संपर्क करें।",
+  "oauth_access_denied": "आपने अपने खाते तक पहुँच की अनुमति नहीं दी।",
+  "organization_membership_quota_exceeded": "आप अपने संगठन की सदस्यता की सीमा तक पहुंच गए हैं, जिसमें बकाया आमंत्रण भी शामिल हैं।",
+  "organization_not_found_or_unauthorized": "आप अब इस संगठन के सदस्य नहीं हैं। कृपया कोई दूसरा चुनें या बनाएँ।",
+  "organization_not_found_or_unauthorized_with_create_organization_disabled": "आप अब इस संगठन के सदस्य नहीं हैं। कृपया कोई दूसरा चुनें।",
+  "passkey_already_exists": "इस डिवाइस के साथ पहले से ही एक पासकी पंजीकृत है।",
+  "passkey_not_supported": "इस डिवाइस पर पासकी समर्थित नहीं हैं।",
+  "passkey_pa_not_supported": "पंजीकरण के लिए प्लेटफॉर्म प्रमाणकर्ता की आवश्यकता होती है लेकिन डिवाइस इसका समर्थन नहीं करता।",
+  "passkey_registration_cancelled": "पासकी पंजीकरण रद्द कर दिया गया या समय समाप्त हो गया।",
+  "passkey_retrieval_cancelled": "पासकी सत्यापन रद्द कर दिया गया या समय समाप्त हो गया।",
+  "passwordComplexity": {
+   "maximumLength": "{{length}} अक्षरों से कम",
+   "minimumLength": "{{length}} या अधिक अक्षर",
+   "requireLowercase": "एक लोअरकेस अक्षर",
+   "requireNumbers": "एक संख्या",
+   "requireSpecialCharacter": "एक विशेष वर्ण",
+   "requireUppercase": "एक अपरकेस अक्षर",
+   "sentencePrefix": "आपके पासवर्ड में होना चाहिए"
+  },
+  "protect_check_execution_failed": "सत्यापन पूरा नहीं हुआ। कृपया फिर से कोशिश करें।",
+  "protect_check_invalid_script": "सत्यापन लोड नहीं हो सका। समस्या बनी रहे तो सहायता से संपर्क करें।",
+  "protect_check_invalid_sdk_url": "सत्यापन शुरू नहीं हो सका। कृपया सहायता से संपर्क करें।",
+  "protect_check_required": "इस साइन-इन के लिए एक अतिरिक्त सत्यापन चरण ज़रूरी है, जो यहाँ नहीं दिखाया जा सकता। कृपया फिर से कोशिश करें या साइन-इन का कोई दूसरा तरीका अपनाएँ।",
+  "protect_check_script_load_failed": "सत्यापन लोड नहीं हो सका। यह नेटवर्क समस्या या किसी Content Security Policy की वजह से हो सकता है, जो सत्यापन स्क्रिप्ट को रोक रही हो। कृपया फिर से कोशिश करें या सहायता से संपर्क करें।",
+  "protect_check_timed_out": "सत्यापन समय पर पूरा नहीं हुआ। कृपया फिर से कोशिश करें।",
+  "protect_check_unsupported_environment": "यह सत्यापन इस वातावरण में समर्थित नहीं है। कृपया किसी मानक ब्राउज़र में जारी रखें या सहायता से संपर्क करें।",
+  "sso_bypass_domain_not_served": "यह सदस्य नहीं जोड़ा जा सका, क्योंकि उनका ईमेल पता किसी कनेक्शन से जुड़ा नहीं है।",
+  "ticket_expired_code": "यह लिंक समाप्त हो चुका है। कृपया फिर से शुरू करें या नया लिंक माँगें।",
+  "ticket_invalid_code": "यह लिंक अब मान्य नहीं है या पहले ही इस्तेमाल हो चुका है। कृपया फिर से शुरू करें या नया लिंक माँगें।",
+  "too_many_unverified_identifications": "इस खाते पर बहुत सारे सत्यापन लंबित हैं। जिन असत्यापित ईमेल पतों, फ़ोन नंबरों या वॉलेट की अब ज़रूरत नहीं है, उन्हें हटा दें, या अधूरी पासकी सेटअप के समाप्त होने तक कुछ मिनट रुकें, फिर कोशिश करें।",
+  "web3_missing_identifier": "Web3 वॉलेट एक्सटेंशन नहीं मिल सका। जारी रखने के लिए कृपया एक इंस्टॉल करें।",
+  "web3_signature_request_rejected": "आपने सिग्नेचर अनुरोध अस्वीकार कर दिया है। जारी रखने के लिए कृपया फिर से प्रयास करें।",
+  "web3_solana_signature_generation_failed": "सिग्नेचर बनाते समय एक त्रुटि हुई। जारी रखने के लिए कृपया फिर से प्रयास करें।",
+  "zxcvbn": {
+   "couldBeStronger": "आपका पासवर्ड काम करता है, लेकिन मजबूत हो सकता है। अधिक अक्षर जोड़ने का प्रयास करें।",
+   "goodPassword": "आपका पासवर्ड सभी आवश्यक आवश्यकताओं को पूरा करता है।",
+   "notEnough": "आपका पासवर्ड पर्याप्त मजबूत नहीं है।",
+   "suggestions": {
+    "allUppercase": "कुछ अक्षरों को कैपिटलाइज़ करें, लेकिन सभी को नहीं।",
+    "anotherWord": "और अधिक शब्द जोड़ें जो कम सामान्य हों।",
+    "associatedYears": "ऐसे वर्षों से बचें जो आपसे जुड़े हों।",
+    "capitalization": "पहले अक्षर से अधिक को कैपिटलाइज़ करें।",
+    "dates": "ऐसी तारीखों और वर्षों से बचें जो आपसे जुड़े हों।",
+    "l33t": "'a' के लिए '@' जैसे अनुमानित अक्षर प्रतिस्थापनों से बचें।",
+    "longerKeyboardPattern": "लंबे कीबोर्ड पैटर्न का उपयोग करें और टाइपिंग दिशा को कई बार बदलें।",
+    "noNeed": "आप प्रतीकों, संख्याओं या अपरकेस अक्षरों का उपयोग किए बिना मजबूत पासवर्ड बना सकते हैं।",
+    "pwned": "यदि आप इस पासवर्ड का उपयोग कहीं और करते हैं, तो आपको इसे बदलना चाहिए।",
+    "recentYears": "हाल के वर्षों से बचें।",
+    "repeated": "दोहराए गए शब्दों और अक्षरों से बचें।",
+    "reverseWords": "सामान्य शब्दों की उलटी वर्तनी से बचें।",
+    "sequences": "सामान्य वर्ण अनुक्रमों से बचें।",
+    "useWords": "कई शब्दों का उपयोग करें, लेकिन सामान्य वाक्यांशों से बचें।"
+   },
+   "warnings": {
+    "common": "यह एक आमतौर पर उपयोग किया जाने वाला पासवर्ड है।",
+    "commonNames": "सामान्य नाम और उपनाम अनुमान लगाना आसान होते हैं।",
+    "dates": "तारीखों का अनुमान लगाना आसान होता है।",
+    "extendedRepeat": "\"abcabcabc\" जैसे दोहराए गए वर्ण पैटर्न का अनुमान लगाना आसान होता है।",
+    "keyPattern": "छोटे कीबोर्ड पैटर्न का अनुमान लगाना आसान होता है।",
+    "namesByThemselves": "एकल नाम या उपनाम का अनुमान लगाना आसान होता है।",
+    "pwned": "आपका पासवर्ड इंटरनेट पर डेटा उल्लंघन के कारण उजागर हुआ था।",
+    "recentYears": "हाल के वर्षों का अनुमान लगाना आसान होता है।",
+    "sequences": "\"abc\" जैसे सामान्य वर्ण अनुक्रमों का अनुमान लगाना आसान होता है।",
+    "similarToCommon": "यह एक आमतौर पर उपयोग किए जाने वाले पासवर्ड के समान है।",
+    "simpleRepeat": "\"aaa\" जैसे दोहराए गए अक्षरों का अनुमान लगाना आसान होता है।",
+    "straightRow": "आपके कीबोर्ड पर कुंजियों की सीधी पंक्तियों का अनुमान लगाना आसान होता है।",
+    "topHundred": "यह एक अक्सर उपयोग किया जाने वाला पासवर्ड है।",
+    "topTen": "यह एक अत्यधिक उपयोग किया जाने वाला पासवर्ड है।",
+    "userInputs": "किसी भी व्यक्तिगत या पृष्ठ संबंधित डेटा नहीं होना चाहिए।",
+    "wordByItself": "एकल शब्दों का अनुमान लगाना आसान होता है।"
+   }
+  }
+ },
+ "userButton": {
+  "action__addAccount": "खाता जोड़ें",
+  "action__closeUserMenu": "उपयोगकर्ता मेनू बंद करें",
+  "action__manageAccount": "खाता प्रबंधित करें",
+  "action__openUserMenu": "उपयोगकर्ता मेनू खोलें",
+  "action__signOut": "साइन आउट",
+  "action__signOutAll": "सभी खातों से साइन आउट करें",
+  "label__accountActions": "खाता क्रियाएं",
+  "label__activeSessions": "सक्रिय सत्र",
+  "label__userButtonPopover": "खाता पैनल"
+ },
+ "userProfile": {
+  "apiKeysPage": {
+   "title": "API कुंजियाँ"
+  },
+  "backupCodePage": {
+   "actionLabel__copied": "कॉपी किया गया!",
+   "actionLabel__copy": "सभी कॉपी करें",
+   "actionLabel__download": ".txt डाउनलोड करें",
+   "actionLabel__print": "प्रिंट करें",
+   "infoText1": "बैकअप कोड इस खाते के लिए सक्षम किए जाएंगे।",
+   "infoText2": "बैकअप कोड को गुप्त रखें और सुरक्षित रूप से संग्रहित करें। यदि आपको संदेह है कि वे समझौता कर चुके हैं, तो आप बैकअप कोड पुनः जनरेट कर सकते हैं।",
+   "subtitle__codelist": "उन्हें सुरक्षित रूप से संग्रहित करें और गुप्त रखें।",
+   "successMessage": "बैकअप कोड अब सक्षम हैं। यदि आप अपने प्रमाणीकरण डिवाइस तक पहुंच खो देते हैं, तो आप अपने खाते में साइन इन करने के लिए इनमें से एक का उपयोग कर सकते हैं। प्रत्येक कोड का उपयोग केवल एक बार किया जा सकता है।",
+   "successSubtitle": "यदि आप अपने प्रमाणीकरण डिवाइस तक पहुंच खो देते हैं, तो आप अपने खाते में साइन इन करने के लिए इनमें से एक का उपयोग कर सकते हैं।",
+   "title": "बैकअप कोड सत्यापन जोड़ें",
+   "title__codelist": "बैकअप कोड"
+  },
+  "billingPage": {
+   "accountCreditsSection": {
+    "title": "खाता क्रेडिट",
+    "viewHistory": "क्रेडिट इतिहास देखें"
+   },
+   "creditHistoryPage": {
+    "tableHeader__amount": "राशि",
+    "tableHeader__date": "तारीख",
+    "title": "खाता क्रेडिट इतिहास"
+   },
+   "paymentHistorySection": {
+    "empty": "कोई भुगतान इतिहास नहीं",
+    "notFound": "भुगतान प्रयास नहीं मिला",
+    "tableHeader__amount": "राशि",
+    "tableHeader__date": "तिथि",
+    "tableHeader__status": "स्थिति"
+   },
+   "paymentMethodsSection": {
+    "actionLabel__default": "डिफ़ॉल्ट बनाएँ",
+    "actionLabel__remove": "हटाएँ",
+    "add": "नई भुगतान विधि जोड़ें",
+    "addSubtitle": "अपने खाते में एक नई भुगतान विधि जोड़ें।",
+    "cancelButton": "रद्द करें",
+    "formButtonPrimary__add": "भुगतान विधि जोड़ें",
+    "formButtonPrimary__pay": "{{amount}} भुगतान करें",
+    "payWithTestCardButton": "टेस्ट कार्ड से भुगतान करें",
+    "removeMethod": {
+     "messageLine1": "{{identifier}} को इस खाते से हटा दिया जाएगा।",
+     "messageLine2": "आप अब इस भुगतान स्रोत का उपयोग नहीं कर पाएँगे और इस पर निर्भर कोई भी आवर्ती सदस्यता अब काम नहीं करेगी।",
+     "successMessage": "{{paymentMethod}} को आपके खाते से हटा दिया गया है।",
+     "title": "भुगतान विधि हटाएँ"
+    },
+    "title": "भुगतान विधियाँ"
+   },
+   "start": {
+    "headerTitle__payments": "भुगतान",
+    "headerTitle__plans": "योजनाएँ",
+    "headerTitle__statements": "स्टेटमेंट",
+    "headerTitle__subscriptions": "सदस्यता"
+   },
+   "statementsSection": {
+    "empty": "प्रदर्शित करने के लिए कोई स्टेटमेंट नहीं",
+    "itemCaption__paidForPlan": "{{plan}} {{period}} योजना के लिए भुगतान किया गया",
+    "itemCaption__payerCredit": "खाता शेष से क्रेडिट",
+    "itemCaption__proratedCredit": "पिछली सदस्यता के आंशिक उपयोग के लिए आनुपातिक क्रेडिट",
+    "itemCaption__subscribedAndPaidForPlan": "{{plan}} {{period}} योजना के लिए सदस्यता ली और भुगतान किया गया",
+    "notFound": "स्टेटमेंट नहीं मिला",
+    "tableHeader__amount": "राशि",
+    "tableHeader__date": "तिथि",
+    "title": "स्टेटमेंट",
+    "totalPaid": "कुल भुगतान"
+   },
+   "subscriptionsListSection": {
+    "actionLabel__manageSubscription": "प्रबंधित करें",
+    "actionLabel__newSubscription": "किसी योजना की सदस्यता लें",
+    "actionLabel__switchPlan": "योजनाएँ बदलें",
+    "overview": "सारांश",
+    "tableHeader__edit": "संपादित करें",
+    "tableHeader__plan": "योजना",
+    "tableHeader__startDate": "आरंभ तिथि",
+    "title": "सदस्यता"
+   },
+   "subscriptionsSection": {
+    "actionLabel__default": "प्रबंधित करें"
+   },
+   "switchPlansSection": {
+    "title": "योजनाएँ बदलें"
+   },
+   "title": "बिलिंग"
+  },
+  "connectedAccountPage": {
+   "formHint": "अपने खाते को कनेक्ट करने के लिए एक प्रदाता चुनें।",
+   "formHint__noAccounts": "कोई उपलब्ध बाहरी खाता प्रदाता नहीं हैं।",
+   "removeResource": {
+    "messageLine1": "{{identifier}} को इस खाते से हटा दिया जाएगा।",
+    "messageLine2": "आप अब इस कनेक्टेड खाते का उपयोग नहीं कर पाएंगे और कोई भी निर्भर सुविधाएँ अब काम नहीं करेंगी।",
+    "successMessage": "{{connectedAccount}} को आपके खाते से हटा दिया गया है।",
+    "title": "कनेक्टेड खाता हटाएं"
+   },
+   "socialButtonsBlockButton": "{{provider|titleize}}",
+   "successMessage": "प्रदाता को आपके खाते में जोड़ दिया गया है",
+   "title": "कनेक्टेड खाता जोड़ें"
+  },
+  "deletePage": {
+   "actionDescription": "जारी रखने के लिए नीचे \"Delete account\" टाइप करें।",
+   "confirm": "खाता हटाएं",
+   "messageLine1": "क्या आप वाकई अपना खाता हटाना चाहते हैं? कुछ संबंधित डेटा रखा जा सकता है। पूर्ण डेटा हटाने का अनुरोध करने के लिए, कृपया सहायता से संपर्क करें।",
+   "messageLine2": "यह कार्रवाई स्थायी और अपरिवर्तनीय है।",
+   "title": "खाता हटाएं"
+  },
+  "emailAddressPage": {
+   "emailCode": {
+    "formHint": "इस ईमेल पते पर एक सत्यापन कोड वाला ईमेल भेजा जाएगा।",
+    "formSubtitle": "{{identifier}} पर भेजा गया सत्यापन कोड दर्ज करें",
+    "formTitle": "सत्यापन कोड",
+    "resendButton": "कोड नहीं मिला? फिर से भेजें",
+    "successMessage": "ईमेल {{identifier}} को आपके खाते में जोड़ दिया गया है।"
+   },
+   "emailLink": {
+    "formHint": "इस ईमेल पते पर एक सत्यापन लिंक वाला ईमेल भेजा जाएगा।",
+    "formSubtitle": "{{identifier}} पर भेजे गए ईमेल में सत्यापन लिंक पर क्लिक करें",
+    "formTitle": "सत्यापन लिंक",
+    "resendButton": "लिंक नहीं मिला? फिर से भेजें",
+    "successMessage": "ईमेल {{identifier}} को आपके खाते में जोड़ दिया गया है।"
+   },
+   "enterpriseSSOLink": {
+    "formButton": "साइन-इन करने के लिए क्लिक करें",
+    "formSubtitle": "{{identifier}} के साथ साइन-इन पूरा करें"
+   },
+   "formHint": "आपको इस ईमेल पते को अपने खाते में जोड़ने से पहले इसे सत्यापित करना होगा।",
+   "removeResource": {
+    "messageLine1": "{{identifier}} को इस खाते से हटा दिया जाएगा।",
+    "messageLine2": "आप अब इस ईमेल पते का उपयोग करके साइन इन नहीं कर पाएंगे।",
+    "successMessage": "{{emailAddress}} को आपके खाते से हटा दिया गया है।",
+    "title": "ईमेल पता हटाएं"
+   },
+   "title": "ईमेल पता जोड़ें",
+   "verifyTitle": "ईमेल पता सत्यापित करें"
+  },
+  "formButtonPrimary__add": "जोड़ें",
+  "formButtonPrimary__continue": "जारी रखें",
+  "formButtonPrimary__finish": "समाप्त करें",
+  "formButtonPrimary__remove": "हटाएं",
+  "formButtonPrimary__save": "सहेजें",
+  "formButtonReset": "रद्द करें",
+  "mfaPage": {
+   "formHint": "जोड़ने के लिए एक विधि चुनें।",
+   "title": "दो-चरण सत्यापन जोड़ें"
+  },
+  "mfaPhoneCodePage": {
+   "backButton": "मौजूदा नंबर का उपयोग करें",
+   "primaryButton__addPhoneNumber": "फोन नंबर जोड़ें",
+   "removeResource": {
+    "messageLine1": "{{identifier}} अब साइन इन करते समय सत्यापन कोड प्राप्त नहीं करेगा।",
+    "messageLine2": "आपका खाता उतना सुरक्षित नहीं हो सकता है। क्या आप वाकई जारी रखना चाहते हैं?",
+    "successMessage": "{{mfaPhoneCode}} के लिए SMS कोड दो-चरण सत्यापन हटा दिया गया है",
+    "title": "दो-चरण सत्यापन हटाएं"
+   },
+   "subtitle__availablePhoneNumbers": "SMS कोड दो-चरण सत्यापन के लिए पंजीकरण करने के लिए एक मौजूदा फोन नंबर चुनें या एक नया जोड़ें।",
+   "subtitle__unavailablePhoneNumbers": "SMS कोड दो-चरण सत्यापन के लिए पंजीकरण करने के लिए कोई उपलब्ध फोन नंबर नहीं हैं, कृपया एक नया जोड़ें।",
+   "successMessage1": "साइन इन करते समय, आपको एक अतिरिक्त चरण के रूप में इस फोन नंबर पर भेजे गए सत्यापन कोड दर्ज करने की आवश्यकता होगी।",
+   "successMessage2": "इन बैकअप कोड को सहेजें और उन्हें कहीं सुरक्षित रखें। यदि आप अपने प्रमाणीकरण डिवाइस तक पहुँच खो देते हैं, तो आप साइन इन करने के लिए बैकअप कोड का उपयोग कर सकते हैं।",
+   "successTitle": "SMS कोड सत्यापन सक्षम किया गया",
+   "title": "SMS कोड सत्यापन जोड़ें"
+  },
+  "mfaTOTPPage": {
+   "authenticatorApp": {
+    "buttonAbleToScan__nonPrimary": "इसके बजाय QR कोड स्कैन करें",
+    "buttonUnableToScan__nonPrimary": "QR कोड स्कैन नहीं कर सकते?",
+    "infoText__ableToScan": "अपने प्रमाणकर्ता ऐप में एक नई साइन-इन विधि सेट करें और इसे अपने खाते से लिंक करने के लिए निम्न QR कोड को स्कैन करें।",
+    "infoText__unableToScan": "अपने प्रमाणकर्ता में एक नई साइन-इन विधि सेट करें और नीचे प्रदान की गई कुंजी दर्ज करें।",
+    "inputLabel__unableToScan1": "सुनिश्चित करें कि समय-आधारित या वन-टाइम पासवर्ड सक्षम है, फिर अपने खाते को लिंक करना समाप्त करें।",
+    "inputLabel__unableToScan2": "वैकल्पिक रूप से, यदि आपका प्रमाणकर्ता TOTP URI का समर्थन करता है, तो आप पूर्ण URI को भी कॉपी कर सकते हैं।"
+   },
+   "removeResource": {
+    "messageLine1": "साइन इन करते समय इस प्रमाणकर्ता से सत्यापन कोड की अब आवश्यकता नहीं होगी।",
+    "messageLine2": "आपका खाता उतना सुरक्षित नहीं हो सकता है। क्या आप वाकई जारी रखना चाहते हैं?",
+    "successMessage": "प्रमाणकर्ता ऐप के माध्यम से दो-चरण सत्यापन हटा दिया गया है।",
+    "title": "दो-चरण सत्यापन हटाएं"
+   },
+   "successMessage": "दो-चरण सत्यापन अब सक्षम है। साइन इन करते समय, आपको एक अतिरिक्त चरण के रूप में इस प्रमाणकर्ता से सत्यापन कोड दर्ज करने की आवश्यकता होगी।",
+   "title": "प्रमाणकर्ता ऐप जोड़ें",
+   "verifySubtitle": "अपने प्रमाणकर्ता द्वारा जनरेट किया गया सत्यापन कोड दर्ज करें",
+   "verifyTitle": "सत्यापन कोड"
+  },
+  "mobileButton__menu": "मेनू",
+  "navbar": {
+   "account": "प्रोफ़ाइल",
+   "apiKeys": "API कुंजियाँ",
+   "billing": "बिलिंग",
+   "description": "अपनी खाता जानकारी प्रबंधित करें।",
+   "security": "सुरक्षा",
+   "title": "खाता"
+  },
+  "passkeyScreen": {
+   "removeResource": {
+    "messageLine1": "{{name}} को इस खाते से हटा दिया जाएगा।",
+    "title": "पासकी हटाएं"
+   },
+   "subtitle__rename": "आप पासकी का नाम बदल सकते हैं ताकि इसे खोजना आसान हो।",
+   "title__rename": "पासकी का नाम बदलें"
+  },
+  "passwordPage": {
+   "checkboxInfoText__signOutOfOtherSessions": "यह अनुशंसा की जाती है कि आप अन्य सभी डिवाइसों से साइन आउट करें जिन्होंने आपके पुराने पासवर्ड का उपयोग किया हो सकता है।",
+   "readonly": "आपका पासवर्ड वर्तमान में संपादित नहीं किया जा सकता क्योंकि आप केवल एंटरप्राइज कनेक्शन के माध्यम से साइन इन कर सकते हैं।",
+   "successMessage__set": "आपका पासवर्ड सेट किया गया है।",
+   "successMessage__signOutOfOtherSessions": "अन्य सभी डिवाइसों को साइन आउट कर दिया गया है।",
+   "successMessage__update": "आपका पासवर्ड अपडेट किया गया है।",
+   "title__set": "पासवर्ड सेट करें",
+   "title__update": "पासवर्ड अपडेट करें"
+  },
+  "phoneNumberPage": {
+   "infoText": "इस फोन नंबर पर एक सत्यापन कोड वाला टेक्स्ट मैसेज भेजा जाएगा। मैसेज और डेटा दरें लागू हो सकती हैं।",
+   "removeResource": {
+    "messageLine1": "{{identifier}} को इस खाते से हटा दिया जाएगा।",
+    "messageLine2": "आप अब इस फोन नंबर का उपयोग करके साइन इन नहीं कर पाएंगे।",
+    "successMessage": "{{phoneNumber}} को आपके खाते से हटा दिया गया है।",
+    "title": "फोन नंबर हटाएं"
+   },
+   "successMessage": "{{identifier}} को आपके खाते में जोड़ दिया गया है।",
+   "title": "फोन नंबर जोड़ें",
+   "verifySubtitle": "{{identifier}} पर भेजा गया सत्यापन कोड दर्ज करें",
+   "verifyTitle": "फोन नंबर सत्यापित करें"
+  },
+  "plansPage": {
+   "title": "योजनाएँ"
+  },
+  "profilePage": {
+   "fileDropAreaHint": "अनुशंसित आकार 1:1, 10MB तक।",
+   "imageFormDestructiveActionSubtitle": "हटाएं",
+   "imageFormSubtitle": "अपलोड",
+   "imageFormTitle": "प्रोफ़ाइल छवि",
+   "readonly": "आपकी प्रोफ़ाइल जानकारी एंटरप्राइज कनेक्शन द्वारा प्रदान की गई है और इसे संपादित नहीं किया जा सकता।",
+   "successMessage": "आपकी प्रोफ़ाइल अपडेट कर दी गई है।",
+   "title": "प्रोफ़ाइल अपडेट करें"
+  },
+  "start": {
+   "activeDevicesSection": {
+    "destructiveAction": "डिवाइस से साइन आउट करें",
+    "title": "सक्रिय डिवाइस"
+   },
+   "connectedAccountsSection": {
+    "actionLabel__connectionFailed": "पुनः कनेक्ट करें",
+    "actionLabel__reauthorize": "अभी अधिकृत करें",
+    "destructiveActionTitle": "हटाएं",
+    "primaryButton": "खाता कनेक्ट करें",
+    "subtitle__disconnected": "यह खाता डिस्कनेक्ट कर दिया गया है।",
+    "subtitle__reauthorize": "आवश्यक स्कोप अपडेट किए गए हैं, और आप सीमित कार्यक्षमता का अनुभव कर सकते हैं। किसी भी समस्या से बचने के लिए कृपया इस एप्लिकेशन को फिर से अधिकृत करें",
+    "title": "कनेक्टेड खाते"
+   },
+   "dangerSection": {
+    "deleteAccountButton": "खाता हटाएं",
+    "title": "खाता हटाएं"
+   },
+   "emailAddressesSection": {
+    "destructiveAction": "ईमेल हटाएं",
+    "detailsAction__nonPrimary": "प्राथमिक के रूप में सेट करें",
+    "detailsAction__primary": "सत्यापन पूरा करें",
+    "detailsAction__unverified": "सत्यापित करें",
+    "primaryButton": "ईमेल पता जोड़ें",
+    "title": "ईमेल पते"
+   },
+   "enterpriseAccountsSection": {
+    "primaryButton": "खाता कनेक्ट करें",
+    "title": "एंटरप्राइज खाते"
+   },
+   "headerTitle__account": "प्रोफ़ाइल विवरण",
+   "headerTitle__security": "सुरक्षा",
+   "mfaSection": {
+    "backupCodes": {
+     "actionLabel__regenerate": "पुनः जनरेट करें",
+     "headerTitle": "बैकअप कोड",
+     "subtitle__regenerate": "सुरक्षित बैकअप कोड का एक नया सेट प्राप्त करें। पिछले बैकअप कोड हटा दिए जाएंगे और उनका उपयोग नहीं किया जा सकेगा।",
+     "title__regenerate": "बैकअप कोड पुनः जनरेट करें"
+    },
+    "phoneCode": {
+     "actionLabel__setDefault": "डिफ़ॉल्ट के रूप में सेट करें",
+     "destructiveActionLabel": "हटाएं"
+    },
+    "primaryButton": "दो-चरण सत्यापन जोड़ें",
+    "title": "दो-चरण सत्यापन",
+    "totp": {
+     "destructiveActionTitle": "हटाएं",
+     "headerTitle": "प्रमाणकर्ता ऐप"
+    }
+   },
+   "passkeysSection": {
+    "menuAction__destructive": "हटाएं",
+    "menuAction__rename": "नाम बदलें",
+    "primaryButton": "पासकी जोड़ें",
+    "title": "पासकी"
+   },
+   "passwordSection": {
+    "primaryButton__setPassword": "पासवर्ड सेट करें",
+    "primaryButton__updatePassword": "पासवर्ड अपडेट करें",
+    "title": "पासवर्ड"
+   },
+   "phoneNumbersSection": {
+    "destructiveAction": "फोन नंबर हटाएं",
+    "detailsAction__nonPrimary": "प्राथमिक के रूप में सेट करें",
+    "detailsAction__primary": "सत्यापन पूरा करें",
+    "detailsAction__unverified": "फोन नंबर सत्यापित करें",
+    "primaryButton": "फोन नंबर जोड़ें",
+    "title": "फोन नंबर"
+   },
+   "profileSection": {
+    "primaryButton": "प्रोफ़ाइल अपडेट करें",
+    "title": "प्रोफ़ाइल"
+   },
+   "usernameSection": {
+    "primaryButton__setUsername": "उपयोगकर्ता नाम सेट करें",
+    "primaryButton__updateUsername": "उपयोगकर्ता नाम अपडेट करें",
+    "title": "उपयोगकर्ता नाम"
+   },
+   "web3WalletsSection": {
+    "destructiveAction": "वॉलेट हटाएं",
+    "detailsAction__nonPrimary": "प्राथमिक के रूप में सेट करें",
+    "primaryButton": "वॉलेट कनेक्ट करें",
+    "title": "Web3 वॉलेट",
+    "web3SelectSolanaWalletScreen": {
+     "subtitle": "अपने खाते से कनेक्ट करने के लिए एक Solana वॉलेट चुनें।",
+     "title": "Solana वॉलेट जोड़ें"
+    }
+   }
+  },
+  "usernamePage": {
+   "successMessage": "आपका उपयोगकर्ता नाम अपडेट किया गया है।",
+   "title__set": "उपयोगकर्ता नाम सेट करें",
+   "title__update": "उपयोगकर्ता नाम अपडेट करें"
+  },
+  "web3WalletPage": {
+   "removeResource": {
+    "messageLine1": "{{identifier}} को इस खाते से हटा दिया जाएगा।",
+    "messageLine2": "आप अब इस web3 वॉलेट का उपयोग करके साइन इन नहीं कर पाएंगे।",
+    "successMessage": "{{web3Wallet}} को आपके खाते से हटा दिया गया है।",
+    "title": "web3 वॉलेट हटाएं"
+   },
+   "subtitle__availableWallets": "अपने खाते से कनेक्ट करने के लिए web3 वॉलेट चुनें।",
+   "subtitle__unavailableWallets": "कोई उपलब्ध web3 वॉलेट नहीं हैं।",
+   "successMessage": "वॉलेट को आपके खाते में जोड़ दिया गया है।",
+   "title": "web3 वॉलेट जोड़ें",
+   "web3WalletButtonsBlockButton": "{{provider|titleize}}"
+  }
+ },
+ "web3SolanaWalletButtons": {
+  "connect": "{{walletName}} के साथ कनेक्ट करें",
+  "continue": "{{walletName}} के साथ जारी रखें",
+  "noneAvailable": "कोई Solana Web3 वॉलेट नहीं मिला। कृपया Web3 समर्थित {{ solanaWalletsLink || link(\"wallet extension\") }} इंस्टॉल करें।"
+ }
+}

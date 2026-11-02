@@ -15,6 +15,7 @@ import {
 
 import { useLocale, useTranslations } from "next-intl"
 
+import { isRightToLeft } from "@/lib/i18n/locale-map"
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 
@@ -42,7 +43,7 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
-      dir={locale === "ar" ? "rtl" : "ltr"}
+      dir={isRightToLeft(locale) ? "rtl" : "ltr"}
       labels={{ labelNext: () => t("next"), labelPrevious: () => t("previous") }}
       formatters={{
         formatMonthDropdown: (date) => date.toLocaleString(locale, { month: "short" }),

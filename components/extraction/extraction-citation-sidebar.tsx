@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { FileSearch } from "@/components/icons";
 import { motion, AnimatePresence } from "motion/react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { isRightToLeft } from "@/lib/i18n/locale-map";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -37,9 +38,11 @@ export function ExtractionCitationSidebar({
   if (!_hasHydrated) return null;
 
   const hasPayload = answer !== null;
+  const locale = useLocale();
   const firstPage = getAllCitationLocations(answer?.result)[0]?.page;
   const width = !hasPayload ? 0 : isCollapsed ? collapsedWidth : expandedWidth;
-  const translateX = isCollapsed ? -(expandedWidth - collapsedWidth) : 0;
+  const offset = expandedWidth - collapsedWidth;
+  const translateX = isCollapsed ? (isRightToLeft(locale) ? offset : -offset) : 0;
 
   return (
     <div

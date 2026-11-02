@@ -1,0 +1,936 @@
+{
+ "locale": "af-ZA",
+ "actionBlocked": {
+  "subtitle": "Tot jou veiligheid kon hierdie versoek nie voltooi word nie.",
+  "title": "Ons kon nie hierdie versoek voltooi nie",
+  "traceIdLabel": "Verwysing"
+ },
+ "backButton": "Terug",
+ "badge__activePlan": "Aktief",
+ "badge__banned": "Verbied",
+ "badge__canceledEndsAt": "Gekanselleer, Eindig {{ date | shortDate('af-ZA') }}",
+ "badge__currentPlan": "Huidige plan",
+ "badge__default": "Verstek",
+ "badge__deprovisioned": "Toegang verwyder",
+ "badge__endsAt": "Eindig {{ date | shortDate('af-ZA') }}",
+ "badge__expired": "Verval",
+ "badge__freeTrial": "Gratis proef",
+ "badge__otherImpersonatorDevice": "Ander toestel wat iemand naboots",
+ "badge__pastDueAt": "Agterstallig sedert {{ date | shortDate('af-ZA') }}",
+ "badge__pastDuePlan": "Agterstallig",
+ "badge__primary": "Primêr",
+ "badge__renewsAt": "Verleng {{ date | shortDate('af-ZA') }}",
+ "badge__requiresAction": "Vereis aksie",
+ "badge__startsAt": "Begin {{ date | shortDate('af-ZA') }}",
+ "badge__thisDevice": "Hierdie toestel",
+ "badge__trialEndsAt": "Proef eindig {{ date | shortDate('af-ZA') }}",
+ "badge__unverified": "Nie bevestig nie",
+ "badge__upcomingPlan": "Komend",
+ "badge__userDevice": "Gebruikerstoestel",
+ "badge__you": "Jy",
+ "createOrganization": {
+  "formButtonSubmit": "Skep organisasie",
+  "invitePage": {
+   "formButtonReset": "Slaan oor"
+  },
+  "title": "Skep organisasie"
+ },
+ "dates": {
+  "lastDay": "Gister om {{ date | timeString('af-ZA') }}",
+  "next6Days": "{{ date | weekday('en-US','long') }} om {{ date | timeString('af-ZA') }}",
+  "nextDay": "More om {{ date | timeString('af-ZA') }}",
+  "numeric": "{{ date | numeric('af-ZA') }}",
+  "previous6Days": "Laas {{ date | weekday('en-US','long') }} om {{ date | timeString('af-ZA') }}",
+  "sameDay": "Vandag om {{ date | timeString('af-ZA') }}"
+ },
+ "dividerText": "of",
+ "footerActionLink__alternativePhoneCodeProvider": "Stuur eerder kode per SMS",
+ "footerActionLink__useAnotherMethod": "Gebruik ’n ander metode",
+ "footerPageLink__help": "Hulp",
+ "footerPageLink__privacy": "Privaatheid",
+ "footerPageLink__terms": "Voorwaardes",
+ "formButtonPrimary": "Gaan voort",
+ "formButtonPrimary__verify": "Bevestig",
+ "formFieldAction__forgotPassword": "Wagwoord vergeet?",
+ "formFieldAction__hidePassword": "Verberg wagwoord",
+ "formFieldAction__showPassword": "Wys wagwoord",
+ "formFieldError__matchingPasswords": "Wagwoorde stem ooreen.",
+ "formFieldError__notMatchingPasswords": "Wagwoorde stem nie ooreen nie.",
+ "formFieldError__verificationLinkExpired": "Die bevestigingskakel het verval. Vra asseblief ’n nuwe skakel aan.",
+ "formFieldHintText__optional": "Opsioneel",
+ "formFieldHintText__slug": "’n Slug is ’n mensleesbare ID wat uniek moet wees. Dit word dikwels in URL’s gebruik.",
+ "formFieldInputPlaceholder__apiKeyDescription": "Verduidelik waarom jy hierdie sleutel maak",
+ "formFieldInputPlaceholder__apiKeyExpirationDate": "Kies datum",
+ "formFieldInputPlaceholder__apiKeyName": "Tik jou geheime sleutelnaam in",
+ "formFieldInputPlaceholder__backupCode": "Tik rugsteunkode in",
+ "formFieldInputPlaceholder__confirmDeletionUserAccount": "Verwyder rekening",
+ "formFieldInputPlaceholder__emailAddress": "Tik jou e-posadres in",
+ "formFieldInputPlaceholder__emailAddress_username": "Tik e-pos of gebruikersnaam in",
+ "formFieldInputPlaceholder__emailAddresses": "example@email.com, example2@email.com",
+ "formFieldInputPlaceholder__firstName": "Voornaam",
+ "formFieldInputPlaceholder__lastName": "Van",
+ "formFieldInputPlaceholder__organizationDomain": "example.com",
+ "formFieldInputPlaceholder__organizationDomainEmailAddress": "you@example.com",
+ "formFieldInputPlaceholder__organizationName": "Organisasienaam",
+ "formFieldInputPlaceholder__organizationSlug": "my-org",
+ "formFieldInputPlaceholder__password": "Tik jou wagwoord in",
+ "formFieldInputPlaceholder__phoneNumber": "Tik jou foonnommer in",
+ "formFieldInputPlaceholder__signUpPassword": "Skep ’n wagwoord",
+ "formFieldInputPlaceholder__username": "Tik jou gebruikersnaam in",
+ "formFieldInput__emailAddress_format": "Voorbeeldformaat: name@example.com",
+ "formFieldLabel__apiKey": "API-sleutel",
+ "formFieldLabel__apiKeyDescription": "Beskrywing",
+ "formFieldLabel__apiKeyExpiration": "Vervaldatum",
+ "formFieldLabel__apiKeyName": "Geheime sleutelnaam",
+ "formFieldLabel__automaticInvitations": "Skakel outomatiese uitnodigings vir hierdie domein aan",
+ "formFieldLabel__backupCode": "Rugsteunkode",
+ "formFieldLabel__confirmDeletion": "Bevestiging",
+ "formFieldLabel__confirmPassword": "Bevestig wagwoord",
+ "formFieldLabel__currentPassword": "Huidige wagwoord",
+ "formFieldLabel__emailAddress": "E-posadres",
+ "formFieldLabel__emailAddress_username": "E-posadres of gebruikersnaam",
+ "formFieldLabel__emailAddresses": "E-posadresse",
+ "formFieldLabel__firstName": "Voornaam",
+ "formFieldLabel__lastName": "Van",
+ "formFieldLabel__newPassword": "Nuwe wagwoord",
+ "formFieldLabel__organizationDomain": "Domein",
+ "formFieldLabel__organizationDomainDeletePending": "Verwyder hangende uitnodigings en voorstelle",
+ "formFieldLabel__organizationDomainEmailAddress": "Bevestigings-e-posadres",
+ "formFieldLabel__organizationDomainEmailAddressDescription": "Tik ’n e-posadres onder hierdie domein in om ’n kode te ontvang en hierdie domein te bevestig.",
+ "formFieldLabel__organizationName": "Naam",
+ "formFieldLabel__organizationSlug": "URL-ID",
+ "formFieldLabel__passkeyName": "Naam van passkey",
+ "formFieldLabel__password": "Wagwoord",
+ "formFieldLabel__phoneNumber": "Foonnommer",
+ "formFieldLabel__role": "Rol",
+ "formFieldLabel__signOutOfOtherSessions": "Meld af by alle ander toestelle",
+ "formFieldLabel__username": "Gebruikersnaam",
+ "identityPreviewEditButton__emailAddress": "Wysig e-posadres",
+ "identityPreviewEditButton__identifier": "Wysig identifiseerder",
+ "identityPreviewEditButton__phoneNumber": "Wysig foonnommer",
+ "lastAuthenticationStrategy": "Laas gebruik",
+ "maintenanceMode": "Ons is tans besig met onderhoud, maar moenie bekommerd wees nie. Dit behoort nie meer as ’n paar minute te neem nie.",
+ "membershipRole__admin": "Admin",
+ "membershipRole__basicMember": "Lid",
+ "membershipRole__guestMember": "Gas",
+ "paginationButton__next": "Volgende",
+ "paginationButton__previous": "Vorige",
+ "paginationRowText__displaying": "Wys",
+ "paginationRowText__of": "van",
+ "reverification": {
+  "alternativeMethods": {
+   "actionLink": "Kry hulp",
+   "actionText": "Het jy nie een van hierdie nie?",
+   "blockButton__backupCode": "Gebruik ’n rugsteunkode",
+   "blockButton__emailCode": "Stuur kode na {{identifier}}",
+   "blockButton__passkey": "Gebruik jou passkey",
+   "blockButton__password": "Gaan voort met jou wagwoord",
+   "blockButton__phoneCode": "Stuur SMS-kode na {{identifier}}",
+   "blockButton__totp": "Gebruik jou verifieerder-app",
+   "getHelp": {
+    "blockButton__emailSupport": "E-pos ondersteuning",
+    "content": "As jy probleme ondervind om jou rekening te bevestig, stuur vir ons ’n e-pos en ons sal saam met jou werk om toegang so gou moontlik te herstel.",
+    "title": "Kry hulp"
+   },
+   "subtitle": "Probleme? Jy kan enige van hierdie metodes gebruik om te bevestig.",
+   "title": "Gebruik ’n ander metode"
+  },
+  "backupCodeMfa": {
+   "subtitle": "Tik die rugsteunkode in wat jy ontvang het toe jy tweestapverifikasie opgestel het",
+   "title": "Tik ’n rugsteunkode in"
+  },
+  "emailCode": {
+   "formTitle": "Verifikasiekode",
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "Tik die kode in wat na jou e-pos gestuur is om voort te gaan",
+   "title": "Verifikasie word vereis"
+  },
+  "noAvailableMethods": {
+   "message": "Kan nie met verifikasie voortgaan nie. Geen geskikte verifikasiefaktor is opgestel nie",
+   "subtitle": "’n Fout het voorgekom",
+   "title": "Kan nie jou rekening verifieer nie"
+  },
+  "passkey": {
+   "blockButton__passkey": "Gebruik jou passkey",
+   "subtitle": "Deur jou passkey te gebruik, bevestig jy jou identiteit. Jou toestel mag vir jou vingerafdruk, gesig of skermslot vra.",
+   "title": "Gebruik jou passkey"
+  },
+  "password": {
+   "actionLink": "Gebruik ’n ander metode",
+   "subtitle": "Tik jou huidige wagwoord in om voort te gaan",
+   "title": "Verifikasie word vereis"
+  },
+  "phoneCode": {
+   "formTitle": "Verifikasiekode",
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "Tik die kode in wat na jou foon gestuur is om voort te gaan",
+   "title": "Verifikasie word vereis"
+  },
+  "phoneCodeMfa": {
+   "formTitle": "Verifikasiekode",
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "Tik die kode in wat na jou foon gestuur is om voort te gaan",
+   "title": "Verifikasie word vereis"
+  },
+  "totpMfa": {
+   "formTitle": "Verifikasiekode",
+   "subtitle": "Tik die kode in wat deur jou verifieerder-app gegenereer is om voort te gaan",
+   "title": "Verifikasie word vereis"
+  }
+ },
+ "searchInput": {
+  "action__clear": "Maak soek leeg"
+ },
+ "signIn": {
+  "accountSwitcher": {
+   "action__addAccount": "Voeg rekening by",
+   "action__signOutAll": "Meld af by alle rekeninge",
+   "subtitle": "Kies die rekening waarmee jy wil voortgaan.",
+   "title": "Kies ’n rekening"
+  },
+  "alternativeMethods": {
+   "actionLink": "Kry hulp",
+   "actionText": "Het jy nie een van hierdie nie?",
+   "blockButton__backupCode": "Gebruik ’n rugsteunkode",
+   "blockButton__emailCode": "Stuur kode na {{identifier}}",
+   "blockButton__emailLink": "Stuur skakel na {{identifier}}",
+   "blockButton__passkey": "Meld aan met jou passkey",
+   "blockButton__password": "Meld aan met jou wagwoord",
+   "blockButton__phoneCode": "Stuur SMS-kode na {{identifier}}",
+   "blockButton__totp": "Gebruik jou verifieerder-app",
+   "getHelp": {
+    "blockButton__emailSupport": "E-pos ondersteuning",
+    "content": "As jy probleme ondervind om by jou rekening aan te meld, stuur vir ons ’n e-pos en ons sal saam met jou werk om toegang so gou moontlik te herstel.",
+    "title": "Kry hulp"
+   },
+   "subtitle": "Probleme? Jy kan enige van hierdie metodes gebruik om aan te meld.",
+   "title": "Gebruik ’n ander metode"
+  },
+  "alternativePhoneCodeProvider": {
+   "formTitle": "Verifikasiekode",
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "om voort te gaan na {{applicationName}}",
+   "title": "Kyk na jou {{provider}}"
+  },
+  "backupCodeMfa": {
+   "subtitle": "Jou rugsteunkode is die een wat jy ontvang het toe jy tweestapverifikasie opgestel het.",
+   "title": "Tik ’n rugsteunkode in"
+  },
+  "emailCode": {
+   "formTitle": "Verifikasiekode",
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "om voort te gaan na {{applicationName}}",
+   "title": "Kyk na jou e-pos"
+  },
+  "emailCodeMfa": {
+   "formTitle": "Kyk na jou e-pos",
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "om voort te gaan na {{applicationName}}",
+   "title": "Kyk na jou e-pos"
+  },
+  "emailLink": {
+   "clientMismatch": {
+    "subtitle": "Om voort te gaan, maak die bevestigingskakel oop op die toestel en blaaier waar jy die aanmelding begin het",
+    "title": "Bevestigingskakel is ongeldig vir hierdie toestel"
+   },
+   "expired": {
+    "subtitle": "Gaan terug na die oorspronklike oortjie om voort te gaan.",
+    "title": "Hierdie bevestigingskakel het verval"
+   },
+   "failed": {
+    "subtitle": "Gaan terug na die oorspronklike oortjie om voort te gaan.",
+    "title": "Hierdie bevestigingskakel is ongeldig"
+   },
+   "formSubtitle": "Gebruik die bevestigingskakel wat na jou e-pos gestuur is",
+   "formTitle": "Bevestigingskakel",
+   "loading": {
+    "subtitle": "Jy word binnekort herlei",
+    "title": "Meld aan..."
+   },
+   "resendButton": "Nie ’n skakel ontvang nie? Stuur weer",
+   "subtitle": "om voort te gaan na {{applicationName}}",
+   "title": "Kyk na jou e-pos",
+   "unusedTab": {
+    "title": "Jy kan hierdie oortjie toemaak"
+   },
+   "verified": {
+    "subtitle": "Jy word binnekort herlei",
+    "title": "Suksesvol aangemeld"
+   },
+   "verifiedSwitchTab": {
+    "subtitle": "Gaan terug na die oorspronklike oortjie om voort te gaan",
+    "subtitleNewTab": "Gaan terug na die nuut geopende oortjie om voort te gaan",
+    "titleNewTab": "Aangemeld op ’n ander oortjie"
+   },
+   "verifiedTransferable": {
+    "subtitle": "Gaan terug na die oorspronklike oortjie om voort te gaan",
+    "title": "E-pos bevestig"
+   }
+  },
+  "emailLinkMfa": {
+   "formSubtitle": "Gebruik die bevestigingskakel wat na jou e-pos gestuur is",
+   "resendButton": "Nie ’n skakel ontvang nie? Stuur weer",
+   "subtitle": "om voort te gaan na {{applicationName}}",
+   "title": "Kyk na jou e-pos"
+  },
+  "enterpriseConnections": {
+   "subtitle": "Kies ’n ondernemingsrekening om voort te gaan.",
+   "title": "Kies ’n rekening"
+  },
+  "enterpriseSSO": {
+   "formButtonPrimary": "Gaan voort met SSO"
+  },
+  "forgotPassword": {
+   "formTitle": "Kode om wagwoord te herstel",
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "om jou wagwoord te herstel",
+   "subtitle_email": "Tik eers die kode in wat na jou e-posadres gestuur is",
+   "subtitle_phone": "Tik eers die kode in wat na jou foon gestuur is",
+   "title": "Herstel wagwoord"
+  },
+  "forgotPasswordAlternativeMethods": {
+   "blockButton__resetPassword": "Herstel jou wagwoord",
+   "label__alternativeMethods": "Of meld aan met ’n ander metode",
+   "title": "Wagwoord vergeet?"
+  },
+  "newDeviceVerificationNotice": "Jy meld aan vanaf ’n nuwe toestel. Ons vra vir bevestiging om jou rekening veilig te hou.",
+  "noAvailableMethods": {
+   "message": "Kan nie met aanmelding voortgaan nie. Daar is geen beskikbare verifikasiefaktor nie.",
+   "subtitle": "’n Fout het voorgekom",
+   "title": "Kan nie aanmeld nie"
+  },
+  "passkey": {
+   "subtitle": "Deur jou passkey te gebruik, bevestig jy dat dit jy is. Jou toestel mag vir jou vingerafdruk, gesig of skermslot vra.",
+   "title": "Gebruik jou passkey"
+  },
+  "password": {
+   "actionLink": "Gebruik ’n ander metode",
+   "subtitle": "Tik die wagwoord wat by jou rekening hoort in",
+   "title": "Tik jou wagwoord in"
+  },
+  "passwordCompromised": {
+   "title": "Wagwoord is gekompromitteer"
+  },
+  "passwordPwned": {
+   "title": "Wagwoord is gekompromitteer"
+  },
+  "passwordUntrusted": {
+   "title": "Wagwoord is nie betroubaar nie"
+  },
+  "phoneCode": {
+   "formTitle": "Verifikasiekode",
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "om voort te gaan na {{applicationName}}",
+   "title": "Kyk na jou foon"
+  },
+  "phoneCodeMfa": {
+   "formTitle": "Verifikasiekode",
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "Tik die verifikasiekode in wat na jou foon gestuur is om voort te gaan",
+   "title": "Kyk na jou foon"
+  },
+  "protectCheck": {
+   "loading": "Laai…",
+   "retryButton": "Probeer weer",
+   "subtitle": "Wag asseblief terwyl ons jou versoek bevestig.",
+   "title": "Bevestig jou versoek"
+  },
+  "resetPassword": {
+   "formButtonPrimary": "Herstel wagwoord",
+   "requiredMessage": "Om sekuriteitsredes moet jy jou wagwoord herstel.",
+   "successMessage": "Jou wagwoord is suksesvol verander. Ons meld jou nou aan, wag asseblief ’n oomblik.",
+   "title": "Stel nuwe wagwoord"
+  },
+  "resetPasswordMfa": {
+   "detailsLabel": "Ons moet jou identiteit bevestig voordat jy jou wagwoord kan herstel."
+  },
+  "ssoBypass": {
+   "actionLink": "Kan nie SSO gebruik nie?",
+   "code": {
+    "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+    "subtitle": "om voort te gaan na {{applicationName}}",
+    "title": "Kyk na jou e-pos"
+   },
+   "notice": "Jou organisasie vereis SSO. Voortgaan sonder SSO word aangeteken."
+  },
+  "start": {
+   "actionLink": "Teken aan",
+   "actionLink__join_waitlist": "Sluit by wagtelys aan",
+   "actionLink__use_email": "Gebruik e-pos",
+   "actionLink__use_email_username": "Gebruik e-pos of gebruikersnaam",
+   "actionLink__use_passkey": "Gebruik eerder passkey",
+   "actionLink__use_phone": "Gebruik foon",
+   "actionLink__use_username": "Gebruik gebruikersnaam",
+   "actionText": "Het jy nie ’n rekening nie?",
+   "actionText__join_waitlist": "Wil jy vroeg toegang hê?",
+   "alternativePhoneCodeProvider": {
+    "actionLink": "Gebruik ’n ander metode",
+    "label": "{{provider}} foonnommer",
+    "subtitle": "Tik jou foonnommer in om ’n verifikasiekode op {{provider}} te ontvang.",
+    "title": "Meld aan by {{applicationName}} met {{provider}}"
+   },
+   "subtitle": "Welkom terug! Meld asseblief aan om voort te gaan",
+   "title": "Meld aan by {{applicationName}}",
+   "titleCombined": "Gaan voort na {{applicationName}}"
+  },
+  "totpMfa": {
+   "formTitle": "Verifikasiekode",
+   "subtitle": "Tik die verifikasiekode in wat deur jou verifieerder-app gegenereer is om voort te gaan",
+   "title": "Tweestapverifikasie"
+  },
+  "web3Solana": {
+   "subtitle": "Kies hieronder ’n beursie om aan te meld",
+   "title": "Meld aan met Solana"
+  }
+ },
+ "signInEnterPasswordTitle": "Tik jou wagwoord in",
+ "signUp": {
+  "alternativePhoneCodeProvider": {
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "Tik die verifikasiekode in wat na jou {{provider}} gestuur is",
+   "title": "Bevestig jou {{provider}}"
+  },
+  "continue": {
+   "actionLink": "Meld aan",
+   "actionText": "Het jy reeds ’n rekening?",
+   "subtitle": "Vul asseblief die res van die besonderhede in om voort te gaan.",
+   "title": "Vul ontbrekende velde in"
+  },
+  "emailCode": {
+   "formSubtitle": "Tik die verifikasiekode in wat na jou e-posadres gestuur is",
+   "formTitle": "Verifikasiekode",
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "Tik die verifikasiekode in wat na jou e-pos gestuur is",
+   "title": "Bevestig jou e-pos"
+  },
+  "emailLink": {
+   "clientMismatch": {
+    "subtitle": "Om voort te gaan, maak die bevestigingskakel oop op die toestel en blaaier waar jy die registrasie begin het",
+    "title": "Bevestigingskakel is ongeldig vir hierdie toestel"
+   },
+   "formSubtitle": "Gebruik die bevestigingskakel wat na jou e-posadres gestuur is",
+   "formTitle": "Bevestigingskakel",
+   "loading": {
+    "title": "Registreer..."
+   },
+   "resendButton": "Nie ’n skakel ontvang nie? Stuur weer",
+   "subtitle": "om voort te gaan na {{applicationName}}",
+   "title": "Bevestig jou e-pos",
+   "verified": {
+    "title": "Suksesvol geregistreer"
+   },
+   "verifiedSwitchTab": {
+    "subtitle": "Gaan terug na die nuut geopende oortjie om voort te gaan",
+    "subtitleNewTab": "Gaan terug na die vorige oortjie om voort te gaan",
+    "title": "E-pos suksesvol bevestig"
+   }
+  },
+  "enterpriseConnections": {
+   "subtitle": "Kies ’n ondernemingsrekening om voort te gaan.",
+   "title": "Kies ’n rekening"
+  },
+  "legalConsent": {
+   "checkbox": {
+    "label__onlyPrivacyPolicy": "Ek stem in tot die {{ privacyPolicyLink || link(\"Privaatheidsbeleid\") }}",
+    "label__onlyTermsOfService": "Ek stem in tot die {{ termsOfServiceLink || link(\"Diensvoorwaardes\") }}",
+    "label__termsOfServiceAndPrivacyPolicy": "Ek stem in tot die {{ termsOfServiceLink || link(\"Diensvoorwaardes\") }} en {{ privacyPolicyLink || link(\"Privaatheidsbeleid\") }}"
+   },
+   "continue": {
+    "subtitle": "Lees en aanvaar asseblief die voorwaardes om voort te gaan",
+    "title": "Regsinstemming"
+   }
+  },
+  "phoneCode": {
+   "formSubtitle": "Tik die verifikasiekode in wat na jou foonnommer gestuur is",
+   "formTitle": "Verifikasiekode",
+   "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+   "subtitle": "Tik die verifikasiekode in wat na jou foon gestuur is",
+   "title": "Bevestig jou foon"
+  },
+  "protectCheck": {
+   "loading": "Laai…",
+   "retryButton": "Probeer weer",
+   "subtitle": "Wag asseblief terwyl ons jou versoek bevestig.",
+   "title": "Bevestig jou versoek"
+  },
+  "restrictedAccess": {
+   "actionLink": "Meld aan",
+   "actionText": "Het jy reeds ’n rekening?",
+   "blockButton__emailSupport": "E-pos ondersteuning",
+   "blockButton__joinWaitlist": "Sluit by wagtelys aan",
+   "subtitle": "Registrasies is tans gedeaktiveer. As jy glo jy behoort toegang te hê, kontak asseblief ondersteuning.",
+   "subtitleWaitlist": "Registrasies is tans gedeaktiveer. Sluit by die wagtelys aan om die eerste te wees wat weet wanneer ons bekendgee.",
+   "title": "Toegang is beperk"
+  },
+  "start": {
+   "actionLink": "Meld aan",
+   "actionLink__use_email": "Gebruik eerder e-pos",
+   "actionLink__use_phone": "Gebruik eerder foon",
+   "actionText": "Het jy reeds ’n rekening?",
+   "alternativePhoneCodeProvider": {
+    "actionLink": "Gebruik ’n ander metode",
+    "label": "{{provider}} foonnommer",
+    "subtitle": "Tik jou foonnommer in om ’n verifikasiekode op {{provider}} te ontvang.",
+    "title": "Registreer by {{applicationName}} met {{provider}}"
+   },
+   "subtitle": "Welkom! Vul asseblief die besonderhede in om te begin.",
+   "subtitleCombined": "Welkom! Vul asseblief die besonderhede in om te begin.",
+   "title": "Skep jou rekening",
+   "titleCombined": "Skep jou rekening"
+  },
+  "web3Solana": {
+   "subtitle": "Kies hieronder ’n beursie om te registreer",
+   "title": "Registreer met Solana"
+  }
+ },
+ "socialButtonsBlockButton": "Gaan voort met {{provider|titleize}}",
+ "socialButtonsBlockButtonManyInView": "{{provider|titleize}}",
+ "unstable__errors": {
+  "action_blocked": "Hierdie handeling kon nie voltooi word nie. Probeer asseblief later weer, of kontak ondersteuning as dit aanhou gebeur.",
+  "already_a_member_in_organization": "{{email}} is reeds ’n lid van die organisasie.",
+  "api_key_name_already_exists": "Die API-sleutelnaam bestaan reeds.",
+  "api_key_usage_exceeded": "Jy het jou gebruikslimiet bereik. Jy kan die limiet verwyder deur na ’n betaalde plan op te gradeer.",
+  "avatar_file_size_exceeded": "Lêergrootte oorskry die maksimum limiet van 10MB. Kies asseblief ’n kleiner lêer.",
+  "avatar_file_type_invalid": "Lêertipe word nie ondersteun nie. Laai asseblief ’n JPG-, PNG-, GIF- of WEBP-beeld op.",
+  "captcha_unavailable": "Registrasie was onsuksesvol weens ’n mislukte bot-validering. Herlaai asseblief die bladsy om weer te probeer, of kontak ondersteuning vir meer hulp.",
+  "form_new_password_matches_current": "Die nuwe wagwoord kan nie dieselfde as die huidige wagwoord wees nie.",
+  "form_password_length_too_short": "Jou wagwoord is te kort. Dit moet ten minste 8 karakters lank wees.",
+  "form_password_matches_identifier": "Die wagwoord kan nie jou e-posadres, foonnommer of gebruikersnaam wees nie. Gebruik asseblief ’n ander wagwoord om jou rekening veilig te hou.",
+  "form_password_not_strong_enough": "Jou wagwoord is nie sterk genoeg nie.",
+  "form_password_pwned": "Hierdie wagwoord is as deel van ’n datalek gevind en kan nie gebruik word nie. Probeer asseblief ’n ander wagwoord.",
+  "form_password_pwned__sign_in": "Hierdie wagwoord is as deel van ’n datalek gevind en kan nie gebruik word nie. Herstel asseblief jou wagwoord.",
+  "form_password_untrusted__sign_in": "Jou wagwoord is moontlik gekompromitteer. Om jou rekening te beskerm, gaan asseblief voort met ’n alternatiewe aanmeldmetode. Jy sal jou wagwoord moet herstel nadat jy aangemeld het.",
+  "form_username_invalid_length": "Jou gebruikersnaam moet tussen {{min_length}} en {{max_length}} karakters lank wees.",
+  "form_username_needs_non_number_char": "Jou gebruikersnaam moet ten minste een nie-numeriese karakter bevat.",
+  "insufficient_seats_change_plan": "Jou organisasie het nie genoeg plekke om die gewenste aantal lede uit te nooi nie. Verander asseblief na ’n plan wat die aantal lede ondersteun wat jy probeer uitnooi.",
+  "insufficient_seats_contact_support": "Jou organisasie het nie genoeg plekke om die gewenste aantal lede uit te nooi nie. Kontak asseblief ondersteuning.",
+  "oauth_access_denied": "Jy het nie toegang tot jou rekening toegestaan nie.",
+  "organization_membership_quota_exceeded": "Jy het jou limiet van organisasielidmaatskappe bereik, insluitend hangende uitnodigings.",
+  "organization_not_found_or_unauthorized": "Jy is nie meer ’n lid van hierdie organisasie nie. Kies of skep asseblief ’n ander een.",
+  "organization_not_found_or_unauthorized_with_create_organization_disabled": "Jy is nie meer ’n lid van hierdie organisasie nie. Kies asseblief een anders.",
+  "passkey_already_exists": "’n Passkey is reeds op hierdie toestel geregistreer.",
+  "passkey_not_supported": "Passkeys word nie op hierdie toestel ondersteun nie.",
+  "passkey_pa_not_supported": "Registrasie vereis ’n platformverifieerder, maar die toestel ondersteun dit nie.",
+  "passkey_registration_cancelled": "Passkey-registrasie is gekanselleer of het getyd uitgeloop.",
+  "passkey_retrieval_cancelled": "Passkey-verifikasie is gekanselleer of het getyd uitgeloop.",
+  "passwordComplexity": {
+   "maximumLength": "minder as {{length}} karakters",
+   "minimumLength": "{{length}} of meer karakters",
+   "requireLowercase": "’n kleinletter",
+   "requireNumbers": "’n syfer",
+   "requireSpecialCharacter": "’n spesiale karakter",
+   "requireUppercase": "’n hoofletter",
+   "sentencePrefix": "Jou wagwoord moet bevat"
+  },
+  "protect_check_execution_failed": "Verifikasie is nie voltooi nie. Probeer asseblief weer.",
+  "protect_check_invalid_script": "Kon nie verifikasie laai nie. Kontak asseblief ondersteuning as dit aanhou gebeur.",
+  "protect_check_invalid_sdk_url": "Verifikasie kon nie begin nie. Kontak asseblief ondersteuning.",
+  "protect_check_required": "Hierdie aanmelding benodig ’n ekstra verifikasiestap wat hier nie gewys kan word nie. Probeer asseblief weer of gebruik ’n ander aanmeldmetode.",
+  "protect_check_script_load_failed": "Kon nie verifikasie laai nie. Dit kan veroorsaak word deur ’n netwerkprobleem of ’n Content Security Policy wat die verifikasieskrip blokkeer. Probeer asseblief weer of kontak ondersteuning.",
+  "protect_check_timed_out": "Verifikasie is nie betyds voltooi nie. Probeer asseblief weer.",
+  "protect_check_unsupported_environment": "Verifikasie word nie in hierdie omgewing ondersteun nie. Gaan asseblief voort in ’n standaard-blaaier of kontak ondersteuning.",
+  "sso_bypass_domain_not_served": "Hierdie lid kon nie bygevoeg word nie, omdat hul e-posadres nie deur ’n koppeling bedien word nie.",
+  "ticket_expired_code": "Hierdie skakel het verval. Begin asseblief weer of vra ’n nuwe skakel aan.",
+  "ticket_invalid_code": "Hierdie skakel is nie meer geldig nie of is reeds gebruik. Begin asseblief weer of vra ’n nuwe skakel aan.",
+  "too_many_unverified_identifications": "Daar is te veel bevestigings hangende op hierdie rekening. Verwyder ’n onbevestigde e-posadres, foonnommer of beursie wat jy nie meer nodig het nie, of wag ’n paar minute totdat ’n onvoltooide passkey-opstelling verval, en probeer dan weer.",
+  "web3_missing_identifier": "’n Web3 Wallet-uitbreiding kon nie gevind word nie. Installeer asseblief een om voort te gaan.",
+  "web3_signature_request_rejected": "Jy het die handtekeningversoek verwerp. Probeer asseblief weer om voort te gaan.",
+  "web3_solana_signature_generation_failed": "’n Fout het voorgekom met die genereer van die handtekening. Probeer asseblief weer om voort te gaan.",
+  "zxcvbn": {
+   "couldBeStronger": "Jou wagwoord werk, maar kan sterker wees. Probeer om meer karakters by te voeg.",
+   "goodPassword": "Jou wagwoord voldoen aan al die nodige vereistes.",
+   "notEnough": "Jou wagwoord is nie sterk genoeg nie.",
+   "suggestions": {
+    "allUppercase": "Maak sommige, maar nie alle letters hoofletters nie.",
+    "anotherWord": "Voeg meer woorde by wat minder algemeen is.",
+    "associatedYears": "Vermy jaartalle wat met jou verband hou.",
+    "capitalization": "Gebruik meer hoofletters as net die eerste letter.",
+    "dates": "Vermy datums en jaartalle wat met jou verband hou.",
+    "l33t": "Vermy voorspelbare letterveranderings soos ‘@’ vir ‘a’.",
+    "longerKeyboardPattern": "Gebruik langer sleutelbordpatrone en verander die tikrigting meermaals.",
+    "noNeed": "Jy kan sterk wagwoorde maak sonder simbole, syfers of hoofletters.",
+    "pwned": "As jy hierdie wagwoord elders gebruik, moet jy dit verander.",
+    "recentYears": "Vermy onlangse jaartalle.",
+    "repeated": "Vermy woorde en karakters wat herhaal word.",
+    "reverseWords": "Vermy omgekeerde spellings van algemene woorde.",
+    "sequences": "Vermy algemene karakterreekse.",
+    "useWords": "Gebruik verskeie woorde, maar vermy algemene frases."
+   },
+   "warnings": {
+    "common": "Dit is ’n algemeen gebruikte wagwoord.",
+    "commonNames": "Algemene voornamen en vanne is maklik om te raai.",
+    "dates": "Datums is maklik om te raai.",
+    "extendedRepeat": "Herhaalde karakterpatrone soos “abcabcabc” is maklik om te raai.",
+    "keyPattern": "Kort sleutelbordpatrone is maklik om te raai.",
+    "namesByThemselves": "Enkele voornamme of vanne is maklik om te raai.",
+    "pwned": "Jou wagwoord is deur ’n datalek op die internet blootgestel.",
+    "recentYears": "Onlangse jaartalle is maklik om te raai.",
+    "sequences": "Algemene karakterreekse soos “abc” is maklik om te raai.",
+    "similarToCommon": "Dit lyk soos ’n algemeen gebruikte wagwoord.",
+    "simpleRepeat": "Herhaalde karakters soos “aaa” is maklik om te raai.",
+    "straightRow": "Reguit rye sleutels op jou sleutelbord is maklik om te raai.",
+    "topHundred": "Dit is ’n gereeld gebruikte wagwoord.",
+    "topTen": "Dit is ’n baie gebruikte wagwoord.",
+    "userInputs": "Daar behoort geen persoonlike of bladsy-verwante data te wees nie.",
+    "wordByItself": "Enkele woorde is maklik om te raai."
+   }
+  }
+ },
+ "userButton": {
+  "action__addAccount": "Voeg rekening by",
+  "action__closeUserMenu": "Maak gebruikerkieslys toe",
+  "action__manageAccount": "Bestuur rekening",
+  "action__openUserMenu": "Maak gebruikerkieslys oop",
+  "action__signOut": "Meld af",
+  "action__signOutAll": "Meld af by alle rekeninge",
+  "label__accountActions": "Rekeningaksies",
+  "label__activeSessions": "Aktiewe sessies",
+  "label__userButtonPopover": "Rekeningpaneel"
+ },
+ "userProfile": {
+  "apiKeysPage": {
+   "title": "API-sleutels"
+  },
+  "backupCodePage": {
+   "actionLabel__copied": "Gekopieer!",
+   "actionLabel__copy": "Kopieer alles",
+   "actionLabel__download": "Laai .txt af",
+   "actionLabel__print": "Druk",
+   "infoText1": "Rugsteunkodes word vir hierdie rekening geaktiveer.",
+   "infoText2": "Hou die rugsteunkodes geheim en berg dit veilig. Jy kan rugsteunkodes weer genereer as jy vermoed dat hulle gekompromitteer is.",
+   "subtitle__codelist": "Berg dit veilig en hou dit geheim.",
+   "successMessage": "Rugsteunkodes is nou geaktiveer. Jy kan een van hierdie gebruik om by jou rekening aan te meld as jy toegang tot jou verifikasietoestel verloor. Elke kode kan net een keer gebruik word.",
+   "successSubtitle": "Jy kan een van hierdie gebruik om by jou rekening aan te meld as jy toegang tot jou verifikasietoestel verloor.",
+   "title": "Voeg rugsteunkodeverifikasie by",
+   "title__codelist": "Rugsteunkodes"
+  },
+  "billingPage": {
+   "accountCreditsSection": {
+    "title": "Rekeningkrediet",
+    "viewHistory": "Bekyk kredietgeskiedenis"
+   },
+   "creditHistoryPage": {
+    "tableHeader__amount": "Bedrag",
+    "tableHeader__date": "Datum",
+    "title": "Rekeningkredietgeskiedenis"
+   },
+   "paymentHistorySection": {
+    "empty": "Geen betalingsgeskiedenis nie",
+    "notFound": "Betalingspoging nie gevind nie",
+    "tableHeader__amount": "Bedrag",
+    "tableHeader__date": "Datum",
+    "tableHeader__status": "Status"
+   },
+   "paymentMethodsSection": {
+    "actionLabel__default": "Maak verstek",
+    "actionLabel__remove": "Verwyder",
+    "add": "Voeg nuwe betaalmetode by",
+    "addSubtitle": "Voeg ’n nuwe betaalmetode by jou rekening by.",
+    "cancelButton": "Kanselleer",
+    "formButtonPrimary__add": "Voeg betaalmetode by",
+    "formButtonPrimary__pay": "Betaal {{amount}}",
+    "payWithTestCardButton": "Betaal met toetskaart",
+    "removeMethod": {
+     "messageLine1": "{{identifier}} sal van hierdie rekening verwyder word.",
+     "messageLine2": "Jy sal nie meer hierdie betaalbron kan gebruik nie, en enige herhalende intekenings wat daarvan afhang, sal nie meer werk nie.",
+     "successMessage": "{{paymentMethod}} is van jou rekening verwyder.",
+     "title": "Verwyder betaalmetode"
+    },
+    "title": "Betaalmetodes"
+   },
+   "start": {
+    "headerTitle__payments": "Betalings",
+    "headerTitle__plans": "Planne",
+    "headerTitle__statements": "State",
+    "headerTitle__subscriptions": "Intekening"
+   },
+   "statementsSection": {
+    "empty": "Geen state om te wys nie",
+    "itemCaption__paidForPlan": "Betaal vir {{plan}} {{period}}-plan",
+    "itemCaption__payerCredit": "Krediet uit rekeningbalans",
+    "itemCaption__proratedCredit": "Pro-rata-krediet vir gedeeltelike gebruik van die vorige intekening",
+    "itemCaption__subscribedAndPaidForPlan": "Ingeteken op en betaal vir {{plan}} {{period}}-plan",
+    "notFound": "Staat nie gevind nie",
+    "tableHeader__amount": "Bedrag",
+    "tableHeader__date": "Datum",
+    "title": "State",
+    "totalPaid": "Totaal betaal"
+   },
+   "subscriptionsListSection": {
+    "actionLabel__manageSubscription": "Bestuur",
+    "actionLabel__newSubscription": "Teken op vir ’n plan",
+    "actionLabel__switchPlan": "Wissel planne",
+    "overview": "Oorsig",
+    "tableHeader__edit": "Wysig",
+    "tableHeader__plan": "Plan",
+    "tableHeader__startDate": "Begindatum",
+    "title": "Intekening"
+   },
+   "subscriptionsSection": {
+    "actionLabel__default": "Bestuur"
+   },
+   "switchPlansSection": {
+    "title": "Wissel planne"
+   },
+   "title": "Faktuur"
+  },
+  "connectedAccountPage": {
+   "formHint": "Kies ’n verskaffer om jou rekening te koppel.",
+   "formHint__noAccounts": "Daar is geen beskikbare eksterne rekeningverskaffers nie.",
+   "removeResource": {
+    "messageLine1": "{{identifier}} sal van hierdie rekening verwyder word.",
+    "messageLine2": "Jy sal nie meer hierdie gekoppelde rekening kan gebruik nie, en enige funksies wat daarvan afhang, sal nie meer werk nie.",
+    "successMessage": "{{connectedAccount}} is van jou rekening verwyder.",
+    "title": "Verwyder gekoppelde rekening"
+   },
+   "socialButtonsBlockButton": "{{provider|titleize}}",
+   "successMessage": "Die verskaffer is by jou rekening gevoeg",
+   "title": "Voeg gekoppelde rekening by"
+  },
+  "deletePage": {
+   "actionDescription": "Tik “Verwyder rekening” hieronder in om voort te gaan.",
+   "confirm": "Verwyder rekening",
+   "messageLine1": "Is jy seker jy wil jou rekening verwyder? Sommige verwante data kan behoue bly. Om volledige dataverwydering aan te vra, kontak asseblief ondersteuning.",
+   "messageLine2": "Hierdie aksie is permanent en onomkeerbaar.",
+   "title": "Verwyder rekening"
+  },
+  "emailAddressPage": {
+   "emailCode": {
+    "formHint": "’n E-pos met ’n verifikasiekode sal na hierdie e-posadres gestuur word.",
+    "formSubtitle": "Tik die verifikasiekode in wat na {{identifier}} gestuur is",
+    "formTitle": "Verifikasiekode",
+    "resendButton": "Nie ’n kode ontvang nie? Stuur weer",
+    "successMessage": "Die e-pos {{identifier}} is by jou rekening gevoeg."
+   },
+   "emailLink": {
+    "formHint": "’n E-pos met ’n verifikasieskakel sal na hierdie e-posadres gestuur word.",
+    "formSubtitle": "Klik op die verifikasieskakel in die e-pos wat na {{identifier}} gestuur is",
+    "formTitle": "Bevestigingskakel",
+    "resendButton": "Nie ’n skakel ontvang nie? Stuur weer",
+    "successMessage": "Die e-pos {{identifier}} is by jou rekening gevoeg."
+   },
+   "enterpriseSSOLink": {
+    "formButton": "Klik om aan te meld",
+    "formSubtitle": "Voltooi die aanmelding met {{identifier}}"
+   },
+   "formHint": "Jy sal hierdie e-posadres moet bevestig voordat dit by jou rekening gevoeg kan word.",
+   "removeResource": {
+    "messageLine1": "{{identifier}} sal van hierdie rekening verwyder word.",
+    "messageLine2": "Jy sal nie meer met hierdie e-posadres kan aanmeld nie.",
+    "successMessage": "{{emailAddress}} is van jou rekening verwyder.",
+    "title": "Verwyder e-posadres"
+   },
+   "title": "Voeg e-posadres by",
+   "verifyTitle": "Bevestig e-posadres"
+  },
+  "formButtonPrimary__add": "Voeg by",
+  "formButtonPrimary__continue": "Gaan voort",
+  "formButtonPrimary__finish": "Voltooi",
+  "formButtonPrimary__remove": "Verwyder",
+  "formButtonPrimary__save": "Stoor",
+  "formButtonReset": "Kanselleer",
+  "mfaPage": {
+   "formHint": "Kies ’n metode om by te voeg.",
+   "title": "Voeg tweestapverifikasie by"
+  },
+  "mfaPhoneCodePage": {
+   "backButton": "Gebruik bestaande nommer",
+   "primaryButton__addPhoneNumber": "Voeg foonnommer by",
+   "removeResource": {
+    "messageLine1": "{{identifier}} sal nie meer verifikasiekodes ontvang wanneer jy aanmeld nie.",
+    "messageLine2": "Jou rekening is dalk nie so veilig nie. Is jy seker jy wil voortgaan?",
+    "successMessage": "SMS-kodeverifikasie in twee stappe is vir {{mfaPhoneCode}} verwyder",
+    "title": "Verwyder tweestapverifikasie"
+   },
+   "subtitle__availablePhoneNumbers": "Kies ’n bestaande foonnommer om vir SMS-kodeverifikasie in twee stappe te registreer, of voeg ’n nuwe een by.",
+   "subtitle__unavailablePhoneNumbers": "Daar is geen beskikbare foonnommers om vir SMS-kodeverifikasie in twee stappe te registreer nie. Voeg asseblief ’n nuwe een by.",
+   "successMessage1": "Wanneer jy aanmeld, sal jy ’n verifikasiekode wat na hierdie foonnommer gestuur is as ’n bykomende stap moet invoer.",
+   "successMessage2": "Stoor hierdie rugsteunkodes op ’n veilige plek. As jy toegang tot jou verifikasietoestel verloor, kan jy rugsteunkodes gebruik om aan te meld.",
+   "successTitle": "SMS-kodeverifikasie geaktiveer",
+   "title": "Voeg SMS-kodeverifikasie by"
+  },
+  "mfaTOTPPage": {
+   "authenticatorApp": {
+    "buttonAbleToScan__nonPrimary": "Skandeer eerder QR-kode",
+    "buttonUnableToScan__nonPrimary": "Kan nie QR-kode skandeer nie?",
+    "infoText__ableToScan": "Stel ’n nuwe aanmeldmetode op in jou verifieerder-app en skandeer die volgende QR-kode om dit aan jou rekening te koppel.",
+    "infoText__unableToScan": "Stel ’n nuwe aanmeldmetode op in jou verifieerder en tik die sleutel hieronder in.",
+    "inputLabel__unableToScan1": "Maak seker dat Time-based of One-time passwords geaktiveer is, en voltooi dan die koppeling van jou rekening.",
+    "inputLabel__unableToScan2": "As jou verifieerder TOTP-URI’s ondersteun, kan jy ook die volledige URI kopieer."
+   },
+   "removeResource": {
+    "messageLine1": "Verifikasiekodes van hierdie verifieerder sal nie meer benodig word wanneer jy aanmeld nie.",
+    "messageLine2": "Jou rekening is dalk nie so veilig nie. Is jy seker jy wil voortgaan?",
+    "successMessage": "Tweestapverifikasie deur die verifieerder-app is verwyder.",
+    "title": "Verwyder tweestapverifikasie"
+   },
+   "successMessage": "Tweestapverifikasie is nou geaktiveer. Wanneer jy aanmeld, sal jy ’n verifikasiekode van hierdie verifieerder as ’n bykomende stap moet invoer.",
+   "title": "Voeg verifieerder-app by",
+   "verifySubtitle": "Tik die verifikasiekode in wat deur jou verifieerder gegenereer is",
+   "verifyTitle": "Verifikasiekode"
+  },
+  "mobileButton__menu": "Kieslys",
+  "navbar": {
+   "account": "Profiel",
+   "apiKeys": "API-sleutels",
+   "billing": "Faktuur",
+   "description": "Bestuur jou rekeninginligting.",
+   "security": "Sekuriteit",
+   "title": "Rekening"
+  },
+  "passkeyScreen": {
+   "removeResource": {
+    "messageLine1": "{{name}} sal van hierdie rekening verwyder word.",
+    "title": "Verwyder passkey"
+   },
+   "subtitle__rename": "Jy kan die passkey se naam verander om dit makliker te vind.",
+   "title__rename": "Hernoem passkey"
+  },
+  "passwordPage": {
+   "checkboxInfoText__signOutOfOtherSessions": "Dit word aanbeveel om by alle ander toestelle af te meld wat dalk jou ou wagwoord gebruik het.",
+   "readonly": "Jou wagwoord kan nie tans gewysig word nie, omdat jy net via die ondernemingskoppeling kan aanmeld.",
+   "successMessage__set": "Jou wagwoord is gestel.",
+   "successMessage__signOutOfOtherSessions": "Alle ander toestelle is afgemeld.",
+   "successMessage__update": "Jou wagwoord is opgedateer.",
+   "title__set": "Stel wagwoord",
+   "title__update": "Dateer wagwoord op"
+  },
+  "phoneNumberPage": {
+   "infoText": "’n SMS met ’n verifikasiekode sal na hierdie foonnommer gestuur word. Boodskap- en datatariewe kan geld.",
+   "removeResource": {
+    "messageLine1": "{{identifier}} sal van hierdie rekening verwyder word.",
+    "messageLine2": "Jy sal nie meer met hierdie foonnommer kan aanmeld nie.",
+    "successMessage": "{{phoneNumber}} is van jou rekening verwyder.",
+    "title": "Verwyder foonnommer"
+   },
+   "successMessage": "{{identifier}} is by jou rekening gevoeg.",
+   "title": "Voeg foonnommer by",
+   "verifySubtitle": "Tik die verifikasiekode in wat na {{identifier}} gestuur is",
+   "verifyTitle": "Bevestig foonnommer"
+  },
+  "plansPage": {
+   "title": "Planne"
+  },
+  "profilePage": {
+   "fileDropAreaHint": "Aanbevole grootte 1:1, tot 10MB.",
+   "imageFormDestructiveActionSubtitle": "Verwyder",
+   "imageFormSubtitle": "Laai op",
+   "imageFormTitle": "Profielbeeld",
+   "readonly": "Jou profielinligting is deur die ondernemingskoppeling verskaf en kan nie gewysig word nie.",
+   "successMessage": "Jou profiel is opgedateer.",
+   "title": "Dateer profiel op"
+  },
+  "start": {
+   "activeDevicesSection": {
+    "destructiveAction": "Meld af by toestel",
+    "title": "Aktiewe toestelle"
+   },
+   "connectedAccountsSection": {
+    "actionLabel__connectionFailed": "Koppel weer",
+    "actionLabel__reauthorize": "Magtig nou",
+    "destructiveActionTitle": "Verwyder",
+    "primaryButton": "Koppel rekening",
+    "subtitle__disconnected": "Hierdie rekening is ontkoppel.",
+    "subtitle__reauthorize": "Die vereiste toestemmings is opgedateer, en jy ervaar dalk beperkte funksionaliteit. Magtig asseblief hierdie toepassing weer om enige probleme te vermy.",
+    "title": "Gekoppelde rekeninge"
+   },
+   "dangerSection": {
+    "deleteAccountButton": "Verwyder rekening",
+    "title": "Verwyder rekening"
+   },
+   "emailAddressesSection": {
+    "destructiveAction": "Verwyder e-pos",
+    "detailsAction__nonPrimary": "Stel as primêr",
+    "detailsAction__primary": "Voltooi bevestiging",
+    "detailsAction__unverified": "Bevestig",
+    "primaryButton": "Voeg e-posadres by",
+    "title": "E-posadresse"
+   },
+   "enterpriseAccountsSection": {
+    "primaryButton": "Koppel rekening",
+    "title": "Ondernemingsrekeninge"
+   },
+   "headerTitle__account": "Profielbesonderhede",
+   "headerTitle__security": "Sekuriteit",
+   "mfaSection": {
+    "backupCodes": {
+     "actionLabel__regenerate": "Genereer opnuut",
+     "headerTitle": "Rugsteunkodes",
+     "subtitle__regenerate": "Kry ’n nuwe stel veilige rugsteunkodes. Vorige rugsteunkodes sal uitgevee word en kan nie gebruik word nie.",
+     "title__regenerate": "Genereer rugsteunkodes opnuut"
+    },
+    "phoneCode": {
+     "actionLabel__setDefault": "Stel as verstek",
+     "destructiveActionLabel": "Verwyder"
+    },
+    "primaryButton": "Voeg tweestapverifikasie by",
+    "title": "Tweestapverifikasie",
+    "totp": {
+     "destructiveActionTitle": "Verwyder",
+     "headerTitle": "Verifieerder-app"
+    }
+   },
+   "passkeysSection": {
+    "menuAction__destructive": "Verwyder",
+    "menuAction__rename": "Hernoem",
+    "primaryButton": "Voeg ’n passkey by",
+    "title": "Passkeys"
+   },
+   "passwordSection": {
+    "primaryButton__setPassword": "Stel wagwoord",
+    "primaryButton__updatePassword": "Dateer wagwoord op",
+    "title": "Wagwoord"
+   },
+   "phoneNumbersSection": {
+    "destructiveAction": "Verwyder foonnommer",
+    "detailsAction__nonPrimary": "Stel as primêr",
+    "detailsAction__primary": "Voltooi bevestiging",
+    "detailsAction__unverified": "Bevestig foonnommer",
+    "primaryButton": "Voeg foonnommer by",
+    "title": "Foonnommers"
+   },
+   "profileSection": {
+    "primaryButton": "Dateer profiel op",
+    "title": "Profiel"
+   },
+   "usernameSection": {
+    "primaryButton__setUsername": "Stel gebruikersnaam",
+    "primaryButton__updateUsername": "Dateer gebruikersnaam op",
+    "title": "Gebruikersnaam"
+   },
+   "web3WalletsSection": {
+    "destructiveAction": "Verwyder beursie",
+    "detailsAction__nonPrimary": "Stel as primêr",
+    "primaryButton": "Koppel beursie",
+    "title": "Web3-beursies",
+    "web3SelectSolanaWalletScreen": {
+     "subtitle": "Kies ’n Solana-beursie om aan jou rekening te koppel.",
+     "title": "Voeg ’n Solana-beursie by"
+    }
+   }
+  },
+  "usernamePage": {
+   "successMessage": "Jou gebruikersnaam is opgedateer.",
+   "title__set": "Stel gebruikersnaam",
+   "title__update": "Dateer gebruikersnaam op"
+  },
+  "web3WalletPage": {
+   "removeResource": {
+    "messageLine1": "{{identifier}} sal van hierdie rekening verwyder word.",
+    "messageLine2": "Jy sal nie meer met hierdie Web3-beursie kan aanmeld nie.",
+    "successMessage": "{{web3Wallet}} is van jou rekening verwyder.",
+    "title": "Verwyder Web3-beursie"
+   },
+   "subtitle__availableWallets": "Kies ’n Web3-beursie om aan jou rekening te koppel.",
+   "subtitle__unavailableWallets": "Daar is geen beskikbare Web3-beursies nie.",
+   "successMessage": "Die beursie is by jou rekening gevoeg.",
+   "title": "Voeg Web3-beursie by",
+   "web3WalletButtonsBlockButton": "{{provider|titleize}}"
+  }
+ },
+ "web3SolanaWalletButtons": {
+  "connect": "Koppel met {{walletName}}",
+  "continue": "Gaan voort met {{walletName}}",
+  "noneAvailable": "Geen Solana-Web3-beursies is opgespoor nie. Installeer asseblief ’n Web3-ondersteunde {{ solanaWalletsLink || link(\"beursie-uitbreiding\") }}."
+ }
+}

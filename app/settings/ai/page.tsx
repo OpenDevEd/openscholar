@@ -290,7 +290,7 @@ function PayMenu({
           <ChevronsUpDown className="size-3 text-muted-foreground/60" />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[26rem] space-y-3 p-3">
+      <PopoverContent align="start" className="w-[min(26rem,calc(100vw-2rem))] space-y-3 p-3">
         {pay ? (
           <Segmented
             label={t("payWith")}

@@ -158,7 +158,7 @@ function EffortStep({
               </button>
             </TooltipHint>
             <Brand className="size-4 shrink-0" />
-            <span className="truncate font-medium">{stripProviderPrefix(row.name)}</span>
+            <span dir="auto" className="truncate font-medium">{stripProviderPrefix(row.name)}</span>
           </span>
           <Stats model={row} />
           <span />
@@ -456,7 +456,7 @@ export function ModelPicker({
                               const Brand = getModelIcon(m.id);
                               return <Brand key={m.id} className="size-3 shrink-0" />;
                             })}
-                            <span className="truncate">{models.map((m) => stripProviderPrefix(m.name)).join(", ")}</span>
+                            <span dir="auto" className="truncate">{models.map((m) => stripProviderPrefix(m.name)).join(", ")}</span>
                             {onlyEffort ? <span className="shrink-0 rounded-full bg-muted px-1.5 text-2xs">{tm(`efforts.${onlyEffort}`)}</span> : null}
                           </span>
                         </span>
@@ -496,7 +496,7 @@ export function ModelPicker({
                       >
                         <span className="flex min-w-0 items-center gap-2.5">
                           <Brand className={cn("size-4 shrink-0", selected ? "text-foreground" : "text-muted-foreground")} />
-                          <span className={cn("truncate", selected && "font-medium")}>{stripProviderPrefix(row.name)}</span>
+                          <span dir="auto" className={cn("truncate", selected && "font-medium")}>{stripProviderPrefix(row.name)}</span>
                         </span>
                         <Stats model={row} />
                         <Check className={cn("size-4 text-primary", selected ? "opacity-100" : "opacity-0")} />
@@ -516,6 +516,7 @@ export function ModelPicker({
             <div className="flex items-center justify-between gap-3 border-t border-border-subtle py-2 ps-4 pe-2">
               <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{tm("effort")}</span>
               <Segmented
+                className="min-w-0 max-w-full shrink flex-wrap"
                 label={tm("effort")}
                 // No highlight until a level is picked when OpenRouter names no default.
                 value={currentEffort ?? ("" as Effort)}

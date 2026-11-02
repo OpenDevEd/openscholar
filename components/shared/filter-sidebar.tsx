@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { sidebarSpring, hoverSpring } from "@/lib/ui/sidebar-motion";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { isRightToLeft } from "@/lib/i18n/locale-map";
 import { useIsMobile } from "@/lib/hooks";
 import type { StoreApi } from "zustand";
 import type { UseBoundStore } from "zustand";
@@ -64,6 +65,7 @@ export function FilterSidebar({
   const { isCollapsed, _hasHydrated, toggle } = useStore();
   const { expandedWidth, collapsedWidth } = getDimensions(isCollapsed);
   const t = useTranslations("sidebarLayout");
+  const locale = useLocale();
   const isMobileView = useIsMobile();
 
   // Keyboard shortcut: Ctrl+Shift+F (or Cmd+Shift+F) to toggle sidebar
@@ -85,8 +87,9 @@ export function FilterSidebar({
   // Don't render until hydrated or on mobile
   if (!_hasHydrated || isMobileView) return null;
 
-  // Calculate translateX - when collapsed, slide left so only collapsedWidth is visible
-  const translateX = isCollapsed ? -(expandedWidth - collapsedWidth) : 0;
+  // When collapsed it slides towards the page's edge, so only collapsedWidth is visible.
+  const offset = expandedWidth - collapsedWidth;
+  const translateX = isCollapsed ? (isRightToLeft(locale) ? offset : -offset) : 0;
 
   return (
     <div
