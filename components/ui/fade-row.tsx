@@ -17,8 +17,9 @@ export function FadeRow({ as: Tag = "div", scrolls = false, scrollbar = "hover",
     const element = row.current;
     if (!element) return;
     const measure = () => {
-      const start = element.scrollLeft > 1;
-      const end = element.scrollLeft + element.clientWidth < element.scrollWidth - 1;
+      const scrolled = Math.abs(element.scrollLeft);
+      const start = scrolled > 1;
+      const end = scrolled + element.clientWidth < element.scrollWidth - 1;
       setPast((was) => (was.start === start && was.end === end ? was : { start, end }));
     };
     const resize = new ResizeObserver(measure);
@@ -47,8 +48,8 @@ export function FadeRow({ as: Tag = "div", scrolls = false, scrollbar = "hover",
         "min-w-0",
         scrolls ? (scrollbar === "none" ? "overflow-x-auto [scrollbar-width:none]" : "scrollbar-hover overflow-x-auto") : "overflow-hidden",
         // Written out whole, so Tailwind finds them: each edge fades over its last 1.5rem.
-        past.start && "mask-l-from-[calc(100%-1.5rem)]",
-        past.end && "mask-r-from-[calc(100%-1.5rem)]",
+        past.start && "ltr:mask-l-from-[calc(100%-1.5rem)] rtl:mask-r-from-[calc(100%-1.5rem)]",
+        past.end && "ltr:mask-r-from-[calc(100%-1.5rem)] rtl:mask-l-from-[calc(100%-1.5rem)]",
         className,
       )}
     >

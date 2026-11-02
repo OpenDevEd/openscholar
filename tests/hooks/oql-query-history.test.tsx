@@ -23,7 +23,9 @@ vi.mock("convex/react", async (importOriginal) => ({
   ...(await importOriginal<typeof import("convex/react")>()),
   usePaginatedQuery: () => ({ results: [], status: "Exhausted", loadMore: vi.fn() }),
 }));
-vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }), useTranslations: () => (key: string) => key }));
 vi.mock("@/lib/toast", () => ({ useAppToast: () => ({ search: { failed: vi.fn() } }) }));
 vi.mock("@/lib/search-utils", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/search-utils")>()),

@@ -86,7 +86,7 @@ export function SharedWithMe({ initial }: { initial?: { counts: Counts; rows: Sh
       }
       intro={
         <div className="space-y-3 px-4 py-3">
-          <FadeRow scrolls scrollbar="none" className="flex h-8 gap-1.5 pr-8">
+          <FadeRow scrolls scrollbar="none" className="flex h-8 gap-1.5 pe-8">
             {counts ? (
               <>
                 <KindChip on={kind === null} onClick={() => setKind(null)} count={counts.total}>

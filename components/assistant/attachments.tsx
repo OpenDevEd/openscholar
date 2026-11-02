@@ -250,7 +250,7 @@ export function Tray({ files, onRemove }: { files: readonly Attachment[]; onRemo
   return (
     <motion.div className="overflow-hidden" initial={false} animate={{ height: files.length ? TRAY_H : 0 }} transition={{ duration: 0.3, ease: EASE }}>
       <FadeRow scrolls className="px-2 pt-2">
-        <div className="flex h-14 w-max items-center gap-2 pr-2">
+        <div className="flex h-14 w-max items-center gap-2 pe-2">
           <AnimatePresence initial={false} mode="popLayout">
             {files.map((file) => (
               <motion.div
@@ -298,7 +298,7 @@ function RemoveButton({ name, onRemove }: { name: string; onRemove: () => void }
         type="button"
         aria-label={t("removeNamed", { name })}
         onClick={onRemove}
-        className="absolute -right-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-foreground text-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+        className="absolute -end-1.5 -top-1.5 flex size-5 items-center justify-center rounded-full bg-foreground text-background opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
       >
         <X className="size-3" />
       </button>
@@ -326,7 +326,7 @@ function ImageChip({ url, name, progress, onRemove, compact }: { url?: string | 
 /** A file shown by its name with a line under it: one refused with why, or one that expired. */
 function NamedChip({ icon, name, line, tone, onRemove, compact }: { icon: ReactNode; name: string; line: string; tone: "refused" | "expired"; onRemove?: () => void; compact?: boolean }) {
   return (
-    <div className={cn("group relative flex items-center gap-2.5 rounded-xl pl-1.5 pr-2", compact ? "h-11 max-w-[15rem]" : "h-12 w-[13.5rem]", tone === "refused" ? "bg-destructive/[0.07] ring-1 ring-destructive/25" : "bg-muted/40")}>
+    <div className={cn("group relative flex items-center gap-2.5 rounded-xl ps-1.5 pe-2", compact ? "h-11 max-w-[15rem]" : "h-12 w-[13.5rem]", tone === "refused" ? "bg-destructive/[0.07] ring-1 ring-destructive/25" : "bg-muted/40")}>
       <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", tone === "refused" ? "bg-destructive/15 text-destructive" : "bg-muted text-muted-foreground")}>{icon}</span>
       <div className="min-w-0 flex-1">
         <TooltipHint label={name} onlyWhenClipped>
@@ -366,7 +366,7 @@ function DocChip({ name, bytes, pages, lines, progress, onRemove, compact, href 
       {onRemove ? <RemoveButton name={name} onRemove={onRemove} /> : null}
     </>
   );
-  const box = cn("group relative flex items-center gap-2.5 rounded-xl bg-muted/60 pl-1.5 pr-2 text-left", compact ? "h-11 max-w-[15rem]" : "h-12 w-[13.5rem]");
+  const box = cn("group relative flex items-center gap-2.5 rounded-xl bg-muted/60 ps-1.5 pe-2 text-start", compact ? "h-11 max-w-[15rem]" : "h-12 w-[13.5rem]");
   return href ? (
     <a href={href} target="_blank" rel="noreferrer" className={cn(box, "transition-colors hover:bg-muted")}>
       {body}
@@ -395,7 +395,7 @@ export function SentFiles({ files, onReattach }: { files: readonly SentFile[]; o
         ) : file.url !== null ? (
           <ImageChip key={file.id} url={file.url} name={file.name} progress={file.url ? 1 : 0} compact />
         ) : onReattach ? (
-          <button key={file.id} type="button" onClick={onReattach} className="rounded-xl text-left transition-opacity hover:opacity-80">
+          <button key={file.id} type="button" onClick={onReattach} className="rounded-xl text-start transition-opacity hover:opacity-80">
             <NamedChip icon={<Hourglass className="size-4" />} name={file.name} line={t("expired")} tone="expired" compact />
           </button>
         ) : (

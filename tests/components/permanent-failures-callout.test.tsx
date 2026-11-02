@@ -12,6 +12,8 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { PermanentFailuresCallout } from "@/components/extraction/permanent-failures-callout";
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
   useTranslations: () => (key: string, params?: Record<string, number>) =>
     params ? `${key}:${JSON.stringify(params)}` : key,
 }));

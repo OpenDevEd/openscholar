@@ -80,7 +80,7 @@ function PageChip({ url, page, outside, children }: { url: string | null; page: 
   const [asking, setAsking] = useState(false);
   const inside = (
     <>
-      <FileText className="mr-1 inline size-3 -translate-y-px" />
+      <FileText className="me-1 inline size-3 -translate-y-px" />
       {children}
     </>
   );
@@ -138,7 +138,7 @@ function WebCitation({ source }: { source: WebSource }) {
               setAsking(true);
             }}
           >
-            <Globe className="mr-1 inline size-3 -translate-y-px" />
+            <Globe className="me-1 inline size-3 -translate-y-px" />
             {host}
           </a>
         </HoverCardTrigger>
@@ -167,7 +167,7 @@ export function WebSources({ sources }: { sources: readonly WebSource[] }) {
   return (
     <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, ease: EASE }}>
       <Sources className="mb-0 text-muted-foreground">
-        <SourcesTrigger count={sources.length} className="group -ml-2 h-7 rounded-full px-2 text-xs font-medium hover:bg-muted hover:text-foreground">
+        <SourcesTrigger count={sources.length} className="group -ms-2 h-7 rounded-full px-2 text-xs font-medium hover:bg-muted hover:text-foreground">
           <Globe className="size-3.5" style={{ color: "var(--kind-web)" }} />
           <span>{t("webSources", { count: sources.length })}</span>
           <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" />

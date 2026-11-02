@@ -69,6 +69,7 @@ vi.mock("@/lib/auth/use-auth-query", () => ({
 }));
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
   useTranslations:
     () =>
     (key: string, params?: Record<string, string>) =>

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({ query: vi.fn(), retrySetup: vi.fn() }));
 
 vi.mock("convex/react", () => ({ useMutation: () => mocks.retrySetup }));
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
   useTranslations: () => (key: string) => key,
   useFormatter: () => ({ dateTime: (date: Date) => date.toISOString() }),
 }));

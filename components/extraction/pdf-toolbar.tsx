@@ -92,7 +92,7 @@ export function PdfToolbar({
           onPageChange={onPageChange}
         />
 
-        <div className="ml-auto flex items-center gap-0.5">
+        <div className="ms-auto flex items-center gap-0.5">
           <ToolbarIconButton label={t('accessibility.zoomOut')} onClick={onZoomOut} disabled={!canZoomOut}>
             <ZoomOut className="size-3.5" />
           </ToolbarIconButton>

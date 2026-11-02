@@ -16,7 +16,7 @@
  */
 
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { useNow, useTranslations } from "next-intl";
+import { useNow, useTranslations, useLocale } from "next-intl";
 import { AlertTriangle, Coins, Pause } from "@/components/icons";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,7 @@ export type JobStatusBannerProps =
     });
 
 export function JobStatusBanner(props: JobStatusBannerProps) {
+  const locale = useLocale();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const router = useWorkspaceRouter();
@@ -129,11 +130,11 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
         {t(props.allowed === undefined ? "creditsExhausted.title" : "creditsExhausted.limitTitle")}
       </AlertTitle>
       <AlertDescription className="space-y-3">
-        <p className="text-sm">{props.allowed === undefined ? t("creditsExhausted.body") : t("creditsExhausted.limitBody", { credits: props.allowed.toLocaleString() })}</p>
+        <p className="text-sm">{props.allowed === undefined ? t("creditsExhausted.body") : t("creditsExhausted.limitBody", { credits: props.allowed.toLocaleString(locale) })}</p>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Coins className="h-3.5 w-3.5" aria-hidden="true" />
           <span className="tabular-nums">
-            {total.toLocaleString()} {tc("credits").toLowerCase()}
+            {total.toLocaleString(locale)} {tc("credits").toLowerCase()}
           </span>
         </div>
         {overCap ? <p className="text-xs">{te("member_cap")}</p> : null}

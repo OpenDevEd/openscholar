@@ -83,7 +83,7 @@ export function LibraryPageShell({
                 {cardFilters ? (
                   <Collapse className={cn("w-full min-w-0 @lg:w-auto @lg:flex-1", filters ? OPEN : CLOSED)}>
                     {/* Filters sit beside the tabs in equal columns. On a phone they go two to a row, and a lone or leading filter takes the full row. */}
-                    <div className={cn("grid gap-2 [&>*]:w-full [&_input]:w-full @max-lg:grid-cols-2 @max-lg:[&>:only-child]:col-span-2 @max-lg:[&>:first-child:nth-last-child(3)]:col-span-2", tabs && "pt-3 @lg:pt-0 max-lg:group-has-[[data-view-switch]]/toolbar:pt-0", filtersInCard ? "@lg:ml-auto @lg:w-64" : "@lg:grid-flow-col @lg:auto-cols-fr")}>
+                    <div className={cn("grid gap-2 [&>*]:w-full [&_input]:w-full @max-lg:grid-cols-2 @max-lg:[&>:only-child]:col-span-2 @max-lg:[&>:first-child:nth-last-child(3)]:col-span-2", tabs && "pt-3 @lg:pt-0 max-lg:group-has-[[data-view-switch]]/toolbar:pt-0", filtersInCard ? "@lg:ms-auto @lg:w-64" : "@lg:grid-flow-col @lg:auto-cols-fr")}>
                       {cardFilters}
                     </div>
                   </Collapse>

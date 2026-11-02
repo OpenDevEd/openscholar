@@ -76,7 +76,7 @@ export function PaperCardListSimple({
         tabIndex={hide?.focusMode ? undefined : 0}
         onClick={hide?.focusMode ? undefined : () => openFocusMode(isMobile, resultIndex, result.id)}
         onKeyDown={hide?.focusMode ? undefined : (e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex, result.id)}
-        className={cn("w-full text-left", !hide?.focusMode && "cursor-pointer")}
+        className={cn("w-full text-start", !hide?.focusMode && "cursor-pointer")}
       >
         <div className="flex items-center gap-3 p-3 @sm/card:p-4">
           {/* Rating - always visible */}
@@ -101,7 +101,7 @@ export function PaperCardListSimple({
             <div className="flex-1 min-w-0">
               <h3 className="font-medium text-sm leading-tight line-clamp-1 group-hover:text-primary transition-colors">
                 <QueryMatchText text={displayTitle} />
-                {result.publication_year != null && <span className="ml-1.5 text-muted-foreground font-normal">
+                {result.publication_year != null && <span className="ms-1.5 text-muted-foreground font-normal">
                   ({result.publication_year})
                 </span>}
               </h3>

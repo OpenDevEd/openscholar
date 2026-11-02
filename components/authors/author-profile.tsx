@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { PageWrapper } from "@/components/PageWrapper";
 import { readAuthorPublications } from "@/app/actions/author-publications";
@@ -48,6 +49,8 @@ function AuthorProfileBody({profileId, record, references, configuration = false
   references: ProfileReferences | undefined;
   configuration?: boolean;
 }) {
+  const tLabels = useTranslations("authorPages");
+  const t = useTranslations("authorPages");
   const { isLoading: authLoading } = useConvexAuth();
   const workspaceId = useWorkspace();
   const publications = useSWR(references ? ["author-publications", profileId, JSON.stringify(references)] : null, () => readAuthorPublications(profileId), {refreshInterval: data => data?.unavailableCount ? 15000 : 0});
@@ -60,8 +63,8 @@ function AuthorProfileBody({profileId, record, references, configuration = false
     if (!record?.openalex || (previous && previous.results.length < 10)) return null;
     return ["author-profile-works", record.openalex, page + 1] as const;
   }, ([, id, page]) => unlessLimited(readProfileAuthorWorks(id, page)));
-  if ((configuration && authLoading) || record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title="Loading author profile" /></PageWrapper>;
-  if (!record) return <p className="p-6">Author profile not found.</p>;
+  if ((configuration && authLoading) || record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title={t("loadingAuthorProfile")} /></PageWrapper>;
+  if (!record) return <p className="p-6">{t("authorProfileNotFound")}</p>;
   if (configuration && !record.role) return <PageWrapper><AuthStatePanel layout="fullscreen" variant="no_access" /></PageWrapper>;
   const profile: AuthorProfile = {
     ...record, id: record._id, photo: record.photo ?? undefined, featured: (references ?? []).filter(reference => reference.rank !== undefined).sort((a, b) => a.rank! - b.rank!).map(reference => reference.id),
@@ -69,8 +72,8 @@ function AuthorProfileBody({profileId, record, references, configuration = false
   };
   return <AuthorPage key={`${record._id}:${configuration}`} profile={profile} configuration={configuration}
     canEdit={Boolean(record.role)} member={record.member} atHome={record.workspaceId !== undefined && record.workspaceId === workspaceId} moveFrom={record.role === "owner" ? record.workspaceId : undefined} accessSection={configuration && record.role === "owner" && record.workspaceId ? <ProfileAccess profileId={profileId} workspaceId={record.workspaceId} /> : null}
-    papers={publications.data?.papers ?? []} loadingPublications={publications.isLoading} loadingAuthors={authors.isValidating || search !== debouncedSearch} publicationStatus={publications.error ? "Publications could not be loaded. Try again shortly." : publications.data?.unavailableCount ? "Some publications could not be loaded. Try again shortly." : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
-    openAlexError={[authors.error, match.error, works.error].find((error) => error instanceof OpenAlexLimitedError)?.message ?? (authors.error || match.error || works.error ? "OpenAlex is unavailable. Try again." : null)}
+    papers={publications.data?.papers ?? []} loadingPublications={publications.isLoading} loadingAuthors={authors.isValidating || search !== debouncedSearch} publicationStatus={publications.error ? tLabels("publicationsCouldNotBeLoadedTry") : publications.data?.unavailableCount ? tLabels("somePublicationsCouldNotBeLoaded") : null} openAlexAuthors={authors.data ?? []} openAlexPapers={works.data?.flatMap(page => page.results) ?? []}
+    openAlexError={[authors.error, match.error, works.error].find((error) => error instanceof OpenAlexLimitedError)?.message ?? (authors.error || match.error || works.error ? tLabels("openalexIsUnavailableTryAgain") : null)}
     onSearchAuthors={value => { setSearch(value); if (value === search) void authors.mutate(); }}
     hasMoreWorks={(works.data?.flatMap(page => page.results).length ?? 0) < (works.data?.[0]?.meta.count ?? 0)}
     workCount={works.data?.[0]?.meta.count ?? 0} loadingWorks={works.isLoading || works.isValidating}

@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({ listInstitutions: vi.fn() }));
 
 vi.mock("convex/react", () => ({ useAction: () => mocks.listInstitutions }));
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
   useTranslations: (namespace: string) => (key: string, values?: Record<string, unknown>) =>
     `${namespace}.${key}${values ? ` ${JSON.stringify(values)}` : ""}`,
 }));

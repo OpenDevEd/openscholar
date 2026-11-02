@@ -188,7 +188,7 @@ export default function BillingPage() {
                 </div>
               ) : null}
             </div>
-            {topUps.bundles.length > 0 ? <TopUpBundles topUps={topUps} className="border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-l @min-[46rem]/configuration:border-t-0" /> : null}
+            {topUps.bundles.length > 0 ? <TopUpBundles topUps={topUps} className="border-t border-border-subtle bg-inset @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0" /> : null}
           </section>
         ) : null}
 
@@ -246,7 +246,7 @@ export default function BillingPage() {
                 ))}
               </div>
             ) : (
-              <p className="pl-1 text-xs text-muted-foreground">{tu("empty")}</p>
+              <p className="ps-1 text-xs text-muted-foreground">{tu("empty")}</p>
             )}
           </Zone>
         ) : null}
@@ -299,7 +299,7 @@ export default function BillingPage() {
                 ) : null}
               </div>
               {account.pastDue ? (
-                <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 ps-3 pe-2 text-sm text-destructive">
                   <span className="flex items-center gap-2">
                     <AlertCircle className="size-4 shrink-0" />
                     {/* The payment that failed, and the day Stripe stops retrying and the plan ends (#40). */}
@@ -321,7 +321,7 @@ export default function BillingPage() {
                 <div className="space-y-1.5">
                   <div className="relative h-1.5 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="absolute inset-y-0 left-0 rounded-full bg-primary"
+                      className="absolute inset-y-0 start-0 rounded-full bg-primary"
                       style={{ width: `${Math.min(100, Math.max(0, ((now.getTime() - periodStart) / (periodEnd - periodStart)) * 100))}%` }}
                     />
                   </div>
@@ -391,7 +391,7 @@ export default function BillingPage() {
                         {/* `now` ticks once a minute: a charge made since is just now, not in the future. */}
                         {format.relativeTime(c.createdAt, Math.max(now.getTime(), c.createdAt))}
                       </time>
-                      <span className="w-20 text-right font-mono text-sm tabular-nums">
+                      <span className="w-20 text-end font-mono text-sm tabular-nums">
                         −{format.number(c.credits)}
                       </span>
                     </li>

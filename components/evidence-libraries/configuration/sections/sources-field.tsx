@@ -10,7 +10,7 @@ import {
   RefreshCw,
   Settings2,
 } from "@/components/icons";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { type ReactNode, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -656,6 +656,7 @@ function GroupRow({
   onReconnect: () => void;
   onRemove: () => void;
 }) {
+  const locale = useLocale();
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const pdfs = sourcePdfs({
     downloadPdfs: entry.settings.downloadPdfs,
@@ -683,7 +684,7 @@ function GroupRow({
         {
           key: "records",
           label: t("zoteroItemsLabel"),
-          value: group.itemCount.toLocaleString(),
+          value: group.itemCount.toLocaleString(locale),
         },
         ...(group.connectedByZoteroUsername
           ? [

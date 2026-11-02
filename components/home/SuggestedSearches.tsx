@@ -64,7 +64,7 @@ function Suggestions({ suggestions, dimmed, onPick, working, disabled }: { sugge
               setPicked(suggestion.question);
               onPick(suggestion.question);
             }}
-            className="group flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left transition-colors hover:bg-muted/70 focus-visible:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60"
+            className="group flex w-full items-start gap-3 rounded-xl px-3 py-2 text-start transition-colors hover:bg-muted/70 focus-visible:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-60"
           >
             <AiIcon working={working && picked === suggestion.question} className="mt-0.5 size-4 shrink-0" />
             <span className="flex min-w-0 flex-1 flex-col gap-0.5">

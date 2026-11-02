@@ -331,7 +331,7 @@ Return a more targeted version of this query.`;
 
               {/* AI-actions sub-group: Start Chat + Screen All grouped together; trailing coin glyph signals credit-bearing actions */}
               <div
-                className={cn("items-center gap-0.5 rounded-xl bg-accent pr-1.5", assistantEnabled || !guest ? "inline-flex" : "hidden")}
+                className={cn("items-center gap-0.5 rounded-xl bg-accent pe-1.5", assistantEnabled || !guest ? "inline-flex" : "hidden")}
                 data-group="ai-actions"
               >
                 {assistantEnabled && (
@@ -370,7 +370,7 @@ Return a more targeted version of this query.`;
                     <button
                       type="button"
                       aria-label={tsc("screenAllCredits")}
-                      className="ml-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      className="ms-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-primary ring-1 ring-primary/30 transition-colors hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                     >
                       <Coins className="h-3.5 w-3.5" />
                     </button>

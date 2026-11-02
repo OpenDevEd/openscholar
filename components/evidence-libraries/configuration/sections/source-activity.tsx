@@ -158,7 +158,7 @@ function OpenEndedBar({ label }: { label: string }) {
       aria-label={label}
       className="relative h-2 w-full overflow-hidden rounded-full bg-foreground/10"
     >
-      <span className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-primary animate-[source-open-ended_1.4s_ease-in-out_infinite] motion-reduce:w-full motion-reduce:animate-none motion-reduce:opacity-40" />
+      <span className="absolute inset-y-0 start-0 w-1/3 rounded-full bg-primary animate-[source-open-ended_1.4s_ease-in-out_infinite] motion-reduce:w-full motion-reduce:animate-none motion-reduce:opacity-40" />
     </div>
   );
 }
@@ -364,7 +364,7 @@ function FailedActivity({
             {retrying ? <Spinner /> : <RefreshCw />}
             {t(pdfs ? "retryPdfs" : "retry")}
           </Button>
-          <DisclosureTrigger className="ml-0">{t("details")}</DisclosureTrigger>
+          <DisclosureTrigger className="ms-0">{t("details")}</DisclosureTrigger>
         </div>
         <DisclosureContent>
           <pre className="whitespace-pre-wrap break-words pt-3 font-mono text-2xs leading-relaxed text-muted-foreground">

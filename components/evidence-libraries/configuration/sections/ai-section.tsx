@@ -89,7 +89,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
         data-ai-enabled={enabled}
       />
       {enabled ? (
-        <div className="space-y-6 border-l-2 border-primary/20 pl-4 sm:pl-5">
+        <div className="space-y-6 border-s-2 border-primary/20 ps-4 sm:ps-5">
           <ProviderKeyField libraryId={libraryId} keySaved={keySaved} />
           <FieldGroup
             title={t("modelsLabel")}
@@ -144,7 +144,7 @@ export function AiSection({ libraryId, draft, saved, patch, reset }: SectionProp
                         data-model={model}
                       >
                         <div className="flex min-w-0 items-center gap-3">
-                          <span className="w-4 shrink-0 text-right font-mono text-xs text-muted-foreground">
+                          <span className="w-4 shrink-0 text-end font-mono text-xs text-muted-foreground">
                             {index + 1}
                           </span>
                           <Icon className="size-4 shrink-0 text-foreground/75" />

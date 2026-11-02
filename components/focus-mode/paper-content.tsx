@@ -322,7 +322,7 @@ export function PaperContent({
           <div className="text-sm font-medium text-muted-foreground mb-1">
             {tCommon("abstract")}
           </div>
-          <div className={cn("pr-2", fontSizeClass, lineHeightClass)}>
+          <div className={cn("pe-2", fontSizeClass, lineHeightClass)}>
             {isPreview
               ? tFocus("abstractPreview")
               : <QueryMatchText text={showTranslated && translatedContent ? translatedContent.translatedAbstract : paper.abstract} />}

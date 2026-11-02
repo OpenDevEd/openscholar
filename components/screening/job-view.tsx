@@ -189,7 +189,7 @@ export function JobView({
               );
             })}
             {phase === "running" ? (
-              <span className="ml-auto inline-flex items-center gap-1.5 text-muted-foreground">
+              <span className="ms-auto inline-flex items-center gap-1.5 text-muted-foreground">
                 <span className="size-2.5 rounded-sm" style={{ backgroundImage: "repeating-linear-gradient(-45deg, var(--primary) 0 2px, color-mix(in oklab, var(--primary) 30%, transparent) 2px 4px)" }} />
                 {t.rich("beingRead", { n: () => <span className="font-semibold tabular-nums text-foreground"><AnimatedNumber value={job.running} /></span> })}
               </span>
@@ -375,8 +375,8 @@ function Results({ job, questions, max, minimum, done }: { job: Job; questions: 
             </Button>
           ) : null}
           <div className="relative w-56">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(e) => { setHeld(null); setQuery(e.target.value); }} placeholder={t("findPaper")} aria-label={t("findPaper")} className="h-8 rounded-full pl-8 text-sm" />
+            <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input value={query} onChange={(e) => { setHeld(null); setQuery(e.target.value); }} placeholder={t("findPaper")} aria-label={t("findPaper")} className="h-8 rounded-full ps-8 text-sm" />
           </div>
         </div>
       }
@@ -555,7 +555,7 @@ function PaperDetail({ paper, questions, max, minimum, onAnswer }: { paper: Pape
                   ) : null}
                 </div>
               </div>
-              <span className={cn("col-start-3 row-start-1 text-right text-xs font-semibold tabular-nums md:col-start-auto md:row-start-auto", earned)} aria-label={t("points", { points })}>
+              <span className={cn("col-start-3 row-start-1 text-end text-xs font-semibold tabular-nums md:col-start-auto md:row-start-auto", earned)} aria-label={t("points", { points })}>
                 +{points}
               </span>
             </li>

@@ -155,7 +155,7 @@ export function SearchInput({
                 size="lg"
                 aria-label={isEnhancing ? tc("processing") : effectiveMode === "research" ? t("researchButton") : tc("search")}
                 className={cn(
-                  "ml-auto rounded-xl px-3.5 sm:px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2 overflow-hidden",
+                  "ms-auto rounded-xl px-3.5 sm:px-6 min-h-[44px] sm:min-h-0 transition-all duration-300 gap-2 overflow-hidden",
                   effectiveMode === "research"
                     ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/25"
                     : "bg-foreground hover:bg-foreground/90 text-background",

@@ -254,7 +254,7 @@ export const SCHEMA_LIMITS = {
 } as const;
 
 export const LOCALES = schemaEnum<
-  "en-GB" | "en-US" | "de" | "ar" | "hi" | "fr" | "cn" | "sw" | "pt"
+  "en-GB" | "en-US" | "de" | "ar" | "hi" | "fr" | "cn" | "sw" | "pt" | "es" | "af"
 >("/localization/locales/*");
 export type Locale = (typeof LOCALES)[number];
 export const EXPORT_FORMATS = ["ris", "bibtex", "atom"] as const;

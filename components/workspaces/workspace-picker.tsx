@@ -28,7 +28,7 @@ export function WorkspacePicker({ value, onChange, disabled = false, except, det
             aria-checked={on}
             disabled={disabled}
             onClick={() => onChange(workspace.workspaceId)}
-            className={cn("flex w-full items-center gap-3 p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50", on ? "bg-primary/5" : "enabled:hover:bg-muted/50")}
+            className={cn("flex w-full items-center gap-3 p-3 text-start transition-colors disabled:cursor-not-allowed disabled:opacity-50", on ? "bg-primary/5" : "enabled:hover:bg-muted/50")}
           >
             <WorkspaceTile workspace={workspace} />
             <span className="min-w-0 flex-1">

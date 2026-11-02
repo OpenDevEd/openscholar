@@ -128,7 +128,7 @@ const PaperCard = memo(function PaperCard({
         <div className="space-y-2 border-t border-border-subtle px-4 py-3">
           {missing.length ? (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <span className="me-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                 <CircleDashed aria-hidden className="size-3.5" />
                 {tc("insufficientEvidence")}
               </span>
@@ -137,7 +137,7 @@ const PaperCard = memo(function PaperCard({
           ) : null}
           {failed.length ? (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="mr-1 inline-flex items-center gap-1.5 text-xs text-destructive">
+              <span className="me-1 inline-flex items-center gap-1.5 text-xs text-destructive">
                 <CircleX aria-hidden className="size-3.5" />
                 {tc("extractionError")}
               </span>

@@ -118,7 +118,7 @@ function PageContent() {
 
       {/* AI setup gate — top-right on desktop, top-center on mobile */}
       {!isAIConfigured && (
-        <div className="absolute top-4 right-4 z-20 w-[calc(100%-2rem)] sm:w-auto sm:max-w-md">
+        <div className="absolute top-4 end-4 z-20 w-[calc(100%-2rem)] sm:w-auto sm:max-w-md">
           <AISetupGate />
         </div>
       )}

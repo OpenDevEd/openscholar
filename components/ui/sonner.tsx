@@ -32,16 +32,16 @@ function CustomToast({
   return (
     <div
       className={cn(
-        "relative flex min-w-[300px] max-w-[400px] items-start gap-3 overflow-hidden rounded-xl border p-3 pl-5",
+        "relative flex min-w-[300px] max-w-[400px] items-start gap-3 overflow-hidden rounded-xl border p-3 ps-5",
         "bg-[color-mix(in_oklab,var(--destructive)_8%,var(--background))] border-destructive/30",
         "shadow-md transition-shadow duration-200 ease-out hover:shadow-lg"
       )}
     >
-      <div className="absolute left-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-r-sm bg-destructive" />
+      <div className="absolute start-0 top-1/2 h-[60%] w-[3px] -translate-y-1/2 rounded-e-sm bg-destructive" />
 
       <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1 pr-6">
+      <div className="flex min-w-0 flex-1 flex-col gap-1 pe-6">
         <span className="text-sm font-medium leading-tight text-foreground">{title}</span>
         {description ? (
           <span className="text-xs leading-relaxed text-muted-foreground">{description}</span>
@@ -88,7 +88,7 @@ function CustomToast({
       <button
         onClick={closeToast}
         className={cn(
-          "absolute right-2 top-2 flex h-6 w-6 scale-90 items-center justify-center rounded-md border-0 p-0",
+          "absolute end-2 top-2 flex h-6 w-6 scale-90 items-center justify-center rounded-md border-0 p-0",
           "bg-transparent text-muted-foreground opacity-0 transition-[opacity,scale,background-color,color] duration-150",
           "cursor-pointer hover:bg-accent hover:text-accent-foreground",
           "focus-visible:scale-100 focus-visible:opacity-100 focus-visible:outline-none",

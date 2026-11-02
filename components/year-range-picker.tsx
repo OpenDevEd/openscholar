@@ -143,7 +143,7 @@ export function YearRangePicker({
         <Button
           variant="outline"
           className={cn(
-            "w-full h-10 justify-start text-left font-normal transition-all duration-200",
+            "w-full h-10 justify-start text-start font-normal transition-all duration-200",
             isFilterActive
               ? "border-sidebar-primary/50"
               : "border-dashed border-muted-foreground/30 dark:border-muted-foreground/20",
@@ -185,7 +185,7 @@ export function YearRangePicker({
                   }}
                   className="h-8 px-3 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  <RotateCcw className="h-3 w-3 mr-1" />
+                  <RotateCcw className="h-3 w-3 me-1" />
                   {tc("reset")}
                 </Button>
               )}

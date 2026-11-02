@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, memo, useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { defaultRangeExtractor, useVirtualizer, useWindowVirtualizer, type Range } from "@tanstack/react-virtual";
 import {
   Table,
@@ -76,6 +76,7 @@ const PaperRow = memo(function PaperRow({
   onOpenAnswer: (answer: OpenAnswer) => void;
   onOpenPaper: (index: number) => void;
 }) {
+  const locale = useLocale();
   const completedCount = paper.results.filter((r) => r.status === "completed").length;
   const questionProgress = `${completedCount}/${Math.max(questions.length, paper.results.length)}`;
   return (
@@ -91,7 +92,7 @@ const PaperRow = memo(function PaperRow({
       onClick={() => onToggleSelect(paper._id)}
     >
       {/* The paper stays in view while the answers scroll sideways; its hover colour is opaque so they never show through. */}
-      <TableCell className={cn(pinnedShadow, "sticky left-0 z-10 bg-card py-4 pl-4 pr-4 align-top whitespace-normal group-hover:bg-inset group-data-[state=selected]:bg-muted md:pl-6")}>
+      <TableCell className={cn(pinnedShadow, "sticky start-0 z-10 bg-card py-4 ps-4 pe-4 align-top whitespace-normal group-hover:bg-inset group-data-[state=selected]:bg-muted md:ps-6")}>
         <div className="flex max-w-[188px] gap-3 sm:max-w-[288px]">
           <Checkbox
             checked={isSelected}
@@ -115,15 +116,15 @@ const PaperRow = memo(function PaperRow({
       </TableCell>
 
       {showCredits && (
-        <TableCell className="py-4 text-right align-top tabular-nums" data-column="credits" data-credits={String(paper.creditsUsed ?? 0)}>
-          {(paper.creditsUsed ?? 0).toLocaleString()}
+        <TableCell className="py-4 text-end align-top tabular-nums" data-column="credits" data-credits={String(paper.creditsUsed ?? 0)}>
+          {(paper.creditsUsed ?? 0).toLocaleString(locale)}
         </TableCell>
       )}
 
       {questions.map((q) => {
         const result = paper.results.find((r) => r.questionKey === q.key);
         return (
-          <TableCell key={q.key} className="relative isolate py-4 pl-4 pr-9 align-top whitespace-normal" onClick={(e) => e.stopPropagation()}>
+          <TableCell key={q.key} className="relative isolate py-4 ps-4 pe-9 align-top whitespace-normal" onClick={(e) => e.stopPropagation()}>
             <ResultCell
               result={result}
               type={q.type}
@@ -233,8 +234,10 @@ export const TableView = memo(function TableView({
     // Only a change counts: the box resizes on every frame while a side panel
     // slides, and a fresh object each time would redraw the whole table each frame.
     const update = () => {
-      const start = box.scrollLeft <= 1;
-      const end = box.scrollLeft + box.clientWidth >= box.scrollWidth - 1;
+      // Right to left, scrollLeft runs from 0 down to a negative number.
+      const scrolled = Math.abs(box.scrollLeft);
+      const start = scrolled <= 1;
+      const end = scrolled + box.clientWidth >= box.scrollWidth - 1;
       setEdges((current) => (current.start === start && current.end === end ? current : { start, end }));
     };
     update();
@@ -249,7 +252,7 @@ export const TableView = memo(function TableView({
   }, []);
   // Answers fade into the card as they slide under the pinned paper column.
   const pinnedShadow = cn(
-    "after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-10 after:translate-x-full after:bg-gradient-to-r after:from-card after:to-transparent after:transition-opacity after:duration-150",
+    "after:pointer-events-none after:absolute after:inset-y-0 after:end-0 after:w-10 after:translate-x-full rtl:after:-translate-x-full after:bg-gradient-to-r rtl:after:bg-gradient-to-l after:from-card after:to-transparent after:transition-opacity after:duration-150",
     edges.start ? "after:opacity-0" : "after:opacity-100",
   );
 
@@ -265,7 +268,7 @@ export const TableView = memo(function TableView({
       >
         <TableHeader>
           <TableRow aria-rowindex={1} className="hover:bg-transparent">
-            <TableHead className={cn(pinnedShadow, "sticky left-0 z-10 w-[220px] min-w-[220px] bg-card pl-4 pr-4 sm:w-[320px] sm:min-w-[320px] md:pl-6")}>
+            <TableHead className={cn(pinnedShadow, "sticky start-0 z-10 w-[220px] min-w-[220px] bg-card ps-4 pe-4 sm:w-[320px] sm:min-w-[320px] md:ps-6")}>
               <div className="flex items-center gap-3">
                 <Checkbox
                   checked={allSelected ? true : someSelected ? "indeterminate" : false}
@@ -275,7 +278,7 @@ export const TableView = memo(function TableView({
               </div>
             </TableHead>
             {showCredits && (
-              <TableHead className="w-[100px] min-w-[100px] text-right tabular-nums" data-column="credits">
+              <TableHead className="w-[100px] min-w-[100px] text-end tabular-nums" data-column="credits">
                 {tc("credits")}
               </TableHead>
             )}
@@ -338,7 +341,7 @@ export const TableView = memo(function TableView({
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-card to-transparent transition-opacity duration-150",
+          "pointer-events-none absolute inset-y-0 end-0 w-10 bg-gradient-to-l from-card to-transparent transition-opacity duration-150",
           edges.end ? "opacity-0" : "opacity-100",
         )}
       />

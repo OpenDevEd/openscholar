@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertDialog,
@@ -57,6 +58,7 @@ export function showConfirmation(options: ConfirmationOptions) {
 }
 
 export function ConfirmationHost() {
+  const t = useTranslations("sharedControls");
   const [current, setCurrent] = useState<ConfirmationRequest | null>(null);
   const handledByActionRef = useRef(false);
 
@@ -134,7 +136,7 @@ export function ConfirmationHost() {
               closeAsCancel();
             }}
           >
-            {current?.cancelText ?? "Cancel"}
+            {current?.cancelText ?? t("cancel")}
           </AlertDialogCancel>
           <AlertDialogAction
             variant={current?.variant === "destructive" ? "destructive" : "default"}
@@ -143,7 +145,7 @@ export function ConfirmationHost() {
               closeAsConfirm();
             }}
           >
-            {current?.confirmText ?? "Confirm"}
+            {current?.confirmText ?? t("confirm")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { type AppIcon, Rocket } from "@/components/icons";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ComponentProps } from "react";
@@ -25,6 +26,7 @@ export function ActivationControl({
   className?: string;
   size?: ComponentProps<typeof Button>["size"];
 }) {
+  const t = useTranslations("sharedControls");
   const reduceMotion = useReducedMotion();
   const BusyIcon = busy?.icon;
 
@@ -54,7 +56,7 @@ export function ActivationControl({
             >
               <BusyIcon
                 role="status"
-                aria-label="Loading"
+                aria-label={t("loading")}
                 className="size-4 text-muted-foreground"
               />
               <span aria-hidden="true" className="min-w-0 truncate">

@@ -2,7 +2,7 @@
 
 import { LogoMark } from "@/components/logo";
 import { useConvex, useMutation } from "convex/react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { type RefObject, useRef } from "react";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
@@ -147,6 +147,7 @@ export function CollectionSourceRow({
   live: SourceLive | null;
   onRemove: () => void;
 }) {
+  const locale = useLocale();
   const t = useTranslations("evidenceLibraryConfiguration.sources");
   const connected = controller.byId.get(entry.collectionId);
   const paused = !entry.enabled;
@@ -170,7 +171,7 @@ export function CollectionSourceRow({
       paused={paused}
       metadata={
         connected && !deleted
-          ? [{ key: "records", label: t("recordsLabel"), value: connected.itemCount.toLocaleString() }]
+          ? [{ key: "records", label: t("recordsLabel"), value: connected.itemCount.toLocaleString(locale) }]
           : []
       }
       description={deleted ? t("collectionDeleted") : undefined}

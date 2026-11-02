@@ -99,9 +99,9 @@ export function FilterSidebar({
       {/* Sidebar that translates */}
       <motion.aside
         className={cn(
-          "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
+          "h-full flex flex-col overflow-hidden absolute end-0 top-0 bottom-0",
           "bg-background",
-          "border-l border-border-subtle"
+          "border-s border-border-subtle"
         )}
         initial={false}
         animate={{ x: translateX }}
@@ -112,7 +112,7 @@ export function FilterSidebar({
         <div className="absolute inset-0 bg-gradient-to-br from-primary/[0.02] via-transparent to-transparent pointer-events-none" />
 
         {/* Floating controls in top-right corner */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border-subtle bg-card p-1">
+        <div className="absolute top-3 end-3 z-10 flex items-center gap-1 rounded-lg border border-border-subtle bg-card p-1">
           <AnimatePresence>
             {activeFilterCount > 0 && (
               <FilterCountControl
@@ -165,7 +165,7 @@ export function FilterSidebar({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-4 right-0 z-20 flex flex-col items-center gap-2"
+            className="absolute top-4 end-0 z-20 flex flex-col items-center gap-2"
           >
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>

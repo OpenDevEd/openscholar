@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRef, useState } from "react";
 import {
   Users,
@@ -80,14 +81,6 @@ export type AccessMember = {
   /** The person looking at the list, who gets a You chip. */
   you?: boolean;
 };
-const roleHint: Record<Role | "Viewer", string> = {
-  Owner:
-    "Inherited from the organization. Manage all its libraries and their teams.",
-  Editor: "Review and publish items. Manage library content.",
-  Creator: "Create and edit items, upload files and submit for review.",
-  // An organization's members without a role in the library (#653).
-  Viewer: "Everyone else in the organization. View the library and its items without changing them.",
-};
 
 /** Organization members one page of the picker shows; typing narrows them. */
 const PEOPLE_PAGE_SIZE = 20;
@@ -99,6 +92,7 @@ type Person = Pick<AccessMember, "id" | "name" | "email" | "imageUrl">;
  * Results kept from an earlier search stay dimmed and can't be picked until the new ones come.
  */
 function OrganizationPeople({ libraryId, members, selected, onSelect }: { libraryId?: Id<"evidenceLibraries">; members: AccessMember[]; selected: Person | null; onSelect: (person: Person) => void }) {
+  const t = useTranslations("libraryTeamAccess");
   const [query, setQuery] = useState("");
   const search = useDebouncedValue(query.trim(), 300);
   const people = useCursorPage(api.evidenceLibraries.queries.listOrganizationPeople, libraryId ? { libraryId, search: search || undefined } : "skip", PEOPLE_PAGE_SIZE);
@@ -109,9 +103,9 @@ function OrganizationPeople({ libraryId, members, selected, onSelect }: { librar
     .filter((person) => !members.some((member) => member.email.toLowerCase() === person.email.toLowerCase()));
   return (
     <Command shouldFilter={false}>
-      <CommandInput placeholder="Search name or email" value={query} onValueChange={setQuery} />
+      <CommandInput placeholder={t("searchNameOrEmail")} value={query} onValueChange={setQuery} />
       <CommandList>
-        {!people.isLoading && !stale && !people.canNext && <CommandEmpty>No people available.</CommandEmpty>}
+        {!people.isLoading && !stale && !people.canNext && <CommandEmpty>{t("noPeopleAvailable")}</CommandEmpty>}
         <CommandGroup className={cn(stale && "opacity-60")}>
           {shown.map((person) => (
             <CommandItem key={person.id} value={person.id} disabled={stale} onSelect={() => onSelect(person)} className="gap-3 py-2.5">
@@ -127,10 +121,10 @@ function OrganizationPeople({ libraryId, members, selected, onSelect }: { librar
       </CommandList>
       {people.hasPages && (
         <div className="flex items-center justify-end gap-1 border-t p-1">
-          <Button type="button" variant="ghost" size="icon" className="size-7" aria-label="Previous people" disabled={!people.canPrevious} onClick={people.previous}>
+          <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={t("previousPeople")} disabled={!people.canPrevious} onClick={people.previous}>
             <ChevronLeft className="size-4" />
           </Button>
-          <Button type="button" variant="ghost" size="icon" className="size-7" aria-label="Next people" disabled={!people.canNext} onClick={people.next}>
+          <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={t("nextPeople")} disabled={!people.canNext} onClick={people.next}>
             <ChevronRight className="size-4" />
           </Button>
         </div>
@@ -156,6 +150,8 @@ export function TeamAccess({
   organization?: WorkspaceLook;
   onResend: (member: AccessMember) => Promise<void>;
 }) {
+  const tLabels = useTranslations("libraryTeamAccess");
+  const t = useTranslations("libraryTeamAccess");
   const isProfile = scope === "profile";
   const [pending, setPending] = useState(false);
   const pendingRef = useRef(false);
@@ -191,14 +187,14 @@ export function TeamAccess({
       current.map((member) =>
         member.id === id ? { ...member, role } : member,
       ),
-    ).catch((error: unknown) => setNotice(error instanceof Error ? error.message : "Unable to change role"));
+    ).catch((error: unknown) => setNotice(error instanceof Error ? error.message : tLabels("unableToChangeRole")));
   function people(
     list: AccessMember[],
-    emptyMessage = "No members in this role yet.",
+    emptyMessage = tLabels("noMembersInThisRoleYet"),
   ) {
     if (!list.length)
       return (
-        <EmptyList>{search ? "No matching people." : emptyMessage}</EmptyList>
+        <EmptyList>{search ? t("noMatchingPeople") : emptyMessage}</EmptyList>
       );
     return (
       <ul className="divide-y divide-border-subtle">
@@ -211,16 +207,16 @@ export function TeamAccess({
                 <p className="truncate text-xs text-muted-foreground">
                   {member.email}
                 </p>
-                {member.invited && member.delivery === "failed" && <p className="text-xs text-destructive">Invitation not delivered</p>}
+                {member.invited && member.delivery === "failed" && <p className="text-xs text-destructive">{t("invitationNotDelivered")}</p>}
               </div>
               {(isProfile && member.role === "Editor") || member.role === "Owner" ? (
                 <RoleLabel role={member.role === "Owner" ? "owner" : "editor"} className="w-36 gap-2 px-3">
-                  {member.role}
+                  {tLabels(`roleNames.${member.role}`)}
                 </RoleLabel>
               ) : (
                 <RoleSelect
                   disabled={pending}
-                  label={`Role for ${member.name}`}
+                  label={t("roleFor", { name: member.name })}
                   value={member.role}
                   onChange={(value) => updateRole(member.id, value)}
                 />
@@ -233,7 +229,7 @@ export function TeamAccess({
                       size="icon"
                       className="size-8 text-muted-foreground"
                       disabled={pending}
-                      aria-label={`Actions for ${member.name}`}
+                      aria-label={t("actionsFor", { name: member.name })}
                     >
                       <MoreHorizontal className="size-4" />
                     </Button>
@@ -242,11 +238,11 @@ export function TeamAccess({
                     {member.invited && (
                       <DropdownMenuItem
                         onSelect={() => {
-                          void runChange(() => onResend(member)).then(() => setNotice(`Invitation sent to ${member.email}.`)).catch((error: unknown) => setNotice(error instanceof Error ? error.message : "Unable to send invitation"));
+                          void runChange(() => onResend(member)).then(() => setNotice(tLabels("invitationSentTo", { email: member.email }))).catch((error: unknown) => setNotice(error instanceof Error ? error.message : tLabels("unableToSendInvitation")));
                         }}
                       >
                         <RotateCcw />
-                        Resend invitation
+                        {t("resendInvitation")}
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuItem
@@ -255,8 +251,8 @@ export function TeamAccess({
                     >
                       <Trash2 />
                       {member.invited
-                        ? "Cancel invitation"
-                        : `Remove from ${scope}`}
+                        ? t("cancelInvitation")
+                        : t(scope === "library" ? "removeFromLibrary" : "removeFromProfile")}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -268,10 +264,10 @@ export function TeamAccess({
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
                 <p className="text-xs">
                   {member.invited
-                    ? "Cancel this invitation?"
+                    ? t("cancelThisInvitation")
                     : isProfile
-                      ? "Remove access to this author profile?"
-                      : "Remove from this library? Organization membership and access to other libraries stay unchanged."}
+                      ? t("removeAccessToThisAuthorProfile")
+                      : t("removeFromThisLibraryOrganizationMembership")}
                 </p>
                 <div className="flex gap-2">
                   <Button
@@ -279,7 +275,7 @@ export function TeamAccess({
                     variant="ghost"
                     onClick={() => setRemoving(null)}
                   >
-                    Keep
+                    {t("keep")}
                   </Button>
                   <Button
                     size="sm"
@@ -293,15 +289,15 @@ export function TeamAccess({
                       setRemoving(null);
                       setNotice(
                         member.invited
-                          ? "Invitation cancelled."
-                          : `Removed from this ${scope}.`,
+                          ? tLabels("invitationCancelled")
+                          : tLabels(scope === "library" ? "removedFromLibrary" : "removedFromProfile"),
                       );
-                    } catch (error) { setNotice(error instanceof Error ? error.message : "Unable to remove access"); }
+                    } catch (error) { setNotice(error instanceof Error ? error.message : tLabels("unableToRemoveAccess")); }
                     }}
                   >
                     {member.invited
-                      ? "Cancel invitation"
-                      : `Remove from ${scope}`}
+                      ? t("cancelInvitation")
+                      : t(scope === "library" ? "removeFromLibrary" : "removeFromProfile")}
                   </Button>
                 </div>
               </div>
@@ -316,11 +312,11 @@ export function TeamAccess({
       <SectionCard
         id={isProfile ? "sec-profile-access" : "sec-team"}
         icon={Users}
-        title={isProfile ? "Profile access" : "Team"}
+        title={isProfile ? t("profileAccess") : t("team")}
         description={
           isProfile
-            ? "The owner manages access. Editors can edit this profile."
-            : "Manage access to this library."
+            ? t("theOwnerManagesAccessEditorsCan")
+            : t("manageAccessToThisLibrary")
         }
         bodyClassName="space-y-0 p-0"
         aside={
@@ -336,7 +332,7 @@ export function TeamAccess({
               }}
             >
               <Plus />
-              {isProfile ? "Add editor" : "Add member"}
+              {isProfile ? t("addEditor") : t("addMember")}
             </Button>
           </DialogTrigger>
         }
@@ -344,11 +340,9 @@ export function TeamAccess({
         <DialogContent showCloseButton={false} className="sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
-              {isProfile ? "Invite profile editor" : "Add member"}
+              {isProfile ? t("inviteProfileEditor") : t("addMember")}
             </DialogTitle>
-            <DialogDescription>
-              Choose who can manage this {scope}.
-            </DialogDescription>
+            <DialogDescription>{t(scope === "library" ? "whoManagesLibrary" : "whoManagesProfile")}</DialogDescription>
           </DialogHeader>
           <form
             className="space-y-4"
@@ -361,8 +355,8 @@ export function TeamAccess({
                 if (!person) {
                   setError(
                     isProfile
-                      ? "Choose a person."
-                      : "Choose an organization member.",
+                      ? tLabels("chooseAPerson2")
+                      : tLabels("chooseAnOrganizationMember"),
                   );
                   return;
                 }
@@ -375,7 +369,7 @@ export function TeamAccess({
                   },
                 ]);
                 setNotice(
-                  `${person.name} added to this ${scope}.`,
+                  tLabels(scope === "library" ? "addedToLibrary" : "addedToProfile", { name: person.name }),
                 );
                 setInvite(false);
                 setSelected(null);
@@ -386,8 +380,8 @@ export function TeamAccess({
               if (libraryId && (await convex.query(api.evidenceLibraries.queries.isOrganizationPerson, { libraryId, email }))) {
                 setError(
                   isProfile
-                    ? "This person is already listed. Choose them under Existing person."
-                    : "This person is already listed. Choose them under From organization.",
+                    ? tLabels("thisPersonIsAlreadyListedChoose")
+                    : tLabels("thisPersonIsAlreadyListedChoose2"),
                 );
                 return;
               }
@@ -397,7 +391,7 @@ export function TeamAccess({
                 )
               ) {
                 setError(
-                  "This email already has access or a pending invitation.",
+                  tLabels("thisEmailAlreadyHasAccessOr"),
                 );
                 return;
               }
@@ -412,19 +406,19 @@ export function TeamAccess({
                 },
               ]);
               setNotice(
-                `Invitation sent to ${email.trim()}.`,
+                tLabels("invitationSentTo", { email: email.trim() }),
               );
               setEmail("");
               setInvite(false);
               setView("invitations");
               setSearch("");
-              } catch (error) { setError(error instanceof Error ? error.message : "Unable to add member"); }
+              } catch (error) { setError(error instanceof Error ? error.message : tLabels("unableToAddMember")); }
             }}
           >
             <div className="flex items-center justify-between gap-3">
               <div
                 className="flex flex-wrap items-center gap-1"
-                aria-label="Add member method"
+                aria-label={t("addMemberMethod")}
               >
                 {(isProfile ? ["new"] as const : ["existing", "new"] as const).map((mode) => (
                   <Button
@@ -449,9 +443,9 @@ export function TeamAccess({
                     )}
                     {mode === "existing"
                       ? isProfile
-                        ? "Existing person"
-                        : "From organization"
-                      : "Invite by email"}
+                        ? t("existingPerson")
+                        : t("fromOrganization")
+                      : t("inviteByEmail")}
                   </Button>
                 ))}
               </div>
@@ -467,7 +461,7 @@ export function TeamAccess({
                         role="combobox"
                         aria-expanded={pickerOpen}
                         aria-label={
-                          isProfile ? "Person" : "Organization member"
+                          isProfile ? t("person") : t("organizationMember")
                         }
                         className="h-10 w-full justify-between gap-2 bg-background px-3 font-normal shadow-none"
                       >
@@ -482,7 +476,7 @@ export function TeamAccess({
                         ) : (
                           <span className="flex items-center gap-2 text-muted-foreground">
                             <Search className="size-4" />
-                            Choose a person
+                            {t("chooseAPerson")}
                           </span>
                         )}
                         <ChevronsUpDown className="size-3.5 shrink-0 text-muted-foreground" />
@@ -508,20 +502,20 @@ export function TeamAccess({
                   <Input
                     type="email"
                     required
-                    aria-label="Email address"
+                    aria-label={t("emailAddress")}
                     value={email}
                     onChange={(event) => {
                       setEmail(event.target.value);
                       setError("");
                     }}
-                    placeholder="name@organisation.org"
+                    placeholder={t("nameOrganisationOrg")}
                     className="h-10 bg-background"
                   />
                 )}
               </div>
               {!isProfile && (
                 <RoleSelect
-                  label="Library role"
+                  label={t("libraryRole")}
                   value={role}
                   onChange={setRole}
                   className="h-10 data-[size=sm]:h-10"
@@ -530,16 +524,16 @@ export function TeamAccess({
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground">
               {isProfile
-                ? "Editors can edit profile details and select publications."
+                ? t("editorsCanEditProfileDetailsAnd")
                 : addMode === "existing"
-                  ? "Access applies to this library only."
-                  : "They’ll receive access to this library only. Organization membership is unchanged."}
+                  ? t("accessAppliesToThisLibraryOnly")
+                  : t("theyLlReceiveAccessToThis")}
             </p>
             {error && <FieldError>{error}</FieldError>}
             <DialogFooter className="border-t border-border-subtle pt-4">
               <DialogClose asChild>
                 <Button type="button" variant="outline">
-                  Cancel
+                  {t("cancel")}
                 </Button>
               </DialogClose>
               <Button
@@ -548,7 +542,7 @@ export function TeamAccess({
                 aria-busy={pending}
               >
                 {addMode === "existing" ? <Plus /> : <Mail />}
-                {addMode === "existing" ? `Add to ${scope}` : "Send invitation"}
+                {addMode === "existing" ? t(scope === "library" ? "addToLibrary" : "addToProfile") : t("sendInvitation")}
               </Button>
             </DialogFooter>
           </form>
@@ -562,7 +556,7 @@ export function TeamAccess({
             <Button
               variant="ghost"
               size="icon"
-              aria-label="Dismiss member status"
+              aria-label={t("dismissMemberStatus")}
               onClick={() => setNotice("")}
               className="size-6"
             >
@@ -573,9 +567,9 @@ export function TeamAccess({
         {!isProfile && (
           <div className="border-b border-border-subtle bg-inset">
             <div className="px-4 pt-4">
-              <h4 className="text-xs font-medium">Organization owners</h4>
+              <h4 className="text-xs font-medium">{t("organizationOwners")}</h4>
               <p className="mt-1 text-xs text-muted-foreground">
-                Access to all libraries. Managed in organization settings.
+                {t("accessToAllLibrariesManagedIn")}
               </p>
             </div>
             {people(members.filter((member) => member.role === "Owner"))}
@@ -585,26 +579,26 @@ export function TeamAccess({
           // The rest of the organization views the library until an owner gives them a role (#653).
           <div className="border-b border-border-subtle bg-inset">
             <div className="px-4 pt-4">
-              <h4 className="text-xs font-medium">Everyone else in the organization</h4>
+              <h4 className="text-xs font-medium">{t("everyoneElseInTheOrganization")}</h4>
               <p className="mt-1 text-xs text-muted-foreground">
-                Viewers until you add them below with a role.
+                {t("viewersUntilYouAddThemBelow")}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 px-4 py-4">
               <WorkspaceTile workspace={organization} size="row" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">Everyone in {organization.name}</p>
-                <p className="truncate text-xs text-muted-foreground">Everyone without a role in this library</p>
+                <p className="truncate text-sm font-medium">{t("everyoneIn", { name: organization.name })}</p>
+                <p className="truncate text-xs text-muted-foreground">{t("everyoneWithoutARoleInThis")}</p>
               </div>
               <RoleLabel role="view" className="w-36 gap-2 px-3">
-                Viewer
+                {tLabels("roleNames.Viewer")}
               </RoleLabel>
               <span className="size-8" aria-hidden="true" />
             </div>
           </div>
         )}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
-          <div className="flex items-center gap-1" aria-label="Team view">
+          <div className="flex items-center gap-1" aria-label={t("teamView")}>
             {(["members", "invitations"] as const).map((tab) => {
               const Icon = tab === "members" ? Users : Mail;
               const count = members.filter(
@@ -630,9 +624,9 @@ export function TeamAccess({
                   <Icon className="size-3.5" />
                   {tab === "members"
                     ? isProfile
-                      ? "Profile members"
-                      : "Library members"
-                    : "Invitations"}
+                      ? t("profileMembers")
+                      : t("libraryMembers")
+                    : t("invitations")}
                   <span className="text-xs tabular-nums text-muted-foreground">
                     {count}
                   </span>
@@ -641,20 +635,20 @@ export function TeamAccess({
             })}
           </div>
           <div className="relative w-full sm:w-48">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
             <Input
-              aria-label="Search team"
+              aria-label={t("searchTeam")}
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Find a person…"
-              className="h-8 border-transparent bg-inset pl-8 text-xs shadow-none"
+              placeholder={t("findAPerson")}
+              className="h-8 border-transparent bg-inset ps-8 text-xs shadow-none"
             />
           </div>
         </div>
         {view === "invitations" && (
           <p className="flex items-center gap-2 border-b border-border-subtle px-4 py-3 text-xs text-muted-foreground">
             <Clock3 className="size-3.5" />
-            Accepting grants access to this {scope} only.
+            {t(scope === "library" ? "acceptingGrantsLibrary" : "acceptingGrantsProfile")}
           </p>
         )}
         {people(
@@ -664,21 +658,21 @@ export function TeamAccess({
               member.invited === (view === "invitations"),
           ),
           view === "invitations"
-            ? "No pending invitations."
-            : "No members yet.",
+            ? tLabels("noPendingInvitations")
+            : tLabels("noMembersYet"),
         )}
         {!isProfile && (
           <div className="border-t border-border-subtle px-4 py-3 text-xs text-muted-foreground">
-            <Disclosure open={rolesOpen} onOpenChange={setRolesOpen} label="About library roles">
+            <Disclosure open={rolesOpen} onOpenChange={setRolesOpen} label={t("aboutLibraryRoles")}>
             <dl className={cn("grid gap-3 pb-1 pt-3", organization ? "sm:grid-cols-2 lg:grid-cols-4" : "sm:grid-cols-3")}>
               {(["Owner", "Editor", "Creator", ...(organization ? (["Viewer"] as const) : [])] as const).map((role) => (
                 <div key={role}>
                   <dt className="mb-1">
                     <RoleLabel role={role === "Owner" ? "owner" : role === "Viewer" ? "view" : role === "Creator" ? "creator" : "editor"} className="font-medium text-foreground">
-                      {role}
+                      {tLabels(`roleNames.${role}`)}
                     </RoleLabel>
                   </dt>
-                  <dd className="leading-relaxed">{roleHint[role]}</dd>
+                  <dd className="leading-relaxed">{tLabels(`roleHints.${role}`)}</dd>
                 </div>
               ))}
             </dl>
@@ -704,6 +698,8 @@ function RoleSelect({
   value: Role;
   onChange: (role: Role) => void;
 }) {
+  const tLabels = useTranslations("libraryTeamAccess");
+  const t = useTranslations("libraryTeamAccess");
   return (
     <Select disabled={disabled} value={value} onValueChange={(value) => onChange(value as Role)}>
       <SelectTrigger
@@ -716,22 +712,22 @@ function RoleSelect({
         )}
       >
         {value === "Editor" ? <ROLE_ICONS.editor className="size-3.5 text-muted-foreground" /> : <ROLE_ICONS.creator className="size-3.5 text-muted-foreground" />}
-        <SelectValue className="shrink-0">{value}</SelectValue>
+        <SelectValue className="shrink-0">{tLabels(`roleNames.${value}`)}</SelectValue>
       </SelectTrigger>
       <SelectContent className="w-72" position="popper">
-        <SelectItem value="Editor" textValue="Editor">
+        <SelectItem value="Editor" textValue={tLabels("roleNames.Editor")}>
           <div className="py-1">
-            <span className="font-medium">Editor</span>
+            <span className="font-medium">{tLabels("roleNames.Editor")}</span>
             <span className="mt-0.5 block text-xs text-muted-foreground">
-              Review, publish and manage library content.
+              {t("reviewPublishAndManageLibraryContent")}
             </span>
           </div>
         </SelectItem>
-        <SelectItem value="Creator" textValue="Creator">
+        <SelectItem value="Creator" textValue={tLabels("roleNames.Creator")}>
           <div className="py-1">
-            <span className="font-medium">Creator</span>
+            <span className="font-medium">{tLabels("roleNames.Creator")}</span>
             <span className="mt-0.5 block text-xs text-muted-foreground">
-              Edit items and submit work for review.
+              {t("editItemsAndSubmitWorkFor")}
             </span>
           </div>
         </SelectItem>

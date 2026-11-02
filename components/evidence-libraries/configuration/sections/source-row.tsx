@@ -2,7 +2,7 @@
 
 import type { HTMLAttributes, ReactNode } from "react";
 import { Pause, Pencil, Play, Trash2 } from "@/components/icons";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -176,9 +176,10 @@ export function SourceSwitch({
 
 /** A count read after the row renders, in a box wide enough that nothing moves when it arrives. */
 export function SourceCount({ count }: { count: number | null | undefined }) {
+  const locale = useLocale();
   return (
     <span className="inline-block min-w-[7ch] tabular-nums">
-      {count == null ? null : count.toLocaleString()}
+      {count == null ? null : count.toLocaleString(locale)}
     </span>
   );
 }

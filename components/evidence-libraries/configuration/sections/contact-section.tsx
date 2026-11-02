@@ -151,7 +151,7 @@ export function ContactSection({ libraryId, draft, saved, patch, reset }: Sectio
                 onChange={(on) => setEmail(key, on ? "" : null)}
               />
               {value !== null ? (
-                <Panel tone="muted" className="ml-4">
+                <Panel tone="muted" className="ms-4">
                   <Field
                     label={t(`${key}`)}
                     className="max-w-sm"

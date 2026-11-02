@@ -209,7 +209,7 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
                 </Button>
               </form>
             ) : admin ? (
-              <button type="button" onClick={() => setDraft(name)} className="group flex max-w-full items-center gap-2 text-left" aria-label={t("rename")}>
+              <button type="button" onClick={() => setDraft(name)} className="group flex max-w-full items-center gap-2 text-start" aria-label={t("rename")}>
                 <span className="truncate text-3xl font-semibold tracking-tight">{name}</span>
                 <Pencil className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
               </button>
@@ -218,7 +218,7 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
             )}
             <div className="flex flex-wrap items-center gap-2">
               <PlanChip workspace={organization} />
-              <Link href="/settings/workspace/members" className="flex h-7 items-center gap-2 rounded-full pl-1 pr-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
+              <Link href="/settings/workspace/members" className="flex h-7 items-center gap-2 rounded-full ps-1 pe-2.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground">
                 <MemberFaces workspaceId={workspaceId} label={tw("members", { count: organization.members ?? 0 })} count={organization.members} />
                 <span className="tabular-nums">{tw("members", { count: organization.members ?? 0 })}</span>
               </Link>
@@ -281,7 +281,7 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
 
         <Zone label={t("leaveOrDelete")}>
           <ul className={LIST}>
-            <li className="flex items-center gap-3 p-3 pl-4">
+            <li className="flex items-center gap-3 p-3 ps-4">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{t("leaveName", { name })}</p>
                 <p className="text-xs text-muted-foreground">{t("leaveDetail")}</p>
@@ -293,7 +293,7 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
               </Guarded>
             </li>
             {admin ? (
-              <li className="flex items-center gap-3 p-3 pl-4">
+              <li className="flex items-center gap-3 p-3 ps-4">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium">{t("deleteName", { name })}</p>
                   <p className="text-xs text-muted-foreground">
@@ -507,7 +507,7 @@ export function WorkspaceMembers() {
                 // A free organization at its limit is offered Team where it invites (#863).
                 <Opening key="team">
                   <div className="pt-2.5">
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border-subtle bg-inset py-2.5 pl-4 pr-2.5 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border-subtle bg-inset py-2.5 ps-4 pe-2.5 text-sm">
                       <span className="text-muted-foreground">{t("freeUpTo", { count: FREE_MEMBERS })}</span>
                       <Button asChild size="sm">
                         <Link href="/pricing">
@@ -536,13 +536,13 @@ export function WorkspaceMembers() {
                             ) : null}
                           </p>
                         </div>
-                        <div className="text-right">
+                        <div className="text-end">
                           <p className="text-2xl font-semibold tabular-nums tracking-tight">{money(adding.preview.dueNow, true)}</p>
                           {renewal ? <p className="text-xs tabular-nums text-muted-foreground">{t("thenAMonthFrom", { amount: money((seats + 1) * seatPrice), date: date(renewal) })}</p> : null}
                         </div>
                       </div>
                       {refused ? (
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 ps-3 pe-2 text-sm text-destructive">
                           <span className="flex items-center gap-2">
                             <AlertCircle className="size-4 shrink-0" /> {refused.code === "confirm" ? t("seatToConfirm") : t("seatDeclined")}
                           </span>
@@ -568,7 +568,7 @@ export function WorkspaceMembers() {
           </Zone>
         ) : null}
 
-        <Zone label={tw("membersHeading")} aside={<span className="pr-1 text-xs tabular-nums text-muted-foreground">{memberCount}</span>}>
+        <Zone label={tw("membersHeading")} aside={<span className="pe-1 text-xs tabular-nums text-muted-foreground">{memberCount}</span>}>
           <Paged pager={{ list: members, size: PER_PAGE, total: memberCount }} rowHeight={ROW_HEIGHT} label={t("membersLabel")}>
             <ul key={members.page} className={LIST}>
               {members.items.map((member) => (
@@ -586,7 +586,7 @@ export function WorkspaceMembers() {
                         <IconButton small label={t("removeName", { name: member.name })} icon={<X className="size-3.5" />} onClick={() => setRemoving({ userId: member.userId, name: member.name, ...(member.keepsSeat ? { keepsSeat: true as const } : {}) })} />
                       </>
                     ) : (
-                      <RoleLabel role={member.role} className="w-[9.5rem] justify-end pr-2">
+                      <RoleLabel role={member.role} className="w-[9.5rem] justify-end pe-2">
                         {member.role === "admin" ? tw("admin") : tw("member")}
                       </RoleLabel>
                     )}
@@ -604,7 +604,7 @@ export function WorkspaceMembers() {
               {invitations.items.map((invitation) => (
                 <li key={invitation.invitationId}>
                   <IdentityRow className="p-3" avatar={<EmailAvatar />} name={invitation.email} detail={t("invited", { when: ago(invitation.sentAt) })}>
-                    <RoleLabel role={invitation.role} className="pr-1">
+                    <RoleLabel role={invitation.role} className="pe-1">
                       {invitation.role === "admin" ? tw("admin") : tw("member")}
                     </RoleLabel>
                     {admin ? (
@@ -721,7 +721,7 @@ export function WorkspaceBilling() {
         <PaymentReceived />
         {account.pastDue ? (
           // A failed payment, the day the plan ends if it isn't paid, and where to pay it (#40), as a person's billing page has it.
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 ps-3 pe-2 text-sm text-destructive">
             <span className="flex items-center gap-2">
               <AlertCircle className="size-4 shrink-0" />
               {account.unpaid ? t("paymentFailedEnds", { amount: money(account.unpaid.amount), plan: plan?.name ?? "", date: date(account.unpaid.since + DAYS_TO_PAY * 86_400_000) }) : t("paymentFailed")}
@@ -778,7 +778,7 @@ export function WorkspaceBilling() {
               </div>
             ) : null}
           </div>
-          <div className="flex flex-col justify-between gap-4 border-t border-border-subtle bg-inset p-5 @min-[46rem]/configuration:border-l @min-[46rem]/configuration:border-t-0">
+          <div className="flex flex-col justify-between gap-4 border-t border-border-subtle bg-inset p-5 @min-[46rem]/configuration:border-s @min-[46rem]/configuration:border-t-0">
             <div className="space-y-1">
               <p className="flex items-center gap-2 text-xl font-semibold tracking-tight">
                 {plan?.name}

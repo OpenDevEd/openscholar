@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Ubuntu } from "next/font/google";
+import { DirectionProvider } from "@/components/ui/direction";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { QuerySyncProvider } from "@/components/query-sync-provider";
@@ -91,9 +92,12 @@ export default async function RootLayout({
   const { me, looks } = readCache(requestCookies.get(LOOK_COOKIE)?.value, userId);
   const look = looks[lookKey(slug)];
 
+  const direction = locale === "ar" ? "rtl" : "ltr";
+
   return (
-    <html lang={locale} suppressHydrationWarning className={cn(appFont.variable, "antialiased")}>
+    <html lang={locale} dir={direction} suppressHydrationWarning className={cn(appFont.variable, "antialiased")}>
       <body>
+        <DirectionProvider dir={direction}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
             <ConvexClientProvider preloadedFlags={preloadedFlags} preloadedCatalog={preloadedCatalog}>
@@ -134,6 +138,7 @@ export default async function RootLayout({
             </ConvexClientProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
+        </DirectionProvider>
       </body>
     </html>
   );

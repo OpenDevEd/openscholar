@@ -42,7 +42,7 @@ export function AnswerPanel({ answer }: { answer: OpenAnswer | null }) {
       {/* With a citation below, the details share the height with the PDF. */}
       <section className={cn("shrink-0 space-y-3 overflow-y-auto rounded-xl border border-border-subtle bg-card p-4", citation && "max-h-[50%]")}>
         {/* Room on the right for the panel's collapse button. */}
-        <div className="space-y-1 pr-10">
+        <div className="space-y-1 pe-10">
           <p className="text-sm font-medium leading-snug">{paper.title}</p>
           <p className="text-xs text-muted-foreground">{question.question}</p>
         </div>

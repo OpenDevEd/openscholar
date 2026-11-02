@@ -67,7 +67,7 @@ export function ItemBar({ kind, id, name, started, className, share, guest }: { 
         <>
           {by ? <PersonTag name={by.name} imageUrl={by.imageUrl} you={by.you} before={t(started)} /> : null}
           {/* One element pushes the rest right, so an empty room costs no gap that who started it needs on a phone. */}
-          <span className="ml-auto flex">
+          <span className="ms-auto flex">
             <ItemPresence kind={kind} id={id} />
           </span>
           <ActivityButton kind={kind} id={id} name={name} />
@@ -187,14 +187,14 @@ function ActivityRow({ row, now }: { row: Row; now: Date }) {
     <div className="flex gap-3 rounded-xl px-2 py-2.5">
       <span className="relative mt-0.5 shrink-0 self-start">
         <IdentityAvatar name={row.by.name} imageUrl={row.by.imageUrl} className="size-8" />
-        <span className="absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full ring-2 ring-background" style={{ backgroundColor: `color-mix(in oklab, ${look.tint} 30%, var(--background))`, color: look.tint }}>
+        <span className="absolute -bottom-1 -end-1 flex size-4 items-center justify-center rounded-full ring-2 ring-background" style={{ backgroundColor: `color-mix(in oklab, ${look.tint} 30%, var(--background))`, color: look.tint }}>
           <Icon className="size-2.5" />
         </span>
       </span>
       <div className="min-w-0 flex-1 space-y-1.5">
         <p className="text-sm leading-snug">
           <span className="font-medium">{row.by.name}</span>
-          {row.by.you ? <YouTag className="ml-1.5 inline-block align-[1px]" /> : null}{" "}
+          {row.by.you ? <YouTag className="ms-1.5 inline-block align-[1px]" /> : null}{" "}
           <span className="text-muted-foreground">{look.counted ? t(row.happened, { count: row.count ?? 1 }) : t(row.happened)}</span>
           {inline ? <span className="font-medium"> {row.detail}</span> : null}
         </p>

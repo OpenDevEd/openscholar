@@ -11,6 +11,8 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
   useTranslations:
     () =>
     (key: string, params?: Record<string, unknown>) => {

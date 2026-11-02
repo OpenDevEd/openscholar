@@ -20,8 +20,8 @@ export const isRoomy = (viewMode: ViewMode) => viewMode === "list-detail" || vie
 const LAYOUT: Record<ViewMode, string> = {
   "list-simple": "flex items-center gap-3 px-4 py-2.5",
   "list-detail": "flex flex-wrap gap-3 p-4 sm:flex-nowrap",
-  "grid-2": "flex h-full flex-col gap-2.5 border-b border-r border-border-subtle p-4",
-  "grid-3": "flex h-full flex-col gap-2 border-b border-r border-border-subtle p-4",
+  "grid-2": "flex h-full flex-col gap-2.5 border-b border-e border-border-subtle p-4",
+  "grid-3": "flex h-full flex-col gap-2 border-b border-e border-border-subtle p-4",
 };
 
 /** One entry. `active` keeps its actions shown while one of them has something open. */
@@ -42,7 +42,7 @@ export function Entry({ viewMode, active, className, children, ...props }: { vie
 
 /** For the entry's title button or link: its hit area covers the whole entry. */
 export const ENTRY_OPEN =
-  "rounded-sm text-left text-sm font-medium outline-none [overflow-wrap:anywhere] after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring";
+  "rounded-sm text-start text-sm font-medium outline-none [overflow-wrap:anywhere] after:absolute after:inset-0 focus-visible:after:ring-2 focus-visible:after:ring-inset focus-visible:after:ring-ring";
 
 /**
  * The entry's time, and the actions that take its place while the entry is
@@ -55,7 +55,7 @@ export function EntryAside({ meta, className, children }: { meta: ReactNode; cla
   return (
     <div className={cn("relative flex min-w-[5.25rem] shrink-0 items-center justify-end gap-1", className)}>
       {children ? (
-        <div className="z-10 flex items-center transition-opacity [@media(hover:hover)]:absolute [@media(hover:hover)]:right-0 [@media(hover:hover)]:[[data-entry]:not(:hover,:has(:focus-visible),[data-active])_&]:opacity-0">
+        <div className="z-10 flex items-center transition-opacity [@media(hover:hover)]:absolute [@media(hover:hover)]:end-0 [@media(hover:hover)]:[[data-entry]:not(:hover,:has(:focus-visible),[data-active])_&]:opacity-0">
           {children}
         </div>
       ) : null}
@@ -83,7 +83,7 @@ export function FullTextToggle({ text, iconOnly = false, className }: { text: Pi
     <DisclosureButton
       aria-expanded={text.expanded}
       aria-label={iconOnly ? label : undefined}
-      className={cn("relative z-10 ml-0 h-6 shrink-0", iconOnly ? "w-6 px-0" : "px-1.5", className)}
+      className={cn("relative z-10 ms-0 h-6 shrink-0", iconOnly ? "w-6 px-0" : "px-1.5", className)}
       onClick={text.toggle}
     >
       {iconOnly ? null : label}

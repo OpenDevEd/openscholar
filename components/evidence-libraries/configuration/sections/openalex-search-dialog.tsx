@@ -138,7 +138,7 @@ function SearchWorkspace({
                 maxLength={80}
                 placeholder={t("namePlaceholder")}
                 onChange={(event) => setName(event.target.value)}
-                className="-ml-2 min-w-40 max-w-full field-sizing-content rounded-lg border border-transparent bg-transparent px-2 py-1 text-xl font-semibold outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/10"
+                className="-ms-2 min-w-40 max-w-full field-sizing-content rounded-lg border border-transparent bg-transparent px-2 py-1 text-xl font-semibold outline-none transition-colors placeholder:text-muted-foreground/50 hover:border-border focus:border-primary/50 focus:bg-background focus:ring-2 focus:ring-primary/10"
               />
               <Button
                 type="button"

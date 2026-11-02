@@ -70,7 +70,7 @@ export function TopicPage({ topic, path, related, detail: initialDetail }: { top
       {detail.error && <div role="alert" className="flex items-center gap-2 text-sm text-muted-foreground">{t("descriptionFailed")}<Button size="sm" variant="ghost" onClick={() => void detail.mutate()}>{t("tryAgain")}</Button></div>}
       {!!detail.data?.keywords.length && <div className="flex flex-wrap gap-2" aria-label={t("keywords")}>{detail.data.keywords.map(keyword => <Link key={keyword} href={buildShareableUrl("", { q: keyword })} className="rounded-md bg-inset px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary focus-visible:outline-2 focus-visible:outline-ring">{keyword}</Link>)}</div>}
       {!!related.length && <div>
-        <Button variant="ghost" size="sm" className="-ml-3" aria-expanded={showRelated} onClick={() => setShowRelated(value => !value)}><Network aria-hidden />{showRelated ? t("hideRelated") : t("related")}<span className="text-muted-foreground">{related.length}</span></Button>
+        <Button variant="ghost" size="sm" className="-ms-3" aria-expanded={showRelated} onClick={() => setShowRelated(value => !value)}><Network aria-hidden />{showRelated ? t("hideRelated") : t("related")}<span className="text-muted-foreground">{related.length}</span></Button>
         {showRelated && <div className="mt-2 grid gap-1 sm:grid-cols-2">{related.map(node => <Link className="flex items-center justify-between gap-3 rounded-lg px-3 py-2 text-sm hover:bg-muted hover:text-primary" key={node.id} href={`/topics/${node.id}`}>{node.name}<ArrowUpRight aria-hidden className="size-3.5 shrink-0" /></Link>)}</div>}
       </div>}
     </div>

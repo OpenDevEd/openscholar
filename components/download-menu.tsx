@@ -43,7 +43,7 @@ export function DownloadMenu({
     </Button>
   ) : (
     <Button variant="outline" size={size}>
-      <Download className="h-4 w-4 mr-2" />
+      <Download className="h-4 w-4 me-2" />
       {t("downloadAll")}
     </Button>
   );

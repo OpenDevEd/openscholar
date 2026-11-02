@@ -1,7 +1,7 @@
 "use client";
 
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { Coins } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 
@@ -32,6 +32,7 @@ export function ExtractionPreflightBanner({
   balance,
   onBeforeNavigate,
 }: ExtractionPreflightBannerProps) {
+  const locale = useLocale();
   const t = useTranslations("extraction");
   const tc = useTranslations("common");
   const router = useWorkspaceRouter();
@@ -62,18 +63,18 @@ export function ExtractionPreflightBanner({
             <>
               <span className="font-semibold">
                 {t("preflight.sufficient", {
-                  estimate: credits.toLocaleString(),
+                  estimate: credits.toLocaleString(locale),
                 })}
               </span>
               <span className="text-muted-foreground">
                 {" "}
-                / {total.toLocaleString()}
+                / {total.toLocaleString(locale)}
               </span>
             </>
           ) : (
             t("preflight.insufficient", {
-              estimate: credits.toLocaleString(),
-              balance: total.toLocaleString(),
+              estimate: credits.toLocaleString(locale),
+              balance: total.toLocaleString(locale),
             })
           )}
         </span>

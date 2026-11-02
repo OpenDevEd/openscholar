@@ -303,7 +303,7 @@ function NavbarPreview({ layout }: { layout: "small" | "wide" }) {
         }
       >
         <span className="h-2 w-10 rounded-sm bg-foreground/70" />
-        <span className="ml-auto flex items-center gap-1.5">
+        <span className="ms-auto flex items-center gap-1.5">
           <span className="h-1.5 w-6 rounded-sm bg-muted-foreground/50" />
           <span className="h-1.5 w-6 rounded-sm bg-muted-foreground/50" />
           <span className="h-1.5 w-6 rounded-sm bg-primary/80" />

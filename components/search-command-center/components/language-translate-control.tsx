@@ -52,7 +52,7 @@ export function LanguageTranslateControl({
         aria-hidden={!hasValue}
       >
         <div
-          className="flex items-center border-r border-current/20"
+          className="flex items-center border-e border-current/20"
           style={{ width: ACTIONS_WIDTH }}
         >
           <TooltipHint label={t("translateAgain")}>

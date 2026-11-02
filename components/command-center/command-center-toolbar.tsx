@@ -107,13 +107,13 @@ export function CommandCenterFileActions({
           <DropdownMenuContent align="end">
             {onDownloadJSON && (
               <DropdownMenuItem onClick={onDownloadJSON} disabled={disabled || totalCount === 0}>
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4 me-2" />
                 {tc("downloadAsJson")}
               </DropdownMenuItem>
             )}
             {onDownloadCSV && (
               <DropdownMenuItem onClick={onDownloadCSV} disabled={disabled || totalCount === 0}>
-                <Download className="h-4 w-4 mr-2" />
+                <Download className="h-4 w-4 me-2" />
                 {tc("downloadAsCsv")}
               </DropdownMenuItem>
             )}
@@ -122,13 +122,13 @@ export function CommandCenterFileActions({
             )}
             {onUploadJSON && (
               <DropdownMenuItem onClick={onUploadJSON} disabled={disabled}>
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4 me-2" />
                 {tc("uploadJson")}
               </DropdownMenuItem>
             )}
             {onUploadCSV && (
               <DropdownMenuItem onClick={onUploadCSV} disabled={disabled}>
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="h-4 w-4 me-2" />
                 {tc("uploadCsv")}
               </DropdownMenuItem>
             )}

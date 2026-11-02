@@ -50,7 +50,7 @@ export function QueryTextarea({
       }}
     >
       <div className="group relative">
-        <div className="absolute -top-2.5 left-3 z-10 flex items-center gap-2">
+        <div className="absolute -top-2.5 start-3 z-10 flex items-center gap-2">
           <span
             className={cn(
               "px-1.5 py-0.5 text-xs font-medium",
@@ -114,9 +114,9 @@ export function QueryTextarea({
               className={cn("order-1 md:order-2 h-7 px-3 text-xs")}
             >
               {busy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                <Loader2 className="h-3.5 w-3.5 animate-spin me-1.5" />
               ) : (
-                <Search className="h-3.5 w-3.5 mr-1.5" />
+                <Search className="h-3.5 w-3.5 me-1.5" />
               )}
               {t("common.search")}
             </Button>

@@ -26,7 +26,7 @@ export function DisclosureButton({ className, children, ...props }: ComponentPro
       type="button"
       variant="ghost"
       size="sm"
-      className={cn("group/disclosure -ml-2 h-7 text-xs font-medium text-muted-foreground hover:text-foreground", className)}
+      className={cn("group/disclosure -ms-2 h-7 text-xs font-medium text-muted-foreground hover:text-foreground", className)}
       {...props}
     >
       <ChevronRight className="h-3.5 w-3.5 transition-transform group-aria-expanded/disclosure:rotate-90" />
