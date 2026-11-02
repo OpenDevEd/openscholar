@@ -43,13 +43,14 @@ export function RichTextField({
   lists?: boolean;
   minRows?: number;
 }) {
+  const tLabels = useTranslations("richTextField");
   return (
     <Field
       label={label}
       hint={hint}
       suffix={suffix}
       counter={`${value.length} / ${maxLength}`}
-      error={value.length > maxLength ? `Keep this under ${maxLength} characters.` : null}
+      error={value.length > maxLength ? tLabels("keepThisUnderCharacters", { maxLength }) : null}
     >
       {(id, invalid) => (
         <RichTextEditor

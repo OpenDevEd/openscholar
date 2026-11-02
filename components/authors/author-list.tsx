@@ -30,6 +30,7 @@ import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "
  * `createsBefore` is that as the rail last saw it, until the plan is read. `firstPage` is the list's first page, sent with the page.
  */
 export function AuthorList({createsBefore, firstPage}: {createsBefore: boolean; firstPage: FunctionReturnType<typeof api.authors.profiles.list>}) {
+  const tLabels = useTranslations("authorPages");
   const t = useTranslations("authorPages");
   const router = useWorkspaceRouter();
   const [search, setSearch] = useState("");
@@ -63,7 +64,7 @@ export function AuthorList({createsBefore, firstPage}: {createsBefore: boolean; 
     <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{t("createAuthorProfile")}</DialogTitle></DialogHeader><form className="space-y-4" onSubmit={async event => {
       event.preventDefault(); if (creating) return; setCreating(true); setError("");
       try { const id = await create({name}); router.push(`/authors/${id}/configuration`); setOpen(false); }
-      catch (error) { setError(error instanceof Error ? error.message : "Could not create profile"); }
+      catch (error) { setError(error instanceof Error ? error.message : tLabels("couldNotCreateProfile")); }
       finally { setCreating(false); }
     }}><Field label={t("name")}>{id => <Input id={id} value={name} onChange={event => setName(event.target.value)} required maxLength={500} autoFocus />}</Field>{error && <FieldError>{error}</FieldError>}<DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button><Button type="submit" disabled={creating || !name.trim()}><Plus />{t("createProfile")}</Button></DialogFooter></form></DialogContent></Dialog>
   </LibraryPageShell>;

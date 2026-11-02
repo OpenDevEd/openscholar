@@ -145,7 +145,7 @@ export function QueryEvolution({
                       "relative flex items-start gap-2",
                       // Dot - centered at -8px from item edge
                       "before:absolute before:-start-2 before:top-1.5",
-                      "before:w-1.5 before:h-1.5 before:-translate-x-1/2 before:rounded-full before:z-10",
+                      "before:w-1.5 before:h-1.5 before:-translate-x-1/2 rtl:before:translate-x-1/2 before:rounded-full before:z-10",
                       isCurrent
                         ? "before:bg-foreground"
                         : "before:bg-muted-foreground"
@@ -153,7 +153,7 @@ export function QueryEvolution({
                   >
                     {/* Connecting line to next dot - starts at current dot center, ends at next dot center */}
                     {!isLast && (
-                      <div className="absolute -start-2 top-[9px] bottom-[-15px] w-px bg-border/40 -translate-x-1/2" />
+                      <div className="absolute -start-2 top-[9px] bottom-[-15px] w-px bg-border/40 -translate-x-1/2 rtl:translate-x-1/2" />
                     )}
                     <div className="flex-1 min-w-0">
                       <QueryText 

@@ -15,10 +15,11 @@ import { WorkspacePicker } from "@/components/workspaces/workspace-picker";
 type ConnectState = "consent" | "creating" | "show_key" | "done" | "error";
 
 export default function ConnectPage() {
+  const tLabels = useTranslations("connectApp");
   const t = useTranslations("connectApp");
   const searchParams = useSearchParams();
   const redirectUri = searchParams.get("redirect_uri");
-  const appName = searchParams.get("app_name") || "Unknown app";
+  const appName = searchParams.get("app_name") || tLabels("unknownApp");
   const isManualMode = !redirectUri || searchParams.get("mode") === "manual";
   const { phase, canRunProtectedQueries } = useAuthReadiness();
 
@@ -56,7 +57,7 @@ export default function ConnectPage() {
     }
 
     if (!isManualMode && isOriginAllowed === false) {
-      setError("This application's origin is not registered");
+      setError(tLabels("thisApplicationSOriginIsNot"));
       setState("error");
       return;
     }
@@ -85,7 +86,7 @@ export default function ConnectPage() {
       }
     } catch (e) {
       console.error("[connect] Failed to create wallet key:", e);
-      setError(e instanceof Error ? e.message : "Failed to create connection");
+      setError(e instanceof Error ? e.message : tLabels("failedToCreateConnection"));
       setState("error");
     }
   }, [redirectUri, redirectOrigin, appName, isManualMode, isOriginAllowed, approveConnection, finalizeConnection, picked]);

@@ -234,8 +234,10 @@ export const TableView = memo(function TableView({
     // Only a change counts: the box resizes on every frame while a side panel
     // slides, and a fresh object each time would redraw the whole table each frame.
     const update = () => {
-      const start = box.scrollLeft <= 1;
-      const end = box.scrollLeft + box.clientWidth >= box.scrollWidth - 1;
+      // Right to left, scrollLeft runs from 0 down to a negative number.
+      const scrolled = Math.abs(box.scrollLeft);
+      const start = scrolled <= 1;
+      const end = scrolled + box.clientWidth >= box.scrollWidth - 1;
       setEdges((current) => (current.start === start && current.end === end ? current : { start, end }));
     };
     update();
@@ -250,7 +252,7 @@ export const TableView = memo(function TableView({
   }, []);
   // Answers fade into the card as they slide under the pinned paper column.
   const pinnedShadow = cn(
-    "after:pointer-events-none after:absolute after:inset-y-0 after:end-0 after:w-10 after:translate-x-full after:bg-gradient-to-r after:from-card after:to-transparent after:transition-opacity after:duration-150",
+    "after:pointer-events-none after:absolute after:inset-y-0 after:end-0 after:w-10 after:translate-x-full rtl:after:-translate-x-full after:bg-gradient-to-r rtl:after:bg-gradient-to-l after:from-card after:to-transparent after:transition-opacity after:duration-150",
     edges.start ? "after:opacity-0" : "after:opacity-100",
   );
 

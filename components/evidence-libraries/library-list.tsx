@@ -95,6 +95,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   pending?: boolean;
   preloadedOrganizations?: Preloaded<typeof api.organizationFeatures.listLibraryOrganizations>;
 }) {
+  const tLabels = useTranslations("libraryList");
   const t = useTranslations("libraryList");
   const owner = useLibraryOrganizationChoice(preloadedOrganizations);
   const [tab, setView] = useQueryState("view", parseAsStringLiteral(["libraries", "invitations"]).withDefault("libraries"));
@@ -119,6 +120,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   // The invitation being answered: while its answer is on its way, no invitation takes another.
   const [answering, setAnswering] = useState<string | null>(null);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator", viewer: "Viewer" } as const;
+  const roleNames = { Owner: tLabels("owner"), Editor: tLabels("editor"), Creator: tLabels("creator"), Viewer: tLabels("viewer") } as const;
   // An address has at most a page of invitations waiting, so they are filtered here.
   const invited = (invitations.data?.page ?? []).filter((invitation) => `${invitation.name} ${invitation.organization.name}`.toLowerCase().includes(search.trim().toLowerCase()));
   const visible: Library[] = view === "libraries"
@@ -254,7 +256,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <RoleLabel role={roleKinds[library.role]} className="ms-1">
-                            {library.role}
+                            {roleNames[library.role]}
                           </RoleLabel>
                         </TooltipTrigger>
                         <TooltipContent>
@@ -297,7 +299,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                               await respond({ invitationId: library.invitationId, accept: true });
                               setNotice(`Accepted ${library.name}.`);
                               setView("libraries");
-                            } catch (error) { setNotice(getErrorMessage(error, "Unable to accept invitation")); }
+                            } catch (error) { setNotice(getErrorMessage(error, tLabels("unableToAcceptInvitation"))); }
                             finally { setAnswering(null); }
                           }}
                         >
@@ -311,8 +313,8 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                       ) : library.status === "deleting" ? (
                         <Button size="sm" variant="outline" disabled={retrying === library.id} onClick={async () => {
                           setRetrying(library.id);
-                          try { await restartTeardown({libraryId: library.id as Id<"evidenceLibraries">}); setNotice(`Deletion restarted for ${library.name}.`); }
-                          catch (error) { setNotice(getErrorMessage(error, "Could not restart deletion")); }
+                          try { await restartTeardown({libraryId: library.id as Id<"evidenceLibraries">}); setNotice(tLabels("deletionRestartedFor", { name: library.name })); }
+                          catch (error) { setNotice(getErrorMessage(error, tLabels("couldNotRestartDeletion"))); }
                           finally { setRetrying(null); }
                         }}><RotateCcw />{t("retryDeletion")}</Button>
                       ) : (
@@ -432,8 +434,8 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                 try {
                   await respond({ invitationId: declining.invitationId, accept: false });
                   setDeclining(null);
-                  setNotice("Invitation declined.");
-                } catch (error) { setNotice(getErrorMessage(error, "Unable to decline invitation")); }
+                  setNotice(tLabels("invitationDeclined"));
+                } catch (error) { setNotice(getErrorMessage(error, tLabels("unableToDeclineInvitation"))); }
                 finally { setAnswering(null); }
               }}
             >

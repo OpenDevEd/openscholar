@@ -13,6 +13,7 @@ import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { TeamAccess, type AccessMember } from "./team-access";
 
 export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> }) {
+  const tLabels = useTranslations("libraryTeamAccess");
   const t = useTranslations("libraryTeamAccess");
   const { user } = useUser();
   const { data } = useProtectedQuery(api.evidenceLibraries.queries.listTeam, { libraryId });

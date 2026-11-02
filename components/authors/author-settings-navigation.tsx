@@ -9,11 +9,11 @@ import {
 import { useScrollSpy } from "@/components/evidence-libraries/configuration/use-scroll-spy";
 import { TeamIcon, PersonIcon, LinkIcon, BookIcon } from "@/components/icons";
 const sections = [
-  ["profile-details", "Profile", PersonIcon],
-  ["profile-links", "Links & identifiers", LinkIcon],
-  ["profile-publications", "Publications", BookIcon],
-  ["profile-openalex", "OpenAlex", OpenAlexIcon],
-  ["profile-access", "Access", TeamIcon],
+  ["profile-details", "sectionProfile", PersonIcon],
+  ["profile-links", "sectionLinks", LinkIcon],
+  ["profile-publications", "sectionPublications", BookIcon],
+  ["profile-openalex", "sectionOpenAlex", OpenAlexIcon],
+  ["profile-access", "sectionAccess", TeamIcon],
 ] as const;
 const editorSections = sections.filter(([id]) => id !== "profile-access");
 const ownerIds = sections.map(([id]) => id);
@@ -34,7 +34,7 @@ export function AuthorSettingsNavigation({canManageAccess}: {canManageAccess: bo
             active={(active ?? ids[0]) === id}
             onClick={() => jumpTo(id)}
           >
-            {label}
+            {t(label)}
           </RailLink>
         ))}
       </RailGroup>

@@ -124,6 +124,7 @@ export default function AuthorPage({
   openAlexError: string | null;
   hasMoreWorks: boolean; workCount: number; loadingWorks: boolean; onLoadMoreWorks: () => void;
 }) {
+  const tLabels = useTranslations("authorPages");
   const t = useTranslations("authorPages");
   const profileId = profile.id;
   const tm = useTranslations("workspaces.move");
@@ -172,7 +173,7 @@ export default function AuthorPage({
       setFormError("");
       return true;
     }
-    catch (error) { setFormError(error instanceof Error ? error.message : "Could not save this profile"); return false; }
+    catch (error) { setFormError(error instanceof Error ? error.message : tLabels("couldNotSaveThisProfile")); return false; }
     finally { setSaving(false); }
   };
   const openMatch = () => {
@@ -203,7 +204,7 @@ export default function AuthorPage({
               icon={PersonIcon}
               title={profile.name}
               backHref={profileHref}
-              backLabel="Back to author profile"
+              backLabel={tLabels("backToAuthorProfile")}
               titleAside={<>
                 <span className="hidden text-sm text-muted-foreground @3xl:inline">{t("profileSettings")}</span>
                 {dirty ? (
@@ -243,7 +244,7 @@ export default function AuthorPage({
               e.preventDefault();
               if (saving || profileChanged) return;
               if (!draft.name.trim()) {
-                setFormError("Enter the author's name.");
+                setFormError(tLabels("enterTheAuthorSName"));
                 return;
               }
               if (
@@ -253,7 +254,7 @@ export default function AuthorPage({
                 )
               ) {
                 setFormError(
-                  "Enter a valid ORCID, such as 0000-0000-0000-0000.",
+                  tLabels("enterAValidOrcidSuchAs"),
                 );
                 return;
               }
@@ -261,7 +262,7 @@ export default function AuthorPage({
                 (draft.website && !safeUrl(draft.website)) ||
                 (draft.linkedin && !safeUrl(draft.linkedin))
               ) {
-                setFormError("Use a full http or https URL.");
+                setFormError(tLabels("useAFullHttpOrHttps"));
                 return;
               }
               await update({ ...draft, name: draft.name.trim() });
@@ -352,9 +353,9 @@ export default function AuthorPage({
                 <div className="grid gap-4 sm:grid-cols-2">
                   {(
                     [
-                      ["name", "Name", UserRound],
-                      ["affiliation", "Affiliation", GraduationCap],
-                      ["headline", "Headline", Pencil],
+                      ["name", tLabels("name"), UserRound],
+                      ["affiliation", tLabels("affiliation"), GraduationCap],
+                      ["headline", tLabels("headline"), Pencil],
                     ] as const
                   ).map(([key, label, Icon]) => (
                     <Field
@@ -410,7 +411,7 @@ export default function AuthorPage({
                 <div className="grid gap-4 sm:grid-cols-2">
                   {(
                     [
-                      ["website", "Website", "https://", Globe],
+                      ["website", tLabels("website"), "https://", Globe],
                       [
                         "linkedin",
                         "LinkedIn",
@@ -584,7 +585,7 @@ export default function AuthorPage({
           icon={PersonIcon}
           title={profile.name}
           backHref="/authors"
-          backLabel="Back to authors"
+          backLabel={tLabels("backToAuthors")}
           actions={<>
             {presence}
             {member ? (
@@ -713,7 +714,7 @@ export default function AuthorPage({
                             ? `https://orcid.org/${profile.orcid.replace("https://orcid.org/", "")}`
                             : "",
                         },
-                        { name: "Website", icon: Globe, url: profile.website },
+                        { name: tLabels("website"), icon: Globe, url: profile.website },
                         {
                           name: "LinkedIn",
                           icon: LinkedInIcon,

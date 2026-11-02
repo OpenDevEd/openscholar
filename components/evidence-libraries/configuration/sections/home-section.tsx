@@ -76,6 +76,7 @@ const EXAMPLE_DATE = { day: "numeric", month: "long", year: "numeric", timeZone:
 const EXAMPLE_LAST_DAY = Date.UTC(2026, 2, 12);
 
 export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionProps) {
+  const tLabels = useTranslations("libraryHomeSettings");
   const t = useTranslations("libraryHomeSettings");
   const home = draft.home;
   const team = useTeam(libraryId);
@@ -84,7 +85,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
     ...(team ?? []),
     ...home.people
       .filter((person) => isHandEntered(person.id) && person.name.trim())
-      .map((person) => ({ id: person.id, name: person.name.trim(), imageUrl: publicPhoto(person.photo), role: "Added by hand" })),
+      .map((person) => ({ id: person.id, name: person.name.trim(), imageUrl: publicPhoto(person.photo), role: tLabels("addedByHand") })),
   ];
   const generatedQuestions = useHomeQuestions(libraryId, draft.features.homePage);
   // Changes read the draft they are applied to, not the one rendered, so an
@@ -153,12 +154,12 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
             <HeadingField
               value={home.headings.curation}
               limit={LIMITS.headings.curation}
-              fallback="How the library is curated"
+              fallback={tLabels("howTheLibraryIsCurated")}
               onChange={(value) => setHeading("curation", value)}
             />
             <RichTextField
               label={t("statement")}
-              suffix="Optional"
+              suffix={tLabels("optional")}
               value={home.statement}
               onChange={(statement) => setHome(() => ({ statement }))}
               maxLength={LIMITS.statement}
@@ -188,7 +189,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
                     <ListRow
                       key={step.id}
                       id={step.id}
-                      removeLabel="Remove step"
+                      removeLabel={tLabels("removeStep")}
                       onRemove={() => setHome((h) => ({ steps: h.steps.filter((each) => each.id !== step.id) }))}
                     >
                       <div className="grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
@@ -255,7 +256,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
                         </Field>
                       ) : null}
                       <StepLook step={step} onChange={(change) => updateStep(step.id, change)} />
-                      <Field label={t("whatHappens")} suffix="Optional" counter={`${step.text.length} / ${LIMITS.stepText}`}>
+                      <Field label={t("whatHappens")} suffix={tLabels("optional")} counter={`${step.text.length} / ${LIMITS.stepText}`}>
                         {(id) => (
                           <Textarea
                             id={id}
@@ -278,12 +279,12 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
             <HeadingField
               value={home.headings.team}
               limit={LIMITS.headings.team}
-              fallback="Who is behind it"
+              fallback={tLabels("whoIsBehindIt")}
               onChange={(value) => setHeading("team", value)}
             />
             <RichTextField
               label={t("aboutTheTeam")}
-              suffix="Optional"
+              suffix={tLabels("optional")}
               value={home.team}
               onChange={(team) => setHome(() => ({ team }))}
               maxLength={LIMITS.team}
@@ -294,7 +295,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
             <HeadingField
               value={home.headings.involvement}
               limit={LIMITS.headings.involvement}
-              fallback="Get involved"
+              fallback={tLabels("getInvolved")}
               hint={t("usedInsteadWhenThereIsNo")}
               onChange={(value) => setHeading("involvement", value)}
             />
@@ -329,7 +330,7 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
                 <Field
                   key={index}
                   label={t("exampleQuestion", { value: index + 1 })}
-                  suffix="Optional"
+                  suffix={tLabels("optional")}
                   counter={`${question.length} / ${LIMITS.question}`}
                 >
                   {(id) => (
@@ -358,12 +359,12 @@ export function HomeSection({ libraryId, draft, saved, patch, reset }: SectionPr
             <HeadingField
               value={home.extra.title}
               limit={LIMITS.extraTitle}
-              fallback="Using and citing the library"
+              fallback={tLabels("usingAndCitingTheLibrary")}
               onChange={(title) => setHome((h) => ({ extra: { ...h.extra, title } }))}
             />
             <RichTextField
               label={t("licenceAndReuse")}
-              suffix="Optional"
+              suffix={tLabels("optional")}
               value={home.extra.text}
               onChange={(text) => setHome((h) => ({ extra: { ...h.extra, text } }))}
               maxLength={LIMITS.extra}
@@ -389,9 +390,10 @@ function HeadingField({
   hint?: string;
   onChange: (value: string) => void;
 }) {
+  const tLabels = useTranslations("libraryHomeSettings");
   const t = useTranslations("libraryHomeSettings");
   return (
-    <Field label={t("heading")} suffix="Optional" hint={hint} counter={`${value.length} / ${limit}`}>
+    <Field label={t("heading")} suffix={tLabels("optional")} hint={hint} counter={`${value.length} / ${limit}`}>
       {(id) => (
         <Input
           id={id}
@@ -408,10 +410,11 @@ function HeadingField({
 
 /** A step's icon and, on a text step, the figure its owner writes. */
 function StepLook({ step, onChange }: { step: HomeStepDraft; onChange: (change: Partial<HomeStepDraft>) => void }) {
+  const tLabels = useTranslations("libraryHomeSettings");
   const t = useTranslations("libraryHomeSettings");
   return (
     <div className="grid gap-3 sm:grid-cols-[12rem_minmax(0,1fr)]">
-      <Field label={t("icon")} suffix="Optional">
+      <Field label={t("icon")} suffix={tLabels("optional")}>
         {(id) => (
           <NavbarIconPicker
             id={id}
@@ -423,7 +426,7 @@ function StepLook({ step, onChange }: { step: HomeStepDraft; onChange: (change: 
       </Field>
       {step.type === "text" ? (
         <div className="grid gap-3 sm:grid-cols-[8rem_minmax(0,1fr)]">
-          <Field label={t("figure")} suffix="Optional" counter={`${step.figureValue.length} / ${LIMITS.figureValue}`}>
+          <Field label={t("figure")} suffix={tLabels("optional")} counter={`${step.figureValue.length} / ${LIMITS.figureValue}`}>
             {(id) => (
               <Input
                 id={id}
@@ -515,11 +518,12 @@ function TimelinePreview({ steps, team }: { steps: HomeStepDraft[]; team: TeamPe
 
 /** What the page shows from settings made elsewhere, each with the card that changes it. */
 function FilledIn({ draft }: { draft: SectionProps["draft"] }) {
+  const tLabels = useTranslations("libraryHomeSettings");
   const t = useTranslations("libraryHomeSettings");
   const rows: { label: string; value: ReactNode; section: string; card: string }[] = [
-    { label: t("tagline"), value: draft.identity.tagline || <Missing />, section: "identity", card: "Identity" },
-    { label: t("contactEmail"), value: draft.contact.email || <Missing />, section: "contact", card: "Contact" },
-    { label: t("takedownForm"), value: draft.email.takedownRecipient ? "Linked" : <Missing>{t("off")}</Missing>, section: "contact", card: "Contact" },
+    { label: t("tagline"), value: draft.identity.tagline || <Missing />, section: "identity", card: tLabels("identity") },
+    { label: t("contactEmail"), value: draft.contact.email || <Missing />, section: "contact", card: tLabels("contact") },
+    { label: t("takedownForm"), value: draft.email.takedownRecipient ? tLabels("linked") : <Missing>{t("off")}</Missing>, section: "contact", card: tLabels("contact") },
   ];
   return (
     <FieldGroup title={t("filledInForYou")} hint={t("newestPublicationsTheMostCitedDigests")}>
@@ -537,14 +541,16 @@ function FilledIn({ draft }: { draft: SectionProps["draft"] }) {
   );
 }
 
-function Missing({ children = "Not set" }: { children?: ReactNode }) {
-  return <span className="text-muted-foreground">{children}</span>;
+function Missing({ children }: { children?: ReactNode }) {
+  const tLabels = useTranslations("libraryHomeSettings");
+  return <span className="text-muted-foreground">{children ?? tLabels("notSet")}</span>;
 }
 
 type TeamPerson = { id: string; name: string; imageUrl?: string; role: string };
 
 /** The library's team as the Team card has it: owners, editors and creators, with their photos. Undefined while it loads. */
 function useTeam(libraryId: Id<"evidenceLibraries">): TeamPerson[] | undefined {
+  const tLabels = useTranslations("libraryHomeSettings");
   const { data } = useProtectedQuery(api.evidenceLibraries.queries.listTeam, { libraryId });
   if (!data) return undefined;
   // Only people the page can name, as it will name them; an email is never shown instead of a name.
@@ -553,7 +559,7 @@ function useTeam(libraryId: Id<"evidenceLibraries">): TeamPerson[] | undefined {
       const name = publicName(person.name);
       return name ? [{ id: person.clerkUserId, name, imageUrl: publicPhoto(person.imageUrl), role }] : [];
     });
-  return [...shown(data.owners, "Owner"), ...shown(data.editors, "Editor"), ...shown(data.creators, "Creator")];
+  return [...shown(data.owners, tLabels("owner")), ...shown(data.editors, tLabels("editor")), ...shown(data.creators, tLabels("creator"))];
 }
 
 /** The questions the page asks in empty slots, as the running library makes them. Empty until it answers; not asked while the home page is off. */
@@ -587,6 +593,7 @@ function EditorsField({
   value: HomePersonDraft[];
   onChange: (value: HomePersonDraft[]) => void;
 }) {
+  const tLabels = useTranslations("libraryHomeSettings");
   const t = useTranslations("libraryHomeSettings");
   const update = (id: string, change: Partial<HomePersonDraft>) =>
     onChange(value.map((person) => (person.id === id ? { ...person, ...change } : person)));
@@ -606,14 +613,14 @@ function EditorsField({
           }
           title={t("addPeopleFromTheTeam")}
           description={t("everyoneOnTheLibrarySTeam")}
-          searchLabel="Search the team"
-          columns={{ title: t("name"), meta: "Role" }}
+          searchLabel={tLabels("searchTheTeam")}
+          columns={{ title: t("name"), meta: tLabels("role") }}
           source={localPickerSource(rows)}
           renderLeading={(row) => (
             <IdentityAvatar name={row.title} imageUrl={team?.find((person) => person.id === row.id)?.imageUrl} className="size-7" />
           )}
           usedIds={value.map((person) => person.id)}
-          usedLabel="Shown"
+          usedLabel={tLabels("shown")}
           confirmLabel={(count) => (count === 1 ? "Add 1 person" : `Add ${count} people`)}
           onConfirm={(picked) =>
             onChange(
@@ -629,11 +636,11 @@ function EditorsField({
               ].slice(0, LIMITS.people),
             )
           }
-          loadingLabel="Loading the team"
-          failedLabel="The team could not be read."
-          emptyLabel="Nobody is on the team yet."
-          noMatchLabel="Nobody on the team matches."
-          notSetUpLabel="Nobody is on the team yet."
+          loadingLabel={tLabels("loadingTheTeam")}
+          failedLabel={tLabels("theTeamCouldNotBeRead")}
+          emptyLabel={tLabels("nobodyIsOnTheTeamYet")}
+          noMatchLabel={tLabels("nobodyOnTheTeamMatches")}
+          notSetUpLabel={tLabels("nobodyIsOnTheTeamYet")}
         />
         <Button
           type="button"
@@ -654,7 +661,7 @@ function EditorsField({
           {value.map((person) => {
             const byHand = isHandEntered(person.id);
             const member = byHand ? undefined : team?.find((each) => each.id === person.id);
-            const name = member?.name || person.name || "Someone new";
+            const name = member?.name || person.name || tLabels("someoneNew");
             // While the team loads nobody counts as removed.
             const removed = !byHand && team !== undefined && !member;
             return (
@@ -695,7 +702,7 @@ function EditorsField({
                   </div>
                 ) : null}
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label={t("title")} suffix="Optional" counter={`${person.title.length} / ${LIMITS.personTitle}`}>
+                  <Field label={t("title")} suffix={tLabels("optional")} counter={`${person.title.length} / ${LIMITS.personTitle}`}>
                     {(id) => (
                       <Input
                         id={id}
@@ -707,7 +714,7 @@ function EditorsField({
                       />
                     )}
                   </Field>
-                  <Field label={t("location")} suffix="Optional" counter={`${person.location.length} / ${LIMITS.personLocation}`}>
+                  <Field label={t("location")} suffix={tLabels("optional")} counter={`${person.location.length} / ${LIMITS.personLocation}`}>
                     {(id) => (
                       <Input
                         id={id}
@@ -734,6 +741,7 @@ function EditorsField({
  * Enter on it or drop an image on it; the photo is cropped to a square and made small before it is stored.
  */
 function PhotoPerson({ name, photo, onChange }: { name: string; photo: string; onChange: (photo: string) => void }) {
+  const tLabels = useTranslations("libraryHomeSettings");
   const t = useTranslations("libraryHomeSettings");
   const { uploadFile } = useFileUploads();
   const [uploading, setUploading] = useState(false);
@@ -761,7 +769,7 @@ function PhotoPerson({ name, photo, onChange }: { name: string; photo: string; o
     onDrop: upload,
     onDropRejected: () => setFailed(true),
   });
-  const label = photo ? `Change the photo of ${name}` : `Add a photo of ${name}`;
+  const label = photo ? tLabels("changeThePhotoOf", { name }) : tLabels("addAPhotoOf", { name });
   return (
     <div className="flex items-center gap-3">
       <div className="relative shrink-0">
@@ -828,6 +836,7 @@ function PublicationChoice({
   value: string;
   onChange: (value: string) => void;
 }) {
+  const tLabels = useTranslations("libraryHomeSettings");
   const t = useTranslations("libraryHomeSettings");
   const format = useFormatter();
   const publicationRow = useCallback((publication: ReviewedPublication): PickerRow => ({
@@ -876,8 +885,8 @@ function PublicationChoice({
       }
       title={t("publicationFollowed")}
       description={t("chooseAPublicationWithAPdf")}
-      searchLabel="Search publications"
-      columns={{ title: t("publication"), meta: "Date" }}
+      searchLabel={tLabels("searchPublications")}
+      columns={{ title: t("publication"), meta: tLabels("date") }}
       source={source}
       renderLeading={() => (
         <span className="grid h-10 w-7 shrink-0 place-items-center rounded-sm bg-muted text-muted-foreground" aria-hidden>
@@ -889,12 +898,12 @@ function PublicationChoice({
         setChosen(row);
         onChange(row?.id ?? "");
       }}
-      noneLabel="Latest publication"
-      loadingLabel="Loading publications"
-      failedLabel="The library's publications could not be read."
-      emptyLabel="No publication has a PDF yet."
-      noMatchLabel="No publication matches."
-      notSetUpLabel="The library is not set up yet."
+      noneLabel={tLabels("latestPublication")}
+      loadingLabel={tLabels("loadingPublications")}
+      failedLabel={tLabels("theLibrarySPublicationsCouldNot")}
+      emptyLabel={tLabels("noPublicationHasAPdfYet")}
+      noMatchLabel={tLabels("noPublicationMatches")}
+      notSetUpLabel={tLabels("theLibraryIsNotSetUp")}
     />
   );
 }

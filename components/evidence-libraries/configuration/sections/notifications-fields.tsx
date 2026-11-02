@@ -17,6 +17,7 @@ import { FieldGroup, PanelRow, ToggleRow } from "../fields";
 import type { SectionProps } from "../section-shell";
 
 export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps, "libraryId" | "draft" | "patch">) {
+  const tLabels = useTranslations("libraryNotificationSettings");
   const locale = useLocale();
   const t = useTranslations("libraryNotificationSettings");
   const canSend = useProtectedQuery(api.evidenceLibraries.digests.manual.available, {libraryId}).data === true;
@@ -40,7 +41,7 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
   const schedule = notifications.schedule;
   const setSchedule = (value: typeof schedule) => patch(draft => {draft.notifications.schedule = value;return draft;});
   let timezoneError: string | null = null;
-  try {new Intl.DateTimeFormat("en", {timeZone: schedule.timezone});} catch {timezoneError = "Choose a timezone.";}
+  try {new Intl.DateTimeFormat("en", {timeZone: schedule.timezone});} catch {timezoneError = tLabels("chooseATimezone");}
   return <FieldGroup title={<span className="inline-flex items-center gap-2"><Mail className="size-4 text-primary" />{t("emailUpdates")}</span>}>
     <ToggleRow label={t("readerSubscriptions")} hint={t("readersCanChooseNewPublicationsLibrary")} checked={notifications.enabled} onChange={enabled => patch(draft => {draft.notifications.enabled = enabled;return draft;})} />
     {notifications.enabled && <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -60,10 +61,10 @@ export function NotificationsFields({libraryId, draft, patch}: Pick<SectionProps
       </Field>
       <Field label={<span className="inline-flex items-center gap-2"><CalendarDays className="size-4 text-muted-foreground" />{schedule.frequency === "weekly" ? t("dayOfTheWeek") : t("dayOfTheMonth")}</span>} hint={schedule.frequency === "monthly" && schedule.dayOfMonth > 28 ? t("shorterMonthsUseTheirLastDay") : undefined}>
         {id => schedule.frequency === "weekly"
-          ? <Select value={String(schedule.weekday)} onValueChange={value => setSchedule({...schedule, weekday: Number(value)})}><SelectTrigger id={id} className="w-full bg-background"><SelectValue /></SelectTrigger><SelectContent>{["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, index) => <SelectItem key={day} value={String(index)}>{day}</SelectItem>)}</SelectContent></Select>
+          ? <Select value={String(schedule.weekday)} onValueChange={value => setSchedule({...schedule, weekday: Number(value)})}><SelectTrigger id={id} className="w-full bg-background"><SelectValue /></SelectTrigger><SelectContent>{[tLabels("sunday"), tLabels("monday"), tLabels("tuesday"), tLabels("wednesday"), tLabels("thursday"), tLabels("friday"), tLabels("saturday")].map((day, index) => <SelectItem key={day} value={String(index)}>{day}</SelectItem>)}</SelectContent></Select>
           : <Select value={String(schedule.dayOfMonth)} onValueChange={value => setSchedule({...schedule, dayOfMonth: Number(value)})}><SelectTrigger id={id} aria-describedby={schedule.dayOfMonth > 28 ? hintId(id) : undefined} className="w-full bg-background"><SelectValue /></SelectTrigger><SelectContent>{Array.from({length: 31}, (_, index) => <SelectItem key={index + 1} value={String(index + 1)}>{index + 1}</SelectItem>)}</SelectContent></Select>}
       </Field>
-      <Field label={<span className="inline-flex items-center gap-2"><Clock3 className="size-4 text-muted-foreground" />{t("time")}</span>} error={!/^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.time) ? "Choose a valid time." : null}>
+      <Field label={<span className="inline-flex items-center gap-2"><Clock3 className="size-4 text-muted-foreground" />{t("time")}</span>} error={!/^([01]\d|2[0-3]):[0-5]\d$/.test(schedule.time) ? tLabels("chooseAValidTime") : null}>
         {(id, invalid) => <Input id={id} type="time" className="bg-background" value={schedule.time} aria-invalid={invalid || undefined} onChange={event => setSchedule({...schedule, time: event.target.value})} />}
       </Field>
       <Field label={<span className="inline-flex items-center gap-2"><Globe2 className="size-4 text-muted-foreground" />{t("timezone")}</span>} error={timezoneError}>
