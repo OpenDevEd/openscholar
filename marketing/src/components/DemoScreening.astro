@@ -74,5 +74,5 @@ const papers = [
   .pick:hover { background: rgb(255 255 255 / .16); }
   .pick[data-v="Yes"] { color: var(--good); } .pick[data-v="Unclear"] { color: var(--warn); } .pick[data-v="No"] { color: var(--bad); }
   .stars { --n: 0; --star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5l2.9 6.2 6.8.8-5 4.7 1.3 6.7-6-3.3-6 3.3 1.3-6.7-5-4.7 6.8-.8z'/%3E%3C/svg%3E"); width: 80px; height: 16px; background: linear-gradient(90deg, #ffd2a1 calc(var(--n) * 20%), rgb(255 255 255 / .16) 0); -webkit-mask: var(--star) 0 0/16px 16px repeat-x; mask: var(--star) 0 0/16px 16px repeat-x; }
-  @media (max-width: 900px) { .top { min-height: calc(76svh - 112px); align-content: start; } .list { width: 100%; } .table :global(li) { grid-template-columns: 1fr 1fr 84px; padding-block: 8px; } .t { grid-column: 1 / -1; white-space: normal; } }
+  @media (max-width: 900px) { .top { min-height: calc(80svh - 112px); align-content: start; } .list { width: 100%; } .table :global(li) { grid-template-columns: 1fr 1fr 84px; padding-block: 8px; } .t { grid-column: 1 / -1; white-space: normal; } }
 </style>
