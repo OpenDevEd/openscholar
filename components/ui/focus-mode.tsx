@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import posthog from "posthog-js";
 
 import { motion, AnimatePresence, PanInfo } from "motion/react";
@@ -17,6 +17,7 @@ import { useIsMobile } from "@/lib/hooks";
 import { useTranslations } from "next-intl";
 
 import { useTranslate } from "../paper-card";
+import { ITEMS_PER_PAGE } from "@/lib/constants";
 import { useAuthorFilter, useInstitutionFilter, useJournalFilter, type FilterValue } from "../paper-card/hooks";
 
 import { PaperContent } from "@/components/focus-mode/paper-content";
@@ -49,6 +50,7 @@ export function FocusMode({
   // One paper, such as one a chat names, is read on its own: the index the page's list keeps is for that list.
   const currentIndex = papers.length === 1 ? 0 : focusModeIndex;
   const [showSettings, setShowSettings] = useState(false);
+  const [translationMenuOpen, setTranslationMenuOpen] = useState(false);
   // It stays mounted while closed, so it can slide out: each opening starts on the paper, not on the settings left open.
   const [openedBefore, setOpenedBefore] = useState(isOpen);
   if (isOpen !== openedBefore) {
@@ -79,6 +81,9 @@ export function FocusMode({
   const wasOpenRef = useRef(isOpen);
 
   const currentPaper = papers[currentIndex];
+  // What the translation menu's run and auto-translate cover: the page of the list this paper is on.
+  const listedStart = Math.floor(currentIndex / ITEMS_PER_PAGE) * ITEMS_PER_PAGE;
+  const listedPapers = useMemo(() => papers.slice(listedStart, listedStart + ITEMS_PER_PAGE), [papers, listedStart]);
   const savePaper = useSavePaper(currentPaper);
   // Any paper named by its source but an upload is rated and saved (a rating saves it; an upload's file stays with its job); it opens where its source keeps it, if anywhere.
   const saveable = currentPaper ? saveablePaper(currentPaper.id) : false;
@@ -266,7 +271,8 @@ export function FocusMode({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
+      // The menu keeps its keys, and Escape shuts only what handled it.
+      if (!isOpen || translationMenuOpen || e.defaultPrevented) return;
 
       switch (e.key) {
         case "ArrowLeft":
@@ -350,8 +356,11 @@ export function FocusMode({
         case "t":
         case "T":
           e.preventDefault();
+          // As its button does: switch the text, or with nothing to switch to, open the menu.
           if (translatedContent) {
             setShowTranslated(!showTranslated);
+          } else {
+            setTranslationMenuOpen(true);
           }
           break;
       }
@@ -361,6 +370,7 @@ export function FocusMode({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [
     isOpen,
+    translationMenuOpen,
     currentIndex,
     papers.length,
     currentPaper,
@@ -465,6 +475,9 @@ export function FocusMode({
             showTranslated={showTranslated}
             translatedContent={translatedContent}
             isTranslating={isTranslating}
+            listedPapers={listedPapers}
+            translationMenuOpen={translationMenuOpen}
+            onTranslationMenuOpenChange={setTranslationMenuOpen}
             isMobile={isMobile}
             onRatingChange={handleRatingChange}
             onToggleTranslation={() => setShowTranslated(!showTranslated)}

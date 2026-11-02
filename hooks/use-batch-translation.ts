@@ -2,13 +2,23 @@
 
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useBatchTranslations } from "@/lib/ai/client/router";
-import { useTranslationStore } from "@/lib/store";
+import { useResultsTranslationSettingsStore, useTranslationStore } from "@/lib/store";
 import { useBatchOperation } from "./use-batch-operation";
 import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { useLocale } from "next-intl";
 
 function translationKey(paperId: string, targetLanguage: string): string {
   return `${paperId}:${targetLanguage}`;
+}
+
+// The server refuses a person's second batch while the first runs. Every use of this hook
+// in the tab takes turns, as focus mode's control unmounts while its batch runs on.
+// ponytail: per tab; a second tab is still refused, and retrying works.
+let lastBatch: Promise<unknown> = Promise.resolve();
+function inTurn<T>(run: () => Promise<T>): Promise<T> {
+  const turn = lastBatch.then(run);
+  lastBatch = turn.catch(() => {});
+  return turn;
 }
 
 interface Paper {
@@ -34,9 +44,9 @@ interface UseBatchTranslationOptions {
   canStart: boolean;
   /** When true, blocks results translation (e.g. search refetch in progress) */
   isSearchLoading?: boolean;
-  autoTranslateResults: boolean;
   manualRunRequestId: number;
-  targetLanguageOverride: string | null;
+  /** The whole batch was refused, such as for want of credits. */
+  onBatchRejected?: (error: unknown) => void;
 }
 
 /**
@@ -52,15 +62,19 @@ export function useBatchTranslation({
   papers,
   canStart,
   isSearchLoading = false,
-  autoTranslateResults,
   manualRunRequestId,
-  targetLanguageOverride,
+  onBatchRejected,
 }: UseBatchTranslationOptions) {
-  const locale = useLocale();
-  const targetLanguage = targetLanguageOverride ?? localeToLanguageCode(locale);
+  const localeLanguage = localeToLanguageCode(useLocale());
+  const targetLanguageOverride = useResultsTranslationSettingsStore((state) => state.targetLanguageOverride);
+  const targetLanguage = targetLanguageOverride ?? localeLanguage;
+  const autoTranslateResults = useResultsTranslationSettingsStore((state) => state.autoTranslateResults);
   const { execute, isConfigured } = useBatchTranslations();
-  const { getTranslation, setTranslation, setShowTranslated } = useTranslationStore();
-  const lastConsumedManualRunRequestIdRef = useRef(0);
+  const { getTranslation, setShowTranslated } = useTranslationStore();
+  // The run count outlives this hook, as the results page mounts again on a new search.
+  // A run from before this mount isn't its own to start.
+  const lastConsumedManualRunRequestIdRef = useRef(manualRunRequestId);
+  const cancelledBatchesRef = useRef(0);
 
   // Filter papers that need translation
   const filterItemsNeedingProcessing = useCallback(
@@ -73,15 +87,18 @@ export function useBatchTranslation({
     [getTranslation]
   );
 
-  // Compute batch key for deduplication
+  // Compute batch key for deduplication. Each run has its own, so a run can send
+  // papers again that an earlier one was refused. So does each batch cancelled while
+  // waiting, which never reached the server: switching auto-translate back on makes a
+  // new key here, and that sends those papers.
   const computeBatchKey = useCallback(
     (papersToProcess: Paper[], context: BatchTranslationContext) => {
       if (papersToProcess.length === 0) return null;
 
       const paperIds = papersToProcess.map((p) => p.id).sort();
-      return `${context.targetLanguage}:${paperIds.join(",")}`;
+      return `${context.targetLanguage}:${manualRunRequestId}:${cancelledBatchesRef.current}:${paperIds.join(",")}`;
     },
-    []
+    [manualRunRequestId, autoTranslateResults]
   );
 
   // Build the input for execute
@@ -97,20 +114,50 @@ export function useBatchTranslation({
     []
   );
 
-  // Handle results — also consumes the manual-run request id when work
-  // actually happens (replaces the deleted `beforeExecute` site that ran
-  // before the in-flight guard and wedged on contention).
+  // Show results in the language still chosen; executeBatch has stored them
   const handleResult = useCallback(
-    (paperId: string, translation: TranslationData, context: BatchTranslationContext) => {
+    (paperId: string, _translation: TranslationData, context: BatchTranslationContext) => {
       if (context.targetLanguage === targetLanguage) {
-        setTranslation(paperId, { ...translation, targetLanguage: context.targetLanguage });
         setShowTranslated(paperId, true);
       }
-      if (!autoTranslateResults) {
-        lastConsumedManualRunRequestIdRef.current = manualRunRequestId;
+    },
+    [setShowTranslated, targetLanguage]
+  );
+
+  const executeBatch = useCallback<typeof execute>(
+    async (input) => {
+      const askedByRun = manualRunRequestId > lastConsumedManualRunRequestIdRef.current;
+      try {
+        return await inTurn(async () => {
+          // Auto-translate may have been switched off while this waited, and nothing else asked for it.
+          if (!askedByRun && !useResultsTranslationSettingsStore.getState().autoTranslateResults) {
+            cancelledBatchesRef.current += 1;
+            return { results: {}, errors: [] };
+          }
+          // The batch ahead may have translated some of these, so they're read at this turn.
+          // Stored here, before the next turn reads them, in whichever language was paid for.
+          const { getTranslation: stored, setTranslation } = useTranslationStore.getState();
+          const papersLeft = input.papers.filter((paper) => !stored(paper.id, input.targetLanguage));
+          if (papersLeft.length === 0) return { results: {}, errors: [] };
+          const batch = await execute({ ...input, papers: papersLeft });
+          for (const [paperId, translation] of Object.entries(batch.results)) {
+            setTranslation(paperId, { ...translation, targetLanguage: input.targetLanguage });
+          }
+          return batch;
+        });
+      } catch (error) {
+        onBatchRejected?.(error);
+        throw error;
+      } finally {
+        // A run ends when its batch settles, either way, so it doesn't carry on to the next
+        // papers that show up. A language picked meanwhile carries it over to that language.
+        const latestOverride = useResultsTranslationSettingsStore.getState().targetLanguageOverride;
+        if ((latestOverride ?? localeLanguage) === input.targetLanguage) {
+          lastConsumedManualRunRequestIdRef.current = manualRunRequestId;
+        }
       }
     },
-    [setTranslation, setShowTranslated, targetLanguage, autoTranslateResults, manualRunRequestId]
+    [execute, localeLanguage, manualRunRequestId, onBatchRejected]
   );
 
   // Create loading state
@@ -174,7 +221,7 @@ export function useBatchTranslation({
     BatchTranslationContext,
     Set<string>
   >({
-    execute,
+    execute: executeBatch,
     isConfigured,
     computeBatchKey,
     filterItemsNeedingProcessing,

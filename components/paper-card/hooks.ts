@@ -29,7 +29,7 @@ export interface TranslationContent {
 
 /**
  * Hook for reading translation state from the store and context.
- * Translation is triggered by useBatchTranslation in results-list.tsx.
+ * Translation is triggered by useBatchTranslation in results-list.tsx and focus mode.
  * This hook is now a pure "reader" - it doesn't trigger translations.
  */
 export function useTranslate(

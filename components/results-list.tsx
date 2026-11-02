@@ -42,6 +42,8 @@ import { FocusMode } from "./ui/focus-mode";
 import { usePhoneView } from "@/lib/hooks";
 import { useBatchScreening } from "@/hooks/use-batch-screening";
 import { useBatchTranslation } from "@/hooks/use-batch-translation";
+import { useAppToast } from "@/lib/toast";
+import { useTranslations } from "next-intl";
 import { ScreeningErrorAlert } from "@/components/screening/screening-error-alert";
 import { AiOverview } from "@/components/ai-overview/overview-card";
 import { useCitedFocus } from "@/components/ai-overview/focus";
@@ -334,12 +336,6 @@ export function ResultsList({
   );
 
   const { setScreeningResponse, setScreeningResponses } = useSearchHistoryStore();
-  const autoTranslateResults = useResultsTranslationSettingsStore(
-    (state) => state.autoTranslateResults
-  );
-  const targetLanguageOverride = useResultsTranslationSettingsStore(
-    (state) => state.targetLanguageOverride
-  );
   const manualRunRequestId = useResultsTranslationSettingsStore(
     (state) => state.manualRunRequestId
   );
@@ -457,6 +453,8 @@ export function ResultsList({
   }, []);
 
   const papersForBatchTranslation = paginatedResults;
+  const toast = useAppToast();
+  const tSearchCommand = useTranslations("searchCommand");
 
   // Use batch translation hook
   const {
@@ -468,11 +466,11 @@ export function ResultsList({
   } = useBatchTranslation({
     searchId: searchId || "",
     papers: papersForBatchTranslation,
-    canStart: !preview && !!searchId,
+    // Focus mode translates the paper being read, and a person has one batch at a time.
+    canStart: !preview && !!searchId && !isFocusModeOpen,
     isSearchLoading: isLoading || isValidating,
-    autoTranslateResults,
     manualRunRequestId,
-    targetLanguageOverride,
+    onBatchRejected: (error) => toast.ai.failed(tSearchCommand("translate"), error),
   });
 
   // Notify Zotero when results change
