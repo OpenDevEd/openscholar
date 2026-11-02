@@ -204,7 +204,8 @@
       "pt": "Portugiesisch",
       "es": "Spanisch",
       "de": "Deutsch",
-      "af": "Afrikaans"
+      "af": "Afrikaans",
+      "zu": "Zulu"
     },
     "you": "Sie"
   },
@@ -1315,7 +1316,8 @@
     "bg": "Bulgarisch",
     "hr": "Kroatisch",
     "sw": "Suaheli",
-    "af": "Afrikaans"
+    "af": "Afrikaans",
+    "zu": "Zulu"
   },
   "workId": {
     "workIdLabel": "Werk-ID",
@@ -2615,7 +2617,8 @@
         "sw": "Suaheli",
         "pt": "Portugiesisch",
         "es": "Spanisch",
-        "af": "Afrikaans"
+        "af": "Afrikaans",
+        "zu": "Zulu"
       }
     },
     "analytics": {

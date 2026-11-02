@@ -15,6 +15,7 @@ const NEXT_INTL_TO_BCP47: Record<string, string> = {
   "es": "es-ES",
   "de": "de-DE",
   "af": "af-ZA",
+  "zu": "zu-ZA",
 };
 
 /**

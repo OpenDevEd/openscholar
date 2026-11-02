@@ -204,7 +204,8 @@
       "pt": "Kireno",
       "es": "Kihispania",
       "de": "Kijerumani",
-      "af": "Kiafrikaans"
+      "af": "Kiafrikaans",
+      "zu": "Kizulu"
     },
     "you": "Wewe"
   },
@@ -1315,7 +1316,8 @@
     "bg": "Kibulgaria",
     "hr": "Kikroeshia",
     "sw": "Kiswahili",
-    "af": "Kiafrikaans"
+    "af": "Kiafrikaans",
+    "zu": "Kizulu"
   },
   "workId": {
     "workIdLabel": "Kitambulisho cha kazi",
@@ -2615,7 +2617,8 @@
         "sw": "Kiswahili",
         "pt": "Kireno",
         "es": "Kihispania",
-        "af": "Kiafrikaans"
+        "af": "Kiafrikaans",
+        "zu": "Kizulu"
       }
     },
     "analytics": {

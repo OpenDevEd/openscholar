@@ -204,7 +204,8 @@
       "pt": "Português",
       "es": "Espanhol",
       "de": "Alemão",
-      "af": "Africâner"
+      "af": "Africâner",
+      "zu": "Zulu"
     },
     "you": "Você"
   },
@@ -1315,7 +1316,8 @@
     "bg": "Búlgaro",
     "hr": "Croata",
     "sw": "Suaíli",
-    "af": "Africâner"
+    "af": "Africâner",
+    "zu": "Zulu"
   },
   "workId": {
     "workIdLabel": "ID do trabalho",
@@ -2615,7 +2617,8 @@
         "sw": "Suaíli",
         "pt": "Português",
         "es": "Espanhol",
-        "af": "Africâner"
+        "af": "Africâner",
+        "zu": "Zulu"
       }
     },
     "analytics": {
