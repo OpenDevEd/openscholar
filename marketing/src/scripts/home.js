@@ -38,7 +38,8 @@ function frame(ms) {
   const t = ms / 1000, dt = Math.min(0.05, t - then); then = t;
   const y = scrollY, target = chapterAt(y);
   const moving = Math.abs(target - cur) > 0.0005;
-  cur = reduced || !moving ? target : cur + (target - cur) * (1 - Math.exp(-dt * 6));
+  // A big jump (Back, the End key, focus) lands straight on its chapter instead of playing through the ones between.
+  cur = reduced || !moving || Math.abs(target - cur) > 1.5 ? target : cur + (target - cur) * (1 - Math.exp(-dt * 6));
   const a = Math.min(CH.length - 1, Math.floor(cur)), b = Math.min(CH.length - 1, a + 1), m = cur - a, e = smooth(m);
   // Only the chapters on screen are touched.
   const now = Math.round(cur);
