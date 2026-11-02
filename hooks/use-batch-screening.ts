@@ -151,7 +151,6 @@ export function useBatchScreening({
     context,
     canStart,
     papers,
-    retryFailedItems: false,
     createLoadingState,
     clearLoadingState,
   });

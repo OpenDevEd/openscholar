@@ -38,38 +38,34 @@ interface ResultsTranslationControlProps {
   compactTrigger?: boolean;
 }
 
+/** The language translations go to: the one picked, else the page's. */
+function useTranslationTarget() {
+  const tl = useTranslations("languages");
+  const localeTargetLanguage = localeToLanguageCode(useLocale());
+  const targetLanguageOverride = useResultsTranslationSettingsStore(
+    (state) => state.targetLanguageOverride
+  );
+  const effectiveTargetLanguage = targetLanguageOverride ?? localeTargetLanguage;
+  return {
+    localeTargetLanguage,
+    targetLanguageOverride,
+    effectiveTargetLanguage,
+    effectiveTargetLabel: tl(effectiveTargetLanguage as never) || effectiveTargetLanguage,
+  };
+}
+
 export function ResultsTranslationControl({
   disabled = false,
   triggerClassName,
   triggerVariant = "outline",
   compactTrigger = false,
 }: ResultsTranslationControlProps) {
-  const toast = useAppToast();
   const t = useTranslations("searchCommand");
-  const tc = useTranslations("common");
-  const tl = useTranslations("languages");
-  const locale = useLocale();
-  const targetModeId = useId();
   const [isOpen, setIsOpen] = useState(false);
-
-  const localeTargetId = `${targetModeId}-target-locale`;
-  const manualTargetId = `${targetModeId}-target-manual`;
-  const localeTargetLanguage = localeToLanguageCode(locale);
+  const { effectiveTargetLanguage, effectiveTargetLabel } = useTranslationTarget();
 
   const autoTranslateResults = useResultsTranslationSettingsStore(
     (state) => state.autoTranslateResults
-  );
-  const targetLanguageOverride = useResultsTranslationSettingsStore(
-    (state) => state.targetLanguageOverride
-  );
-  const setAutoTranslateResults = useResultsTranslationSettingsStore(
-    (state) => state.setAutoTranslateResults
-  );
-  const setTargetLanguageOverride = useResultsTranslationSettingsStore(
-    (state) => state.setTargetLanguageOverride
-  );
-  const clearTargetLanguageOverride = useResultsTranslationSettingsStore(
-    (state) => state.clearTargetLanguageOverride
   );
   const requestManualRun = useResultsTranslationSettingsStore(
     (state) => state.requestManualRun
@@ -85,43 +81,10 @@ export function ResultsTranslationControl({
   const isTranslating = (loadingPaperIds?.size ?? 0) > 0;
   const allTranslated =
     !isTranslating && totalPaperCount > 0 && translatedPaperCount === totalPaperCount;
-  const isUsingLocaleTarget = targetLanguageOverride === null;
-  const targetMode = isUsingLocaleTarget ? "locale" : "manual";
-  const effectiveTargetLanguage = targetLanguageOverride ?? localeTargetLanguage;
-  const effectiveTargetLabel =
-    tl(effectiveTargetLanguage as never) || effectiveTargetLanguage;
   const targetBadgeLabel = effectiveTargetLanguage.toUpperCase();
   const isTriggerDisabled = disabled;
-  const isRunDisabled = disabled || isTranslating || allTranslated;
   const showActiveTranslationState = autoTranslateResults || allTranslated;
   const triggerAriaLabel = `${t("translate")} - ${t("targetLanguageValue", { language: effectiveTargetLabel })}`;
-
-  const handleTargetModeChange = useCallback(
-    (value: string) => {
-      if (value === "locale") {
-        clearTargetLanguageOverride();
-        return;
-      }
-      if (targetLanguageOverride === null) {
-        setTargetLanguageOverride(localeTargetLanguage);
-      }
-    },
-    [
-      clearTargetLanguageOverride,
-      localeTargetLanguage,
-      setTargetLanguageOverride,
-      targetLanguageOverride,
-    ]
-  );
-
-  const handleRunTranslation = useCallback(() => {
-    if (isRunDisabled) return;
-    if (!isConfigured) {
-      toast.ai.configRequired(t("configureAISettings"));
-      return;
-    }
-    requestManualRun();
-  }, [isConfigured, isRunDisabled, requestManualRun, t, toast]);
 
   const trigger = (
     <Button
@@ -174,133 +137,220 @@ export function ResultsTranslationControl({
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align="end" className="w-[340px] overflow-hidden p-0">
-        <PopoverHeader className="gap-1 border-b bg-inset px-4 py-3">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-0.5">
-              <PopoverTitle className="text-sm">{t("translationSettings")}</PopoverTitle>
-              <PopoverDescription className="text-xs">
-                {t("targetLanguageValue", { language: effectiveTargetLabel })}
-              </PopoverDescription>
-            </div>
-            <Badge
-              variant="outline"
-              className="h-5 shrink-0 rounded-full px-1.5 text-3xs font-semibold tracking-wide"
-            >
-              {targetBadgeLabel}
-            </Badge>
-          </div>
-        </PopoverHeader>
-
-        <div className="space-y-4 px-4 py-3">
-          <div className="rounded-lg border border-border-subtle bg-inset p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <p className="text-sm font-medium">{t("autoTranslateResults")}</p>
-                <p className="text-xs text-muted-foreground">{t("listedItemsOnly")}</p>
-              </div>
-              <Switch
-                size="sm"
-                checked={autoTranslateResults}
-                onCheckedChange={setAutoTranslateResults}
-                disabled={disabled}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <RadioGroup
-              value={targetMode}
-              onValueChange={handleTargetModeChange}
-              className="gap-2"
-            >
-              <div className="flex items-center justify-between rounded-md border border-border-subtle px-2.5 py-2">
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="locale" id={localeTargetId} />
-                  <Label htmlFor={localeTargetId} className="cursor-pointer text-sm font-medium">
-                    {t("useCurrentLocaleTarget")}
-                  </Label>
-                </div>
-                {isUsingLocaleTarget && <Check className="h-4 w-4 text-primary" />}
-              </div>
-
-              <div className="flex items-center justify-between rounded-md border border-border-subtle px-2.5 py-2">
-                <div className="flex items-center gap-2">
-                  <RadioGroupItem value="manual" id={manualTargetId} />
-                  <Label htmlFor={manualTargetId} className="cursor-pointer text-sm font-medium">
-                    {tc("manual")}
-                  </Label>
-                </div>
-                {!isUsingLocaleTarget && <Check className="h-4 w-4 text-primary" />}
-              </div>
-            </RadioGroup>
-
-            {!isUsingLocaleTarget && (
-              <div className="space-y-1.5 rounded-md border border-border-subtle bg-inset p-2.5">
-                <Label className="text-xs text-muted-foreground">{tc("language")}</Label>
-                <Select
-                  value={targetLanguageOverride ?? localeTargetLanguage}
-                  onValueChange={setTargetLanguageOverride}
-                  disabled={disabled}
-                >
-                  <SelectTrigger size="sm" className="w-full bg-background shadow-none">
-                    <SelectValue placeholder={tc("language")} />
-                  </SelectTrigger>
-                  <SelectContent className="z-[220] max-h-72">
-                    {languageOptions.map((language) => (
-                      <SelectItem key={language.code} value={language.code}>
-                        <span className="flex w-full items-center justify-between gap-3">
-                          <span className="flex items-center gap-2">
-                            <img
-                              src={language.flagUrl}
-                              alt={`${language.name} flag`}
-                              className="h-3 w-4 shrink-0 rounded-sm border border-border object-cover"
-                            />
-                            <span>{tl(language.code as never) || language.name}</span>
-                          </span>
-                          <span className="text-3xs tracking-wide text-muted-foreground">
-                            {language.code.toUpperCase()}
-                          </span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <Separator />
-        <div className="px-4 py-3">
-          <Button
-            type="button"
-            size="sm"
-            className={cn(
-              "w-full",
-              allTranslated &&
-                "border-success/40 ink-success hover:ink-success"
-            )}
-            variant={allTranslated || autoTranslateResults ? "outline" : "default"}
-            onClick={handleRunTranslation}
-            disabled={isRunDisabled}
-          >
-            {isTranslating ? (
-              <>
-                <TranslateIcon working size={14} className="h-3.5 w-3.5" />
-                {t("translatingResults")}
-              </>
-            ) : allTranslated ? (
-              <>
-                <Check className="h-3.5 w-3.5" />
-                {t("resultsTranslated")}
-              </>
-            ) : (
-              t("runResultsTranslation")
-            )}
-          </Button>
-        </div>
-      </PopoverContent>
+      <TranslationSettingsMenu
+        disabled={disabled}
+        isConfigured={isConfigured}
+        isTranslating={isTranslating}
+        allTranslated={allTranslated}
+        onRun={requestManualRun}
+      />
     </Popover>
+  );
+}
+
+interface TranslationSettingsMenuProps {
+  disabled?: boolean;
+  isConfigured: boolean;
+  isTranslating: boolean;
+  allTranslated: boolean;
+  onRun: () => void;
+  onInteractOutside?: React.ComponentProps<typeof PopoverContent>["onInteractOutside"];
+}
+
+/** The language, auto-translate and run menu, for whichever button opens it. */
+export function TranslationSettingsMenu({
+  disabled = false,
+  isConfigured,
+  isTranslating,
+  allTranslated,
+  onRun,
+  onInteractOutside,
+}: TranslationSettingsMenuProps) {
+  const toast = useAppToast();
+  const t = useTranslations("searchCommand");
+  const tc = useTranslations("common");
+  const tl = useTranslations("languages");
+  const targetModeId = useId();
+  const localeTargetId = `${targetModeId}-target-locale`;
+  const manualTargetId = `${targetModeId}-target-manual`;
+  const { localeTargetLanguage, targetLanguageOverride, effectiveTargetLanguage, effectiveTargetLabel } = useTranslationTarget();
+
+  const autoTranslateResults = useResultsTranslationSettingsStore(
+    (state) => state.autoTranslateResults
+  );
+  const setAutoTranslateResults = useResultsTranslationSettingsStore(
+    (state) => state.setAutoTranslateResults
+  );
+  const setTargetLanguageOverride = useResultsTranslationSettingsStore(
+    (state) => state.setTargetLanguageOverride
+  );
+  const clearTargetLanguageOverride = useResultsTranslationSettingsStore(
+    (state) => state.clearTargetLanguageOverride
+  );
+
+  const isUsingLocaleTarget = targetLanguageOverride === null;
+  const targetMode = isUsingLocaleTarget ? "locale" : "manual";
+  const targetBadgeLabel = effectiveTargetLanguage.toUpperCase();
+  const isRunDisabled = disabled || isTranslating || allTranslated;
+
+  const handleTargetModeChange = useCallback(
+    (value: string) => {
+      if (value === "locale") {
+        clearTargetLanguageOverride();
+        return;
+      }
+      if (targetLanguageOverride === null) {
+        setTargetLanguageOverride(localeTargetLanguage);
+      }
+    },
+    [
+      clearTargetLanguageOverride,
+      localeTargetLanguage,
+      setTargetLanguageOverride,
+      targetLanguageOverride,
+    ]
+  );
+
+  const handleRunTranslation = useCallback(() => {
+    if (isRunDisabled) return;
+    if (!isConfigured) {
+      toast.ai.configRequired(t("configureAISettings"));
+      return;
+    }
+    onRun();
+  }, [isConfigured, isRunDisabled, onRun, t, toast]);
+
+  return (
+    <PopoverContent
+      align="end"
+      className="w-[340px] p-0"
+      onInteractOutside={onInteractOutside}
+    >
+      <PopoverHeader className="gap-1 border-b bg-inset px-4 py-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 space-y-0.5">
+            <PopoverTitle className="text-sm">{t("translationSettings")}</PopoverTitle>
+            <PopoverDescription className="text-xs">
+              {t("targetLanguageValue", { language: effectiveTargetLabel })}
+            </PopoverDescription>
+          </div>
+          <Badge
+            variant="outline"
+            className="h-5 shrink-0 rounded-full px-1.5 text-3xs font-semibold tracking-wide"
+          >
+            {targetBadgeLabel}
+          </Badge>
+        </div>
+      </PopoverHeader>
+
+      <div className="space-y-4 px-4 py-3">
+        <div className="rounded-lg border border-border-subtle bg-inset p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <p className="text-sm font-medium">{t("autoTranslateResults")}</p>
+              <p className="text-xs text-muted-foreground">{t("listedItemsOnly")}</p>
+            </div>
+            <Switch
+              size="sm"
+              checked={autoTranslateResults}
+              onCheckedChange={setAutoTranslateResults}
+              disabled={disabled}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <RadioGroup
+            value={targetMode}
+            onValueChange={handleTargetModeChange}
+            className="gap-2"
+          >
+            <div className="flex items-center justify-between rounded-md border border-border-subtle px-2.5 py-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="locale" id={localeTargetId} />
+                <Label htmlFor={localeTargetId} className="cursor-pointer text-sm font-medium">
+                  {t("useCurrentLocaleTarget")}
+                </Label>
+              </div>
+              {isUsingLocaleTarget && <Check className="h-4 w-4 text-primary" />}
+            </div>
+
+            <div className="flex items-center justify-between rounded-md border border-border-subtle px-2.5 py-2">
+              <div className="flex items-center gap-2">
+                <RadioGroupItem value="manual" id={manualTargetId} />
+                <Label htmlFor={manualTargetId} className="cursor-pointer text-sm font-medium">
+                  {tc("manual")}
+                </Label>
+              </div>
+              {!isUsingLocaleTarget && <Check className="h-4 w-4 text-primary" />}
+            </div>
+          </RadioGroup>
+
+          {!isUsingLocaleTarget && (
+            <div className="space-y-1.5 rounded-md border border-border-subtle bg-inset p-2.5">
+              <Label className="text-xs text-muted-foreground">{tc("language")}</Label>
+              <Select
+                value={targetLanguageOverride ?? localeTargetLanguage}
+                onValueChange={setTargetLanguageOverride}
+                disabled={disabled}
+              >
+                <SelectTrigger size="sm" className="w-full bg-background shadow-none">
+                  <SelectValue placeholder={tc("language")} />
+                </SelectTrigger>
+                <SelectContent className="z-[220] max-h-72">
+                  {languageOptions.map((language) => (
+                    <SelectItem key={language.code} value={language.code}>
+                      <span className="flex w-full items-center justify-between gap-3">
+                        <span className="flex items-center gap-2">
+                          <img
+                            src={language.flagUrl}
+                            alt={`${language.name} flag`}
+                            className="h-3 w-4 shrink-0 rounded-sm border border-border object-cover"
+                          />
+                          <span>{tl(language.code as never) || language.name}</span>
+                        </span>
+                        <span className="text-3xs tracking-wide text-muted-foreground">
+                          {language.code.toUpperCase()}
+                        </span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <Separator />
+      <div className="px-4 py-3">
+        <Button
+          type="button"
+          size="sm"
+          className={cn(
+            "w-full",
+            allTranslated &&
+              "border-success/40 ink-success hover:ink-success"
+          )}
+          variant={allTranslated || autoTranslateResults ? "outline" : "default"}
+          onClick={handleRunTranslation}
+          disabled={isRunDisabled}
+        >
+          {isTranslating ? (
+            <>
+              <TranslateIcon working size={14} className="h-3.5 w-3.5" />
+              {t("translatingResults")}
+            </>
+          ) : allTranslated ? (
+            <>
+              <Check className="h-3.5 w-3.5" />
+              {t("resultsTranslated")}
+            </>
+          ) : (
+            t("runResultsTranslation")
+          )}
+        </Button>
+      </div>
+    </PopoverContent>
   );
 }
