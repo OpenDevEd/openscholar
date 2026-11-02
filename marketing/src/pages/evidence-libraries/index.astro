@@ -6,8 +6,8 @@ import { APP } from "../../data/site.mjs";
 import papers from "../../data/extraction.json";
 const shots = [
   ["lib-home", 1920, 1150, "Wealth Inequality and Social Mobility", "https://wealth-inequality.openscholar.ai", "A library's home page, with its first pages fanned out beside its name"],
-  ["lib-evidence", 1240, 640, "Artificial Intelligence in Education", "https://aied.openscholar.ai", "A map of research clusters in a library about AI in education"],
-  ["lib-plate", 1000, 782, "Wealth Inequality, in its light theme", "https://wealth-inequality.openscholar.ai", "The same library's home page in its light theme"],
+  ["lib-evidence", 1240, 612, "Artificial Intelligence in Education", "https://aied.openscholar.ai", "A map of research clusters in a library about AI in education"],
+  ["lib-plate", 1000, 740, "Wealth Inequality, in its light theme", "https://wealth-inequality.openscholar.ai", "The same library's home page in its light theme"],
 ];
 const sources = [0, 1, 2].map((i) => ({ title: papers[i].title, year: papers[i].year, sentences: papers[i].sentences }));
 ---
@@ -76,7 +76,7 @@ const sources = [0, 1, 2].map((i) => ({ title: papers[i].title, year: papers[i].
   .g-pin h2 { position: absolute; z-index: 1; left: var(--edge); top: 88px; font-size: clamp(40px, 5.6vw, 92px); line-height: .96; max-width: 7em; text-shadow: 0 2px 40px #000; }
   .plates { position: absolute; inset: 12svh var(--edge) 6svh 26vw; transform-style: preserve-3d; }
   .plate { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: min(100%, calc(74svh * var(--ar))); display: block; transform-style: preserve-3d; will-change: transform; opacity: 0; }
-  .plate img { width: 100%; height: auto; border-radius: 8px; box-shadow: 0 0 0 1px rgb(255 220 170 / .3), 0 50px 120px -10px #000; }
+  .plate img { width: 100%; height: auto; aspect-ratio: var(--ar); object-fit: cover; object-position: 50% 0; border-radius: 8px; box-shadow: 0 0 0 1px rgb(255 220 170 / .3), 0 50px 120px -10px #000; }
   .plate span { position: absolute; left: 0; top: calc(100% + 10px); font-size: 15px; color: var(--t1); text-shadow: 0 1px 12px #000; }
 
   .answers { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px 64px; padding: 128px var(--edge); align-items: start; }
