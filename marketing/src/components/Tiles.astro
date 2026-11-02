@@ -1,0 +1,38 @@
+---
+// Three small tools that work: bring in Zotero, flip a title's language, change a citation's style.
+const LANGS = [["English", "en", "ltr", "Does peer tutoring help children read?"], ["Français", "fr", "ltr", "Le tutorat entre pairs aide-t-il les enfants à lire ?"], ["Español", "es", "ltr", "¿La tutoría entre pares ayuda a los niños a leer?"], ["العربية", "ar", "rtl", "هل يساعد التعليم بالأقران الأطفال على القراءة؟"]];
+const CITES = [
+  ["APA", "Topping, K. J., Miller, D., Thurston, A., McGavock, K. L., & Conlin, N. (2011). Peer tutoring in reading in Scotland: Thinking big. <i>Literacy, 45</i>(1), 3–9."],
+  ["MLA", "Topping, Keith James, et al. “Peer Tutoring in Reading in Scotland: Thinking Big.” <i>Literacy</i>, vol. 45, no. 1, 2011, pp. 3–9."],
+  ["Harvard", "Topping, K.J., Miller, D., Thurston, A., McGavock, K.L. and Conlin, N. (2011) ‘Peer tutoring in reading in Scotland: thinking big’, <i>Literacy</i>, 45(1), pp. 3–9."],
+  ["Vancouver", "Topping KJ, Miller D, Thurston A, McGavock KL, Conlin N. Peer tutoring in reading in Scotland: thinking big. Literacy. 2011;45(1):3–9."],
+];
+const rows = ["Peer tutoring", "Reading interventions", "Systematic reviews"];
+---
+<div class="row tiles" data-tiles data-cites={JSON.stringify(CITES)} data-langs={JSON.stringify(LANGS)}>
+  <div class="b t1"><h3>Bring your Zotero along</h3>
+    <ul class="zot" aria-hidden="true">{rows.map((r, i) => <li style={`--i:${i}`}><svg width="22" height="22" viewBox="0 0 120 120"><rect x="6" y="6" width="108" height="108" rx="22" fill="#CC2936" /><path d="M34 34h52v9L50 78h36v9H32v-9l36-35H34z" fill="#fff" /></svg><span>{r}</span><svg class="ok" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#0b5e3f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5" /></svg></li>)}</ul>
+  </div>
+  <div class="b t2"><h3>Read it in your own language</h3>
+    <div class="flip"><p data-lang-text lang="en" dir="ltr">{LANGS[0][3]}</p></div>
+    <div class="seg" role="group" aria-label="Language">{LANGS.map(([l], i) => <button type="button" data-lang-i={i} aria-pressed={i === 0 ? "true" : "false"}>{l}</button>)}</div>
+  </div>
+  <div class="b t3"><h3>Cite it in any style</h3>
+    <div class="cite"><p data-cite-text set:html={CITES[0][1]} /></div>
+    <div class="seg" role="group" aria-label="Citation style">{CITES.map(([s], i) => <button type="button" data-cite-i={i} aria-pressed={i === 0 ? "true" : "false"}>{s}</button>)}</div>
+  </div>
+</div>
+<script>
+  const root = document.querySelector("[data-tiles]"), CITES = JSON.parse(root.dataset.cites), LANGS = JSON.parse(root.dataset.langs), lt = root.querySelector("[data-lang-text]"), ct = root.querySelector("[data-cite-text]");
+  const press = (sel, b) => root.querySelectorAll(sel).forEach((x) => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+  root.addEventListener("click", (e) => { const l = e.target.closest("[data-lang-i]"), c = e.target.closest("[data-cite-i]"); if (l) { const [, code, dir, text] = LANGS[+l.dataset.langI]; lt.textContent = text; lt.lang = code; lt.dir = dir; press("[data-lang-i]", l); } if (c) { ct.innerHTML = CITES[+c.dataset.citeI][1]; press("[data-cite-i]", c); } });
+</script>
+<style>
+  .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); } .tiles .b { display: flex; flex-direction: column; gap: 16px; padding: clamp(18px, 2.4vw, 28px); }
+  .t1 { background: var(--tang); } .t2 { background: #fff; } .t3 { background: var(--leaf); color: #fff; }
+  .zot { display: grid; gap: 8px; margin-top: auto; } .zot li { display: grid; grid-template-columns: 22px minmax(0, 1fr) 18px; gap: 10px; align-items: center; height: 44px; padding-inline: 10px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; font-size: 15px; } .zot svg { flex: none; } .ok { animation: tick 6s calc(var(--i) * .8s) var(--ease) infinite; } @keyframes tick { 0%, 8% { opacity: 0; scale: .4; } 14%, 90% { opacity: 1; scale: 1; } 96%, 100% { opacity: 0; scale: .4; } }
+  .flip { flex: 1; min-height: 92px; display: flex; align-items: center; padding: 10px 14px; border-radius: 12px; background: var(--mark-1); } .flip p { font-size: clamp(18px, 1.8vw, 22px); line-height: 1.2; letter-spacing: -.02em; font-weight: 500; width: 100%; }
+  .cite { flex: 1; min-height: 92px; padding: 10px 14px; border-radius: 12px; background: #fff; color: var(--ink); font-size: 14px; line-height: 1.35; } .cite :global(i) { font-style: italic; }
+  .seg { display: flex; flex-wrap: wrap; gap: 4px; } .seg button { height: 32px; padding-inline: 10px; border-radius: 8px; font-size: 13px; font-weight: 500; background: rgb(11 16 32 / .07); transition: background-color .15s var(--ease), translate .1s var(--ease); } .t3 .seg button { background: rgb(255 255 255 / .16); } .seg button:hover { background: var(--mark-1); color: var(--ink); } .seg button:active { translate: 0 1px; } .seg [aria-pressed="true"] { background: var(--ink) !important; color: #fff !important; } .t3 .seg [aria-pressed="true"] { background: #fff !important; color: var(--ink) !important; }
+  @media (max-width: 900px) { .tiles { grid-template-columns: minmax(0, 1fr); } .cite { min-height: 120px; } .seg button { height: 40px; } }
+</style>

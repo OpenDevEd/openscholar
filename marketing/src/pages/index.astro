@@ -6,9 +6,9 @@ import Search from "../components/Search.astro";
 import Sift from "../components/Sift.astro";
 import Extract from "../components/Extract.astro";
 import Agent from "../components/Agent.astro";
-import Sticker from "../components/Sticker.astro";
+import Tiles from "../components/Tiles.astro";
 import Shape from "../components/Shape.astro";
-const rail = [["#search", "Find it", "glass", "#FFD233"], ["#review", "Sift it", "sieve", "#3DDC97"], ["#extract", "Pull it out", "pen", "#FF5A47"], ["#assistant", "Hand it over", "stamp", "#0b1020"], ["#library", "Publish it", "page", "#FF9BD0"]];
+const rail = [["#assistant", "Hand it over", "seal", "#0b1020"], ["#search", "Find it", "tokens", "#FFD233"], ["#review", "Sift it", "slide", "#2fd08c"], ["#extract", "Pull it out", "cell", "#FF4F3D"], ["#library", "Publish it", "site", "#FF8CC8"]];
 const asks = ["What keeps girls in school?", "Does mindfulness ease anxiety?", "How does heat affect learning?", "Do cash transfers end poverty?"];
 const shots = [["lib-plate", 1000, 740, "Wealth Inequality and Social Mobility", "https://wealth-inequality.openscholar.ai", "s0"], ["lib-evidence", 1240, 612, "Artificial Intelligence in Education", "https://aied.openscholar.ai", "s1"], ["lib-home", 1920, 1150, "Wealth Inequality, after dark", "https://wealth-inequality.openscholar.ai", "s2"]];
 ---
@@ -19,20 +19,15 @@ const shots = [["lib-plate", 1000, 740, "Wealth Inequality and Social Mobility",
   </section>
 
   <nav class="rail" aria-label="What OpenScholar does">
-    {rail.map(([href, name, st, c], i) => <a href={href} style={`--c:${c};--tilt:${[-1, .8, -.6, 1, -.8][i]}deg`}><Sticker name={st} size={64} /><b>{name}</b></a>)}
+    {rail.map(([href, name, st, c]) => <a href={href} style={`--c:${c}`}><span class={`mini ${st}`} aria-hidden="true">{st === "seal" && "Allow"}{st === "tokens" && <><i></i><i></i></>}{st === "cell" && <><i></i><i></i><i></i></>}{st === "site" && <><i></i><i></i><i></i></>}</span><b>{name}</b></a>)}
   </nav>
 
+  <Agent />
   <Search />
   <Sift />
   <Extract />
 
-  <div class="row trio">
-    <a class="b t1" href="/docs/#organize"><Sticker name="zotero" size={84} /><h3>Bring your Zotero along</h3></a>
-    <a class="b t2" href="/docs/#search"><Sticker name="globe" size={84} /><h3>Read it in your own language</h3></a>
-    <a class="b t3" href="/docs/#organize"><Sticker name="quote" size={84} /><h3>Cite it in any style</h3></a>
-  </div>
-
-  <Agent />
+  <Tiles />
 
   <section class="b team">
     <Shape kind="quarters" color="rgb(255 255 255 / .07)" />
@@ -66,14 +61,17 @@ const shots = [["lib-plate", 1000, 740, "Wealth Inequality and Social Mobility",
 <style>
   .hero { background: var(--cobalt); color: #fff; min-height: 640px; display: flex; align-items: center; }
   .rail { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gap); }
-  .rail a { position: relative; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 22px; background: var(--c); font-size: clamp(16px, 1.6vw, 20px); letter-spacing: -.03em; transition: translate .2s var(--ease); } .rail a:nth-child(4) { color: #fff; } .rail a:hover { translate: 0 -3px; } .rail a:active { translate: 0 2px; } .trio .b:active { translate: 0 2px; } .rail :global(svg) { flex: none; rotate: var(--tilt); transition: rotate .25s var(--ease), scale .25s var(--ease); } .rail a:hover :global(svg) { rotate: -10deg; scale: 1.1; } .rail b { font-weight: 700; line-height: 1.05; }
-  .copy { position: relative; width: min(50%, 600px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; justify-items: start; } h1 { text-wrap: balance; } .copy .lead { max-width: 30rem; }
-  .trio { grid-template-columns: repeat(3, minmax(0, 1fr)); } .trio .b { display: flex; flex-direction: column; justify-content: space-between; gap: 40px; min-height: 240px; transition: translate .2s var(--ease); } .trio .b:hover { translate: 0 -4px; } .trio :global(svg) { transition: rotate .3s var(--ease); } .trio .b:hover :global(svg) { rotate: -8deg; }
-  .t1 { background: var(--tang); } .t2 { background: #fff; } .t3 { background: var(--leaf); color: #fff; }
+  .rail a { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 14px; min-height: 112px; padding: 14px 16px; border-radius: 22px; background: var(--c); font-size: clamp(16px, 1.6vw, 20px); letter-spacing: -.03em; transition: translate .2s var(--ease); } .rail a:first-child { color: #fff; } .rail a:hover { translate: 0 -3px; } .rail a:active { translate: 0 2px; } .rail b { font-weight: 700; line-height: 1.05; }
+  .mini { display: block; } .seal { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #d42c1a; color: #fff; font-size: 12px; font-weight: 700; outline: 1.5px dashed rgb(255 255 255 / .8); outline-offset: -5px; rotate: -8deg; transition: rotate .25s var(--ease); } a:hover .seal { rotate: 4deg; }
+  .tokens { display: flex; gap: 4px; padding: 8px; border-radius: 10px; background: #fff; } .tokens i { width: 42px; height: 14px; border-radius: 3px; background: #8fd0ff; } .tokens i:first-child { width: 58px; background: #ffe14d; }
+  .slide { width: 112px; height: 8px; margin-block: 16px; border-radius: 4px; background: var(--ink); position: relative; } .slide::after { content: ""; position: absolute; left: 62%; top: -10px; width: 30px; height: 26px; border-radius: 8px; background: var(--sun); box-shadow: 0 3px 0 var(--sun-edge), 0 0 0 2px var(--ink); transition: left .35s var(--ease); } a:hover .slide::after { left: 24%; }
+  .cell { display: grid; gap: 4px; width: 112px; } .cell i { height: 10px; border-radius: 3px; background: rgb(255 255 255 / .55); } .cell i:nth-child(2) { background: #ffe14d; width: 86%; } .cell i:nth-child(3) { width: 62%; }
+  .site { display: grid; grid-template-columns: 28px 1fr; grid-template-rows: 10px 26px; gap: 4px; width: 112px; padding: 6px; border-radius: 9px; background: #fff; } .site i:nth-child(1) { grid-column: 1 / -1; background: var(--cobalt); border-radius: 3px; } .site i:nth-child(2) { background: var(--sun); border-radius: 3px; } .site i:nth-child(3) { background: var(--pink); border-radius: 3px; }
+  .copy { position: relative; width: min(49%, 590px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; justify-items: start; } h1 { text-wrap: balance; } .copy .lead { max-width: 30rem; }
   .team { background: var(--deep); color: #fff; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; align-items: center; } .t-copy { display: grid; gap: 18px; justify-items: start; } .feed { display: grid; gap: 8px; height: calc(4 * 68px + 3 * 8px); overflow: hidden; }
   .lib { background: var(--pink); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; align-items: center; min-height: 520px; } .l-copy { display: grid; gap: 18px; justify-items: start; }
   .fan { position: relative; height: 440px; } .shot { position: absolute; width: 74%; border-radius: 12px; overflow: hidden; box-shadow: 0 24px 40px -14px rgb(11 16 32 / .5), 0 0 0 3px #fff; transition: rotate .3s var(--ease), translate .3s var(--ease), scale .3s var(--ease); } .shot:hover { z-index: 3; rotate: 0deg; scale: 1.04; }
   .s2 { left: 0; top: 0; rotate: -7deg; z-index: 0; } .s1 { right: -6%; top: 20px; rotate: 6deg; z-index: 1; } .s0 { left: 14%; bottom: 0; rotate: -1.5deg; z-index: 2; width: 66%; }
   .end { background: var(--sun); display: grid; justify-items: start; gap: 24px; padding-block: clamp(48px, 7vw, 88px); } .end h2 { font-size: clamp(44px, 8vw, 112px); max-width: 8em; line-height: .96; letter-spacing: -.05em; }
-  @media (max-width: 900px) { .hero { flex-direction: column; align-items: stretch; min-height: 0; padding-bottom: 0; } .copy { width: 100%; order: 1; } .rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rail a:last-child { grid-column: 1 / -1; } .trio { grid-template-columns: minmax(0, 1fr); } .trio .b { flex-direction: row; align-items: center; justify-content: flex-start; min-height: 0; gap: 16px; } .team, .lib { grid-template-columns: minmax(0, 1fr); } .fan { height: 62vw; min-height: 280px; } }
+  @media (max-width: 900px) { .hero { flex-direction: column; align-items: stretch; min-height: 0; padding-bottom: 0; } .copy { width: 100%; order: 1; } .rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rail a:last-child { grid-column: 1 / -1; } .team, .lib { grid-template-columns: minmax(0, 1fr); } .fan { height: 62vw; min-height: 280px; } }
 </style>

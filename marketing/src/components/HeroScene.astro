@@ -1,34 +1,31 @@
 ---
-// The product in one loop: a question goes out, papers are read, sentences light up, and a cited answer comes back. Without animation it rests on the finished answer.
+// The product in one loop: papers are read, the sentence that matters lights up, and a cited answer streams back. Without animation it rests on the finished answer.
 const papers = [
-  { c: "#FFD233", title: "Paired Reading in Spanish in Colombia", who: "Thurston, 2023", art: `<rect width="200" height="84" fill="#FF5A47"/><circle cx="50" cy="84" r="62" fill="#FFD233"/><circle cx="50" cy="84" r="30" fill="#0b1020"/>` },
-  { c: "#7DF0B4", title: "Effects of Peer Tutoring for Tutors and Tutees", who: "Thurston, 2021", art: `<rect width="200" height="84" fill="#7DF0B4"/>${[0, 1, 2, 3, 4].map((k) => `<rect x="${k * 40 + 4}" y="${84 - (k + 1) * 15}" width="32" height="${(k + 1) * 15}" fill="${k % 2 ? "#0b1020" : "#2563EB"}"/>`).join("")}` },
-  { c: "#FFB3DC", title: "Peer tutoring in reading in Scotland", who: "Topping, 2011", art: `<rect width="200" height="84" fill="#FF9BD0"/>${[0, 1, 2, 3, 4, 5, 6].map((k) => `<path d="M${-20 + k * 36} 84L${20 + k * 36} 0" stroke="${k % 2 ? "#fff" : "#FF5A47"}" stroke-width="12"/>`).join("")}` },
+  { c: "#FFE14D", title: "Paired Reading in Spanish in Colombia", who: "Thurston, 2023", before: "", lit: "Results indicated that Paired Reading could be an effective, low-cost strategy for improving reading.", after: "" },
+  { c: "#7DF0B4", title: "Peer Tutoring for Tutors and Tutees", who: "Thurston, 2021", before: "Gains were ", lit: "significantly greater on independent standardised reading comprehension tests", after: " than in comparison classes." },
+  { c: "#FFB3DC", title: "Peer tutoring in reading in Scotland", who: "Topping, 2011", before: "On short-term evaluation, ", lit: "pupils did significantly better than control pupils", after: " in both years." },
 ];
+const answer = [["Yes, in the trials here. ", null], ["Paired Reading could be an effective, low-cost way to improve reading", "#FFE14D"], [", with ", null], ["greater gains on comprehension tests", "#7DF0B4"], [" and ", null], ["better results than control pupils", "#FFB3DC"], [".", null]];
+let n = 0;
+const runs = answer.map(([t, m]) => ({ m, words: t.split(/(?<= )/).map((w) => ({ w, i: n++ })) }));
 ---
 <div class="scene" aria-hidden="true">
-  <svg class="threads" viewBox="0 0 520 600" preserveAspectRatio="none" fill="none">
-    {[[88, "#FFD233"], [260, "#7DF0B4"], [432, "#FFB3DC"]].map(([x, c], i) => <><path class="out" pathLength="1" d={`M-60 372 C 60 372, ${x - 30} 330, ${x} 244`} stroke={c} stroke-width="3" style={`--i:${i}`} /><path class="back" pathLength="1" d={`M${x} 244 C ${x} 300, 260 300, 260 356`} stroke={c} stroke-width="3" style={`--i:${i}`} /></>)}
-  </svg>
-  <div class="cards">{papers.map((p, i) => <article style={`--c:${p.c};--i:${i}`}><svg viewBox="0 0 200 84" preserveAspectRatio="xMidYMid slice" set:html={p.art} /><b>{p.title}</b><span>{p.who}</span><div class="lines"><i></i><i class="lit"></i><i></i></div></article>)}</div>
-  <div class="answer"><p class="q">Does peer tutoring help reading?</p><p class="a"><mark style="--m:#FFE14D">A trial in Colombia found a positive effect</mark>, and <mark style="--m:#7DF0B4">a study in England found gains in comprehension</mark>.</p><div class="refs"><em style="--m:#FFD233">Thurston, 2023</em><em style="--m:#7DF0B4">Thurston, 2021</em><em style="--m:#FFB3DC">Topping, 2011</em></div></div>
+  <div class="cards">{papers.map((p, i) => <article style={`--c:${p.c};--i:${i}`}><i class="tab"></i><b>{p.title}</b><span>{p.who}</span><p>{p.before}<mark>{p.lit}</mark>{p.after}</p></article>)}</div>
+  <div class="threads">{papers.map((p, i) => <i style={`--c:${p.c};--i:${i}`}></i>)}</div>
+  <div class="answer"><p class="q">Does peer tutoring help reading?</p><p class="a">{runs.map((r) => r.m ? <mark style={`--m:${r.m}`}>{r.words.map(({ w, i }) => <span style={`--w:${i}`}>{w}</span>)}</mark> : r.words.map(({ w, i }) => <span style={`--w:${i}`}>{w}</span>))}</p><div class="refs">{papers.map((p) => <em style={`--m:${p.c}`}>{p.who}</em>)}</div></div>
 </div>
 <style>
-  .scene { position: absolute; inset: 0 0 0 auto; width: 46%; --d: 13s; }
-  .threads { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; } .threads path { stroke-dasharray: 1; vector-effect: non-scaling-stroke; }
-  .out { animation: thread var(--d) calc(var(--i) * .25s) linear infinite; } .back { animation: threadBack var(--d) calc(var(--i) * .25s) linear infinite; }
-  @keyframes thread { 0% { stroke-dashoffset: 1; opacity: 1; } 10% { stroke-dashoffset: 0; } 90% { opacity: 1; stroke-dashoffset: 0; } 96%, 100% { opacity: 0; stroke-dashoffset: 0; } }
-  @keyframes threadBack { 0%, 38% { stroke-dashoffset: 1; opacity: 1; } 50% { stroke-dashoffset: 0; } 90% { opacity: 1; stroke-dashoffset: 0; } 96%, 100% { opacity: 0; stroke-dashoffset: 0; } }
-  .cards { position: absolute; left: 12px; right: 20px; top: 32px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-  article { height: 216px; overflow: hidden; background: #fff; color: var(--ink); border-radius: 14px; box-shadow: 0 16px 28px -14px rgb(11 16 32 / .55); animation: read var(--d) calc(var(--i) * .25s) var(--ease) infinite; }
-  article:nth-child(1) { rotate: -2deg; } article:nth-child(2) { translate: 0 -8px; } article:nth-child(3) { rotate: 2deg; }
-  @keyframes read { 0%, 8% { translate: 0 10px; opacity: .55; } 14%, 92% { translate: 0 0; opacity: 1; } 98%, 100% { translate: 0 10px; opacity: .55; } }
-  article svg { width: 100%; height: 58px; } article b { display: block; margin: 8px 10px 2px; font-size: 13px; line-height: 1.15; font-weight: 700; letter-spacing: -.015em; } article span { display: block; margin-inline: 10px; font-size: 11px; color: var(--t2); }
-  .lines { display: grid; gap: 5px; margin: 8px 10px; } .lines i { height: 7px; border-radius: 3px; background: rgb(11 16 32 / .14); } .lines .lit { background: var(--c); transform-origin: left; animation: lit var(--d) calc(var(--i) * .7s) var(--ease) infinite; }
-  @keyframes lit { 0%, 16% { transform: scaleX(0); } 26%, 92% { transform: scaleX(1); } 98%, 100% { transform: scaleX(0); } }
-  .answer { position: absolute; left: 12px; right: 20px; bottom: 28px; padding: 18px 20px; border-radius: 20px; background: #fff; color: var(--ink); box-shadow: 0 24px 40px -18px rgb(11 16 32 / .6); } .a, .refs { animation: answer var(--d) var(--ease) infinite; }
-  @keyframes answer { 0%, 44% { opacity: 0; translate: 0 8px; } 54%, 92% { opacity: 1; translate: 0 0; } 98%, 100% { opacity: 0; translate: 0 4px; } }
-  .q { font-size: 14px; color: var(--t2); margin-bottom: 6px; } .a { font-size: clamp(18px, 1.8vw, 24px); line-height: 1.2; letter-spacing: -.025em; font-weight: 500; } .a mark { color: inherit; background: var(--m); border-radius: 4px; padding-inline: 3px; margin-inline: -1px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-  .refs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; } .refs em { font-style: normal; font-size: 12px; font-weight: 500; padding: 3px 8px; border-radius: 7px; background: var(--m); }
-  @media (max-width: 900px) { .scene { position: relative; inset: auto; order: 2; width: auto; height: 470px; margin: 20px calc(var(--pad) * -.6) 0; } .threads { display: none; } .cards { left: 0; right: 0; top: 0; } article { height: 196px; } article b { font-size: 12px; } .answer { left: 0; right: 0; bottom: 20px; } }
+  .scene { position: absolute; inset: 0 0 0 auto; width: 47%; --d: 12s; display: flex; flex-direction: column; justify-content: center; padding: 24px 24px 24px 12px; }
+  .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  article { overflow: hidden; height: 236px; padding-bottom: 10px; background: #fff; color: var(--ink); border-radius: 14px; box-shadow: 0 16px 28px -14px rgb(11 16 32 / .55); } article:nth-child(1) { rotate: -1.5deg; } article:nth-child(3) { rotate: 1.5deg; }
+  .tab { display: block; height: 12px; background: var(--c); } article b { display: block; margin: 8px 10px 2px; font-size: 13px; line-height: 1.15; font-weight: 700; letter-spacing: -.015em; } article span { display: block; margin-inline: 10px; font-size: 11px; color: var(--t2); } article p { margin: 8px 10px 0; font-size: 12px; line-height: 1.35; color: var(--t2); }
+  article mark { color: var(--ink); background: linear-gradient(var(--c), var(--c)) no-repeat 0 0 / 100% 100%; border-radius: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; animation: sweep var(--d) calc(var(--i) * .3s) var(--ease) infinite; }
+  @keyframes sweep { 0% { background-size: 0 100%; } 8%, 92% { background-size: 100% 100%; } 98%, 100% { background-size: 0 100%; } }
+  .threads { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; height: 34px; margin-block: 2px; position: relative; z-index: 0; } .threads i { justify-self: center; width: 6px; height: 100%; border-radius: 3px; background: var(--c); transform-origin: top; animation: down var(--d) calc(var(--i) * .3s) var(--ease) infinite; }
+  @keyframes down { 0%, 6% { transform: scaleY(0); } 12%, 92% { transform: scaleY(1); } 98%, 100% { transform: scaleY(0); } }
+  .answer { min-height: 208px; padding: 18px 20px; border-radius: 20px; background: #fff; color: var(--ink); box-shadow: 0 24px 40px -18px rgb(11 16 32 / .6); position: relative; }
+  .q { font-size: 14px; color: var(--t2); margin-bottom: 6px; } .a { font-size: clamp(17px, 1.65vw, 22px); line-height: 1.22; letter-spacing: -.02em; font-weight: 500; } .a mark { color: inherit; background: var(--m); border-radius: 4px; padding-inline: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; animation: word var(--d) .9s linear infinite; }
+  .a span { animation: word var(--d) calc(1.1s + var(--w) * .09s) linear infinite; } @keyframes word { 0% { opacity: 0; } 2%, 88% { opacity: 1; } 94%, 100% { opacity: 0; } }
+  .refs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; animation: word var(--d) 4s linear infinite; } .refs em { font-style: normal; font-size: 12px; font-weight: 500; padding: 3px 8px; border-radius: 7px; background: var(--m); }
+  @media (max-width: 900px) { .scene { position: relative; inset: auto; order: 2; width: auto; margin: 20px calc(var(--pad) * -.6) 0; padding: 0 0 20px; } article { height: 232px; } article b { font-size: 12px; } article p { font-size: 11.5px; } .answer { min-height: 214px; } }
 </style>
