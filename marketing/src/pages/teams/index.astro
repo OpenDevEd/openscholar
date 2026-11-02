@@ -1,0 +1,82 @@
+---
+import Base from "../../layouts/Base.astro";
+import { APP } from "../../data/site.mjs";
+const cursors = [["Maya", "#ffd2a1", "c1"], ["Tomas", "#8fd3ff", "c2"], ["Amina", "#9ff0c0", "c3"]];
+---
+<Base title="Teams: OpenScholar" description="Your whole team, in one place, on the same evidence.">
+  <section class="sky"><img src="/img/scene-array-1672.avif" width="1672" height="941" alt="Eight radio telescope dishes in a line at blue hour, all pointing at the same patch of sky" fetchpriority="high" /><div class="sky-copy"><h1>Stop emailing spreadsheets</h1><p class="lead">Bring everyone into one place, on the same evidence, and see it change as it happens.</p><a class="btn primary" href={APP}>Bring your team in</a></div></section>
+
+  <section class="together" style="--glow:#60a5fa">
+    <div class="tw-copy"><h2>Read it together</h2><p class="lead">See who has it open, and watch the work move while they're in it.</p></div>
+    <div class="room">
+      <div class="faces" aria-hidden="true">{cursors.map(() => <i></i>)}<span>3 here now</span></div>
+      <img src="/img/app-rows.avif" width="1600" height="1424" loading="lazy" decoding="async" alt="A screening that three people are working in together" />
+      {cursors.map(([n, c, k]) => <span class={`cur ${k}`} aria-hidden="true"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M1 1l5 14 2-6 6-2z" fill={c} /></svg><em style={`background:${c}`}>{n}</em></span>)}
+    </div>
+  </section>
+
+  <section class="story">
+    <div class="st-a"><h2>Never ask "who changed this?" again</h2><p class="lead">Every item keeps its own history, including what the assistant did.</p></div>
+    <ol class="feed" data-feed aria-label="Recent activity"></ol>
+  </section>
+
+  <section class="share">
+    <div class="invite" aria-hidden="true">
+      <b>Share this screening</b>
+      <div class="inv-row"><span>lena@university.edu</span><em>Can edit</em></div>
+      <ul><li><i></i><span>Everyone in Learning Lab</span><em>Can edit</em></li><li><i></i><span>Lena</span><em>Can edit</em></li><li><i></i><span>Sam</span><em>Can view</em></li></ul>
+    </div>
+    <div><h2>Share the work, not the keys</h2><p class="lead">Your team sees everything. Bring in someone from outside for just one thing, and that's all they'll ever see.</p></div>
+  </section>
+
+  <section class="move" data-move>
+    <div><h2>Started alone? Bring it in.</h2><p class="lead">Your work comes with you, ratings, answers and history included, and the people you shared it with keep their access.</p>
+      <button type="button" class="btn primary" data-go>Move to Learning Lab</button></div>
+    <div class="lanes">
+      <div class="lane" data-lane="a"><span>Personal</span><div class="card" data-card><b>Peer tutoring and reading</b><ul><li>Results and their ratings</li><li>Screening answers</li><li>Earlier searches</li><li>History</li></ul></div></div>
+      <div class="lane" data-lane="b"><span>Learning Lab</span></div>
+    </div>
+  </section>
+
+  <section class="go"><h2>Bring your team in</h2><a class="btn primary" href={APP}>Get started</a></section>
+</Base>
+<script>
+  const LOG = [["Maya", "started the screening"], ["Amina", "added papers to the collection"], ["The assistant, for Maya", "extracted the sample sizes"], ["Tomas", "changed an answer"], ["Lena", "rated a paper"], ["Maya", "shared it with a guest"], ["Tomas", "added a paper to the collection"], ["Amina", "changed an answer"]];
+  const feed = document.querySelector("[data-feed]"); let k = 0;
+  const push = () => { const [who, what] = LOG[k++ % LOG.length], li = document.createElement("li"); li.innerHTML = `<i></i><span><b>${who}</b> ${what}</span>`; feed.prepend(li); if (feed.children.length > 5) feed.lastElementChild.remove(); };
+  for (let i = 0; i < 5; i++) push();
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(() => { if (!document.hidden) push(); }, 2800);
+  const move = document.querySelector("[data-move]"), card = move.querySelector("[data-card]"), go = move.querySelector("[data-go]"), [la, lb] = [move.querySelector('[data-lane="a"]'), move.querySelector('[data-lane="b"]')];
+  go.addEventListener("click", () => { const to = card.parentElement === la ? lb : la, swap = () => { to.append(card); go.textContent = to === lb ? "Move back to Personal" : "Move to Learning Lab"; }; document.startViewTransition ? document.startViewTransition(swap) : swap(); });
+</script>
+<style is:global>
+  [data-feed] li { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 14px; align-items: center; padding: 12px 16px; border-radius: 16px; background: rgb(20 24 34 / .7); font-size: clamp(16px, 1.4vw, 20px); animation: fadeUp .4s var(--ease) both; } [data-feed] li + li { margin-top: 8px; } [data-feed] li:nth-child(n + 3) { opacity: .6; }
+  [data-feed] b { font-weight: 500; }
+  [data-feed] li i { width: 36px; height: 36px; border-radius: 50%; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } }
+</style>
+<style>
+  .sky { position: relative; height: 100svh; overflow: hidden; }
+  .sky img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center bottom; }
+  .sky-copy { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 112px var(--edge) 0; }
+  .sky h1 { font-size: clamp(50px, 8.6vw, 148px); line-height: .94; letter-spacing: -.05em; max-width: 9em; text-shadow: 0 2px 40px rgb(0 0 0 / .6); }
+  .sky .lead { margin-block: 20px 24px; max-width: 34rem; text-shadow: 0 1px 24px #000; }
+  .together { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 64px; align-items: center; padding: 128px var(--edge); background: radial-gradient(60% 70% at 75% 50%, #0c2152, #000 70%); }
+  .tw-copy .lead { margin-top: 24px; }
+  .room { position: relative; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 40px 120px -20px #000, 0 0 160px -30px #3b82f6; } .room img { width: 100%; height: auto; }
+  .faces { position: absolute; right: 16px; top: 12px; z-index: 2; display: flex; align-items: center; padding: 4px 12px 4px 14px; border-radius: 999px; background: rgb(0 0 0 / .72); font-size: 13px; } .faces i { width: 26px; height: 26px; margin-left: -8px; border-radius: 50%; border: 2px solid #111; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; } .faces span { margin-left: 8px; }
+  .cur { position: absolute; left: 0; top: 0; display: flex; align-items: flex-start; will-change: transform; } .cur em { margin: 14px 0 0 -2px; padding: 1px 8px; border-radius: 999px; font-style: normal; font-size: 12px; color: #000; font-weight: 500; }
+  .c1 { animation: c1 13s var(--ease) infinite alternate; } .c2 { animation: c2 17s var(--ease) infinite alternate; } .c3 { animation: c3 11s var(--ease) infinite alternate; }
+  @keyframes c1 { 0% { transform: translate(14vw, 8vw); } 30% { transform: translate(38vw, 14vw); } 60% { transform: translate(20vw, 28vw); } 100% { transform: translate(44vw, 20vw); } }
+  @keyframes c2 { 0% { transform: translate(40vw, 32vw); } 40% { transform: translate(12vw, 18vw); } 100% { transform: translate(30vw, 9vw); } }
+  @keyframes c3 { 0% { transform: translate(24vw, 36vw); } 50% { transform: translate(46vw, 10vw); } 100% { transform: translate(8vw, 24vw); } }
+  .story { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 64px; align-items: center; padding: 128px var(--edge); }
+  .st-a .lead { margin-top: 24px; } .feed { min-height: 372px; }
+  .share { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 64px; align-items: center; padding: 128px var(--edge); background: radial-gradient(60% 70% at 20% 50%, #0a2a2e, #000 70%); } .share .lead { margin-top: 24px; }
+  .invite { padding: 24px; border-radius: 24px; background: var(--s1); box-shadow: 0 0 0 1px var(--line2), 0 40px 120px -20px #000; rotate: -2deg; } .invite b { font-weight: 500; font-size: 22px; } .inv-row { display: flex; justify-content: space-between; margin-block: 16px; padding: 12px 14px; border-radius: 12px; background: var(--s2); } .invite em { font-style: normal; color: var(--t2); } .invite li { display: grid; grid-template-columns: 32px 1fr auto; gap: 12px; align-items: center; padding-block: 10px; } .invite i { width: 32px; height: 32px; border-radius: 50%; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; }
+  .move { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 64px; padding: 128px var(--edge); align-items: center; } .move .lead { margin-block: 24px; }
+  .lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } .lane { min-height: 300px; padding: 16px; border-radius: 22px; background: var(--s1); box-shadow: inset 0 0 0 1px var(--line); } .lane > span { color: var(--t2); font-size: 14px; }
+  .card { view-transition-name: move-card; margin-top: 12px; padding: 16px; background: var(--s3); border-radius: 14px; } .card b { font-weight: 500; } .card ul { margin-top: 8px; color: var(--t2); font-size: 14px; display: grid; gap: 2px; }
+  .go { display: flex; flex-direction: column; align-items: center; gap: 32px; text-align: center; padding: 160px var(--edge); background: radial-gradient(70% 80% at 50% 100%, #0c2152, #000 70%); }
+  @media (max-width: 900px) { .together, .story, .share, .move { grid-template-columns: minmax(0, 1fr); padding-block: 72px; gap: 32px; } .invite { rotate: none; } @keyframes c1 { to { transform: translate(40vw, 50vw); } } }
+</style>

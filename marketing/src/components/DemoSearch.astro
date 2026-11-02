@@ -1,16 +1,13 @@
 ---
-import Base from "../../layouts/Base.astro";
-import Next from "../../components/Next.astro";
-import data from "../../data/search-default.json";
-import topics from "../../data/topics.svg?raw";
-import { APP } from "../../data/site.mjs";
+import data from "../data/search-default.json";
+import { APP } from "../data/site.mjs";
 const n = (x) => x.toLocaleString("en-US");
 const toggles = [["is_oa:true", "Open access", "oa=true"], ["has_abstract:true", "Has an abstract", "abs=true"], ["type:review", "Reviews", "review=true"], ["publication_year:>2019", "Since 2020", "yf=2020"]];
-const also = [["AI overview", "Counts a whole search and writes it up with charts"], ["Query help", "Rewrites, broadens or narrows your query"], ["30 languages", "Translates the query and the listed results"], ["2,857 citation styles", "APA to Vancouver, plus every journal style you can search"], ["Focus reader", "One paper at a time, with keys to rate, save and move on"], ["Citation graph", "What cites a paper, what it cites, and what's related"]];
+
 ---
-<Base title="Search: OpenScholar" description="Run a real search against 329 million works, right on this page.">
+
   <section class="console" data-console data-default={JSON.stringify(data)}>
-    <p class="mono note">Change the query and it asks OpenAlex's 329 million works from your browser, live.</p>
+    <div class="d-head"><h2>Try your question on the world's research</h2><p class="lead">This isn't a video. Change the words and the answer comes back live.</p></div>
     <form data-form role="search">
       <label class="sr" for="q">Search query</label>
       <div class="field"><div class="mirror" data-mirror aria-hidden="true"></div><input id="q" data-q value={data.q} spellcheck="false" autocomplete="off" /></div>
@@ -18,7 +15,7 @@ const also = [["AI overview", "Counts a whole search and writes it up with chart
     </form>
     <div class="filters" role="group" aria-label="Filters">{toggles.map(([f, l, u]) => <button type="button" aria-pressed="false" data-filter={f} data-url={u}>{l}</button>)}</div>
     <div class="out" data-out>
-      <div class="total"><b data-count>{n(data.count)}</b><span>works in title and abstract</span>
+      <div class="total"><b data-count>{n(data.count)}</b><span>papers</span>
         <a class="link" data-open href={`${APP}/results?q=${encodeURIComponent(data.q)}`}>Open this search in OpenScholar</a>
       </div>
       <div class="chart" data-chart aria-hidden="true"></div>
@@ -27,19 +24,7 @@ const also = [["AI overview", "Counts a whole search and writes it up with chart
     <p class="mono err" data-err hidden>OpenAlex didn't answer that one. Check the query, or try again in a moment.</p>
   </section>
 
-  <section class="wheel" data-wheel>
-    <div class="wheel-copy">
-      <h2>Or start from the whole map of science</h2>
-      <p class="lead">Every field OpenAlex knows, each spoke a subfield as long as its share of the literature. Point at one. Then open any of its 4,516 topics.</p>
-      <div class="read" data-read aria-live="polite"><b data-name>Point at a field</b><span class="mono" data-info>26 fields, 252 subfields</span><span data-top></span></div>
-      <a class="btn quiet" href={`${APP}/topics`}>Browse topics</a>
-    </div>
-    <div class="wheel-art" set:html={topics} />
-  </section>
-
-  <section class="also"><ul>{also.map(([a, b]) => <li><b>{a}</b><span>{b}</span></li>)}</ul></section>
-  <Next href="/screening/" label="Screening" text="Now decide which of those papers count" />
-</Base>
+  
 <script>
   const root = document.querySelector("[data-console]"), q = root.querySelector("[data-q]"), mirror = root.querySelector("[data-mirror]"), chart = root.querySelector("[data-chart]"), res = root.querySelector("[data-res]"), count = root.querySelector("[data-count]"), err = root.querySelector("[data-err]"), open = root.querySelector("[data-open]");
   const API = "https://api.openalex.org/works", APP = open.href.split("/results")[0];
@@ -47,7 +32,7 @@ const also = [["AI overview", "Counts a whole search and writes it up with chart
   // Each term or group gets a colour, in the query and in the results.
   const COL = ["#ffc48a", "#8fd3ff", "#9ff0c0", "#ffd9e6"];
   const terms = () => (q.value.match(/"[^"]+"|\b(?!AND\b|OR\b|NOT\b)[\w-]{3,}/g) ?? []).map((t) => t.replace(/"/g, ""));
-  const paint = () => { let out = "", i = 0; const parts = q.value.split(/("[^"]*"|\b(?:AND|OR|NOT)\b)/); for (const p of parts) { if (/^(AND|OR|NOT)$/.test(p)) out += `<i class="op">${p}</i>`; else if (p.trim()) out += p.split(/(\s+)/).map((w) => w.trim() ? `<i style="color:${COL[i++ % 4]}">${esc(w)}</i>` : w).join(""); else out += p; } mirror.innerHTML = out; };
+  const paint = () => { let i = 0; mirror.innerHTML = q.value.split(/("[^"]*"|\b(?:AND|OR|NOT)\b|\s+)/).map((p) => { if (!p) return ""; if (/^(AND|OR|NOT)$/.test(p)) return `<i class="op">${p}</i>`; if (!p.trim()) return p; if (!p.startsWith('"') && p.replace(/[()]/g, "").length < 3) return esc(p); return `<i style="color:${COL[i++ % 4]}">${esc(p)}</i>`; }).join(""); };
   const mark = (t) => { let s = esc(t); terms().forEach((w, i) => { s = s.replace(new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"), `<mark style="color:${COL[i % 4]}">$1</mark>`); }); return s; };
   let shown = +root.dataset.default && 0;
   const tween = (to) => { const from = shown, t0 = performance.now(); shown = to; const step = (t) => { const k = Math.min(1, (t - t0) / 500), e = 1 - (1 - k) ** 3; count.textContent = Math.round(from + (to - from) * e).toLocaleString("en-US"); if (k < 1) requestAnimationFrame(step); }; requestAnimationFrame(step); };
@@ -74,21 +59,8 @@ const also = [["AI overview", "Counts a whole search and writes it up with chart
   root.querySelectorAll("[data-filter]").forEach((b) => b.addEventListener("click", () => { b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") === "true" ? "false" : "true"); run(); }));
   paint(); const d0 = JSON.parse(root.dataset.default); shown = d0.count; draw(d0.years); list(d0.results);
 
-  const wheel = document.querySelector("[data-wheel]"), art = wheel.querySelector("svg");
-  const set = (g) => { art.classList.toggle("lit", !!g); art.querySelectorAll(".f.on").forEach((x) => x.classList.remove("on")); if (!g) return; g.classList.add("on"); wheel.querySelector("[data-name]").textContent = g.dataset.name; wheel.querySelector("[data-info]").textContent = `${g.dataset.subs} subfields  ${(+g.dataset.works).toLocaleString("en-US")} works`; wheel.querySelector("[data-top]").textContent = g.dataset.top; };
-  art.querySelectorAll(".f").forEach((g) => { g.addEventListener("pointerenter", () => set(g)); g.addEventListener("focus", () => set(g)); });
-  art.addEventListener("pointerleave", () => set(null));
 </script>
 <style is:global>
-  .wheel-art svg { width: 100%; height: auto; overflow: visible; }
-  .wheel-art .ln { fill: none; stroke: #2563eb; stroke-width: .9; opacity: .5; transition: opacity .15s; }
-  .wheel-art .lf { fill: none; stroke: #bfdbfe; stroke-width: 2.4; transition: opacity .15s, stroke .15s; }
-  .wheel-art circle { fill: #bfdbfe; }
-  .wheel-art text { font: 300 21px Ubuntu, system-ui, sans-serif; fill: #a9afbb; transition: fill .15s; }
-  .wheel-art .f { outline: none; cursor: default; pointer-events: bounding-box; }
-  .wheel-art svg.lit .f:not(.on) .lf, .wheel-art svg.lit .f:not(.on) .ln { opacity: .28; }
-  .wheel-art .f.on text { fill: #fff; }
-  .wheel-art .f.on .lf { stroke: #fff; }
   [data-mirror] i { font-style: normal; } [data-mirror] .op { color: #6b7280; }
   [data-res] mark { background: none; }
   [data-chart] span { flex: 1; display: flex; align-items: flex-end; height: 100%; }
@@ -100,11 +72,11 @@ const also = [["AI overview", "Counts a whole search and writes it up with chart
 </style>
 <style>
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .console { min-height: 100svh; padding: 112px var(--edge) 64px; display: flex; flex-direction: column; background: radial-gradient(120% 80% at 80% 0%, #0a1a3f 0%, #000 60%); }
-  .note { color: var(--pale); }
+  .console { min-height: 100svh; padding: 112px var(--edge) 64px; display: flex; flex-direction: column; background: radial-gradient(120% 80% at 80% 0%, #0c2152 0%, #000 60%); } .d-head .lead { margin-top: 16px; max-width: 40rem; }
+  
   form { display: flex; align-items: center; gap: 16px; margin-top: 20px; border-bottom: 1px solid var(--line2); padding-bottom: 12px; }
   form:focus-within { border-color: var(--ink); }
-  .field { position: relative; flex: 1; min-width: 0; font: 300 clamp(26px, 5.2vw, 88px)/1.2 var(--sans); letter-spacing: -.03em; overflow: hidden; }
+  .field { position: relative; flex: 1; min-width: 0; font: 500 clamp(26px, 4.4vw, 72px)/1.2 var(--sans); letter-spacing: -.03em; overflow: hidden; }
   .mirror, input { display: block; width: 100%; white-space: pre; font: inherit; letter-spacing: inherit; }
   .mirror { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
   input { position: relative; background: none; border: 0; outline: 0; color: transparent; caret-color: #fff; padding: 0; }
@@ -115,18 +87,10 @@ const also = [["AI overview", "Counts a whole search and writes it up with chart
   .filters [aria-pressed="true"] { background: var(--t1); color: #000; border-color: var(--t1); }
   .out { flex: 1; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto 1fr; gap: 32px 64px; margin-top: 40px; transition: opacity .2s var(--ease); }
   [data-busy] .out { opacity: .55; }
-  .total b { display: block; font-weight: 300; font-size: clamp(56px, 8vw, 132px); line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
-  .total span { color: var(--t2); display: block; margin-block: 8px 16px; }
-  .chart { position: relative; grid-column: 1; display: flex; align-items: flex-end; gap: 3px; height: 180px; align-self: end; margin-bottom: 22px; }
+  .total { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; } .total b { font-weight: 500; font-size: 28px; font-variant-numeric: tabular-nums; }
+  .total span { color: var(--t2); } .total a { flex-basis: 100%; }
+  .chart { position: relative; grid-column: 1; display: flex; align-items: flex-end; gap: 3px; height: min(36svh, 340px); align-self: end; margin-bottom: 22px; }
   .res { grid-column: 2; grid-row: 1 / 3; align-self: start; }
   .err { color: var(--warn); margin-top: 16px; }
-  .wheel { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 7fr); gap: 16px; align-items: center; padding: 96px var(--edge); }
-  .wheel-copy .lead { margin-top: 24px; }
-  .read { display: grid; gap: 4px; min-height: 124px; margin-block: 32px 24px; padding-top: 16px; border-top: 1px solid var(--line2); }
-  .read b { font-weight: 300; font-size: 30px; letter-spacing: -.02em; line-height: 36px; }
-  .read span:last-child { color: var(--t2); font-size: 14px; line-height: 20px; }
-  .also ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 48px; padding: 64px var(--edge) 96px; }
-  .also b { display: block; font-weight: 300; font-size: 26px; letter-spacing: -.02em; }
-  .also span { color: var(--t2); font-size: 15px; }
-  @media (max-width: 900px) { .out, .wheel { grid-template-columns: minmax(0, 1fr); } .res { grid-column: 1; grid-row: auto; } .also ul { grid-template-columns: minmax(0, 1fr); } .go { width: 44px; height: 44px; } .read { min-height: 140px; } }
+  @media (max-width: 900px) { .out { grid-template-columns: minmax(0, 1fr); } .res { grid-column: 1; grid-row: auto; } .go { width: 44px; height: 44px; } }
 </style>

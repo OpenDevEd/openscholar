@@ -1,0 +1,18 @@
+---
+import Base from "../../layouts/Base.astro";
+import DemoSearch from "../../components/DemoSearch.astro";
+import DemoScreening from "../../components/DemoScreening.astro";
+import DemoEvidence from "../../components/DemoEvidence.astro";
+import DemoAssistant from "../../components/DemoAssistant.astro";
+import { APP } from "../../data/site.mjs";
+---
+<Base title="See it work: OpenScholar" description="Don't take our word for it. Search, screen, check and approve, right here on this page.">
+  <DemoSearch />
+  <DemoScreening />
+  <DemoEvidence />
+  <DemoAssistant />
+  <section class="go"><h2>Now try it on your own question</h2><a class="btn primary" href={APP}>Get started</a></section>
+</Base>
+<style>
+  .go { display: flex; flex-direction: column; align-items: center; gap: 32px; text-align: center; padding: 160px var(--edge); background: radial-gradient(70% 80% at 50% 100%, #0c2152, #000 70%); }
+</style>

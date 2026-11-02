@@ -1,6 +1,4 @@
 ---
-import Base from "../../layouts/Base.astro";
-import Next from "../../components/Next.astro";
 const papers = [
   ["Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia", 0, 0],
   ["Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees", 0, 1],
@@ -12,13 +10,13 @@ const papers = [
 ];
 const qs = ["Is it a randomised trial?", "Is it about reading in primary school?"];
 ---
-<Base title="Screening: OpenScholar" description="Steer a live stream of papers through your own screening rules.">
+
   <section class="stage" data-stage>
     <canvas data-stream aria-hidden="true"></canvas>
-    <div class="head"><h1>Let through only what meets your rules</h1></div>
+    <div class="head"><h2>Set the rules. Watch them work.</h2></div>
     <div class="gatelab" aria-hidden="true"><span data-gl="0">{qs[0]}</span><span data-gl="1">{qs[1]}</span></div>
     <div class="tally" aria-live="polite"><b data-share>0%</b><span>of papers included</span></div>
-    <p class="mono set">You set these rules before a job starts. The stream is a simulation of how they split the papers.</p>
+    <p class="set">Slide the rules you set before a job starts. This stream is a simulation of how they split your papers.</p>
     <div class="deck">
       {qs.map((q, i) => (
         <fieldset data-q={i}>
@@ -32,16 +30,17 @@ const qs = ["Is it a randomised trial?", "Is it about reading in primary school?
 
   <section class="review">
     <div class="r-head">
-      <h2>Overrule the model, and the score follows</h2>
-      <p class="lead">In a finished job, click any answer to change it. The paper's score, its stars and whether it's in all update. Real papers, example answers, 3 of 4 points to get in.</p>
+      <h2>You always have the last word</h2>
+      <p class="lead">Disagree with an answer? Click it. The paper's score and stars follow you. Real papers, example answers.</p>
     </div>
+    <div class="cols" aria-hidden="true"><span></span><span></span><span>Randomised trial?</span><span>Primary school reading?</span><span>Stars</span><span></span></div>
     <ol class="table" data-table>
       {papers.map(([t, a, b]) => (
         <li data-a={a} data-b={b} data-a0={a} data-b0={b}>
           <span class="state" data-st></span>
           <span class="t">{t}</span>
-          <button type="button" class="pick" data-k="a"></button>
-          <button type="button" class="pick" data-k="b"></button>
+          <button type="button" class="pick" data-k="a" data-q="Trial?"></button>
+          <button type="button" class="pick" data-k="b" data-q="Reading?"></button>
           <span class="stars" data-stars role="img"></span>
           <button type="button" class="back" data-back hidden>Put back</button>
         </li>
@@ -49,14 +48,7 @@ const qs = ["Is it a randomised trial?", "Is it about reading in primary school?
     </ol>
   </section>
 
-  <section class="facts">
-    <div><h3>Screen anything</h3><p>A search, or a range or page of one. A collection, your saved papers or an Evidence Library. From a chat, a Zotero collection.</p></div>
-    <div><h3>Keep what passes</h3><p>Included papers go straight into a collection, here or in a library, and excluded ones can be taken out.</p></div>
-    <div><h3>Let it write the questions</h3><p>Questions come from your research question, or from a search you already have.</p></div>
-    <div><h3>Take it with you</h3><p>Export as CSV, JSON, or Excel with Results and Summary sheets.</p></div>
-  </section>
-  <Next href="/extraction/" label="Extraction" text="Now read the same details out of what's left" />
-</Base>
+  
 <script>
   const stage = document.querySelector("[data-stage]"), cv = stage.querySelector("canvas"), ctx = cv.getContext("2d");
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -119,13 +111,13 @@ const qs = ["Is it a randomised trial?", "Is it about reading in primary school?
   .stage { position: relative; min-height: 100svh; display: flex; flex-direction: column; padding: 96px var(--edge) 32px; overflow: hidden; }
   canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   .head, .deck, .tally { position: relative; }
-  h1 { font-size: clamp(38px, 4.6vw, 76px); max-width: 15em; }
+  h2 { max-width: 14em; }
   .gatelab span { position: absolute; top: calc(50% - 136px); translate: -50% 0; width: 200px; text-align: center; font-size: 14px; color: var(--t1); }
   .gatelab [data-gl="0"] { left: 34%; } .gatelab [data-gl="1"] { left: 62%; }
   .tally { position: absolute; right: var(--edge); top: 50%; translate: 0 -50%; text-align: right; }
-  .tally b { display: block; font-weight: 300; font-size: clamp(56px, 8vw, 128px); line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
-  .tally span { color: var(--t2); }
-  .set { position: relative; margin-top: auto; margin-bottom: 10px; color: var(--t2); } .deck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding: 20px; background: rgb(11 12 15 / .82); border: 1px solid var(--line); border-radius: 18px; }
+  .tally b { display: inline; font-weight: 500; font-size: 26px; font-variant-numeric: tabular-nums; }
+  .tally span { color: var(--t2); margin-left: 6px; } .tally { background: rgb(0 0 0 / .7); padding: 6px 14px; border-radius: 999px; }
+  .set { position: relative; margin-top: auto; margin-bottom: 12px; color: var(--t2); font-size: 15px; } .deck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding: 20px; background: rgb(11 12 15 / .82); border: 1px solid var(--line); border-radius: 18px; }
   fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 4px; }
   legend { padding: 0; font-size: 14px; margin-bottom: 8px; }
   fieldset label { display: grid; grid-template-columns: 64px 1fr 16px; gap: 10px; align-items: center; font-size: 13px; }
@@ -139,16 +131,15 @@ const qs = ["Is it a randomised trial?", "Is it about reading in primary school?
   .table :global(li.out) .t { color: var(--t3); }
   .state { font: 400 13px var(--mono); }
   .table :global(li.in) .state { color: var(--good); } .table :global(li.out) .state { color: var(--t2); }
+  .cols { display: grid; grid-template-columns: 76px minmax(0, 1fr) 84px 84px 96px 76px; gap: 12px; padding-bottom: 8px; font-size: 12px; line-height: 15px; color: var(--t3); }
   .t { font-size: 15px; }
   .pick { height: 32px; border-radius: 8px; background: var(--s2); font-size: 13px; transition: background-color .15s var(--ease); }
   .pick:hover { background: var(--s3); }
   .pick[data-v="Yes"] { color: var(--good); } .pick[data-v="Unclear"] { color: var(--warn); } .pick[data-v="No"] { color: var(--bad); }
-  .stars { --n: 0; height: 12px; background: linear-gradient(90deg, #ffd2a1 calc(var(--n) * 20%), var(--s3) 0); -webkit-mask: repeating-linear-gradient(90deg, #000 0 14px, transparent 14px 18px); mask: repeating-linear-gradient(90deg, #000 0 14px, transparent 14px 18px); transition: none; }
+  .stars { --n: 0; width: 86px; height: 12px; background: linear-gradient(90deg, #ffd2a1 calc(var(--n) * 20%), var(--s3) 0); -webkit-mask: repeating-linear-gradient(90deg, #000 0 14px, transparent 14px 18px); mask: repeating-linear-gradient(90deg, #000 0 14px, transparent 14px 18px); }
   .back { font-size: 13px; color: var(--ink); text-align: right; }
-  .facts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 40px; padding: 48px var(--edge) 128px; }
-  .facts h3 { font-weight: 300; font-size: 24px; margin-bottom: 8px; } .facts p { color: var(--t2); font-size: 15px; }
   @media (max-width: 900px) {
-    .deck, .facts, .r-head { grid-template-columns: minmax(0, 1fr); } .tally { position: relative; top: auto; right: auto; translate: none; text-align: left; margin-top: 24px; } .gatelab { display: none; } .deck { margin-top: 240px; gap: 16px; }
-    .table :global(li) { grid-template-columns: 1fr 1fr; } .t { grid-column: 1 / -1; order: -1; }
+    .deck, .r-head { grid-template-columns: minmax(0, 1fr); } .tally { position: relative; top: auto; right: auto; translate: none; text-align: left; margin-top: 24px; } .gatelab { display: none; } .deck { margin-top: 240px; gap: 16px; }
+    .cols { display: none; } .table :global(li) { grid-template-columns: 1fr 1fr; } .t { grid-column: 1 / -1; order: -1; } .pick::before { content: attr(data-q) " "; color: var(--t3); }
   }
 </style>

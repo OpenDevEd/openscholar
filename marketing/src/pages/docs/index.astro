@@ -1,0 +1,46 @@
+---
+import Base from "../../layouts/Base.astro";
+import { GUIDES } from "../../data/docs.mjs";
+import { group } from "../../data/features.mjs";
+---
+<Base title="Documentation: OpenScholar" description="How to use OpenScholar and Evidence Libraries.">
+  <div class="docs">
+    <aside>
+      <label><span class="sr">Search the docs</span><input type="search" data-find placeholder="Search the docs" autocomplete="off" /></label>
+      <nav aria-label="Documentation">{GUIDES.map((g) => <a href={`#${g.id}`}>{g.title}</a>)}</nav>
+    </aside>
+    <article>
+      <h1>Documentation</h1>
+      <p class="lead">How to use OpenScholar and Evidence Libraries.</p>
+      {GUIDES.map((g) => (
+        <section id={g.id} data-guide>
+          <h2>{g.title}</h2>
+          {g.intro.map((p) => <p class="p">{p}</p>)}
+          {g.steps && <ol class="steps">{g.steps.map((s) => <li>{s}</li>)}</ol>}
+          {g.group && <details class="more" data-block><summary>Everything in this area</summary>{g.group.map((id) => { const f = group(id); return (<div class="block">{g.group.length > 1 && <h3>{f.name}</h3>}<dl>{f.items.map(([n, t]) => <div data-text={`${n} ${t}`.toLowerCase()}><dt>{n}</dt><dd>{t}</dd></div>)}</dl></div>); })}</details>}
+        </section>
+      ))}
+      <p class="none" data-none hidden>Nothing matches. Try a shorter word.</p>
+    </article>
+  </div>
+</Base>
+<script>
+  const input = document.querySelector("[data-find]"), rows = [...document.querySelectorAll("[data-text]")], blocks = [...document.querySelectorAll("[data-block]")], guides = [...document.querySelectorAll("[data-guide]")], none = document.querySelector("[data-none]");
+  input.addEventListener("input", () => { const q = input.value.trim().toLowerCase(); let n = 0; for (const r of rows) { const on = !q || r.dataset.text.includes(q); r.hidden = !on; n += on; } for (const b of blocks) { const any = !!b.querySelector("[data-text]:not([hidden])"); b.hidden = !any; b.open = !!q && any; } for (const g of guides) { const prose = g.textContent.toLowerCase().includes(q); g.hidden = !!q && !g.querySelector("[data-block]:not([hidden])") && !prose; } none.hidden = !q || guides.some((g) => !g.hidden); });
+</script>
+<style>
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .docs { display: grid; grid-template-columns: 280px minmax(0, 760px); gap: 64px; justify-content: center; padding: 104px var(--edge) 96px; }
+  aside { position: sticky; top: 88px; align-self: start; max-height: calc(100svh - 112px); overflow-y: auto; scrollbar-width: thin; }
+  input { width: 100%; height: 42px; padding-inline: 14px; background: var(--s1); border: 1px solid var(--line2); border-radius: 10px; font-size: 14px; outline-color: var(--ink); margin-bottom: 20px; } input::placeholder { color: var(--t3); }
+  nav a { display: block; padding: 7px 10px; border-radius: 8px; font-size: 15px; color: var(--t2); transition: color .15s var(--ease), background-color .15s var(--ease); } nav a:hover { color: var(--t1); background: var(--s1); }
+  h1 { font-size: clamp(40px, 5vw, 64px); } .lead { margin-top: 12px; }
+  section { padding-top: 56px; scroll-margin-top: 48px; } section[hidden] { display: none; }
+  section h2 { font-size: clamp(26px, 2.6vw, 34px); letter-spacing: -.025em; line-height: 1.15; margin-bottom: 14px; }
+  .p { color: rgb(242 244 248 / .78); font-size: 17px; line-height: 1.6; margin-bottom: 14px; }
+  .steps { counter-reset: s; margin-block: 8px 8px; } .steps li { counter-increment: s; display: grid; grid-template-columns: 32px 1fr; padding-block: 8px; font-size: 16px; line-height: 1.5; color: rgb(242 244 248 / .78); } .steps li::before { content: counter(s); color: var(--ink); font-weight: 500; }
+  .more { margin-top: 12px; } .more[hidden] { display: none; } .more summary { cursor: pointer; color: var(--ink); font-size: 15px; } .block { margin-top: 16px; } h3 { font-size: 17px; margin-bottom: 8px; }
+  dl > div { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; padding-block: 10px; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.45; } dl > div[hidden] { display: none; } dt { font-weight: 500; } dd { color: var(--t2); }
+  .none { color: var(--t2); margin-top: 40px; font-size: 18px; } .none[hidden] { display: none; }
+  @media (max-width: 900px) { .docs { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 88px; } aside { position: static; max-height: none; } aside nav { display: flex; flex-wrap: wrap; gap: 4px; } dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+</style>

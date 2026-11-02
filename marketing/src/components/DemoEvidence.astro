@@ -1,14 +1,12 @@
 ---
-import Base from "../../layouts/Base.astro";
-import Next from "../../components/Next.astro";
-import papers from "../../data/extraction.json";
+import papers from "../data/extraction.json";
 const Q = [["size", "What is the sample size?"], ["design", "What design did it use?"], ["effect", "What effect size does it report?"]];
 ---
-<Base title="Extraction: OpenScholar" description="Click any extracted answer and see the exact sentence it came from.">
+
   <section class="lab" data-lab data-papers={JSON.stringify(papers)}>
     <div class="lab-head">
-      <h1>Every answer points at its sentence</h1>
-      <p class="lead">Click any answer. Each paper's abstract is drawn as a spectrum, one block per sentence, and the sentence behind the answer lights up. Real abstracts, answers written as an example.</p>
+      <h2>Never wonder where an answer came from</h2>
+      <p class="lead">Click any answer and the sentence behind it lights up. Real papers, answers written as an example.</p>
     </div>
     <div class="split">
     <div class="grid" role="table" aria-label="Extraction results">
@@ -26,28 +24,12 @@ const Q = [["size", "What is the sample size?"], ["design", "What design did it 
     <div class="reading" aria-live="polite" tabindex="0"><p class="mono" data-from></p><p class="abs" data-abs></p></div>
     </div>
     <div class="dl">
-      <span class="mono">Take this table with you</span>
+      <span class="dlh">It's your data. Take it with you.</span>
       <button type="button" class="btn quiet" data-dl="csv">Download as CSV</button>
       <button type="button" class="btn quiet" data-dl="json">Download as JSON</button>
     </div>
   </section>
-  <section class="types">
-    <h2>Four kinds of answer</h2>
-    <dl>
-      <div><dt>Number</dt><dd class="v">298</dd></div>
-      <div><dt>Yes or no</dt><dd class="v">Yes</dd></div>
-      <div><dt>Text</dt><dd class="v">Paired Reading</dd></div>
-      <div><dt>List</dt><dd class="v">Grade 3, Grade 5</dd></div>
-    </dl>
-    <ul class="points">
-      <li><b>Table, cards or split view</b><span>Filter, choose columns, search answers and citations</span></li>
-      <li><b>Pause, resume, retry</b><span>Retry only what failed, or duplicate a job with new questions</span></li>
-      <li><b>From anywhere</b><span>A search, a collection, saved papers, a screening or an Evidence Library</span></li>
-      <li><b>A full workbook</b><span>Excel with Results, Questions, Job, Evidence and Summary sheets</span></li>
-    </ul>
-  </section>
-  <Next href="/assistant/" label="Assistant" text="Or have all of this done for you" />
-</Base>
+  
 <script>
   const lab = document.querySelector("[data-lab]"), papers = JSON.parse(lab.dataset.papers), abs = lab.querySelector("[data-abs]"), from = lab.querySelector("[data-from]");
   const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
@@ -72,7 +54,7 @@ const Q = [["size", "What is the sample size?"], ["design", "What design did it 
 <style>
   .lab { padding: 104px var(--edge) 64px; background: radial-gradient(100% 60% at 20% 0%, #0d1a38 0%, #000 60%); }
   .lab-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; align-items: end; margin-bottom: 48px; }
-  h1 { font-size: clamp(38px, 5vw, 84px); }
+  
   .row { display: grid; grid-template-columns: minmax(0, 4fr) repeat(3, minmax(0, 2fr)); gap: 12px; align-items: stretch; padding-block: 8px; border-top: 1px solid var(--line); }
   .head { color: var(--t2); font-size: 14px; border-top: 0; align-items: end; padding-bottom: 12px; }
   .paper b { font-weight: 400; font-size: 15px; line-height: 20px; display: block; margin-bottom: 8px; }
@@ -84,17 +66,12 @@ const Q = [["size", "What is the sample size?"], ["design", "What design did it 
   .cell[aria-pressed] { background: var(--t1); color: #000; }
   .cell[aria-pressed] .num, .cell[aria-pressed] .txt { color: #000; }
   .cell:disabled { cursor: default; color: var(--t3); }
-  .num { font-weight: 300; font-size: clamp(28px, 3vw, 44px); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .num { font-weight: 500; font-size: 22px; font-variant-numeric: tabular-nums; }
   .txt { font-size: 15px; line-height: 20px; }
   .split { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 5fr); gap: 32px; align-items: start; } .reading { position: sticky; top: 80px; padding: 24px; border: 1px solid var(--line2); border-radius: 18px; height: 460px; overflow-y: auto; scrollbar-width: thin; background: rgb(11 12 15 / .7); }
-  .abs { margin-top: 12px; color: var(--t3); font-size: clamp(16px, 1.3vw, 20px); line-height: 1.55; font-weight: 300; }
+  .abs { margin-top: 12px; color: var(--t3); font-size: clamp(17px, 1.5vw, 23px); line-height: 1.5; }
   .abs :global(mark) { background: none; color: #fff; font-weight: 400; box-shadow: inset 0 -2px 0 var(--ink); }
-  .dl { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px; } .dl .mono { margin-right: auto; }
-  .types { padding: 128px var(--edge); }
-  dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; margin-block: 48px; }
-  dt { color: var(--t2); } .v { font-weight: 300; font-size: clamp(26px, 3.2vw, 52px); letter-spacing: -.03em; margin-top: 8px; line-height: 1.1; color: var(--pale); }
-  .points { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
-  .points b { display: block; font-weight: 400; } .points span { color: var(--t2); font-size: 14px; }
+  .dl { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px; } .dlh { margin-right: auto; color: var(--t2); }
   @media (max-width: 1100px) { .split { grid-template-columns: minmax(0, 1fr); } .reading { position: static; height: 340px; } }
-  @media (max-width: 900px) { .lab-head, .points { grid-template-columns: minmax(0, 1fr); } dl { grid-template-columns: 1fr 1fr; } .row { grid-template-columns: 1fr 1fr 1fr; } .head span:first-child { display: none; } .paper { grid-column: 1 / -1; } .num { font-size: 26px; } .txt { font-size: 13px; } .cell { padding: 8px; } }
+  @media (max-width: 900px) { .lab-head { grid-template-columns: minmax(0, 1fr); } .row { grid-template-columns: 1fr 1fr 1fr; } .head span:first-child { display: none; } .paper { grid-column: 1 / -1; } .num { font-size: 26px; } .txt { font-size: 13px; } .cell { padding: 8px; } }
 </style>

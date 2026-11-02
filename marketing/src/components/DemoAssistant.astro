@@ -1,13 +1,11 @@
 ---
-import Base from "../../layouts/Base.astro";
-import Next from "../../components/Next.astro";
-const reach = [["Research", "Searches, papers, authors, topics, citations, the web"], ["Your library", "Saved papers, ratings, collections, bookmarks, history"], ["Jobs", "Starts, stops, retries and reads screenings and extractions"], ["Your team", "Workspaces, members, invitations, sharing, moving items"], ["Evidence Libraries", "Draft settings, team, sources, collections, records"], ["Zotero", "Groups, collections, items and PDFs"]];
+
 ---
-<Base title="Assistant: OpenScholar" description="Run a whole review with the assistant and press Allow yourself.">
-  <section class="run" data-run>
+
+  <section class="run" id="assistant" data-run>
     <div class="intro">
-      <h1>Ask for the review. Press Allow. Watch it happen</h1>
-      <p class="lead">It has the same 190 actions as the app, so what it does shows up where you'd have done it yourself. This replays a real run, and you're the one approving it.</p>
+      <h2>It does the work. You make the calls.</h2>
+      <p class="lead">Everything it does lands right where you'd have done it yourself, and nothing big happens until you say so. This replays a real run.</p>
     </div>
     <div class="desk">
       <div class="chat">
@@ -21,20 +19,7 @@ const reach = [["Research", "Searches, papers, authors, topics, citations, the w
       </div>
     </div>
   </section>
-  <section class="reach">
-    <h2>What it can reach</h2>
-    <ul>{reach.map(([a, b]) => <li><b>{a}</b><span>{b}</span></li>)}</ul>
-  </section>
-  <section class="safe">
-    <h2>What it does alone, and what it asks about</h2>
-    <div class="cols">
-      <div><h3>On its own</h3><ul><li>Reading your records</li><li>Saving and organizing papers, with Undo</li><li>Making a collection</li></ul></div>
-      <div><h3>Asks first</h3><ul><li>Running a screening or an extraction</li><li>Deleting a collection</li><li>Sharing an item with someone</li><li>Changing a library's draft</li></ul></div>
-      <div><h3>Also in the chat</h3><ul><li>@ to point at a search, collection or paper</li><li>Attach images, PDFs and text files</li><li>Share a chat to read or to write</li><li>Pick the model and effort</li></ul></div>
-    </div>
-  </section>
-  <Next href="/workspaces/" label="Teams" text="Bring other people into the same work" />
-</Base>
+  
 <script>
   const root = document.querySelector("[data-run]"), log = root.querySelector("[data-log]"), send = root.querySelector("[data-send]"), go = root.querySelector("[data-go]");
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches, wait = (ms) => new Promise((r) => setTimeout(r, reduced ? 0 : ms));
@@ -46,7 +31,7 @@ const reach = [["Research", "Searches, papers, authors, topics, citations, the w
   const num = (el, v) => { el.textContent = v; };
   function reset() { log.innerHTML = ""; $("[data-col]").innerHTML = ""; num($("[data-col-n]"), "Empty"); num($("[data-scr-s]"), "Not started"); $("[data-scr-p]").style.strokeDashoffset = 1; ["[data-y]", "[data-u]", "[data-n]"].forEach((s) => num($(s), 0)); num($("[data-ext-s]"), "Not started"); $("[data-ext]").innerHTML = ""; root.querySelectorAll(".pane").forEach((p) => p.removeAttribute("data-live")); }
   async function play() {
-    reset(); send.hidden = true; add("me", "Find three randomised trials of peer tutoring in primary school reading, screen them, and extract the sample size.");
+    reset(); send.hidden = true; root.querySelector("[data-go]").textContent = "Send"; add("me", "Find three randomised trials of peer tutoring in primary school reading, screen them, and extract the sample size.");
     await step("Looking papers up", "Looked papers up"); await step("Reading 2 papers", "Read 2 papers");
     const c = $('[data-pane="col"]'); c.setAttribute("data-live", ""); await step("Making a collection", "Made a collection: Audit set");
     for (let i = 0; i < 3; i++) { await wait(320); const li = document.createElement("li"); li.textContent = papers[i]; $("[data-col]").append(li); num($("[data-col-n]"), `${i + 1} paper${i ? "s" : ""}`); }
@@ -68,6 +53,8 @@ const reach = [["Research", "Searches, papers, authors, topics, citations, the w
     send.hidden = false; go.textContent = "Run again";
   }
   send.addEventListener("submit", (e) => { e.preventDefault(); play(); });
+  // It starts by itself when it comes into view, and stops at the first Allow for the visitor to press.
+  new IntersectionObserver(([e], io) => { if (e.isIntersecting) { io.disconnect(); if (!send.hidden) play(); } }, { threshold: 0.45 }).observe(root.querySelector(".desk"));
 </script>
 <style is:global>
   [data-log] .me { justify-self: end; max-width: 86%; background: var(--s3); padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 20px; }
@@ -83,9 +70,9 @@ const reach = [["Research", "Searches, papers, authors, topics, citations, the w
   .ex-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 110px; gap: 12px; align-items: center; padding-block: 8px; border-top: 1px solid var(--line); font-size: 14px; animation: askIn .3s var(--ease) both; } .ex-row b { font-weight: 300; font-size: 24px; } .ex-row.miss b { font-size: 14px; font-weight: 400; color: var(--t3); }
 </style>
 <style>
-  .run { padding: 104px var(--edge) 64px; background: radial-gradient(90% 60% at 100% 0%, #10204a 0%, #000 62%); }
+  .run { padding: 104px var(--edge) 64px; background: radial-gradient(90% 60% at 100% 0%, #3a2606 0%, #000 62%); }
   .intro { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; align-items: end; margin-bottom: 40px; }
-  h1 { font-size: clamp(36px, 4.2vw, 68px); }
+  
   .desk { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; }
   .chat { height: max(540px, calc(100svh - 300px)); display: flex; flex-direction: column; background: var(--s1); border: 1px solid var(--line2); border-radius: 22px; overflow: hidden; }
   .log { flex: 1; min-height: 0; overflow-y: auto; padding: 20px; display: grid; align-content: start; gap: 12px; }
@@ -94,14 +81,10 @@ const reach = [["Research", "Searches, papers, authors, topics, citations, the w
   .acct { display: grid; grid-template-rows: auto auto 1fr; gap: 16px; height: max(540px, calc(100svh - 300px)); }
   .pane { background: var(--s1); border: 1px solid var(--line); border-radius: 22px; padding: 14px 20px; overflow: hidden; opacity: .42; transition: opacity .4s var(--ease), border-color .4s var(--ease); min-height: 0; }
   .pane[data-live] { opacity: 1; border-color: var(--line2); }
-  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; } header b { font-weight: 300; font-size: 22px; letter-spacing: -.01em; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; } header b { font-weight: 500; font-size: 22px; letter-spacing: -.01em; }
   ul[data-col] { min-height: 96px; }
   .ring { display: flex; align-items: center; gap: 24px; }
   svg circle { fill: none; stroke: var(--s3); stroke-width: 5; } svg .p { stroke: var(--good); stroke-dasharray: 1; stroke-dashoffset: 1; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset .5s var(--ease); }
-  .ring dl { display: flex; gap: 32px; } .ring dt { font-size: 13px; color: var(--t2); } .ring dd { font-weight: 300; font-size: 32px; font-variant-numeric: tabular-nums; }
-  .reach { padding: 128px var(--edge) 64px; }
-  .reach ul { margin-top: 48px; columns: 2; column-gap: 64px; }
-  .reach li { break-inside: avoid; padding-block: 20px; border-top: 1px solid var(--line); } .reach b { display: block; font-weight: 300; font-size: clamp(26px, 3vw, 44px); letter-spacing: -.02em; } .reach span { color: var(--t2); }
-  .safe { padding: 64px var(--edge) 128px; } .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin-top: 48px; } .cols li { padding-block: 10px; border-top: 1px solid var(--line); color: var(--t2); font-size: 15px; } .cols h3 { font-weight: 400; margin-bottom: 12px; }
-  @media (max-width: 900px) { .intro, .desk, .cols { grid-template-columns: minmax(0, 1fr); } .acct { height: auto; } .chat { height: 560px; } .reach ul { columns: 1; } }
+  .ring dl { display: flex; gap: 32px; } .ring dt { font-size: 13px; color: var(--t2); } .ring dd { font-weight: 500; font-size: 32px; font-variant-numeric: tabular-nums; }
+  @media (max-width: 900px) { .intro, .desk { grid-template-columns: minmax(0, 1fr); } .acct { height: auto; } .chat { height: 560px; } }
 </style>

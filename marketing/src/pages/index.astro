@@ -1,201 +1,117 @@
 ---
 import Base from "../layouts/Base.astro";
-import meta from "../data/field-meta.json";
-import papers from "../data/extraction.json";
-import { APP, LIBRARIES } from "../data/site.mjs";
-const yearMax = Math.max(...meta.years.map((y) => y[1]));
-const yearTicks = meta.years.filter(([y]) => y % 3 === 2 || y === 2026);
-const n = (x) => x.toLocaleString("en-US");
-const CH = ["Read", "Ask", "Overview", "Screen", "Extract", "Assistant", "Publish", "Begin"];
-const steps = ["Searched for peer tutoring trials", "Made a collection, saved 3 papers", "Screening started, after you allowed it", "Extraction started, after you allowed it", "Read the results and wrote them up"];
-const rowsShown = papers.slice(0, 5);
-const deeper = [
-  ["/search/", "Search", "Try a real search against 329 million works"],
-  ["/screening/", "Screening", "Change the rules and watch a stream of papers split"],
-  ["/extraction/", "Extraction", "Click any answer and see the sentence behind it"],
-  ["/assistant/", "Assistant", "Run a whole review and press Allow yourself"],
-  ["/workspaces/", "Teams", "See your work the way each person sees it"],
-  ["/evidence-libraries/", "Evidence Libraries", "Design a library and watch it change as you type"],
-  ["/maps/", "Globe", "Spin the Earth and find any of 9,988 institutions"],
-  ["/features/", "All features", "Every feature, in one searchable catalogue"],
-];
+import AskBar from "../components/AskBar.astro";
+const statement = "Too many tabs. A spreadsheet nobody trusts. A review that's out of date before it's done. All that, to answer one question.".split(" ");
+const scenes = [[2, "telescope"], [3, "prism"], [4, "spectrograph"], [5, "console"], [6, "array"], [7, "plates"], [8, "horizon"]];
+const steps = ["Finding the papers that matter", "Saving them to a collection", "Screening them against your questions", "Pulling out the details you asked for", "Writing up what it found"];
+const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26%", "Tomas is reading the screening"], ["left:10%;top:52%", "Amina added papers to the collection"], ["left:74%;top:44%", "Lena shared it with a colleague"]];
 ---
-<Base title="OpenScholar: read everything, keep what holds up" description="OpenScholar searches 329 million works, reads them against your questions, and publishes what holds up as an Evidence Library anyone can search.">
+<Base title="OpenScholar: know what the research really says" description="From your first question to published evidence, OpenScholar does the reading with you." journey>
   <canvas class="field" data-field aria-hidden="true"></canvas>
-  <nav class="rail" data-rail aria-label="Chapters">{CH.map((c, i) => <a href={`#ch${i}`}><span>{c}</span></a>)}</nav>
-  <div hidden data-year-max={yearMax}></div>
+  <div class="photos" aria-hidden="true">{scenes.map(([i, n]) => <img data-photo={i} src={`/img/scene-${n}-1672.avif`} width="1672" height="941" decoding="async" alt="" />)}</div>
 
-  <section class="ch hero" id="ch0" data-ch="0">
-    <div class="pin">
-      <div class="copy" data-copy>
-        <h1>Read everything.<br />Keep what holds up.</h1>
-        <div class="hero-foot">
-          <p class="lead">OpenScholar searches 329 million works, reads them against your questions, and publishes what holds up as a library anyone can search.</p>
-          <div class="acts"><a class="btn primary" href={APP}>Start with a question</a><a class="btn quiet" href="/features/">Every feature</a></div>
-        </div>
-        <p class="mono cap" data-cap>Each light is a real paper on AI in education, {n(meta.n)} of them. The oldest sit at the centre, this year's at the rim.</p>
-      </div>
-    </div>
-  </section>
+  <section class="ch hero" data-ch="0"><div class="pin"><div class="copy" data-copy>
+    <h1>Know what the research really says</h1>
+    <div class="hero-foot"><p class="lead">From your first question to published evidence, OpenScholar does the reading with you.</p><AskBar id="ask-hero" /></div>
+  </div></div></section>
 
-  <section class="ch" id="ch1" data-ch="1">
-    <div class="pin end">
-      <div class="copy narrow" data-copy>
-        <h2>Ask, and one part of the sky lights up</h2>
-        <div class="q"><span class="q-t" data-typed='ChatGPT and generative AI'></span><i></i></div>
-        <p class="lead">Type a question or an exact query. Here it lights one topic area of the map, 21,805 papers.</p>
-      </div>
-    </div>
-  </section>
+  <section class="ch said" data-ch="1"><div class="pin mid"><p class="say" data-said data-copy>{statement.map((w) => <span>{w} </span>)}</p></div></section>
 
-  <section class="ch" id="ch2" data-ch="2">
-    <div class="pin">
-      <div class="copy narrow" data-copy>
-        <h2>Then it reads the whole result</h2>
-        <p class="lead">An AI overview counts everything and reads the most cited, so you see the shape of a field before the first paper. These bars are the same papers, stacked by year.</p>
-      </div>
-    </div>
-  </section>
+  <section class="ch" data-ch="2"><div class="pin"><div class="copy find" data-copy>
+    <div class="t"><h2>Ask like a person. Search like a librarian.</h2><p class="lead">Your question goes in plain. The search comes out expert, and you see the shape of the whole field before you read a single paper.</p></div>
+    <div class="shot overview"><img src="/img/app-overview.avif" width="1600" height="898" decoding="async" alt="An AI overview of a search: a written summary, papers per year, and where to start reading" /></div>
+  </div></div></section>
 
-  <section class="ch" id="ch3" data-ch="3">
-    <div class="pin top-left">
-      <div class="copy" data-copy>
-        <h2>Your questions are the gates</h2>
-        <p class="lead wide">A model answers yes or no for every paper. Your points decide who carries on.</p>
-      </div>
-    </div>
-  </section>
+  <section class="ch" data-ch="3"><div class="pin"><div class="copy screen" data-copy>
+    <div class="t"><h2 class="huge">Let the noise fall away</h2><p class="lead">Tell it what matters. Every paper is judged by your rules, in the open, and you always have the last word.</p></div>
+    <div class="shot rows"><img src="/img/app-rows.avif" width="1600" height="1424" decoding="async" alt="A screening list where each paper shows its answers and a star rating" /></div>
+  </div></div></section>
 
-  <section class="ch" id="ch4" data-ch="4">
-    <div class="pin">
-      <div class="copy narrow small" data-copy>
-        <h2>What's left becomes data</h2>
-        <p class="lead">Ask the same questions of every paper. Each answer carries a confidence score and the sentence it came from.</p>
-      </div>
-    </div>
-  </section>
+  <section class="ch" data-ch="4"><div class="pin"><div class="copy extract" data-copy>
+    <div class="t"><h2>Stop copying. Start knowing.</h2></div>
+    <figure class="moment"><span class="asked">What is the sample size?</span><b class="ans">298</b><blockquote>A randomised trial was conducted in four Colombian elementary schools with eight classes, and <mark>298 third and fifth grade pupils</mark>.</blockquote><figcaption>Every answer, tied to the sentence it came from</figcaption></figure>
+  </div></div></section>
 
-  <section class="ch" id="ch5" data-ch="5">
-    <div class="pin center">
-      <div class="copy chat" data-copy>
-        <h2>Or just ask for the review</h2>
-        <ol class="steps">{steps.map((s) => <li data-step><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5" /></svg>{s}</li>)}</ol>
-        <p class="lead">The assistant has the same 190 actions as the app. It stops and asks before it runs a job.</p>
-      </div>
-    </div>
-  </section>
+  <section class="ch" data-ch="5"><div class="pin"><div class="copy assist" data-copy>
+    <div class="t"><h2>Hand over the whole review</h2><p class="lead">Describe what you need and watch it happen. You approve the big moves, and it admits what it couldn't read.</p></div>
+    <div class="run"><ol>{steps.map((s) => <li data-step><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5" /></svg>{s}</li>)}</ol><a class="btn primary" href="/try/#assistant">Try it yourself</a></div>
+  </div></div></section>
 
-  <section class="ch" id="ch6" data-ch="6">
-    <div class="pin">
-      <div class="copy narrow" data-copy>
-        <h2>Publish it for the world to read</h2>
-        <p class="lead">An Evidence Library is a public site with its own address, search, maps, AI answers and digests. The lights are 9,988 institutions behind one of them.</p>
-        <ul class="libs">{LIBRARIES.map((l) => <li><a href={l.href}><span>{l.name}</span><b class="mono">{l.records}</b></a></li>)}</ul>
-      </div>
-    </div>
-  </section>
+  <section class="ch" data-ch="6"><div class="pin top"><div class="copy team" data-copy>
+    <h2>Many eyes on one patch of sky</h2><p class="lead">Your whole team, in one place, on the same evidence, seeing it change as it happens.</p><a class="link" href="/teams/">See how teams work in it</a>
+    <div class="sky" aria-hidden="true">{people.map(([pos, what], i) => <span class="bubble" style={`${pos};animation-delay:${i * 1.6}s`}><i></i>{what}</span>)}</div>
+  </div></div></section>
 
-  <section class="ch last" id="ch7" data-ch="7">
-    <div class="pin bottom">
-      <div class="copy begin" data-copy>
-        <h2>Start with a question</h2>
-        <div class="acts"><a class="btn primary" href={APP}>Open OpenScholar</a></div>
-      </div>
-    </div>
-  </section>
+  <section class="ch" data-ch="7"><div class="pin"><div class="copy lib" data-copy>
+    <div class="t"><h2>Give your evidence a home</h2><p class="lead">Turn what you've found into a public library, with your name on the door, that anyone can search, explore and question. New work finds its own way in.</p><a class="btn primary" href="/evidence-libraries/">Explore Evidence Libraries</a></div>
+    <a class="shot live" href="https://wealth-inequality.openscholar.ai"><img src="/img/live-wi-home.avif" width="1920" height="1200" decoding="async" alt="A live Evidence Library's home page" /></a>
+  </div></div></section>
 
-  <div class="labels" aria-hidden="true">
-    {yearTicks.map(([y, c]) => <span class="lab tick" data-year={y} data-count={c}>{y}</span>)}
-    {meta.years.filter(([y]) => y >= 2024).map(([y, c]) => <span class="lab count" data-year={y} data-count={c} data-at="top">{n(c)}{y === 2026 ? " so far" : ""}</span>)}
-    {["Is it a randomised trial?", "Is it about primary school?", "Does it measure reading?"].map((g) => <span class="lab gate" data-gate>{g}</span>)}
-    {["Sample size", "Design", "Effect size"].map((h, c) => <span class="lab head" data-cell data-r="-1" data-c={c}>{h}</span>)}
-    {rowsShown.flatMap((p, r) => [p.size, p.design, p.effect].map((cell, c) => <span class:list={["lab val", { dim: cell.at < 0, big: c === 0 }]} data-cell data-r={r} data-c={c}>{cell.value}</span>))}
-    {rowsShown.map((p, r) => <span class="lab row" data-cell data-r={r} data-c="-1">{p.title}</span>)}
-  </div>
-
-  <section class="deep">
-    <h2>Now try it yourself</h2>
-    <ul>{deeper.map(([href, t, d]) => <li><a href={href}><b>{t}</b><span>{d}</span></a></li>)}</ul>
-  </section>
+  <section class="ch last" data-ch="8"><div class="pin mid"><div class="copy end" data-copy><h2>What do you want to know?</h2><AskBar id="ask-end" /><a class="link" href="/docs/">Read the docs</a></div></div></section>
 </Base>
 <script>
   import "../scripts/home.js";
 </script>
 <style>
   .field { position: fixed; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1.4s var(--ease); pointer-events: none; }
-  .ch { position: relative; height: 200vh; height: 200svh; pointer-events: none; }
-  .hero { height: 160svh; }
-  .last { height: 170svh; }
-  .pin { position: sticky; top: 0; height: 100svh; padding: 96px var(--edge) 40px; display: flex; align-items: center; }
+  .photos { position: fixed; inset: 0; pointer-events: none; mix-blend-mode: screen; }
+  .photos img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; visibility: hidden; }
+  .ch { position: relative; height: 220svh; pointer-events: none; }
+  .hero { height: 150svh; } .said { height: 300svh; } .last { height: 170svh; }
+  .pin { position: sticky; top: 0; height: 100svh; padding: 88px var(--edge) 40px; display: flex; flex-direction: column; justify-content: flex-end; overflow: clip; }
+  .pin.mid { justify-content: center; align-items: center; text-align: center; } .pin.top { justify-content: flex-start; }
   .copy { pointer-events: auto; will-change: opacity, transform; }
-  .narrow { max-width: min(36vw, 560px); }
-  .narrow .lead, .narrow .q { margin-top: 24px; }
-  .small { max-width: 25vw; } .small h2 { font-size: clamp(32px, 3.4vw, 56px); }
-  .wide { max-width: 44rem; margin-top: 16px; }
-  .end { justify-content: flex-end; } .end .copy { padding: 32px; margin: -32px; background: radial-gradient(closest-side, rgb(0 0 0 / .78) 55%, transparent); }
-  .top-left { align-items: flex-start; }
-  .center { justify-content: center; text-align: center; }
-  .bottom { align-items: flex-end; justify-content: center; text-align: center; padding-bottom: 96px; }
-  .acts { display: flex; flex-wrap: wrap; gap: 12px; }
-  .begin .acts { justify-content: center; margin-top: 24px; }
+  .copy a, .copy input, .copy button { pointer-events: auto; }
+  .lead { margin-top: 20px; max-width: 34rem; text-shadow: 0 1px 24px #000; color: rgb(242 244 248 / .82); }
+  h2 { text-shadow: 0 2px 40px rgb(0 0 0 / .85); }
 
-  .hero .pin { align-items: flex-end; padding-bottom: 32px; }
   .hero .copy { width: 100%; }
-  .hero h1 { text-shadow: 0 0 40px #000; }
-  .hero-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px 48px; margin-top: 32px; }
-  .hero-foot .lead { max-width: 38rem; }
-  .cap { margin-top: 24px; }
+  .hero h1 { max-width: 9.5em; font-size: clamp(54px, 9vw, 156px); line-height: .94; letter-spacing: -.05em; text-shadow: 0 2px 40px rgb(0 0 0 / .5); }
+  .hero-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px 48px; margin-top: 28px; }
+  .hero-foot .lead { margin: 0; max-width: 26rem; }
 
-  .q { display: flex; align-items: center; height: 56px; padding-inline: 16px; border: 1px solid var(--line2); border-radius: 12px; background: rgb(0 0 0 / .6); font: 400 18px var(--mono); color: var(--pale); }
-  .q i { width: 2px; height: 22px; margin-left: 2px; background: var(--pale); }
+  .say { font-size: clamp(36px, 6vw, 96px); font-weight: 500; line-height: 1.06; letter-spacing: -.04em; max-width: 14em; text-shadow: 0 2px 30px #000; }
+  .say span { opacity: .14; }
 
-  .chat h2 { margin-bottom: 32px; }
-  .steps { display: grid; gap: 10px; width: min(460px, 86vw); margin-inline: auto; text-align: left; }
-  .steps li { display: flex; align-items: center; gap: 12px; font-size: 16px; color: var(--t3); transition: color .25s var(--ease); }
-  .steps svg { flex: none; opacity: .25; transition: opacity .25s var(--ease), color .25s var(--ease); }
-  .steps li[data-done] { color: var(--t1); }
-  .steps li[data-done] svg { opacity: 1; color: var(--good); }
-  .chat .lead { margin: 32px auto 0; max-width: 32rem; }
+  .shot { display: block; border-radius: 16px; overflow: hidden; background: #050507; box-shadow: 0 0 0 1px rgb(255 255 255 / .12), 0 40px 120px -20px #000; } .shot img { width: 100%; height: auto; }
 
-  .libs { margin-top: 28px; }
-  .libs a { display: flex; justify-content: space-between; gap: 16px; padding-block: 10px; border-top: 1px solid var(--line); font-size: 15px; transition: color .15s var(--ease); }
-  .libs a:hover { color: var(--ink); }
-  .libs b { font-weight: 400; flex: none; }
+  .find { padding-top: 2vh; max-width: 48vw; flex: 1; }
+  .find .t { } .find h2 { font-size: clamp(38px, 5vw, 84px); }
+  .overview { position: absolute; left: var(--edge); bottom: 0; translate: 0 38%; width: min(56vw, 880px); box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 40px 120px -20px #000, 40px -30px 120px -40px #3b82f6; }
 
-  .labels { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
-  .lab { position: absolute; left: 0; top: 0; opacity: 0; visibility: hidden; white-space: nowrap; }
-  .lab > * { position: relative; }
-  .tick { font: 400 13px var(--mono); color: var(--t2); margin: 4px 0 0 -16px; }
-  .count { font: 400 14px var(--mono); color: var(--t1); margin: -18px 0 0 -30px; }
-  .gate { font-size: 16px; color: var(--t1); margin: -36px 0 0 -90px; width: 180px; text-align: center; }
-  .head { font-size: 14px; color: var(--t2); margin: -8px 0 0 -40px; }
-  .val { font-size: 14px; margin: -10px 0 0 -48px; color: var(--t1); width: 110px; white-space: normal; text-align: left; line-height: 18px; }
-  .val.big { font-size: 30px; font-weight: 300; margin: -18px 0 0 -30px; line-height: 36px; }
-  .val.dim { color: var(--t3); }
-  .row { font-size: 13px; color: var(--t2); width: 210px; white-space: normal; line-height: 17px; text-align: right; margin: -24px 0 0 -224px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .screen { position: absolute; inset: 88px var(--edge) 0; } .screen .huge { font-size: clamp(40px, 5.6vw, 92px); line-height: .96; }
+  .screen .lead { max-width: 36rem; margin-top: 12px; }
+  .rows { position: absolute; left: 0; top: 56svh; width: min(46vw, 720px); box-shadow: 0 -1px 0 0 rgb(180 255 220 / .7), 0 -30px 120px -30px #34d399, 0 40px 120px -20px #000; }
 
-  .rail { position: fixed; right: 16px; top: 50%; translate: 0 -50%; z-index: 20; display: grid; gap: 2px; }
-  .rail a { display: flex; align-items: center; justify-content: flex-end; gap: 10px; height: 22px; font-size: 12px; color: transparent; transition: color .15s var(--ease); }
-  .rail a::after { content: ""; width: 14px; height: 1px; background: var(--t3); transition: width .2s var(--ease), background-color .2s var(--ease); }
-  .rail a[data-on] { color: var(--t2); }
-  .rail a[data-on]::after { width: 28px; background: var(--t1); }
-  .rail a:hover { color: var(--t1); }
+  .extract { height: 100%; position: relative; } .extract h2 { font-size: clamp(40px, 6vw, 104px); max-width: 6.4em; line-height: .96; }
+  .moment { position: absolute; right: 0; bottom: 0; width: min(40vw, 620px); margin: 0; padding: 28px; border-radius: 24px; background: rgb(8 12 22 / .78); box-shadow: 0 0 0 1px rgb(150 220 255 / .25), 0 30px 120px -20px #22d3ee66; backdrop-filter: blur(14px); }
+  .asked { color: var(--t2); font-size: 15px; } .ans { display: block; font-weight: 500; font-size: clamp(64px, 9vw, 136px); line-height: 1; letter-spacing: -.05em; margin-block: 4px 16px; color: #fff; }
+  blockquote { font-size: clamp(16px, 1.5vw, 21px); line-height: 1.4; color: rgb(242 244 248 / .7); } blockquote mark { background: none; color: #fff; box-shadow: inset 0 -2px 0 #22d3ee; }
+  figcaption { margin-top: 14px; font-size: 14px; color: var(--t2); }
 
-  .deep { position: relative; background: #000; padding: 128px var(--edge) 96px; }
-  .deep ul { margin-top: 48px; }
-  .deep a { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: baseline; gap: 24px; padding-block: 18px; border-top: 1px solid var(--line); transition: padding-left .25s var(--ease), color .15s var(--ease); }
-  .deep a:hover { color: var(--ink); }
-  .deep b { font-weight: 300; font-size: clamp(30px, 4vw, 60px); line-height: 1.1; letter-spacing: -.03em; }
-  .deep span { color: var(--t2); font-size: clamp(15px, 1.3vw, 19px); font-weight: 300; }
+  .assist { height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 32px; } .assist .t { max-width: 44rem; } .assist h2 { font-size: clamp(40px, 5.4vw, 92px); }
+  .run { width: min(480px, 100%); padding: 24px; border-radius: 24px; background: rgb(22 16 6 / .72); box-shadow: 0 0 0 1px rgb(255 220 150 / .2), 0 30px 100px -20px #fbbf2455; backdrop-filter: blur(14px); }
+  .run ol { display: grid; gap: 12px; margin-bottom: 20px; } .run li { display: flex; align-items: center; gap: 12px; color: var(--t3); transition: color .3s var(--ease); font-size: 17px; } .run svg { flex: none; opacity: .2; transition: opacity .3s var(--ease), color .3s var(--ease); } .run li[data-done] { color: var(--t1); } .run li[data-done] svg { opacity: 1; color: #fbbf24; }
+
+  .team { position: relative; height: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; padding-top: 2vh; } .team h2 { font-size: clamp(40px, 5.8vw, 100px); max-width: 11em; line-height: .98; }
+  .link { display: inline-block; margin-top: 16px; font-size: 18px; color: var(--pale); }
+  .sky { position: absolute; inset: 0; pointer-events: none; }
+  .bubble { position: absolute; display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 999px; background: rgb(14 20 38 / .88); box-shadow: 0 0 0 1px rgb(255 255 255 / .16), 0 20px 50px -10px #000; font-size: 15px; white-space: nowrap; animation: float 8s var(--ease) infinite; }
+  .bubble i { width: 30px; height: 30px; border-radius: 50%; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; }
+  @keyframes float { 0%, 100% { opacity: 0; translate: 0 14px; } 12%, 70% { opacity: 1; translate: 0 0; } }
+
+  .lib { height: 100%; display: flex; flex-direction: column; justify-content: space-between; } .lib h2 { font-size: clamp(40px, 5.8vw, 100px); max-width: 7em; line-height: .96; } .lib .btn { margin-top: 20px; } .lib .lead { max-width: 28rem; }
+  .live { position: absolute; left: var(--edge); bottom: 0; translate: 0 52%; width: min(44vw, 700px); transition: translate .5s var(--ease); box-shadow: 0 0 0 1px rgb(255 240 200 / .22), 0 40px 120px -20px #000, 30px -20px 120px -40px #fbbf24; } .live:hover { translate: 0 44%; }
+
+  .end { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; padding-bottom: 30vh; } .end .link { margin-top: 0; } .end h2 { font-size: clamp(44px, 7.4vw, 124px); max-width: 10em; }
 
   @media (max-width: 899px) {
-    .rail, .labels { display: none; }
-    .narrow { max-width: none; }
-    .pin { align-items: flex-end; padding-bottom: 32px; }
-    .top-left { align-items: flex-start; }
-    .center { align-items: flex-end; }
-    .deep a { grid-template-columns: minmax(0, 1fr); gap: 2px; }
-    .ch .copy { background: linear-gradient(transparent, rgb(0 0 0 / .72) 24px); padding-top: 24px; }
-    .hero .copy { background: none; }
+    .ch { height: 180svh; } .said { height: 260svh; }
+    .hero h1 { font-size: clamp(48px, 14vw, 76px); }
+    .find, .screen, .extract, .lib { display: block; height: auto; position: static; max-width: none; flex: none; inset: auto; } .assist { justify-content: flex-end; height: auto; } .team { height: auto; padding-top: 0; }
+    .pin { justify-content: flex-end; background: linear-gradient(transparent 35%, rgb(0 0 0 / .72) 62%); } .hero .pin, .said .pin, .last .pin { background: none; } .pin.top { justify-content: flex-start; background: linear-gradient(rgb(0 0 0 / .6), transparent 50%); }
+    .overview, .rows, .live, .moment { position: static; translate: none; width: 100%; margin-top: 16px; top: auto; }
+    .overview { max-height: 34svh; } .rows { max-height: 30svh; } .live { display: none; } .moment { padding: 18px; } .ans { font-size: 56px; margin-bottom: 8px; }
+    .sky { display: none; } .run { padding: 16px; } .run ol { gap: 8px; margin-bottom: 12px; } .run li { font-size: 15px; }
   }
 </style>
