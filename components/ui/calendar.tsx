@@ -13,6 +13,8 @@ import {
   type DayButton,
 } from "react-day-picker"
 
+import { useLocale, useTranslations } from "next-intl"
+
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
 
@@ -29,6 +31,8 @@ function Calendar({
   buttonVariant?: React.ComponentProps<typeof Button>["variant"]
 }) {
   const defaultClassNames = getDefaultClassNames()
+  const locale = useLocale()
+  const t = useTranslations("common")
 
   return (
     <DayPicker
@@ -38,9 +42,13 @@ function Calendar({
         className
       )}
       captionLayout={captionLayout}
+      dir={locale === "ar" ? "rtl" : "ltr"}
+      labels={{ labelNext: () => t("next"), labelPrevious: () => t("previous") }}
       formatters={{
-        formatMonthDropdown: (date) =>
-          date.toLocaleString("default", { month: "short" }),
+        formatMonthDropdown: (date) => date.toLocaleString(locale, { month: "short" }),
+        formatCaption: (date) => date.toLocaleString(locale, { month: "long", year: "numeric" }),
+        formatWeekdayName: (date) => date.toLocaleString(locale, { weekday: "short" }),
+        formatDay: (date) => date.toLocaleString(locale, { day: "numeric" }),
         ...formatters,
       }}
       classNames={{

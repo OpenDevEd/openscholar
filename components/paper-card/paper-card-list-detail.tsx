@@ -158,7 +158,7 @@ export function PaperCardListDetail({
             onClick={hide?.focusMode ? undefined : handlePaperOpened}
             className={cn("text-start w-full", !hide?.focusMode && "group/title")}
           >
-            <h3 className="font-semibold text-lg leading-snug text-wrap-anywhere group-hover/title:text-primary transition-colors">
+            <h3 dir="auto" className="font-semibold text-lg leading-snug text-wrap-anywhere group-hover/title:text-primary transition-colors">
               <QueryMatchText
                 text={showTranslated && translatedContent ? translatedContent.translatedTitle : result.title}
               />
@@ -190,7 +190,7 @@ export function PaperCardListDetail({
         {/* Abstract */}
         {result.abstract && (
           <div className="mb-4">
-            <p className="text-sm text-foreground leading-relaxed text-wrap-anywhere">
+            <p dir="auto" className="text-sm text-foreground leading-relaxed text-wrap-anywhere">
               <QueryMatchText text={isExpanded
                 ? showTranslated && translatedContent
                   ? translatedContent.translatedAbstract
