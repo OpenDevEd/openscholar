@@ -10,7 +10,6 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Select,
   SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -28,7 +27,7 @@ import { localeToLanguageCode } from "@/lib/i18n/locale-map";
 import { useAppToast } from "@/lib/toast";
 import { useResultsTranslationSettingsStore } from "@/lib/store";
 import { TranslationContext } from "@/components/results-contexts";
-import { languageOptions } from "@/lib/ai/core/languages";
+import { LanguageSelectItems } from "@/components/language-selector";
 import { cn } from "@/lib/utils";
 
 interface ResultsTranslationControlProps {
@@ -169,7 +168,6 @@ export function TranslationSettingsMenu({
   const toast = useAppToast();
   const t = useTranslations("searchCommand");
   const tc = useTranslations("common");
-  const tl = useTranslations("languages");
   const targetModeId = useId();
   const localeTargetId = `${targetModeId}-target-locale`;
   const manualTargetId = `${targetModeId}-target-manual`;
@@ -298,23 +296,7 @@ export function TranslationSettingsMenu({
                   <SelectValue placeholder={tc("language")} />
                 </SelectTrigger>
                 <SelectContent className="z-[220] max-h-72">
-                  {languageOptions.map((language) => (
-                    <SelectItem key={language.code} value={language.code}>
-                      <span className="flex w-full items-center justify-between gap-3">
-                        <span className="flex items-center gap-2">
-                          <img
-                            src={language.flagUrl}
-                            alt={`${language.name} flag`}
-                            className="h-3 w-4 shrink-0 rounded-sm border border-border object-cover"
-                          />
-                          <span>{tl(language.code as never) || language.name}</span>
-                        </span>
-                        <span className="text-3xs tracking-wide text-muted-foreground">
-                          {language.code.toUpperCase()}
-                        </span>
-                      </span>
-                    </SelectItem>
-                  ))}
+                  <LanguageSelectItems />
                 </SelectContent>
               </Select>
             </div>
