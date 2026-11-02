@@ -1,11 +1,13 @@
 @font-face { font-family: Ubuntu; font-weight: 400; font-display: swap; src: url(/fonts/ubuntu-latin-400-normal.woff2) format("woff2"); }
 @font-face { font-family: Ubuntu; font-weight: 500; font-display: swap; src: url(/fonts/ubuntu-latin-500-normal.woff2) format("woff2"); }
+@font-face { font-family: "Ubuntu Mono"; font-weight: 400; font-display: swap; src: url(/fonts/ubuntu-mono-latin-400-normal.woff2) format("woff2"); }
 @view-transition { navigation: auto; }
 :root {
   color-scheme: light;
   --ink: #0a1a3f; --t2: #47557a; --t3: #5d698a; --line: rgb(10 26 63 / .1); --line2: rgb(10 26 63 / .18); --soft: #f3f6fb; --brand: #2563eb; --brand-dark: #1d4ed8;
   --ease: cubic-bezier(.22, 1, .36, 1);
-  --sans: Ubuntu, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sans: Ubuntu, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; --mono: "Ubuntu Mono", ui-monospace, Menlo, monospace;
+  --spectrum: linear-gradient(90deg, #2563eb, #06b6d4, #10b981, #f59e0b, #f43f5e); --night: #010827;
   --gap: 16px; --pad: clamp(24px, 4.4vw, 64px); --r: 28px;
 }
 *, *::before, *::after { box-sizing: border-box; }
@@ -23,11 +25,25 @@ p { text-wrap: pretty; }
 .lead { font-size: clamp(17px, 1.5vw, 20px); line-height: 1.45; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 :focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
-.strip { max-width: 1280px; margin-inline: auto; padding-inline: var(--gap); display: grid; gap: var(--gap); }
+.strip { max-width: 1280px; margin-inline: auto; padding-inline: var(--gap); display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--gap); }
 
 /* A colour field panel. */
-.panel { position: relative; isolation: isolate; overflow: hidden; border-radius: var(--r); background: var(--bg, #0b1f6b); color: #fff; scroll-margin-top: 84px; }
+.panel { position: relative; isolation: isolate; overflow: clip; border-radius: var(--r); background: var(--bg, #0b1f6b); color: #fff; scroll-margin-top: 84px; }
 .panel > .field { position: absolute; inset: 0; z-index: -1; }
+/* Light follows the pointer across a colour field. */
+.panel::after, .bleed::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(520px circle at var(--mx, 50%) var(--my, 50%), rgb(255 255 255 / .14), transparent 70%); opacity: 0; transition: opacity .3s var(--ease); }
+.panel:hover::after, .bleed:hover::after { opacity: 1; }
+
+/* A section whose art runs to the edges of the window while its content keeps to the strip. */
+.bleed { position: relative; isolation: isolate; width: 100vw; margin-inline: calc(50% - 50vw); overflow: clip; color: #fff; scroll-margin-top: 84px; }
+.inner { max-width: 1280px; margin-inline: auto; padding-inline: calc(var(--gap) + clamp(8px, 2.6vw, 32px)); }
+.panel > .art { z-index: -1; }
+.art { position: absolute; inset: 0; z-index: -2; overflow: clip; }
+.art img { width: 100%; height: 100%; object-fit: cover; }
+.art canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity .6s var(--ease); }
+.art.dim::after { content: ""; position: absolute; inset: 0; background: linear-gradient(var(--dir, 90deg), rgb(var(--sc, 3 44 66) / .94), rgb(var(--sc, 3 44 66) / .7) 45%, rgb(var(--sc, 3 44 66) / 0) 70%); }
+/* Small technical labels pinned to a graphic. */
+.tag { font: 400 14px/1.2 var(--mono); }
 
 /* The colour fields behind each panel: drawn by the browser, so they cost nothing to load. */
 .f-cobalt { background: radial-gradient(ellipse 22% 34% at 98% 98%, #0284c7, transparent), radial-gradient(ellipse 45% 71% at 12% 86%, #1e40af, transparent), radial-gradient(ellipse 37% 60% at 62% 76%, #0369a1, transparent), radial-gradient(ellipse 40% 64% at 81% 18%, #1d4ed8, transparent), radial-gradient(ellipse 45% 71% at 19% 12%, #2563eb, transparent), #1036a8; }
@@ -37,14 +53,28 @@ p { text-wrap: pretty; }
 .f-ocean { background: radial-gradient(ellipse 37% 60% at 8% 86%, #155e75, transparent), radial-gradient(ellipse 40% 64% at 56% 88%, #1d4ed8, transparent), radial-gradient(ellipse 40% 64% at 78% 20%, #0369a1, transparent), radial-gradient(ellipse 43% 69% at 16% 18%, #0e7490, transparent), #0e5a7a; }
 .f-night { background: radial-gradient(ellipse 17% 28% at 96% 98%, #0369a1, transparent), radial-gradient(ellipse 45% 71% at 55% 90%, #172554, transparent), radial-gradient(ellipse 34% 55% at 82% 12%, #155e75, transparent), radial-gradient(ellipse 40% 64% at 14% 12%, #1e3a8a, transparent), #070d2b; }
 
-/* Buttons: the arrow sits in its own chip and slides across on hover. */
-.btn { --face: #fff; --text: var(--ink); --chip: var(--tint, var(--brand)); --chipt: #fff; display: inline-flex; align-items: center; gap: 14px; height: 52px; padding: 0 8px 0 20px; border-radius: 14px; background: var(--face); color: var(--text); font-weight: 500; font-size: 16px; white-space: nowrap; transition: background-color .2s var(--ease), box-shadow .2s var(--ease), transform .12s var(--ease); box-shadow: 0 1px 2px rgb(10 26 63 / .18); }
-.btn i { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--chip); color: var(--chipt); flex: none; } .btn i svg { transition: transform .25s var(--ease); } .btn:hover i svg { transform: translateX(3px); } .btn:not(.brand, .ghost):hover { box-shadow: 0 6px 18px rgb(10 26 63 / .28); } .btn:active { transform: translateY(1px); }
-.btn.brand { --face: var(--brand); --text: #fff; --chip: #fff; --chipt: var(--brand); } .btn.brand:hover { background: var(--brand-dark); }
-.btn.ghost { --face: rgb(255 255 255 / .14); --text: #fff; padding-inline: 20px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .4); } .btn.ghost:hover { background: rgb(255 255 255 / .24); }
+/* Buttons: the arrow's chip floods the whole button on hover. */
+.btn { --face: #fff; --text: var(--ink); --chip: var(--tint, var(--brand)); --chipt: #fff; position: relative; isolation: isolate; overflow: hidden; display: inline-flex; align-items: center; gap: 14px; height: 52px; padding: 0 8px 0 20px; border-radius: 14px; background: var(--face); color: var(--text); font-weight: 500; font-size: 16px; white-space: nowrap; transition: background-color .2s var(--ease), color .2s var(--ease), box-shadow .2s var(--ease), transform .12s var(--ease); box-shadow: 0 1px 2px rgb(10 26 63 / .18); }
+.btn::before { content: ""; position: absolute; z-index: -1; inset: 0; background: var(--chip); clip-path: inset(calc(50% - 18px) 8px calc(50% - 18px) calc(100% - 44px) round 10px); transition: clip-path .4s var(--ease), background-color .2s var(--ease); }
+.btn i { display: grid; place-items: center; width: 36px; height: 36px; color: var(--chipt); flex: none; overflow: hidden; transition: color .2s var(--ease); } .btn i svg { transition: transform .35s var(--ease); } .btn:hover i svg { transform: translateX(3px); }
+.btn:not(.ghost, .line):hover { color: var(--chipt); box-shadow: 0 10px 26px -8px rgb(10 26 63 / .45); } .btn:not(.ghost, .line):hover::before { clip-path: inset(0 round 14px); } .btn:active { transform: translateY(1px); }
+.btn.brand { --face: var(--brand); --text: #fff; --chip: #fff; --chipt: var(--brand); } .btn.brand:hover { --chip: var(--ink); --chipt: #fff; }
+.btn.ghost, .btn.line { padding-inline: 20px; } .btn.ghost::before, .btn.line::before { display: none; }
+.btn.ghost { --face: rgb(255 255 255 / .14); --text: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .4); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); } .btn.ghost:hover { background: #fff; color: var(--ink); }
+.btn.line { --face: transparent; --text: var(--ink); box-shadow: inset 0 0 0 1px var(--line2); } .btn.line:hover { background: var(--ink); color: #fff; box-shadow: none; }
 /* A real product window. */
 .win { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px rgb(10 26 63 / .08), 0 30px 60px -24px rgb(10 20 60 / .55); color: var(--ink); }
 .win img { width: 100%; height: auto; }
+/* Windows lean toward the pointer, and a highlight crosses the glass. */
+.win[data-tilt] { position: relative; transition: transform .6s var(--ease); will-change: transform; } .win[data-tilt]:hover { transition: transform .1s linear; }
+.win[data-tilt]::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(600px circle at var(--sx, 50%) var(--sy, 50%), rgb(255 255 255 / .28), transparent 65%); mix-blend-mode: soft-light; opacity: 0; transition: opacity .3s var(--ease); } .win[data-tilt]:hover::after { opacity: 1; }
+/* A point of light runs around the edge of a card. */
+@property --a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.edge { position: relative; } .edge::before { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; padding: 1.5px; background: conic-gradient(from var(--a), transparent 62%, rgb(255 255 255 / .9) 82%, transparent 92%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .25s var(--ease); pointer-events: none; }
+.edge:hover::before { opacity: 1; animation: orbit 2.8s linear infinite; } @keyframes orbit { to { --a: 360deg; } }
+/* Text rolls up to a copy of itself. */
+.roll { position: relative; display: inline-block; overflow: hidden; vertical-align: top; line-height: 1.35; } .roll > span { display: block; transition: transform .32s var(--ease); } .roll::after { content: attr(data-t); position: absolute; left: 0; top: 100%; white-space: nowrap; transition: transform .32s var(--ease); } a:hover > .roll > span, a:hover > .roll::after { transform: translateY(-100%); }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } @view-transition { navigation: none; } }
+@media (max-width: 900px) { .panel > .art img, .hero > .art img { opacity: .24; } .art.dim::after { background: rgb(var(--sc, 3 44 66) / .74); } }
 @media (max-width: 700px) { :root { --gap: 10px; --r: 22px; } }
 @media (max-width: 400px) { .btn { height: auto; min-height: 52px; padding-block: 8px; white-space: normal; line-height: 1.2; } }

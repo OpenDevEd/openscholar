@@ -1,0 +1,48 @@
+---
+// The hero's product window: one real screen for each step of the work, advancing by itself until someone takes over.
+import Cards from "./Cards.astro";
+import Icon from "./Icon.astro";
+const tabs = [
+  { label: "Search", icon: "search", img: "shot-search", w: 1800, h: 1128, css: "width:139%;margin:-15% 0 0 -39%", alt: "OpenScholar's search results, with an AI overview of the field and query terms highlighted in each paper", card: "query" },
+  { label: "Screen", icon: "sieve", img: "shot-screen", w: 1740, h: 1500, css: "width:100%", alt: "A screening showing its progress, its questions and the included papers", card: "rule" },
+  { label: "Extract", icon: "table", img: "shot-extract", w: 1800, h: 1268, css: "width:100%", alt: "An extraction table with an answer and a confidence score for each paper" },
+  { label: "Assistant", icon: "spark", img: "shot-assistant", w: 880, h: 860, css: "width:58%", alt: "The research assistant listing which papers to check by hand after an extraction", card: "approve" },
+  { label: "Publish", icon: "globe", img: "community-home", w: 1920, h: 1150, css: "width:100%", alt: "A live Evidence Community with its own name and branding" },
+];
+---
+<div class="ws" data-ws>
+  <div class="tabs" role="tablist" aria-label="See each step of the work">{tabs.map((t, i) => <button type="button" role="tab" id={`ws-t${i}`} aria-controls={`ws-p${i}`} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1}><Icon name={t.icon} size={16} /><span>{t.label}</span><u aria-hidden="true"></u></button>)}</div>
+  <div class="frame"><div class="stage">
+    {tabs.map((t, i) => <div class:list={["pane", { on: i === 0 }]} id={`ws-p${i}`} role="tabpanel" aria-labelledby={`ws-t${i}`}>
+      <img {...(i === 0 ? { src: `/img/${t.img}.avif`, fetchpriority: "high" } : { "data-src": `/img/${t.img}.avif` })} width={t.w} height={t.h} alt={t.alt} style={t.css} />
+      {t.card && <div class="over"><Cards kind={t.card} /></div>}
+    </div>)}
+  </div></div>
+</div>
+<script>
+  const ws = document.querySelector("[data-ws]");
+  if (ws) {
+    const tabs = [...ws.querySelectorAll("[role=tab]")], panes = [...ws.querySelectorAll(".pane")];
+    const load = (i) => { if (i.dataset.src) { i.src = i.dataset.src; delete i.dataset.src; } };
+    const pick = (n, focus) => { load(panes[n].querySelector("img")); tabs.forEach((t, i) => { const on = i === n; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; panes[i].classList.toggle("on", on); }); if (focus) tabs[n].focus(); };
+    // The bar filling up under a tab is the timer: when its animation ends, the next tab starts. Reduced motion removes the animation, so nothing advances by itself.
+    ws.addEventListener("animationend", (e) => { if (e.animationName.includes("fill")) pick((tabs.indexOf(e.target.parentElement) + 1) % tabs.length); });
+    tabs.forEach((t, i) => { t.addEventListener("click", () => pick(i)); t.addEventListener("keydown", (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); pick((i + d + tabs.length) % tabs.length, true); } }); });
+    new IntersectionObserver(([en]) => ws.classList.toggle("off", !en.isIntersecting), { threshold: .2 }).observe(ws);
+    const fill = () => ws.querySelectorAll("img[data-src]").forEach(load);
+    addEventListener("load", () => (window.requestIdleCallback || setTimeout)(fill), { once: true }); if (document.readyState === "complete") fill();
+  }
+</script>
+<style>
+  .ws { position: relative; display: grid; gap: 10px; transform-origin: 50% 100%; }
+  @supports (animation-timeline: scroll()) { .ws { animation: settle linear both; animation-timeline: scroll(root); animation-range: 0 460px; } @keyframes settle { from { transform: perspective(1800px) rotateX(9deg) scale(.97); } to { transform: none; } } }
+  .tabs { justify-self: start; display: flex; gap: 2px; padding: 4px; border-radius: 14px; background: rgb(255 255 255 / .72); -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6); box-shadow: 0 0 0 1px var(--line), 0 12px 28px -18px rgb(10 26 63 / .4); max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  [role="tab"] { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding-inline: 14px; border-radius: 10px; color: var(--t2); font-size: 15px; white-space: nowrap; transition: color .2s var(--ease), background-color .2s var(--ease); flex: none; } [role="tab"]:hover { color: var(--ink); background: rgb(10 26 63 / .05); } [role="tab"][aria-selected="true"] { color: #fff; background: var(--ink); }
+  u { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--spectrum); transform: scaleX(0); transform-origin: left; text-decoration: none; } [aria-selected="true"] u { animation: fill 6.5s linear forwards; } .ws:is(:hover, :focus-within, .off) u { animation-play-state: paused; } @keyframes fill { to { transform: scaleX(1); } }
+  .frame { padding: 8px; border-radius: 22px; background: rgb(255 255 255 / .46); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: 0 0 0 1px rgb(10 26 63 / .08), 0 50px 90px -40px rgb(10 26 63 / .55); }
+  .stage { position: relative; aspect-ratio: 16 / 9.2; border-radius: 15px; overflow: hidden; background: #fff; box-shadow: 0 0 0 1px var(--line); }
+  .pane { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .45s var(--ease), visibility 0s .45s; } .pane.on { opacity: 1; visibility: visible; transition: opacity .45s var(--ease); z-index: 1; }
+  .pane img { max-width: none; height: auto; transform: translateY(10px); transition: transform .7s var(--ease); } .pane.on img { transform: none; }
+  .over { position: absolute; right: 24px; bottom: 24px; width: min(360px, 44%); transform: translateY(16px); opacity: 0; transition: transform .6s .12s var(--ease), opacity .4s .12s var(--ease); } .on .over { transform: none; opacity: 1; }
+  @media (max-width: 700px) { .stage { aspect-ratio: 4 / 4.4; } .pane img { width: 190% !important; margin: 0 !important; } .pane:first-child img { margin: -22% 0 0 -60% !important; } .pane:nth-child(4) img { width: 100% !important; } .over { left: 12px; right: 12px; bottom: 12px; width: auto; } .frame { padding: 5px; } }
+</style>

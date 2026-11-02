@@ -1,8 +1,12 @@
 ---
 import "../styles/global.css";
 import { APP, NAV } from "../data/site.mjs";
-const { title, description } = Astro.props;
+import { GUIDES } from "../data/docs.mjs";
+import AskBar from "../components/AskBar.astro";
+import Icon from "../components/Icon.astro";
+const { title, description, tone = "light" } = Astro.props;
 const path = Astro.url.pathname;
+const tries = ["Does peer tutoring improve reading?", "What works to keep girls in secondary school?", "\"cash transfers\" AND nutrition", "How does wealth inequality affect social mobility?"];
 ---
 <!doctype html>
 <html lang="en">
@@ -21,40 +25,102 @@ const path = Astro.url.pathname;
   <link rel="preload" href="/fonts/ubuntu-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/ubuntu-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin />
   <script type="speculationrules" set:html={JSON.stringify({ prerender: [{ where: { href_matches: "/*" }, eagerness: "moderate" }] })} />
-    <slot name="head" />
+  <slot name="head" />
 </head>
 <body>
-  <div class="bar-wrap"><header class="bar">
-    <a class="brand" href="/" aria-label="OpenScholar home"><img src="/favicon.svg" width="28" height="28" alt="" /><span>OpenScholar</span></a>
-    <nav class="nav" aria-label="Main">{NAV.map((n) => <a href={n.href} aria-current={path === n.href ? "page" : undefined}>{n.label}</a>)}</nav>
-    <div class="end"><a class="signin" href={`${APP}/sign-in`}>Sign in</a><a class="go" href={APP}>Get started</a>
-      <details class="menu"><summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></summary><div class="sheet">{NAV.map((n) => <a href={n.href}>{n.label}</a>)}<a href={`${APP}/sign-in`}>Sign in</a></div></details></div>
-  </header></div>
+  <div class="top" data-tone={tone}>
+    <header class="bar">
+      <a class="brand" href="/" aria-label="OpenScholar home"><img src="/favicon.svg" width="28" height="28" alt="" /><span class="roll" data-t="OpenScholar"><span>OpenScholar</span></span></a>
+      <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
+      <div class="end">
+        <button class="cmd" type="button" data-palette><Icon name="search" size={16} /><span>Ask a question</span><kbd data-key>⌘K</kbd></button>
+        <a class="signin" href={`${APP}/sign-in`}><span class="roll" data-t="Sign in"><span>Sign in</span></span></a>
+        <a class="go" href={APP}><span>Get started</span></a>
+        <details class="menu"><summary aria-label="Menu"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7h14M3 13h14" /></svg></summary><div class="sheet"><button type="button" class="s-ask" data-palette><Icon name="search" size={18} />Ask a question</button>{NAV.map((n) => <a href={n.href}>{n.label}</a>)}<a href={`${APP}/sign-in`}>Sign in</a></div></details>
+      </div>
+    </header>
+    <div class="mega" data-mega>
+      {NAV.map((n) => <div class="sub" data-sub={n.id} inert>
+        {n.rows ? <div class="split">
+          <div class="rows">
+            {n.rows.map((r, i) => <a class="row" href={r.href} data-row={i}><i><Icon name={r.icon} /></i><span><b>{r.title}</b><em>{r.text}</em></span></a>)}
+            {n.live && <div class="live"><span>See one live</span>{n.live.map(([t, u]) => <a href={u}>{t}<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l6-6M4 3h5v5" /></svg></a>)}</div>}
+          </div>
+          <div class="stage">{n.rows.map((r, i) => <div class:list={["st", `f-${r.field}`, { "with-img": r.img }]} data-st={i}>{r.art && <img class="a" data-src={`/img/art-${r.art}.avif`} alt="" />}{r.img && <img class="s" data-src={`/img/${r.img}.avif`} alt="" />}</div>)}</div>
+        </div> : <div class="guides"><div class="g-grid">{GUIDES.map((g) => <a href={`/docs/#${g.id}`}><span class="roll" data-t={g.title}><span>{g.title}</span></span></a>)}</div></div>}
+      </div>)}
+    </div>
+  </div>
   <main class="strip"><slot /></main>
-  <footer class="foot"><div class="f-in">
-    <div class="f-brand"><img src="/favicon.svg" width="32" height="32" alt="" /><p>The evidence workspace for research teams</p></div>
-    <nav aria-label="Footer">
-      <div><b>Product</b><a href="/#product">Overview</a><a href="/evidence-libraries/">Evidence Libraries</a><a href="/teams/">Teams</a></div>
-      <div><b>Learn</b><a href="/docs/">Documentation</a><a href="/docs/#start">Get started</a></div>
-      <div><b>Legal</b><a href={`${APP}/privacy`}>Privacy</a><a href={`${APP}/cookie-policy`}>Cookies</a><a href={`${APP}/credits`}>Attributions</a></div>
-    </nav>
-    <p class="credit">Built by OpenDevEd and eKitabu</p>
-  </div></footer>
-  <script>const menu = document.querySelector(".menu"); addEventListener("click", (e) => { if (menu?.open && (!menu.contains(e.target) || e.target.closest(".sheet a"))) menu.open = false; });</script>
+  <footer class="foot" data-spot>
+    <div class="f-in">
+      <div class="f-brand"><img src="/favicon.svg" width="32" height="32" alt="" /><p>The evidence workspace for research teams</p></div>
+      <nav aria-label="Footer">
+        <div><b>Product</b><a href="/#product">Overview</a><a href="/evidence-communities/">Evidence Communities</a><a href="/teams/">Teams</a></div>
+        <div><b>Learn</b><a href="/docs/">Documentation</a><a href="/docs/#start">Get started</a></div>
+        <div><b>Legal</b><a href={`${APP}/privacy`}>Privacy</a><a href={`${APP}/cookie-policy`}>Cookies</a><a href={`${APP}/credits`}>Attributions</a></div>
+      </nav>
+      <p class="credit">Built by OpenDevEd and eKitabu</p>
+    </div>
+    <div class="word" aria-hidden="true">OpenScholar</div>
+  </footer>
+  <dialog class="palette" data-dialog aria-label="Ask a question">
+    <AskBar id="ask-nav" />
+    <ul>{tries.map((t) => <li><button type="button" data-try={t}><Icon name="search" size={16} /><span>{t}</span></button></li>)}</ul>
+  </dialog>
+  <script src="../scripts/fx.js"></script>
 </body>
 </html>
 <style>
-  .bar-wrap { position: sticky; top: 0; z-index: 50; background: rgb(255 255 255 / .92); backdrop-filter: blur(10px); }
-  .bar { display: flex; align-items: center; gap: 24px; max-width: 1280px; height: 68px; margin-inline: auto; padding-inline: calc(var(--gap) + 8px); }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 18px; letter-spacing: -.02em; flex: none; }
-  .nav { display: flex; gap: 4px; margin-left: 12px; font-size: 15px; color: var(--t2); } .nav a { padding: 8px 12px; border-radius: 10px; transition: background-color .15s var(--ease), color .15s var(--ease); } .nav a:hover { background: var(--soft); color: var(--ink); } .nav a[aria-current] { color: var(--ink); background: var(--soft); }
-  .end { display: flex; align-items: center; gap: 10px; flex: none; margin-left: auto; } .signin { font-size: 15px; padding: 8px 10px; color: var(--t2); } .signin:hover { color: var(--ink); }
-  .go { padding: 9px 16px; border-radius: 11px; background: var(--brand); color: #fff; font-weight: 500; font-size: 15px; transition: background-color .15s var(--ease); } .go:hover { background: var(--brand-dark); }
-  .menu { display: none; position: relative; } .menu summary { list-style: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 11px; background: var(--soft); cursor: pointer; } .menu summary::-webkit-details-marker { display: none; }
-  .sheet { position: absolute; right: 0; top: 48px; width: 220px; padding: 8px; border-radius: 14px; background: #fff; box-shadow: 0 0 0 1px var(--line), 0 18px 40px -12px rgb(10 26 63 / .3); display: grid; } .sheet a { padding: 10px 12px; border-radius: 9px; } .sheet a:hover { background: var(--soft); }
-  .foot { margin-top: clamp(40px, 6vw, 80px); border-top: 1px solid var(--line); } .f-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px 48px; max-width: 1280px; margin-inline: auto; padding: 48px calc(var(--gap) + 8px) 32px; }
-  .f-brand p { margin-top: 12px; color: var(--t2); max-width: 18em; } .foot nav { display: flex; gap: 56px; } .foot nav div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: var(--t2); } .foot nav b { font-weight: 500; color: var(--ink); margin-bottom: 4px; } .foot nav a:hover { color: var(--brand); } .credit { grid-column: 1 / -1; font-size: 14px; color: var(--t3); }
-  @media (max-width: 900px) { .nav, .signin { display: none; } .menu { display: block; } }
-  @media (max-width: 365px) { .brand span { display: none; } }
-  @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav { gap: 32px; flex-wrap: wrap; } }
+  .top { position: sticky; top: 10px; z-index: 50; max-width: 1280px; height: 64px; margin: 10px auto -74px; padding-inline: var(--gap); }
+  .bar { position: relative; display: flex; align-items: center; gap: 20px; height: 64px; padding: 0 10px 0 16px; border-radius: 18px; background: rgb(255 255 255 / .5); -webkit-backdrop-filter: blur(20px) saturate(1.8); backdrop-filter: blur(20px) saturate(1.8); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .5); transition: background-color .25s var(--ease), box-shadow .25s var(--ease), color .25s var(--ease); }
+  .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .bar { color: #fff; background: rgb(255 255 255 / .1); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .2); }
+  .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .brand img { filter: brightness(0) invert(1); }
+  .stuck .bar, .top:has(.mega[data-open]) .bar { background: rgb(255 255 255 / .78); box-shadow: 0 0 0 1px var(--line), 0 16px 36px -20px rgb(10 26 63 / .4); color: var(--ink); }
+  .bar::after { content: ""; position: absolute; inset: auto 18px 0; height: 2px; border-radius: 2px; background: var(--spectrum); transform-origin: left; transform: scaleX(0); opacity: 0; transition: opacity .25s var(--ease); pointer-events: none; }
+  .stuck .bar::after { opacity: 1; }
+  @supports (animation-timeline: scroll()) { .bar::after { animation: grow linear both; animation-timeline: scroll(root); } @keyframes grow { to { transform: scaleX(1); } } }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 18px; letter-spacing: -.02em; flex: none; } .brand img { transition: rotate .5s var(--ease), filter .25s var(--ease); } .brand:hover img { rotate: -90deg; }
+  .nav { position: relative; display: flex; gap: 2px; font-size: 15px; }
+  .lk { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; height: 40px; padding-inline: 12px; border-radius: 11px; }
+  .chev { opacity: .55; transition: rotate .25s var(--ease); } .lk.on .chev { rotate: 180deg; } .lk[aria-current] { background: rgb(10 26 63 / .05); } .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .lk[aria-current] { background: rgb(255 255 255 / .12); }
+  .pill { position: absolute; top: 0; left: 0; height: 40px; width: var(--pw, 0); border-radius: 11px; background: rgb(10 26 63 / .07); opacity: 0; transform: translateX(var(--px, 0)); transition: transform .28s var(--ease), width .28s var(--ease), opacity .18s var(--ease); pointer-events: none; }
+  .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .pill { background: rgb(255 255 255 / .16); }
+  .end { display: flex; align-items: center; gap: 8px; flex: none; margin-left: auto; }
+  .cmd { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 6px 0 12px; border-radius: 11px; background: rgb(255 255 255 / .5); box-shadow: inset 0 0 0 1px var(--line2); font-size: 14px; color: inherit; transition: background-color .15s var(--ease), box-shadow .15s var(--ease); } .cmd:hover { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 1px var(--brand), 0 0 0 3px rgb(37 99 235 / .14); }
+  .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .cmd:not(:hover) { background: rgb(255 255 255 / .1); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3); }
+  kbd { min-width: 46px; text-align: center; padding: 3px 6px; border-radius: 6px; background: rgb(10 26 63 / .07); font: 400 12px/1 var(--mono); color: inherit; } .top[data-tone="dark"]:not(.stuck, :has(.mega[data-open])) .cmd:not(:hover) kbd { background: rgb(255 255 255 / .16); }
+  .signin { font-size: 15px; padding: 8px 10px; }
+  .go { position: relative; isolation: isolate; display: inline-flex; align-items: center; height: 44px; padding-inline: 16px; border-radius: 12px; background: var(--brand); color: #fff; font-weight: 500; font-size: 15px; white-space: nowrap; overflow: hidden; transition: box-shadow .2s var(--ease); }
+  .go::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 50%; width: 200%; aspect-ratio: 1; background: conic-gradient(from 0deg, #2563eb, #06b6d4, #10b981, #f59e0b, #f43f5e, #2563eb); translate: -50% -50%; opacity: 0; transition: opacity .25s var(--ease); }
+  .go::after { content: ""; position: absolute; z-index: -1; inset: 2px; border-radius: 10px; background: var(--brand); transition: background-color .15s var(--ease); }
+  .go:hover::before { opacity: 1; animation: turn 2.4s linear infinite; } .go:hover::after { background: var(--brand-dark); }
+  @keyframes turn { to { rotate: 360deg; } }
+  .menu { display: none; position: relative; } .menu summary { list-style: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgb(255 255 255 / .6); box-shadow: inset 0 0 0 1px var(--line2); color: var(--ink); cursor: pointer; } .menu summary::-webkit-details-marker { display: none; }
+  .sheet { position: absolute; right: 0; top: 54px; width: min(320px, calc(100vw - 2 * var(--gap) - 20px)); padding: 8px; border-radius: 16px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px var(--line), 0 18px 40px -12px rgb(10 26 63 / .3); display: grid; } .sheet a, .s-ask { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 10px 12px; border-radius: 10px; text-align: left; } .sheet a:hover, .s-ask:hover { background: var(--soft); }
+  /* One panel that changes shape between menus. */
+  .mega { position: absolute; top: 72px; left: var(--gap); width: var(--w, 800px); height: var(--h, 320px); transform: translateX(var(--x, 0)); border-radius: 20px; background: #fff; box-shadow: 0 0 0 1px var(--line), 0 40px 80px -30px rgb(10 26 63 / .45); opacity: 0; visibility: hidden; color: var(--ink); overflow: hidden; }
+  .top:has(.mega[data-open])::after { content: ""; position: absolute; left: 0; right: 0; top: 64px; height: 10px; }
+  .mega[data-open] { opacity: 1; visibility: visible; transition: opacity .16s var(--ease), transform .3s var(--ease), width .3s var(--ease), height .3s var(--ease); }
+  .mega:not([data-open]) { transition: opacity .12s var(--ease), visibility 0s .12s; }
+  .sub { position: absolute; top: 0; left: 0; opacity: 0; transform: translateX(var(--from, 0)); transition: opacity .2s var(--ease), transform .3s var(--ease); pointer-events: none; }
+  .sub[data-on] { opacity: 1; transform: none; pointer-events: auto; }
+  .split { display: grid; grid-template-columns: 400px 420px; width: 820px; }
+  .rows { display: grid; align-content: start; gap: 2px; padding: 10px; }
+  .row { display: flex; gap: 12px; padding: 10px; border-radius: 12px; transition: background-color .15s var(--ease); } .row i { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--soft); color: var(--brand-dark); transition: background-color .15s var(--ease), color .15s var(--ease); } .row b { display: block; font-weight: 500; font-size: 15px; line-height: 1.3; } .row em { display: block; font-style: normal; font-size: 13px; line-height: 1.35; color: var(--t2); }
+  .row.on, .row:focus-visible { background: var(--soft); } .row.on i, .row:focus-visible i { background: var(--brand); color: #fff; }
+  .live { display: grid; gap: 4px; margin-top: 6px; padding: 12px 10px 8px; border-top: 1px solid var(--line); font-size: 13px; } .live span { color: var(--t3); } .live a { display: flex; align-items: center; gap: 6px; font-size: 14px; } .live a:hover { color: var(--brand-dark); }
+  .stage { position: relative; margin: 10px 10px 10px 0; border-radius: 12px; overflow: hidden; min-height: 300px; }
+  .st { position: absolute; inset: 0; opacity: 0; transition: opacity .25s var(--ease); } .st.on { opacity: 1; } .st .a { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; } .st .s { position: absolute; left: 28px; top: 28px; width: 560px; max-width: none; border-radius: 10px; box-shadow: 0 24px 48px -16px rgb(10 20 60 / .6); transform: translateY(8px); transition: transform .4s var(--ease); } .st.on .s { transform: none; }
+  .guides { width: 560px; padding: 12px; } .g-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; } .g-grid a { padding: 9px 12px; border-radius: 10px; font-size: 15px; transition: background-color .15s var(--ease); } .g-grid a:hover { background: var(--soft); }
+  .foot { position: relative; overflow: hidden; background: #070d2b; color: #fff; } .f-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px 48px; max-width: 1280px; margin-inline: auto; padding: 56px calc(var(--gap) + 8px) 24px; }
+  .f-brand img { filter: brightness(0) invert(1); } .f-brand p { margin-top: 12px; color: rgb(255 255 255 / .72); max-width: 18em; } .foot nav { display: flex; gap: 56px; } .foot nav div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: rgb(255 255 255 / .72); } .foot nav b { font-weight: 500; color: #fff; margin-bottom: 4px; } .foot nav a { transition: color .15s var(--ease); } .foot nav a:hover { color: #fff; } .credit { grid-column: 1 / -1; font-size: 14px; color: rgb(255 255 255 / .6); }
+  /* The name is barely there until the pointer brings colour through it. */
+  .word { margin-top: 8px; padding-inline: var(--gap); text-align: center; font-weight: 500; font-size: 17.4vw; line-height: .86; letter-spacing: -.05em; white-space: nowrap; margin-bottom: -.1em; color: transparent; -webkit-background-clip: text; background-clip: text; background-image: radial-gradient(circle 380px at var(--mx, -999px) var(--my, 50%), #38bdf8, #34d399 35%, #fbbf24 65%, transparent 100%), linear-gradient(rgb(255 255 255 / .1), rgb(255 255 255 / .1)); user-select: none; }
+  .palette { width: min(640px, calc(100vw - 24px)); margin: 12vh auto auto; padding: 10px; border: 0; border-radius: 24px; background: #fff; color: var(--ink); box-shadow: 0 40px 100px -24px rgb(10 26 63 / .6); } .palette::backdrop { background: rgb(7 13 43 / .5); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+  .palette :global(.ask) { width: 100%; box-shadow: inset 0 0 0 1px var(--line2); } .palette ul { display: grid; gap: 2px; margin-top: 8px; } .palette li button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 10px; text-align: left; font-size: 15px; color: var(--t2); transition: background-color .12s var(--ease), color .12s var(--ease); } .palette li button:hover, .palette li button:focus-visible { background: var(--soft); color: var(--ink); }
+  @media (max-width: 1160px) { .cmd span, .signin { display: none; } .cmd { padding: 0 6px 0 10px; } }
+  @media (max-width: 960px) { .nav, .signin, .cmd, .mega { display: none; } .menu { display: block; } }
+  @media (max-width: 365px) { .brand .roll { display: none; } }
+  @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav { gap: 32px; flex-wrap: wrap; } .top { margin-inline: 0; } .bar { padding-inline: 12px 8px; } }
 </style>

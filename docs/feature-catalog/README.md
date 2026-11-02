@@ -1,6 +1,6 @@
-# OpenScholar and Evidence Library feature catalogue
+# OpenScholar and Evidence Community feature catalogue
 
-Checked on 2 November 2026 against `dev.openscholar.ai` (OpenScholar `dev` at `18c990d3`) and the live libraries on Evidence Library `main` at `f0f0be82`. `openscholar.ai` runs the older `main` branch and has none of the Evidence Library or extraction work, so a marketing page has to point at the `dev` release.
+Checked on 2 November 2026 against `dev.openscholar.ai` (OpenScholar `dev` at `18c990d3`) and the live communities on Evidence Community `main` at `f0f0be82`. `openscholar.ai` runs the older `main` branch and has none of the Evidence Community or extraction work, so a marketing page has to point at the `dev` release.
 
 **How each row was checked**
 
@@ -15,13 +15,13 @@ Screenshots are in [`shots/`](shots/). They are references for you, not marketin
 ## Check these before you write copy
 
 1. **The assistant misreported a screening.** It told me "all three papers were marked as randomized trials, with none unclear", but the export shows Yes, Unclear, Unclear. It had set the pass mark to 0 of 1 points, so every paper counted as Included, and the page's top tally shows 3 included and 0 unclear. A screening built by hand doesn't depend on this, but "the assistant runs your screening" needs this fixed first.
-2. **The README overclaims Zotero.** It says "sync directly to Zotero". OpenScholar reads Zotero (chats, chat-started jobs, Evidence Library sources) and I found no button that writes to it. Two-way sync exists only in the Evidence Library.
+2. **The README overclaims Zotero.** It says "sync directly to Zotero". OpenScholar reads Zotero (chats, chat-started jobs, Evidence Community sources) and I found no button that writes to it. Two-way sync exists only in the Evidence Community.
 3. **Public author list.** `/authors` shows test profiles such as "Two97 author" to anyone. Clear them before linking to it.
 4. **One unexplained miss.** The first Question search of the day didn't leave the page in 60 seconds. The next four worked in 5 to 17 seconds, so I couldn't reproduce it.
 
 ### Only partly general
 
-**Evidence chains (`/evidence`)** runs only on AIED, from data built offline. A new library doesn't get it by turning on a switch.
+**Evidence chains (`/evidence`)** runs only on AIED, from data built offline. A new community doesn't get it by turning on a switch.
 
 ## OpenScholar
 
@@ -60,7 +60,7 @@ Screenshots: [question results](shots/in-question-results.png), [overview](shots
 | Feature | What it does | Check |
 |---|---|---|
 | Topics | Browse OpenAlex's 4,516 topics by domain, field and subfield, signed out too | Seen |
-| Topic pages | Description, keywords, related topics, and papers from OpenAlex and your Evidence Libraries | Seen |
+| Topic pages | Description, keywords, related topics, and papers from OpenAlex and your Evidence Communities | Seen |
 | Author profiles | Public pages and a searchable list. Search papers from a profile | Seen |
 | Create an author | Make and edit a profile, invite editors. | Seen |
 
@@ -83,11 +83,11 @@ Screenshots: [library](shots/in-library.png), [history](shots/in-history.png).
 | Feature | What it does | Check |
 |---|---|---|
 | Screening jobs | A model answers yes or no questions for every paper, and points decide who is in | Ran |
-| Paper sources | A search (a range, a page or all of it), a collection, saved papers or an Evidence Library. From a chat, also a Zotero collection | Seen |
+| Paper sources | A search (a range, a page or all of it), a collection, saved papers or an Evidence Community. From a chat, also a Zotero collection | Seen |
 | Scoring | Points for Yes, No and Unclear on each question, a pass mark, and star ratings from the score | Seen |
 | Write questions for me | Generates questions from the research question, or imports them from a search | Seen |
 | Screen all | Starts from the search results page | Seen |
-| Save results | Adds included papers to a collection, or removes excluded ones, here or in a library | Seen |
+| Save results | Adds included papers to a collection, or removes excluded ones, here or in a community | Seen |
 | Review and overrule | See the answer and confidence for each paper, change it, or put the model's answer back | Seen |
 | Live progress | Queues papers as others finish, can cancel or run again | Ran |
 | Export | CSV, JSON or Excel with Results and Summary sheets | Ran |
@@ -100,7 +100,7 @@ Screenshots: [new screening](shots/in-screening-new.png), [finished job](shots/i
 |---|---|---|
 | Extraction jobs | A model reads each paper's abstract and answers each question | Ran |
 | Answer types | Text, yes or no, number, or list | Seen |
-| Paper sources | A search, a collection, saved papers, a screening or an Evidence Library | Seen |
+| Paper sources | A search, a collection, saved papers, a screening or an Evidence Community | Seen |
 | Write questions for me | Drafts questions from the chosen papers | Seen |
 | Confidence and evidence | Each answer has a confidence score and a citation you can open to check it | Ran |
 | Views | Table, cards, or split view with the evidence beside it. Filters, chosen columns, search | Seen |
@@ -116,11 +116,11 @@ Screenshots: [new job](shots/in-extraction-new.png), [table](shots/in-extraction
 | Feature | What it does | Check |
 |---|---|---|
 | Do the work from one message | From one message it searched, made a collection, saved 3 papers, then ran a screening and an extraction | Ran |
-| Same actions as the app | 190 registered actions cover searches, library, jobs, workspaces, sharing and library settings | Code |
+| Same actions as the app | 190 registered actions cover searches, community, jobs, workspaces, sharing and community settings | Code |
 | Knows your page | Sees what you have open, and `@` points it at a search, collection or paper | Seen |
 | Reads papers and files | Reads paper PDFs and attached images, PDFs and text files. Searches the web | Code |
 | Zotero | Reads your groups, collections and items, and brings PDFs into the chat | Code |
-| Library help | Reads and edits a library's draft settings, team, sources and publications | Code |
+| Community help | Reads and edits a community's draft settings, team, sources and publications | Code |
 | Asks before it acts | Jobs and hard-to-undo changes wait for your approval. Bulk changes can be undone | Ran |
 | Shared chats | Share a chat to read or to write, and see who else is in it | Seen |
 | Model choice | Pick the model and reasoning effort for a chat | Seen |
@@ -142,11 +142,11 @@ Screenshot: [assistant](shots/in-assistant.png).
 
 Screenshots: [workspace](shots/va-workspace.png), [members](shots/va-members.png).
 
-### Creating and running an Evidence Library
+### Creating and running an Evidence Community
 
 | Feature | What it does | Check |
 |---|---|---|
-| New library | Pick a name, reserve an address, and create a draft. | Seen |
+| New community | Pick a name, reserve an address, and create a draft. | Seen |
 | One-step setup | Creates the database, storage and app, then builds it and puts it online. The page says about 2 minutes | Code |
 | Brand | Name, logo, icons, colours, fonts, share image, funders, institutions | Seen |
 | Content pages | Home page, navigation, footer, contact and legal text | Seen |
@@ -160,7 +160,7 @@ Screenshots: [workspace](shots/va-workspace.png), [members](shots/va-members.png
 | Versions | Draft, activate, restore an earlier version, opt-in software updates | Seen |
 | Team | Owner, Editor, Creator and Viewer roles | Seen |
 
-Screenshots: [library list](shots/va-libs.png), [configuration](shots/va-config.png).
+Screenshots: [community list](shots/va-libs.png), [configuration](shots/va-config.png).
 
 ### Accounts and AI choice
 
@@ -175,15 +175,15 @@ Screenshots: [library list](shots/va-libs.png), [configuration](shots/va-config.
 
 Screenshots: [AI settings](shots/in-settings-ai.png), [connections](shots/in-connections.png).
 
-## Evidence Library
+## Evidence Community
 
-Each library is its own public site with its own records, database, search index and address. Owners turn most things on or off, so the table of live libraries below shows what each one has.
+Each community is its own public site with its own records, database, search index and address. Owners turn most things on or off, so the table of live communities below shows what each one has.
 
 ### Home page
 
 | Feature | What it does | Check |
 |---|---|---|
-| Library home page | Introduction, records by year, latest publications, how the library is curated with live counts, the team, and ways to get involved | Seen |
+| Community home page | Introduction, records by year, latest publications, how the community is curated with live counts, the team, and ways to get involved | Seen |
 | Suggest or join | Readers can suggest a publication or offer to edit | Seen |
 
 Screenshot: [home page](shots/wi-home-live.png).
@@ -200,7 +200,7 @@ Screenshot: [home page](shots/wi-home-live.png).
 | And/Or for collections | Choose whether a record must be in any or all of the ticked collections | Seen |
 | List or grid | With PDF covers on cards and abstracts on or off | Seen |
 
-Screenshots: [library](shots/wi-lib-live.png), [collections](shots/us-lib.png).
+Screenshots: [community](shots/wi-lib-live.png), [collections](shots/us-lib.png).
 
 ### Records
 
@@ -209,7 +209,7 @@ Screenshots: [library](shots/wi-lib-live.png), [collections](shots/us-lib.png).
 | Record page | Abstract, authors, topics, collections, files, and links to the original | Seen |
 | Open access label | Labels open records, optionally closed ones too | Seen |
 | PDF covers | A record's first page shows on its card, and clicking it opens the PDF | Seen |
-| Citations and references | Shows how many are in the library out of the total, and opens the rest in OpenScholar | Seen |
+| Citations and references | Shows how many are in the community out of the total, and opens the rest in OpenScholar | Seen |
 | Cite | The same styles as OpenScholar, searchable | Seen |
 | Copy buttons | Link, abstract, DOI and other fields | Seen |
 | Share preview | A record's PDF cover or title card shows when the link is shared | Code |
@@ -232,7 +232,7 @@ Screenshots: [country map](shots/wi-map-mode.png), [institutions](shots/wi-map-i
 
 | Feature | What it does | Check |
 |---|---|---|
-| Ask AI across the library | Searches and reads records, then answers with links to the record and PDF page | Ran |
+| Ask AI across the community | Searches and reads records, then answers with links to the record and PDF page | Ran |
 | Honest about gaps | In the test it said one PDF wouldn't download, so it reported only the abstract | Ran |
 | Ask about results | Asks about your current search results, and attaches records to a chat | Seen |
 | Sources panel | Lists what the AI read beside the answer | Ran |
@@ -258,7 +258,7 @@ Screenshot: [digests](shots/wi-digests-live.png).
 
 | Feature | What it does | Check |
 |---|---|---|
-| Sign in with OpenScholar | One account across libraries | Ran |
+| Sign in with OpenScholar | One account across communities | Ran |
 | Bookmarks and collections | Save records into private or public collections | Seen |
 | Reader profile | A shareable page with their bookmarks and collections | Seen |
 | Share a collection | Invite people to view or add, and see who it's shared with | Code |
@@ -269,7 +269,7 @@ Screenshot: [profile](shots/qa-profile.png).
 
 | Feature | What it does | Check |
 |---|---|---|
-| Download records | RIS, BibTeX, formatted HTML or plain text citations, for current results or the whole library, up to 20,000 records | Seen |
+| Download records | RIS, BibTeX, formatted HTML or plain text citations, for current results or the whole community, up to 20,000 records | Seen |
 | Atom feed | A feed of new records | Ran |
 | Sitemap and robots | For search engines | Ran |
 | Reference managers | unAPI with MODS, for tools such as Zotero's connector | Code |
@@ -300,10 +300,10 @@ Screenshots: [admin](shots/qa-admin-record.png), [import](shots/qa-admin-import.
 
 | Source | What it does | Check |
 |---|---|---|
-| Written in the library | Native records with no outside source | Seen |
+| Written in the community | Native records with no outside source | Seen |
 | OpenAlex search | Imports a saved search and fetches only what changed. Wealth Inequality updates nightly | Seen |
 | Zotero group | Two-way sync: imports records and writes editors' changes back. PDFs published by tag or all | Code |
-| OpenScholar collection | Fills the library from a collection, used on AIED | Code |
+| OpenScholar collection | Fills the community from a collection, used on AIED | Code |
 | Full text | Downloads PDFs where the licence allows and keeps records searchable when a download fails | Seen |
 | Screening a source | AI screens incoming records against a subject, with a trial on 200 records first | Code |
 
@@ -317,11 +317,11 @@ Screenshots: [admin](shots/qa-admin-record.png), [import](shots/qa-admin-import.
 | Legal pages | Privacy and cookie policy, plus terms if the owner writes them | Seen |
 | Consent and analytics | Cookie settings, PostHog or Google Analytics | Seen |
 
-### Live libraries
+### Live communities
 
-From each library's active settings today.
+From each community's active settings today.
 
-| Library | Records seen | Home page | Reader accounts | Digests | Languages |
+| Community | Records seen | Home page | Reader accounts | Digests | Languages |
 |---|---|---|---|---|---|
 | [AIED](https://aied.openscholar.ai) | 131,794 | Yes | Yes | Paused | 1 |
 | [Wealth Inequality](https://wealth-inequality.openscholar.ai) | 52,447 | Yes | Yes | On | 1 |
@@ -335,10 +335,10 @@ All six have AI answers, country focus and author filter on. Downloads and the A
 ## What I didn't test today
 
 - Connecting a Zotero account, because the test accounts have no Zotero login.
-- Crossref and Zenodo, which are off on the test library.
+- Crossref and Zenodo, which are off on the test community.
 - Sending a digest email, and subscribing.
 - Anything needing two people: guests and presence.
-- Creating a new library or adding a custom domain.
+- Creating a new community or adding a custom domain.
 - Phones, Firefox and Safari. All of this ran in desktop Chromium.
 
-AIED, TVET and ECCAR are not used as test targets, so I only opened AIED's `/evidence` page signed out. Ask AI ran once on the Sources QA library.
+AIED, TVET and ECCAR are not used as test targets, so I only opened AIED's `/evidence` page signed out. Ask AI ran once on the Sources QA community.

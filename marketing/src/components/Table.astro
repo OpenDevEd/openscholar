@@ -20,6 +20,7 @@ const rows = [
   btn.addEventListener("click", () => { const on = btn.getAttribute("aria-pressed") !== "true", from = new Map(rows.map((r) => [r, r.getBoundingClientRect().top])); btn.setAttribute("aria-pressed", on); [...rows].sort((a, b) => (on ? a.dataset.c - b.dataset.c : a.dataset.i - b.dataset.i)).forEach((r) => list.append(r)); if (!still) for (const r of rows) { const dy = from.get(r) - r.getBoundingClientRect().top; if (dy) r.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 380, easing: "cubic-bezier(.22,1,.36,1)" }); } });
 </script>
 <style>
+  [data-rows] .r { transition: background-color .15s var(--ease); } [data-rows] .r:hover { background: rgb(180 83 9 / .07); }
   .x { padding: 8px 24px 12px; border-radius: 18px; background: #fff; color: var(--ink); box-shadow: 0 30px 60px -28px rgb(70 25 5 / .7); }
   .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-block: 12px; } .bar b { font-weight: 500; font-size: 18px; letter-spacing: -.01em; }
   .sort { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding-inline: 12px; border-radius: 10px; background: var(--soft); font-size: 14px; font-weight: 500; transition: background-color .15s var(--ease), color .15s var(--ease); } .sort:hover { background: #e6eeff; } .sort[aria-pressed="true"] { background: var(--ink); color: #fff; }

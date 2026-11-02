@@ -1,11 +1,12 @@
 ---
 // One capability: a colour field, the case for it, the real product, and a small working piece of it laid over the top.
-const { id, field, chip = "#2563eb", title, text, img, w = 1600, h = 1000, alt, flip = false, fit = false, narrow = false } = Astro.props;
+const { id, field, art, scrim = "--sc:3 44 66", chip = "#2563eb", title, text, img, w = 1600, h = 1000, alt, flip = false, fit = false, narrow = false } = Astro.props;
+import Art from "./Art.astro";
 ---
 <section id={id} class:list={["panel", "f", { flip, fit, narrow }]} style={`--tint:${chip}`}>
-  <i class={`field f-${field}`} aria-hidden="true"></i>
+  <i class={`field f-${field}`} aria-hidden="true"></i>{art && <Art name={art} class="dim" style={scrim} />}
   <div class="copy"><h2>{title}</h2><p class="lead">{text}</p><slot name="extra" /></div>
-  <div class="view"><div class="win"><img src={`/img/${img}.avif`} width={w} height={h} loading="lazy" decoding="async" alt={alt} /></div><div class="over"><slot /></div></div>
+  <div class="view"><div class="win" data-tilt><img src={`/img/${img}.avif`} width={w} height={h} loading="lazy" decoding="async" alt={alt} /></div><div class="over"><slot /></div></div>
 </section>
 <style>
   .f { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: clamp(24px, 4vw, 56px); align-items: center; padding: var(--pad) 0 var(--pad) var(--pad); min-height: 600px; }

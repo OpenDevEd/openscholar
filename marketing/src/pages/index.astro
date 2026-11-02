@@ -3,87 +3,105 @@ import Base from "../layouts/Base.astro";
 import Feature from "../components/Feature.astro";
 import Cards from "../components/Cards.astro";
 import AudienceArt from "../components/AudienceArt.astro";
-import SieveWall from "../components/SieveWall.astro";
+import Art from "../components/Art.astro";
+import Workspace from "../components/Workspace.astro";
 import Table from "../components/Table.astro";
 import Faq from "../components/Faq.astro";
 import AskBar from "../components/AskBar.astro";
 import Arrow from "../components/Arrow.astro";
 import { APP } from "../data/site.mjs";
 const teams = [
-  ["ocean", "review", "Review teams", "Run systematic and scoping reviews with explicit criteria and data you can export."],
-  ["rose", "brief", "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind it ready to share."],
-  ["emerald", "library", "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name."],
+  ["ocean", "review", "Review teams", "Run systematic and scoping reviews with explicit criteria and data you can export.", "/#screening"],
+  ["rose", "brief", "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind it ready to share.", "/#trust"],
+  ["emerald", "community", "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name.", "/evidence-communities/"],
 ];
+const kept = [["yes", "The effects of a peer-tutoring strategy on children's e-book reading comprehension"], ["yes", "Assessing the differential effects of peer tutoring for tutors and tutees in elementary reading education"], ["maybe", "Role of peer tutoring and methods to boost reading skills at the urban sector primary schools"], ["yes", "Implementing an online peer tutoring intervention to promote reading skills of elementary students"]];
 const faq = [
   ["What does the AI read?", "Screening and extraction work from each paper's title and abstract. The assistant can also read open-access PDFs and files you attach to a chat. Answers show how well they're grounded and link to their source where they can, and the assistant tells you when it couldn't read something."],
   ["Can we choose the model?", "Yes. Choose a preset, pick a model for each task, or use your own provider key."],
-  ["Does it work with Zotero?", "Yes. OpenScholar can read your Zotero groups, collections and items, and an Evidence Library can publish from a Zotero group."],
+  ["Does it work with Zotero?", "Yes. OpenScholar can read your Zotero groups, collections and items, and an Evidence Community can publish from a Zotero group."],
   ["Can we take our data with us?", "Yes. Results, screenings and extractions all export, in formats including CSV, JSON and Excel."],
   ["Who can see our work?", "Members of an organization see its work. To bring someone in from outside, share a single item with them as a viewer or an editor."],
 ];
 ---
 <Base title="OpenScholar: the evidence workspace for research teams" description="Know what the evidence says before anyone asks you to defend it. Find the literature, screen it against your criteria, extract the data and publish what you learn.">
-  <section class="panel hero">
-    <i class="field f-cobalt" aria-hidden="true"></i>
-    <div class="h-top"><h1>Know what the evidence says before anyone asks you to defend it</h1><div class="h-side"><p class="lead">OpenScholar is the evidence workspace for research teams. Find the literature, screen it against your criteria, extract the data and publish what you learn.</p><div class="acts"><a class="btn" href={APP}>Get started<Arrow /></a><a class="btn ghost" href="https://wealth-inequality.openscholar.ai">See a live library</a></div></div></div>
-    <div class="win shot"><img src="/img/shot-search.avif" width="1800" height="1128" fetchpriority="high" alt="OpenScholar's search results, with an AI overview of the field and query terms highlighted in each paper" /></div>
-  </section>
-
-  <section class="who" id="who"><h2>For anyone whose work has to stand on the evidence</h2>
-    <div class="teams">{teams.map(([f, k, t, d]) => <article class="panel"><i class={`field f-${f}`} aria-hidden="true"></i><AudienceArt kind={k} /><h3>{t}</h3><p>{d}</p></article>)}</div>
-  </section>
-
-  <Feature id="product" field="ocean" chip="#0e7490" title="Start with the whole literature, not the first page of it" text="Ask in plain language. You get a query you can read and change, and a view of the whole field before you commit to reading any of it." img="shot-search2" w={1800} h={955} alt="Results for a search, with an overview of the field and highlighted terms"><Cards kind="query" /></Feature>
-
-  <section class="panel band" id="screening">
-    <i class="field f-emerald" aria-hidden="true"></i>
-    <div class="b-head"><h2>Decide what counts once, then apply it to every paper</h2><p class="lead">Write your questions and what each answer is worth. AI answers for every paper, your rules decide what's included, and you can overrule any answer.</p></div>
-    <div class="flow"><Cards kind="rule" /><svg class="pipe" viewBox="0 0 60 120" preserveAspectRatio="none" fill="none" aria-hidden="true"><path d="M0 60H60" stroke="#fff" stroke-width="2" stroke-dasharray="3 6" vector-effect="non-scaling-stroke" /></svg><div class="stream"><SieveWall /><div class="legend" aria-hidden="true"><span><i style="background:rgb(255 255 255 / .3)"></i>Not included</span><span><i style="background:#fde68a"></i>Unclear, for you to decide</span><span><i style="background:#fff"></i>Included</span></div></div></div>
-  </section>
-
-  <section class="panel band" id="extraction">
-    <i class="field f-amber" aria-hidden="true"></i>
-    <div class="b-head"><h2>Stop retyping the literature into a spreadsheet</h2><p class="lead">Ask the same questions of every paper's abstract and get a table you can sort, check and export. Start with the answers the model is least sure of.</p></div>
-    <Table />
-  </section>
-
-  <Feature id="assistant" field="cobalt" chip="#1d4ed8" flip narrow title="Delegate the groundwork, not the decisions" text="Describe the review you need. The assistant searches, builds collections and runs jobs in your workspace, stops for your approval, and tells you which results to check by hand." img="shot-assistant" w={880} h={860} alt="The research assistant listing which papers to check by hand after an extraction"><Cards kind="approve" /></Feature>
-
-  <section class="panel trust">
-    <i class="field f-night" aria-hidden="true"></i>
-    <div class="t-head"><h2>Built for the moment someone asks how you know</h2><p class="lead">Follow an answer back through its sentence to its paper. Your criteria are written down, every change has a name beside it, and people make the final call.</p></div>
-    <div class="trace" aria-hidden="true">
-      <div class="t-a"><span>What is the sample size?</span><b>298 pupils</b></div>
-      <svg viewBox="0 0 120 60" preserveAspectRatio="none" fill="none"><path d="M0 30H120" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 5" vector-effect="non-scaling-stroke" /></svg>
-      <div class="t-b">A randomised trial was conducted in four Colombian elementary schools with eight classes, and <mark>298 third and fifth grade pupils</mark>.</div>
-      <svg viewBox="0 0 120 60" preserveAspectRatio="none" fill="none"><path d="M0 30H120" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 5" vector-effect="non-scaling-stroke" /></svg>
-      <div class="t-c"><b>Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia</b><span>Thurston, 2023</span></div>
+  <section class="bleed hero">
+    <div class="ribbon"><Art name="hero-ribbon" live eager /><p class="tag t1">the whole literature</p><p class="tag t2">your criteria</p><p class="tag t3">the evidence you can defend</p></div>
+    <div class="inner">
+      <div class="h-copy"><h1>Know what the evidence says before anyone asks you to defend it</h1><p class="lead">OpenScholar is the evidence workspace for research teams. Find the literature, screen it against your criteria, extract the data and publish what you learn.</p><div class="acts"><a class="btn brand" href={APP}>Get started<Arrow /></a><a class="btn line" href="https://wealth-inequality.openscholar.ai">See a live community</a></div></div>
+      <Workspace />
     </div>
   </section>
 
-  <section class="panel publish" id="library" style="--tint:#be123c">
-    <i class="field f-rose" aria-hidden="true"></i>
-    <div class="p-copy"><h2>Publish your evidence as a living library</h2><p class="lead">Give your field a public home with your own branding and address. You choose the sources that keep it current, and readers can search it, explore it and ask it questions.</p><a class="btn" href="/evidence-libraries/">Explore Evidence Libraries<Arrow /></a></div>
-    <div class="p-shots"><a class="win a" href="https://wealth-inequality.openscholar.ai" aria-label="Wealth Inequality and Social Mobility library"><img src="/img/lib-plate.avif" width="1000" height="782" loading="lazy" decoding="async" alt="" /></a><a class="win b" href="https://aied.openscholar.ai" aria-label="Artificial Intelligence in Education library"><img src="/img/lib-evidence.avif" width="1240" height="640" loading="lazy" decoding="async" alt="" /></a></div>
+  <section class="who" id="who"><h2>For anyone whose work has to stand on the evidence</h2>
+    <div class="teams">{teams.map(([f, k, t, d, href]) => <a class="panel edge" href={href}><i class={`field f-${f}`} aria-hidden="true"></i><AudienceArt kind={k} /><h3>{t}<Arrow /></h3><p>{d}</p></a>)}</div>
+  </section>
+
+  <Feature id="product" field="ocean" art="sea" chip="#0e7490" title="Start with the whole literature, not the first page of it" text="Ask in plain language. You get a query you can read and change, and a view of the whole field before you commit to reading any of it." img="shot-search2" w={1800} h={955} alt="Results for a search, with an overview of the field and highlighted terms"><Cards kind="query" /></Feature>
+
+  <section class="bleed sieve" id="screening">
+    <Art name="sieve" pos="50% 100%" live />
+    <div class="inner">
+      <div class="b-head"><h2>Decide what counts once, then apply it to every paper</h2><p class="lead">Write your questions and what each answer is worth. AI answers for every paper, your rules decide what's included, and you can overrule any answer.</p></div>
+      <div class="flow"><p class="tag">every paper in your search</p><Cards kind="rule" /><div class="kept" aria-label="Papers that met the criteria"><b>Included</b><ul>{kept.map(([v, t]) => <li class={v}><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">{v === "yes" ? <path d="m4 10.500 4 4 8-9" /> : <path d="M10 5v6m0 4v.01" />}</svg><span>{t}</span></li>)}</ul></div></div>
+    </div>
+  </section>
+
+  <section class="panel band" id="extraction">
+    <i class="field f-amber" aria-hidden="true"></i><Art name="grid" pos="100% 0" class="dim" style="--sc:109 29 1" />
+    <div class="b-head stack"><h2>Stop retyping the literature into a spreadsheet</h2><p class="lead">Ask the same questions of every paper's abstract and get a table you can sort, check and export. Start with the answers the model is least sure of.</p></div>
+    <Table />
+  </section>
+
+  <Feature id="assistant" field="cobalt" art="gate" scrim="--sc:9 32 124;--dir:270deg" chip="#1d4ed8" flip narrow title="Delegate the groundwork, not the decisions" text="Describe the review you need. The assistant searches, builds collections and runs jobs in your workspace, stops for your approval, and tells you which results to check by hand." img="shot-assistant" w={880} h={860} alt="The research assistant listing which papers to check by hand after an extraction"><Cards kind="approve" /></Feature>
+
+  <section class="bleed trust" id="trust">
+    <div class="inner t-head"><h2>Built for the moment someone asks how you know</h2><p class="lead">Follow a cited answer back through its sentence to its paper. Your criteria are written down, every change has a name beside it, and people make the final call.</p></div>
+    <div class="wire">
+      <Art name="thread" live />
+      <div class="inner trace" aria-hidden="true">
+        <div class="t-a"><span>What is the sample size?</span><b>298 pupils</b></div>
+        <div class="t-b">A randomised trial was conducted in four Colombian elementary schools with eight classes, and <mark>298 third and fifth grade pupils</mark>.</div>
+        <div class="t-c"><b>Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia</b><span>Thurston, 2023</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel publish" id="community" style="--tint:#be123c">
+    <Art name="globe" pos="100% 50%" />
+    <div class="p-copy"><h2>Turn your evidence into a living community</h2><p class="lead">Give your field a public home with your own branding and address. You choose the sources that keep it current, and readers can search it, explore it and ask it questions.</p><a class="btn" href="/evidence-communities/">Explore Evidence Communities<Arrow /></a></div>
+    <div class="p-shots"><a class="win a" data-tilt href="https://wealth-inequality.openscholar.ai" aria-label="Wealth Inequality and Social Mobility community"><img src="/img/community-plate.avif" width="1000" height="782" loading="lazy" decoding="async" alt="" /></a><a class="win b" data-tilt href="https://aied.openscholar.ai" aria-label="Artificial Intelligence in Education community"><img src="/img/community-evidence.avif" width="1240" height="640" loading="lazy" decoding="async" alt="" /></a></div>
   </section>
 
   <Faq items={faq} />
 
-  <section class="panel close"><i class="field f-cobalt" aria-hidden="true"></i><h2>Start with your next question</h2><AskBar id="ask-end" /></section>
+  <section class="bleed close"><Art name="dark-ribbon" pos="50% 100%" live /><div class="inner"><h2>Start with your next question</h2><AskBar id="ask-end" /></div></section>
 </Base>
 <style>
-  .hero { padding: var(--pad) var(--pad) 0; }
-  .h-top { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px 48px; align-items: end; margin-bottom: clamp(32px, 4vw, 56px); } .h-side { display: grid; gap: 20px; } .acts { display: flex; flex-wrap: wrap; gap: 10px; }
-  .shot { border-radius: 16px 16px 0 0; margin-bottom: -2px; max-height: 620px; overflow: hidden; } .shot img { width: 139%; margin-left: -39%; margin-top: -15%; max-width: none; }
+  .hero { color: var(--ink); background: #fff; padding-block: clamp(96px, 9vw, 128px) clamp(24px, 3vw, 40px); }
+  .ribbon { position: absolute; z-index: -2; top: 0; right: 0; width: max(100vw, 1180px); aspect-ratio: 1672 / 941; -webkit-mask-image: linear-gradient(#000 82%, transparent); mask-image: linear-gradient(#000 82%, transparent); }
+  .ribbon :global(.art) { z-index: 0; }
+  .tag { position: absolute; z-index: 1; display: flex; align-items: center; gap: 8px; padding: 5px 9px; border-radius: 8px; background: rgb(255 255 255 / .86); box-shadow: 0 0 0 1px var(--line); color: var(--ink); white-space: nowrap; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .t1 { left: 79%; top: 17%; } .t2 { left: 67%; top: 42%; } .t3 { left: 82%; top: 58%; }
+  .tag::after { content: ""; position: absolute; top: 50%; width: 40px; height: 1px; background: currentColor; opacity: .5; }
+  .tag::after { right: 100%; }
+  .h-copy { display: grid; gap: 20px; justify-items: start; width: min(47%, 640px); min-width: 0; margin-bottom: clamp(32px, 4vw, 48px); } .h-copy h1 { font-size: clamp(40px, 4.5vw, 64px); } .h-copy .lead { color: var(--t2); } .acts { display: flex; flex-wrap: wrap; gap: 10px; }
   .band { display: grid; gap: 28px; padding: var(--pad); } .b-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
-  .flow { display: grid; grid-template-columns: minmax(0, 340px) 60px minmax(0, 1fr); align-items: center; } .pipe { width: 100%; height: 120px; } .stream { min-width: 0; } .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; font-size: 14px; } .legend span { display: inline-flex; align-items: center; gap: 7px; } .legend i { width: 12px; height: 12px; border-radius: 3px; }
+  .stack { grid-template-columns: minmax(0, 1fr); width: min(52%, 600px); } .band :global(.art) { height: 440px; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
+  .sieve { background: #013527; padding-block: clamp(56px, 7vw, 96px); min-height: min(58vw, 860px); }
+  .flow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 340px) minmax(0, 1fr); gap: 24px; align-items: center; margin-top: clamp(32px, 6vw, 88px); } .flow .tag { position: static; justify-self: start; background: rgb(0 40 30 / .7); color: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .3); } .flow .tag::after { display: none; }
+  .kept { padding: 14px 16px; border-radius: 14px; background: rgb(255 255 255 / .94); color: var(--ink); box-shadow: 0 22px 40px -16px rgb(0 30 20 / .7); font-size: 14px; line-height: 1.3; } .kept > b { display: block; font-weight: 500; font-size: 16px; margin-bottom: 8px; } .kept ul { display: grid; gap: 8px; } .kept li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; } .kept svg { margin-top: 1px; color: #047857; } .kept .maybe svg { color: #b45309; } .kept span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
   .who { padding: clamp(40px, 6vw, 72px) var(--pad) 8px; } .who h2 { max-width: 16em; margin-bottom: 28px; }
-  .teams { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); margin-inline: calc(var(--pad) * -1); } .teams .panel { display: flex; flex-direction: column; gap: 10px; padding: 24px; } .teams :global(svg) { margin-bottom: 14px; } .teams p { font-size: 16px; line-height: 1.4; }
-  .trust { padding: var(--pad); display: grid; gap: 36px; } .t-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
-  .trace { display: grid; grid-template-columns: minmax(0, 3fr) 48px minmax(0, 5fr) 48px minmax(0, 4fr); align-items: center; } .trace > svg { width: 100%; height: 60px; }
-  .t-a, .t-b, .t-c { padding: 18px 20px; border-radius: 14px; background: #fff; color: var(--ink); } .t-a span, .t-c span { display: block; font-size: 14px; color: var(--t2); } .t-a b { display: block; margin-top: 4px; font-weight: 500; font-size: 26px; letter-spacing: -.02em; } .t-b { font-size: 16px; line-height: 1.45; color: var(--t2); } .t-b mark { background: #fde68a; color: var(--ink); border-radius: 3px; padding-inline: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; } .t-c b { display: block; font-weight: 500; line-height: 1.3; margin-bottom: 4px; }
-  .publish { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; padding: var(--pad); min-height: 560px; } .p-copy { display: grid; gap: 18px; justify-items: start; } .publish :global(.btn) { --chip: var(--tint); }
-  .p-shots { position: relative; height: 440px; } .p-shots .win { position: absolute; display: block; transition: transform .3s var(--ease); } .p-shots .win:hover { transform: translateY(-6px); z-index: 2; } .a { left: 0; top: 0; width: 66%; z-index: 1; } .b { right: 0; bottom: 0; width: 66%; }
-  .close { display: grid; justify-items: center; gap: 24px; padding: clamp(48px, 7vw, 96px) var(--pad); text-align: center; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
-  @media (max-width: 900px) { .h-top, .publish, .t-head { grid-template-columns: minmax(0, 1fr); } .shot img { width: 190%; margin-left: -53%; margin-top: -28%; } .b-head, .flow { grid-template-columns: minmax(0, 1fr); } .pipe { display: none; } .stream { margin-top: 16px; } .who { padding-inline: 8px; } .teams { grid-template-columns: minmax(0, 1fr); margin-inline: -8px; } .trace { grid-template-columns: minmax(0, 1fr); gap: 0; } .trace > svg { width: 0; height: 24px; margin-inline: 24px; border-left: 2px dashed #fbbf24; } .trace > svg path { display: none; } .p-shots { height: 76vw; } }
+  .teams { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); margin-inline: calc(var(--pad) * -1); } .teams .panel { display: flex; flex-direction: column; gap: 10px; padding: 24px; } .teams :global(svg:not(h3 svg)) { margin-bottom: 14px; transition: transform .4s var(--ease); } .teams :global(.aud) { margin-bottom: 14px; transition: transform .4s var(--ease); } .teams .panel:hover :global(.aud), .teams .panel:hover > :global(svg) { transform: translateY(-4px); } .teams h3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .teams h3 :global(i) { display: grid; place-items: center; width: 28px; height: 28px; transition: transform .3s var(--ease); } .teams .panel:hover h3 :global(i) { transform: translateX(4px); } .teams p { font-size: 16px; line-height: 1.4; }
+  .trust { background: #00081a; padding-top: clamp(56px, 7vw, 96px); } .t-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
+  .wire { position: relative; isolation: isolate; display: grid; align-items: center; min-height: clamp(420px, 40vw, 620px); } .wire :global(.art) { z-index: -1; }
+  .wire { overflow: clip; } .wire::after { content: ""; position: absolute; z-index: -1; left: -220px; top: 50%; width: 220px; height: 3px; margin-top: -1.5px; background: linear-gradient(90deg, transparent, #fff 50%, transparent); animation: run 3.6s linear infinite; }
+  @keyframes run { to { transform: translateX(calc(100vw + 220px)); } }
+  .trace { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 5fr) minmax(0, 4fr); gap: clamp(32px, 5vw, 72px); align-items: center; width: 100%; }
+  .t-a, .t-b, .t-c { padding: 18px 20px; border-radius: 14px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px rgb(251 191 36 / .5), 0 24px 60px -20px rgb(251 191 36 / .35); transition: transform .3s var(--ease); } .t-a:hover, .t-b:hover, .t-c:hover { transform: translateY(-4px); } .t-a span, .t-c span { display: block; font-size: 14px; color: var(--t2); } .t-a b { display: block; margin-top: 4px; font-weight: 500; font-size: 26px; letter-spacing: -.02em; } .t-b { font-size: 16px; line-height: 1.45; color: var(--t2); } .t-b mark { background: #fde68a; color: var(--ink); border-radius: 3px; padding-inline: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; } .t-c b { display: block; font-weight: 500; line-height: 1.3; margin-bottom: 4px; }
+  .publish { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; padding: var(--pad); min-height: 620px; background: #520116; } .p-copy { display: grid; gap: 18px; justify-items: start; } .publish :global(.btn) { --chip: var(--tint); } .publish > :global(.art) { z-index: -1; }
+  .p-shots { position: relative; height: 480px; } .p-shots .win { position: absolute; display: block; } .p-shots .win:hover { z-index: 2; } .a { left: 0; top: 0; width: 62%; z-index: 1; } .b { right: 0; bottom: 0; width: 62%; }
+  .close { background: var(--night); padding-block: clamp(64px, 8vw, 112px) max(160px, 28vw); text-align: center; } .close .inner { display: grid; justify-items: center; gap: 24px; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
+  @media (max-width: 1100px) { .tag { display: none; } .flow .tag { display: none; } .flow { grid-template-columns: minmax(0, 340px) minmax(0, 1fr); } }
+  @media (max-width: 900px) { .ribbon { top: 420px; width: 170vw; right: -50vw; } .h-copy { width: 100%; } .publish, .t-head { grid-template-columns: minmax(0, 1fr); } .b-head, .flow { grid-template-columns: minmax(0, 1fr); } .stack { width: 100%; } .who { padding-inline: 8px; } .teams { grid-template-columns: minmax(0, 1fr); margin-inline: -8px; } .wire { min-height: 0; padding-block: 32px; } .trace { grid-template-columns: minmax(0, 1fr); gap: 28px; } .p-shots { height: 76vw; } }
 </style>

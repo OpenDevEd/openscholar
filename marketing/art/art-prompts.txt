@@ -1,0 +1,22 @@
+Use your built-in image_gen tool. Generate each of the 8 images below, one tool call each, at the widest landscape size the tool supports (16:9 or wider, highest resolution and quality). Do not edit files or do anything else. After all of them, print the absolute saved path of each image next to its name.
+
+Shared style for all: a physically based 3D render, as a studio photograph of real glass and light. One subject. Crisp, razor-sharp fine detail, real refraction and caustics. Rich saturated colour. No text, no letters, no numbers, no logos, no UI, no people, no robots, no brains, no orbs, no bubbles, no sparkles, no lens flare, no film grain. Never any purple, violet or magenta.
+
+1. hero-ribbon: Pure flat white background (#ffffff), completely empty white across the whole left half of the frame. One immense continuous ribbon made of thousands of razor-thin translucent glass sheets, fanned like the pages of an enormous open book, enters off the top-right corner, sweeps down through the right half in one long graceful S-curve, and leaves off the bottom-right edge. Colour shifts smoothly along its length from deep cobalt blue (#2563eb) through cyan and emerald to amber and warm coral. The fine parallel edges of the sheets catch the light. No shadow on the background, the white stays pure white.
+
+2. dark-ribbon: The same kind of ribbon of thousands of razor-thin translucent glass sheets, on a flat deep navy background (#070d2b). It enters from the left edge low in frame and crosses the whole width to leave off the right edge, along the lower third, in a long slow wave. Colour shifts from cobalt through cyan and emerald to amber and coral. The upper two thirds of the frame stay calm empty navy.
+
+3. sieve: Flat deep emerald background (#04372c). Thousands of small thin translucent glass sheets drift in from the left edge as a wide loose scattered cloud, pass through a single tall thin vertical pane of lit glass at the centre, and leave to the right edge as a tight orderly parallel fan. Emerald, mint and teal light with a few warm amber sheets. The top third stays calm and empty.
+
+4. grid: Flat deep burnt orange background (#6e2206). A monumental wall of glass cells in a perfect rectangular grid, like a spreadsheet built as architecture, in steep perspective receding from the right edge toward the left. Some cells glow warm amber from within, most are dark translucent. The left third stays calm and empty.
+
+5. thread: Flat very deep navy background (#050a22). One fine bright golden thread of light runs perfectly horizontally from the left edge to the right edge at the exact vertical centre of the frame, passing through a long row of tall thin dark glass sheets standing upright and evenly spaced, each sheet lit amber where the thread pierces it. Symmetrical, precise, calm.
+
+6. globe: Flat deep crimson background (#4c0820). A huge globe built from thousands of tiny translucent page-shaped glass tiles, lit rose, coral and warm amber, its surface forming faint continents. The globe sits in the right half, cropped by the bottom and right edges. The left half stays calm and empty. Not a bubble: clearly made of many small flat tiles.
+
+7. converge: Flat deep teal blue background (#07303f). Six separate large translucent glass sheets of different colours (cobalt, cyan, emerald, amber, coral, sky blue) fly in from different angles on the right side of the frame and merge into one single bright clear pane at the centre right. The left half stays calm and empty.
+
+8. sea: Seen from straight above. A vast calm sea of many thousands of tiny thin white-blue glass page tiles on a flat deep ocean blue background (#07405c), rippling in long waves from edge to edge, with one clear bright path of aligned tiles running diagonally across the frame. Cyan and white light.
+
+9. gate:
+Flat deep cobalt blue background (#0a2486). A long straight conveyor line of hundreds of small thin translucent glass sheets travels in from the right edge of the frame along a beam of bright sky-blue light, in perfect order, and stops in front of one single tall clear glass door standing shut at the centre left of the frame. The door glows white at its edges and the sheets wait in front of it. The left of the door and the top half of the frame stay calm and empty.
