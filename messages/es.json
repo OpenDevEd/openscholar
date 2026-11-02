@@ -204,7 +204,8 @@
       "pt": "Portugués",
       "es": "Español",
       "de": "Alemán",
-      "af": "Afrikáans"
+      "af": "Afrikáans",
+      "zu": "Zulú"
     },
     "you": "Usted"
   },
@@ -1315,7 +1316,8 @@
     "bg": "Búlgaro",
     "hr": "Croata",
     "sw": "Suajili",
-    "af": "Afrikáans"
+    "af": "Afrikáans",
+    "zu": "Zulú"
   },
   "workId": {
     "workIdLabel": "ID de obra",
@@ -2615,7 +2617,8 @@
         "sw": "Suajili",
         "pt": "Portugués",
         "es": "Español",
-        "af": "Afrikáans"
+        "af": "Afrikáans",
+        "zu": "Zulú"
       }
     },
     "analytics": {

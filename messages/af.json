@@ -204,7 +204,8 @@
       "pt": "Portugees",
       "es": "Spaans",
       "de": "Duits",
-      "af": "Afrikaans"
+      "af": "Afrikaans",
+      "zu": "Zoeloe"
     },
     "you": "Jy"
   },
@@ -1315,7 +1316,8 @@
     "bg": "Bulgaars",
     "hr": "Kroaties",
     "sw": "Swahili",
-    "af": "Afrikaans"
+    "af": "Afrikaans",
+    "zu": "Zoeloe"
   },
   "workId": {
     "workIdLabel": "Werk-ID",
@@ -2615,7 +2617,8 @@
         "sw": "Swahili",
         "pt": "Portugees",
         "es": "Spaans",
-        "af": "Afrikaans"
+        "af": "Afrikaans",
+        "zu": "Zoeloe"
       }
     },
     "analytics": {

@@ -29,6 +29,7 @@ const LOCALE_TO_LABEL_KEY: Record<Locale, string> = {
   es: "es",
   de: "de",
   af: "af",
+  zu: "zu",
 };
 
 interface LanguageSwitcherProps {

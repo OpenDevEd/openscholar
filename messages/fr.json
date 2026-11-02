@@ -204,7 +204,8 @@
       "pt": "Portugais",
       "es": "Espagnol",
       "de": "Allemand",
-      "af": "Afrikaans"
+      "af": "Afrikaans",
+      "zu": "Zoulou"
     },
     "you": "Vous"
   },
@@ -1314,7 +1315,8 @@
     "bg": "Bulgare",
     "hr": "Croate",
     "sw": "Swahili",
-    "af": "Afrikaans"
+    "af": "Afrikaans",
+    "zu": "Zoulou"
   },
   "workId": {
     "workIdLabel": "ID de l'œuvre",
@@ -2614,7 +2616,8 @@
         "sw": "Swahili",
         "pt": "Portugais",
         "es": "Espagnol",
-        "af": "Afrikaans"
+        "af": "Afrikaans",
+        "zu": "Zoulou"
       }
     },
     "analytics": {
