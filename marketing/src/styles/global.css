@@ -6,7 +6,7 @@
 :root {
   color-scheme: light;
   --paper: #f6f3ea; --ink: #0b1020; --white: #fff;
-  --cobalt: #2563eb; --cobalt-edge: #123a9e; --sun: #ffd233; --sun-edge: #c79800; --mint: #3ddc97; --mint-edge: #129a60; --coral: #ff5a47; --coral-edge: #b92a1a; --sky: #8fd0ff; --tang: #ff9c1a; --pink: #ff9bd0; --leaf: #0b6b4f;
+  --cobalt: #2563eb; --cobalt-edge: #123a9e; --sun: #ffd233; --sun-edge: #c79800; --mint: #2fd08c; --mint-edge: #129a60; --coral: #ff4f3d; --coral-edge: #b92a1a; --sky: #8fd0ff; --tang: #ff9c1a; --pink: #ff8cc8; --leaf: #0b6b4f; --deep: #153fb0;
   --mark-1: #ffe14d; --mark-2: #8fd0ff; --mark-3: #7df0b4; --mark-4: #ffb3dc;
   --t2: rgb(11 16 32 / .74); --t3: rgb(11 16 32 / .6); --line: rgb(11 16 32 / .12);
   --ease: cubic-bezier(.22, 1, .36, 1);
@@ -37,13 +37,14 @@ p { text-wrap: pretty; }
 .row { display: grid; gap: var(--gap); }
 
 /* A keycap: it has a real edge, and pressing it pushes it down. */
-.key { --face: var(--ink); --edge: #000; --text: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 52px; padding-inline: 22px; border-radius: 14px; background: var(--face); color: var(--text); font-weight: 700; font-size: 16px; letter-spacing: -.01em; white-space: nowrap; box-shadow: 0 5px 0 var(--edge); transform: translateY(0); transition: transform .12s var(--ease), box-shadow .12s var(--ease); cursor: pointer; }
+.key { --face: var(--ink); --edge: #4a5a91; --text: #fff; display: inline-flex; align-items: center; justify-content: center; gap: 10px; height: 52px; padding-inline: 22px; border-radius: 14px; background: var(--face); color: var(--text); font-weight: 700; font-size: 16px; letter-spacing: -.01em; white-space: nowrap; box-shadow: 0 5px 0 var(--edge); transform: translateY(0); transition: transform .12s var(--ease), box-shadow .12s var(--ease); cursor: pointer; }
 .key:hover { transform: translateY(-2px); box-shadow: 0 7px 0 var(--edge); }
 .key:active { transform: translateY(5px); box-shadow: 0 0 0 var(--edge); transition-duration: .04s; }
 .key svg { flex: none; transition: transform .2s var(--ease); } .key:hover svg { transform: translateX(3px); }
 .key.sun { --face: var(--sun); --edge: var(--sun-edge); --text: var(--ink); }
 .key.white { --face: #fff; --edge: #b9bdcc; --text: var(--ink); }
 .key.cobalt { --face: var(--cobalt); --edge: var(--cobalt-edge); }
+.key.coral { --face: #d42c1a; --edge: #8f1d10; }
 .key.small { height: 40px; padding-inline: 14px; font-size: 14px; border-radius: 11px; box-shadow: 0 4px 0 var(--edge); } .key.small:hover { box-shadow: 0 5px 0 var(--edge); } .key.small:active { transform: translateY(4px); box-shadow: 0 0 0 var(--edge); }
 
 /* A highlighter stroke: the same marks the product puts on search terms. It wipes on when it's first seen. */
@@ -52,9 +53,6 @@ p { text-wrap: pretty; }
 
 /* Text link: a marker stroke rises under it. */
 .pen { font-weight: 500; background: linear-gradient(var(--pen, var(--mark-1)), var(--pen, var(--mark-1))) no-repeat 0 100% / 100% .28em; transition: background-size .2s var(--ease); } .pen:hover { background-size: 100% 100%; }
-
-/* A die-cut sticker. */
-.sticker { filter: drop-shadow(2.5px 0 0 #fff) drop-shadow(-2.5px 0 0 #fff) drop-shadow(0 2.5px 0 #fff) drop-shadow(0 -2.5px 0 #fff) drop-shadow(0 6px 8px rgb(11 16 32 / .22)); }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } @view-transition { navigation: none; } }
 @media (max-width: 700px) { :root { --gap: 8px; --r: 24px; } }

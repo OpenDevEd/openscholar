@@ -2,9 +2,8 @@
 const accents = [["#2563eb", "Blue"], ["#c2410c", "Orange"], ["#0b7a5b", "Green"], ["#c2185b", "Rose"], ["#0b1020", "Ink"]];
 const records = [["Randomised trial", "Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia"], ["Randomised trial", "Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees"], ["Quasi-experiment", "Academic Achievement and Peer Tutoring in Mathematics: A Comparison Between Primary and Secondary Education"]];
 ---
-<section class="b studio" data-studio>
+<div class="studio" data-studio>
   <div class="controls">
-    <h2>Make it yours</h2>
     <label class="fld"><span>Name</span><input data-name value="Peer Tutoring Evidence" maxlength="48" /></label>
     <div class="fld"><span>Colour</span><div class="pots" role="radiogroup" aria-label="Colour">{accents.map(([c, n], i) => <button type="button" role="radio" aria-checked={i === 0 ? "true" : "false"} aria-label={n} data-accent={c} style={`--c:${c}`}><svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><path d="M22 4c6 8 15 14 15 23a15 15 0 01-30 0C7 18 16 12 22 4z" fill={c} /><path d="M15 27c0 4 3 7 6 8" fill="none" stroke="#fff" stroke-opacity=".7" stroke-width="3" stroke-linecap="round" /></svg></button>)}</div></div>
     <div class="fld"><span>Look</span><div class="seg" role="radiogroup" aria-label="Look"><button type="button" role="radio" aria-checked="true" data-mode="light">Light</button><button type="button" role="radio" aria-checked="false" data-mode="dark">Dark</button></div></div>
@@ -23,7 +22,7 @@ const records = [["Randomised trial", "Results from a Phase 2 exploratory trial 
       <div class="s-main">{records.map(([k, t]) => <article><span class="k" data-t={k === "Randomised trial" ? "rct" : "quasi"}>{k}</span><h4 lang="en" dir="ltr">{t}</h4></article>)}</div>
     </div>
   </div>
-</section>
+</div>
 <script>
   const STR = { en: { lib: "Library", map: "Map", contact: "Contact Us", in: "Sign in", ask: "Ask AI", dig: "Digests", rct: "Randomised trial", quasi: "Quasi-experiment" }, fr: { lib: "Bibliothèque de preuves", map: "Carte", contact: "Nous contacter", in: "Se connecter", ask: "Demander à l'IA", dig: "Derniers digests", rct: "Essai randomisé", quasi: "Quasi-expérience" }, ar: { lib: "مكتبة الأدلة", map: "خريطة", contact: "اتصل بنا", in: "تسجيل الدخول", ask: "اسأل الذكاء الاصطناعي", dig: "أحدث الملخصات", rct: "تجربة معشاة", quasi: "شبه تجربة" } };
   const S = document.querySelector("[data-studio]"), site = S.querySelector("[data-site]"), root = S.querySelector("[data-root]"), tag = S.querySelector("[data-live-tag]"), build = S.querySelector("[data-build]"), name = S.querySelector("[data-name]");
@@ -38,8 +37,8 @@ const records = [["Randomised trial", "Results from a Phase 2 exploratory trial 
   build.addEventListener("click", () => { tag.hidden = false; build.textContent = "It's live"; site.classList.remove("going"); void site.offsetWidth; site.classList.add("going"); });
 </script>
 <style>
-  .studio { background: var(--sky); display: grid; grid-template-columns: minmax(280px, 4fr) minmax(0, 8fr); gap: 28px; }
-  .controls { display: flex; flex-direction: column; gap: 16px; } h2 { margin-bottom: 4px; }
+  .studio { display: grid; grid-template-columns: minmax(280px, 4fr) minmax(0, 8fr); gap: 28px; }
+  .controls { display: flex; flex-direction: column; gap: 16px; }
   .fld { display: grid; gap: 6px; } .fld > span { font-size: 14px; font-weight: 700; }
   .fld > input { height: 48px; padding-inline: 14px; background: #fff; border: 0; border-radius: 12px; font-size: 16px; font-weight: 500; box-shadow: 0 0 0 2px var(--ink); outline: 0; } .fld > input:focus { box-shadow: 0 0 0 3px var(--ink); }
   .pots { display: flex; gap: 2px; } .pots button { border-radius: 12px; padding: 2px; transition: translate .2s var(--ease), background-color .2s var(--ease); } .pots button:hover { translate: 0 -2px; } .pots [aria-checked="true"] { background: #fff; }
@@ -60,5 +59,5 @@ const records = [["Randomised trial", "Results from a Phase 2 exploratory trial 
   .s-main { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; } article { background: var(--card); border-radius: 12px; padding: 12px 14px; } .k { font-size: 13px; font-weight: 500; color: color-mix(in srgb, var(--a), var(--ink2) 35%); } h4 { margin: 4px 0 0; font-weight: 500; font-size: 15px; line-height: 1.25; }
   .going .site { animation: sweep .8s var(--ease) both; } @keyframes sweep { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
   [hidden] { display: none !important; }
-  @media (max-width: 1000px) { .studio { display: flex; flex-direction: column; } .controls { display: contents; } .browser { order: 1; } .fld, .build { order: 2; } h2 { order: 0; } .s-main { grid-template-columns: minmax(0, 1fr); } .s-copy { width: 100%; } .fan { opacity: .4; width: 100%; } }
+  @media (max-width: 1000px) { .studio { display: flex; flex-direction: column; } .controls { display: contents; } .browser { order: 1; } .fld, .build { order: 2; } .s-main { grid-template-columns: minmax(0, 1fr); } .s-copy { width: 100%; } .fan { opacity: .4; width: 100%; } }
 </style>

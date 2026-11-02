@@ -1,11 +1,11 @@
 ---
 import data from "../data/search-default.json";
 import { APP } from "../data/site.mjs";
-import Shape from "./Shape.astro";
+import Art from "./Art.astro";
 const toggles = [["is_oa:true", "Open access", "oa=true"], ["has_abstract:true", "Has an abstract", "abs=true"], ["type:review", "Reviews", "review=true"], ["publication_year:>2019", "Recent", "yf=2020"]];
 ---
 <section class="b search" id="search" data-console data-default={JSON.stringify({ years: data.years, results: data.results.slice(0, 4) })}>
-  <Shape kind="dots" color="rgb(255 255 255 / .34)" />
+  <Art kind="lens" class="lens" />
   <div class="head"><h2>Ask like a person. Search like a <span class="hl wipe" style="--c:#fff">librarian</span></h2><p class="lead">Change the words below and the whole field redraws, live, in the colours of your query.</p></div>
   <form data-form role="search">
     <label class="sr" for="q">Search query</label>
@@ -64,7 +64,7 @@ const toggles = [["is_oa:true", "Open access", "oa=true"], ["has_abstract:true",
 </style>
 <style>
   .search { background: var(--sun); }
-  .head { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 16px 40px; align-items: end; margin-bottom: 28px; } .lead { color: var(--ink); }
+  .head { max-width: 58%; margin-bottom: 28px; } .lead { color: var(--ink); margin-top: 14px; max-width: 30rem; } .search :global(.lens) { right: -40px; top: -60px; width: min(44%, 500px); }
   form { display: flex; align-items: center; gap: 14px; padding: 12px 14px 17px 22px; border-radius: 22px; background: #fff; box-shadow: 0 0 0 2px var(--ink); } form:focus-within { box-shadow: 0 0 0 4px var(--ink); }
   .field { position: relative; flex: 1; min-width: 0; font: 700 clamp(20px, 3.4vw, 46px)/1.25 var(--sans); letter-spacing: -.03em; overflow: hidden; padding-block: 2px; }
   .mirror, input { display: block; width: 100%; white-space: pre; font: inherit; letter-spacing: inherit; }
@@ -77,5 +77,5 @@ const toggles = [["is_oa:true", "Open access", "oa=true"], ["has_abstract:true",
   .chart { flex: 1; min-height: 240px; display: flex; align-items: flex-end; gap: 1px; } .axis { display: flex; justify-content: space-between; margin-top: 10px; font: 400 13px var(--mono); color: rgb(255 255 255 / .7); }
   .sheet { padding: 22px; border-radius: 22px; background: #fff; display: flex; flex-direction: column; } .res { flex: 1; } .sheet .pen { align-self: flex-start; margin-top: 8px; }
   .err { margin-top: 12px; font-weight: 500; }
-  @media (max-width: 860px) { .head, .out { grid-template-columns: minmax(0, 1fr); } .scope { min-height: 280px; } .chart { min-height: 170px; } form { padding-left: 14px; gap: 8px; } form .key { width: 44px; height: 44px; } .field { font-size: 16px; font-weight: 500; letter-spacing: -.01em; } [data-chart] i { -webkit-mask-size: 100% 8px; mask-size: 100% 8px; } }
+  @media (max-width: 860px) { .head { max-width: none; padding-right: 72px; } .search :global(.lens) { width: 130px; right: -18px; top: -12px; } .out { grid-template-columns: minmax(0, 1fr); } .scope { min-height: 280px; } .chart { min-height: 170px; } form { padding-left: 14px; gap: 8px; } form .key { width: 44px; height: 44px; } .field { font-size: 16px; font-weight: 500; letter-spacing: -.01em; } [data-chart] i { -webkit-mask-size: 100% 8px; mask-size: 100% 8px; } }
 </style>

@@ -2,25 +2,21 @@
 import Base from "../../layouts/Base.astro";
 import Designer from "../../components/Designer.astro";
 import DotMap from "../../components/DotMap.astro";
-import Sticker from "../../components/Sticker.astro";
 import Shape from "../../components/Shape.astro";
+import Art from "../../components/Art.astro";
 import { APP } from "../../data/site.mjs";
 import papers from "../../data/extraction.json";
 const sources = [0, 1, 2].map((i) => ({ title: papers[i].title, year: papers[i].year, sentences: papers[i].sentences }));
-const shots = [["lib-home", 1920, 1150, "s2"], ["lib-evidence", 1240, 612, "s1"], ["lib-plate", 1000, 740, "s0"]];
 const lanes = [["Zotero", "#FFE14D"], ["Saved searches", "#8FD0FF"], ["OpenScholar", "#7DF0B4"], ["Your team", "#FFB3DC"]];
 ---
 <Base title="Evidence Libraries: OpenScholar" description="Your evidence deserves better than a PDF in a shared drive. Give it a beautiful public home.">
   <section class="b open">
-    <Shape kind="arcs" color="rgb(255 255 255 / .18)" />
-    <div class="o-copy"><h1>Your evidence deserves better than a <span class="hl wipe" style="--c:#FFE14D">shared drive</span></h1><p class="lead">A public home with your name on the door, where people can find it, search it and trust it.</p>
-      <div class="acts"><a class="key" href={`${APP}/evidence-libraries`}>Create your library</a><a class="key white" href="https://wealth-inequality.openscholar.ai">Visit a live one</a></div></div>
-    <div class="fan" aria-hidden="true">{shots.map(([img, w, h, c]) => <img class={c} src={`/img/${img}.avif`} width={w} height={h} decoding="async" alt="" />)}</div>
+    <Shape kind="arcs" color="rgb(255 255 255 / .16)" />
+    <div class="o-head"><h1>Your evidence deserves better than a <span class="hl wipe" style="--c:#FFE14D">shared drive</span></h1><div class="o-side"><p class="lead">A public home with your name on the door. Try it here: change anything.</p><div class="acts"><a class="key" href={`${APP}/evidence-libraries`}>Create your library</a><a class="key white" href="https://wealth-inequality.openscholar.ai">Visit a live one</a></div></div></div>
+    <Designer />
   </section>
-  <Designer />
   <section class="b answers" data-answers data-sources={JSON.stringify(sources)}>
-    <Sticker name="quote" size={120} class="st" />
-    <h2>Let your readers question the library</h2>
+        <h2>Let your readers question the library</h2>
     <div class="a-grid">
       <div><p class="q">Does peer tutoring help children read?</p>
         <p class="a">Yes, in the trials here. A <button type="button" data-cite="0">trial in Colombia</button> found a positive effect for the group doing Paired Reading. A <button type="button" data-cite="1">study in England</button> found gains in reading comprehension, greater for the tutors than the tutees. <button type="button" data-cite="2">Work in mathematics</button> shows similar benefits at primary and secondary level.</p>
@@ -41,7 +37,7 @@ const lanes = [["Zotero", "#FFE14D"], ["Saved searches", "#8FD0FF"], ["OpenSchol
       <ol><li>Draft</li><li>In review</li><li class="on"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5" /></svg>Published</li></ol>
     </div>
   </section>
-  <section class="b end"><Shape kind="stripes" color="rgb(255 255 255 / .24)" /><Sticker name="folder" size={140} class="e1" /><Sticker name="page" size={120} class="e2" /><h2>Open your library</h2><a class="key sun" href={`${APP}/evidence-libraries`}>Create your library</a></section>
+  <section class="b end"><Art kind="door" class="door" /><div><h2>Open your library</h2><a class="key sun" href={`${APP}/evidence-libraries`}>Create your library</a></div></section>
 </Base>
 <script>
   const ans = document.querySelector("[data-answers]"), sources = JSON.parse(ans.dataset.sources), PICK = [[1, 5], [0, 4], [2, 8]], title = ans.querySelector("[data-t]"), body = ans.querySelector("[data-s]"), esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
@@ -58,11 +54,9 @@ const lanes = [["Zotero", "#FFE14D"], ["Saved searches", "#8FD0FF"], ["OpenSchol
   [data-hits] button { display: block; width: 100%; padding: 8px 12px; text-align: left; font-size: 15px; border-radius: 8px; font-weight: 500; } [data-hits] button:hover { background: var(--mark-1); } [data-hits] .none { padding: 8px 12px; color: var(--t2); font-size: 15px; }
 </style>
 <style>
-  .open { background: var(--tang); display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: center; min-height: 600px; }
-  .o-copy { display: grid; gap: 20px; justify-items: start; } .acts { display: flex; flex-wrap: wrap; gap: 12px; }
-  .fan { position: relative; height: 460px; margin-right: calc(var(--pad) * -1.6); } .fan img { position: absolute; width: 96%; border-radius: 12px; box-shadow: 0 24px 40px -14px rgb(11 16 32 / .55), 0 0 0 3px #fff; }
-  .s2 { top: 0; left: 18%; rotate: 6deg; } .s1 { top: 90px; left: 8%; rotate: -3deg; } .s0 { top: 150px; left: 22%; rotate: 2.5deg; width: 80% !important; }
-  .answers { background: var(--mint); } .answers :global(.st) { position: absolute; right: 24px; top: 16px; rotate: 8deg; z-index: -1; } .answers h2 { max-width: 11em; margin-bottom: 24px; padding-right: 110px; }
+  .open { background: var(--tang); display: grid; gap: 32px; }
+  .o-head { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 20px 32px; align-items: end; } .o-side { display: grid; gap: 16px; } .acts { display: flex; flex-wrap: wrap; gap: 12px; }
+  .answers { background: var(--mint); } .answers h2 { max-width: 11em; margin-bottom: 24px; }
   .a-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: start; }
   .q { display: inline-block; padding: 10px 14px; border-radius: 14px 14px 14px 4px; background: var(--ink); color: #fff; font-weight: 500; margin-bottom: 16px; }
   .a { font-size: clamp(22px, 2.5vw, 34px); line-height: 1.15; letter-spacing: -.025em; font-weight: 500; }
@@ -75,7 +69,7 @@ const lanes = [["Zotero", "#FFE14D"], ["Saved searches", "#8FD0FF"], ["OpenSchol
   .flow { background: var(--sun); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; align-items: center; } .flow .lead { margin-top: 14px; }
   .pipes { display: grid; grid-template-columns: auto minmax(40px, 1fr) minmax(0, 1fr); align-items: center; height: 300px; } .pipes ul { display: grid; align-content: space-around; height: 100%; } .pipes ul li { padding: 8px 14px; border-radius: 12px; font-weight: 700; letter-spacing: -.02em; box-shadow: 0 0 0 2px var(--ink); white-space: nowrap; }
   .pipes > svg { width: 100%; height: 100%; } .p { stroke-dasharray: .08 .06; animation: run 2.4s linear infinite; } @keyframes run { to { stroke-dashoffset: -.28; } }
-  .pipes ol { display: grid; gap: 8px; } .pipes ol li { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-radius: 14px; background: rgb(11 16 32 / .1); font-weight: 700; letter-spacing: -.02em; } .pipes .on { background: var(--ink); color: #fff; }
-  .end { background: var(--pink); display: grid; justify-items: center; gap: 24px; padding-block: clamp(56px, 7vw, 88px); text-align: center; } .end h2 { font-size: clamp(42px, 7vw, 96px); } .end :global(.e1) { position: absolute; left: 6%; bottom: 12%; rotate: -10deg; z-index: -1; } .end :global(.e2) { position: absolute; right: 7%; top: 14%; rotate: 10deg; z-index: -1; }
-  @media (max-width: 900px) { .open, .a-grid, .flow { grid-template-columns: minmax(0, 1fr); } .open { min-height: 0; } .fan { height: 70vw; margin-right: 0; } .fan img { width: 90%; } .s2 { left: 12%; } .s1 { left: 0; top: 16%; } .s0 { left: 18%; top: 32%; width: 72% !important; } .page { rotate: none; } .answers h2 { padding-right: 76px; } .answers :global(.st) { width: 76px; height: 76px; right: 10px; top: 8px; } .pipes { height: auto; grid-template-columns: 1fr 1fr; gap: 12px; } .pipes > svg { display: none; } .pipes ul { gap: 8px; } .end :global(.e1), .end :global(.e2) { width: 64px; height: 64px; } .end { padding-block: 84px; } .end :global(.e1) { left: 8px; bottom: 8px; } .end :global(.e2) { right: 8px; top: 8px; } }
+  .pipes ol { display: grid; gap: 8px; } .pipes ol li { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-radius: 14px; background: rgb(11 16 32 / .1); font-weight: 700; letter-spacing: -.02em; } .pipes ol .on { background: var(--ink); color: #fff; }
+  .end { background: var(--pink); display: flex; align-items: center; min-height: 420px; padding-block: clamp(48px, 7vw, 88px); } .end h2 { font-size: clamp(44px, 8vw, 112px); line-height: .96; max-width: 5em; margin-bottom: 24px; letter-spacing: -.05em; } .end :global(.door) { right: 6%; bottom: -60px; width: min(40%, 420px); }
+  @media (max-width: 900px) { .o-head, .a-grid, .flow { grid-template-columns: minmax(0, 1fr); } .page { rotate: none; } .pipes { height: auto; grid-template-columns: 1fr 1fr; gap: 12px; } .pipes > svg { display: none; } .pipes ul { gap: 8px; } .end { min-height: 380px; align-items: flex-start; } .end :global(.door) { width: 170px; right: 10px; bottom: -30px; } }
 </style>

@@ -1,12 +1,11 @@
 ---
 import Base from "../layouts/Base.astro";
 import AskBar from "../components/AskBar.astro";
-import Covers from "../components/Covers.astro";
+import HeroScene from "../components/HeroScene.astro";
 import Search from "../components/Search.astro";
 import Sift from "../components/Sift.astro";
 import Extract from "../components/Extract.astro";
 import Agent from "../components/Agent.astro";
-import Room from "../components/Room.astro";
 import Sticker from "../components/Sticker.astro";
 import Shape from "../components/Shape.astro";
 const rail = [["#search", "Find it", "glass", "#FFD233"], ["#review", "Sift it", "sieve", "#3DDC97"], ["#extract", "Pull it out", "pen", "#FF5A47"], ["#assistant", "Hand it over", "stamp", "#0b1020"], ["#library", "Publish it", "page", "#FF9BD0"]];
@@ -15,7 +14,7 @@ const shots = [["lib-plate", 1000, 740, "Wealth Inequality and Social Mobility",
 ---
 <Base title="OpenScholar: know what the research really says" description="From your first question to published evidence, OpenScholar does the reading with you.">
   <section class="b hero">
-    <Covers />
+    <HeroScene />
     <div class="copy"><h1>Know what the research <span class="hl wipe">really says</span></h1><p class="lead">From your first question to published evidence, OpenScholar does the reading with you.</p><AskBar id="ask-hero" chips={asks} /></div>
   </section>
 
@@ -36,9 +35,9 @@ const shots = [["lib-plate", 1000, 740, "Wealth Inequality and Social Mobility",
   <Agent />
 
   <section class="b team">
-    <Shape kind="quarters" color="rgb(37 99 235 / .14)" />
-    <div class="t-copy"><h2>Stop emailing spreadsheets</h2><p class="lead">Your whole team, on the same evidence, watching it change as it happens.</p><a class="key" href="/teams/">See how teams work<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5" /></svg></a></div>
-    <Room />
+    <Shape kind="quarters" color="rgb(255 255 255 / .07)" />
+    <div class="t-copy"><h2>Stop emailing spreadsheets</h2><p class="lead">Your whole team, on the same evidence, watching it change as it happens.</p><a class="key sun" href="/teams/">See how teams work<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5" /></svg></a></div>
+    <ol class="feed" data-feed aria-hidden="true"></ol>
   </section>
 
   <section class="b lib" id="library">
@@ -48,23 +47,33 @@ const shots = [["lib-plate", 1000, 740, "Wealth Inequality and Social Mobility",
   </section>
 
   <section class="b end">
-    <Shape kind="stripes" color="rgb(255 255 255 / .26)" />
-    <Sticker name="glass" size={150} class="e1" /><Sticker name="star" size={110} class="e2" /><Sticker name="paper" size={130} class="e3" />
-    <h2>What do you want to know?</h2><AskBar id="ask-end" />
+    <Shape kind="arcs" color="rgb(255 255 255 / .34)" />
+    <h2>What do you want to <span class="hl wipe" style="--c:#fff">know?</span></h2><AskBar id="ask-end" key="coral" />
   </section>
 </Base>
+<script>
+  const feed = document.querySelector("[data-feed]"), LOG = [["Maya", "started a screening", "#FF4F3D"], ["Tomas", "changed an answer", "#FFD233"], ["Amina", "added papers to the collection", "#2FD08C"], ["The assistant", "pulled out the sample sizes, for Maya", "#8FD0FF"], ["Lena", "rated a paper", "#FF8CC8"], ["Tomas", "added a paper to the collection", "#FFD233"], ["Amina", "changed an answer", "#2FD08C"], ["Maya", "shared it with a guest", "#FF4F3D"]]; let k = 0, on = false;
+  const push = () => { const [who, what, c] = LOG[k++ % LOG.length], li = document.createElement("li"); li.style.setProperty("--c", c); li.innerHTML = `<i><svg viewBox="0 0 24 24" fill="#0b1020" width="20" height="20"><circle cx="12" cy="9" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7z"/></svg></i><span><b>${who}</b> ${what}</span>`; feed.prepend(li); if (feed.children.length > 4) feed.lastElementChild.remove(); };
+  for (let i = 0; i < 4; i++) push();
+  new IntersectionObserver(([e]) => { on = e.isIntersecting; }).observe(feed);
+  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(() => { if (on && !document.hidden) push(); }, 2400);
+</script>
+<style is:global>
+  [data-feed] li { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: center; height: 68px; padding-inline: 14px; border-radius: 16px; background: #fff; color: var(--ink); font-size: clamp(15px, 1.5vw, 19px); line-height: 1.15; letter-spacing: -.015em; animation: feedIn .45s var(--ease) both; } [data-feed] li:nth-child(n + 3) { background: rgb(255 255 255 / .82); }
+  [data-feed] i { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--c); } [data-feed] b { font-weight: 700; }
+  @keyframes feedIn { from { opacity: 0; transform: translateY(-14px) scale(.98); } }
+</style>
 <style>
   .hero { background: var(--cobalt); color: #fff; min-height: 640px; display: flex; align-items: center; }
   .rail { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gap); }
-  .rail a { position: relative; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 22px; background: var(--c); font-size: clamp(16px, 1.6vw, 20px); letter-spacing: -.03em; transition: translate .2s var(--ease); } .rail a:nth-child(4) { color: #fff; } .rail a:hover { translate: 0 -3px; } .rail :global(svg) { flex: none; rotate: var(--tilt); transition: rotate .25s var(--ease), scale .25s var(--ease); } .rail a:hover :global(svg) { rotate: -10deg; scale: 1.1; } .rail b { font-weight: 700; line-height: 1.05; }
-  .copy { position: relative; width: min(54%, 660px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; justify-items: start; } h1 { text-wrap: balance; } .copy .lead { max-width: 30rem; }
+  .rail a { position: relative; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 22px; background: var(--c); font-size: clamp(16px, 1.6vw, 20px); letter-spacing: -.03em; transition: translate .2s var(--ease); } .rail a:nth-child(4) { color: #fff; } .rail a:hover { translate: 0 -3px; } .rail a:active { translate: 0 2px; } .trio .b:active { translate: 0 2px; } .rail :global(svg) { flex: none; rotate: var(--tilt); transition: rotate .25s var(--ease), scale .25s var(--ease); } .rail a:hover :global(svg) { rotate: -10deg; scale: 1.1; } .rail b { font-weight: 700; line-height: 1.05; }
+  .copy { position: relative; width: min(50%, 600px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; justify-items: start; } h1 { text-wrap: balance; } .copy .lead { max-width: 30rem; }
   .trio { grid-template-columns: repeat(3, minmax(0, 1fr)); } .trio .b { display: flex; flex-direction: column; justify-content: space-between; gap: 40px; min-height: 240px; transition: translate .2s var(--ease); } .trio .b:hover { translate: 0 -4px; } .trio :global(svg) { transition: rotate .3s var(--ease); } .trio .b:hover :global(svg) { rotate: -8deg; }
   .t1 { background: var(--tang); } .t2 { background: #fff; } .t3 { background: var(--leaf); color: #fff; }
-  .team { background: var(--sky); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; align-items: center; } .t-copy { display: grid; gap: 18px; justify-items: start; }
+  .team { background: var(--deep); color: #fff; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; align-items: center; } .t-copy { display: grid; gap: 18px; justify-items: start; } .feed { display: grid; gap: 8px; height: calc(4 * 68px + 3 * 8px); overflow: hidden; }
   .lib { background: var(--pink); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; align-items: center; min-height: 520px; } .l-copy { display: grid; gap: 18px; justify-items: start; }
   .fan { position: relative; height: 440px; } .shot { position: absolute; width: 74%; border-radius: 12px; overflow: hidden; box-shadow: 0 24px 40px -14px rgb(11 16 32 / .5), 0 0 0 3px #fff; transition: rotate .3s var(--ease), translate .3s var(--ease), scale .3s var(--ease); } .shot:hover { z-index: 3; rotate: 0deg; scale: 1.04; }
   .s2 { left: 0; top: 0; rotate: -7deg; z-index: 0; } .s1 { right: -6%; top: 20px; rotate: 6deg; z-index: 1; } .s0 { left: 14%; bottom: 0; rotate: -1.5deg; z-index: 2; width: 66%; }
-  .end { background: var(--sun); display: grid; justify-items: center; gap: 24px; padding-block: clamp(56px, 8vw, 104px); text-align: center; } .end h2 { font-size: clamp(42px, 7vw, 96px); max-width: 9em; }
-  .end :global(.e1) { position: absolute; left: 4%; top: 12%; rotate: -14deg; z-index: -1; } .end :global(.e2) { position: absolute; right: 6%; top: 10%; rotate: 16deg; z-index: -1; } .end :global(.e3) { position: absolute; right: 12%; bottom: 8%; rotate: 8deg; z-index: -1; }
-  @media (max-width: 900px) { .hero { flex-direction: column; align-items: stretch; min-height: 0; padding-bottom: 0; } .copy { width: 100%; order: 1; } .end { padding-top: 104px; } .rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rail a:last-child { grid-column: 1 / -1; } .trio { grid-template-columns: minmax(0, 1fr); } .trio .b { flex-direction: row; align-items: center; justify-content: flex-start; min-height: 0; gap: 16px; } .team, .lib { grid-template-columns: minmax(0, 1fr); } .fan { height: 62vw; min-height: 280px; } .end :global(.e1), .end :global(.e2), .end :global(.e3) { width: 72px; height: 72px; } .end :global(.e1) { top: 12px; left: 8px; } .end :global(.e2) { top: 12px; right: 8px; } .end :global(.e3) { bottom: 12px; right: 8px; } }
+  .end { background: var(--sun); display: grid; justify-items: start; gap: 24px; padding-block: clamp(48px, 7vw, 88px); } .end h2 { font-size: clamp(44px, 8vw, 112px); max-width: 8em; line-height: .96; letter-spacing: -.05em; }
+  @media (max-width: 900px) { .hero { flex-direction: column; align-items: stretch; min-height: 0; padding-bottom: 0; } .copy { width: 100%; order: 1; } .rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rail a:last-child { grid-column: 1 / -1; } .trio { grid-template-columns: minmax(0, 1fr); } .trio .b { flex-direction: row; align-items: center; justify-content: flex-start; min-height: 0; gap: 16px; } .team, .lib { grid-template-columns: minmax(0, 1fr); } .fan { height: 62vw; min-height: 280px; } }
 </style>

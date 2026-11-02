@@ -13,7 +13,7 @@ import { group } from "../../data/features.mjs";
     <article>
       {GUIDES.map((g) => (
         <section id={g.id} data-guide>
-          <h2>{g.title}</h2>
+          <h2 class="gh">{g.title}</h2>
           {g.intro.map((p) => <p class="p">{p}</p>)}
           {g.steps && <ol class="steps">{g.steps.map((s) => <li>{s}</li>)}</ol>}
           {g.group && <details class="more" data-block><summary>Everything in this area</summary>{g.group.map((id) => { const f = group(id); return (<div class="block">{g.group.length > 1 && <h3>{f.name}</h3>}<dl>{f.items.map(([n, t]) => <div data-text={`${n} ${t}`.toLowerCase()}><dt>{n}</dt><dd>{t}</dd></div>)}</dl></div>); })}</details>}
@@ -34,8 +34,9 @@ import { group } from "../../data/features.mjs";
   input { width: 100%; height: 44px; padding-inline: 14px; background: var(--paper); border: 0; border-radius: 12px; font-size: 16px; font-weight: 500; outline: 0; margin-bottom: 8px; } input:focus { box-shadow: 0 0 0 3px var(--ink); } input::placeholder { color: var(--t3); font-weight: 400; }
   nav a { display: block; padding: 7px 10px; border-radius: 9px; font-size: 15px; font-weight: 500; transition: background-color .15s var(--ease); } nav a:hover { background: var(--mark-1); }
   article { padding: var(--pad); border-radius: var(--r); background: #fff; min-width: 0; }
-  section[data-guide] { padding-block: 32px; border-top: 1px solid var(--line); scroll-margin-top: 80px; } section[data-guide]:first-child { padding-top: 0; border-top: 0; } section[hidden] { display: none; }
-  section[data-guide] h2 { font-size: clamp(26px, 2.8vw, 36px); margin-bottom: 12px; }
+  section[data-guide] { padding-block: 28px; scroll-margin-top: 80px; } section[data-guide]:first-child { padding-top: 0; border-top: 0; } section[hidden] { display: none; }
+  section[data-guide] .gh { font-size: clamp(24px, 2.6vw, 34px); margin-bottom: 14px; padding: 12px 16px; border-radius: 14px; background: var(--g); width: fit-content; max-width: 100%; }
+  section[data-guide]:nth-child(5n + 1) { --g: var(--sun); } section[data-guide]:nth-child(5n + 2) { --g: var(--mint); } section[data-guide]:nth-child(5n + 3) { --g: var(--pink); } section[data-guide]:nth-child(5n + 4) { --g: var(--sky); } section[data-guide]:nth-child(5n) { --g: #ffb65c; }
   .p { color: var(--t2); font-size: 17px; line-height: 1.55; margin-bottom: 12px; max-width: 42rem; }
   .steps { counter-reset: s; display: grid; gap: 8px; max-width: 42rem; } .steps li { counter-increment: s; display: grid; grid-template-columns: 34px 1fr; gap: 6px; font-size: 16px; line-height: 1.45; color: var(--t2); } .steps li::before { content: counter(s); display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--mark-1); color: var(--ink); font-weight: 700; font-size: 14px; }
   .more { margin-top: 12px; } .more[hidden] { display: none; } .more summary { cursor: pointer; font-weight: 500; width: fit-content; } .block { margin-top: 16px; } h3 { font-size: 18px; margin-bottom: 8px; }

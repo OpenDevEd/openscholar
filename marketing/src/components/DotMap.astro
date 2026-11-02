@@ -17,7 +17,7 @@ const paths = Object.entries(groups).map(([k, d]) => { if (k === "land") return 
 </div>
 <script>
   const map = document.querySelector("[data-map]"), pin = map.querySelector("[data-pin]"), text = map.querySelector("[data-pin-t]"), TOP = +map.dataset.top, BOT = +map.dataset.bot;
-  window.pinAt = (lon, lat, name) => { pin.style.left = `${((lon + 180) / 360) * 100}%`; pin.style.top = `${((TOP - lat) / (TOP - BOT)) * 100}%`; pin.classList.toggle("flip", lon > 90); text.textContent = name; pin.hidden = false; if (matchMedia("(prefers-reduced-motion: reduce)").matches) return; pin.getAnimations().forEach((a) => a.cancel()); pin.animate([{ scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1 }], { duration: 320, easing: "cubic-bezier(.22,1,.36,1)" }); };
+  window.pinAt = (lon, lat, name) => { pin.style.left = `${((lon + 180) / 360) * 100}%`; pin.style.top = `${((TOP - lat) / (TOP - BOT)) * 100}%`; pin.classList.remove("flip"); text.textContent = name; pin.hidden = false; pin.classList.toggle("flip", lon > 90 || pin.getBoundingClientRect().right > map.getBoundingClientRect().right); if (matchMedia("(prefers-reduced-motion: reduce)").matches) return; pin.getAnimations().forEach((a) => a.cancel()); pin.animate([{ scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1 }], { duration: 320, easing: "cubic-bezier(.22,1,.36,1)" }); };
 </script>
 <style>
   .map { position: relative; } .map > svg { width: 100%; height: auto; } .pin svg { flex: none; }
