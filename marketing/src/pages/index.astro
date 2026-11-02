@@ -12,7 +12,7 @@ const teams = [
   ["emerald", "Institutions and networks", "Give your field one trusted, public home for its evidence, kept current and under your own name."],
 ];
 const faq = [
-  ["What does the AI read?", "Screening and extraction work from each paper's title and abstract. The assistant can also read open-access PDFs and files you attach to a chat. Every answer shows where it came from, and it tells you when it couldn't read something."],
+  ["What does the AI read?", "Screening and extraction work from each paper's title and abstract. The assistant can also read open-access PDFs and files you attach to a chat. Answers show how well they're grounded and link to their source where they can, and the assistant tells you when it couldn't read something."],
   ["Can we choose the model?", "Yes. Choose a preset, pick a model for each task, or use your own provider key."],
   ["Does it work with Zotero?", "Yes. OpenScholar can read your Zotero groups, collections and items, and an Evidence Library can publish from a Zotero group."],
   ["Can we take our data with us?", "Yes. Results, screenings and extractions all export, in formats including CSV, JSON and Excel."],
@@ -36,7 +36,7 @@ const faq = [
     <Funnel slot="extra" />
   </Feature>
 
-  <Feature field="amber" title="Turn a stack of papers into a dataset" text="Ask the same questions of every paper and get a table you can sort, check and export, with a confidence score and the source sentence behind each answer." points={["Choose an answer type for each question", "Check the least certain answers first", "Export to CSV, JSON or Excel"]} img="shot-extract" w={1800} h={1271} alt="An extraction table with answers, confidence and sources" />
+  <Feature field="amber" title="Turn a stack of papers into a dataset" text="Ask the same questions of every paper and get a table you can sort, check and export, with a confidence score on each answer and a link to its source sentence wherever the model can ground it." points={["Choose an answer type for each question", "Check the least certain answers first", "Export to CSV, JSON or Excel"]} img="shot-extract" w={1800} h={1271} alt="An extraction table with answers, confidence and sources" />
 
   <Feature field="night" flip title="Delegate the groundwork, not the decisions" text="Describe the review you need. The assistant searches, builds collections and runs screenings and extractions in your workspace, and asks before anything it can't undo." points={["Works with what's on your screen", "Waits for approval on jobs and irreversible changes", "Says what it couldn't read"]} img="shot-assistant" w={1800} h={1128} alt="The research assistant reporting on a finished extraction" />
 
@@ -51,7 +51,7 @@ const faq = [
       <div class="t-c"><b>Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia</b><span>Thurston, 2023</span></div>
     </div>
     <dl>
-      <div><dt>Traceable</dt><dd>Every answer links back to the sentence and the paper it came from.</dd></div>
+      <div><dt>Traceable</dt><dd>Answers link back to the sentence and paper they came from, and show when they can't be grounded.</dd></div>
       <div><dt>Explicit</dt><dd>Your criteria and weights are written down, so a decision can be explained and repeated.</dd></div>
       <div><dt>Supervised</dt><dd>AI proposes. People approve, overrule and sign off.</dd></div>
       <div><dt>Yours</dt><dd>Export your work whenever you like, and use your own AI keys if you prefer.</dd></div>
@@ -60,7 +60,7 @@ const faq = [
 
   <section class="panel publish">
     <img class="field" src="/img/field-rose.avif" width="1200" height="750" loading="lazy" decoding="async" alt="" />
-    <div class="p-copy"><h2>Publish your evidence as a living library</h2><p class="lead">Give your field a public home with your own branding and address. Sources keep it current, your editors control what appears, and readers can search it, explore it and ask it questions.</p><a class="btn" href="/evidence-libraries/">Explore Evidence Libraries<Arrow /></a></div>
+    <div class="p-copy"><h2>Publish your evidence as a living library</h2><p class="lead">Give your field a public home with your own branding and address. You choose the sources that keep it current, and readers can search it, explore it and ask it questions.</p><a class="btn" href="/evidence-libraries/">Explore Evidence Libraries<Arrow /></a></div>
     <div class="p-shots"><a class="win a" href="https://wealth-inequality.openscholar.ai" aria-label="Wealth Inequality and Social Mobility library"><img src="/img/lib-plate.avif" width="1000" height="782" loading="lazy" decoding="async" alt="" /></a><a class="win b" href="https://aied.openscholar.ai" aria-label="Artificial Intelligence in Education library"><img src="/img/lib-evidence.avif" width="1240" height="640" loading="lazy" decoding="async" alt="" /></a></div>
   </section>
 

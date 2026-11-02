@@ -25,14 +25,14 @@ import { group } from "../../data/features.mjs";
 </Base>
 <script>
   const input = document.querySelector("[data-find]"), rows = [...document.querySelectorAll("[data-text]")], blocks = [...document.querySelectorAll("[data-block]")], guides = [...document.querySelectorAll("[data-guide]")], none = document.querySelector("[data-none]");
-  input.addEventListener("input", () => { const q = input.value.trim().toLowerCase(); let n = 0; for (const r of rows) { const on = !q || r.dataset.text.includes(q); r.hidden = !on; n += on; } for (const b of blocks) { const any = !!b.querySelector("[data-text]:not([hidden])"); b.hidden = !any; b.open = !!q && any; } for (const g of guides) { const prose = g.textContent.toLowerCase().includes(q); g.hidden = !!q && !g.querySelector("[data-block]:not([hidden])") && !prose; } none.hidden = !q || guides.some((g) => !g.hidden); });
+  input.addEventListener("input", () => { const q = input.value.trim().toLowerCase(); let n = 0; for (const r of rows) { const on = !q || r.dataset.text.includes(q); r.hidden = !on; n += on; } for (const b of blocks) { const any = !!b.querySelector("[data-text]:not([hidden])"); b.hidden = !any; b.open = !!q && any; } for (const g of guides) { const prose = g.textContent.toLowerCase().includes(q); g.hidden = !!q && !g.querySelector("[data-block]:not([hidden])") && !prose; } none.hidden = !q || guides.some((g) => !g.hidden); for (const a of document.querySelectorAll("aside nav a")) a.hidden = !!document.querySelector(a.getAttribute("href"))?.hidden; });
 </script>
 <style>
   .intro { padding: var(--pad); } .intro .lead { margin-top: 10px; }
   .docs { display: grid; grid-template-columns: 260px minmax(0, 760px); gap: clamp(24px, 5vw, 72px); align-items: start; padding-top: 16px; }
   aside { position: sticky; top: 84px; max-height: calc(100svh - 100px); overflow-y: auto; scrollbar-width: thin; }
   input { width: 100%; height: 44px; padding-inline: 14px; background: var(--soft); border: 0; border-radius: 11px; font-size: 16px; outline: 0; margin-bottom: 10px; } input:focus { box-shadow: 0 0 0 2px var(--brand); } input::placeholder { color: var(--t3); }
-  nav a { display: block; padding: 7px 10px; border-radius: 9px; font-size: 15px; color: var(--t2); transition: background-color .15s var(--ease), color .15s var(--ease); } nav a:hover { background: var(--soft); color: var(--ink); }
+  nav a { display: block; padding: 7px 10px; border-radius: 9px; font-size: 15px; color: var(--t2); transition: background-color .15s var(--ease), color .15s var(--ease); } nav a:hover { background: var(--soft); color: var(--ink); } nav a[hidden] { display: none; }
   article { min-width: 0; } section[data-guide] { padding-block: 28px; border-top: 1px solid var(--line); scroll-margin-top: 80px; } section[data-guide]:first-child { padding-top: 8px; border-top: 0; } section[hidden] { display: none; }
   section[data-guide] h2 { font-size: clamp(24px, 2.4vw, 32px); margin-bottom: 12px; }
   .p { color: var(--t2); font-size: 17px; margin-bottom: 12px; }

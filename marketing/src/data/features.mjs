@@ -1,7 +1,7 @@
-// The one list of features. The All features page shows all of it, and each product page shows its own group.
+// The one list of features, shown in the docs.
 export const PRODUCTS = [
   { id: "openscholar", name: "OpenScholar", groups: [
-    { id: "search", name: "Search and discovery", page: "/search/", items: [
+    { id: "search", name: "Search and discovery", items: [
       ["Paper search", "Searches the world's published research"],
       ["Keyword search", "AND, OR and NOT, with each term coloured in the query and in the results"],
       ["Question search", "Turns a plain question into a Boolean search"],
@@ -27,20 +27,20 @@ export const PRODUCTS = [
       ["Share a search", "A link opens it for workspace members and guests, and anyone else gets their own copy"],
       ["No account needed", "Search, filters, history and bookmarks work signed out"],
     ]},
-    { id: "explore", name: "Explore", page: "/search/", items: [
+    { id: "explore", name: "Explore", items: [
       ["Topics", "Browse research topics by domain, field and subfield"],
       ["Topic pages", "Description, keywords, related topics, and papers, including those in your Evidence Libraries"],
       ["Author profiles", "Public pages and a searchable list, with papers one click away"],
       ["Create an author", "Make and edit a profile, and invite editors"],
     ]},
-    { id: "organize", name: "Library, history and bookmarks", page: "/search/", items: [
+    { id: "organize", name: "Library, history and bookmarks", items: [
       ["Personal library", "Save papers and rate them 0 to 5, then filter by date saved, year, rating or collection"],
       ["Collections", "Group saved papers, rename, delete, and keep one paper in several"],
       ["Library export", "CSV or JSON"],
       ["Search history", "Every search with its result count and how the query changed, with copy, delete and JSON download"],
       ["Bookmarks", "Short names that expand in a query, so ml... becomes a long list of terms, with a live preview"],
     ]},
-    { id: "screening", name: "Screening", page: "/screening/", items: [
+    { id: "screening", name: "Screening", items: [
       ["Screening jobs", "A model answers yes or no questions for every paper, and points decide who is in"],
       ["Paper sources", "A search, a range or page of one, a collection, saved papers, an Evidence Library, or from a chat, a Zotero collection"],
       ["Scoring", "Points for Yes, No and Unclear on each question, a pass mark, and star ratings from the score"],
@@ -51,17 +51,17 @@ export const PRODUCTS = [
       ["Live progress", "Queues papers as others finish, and can cancel or run again"],
       ["Export", "CSV, JSON or Excel with Results and Summary sheets"],
     ]},
-    { id: "extraction", name: "Data extraction", page: "/extraction/", items: [
+    { id: "extraction", name: "Data extraction", items: [
       ["Extraction jobs", "A model reads each paper's abstract and answers each question"],
       ["Answer types", "Text, yes or no, number or list"],
       ["Paper sources", "A search, a collection, saved papers, a screening or an Evidence Library"],
       ["Questions written for you", "Drafted from the papers you chose"],
-      ["Confidence and evidence", "Each answer has a confidence score and a citation you can open and check"],
+      ["Confidence and evidence", "Each answer has a confidence score and, where the model can ground it, a citation you can open and check"],
       ["Views", "Table, cards or split view with the evidence beside it, plus filters, chosen columns and search"],
       ["Job control", "Pause, resume, retry only the failures, duplicate"],
       ["Export", "CSV, JSON, or Excel with Results, Questions, Job, Evidence and Summary sheets, for all rows or those selected"],
     ]},
-    { id: "assistant", name: "Research assistant", page: "/assistant/", items: [
+    { id: "assistant", name: "Research assistant", items: [
       ["Whole jobs from one message", "Searches, makes a collection, saves papers, then runs a screening and an extraction"],
       ["The same actions as the app", "Searches, library, jobs, workspaces, sharing and library settings"],
       ["Knows your page", "Sees what you have open, and @ points it at a search, collection or paper"],
@@ -72,7 +72,7 @@ export const PRODUCTS = [
       ["Shared chats", "Share a chat to read or to write, and see who else is in it"],
       ["Model choice", "Pick the model and reasoning effort for a chat"],
     ]},
-    { id: "workspaces", name: "Workspaces and collaboration", page: "/workspaces/", items: [
+    { id: "workspaces", name: "Workspaces and collaboration", items: [
       ["Workspaces", "A personal workspace for everyone and another for each organization, with a switcher"],
       ["Organizations", "Name, logo, colour, members, roles and invitations"],
       ["Shared work", "Members see all of the organization's collections, searches, screenings, extractions and chats"],
@@ -82,7 +82,7 @@ export const PRODUCTS = [
       ["Move", "Move an item to another workspace, and see what goes with it first"],
       ["Ratings in a collection", "Each member's rating and the group's average"],
     ]},
-    { id: "setup", name: "Creating and running a library", page: "/evidence-libraries/", items: [
+    { id: "setup", name: "Creating and running a library", items: [
       ["New library", "Pick a name, reserve an address and create a draft"],
       ["One-step setup", "Creates the database, storage and app, then builds it and puts it online"],
       ["Brand", "Name, logo, icons, colours, fonts, share image, funders and institutions"],
@@ -97,7 +97,7 @@ export const PRODUCTS = [
       ["Versions", "Draft, activate, restore an earlier version, and opt-in software updates"],
       ["Team", "Owner, Editor, Creator and Viewer roles"],
     ]},
-    { id: "account", name: "Accounts and AI choice", page: "/features/", items: [
+    { id: "account", name: "Accounts and AI choice", items: [
       ["AI presets", "Cheap, Fast, Balanced or Intelligent, with a model for each task"],
       ["Custom models", "Choose the model and effort for each of 8 tasks"],
       ["Bring your own key", "Use your own provider key, stored in your browser, even while signed out"],
@@ -106,11 +106,11 @@ export const PRODUCTS = [
     ]},
   ]},
   { id: "evidence-library", name: "Evidence Library", groups: [
-    { id: "home-page", name: "Home page", page: "/evidence-libraries/", items: [
+    { id: "home-page", name: "Home page", items: [
       ["Library home page", "Introduction, records by year, latest publications, how the library is curated with live counts, the team, and ways to get involved"],
       ["Suggest or join", "Readers can suggest a publication or offer to edit"],
     ]},
-    { id: "browse", name: "Search and browse", page: "/evidence-libraries/", items: [
+    { id: "browse", name: "Search and browse", items: [
       ["Keyword search", "Scopes include title and abstract, authors, all metadata, full text and everywhere, with nine sort orders"],
       ["Meaning-based search", "Records are indexed by meaning when AI answers are on"],
       ["Sidebar filters", "Topic areas or collections, years as a bar chart, record types, PDFs, top authors and most cited, all with counts"],
@@ -119,7 +119,7 @@ export const PRODUCTS = [
       ["And or Or for collections", "Choose whether a record must be in any or all of the ticked collections"],
       ["List or grid", "With PDF covers on cards, and abstracts on or off"],
     ]},
-    { id: "records", name: "Records", page: "/evidence-libraries/", items: [
+    { id: "records", name: "Records", items: [
       ["Record page", "Abstract, authors, topics, collections, files and links to the original"],
       ["Open access label", "Labels open records, and closed ones too if you want"],
       ["PDF covers", "A record's first page shows on its card, and clicking it opens the PDF"],
@@ -129,13 +129,13 @@ export const PRODUCTS = [
       ["Share preview", "A record's PDF cover or title card shows when its link is shared"],
       ["Summarize and Explain", "AI on a single record, or a chat about it"],
     ]},
-    { id: "maps", name: "Maps", page: "/maps/", items: [
+    { id: "maps", name: "Maps", items: [
       ["Globe by country focus", "Colours countries by the ones the papers study, as a total or per million people"],
       ["Globe by author country", "The same, by where the authors work"],
       ["Globe by institution", "Places every institution on the globe, ranked, with search"],
       ["Evidence chains", "Maps who cites whom across a library and flags reviews with broken evidence, on AIED"],
     ]},
-    { id: "ask", name: "Ask AI and Smart Screening", page: "/evidence-libraries/", items: [
+    { id: "ask", name: "Ask AI and Smart Screening", items: [
       ["Ask AI across the library", "Searches and reads records, then answers with links to the record and PDF page"],
       ["Ask about results", "Asks about your current search results, and attaches records to a chat"],
       ["Sources panel", "Lists what the AI read beside the answer"],
@@ -144,30 +144,30 @@ export const PRODUCTS = [
       ["Smart Screening", "Add your own fields and have the AI fill them in for the records a chat cites"],
       ["Continue in OpenScholar", "Sends the results, search or collection on, where Screen and Extract are offered"],
     ]},
-    { id: "digests", name: "Digests", page: "/evidence-libraries/", items: [
+    { id: "digests", name: "Digests", items: [
       ["Digest page", "AI-written summaries by period, with reviews first and the next edition date"],
       ["Email subscription", "Readers subscribe and get each edition by email"],
       ["Editorial control", "Optional editor approval, and a note saying who checked it or that AI wrote it"],
       ["Schedule", "Weekly or monthly, on a chosen day and time zone, with pause and send now"],
     ]},
-    { id: "readers", name: "Reader accounts", page: "/evidence-libraries/", items: [
+    { id: "readers", name: "Reader accounts", items: [
       ["Sign in with OpenScholar", "One account across libraries"],
       ["Bookmarks and collections", "Save records into private or public collections"],
       ["Reader profile", "A shareable page with their bookmarks and collections"],
       ["Share a collection", "Invite people to view or add, and see who it's shared with"],
     ]},
-    { id: "exports", name: "Exports and open standards", page: "/evidence-libraries/", items: [
+    { id: "exports", name: "Exports and open standards", items: [
       ["Download records", "RIS, BibTeX, formatted HTML or plain text citations, for current results or the whole library"],
       ["Atom feed", "A feed of new records"],
       ["Sitemap and robots", "For search engines"],
       ["Reference managers", "unAPI with MODS, for tools such as Zotero's connector"],
     ]},
-    { id: "admin", name: "Admin", page: "/evidence-libraries/", items: [
+    { id: "admin", name: "Admin", items: [
       ["Record table", "Search, filter by kind, state, source or collection, and choose columns"],
       ["Create records", "Write a record by hand as a draft"],
       ["Import by DOI", "Paste DOIs to make records"],
       ["Import files", ".ris, .bib, .bibtex, .json, .xml, .nbib, .mods and .txt"],
-      ["Draft and review", "Creators submit, and Editors or Owners publish or send back, so nothing reaches readers before that"],
+      ["Draft and review", "Creators submit, and Editors or Owners publish or send back, so a draft doesn't reach readers before that"],
       ["Draft preview", "See the public page beside the editor"],
       ["Bulk actions", "Add, remove or delete selected records"],
       ["Collections", "Create, move and restore"],
@@ -176,7 +176,7 @@ export const PRODUCTS = [
       ["Conflict handling", "Compare and resolve when a source and an editor changed the same record"],
       ["DOIs", "Register your own, or archive files and get a DOI through Zenodo"],
     ]},
-    { id: "sources", name: "Where records come from", page: "/evidence-libraries/", items: [
+    { id: "sources", name: "Where records come from", items: [
       ["Written in the library", "Native records with no outside source"],
       ["Saved search", "Imports a saved search and fetches only what changed"],
       ["Zotero group", "Two-way sync, with PDFs published by tag or all of them"],
@@ -184,7 +184,7 @@ export const PRODUCTS = [
       ["Full text", "Downloads PDFs where the licence allows, and records stay searchable when a download fails"],
       ["Screening a source", "AI screens incoming records against a subject, with a trial run first"],
     ]},
-    { id: "site", name: "Site languages and policy pages", page: "/evidence-libraries/", items: [
+    { id: "site", name: "Site languages and policy pages", items: [
       ["Languages", "UK and US English, French, German, Portuguese, Arabic, Hindi, Chinese and Swahili"],
       ["Theme", "Light and dark, with a switch if the owner allows it"],
       ["Contact and takedown", "Forms that email the owner's chosen address"],
@@ -194,5 +194,4 @@ export const PRODUCTS = [
   ]},
 ];
 
-export const featureCount = PRODUCTS.flatMap((p) => p.groups).reduce((n, g) => n + g.items.length, 0);
 export const group = (id) => PRODUCTS.flatMap((p) => p.groups).find((g) => g.id === id);

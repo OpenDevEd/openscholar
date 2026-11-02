@@ -54,5 +54,6 @@ const path = Astro.url.pathname;
   .foot { margin-top: clamp(40px, 6vw, 80px); border-top: 1px solid var(--line); } .f-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px 48px; max-width: 1280px; margin-inline: auto; padding: 48px calc(var(--gap) + 8px) 32px; }
   .f-brand p { margin-top: 12px; color: var(--t2); max-width: 18em; } .foot nav { display: flex; gap: 56px; } .foot nav div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: var(--t2); } .foot nav b { font-weight: 500; color: var(--ink); margin-bottom: 4px; } .foot nav a:hover { color: var(--brand); } .credit { grid-column: 1 / -1; font-size: 14px; color: var(--t3); }
   @media (max-width: 900px) { .nav, .signin { display: none; } .menu { display: block; } }
+  @media (max-width: 400px) { .brand span { display: none; } }
   @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav { gap: 32px; flex-wrap: wrap; } }
 </style>

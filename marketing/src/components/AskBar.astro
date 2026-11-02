@@ -5,14 +5,16 @@ const { id = "ask" } = Astro.props;
 <form class="ask" data-ask action={`${APP}/results`} method="get" role="search">
   <label class="sr" for={id}>Ask a research question</label>
   <input id={id} name="q" autocomplete="off" required placeholder="Ask a research question" />
-  <button class="btn brand">Search<svg class="sr" aria-hidden="true"></svg><i aria-hidden="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5" /></svg></i></button>
+  <button class="btn brand" aria-label="Search"><span>Search</span><i aria-hidden="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5" /></svg></i></button>
 </form>
 <script>
-  // The app reads `q` as keywords: words that only make it a sentence would narrow the search to almost nothing.
-  const FILLER = /^(a|an|and|are|as|at|be|by|can|did|do|does|for|from|good|has|have|how|if|in|is|it|of|on|or|really|than|that|the|their|there|these|this|to|was|were|what|when|where|which|who|why|will|with|would)$/i;
-  for (const form of document.querySelectorAll("[data-ask]")) form.addEventListener("submit", (e) => { const input = form.querySelector("input"), words = input.value.replace(/[?.!,]/g, " ").split(/\s+/).filter((w) => w && !FILLER.test(w)); if (!words.length) return; e.preventDefault(); location.href = `${form.action}?q=${encodeURIComponent(words.join(" "))}`; });
+  // The app reads `q` as keywords, so a sentence loses the words that only make it a sentence. A query stays exactly as typed.
+  const FILLER = /^(a|an|and|are|as|at|be|by|can|did|do|does|for|from|good|has|have|how|if|in|is|it|of|on|or|really|than|that|the|their|there|these|this|to|was|were|what|when|where|which|who|why|will|with|would)$/;
+  const QUESTION = /\?\s*$|^(what|why|how|who|when|where|which|is|are|do|does|did|can|could|should|will|would)\b/i, QUERY = /"|\b(AND|OR|NOT)\b/;
+  for (const form of document.querySelectorAll("[data-ask]")) form.addEventListener("submit", (e) => { const typed = form.querySelector("input").value.trim(); if (QUERY.test(typed) || !QUESTION.test(typed)) return; const words = typed.replace(/[?.!,]/g, " ").split(/\s+/).filter((w, i) => w && !FILLER.test(i === 0 ? w.toLowerCase() : w)); if (!words.length) return; e.preventDefault(); location.href = `${form.action}?q=${encodeURIComponent(words.join(" "))}`; });
 </script>
 <style>
   .ask { display: flex; align-items: center; gap: 8px; width: min(600px, 100%); padding: 6px 6px 6px 18px; border-radius: 18px; background: #fff; color: var(--ink); box-shadow: 0 20px 40px -18px rgb(10 20 60 / .55); } .ask:focus-within { box-shadow: 0 0 0 3px rgb(255 255 255 / .7), 0 20px 40px -18px rgb(10 20 60 / .55); }
   input { flex: 1; min-width: 0; height: 52px; background: none; border: 0; outline: 0; font-size: 16px; text-overflow: ellipsis; } input::placeholder { color: var(--t3); }
+  @media (max-width: 500px) { .ask { padding-left: 14px; } .ask button { padding-left: 8px; } .ask button span { display: none; } }
 </style>
