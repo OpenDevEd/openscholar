@@ -3,6 +3,6 @@ import Base from "../layouts/Base.astro";
 import AskBar from "../components/AskBar.astro";
 ---
 <Base title="Not found: OpenScholar" description="That page isn't here.">
-  <section class="panel lost"><img class="field" src="/img/field-cobalt.avif" width="1200" height="750" alt="" /><h1>That page isn't here</h1><p class="lead">Search the research instead, or head <a href="/">back to the start</a>.</p><AskBar id="ask-lost" /></section>
+  <section class="panel lost"><i class="field f-cobalt" aria-hidden="true"></i><h1>That page isn't here</h1><p class="lead">Search the research instead, or head <a href="/">back to the start</a>.</p><AskBar id="ask-lost" /></section>
 </Base>
 <style>.lost { display: grid; justify-items: center; align-content: center; gap: 20px; min-height: 520px; padding: var(--pad); text-align: center; } .lead a { text-decoration: underline; text-underline-offset: 3px; }</style>

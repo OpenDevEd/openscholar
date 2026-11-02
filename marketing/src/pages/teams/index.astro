@@ -5,6 +5,7 @@ import Faq from "../../components/Faq.astro";
 import Arrow from "../../components/Arrow.astro";
 import { APP } from "../../data/site.mjs";
 const yes = true, no = false;
+const ledger = [["Maya Chen", "#fb7185", "changed an answer", "Peer tutoring screening", "2 min"], ["The assistant", "#7dd3fc", "finished an extraction, for Maya", "Peer tutoring trials", "9 min"], ["Tomas Silva", "#fde68a", "added papers to a collection", "Reading interventions", "24 min"], ["Amina Bello", "#a7f3d0", "shared it with a guest", "Peer tutoring screening", "1 hour"], ["Lena Roth", "#fbcfe8", "moved it into the team", "Scoping review 2026", "3 hours"]];
 const roles = [["See all the organization's work", yes, yes, no], ["Start searches, screenings and extractions", yes, yes, no], ["Delete what they made", yes, yes, no], ["Delete anything and manage roles", yes, no, no], ["See one item shared with them", yes, yes, yes]];
 const faq = [
   ["How does a team get started?", "Create an organization and invite your colleagues. Everyone also keeps a personal workspace, and the switcher at the top of the sidebar moves between the two."],
@@ -13,23 +14,24 @@ const faq = [
 ];
 ---
 <Base title="Teams: OpenScholar" description="One workspace for your team's evidence: shared searches, screenings and extractions, with a record of every change.">
-  <section class="panel hero">
-    <img class="field" src="/img/field-emerald.avif" width="1200" height="750" fetchpriority="high" alt="" />
-    <div class="h-top"><h1>One workspace for your team's evidence</h1><div class="h-side"><p class="lead">Keep every search, screening and extraction in one place, see who did what, and stop passing spreadsheets around.</p><div class="acts"><a class="btn" href={APP}>Bring your team in<Arrow /></a></div></div></div>
-    <div class="win shot"><img src="/img/shot-screen.avif" width="1610" height="1400" fetchpriority="high" alt="A screening shared across a team, showing who ran it, its activity and its results" /></div>
+  <section class="panel hero" style="--tint:#047857">
+    <i class="field f-emerald" aria-hidden="true"></i>
+    <div class="h-copy"><h1>One workspace for your team's evidence</h1><p class="lead">Keep every search, screening and extraction in one place, see who did what, and stop passing spreadsheets around.</p><a class="btn" href={APP}>Bring your team in<Arrow /></a></div>
+    <div class="ledger" aria-hidden="true"><b>Activity</b><ol>{ledger.map(([who, c, what, item, when]) => <li><i style={`--c:${c}`}><svg viewBox="0 0 24 24" fill="#0a1a3f" width="20" height="20"><circle cx="12" cy="9" r="4" /><path d="M4 21c1-5 4-7 8-7s7 2 8 7z" /></svg></i><div><p><strong>{who}</strong> {what}</p><span>{item}</span></div><em>{when}</em></li>)}</ol></div>
   </section>
-  <Feature field="ocean" title="Every change has a name beside it" text="Each item keeps its own history, including what the assistant did, so you can answer who changed what, and when, without asking around." fit img="shot-activity" w={1200} h={760} alt="The activity history of a screening" />
+  <Feature field="ocean" chip="#0e7490" title="Everyone works from the same version" text="A screening is one shared thing, not six copies of a spreadsheet. Your team sees it as it changes, with the history of how it got there one click away." img="shot-screen" w={1740} h={1500} alt="A screening shared across a team, showing who ran it, its activity and its results"><div class="activity"><div class="win"><img src="/img/shot-activity.avif" width="888" height="560" loading="lazy" decoding="async" alt="The activity history of a screening" /></div></div></Feature>
   <section class="roles"><div><h2>The right access for each person</h2><p class="lead">Your team sees your work. Guests see only what you share with them.</p></div>
     <div class="matrix" role="table" aria-label="What each role can do"><div class="r head" role="row"><span role="columnheader">Can they</span><b role="columnheader">Admin</b><b role="columnheader">Member</b><b role="columnheader">Guest</b></div>{roles.map(([t, a, m, g]) => <div class="r" role="row"><span role="cell">{t}</span>{[a, m, g].map((v) => <i role="cell" aria-label={v ? "Yes" : "No"} class:list={{ on: v }}>{v && <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5" /></svg>}</i>)}</div>)}</div>
   </section>
   <Faq items={faq} />
-  <section class="panel close"><img class="field" src="/img/field-emerald.avif" width="1200" height="750" loading="lazy" decoding="async" alt="" /><h2>Bring your team's evidence together</h2><a class="btn" href={APP}>Get started<Arrow /></a></section>
+  <section class="panel close"><i class="field f-emerald" aria-hidden="true"></i><h2>Bring your team's evidence together</h2><a class="btn" href={APP}>Get started<Arrow /></a></section>
 </Base>
 <style>
-  .hero { padding: var(--pad) var(--pad) 0; } .h-top { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px 48px; align-items: end; margin-bottom: clamp(32px, 4vw, 56px); } .h-side { display: grid; gap: 20px; } .acts { display: flex; flex-wrap: wrap; gap: 10px; }
-  .shot { border-radius: 16px 16px 0 0; margin-bottom: -2px; max-height: 620px; overflow: hidden; }
+  .hero { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 40px; align-items: center; padding: var(--pad); min-height: 600px; } .h-copy { display: grid; gap: 20px; justify-items: start; }
+  .ledger { padding: 20px 22px; border-radius: 18px; background: #fff; color: var(--ink); box-shadow: 0 30px 60px -24px rgb(6 40 30 / .6); } .ledger > b { font-weight: 500; font-size: 18px; } .ledger li { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding-block: 12px; border-top: 1px solid var(--line); } .ledger li:first-child { border-top: 0; } .ledger i { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--c); } .ledger p { font-size: 15px; line-height: 1.25; } .ledger strong { font-weight: 500; } .ledger span { font-size: 13px; color: var(--t3); } .ledger em { font-style: normal; font-size: 13px; color: var(--t3); white-space: nowrap; }
+  .activity { width: min(360px, 100%); }
   .roles { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 32px clamp(24px, 4vw, 64px); padding: clamp(40px, 6vw, 72px) var(--pad) 8px; } .roles .lead { margin-top: 14px; color: var(--t2); }
   .r { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 76px); gap: 8px; align-items: center; min-height: 54px; border-top: 1px solid var(--line); } .head { border-top: 0; font-size: 15px; min-height: 40px; color: var(--t2); } .head b { font-weight: 500; color: var(--ink); text-align: center; } .r i { justify-self: center; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--soft); } .r i.on { background: #d1fae5; color: #047857; }
   .close { display: grid; justify-items: center; gap: 24px; padding: clamp(48px, 7vw, 96px) var(--pad); text-align: center; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
-  @media (max-width: 900px) { .h-top, .roles { grid-template-columns: minmax(0, 1fr); } .roles { padding-inline: 8px; } .r { grid-template-columns: minmax(0, 1fr) repeat(3, 56px); gap: 4px; } }
+  @media (max-width: 900px) { .hero, .roles { grid-template-columns: minmax(0, 1fr); } .roles { padding-inline: 8px; } .r { grid-template-columns: minmax(0, 1fr) repeat(3, 56px); gap: 4px; } }
 </style>

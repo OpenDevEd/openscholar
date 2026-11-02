@@ -1,0 +1,8 @@
+---
+// Every paper one tile. They arrive unsorted on the left and leave as a short list on the right.
+const R = (i) => { const x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); };
+const cols = 34, rows = 9, tiles = [];
+for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) { const t = c / (cols - 1), keepBand = Math.abs(r - 4) <= (1 - t) * 4.4 + .5; if (!keepBand) continue; const v = R(c * 31 + r * 7); const kept = t > .35 && v < .18 + t * .5; const unclear = !kept && t > .35 && v < .3 + t * .5; tiles.push({ x: c * 14, y: r * 14, f: kept ? "#fff" : unclear ? "#fde68a" : `rgb(255 255 255 / ${.3 - t * .12})` }); }
+---
+<svg class="wall" viewBox={`0 0 ${cols * 14} ${rows * 14}`} role="img" aria-label="A wide field of papers narrowing to a short list that meets your criteria">{tiles.map((t) => <rect x={t.x} y={t.y} width="11" height="11" rx="2.5" fill={t.f} />)}</svg>
+<style>.wall { width: 100%; height: auto; margin-top: 4px; }</style>

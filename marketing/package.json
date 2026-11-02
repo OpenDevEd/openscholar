@@ -5,8 +5,7 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
-    "art": "node art/fields.mjs"
+    "preview": "astro preview"
   },
   "dependencies": {
     "astro": "^7.4.4",

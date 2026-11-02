@@ -1,15 +1,17 @@
 ---
 import Base from "../layouts/Base.astro";
 import Feature from "../components/Feature.astro";
+import Cards from "../components/Cards.astro";
+import AudienceArt from "../components/AudienceArt.astro";
+import SieveWall from "../components/SieveWall.astro";
 import Faq from "../components/Faq.astro";
 import AskBar from "../components/AskBar.astro";
 import Arrow from "../components/Arrow.astro";
-import Funnel from "../components/Funnel.astro";
 import { APP } from "../data/site.mjs";
 const teams = [
-  ["ocean", "Review teams", "Run systematic and scoping reviews with explicit criteria, a record of every decision and data you can export."],
-  ["rose", "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind every claim ready to share."],
-  ["emerald", "Institutions and networks", "Give your field one trusted, public home for its evidence, kept current and under your own name."],
+  ["ocean", "review", "Review teams", "Run systematic and scoping reviews with explicit criteria and data you can export."],
+  ["rose", "brief", "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind it ready to share."],
+  ["emerald", "library", "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name."],
 ];
 const faq = [
   ["What does the AI read?", "Screening and extraction work from each paper's title and abstract. The assistant can also read open-access PDFs and files you attach to a chat. Answers show how well they're grounded and link to their source where they can, and the assistant tells you when it couldn't read something."],
@@ -19,30 +21,28 @@ const faq = [
   ["Who can see our work?", "Members of an organization see its work. To bring someone in from outside, share a single item with them as a viewer or an editor."],
 ];
 ---
-<Base title="OpenScholar: the evidence workspace for research teams" description="Find the literature, screen it against your criteria, extract the data and publish what you learn. AI does the reading. Your team keeps the judgement.">
+<Base title="OpenScholar: the evidence workspace for research teams" description="Know what the evidence says before anyone asks you to defend it. Find the literature, screen it against your criteria, extract the data and publish what you learn.">
   <section class="panel hero">
-    <img class="field" src="/img/field-cobalt.avif" width="1200" height="750" fetchpriority="high" alt="" />
-    <div class="h-top"><h1>The evidence workspace for research teams</h1><div class="h-side"><p class="lead">Find the literature, screen it against your criteria, extract the data and publish what you learn. AI does the reading. Your team keeps the judgement.</p><div class="acts"><a class="btn" href={APP}>Get started<Arrow /></a><a class="btn ghost" href="https://wealth-inequality.openscholar.ai">See a live library</a></div></div></div>
+    <i class="field f-cobalt" aria-hidden="true"></i>
+    <div class="h-top"><h1>Know what the evidence says before anyone asks you to defend it</h1><div class="h-side"><p class="lead">OpenScholar is the evidence workspace for research teams. Find the literature, screen it against your criteria, extract the data and publish what you learn.</p><div class="acts"><a class="btn" href={APP}>Get started<Arrow /></a><a class="btn ghost" href="https://wealth-inequality.openscholar.ai">See a live library</a></div></div></div>
     <div class="win shot"><img src="/img/shot-search.avif" width="1800" height="1128" fetchpriority="high" alt="OpenScholar's search results, with an AI overview of the field and query terms highlighted in each paper" /></div>
   </section>
 
   <section class="who" id="who"><h2>For anyone whose work has to stand on the evidence</h2>
-    <div class="teams">{teams.map(([f, t, d]) => <article class="panel"><img class="field" src={`/img/field-${f}.avif`} width="1200" height="750" loading="lazy" decoding="async" alt="" /><h3>{t}</h3><p>{d}</p></article>)}</div>
+    <div class="teams">{teams.map(([f, k, t, d]) => <article class="panel"><i class={`field f-${f}`} aria-hidden="true"></i><AudienceArt kind={k} /><h3>{t}</h3><p>{d}</p></article>)}</div>
   </section>
 
-  <Feature id="product" field="ocean" title="Search the whole literature, not just what ranks first" text="Write your question in plain language and get a query you can read and change. Then see the shape of the field before you commit to reading any of it." points={["Plain questions become editable Boolean queries", "Filters by year, country, access and more", "An AI overview linked to the papers behind it"]} img="shot-search2" w={1800} h={1111} alt="Results for a search with filters down the side" />
+  <Feature id="product" field="ocean" chip="#0e7490" title="Start with the whole literature, not the first page of it" text="Ask in plain language. You get a query you can read and change, and a view of the whole field before you commit to reading any of it." img="shot-search2" w={1800} h={1111} alt="Results for a search, with an overview of the field and highlighted terms"><Cards kind="query" /></Feature>
 
-  <Feature field="emerald" flip title="Screen thousands of papers against criteria you set" text="Write your questions and decide what each answer is worth. AI answers for every paper, your rules decide what's included, and any answer can be overruled." img="shot-screen" w={1610} h={1400} alt="A screening with its progress, questions and included papers">
-    <Funnel slot="extra" />
-  </Feature>
+  <Feature field="emerald" chip="#047857" flip title="Decide what counts once, then apply it to every paper" text="Write your questions and what each answer is worth. AI answers for every paper, your rules decide what's included, and you can overrule any answer." img="shot-screen" w={1740} h={1500} alt="A screening with its progress, questions and included papers"><SieveWall slot="extra" /><Cards kind="rule" /></Feature>
 
-  <Feature field="amber" title="Turn a stack of papers into a dataset" text="Ask the same questions of every paper and get a table you can sort, check and export, with a confidence score on each answer and a link to its source sentence wherever the model can ground it." points={["Choose an answer type for each question", "Check the least certain answers first", "Export to CSV, JSON or Excel"]} img="shot-extract" w={1800} h={1271} alt="An extraction table with answers, confidence and sources" />
+  <Feature field="amber" chip="#c2410c" title="Stop retyping the literature into a spreadsheet" text="Ask the same questions of every paper's abstract and get a table you can sort, check and export. Start with the answers the model is least sure of." img="shot-extract" w={1800} h={1268} alt="An extraction table with answers, confidence and sources"><Cards kind="answer" /></Feature>
 
-  <Feature field="night" flip title="Delegate the groundwork, not the decisions" text="Describe the review you need. The assistant searches, builds collections and runs screenings and extractions in your workspace, and asks before anything it can't undo." points={["Works with what's on your screen", "Waits for approval on jobs and irreversible changes", "Says what it couldn't read"]} img="shot-assistant" w={1800} h={1128} alt="The research assistant reporting on a finished extraction" />
+  <Feature id="assistant" field="night" chip="#1d4ed8" flip title="Delegate the groundwork, not the decisions" text="Describe the review you need. The assistant searches, builds collections and runs jobs in your workspace, stops for your approval, and tells you which results to check by hand." img="shot-assistant" w={1800} h={966} alt="The research assistant beside a finished extraction, listing the papers to check by hand"><Cards kind="approve" /></Feature>
 
   <section class="panel trust">
-    <img class="field" src="/img/field-night.avif" width="1200" height="750" loading="lazy" decoding="async" alt="" />
-    <h2>Built so you can stand behind the result</h2>
+    <i class="field f-night" aria-hidden="true"></i>
+    <div class="t-head"><h2>Built for the moment someone asks how you know</h2><p class="lead">Follow an answer back through its sentence to its paper. Your criteria are written down, every change has a name beside it, and people make the final call.</p></div>
     <div class="trace" aria-hidden="true">
       <div class="t-a"><span>What is the sample size?</span><b>298 pupils</b></div>
       <svg viewBox="0 0 120 60" preserveAspectRatio="none" fill="none"><path d="M0 30H120" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 5" vector-effect="non-scaling-stroke" /></svg>
@@ -50,36 +50,29 @@ const faq = [
       <svg viewBox="0 0 120 60" preserveAspectRatio="none" fill="none"><path d="M0 30H120" stroke="#fbbf24" stroke-width="2" stroke-dasharray="4 5" vector-effect="non-scaling-stroke" /></svg>
       <div class="t-c"><b>Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia</b><span>Thurston, 2023</span></div>
     </div>
-    <dl>
-      <div><dt>Traceable</dt><dd>Answers link back to the sentence and paper they came from, and show when they can't be grounded.</dd></div>
-      <div><dt>Explicit</dt><dd>Your criteria and weights are written down, so a decision can be explained and repeated.</dd></div>
-      <div><dt>Supervised</dt><dd>AI proposes. People approve, overrule and sign off.</dd></div>
-      <div><dt>Yours</dt><dd>Export your work whenever you like, and use your own AI keys if you prefer.</dd></div>
-    </dl>
   </section>
 
-  <section class="panel publish">
-    <img class="field" src="/img/field-rose.avif" width="1200" height="750" loading="lazy" decoding="async" alt="" />
+  <section class="panel publish" id="library" style="--tint:#be123c">
+    <i class="field f-rose" aria-hidden="true"></i>
     <div class="p-copy"><h2>Publish your evidence as a living library</h2><p class="lead">Give your field a public home with your own branding and address. You choose the sources that keep it current, and readers can search it, explore it and ask it questions.</p><a class="btn" href="/evidence-libraries/">Explore Evidence Libraries<Arrow /></a></div>
     <div class="p-shots"><a class="win a" href="https://wealth-inequality.openscholar.ai" aria-label="Wealth Inequality and Social Mobility library"><img src="/img/lib-plate.avif" width="1000" height="782" loading="lazy" decoding="async" alt="" /></a><a class="win b" href="https://aied.openscholar.ai" aria-label="Artificial Intelligence in Education library"><img src="/img/lib-evidence.avif" width="1240" height="640" loading="lazy" decoding="async" alt="" /></a></div>
   </section>
 
   <Faq items={faq} />
 
-  <section class="panel close"><img class="field" src="/img/field-cobalt.avif" width="1200" height="750" loading="lazy" decoding="async" alt="" /><h2>Start with your next question</h2><AskBar id="ask-end" /></section>
+  <section class="panel close"><i class="field f-cobalt" aria-hidden="true"></i><h2>Start with your next question</h2><AskBar id="ask-end" /></section>
 </Base>
 <style>
   .hero { padding: var(--pad) var(--pad) 0; }
   .h-top { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px 48px; align-items: end; margin-bottom: clamp(32px, 4vw, 56px); } .h-side { display: grid; gap: 20px; } .acts { display: flex; flex-wrap: wrap; gap: 10px; }
-  .shot { border-radius: 16px 16px 0 0; margin-bottom: -2px; max-height: 620px; overflow: hidden; } .shot img { width: 100%; }
+  .shot { border-radius: 16px 16px 0 0; margin-bottom: -2px; max-height: 620px; overflow: hidden; }
   .who { padding: clamp(40px, 6vw, 72px) var(--pad) 8px; } .who h2 { max-width: 16em; margin-bottom: 28px; }
-  .teams { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); margin-inline: calc(var(--pad) * -1 + 0px); } .teams .panel { display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; min-height: 300px; padding: 28px; } .teams p { font-size: 16px; line-height: 1.4; }
-  .trust { padding: var(--pad); display: grid; gap: 36px; } .trust h2 { max-width: 14em; }
+  .teams { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); margin-inline: calc(var(--pad) * -1); } .teams .panel { display: flex; flex-direction: column; gap: 10px; padding: 24px; } .teams :global(svg) { margin-bottom: 14px; } .teams p { font-size: 16px; line-height: 1.4; }
+  .trust { padding: var(--pad); display: grid; gap: 36px; } .t-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
   .trace { display: grid; grid-template-columns: minmax(0, 3fr) 48px minmax(0, 5fr) 48px minmax(0, 4fr); align-items: center; } .trace > svg { width: 100%; height: 60px; }
   .t-a, .t-b, .t-c { padding: 18px 20px; border-radius: 14px; background: #fff; color: var(--ink); } .t-a span, .t-c span { display: block; font-size: 14px; color: var(--t2); } .t-a b { display: block; margin-top: 4px; font-weight: 500; font-size: 26px; letter-spacing: -.02em; } .t-b { font-size: 16px; line-height: 1.45; color: var(--t2); } .t-b mark { background: #fde68a; color: var(--ink); border-radius: 3px; padding-inline: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; } .t-c b { display: block; font-weight: 500; line-height: 1.3; margin-bottom: 4px; }
-  dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px 32px; } dt { font-weight: 500; font-size: 19px; margin-bottom: 6px; } dd { color: rgb(255 255 255 / .82); line-height: 1.45; }
-  .publish { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; padding: var(--pad); min-height: 560px; } .p-copy { display: grid; gap: 18px; justify-items: start; }
+  .publish { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; padding: var(--pad); min-height: 560px; } .p-copy { display: grid; gap: 18px; justify-items: start; } .publish :global(.btn) { --chip: var(--tint); }
   .p-shots { position: relative; height: 440px; } .p-shots .win { position: absolute; display: block; transition: transform .3s var(--ease); } .p-shots .win:hover { transform: translateY(-6px); z-index: 2; } .a { left: 0; top: 0; width: 66%; z-index: 1; } .b { right: 0; bottom: 0; width: 66%; }
   .close { display: grid; justify-items: center; gap: 24px; padding: clamp(48px, 7vw, 96px) var(--pad); text-align: center; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
-  @media (max-width: 900px) { .h-top, .publish { grid-template-columns: minmax(0, 1fr); } .teams { grid-template-columns: minmax(0, 1fr); margin-inline: calc(var(--pad) * -1); } .teams .panel { min-height: 200px; } .who { padding-inline: 8px; } .teams { margin-inline: -8px; } .trace { grid-template-columns: minmax(0, 1fr); gap: 0; } .trace > svg { width: 2px; height: 24px; margin-inline: 24px; overflow: visible; } .trace > svg path { d: path("M1 0V60"); } dl { grid-template-columns: minmax(0, 1fr); } .p-shots { height: 76vw; } }
+  @media (max-width: 900px) { .h-top, .publish, .t-head { grid-template-columns: minmax(0, 1fr); } .shot { overflow: hidden; } .shot img { width: 170%; max-width: none; } .who { padding-inline: 8px; } .teams { grid-template-columns: minmax(0, 1fr); margin-inline: -8px; } .trace { grid-template-columns: minmax(0, 1fr); gap: 0; } .trace > svg { width: 2px; height: 24px; margin-inline: 24px; overflow: visible; } .trace > svg path { d: path("M1 0V60"); } .p-shots { height: 76vw; } }
 </style>
