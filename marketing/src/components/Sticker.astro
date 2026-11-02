@@ -1,0 +1,19 @@
+---
+// Hand-drawn stickers from the product's world: pens, papers, stamps.
+const { name, size = 96, class: cls = "", style = "" } = Astro.props;
+const ART = {
+  pen: `<g transform="rotate(38 60 60)"><rect x="42" y="6" width="36" height="70" rx="9" fill="#FFD233"/><rect x="42" y="44" width="36" height="14" fill="#0b1020"/><path d="M46 76h28l-5 20H51z" fill="#fff"/><path d="M53 96h14l-3 14h-8z" fill="#FF5A47"/></g>`,
+  glass: `<circle cx="50" cy="50" r="36" fill="#8FD0FF"/><circle cx="50" cy="50" r="36" fill="none" stroke="#0b1020" stroke-width="9"/><path d="M34 44c3-9 11-14 20-13" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round"/><path d="M78 78l26 26" stroke="#0b1020" stroke-width="15" stroke-linecap="round"/>`,
+  star: `<path d="M60 8l15 33 36 4-27 24 8 36-32-19-32 19 8-36L9 45l36-4z" fill="#FF9C1A"/><path d="M60 26l9 21 23 2-17 15 5 23-20-12-20 12 5-23-17-15 23-2z" fill="#FFD233"/>`,
+  paper: `<path d="M24 10h52l22 22v78H24z" fill="#fff"/><path d="M76 10l22 22H76z" fill="#b9c6e8"/><rect x="36" y="42" width="48" height="11" rx="2" fill="#FFE14D"/><rect x="38" y="45" width="44" height="5" fill="#0b1020"/><rect x="38" y="62" width="44" height="5" fill="#0b1020" opacity=".35"/><rect x="36" y="74" width="34" height="11" rx="2" fill="#7DF0B4"/><rect x="38" y="77" width="30" height="5" fill="#0b1020"/><rect x="38" y="94" width="44" height="5" fill="#0b1020" opacity=".35"/>`,
+  sieve: `<path d="M14 40h92L82 88H38z" fill="#2563EB"/><ellipse cx="60" cy="40" rx="46" ry="14" fill="#123a9e"/><ellipse cx="60" cy="40" rx="36" ry="9" fill="#0b1020"/><circle cx="50" cy="96" r="6" fill="#FFD233"/><circle cx="70" cy="104" r="5" fill="#FF5A47"/><circle cx="58" cy="112" r="4" fill="#3DDC97"/><path d="M41 12h16v18H41zM64 6h15v22H64z" fill="#FF9BD0"/>`,
+  folder: `<path d="M10 30a8 8 0 018-8h28l12 13h44a8 8 0 018 8v55a8 8 0 01-8 8H18a8 8 0 01-8-8z" fill="#FF9C1A"/><path d="M10 52h100v46a8 8 0 01-8 8H18a8 8 0 01-8-8z" fill="#FFD233"/><rect x="24" y="66" width="38" height="8" rx="2" fill="#0b1020"/>`,
+  stamp: `<circle cx="60" cy="60" r="50" fill="#FF5A47"/><circle cx="60" cy="60" r="40" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="8 7"/><path d="M38 62l15 15 30-34" fill="none" stroke="#fff" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>`,
+  quote: `<path d="M12 22a12 12 0 0112-12h72a12 12 0 0112 12v52a12 12 0 01-12 12H52l-24 24V86h-4a12 12 0 01-12-12z" fill="#3DDC97"/><path d="M40 58c-9 0-11-7-11-13 0-9 7-15 14-16v8c-4 1-6 4-6 8h6v13zm32 0c-9 0-11-7-11-13 0-9 7-15 14-16v8c-4 1-6 4-6 8h6v13z" fill="#0b1020"/>`,
+  zotero: `<rect x="10" y="10" width="100" height="100" rx="22" fill="#CC2936"/><path d="M34 34h52v9L50 78h36v9H32v-9l36-35H34z" fill="#fff"/>`,
+  globe: `<circle cx="60" cy="60" r="50" fill="#8FD0FF"/><path d="M34 22c9 5 20 2 25 9s-6 12-14 13-16 7-13 15 13 5 17 12-1 17 6 23c-20 4-44-10-48-33-3-15 10-34 27-39zM76 16c12 6 25 19 28 34-8 1-15 2-20-4s-13-6-13-14 2-11 5-16zM82 64c8-2 15 0 20 3-3 13-13 26-26 32-3-7-1-13 0-19s0-14 6-16z" fill="#3DDC97"/>`,
+  page: `<rect x="14" y="14" width="92" height="92" rx="14" fill="#2563EB"/><rect x="28" y="30" width="64" height="12" rx="6" fill="#fff"/><rect x="28" y="52" width="26" height="40" rx="6" fill="#FFD233"/><rect x="62" y="52" width="30" height="16" rx="6" fill="#FF9BD0"/><rect x="62" y="76" width="30" height="16" rx="6" fill="#3DDC97"/>`,
+  cap: `<path d="M60 22l54 26-54 26L6 48z" fill="#0b1020"/><path d="M28 62v22c0 8 15 15 32 15s32-7 32-15V62L60 78z" fill="#2563EB"/><path d="M104 54v30" stroke="#FFD233" stroke-width="6" stroke-linecap="round"/><circle cx="104" cy="88" r="7" fill="#FFD233"/>`,
+};
+---
+<svg class:list={["sticker", cls]} style={style} width={size} height={size} viewBox="0 0 120 120" aria-hidden="true" set:html={ART[name]} />

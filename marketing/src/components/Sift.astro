@@ -1,0 +1,62 @@
+---
+import Sticker from "./Sticker.astro";
+import Shape from "./Shape.astro";
+const papers = [
+  ["Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia", 0, 0],
+  ["Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees", 0, 1],
+  ["How to Analyze Interpersonal and Individual Effects in Peer-Tutored Reading Intervention", 1, 1],
+  ["How does peer tutoring contribute to the development of reading comprehension?", 2, 1],
+  ["Psychological Effects of Peer Tutoring in Mathematics in Primary Education", 2, 2],
+];
+---
+<section class="b sift" id="review" data-sift>
+  <Shape kind="stairs" color="rgb(11 16 32 / .07)" /><Sticker name="sieve" size={132} class="s1" />
+  <div class="head"><h2>Set the bar. Watch the noise fall.</h2>
+    <div class="bar"><label for="pm">How strict are you feeling?</label><input id="pm" type="range" min="1" max="4" step="1" value="3" data-pm /><div class="ends" aria-hidden="true"><span>Let more through</span><span>Only the strongest</span></div></div>
+  </div>
+  <div class="trays">
+    <div class="tray in"><header><b>Kept</b><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5" /></svg></header><ol data-in></ol></div>
+    <div class="tray out"><header><b>Fell through</b><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M10 3v12M5 11l5 5 5-5" stroke-linejoin="round" /></svg></header><ol data-out></ol></div>
+  </div>
+  <p class="last">Disagree with an answer? Press it, and the paper moves. You always have the last word. These answers are examples.</p>
+  <template data-paper-source>{papers.map(([t, a, b]) => <li data-a={a} data-b={b}><span class="t">{t}</span><div class="ans"><button type="button" class="pick" data-k="a"></button><button type="button" class="pick" data-k="b"></button><span class="stars" data-stars role="img"></span></div></li>)}</template>
+</section>
+<script>
+  const root = document.querySelector("[data-sift]"), pm = root.querySelector("[data-pm]"), IN = root.querySelector("[data-in]"), OUT = root.querySelector("[data-out]");
+  IN.append(...root.querySelector("[data-paper-source]").content.cloneNode(true).children);
+  const rows = [...IN.children], LBL = ["Yes", "Unclear", "No"], SCORE = [2, 1, 0], still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  // Papers hop between the trays: measure, move, then animate from where each one was.
+  function place() { const pass = +pm.value, from = new Map(rows.map((r) => [r, r.getBoundingClientRect()]));
+    for (const r of rows) { const a = +r.dataset.a, b = +r.dataset.b, s = SCORE[a] + SCORE[b], ok = s >= pass, stars = Math.round((s / 4) * 5); const [p, q] = r.querySelectorAll(".pick"); p.textContent = `Trial: ${LBL[a]}`; p.dataset.v = LBL[a]; q.textContent = `Reading: ${LBL[b]}`; q.dataset.v = LBL[b]; p.setAttribute("aria-label", `Is it a randomised trial? ${LBL[a]}. Change it`); q.setAttribute("aria-label", `Is it about reading in primary school? ${LBL[b]}. Change it`); const st = r.querySelector("[data-stars]"); st.setAttribute("aria-label", `${stars} of 5 stars`); st.style.setProperty("--n", stars); const to = ok ? IN : OUT; if (r.parentElement !== to) to.append(r); }
+    for (const list of [IN, OUT]) [...list.children].sort((x, y) => rows.indexOf(x) - rows.indexOf(y)).forEach((r) => list.append(r));
+    if (still) return; for (const r of rows) { const a = from.get(r), z = r.getBoundingClientRect(), dx = a.left - z.left, dy = a.top - z.top; if (a.width && (dx || dy)) r.animate([{ transform: `translate(${dx}px, ${dy}px) rotate(${dx ? 3 : 0}deg)`, zIndex: 2 }, { transform: "none", zIndex: 2 }], { duration: 520, easing: "cubic-bezier(.22,1,.36,1)" }); } }
+  pm.addEventListener("input", place);
+  root.addEventListener("click", (e) => { const t = e.target; if (t.matches?.(".pick")) { const li = t.closest("li"); li.dataset[t.dataset.k] = (+li.dataset[t.dataset.k] + 1) % 3; place(); t.focus(); } });
+  place();
+</script>
+<style is:global>
+  [data-sift] li { position: relative; display: grid; gap: 8px; align-content: center; height: 100px; padding: 10px 14px; border-radius: 14px; background: #fff; box-shadow: 0 2px 0 rgb(11 16 32 / .14); }
+  [data-sift] .t { font-weight: 500; font-size: 15px; line-height: 1.25; letter-spacing: -.01em; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  [data-sift] .ans { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  [data-sift] .pick { height: 26px; padding-inline: 8px; border-radius: 7px; font-size: 13px; font-weight: 500; transition: translate .12s var(--ease), box-shadow .12s var(--ease); box-shadow: 0 2px 0 rgb(11 16 32 / .25); } [data-sift] .pick:hover { translate: 0 -1px; } [data-sift] .pick:active { translate: 0 2px; box-shadow: none; }
+  [data-sift] .pick[data-v="Yes"] { background: #c6f6dd; color: #0b5e3f; } [data-sift] .pick[data-v="Unclear"] { background: #ffe9a8; color: #6d4a00; } [data-sift] .pick[data-v="No"] { background: #ffd2cc; color: #8f1d10; }
+  [data-sift] .stars { --star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5l2.9 6.2 6.8.8-5 4.7 1.3 6.7-6-3.3-6 3.3 1.3-6.7-5-4.7 6.8-.8z'/%3E%3C/svg%3E"); margin-left: auto; width: 80px; height: 16px; flex: none; background: linear-gradient(90deg, #ff9c1a calc(var(--n, 0) * 20%), rgb(11 16 32 / .14) 0); -webkit-mask: var(--star) 0 0/16px 16px repeat-x; mask: var(--star) 0 0/16px 16px repeat-x; }
+</style>
+<style>
+  .sift { background: var(--mint); } :global(.sift) :global(.s1) { position: absolute; right: 28px; top: 20px; rotate: 10deg; z-index: -1; }
+  .head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 20px 40px; align-items: end; margin-bottom: 28px; padding-right: 120px; } h2 { max-width: 9em; }
+  .bar { display: grid; gap: 4px; } .bar label { font-weight: 700; font-size: 17px; letter-spacing: -.01em; }
+  input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; margin: 0; background: linear-gradient(var(--ink), var(--ink)) no-repeat 0 50% / 100% 8px; border-radius: 8px; cursor: grab; } input[type="range"]:active { cursor: grabbing; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 46px; height: 36px; border-radius: 11px; background: var(--sun); box-shadow: 0 4px 0 var(--sun-edge), 0 0 0 2px var(--ink); }
+  input[type="range"]::-moz-range-thumb { width: 46px; height: 36px; border: 0; border-radius: 11px; background: var(--sun); box-shadow: 0 4px 0 var(--sun-edge), 0 0 0 2px var(--ink); }
+  .ends { display: flex; justify-content: space-between; font-size: 14px; font-weight: 500; }
+  .trays { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .tray { padding: 14px; border-radius: 22px; } .tray header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; padding-inline: 4px; font-size: 18px; letter-spacing: -.02em; } .tray b { font-weight: 700; }
+  .tray ol { display: grid; gap: 8px; align-content: start; min-height: calc(4 * 100px + 3 * 8px); position: relative; }
+  .tray ol::before { content: ""; position: absolute; inset: 0; z-index: 0; border-radius: 14px; background: repeating-linear-gradient(var(--slot) 0 100px, transparent 100px 108px); }
+  .tray ol > :global(li) { z-index: 1; }
+  .in { --slot: rgb(255 255 255 / .1); background: var(--ink); color: #fff; } .in :global(li) { color: var(--ink); } .out { --slot: rgb(255 255 255 / .22); background: rgb(11 16 32 / .14); }
+  .out :global(li) { background: rgb(255 255 255 / .62); }
+  .last { margin-top: 18px; font-weight: 500; font-size: 15px; }
+  @media (max-width: 860px) { .head { grid-template-columns: minmax(0, 1fr); padding-right: 0; } :global(.sift) :global(.s1) { width: 88px; height: 88px; right: 12px; top: 8px; } h2 { padding-right: 76px; } .trays { grid-template-columns: minmax(0, 1fr); } .tray ol { min-height: calc(100px * 2 + 8px); } .tray ol::before { display: none; } .tray ol > :global(li) { height: auto; min-height: 100px; } }
+</style>

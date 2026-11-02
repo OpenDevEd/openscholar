@@ -1,107 +1,70 @@
 ---
 import Base from "../layouts/Base.astro";
 import AskBar from "../components/AskBar.astro";
-const statement = ["Too many tabs.", "A spreadsheet nobody trusts.", "A review that's out of date before it's done.", "All that, to answer one question."];
-const stays = ["Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia", "Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees", "Peer tutoring in reading in Scotland: thinking big"];
-const falls = ["Psychological Effects of Peer Tutoring in Mathematics in Primary Education", "How does peer tutoring contribute to the development of reading comprehension?"];
-const scenes = [[5, "telescope"], [6, "prism"], [7, "spectrograph"], [8, "console"], [9, "array"], [10, "plates"], [11, "horizon"]];
-const steps = ["Finding the papers that matter", "Saving them to a collection", "Screening them against your questions", "Pulling out the details you asked for", "Writing up what it found"];
+import Covers from "../components/Covers.astro";
+import Search from "../components/Search.astro";
+import Sift from "../components/Sift.astro";
+import Extract from "../components/Extract.astro";
+import Agent from "../components/Agent.astro";
+import Room from "../components/Room.astro";
+import Sticker from "../components/Sticker.astro";
+import Shape from "../components/Shape.astro";
+const rail = [["#search", "Find it", "glass", "#FFD233"], ["#review", "Sift it", "sieve", "#3DDC97"], ["#extract", "Pull it out", "pen", "#FF5A47"], ["#assistant", "Hand it over", "stamp", "#0b1020"], ["#library", "Publish it", "page", "#FF9BD0"]];
+const asks = ["What keeps girls in school?", "Does mindfulness ease anxiety?", "How does heat affect learning?", "Do cash transfers end poverty?"];
+const shots = [["lib-plate", 1000, 740, "Wealth Inequality and Social Mobility", "https://wealth-inequality.openscholar.ai", "s0"], ["lib-evidence", 1240, 612, "Artificial Intelligence in Education", "https://aied.openscholar.ai", "s1"], ["lib-home", 1920, 1150, "Wealth Inequality, after dark", "https://wealth-inequality.openscholar.ai", "s2"]];
 ---
 <Base title="OpenScholar: know what the research really says" description="From your first question to published evidence, OpenScholar does the reading with you.">
-  <canvas class="field" data-field aria-hidden="true"></canvas>
-  <div class="photos" aria-hidden="true">{scenes.map(([i, n]) => <img data-photo={i} src={`/img/scene-${n}-1672.avif`} width="1672" height="941" decoding="async" alt="" />)}<div class="etched" data-etched><img src="/img/lib-plate.avif" width="1000" height="782" decoding="async" alt="" /></div></div>
-  <noscript><style>.pin { position: sticky !important; } .ch .copy { opacity: 1 !important; pointer-events: auto !important; }</style></noscript>
+  <section class="b hero">
+    <Covers />
+    <div class="copy"><h1>Know what the research <span class="hl wipe">really says</span></h1><p class="lead">From your first question to published evidence, OpenScholar does the reading with you.</p><AskBar id="ask-hero" chips={asks} /></div>
+  </section>
 
-  <section class="ch hero" data-ch="0"><div class="pin"><div class="copy" data-copy>
-    <h1>Know what the research really says</h1>
-    <div class="hero-foot"><p class="lead">From your first question to published evidence, OpenScholar does the reading with you.</p><AskBar id="ask-hero" /></div>
-  </div></div></section>
+  <nav class="rail" aria-label="What OpenScholar does">
+    {rail.map(([href, name, st, c], i) => <a href={href} style={`--c:${c};--tilt:${[-1, .8, -.6, 1, -.8][i]}deg`}><Sticker name={st} size={64} /><b>{name}</b></a>)}
+  </nav>
 
-  {statement.map((s, i) => <section class="ch said" data-ch={i + 1}><div class="pin mid"><p class="say" data-copy>{s}</p></div></section>)}
+  <Search />
+  <Sift />
+  <Extract />
 
-  <section class="ch" data-ch="5"><div class="pin"><div class="copy find" data-copy>
-    <div class="t"><h2>Ask like a person. Search like a librarian.</h2><p class="lead">Your question goes in plain. The search comes out expert, and you see the shape of the whole field before you read a single paper.</p></div>
-    <p class="query" aria-label="Does peer tutoring improve reading? becomes the search: peer tutoring AND reading"><s>Does peer tutoring improve reading?</s><span><i style="color:#ffc48a">"peer tutoring"</i> <i class="op">AND</i> <i style="color:#8fd3ff">reading</i></span></p>
-  </div></div></section>
+  <div class="row trio">
+    <a class="b t1" href="/docs/#organize"><Sticker name="zotero" size={84} /><h3>Bring your Zotero along</h3></a>
+    <a class="b t2" href="/docs/#search"><Sticker name="globe" size={84} /><h3>Read it in your own language</h3></a>
+    <a class="b t3" href="/docs/#organize"><Sticker name="quote" size={84} /><h3>Cite it in any style</h3></a>
+  </div>
 
-  <section class="ch" data-ch="6"><div class="pin"><div class="copy screen" data-copy>
-    <div class="t"><h2 class="huge">Let the noise fall away</h2><p class="lead">Tell it what matters. Every paper is judged by your rules, in the open, and you always have the last word.</p></div>
-    <ul class="kept">{stays.map((t, i) => <li style={`--i:${i}`}>{t}</li>)}{falls.map((t, i) => <li class="gone" style={`--i:${i}`}>{t}</li>)}</ul>
-  </div></div></section>
+  <Agent />
 
-  <section class="ch" data-ch="7"><div class="pin"><div class="copy extract" data-copy>
-    <div class="t"><h2>Stop copying. Start knowing.</h2><p class="lead">Ask your questions once, across every paper, and never lose the sentence behind an answer.</p></div>
-    <figure class="moment"><figcaption>What is the sample size?</figcaption><blockquote>A randomised trial was conducted in four Colombian elementary schools with eight classes, and <mark>298 third and fifth grade pupils</mark>.</blockquote></figure>
-  </div></div></section>
+  <section class="b team">
+    <Shape kind="quarters" color="rgb(37 99 235 / .14)" />
+    <div class="t-copy"><h2>Stop emailing spreadsheets</h2><p class="lead">Your whole team, on the same evidence, watching it change as it happens.</p><a class="key" href="/teams/">See how teams work<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5" /></svg></a></div>
+    <Room />
+  </section>
 
-  <section class="ch" data-ch="8"><div class="pin"><div class="copy assist" data-copy>
-    <div class="t"><h2>Hand over the whole review</h2><p class="lead">Describe what you need and watch it happen. You approve the big moves, and it admits what it couldn't read.</p></div>
-    <div class="run"><ol>{steps.map((s) => <li data-step><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5" /></svg>{s}</li>)}</ol><a class="btn primary" href="/try/#assistant">Try it yourself</a></div>
-  </div></div></section>
+  <section class="b lib" id="library">
+    <Shape kind="dots" color="rgb(255 255 255 / .28)" />
+    <div class="l-copy"><h2>Give your evidence a home</h2><p class="lead">A public library with your name on the door, that anyone can search, explore and question.</p><a class="key" href="/evidence-libraries/">Explore Evidence Libraries<svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5" /></svg></a></div>
+    <div class="fan">{shots.map(([img, w, h, name, href, cls]) => <a class:list={["shot", cls]} href={href} aria-label={name}><img src={`/img/${img}.avif`} width={w} height={h} loading="lazy" decoding="async" alt="" /></a>)}</div>
+  </section>
 
-  <section class="ch" data-ch="9"><div class="pin top"><div class="copy team" data-copy>
-    <h2>Many eyes on one patch of sky</h2><p class="lead">Your whole team, in one place, on the same evidence, seeing it change as it happens.</p><a class="link" href="/teams/">See how teams work in it</a>
-  </div></div></section>
-
-  <section class="ch" data-ch="10"><div class="pin"><div class="copy lib" data-copy>
-    <div class="t"><h2>Give your evidence a home</h2><p class="lead">Turn what you've found into a public library, with your name on the door, that anyone can search, explore and question. New work finds its own way in.</p><a class="btn primary" href="/evidence-libraries/">Explore Evidence Libraries</a></div>
-    
-  </div></div></section>
-
-  <section class="ch last" data-ch="11"><div class="pin mid"><div class="copy end" data-copy><h2>What do you want to know?</h2><AskBar id="ask-end" /><a class="link" href="/docs/">Read the docs</a></div></div></section>
+  <section class="b end">
+    <Shape kind="stripes" color="rgb(255 255 255 / .26)" />
+    <Sticker name="glass" size={150} class="e1" /><Sticker name="star" size={110} class="e2" /><Sticker name="paper" size={130} class="e3" />
+    <h2>What do you want to know?</h2><AskBar id="ask-end" />
+  </section>
 </Base>
-<script>
-  import "../scripts/home.js";
-</script>
 <style>
-  .field { position: fixed; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1.4s var(--ease); pointer-events: none; }
-  .photos { position: fixed; inset: 0; pointer-events: none; mix-blend-mode: screen; }
-  .etched { position: absolute; left: 0; top: 0; width: 1000px; height: 782px; transform-origin: 0 0; mix-blend-mode: multiply; opacity: 0; visibility: hidden; } .photos .etched img { position: static; width: 100%; height: 100%; opacity: 1; visibility: visible; object-fit: fill; }
-  .photos img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; visibility: hidden; }
-  .ch { position: relative; height: 220svh; pointer-events: none; }
-  .hero { height: 150svh; } .said { height: 125svh; } .last { height: 170svh; }
-  .pin { position: fixed; inset: 0 0 auto; height: 100svh; padding: 88px var(--edge) 40px; display: flex; flex-direction: column; justify-content: flex-end; overflow: clip; }
-  .pin.mid { justify-content: center; align-items: center; text-align: center; } .pin.top { justify-content: flex-start; }
-  .copy { pointer-events: auto; will-change: opacity, transform; } .ch:not(.hero) .copy { opacity: 0; pointer-events: none; }
-  .lead { margin-top: 20px; max-width: 34rem; text-shadow: 0 1px 24px #000; color: rgb(242 244 248 / .82); }
-  h2 { text-shadow: 0 2px 40px rgb(0 0 0 / .85); }
-
-  .hero .copy { width: 100%; }
-  .hero h1 { max-width: 9.5em; font-size: clamp(54px, 9vw, 156px); line-height: .94; letter-spacing: -.05em; text-shadow: 0 2px 40px rgb(0 0 0 / .5); }
-  .hero-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px 48px; margin-top: 28px; }
-  .hero-foot .lead { margin: 0; max-width: 26rem; }
-
-  .say { max-width: 11em; font-size: clamp(44px, 8.4vw, 148px); font-weight: 500; line-height: .98; letter-spacing: -.05em; text-wrap: balance; text-shadow: 0 0 40px #000, 0 0 80px #000; }
-
-  .find { max-width: 46vw; flex: 1; } .find h2 { font-size: clamp(38px, 5vw, 84px); }
-  .query { margin-top: 20px; display: grid; gap: 4px; font-size: clamp(20px, 2vw, 32px); font-weight: 500; letter-spacing: -.02em; } .query s { text-decoration: none; color: var(--t3); font-weight: 400; font-size: .7em; } .query i { font-style: normal; } .query .op { color: #6b7280; }
-
-  .screen { position: absolute; inset: 88px var(--edge) 0; } .screen .huge { font-size: clamp(40px, 5.6vw, 92px); line-height: .96; }
-  .screen .lead { max-width: 36rem; margin-top: 12px; }
-  .kept { position: absolute; left: 0; top: calc(50svh - 40px); width: min(40vw, 580px); display: grid; gap: 12px; font-size: clamp(15px, 1.25vw, 19px); line-height: 1.3; } .kept li { padding-left: 22px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239ff0c0' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10.5 8 14.5 16 5.5'/%3E%3C/svg%3E") 0 .22em/15px no-repeat; }
-  .kept .gone { background: none; color: var(--t3); animation: drop 5s calc((1 - var(--i)) * 1s) cubic-bezier(.4, 0, .9, .5) infinite backwards; } @keyframes drop { 0% { opacity: 0; translate: 0 0; } 8%, 30% { opacity: 1; translate: 0 0; } 80%, 100% { opacity: 0; translate: 0 90px; } }
-
-  .extract { height: 100%; position: relative; } .extract h2 { font-size: clamp(40px, 6vw, 104px); max-width: 6.4em; line-height: .96; } .extract .lead { max-width: 25rem; }
-  .moment { position: absolute; right: 0; bottom: 0; width: min(38vw, 600px); margin: 0; }
-  figcaption { color: var(--t2); font-size: clamp(16px, 1.4vw, 20px); margin-bottom: 8px; }
-  blockquote { font-size: clamp(22px, 2.5vw, 38px); line-height: 1.2; letter-spacing: -.02em; color: rgb(242 244 248 / .55); text-shadow: 0 1px 24px #000; } blockquote mark { -webkit-box-decoration-break: clone; box-decoration-break: clone; background: none; color: #fff; box-shadow: inset 0 -3px 0 #8fd3ff; }
-
-  .assist { height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 32px; } .assist .t { max-width: 44rem; } .assist h2 { font-size: clamp(40px, 5.4vw, 92px); }
-  .run { width: min(480px, 100%); }
-  .run ol { display: grid; gap: 12px; margin-bottom: 24px; } .run li { display: flex; align-items: center; gap: 12px; color: var(--t3); transition: color .3s var(--ease); font-size: clamp(17px, 1.4vw, 21px); } .run svg { flex: none; opacity: .2; transition: opacity .3s var(--ease), color .3s var(--ease); } .run li[data-done] { color: var(--t1); } .run li[data-done] svg { opacity: 1; color: #ffc48a; }
-
-  .team { position: relative; height: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; padding-top: 2vh; } .team h2 { font-size: clamp(40px, 5.8vw, 100px); max-width: 11em; line-height: .98; }
-  .link { display: inline-block; margin-top: 16px; font-size: 18px; color: var(--pale); }
-
-  .lib { height: 100%; display: flex; flex-direction: column; justify-content: center; } .lib h2 { font-size: clamp(40px, 5.8vw, 100px); max-width: 7em; line-height: .96; } .lib .btn { margin-top: 20px; } .lib .lead { max-width: 28rem; }
-
-  .end { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; padding-bottom: 30vh; } .end .link { margin-top: 0; } .end h2 { font-size: clamp(44px, 7.4vw, 124px); max-width: 10em; }
-
-  @media (max-width: 899px) {
-    .ch { height: 180svh; } .said { height: 125svh; }
-    .hero h1 { font-size: clamp(48px, 14vw, 76px); }
-    .find, .screen, .extract, .lib { display: block; height: auto; position: static; max-width: none; flex: none; inset: auto; } .assist { justify-content: flex-end; height: auto; } .team { height: auto; padding-top: 0; }
-    .pin { justify-content: flex-end; } .ch:not(.hero, .said, .last) .copy { margin: auto calc(var(--edge) * -1) -40px; padding: 64px var(--edge) 40px; background: linear-gradient(transparent, rgb(0 0 0 / .8) 64px); } .ch .team { margin: -88px calc(var(--edge) * -1) auto !important; padding: 88px var(--edge) 64px !important; background: linear-gradient(rgb(0 0 0 / .8) calc(100% - 64px), transparent) !important; }
-    .last .pin { position: sticky; top: 0; } .kept { display: none; } .moment { position: static; width: 100%; margin-top: 16px; } blockquote { font-size: 20px; }
-    }
+  .hero { background: var(--cobalt); color: #fff; min-height: 640px; display: flex; align-items: center; }
+  .rail { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--gap); }
+  .rail a { position: relative; display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 22px; background: var(--c); font-size: clamp(16px, 1.6vw, 20px); letter-spacing: -.03em; transition: translate .2s var(--ease); } .rail a:nth-child(4) { color: #fff; } .rail a:hover { translate: 0 -3px; } .rail :global(svg) { flex: none; rotate: var(--tilt); transition: rotate .25s var(--ease), scale .25s var(--ease); } .rail a:hover :global(svg) { rotate: -10deg; scale: 1.1; } .rail b { font-weight: 700; line-height: 1.05; }
+  .copy { position: relative; width: min(54%, 660px); display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; justify-items: start; } h1 { text-wrap: balance; } .copy .lead { max-width: 30rem; }
+  .trio { grid-template-columns: repeat(3, minmax(0, 1fr)); } .trio .b { display: flex; flex-direction: column; justify-content: space-between; gap: 40px; min-height: 240px; transition: translate .2s var(--ease); } .trio .b:hover { translate: 0 -4px; } .trio :global(svg) { transition: rotate .3s var(--ease); } .trio .b:hover :global(svg) { rotate: -8deg; }
+  .t1 { background: var(--tang); } .t2 { background: #fff; } .t3 { background: var(--leaf); color: #fff; }
+  .team { background: var(--sky); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; align-items: center; } .t-copy { display: grid; gap: 18px; justify-items: start; }
+  .lib { background: var(--pink); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; align-items: center; min-height: 520px; } .l-copy { display: grid; gap: 18px; justify-items: start; }
+  .fan { position: relative; height: 440px; } .shot { position: absolute; width: 74%; border-radius: 12px; overflow: hidden; box-shadow: 0 24px 40px -14px rgb(11 16 32 / .5), 0 0 0 3px #fff; transition: rotate .3s var(--ease), translate .3s var(--ease), scale .3s var(--ease); } .shot:hover { z-index: 3; rotate: 0deg; scale: 1.04; }
+  .s2 { left: 0; top: 0; rotate: -7deg; z-index: 0; } .s1 { right: -6%; top: 20px; rotate: 6deg; z-index: 1; } .s0 { left: 14%; bottom: 0; rotate: -1.5deg; z-index: 2; width: 66%; }
+  .end { background: var(--sun); display: grid; justify-items: center; gap: 24px; padding-block: clamp(56px, 8vw, 104px); text-align: center; } .end h2 { font-size: clamp(42px, 7vw, 96px); max-width: 9em; }
+  .end :global(.e1) { position: absolute; left: 4%; top: 12%; rotate: -14deg; z-index: -1; } .end :global(.e2) { position: absolute; right: 6%; top: 10%; rotate: 16deg; z-index: -1; } .end :global(.e3) { position: absolute; right: 12%; bottom: 8%; rotate: 8deg; z-index: -1; }
+  @media (max-width: 900px) { .hero { flex-direction: column; align-items: stretch; min-height: 0; padding-bottom: 0; } .copy { width: 100%; order: 1; } .end { padding-top: 104px; } .rail { grid-template-columns: repeat(2, minmax(0, 1fr)); } .rail a:last-child { grid-column: 1 / -1; } .trio { grid-template-columns: minmax(0, 1fr); } .trio .b { flex-direction: row; align-items: center; justify-content: flex-start; min-height: 0; gap: 16px; } .team, .lib { grid-template-columns: minmax(0, 1fr); } .fan { height: 62vw; min-height: 280px; } .end :global(.e1), .end :global(.e2), .end :global(.e3) { width: 72px; height: 72px; } .end :global(.e1) { top: 12px; left: 8px; } .end :global(.e2) { top: 12px; right: 8px; } .end :global(.e3) { bottom: 12px; right: 8px; } }
 </style>

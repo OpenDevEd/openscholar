@@ -1,0 +1,13 @@
+---
+// A big tone-on-tone print behind a block.
+const { kind = "arcs", color = "rgb(11 16 32 / .08)", class: cls = "" } = Astro.props;
+const INK = {
+  arcs: [0, 1, 2, 3, 4, 5].map((i) => `<circle cx="600" cy="0" r="${90 + i * 90}" fill="none" stroke="${color}" stroke-width="44"/>`).join(""),
+  quarters: Array.from({ length: 24 }, (_, i) => { const x = (i % 6) * 100, y = Math.floor(i / 6) * 100, r = (i * 7 + (i % 5)) % 4; return `<path transform="translate(${x + 50} ${y + 50}) rotate(${r * 90})" d="M-50-50h100a100 100 0 01-100 100z" fill="${color}"/>`; }).join(""),
+  dots: Array.from({ length: 70 }, (_, i) => { const x = (i % 10) * 60 + 30, y = Math.floor(i / 10) * 60 + 30, r = 5 + ((i * 13) % 7) * 3; return `<circle cx="${x}" cy="${y}" r="${r}" fill="${color}"/>`; }).join(""),
+  stripes: Array.from({ length: 12 }, (_, i) => `<path d="M${-120 + i * 80} 420L${180 + i * 80} 0" stroke="${color}" stroke-width="34"/>`).join(""),
+  stairs: Array.from({ length: 6 }, (_, i) => `<rect x="${i * 100}" y="${360 - (i + 1) * 60}" width="96" height="${(i + 1) * 60}" fill="${color}"/>`).join(""),
+};
+---
+<svg class:list={["shape", cls]} viewBox="0 0 600 420" preserveAspectRatio="xMaxYMin slice" aria-hidden="true" set:html={INK[kind]} />
+<style>.shape { position: absolute; right: 0; top: 0; z-index: -2; width: min(62%, 680px); height: 100%; max-height: 520px; pointer-events: none; mask-image: linear-gradient(90deg, transparent, #000 45%), linear-gradient(#000 60%, transparent); mask-composite: intersect; } @media (max-width: 860px) { .shape { width: 100%; max-height: 320px; } }</style>

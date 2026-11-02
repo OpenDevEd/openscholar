@@ -1,12 +1,11 @@
 ---
 import Base from "../layouts/Base.astro";
 import AskBar from "../components/AskBar.astro";
+import Sticker from "../components/Sticker.astro";
 ---
-<Base title="Lost in space: OpenScholar" description="That page isn't here. Ask a question instead.">
-  <section class="lost"><img src="/img/scene-horizon-1672.avif" width="1672" height="941" alt="" /><h1>Nothing out here</h1><p class="lead">That page drifted off. Ask a question instead, or head <a class="link" href="/">back to the start</a>.</p><AskBar id="ask-lost" /></section>
+<Base title="Not found: OpenScholar" description="That page isn't here. Ask a question instead.">
+  <section class="b lost"><Sticker name="glass" size={170} class="g" /><h1>Nothing on this page</h1><p class="lead">Ask a question instead, or head <a class="pen" href="/">back to the start</a>.</p><AskBar id="ask-lost" /></section>
 </Base>
 <style>
-  .lost { position: relative; isolation: isolate; height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 20px; padding: 16svh var(--edge) 0; text-align: center; overflow: hidden; }
-  .lost img { position: absolute; left: 0; bottom: 0; z-index: -1; width: 100%; height: auto; min-height: 100%; object-fit: cover; object-position: 50% 62%; }
-  h1 { font-size: clamp(48px, 9vw, 156px); line-height: .94; letter-spacing: -.05em; }
+  .lost { background: var(--sun); display: grid; justify-items: center; gap: 20px; padding-block: clamp(64px, 9vw, 120px); text-align: center; min-height: 560px; align-content: center; } .lost :global(.g) { rotate: -12deg; }
 </style>

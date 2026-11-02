@@ -1,0 +1,44 @@
+---
+import papers from "../data/extraction.json";
+import Sticker from "./Sticker.astro";
+import Shape from "./Shape.astro";
+const Q = [["who", "Who took part?"], ["design", "What was the design?"], ["size", "How many people?"]];
+const list = papers.map((p) => ({ title: p.title, year: p.year, sentences: p.sentences, who: p.who, design: p.design, size: p.size }));
+---
+<section class="b ex" id="extract" data-lab data-papers={JSON.stringify(list)}>
+  <Shape kind="arcs" color="rgb(255 255 255 / .16)" /><Sticker name="pen" size={150} class="s1" />
+  <h2>Stop copying. Start knowing.</h2>
+  <p class="lead">Ask your questions once, across every paper. Then press any answer to see the sentence behind it.</p>
+  <div class="grid">
+    <div class="left">
+      <div class="qs" role="tablist" aria-label="Question">{Q.map(([k, q], i) => <button type="button" role="tab" aria-selected={i === 0 ? "true" : "false"} data-q={k}>{q}</button>)}</div>
+      <ol class="answers">{list.map((p, r) => <li><button type="button" data-r={r}><span class="pt">{p.title}</span><b data-val></b></button></li>)}</ol>
+      <div class="dl"><span>It's your data. Take it with you.</span><button type="button" class="key small white" data-dl="csv">CSV</button><button type="button" class="key small white" data-dl="json">JSON</button></div>
+    </div>
+    <article class="page" aria-live="polite"><i class="clip" aria-hidden="true"></i><b data-from></b><p data-abs></p></article>
+  </div>
+</section>
+<script>
+  const lab = document.querySelector("[data-lab]"), papers = JSON.parse(lab.dataset.papers), abs = lab.querySelector("[data-abs]"), from = lab.querySelector("[data-from]"), items = [...lab.querySelectorAll("[data-r]")], qs = [...lab.querySelectorAll("[data-q]")];
+  const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+  let key = "who", row = 1;
+  function show() { const p = papers[row], at = p[key].at; qs.forEach((q) => q.setAttribute("aria-selected", q.dataset.q === key ? "true" : "false")); items.forEach((b, r) => { b.querySelector("[data-val]").textContent = papers[r][key].value; b.toggleAttribute("data-on", r === row); }); from.textContent = `${p.title}, ${p.year}`; abs.innerHTML = p.sentences.map((s, i) => (i === at ? `<mark>${esc(s)}</mark>` : esc(s))).join(" "); const m = abs.querySelector("mark"), box = abs.closest(".page"); if (m) box.scrollTop = Math.max(0, m.offsetTop - box.offsetTop - 100); }
+  lab.addEventListener("click", (e) => { const q = e.target.closest("[data-q]"), r = e.target.closest("[data-r]"), d = e.target.closest("[data-dl]"); if (q) key = q.dataset.q; if (r) row = +r.dataset.r; if (q || r) show(); if (d) download(d.dataset.dl); });
+  function download(kind) { const rows = papers.map((p) => ({ title: p.title, year: p.year, who_took_part: p.who.value, design: p.design.value, sample_size: p.size.value, who_evidence: p.sentences[p.who.at] ?? "", design_evidence: p.sentences[p.design.at] ?? "", size_evidence: p.sentences[p.size.at] ?? "" })), q = (v) => `"${String(v).replace(/"/g, '""')}"`, body = kind === "json" ? JSON.stringify(rows, null, 2) : [Object.keys(rows[0]).map(q).join(","), ...rows.map((r) => Object.values(r).map(q).join(","))].join("\n"), a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([body], { type: kind === "json" ? "application/json" : "text/csv" })); a.download = `extraction-results.${kind}`; a.click(); URL.revokeObjectURL(a.href); }
+  show();
+</script>
+<style>
+  .ex { background: var(--coral); } .ex :global(.s1) { position: absolute; right: 12px; top: 8px; z-index: -1; rotate: -8deg; }
+  h2 { max-width: 8.5em; color: #fff; } .lead { margin-block: 12px 24px; max-width: 34rem; color: var(--ink); font-weight: 500; }
+  .grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 12px; align-items: stretch; }
+  .left { display: flex; flex-direction: column; min-width: 0; }
+  .qs { display: flex; gap: 4px; padding-inline: 16px; overflow-x: auto; scrollbar-width: none; } .qs button { flex: none; height: 42px; padding-inline: 14px; border-radius: 12px 12px 0 0; background: rgb(255 255 255 / .35); font-weight: 500; font-size: 15px; transition: background-color .15s var(--ease); } .qs button:hover { background: rgb(255 255 255 / .6); } .qs [aria-selected="true"] { background: #fff; font-weight: 700; }
+  .answers { flex: 1; padding: 8px; border-radius: 22px; background: #fff; display: grid; gap: 4px; align-content: start; }
+  .answers button { display: grid; grid-template-columns: minmax(0, 1fr) minmax(120px, 36%); gap: 16px; align-items: center; width: 100%; min-height: 62px; padding: 10px 14px; border-radius: 14px; text-align: left; transition: background-color .15s var(--ease); } .answers button:hover { background: var(--paper); } .answers [data-on] { background: var(--mark-1) !important; }
+  .pt { font-size: 15px; line-height: 1.25; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; } .answers b { font-size: 17px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
+  .dl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 14px; font-weight: 500; } .dl span { margin-right: auto; }
+  .page { position: relative; max-height: 520px; overflow-y: auto; scrollbar-width: thin; padding: 28px 24px 24px; background: #fff; border-radius: 6px; rotate: 1.2deg; box-shadow: 0 24px 40px -18px rgb(11 16 32 / .5); font-size: 15px; line-height: 1.55; color: var(--t2); }
+  .clip { position: absolute; left: 24px; top: -2px; width: 56px; height: 12px; background: var(--ink); border-radius: 0 0 6px 6px; }
+  .page b { display: block; font-size: 19px; line-height: 1.15; letter-spacing: -.02em; color: var(--ink); margin-bottom: 12px; } .page :global(mark) { background: var(--mark-1); color: var(--ink); border-radius: 3px; padding-inline: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  @media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } .ex :global(.s1) { width: 96px; height: 96px; } h2 { padding-right: 60px; } .page { rotate: none; max-height: 360px; } .answers button { grid-template-columns: minmax(0, 1fr); gap: 2px; } .dl span { flex-basis: 100%; } }
+</style>

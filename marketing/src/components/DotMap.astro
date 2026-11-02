@@ -1,0 +1,26 @@
+---
+// A map of real places: land as small dots, and every research institution brightening its cell.
+import { readFileSync } from "node:fs";
+const earth = new Int16Array((() => { const f = readFileSync("src/data/earth.bin"); return f.buffer.slice(f.byteOffset, f.byteOffset + f.length); })());
+const INST = 9988, CELL = 2.4, TOP = 76, BOT = -58, W = 360 / CELL, H = (TOP - BOT) / CELL, cells = new Map();
+const add = (lon, lat, weight) => { if (lat > TOP || lat < BOT) return; const k = `${Math.floor((lon + 180) / CELL)},${Math.floor((TOP - lat) / CELL)}`; const c = cells.get(k) ?? { land: 0, inst: 0 }; c.land += 1; c.inst += weight; cells.set(k, c); };
+const land = (earth.length - 2 - INST * 2) / 2;
+for (let i = 0; i < INST; i++) add(earth[2 + i * 2] / 100, earth[3 + i * 2] / 100, 1);
+for (let i = 0; i < land; i++) add(earth[2 + INST * 2 + i * 2] / 100, earth[3 + INST * 2 + i * 2] / 100, 0);
+const HUES = ["#FF5A47", "#FF9C1A", "#FFD233", "#3DDC97", "#8FD0FF", "#FF9BD0"], groups = {};
+for (const [k, c] of cells) { const [x, y] = k.split(",").map(Number), hue = HUES[Math.min(5, Math.floor((x / W) * 6))], size = c.inst > 40 ? 3 : c.inst > 8 ? 2 : c.inst > 0 ? 1 : 0, key = size === 0 ? "land" : `${hue}|${size}`; (groups[key] ??= []).push(`M${x + .5} ${y + .5}h0`); }
+const paths = Object.entries(groups).map(([k, d]) => { if (k === "land") return { d: d.join(""), stroke: "rgb(255 255 255 / .38)", w: .4 }; const [c, s] = k.split("|"); return { d: d.join(""), stroke: c, w: [0, .5, .72, .94][+s] }; });
+---
+<div class="map" data-map data-top={TOP} data-bot={BOT}>
+  <svg viewBox={`0 0 ${W} ${H}`} aria-hidden="true">{paths.map((p) => <path d={p.d} stroke={p.stroke} stroke-width={p.w} stroke-linecap="round" fill="none" />)}</svg>
+  <div class="pin" data-pin hidden><svg width="26" height="32" viewBox="0 0 26 32" aria-hidden="true"><path d="M13 31C8 24 2 19 2 12a11 11 0 0122 0c0 7-6 12-11 19z" fill="#fff" /><circle cx="13" cy="12" r="5" fill="#FF5A47" /></svg><span data-pin-t></span></div>
+</div>
+<script>
+  const map = document.querySelector("[data-map]"), pin = map.querySelector("[data-pin]"), text = map.querySelector("[data-pin-t]"), TOP = +map.dataset.top, BOT = +map.dataset.bot;
+  window.pinAt = (lon, lat, name) => { pin.style.left = `${((lon + 180) / 360) * 100}%`; pin.style.top = `${((TOP - lat) / (TOP - BOT)) * 100}%`; pin.classList.toggle("flip", lon > 90); text.textContent = name; pin.hidden = false; pin.getAnimations().forEach((a) => a.cancel()); pin.animate([{ scale: 0.5, opacity: 0 }, { scale: 1, opacity: 1 }], { duration: 320, easing: "cubic-bezier(.22,1,.36,1)" }); };
+</script>
+<style>
+  .map { position: relative; } svg { width: 100%; height: auto; }
+  .pin { position: absolute; display: flex; align-items: flex-start; translate: -13px -31px; pointer-events: none; transform-origin: 13px 31px; } [hidden] { display: none; }
+  .pin span { margin: -2px 0 0 4px; padding: 3px 9px; border-radius: 8px; background: #fff; color: var(--ink); font-size: 14px; font-weight: 700; white-space: nowrap; } .pin.flip { flex-direction: row-reverse; translate: calc(-100% + 13px) -31px; } .pin.flip span { margin: -2px 4px 0 0; }
+</style>

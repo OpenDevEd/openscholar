@@ -1,0 +1,32 @@
+---
+const cursors = [["Maya", "#FF5A47"], ["Tomas", "#2563EB"], ["Amina", "#0B8A57"]];
+const rows = [["Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia", 0, 0], ["Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees", 0, 1], ["How to Analyze Interpersonal and Individual Effects in Peer-Tutored Reading Intervention", 1, 0], ["Peer tutoring in reading in Scotland: thinking big", 0, 0], ["How does peer tutoring contribute to the development of reading comprehension?", 2, 1]];
+const LBL = ["Yes", "Unclear", "No"];
+---
+<div class="room" data-room aria-hidden="true">
+  <header><b>Peer tutoring and reading</b><span class="faces">{cursors.map(([n, c]) => <i style={`--c:${c}`}><svg viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="9" r="4" /><path d="M4 21c1-5 4-7 8-7s7 2 8 7z" /></svg></i>)}</span></header>
+  <ol>{rows.map(([t, a, b]) => <li data-a={a} data-b={b}><span class="t">{t}</span><em class="pick" data-v={LBL[a]}>{LBL[a]}</em><em class="pick" data-v={LBL[b]}>{LBL[b]}</em><span class="stars"></span></li>)}</ol>
+  <p class="log" data-log></p>
+  {cursors.map(([n, c]) => <span class="cur" data-cur><svg width="20" height="20" viewBox="0 0 16 16"><path d="M1 1l5 14 2-6 6-2z" fill={c} stroke="#fff" /></svg><u style={`background:${c}`}>{n}</u></span>)}
+</div>
+<script>
+  const room = document.querySelector("[data-room]"), items = [...room.querySelectorAll("li")], curs = [...room.querySelectorAll("[data-cur]")], log = room.querySelector("[data-log]"), LBL = ["Yes", "Unclear", "No"], NAMES = ["Maya", "Tomas", "Amina"], still = matchMedia("(prefers-reduced-motion: reduce)").matches, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  let seen = false; new IntersectionObserver(([e]) => { seen = e.isIntersecting; }).observe(room);
+  const paint = (li) => { const [p, q] = li.querySelectorAll(".pick"), a = +li.dataset.a, b = +li.dataset.b, s = [2, 1, 0][a] + [2, 1, 0][b]; p.textContent = LBL[a]; p.dataset.v = LBL[a]; q.textContent = LBL[b]; q.dataset.v = LBL[b]; li.querySelector(".stars").style.setProperty("--n", Math.round(s / 4 * 5)); li.classList.toggle("out", s < 3); };
+  items.forEach(paint);
+  const to = (c, el) => { const r = room.getBoundingClientRect(), b = el.getBoundingClientRect(); c.style.transform = `translate(${b.left - r.left + b.width / 2}px, ${b.top - r.top + b.height / 2}px)`; };
+  const home = () => curs.forEach((c, i) => to(c, items[i * 2].querySelector(".t"))); home(); addEventListener("resize", home, { passive: true });
+  const JOBS = [[1, 1, "b", 0], [0, 4, "a", 1], [2, 2, "a", 0], [1, 4, "b", 0], [0, 3, "b", 1], [2, 1, "b", 1], [1, 4, "a", 2], [0, 3, "b", 0], [2, 4, "b", 1], [1, 2, "a", 1]];
+  log.textContent = "Tomas changed an answer";
+  if (!still) (async () => { for (let j = 0; ; j++) { await wait(seen && !document.hidden ? 1500 : 500); if (!seen || document.hidden) { j--; continue; } const [who, row, key, val] = JOBS[j % JOBS.length], li = items[row], pick = li.querySelectorAll(".pick")[key === "a" ? 0 : 1]; to(curs[who], pick); curs.forEach((c, i) => { if (i !== who) to(c, items[(row + i * 2 + 1) % items.length].querySelector(".t")); }); await wait(950); pick.classList.remove("hit"); void pick.offsetWidth; pick.classList.add("hit"); li.dataset[key] = val; paint(li); log.textContent = `${NAMES[who]} changed an answer`; log.classList.remove("in"); void log.offsetWidth; log.classList.add("in"); } })();
+</script>
+<style>
+  .room { position: relative; padding: 18px 20px; border-radius: 22px; background: #fff; color: var(--ink); box-shadow: 0 24px 40px -22px rgb(11 16 32 / .5); }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; } header b { font-weight: 700; font-size: 19px; letter-spacing: -.025em; } .faces { display: flex; flex: none; } .faces i { display: grid; place-items: center; width: 32px; height: 32px; margin-left: -8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 2px #fff; } .faces svg { width: 20px; height: 20px; }
+  li { display: grid; grid-template-columns: minmax(0, 1fr) 72px 72px 84px; gap: 8px; align-items: center; min-height: 60px; border-top: 1px solid var(--line); transition: opacity .3s var(--ease); } li:global(.out) .t { color: var(--t3); } .t { font-size: 15px; line-height: 1.25; }
+  .pick { display: grid; place-items: center; height: 28px; border-radius: 7px; font: 500 13px var(--sans); } .pick[data-v="Yes"] { background: #c6f6dd; color: #0b5e3f; } .pick[data-v="Unclear"] { background: #ffe9a8; color: #6d4a00; } .pick[data-v="No"] { background: #ffd2cc; color: #8f1d10; } .pick:global(.hit) { animation: tap .5s var(--ease); } @keyframes tap { 0% { scale: 1.25; } 100% { scale: 1; } }
+  .stars { --star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5l2.9 6.2 6.8.8-5 4.7 1.3 6.7-6-3.3-6 3.3 1.3-6.7-5-4.7 6.8-.8z'/%3E%3C/svg%3E"); width: 80px; height: 16px; background: linear-gradient(90deg, #ff9c1a calc(var(--n, 0) * 20%), rgb(11 16 32 / .14) 0); -webkit-mask: var(--star) 0 0/16px 16px repeat-x; mask: var(--star) 0 0/16px 16px repeat-x; }
+  .log { margin-top: 10px; min-height: 22px; font-weight: 500; font-size: 15px; } .log:global(.in) { animation: logIn .3s var(--ease); } @keyframes logIn { from { opacity: 0; translate: 0 6px; } }
+  .cur { position: absolute; left: 0; top: 0; display: flex; align-items: flex-start; pointer-events: none; transition: transform .9s var(--ease); will-change: transform; } .cur u { margin: 15px 0 0 -3px; padding: 1px 8px; border-radius: 7px; text-decoration: none; font-size: 12px; color: #fff; font-weight: 700; }
+  @media (max-width: 700px) { li { grid-template-columns: 1fr 1fr 84px; padding-block: 8px; min-height: 0; } .t { grid-column: 1 / -1; font-size: 14px; } }
+</style>

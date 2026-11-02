@@ -1,104 +1,81 @@
 ---
 import Base from "../../layouts/Base.astro";
 import Designer from "../../components/Designer.astro";
-import Globe from "../../components/Globe.astro";
+import DotMap from "../../components/DotMap.astro";
+import Sticker from "../../components/Sticker.astro";
+import Shape from "../../components/Shape.astro";
 import { APP } from "../../data/site.mjs";
 import papers from "../../data/extraction.json";
-const shots = [
-  ["lib-home", 1920, 1150, "Wealth Inequality and Social Mobility", "https://wealth-inequality.openscholar.ai", "A library's home page, with its first pages fanned out beside its name"],
-  ["lib-evidence", 1240, 612, "Artificial Intelligence in Education", "https://aied.openscholar.ai", "A map of research clusters in a library about AI in education"],
-  ["lib-plate", 1000, 740, "Wealth Inequality, in its light theme", "https://wealth-inequality.openscholar.ai", "The same library's home page in its light theme"],
-];
 const sources = [0, 1, 2].map((i) => ({ title: papers[i].title, year: papers[i].year, sentences: papers[i].sentences }));
+const shots = [["lib-home", 1920, 1150, "s2"], ["lib-evidence", 1240, 612, "s1"], ["lib-plate", 1000, 740, "s0"]];
+const lanes = [["Zotero", "#FFE14D"], ["Saved searches", "#8FD0FF"], ["OpenScholar", "#7DF0B4"], ["Your team", "#FFB3DC"]];
 ---
 <Base title="Evidence Libraries: OpenScholar" description="Your evidence deserves better than a PDF in a shared drive. Give it a beautiful public home.">
-  <section class="open">
-    <img class="scene" src="/img/scene-plates-1672.avif" width="1672" height="941" fetchpriority="high" alt="An archive of steel cabinets holding glass plates, with one drawer open and one plate lit from behind" /><i class="tint" aria-hidden="true"></i>
-    <div class="o-copy"><h1>Your evidence deserves better than a shared drive</h1><p class="lead">A public home with your name on the door, where people can find it, search it and trust it.</p><div class="acts"><a class="btn primary" href={`${APP}/evidence-libraries`}>Create your library</a><a class="btn quiet" href="https://wealth-inequality.openscholar.ai">Visit a live one</a></div></div>
+  <section class="b open">
+    <Shape kind="arcs" color="rgb(255 255 255 / .18)" />
+    <div class="o-copy"><h1>Your evidence deserves better than a <span class="hl wipe" style="--c:#FFE14D">shared drive</span></h1><p class="lead">A public home with your name on the door, where people can find it, search it and trust it.</p>
+      <div class="acts"><a class="key" href={`${APP}/evidence-libraries`}>Create your library</a><a class="key white" href="https://wealth-inequality.openscholar.ai">Visit a live one</a></div></div>
+    <div class="fan" aria-hidden="true">{shots.map(([img, w, h, c]) => <img class={c} src={`/img/${img}.avif`} width={w} height={h} decoding="async" alt="" />)}</div>
   </section>
-
-  <section class="gallery" data-gallery>
-    <div class="g-pin">
-      <img class="g-bg" src="/img/scene-plates-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" /><i class="tint" aria-hidden="true"></i>
-      <h2>Already out in the world</h2>
-      <div class="plates">{shots.map(([img, w, h, name, href, alt], i) => <a class="plate" style={`--ar:${w / h}`} href={href} data-shot={i}><img src={`/img/${img}.avif`} width={w} height={h} loading="lazy" decoding="async" alt={alt} /><span>{name}</span></a>)}</div>
-    </div>
-  </section>
-
   <Designer />
-
-  <section class="answers" data-answers data-sources={JSON.stringify(sources)}>
-    <div class="a-head"><h2>Let your readers question the library</h2></div>
-    <div class="a-ask"><p class="q">Does peer tutoring help children read?</p>
-      <p class="a" data-a>Yes, in the trials here. A <button type="button" data-cite="0">trial in Colombia</button> found a positive effect for the group doing Paired Reading. A <button type="button" data-cite="1">study in England</button> found gains in reading comprehension, and they were greater for the tutors than the tutees. <button type="button" data-cite="2">Work in mathematics</button> shows similar benefits at primary and secondary level.</p>
-      <p class="own">And when it can't read something, you'll know.</p>
-    </div>
-    <article class="page" aria-live="polite"><b data-t></b><p data-s></p></article>
-  </section>
-
-  <Globe />
-
-  <section class="care">
-    <div class="care-a"><h2>New work finds its own way in</h2><p class="lead">Connect Zotero, a saved search or your own collection. Your team decides what readers see.</p></div>
-    <div class="flow" aria-hidden="true">
-      <div class="col in"><span>Zotero</span><span>Saved searches</span><span>OpenScholar</span><span>Your team</span></div>
-      <svg viewBox="0 0 300 300" preserveAspectRatio="none" fill="none">{[37, 112, 187, 262].map((y, i) => <path class="pipe" pathLength="1" d={`M0 ${y} C 150 ${y}, 150 150, 300 150`} style={`animation-delay:${i * -0.7}s`} />)}</svg>
-      <div class="stack"><b>Draft</b><b>In review</b><b class="on">Published</b></div>
+  <section class="b answers" data-answers data-sources={JSON.stringify(sources)}>
+    <Sticker name="quote" size={120} class="st" />
+    <h2>Let your readers question the library</h2>
+    <div class="a-grid">
+      <div><p class="q">Does peer tutoring help children read?</p>
+        <p class="a">Yes, in the trials here. A <button type="button" data-cite="0">trial in Colombia</button> found a positive effect for the group doing Paired Reading. A <button type="button" data-cite="1">study in England</button> found gains in reading comprehension, greater for the tutors than the tutees. <button type="button" data-cite="2">Work in mathematics</button> shows similar benefits at primary and secondary level.</p>
+        <p class="own">And when it can't read something, you'll know.</p></div>
+      <article class="page" aria-live="polite"><b data-t></b><p data-s></p></article>
     </div>
   </section>
-
-  <section class="end"><img src="/img/scene-plates-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" /><i class="tint" aria-hidden="true"></i><div><h2>Open your library</h2><a class="btn primary" href={`${APP}/evidence-libraries`}>Create your library</a></div></section>
+  <section class="b world">
+    <div class="w-head"><h2>See where your field lives</h2><div class="find"><label class="sr" for="f">Find a university</label><input id="f" data-find placeholder="Find a university" autocomplete="off" /><ul data-hits></ul></div></div>
+    <DotMap />
+  </section>
+  <section class="b flow">
+    <Shape kind="dots" color="rgb(255 255 255 / .3)" />
+    <div><h2>New work finds its own way in</h2><p class="lead">Connect your sources. Your team decides what readers see.</p></div>
+    <div class="pipes" aria-hidden="true">
+      <ul>{lanes.map(([n, c]) => <li style={`background:${c}`}>{n}</li>)}</ul>
+      <svg viewBox="0 0 200 300" preserveAspectRatio="none" fill="none">{lanes.map(([, c], i) => <path d={`M0 ${37 + i * 75} C 110 ${37 + i * 75}, 90 150, 200 150`} stroke="#0b1020" stroke-width="10" /><path class="p" d={`M0 ${37 + i * 75} C 110 ${37 + i * 75}, 90 150, 200 150`} stroke={c} stroke-width="5" pathLength="1" style={`animation-delay:${i * -0.6}s`} />)}</svg>
+      <ol><li>Draft</li><li>In review</li><li class="on"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5" /></svg>Published</li></ol>
+    </div>
+  </section>
+  <section class="b end"><Shape kind="stripes" color="rgb(255 255 255 / .24)" /><Sticker name="folder" size={140} class="e1" /><Sticker name="page" size={120} class="e2" /><h2>Open your library</h2><a class="key sun" href={`${APP}/evidence-libraries`}>Create your library</a></section>
 </Base>
 <script>
-  // Each library's page rises out of the drawer, holds, then steps back to the shelf.
-  const gal = document.querySelector("[data-gallery]"), shots = [...gal.querySelectorAll("[data-shot]")], still = matchMedia("(prefers-reduced-motion: reduce)").matches, galleryTitle = gal.querySelector("h2");
-  const ease = (t) => t * t * (3 - 2 * t), mix = (a, b, t) => a + (b - a) * t;
-  const wipe = () => { if (innerWidth < 900 || still) { shots.forEach((el) => { el.style.transform = ""; el.style.opacity = ""; el.lastElementChild.style.opacity = ""; }); galleryTitle.style.opacity = ""; return; } const r = gal.getBoundingClientRect(), p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight))) * (shots.length + 0.1);
-    shots.forEach((el, i) => { const s = p - i + 0.35, up = ease(Math.min(1, Math.max(0, s / 0.8))), back = i === shots.length - 1 ? 0 : ease(Math.min(1, Math.max(0, s - 0.95))); const x = mix(mix(22, 0, up), -30 + i * 7, back), y = mix(mix(82, 0, up), -14 + i * 7, back), z = mix(mix(-200, 0, up), -420, back), rx = mix(58, 0, up), ry = mix(mix(-16, -4, up), 22, back); el.style.transform = `translate3d(${x}vw, ${y}vh, ${z}px) rotateX(${rx}deg) rotateY(${ry}deg)`; el.style.opacity = up < 0.02 ? 0 : 1; el.lastElementChild.style.opacity = 1 - back; }); galleryTitle.style.opacity = 1 - Math.min(1, Math.max(0, p - 0.35) * 2.2); };
-  let queued = false; addEventListener("scroll", () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; wipe(); }); }, { passive: true }); addEventListener("resize", wipe, { passive: true }); wipe();
   const ans = document.querySelector("[data-answers]"), sources = JSON.parse(ans.dataset.sources), PICK = [[1, 5], [0, 4], [2, 8]], title = ans.querySelector("[data-t]"), body = ans.querySelector("[data-s]"), esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
-  const cite = (k) => { const [src, at] = PICK[k], s = sources[src]; ans.querySelectorAll("[data-cite]").forEach((b) => b.toggleAttribute("data-on", +b.dataset.cite === k)); title.textContent = `${s.title}, ${s.year}`; body.innerHTML = s.sentences.map((x, i) => (i === at ? `<mark>${esc(x)}</mark>` : esc(x))).join(" "); };
+  const cite = (k) => { const [src, at] = PICK[k], s = sources[src]; ans.querySelectorAll("[data-cite]").forEach((b) => b.toggleAttribute("data-on", +b.dataset.cite === k)); title.textContent = `${s.title}, ${s.year}`; body.innerHTML = s.sentences.map((x, i) => (i === at ? `<mark>${esc(x)}</mark>` : esc(x))).join(" "); const m = body.querySelector("mark"), box = body.closest(".page"); box.scrollTop = Math.max(0, m.offsetTop - box.offsetTop - 80); };
   ans.addEventListener("click", (e) => { const b = e.target.closest("[data-cite]"); if (b) cite(+b.dataset.cite); }); cite(0);
+  const find = document.querySelector("[data-find]"), hits = document.querySelector("[data-hits]"); let names = null, loading = null;
+  const load = () => (loading ??= fetch("/data/institutions.json").then((r) => r.json()).then((d) => { names = Object.entries(d); }));
+  const nice = (s) => s.replace(/(^|[\s-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()).replace(/ (Of|And|The|For|In|De|Du|La)(?= )/g, (m) => m.toLowerCase());
+  pinAt(36.82, -1.28, "University of Nairobi");
+  find.addEventListener("focus", load, { once: true });
+  find.addEventListener("input", async () => { await load(); const q = find.value.trim().toLowerCase(); hits.textContent = ""; if (q.length < 2) return; const found = names.filter(([k]) => k.includes(q)).slice(0, 5); for (const [n, v] of found) { const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.textContent = nice(n); b.addEventListener("click", () => { pinAt(v[0], v[1], nice(n)); hits.textContent = ""; find.value = nice(n); }); li.append(b); hits.append(li); } if (!found.length) { const li = document.createElement("li"); li.className = "none"; li.textContent = "Not among these institutions"; hits.append(li); } });
 </script>
+<style is:global>
+  [data-hits] button { display: block; width: 100%; padding: 8px 12px; text-align: left; font-size: 15px; border-radius: 8px; font-weight: 500; } [data-hits] button:hover { background: var(--mark-1); } [data-hits] .none { padding: 8px 12px; color: var(--t2); font-size: 15px; }
+</style>
 <style>
-  .tint { position: absolute; inset: 0; z-index: -1; background: #e8912e; mix-blend-mode: color; pointer-events: none; }
-  .open { position: relative; isolation: isolate; background: #000; min-height: 100svh; display: flex; align-items: flex-end; padding: 112px var(--edge) 72px; overflow: hidden; }
-  .open::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(rgb(0 0 0 / .6), transparent 22%), linear-gradient(90deg, rgb(0 0 0 / .82), transparent 72%); }
-  .scene { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 100% 45%; mask-image: linear-gradient(#000 80%, transparent); }
-  .o-copy { position: relative; max-width: 960px; }
-  .o-copy h1 { font-size: clamp(46px, 6.6vw, 112px); text-shadow: 0 2px 40px rgb(0 0 0 / .7); }
-  .o-copy .lead { margin-block: 24px 32px; max-width: 36rem; text-shadow: 0 1px 24px #000; }
-  .acts { display: flex; flex-wrap: wrap; gap: 12px; }
-
-  .gallery { height: 420svh; }
-  .g-pin { position: sticky; top: 0; height: 100svh; overflow: hidden; isolation: isolate; background: #000; perspective: 1400px; }
-  .g-bg { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; object-fit: cover; object-position: 100% 45%; opacity: .34; mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); }
-  .g-pin h2 { position: absolute; z-index: 1; left: var(--edge); top: 88px; font-size: clamp(40px, 5.6vw, 92px); line-height: .96; max-width: 7em; text-shadow: 0 2px 40px #000; }
-  .plates { position: absolute; inset: 12svh var(--edge) 6svh 26vw; transform-style: preserve-3d; }
-  .plate { position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: min(100%, calc(74svh * var(--ar))); display: block; transform-style: preserve-3d; will-change: transform; opacity: 0; }
-  .plate img { width: 100%; height: auto; aspect-ratio: var(--ar); object-fit: cover; object-position: 50% 0; border-radius: 8px; box-shadow: 0 0 0 1px rgb(255 220 170 / .3), 0 50px 120px -10px #000; }
-  .plate span { position: absolute; left: 0; top: calc(100% + 10px); font-size: 15px; color: var(--t1); text-shadow: 0 1px 12px #000; }
-
-  .answers { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px 64px; padding: 128px var(--edge); align-items: start; }
-  .a-head { grid-column: 1 / -1; } .a-head h2 { max-width: 11em; }
-  .q { font-size: clamp(18px, 1.6vw, 24px); color: var(--t2); margin-bottom: 16px; }
-  .a { font-size: clamp(26px, 3vw, 48px); line-height: 1.14; letter-spacing: -.03em; }
-  .a button { font: inherit; letter-spacing: inherit; color: #ffc48a; box-shadow: inset 0 -2px 0 rgb(255 196 138 / .4); transition: color .15s var(--ease), box-shadow .15s var(--ease); } .a button[data-on] { color: #fff; box-shadow: inset 0 -3px 0 #fff; }
-  .own { margin-top: 24px; color: var(--t2); font-size: 18px; }
-  .page { position: sticky; top: 88px; padding: 28px; border-radius: 6px; background: #f4f3f0; color: #171717; font-size: 15px; line-height: 1.55; box-shadow: 0 40px 120px -20px #000; rotate: 1.2deg; } .page b { display: block; font-weight: 500; font-size: 20px; line-height: 1.2; margin-bottom: 12px; } .page p { color: #6b6b6b; } .page :global(mark) { background: #ffe9a8; color: #171717; }
-
-  .care { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 64px; align-items: center; padding: 128px var(--edge); }
-  .care .lead { margin-top: 24px; }
-  .flow { display: grid; grid-template-columns: auto minmax(60px, 1fr) minmax(0, 1fr); align-items: center; height: 300px; }
-  .col { display: grid; align-content: space-around; height: 100%; font-size: clamp(18px, 2vw, 28px); font-weight: 500; letter-spacing: -.02em; }
-  .flow svg { width: 100%; height: 100%; }
-  .pipe { stroke: #fbbf24; stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-dasharray: .06 .05; animation: flow 3s linear infinite; }
-  @keyframes flow { to { stroke-dashoffset: -.33; } }
-  .stack { display: grid; gap: 8px; } .stack b { padding: 16px 20px; border-radius: 16px; background: var(--s1); box-shadow: inset 0 0 0 1px var(--line); font-weight: 500; font-size: clamp(16px, 1.6vw, 22px); } .stack .on { background: var(--t1); color: #000; }
-
-  .end { position: relative; isolation: isolate; background: #000; height: 100svh; display: flex; align-items: center; padding-inline: var(--edge); overflow: hidden; }
-  .end img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 100% 45%; mask-image: linear-gradient(transparent, #000 16%); } .end::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgb(0 0 0 / .78), transparent 60%); }
-  .end .tint { background: var(--lib, #e8912e); transition: background-color .4s var(--ease); }
-  .end h2 { font-size: clamp(44px, 7vw, 120px); max-width: 5em; line-height: .96; margin-bottom: 28px; text-shadow: 0 2px 40px #000; }
-  @media (max-width: 900px) { .gallery { height: auto; } .g-pin { position: relative; height: auto; padding: 88px var(--edge) 48px; perspective: none; } .g-pin h2 { position: static; margin-bottom: 32px; } .plates { position: static; display: grid; gap: 16px; } .plate { position: relative; left: 0; top: 0; translate: none; width: 100%; opacity: 1; } .plate span { position: static; display: block; margin-top: 6px; } .answers, .care { grid-template-columns: minmax(0, 1fr); } .page { position: static; rotate: none; } .flow svg { display: none; } .flow { grid-template-columns: 1fr 1fr; height: auto; gap: 24px; } .open::after, .end::after { background: linear-gradient(transparent 20%, rgb(0 0 0 / .86) 60%), linear-gradient(rgb(0 0 0 / .5), transparent 20%); } .end { align-items: flex-end; padding-bottom: 72px; } }
+  .open { background: var(--tang); display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: center; min-height: 600px; }
+  .o-copy { display: grid; gap: 20px; justify-items: start; } .acts { display: flex; flex-wrap: wrap; gap: 12px; }
+  .fan { position: relative; height: 460px; margin-right: calc(var(--pad) * -1.6); } .fan img { position: absolute; width: 96%; border-radius: 12px; box-shadow: 0 24px 40px -14px rgb(11 16 32 / .55), 0 0 0 3px #fff; }
+  .s2 { top: 0; left: 18%; rotate: 6deg; } .s1 { top: 90px; left: 8%; rotate: -3deg; } .s0 { top: 150px; left: 22%; rotate: 2.5deg; width: 80% !important; }
+  .answers { background: var(--mint); } .answers :global(.st) { position: absolute; right: 24px; top: 16px; rotate: 8deg; z-index: -1; } .answers h2 { max-width: 11em; margin-bottom: 24px; padding-right: 110px; }
+  .a-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: start; }
+  .q { display: inline-block; padding: 10px 14px; border-radius: 14px 14px 14px 4px; background: var(--ink); color: #fff; font-weight: 500; margin-bottom: 16px; }
+  .a { font-size: clamp(22px, 2.5vw, 34px); line-height: 1.15; letter-spacing: -.025em; font-weight: 500; }
+  .a button { font: inherit; letter-spacing: inherit; padding-inline: 4px; border-radius: 6px; background: #fff; transition: background-color .15s var(--ease); -webkit-box-decoration-break: clone; box-decoration-break: clone; } .a button:hover { background: var(--mark-1); } .a button[data-on] { background: var(--ink); color: #fff; }
+  .own { margin-top: 16px; font-weight: 500; }
+  .page { max-height: 440px; overflow-y: auto; scrollbar-width: thin; padding: 26px 24px; background: #fff; border-radius: 6px; rotate: 1.2deg; box-shadow: 0 24px 40px -18px rgb(11 16 32 / .5); font-size: 15px; line-height: 1.55; color: var(--t2); } .page b { display: block; color: var(--ink); font-size: 19px; line-height: 1.15; letter-spacing: -.02em; margin-bottom: 12px; } .page :global(mark) { background: var(--mark-3); color: var(--ink); border-radius: 3px; padding-inline: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .world { background: var(--ink); color: #fff; } .w-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 32px; margin-bottom: 20px; position: relative; z-index: 2; } .w-head h2 { max-width: 9em; }
+  .find { position: relative; width: min(340px, 100%); } .find input { width: 100%; height: 50px; padding-inline: 16px; border: 0; border-radius: 14px; background: #fff; color: var(--ink); font-size: 16px; font-weight: 500; outline: 0; } .find input:focus { box-shadow: 0 0 0 3px var(--sun); } .find input::placeholder { color: var(--t3); }
+  .find ul { position: absolute; left: 0; right: 0; top: 56px; z-index: 3; background: #fff; color: var(--ink); border-radius: 14px; box-shadow: 0 18px 40px -12px rgb(0 0 0 / .6); } .find ul:empty { display: none; } .find ul { padding: 6px; }
+  .flow { background: var(--sun); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; align-items: center; } .flow .lead { margin-top: 14px; }
+  .pipes { display: grid; grid-template-columns: auto minmax(40px, 1fr) minmax(0, 1fr); align-items: center; height: 300px; } .pipes ul { display: grid; align-content: space-around; height: 100%; } .pipes ul li { padding: 8px 14px; border-radius: 12px; font-weight: 700; letter-spacing: -.02em; box-shadow: 0 0 0 2px var(--ink); white-space: nowrap; }
+  .pipes > svg { width: 100%; height: 100%; } .p { stroke-dasharray: .08 .06; animation: run 2.4s linear infinite; } @keyframes run { to { stroke-dashoffset: -.28; } }
+  .pipes ol { display: grid; gap: 8px; } .pipes ol li { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-radius: 14px; background: rgb(11 16 32 / .1); font-weight: 700; letter-spacing: -.02em; } .pipes .on { background: var(--ink); color: #fff; }
+  .end { background: var(--pink); display: grid; justify-items: center; gap: 24px; padding-block: clamp(56px, 7vw, 88px); text-align: center; } .end h2 { font-size: clamp(42px, 7vw, 96px); } .end :global(.e1) { position: absolute; left: 6%; bottom: 12%; rotate: -10deg; z-index: -1; } .end :global(.e2) { position: absolute; right: 7%; top: 14%; rotate: 10deg; z-index: -1; }
+  @media (max-width: 900px) { .open, .a-grid, .flow { grid-template-columns: minmax(0, 1fr); } .open { min-height: 0; } .fan { height: 70vw; margin-right: 0; } .fan img { width: 90%; } .s2 { left: 12%; } .s1 { left: 0; top: 16%; } .s0 { left: 18%; top: 32%; width: 72% !important; } .page { rotate: none; } .answers h2 { padding-right: 76px; } .answers :global(.st) { width: 76px; height: 76px; right: 10px; top: 8px; } .pipes { height: auto; grid-template-columns: 1fr 1fr; gap: 12px; } .pipes > svg { display: none; } .pipes ul { gap: 8px; } .end :global(.e1), .end :global(.e2) { width: 64px; height: 64px; } .end { padding-block: 84px; } .end :global(.e1) { left: 8px; bottom: 8px; } .end :global(.e2) { right: 8px; top: 8px; } }
 </style>
