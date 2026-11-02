@@ -6,7 +6,6 @@ const stays = ["Results from a Phase 2 exploratory trial of Paired Reading in Sp
 const falls = ["Psychological Effects of Peer Tutoring in Mathematics in Primary Education", "How does peer tutoring contribute to the development of reading comprehension?"];
 const scenes = [[5, "telescope"], [6, "prism"], [7, "spectrograph"], [8, "console"], [9, "array"], [10, "plates"], [11, "horizon"]];
 const steps = ["Finding the papers that matter", "Saving them to a collection", "Screening them against your questions", "Pulling out the details you asked for", "Writing up what it found"];
-const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26%", "Tomas is reading the screening"], ["left:6%;top:47%", "Amina added papers to the collection"], ["left:74%;top:44%", "Lena shared it with a colleague"]];
 ---
 <Base title="OpenScholar: know what the research really says" description="From your first question to published evidence, OpenScholar does the reading with you.">
   <canvas class="field" data-field aria-hidden="true"></canvas>
@@ -42,7 +41,6 @@ const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26
 
   <section class="ch" data-ch="9"><div class="pin top"><div class="copy team" data-copy>
     <h2>Many eyes on one patch of sky</h2><p class="lead">Your whole team, in one place, on the same evidence, seeing it change as it happens.</p><a class="link" href="/teams/">See how teams work in it</a>
-    <div class="sky" aria-hidden="true">{people.map(([pos, what], i) => <span class="bubble" style={`${pos};animation-delay:${i * 1.6}s`}><i></i>{what}</span>)}</div>
   </div></div></section>
 
   <section class="ch" data-ch="10"><div class="pin"><div class="copy lib" data-copy>
@@ -94,10 +92,6 @@ const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26
 
   .team { position: relative; height: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; padding-top: 2vh; } .team h2 { font-size: clamp(40px, 5.8vw, 100px); max-width: 11em; line-height: .98; }
   .link { display: inline-block; margin-top: 16px; font-size: 18px; color: var(--pale); }
-  .sky { position: absolute; inset: 0; pointer-events: none; }
-  .bubble { position: absolute; display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; border-radius: 999px; background: rgb(14 20 38 / .88); box-shadow: 0 0 0 1px rgb(255 255 255 / .16), 0 20px 50px -10px #000; font-size: 15px; white-space: nowrap; animation: float 8s var(--ease) infinite; }
-  .bubble i { width: 30px; height: 30px; border-radius: 50%; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; }
-  @keyframes float { 0%, 100% { opacity: 0; translate: 0 14px; } 12%, 70% { opacity: 1; translate: 0 0; } }
 
   .lib { height: 100%; display: flex; flex-direction: column; justify-content: center; } .lib h2 { font-size: clamp(40px, 5.8vw, 100px); max-width: 7em; line-height: .96; } .lib .btn { margin-top: 20px; } .lib .lead { max-width: 28rem; }
 
@@ -109,6 +103,5 @@ const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26
     .find, .screen, .extract, .lib { display: block; height: auto; position: static; max-width: none; flex: none; inset: auto; } .assist { justify-content: flex-end; height: auto; } .team { height: auto; padding-top: 0; }
     .pin { justify-content: flex-end; } .ch:not(.hero, .said, .last) .copy { margin: auto calc(var(--edge) * -1) -40px; padding: 64px var(--edge) 40px; background: linear-gradient(transparent, rgb(0 0 0 / .8) 64px); } .ch .team { margin: -88px calc(var(--edge) * -1) auto !important; padding: 88px var(--edge) 64px !important; background: linear-gradient(rgb(0 0 0 / .8) calc(100% - 64px), transparent) !important; }
     .kept { display: none; } .moment { position: static; width: 100%; margin-top: 16px; } blockquote { font-size: 20px; }
-    .sky { display: none; } .run ol { gap: 8px; margin-bottom: 12px; } .run li { font-size: 15px; }
-  }
+    }
 </style>

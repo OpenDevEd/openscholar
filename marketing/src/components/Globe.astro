@@ -1,5 +1,4 @@
 ---
-import top from "../data/top-countries.json";
 ---
 
   <section class="globe" data-globe>
@@ -8,9 +7,8 @@ import top from "../data/top-countries.json";
     <div class="left">
       <h2>See where your field really lives</h2>
       <p class="lead">Show the people and places behind your evidence. Spin the Earth, or find a university.</p>
-      <div class="find"><label class="sr" for="f">Find an institution</label><input id="f" data-find placeholder="University of Nairobi" autocomplete="off" /><ul data-hits></ul></div>
+      <div class="find"><label class="sr" for="f">Find an institution</label><input id="f" data-find placeholder="Find a university" autocomplete="off" /><ul data-hits></ul></div>
     </div>
-    <ol class="rank" aria-label="Fly to a country">{top.map((c) => <li><button type="button" data-fly={`${c.lon},${c.lat}`} data-label={c.name}><span>{c.name}</span></button></li>)}</ol>
   </section>
 
   
@@ -26,8 +24,8 @@ import top from "../data/top-countries.json";
   new IntersectionObserver(async ([e], io) => { if (!e.isIntersecting) return; io.disconnect();
     const earth = new Int16Array(await (await fetch("/data/earth.bin")).arrayBuffer());
     const land = (earth.length - 2 - INST * 2) / 2, count = INST + land, data = new Float32Array(count * 4), seeds = new Float32Array(count * 2), r = mulberry(5);
-    for (let i = 0; i < count; i++) { const k = i < INST ? 2 + i * 2 : 2 + INST * 2 + (i - INST) * 2, p = sphere(earth[k] / 100, earth[k + 1] / 100); data.set([p[0], p[1], p[2], i < INST ? 0.62 : 0.34], i * 4); seeds[i * 2] = r(); seeds[i * 2 + 1] = 1; }
-    field = createField(canvas, { count, seeds, targets: [{ data, warm: 1 }, { data, warm: 1 }], sizeScale: 0.85 }); canvas.style.opacity = 1;
+    for (let i = 0; i < count; i++) { const k = i < INST ? 2 + i * 2 : 2 + INST * 2 + (i - INST) * 2, p = sphere(earth[k] / 100, earth[k + 1] / 100); data.set([p[0], p[1], p[2], i < INST ? 0.62 : 0.5], i * 4); seeds[i * 2] = r(); seeds[i * 2 + 1] = 1; }
+    field = createField(canvas, { count, seeds, targets: [{ data, warm: 1 }, { data, warm: 1 }], sizeScale: 0.85 }); canvas.style.opacity = 1; fly(36.82, -1.28, "University of Nairobi");
   }, { rootMargin: "600px" }).observe(root);
   let then = 0;
   let visible = false; new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(root);
@@ -44,7 +42,6 @@ import top from "../data/top-countries.json";
   addEventListener("pointerup", () => { dragging = false; });
   canvas.addEventListener("keydown", (e) => { const d = { ArrowLeft: [0.12, 0], ArrowRight: [-0.12, 0], ArrowUp: [0, 0.12], ArrowDown: [0, -0.12] }[e.key]; if (!d) return; e.preventDefault(); spin = false; target = null; yaw += d[0]; pitch = Math.max(-1.3, Math.min(1.3, pitch + d[1])); });
   const fly = (lon, lat, label) => { spin = false; if (reduced) { yaw = -lon * rad; pitch = lat * rad; target = null; } else target = [-lon * rad, lat * rad]; marker = [lon, lat]; pinT.textContent = label; pin.hidden = false; };
-  root.querySelectorAll("[data-fly]").forEach((b) => b.addEventListener("click", () => { const [lon, lat] = b.dataset.fly.split(",").map(Number); fly(lon, lat, b.dataset.label); }));
   const find = root.querySelector("[data-find]"), hits = root.querySelector("[data-hits]"); let names = null, loading = null;
   const load = () => (loading ??= fetch("/data/institutions.json").then((r) => r.json()).then((d) => { names = Object.entries(d); }));
   const title = (s) => s.replace(/(^|[\s-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()).replace(/ (Of|And|The|For|In|De|Du|La)(?= )/g, (m) => m.toLowerCase());
@@ -65,7 +62,5 @@ import top from "../data/top-countries.json";
   .find input { width: 100%; height: 46px; padding-inline: 14px; background: rgb(11 12 15 / .8); border: 1px solid var(--line2); border-radius: 12px; font-size: 15px; outline-color: var(--ink); } .find input::placeholder { color: var(--t3); }
   .find ul { margin-top: 4px; background: rgb(11 12 15 / .92); border-radius: 12px; }
   .pin { position: absolute; left: 0; top: 0; pointer-events: none; } .pin i { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border: 1.5px solid #fff; border-radius: 50%; } .pin span { position: absolute; left: 14px; top: -11px; white-space: nowrap; padding: 2px 8px; background: #b5651d; border-radius: 6px; font-size: 13px; } [hidden] { display: none; }
-  .rank { position: absolute; right: var(--edge); top: 50%; translate: 0 -50%; width: min(18vw, 280px); }
-  .rank button { position: relative; display: grid; grid-template-columns: 1fr auto; width: 100%; padding: 7px 0 9px; font-size: 14px; text-align: left; color: var(--t2); transition: color .15s var(--ease); } .rank button:hover { color: #fff; }
-  @media (max-width: 900px) { .left { position: relative; left: auto; top: auto; width: auto; padding: 88px var(--edge) 0; pointer-events: auto; } .rank { display: none; } .globe { height: auto; min-height: 100svh; padding-bottom: 72vw; } }
+  @media (max-width: 900px) { .left { position: relative; left: auto; top: auto; width: auto; padding: 88px var(--edge) 0; pointer-events: auto; } .globe { height: auto; min-height: 100svh; padding-bottom: 72vw; } }
 </style>

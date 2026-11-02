@@ -32,7 +32,7 @@ const LBL = ["Yes", "Unclear", "No"];
   <section class="share">
     <img class="dim" src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" />
     <img class="lit" src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" />
-    <svg class="one" viewBox="0 0 1672 941" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><path class="beam-one" d="M1338 540 L1338 250" /></svg>
+    <svg class="one" viewBox="0 0 1672 941" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><path class="beam-one" d="M1338 540 L1180 170" /></svg>
     <div class="s-copy"><h2>Share the work, not the keys</h2><p class="lead">Your team sees everything. Bring in someone from outside for just one thing, and that's all they'll ever see.</p></div>
     <div class="invite" aria-hidden="true"><b>One screening, shared with Sam</b><span>Can view this and nothing else</span></div>
   </section>
@@ -51,7 +51,7 @@ const LBL = ["Yes", "Unclear", "No"];
   <section class="go" data-close>
     <img src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" />
     <svg viewBox="0 0 1672 941" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><defs><radialGradient id="bloom"><stop offset="0" stop-color="#fff" /><stop offset=".2" stop-color="#bfdbfe" stop-opacity=".55" /><stop offset="1" stop-color="#60a5fa" stop-opacity="0" /></radialGradient></defs>{DISHES.map((u, i) => <><path class="beam" d={`M${u * 1672} 540 L836 210`} /><path class="pulse all" style={`animation-delay:${i * 60}ms`} pathLength="1" d={`M${u * 1672} 540 L836 210`} /></>)}<circle class="bloom" cx="836" cy="210" r="190" fill="url(#bloom)" /></svg>
-    <div><h2>Bring your team in</h2><a class="btn primary" href={APP}>Get started</a></div>
+    <div><h2>Point everyone at the same question</h2><a class="btn primary" href={APP}>Get started</a></div>
   </section>
 </Base>
 <script>
@@ -89,7 +89,7 @@ const LBL = ["Yes", "Unclear", "No"];
   h1 { font-size: clamp(44px, min(6.2vw, 12svh), 104px); line-height: .94; letter-spacing: -.05em; text-shadow: 0 2px 40px rgb(0 0 0 / .7); }
   .a-copy .lead { margin-block: 12px 20px; max-width: 48rem; text-shadow: 0 1px 24px #000; }
   .said { position: absolute; left: 0; right: 0; bottom: 32px; text-align: center; font-size: clamp(17px, 1.6vw, 24px); text-shadow: 0 1px 16px #000; opacity: 0; } .said:global(.in) { animation: said 2.1s var(--ease) both; } @keyframes said { 0% { opacity: 0; translate: 0 8px; } 15%, 80% { opacity: 1; translate: 0 0; } 100% { opacity: 0; } }
-  .opened { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 64px; align-items: center; padding: 88px var(--edge) 40px; background: #000; clip-path: circle(0 at 50% 14%); will-change: clip-path; }
+  .opened { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 64px; align-items: center; padding: 88px var(--edge) 40px; background: radial-gradient(90% 80% at 50% 14%, #12264f, #000 70%); clip-path: circle(0 at 50% 14%); will-change: clip-path; }
   .o-t .lead { margin-top: 24px; }
   .room { position: relative; padding: 20px 24px; border-radius: 20px; background: #0c111d; box-shadow: 0 0 0 1px rgb(255 255 255 / .12); }
   .room header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; } .room header b { font-weight: 500; font-size: 20px; } .room header span { display: flex; } .room header i { width: 30px; height: 30px; margin-left: -8px; border-radius: 50%; border: 2px solid #0c111d; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; }
@@ -100,10 +100,10 @@ const LBL = ["Yes", "Unclear", "No"];
   .cur { position: absolute; left: 0; top: 0; display: flex; align-items: flex-start; pointer-events: none; transition: transform .9s var(--ease); will-change: transform; } .cur u { margin: 14px 0 0 -2px; padding: 1px 8px; border-radius: 999px; text-decoration: none; font-size: 12px; color: #000; font-weight: 500; }
 
   .share { position: relative; isolation: isolate; height: 100svh; overflow: hidden; padding: 112px var(--edge); }
-  .dim, .lit, .one { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 100%; } .dim { filter: brightness(.32); mask-image: linear-gradient(transparent, #000 25%); } .lit { mask-image: radial-gradient(11% 22% at 80% 66%, #000 40%, transparent); }
+  .dim, .lit, .one { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 100%; scale: 1.5; transform-origin: 80% 57%; } .dim { filter: brightness(.32); mask-image: linear-gradient(transparent, #000 25%); } .lit { mask-image: radial-gradient(11% 22% at 80% 66%, #000 40%, transparent); }
   .beam-one { stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-dasharray: 3 6; animation: rise 1.4s linear infinite; } @keyframes rise { to { stroke-dashoffset: 18; } }
   .s-copy { max-width: 44rem; } .s-copy .lead { margin-top: 20px; }
-  .invite { position: absolute; left: 80%; top: 11svh; translate: -50% 0; width: min(320px, 34vw); padding: 16px 20px; border-radius: 16px; background: #0c111d; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); } .invite b { display: block; font-weight: 500; } .invite span { font-size: 14px; color: var(--t2); }
+  .invite { position: absolute; left: 62%; top: 11svh; translate: -50% 0; width: min(320px, 34vw); padding: 16px 20px; border-radius: 16px; background: #0c111d; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); } .invite b { display: block; font-weight: 500; } .invite span { font-size: 14px; color: var(--t2); }
 
   .move { position: relative; isolation: isolate; overflow: hidden; padding: 128px var(--edge) 0; }
   .m-copy { position: relative; z-index: 1; max-width: 44rem; } .m-copy .lead { margin-block: 20px 24px; }
@@ -112,7 +112,7 @@ const LBL = ["Yes", "Unclear", "No"];
   .rest { clip-path: inset(0 14.4% 0 0); } .seam { clip-path: inset(0 14.2% 0 85.6%); transform-origin: 136.96vw 0; transform: scaleX(44); transition: transform 1.3s var(--ease); } [data-moved] .seam { transform: scaleX(1); } .lone { clip-path: inset(0 0 0 85.6%); translate: 14vw 0; transition: translate 1.3s var(--ease); } [data-moved] .lone { translate: 0 0; }
   .tag { position: absolute; left: 28%; bottom: 10%; padding: 6px 14px; border-radius: 999px; background: rgb(0 0 0 / .8); font-size: 15px; } .mine { left: auto; right: 3%; transition: transform 1.3s var(--ease), opacity .6s var(--ease); } [data-moved] .mine { transform: translateX(-14vw); opacity: 0; }
 
-  .go { position: relative; isolation: isolate; height: 100svh; display: grid; place-items: start center; padding-top: 12svh; text-align: center; overflow: hidden; } .go img, .go svg { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 100%; } .go img { mask-image: linear-gradient(transparent, #000 25%); } .go h2 { font-size: clamp(44px, min(6.6vw, 13svh), 112px); line-height: .96; margin-bottom: 24px; text-shadow: 0 2px 30px #000; }
+  .go { position: relative; isolation: isolate; height: 100svh; display: grid; place-items: start center; padding-top: 12svh; text-align: center; overflow: hidden; } .go img, .go svg { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 100%; } .go img { mask-image: linear-gradient(transparent, #000 25%); } .go h2 { max-width: 12em; font-size: clamp(40px, min(5.6vw, 11svh), 96px); line-height: .96; margin-bottom: 24px; text-shadow: 0 2px 30px #000; }
   [data-close][data-lit] .all { animation: up 1.2s cubic-bezier(.4, 0, .6, 1) both; }
   .bloom { transform-box: fill-box; transform-origin: center; transform: scale(.25); opacity: .5; transition: transform 1.2s var(--ease) 1s, opacity 1.2s var(--ease) 1s; } [data-close][data-lit] .bloom { transform: scale(1); opacity: 1; }
   @media (max-width: 900px) { .a-copy { inset-block-start: 170px; } h1 { max-width: 7em; } .a-copy .lead { margin-block: 16px; } .opened { grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; overflow: hidden; } .o-t .lead { margin-top: 8px; } .room { padding: 12px; } .room li { grid-template-columns: 1fr 1fr 84px; padding-block: 8px; min-height: 0; } .t { grid-column: 1 / -1; font-size: 14px; } .invite { left: var(--edge); top: auto; bottom: 40svh; translate: none; width: auto; right: var(--edge); } .one { display: none; } .share { height: 100svh; } .m-copy { margin-bottom: 8px; } }
