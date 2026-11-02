@@ -18,7 +18,8 @@ for (const box of document.querySelectorAll("[data-live]")) {
   const [px, py] = (box.dataset.live || "50% 50%").split(" ").map((x) => (x === "right" || x === "bottom" ? 1 : x === "left" || x === "top" ? 0 : parseFloat(x) / 100));
   let seen = false, raf = 0, mx = .5, my = .5, tx = .5, ty = .5, e = 0, te = 0;
   const size = () => { const r = box.getBoundingClientRect(), k = Math.min(devicePixelRatio, 1.5); c.width = r.width * k; c.height = r.height * k; gl.viewport(0, 0, c.width, c.height); gl.uniform2f(uA, r.width / r.height, 1); const f = Math.max(r.width / img.naturalWidth, r.height / img.naturalHeight), sx = r.width / (img.naturalWidth * f), sy = r.height / (img.naturalHeight * f); gl.uniform2f(u("cs"), sx, sy); gl.uniform2f(u("co"), (1 - sx) * px, (1 - sy) * py); };
-  const draw = (ms) => { raf = seen && !still.matches ? requestAnimationFrame(draw) : 0; mx += (tx - mx) * .08; my += (ty - my) * .08; e += (te - e) * .06; gl.uniform1f(uS, ms / 1000); gl.uniform2f(uM, mx, my); gl.uniform1f(uE, e); gl.drawArrays(gl.TRIANGLES, 0, 3); };
+  // Reading `matches` every frame can use up Chromium's change event, so the loop handles the switch itself.
+  const draw = (ms) => { if (still.matches) { raf = 0; c.style.opacity = 0; return; } raf = seen ? requestAnimationFrame(draw) : 0; mx += (tx - mx) * .08; my += (ty - my) * .08; e += (te - e) * .06; gl.uniform1f(uS, ms / 1000); gl.uniform2f(uM, mx, my); gl.uniform1f(uE, e); gl.drawArrays(gl.TRIANGLES, 0, 3); };
   const start = () => {
     gl.bindTexture(gl.TEXTURE_2D, gl.createTexture()); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
     for (const k of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T]) gl.texParameteri(gl.TEXTURE_2D, k, gl.CLAMP_TO_EDGE);
