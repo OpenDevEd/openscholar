@@ -1,11 +1,8 @@
 ---
 import Base from "../layouts/Base.astro";
 import AskBar from "../components/AskBar.astro";
-import Art from "../components/Art.astro";
 ---
-<Base title="Not found: OpenScholar" description="That page isn't here. Ask a question instead.">
-  <section class="b lost"><Art kind="lens" class="g" /><h1>Nothing on this page</h1><p class="lead">Ask a question instead, or head <a class="pen" href="/">back to the start</a>.</p><AskBar id="ask-lost" /></section>
+<Base title="Not found: OpenScholar" description="That page isn't here.">
+  <section class="panel lost"><img class="field" src="/img/field-cobalt.avif" width="1200" height="750" alt="" /><h1>That page isn't here</h1><p class="lead">Search the research instead, or head <a href="/">back to the start</a>.</p><AskBar id="ask-lost" /></section>
 </Base>
-<style>
-  .lost { background: var(--sun); display: grid; justify-items: center; gap: 20px; padding-block: clamp(64px, 9vw, 120px); text-align: center; min-height: 560px; align-content: center; } .lost :global(.g) { right: -30px; top: -40px; width: min(36%, 360px); }
-</style>
+<style>.lost { display: grid; justify-items: center; align-content: center; gap: 20px; min-height: 520px; padding: var(--pad); text-align: center; } .lead a { text-decoration: underline; text-underline-offset: 3px; }</style>

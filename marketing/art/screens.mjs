@@ -1,0 +1,5 @@
+// Crops the captured product screens (3000 by 1880) into page images. Usage: node art/screens.mjs <folder of s-*.png> [names]
+import sharp from "sharp";
+const from = process.argv[2], only = process.argv[3]?.split(","), out = new URL("../public/img/", import.meta.url).pathname;
+const CROPS = { "shot-search": ["search", 0, 0, 3000, 1880], "shot-search2": ["search2", 740, 0, 1880, 1160], "shot-screen": ["screen", 940, 200, 1610, 1400], "shot-activity": ["activity", 1800, 0, 1200, 760], "lib-search": ["lib-search", 0, 0, 3000, 1880], "shot-extract": ["extract", 470, 180, 2210, 1560], "shot-assistant": ["assistant", 0, 0, 3000, 1880] };
+for (const [name, [file, left, top, width, height]] of Object.entries(CROPS)) { if (only && !only.includes(name)) continue; const i = await sharp(`${from}/s-${file}.png`).extract({ left, top, width, height }).resize({ width: Math.min(width, 1800) }).avif({ quality: 58, effort: 6 }).toFile(`${out}${name}.avif`); console.log(name, i.width, i.height, Math.round(i.size / 1024) + " KB"); }

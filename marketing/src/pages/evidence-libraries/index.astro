@@ -1,75 +1,36 @@
 ---
 import Base from "../../layouts/Base.astro";
-import Designer from "../../components/Designer.astro";
+import Feature from "../../components/Feature.astro";
+import Faq from "../../components/Faq.astro";
+import Arrow from "../../components/Arrow.astro";
 import DotMap from "../../components/DotMap.astro";
-import Shape from "../../components/Shape.astro";
-import Art from "../../components/Art.astro";
 import { APP } from "../../data/site.mjs";
-import papers from "../../data/extraction.json";
-const sources = [0, 1, 2].map((i) => ({ title: papers[i].title, year: papers[i].year, sentences: papers[i].sentences }));
-const lanes = [["Zotero", "#FFE14D"], ["Saved searches", "#8FD0FF"], ["OpenScholar", "#7DF0B4"], ["Your team", "#FFB3DC"]];
+const steps = [["Name it", "Pick a name and reserve your address."], ["Connect sources", "Bring in a Zotero group, a saved search or an OpenScholar collection."], ["Make it yours", "Set your logo, colours, languages and the features readers get."], ["Go live", "Activate it. Later changes wait in a draft until you approve them."]];
+const faq = [
+  ["Who controls what gets published?", "Your team does. Records come from your sources, from imports or from your editors, and nothing reaches readers until an editor or owner publishes it."],
+  ["How does it stay current?", "Connected sources bring in new work, and AI can screen incoming records against your subject before they reach your review."],
+  ["Can readers trust the AI answers?", "Answers link to the record and the page they came from, and the assistant says when it couldn't read a document."],
+  ["Can we use our own domain and languages?", "Libraries have their own address and branding, and can run in several languages, including right-to-left scripts."],
+];
 ---
-<Base title="Evidence Libraries: OpenScholar" description="Your evidence deserves better than a PDF in a shared drive. Give it a beautiful public home.">
-  <section class="b open">
-    <Shape kind="arcs" color="rgb(255 255 255 / .16)" />
-    <div class="o-head"><h1>Your evidence deserves better than a <span class="hl wipe" style="--c:#FFE14D;white-space:nowrap">shared drive</span></h1><div class="o-side"><p class="lead">A public home with your name on the door. Try it here: change anything.</p><div class="acts"><a class="key" href={`${APP}/evidence-libraries`}>Create your library</a><a class="key white" href="https://wealth-inequality.openscholar.ai">Visit a live one</a></div></div></div>
-    <Designer />
+<Base title="Evidence Libraries: OpenScholar" description="A public, searchable home for your field's evidence, kept current and published under your own name.">
+  <section class="panel hero">
+    <img class="field" src="/img/field-rose.avif" width="1200" height="750" fetchpriority="high" alt="" />
+    <div class="h-top"><h1>A public home for your field's evidence</h1><div class="h-side"><p class="lead">Publish a searchable, citable library under your own name, keep it current from your sources, and let anyone question it.</p><div class="acts"><a class="btn" href={`${APP}/evidence-libraries`}>Create your library<Arrow /></a><a class="btn ghost" href="https://wealth-inequality.openscholar.ai">See a live library</a></div></div></div>
+    <a class="win shot" href="https://wealth-inequality.openscholar.ai" aria-label="Wealth Inequality and Social Mobility library"><img src="/img/lib-home.avif" width="1920" height="1150" fetchpriority="high" alt="The home page of a live Evidence Library" /></a>
   </section>
-  <section class="b answers" data-answers data-sources={JSON.stringify(sources)}>
-        <h2>Let your readers question the library</h2>
-    <div class="a-grid">
-      <div><p class="q">Does peer tutoring help children read?</p>
-        <p class="a">Yes, in the trials here. A <button type="button" data-cite="0">trial in Colombia</button> found a positive effect for the group doing Paired Reading. A <button type="button" data-cite="1">study in England</button> found gains in reading comprehension, greater for the tutors than the tutees. <button type="button" data-cite="2">Work in mathematics</button> shows similar benefits at primary and secondary level.</p>
-        <p class="own">And when it can't read something, you'll know.</p></div>
-      <article class="page" aria-live="polite"><b data-t></b><p data-s></p></article>
-    </div>
-  </section>
-  <section class="b world">
-    <div class="w-head"><h2>See where your field lives</h2><div class="find"><label class="sr" for="f">Find a university</label><input id="f" data-find placeholder="Find a university" autocomplete="off" /><ul data-hits></ul></div></div>
-    <DotMap />
-  </section>
-  <section class="b flow">
-    <Shape kind="dots" color="rgb(255 255 255 / .3)" />
-    <div><h2>New work finds its own way in</h2><p class="lead">Connect your sources. Your team decides what readers see.</p></div>
-    <div class="pipes" aria-hidden="true">
-      <ul>{lanes.map(([n, c]) => <li style={`background:${c}`}>{n}</li>)}</ul>
-      <svg viewBox="0 0 200 300" preserveAspectRatio="none" fill="none">{lanes.map(([, c], i) => <path d={`M0 ${37 + i * 75} C 110 ${37 + i * 75}, 90 150, 200 150`} stroke="#0b1020" stroke-width="10" /><path class="p" d={`M0 ${37 + i * 75} C 110 ${37 + i * 75}, 90 150, 200 150`} stroke={c} stroke-width="5" pathLength="1" style={`animation-delay:${i * -0.6}s`} />)}</svg>
-      <ol><li>Draft</li><li>In review</li><li class="on"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 8 14.5 16 5.5" /></svg>Published</li></ol>
-    </div>
-  </section>
-  <section class="b end"><Art kind="door" class="door" /><div><h2>Open your library</h2><a class="key sun" href={`${APP}/evidence-libraries`}>Create your library</a></div></section>
+  <Feature field="ocean" title="Everything your readers need to use the evidence" text="Far more than a list of PDFs. Readers can search and filter the whole collection, read each record, cite and export it, and follow new work as it arrives." points={["Search with filters and record pages", "Citations and downloads for any result", "Digests of what's new"]} img="lib-search" w={1800} h={1128} alt="A library's search page with filters and records" />
+  <Feature field="amber" flip title="Answers your readers can check" text="Anyone can ask the library a question and get an answer that links to the record and the page it came from. When a document can't be read, the answer says so." img="lib-evidence" w={1240} h={640} alt="A map of research clusters in a library about AI in education" />
+  <section class="panel world"><img class="field" src="/img/field-night.avif" width="1200" height="750" loading="lazy" decoding="async" alt="" /><div class="w-top"><h2>Show where your field lives</h2><p class="lead">Every library can map the people and places behind its evidence, so readers can see who's working on what, and where.</p></div><DotMap /></section>
+  <section class="steps"><h2>From first draft to live library</h2><ol>{steps.map(([t, d], i) => <li style={`--c:${["#2563eb", "#0891b2", "#059669", "#ea580c"][i]}`}><span>{i + 1}</span><h3>{t}</h3><p>{d}</p></li>)}</ol></section>
+  <Faq items={faq} />
+  <section class="panel close"><img class="field" src="/img/field-rose.avif" width="1200" height="750" loading="lazy" decoding="async" alt="" /><h2>Open your library</h2><a class="btn" href={`${APP}/evidence-libraries`}>Create your library<Arrow /></a></section>
 </Base>
-<script>
-  const ans = document.querySelector("[data-answers]"), sources = JSON.parse(ans.dataset.sources), PICK = [[1, 5], [0, 4], [2, 8]], title = ans.querySelector("[data-t]"), body = ans.querySelector("[data-s]"), esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
-  const cite = (k) => { const [src, at] = PICK[k], s = sources[src]; ans.querySelectorAll("[data-cite]").forEach((b) => b.toggleAttribute("data-on", +b.dataset.cite === k)); title.textContent = `${s.title}, ${s.year}`; body.innerHTML = s.sentences.map((x, i) => (i === at ? `<mark>${esc(x)}</mark>` : esc(x))).join(" "); const m = body.querySelector("mark"), box = body.closest(".page"); box.scrollTop += m.getBoundingClientRect().top - box.getBoundingClientRect().top - 80; };
-  ans.addEventListener("click", (e) => { const b = e.target.closest("[data-cite]"); if (b) cite(+b.dataset.cite); }); cite(0);
-  const find = document.querySelector("[data-find]"), hits = document.querySelector("[data-hits]"); let names = null, loading = null;
-  const load = () => (loading ??= fetch("/data/institutions.json").then((r) => r.json()).then((d) => { names = Object.entries(d); }));
-  const nice = (s) => s.replace(/(^|[\s-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase()).replace(/ (Of|And|The|For|In|De|Du|La)(?= )/g, (m) => m.toLowerCase());
-  pinAt(36.82, -1.28, "University of Nairobi");
-  find.addEventListener("focus", load, { once: true });
-  find.addEventListener("input", async () => { await load(); const q = find.value.trim().toLowerCase(); hits.textContent = ""; if (q.length < 2) return; const found = names.filter(([k]) => k.includes(q)).slice(0, 5); for (const [n, v] of found) { const li = document.createElement("li"), b = document.createElement("button"); b.type = "button"; b.textContent = nice(n); b.addEventListener("click", () => { pinAt(v[0], v[1], nice(n)); hits.textContent = ""; find.value = nice(n); }); li.append(b); hits.append(li); } if (!found.length) { const li = document.createElement("li"); li.className = "none"; li.textContent = "Not among these institutions"; hits.append(li); } });
-</script>
-<style is:global>
-  [data-hits] button { display: block; width: 100%; padding: 8px 12px; text-align: left; font-size: 15px; border-radius: 8px; font-weight: 500; } [data-hits] button:hover { background: var(--mark-1); } [data-hits] .none { padding: 8px 12px; color: var(--t2); font-size: 15px; }
-</style>
 <style>
-  .open { background: var(--tang); display: grid; gap: 32px; }
-  .o-head { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 20px 32px; align-items: end; } .o-side { display: grid; gap: 16px; } .acts { display: flex; flex-wrap: wrap; gap: 12px; }
-  .answers { background: var(--mint); } .answers h2 { max-width: 11em; margin-bottom: 24px; }
-  .a-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 28px; align-items: start; }
-  .q { display: inline-block; padding: 10px 14px; border-radius: 14px 14px 14px 4px; background: var(--ink); color: #fff; font-weight: 500; margin-bottom: 16px; }
-  .a { font-size: clamp(22px, 2.5vw, 34px); line-height: 1.15; letter-spacing: -.025em; font-weight: 500; }
-  .a button { font: inherit; letter-spacing: inherit; padding-inline: 4px; border-radius: 6px; background: #fff; transition: background-color .15s var(--ease); -webkit-box-decoration-break: clone; box-decoration-break: clone; } .a button:hover { background: var(--mark-1); } .a button[data-on] { background: var(--ink); color: #fff; }
-  .own { margin-top: 16px; font-weight: 500; }
-  .page { max-height: 440px; overflow-y: auto; scrollbar-width: thin; padding: 26px 24px; background: #fff; border-radius: 6px; rotate: 1.2deg; box-shadow: 0 24px 40px -18px rgb(11 16 32 / .5); font-size: 15px; line-height: 1.55; color: var(--t2); } .page b { display: block; color: var(--ink); font-size: 19px; line-height: 1.15; letter-spacing: -.02em; margin-bottom: 12px; } .page :global(mark) { background: var(--mark-3); color: var(--ink); border-radius: 3px; padding-inline: 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-  .world { background: var(--ink); color: #fff; } .w-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px 32px; margin-bottom: 20px; position: relative; z-index: 2; } .w-head h2 { max-width: 9em; }
-  .find { position: relative; width: min(340px, 100%); } .find input { width: 100%; height: 50px; padding-inline: 16px; border: 0; border-radius: 14px; background: #fff; color: var(--ink); font-size: 16px; font-weight: 500; outline: 0; } .find input:focus { box-shadow: 0 0 0 3px var(--sun); } .find input::placeholder { color: var(--t3); }
-  .find ul { position: absolute; left: 0; right: 0; top: 56px; z-index: 3; background: #fff; color: var(--ink); border-radius: 14px; box-shadow: 0 18px 40px -12px rgb(0 0 0 / .6); } .find ul:empty { display: none; } .find ul { padding: 6px; }
-  .flow { background: var(--sun); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 28px; align-items: center; } .flow .lead { margin-top: 14px; }
-  .pipes { display: grid; grid-template-columns: auto minmax(40px, 1fr) minmax(0, 1fr); align-items: center; height: 300px; } .pipes ul { display: grid; align-content: space-around; height: 100%; } .pipes ul li { padding: 8px 14px; border-radius: 12px; font-weight: 700; letter-spacing: -.02em; box-shadow: 0 0 0 2px var(--ink); white-space: nowrap; }
-  .pipes > svg { width: 100%; height: 100%; } .p { stroke-dasharray: .08 .06; animation: run 2.4s linear infinite; } @keyframes run { to { stroke-dashoffset: -.28; } }
-  .pipes ol { display: grid; gap: 8px; } .pipes ol li { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-radius: 14px; background: rgb(11 16 32 / .1); font-weight: 700; letter-spacing: -.02em; } .pipes ol .on { background: var(--ink); color: #fff; }
-  .end { background: var(--pink); display: flex; align-items: center; min-height: 420px; padding-block: clamp(48px, 7vw, 88px); } .end h2 { font-size: clamp(44px, 8vw, 112px); line-height: .96; max-width: 5em; margin-bottom: 24px; letter-spacing: -.05em; } .end :global(.door) { right: 6%; bottom: -60px; width: min(40%, 420px); }
-  @media (max-width: 900px) { .o-head, .a-grid, .flow { grid-template-columns: minmax(0, 1fr); } .page { rotate: none; } .pipes { height: auto; grid-template-columns: 1fr 1fr; gap: 12px; } .pipes > svg { display: none; } .pipes ul { gap: 8px; } .end { min-height: 380px; align-items: flex-start; } .end :global(.door) { width: 170px; right: 10px; bottom: -30px; } }
+  .hero { padding: var(--pad) var(--pad) 0; } .h-top { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px 48px; align-items: end; margin-bottom: clamp(32px, 4vw, 56px); } .h-side { display: grid; gap: 20px; } .acts { display: flex; flex-wrap: wrap; gap: 10px; }
+  .shot { display: block; border-radius: 16px 16px 0 0; margin-bottom: -2px; max-height: 620px; overflow: hidden; }
+  .world { padding: var(--pad); } .w-top { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; margin-bottom: 28px; }
+  .steps { padding: clamp(40px, 6vw, 72px) var(--pad) 8px; } .steps h2 { margin-bottom: 28px; } ol { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; } li span { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 14px; border-radius: 12px; background: var(--c); color: #fff; font-weight: 500; } li p { margin-top: 6px; color: var(--t2); }
+  .close { display: grid; justify-items: center; gap: 24px; padding: clamp(48px, 7vw, 96px) var(--pad); text-align: center; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
+  @media (max-width: 900px) { .h-top, .w-top { grid-template-columns: minmax(0, 1fr); } ol { grid-template-columns: minmax(0, 1fr); } .steps { padding-inline: 8px; } }
 </style>

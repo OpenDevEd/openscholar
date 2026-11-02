@@ -1,42 +1,35 @@
 ---
 import Base from "../../layouts/Base.astro";
-import Room from "../../components/Room.astro";
-import Shape from "../../components/Shape.astro";
+import Feature from "../../components/Feature.astro";
+import Faq from "../../components/Faq.astro";
+import Arrow from "../../components/Arrow.astro";
 import { APP } from "../../data/site.mjs";
-const faces = [["Lena", "Can edit", "#FF5A47"], ["Everyone in Learning Lab", "Can edit", "#2563EB"], ["Sam, from outside", "Can view", "#0B8A57"]];
+const yes = true, no = false;
+const roles = [["See all the organization's work", yes, yes, no], ["Start searches, screenings and extractions", yes, yes, no], ["Delete what they made", yes, yes, no], ["Delete anything and manage roles", yes, no, no], ["See one item shared with them", yes, yes, yes]];
+const faq = [
+  ["How does a team get started?", "Create an organization and invite your colleagues. Everyone also keeps a personal workspace, and the switcher at the top of the sidebar moves between the two."],
+  ["Can we bring in work we've already done?", "Yes. Move an item from a personal workspace into the organization, and its ratings, answers and history come with it. The people it was shared with keep their access."],
+  ["Can we share with someone outside the organization?", "Yes. Use Share on any item and invite them as a viewer or an editor. They'll see that item and nothing else."],
+];
 ---
-<Base title="Teams: OpenScholar" description="Your whole team, in one place, on the same evidence.">
-  <section class="b top">
-    <Shape kind="quarters" color="rgb(37 99 235 / .14)" />
-    <h1>Stop emailing <span class="hl wipe" style="--c:#FFE14D">spreadsheets</span></h1>
-    <div class="t-copy"><p class="lead">Your whole team, on the same evidence, watching it change as it happens. No more "who changed this?"</p><a class="key" href={APP}>Bring your team in</a></div>
-    <Room />
+<Base title="Teams: OpenScholar" description="One workspace for your team's evidence: shared searches, screenings and extractions, with a record of every change.">
+  <section class="panel hero">
+    <img class="field" src="/img/field-emerald.avif" width="1200" height="750" fetchpriority="high" alt="" />
+    <div class="h-top"><h1>One workspace for your team's evidence</h1><div class="h-side"><p class="lead">Keep every search, screening and extraction in one place, see who did what, and stop passing spreadsheets around.</p><div class="acts"><a class="btn" href={APP}>Bring your team in<Arrow /></a></div></div></div>
+    <div class="win shot"><img src="/img/shot-screen.avif" width="1610" height="1400" fetchpriority="high" alt="A screening shared across a team, showing who ran it, its activity and its results" /></div>
   </section>
-  <section class="b share">
-        <div class="card" aria-hidden="true"><b>Share this screening</b><div class="inv"><span>sam@university.edu</span><em>Invite</em></div><ul>{faces.map(([n, r, c]) => <li><i style={`--c:${c}`}><svg viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="9" r="4" /><path d="M4 21c1-5 4-7 8-7s7 2 8 7z" /></svg></i><span>{n}</span><em data-r={r}>{r}</em></li>)}</ul></div>
-    <div><h2>Share the work, not the keys</h2><p class="lead">Bring in someone from outside for just one thing, and that's all they'll ever see.</p></div>
+  <Feature field="ocean" title="Every change has a name beside it" text="Each item keeps its own history, including what the assistant did, so you can answer who changed what, and when, without asking around." fit img="shot-activity" w={1200} h={760} alt="The activity history of a screening" />
+  <section class="roles"><div><h2>The right access for each person</h2><p class="lead">Your team sees your work. Guests see only what you share with them.</p></div>
+    <div class="matrix" role="table" aria-label="What each role can do"><div class="r head" role="row"><span role="columnheader">Can they</span><b role="columnheader">Admin</b><b role="columnheader">Member</b><b role="columnheader">Guest</b></div>{roles.map(([t, a, m, g]) => <div class="r" role="row"><span role="cell">{t}</span>{[a, m, g].map((v) => <i role="cell" aria-label={v ? "Yes" : "No"} class:list={{ on: v }}>{v && <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5" /></svg>}</i>)}</div>)}</div>
   </section>
-  <section class="b move" data-move>
-    <div><h2>Started alone? Bring it in.</h2><p class="lead">Your ratings, answers and history come with you, and the people you shared with keep their access.</p><button type="button" class="key sun" data-go>Move to Learning Lab</button></div>
-    <div class="lanes">
-      <div class="lane" data-lane="a"><span>Personal</span><div class="work" data-card><svg width="60" height="52" viewBox="0 0 60 52" aria-hidden="true"><path d="M0 8a6 6 0 016-6h16l6 7h26a6 6 0 016 6v31a6 6 0 01-6 6H6a6 6 0 01-6-6z" fill="#FF9C1A"/><path d="M0 20h60v26a6 6 0 01-6 6H6a6 6 0 01-6-6z" fill="#FFD233"/></svg><b>Peer tutoring and reading</b></div></div>
-      <div class="lane l2" data-lane="b"><span>Learning Lab</span></div>
-    </div>
-  </section>
-  <section class="b end"><h2>Point everyone at the same question</h2><div class="one" aria-hidden="true"><span>What actually helps children read?</span>{[["Maya", "#d42c1a", "-46%", "-34px"], ["Tomas", "#2563EB", "38%", "-40px"], ["Amina", "#0b6b4f", "46%", "34px"], ["Lena", "#0b1020", "-40%", "38px"]].map(([n, c, x, y], i) => <em style={`--x:${x};--y:${y};--i:${i}`}><svg width="24" height="24" viewBox="0 0 16 16"><path d="M1 1l5 14 2-6 6-2z" fill={c} stroke="#fff" /></svg><u style={`background:${c}`}>{n}</u></em>)}</div><a class="key coral" href={APP}>Get started</a></section>
+  <Faq items={faq} />
+  <section class="panel close"><img class="field" src="/img/field-emerald.avif" width="1200" height="750" loading="lazy" decoding="async" alt="" /><h2>Bring your team's evidence together</h2><a class="btn" href={APP}>Get started<Arrow /></a></section>
 </Base>
-<script>
-  const move = document.querySelector("[data-move]"), card = move.querySelector("[data-card]"), go = move.querySelector("[data-go]"), a = move.querySelector('[data-lane="a"]'), b = move.querySelector('[data-lane="b"]');
-  go.addEventListener("click", () => { const to = card.parentElement === a ? b : a, from = card.getBoundingClientRect(); to.append(card); go.textContent = to === b ? "Move back to Personal" : "Move to Learning Lab"; const z = card.getBoundingClientRect(); if (!matchMedia("(prefers-reduced-motion: reduce)").matches) card.animate([{ transform: `translate(${from.left - z.left}px, ${from.top - z.top}px) rotate(-4deg)` }, { transform: "none" }], { duration: 600, easing: "cubic-bezier(.22,1,.36,1)" }); });
-</script>
 <style>
-  .top { background: var(--sky); display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 28px; align-items: start; } .top h1 { grid-column: 1 / -1; }
-  .share { background: var(--coral); display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; } .share h2 { color: #fff; max-width: 8em; } .share .lead { margin-top: 14px; font-weight: 500; }
-  .card { padding: 20px; border-radius: 22px; background: #fff; rotate: -2deg; box-shadow: 0 24px 40px -18px rgb(11 16 32 / .5); } .card > b { font-size: 20px; letter-spacing: -.02em; } .inv { display: flex; align-items: center; justify-content: space-between; margin-block: 12px; padding: 8px 8px 8px 14px; border-radius: 12px; background: var(--paper); } .inv em, li em { font-style: normal; font-weight: 500; font-size: 13px; } .inv em { padding: 5px 10px; border-radius: 8px; background: var(--ink); color: #fff; }
-  .card li { display: grid; grid-template-columns: 34px 1fr auto; gap: 10px; align-items: center; padding-block: 8px; } .card i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--c); } .card i svg { width: 22px; height: 22px; } .card li em { padding: 3px 9px; border-radius: 7px; background: var(--mark-3); } .card li [data-r="Can view"] { background: var(--mark-1); }
-  .move { background: var(--leaf); color: #fff; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; align-items: center; } .move .lead { margin-block: 14px 20px; } .move h2 { max-width: 8em; }
-  .lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; color: var(--ink); } .lane { min-height: 260px; padding: 14px; border-radius: 4px 20px 20px 20px; background: #fff; } .l2 { background: var(--mint); } .lane > span { font-weight: 700; letter-spacing: -.02em; }
-  .work { margin-top: 12px; padding: 14px; border-radius: 14px; background: var(--paper); box-shadow: 0 8px 18px -8px rgb(11 16 32 / .4); } .work b { display: block; margin-top: 10px; font-size: 18px; line-height: 1.15; letter-spacing: -.02em; }
-  .end { background: var(--mint); display: grid; justify-items: center; gap: 28px; padding-block: clamp(48px, 7vw, 88px); text-align: center; } .end h2 { max-width: 10em; font-size: clamp(38px, 6vw, 84px); } .one { position: relative; display: grid; place-items: center; width: min(620px, 100%); height: 76px; margin-block: 24px; border-radius: 18px; background: #fff; font-size: clamp(16px, 2vw, 24px); font-weight: 500; letter-spacing: -.02em; box-shadow: 0 0 0 3px var(--ink); } .one em { position: absolute; left: 50%; top: 50%; display: flex; align-items: flex-start; font-style: normal; transform: translate(var(--x), var(--y)); } .one u { margin: 15px 0 0 -3px; padding: 1px 8px; border-radius: 7px; text-decoration: none; font-size: 12px; color: #fff; font-weight: 700; } .one em { --sx: calc(var(--x) * 1); animation: gather 3.5s calc(var(--i) * .25s) var(--ease) infinite alternate; left: calc(50% + var(--x)); transform: none; top: calc(50% + var(--y)); } @keyframes gather { from { translate: 0 0; } to { translate: 0 -6px; } }
-  @media (max-width: 900px) { .top, .share, .move { grid-template-columns: minmax(0, 1fr); } .card { rotate: none; } }
+  .hero { padding: var(--pad) var(--pad) 0; } .h-top { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px 48px; align-items: end; margin-bottom: clamp(32px, 4vw, 56px); } .h-side { display: grid; gap: 20px; } .acts { display: flex; flex-wrap: wrap; gap: 10px; }
+  .shot { border-radius: 16px 16px 0 0; margin-bottom: -2px; max-height: 620px; overflow: hidden; }
+  .roles { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 32px clamp(24px, 4vw, 64px); padding: clamp(40px, 6vw, 72px) var(--pad) 8px; } .roles .lead { margin-top: 14px; color: var(--t2); }
+  .r { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 76px); gap: 8px; align-items: center; min-height: 54px; border-top: 1px solid var(--line); } .head { border-top: 0; font-size: 15px; min-height: 40px; color: var(--t2); } .head b { font-weight: 500; color: var(--ink); text-align: center; } .r i { justify-self: center; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--soft); } .r i.on { background: #d1fae5; color: #047857; }
+  .close { display: grid; justify-items: center; gap: 24px; padding: clamp(48px, 7vw, 96px) var(--pad); text-align: center; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
+  @media (max-width: 900px) { .h-top, .roles { grid-template-columns: minmax(0, 1fr); } .roles { padding-inline: 8px; } .r { grid-template-columns: minmax(0, 1fr) repeat(3, 56px); gap: 4px; } }
 </style>
