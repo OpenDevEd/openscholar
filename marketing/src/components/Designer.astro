@@ -1,5 +1,5 @@
 ---
-const accents = [["#2563eb", "Blue"], ["#ff5a1f", "Orange"], ["#0f9d76", "Green"], ["#c2185b", "Rose"], ["#0b1020", "Ink"]];
+const accents = [["#2563eb", "Blue"], ["#c2410c", "Orange"], ["#0b7a5b", "Green"], ["#c2185b", "Rose"], ["#0b1020", "Ink"]];
 const records = [["Randomised trial", "Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia"], ["Randomised trial", "Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees"], ["Quasi-experiment", "Academic Achievement and Peer Tutoring in Mathematics: A Comparison Between Primary and Secondary Education"]];
 ---
 <section class="b studio" data-studio>
@@ -32,7 +32,7 @@ const records = [["Randomised trial", "Results from a Phase 2 exploratory trial 
   name.addEventListener("input", () => { const v = name.value || "Untitled library"; S.querySelector("[data-title]").textContent = v; S.querySelector("[data-title2]").textContent = v; S.querySelector("[data-url]").textContent = `${slug(v)}.openscholar.ai`; unlive(); });
   const radio = (sel, on) => { const btns = [...S.querySelectorAll(sel)]; btns.forEach((b) => b.addEventListener("click", () => { btns.forEach((x) => x.setAttribute("aria-checked", x === b ? "true" : "false")); on(b); unlive(); })); };
   radio("[data-accent]", (b) => { site.style.setProperty("--a", b.dataset.accent); });
-  radio("[data-mode]", (b) => { site.dataset.mode = b.dataset.mode; });
+  radio("button[data-mode]", (b) => { site.dataset.mode = b.dataset.mode; });
   radio("[data-lang]", (b) => { const l = b.dataset.lang, t = STR[l]; root.dir = l === "ar" ? "rtl" : "ltr"; root.lang = l; root.querySelectorAll("[data-t]").forEach((e) => { e.textContent = t[e.dataset.t]; }); });
   S.querySelectorAll("[data-f]").forEach((c) => c.addEventListener("change", () => { root.querySelectorAll(`[data-x="${c.dataset.f}"]`).forEach((e) => { e.hidden = !c.checked; }); unlive(); }));
   build.addEventListener("click", () => { tag.hidden = false; build.textContent = "It's live"; site.classList.remove("going"); void site.offsetWidth; site.classList.add("going"); });

@@ -45,7 +45,7 @@ const lanes = [["Zotero", "#FFE14D"], ["Saved searches", "#8FD0FF"], ["OpenSchol
 </Base>
 <script>
   const ans = document.querySelector("[data-answers]"), sources = JSON.parse(ans.dataset.sources), PICK = [[1, 5], [0, 4], [2, 8]], title = ans.querySelector("[data-t]"), body = ans.querySelector("[data-s]"), esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
-  const cite = (k) => { const [src, at] = PICK[k], s = sources[src]; ans.querySelectorAll("[data-cite]").forEach((b) => b.toggleAttribute("data-on", +b.dataset.cite === k)); title.textContent = `${s.title}, ${s.year}`; body.innerHTML = s.sentences.map((x, i) => (i === at ? `<mark>${esc(x)}</mark>` : esc(x))).join(" "); const m = body.querySelector("mark"), box = body.closest(".page"); box.scrollTop = Math.max(0, m.offsetTop - box.offsetTop - 80); };
+  const cite = (k) => { const [src, at] = PICK[k], s = sources[src]; ans.querySelectorAll("[data-cite]").forEach((b) => b.toggleAttribute("data-on", +b.dataset.cite === k)); title.textContent = `${s.title}, ${s.year}`; body.innerHTML = s.sentences.map((x, i) => (i === at ? `<mark>${esc(x)}</mark>` : esc(x))).join(" "); const m = body.querySelector("mark"), box = body.closest(".page"); box.scrollTop += m.getBoundingClientRect().top - box.getBoundingClientRect().top - 80; };
   ans.addEventListener("click", (e) => { const b = e.target.closest("[data-cite]"); if (b) cite(+b.dataset.cite); }); cite(0);
   const find = document.querySelector("[data-find]"), hits = document.querySelector("[data-hits]"); let names = null, loading = null;
   const load = () => (loading ??= fetch("/data/institutions.json").then((r) => r.json()).then((d) => { names = Object.entries(d); }));

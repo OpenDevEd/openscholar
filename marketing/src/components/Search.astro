@@ -27,7 +27,7 @@ const toggles = [["is_oa:true", "Open access", "oa=true"], ["has_abstract:true",
   const COL = ["#FFE14D", "#8FD0FF", "#7DF0B4", "#FFB3DC"];
   const terms = () => (q.value.match(/"[^"]+"|\b(?!AND\b|OR\b|NOT\b)[\w-]{3,}/g) ?? []).map((t) => t.replace(/"/g, ""));
   const paint = () => { let i = 0; mirror.innerHTML = q.value.split(/("[^"]*"|\b(?:AND|OR|NOT)\b|\s+)/).map((p) => { if (!p) return ""; if (/^(AND|OR|NOT)$/.test(p)) return `<i class="op">${p}</i>`; if (!p.trim()) return p; if (!p.startsWith('"') && p.replace(/[()]/g, "").length < 3) return esc(p); return `<i style="background:${COL[i++ % 4]}">${esc(p)}</i>`; }).join(""); };
-  const mark = (t) => { let s = esc(t); terms().forEach((w, i) => { s = s.replace(new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"), `<mark style="background:${COL[i % 4]}">$1</mark>`); }); return s; };
+  const mark = (t) => { const list = terms(); if (!list.length) return esc(t); const lower = list.map((w) => w.toLowerCase()), re = new RegExp(`(${list.map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).sort((a, b) => b.length - a.length).join("|")})`, "gi"); return t.split(re).map((part, k) => (k % 2 ? `<mark style="background:${COL[lower.indexOf(part.toLowerCase()) % 4]}">${esc(part)}</mark>` : esc(part))).join(""); };
   const calm = (t) => (t === t.toUpperCase() ? t[0] + t.slice(1).toLowerCase() : t);
   const YEARS = Array.from({ length: 30 }, (_, i) => 1997 + i);
   chart.innerHTML = YEARS.map((y, k) => `<span><i style="--c:hsl(${6 + k * 6.8} 96% 62%)"></i></span>`).join("");
