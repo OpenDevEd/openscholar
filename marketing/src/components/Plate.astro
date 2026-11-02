@@ -1,7 +1,0 @@
----
-const { n, caption, href, class: cls } = Astro.props;
----
-<figure class:list={["plate", cls]}>
-  <div class="plate-art"><slot /></div>
-  <figcaption class="mono"><span class="no">Plate {n}</span><span>{caption}{href && <> <a class="link" href={href.url}>{href.label}</a></>}</span></figcaption>
-</figure>

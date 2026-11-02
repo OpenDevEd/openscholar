@@ -6,7 +6,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "art": "node art/render-map.mjs && node art/render-world.mjs && node art/render-topics.mjs && node art/photos.mjs"
+    "art": "node art/build-field.mjs && node art/render-topics.mjs && node art/render-map.mjs && node art/photos.mjs"
   },
   "dependencies": {
     "@fontsource/ubuntu": "^5.3.0",

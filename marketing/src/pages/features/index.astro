@@ -1,62 +1,43 @@
 ---
 import Base from "../../layouts/Base.astro";
-import Closing from "../../components/Closing.astro";
 import { PRODUCTS, featureCount } from "../../data/features.mjs";
+let no = 0;
 ---
-<Base title="All features: OpenScholar and Evidence Library" description={`Every one of the ${featureCount} features in OpenScholar and the Evidence Library, in one searchable list.`}>
-  <div class="wrap layout">
-    <aside>
-      <label class="find"><span class="mono">Find a feature</span><input type="search" data-find placeholder="PDF, Zotero, export" autocomplete="off" /></label>
-      <nav aria-label="Feature groups">
-        {PRODUCTS.map((p) => <div><b>{p.name}</b>{p.groups.map((g) => <a href={`#${g.id}`}>{g.name}</a>)}</div>)}
-      </nav>
-    </aside>
-    <div class="list">
-      <h1>All features</h1>
-      <p class="lead">Every one of the {featureCount} features in OpenScholar and the Evidence Library. <span data-count hidden></span></p>
-      {PRODUCTS.map((p) => (
-        <section class="prod">
-          <h2>{p.name}</h2>
-          {p.groups.map((g) => (
-            <section id={g.id} class="grp" data-group>
-              <h3><a href={g.page}>{g.name}</a></h3>
-              <ul>{g.items.map(([n, t]) => <li data-text={`${n} ${t}`.toLowerCase()}><b>{n}</b><span>{t}</span></li>)}</ul>
-            </section>
-          ))}
-        </section>
-      ))}
-      <p class="none body" data-none hidden>Nothing matches. Try a shorter word.</p>
+<Base title="All features: OpenScholar and Evidence Library" description={`A searchable catalogue of all ${featureCount} features in OpenScholar and the Evidence Library.`}>
+  <section class="cat">
+    <div class="top">
+      <h1><span class="big" data-num>{featureCount}</span> features</h1>
+      <label class="find"><span class="sr">Find a feature</span><input type="search" data-find placeholder="Search the catalogue: PDF, Zotero, export" autocomplete="off" /></label>
     </div>
-  </div>
-  <Closing slot="closing" />
+    {PRODUCTS.map((p) => (
+      <section class="prod" data-product>
+        <h2>{p.name}</h2>
+        {p.groups.map((g) => (
+          <section class="grp" id={g.id} data-group>
+            <h3><a href={g.page}>{g.name}</a></h3>
+            <ol>{g.items.map(([n, t]) => { no += 1; return <li data-text={`${n} ${t}`.toLowerCase()}><span class="mono">{String(no).padStart(3, "0")}</span><b>{n}</b><span class="d">{t}</span></li>; })}</ol>
+          </section>
+        ))}
+      </section>
+    ))}
+    <p class="none" data-none hidden>Nothing matches. Try a shorter word.</p>
+  </section>
 </Base>
-<script is:inline>
-  (() => {
-    const input = document.querySelector("[data-find]"), rows = [...document.querySelectorAll("[data-text]")], groups = [...document.querySelectorAll("[data-group]")], none = document.querySelector("[data-none]"), count = document.querySelector("[data-count]");
-    input.addEventListener("input", () => {
-      const q = input.value.trim().toLowerCase(); let n = 0;
-      for (const r of rows) { const on = !q || r.dataset.text.includes(q); r.hidden = !on; n += on; }
-      for (const g of groups) g.hidden = !g.querySelector("li:not([hidden])");
-      none.hidden = n > 0; count.hidden = !q; count.textContent = q ? `${n} match "${input.value.trim()}".` : "";
-    });
-  })();
+<script>
+  const input = document.querySelector("[data-find]"), rows = [...document.querySelectorAll("[data-text]")], groups = [...document.querySelectorAll("[data-group]")], prods = [...document.querySelectorAll("[data-product]")], none = document.querySelector("[data-none]"), num = document.querySelector("[data-num]");
+  input.addEventListener("input", () => { const q = input.value.trim().toLowerCase(); let n = 0; for (const r of rows) { const on = !q || r.dataset.text.includes(q); r.hidden = !on; n += on; } for (const g of groups) g.hidden = !g.querySelector("li:not([hidden])"); for (const p of prods) p.hidden = !p.querySelector("[data-group]:not([hidden])"); none.hidden = n > 0; num.textContent = n; });
 </script>
 <style>
-  .layout { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 64px; padding-block: 112px 64px; }
-  aside { position: sticky; top: 88px; align-self: start; max-height: calc(100svh - 112px); overflow-y: auto; scrollbar-width: thin; }
-  .find { display: grid; gap: 6px; margin-bottom: 24px; }
-  input { height: 40px; padding-inline: 12px; background: var(--s1); color: var(--t1); border: 1px solid var(--line2); border-radius: 8px; font: inherit; font-size: 14px; }
-  input::placeholder { color: var(--t3); }
-  nav b { display: block; font-weight: 500; font-size: 14px; margin: 16px 0 4px; }
-  nav a { display: block; padding: 4px 0; font-size: 14px; color: var(--t2); }
-  nav a:hover { color: var(--t1); }
-  h1 { font-size: clamp(40px, 5vw, 64px); }
-  .lead { margin-top: 16px; }
-  .prod { margin-top: 64px; }
-  .grp { margin-top: 32px; scroll-margin-top: 88px; }
-  .grp h3 { margin-bottom: 8px; color: var(--ink); }
-  .grp li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 16px; padding-block: 12px; border-top: 1px solid var(--line); font-size: 15px; }
-  .grp li[hidden], .grp[hidden] { display: none; }
-  .grp b { font-weight: 500; } .grp span { color: var(--t2); }
-  @media (max-width: 900px) { .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 88px; } aside { position: static; max-height: none; } aside nav { display: none; } .grp li { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .cat { padding: 96px var(--edge) 96px; }
+  .top { position: sticky; top: 64px; z-index: 5; display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; margin-inline: calc(var(--edge) * -1); padding: 16px var(--edge); background: rgb(0 0 0 / .94); }
+  h1 { font-size: clamp(36px, 5vw, 80px); } .big { font-variant-numeric: tabular-nums; }
+  input { width: min(460px, 86vw); height: 52px; padding-inline: 16px; background: var(--s1); border: 1px solid var(--line2); border-radius: 14px; font-size: 16px; outline-color: var(--ink); } input::placeholder { color: var(--t3); }
+  .prod { margin-top: 64px; } .prod > h2 { font-size: clamp(44px, 9vw, 150px); margin-bottom: 40px; }
+  .grp { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 9fr); gap: 24px; padding-block: 32px; border-top: 1px solid var(--line2); scroll-margin-top: 160px; }
+  .grp h3 { font-weight: 300; font-size: clamp(20px, 2vw, 30px); line-height: 1.15; letter-spacing: -.02em; } .grp h3 a:hover { color: var(--ink); }
+  li { display: grid; grid-template-columns: 44px minmax(0, 4fr) minmax(0, 8fr); gap: 16px; align-items: baseline; padding-block: 9px; transition: background-color .12s var(--ease); }
+  li:hover { background: var(--s1); } li b { font-weight: 400; font-size: 15px; } .d { color: var(--t2); font-size: 14px; line-height: 20px; } li[hidden], .grp[hidden], .prod[hidden], .none[hidden] { display: none; }
+  .none { color: var(--t2); margin-top: 48px; font-size: 20px; }
+  @media (max-width: 800px) { .grp { grid-template-columns: minmax(0, 1fr); } li { grid-template-columns: 36px minmax(0, 1fr); } .d { grid-column: 2; } }
 </style>

@@ -1,9 +1,0 @@
----
-// One image at its real size, so the page never moves when it arrives.
-const { name, widths, ratio, alt = "", sizes = "100vw", priority = false, class: cls } = Astro.props;
-const list = widths ?? [];
-const src = list.length ? `/img/${name}-${list[list.length - 1]}.avif` : `/img/${name}.avif`;
-const srcset = list.length ? list.map((w) => `/img/${name}-${w}.avif ${w}w`).join(", ") : undefined;
-const w = list[0] ?? 1920;
----
-<img class={cls} src={src} srcset={srcset} sizes={srcset ? sizes : undefined} width={w} height={Math.round(w / ratio)} alt={alt} loading={priority ? "eager" : "lazy"} decoding={priority ? "sync" : "async"} fetchpriority={priority ? "high" : undefined} />

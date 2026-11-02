@@ -1,4 +1,4 @@
-// Plate 01: every paper on AI in education at its real place in the citation map. Data: new-el public/evidence-data/aied.
+// The evidence chains plate: checked reviews over the real citation map. Data: new-el public/evidence-data/aied.
 import { readFileSync, writeFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
 import sharp from "sharp";
@@ -33,22 +33,6 @@ function draw(w, h, scale, cx, cy, { bundles = true, dim = 1 } = {}) {
   return { p, X, Y };
 }
 
-// Hero: wide, the map on the right, the left left black for the headline.
-{
-  const w = 3200, h = 1800, scale = 0.455, cx = w * 0.735, cy = h * 0.53;
-  const { p, X, Y } = draw(w, h, scale, cx, cy);
-  haze(p, 9, 0.5);
-  await save(develop(p, 3.4), "citation-map", [2880, 1600]);
-  const labels = places.filter((q) => q.level === 1).map((q) => ({ name: q.name, size: q.size, x: +(X(q.x) / w * 100).toFixed(2), y: +(Y(q.y) / h * 100).toFixed(2) }));
-  writeFileSync(here("../src/data/map-labels.json"), JSON.stringify(labels, null, 1));
-}
-// Phone: the same map, square.
-{
-  const w = 1200, h = 1200, scale = 0.292;
-  const { p } = draw(w, h, scale, w / 2, h / 2);
-  haze(p, 5, 0.3);
-  await save(develop(p, 2.9), "citation-map-square", [1200, 800]);
-}
 // Plate: the reviews checked, by verdict, over the dimmed map.
 {
   const w = 2400, h = 2000, scale = 0.46, cx = w / 2, cy = h / 2;
@@ -59,7 +43,6 @@ function draw(w, h, scale, cx, cy, { bundles = true, dim = 1 } = {}) {
   const tally = {};
   for (const c of chains) { tally[c.verdict] = (tally[c.verdict] ?? 0) + 1; const i = c.index; if (i == null || !hue[c.verdict]) continue; paint(X(xy[i * 2] / Q), Y(xy[i * 2 + 1] / Q), hue[c.verdict], 11); }
     haze(p, 7, 0.25);
-  await save(develop(p, 2.7, marks), "evidence-chains", [2000, 1000]);
-  writeFileSync(here("../src/data/verdicts.json"), JSON.stringify(tally));
+  await save(develop(p, 2.7, marks), "evidence-chains", [2000]);
   console.log("verdicts", tally);
 }

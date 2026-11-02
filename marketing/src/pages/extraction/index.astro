@@ -1,37 +1,100 @@
 ---
 import Base from "../../layouts/Base.astro";
-import Scene from "../../components/Scene.astro";
-import Plate from "../../components/Plate.astro";
-import ExtractionTable from "../../components/ExtractionTable.astro";
-import Features from "../../components/Features.astro";
-import Closing from "../../components/Closing.astro";
-import { APP } from "../../data/site.mjs";
-const types = [["Text", "A brief answer in words", "Paired Reading"], ["Yes or no", "One clear answer", "Yes"], ["Number", "A value you can sort", "298"], ["List", "Several values", "Grade 4, Grade 5"]];
-const sheets = [["Results", "One row per paper"], ["Questions", "What was asked, and how"], ["Job", "Source, model and date"], ["Evidence", "The sentences behind each answer"], ["Summary", "Totals for the whole job"]];
+import Next from "../../components/Next.astro";
+import papers from "../../data/extraction.json";
+const Q = [["size", "What is the sample size?"], ["design", "What design did it use?"], ["effect", "What effect size does it report?"]];
 ---
-<Base title="Data extraction: OpenScholar" description="Answer your own questions across every paper, with a confidence score and the cited sentence behind each answer, and export to Excel, CSV or JSON.">
-  <Scene scene="spectrograph" alt="A strip of glass photographic plate holding a star's spectrum, crossed by fine dark lines" title="Read the same details out of every paper" lead="Write your questions once. OpenScholar answers each one for each paper, and shows you the sentence behind every answer." primary={{ href: `${APP}/extraction/new`, label: "Start an extraction" }} secondary={{ href: "/assistant/", label: "Ask the assistant to do it" }} />
-  <section class="band wrap">
-    <div class="intro"><h2>Check any answer in one click</h2><p class="lead">Each answer shows how confident the model is and cites its source. Sort by confidence to review the weakest ones first.</p></div>
-    <Plate n="11" caption="Sample sizes from a real run, with an example second question"><ExtractionTable /></Plate>
+<Base title="Extraction: OpenScholar" description="Click any extracted answer and see the exact sentence it came from.">
+  <section class="lab" data-lab data-papers={JSON.stringify(papers)}>
+    <div class="lab-head">
+      <h1>Every answer points at its sentence</h1>
+      <p class="lead">Click any answer. Each paper's abstract is drawn as a spectrum, one block per sentence, and the sentence behind the answer lights up. Real abstracts, answers written as an example.</p>
+    </div>
+    <div class="split">
+    <div class="grid" role="table" aria-label="Extraction results">
+      <div class="row head" role="row"><span role="columnheader">Paper</span>{Q.map(([, q]) => <span role="columnheader">{q}</span>)}</div>
+      {papers.map((p, r) => (
+        <div class="row" role="row" data-row={r}>
+          <div class="paper" role="cell">
+            <b>{p.title}</b>
+            <div class="spec" aria-hidden="true">{p.sentences.map((s, k) => <i data-s={k} style={`flex:${s.length}`}></i>)}</div>
+          </div>
+          {Q.map(([k]) => <div role="cell"><button type="button" class:list={["cell", { none: p[k].at < 0 }]} data-r={r} data-k={k} data-at={p[k].at} disabled={p[k].at < 0}><span class:list={[k === "size" ? "num" : "txt"]}>{p[k].value}</span></button></div>)}
+        </div>
+      ))}
+    </div>
+    <div class="reading" aria-live="polite" tabindex="0"><p class="mono" data-from></p><p class="abs" data-abs></p></div>
+    </div>
+    <div class="dl">
+      <span class="mono">Take this table with you</span>
+      <button type="button" class="btn quiet" data-dl="csv">Download as CSV</button>
+      <button type="button" class="btn quiet" data-dl="json">Download as JSON</button>
+    </div>
   </section>
-  <section class="band wrap">
-    <h2 class="sec">Four kinds of answer</h2>
-    <dl class="types">{types.map(([t, d, e]) => <div><dt>{t}</dt><dd>{d}</dd><dd class="eg">{e}</dd></div>)}</dl>
+  <section class="types">
+    <h2>Four kinds of answer</h2>
+    <dl>
+      <div><dt>Number</dt><dd class="v">298</dd></div>
+      <div><dt>Yes or no</dt><dd class="v">Yes</dd></div>
+      <div><dt>Text</dt><dd class="v">Paired Reading</dd></div>
+      <div><dt>List</dt><dd class="v">Grade 3, Grade 5</dd></div>
+    </dl>
+    <ul class="points">
+      <li><b>Table, cards or split view</b><span>Filter, choose columns, search answers and citations</span></li>
+      <li><b>Pause, resume, retry</b><span>Retry only what failed, or duplicate a job with new questions</span></li>
+      <li><b>From anywhere</b><span>A search, a collection, saved papers, a screening or an Evidence Library</span></li>
+      <li><b>A full workbook</b><span>Excel with Results, Questions, Job, Evidence and Summary sheets</span></li>
+    </ul>
   </section>
-  <section class="band wrap split flip">
-    <div class="stack"><h2>Take it into your own analysis</h2><p class="lead">Export CSV, JSON or a full Excel workbook, for every row or just those you selected. Screening exports the same way.</p></div>
-    <div class="win"><div class="win-head"><span>extraction-results.xlsx</span><span class="mono">5 sheets</span></div><ul class="rows sheets">{sheets.map(([n, d]) => <li><b>{n}</b><span>{d}</span></li>)}</ul></div>
-  </section>
-  <section class="band wrap"><Features ids={["extraction"]} /></section>
-  <Closing slot="closing" title="Extract from your next collection" />
+  <Next href="/assistant/" label="Assistant" text="Or have all of this done for you" />
 </Base>
+<script>
+  const lab = document.querySelector("[data-lab]"), papers = JSON.parse(lab.dataset.papers), abs = lab.querySelector("[data-abs]"), from = lab.querySelector("[data-from]");
+  const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+  const show = (r, k) => {
+    const p = papers[r], at = p[k].at;
+    lab.querySelectorAll(".cell[aria-pressed]").forEach((c) => c.removeAttribute("aria-pressed")); lab.querySelectorAll(".spec i.on").forEach((i) => i.classList.remove("on"));
+    lab.querySelector(`.cell[data-r="${r}"][data-k="${k}"]`).setAttribute("aria-pressed", "true");
+    lab.querySelector(`[data-row="${r}"] [data-s="${at}"]`).classList.add("on");
+    from.textContent = `${p.title}, ${p.year}`;
+    abs.innerHTML = p.sentences.map((s, i) => i === at ? `<mark>${esc(s)}</mark>` : esc(s)).join(" ");
+    const reader = abs.parentElement, m = abs.querySelector("mark"); reader.scrollTop = Math.max(0, m.offsetTop - reader.offsetTop - 80);
+  };
+  lab.addEventListener("click", (e) => { const c = e.target.closest(".cell"); if (c && !c.disabled) show(+c.dataset.r, c.dataset.k); const d = e.target.closest("[data-dl]"); if (d) download(d.dataset.dl); });
+  function download(kind) {
+    const rows = papers.map((p) => ({ title: p.title, year: p.year, sample_size: p.size.value, design: p.design.value, effect_size: p.effect.value, sample_size_evidence: p.sentences[p.size.at] ?? "", design_evidence: p.sentences[p.design.at] ?? "", effect_size_evidence: p.sentences[p.effect.at] ?? "" }));
+    const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
+    const body = kind === "json" ? JSON.stringify(rows, null, 2) : [Object.keys(rows[0]).map(q).join(","), ...rows.map((r) => Object.values(r).map(q).join(","))].join("\n");
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([body], { type: kind === "json" ? "application/json" : "text/csv" })); a.download = `extraction-results.${kind}`; a.click(); URL.revokeObjectURL(a.href);
+  }
+  show(1, "size");
+</script>
 <style>
-  .intro { margin-bottom: 48px; } .intro .lead { margin-top: 24px; }
-  .sec { margin-bottom: 48px; }
-  .types { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
-  dt { font-size: 18px; font-weight: 500; } dd { color: var(--t2); font-size: 14px; margin-top: 4px; }
-  .eg { margin-top: 16px; color: var(--pale); font: 400 clamp(20px, 2vw, 28px)/1.2 var(--mono); }
-  .sheets li { grid-template-columns: 96px 1fr; } .sheets b { font-weight: 500; } .sheets span { color: var(--t2); }
-  @media (max-width: 800px) { .types { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .lab { padding: 104px var(--edge) 64px; background: radial-gradient(100% 60% at 20% 0%, #0d1a38 0%, #000 60%); }
+  .lab-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; align-items: end; margin-bottom: 48px; }
+  h1 { font-size: clamp(38px, 5vw, 84px); }
+  .row { display: grid; grid-template-columns: minmax(0, 4fr) repeat(3, minmax(0, 2fr)); gap: 12px; align-items: stretch; padding-block: 8px; border-top: 1px solid var(--line); }
+  .head { color: var(--t2); font-size: 14px; border-top: 0; align-items: end; padding-bottom: 12px; }
+  .paper b { font-weight: 400; font-size: 15px; line-height: 20px; display: block; margin-bottom: 8px; }
+  .spec { display: flex; gap: 2px; height: 14px; }
+  .spec i { display: block; min-width: 3px; background: var(--s3); border-radius: 1px; transition: background-color .2s var(--ease), box-shadow .2s var(--ease); }
+  .spec i:global(.on) { background: #fff; box-shadow: 0 0 12px rgb(191 219 254 / .9); }
+  .cell { width: 100%; height: 100%; min-height: 64px; display: flex; align-items: center; padding: 8px 14px; text-align: left; border-radius: 10px; transition: background-color .15s var(--ease); }
+  .cell:hover:not(:disabled):not([aria-pressed]) { background: var(--s2); }
+  .cell[aria-pressed] { background: var(--t1); color: #000; }
+  .cell[aria-pressed] .num, .cell[aria-pressed] .txt { color: #000; }
+  .cell:disabled { cursor: default; color: var(--t3); }
+  .num { font-weight: 300; font-size: clamp(28px, 3vw, 44px); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .txt { font-size: 15px; line-height: 20px; }
+  .split { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 5fr); gap: 32px; align-items: start; } .reading { position: sticky; top: 80px; padding: 24px; border: 1px solid var(--line2); border-radius: 18px; height: 460px; overflow-y: auto; scrollbar-width: thin; background: rgb(11 12 15 / .7); }
+  .abs { margin-top: 12px; color: var(--t3); font-size: clamp(16px, 1.3vw, 20px); line-height: 1.55; font-weight: 300; }
+  .abs :global(mark) { background: none; color: #fff; font-weight: 400; box-shadow: inset 0 -2px 0 var(--ink); }
+  .dl { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px; } .dl .mono { margin-right: auto; }
+  .types { padding: 128px var(--edge); }
+  dl { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; margin-block: 48px; }
+  dt { color: var(--t2); } .v { font-weight: 300; font-size: clamp(26px, 3.2vw, 52px); letter-spacing: -.03em; margin-top: 8px; line-height: 1.1; color: var(--pale); }
+  .points { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
+  .points b { display: block; font-weight: 400; } .points span { color: var(--t2); font-size: 14px; }
+  @media (max-width: 1100px) { .split { grid-template-columns: minmax(0, 1fr); } .reading { position: static; height: 340px; } }
+  @media (max-width: 900px) { .lab-head, .points { grid-template-columns: minmax(0, 1fr); } dl { grid-template-columns: 1fr 1fr; } .row { grid-template-columns: 1fr 1fr 1fr; } .head span:first-child { display: none; } .paper { grid-column: 1 / -1; } .num { font-size: 26px; } .txt { font-size: 13px; } .cell { padding: 8px; } }
 </style>

@@ -1,35 +1,107 @@
 ---
 import Base from "../../layouts/Base.astro";
-import Scene from "../../components/Scene.astro";
-import Plate from "../../components/Plate.astro";
-import AssistantRun from "../../components/AssistantRun.astro";
-import Features from "../../components/Features.astro";
-import Closing from "../../components/Closing.astro";
-import { APP } from "../../data/site.mjs";
-const areas = [["Research", "Searches, papers, authors, topics, citations, the web"], ["Your library", "Saved papers, ratings, collections, bookmarks, history"], ["Jobs", "Start, stop, retry and read screenings and extractions"], ["Team", "Workspaces, members, invitations, sharing, moving items"], ["Evidence Libraries", "Draft settings, team, sources, collections, records"], ["Zotero", "Groups, collections, items and PDFs"]];
+import Next from "../../components/Next.astro";
+const reach = [["Research", "Searches, papers, authors, topics, citations, the web"], ["Your library", "Saved papers, ratings, collections, bookmarks, history"], ["Jobs", "Starts, stops, retries and reads screenings and extractions"], ["Your team", "Workspaces, members, invitations, sharing, moving items"], ["Evidence Libraries", "Draft settings, team, sources, collections, records"], ["Zotero", "Groups, collections, items and PDFs"]];
 ---
-<Base title="Research assistant: OpenScholar" description="An assistant with the same 190 actions as the app. It finds papers, fills collections, starts jobs with your approval, and reads PDFs and attachments.">
-  <Scene scene="console" alt="An old instrument desk in a dark control room, with toggle switches and one lit analogue dial" title="An assistant that can do what you can" lead="It works through the same 190 actions as the app, so anything it does shows up where you'd have done it yourself. Open it on any page." primary={{ href: APP, label: "Open the assistant" }} secondary={{ href: "/screening/", label: "See screening" }} />
-  <section class="band wrap split">
-    <div class="stack"><h2>One message, a whole review</h2><p class="lead">From one request it searched, built a collection, screened it and extracted from it. It says which papers it couldn't read, and why.</p></div>
-    <Plate n="12" caption="Shortened from a real run"><AssistantRun /></Plate>
+<Base title="Assistant: OpenScholar" description="Run a whole review with the assistant and press Allow yourself.">
+  <section class="run" data-run>
+    <div class="intro">
+      <h1>Ask for the review. Press Allow. Watch it happen</h1>
+      <p class="lead">It has the same 190 actions as the app, so what it does shows up where you'd have done it yourself. This replays a real run, and you're the one approving it.</p>
+    </div>
+    <div class="desk">
+      <div class="chat">
+        <div class="log" data-log aria-live="polite"></div>
+        <form data-send><div class="prompt">Find three randomised trials of peer tutoring in primary school reading, screen them, and extract the sample size.</div><button class="btn primary" data-go>Send</button></form>
+      </div>
+      <div class="acct">
+        <section class="pane" data-pane="col"><header><b>Audit set</b><span class="mono" data-col-n>Empty</span></header><ul data-col></ul></section>
+        <section class="pane" data-pane="scr"><header><b>Screening</b><span class="mono" data-scr-s>Not started</span></header><div class="ring"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><circle cx="32" cy="32" r="28" /><circle class="p" data-scr-p cx="32" cy="32" r="28" pathLength="1" /></svg><dl><div><dt>Yes</dt><dd data-y>0</dd></div><div><dt>Unclear</dt><dd data-u>0</dd></div><div><dt>No</dt><dd data-n>0</dd></div></dl></div></section>
+        <section class="pane" data-pane="ext"><header><b>Extraction</b><span class="mono" data-ext-s>Not started</span></header><div class="ex" data-ext></div></section>
+      </div>
+    </div>
   </section>
-  <section class="band wrap">
-    <h2 class="sec">What it can reach</h2>
-    <ul class="areas">{areas.map(([a, d]) => <li><b>{a}</b><span>{d}</span></li>)}</ul>
+  <section class="reach">
+    <h2>What it can reach</h2>
+    <ul>{reach.map(([a, b]) => <li><b>{a}</b><span>{b}</span></li>)}</ul>
   </section>
-  <section class="band wrap split flip">
-    <div class="stack"><h2>You stay in charge</h2><p class="lead">Jobs, and changes that can't be undone or that other people will see, wait for your answer. Bulk changes can be undone. Chats can be shared to read or to write.</p></div>
-    <div class="win"><div class="win-head"><span>What it does on its own, and what it asks</span></div><ul class="rows two"><li><b>Reads your records</b><span>Without asking</span></li><li><b>Saves and organizes papers</b><span>Without asking, with Undo</span></li><li><b>Runs a screening or extraction</b><span class="ask">Asks first</span></li><li><b>Deletes a collection</b><span class="ask">Asks first</span></li><li><b>Shares an item with someone</b><span class="ask">Asks first</span></li></ul></div>
+  <section class="safe">
+    <h2>What it does alone, and what it asks about</h2>
+    <div class="cols">
+      <div><h3>On its own</h3><ul><li>Reading your records</li><li>Saving and organizing papers, with Undo</li><li>Making a collection</li></ul></div>
+      <div><h3>Asks first</h3><ul><li>Running a screening or an extraction</li><li>Deleting a collection</li><li>Sharing an item with someone</li><li>Changing a library's draft</li></ul></div>
+      <div><h3>Also in the chat</h3><ul><li>@ to point at a search, collection or paper</li><li>Attach images, PDFs and text files</li><li>Share a chat to read or to write</li><li>Pick the model and effort</li></ul></div>
+    </div>
   </section>
-  <section class="band wrap"><Features ids={["assistant"]} /></section>
-  <Closing slot="closing" title="Ask it about your field" />
+  <Next href="/workspaces/" label="Teams" text="Bring other people into the same work" />
 </Base>
+<script>
+  const root = document.querySelector("[data-run]"), log = root.querySelector("[data-log]"), send = root.querySelector("[data-send]"), go = root.querySelector("[data-go]");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches, wait = (ms) => new Promise((r) => setTimeout(r, reduced ? 0 : ms));
+  const papers = ["Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia", "A Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia", "How to Analyze Interpersonal and Individual Effects in Peer-Tutored Reading Intervention"];
+  const $ = (s) => root.querySelector(s), add = (cls, html) => { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; log.append(d); log.scrollTop = log.scrollHeight; return d; };
+  const CHECK = '<svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5"/></svg>';
+  const step = async (doing, did) => { const s = add("step busy", `<i></i>${doing}`); await wait(900); s.className = "step"; s.innerHTML = `${CHECK}${did}`; };
+  const ask = (title, rows) => new Promise((res) => { const a = add("ask", `<b>${title}</b><dl>${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl><div class="row"><button class="btn primary" data-yes>Allow once</button><button class="btn quiet" data-no>Don't do this</button></div>`); a.querySelector("[data-yes]").focus({ preventScroll: true }); a.addEventListener("click", (e) => { const y = e.target.closest("[data-yes]"), n = e.target.closest("[data-no]"); if (!y && !n) return; a.querySelector(".row").innerHTML = `<span class="mono">${y ? "Allowed" : "Not allowed"}</span>`; res(!!y); }); });
+  const num = (el, v) => { el.textContent = v; };
+  function reset() { log.innerHTML = ""; $("[data-col]").innerHTML = ""; num($("[data-col-n]"), "Empty"); num($("[data-scr-s]"), "Not started"); $("[data-scr-p]").style.strokeDashoffset = 1; ["[data-y]", "[data-u]", "[data-n]"].forEach((s) => num($(s), 0)); num($("[data-ext-s]"), "Not started"); $("[data-ext]").innerHTML = ""; root.querySelectorAll(".pane").forEach((p) => p.removeAttribute("data-live")); }
+  async function play() {
+    reset(); send.hidden = true; add("me", "Find three randomised trials of peer tutoring in primary school reading, screen them, and extract the sample size.");
+    await step("Looking papers up", "Looked papers up"); await step("Reading 2 papers", "Read 2 papers");
+    const c = $('[data-pane="col"]'); c.setAttribute("data-live", ""); await step("Making a collection", "Made a collection: Audit set");
+    for (let i = 0; i < 3; i++) { await wait(320); const li = document.createElement("li"); li.textContent = papers[i]; $("[data-col]").append(li); num($("[data-col-n]"), `${i + 1} paper${i ? "s" : ""}`); }
+    add("step", `${CHECK}Saved 3 papers`);
+    const yes1 = await ask("Start a screening", [["Papers", "3 in Audit set"], ["Question", "Is this a randomized trial?"]]);
+    if (!yes1) { add("reply", "OK, I won't run it. Audit set stays as it is, with its 3 papers."); send.hidden = false; go.textContent = "Run again"; return; }
+    $('[data-pane="scr"]').setAttribute("data-live", ""); num($("[data-scr-s]"), "Running");
+    const answers = [["[data-y]", 1], ["[data-u]", 1], ["[data-u]", 2]];
+    for (let i = 0; i < 3; i++) { await wait(620); $("[data-scr-p]").style.strokeDashoffset = 1 - (i + 1) / 3; num($(answers[i][0]), answers[i][1]); }
+    num($("[data-scr-s]"), "Done"); add("step", `${CHECK}Screened 3 papers`);
+    const yes2 = await ask("Start an extraction", [["Papers", "3 in Audit set"], ["Question", "What is the sample size?"], ["Reads", "Abstracts"]]);
+    if (!yes2) { add("reply", "OK, I'll stop there. The screening found 1 yes and 2 unclear, so read those two before you trust them."); send.hidden = false; go.textContent = "Run again"; return; }
+    $('[data-pane="ext"]').setAttribute("data-live", ""); num($("[data-ext-s]"), "Running");
+    const rows = [["Colombia trial, 2023", "298", "95%"], ["Müller et al., 2015", "68", "60%"]];
+    for (const [t, v, conf] of rows) { await wait(760); const d = document.createElement("div"); d.className = "ex-row"; d.innerHTML = `<span>${t}</span><b>${v}</b><span class="mono">${conf} confidence</span>`; $("[data-ext]").append(d); }
+    await wait(420); const d = document.createElement("div"); d.className = "ex-row miss"; d.innerHTML = `<span>Colombia trial, 2021</span><b>None</b><span class="mono">No abstract</span>`; $("[data-ext]").append(d);
+    num($("[data-ext-s]"), "Done"); add("step", `${CHECK}Read the results`); await wait(500);
+    add("reply", "The Colombia Paired Reading trial reports 298 pupils. Müller et al. report 68 dyads, so roughly double that in students. The 2021 Colombia record has no abstract, so it has no answer. Two of the three screened as unclear, so check those before you rely on them.");
+    send.hidden = false; go.textContent = "Run again";
+  }
+  send.addEventListener("submit", (e) => { e.preventDefault(); play(); });
+</script>
+<style is:global>
+  [data-log] .me { justify-self: end; max-width: 86%; background: var(--s3); padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 20px; }
+  [data-log] .step { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--t2); } [data-log] .step svg { color: var(--good); flex: none; }
+  [data-log] .step.busy i { width: 12px; height: 12px; border: 1.5px solid var(--t3); border-top-color: var(--t1); border-radius: 50%; animation: turn .8s linear infinite; flex: none; }
+  @keyframes turn { to { transform: rotate(1turn); } }
+  [data-log] .ask { border: 1px solid var(--ink); border-radius: 14px; padding: 14px; background: #0c1730; animation: askIn .3s var(--ease) both; font-size: 14px; }
+  @keyframes askIn { from { opacity: 0; transform: translateY(6px); } }
+  [data-log] .ask b { font-weight: 500; font-size: 15px; } [data-log] .ask dl { margin-block: 8px 12px; display: grid; gap: 2px; } [data-log] .ask dl div { display: grid; grid-template-columns: 72px 1fr; } [data-log] .ask dt { color: var(--t3); }
+  [data-log] .row { display: flex; flex-wrap: wrap; gap: 8px; } [data-log] .row .btn { height: 38px; padding-inline: 14px; font-size: 14px; border-radius: 10px; }
+  [data-log] .reply { font-size: 15px; line-height: 22px; font-weight: 300; }
+  [data-col] li { padding-block: 8px; border-top: 1px solid var(--line); font-size: 14px; animation: askIn .3s var(--ease) both; }
+  .ex-row { display: grid; grid-template-columns: minmax(0, 1fr) 72px 110px; gap: 12px; align-items: center; padding-block: 8px; border-top: 1px solid var(--line); font-size: 14px; animation: askIn .3s var(--ease) both; } .ex-row b { font-weight: 300; font-size: 24px; } .ex-row.miss b { font-size: 14px; font-weight: 400; color: var(--t3); }
+</style>
 <style>
-  .sec { margin-bottom: 48px; }
-  .areas { columns: 2; column-gap: 64px; }
-  .areas li { break-inside: avoid; padding-block: 20px; border-top: 1px solid var(--line); }
-  .areas b { font-weight: 400; font-size: 24px; display: block; } .areas span { color: var(--t2); display: block; margin-top: 4px; }
-  .two li { grid-template-columns: 1fr auto; } .two b { font-weight: 400; } .two span { color: var(--t2); } .two .ask { color: var(--ink); }
-  @media (max-width: 800px) { .areas { columns: 1; } }
+  .run { padding: 104px var(--edge) 64px; background: radial-gradient(90% 60% at 100% 0%, #10204a 0%, #000 62%); }
+  .intro { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; align-items: end; margin-bottom: 40px; }
+  h1 { font-size: clamp(36px, 4.2vw, 68px); }
+  .desk { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; }
+  .chat { height: max(540px, calc(100svh - 300px)); display: flex; flex-direction: column; background: var(--s1); border: 1px solid var(--line2); border-radius: 22px; overflow: hidden; }
+  .log { flex: 1; min-height: 0; overflow-y: auto; padding: 20px; display: grid; align-content: start; gap: 12px; }
+  form { display: flex; align-items: center; gap: 12px; padding: 12px; border-top: 1px solid var(--line); } form[hidden] { display: none; }
+  .prompt { flex: 1; font-size: 14px; line-height: 19px; color: var(--t2); }
+  .acct { display: grid; grid-template-rows: auto auto 1fr; gap: 16px; height: max(540px, calc(100svh - 300px)); }
+  .pane { background: var(--s1); border: 1px solid var(--line); border-radius: 22px; padding: 14px 20px; overflow: hidden; opacity: .42; transition: opacity .4s var(--ease), border-color .4s var(--ease); min-height: 0; }
+  .pane[data-live] { opacity: 1; border-color: var(--line2); }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; } header b { font-weight: 300; font-size: 22px; letter-spacing: -.01em; }
+  ul[data-col] { min-height: 96px; }
+  .ring { display: flex; align-items: center; gap: 24px; }
+  svg circle { fill: none; stroke: var(--s3); stroke-width: 5; } svg .p { stroke: var(--good); stroke-dasharray: 1; stroke-dashoffset: 1; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset .5s var(--ease); }
+  .ring dl { display: flex; gap: 32px; } .ring dt { font-size: 13px; color: var(--t2); } .ring dd { font-weight: 300; font-size: 32px; font-variant-numeric: tabular-nums; }
+  .reach { padding: 128px var(--edge) 64px; }
+  .reach ul { margin-top: 48px; columns: 2; column-gap: 64px; }
+  .reach li { break-inside: avoid; padding-block: 20px; border-top: 1px solid var(--line); } .reach b { display: block; font-weight: 300; font-size: clamp(26px, 3vw, 44px); letter-spacing: -.02em; } .reach span { color: var(--t2); }
+  .safe { padding: 64px var(--edge) 128px; } .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px; margin-top: 48px; } .cols li { padding-block: 10px; border-top: 1px solid var(--line); color: var(--t2); font-size: 15px; } .cols h3 { font-weight: 400; margin-bottom: 12px; }
+  @media (max-width: 900px) { .intro, .desk, .cols { grid-template-columns: minmax(0, 1fr); } .acct { height: auto; } .chat { height: 560px; } .reach ul { columns: 1; } }
 </style>

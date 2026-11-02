@@ -1,71 +1,121 @@
 ---
 import Base from "../../layouts/Base.astro";
-import Scene from "../../components/Scene.astro";
-import Plate from "../../components/Plate.astro";
-import Img from "../../components/Img.astro";
-import Icon from "../../components/Icon.astro";
-import Features from "../../components/Features.astro";
-import Closing from "../../components/Closing.astro";
+import Next from "../../components/Next.astro";
 import { APP, LIBRARIES } from "../../data/site.mjs";
-const steps = [["Database", "Stores the records"], ["Storage", "Holds PDFs and images"], ["Application", "Creates the library app"], ["Build", "Puts it online"], ["Readiness", "Checks the page loads"], ["Live", "Opens at its public address"]];
+const accents = [["#2563eb", "Blue"], ["#f58220", "Orange"], ["#0f9d76", "Green"], ["#c2410c", "Rust"], ["#7c8aa5", "Slate"]];
+const years = [[2019, 5143], [2020, 5456], [2021, 5589], [2022, 5172], [2023, 5749], [2024, 6797], [2025, 9179], [2026, 9362]];
+const records = [["Randomised trial", "Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia"], ["Randomised trial", "Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees"], ["Quasi-experiment", "Academic Achievement and Peer Tutoring in Mathematics: A Comparison Between Primary and Secondary Education"], ["Randomised trial", "An exploratory evaluation of a paired maths intervention with secondary aged pupils"], ["Quasi-experiment", "Effect Of Peer Tutoring On Students' Academic Achievement In Office Technology And Mangement In Nigerian Polytechnics"]];
+const shots = [["live-wi-home", "Wealth Inequality and Social Mobility", "https://wealth-inequality.openscholar.ai"], ["live-usaid-lib", "USAID", "https://usaid.openscholar.ai/lib"], ["live-aied-evidence", "Artificial Intelligence in Education", "https://aied.openscholar.ai/evidence"]];
+const steps = ["Database", "Storage", "Application", "Build", "Readiness", "Live"];
+const lanes = [["Draft", "Creators write or import"], ["In review", "Editors check"], ["Published", "Readers see it"]];
+const inbound = [["Zotero group", "Two-way sync"], ["OpenAlex search", "Fetches only what changed"], ["OpenScholar collection", "Fills it from your research"], ["Up to 100 PDFs at once", "AI reads each and fills in the record"], ["DOIs and bibliography files", ".ris, .bib, .json, .xml and more"], ["Written by your team", "Native records"]];
+const more = [["Ask AI", "Answers that link to the record and the PDF page"], ["Study types", "AI reads each record's type, and editors can correct it"], ["Digests", "AI-written editions, by email, with editor approval if you want it"], ["Reader accounts", "Bookmarks, public or private collections, and sharing"], ["DOIs", "Crossref registration and Zenodo archiving"], ["Downloads", "RIS, BibTeX and every citation style, up to 20,000 records"], ["Hand-off", "Results open in OpenScholar, ready to screen or extract"], ["Versions", "Activate, restore, and take software updates when you choose"]];
 ---
-<Base title="Evidence Libraries: OpenScholar" description="A public site for evidence: its own address, records, search, maps, AI answers and digests, set up from OpenScholar and kept current from Zotero, OpenAlex or your own hands.">
-  <Scene scene="plates" alt="An archive of steel cabinets holding glass astronomical plates, with one drawer open and one plate lit from behind" title="A public library for the evidence you trust" lead="An Evidence Library has its own address, records, search, maps, AI answers and digests. You set it up from OpenScholar, and your team runs it." primary={{ href: "https://wealth-inequality.openscholar.ai", label: "Visit a live library" }} secondary={{ href: `${APP}/evidence-libraries`, label: "Create a library" }} />
-  <section class="band wrap">
-    <h2 class="sec">Six steps, then it's live</h2>
-    <ol class="steps">{steps.map(([t, d], i) => <li><span class="mono">{i + 1}</span><b>{t}</b><span>{d}</span></li>)}</ol>
-    <p class="body note">Setup runs once from one button. If a step stops, Retry carries on from that step. Each library gets its own database, file storage and search index.</p>
+<Base title="Evidence Libraries: OpenScholar" description="Design a public library for your evidence, and watch it change as you type.">
+  <section class="studio" data-studio>
+    <div class="controls">
+      <h1>Design a library</h1>
+      <label class="fld"><span>Name</span><input data-name value="Peer Tutoring Evidence" maxlength="48" /></label>
+      <div class="fld"><span>Accent</span><div class="sw" role="radiogroup" aria-label="Accent colour">{accents.map(([c, n], i) => <button type="button" role="radio" aria-checked={i === 0 ? "true" : "false"} aria-label={n} data-accent={c} style={`--c:${c}`}></button>)}</div></div>
+      <div class="fld"><span>Appearance</span><div class="seg" role="radiogroup" aria-label="Appearance"><button type="button" role="radio" aria-checked="true" data-mode="dark">Dark</button><button type="button" role="radio" aria-checked="false" data-mode="light">Light</button></div></div>
+      <div class="fld"><span>Language</span><div class="seg" role="radiogroup" aria-label="Language"><button type="button" role="radio" aria-checked="true" data-lang="en">English</button><button type="button" role="radio" aria-checked="false" data-lang="fr">Français</button><button type="button" role="radio" aria-checked="false" data-lang="ar">العربية</button></div></div>
+      <div class="fld"><span>Features</span><div class="tog"><label><input type="checkbox" checked data-f="map" />Map</label><label><input type="checkbox" checked data-f="ask" />Ask AI</label><label><input type="checkbox" checked data-f="dig" />Digests</label></div></div>
+      <button type="button" class="btn blue build" data-build>Set up and activate</button>
+      <ol class="prog" data-prog hidden>{steps.map((s) => <li>{s}</li>)}</ol>
+      <p class="mono" data-note>A preview. Real libraries are created in OpenScholar.</p>
+    </div>
+    <div class="browser" data-site data-mode="dark">
+      <div class="url"><span class="mono" data-url>peer-tutoring-evidence.openscholar.ai</span></div>
+      <div class="site" data-root>
+        <header class="s-top"><img src="/mark.svg" width="22" height="22" alt="" /><b data-title>Peer Tutoring Evidence</b><nav><a data-t="lib">Library</a><a data-t="map" data-x="map">Map</a><a data-x="dig" data-t="dig">Digests</a><a data-t="contact">Contact Us</a></nav><span class="s-in" data-t="in">Sign in</span></header>
+        <div class="s-body">
+          <aside class="s-side"><b data-t="years">Years</b><div class="bars">{years.map(([y, c]) => <i style={`height:${c / 9362 * 100}%`}></i>)}</div><b data-t="types">Types</b><ul class="ty"><li><span data-t="rct">Randomised trial</span><em>202</em></li><li><span data-t="quasi">Quasi-experiment</span><em>1,224</em></li></ul></aside>
+          <div class="s-main"><div class="s-search"><span>peer tutoring</span><em data-x="ask" data-t="ask">Ask AI</em></div>{records.map(([k, t]) => <article><span class="k" data-t={k === "Randomised trial" ? "rct" : "quasi"}>{k}</span><h4 lang="en" dir="ltr">{t}</h4></article>)}</div>
+        </div>
+      </div>
+    </div>
   </section>
-  <section class="band wrap split flip">
-    <div class="stack"><h2>Your brand, your address</h2><p class="lead">Name, logo, colours, fonts, home page, navigation, legal text and your own domain. 9 languages, right to left included.</p></div>
-    <Plate n="14" caption="Wealth Inequality and Social Mobility, live" href={{ url: "https://wealth-inequality.openscholar.ai", label: "Open it" }}><div class="shot"><Img name="live-wi-home" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="The home page of the Wealth Inequality library with PDF first pages fanned across a dark world map" /></div></Plate>
+
+  <section class="flow">
+    <h2>Records keep arriving</h2>
+    <div class="pipes">
+      <ul class="in">{inbound.map(([a, b]) => <li><b>{a}</b><span>{b}</span></li>)}</ul>
+      <svg viewBox="0 0 300 360" preserveAspectRatio="none" aria-hidden="true" fill="none">{[30, 90, 150, 210, 270, 330].map((y, i) => <path class="pipe" pathLength="1" d={`M0 ${y} C 150 ${y}, 150 180, 300 180`} style={`animation-delay:${i * -0.5}s`} />)}</svg>
+      <ol class="review" data-review>{lanes.map(([a, b], i) => <li data-lane={i}><h3>{a}</h3><span>{b}</span></li>)}<li class="token" data-token aria-hidden="true"></li></ol>
+    </div>
   </section>
-  <section class="band wrap split">
-    <div class="stack"><h2>Search built for readers</h2><p class="lead">Filters with live counts, years as a bar chart, and a study type on every record, read by AI and correctable by your editors.</p></div>
-    <Plate n="15" caption="52,447 records, nine sources" href={{ url: "https://wealth-inequality.openscholar.ai/lib", label: "Search it" }}><div class="shot"><Img name="live-wi-lib" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="The library search page with filters and a study type and PDF cover on each record" /></div></Plate>
+
+  <section class="wall">
+    <h2>Running right now</h2>
+    <div class="shots">{shots.map(([f, n, h]) => <a href={h}><img src={`/img/${f}.avif`} width="1920" height="1200" loading="lazy" decoding="async" alt={`${n}, live`} /><span>{n}</span></a>)}</div>
+    <ul class="libs">{LIBRARIES.map((l) => <li><a href={l.href}><b>{l.name}</b><span class="mono">{l.records && `${l.records} records`}</span></a></li>)}</ul>
   </section>
-  <section class="band wrap split flip">
-    <div class="stack"><h2>Answers that cite the page</h2><p class="lead">Ask AI searches the library, reads the records and PDFs, and links every claim to its source. When it can't read something, it says so.</p></div>
-    <Plate n="16" caption="Ask AI on a test library, live"><div class="shot"><Img name="live-qa-ask" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="Ask AI's answer with source links to PDF pages, beside the records it searched" /></div></Plate>
+
+  <section class="archive"><img src="/img/scene-plates-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="An archive of steel cabinets holding glass astronomical plates, with one drawer open and one plate lit from behind" />
+    <ul>{more.map(([a, b]) => <li><b>{a}</b><span>{b}</span></li>)}</ul>
   </section>
-  <section class="band wrap split">
-    <div class="stack"><h2>Records keep arriving</h2><p class="lead">Sync a Zotero group both ways, import an OpenAlex search, fill it from an OpenScholar collection, or write records yourself. Duplicates are merged.</p></div>
-    <Plate n="17" caption="Where records come from">
-      <svg class="src" viewBox="0 0 640 320" fill="none" role="img" aria-label="Zotero with two-way arrows, OpenAlex, OpenScholar and written records all flowing into one library">
-        <g stroke="#3b82f6"><path d="M180 64 C 300 64 300 160 420 160" /><path d="M180 128 C 300 128 300 160 420 160" /><path d="M180 192 C 300 192 300 160 420 160" /><path d="M180 256 C 300 256 300 160 420 160" /></g>
-        <path d="M420 172 C 300 172 300 76 180 76" stroke="#bfdbfe" stroke-dasharray="3 4" />
-        <rect x="420" y="96" width="196" height="128" rx="12" fill="#0a0a0a" stroke="#3b82f6" />
-        <g font-family="Ubuntu,sans-serif"><text x="444" y="160" font-size="18" fill="#ededed">Your library</text><text x="444" y="184" font-size="13" fill="#a6a6a6">One set of records</text>
-          <g font-size="15" fill="#ededed"><text x="24" y="70">Zotero group</text><text x="24" y="134">OpenAlex search</text><text x="24" y="198">OpenScholar collection</text><text x="24" y="262">Written by your team</text></g></g>
-      </svg>
-    </Plate>
-  </section>
-  <section class="band wrap split flip">
-    <div class="stack"><h2>Nothing goes live unchecked</h2><p class="lead">Import up to 100 PDFs at once and AI fills in each record. Creators submit, and Editors or Owners publish. Register DOIs through Crossref or archive through Zenodo.</p></div>
-    <Plate n="18" caption="The admin on a test library, live"><div class="shot"><Img name="live-qa-admin" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="The library admin: a record table with state and PDF columns, and a record's editor on the right" /></div></Plate>
-  </section>
-  <section class="band wrap split">
-    <div class="stack"><h2>A digest of what's new</h2><p class="lead">AI writes each edition with reviews first. Readers subscribe by email, and editors can approve each one before it goes out.</p></div>
-    <Plate n="19" caption="Digests on Wealth Inequality, live" href={{ url: "https://wealth-inequality.openscholar.ai/digests", label: "Read them" }}><div class="shot"><Img name="live-wi-digests" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="The digests page with the next edition's date and past editions" /></div></Plate>
-  </section>
-  <section class="band wrap">
-    <h2 class="sec">Running now</h2>
-    <ul class="libs">{LIBRARIES.map((l) => <li><a href={l.href}><b>{l.name}</b><span>{l.holds}</span><span class="mono">{l.records && `${l.records} records`}</span><Icon name="arrow" /></a></li>)}</ul>
-  </section>
-  <section class="band wrap"><details class="all"><summary>All Evidence Library features</summary><Features ids={["setup", "home-page", "browse", "records", "ask", "digests", "readers", "exports", "admin", "sources", "site"]} /></details></section>
-  <Closing slot="closing" title="Publish your evidence" />
+  <section class="cta"><a class="btn primary" href={`${APP}/evidence-libraries`}>Create a library</a></section>
+  <Next href="/maps/" label="Globe" text="See where your library's evidence comes from" />
 </Base>
+<script>
+  const STR = { en: { lib: "Library", map: "Map", contact: "Contact Us", in: "Sign in", years: "Years", types: "Types", ask: "Ask AI", dig: "Digests", rct: "Randomised trial", quasi: "Quasi-experiment" }, fr: { lib: "Bibliothèque de preuves", map: "Carte", contact: "Nous contacter", in: "Se connecter", years: "Années", types: "Types", ask: "Demander à l'IA", dig: "Derniers digests", rct: "Essai randomisé", quasi: "Quasi-expérience" }, ar: { lib: "مكتبة الأدلة", map: "خريطة", contact: "اتصل بنا", in: "تسجيل الدخول", years: "السنوات", types: "الأنواع", ask: "اسأل الذكاء الاصطناعي", dig: "أحدث الملخصات", rct: "تجربة معشاة", quasi: "شبه تجربة" } };
+  const S = document.querySelector("[data-studio]"), site = S.querySelector("[data-site]"), root = S.querySelector("[data-root]");
+  const slug = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "library";
+  const name = S.querySelector("[data-name]"); name.addEventListener("input", () => { const v = name.value || "Untitled library"; S.querySelector("[data-title]").textContent = v; S.querySelector("[data-url]").textContent = `${slug(v)}.openscholar.ai`; });
+  const radio = (sel, on) => { const btns = [...S.querySelectorAll(sel)]; btns.forEach((b) => b.addEventListener("click", () => { btns.forEach((x) => x.setAttribute("aria-checked", x === b ? "true" : "false")); on(b); })); };
+  radio("[data-accent]", (b) => site.style.setProperty("--a", b.dataset.accent));
+  radio("[data-mode]", (b) => { site.dataset.mode = b.dataset.mode; });
+  radio("[data-lang]", (b) => { const l = b.dataset.lang, t = STR[l]; root.dir = l === "ar" ? "rtl" : "ltr"; root.lang = l; root.querySelectorAll("[data-t]").forEach((e) => { e.textContent = t[e.dataset.t]; }); });
+  S.querySelectorAll("[data-f]").forEach((c) => c.addEventListener("change", () => root.querySelectorAll(`[data-x="${c.dataset.f}"]`).forEach((e) => { e.hidden = !c.checked; })));
+  const build = S.querySelector("[data-build]"), prog = S.querySelector("[data-prog]"), note = S.querySelector("[data-note]"), wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  build.addEventListener("click", async () => { build.hidden = true; prog.hidden = false; const li = [...prog.children]; li.forEach((x) => x.removeAttribute("data-s")); for (const x of li) { x.dataset.s = "run"; await wait(620); x.dataset.s = "done"; } note.textContent = `Live at ${S.querySelector("[data-url]").textContent}, in this preview.`; await wait(1400); build.hidden = false; build.textContent = "Run it again"; prog.hidden = true; });
+</script>
 <style>
-  .sec { margin-bottom: 48px; }
-  .steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
-  .steps li { border-top: 2px solid var(--accent); padding-top: 12px; display: grid; gap: 2px; }
-  .steps .mono { color: var(--ink); } .steps b { font-weight: 500; font-size: 16px; } .steps span:last-child { color: var(--t2); font-size: 14px; line-height: 20px; }
-  .note { margin-top: 32px; }
-  .all summary { cursor: pointer; font-size: clamp(24px, 3vw, 40px); letter-spacing: -.02em; padding-block: 16px; border-block: 1px solid var(--line); margin-bottom: 48px; }
-  .all:not([open]) summary { margin-bottom: 0; }
-  .src { width: 100%; height: auto; }
-  .libs li { border-top: 1px solid var(--line); }
-  .libs a { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) 120px 16px; gap: 16px; align-items: center; padding-block: 16px; font-size: 15px; transition: color .15s var(--ease); }
-  .libs a:hover { color: var(--ink); } .libs b { font-weight: 500; } .libs span { color: var(--t2); font-size: 14px; }
-  @media (max-width: 900px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .libs a { grid-template-columns: minmax(0, 1fr) 16px; } .libs span { grid-column: 1; } .libs a :global(svg) { grid-area: 1 / 2; } }
+  .studio { min-height: 100svh; display: grid; grid-template-columns: minmax(320px, 4fr) minmax(0, 9fr); gap: 32px; padding: 96px var(--edge) 40px; align-items: stretch; background: radial-gradient(80% 70% at 100% 40%, #0e1b3d 0%, #000 65%); }
+  .controls { display: flex; flex-direction: column; gap: 18px; }
+  h1 { font-size: clamp(40px, 4.4vw, 72px); margin-bottom: 8px; }
+  .fld { display: grid; gap: 6px; } .fld > span { font-size: 13px; color: var(--t2); }
+  .fld input:not([type="checkbox"]) { height: 44px; padding-inline: 12px; background: var(--s1); border: 1px solid var(--line2); border-radius: 10px; font-size: 15px; outline-color: var(--ink); }
+  .sw { display: flex; gap: 8px; } .sw button { width: 34px; height: 34px; border-radius: 50%; background: var(--c); transition: box-shadow .15s var(--ease); } .sw [aria-checked="true"] { box-shadow: 0 0 0 2px #000, 0 0 0 4px var(--t1); }
+  .seg { display: flex; gap: 4px; padding: 4px; background: var(--s1); border-radius: 12px; border: 1px solid var(--line); } .seg button { flex: 1; height: 34px; padding-inline: 10px; font-size: 13px; color: var(--t2); border-radius: 8px; transition: background-color .15s var(--ease), color .15s var(--ease); } .seg [aria-checked="true"] { background: var(--t1); color: #000; }
+  .tog { display: flex; flex-wrap: wrap; gap: 14px; font-size: 14px; } .tog label { display: flex; align-items: center; gap: 6px; cursor: pointer; } .tog input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+  .build { justify-content: center; margin-top: 4px; } .build[hidden] { display: none; }
+  .prog { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; } .prog[hidden] { display: none; }
+  .prog li { font-size: 12px; padding: 6px 8px; border-radius: 8px; background: var(--s1); color: var(--t3); transition: background-color .2s var(--ease), color .2s var(--ease); } .prog [data-s="run"] { background: var(--accent); color: #fff; } .prog [data-s="done"] { color: var(--good); }
+  .browser { --a: #2563eb; --bg: #0a0a0a; --card: #151515; --ink2: #ededed; --mut: #9a9a9a; --ln: rgb(255 255 255 / .1); display: flex; flex-direction: column; border-radius: 20px; overflow: hidden; border: 1px solid var(--line2); background: var(--bg); color: var(--ink2); transition: background-color .25s var(--ease), color .25s var(--ease); min-height: 620px; }
+  .browser[data-mode="light"] { --bg: #f4f3f0; --card: #fff; --ink2: #171717; --mut: #6b6b6b; --ln: rgb(0 0 0 / .1); }
+  .url { padding: 10px 16px; border-bottom: 1px solid var(--ln); text-align: center; } .url .mono { color: var(--mut); }
+  .site { flex: 1; padding: 18px; display: flex; flex-direction: column; gap: 16px; }
+  .s-top { display: flex; align-items: center; gap: 10px; padding: 12px 16px; background: var(--card); border-radius: 14px; flex-wrap: wrap; } .s-top b { font-weight: 500; font-size: 16px; }
+  .s-top nav { display: flex; gap: 16px; margin-inline: auto; font-size: 14px; color: var(--mut); flex-wrap: wrap; } .s-top nav a:first-child { color: var(--a); }
+  .s-in { background: var(--a); color: #fff; padding: 6px 12px; border-radius: 8px; font-size: 13px; transition: background-color .2s var(--ease); }
+  .s-body { flex: 1; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 16px; }
+  .s-side { background: var(--card); border-radius: 14px; padding: 14px; font-size: 14px; } .s-side b { font-weight: 500; }
+  .bars { display: flex; align-items: flex-end; gap: 3px; height: 80px; margin-block: 8px 16px; } .bars i { flex: 1; background: var(--a); border-radius: 2px 2px 0 0; transition: background-color .2s var(--ease); }
+  .ty li { display: flex; justify-content: space-between; gap: 8px; padding-block: 5px; font-size: 13px; } .ty em { font-style: normal; color: var(--mut); }
+  .s-main { display: grid; gap: 12px; align-content: start; overflow: hidden; }
+  .s-search { display: flex; align-items: center; justify-content: space-between; height: 44px; padding-inline: 14px 6px; background: var(--card); border-radius: 12px; font-size: 14px; color: var(--mut); } .s-search em { font-style: normal; background: var(--a); color: #fff; padding: 5px 10px; border-radius: 8px; font-size: 13px; }
+  article { background: var(--card); border-radius: 14px; padding: 14px 16px; } .k { font-size: 13px; color: var(--a); } h4 { margin: 4px 0 0; font-weight: 400; font-size: clamp(15px, 1.4vw, 20px); line-height: 1.25; }
+  [hidden] { display: none !important; }
+  .flow { padding: 128px var(--edge) 96px; }
+  .pipes { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 2fr) minmax(0, 5fr); gap: 0; margin-top: 48px; align-items: stretch; }
+  .in li { height: 60px; display: flex; flex-direction: column; justify-content: center; } .in b { font-weight: 400; font-size: 17px; } .in span { color: var(--t2); font-size: 13px; }
+  .pipes svg { width: 100%; height: 360px; }
+  .pipe { stroke: #3b82f6; stroke-width: 1.2; vector-effect: non-scaling-stroke; stroke-dasharray: .06 .05; animation: flow 3s linear infinite; }
+  @keyframes flow { to { stroke-dashoffset: -.33; } }
+  .review { position: relative; display: grid; grid-template-rows: repeat(3, 1fr); height: 360px; border: 1px solid var(--line2); border-radius: 22px; overflow: hidden; background: var(--s1); }
+  .review li[data-lane] { display: flex; flex-direction: column; justify-content: center; padding-inline: 24px; border-top: 1px solid var(--line); } .review li:first-child { border-top: 0; } .review h3 { font-weight: 300; font-size: clamp(26px, 3vw, 44px); line-height: 1.1; letter-spacing: -.02em; } .review span { color: var(--t2); font-size: 14px; }
+  .token { position: absolute; right: 24px; top: 0; width: 72px; height: 92px; background: linear-gradient(145deg, #e9edf5, #9fb0cf); border-radius: 6px; animation: rv 7s var(--ease) infinite; box-shadow: 0 8px 24px #000; }
+  @keyframes rv { 0%, 18% { transform: translateY(14px); } 40%, 58% { transform: translateY(134px); } 80%, 100% { transform: translateY(254px); } }
+  .wall { padding: 64px var(--edge); }
+  .shots { display: grid; grid-template-columns: 5fr 4fr 4fr; gap: 12px; margin-top: 48px; }
+  .shots a { position: relative; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); } .shots img { width: 100%; height: 100%; object-fit: cover; object-position: top left; aspect-ratio: 16 / 11; transition: transform .5s var(--ease); } .shots a:hover img { transform: scale(1.03); }
+  .shots span { position: absolute; left: 12px; bottom: 12px; padding: 4px 10px; background: rgb(0 0 0 / .78); border-radius: 8px; font-size: 13px; }
+  .libs { margin-top: 32px; } .libs a { display: flex; justify-content: space-between; gap: 16px; padding-block: 14px; border-top: 1px solid var(--line); transition: color .15s var(--ease); } .libs a:hover { color: var(--ink); } .libs b { font-weight: 400; }
+  .archive { position: relative; padding: 96px var(--edge); overflow: hidden; display: flex; justify-content: flex-end; min-height: 720px; }
+  .archive img { position: absolute; left: -8%; top: 0; width: 70%; height: 100%; object-fit: cover; object-position: right center; mask-image: linear-gradient(90deg, #000 55%, transparent); }
+  .archive ul { position: relative; width: min(100%, 560px); align-self: center; }
+  .archive li { padding-block: 12px; border-top: 1px solid var(--line); } .archive b { display: block; font-weight: 400; font-size: 18px; } .archive span { color: var(--t2); font-size: 14px; }
+  .cta { padding: 0 var(--edge) 96px; }
+  @media (max-width: 1000px) { .studio { grid-template-columns: minmax(0, 1fr); } .browser { min-height: 560px; } .s-body { grid-template-columns: minmax(0, 1fr); } .bars { height: 48px; } .pipes { grid-template-columns: minmax(0, 1fr); gap: 16px; } .pipes svg { display: none; } .shots { grid-template-columns: minmax(0, 1fr); } .archive img { opacity: .35; width: 100%; left: 0; } }
 </style>
