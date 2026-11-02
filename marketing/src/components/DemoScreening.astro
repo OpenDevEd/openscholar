@@ -11,27 +11,17 @@ const papers = [
 const qs = ["Is it a randomised trial?", "Is it about reading in primary school?"];
 ---
 
-  <section class="stage" data-stage>
-    <canvas data-stream aria-hidden="true"></canvas>
-    <div class="head"><h2>Set the rules. Watch them work.</h2></div>
-    <div class="gatelab" aria-hidden="true"><span data-gl="0">{qs[0]}</span><span data-gl="1">{qs[1]}</span></div>
-    <div class="tally" aria-live="polite"><b data-share>0%</b><span>of papers included</span></div>
-    <p class="set">Slide the rules you set before a job starts. This stream is a simulation of how they split your papers.</p>
-    <div class="deck">
-      {qs.map((q, i) => (
-        <fieldset data-q={i}>
-          <legend>{q}</legend>
-          {["Yes", "Unclear", "No"].map((a, k) => <label><span class:list={["ans", a]}>{a}</span><input type="range" min="0" max="3" step="1" value={[2, 1, 0][k]} data-pts={k} aria-label={`Points for ${a}`} /><output>{[2, 1, 0][k]}</output></label>)}
-        </fieldset>
-      ))}
-      <div class="mark"><label for="pm">Points to be included</label><input id="pm" data-pm type="range" min="0" max="6" step="1" value="3" /><output data-pmo>3 of 4</output></div>
-    </div>
+  <section class="gate" data-gate>
+    <canvas data-c aria-hidden="true"></canvas>
+    <img data-photo src="/img/scene-prism-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="A thin beam of light through a glass prism, with one narrow line carrying on through a slit in a black plate" />
+    <h2>Set the bar. Watch the noise fall.</h2>
+    <div class="bar"><label for="pm">How strict are you feeling?</label><input id="pm" data-pm type="range" min="1" max="4" step="1" value="3" /><div class="ends" aria-hidden="true"><span>Let more through</span><span>Only the strongest</span></div></div>
   </section>
 
   <section class="review">
     <div class="r-head">
       <h2>You always have the last word</h2>
-      <p class="lead">Disagree with an answer? Click it. The paper's score and stars follow you. Real papers, example answers.</p>
+      <p class="lead">Disagree with an answer? Click it, and the paper's score and stars follow you.</p>
     </div>
     <div class="cols" aria-hidden="true"><span></span><span></span><span>Randomised trial?</span><span>Primary school reading?</span><span>Stars</span><span></span></div>
     <ol class="table" data-table>
@@ -46,85 +36,43 @@ const qs = ["Is it a randomised trial?", "Is it about reading in primary school?
         </li>
       ))}
     </ol>
+    <p class="note">The answers here are examples.</p>
   </section>
 
   
 <script>
-  const stage = document.querySelector("[data-stage]"), cv = stage.querySelector("canvas"), ctx = cv.getContext("2d");
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const pts = [[2, 1, 0], [2, 1, 0]]; let pass = 3;
-  const inputs = [...stage.querySelectorAll("[data-q]")];
-  // Shares of Yes, Unclear and No for each question, for the stream only.
-  const DIST = [[0.3, 0.2, 0.5], [0.45, 0.25, 0.3]];
-  const pick = (d) => { const r = Math.random(); return r < d[0] ? 0 : r < d[0] + d[1] ? 1 : 2; };
-  const N = innerWidth < 800 ? 700 : 1800;
-  const P = Array.from({ length: N }, () => ({ x: Math.random(), y: 0, a: pick(DIST[0]), b: pick(DIST[1]), v: 0.00045 + Math.random() * 0.0005, off: (Math.random() - 0.5), drop: 0 }));
-  const score = (p) => pts[0][p.a] + pts[1][p.b];
-  const COL = ["#58d6a0", "#f1b64a", "#f2666b"];
-  const maxScore = () => Math.max(...pts[0]) + Math.max(...pts[1]);
-  const share = () => { let n = 0; for (const a of [0, 1, 2]) for (const b of [0, 1, 2]) if (pts[0][a] + pts[1][b] >= pass) n += DIST[0][a] * DIST[1][b]; return n; };
-  let w = 0, h = 0, dpr = 1, still = false;
-  const size = () => { dpr = Math.min(devicePixelRatio, 2); w = cv.clientWidth; h = cv.clientHeight; cv.width = w * dpr; cv.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0); };
+  import { createField, mulberry, I3 } from "../scripts/field.js";
+  import { shapes, cover } from "../scripts/shapes.js";
+  const gate = document.querySelector("[data-gate]"), canvas = gate.querySelector("[data-c]"), photo = gate.querySelector("[data-photo]"), pm = gate.querySelector("[data-pm]");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches, F = 0.67;
+  let pass = +pm.value, field = null, mix = 0, on = false, fit = cover(1), started = false;
+  const goal = () => (pass - 1) / 3;
+  const size = () => { fit = cover(gate.clientWidth / gate.clientHeight, F); photo.style.objectPosition = `${(fit.pos * 100).toFixed(2)}% 50%`; };
   size(); addEventListener("resize", size, { passive: true });
-  const G = [0.34, 0.62], BEAM = () => h * 0.5;
-  function tick() {
-    ctx.fillStyle = "rgba(0,0,0,.26)"; ctx.fillRect(0, 0, w, h);
-    const by = BEAM(), inc = share();
-    // Gates
-    for (const g of G) { ctx.strokeStyle = "rgba(191,219,254,.5)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(g * w, by, 16, 96, 0, 0, Math.PI * 2); ctx.stroke(); }
-    for (const p of P) {
-      if (!still) p.x += p.v; if (p.x > 1.02) { p.x = -0.02; p.a = pick(DIST[0]); p.b = pick(DIST[1]); p.drop = 0; }
-      const past = p.x > G[1] + 0.02, s = score(p), ok = s >= pass;
-      const spread = p.x < G[0] ? 92 : p.x < G[1] ? 66 : ok ? 24 + inc * 30 : 50;
-      let ty = by + p.off * 2 * spread;
-      if (past && !ok) ty = by + 110 + (p.x - G[1]) * h * 1.25 + p.off * 60;
-      p.y = still || !p.y ? ty : p.y + (ty - p.y) * 0.05;
-      let color = "#9fb9ff", al = 0.75;
-      if (p.x > G[0]) color = COL[p.a]; if (p.x > G[1]) color = COL[p.b];
-      if (past) { color = ok ? "#ffffff" : "#6b7a99"; al = ok ? 1 : Math.max(0, 0.6 - (p.x - G[1]) * 1.4); }
-      ctx.globalAlpha = al; ctx.fillStyle = color; const r = past && ok ? 2.6 : 1.9; ctx.fillRect(p.x * w, p.y, r, r);
-    }
-    ctx.globalAlpha = 1;
-  }
-  let on = false; new IntersectionObserver(([e]) => { on = e.isIntersecting; }).observe(stage);
-  // Reduced motion: one still frame of the current rules, with no movement.
-  const settle = () => { ctx.fillStyle = "#000"; ctx.fillRect(0, 0, w, h); still = true; tick(); still = false; };
-  const loop = () => { requestAnimationFrame(loop); if (on && !document.hidden) tick(); }; if (reduced) settle(); else loop();
-  const shareEl = stage.querySelector("[data-share]"), pmo = stage.querySelector("[data-pmo]"), pm = stage.querySelector("[data-pm]");
-  const read = () => {
-    inputs.forEach((f, q) => f.querySelectorAll("[data-pts]").forEach((inp) => { pts[q][+inp.dataset.pts] = +inp.value; inp.nextElementSibling.textContent = inp.value; }));
-    pm.max = String(maxScore()); pass = +pm.value; pmo.textContent = `${pass} of ${maxScore()}`; shareEl.textContent = `${Math.round(share() * 100)}%`; if (reduced) settle();
-  };
-  stage.addEventListener("input", read);
-  // The table uses the same rules as the stream.
+  const start = () => { started = true; const count = innerWidth < 900 ? 30000 : 70000, r = mulberry(9), seeds = new Float32Array(count * 2), shine = new Float32Array(count); for (let i = 0; i < count; i++) { seeds[i * 2] = r(); seeds[i * 2 + 1] = r(); shine[i] = 0.2 + Math.pow(r(), 6) * 1.6; }
+    const S = shapes(count, seeds, (i) => shine[i]), mk = (pass) => { const d = new Float32Array(count * 4); S.prism(d, pass); return { data: d, wave: 0.55, dir: [1, 0] }; };
+    field = createField(canvas, { count, seeds, targets: [mk(0.26), mk(0.012)], sizeScale: 1.15 }); mix = goal(); if (!field) canvas.remove(); else canvas.style.opacity = 1; };
+  new IntersectionObserver(([e]) => { on = e.isIntersecting; if (on && !started) start(); }, { rootMargin: "400px" }).observe(gate);
+  let then = 0; const frame = (ms) => { requestAnimationFrame(frame); if (!field || !on || document.hidden) return; const t = ms / 1000, dt = Math.min(0.05, t - then); then = t; mix = reduced ? goal() : mix + (goal() - mix) * (1 - Math.exp(-dt * 3)); field.render({ a: 0, b: 1, mix, time: reduced ? 0 : t, eye: [fit.pan, 0, 2.66], center: [fit.pan, 0, 0], rotA: I3, rotB: I3, swirl: 0, moving: false, scaleA: fit.scale, scaleB: fit.scale }); };
+  requestAnimationFrame(frame);
+  pm.addEventListener("input", () => { pass = +pm.value; table(); });
+  // The table follows the same bar.
   const LBL = ["Yes", "Unclear", "No"], rows = [...document.querySelectorAll("[data-table] li")];
-  const JOB = [2, 1, 0], JOB_PASS = 3;
-  function table() { for (const r of rows) { const a = +r.dataset.a, b = +r.dataset.b, s = JOB[a] + JOB[b], max = 4, ok = s >= JOB_PASS, stars = Math.round((s / max) * 5);
+  const JOB = [2, 1, 0];
+  function table() { for (const r of rows) { const a = +r.dataset.a, b = +r.dataset.b, s = JOB[a] + JOB[b], max = 4, ok = s >= pass, stars = Math.round((s / max) * 5);
       r.className = ok ? "in" : "out"; r.querySelector("[data-st]").textContent = ok ? "Included" : "Excluded";
       const [p, q] = r.querySelectorAll(".pick"); p.textContent = LBL[a]; p.dataset.v = LBL[a]; q.textContent = LBL[b]; q.dataset.v = LBL[b]; p.setAttribute("aria-label", `Question 1: ${LBL[a]}. Change it`); q.setAttribute("aria-label", `Question 2: ${LBL[b]}. Change it`);
       const st = r.querySelector("[data-stars]"); st.setAttribute("aria-label", `${stars} of 5 stars`); st.style.setProperty("--n", stars);
       r.querySelector("[data-back]").hidden = a === +r.dataset.a0 && b === +r.dataset.b0; } }
   document.querySelector("[data-table]").addEventListener("click", (e) => { const t = e.target, li = t.closest("li"); if (!li) return; if (t.matches(".pick")) { li.dataset[t.dataset.k] = (+li.dataset[t.dataset.k] + 1) % 3; table(); } if (t.matches("[data-back]")) { li.dataset.a = li.dataset.a0; li.dataset.b = li.dataset.b0; table(); } });
-  read(); table();
+  table();
 </script>
 <style>
-  .stage { position: relative; min-height: 100svh; display: flex; flex-direction: column; padding: 96px var(--edge) 32px; overflow: hidden; }
-  canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
-  .head, .deck, .tally { position: relative; }
-  h2 { max-width: 14em; }
-  .gatelab span { position: absolute; top: calc(50% - 136px); translate: -50% 0; width: 200px; text-align: center; font-size: 14px; color: var(--t1); }
-  .gatelab [data-gl="0"] { left: 34%; } .gatelab [data-gl="1"] { left: 62%; }
-  .tally { position: absolute; right: var(--edge); top: 50%; translate: 0 -50%; text-align: right; }
-  .tally b { display: inline; font-weight: 500; font-size: 26px; font-variant-numeric: tabular-nums; }
-  .tally span { color: var(--t2); margin-left: 6px; } .tally { background: rgb(0 0 0 / .7); padding: 6px 14px; border-radius: 999px; }
-  .set { position: relative; margin-top: auto; margin-bottom: 12px; color: var(--t2); font-size: 15px; } .deck { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; padding: 20px; background: rgb(11 12 15 / .82); border: 1px solid var(--line); border-radius: 18px; }
-  fieldset { border: 0; margin: 0; padding: 0; min-width: 0; display: grid; gap: 4px; }
-  legend { padding: 0; font-size: 14px; margin-bottom: 8px; }
-  fieldset label { display: grid; grid-template-columns: 64px 1fr 16px; gap: 10px; align-items: center; font-size: 13px; }
-  input[type="range"] { accent-color: var(--t1); width: 100%; height: 22px; margin: 0; }
-  output { font: 400 13px var(--mono); color: var(--t2); text-align: right; }
-  .ans.Yes { color: var(--good); } .ans.Unclear { color: var(--warn); } .ans.No { color: var(--bad); }
-  .mark { display: grid; align-content: center; gap: 6px; } .mark label { font-size: 14px; } .mark output { text-align: left; font-size: 15px; color: var(--t1); }
+  .gate { position: relative; isolation: isolate; height: 100svh; min-height: 620px; display: flex; flex-direction: column; justify-content: space-between; padding: 96px var(--edge) 40px; overflow: hidden; background: #000; }
+  canvas { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; opacity: 0; transition: opacity 1s var(--ease); }
+  img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; mix-blend-mode: screen; }
+  h2 { max-width: 8em; font-size: clamp(40px, 5.6vw, 92px); line-height: .96; }
+  .bar { width: min(560px, 100%); display: grid; gap: 8px; } .bar label { font-size: 18px; } .bar input { width: 100%; height: 28px; margin: 0; accent-color: #fff; } .ends { display: flex; justify-content: space-between; font-size: 14px; color: var(--t2); }
   .review { padding: 128px var(--edge) 96px; }
   .r-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; align-items: end; margin-bottom: 48px; }
   .table :global(li) { display: grid; grid-template-columns: 76px minmax(0, 1fr) 84px 84px 96px 76px; gap: 12px; align-items: center; min-height: 60px; padding-block: 10px; border-top: 1px solid var(--line); }
@@ -136,10 +84,11 @@ const qs = ["Is it a randomised trial?", "Is it about reading in primary school?
   .pick { height: 32px; border-radius: 8px; background: var(--s2); font-size: 13px; transition: background-color .15s var(--ease); }
   .pick:hover { background: var(--s3); }
   .pick[data-v="Yes"] { color: var(--good); } .pick[data-v="Unclear"] { color: var(--warn); } .pick[data-v="No"] { color: var(--bad); }
-  .stars { --n: 0; width: 86px; height: 12px; background: linear-gradient(90deg, #ffd2a1 calc(var(--n) * 20%), var(--s3) 0); -webkit-mask: repeating-linear-gradient(90deg, #000 0 14px, transparent 14px 18px); mask: repeating-linear-gradient(90deg, #000 0 14px, transparent 14px 18px); }
+  .stars { --n: 0; --star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5l2.9 6.2 6.8.8-5 4.7 1.3 6.7-6-3.3-6 3.3 1.3-6.7-5-4.7 6.8-.8z'/%3E%3C/svg%3E"); width: 90px; height: 18px; background: linear-gradient(90deg, #ffd2a1 calc(var(--n) * 20%), var(--s3) 0); -webkit-mask: var(--star) 0 0/18px 18px repeat-x; mask: var(--star) 0 0/18px 18px repeat-x; }
+  .note { margin-top: 16px; font-size: 14px; color: var(--t3); }
   .back { font-size: 13px; color: var(--ink); text-align: right; }
   @media (max-width: 900px) {
-    .deck, .r-head { grid-template-columns: minmax(0, 1fr); } .tally { position: relative; top: auto; right: auto; translate: none; text-align: left; margin-top: 24px; } .gatelab { display: none; } .deck { margin-top: 240px; gap: 16px; }
+    .r-head { grid-template-columns: minmax(0, 1fr); }
     .cols { display: none; } .table :global(li) { grid-template-columns: 1fr 1fr; } .t { grid-column: 1 / -1; order: -1; } .pick::before { content: attr(data-q) " "; color: var(--t3); }
   }
 </style>

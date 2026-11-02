@@ -7,9 +7,14 @@ const { id = "ask" } = Astro.props;
   <input id={id} name="q" autocomplete="off" required data-ask-input placeholder="Does peer tutoring improve reading?" />
   <button aria-label="Search"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5" /></svg></button>
 </form>
+<script>
+  // The app reads `q` as keywords: words that only make it a sentence would narrow the search to almost nothing.
+  const FILLER = /^(a|an|and|are|as|at|be|by|can|did|do|does|for|from|good|has|have|how|if|in|is|it|of|on|or|really|than|that|the|their|there|these|this|to|was|were|what|when|where|which|who|why|will|with|would)$/i;
+  for (const form of document.querySelectorAll("[data-ask]")) form.addEventListener("submit", (e) => { const input = form.querySelector("input"), words = input.value.replace(/[?.!,]/g, " ").split(/\s+/).filter((w) => w && !FILLER.test(w)); if (!words.length) return; e.preventDefault(); location.href = `${form.action}?q=${encodeURIComponent(words.join(" "))}`; });
+</script>
 <style>
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .ask { display: flex; align-items: center; gap: 12px; width: min(680px, 100%); height: 72px; padding: 8px 8px 8px 28px; border-radius: 999px; background: rgb(18 22 34 / .72); box-shadow: 0 0 0 1px rgb(255 255 255 / .18), 0 24px 80px -12px rgb(0 0 0 / .8); backdrop-filter: blur(18px); transition: box-shadow .2s var(--ease); }
+  .ask { display: flex; align-items: center; gap: 12px; width: min(680px, 100%); height: 72px; padding: 8px 8px 8px 28px; border-radius: 999px; background: rgb(14 17 26 / .9); box-shadow: 0 0 0 1px rgb(255 255 255 / .18), 0 24px 80px -12px rgb(0 0 0 / .8); transition: box-shadow .2s var(--ease); }
   .ask:focus-within { box-shadow: 0 0 0 1.5px var(--pale), 0 24px 80px -12px rgb(0 0 0 / .8); }
   input { flex: 1; min-width: 0; background: none; border: 0; outline: 0; font-size: clamp(16px, 1.4vw, 20px); }
   input::placeholder { color: rgb(242 244 248 / .55); }

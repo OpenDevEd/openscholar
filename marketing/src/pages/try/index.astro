@@ -4,15 +4,16 @@ import DemoSearch from "../../components/DemoSearch.astro";
 import DemoScreening from "../../components/DemoScreening.astro";
 import DemoEvidence from "../../components/DemoEvidence.astro";
 import DemoAssistant from "../../components/DemoAssistant.astro";
-import { APP } from "../../data/site.mjs";
+import AskBar from "../../components/AskBar.astro";
 ---
 <Base title="See it work: OpenScholar" description="Don't take our word for it. Search, screen, check and approve, right here on this page.">
   <DemoSearch />
   <DemoScreening />
   <DemoEvidence />
   <DemoAssistant />
-  <section class="go"><h2>Now try it on your own question</h2><a class="btn primary" href={APP}>Get started</a></section>
+  <section class="go"><img src="/img/scene-horizon-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" /><h2>Now try it on your own question</h2><AskBar id="ask-try" /></section>
 </Base>
 <style>
-  .go { display: flex; flex-direction: column; align-items: center; gap: 32px; text-align: center; padding: 160px var(--edge); background: radial-gradient(70% 80% at 50% 100%, #0c2152, #000 70%); }
+  .go { position: relative; isolation: isolate; height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; text-align: center; padding-inline: var(--edge); overflow: hidden; }
+  .go img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
 </style>

@@ -1,35 +1,38 @@
 ---
 import Base from "../layouts/Base.astro";
 import AskBar from "../components/AskBar.astro";
-const statement = "Too many tabs. A spreadsheet nobody trusts. A review that's out of date before it's done. All that, to answer one question.".split(" ");
+const statement = ["Too many tabs.", "A spreadsheet nobody trusts.", "A review that's out of date before it's done.", "All that, to answer one question."];
+const stays = ["Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia", "Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees", "Peer tutoring in reading in Scotland: thinking big"];
+const falls = ["Psychological Effects of Peer Tutoring in Mathematics in Primary Education", "How does peer tutoring contribute to the development of reading comprehension?"];
 const scenes = [[2, "telescope"], [3, "prism"], [4, "spectrograph"], [5, "console"], [6, "array"], [7, "plates"], [8, "horizon"]];
 const steps = ["Finding the papers that matter", "Saving them to a collection", "Screening them against your questions", "Pulling out the details you asked for", "Writing up what it found"];
 const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26%", "Tomas is reading the screening"], ["left:10%;top:52%", "Amina added papers to the collection"], ["left:74%;top:44%", "Lena shared it with a colleague"]];
 ---
 <Base title="OpenScholar: know what the research really says" description="From your first question to published evidence, OpenScholar does the reading with you." journey>
   <canvas class="field" data-field aria-hidden="true"></canvas>
-  <div class="photos" aria-hidden="true">{scenes.map(([i, n]) => <img data-photo={i} src={`/img/scene-${n}-1672.avif`} width="1672" height="941" decoding="async" alt="" />)}</div>
+  <div class="photos" aria-hidden="true">{scenes.map(([i, n]) => <img data-photo={i} src={`/img/scene-${n}-1672.avif`} width="1672" height="941" decoding="async" alt="" />)}<div class="etched" data-etched><img src="/img/lib-plate.avif" width="1000" height="782" decoding="async" alt="" /></div></div>
+  <noscript><style>.pin { position: sticky !important; } .ch .copy { visibility: visible !important; }</style></noscript>
 
   <section class="ch hero" data-ch="0"><div class="pin"><div class="copy" data-copy>
     <h1>Know what the research really says</h1>
     <div class="hero-foot"><p class="lead">From your first question to published evidence, OpenScholar does the reading with you.</p><AskBar id="ask-hero" /></div>
   </div></div></section>
 
-  <section class="ch said" data-ch="1"><div class="pin mid"><p class="say" data-said data-copy>{statement.map((w) => <span>{w} </span>)}</p></div></section>
+  <section class="ch said" data-ch="1"><div class="pin mid"><p class="say" data-said data-copy>{statement.map((s) => <span>{s}</span>)}</p></div></section>
 
   <section class="ch" data-ch="2"><div class="pin"><div class="copy find" data-copy>
     <div class="t"><h2>Ask like a person. Search like a librarian.</h2><p class="lead">Your question goes in plain. The search comes out expert, and you see the shape of the whole field before you read a single paper.</p></div>
-    <div class="shot overview"><img src="/img/app-overview.avif" width="1600" height="898" decoding="async" alt="An AI overview of a search: a written summary, papers per year, and where to start reading" /></div>
+    <p class="query" aria-label="Does peer tutoring improve reading? becomes the search: peer tutoring AND reading"><s>Does peer tutoring improve reading?</s><span><i style="color:#ffc48a">"peer tutoring"</i> <i class="op">AND</i> <i style="color:#8fd3ff">reading</i></span></p>
   </div></div></section>
 
   <section class="ch" data-ch="3"><div class="pin"><div class="copy screen" data-copy>
     <div class="t"><h2 class="huge">Let the noise fall away</h2><p class="lead">Tell it what matters. Every paper is judged by your rules, in the open, and you always have the last word.</p></div>
-    <div class="shot rows"><img src="/img/app-rows.avif" width="1600" height="1424" decoding="async" alt="A screening list where each paper shows its answers and a star rating" /></div>
+    <ul class="kept">{stays.map((t, i) => <li style={`--i:${i}`}>{t}</li>)}{falls.map((t, i) => <li class="gone" style={`--i:${i}`}>{t}</li>)}</ul>
   </div></div></section>
 
   <section class="ch" data-ch="4"><div class="pin"><div class="copy extract" data-copy>
-    <div class="t"><h2>Stop copying. Start knowing.</h2></div>
-    <figure class="moment"><span class="asked">What is the sample size?</span><b class="ans">298</b><blockquote>A randomised trial was conducted in four Colombian elementary schools with eight classes, and <mark>298 third and fifth grade pupils</mark>.</blockquote><figcaption>Every answer, tied to the sentence it came from</figcaption></figure>
+    <div class="t"><h2>Stop copying. Start knowing.</h2><p class="lead">Ask your questions once, across every paper. Each answer shows you the sentence it came from.</p></div>
+    <figure class="moment"><figcaption>What is the sample size?</figcaption><blockquote>A randomised trial was conducted in four Colombian elementary schools with eight classes, and <mark>298 third and fifth grade pupils</mark>.</blockquote></figure>
   </div></div></section>
 
   <section class="ch" data-ch="5"><div class="pin"><div class="copy assist" data-copy>
@@ -44,7 +47,7 @@ const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26
 
   <section class="ch" data-ch="7"><div class="pin"><div class="copy lib" data-copy>
     <div class="t"><h2>Give your evidence a home</h2><p class="lead">Turn what you've found into a public library, with your name on the door, that anyone can search, explore and question. New work finds its own way in.</p><a class="btn primary" href="/evidence-libraries/">Explore Evidence Libraries</a></div>
-    <a class="shot live" href="https://wealth-inequality.openscholar.ai"><img src="/img/live-wi-home.avif" width="1920" height="1200" decoding="async" alt="A live Evidence Library's home page" /></a>
+    
   </div></div></section>
 
   <section class="ch last" data-ch="8"><div class="pin mid"><div class="copy end" data-copy><h2>What do you want to know?</h2><AskBar id="ask-end" /><a class="link" href="/docs/">Read the docs</a></div></div></section>
@@ -55,12 +58,13 @@ const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26
 <style>
   .field { position: fixed; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1.4s var(--ease); pointer-events: none; }
   .photos { position: fixed; inset: 0; pointer-events: none; mix-blend-mode: screen; }
+  .etched { position: absolute; left: 0; top: 0; width: 1000px; height: 782px; transform-origin: 0 0; mix-blend-mode: multiply; opacity: 0; visibility: hidden; } .photos .etched img { position: static; width: 100%; height: 100%; opacity: 1; visibility: visible; object-fit: fill; }
   .photos img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; visibility: hidden; }
   .ch { position: relative; height: 220svh; pointer-events: none; }
-  .hero { height: 150svh; } .said { height: 300svh; } .last { height: 170svh; }
-  .pin { position: sticky; top: 0; height: 100svh; padding: 88px var(--edge) 40px; display: flex; flex-direction: column; justify-content: flex-end; overflow: clip; }
+  .hero { height: 150svh; } .said { height: 420svh; } .last { height: 170svh; }
+  .pin { position: fixed; inset: 0 0 auto; height: 100svh; padding: 88px var(--edge) 40px; display: flex; flex-direction: column; justify-content: flex-end; overflow: clip; }
   .pin.mid { justify-content: center; align-items: center; text-align: center; } .pin.top { justify-content: flex-start; }
-  .copy { pointer-events: auto; will-change: opacity, transform; }
+  .copy { pointer-events: auto; will-change: opacity, transform; } .ch:not(.hero) .copy { visibility: hidden; }
   .copy a, .copy input, .copy button { pointer-events: auto; }
   .lead { margin-top: 20px; max-width: 34rem; text-shadow: 0 1px 24px #000; color: rgb(242 244 248 / .82); }
   h2 { text-shadow: 0 2px 40px rgb(0 0 0 / .85); }
@@ -70,28 +74,24 @@ const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26
   .hero-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px 48px; margin-top: 28px; }
   .hero-foot .lead { margin: 0; max-width: 26rem; }
 
-  .say { font-size: clamp(36px, 6vw, 96px); font-weight: 500; line-height: 1.06; letter-spacing: -.04em; max-width: 14em; text-shadow: 0 2px 30px #000; }
-  .say span { opacity: .14; }
+  .say { position: relative; width: 100%; height: 60svh; } .say span { position: absolute; inset: 0; display: grid; place-items: center; font-size: clamp(44px, 8.4vw, 148px); font-weight: 500; line-height: .98; letter-spacing: -.05em; text-wrap: balance; opacity: 0; }
 
-  .shot { display: block; border-radius: 16px; overflow: hidden; background: #050507; box-shadow: 0 0 0 1px rgb(255 255 255 / .12), 0 40px 120px -20px #000; } .shot img { width: 100%; height: auto; }
-
-  .find { padding-top: 2vh; max-width: 48vw; flex: 1; }
-  .find .t { } .find h2 { font-size: clamp(38px, 5vw, 84px); }
-  .overview { position: absolute; left: var(--edge); bottom: 0; translate: 0 38%; width: min(56vw, 880px); box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 40px 120px -20px #000, 40px -30px 120px -40px #3b82f6; }
+  .find { max-width: 46vw; flex: 1; } .find h2 { font-size: clamp(38px, 5vw, 84px); }
+  .query { margin-top: 20px; display: grid; gap: 4px; font-size: clamp(20px, 2vw, 32px); font-weight: 500; letter-spacing: -.02em; } .query s { text-decoration: none; color: var(--t3); font-weight: 400; font-size: .7em; } .query i { font-style: normal; } .query .op { color: #6b7280; }
 
   .screen { position: absolute; inset: 88px var(--edge) 0; } .screen .huge { font-size: clamp(40px, 5.6vw, 92px); line-height: .96; }
   .screen .lead { max-width: 36rem; margin-top: 12px; }
-  .rows { position: absolute; left: 0; top: 56svh; width: min(46vw, 720px); box-shadow: 0 -1px 0 0 rgb(180 255 220 / .7), 0 -30px 120px -30px #34d399, 0 40px 120px -20px #000; }
+  .kept { position: absolute; left: 0; top: calc(50svh - 40px); width: min(40vw, 580px); display: grid; gap: 12px; font-size: clamp(15px, 1.25vw, 19px); line-height: 1.3; } .kept li { padding-left: 22px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%239ff0c0' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 10.5 8 14.5 16 5.5'/%3E%3C/svg%3E") 0 .22em/15px no-repeat; }
+  .kept .gone { background: none; color: var(--t3); animation: drop 5s calc(var(--i) * 1.4s) cubic-bezier(.4, 0, .9, .5) infinite; } @keyframes drop { 0%, 30% { opacity: 1; translate: 0 0; } 80%, 100% { opacity: 0; translate: 0 90px; } }
 
-  .extract { height: 100%; position: relative; } .extract h2 { font-size: clamp(40px, 6vw, 104px); max-width: 6.4em; line-height: .96; }
-  .moment { position: absolute; right: 0; bottom: 0; width: min(40vw, 620px); margin: 0; padding: 28px; border-radius: 24px; background: rgb(8 12 22 / .78); box-shadow: 0 0 0 1px rgb(150 220 255 / .25), 0 30px 120px -20px #22d3ee66; backdrop-filter: blur(14px); }
-  .asked { color: var(--t2); font-size: 15px; } .ans { display: block; font-weight: 500; font-size: clamp(64px, 9vw, 136px); line-height: 1; letter-spacing: -.05em; margin-block: 4px 16px; color: #fff; }
-  blockquote { font-size: clamp(16px, 1.5vw, 21px); line-height: 1.4; color: rgb(242 244 248 / .7); } blockquote mark { background: none; color: #fff; box-shadow: inset 0 -2px 0 #22d3ee; }
-  figcaption { margin-top: 14px; font-size: 14px; color: var(--t2); }
+  .extract { height: 100%; position: relative; } .extract h2 { font-size: clamp(40px, 6vw, 104px); max-width: 6.4em; line-height: .96; } .extract .lead { max-width: 25rem; }
+  .moment { position: absolute; right: 0; bottom: 0; width: min(38vw, 600px); margin: 0; }
+  figcaption { color: var(--t2); font-size: clamp(16px, 1.4vw, 20px); margin-bottom: 8px; }
+  blockquote { font-size: clamp(22px, 2.5vw, 38px); line-height: 1.2; letter-spacing: -.02em; color: rgb(242 244 248 / .55); text-shadow: 0 1px 24px #000; } blockquote mark { background: none; color: #fff; box-shadow: inset 0 -3px 0 #8fd3ff; }
 
   .assist { height: 100%; display: flex; flex-direction: column; justify-content: center; gap: 32px; } .assist .t { max-width: 44rem; } .assist h2 { font-size: clamp(40px, 5.4vw, 92px); }
-  .run { width: min(480px, 100%); padding: 24px; border-radius: 24px; background: rgb(22 16 6 / .72); box-shadow: 0 0 0 1px rgb(255 220 150 / .2), 0 30px 100px -20px #fbbf2455; backdrop-filter: blur(14px); }
-  .run ol { display: grid; gap: 12px; margin-bottom: 20px; } .run li { display: flex; align-items: center; gap: 12px; color: var(--t3); transition: color .3s var(--ease); font-size: 17px; } .run svg { flex: none; opacity: .2; transition: opacity .3s var(--ease), color .3s var(--ease); } .run li[data-done] { color: var(--t1); } .run li[data-done] svg { opacity: 1; color: #fbbf24; }
+  .run { width: min(480px, 100%); }
+  .run ol { display: grid; gap: 12px; margin-bottom: 24px; } .run li { display: flex; align-items: center; gap: 12px; color: var(--t3); transition: color .3s var(--ease); font-size: clamp(17px, 1.4vw, 21px); } .run svg { flex: none; opacity: .2; transition: opacity .3s var(--ease), color .3s var(--ease); } .run li[data-done] { color: var(--t1); } .run li[data-done] svg { opacity: 1; color: #ffc48a; }
 
   .team { position: relative; height: 100%; text-align: center; display: flex; flex-direction: column; align-items: center; padding-top: 2vh; } .team h2 { font-size: clamp(40px, 5.8vw, 100px); max-width: 11em; line-height: .98; }
   .link { display: inline-block; margin-top: 16px; font-size: 18px; color: var(--pale); }
@@ -100,8 +100,7 @@ const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26
   .bubble i { width: 30px; height: 30px; border-radius: 50%; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; }
   @keyframes float { 0%, 100% { opacity: 0; translate: 0 14px; } 12%, 70% { opacity: 1; translate: 0 0; } }
 
-  .lib { height: 100%; display: flex; flex-direction: column; justify-content: space-between; } .lib h2 { font-size: clamp(40px, 5.8vw, 100px); max-width: 7em; line-height: .96; } .lib .btn { margin-top: 20px; } .lib .lead { max-width: 28rem; }
-  .live { position: absolute; left: var(--edge); bottom: 0; translate: 0 52%; width: min(44vw, 700px); transition: translate .5s var(--ease); box-shadow: 0 0 0 1px rgb(255 240 200 / .22), 0 40px 120px -20px #000, 30px -20px 120px -40px #fbbf24; } .live:hover { translate: 0 44%; }
+  .lib { height: 100%; display: flex; flex-direction: column; justify-content: center; } .lib h2 { font-size: clamp(40px, 5.8vw, 100px); max-width: 7em; line-height: .96; } .lib .btn { margin-top: 20px; } .lib .lead { max-width: 28rem; }
 
   .end { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; padding-bottom: 30vh; } .end .link { margin-top: 0; } .end h2 { font-size: clamp(44px, 7.4vw, 124px); max-width: 10em; }
 
@@ -109,9 +108,8 @@ const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26
     .ch { height: 180svh; } .said { height: 260svh; }
     .hero h1 { font-size: clamp(48px, 14vw, 76px); }
     .find, .screen, .extract, .lib { display: block; height: auto; position: static; max-width: none; flex: none; inset: auto; } .assist { justify-content: flex-end; height: auto; } .team { height: auto; padding-top: 0; }
-    .pin { justify-content: flex-end; background: linear-gradient(transparent 35%, rgb(0 0 0 / .72) 62%); } .hero .pin, .said .pin, .last .pin { background: none; } .pin.top { justify-content: flex-start; background: linear-gradient(rgb(0 0 0 / .6), transparent 50%); }
-    .overview, .rows, .live, .moment { position: static; translate: none; width: 100%; margin-top: 16px; top: auto; }
-    .overview { max-height: 34svh; } .rows { max-height: 30svh; } .live { display: none; } .moment { padding: 18px; } .ans { font-size: 56px; margin-bottom: 8px; }
-    .sky { display: none; } .run { padding: 16px; } .run ol { gap: 8px; margin-bottom: 12px; } .run li { font-size: 15px; }
+    .pin { justify-content: flex-end; } .ch:not(.hero, .said, .last) .copy { margin: auto calc(var(--edge) * -1) -40px; padding: 64px var(--edge) 40px; background: linear-gradient(transparent, rgb(0 0 0 / .8) 64px); } .ch .team { margin: -88px calc(var(--edge) * -1) auto !important; padding: 88px var(--edge) 64px !important; background: linear-gradient(rgb(0 0 0 / .8) calc(100% - 64px), transparent) !important; }
+    .kept, .query { display: none; } .moment { position: static; width: 100%; margin-top: 16px; } blockquote { font-size: 20px; }
+    .sky { display: none; } .run ol { gap: 8px; margin-bottom: 12px; } .run li { font-size: 15px; }
   }
 </style>

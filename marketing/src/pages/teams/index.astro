@@ -1,23 +1,28 @@
 ---
 import Base from "../../layouts/Base.astro";
 import { APP } from "../../data/site.mjs";
+const DISHES = [0.106, 0.225, 0.344, 0.456, 0.569, 0.681, 0.8, 0.913];
 const cursors = [["Maya", "#ffd2a1", "c1"], ["Tomas", "#8fd3ff", "c2"], ["Amina", "#9ff0c0", "c3"]];
 ---
 <Base title="Teams: OpenScholar" description="Your whole team, in one place, on the same evidence.">
-  <section class="sky"><img src="/img/scene-array-1672.avif" width="1672" height="941" alt="Eight radio telescope dishes in a line at blue hour, all pointing at the same patch of sky" fetchpriority="high" /><div class="sky-copy"><h1>Stop emailing spreadsheets</h1><p class="lead">Bring everyone into one place, on the same evidence, and see it change as it happens.</p><a class="btn primary" href={APP}>Bring your team in</a></div></section>
-
-  <section class="together" style="--glow:#60a5fa">
-    <div class="tw-copy"><h2>Read it together</h2><p class="lead">See who has it open, and watch the work move while they're in it.</p></div>
-    <div class="room">
-      <div class="faces" aria-hidden="true">{cursors.map(() => <i></i>)}<span>3 here now</span></div>
-      <img src="/img/app-rows.avif" width="1600" height="1424" loading="lazy" decoding="async" alt="A screening that three people are working in together" />
-      {cursors.map(([n, c, k]) => <span class={`cur ${k}`} aria-hidden="true"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M1 1l5 14 2-6 6-2z" fill={c} /></svg><em style={`background:${c}`}>{n}</em></span>)}
+  <section class="array" data-array>
+    <div class="a-pin">
+      <img class="photo" src="/img/scene-array-1672.avif" width="1672" height="941" alt="Eight radio telescope dishes in a line at blue hour, all pointing at the same patch of sky" fetchpriority="high" />
+      <svg class="beams" viewBox="0 0 1672 941" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+        <defs><radialGradient id="star"><stop offset="0" stop-color="#fff" /><stop offset=".25" stop-color="#bfdbfe" stop-opacity=".7" /><stop offset="1" stop-color="#60a5fa" stop-opacity="0" /></radialGradient></defs>
+        {DISHES.map((u, i) => <path class="beam" d={`M${u * 1672} 540 L836 94`} /><path class="pulse" data-pulse={i} pathLength="1" d={`M${u * 1672} 540 L836 94`} />)}
+        <circle class="point" data-point cx="836" cy="94" r="46" fill="url(#star)" />
+      </svg>
+      <div class="a-copy" data-copy><h1>Stop emailing spreadsheets</h1><p class="lead">Bring everyone into one place, on the same evidence, and watch it change as it happens.</p><a class="btn primary" href={APP}>Bring your team in</a></div>
+      <p class="said" data-said aria-live="off"></p>
+      <div class="opened" data-opened>
+        <div class="o-t"><h2>Read it together</h2><p class="lead">See who has it open, and every change anyone made, the assistant's included.</p></div>
+        <div class="room">
+          <img src="/img/app-rows.avif" width="1600" height="1424" loading="lazy" decoding="async" alt="A screening that three people are working in together" />
+          {cursors.map(([n, c, k]) => <span class={`cur ${k}`} aria-hidden="true"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M1 1l5 14 2-6 6-2z" fill={c} /></svg><em style={`background:${c}`}>{n}</em></span>)}
+        </div>
+      </div>
     </div>
-  </section>
-
-  <section class="story">
-    <div class="st-a"><h2>Never ask "who changed this?" again</h2><p class="lead">Every item keeps its own history, including what the assistant did.</p></div>
-    <ol class="feed" data-feed aria-label="Recent activity"></ol>
   </section>
 
   <section class="share">
@@ -38,45 +43,45 @@ const cursors = [["Maya", "#ffd2a1", "c1"], ["Tomas", "#8fd3ff", "c2"], ["Amina"
     </div>
   </section>
 
-  <section class="go"><h2>Bring your team in</h2><a class="btn primary" href={APP}>Get started</a></section>
+  <section class="go"><img src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" /><div><h2>Bring your team in</h2><a class="btn primary" href={APP}>Get started</a></div></section>
 </Base>
 <script>
-  const LOG = [["Maya", "started the screening"], ["Amina", "added papers to the collection"], ["The assistant, for Maya", "extracted the sample sizes"], ["Tomas", "changed an answer"], ["Lena", "rated a paper"], ["Maya", "shared it with a guest"], ["Tomas", "added a paper to the collection"], ["Amina", "changed an answer"]];
-  const feed = document.querySelector("[data-feed]"); let k = 0;
-  const push = () => { const [who, what] = LOG[k++ % LOG.length], li = document.createElement("li"); li.innerHTML = `<i></i><span><b>${who}</b> ${what}</span>`; feed.prepend(li); if (feed.children.length > 5) feed.lastElementChild.remove(); };
-  for (let i = 0; i < 5; i++) push();
-  if (!matchMedia("(prefers-reduced-motion: reduce)").matches) setInterval(() => { if (!document.hidden) push(); }, 2800);
+  const root = document.querySelector("[data-array]"), said = root.querySelector("[data-said]"), copy = root.querySelector("[data-copy]"), opened = root.querySelector("[data-opened]"), point = root.querySelector("[data-point]");
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const LOG = [[3, "Maya started a screening"], [5, "Tomas changed an answer"], [1, "Amina added papers to the collection"], [4, "The assistant extracted the sample sizes, for Maya"], [6, "Lena rated a paper"], [2, "Tomas added a paper to the collection"], [0, "Amina changed an answer"], [7, "Maya shared it with a guest"]];
+  let k = 0;
+  const fire = () => { const [dish, what] = LOG[k++ % LOG.length]; said.textContent = what; said.classList.remove("in"); void said.offsetWidth; said.classList.add("in"); const p = root.querySelector(`[data-pulse="${dish}"]`); p.classList.remove("go"); void p.getBoundingClientRect(); p.classList.add("go"); point.classList.remove("hit"); void point.getBoundingClientRect(); point.classList.add("hit"); };
+  fire(); if (!reduced) setInterval(() => { if (!document.hidden && !opened.hasAttribute("data-full")) fire(); }, 2200);
+  // Scrolling opens the point in the sky into the work everyone's looking at.
+  const scroll = () => { const r = root.getBoundingClientRect(), p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight))), o = Math.min(1, Math.max(0, (p - 0.12) / 0.62)), e = o * o * (3 - 2 * o); opened.style.clipPath = `circle(${e * 130}vmax at 50% 10%)`; opened.toggleAttribute("data-full", e > 0.98); copy.style.opacity = 1 - Math.min(1, o * 2.4); copy.style.pointerEvents = o > 0.2 ? "none" : ""; };
+  let queued = false; addEventListener("scroll", () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; scroll(); }); }, { passive: true }); addEventListener("resize", scroll, { passive: true }); scroll();
   const move = document.querySelector("[data-move]"), card = move.querySelector("[data-card]"), go = move.querySelector("[data-go]"), [la, lb] = [move.querySelector('[data-lane="a"]'), move.querySelector('[data-lane="b"]')];
   go.addEventListener("click", () => { const to = card.parentElement === la ? lb : la, swap = () => { to.append(card); go.textContent = to === lb ? "Move back to Personal" : "Move to Learning Lab"; }; document.startViewTransition ? document.startViewTransition(swap) : swap(); });
 </script>
-<style is:global>
-  [data-feed] li { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 14px; align-items: center; padding: 12px 16px; border-radius: 16px; background: rgb(20 24 34 / .7); font-size: clamp(16px, 1.4vw, 20px); animation: fadeUp .4s var(--ease) both; } [data-feed] li + li { margin-top: 8px; } [data-feed] li:nth-child(n + 3) { opacity: .6; }
-  [data-feed] b { font-weight: 500; }
-  [data-feed] li i { width: 36px; height: 36px; border-radius: 50%; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; }
-  @keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } }
-</style>
 <style>
-  .sky { position: relative; height: 100svh; overflow: hidden; }
-  .sky img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center bottom; }
-  .sky-copy { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 112px var(--edge) 0; }
-  .sky h1 { font-size: clamp(50px, 8.6vw, 148px); line-height: .94; letter-spacing: -.05em; max-width: 9em; text-shadow: 0 2px 40px rgb(0 0 0 / .6); }
-  .sky .lead { margin-block: 20px 24px; max-width: 34rem; text-shadow: 0 1px 24px #000; }
-  .together { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 64px; align-items: center; padding: 128px var(--edge); background: radial-gradient(60% 70% at 75% 50%, #0c2152, #000 70%); }
-  .tw-copy .lead { margin-top: 24px; }
-  .room { position: relative; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 40px 120px -20px #000, 0 0 160px -30px #3b82f6; } .room img { width: 100%; height: auto; }
-  .faces { position: absolute; right: 16px; top: 12px; z-index: 2; display: flex; align-items: center; padding: 4px 12px 4px 14px; border-radius: 999px; background: rgb(0 0 0 / .72); font-size: 13px; } .faces i { width: 26px; height: 26px; margin-left: -8px; border-radius: 50%; border: 2px solid #111; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; } .faces span { margin-left: 8px; }
+  .array { height: 300svh; }
+  .a-pin { position: sticky; top: 0; height: 100svh; overflow: hidden; background: #000; }
+  .photo, .beams { position: absolute; inset: 0; width: 100%; height: 100%; } .photo { object-fit: cover; object-position: 50% 100%; }
+  .beam { stroke: rgb(191 219 254 / .22); stroke-width: 1; fill: none; vector-effect: non-scaling-stroke; }
+  .pulse { stroke: #fff; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-dasharray: .1 1; stroke-dashoffset: .1; opacity: 0; vector-effect: non-scaling-stroke; } .pulse:global(.go) { animation: up 1.1s cubic-bezier(.4, 0, .6, 1) both; } @keyframes up { 0% { stroke-dashoffset: .1; opacity: 1; } 90% { opacity: 1; } 100% { stroke-dashoffset: -1; opacity: 0; } }
+  .point { transform-box: fill-box; transform-origin: center; } .point:global(.hit) { animation: hit 1.6s var(--ease) .9s both; } @keyframes hit { 0% { transform: scale(1); } 20% { transform: scale(1.8); } 100% { transform: scale(1); } }
+  .a-copy { position: absolute; inset: 15svh var(--edge) auto; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  h1 { font-size: clamp(46px, 6.8vw, 116px); line-height: .94; letter-spacing: -.05em; max-width: 9em; text-shadow: 0 2px 40px rgb(0 0 0 / .7); }
+  .a-copy .lead { margin-block: 20px 24px; max-width: 34rem; text-shadow: 0 1px 24px #000; }
+  .said { position: absolute; left: 0; right: 0; bottom: 32px; text-align: center; font-size: clamp(17px, 1.6vw, 24px); text-shadow: 0 1px 16px #000; opacity: 0; } .said:global(.in) { animation: said 2.1s var(--ease) both; } @keyframes said { 0% { opacity: 0; translate: 0 8px; } 15%, 80% { opacity: 1; translate: 0 0; } 100% { opacity: 0; } }
+  .opened { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 64px; align-items: center; padding: 88px var(--edge) 0; background: #060b18; clip-path: circle(0 at 50% 10%); will-change: clip-path; }
+  .o-t .lead { margin-top: 24px; }
+  .room { position: relative; align-self: start; border-radius: 18px 18px 0 0; overflow: hidden; box-shadow: 0 0 0 1px rgb(255 255 255 / .14); } .room img { width: 100%; height: auto; }
   .cur { position: absolute; left: 0; top: 0; display: flex; align-items: flex-start; will-change: transform; } .cur em { margin: 14px 0 0 -2px; padding: 1px 8px; border-radius: 999px; font-style: normal; font-size: 12px; color: #000; font-weight: 500; }
   .c1 { animation: c1 13s var(--ease) infinite alternate; } .c2 { animation: c2 17s var(--ease) infinite alternate; } .c3 { animation: c3 11s var(--ease) infinite alternate; }
   @keyframes c1 { 0% { transform: translate(14vw, 8vw); } 30% { transform: translate(38vw, 14vw); } 60% { transform: translate(20vw, 28vw); } 100% { transform: translate(44vw, 20vw); } }
   @keyframes c2 { 0% { transform: translate(40vw, 32vw); } 40% { transform: translate(12vw, 18vw); } 100% { transform: translate(30vw, 9vw); } }
   @keyframes c3 { 0% { transform: translate(24vw, 36vw); } 50% { transform: translate(46vw, 10vw); } 100% { transform: translate(8vw, 24vw); } }
-  .story { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 64px; align-items: center; padding: 128px var(--edge); }
-  .st-a .lead { margin-top: 24px; } .feed { min-height: 372px; }
-  .share { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 64px; align-items: center; padding: 128px var(--edge); background: radial-gradient(60% 70% at 20% 50%, #0a2a2e, #000 70%); } .share .lead { margin-top: 24px; }
+  .share { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 64px; align-items: center; padding: 128px var(--edge); } .share .lead { margin-top: 24px; }
   .invite { padding: 24px; border-radius: 24px; background: var(--s1); box-shadow: 0 0 0 1px var(--line2), 0 40px 120px -20px #000; rotate: -2deg; } .invite b { font-weight: 500; font-size: 22px; } .inv-row { display: flex; justify-content: space-between; margin-block: 16px; padding: 12px 14px; border-radius: 12px; background: var(--s2); } .invite em { font-style: normal; color: var(--t2); } .invite li { display: grid; grid-template-columns: 32px 1fr auto; gap: 12px; align-items: center; padding-block: 10px; } .invite i { width: 32px; height: 32px; border-radius: 50%; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; }
   .move { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 64px; padding: 128px var(--edge); align-items: center; } .move .lead { margin-block: 24px; }
   .lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } .lane { min-height: 300px; padding: 16px; border-radius: 22px; background: var(--s1); box-shadow: inset 0 0 0 1px var(--line); } .lane > span { color: var(--t2); font-size: 14px; }
   .card { view-transition-name: move-card; margin-top: 12px; padding: 16px; background: var(--s3); border-radius: 14px; } .card b { font-weight: 500; } .card ul { margin-top: 8px; color: var(--t2); font-size: 14px; display: grid; gap: 2px; }
-  .go { display: flex; flex-direction: column; align-items: center; gap: 32px; text-align: center; padding: 160px var(--edge); background: radial-gradient(70% 80% at 50% 100%, #0c2152, #000 70%); }
-  @media (max-width: 900px) { .together, .story, .share, .move { grid-template-columns: minmax(0, 1fr); padding-block: 72px; gap: 32px; } .invite { rotate: none; } @keyframes c1 { to { transform: translate(40vw, 50vw); } } }
+  .go { position: relative; isolation: isolate; height: 100svh; display: grid; place-items: center start; padding-inline: var(--edge); overflow: hidden; } .go img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 10% 100%; transform: scale(1.9); transform-origin: 0 100%; } .go h2 { font-size: clamp(44px, 7vw, 120px); max-width: 6em; line-height: .96; margin-bottom: 28px; text-shadow: 0 2px 40px #000; }
+  @media (max-width: 900px) { .a-copy { inset-block-start: 96px; } .opened { grid-template-columns: minmax(0, 1fr); gap: 24px; align-content: start; } .share, .move { grid-template-columns: minmax(0, 1fr); padding-block: 72px; gap: 32px; } .invite { rotate: none; } .cur { display: none; } }
 </style>

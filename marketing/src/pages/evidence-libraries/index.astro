@@ -2,7 +2,14 @@
 import Base from "../../layouts/Base.astro";
 import Designer from "../../components/Designer.astro";
 import Globe from "../../components/Globe.astro";
-import { APP, LIBRARIES } from "../../data/site.mjs";
+import { APP } from "../../data/site.mjs";
+import papers from "../../data/extraction.json";
+const shots = [
+  ["lib-home", "1920", "1200", "Wealth Inequality and Social Mobility", "https://wealth-inequality.openscholar.ai", "A library's home page, with its first pages fanned out beside its name"],
+  ["lib-evidence", "1240", "1040", "Artificial Intelligence in Education", "https://aied.openscholar.ai", "A map of research clusters in a library about AI in education"],
+  ["lib-map", "1920", "1333", "Wealth Inequality, around the world", "https://wealth-inequality.openscholar.ai/map", "A world map shaded by how much research each country has"],
+];
+const sources = [0, 1, 2].map((i) => ({ title: papers[i].title, year: papers[i].year, sentences: papers[i].sentences }));
 ---
 <Base title="Evidence Libraries: OpenScholar" description="Your evidence deserves better than a PDF in a shared drive. Give it a beautiful public home.">
   <section class="open">
@@ -10,16 +17,22 @@ import { APP, LIBRARIES } from "../../data/site.mjs";
     <div class="o-copy"><h1>Your evidence deserves better than a shared drive</h1><p class="lead">A public home with your name on the door, where people can find it, search it and trust it.</p><div class="acts"><a class="btn primary" href={`${APP}/evidence-libraries`}>Create your library</a><a class="btn quiet" href="https://wealth-inequality.openscholar.ai">Visit a live one</a></div></div>
   </section>
 
-  <section class="gallery">
-    <h2>Already out in the world</h2>
-    <div class="row">{LIBRARIES.map((l, i) => <a class:list={["card", `c${i}`]} href={l.href}><img src={`/img/${l.img}.avif`} width="1920" height="1200" loading="lazy" decoding="async" alt={`The ${l.name} library`} /><span>{l.name}</span></a>)}</div>
+  <section class="gallery" data-gallery>
+    <div class="g-pin">
+      <div class="g-intro"><h2>Already out in the world</h2></div>
+      {shots.map(([img, w, h, name, href, alt], i) => <a class="g-shot" href={href} data-shot={i}><img src={`/img/${img}.avif`} width={w} height={h} loading="lazy" decoding="async" alt={alt} /><span>{name}</span></a>)}
+    </div>
   </section>
 
   <Designer />
 
-  <section class="answers" style="--glow:#22d3ee">
-    <div class="a-text"><h2>Let your readers question the library</h2><p class="lead">Anyone can ask, and every answer points to the exact page it came from. When it can't read something, it says so.</p></div>
-    <div class="window"><img src="/img/app-ask.avif" width="1920" height="1200" loading="lazy" decoding="async" alt="An answer from a library's AI, with links to source pages beside the records it searched" /></div>
+  <section class="answers" data-answers data-sources={JSON.stringify(sources)}>
+    <div class="a-head"><h2>Let your readers question the library</h2></div>
+    <div class="a-ask"><p class="q">Does peer tutoring help children read?</p>
+      <p class="a" data-a>Yes, in the trials here. A <button type="button" data-cite="0">trial in Colombia</button> found a positive effect for the group doing Paired Reading. A <button type="button" data-cite="1">study in England</button> found gains in reading comprehension, and they were greater for the tutors than the tutees. <button type="button" data-cite="2">Work in mathematics</button> shows similar benefits at primary and secondary level.</p>
+      <p class="own">It tells you when it can't read something, too.</p>
+    </div>
+    <article class="page" aria-live="polite"><b data-t></b><p data-s></p></article>
   </section>
 
   <Globe />
@@ -33,25 +46,39 @@ import { APP, LIBRARIES } from "../../data/site.mjs";
     </div>
   </section>
 
-  <section class="end"><h2>Open your library</h2><a class="btn primary" href={`${APP}/evidence-libraries`}>Create your library</a></section>
+  <section class="end"><img src="/img/scene-plates-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" /><i class="tint" aria-hidden="true"></i><div><h2>Open your library</h2><a class="btn primary" href={`${APP}/evidence-libraries`}>Create your library</a></div></section>
 </Base>
+<script>
+  const gal = document.querySelector("[data-gallery]"), shots = [...gal.querySelectorAll("[data-shot]")];
+  const wipe = () => { const r = gal.getBoundingClientRect(), p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight))) * shots.length; shots.forEach((s, i) => { const k = Math.min(1, Math.max(0, p - i)); s.style.clipPath = `inset(${(1 - k) * 100}% 0 0)`; s.firstElementChild.style.transform = `scale(${1.08 - k * 0.08})`; }); };
+  let queued = false; addEventListener("scroll", () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; wipe(); }); }, { passive: true }); addEventListener("resize", wipe, { passive: true }); wipe();
+  const ans = document.querySelector("[data-answers]"), sources = JSON.parse(ans.dataset.sources), PICK = [[1, 5], [0, 4], [2, 8]], title = ans.querySelector("[data-t]"), body = ans.querySelector("[data-s]"), esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+  const cite = (k) => { const [src, at] = PICK[k], s = sources[src]; ans.querySelectorAll("[data-cite]").forEach((b) => b.toggleAttribute("data-on", +b.dataset.cite === k)); title.textContent = `${s.title}, ${s.year}`; body.innerHTML = s.sentences.map((x, i) => (i === at ? `<mark>${esc(x)}</mark>` : esc(x))).join(" "); };
+  ans.addEventListener("click", (e) => { const b = e.target.closest("[data-cite]"); if (b) cite(+b.dataset.cite); }); cite(0);
+</script>
 <style>
-  .open { position: relative; isolation: isolate; min-height: 100svh; display: flex; align-items: flex-end; padding: 112px var(--edge) 72px; overflow: hidden; background: radial-gradient(70% 70% at 30% 40%, #3b2a08, #000 70%); }
+  .open { position: relative; isolation: isolate; min-height: 100svh; display: flex; align-items: flex-end; padding: 112px var(--edge) 72px; overflow: hidden; }
   .scene { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 90% 45%; transform: scale(1.5); transform-origin: 82% 45%; mask-image: linear-gradient(#000 70%, transparent); }
   .o-copy { position: relative; max-width: 960px; }
   .o-copy h1 { font-size: clamp(46px, 6.6vw, 112px); text-shadow: 0 2px 40px rgb(0 0 0 / .7); }
   .o-copy .lead { margin-block: 24px 32px; max-width: 36rem; text-shadow: 0 1px 24px #000; }
   .acts { display: flex; flex-wrap: wrap; gap: 12px; }
-  .gallery { padding: 128px 0 96px; overflow: hidden; text-align: center; }
-  .gallery h2 { padding-inline: var(--edge); }
-  .row { display: flex; justify-content: center; margin-top: 64px; perspective: 1800px; padding-inline: 4vw; }
-  .card { position: relative; flex: 0 0 46vw; border-radius: 18px; overflow: hidden; box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 40px 100px -20px #000; transition: transform .6s var(--ease); }
-  .card img { display: block; width: 100%; height: auto; }
-  .c0 { transform: rotateY(18deg) translateX(14%) scale(.92); z-index: 1; } .c1 { z-index: 2; } .c2 { transform: rotateY(-18deg) translateX(-14%) scale(.92); z-index: 1; }
-  .card:hover { z-index: 3; transform: scale(1.02); }
-  .card span { position: absolute; left: 16px; bottom: 16px; padding: 6px 12px; border-radius: 999px; background: rgb(0 0 0 / .78); font-size: 14px; }
-  .answers { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 64px; align-items: center; padding: 128px var(--edge); background: radial-gradient(60% 70% at 80% 50%, #06303a, #000 70%); }
-  .answers .lead { margin-top: 24px; }
+
+  .gallery { height: 400svh; }
+  .g-pin { position: sticky; top: 0; height: 100svh; overflow: hidden; background: #000; }
+  .g-intro { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding-inline: var(--edge); } .g-intro h2 { font-size: clamp(48px, 9vw, 156px); line-height: .94; max-width: 8em; }
+  .g-shot { position: absolute; inset: 0; display: block; overflow: hidden; background: #000; clip-path: inset(100% 0 0); }
+  .g-shot img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; }
+  .g-shot span { position: absolute; left: var(--edge); bottom: 32px; padding: 8px 16px; border-radius: 999px; background: rgb(0 0 0 / .8); font-size: 16px; }
+
+  .answers { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px 64px; padding: 128px var(--edge); align-items: start; }
+  .a-head { grid-column: 1 / -1; } .a-head h2 { max-width: 11em; }
+  .q { font-size: clamp(18px, 1.6vw, 24px); color: var(--t2); margin-bottom: 16px; }
+  .a { font-size: clamp(26px, 3vw, 48px); line-height: 1.14; letter-spacing: -.03em; }
+  .a button { font: inherit; letter-spacing: inherit; color: #8fd3ff; box-shadow: inset 0 -2px 0 rgb(143 211 255 / .4); transition: color .15s var(--ease), box-shadow .15s var(--ease); } .a button[data-on] { color: #fff; box-shadow: inset 0 -3px 0 #fff; }
+  .own { margin-top: 24px; color: var(--t2); font-size: 18px; }
+  .page { position: sticky; top: 88px; padding: 28px; border-radius: 6px; background: #f4f3f0; color: #171717; font-size: 15px; line-height: 1.55; box-shadow: 0 40px 120px -20px #000; rotate: 1.2deg; } .page b { display: block; font-weight: 500; font-size: 20px; line-height: 1.2; margin-bottom: 12px; } .page p { color: #6b6b6b; } .page :global(mark) { background: #ffe9a8; color: #171717; }
+
   .care { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 64px; align-items: center; padding: 128px var(--edge); }
   .care .lead { margin-top: 24px; }
   .flow { display: grid; grid-template-columns: auto minmax(60px, 1fr) minmax(0, 1fr); align-items: center; height: 300px; }
@@ -60,6 +87,10 @@ import { APP, LIBRARIES } from "../../data/site.mjs";
   .pipe { stroke: #fbbf24; stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-dasharray: .06 .05; animation: flow 3s linear infinite; }
   @keyframes flow { to { stroke-dashoffset: -.33; } }
   .stack { display: grid; gap: 8px; } .stack b { padding: 16px 20px; border-radius: 16px; background: var(--s1); box-shadow: inset 0 0 0 1px var(--line); font-weight: 500; font-size: clamp(16px, 1.6vw, 22px); } .stack .on { background: var(--t1); color: #000; }
-  .end { display: flex; flex-direction: column; align-items: center; gap: 32px; padding: 160px var(--edge); text-align: center; background: radial-gradient(70% 80% at 50% 100%, #3b2a08, #000 70%); }
-  @media (max-width: 900px) { .answers, .care { grid-template-columns: minmax(0, 1fr); } .row { flex-direction: column; gap: 12px; } .card { flex: none; transform: none !important; } .flow svg { display: none; } .flow { grid-template-columns: 1fr 1fr; height: auto; gap: 24px; } }
+
+  .end { position: relative; isolation: isolate; height: 100svh; display: flex; align-items: center; padding-inline: var(--edge); overflow: hidden; }
+  .end img, .tint { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; } .end img { object-fit: cover; object-position: 100% 45%; }
+  .tint { background: var(--lib, #2563eb); mix-blend-mode: color; transition: background-color .4s var(--ease); }
+  .end h2 { font-size: clamp(44px, 7vw, 120px); max-width: 5em; line-height: .96; margin-bottom: 28px; text-shadow: 0 2px 40px #000; }
+  @media (max-width: 900px) { .open::after { content: ""; position: absolute; inset: 30% 0 0; z-index: -1; background: linear-gradient(transparent, rgb(0 0 0 / .86) 40%); } .answers, .care { grid-template-columns: minmax(0, 1fr); } .page { position: static; rotate: none; } .flow svg { display: none; } .flow { grid-template-columns: 1fr 1fr; height: auto; gap: 24px; } .end { background: #000; } .end::before { content: ""; position: absolute; inset: 0; z-index: -1; background: rgb(0 0 0 / .45); } }
 </style>

@@ -1,6 +1,5 @@
 ---
 import top from "../data/top-countries.json";
-const max = top[0].n;
 ---
 
   <section class="globe" data-globe>
@@ -8,10 +7,10 @@ const max = top[0].n;
     <div class="pin" data-pin hidden><i></i><span data-pin-t></span></div>
     <div class="left">
       <h2>See where your field really lives</h2>
-      <p class="lead">Every library comes with a living map of the people and places behind its evidence. Spin the Earth, or find a university.</p>
+      <p class="lead">Show the people and places behind your evidence. Spin the Earth, or find a university.</p>
       <div class="find"><label class="sr" for="f">Find an institution</label><input id="f" data-find placeholder="University of Nairobi" autocomplete="off" /><ul data-hits></ul></div>
     </div>
-    <ol class="rank" aria-label="Countries with the most institutions">{top.map((c) => <li><button type="button" data-fly={`${c.lon},${c.lat}`} data-label={c.name}><span>{c.name}</span><i style={`transform:scaleX(${c.n / max})`}></i></button></li>)}</ol>
+    <ol class="rank" aria-label="Fly to a country">{top.map((c) => <li><button type="button" data-fly={`${c.lon},${c.lat}`} data-label={c.name}><span>{c.name}</span></button></li>)}</ol>
   </section>
 
   
@@ -24,12 +23,12 @@ const max = top[0].n;
   const apply = (m, p) => [m[0] * p[0] + m[3] * p[1] + m[6] * p[2], m[1] * p[0] + m[4] * p[1] + m[7] * p[2], m[2] * p[0] + m[5] * p[1] + m[8] * p[2]];
   const sphere = (lon, lat, r = R) => { const c = Math.cos(lat * rad); return [r * c * Math.sin(lon * rad), r * Math.sin(lat * rad), r * c * Math.cos(lon * rad)]; };
   const wide = () => innerWidth >= 900;
-  (async () => {
+  new IntersectionObserver(async ([e], io) => { if (!e.isIntersecting) return; io.disconnect();
     const earth = new Int16Array(await (await fetch("/data/earth.bin")).arrayBuffer());
     const land = (earth.length - 2 - INST * 2) / 2, count = INST + land, data = new Float32Array(count * 4), seeds = new Float32Array(count * 2), r = mulberry(5);
     for (let i = 0; i < count; i++) { const k = i < INST ? 2 + i * 2 : 2 + INST * 2 + (i - INST) * 2, p = sphere(earth[k] / 100, earth[k + 1] / 100); data.set([p[0], p[1], p[2], i < INST ? 0.62 : 0.34], i * 4); seeds[i * 2] = r(); }
     field = createField(canvas, { count, seeds, targets: [{ data, warm: 0 }, { data, warm: 0 }], sizeScale: 0.85 }); canvas.style.opacity = 1;
-  })();
+  }, { rootMargin: "600px" }).observe(root);
   let then = 0;
   let visible = false; new IntersectionObserver(([e]) => { visible = e.isIntersecting; }).observe(root);
   const frame = (ms) => { requestAnimationFrame(frame); if (!field || document.hidden || !visible) return; const t = ms / 1000, dt = Math.min(0.05, t - then); then = t;
@@ -68,6 +67,5 @@ const max = top[0].n;
   .pin { position: absolute; left: 0; top: 0; pointer-events: none; } .pin i { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border: 1.5px solid #fff; border-radius: 50%; } .pin span { position: absolute; left: 14px; top: -11px; white-space: nowrap; padding: 2px 8px; background: var(--accent); border-radius: 6px; font-size: 13px; } [hidden] { display: none; }
   .rank { position: absolute; right: var(--edge); top: 50%; translate: 0 -50%; width: min(18vw, 280px); }
   .rank button { position: relative; display: grid; grid-template-columns: 1fr auto; width: 100%; padding: 7px 0 9px; font-size: 14px; text-align: left; color: var(--t2); transition: color .15s var(--ease); } .rank button:hover { color: #fff; }
-  .rank i { position: absolute; left: 0; bottom: 3px; width: 100%; height: 2px; background: var(--ink); transform-origin: left; opacity: .75; } .rank b { font-weight: 400; }
   @media (max-width: 900px) { .left { position: relative; left: auto; top: auto; width: auto; padding: 88px var(--edge) 0; pointer-events: auto; } .rank { display: none; } .globe { height: auto; min-height: 100svh; padding-bottom: 72vw; } }
 </style>
