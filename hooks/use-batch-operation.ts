@@ -39,19 +39,6 @@ interface UseBatchOperationConfig<TInput, TResult, TContext> {
   canStart: boolean;
   /** The papers to process */
   papers: Paper[];
-  /**
-   * When `true` (default) and the batch fully fails (rejected promise),
-   * the batchKey is removed from the dedup ref so the next render will
-   * retry the same set of papers — appropriate for transient failures
-   * like translation, where re-firing on a transient blip is desired.
-   *
-   * When `false`, failed batchKeys (both transport-level rejection and
-   * per-item errors in a successful response) are retained in the dedup
-   * ref so the failed batch is not re-queued. Used by screening, where
-   * a per-item insufficient_credits error is permanent until the user
-   * tops up — re-firing would loop forever.
-   */
-  retryFailedItems?: boolean;
 }
 
 interface UseBatchOperationReturn<TLoadingState> {
@@ -72,6 +59,8 @@ interface UseBatchOperationReturn<TLoadingState> {
  * 3. Clears the ref when contextId changes
  * 4. Uses contextId for O(1) comparison instead of JSON.stringify
  * 5. Exposes errors for UI feedback
+ * 6. Keeps a failed batch's key, so it isn't sent again by itself: a refusal such
+ *    as insufficient_credits holds until the person acts, and a re-send would loop
  */
 export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
   execute,
@@ -84,7 +73,6 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
   context,
   canStart,
   papers,
-  retryFailedItems = true,
   createLoadingState,
   clearLoadingState,
 }: UseBatchOperationConfig<TInput, TResult, TContext> & {
@@ -98,7 +86,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
   const [settledBatchVersion, setSettledBatchVersion] = useState(0);
   const fetchedKeysRef = useRef<Set<string>>(new Set());
   const isFetchingRef = useRef(false);
-  const contextIdAtFetchRef = useRef<string | null>(null);
+  const currentContextIdRef = useRef(contextId);
   const queuedLoadingBatchKeyRef = useRef<string | null>(null);
 
   // Get papers that need processing
@@ -123,13 +111,13 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     [handleResult, context, contextId]
   );
 
-  // Reset fetched keys and errors when contextId changes
+  // Reset fetched keys and errors when contextId changes. A batch still running
+  // keeps its slot: the server refuses a person's second, so the new context's waits.
   useEffect(() => {
     fetchedKeysRef.current.clear();
     setLoadingState(clearLoadingState());
     setErrors([]);
-    contextIdAtFetchRef.current = null;
-    isFetchingRef.current = false;
+    currentContextIdRef.current = contextId;
     queuedLoadingBatchKeyRef.current = null;
   }, [contextId, clearLoadingState]);
 
@@ -157,7 +145,6 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
 
     // Capture the contextId at fetch time to detect race conditions
     const contextIdAtFetch = contextId;
-    contextIdAtFetchRef.current = contextIdAtFetch;
 
     // Mark as fetching
     fetchedKeysRef.current.add(batchKey);
@@ -172,7 +159,7 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     execute(input)
       .then(({ results, errors: batchErrors }) => {
         // Check if context changed while we were fetching (O(1) string comparison)
-        if (contextIdAtFetchRef.current !== contextIdAtFetch) {
+        if (currentContextIdRef.current !== contextIdAtFetch) {
           return;
         }
 
@@ -181,52 +168,37 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
           handleResults(paperId, data, contextIdAtFetch);
         });
 
-        // Store errors for UI feedback. When retryFailedItems is false,
-        // also pre-stamp the failed sub-batch's key into the dedup ref
-        // so that a subsequent render — where filterItemsNeedingProcessing
-        // narrows to just the failed papers — does not refire the same
-        // failed batch. Without this, persistent per-item errors (e.g.
-        // insufficient_credits) loop forever.
+        // Store errors for UI feedback, and pre-stamp the failed sub-batch's
+        // key into the dedup ref so that a subsequent render, where
+        // filterItemsNeedingProcessing narrows to just the failed papers,
+        // does not refire it.
         if (batchErrors.length > 0) {
-          if (retryFailedItems === false) {
-            const failedPaperIds = new Set(
-              batchErrors
-                .map((e) => e.paperId)
-                .filter((id) => id !== "batch")
-            );
-            const failedPapers = papersNeedingProcessing.filter((p) =>
-              failedPaperIds.has(p.id)
-            );
-            const failedBatchKey = computeBatchKey(failedPapers, context);
-            if (failedBatchKey) {
-              fetchedKeysRef.current.add(failedBatchKey);
-            }
+          const failedPaperIds = new Set(
+            batchErrors
+              .map((e) => e.paperId)
+              .filter((id) => id !== "batch")
+          );
+          const failedPapers = papersNeedingProcessing.filter((p) =>
+            failedPaperIds.has(p.id)
+          );
+          const failedBatchKey = computeBatchKey(failedPapers, context);
+          if (failedBatchKey) {
+            fetchedKeysRef.current.add(failedBatchKey);
           }
           setErrors(batchErrors);
         }
       })
       .catch((error) => {
-        // On transport-level failure: when retryFailedItems is true
-        // (default), allow the next render to retry by removing the
-        // batchKey. When false, keep it so the failed batch is not
-        // re-queued.
-        if (retryFailedItems !== false) {
-          fetchedKeysRef.current.delete(batchKey);
-        }
+        if (currentContextIdRef.current !== contextIdAtFetch) return;
         setErrors([{ paperId: "batch", error: error.message || String(error) }]);
       })
       .finally(() => {
-        // Only clean up if this fetch's context is still current.
-        // If context changed, the reset effect already handled cleanup
-        // and a new fetch may be in progress — don't disturb it.
-        if (contextIdAtFetchRef.current === contextIdAtFetch) {
-          isFetchingRef.current = false;
-          queuedLoadingBatchKeyRef.current = null;
-          setLoadingState(clearLoadingState());
-          // Bump the settled-version so the effect re-runs and any
-          // queued K2 picks up the slot freed by K1.
-          setSettledBatchVersion((version) => version + 1);
-        }
+        isFetchingRef.current = false;
+        queuedLoadingBatchKeyRef.current = null;
+        setLoadingState(clearLoadingState());
+        // Bump the settled-version so the effect re-runs and any
+        // queued K2 picks up the slot freed by K1.
+        setSettledBatchVersion((version) => version + 1);
       });
   }, [
     batchKey,
@@ -241,7 +213,6 @@ export function useBatchOperation<TInput, TResult, TContext, TLoadingState>({
     computeBatchKey,
     createLoadingState,
     clearLoadingState,
-    retryFailedItems,
     settledBatchVersion,
   ]);
 

@@ -13,7 +13,6 @@ import {
   ExternalLink,
   Settings,
   X,
-  TranslateIcon,
 } from "@/components/icons";
 import { cn } from "@/lib/utils";
 import { DownloadMenu } from "@/components/download-menu";
@@ -24,6 +23,7 @@ import type { PaperResult } from "@/lib/types";
 import { saveablePaper, toPaperKey } from "@/lib/papers/paper-ref";
 import { ItemPresence } from "@/components/workspaces/presence";
 import { usePaperPage } from "@/lib/papers/use-paper-page";
+import { FocusTranslationControl } from "./focus-translation-control";
 
 export interface FocusModeHeaderProps {
   currentPaper: PaperResult;
@@ -33,6 +33,9 @@ export interface FocusModeHeaderProps {
   showTranslated: boolean;
   translatedContent: { translatedTitle: string; translatedAbstract: string; noTranslationNeeded?: boolean } | null;
   isTranslating: boolean;
+  listedPapers: PaperResult[];
+  translationMenuOpen: boolean;
+  onTranslationMenuOpenChange: (open: boolean) => void;
   isMobile: boolean;
   onRatingChange: (paperId: string, rating: string) => void;
   onToggleTranslation: () => void;
@@ -53,6 +56,9 @@ export function FocusModeHeader({
   showTranslated,
   translatedContent,
   isTranslating,
+  listedPapers,
+  translationMenuOpen,
+  onTranslationMenuOpenChange,
   isMobile,
   onRatingChange,
   onToggleTranslation,
@@ -103,7 +109,7 @@ export function FocusModeHeader({
                 {previous}
                 {next}
               </div>
-              <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded tabular-nums max-md:ms-1">
+              <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded tabular-nums whitespace-nowrap max-md:ms-1">
                 {currentIndex + 1} / {totalPapers}
               </div>
             </>
@@ -215,32 +221,21 @@ export function FocusModeHeader({
               </span>
             ) : null}
             <div className="flex items-center gap-1">
-              {/* Shown while the paper is translating or once it has a translation; a paper already in the reader's language has nothing to switch. */}
-              {hasTranslation || isTranslating ? (
-                <>
-                  <Button
-                    variant={showTranslated ? "outline-primary" : "outline"}
-                    size="sm"
-                    className="max-sm:w-8 max-sm:px-0"
-                    onClick={onToggleTranslation}
-                    aria-label={
-                      showTranslated
-                        ? tFocus("showOriginal")
-                        : tFocus("showTranslation")
-                    }
-                    disabled={!hasTranslation}
-                  >
-                    <TranslateIcon working={isTranslating} size={12} className="h-3 w-3 md:me-1" />
-                    <span className="hidden sm:inline">
-                      {showTranslated ? tFocus("original") : tFocus("translation")}
-                    </span>
-                  </Button>
-                  <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden md:inline">
-                    T
-                  </span>
-                  <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
-                </>
-              ) : null}
+              <FocusTranslationControl
+                paper={currentPaper}
+                listedPapers={listedPapers}
+                open={translationMenuOpen}
+                onOpenChange={onTranslationMenuOpenChange}
+                hasTranslation={hasTranslation}
+                showTranslated={showTranslated}
+                isTranslating={isTranslating}
+                onToggleTranslation={onToggleTranslation}
+                tFocus={tFocus}
+              />
+              <span className="text-xs text-muted-foreground bg-muted px-1 rounded hidden xl:inline">
+                T
+              </span>
+              <div className="w-px h-4 bg-border mx-1 hidden md:block"></div>
               <Button
                 variant={showSettings ? "outline-primary" : "outline"}
                 size="icon-sm"
