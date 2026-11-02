@@ -1,0 +1,41 @@
+---
+import Base from "../../layouts/Base.astro";
+import Plate from "../../components/Plate.astro";
+import Img from "../../components/Img.astro";
+import Features from "../../components/Features.astro";
+import Closing from "../../components/Closing.astro";
+const modes = [["Country focus", "The countries the papers study"], ["Author countries", "Where the authors work"], ["Author institutions", "Each institution, ranked, with search"]];
+const preload = { srcset: "/img/globe-institutions-800.avif 800w, /img/globe-institutions-1600.avif 1600w", sizes: "(max-width: 900px) 100vw, 60vw" };
+---
+<Base title="Maps: Evidence Library" description="Every Evidence Library can map its papers on a globe by country focus, author country or institution. AIED also maps its whole citation network and flags reviews with broken evidence." preload={preload}>
+  <section class="top wrap">
+    <div class="copy enter">
+      <h1>See where the evidence comes from</h1>
+      <p class="lead">Map a library's papers on a globe by the countries they study, where their authors work, or each institution behind them.</p>
+      <div class="actions"><a class="btn primary" href="https://wealth-inequality.openscholar.ai/map">Open a live map</a></div>
+      <ul class="modes">{modes.map(([a, b]) => <li><b>{a}</b><span>{b}</span></li>)}</ul>
+    </div>
+    <Plate n="20" caption="9,988 institutions in 179 countries, on one library's real data">
+      <Img name="globe-institutions" widths={[1600, 800]} ratio={1} priority sizes="(max-width: 900px) 100vw, 60vw" alt="A dot-matrix globe centred on Africa and Europe, with research institutions as bright points" />
+    </Plate>
+  </section>
+  <section class="band wrap split">
+    <div class="stack"><h2>Fair comparisons between countries</h2><p class="lead">Colour by total or per million people. Pick a country and the results follow, with your filters still on.</p></div>
+    <Plate n="21" caption="Research per million people, live" href={{ url: "https://wealth-inequality.openscholar.ai/map", label: "Open it" }}><div class="shot"><Img name="live-wi-map" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="A country map coloured by resources per million people, with a ranked list on the left" /></div></Plate>
+  </section>
+  <section class="band wrap split flip">
+    <div class="stack"><h2>Check the evidence under a review</h2><p class="lead">On AI in education, a map of who cites whom across 131,794 papers shows what each of 484 reviews rests on, and flags the ones with broken evidence. It's built for this library, so it isn't on every library yet.</p></div>
+    <Plate n="22" caption="Checked reviews marked over the citation map: red is broken, orange questionable, yellow repairable" href={{ url: "https://aied.openscholar.ai/evidence", label: "Open it" }}><Img name="evidence-chains" widths={[2000, 1000]} ratio={2000 / 1667} sizes="(max-width: 900px) 100vw, 760px" alt="The citation map dimmed, with checked reviews marked in red, orange and yellow" /></Plate>
+  </section>
+  <section class="band wrap"><Features ids={["maps"]} /></section>
+  <Closing slot="closing" title="Put your field on the map" />
+</Base>
+<style>
+  .top { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; align-items: center; padding-block: 112px 48px; min-height: 100svh; }
+  .copy .lead { margin-top: 24px; }
+  h1 { font-size: clamp(40px, 5vw, 72px); }
+  .modes { margin-top: 48px; }
+  .modes li { padding-block: 12px; border-top: 1px solid var(--line); }
+  .modes b { font-weight: 500; display: block; } .modes span { color: var(--t2); font-size: 14px; }
+  @media (max-width: 900px) { .top { grid-template-columns: minmax(0, 1fr); padding-top: 96px; min-height: 0; } }
+</style>

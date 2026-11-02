@@ -1,0 +1,71 @@
+---
+import Base from "../../layouts/Base.astro";
+import Scene from "../../components/Scene.astro";
+import Plate from "../../components/Plate.astro";
+import Img from "../../components/Img.astro";
+import Icon from "../../components/Icon.astro";
+import Features from "../../components/Features.astro";
+import Closing from "../../components/Closing.astro";
+import { APP, LIBRARIES } from "../../data/site.mjs";
+const steps = [["Database", "Stores the records"], ["Storage", "Holds PDFs and images"], ["Application", "Creates the library app"], ["Build", "Puts it online"], ["Readiness", "Checks the page loads"], ["Live", "Opens at its public address"]];
+---
+<Base title="Evidence Libraries: OpenScholar" description="A public site for evidence: its own address, records, search, maps, AI answers and digests, set up from OpenScholar and kept current from Zotero, OpenAlex or your own hands.">
+  <Scene scene="plates" alt="An archive of steel cabinets holding glass astronomical plates, with one drawer open and one plate lit from behind" title="A public library for the evidence you trust" lead="An Evidence Library has its own address, records, search, maps, AI answers and digests. You set it up from OpenScholar, and your team runs it." primary={{ href: "https://wealth-inequality.openscholar.ai", label: "Visit a live library" }} secondary={{ href: `${APP}/evidence-libraries`, label: "Create a library" }} />
+  <section class="band wrap">
+    <h2 class="sec">Six steps, then it's live</h2>
+    <ol class="steps">{steps.map(([t, d], i) => <li><span class="mono">{i + 1}</span><b>{t}</b><span>{d}</span></li>)}</ol>
+    <p class="body note">Setup runs once from one button. If a step stops, Retry carries on from that step. Each library gets its own database, file storage and search index.</p>
+  </section>
+  <section class="band wrap split flip">
+    <div class="stack"><h2>Your brand, your address</h2><p class="lead">Name, logo, colours, fonts, home page, navigation, legal text and your own domain. 9 languages, right to left included.</p></div>
+    <Plate n="14" caption="Wealth Inequality and Social Mobility, live" href={{ url: "https://wealth-inequality.openscholar.ai", label: "Open it" }}><div class="shot"><Img name="live-wi-home" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="The home page of the Wealth Inequality library with PDF first pages fanned across a dark world map" /></div></Plate>
+  </section>
+  <section class="band wrap split">
+    <div class="stack"><h2>Search built for readers</h2><p class="lead">Filters with live counts, years as a bar chart, and a study type on every record, read by AI and correctable by your editors.</p></div>
+    <Plate n="15" caption="52,447 records, nine sources" href={{ url: "https://wealth-inequality.openscholar.ai/lib", label: "Search it" }}><div class="shot"><Img name="live-wi-lib" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="The library search page with filters and a study type and PDF cover on each record" /></div></Plate>
+  </section>
+  <section class="band wrap split flip">
+    <div class="stack"><h2>Answers that cite the page</h2><p class="lead">Ask AI searches the library, reads the records and PDFs, and links every claim to its source. When it can't read something, it says so.</p></div>
+    <Plate n="16" caption="Ask AI on a test library, live"><div class="shot"><Img name="live-qa-ask" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="Ask AI's answer with source links to PDF pages, beside the records it searched" /></div></Plate>
+  </section>
+  <section class="band wrap split">
+    <div class="stack"><h2>Records keep arriving</h2><p class="lead">Sync a Zotero group both ways, import an OpenAlex search, fill it from an OpenScholar collection, or write records yourself. Duplicates are merged.</p></div>
+    <Plate n="17" caption="Where records come from">
+      <svg class="src" viewBox="0 0 640 320" fill="none" role="img" aria-label="Zotero with two-way arrows, OpenAlex, OpenScholar and written records all flowing into one library">
+        <g stroke="#3b82f6"><path d="M180 64 C 300 64 300 160 420 160" /><path d="M180 128 C 300 128 300 160 420 160" /><path d="M180 192 C 300 192 300 160 420 160" /><path d="M180 256 C 300 256 300 160 420 160" /></g>
+        <path d="M420 172 C 300 172 300 76 180 76" stroke="#bfdbfe" stroke-dasharray="3 4" />
+        <rect x="420" y="96" width="196" height="128" rx="12" fill="#0a0a0a" stroke="#3b82f6" />
+        <g font-family="Ubuntu,sans-serif"><text x="444" y="160" font-size="18" fill="#ededed">Your library</text><text x="444" y="184" font-size="13" fill="#a6a6a6">One set of records</text>
+          <g font-size="15" fill="#ededed"><text x="24" y="70">Zotero group</text><text x="24" y="134">OpenAlex search</text><text x="24" y="198">OpenScholar collection</text><text x="24" y="262">Written by your team</text></g></g>
+      </svg>
+    </Plate>
+  </section>
+  <section class="band wrap split flip">
+    <div class="stack"><h2>Nothing goes live unchecked</h2><p class="lead">Import up to 100 PDFs at once and AI fills in each record. Creators submit, and Editors or Owners publish. Register DOIs through Crossref or archive through Zenodo.</p></div>
+    <Plate n="18" caption="The admin on a test library, live"><div class="shot"><Img name="live-qa-admin" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="The library admin: a record table with state and PDF columns, and a record's editor on the right" /></div></Plate>
+  </section>
+  <section class="band wrap split">
+    <div class="stack"><h2>A digest of what's new</h2><p class="lead">AI writes each edition with reviews first. Readers subscribe by email, and editors can approve each one before it goes out.</p></div>
+    <Plate n="19" caption="Digests on Wealth Inequality, live" href={{ url: "https://wealth-inequality.openscholar.ai/digests", label: "Read them" }}><div class="shot"><Img name="live-wi-digests" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="The digests page with the next edition's date and past editions" /></div></Plate>
+  </section>
+  <section class="band wrap">
+    <h2 class="sec">Running now</h2>
+    <ul class="libs">{LIBRARIES.map((l) => <li><a href={l.href}><b>{l.name}</b><span>{l.holds}</span><span class="mono">{l.records && `${l.records} records`}</span><Icon name="arrow" /></a></li>)}</ul>
+  </section>
+  <section class="band wrap"><details class="all"><summary>All Evidence Library features</summary><Features ids={["setup", "home-page", "browse", "records", "ask", "digests", "readers", "exports", "admin", "sources", "site"]} /></details></section>
+  <Closing slot="closing" title="Publish your evidence" />
+</Base>
+<style>
+  .sec { margin-bottom: 48px; }
+  .steps { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 16px; }
+  .steps li { border-top: 2px solid var(--accent); padding-top: 12px; display: grid; gap: 2px; }
+  .steps .mono { color: var(--ink); } .steps b { font-weight: 500; font-size: 16px; } .steps span:last-child { color: var(--t2); font-size: 14px; line-height: 20px; }
+  .note { margin-top: 32px; }
+  .all summary { cursor: pointer; font-size: clamp(24px, 3vw, 40px); letter-spacing: -.02em; padding-block: 16px; border-block: 1px solid var(--line); margin-bottom: 48px; }
+  .all:not([open]) summary { margin-bottom: 0; }
+  .src { width: 100%; height: auto; }
+  .libs li { border-top: 1px solid var(--line); }
+  .libs a { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) 120px 16px; gap: 16px; align-items: center; padding-block: 16px; font-size: 15px; transition: color .15s var(--ease); }
+  .libs a:hover { color: var(--ink); } .libs b { font-weight: 500; } .libs span { color: var(--t2); font-size: 14px; }
+  @media (max-width: 900px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } .libs a { grid-template-columns: minmax(0, 1fr) 16px; } .libs span { grid-column: 1; } .libs a :global(svg) { grid-area: 1 / 2; } }
+</style>

@@ -1,0 +1,42 @@
+---
+import Base from "../../layouts/Base.astro";
+import Scene from "../../components/Scene.astro";
+import Plate from "../../components/Plate.astro";
+import Features from "../../components/Features.astro";
+import Closing from "../../components/Closing.astro";
+import { APP } from "../../data/site.mjs";
+const activity = [["Today", "created it"], ["Today", "added 3 papers"], ["Today", "screened 3 papers, through the assistant"], ["Today", "changed 1 answer"], ["Yesterday", "shared it with a guest"]];
+const moves = ["Results and their ratings", "Screening answers", "Earlier queries", "Activity"];
+---
+<Base title="Workspaces: OpenScholar" description="Work as a team: an organization sees all its searches, screenings, extractions and chats, with activity, presence, guests and moving items between workspaces.">
+  <Scene high scene="array" alt="Eight radio telescope dishes in a line at blue hour, all pointing at the same patch of sky" title="Point the whole team at the same question" lead="Everyone has a personal workspace, and each organization has its own. Inside one, every member sees all the work and who started it." primary={{ href: `${APP}/pricing`, label: "Create an organization" }} secondary={{ href: "/assistant/", label: "Share a chat" }} />
+  <section class="band wrap split">
+    <div class="stack"><h2>Three circles of access</h2><p class="lead">You keep your own workspace. Your organization shares everything inside it. Guests from outside get only the one item you invite them to, as Viewer or Editor.</p></div>
+    <Plate n="13" caption="Who sees what">
+      <svg class="rings" viewBox="0 0 640 400" role="img" aria-label="Personal workspace, organization and guests shown as three overlapping fields, with one shared item crossing into the guest field" fill="none">
+        <rect x="24" y="48" width="176" height="304" rx="16" stroke="#333" /><rect x="224" y="48" width="240" height="304" rx="16" stroke="#3b82f6" /><rect x="488" y="48" width="128" height="304" rx="16" stroke="#333" stroke-dasharray="4 4" />
+        <g font-family="Ubuntu,sans-serif" font-size="15" fill="#ededed"><text x="44" y="84">Personal</text><text x="244" y="84">Organization</text><text x="508" y="84">Guests</text></g>
+        <g font-family="Ubuntu,sans-serif" font-size="14" fill="#a6a6a6">
+          <text x="44" y="136">Your searches</text><text x="44" y="168">Your library</text><text x="44" y="200">Shared with me</text>
+          <text x="244" y="136">Collections</text><text x="244" y="168">Searches</text><text x="244" y="200">Screenings</text><text x="244" y="232">Extractions</text><text x="244" y="264">Chats</text><text x="244" y="296">Evidence Libraries</text>
+        </g>
+        <path d="M322 164 H 508" stroke="#60a5fa" /><rect x="508" y="148" width="92" height="32" rx="8" fill="#172554" /><text x="520" y="169" font-family="Ubuntu,sans-serif" font-size="14" fill="#bfdbfe">One item</text>
+      </svg>
+    </Plate>
+  </section>
+  <section class="band wrap split flip">
+    <div class="stack"><h2>See who did what</h2><p class="lead">Each item keeps its history, including what the assistant did, and shows who has it open. Filter any list by who started each item.</p></div>
+    <div class="win"><div class="win-head"><span>Activity</span><span class="mono">Audit set</span></div><ul class="rows act">{activity.map(([w, t]) => <li><span class="mono">{w}</span><span>{t}</span></li>)}</ul></div>
+  </section>
+  <section class="band wrap split">
+    <div class="stack"><h2>Move work between workspaces</h2><p class="lead">Started something alone? Move it to the organization. You see what goes with it before you confirm, and guests keep their access.</p></div>
+    <div class="win"><div class="win-head"><span>Move search</span></div><div class="mv"><p class="mono">From Personal to Learning Lab</p><h3>Goes with it</h3><ul>{moves.map((m) => <li>{m}</li>)}</ul><span class="btn primary small">Move to Learning Lab</span></div></div>
+  </section>
+  <section class="band wrap"><Features ids={["workspaces"]} /></section>
+  <Closing slot="closing" title="Bring your team in" />
+</Base>
+<style>
+  .rings { width: 100%; height: auto; }
+  .act li { grid-template-columns: 96px 1fr; }
+  .mv { padding: 20px; } .mv h3 { font-size: 15px; margin-top: 16px; } .mv ul { margin-block: 8px 20px; color: var(--t2); font-size: 14px; display: grid; gap: 4px; }
+</style>

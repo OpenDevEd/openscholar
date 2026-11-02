@@ -1,0 +1,45 @@
+---
+import Icon from "./Icon.astro";
+const Q1 = "What is the sample size?", Q2 = "What design did it use?";
+const rows = [
+  { t: "Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia", y: 2023, a: "298", c: 95, d: "Randomised trial", dc: 92 },
+  { t: "How to Analyze Interpersonal and Individual Effects in Peer-Tutored Reading Intervention", y: 2015, a: "68", c: 60, d: "Experimental, with a control condition", dc: 78 },
+];
+---
+<div class="win et">
+  <table>
+    <thead><tr><th scope="col">Paper</th><th scope="col">{Q1}</th><th scope="col">{Q2}</th></tr></thead>
+    <tbody>
+      {rows.map((r, i) => (
+        <tr class:list={{ sel: i === 0 }}>
+          <th scope="row"><b>{r.t}</b><span class="mono">{r.y}</span></th>
+          <td data-q={Q1}><span class="big">{r.a}</span><span class="conf"><i style={`transform:scaleX(${r.c / 100})`}></i></span><span class="mono">{r.c}% confidence</span></td>
+          <td data-q={Q2}><span class="txt">{r.d}</span><span class="conf"><i style={`transform:scaleX(${r.dc / 100})`}></i></span><span class="mono">{r.dc}% confidence</span></td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+  <blockquote><Icon name="quote" size={18} /><p>A randomised trial was conducted in four Colombian elementary schools with eight classes, and 298 third and fifth grade pupils<span class="mono">From the abstract, cited for 298</span></p></blockquote>
+</div>
+<style>
+  table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
+  th, td { padding: 16px; text-align: left; vertical-align: top; font-weight: 400; border-top: 1px solid var(--line); }
+  th:first-child { width: 42%; }
+  thead th { border-top: 0; color: var(--t2); padding-block: 12px; }
+  .sel > * { background: var(--s2); }
+  b { font-weight: 500; display: block; margin-bottom: 4px; }
+  .big { font-size: 28px; line-height: 32px; font-variant-numeric: tabular-nums; display: block; }
+  .txt { display: block; min-height: 32px; }
+  .conf { display: block; height: 3px; margin-block: 8px 6px; background: var(--s3); border-radius: 2px; overflow: hidden; }
+  .conf i { display: block; height: 100%; background: var(--ink); transform-origin: left; }
+  blockquote { margin: 0; display: flex; gap: 12px; padding: 16px; border-top: 1px solid var(--line); color: var(--ink); }
+  blockquote :global(svg) { flex: none; }
+  blockquote p { color: var(--t1); font-size: 15px; }
+  blockquote .mono { display: block; margin-top: 2px; }
+  @media (max-width: 640px) {
+    thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    table, tbody, tr, th, td { display: block; width: auto !important; }
+    tbody td { border-top: 0; padding-top: 0; }
+    td::before { content: attr(data-q); display: block; font-size: 13px; color: var(--t2); margin-bottom: 4px; }
+  }
+</style>

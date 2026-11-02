@@ -1,0 +1,35 @@
+---
+import Base from "../../layouts/Base.astro";
+import Scene from "../../components/Scene.astro";
+import Plate from "../../components/Plate.astro";
+import ScreeningDemo from "../../components/ScreeningDemo.astro";
+import Features from "../../components/Features.astro";
+import Closing from "../../components/Closing.astro";
+import { APP } from "../../data/site.mjs";
+const sources = ["A search", "A range or page of one", "A collection", "Saved papers", "An Evidence Library", "A Zotero collection, from a chat"];
+const stars = [["1 star", 1], ["2 stars", 2], ["3 stars", 3], ["4 stars", 4]];
+---
+<Base title="Screening: OpenScholar" description="Screen thousands of papers with yes or no questions. A model answers, your points decide who stays in, and you can overrule any answer.">
+  <Scene scene="prism" alt="A thin beam of light passing through a glass prism, with one narrow line continuing through a slit in a black plate" title="Let through only what meets your criteria" lead="A model answers your yes or no questions for every paper. Your points decide who is in, and you can overrule any answer." primary={{ href: `${APP}/screening`, label: "Start a screening" }} secondary={{ href: "/extraction/", label: "Then extract" }} />
+  <section class="band wrap">
+    <div class="intro"><h2>See how the pass mark decides</h2><p class="lead">Points for Yes, No and Unclear add up across your questions, and you set the pass mark before the job starts. Try it here.</p></div>
+    <Plate n="10" caption="Example answers on real papers"><ScreeningDemo /></Plate>
+  </section>
+  <section class="band wrap split">
+    <div class="stack"><h2>Screen anything you can point at</h2><p class="lead">Start from the results page with Screen all, or choose your source. Included papers can go straight into a collection, here or in a library.</p></div>
+    <ul class="list">{sources.map((s) => <li>{s}</li>)}</ul>
+  </section>
+  <section class="band wrap split flip">
+    <div class="stack"><h2>Stars come from the same points</h2><p class="lead">Set the score where each star begins, and saved papers carry a rating you can sort your library by.</p></div>
+    <div class="win starbox"><ol>{stars.map(([l, n]) => <li><span>{l}</span><span class="track"><i style={`transform:scaleX(${n / 4})`}></i></span><span class="mono">{n * 2} of 8 points</span></li>)}</ol></div>
+  </section>
+  <section class="band wrap"><Features ids={["screening"]} /></section>
+  <Closing slot="closing" title="Screen your next search" />
+</Base>
+<style>
+  .intro { margin-bottom: 48px; } .intro .lead { margin-top: 24px; }
+  .list li { padding-block: 16px; border-top: 1px solid var(--line); font-size: 18px; }
+  .starbox li { display: grid; grid-template-columns: 64px 1fr 96px; gap: 16px; align-items: center; padding: 16px; border-top: 1px solid var(--line); font-size: 14px; }
+  .starbox li:first-child { border-top: 0; }
+  .track { height: 4px; border-radius: 2px; background: var(--s3); overflow: hidden; } .track i { display: block; height: 100%; background: var(--ink); transform-origin: left; }
+</style>

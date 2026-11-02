@@ -1,0 +1,42 @@
+---
+const S = [
+  { x: 132, href: "/search/", t: "Find", d: "329 million works, by keyword, question or OQL" },
+  { x: 396, href: "/screening/", t: "Screen", d: "Yes or no questions, scored for every paper" },
+  { x: 660, href: "/extraction/", t: "Extract", d: "Your questions answered, with the evidence cited" },
+  { x: 924, href: "/assistant/", t: "Ask", d: "An assistant with the same 190 actions as the app" },
+  { x: 1188, href: "/evidence-libraries/", t: "Publish", d: "A library with its own address, search and maps" },
+];
+const fan = [-36, -24, -12, 0, 12, 24, 36];
+---
+<div class="beam">
+  <svg viewBox="0 0 1320 240" fill="none" role="img" aria-label="A beam of light passes through a telescope, a prism and slit, a grating that splits it into lines, a dial, and lands on a photographic plate">
+    <g stroke="#3b82f6" stroke-width="1.2">
+      <path class="ray" pathLength="1" d="M0 120H372" />
+      <path class="ray" pathLength="1" d="M456 120H636" stroke="#bfdbfe" />
+      {[-40, -26, -13, -5, 8, 20, 34].map((o) => <path class="ray" pathLength="1" d={`M660 120 L1140 ${120 + o}`} stroke-width=".8" />)}
+    </g>
+    <g stroke="#a6a6a6" stroke-width="1.2">
+      <ellipse cx="132" cy="120" rx="16" ry="64" /><ellipse cx="132" cy="120" rx="6" ry="24" /><path d="M116 120H104M148 120H160" />
+      <path d="M396 72 L440 150 H352 Z" /><path d="M456 60V112M456 128V180" stroke-width="3" />
+      {fan.map((o) => <path d={`M412 120 L456 ${120 + o}`} stroke="#1d4ed8" stroke-width=".8" />)}
+      {Array.from({ length: 7 }, (_, i) => <path d={`M${642 + i * 6} 64V176`} stroke-width=".8" />)}
+      <circle cx="924" cy="120" r="36" /><path d="M924 120 L942 96" stroke="#bfdbfe" /><path d="M896 120h6M946 120h6M924 92v6" />
+      <rect x="1140" y="56" width="96" height="128" rx="2" />
+    </g>
+    <g fill="#bfdbfe">{[[-40, 1160], [-26, 1192], [-13, 1172], [-5, 1216], [8, 1156], [20, 1200], [34, 1180]].map(([o, x]) => <circle cx={x} cy={120 + o} r={1.8} />)}</g>
+  </svg>
+  <ol>{S.map((s) => <li><a href={s.href}><h3>{s.t}</h3><p>{s.d}</p></a></li>)}</ol>
+</div>
+<style>
+  svg { width: 100%; height: auto; margin-bottom: 24px; }
+  ol { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 24px; }
+  a { display: block; padding: 8px 12px; margin: -8px -12px; border-radius: 12px; transition: background-color .15s var(--ease); }
+  a:hover { background: var(--s1); }
+  p { color: var(--t2); font-size: 14px; line-height: 20px; margin-top: 4px; }
+  .ray { stroke-dasharray: 1; }
+  @supports (animation-timeline: view()) { @media (prefers-reduced-motion: no-preference) {
+    .ray { animation: draw linear both; animation-timeline: view(); animation-range: entry 20% cover 45%; }
+    @keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+  } }
+  @media (max-width: 800px) { ol { grid-template-columns: minmax(0, 1fr); gap: 20px; } svg { display: none; } }
+</style>

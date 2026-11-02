@@ -1,0 +1,35 @@
+---
+import Base from "../../layouts/Base.astro";
+import Scene from "../../components/Scene.astro";
+import Plate from "../../components/Plate.astro";
+import AssistantRun from "../../components/AssistantRun.astro";
+import Features from "../../components/Features.astro";
+import Closing from "../../components/Closing.astro";
+import { APP } from "../../data/site.mjs";
+const areas = [["Research", "Searches, papers, authors, topics, citations, the web"], ["Your library", "Saved papers, ratings, collections, bookmarks, history"], ["Jobs", "Start, stop, retry and read screenings and extractions"], ["Team", "Workspaces, members, invitations, sharing, moving items"], ["Evidence Libraries", "Draft settings, team, sources, collections, records"], ["Zotero", "Groups, collections, items and PDFs"]];
+---
+<Base title="Research assistant: OpenScholar" description="An assistant with the same 190 actions as the app. It finds papers, fills collections, starts jobs with your approval, and reads PDFs and attachments.">
+  <Scene scene="console" alt="An old instrument desk in a dark control room, with toggle switches and one lit analogue dial" title="An assistant that can do what you can" lead="It works through the same 190 actions as the app, so anything it does shows up where you'd have done it yourself. Open it on any page." primary={{ href: APP, label: "Open the assistant" }} secondary={{ href: "/screening/", label: "See screening" }} />
+  <section class="band wrap split">
+    <div class="stack"><h2>One message, a whole review</h2><p class="lead">From one request it searched, built a collection, screened it and extracted from it. It says which papers it couldn't read, and why.</p></div>
+    <Plate n="12" caption="Shortened from a real run"><AssistantRun /></Plate>
+  </section>
+  <section class="band wrap">
+    <h2 class="sec">What it can reach</h2>
+    <ul class="areas">{areas.map(([a, d]) => <li><b>{a}</b><span>{d}</span></li>)}</ul>
+  </section>
+  <section class="band wrap split flip">
+    <div class="stack"><h2>You stay in charge</h2><p class="lead">Jobs, and changes that can't be undone or that other people will see, wait for your answer. Bulk changes can be undone. Chats can be shared to read or to write.</p></div>
+    <div class="win"><div class="win-head"><span>What it does on its own, and what it asks</span></div><ul class="rows two"><li><b>Reads your records</b><span>Without asking</span></li><li><b>Saves and organizes papers</b><span>Without asking, with Undo</span></li><li><b>Runs a screening or extraction</b><span class="ask">Asks first</span></li><li><b>Deletes a collection</b><span class="ask">Asks first</span></li><li><b>Shares an item with someone</b><span class="ask">Asks first</span></li></ul></div>
+  </section>
+  <section class="band wrap"><Features ids={["assistant"]} /></section>
+  <Closing slot="closing" title="Ask it about your field" />
+</Base>
+<style>
+  .sec { margin-bottom: 48px; }
+  .areas { columns: 2; column-gap: 64px; }
+  .areas li { break-inside: avoid; padding-block: 20px; border-top: 1px solid var(--line); }
+  .areas b { font-weight: 400; font-size: 24px; display: block; } .areas span { color: var(--t2); display: block; margin-top: 4px; }
+  .two li { grid-template-columns: 1fr auto; } .two b { font-weight: 400; } .two span { color: var(--t2); } .two .ask { color: var(--ink); }
+  @media (max-width: 800px) { .areas { columns: 1; } }
+</style>

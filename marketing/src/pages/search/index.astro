@@ -1,0 +1,49 @@
+---
+import Base from "../../layouts/Base.astro";
+import Scene from "../../components/Scene.astro";
+import Plate from "../../components/Plate.astro";
+import Img from "../../components/Img.astro";
+import QueryBox from "../../components/QueryBox.astro";
+import Features from "../../components/Features.astro";
+import Closing from "../../components/Closing.astro";
+import { readFileSync } from "node:fs";
+import { APP } from "../../data/site.mjs";
+const topics = readFileSync("public/img/topics.svg", "utf8");
+const filters = [
+  ["Time", ["Year range", "Date range"]],
+  ["Place", ["Institution location", "Country focus", "Regions"]],
+  ["Quality", ["Open access", "Has an abstract", "Reviews", "Top 10% in field", "Journals and conferences", "Not retracted"]],
+  ["Kind", ["Publication type", "Language", "Study design", "Research areas", "SDGs"]],
+  ["Who", ["Journals", "Institutions", "Institution type", "Funders", "Authors"]],
+  ["Citations", ["Minimum citations", "Cites", "Cited by", "Related to"]],
+];
+---
+<Base title="Search and explore: OpenScholar" description="Search 329 million works by keyword, question or OQL, with deep filters, AI overviews, a citation graph and 4,516 topics to browse.">
+  <Scene scene="telescope" alt="A large reflector telescope inside an open observatory dome at night" title="Search 329 million works the way you think about them" lead="Type a question or an exact Boolean query. Filter by anything OpenAlex records, then read an overview of everything you found." primary={{ href: APP, label: "Start searching" }} secondary={{ href: `${APP}/topics`, label: "Browse topics" }} />
+  <section class="band wrap split">
+    <div class="stack"><h2>A query you can read</h2><p class="lead">Each term keeps its colour in the query and in every result, so you can see why a paper matched. Make it broader or more specific in one click, or translate it into 30 languages.</p></div>
+    <Plate n="07" caption="A real question and its query, with counts from OpenAlex"><QueryBox /></Plate>
+  </section>
+  <section class="band wrap">
+    <h2 class="sec">Filter by what the record actually says</h2>
+    <dl class="filters">{filters.map(([k, v]) => <div><dt>{k}</dt><dd>{v.map((x) => <span>{x}</span>)}</dd></div>)}</dl>
+  </section>
+  <section class="band wrap split flip">
+    <div class="stack"><h2>Read one result as carefully as a thousand</h2><p class="lead">Cards carry citations, FWCI, percentile, topics and SDGs. Focus mode reads them one at a time with keys for rating and saving. Citations come in 2,857 styles.</p></div>
+    <Plate n="08" caption="Search results in OpenScholar, live"><div class="shot"><Img name="live-os-results" ratio={1.6} sizes="(max-width: 900px) 100vw, 760px" alt="OpenScholar's search page in dark mode with filters on the left and a paper card with highlighted terms" /></div></Plate>
+  </section>
+  <section class="band wrap split">
+    <div class="stack"><h2>Or start from the whole map of science</h2><p class="lead">Explore OpenAlex's 4,516 topics by domain, field and subfield. A topic page gathers its description, keywords, related topics, and papers from OpenAlex and your Evidence Libraries.</p></div>
+    <Plate n="09" caption="26 fields and 252 subfields, each spoke as long as its works, from OpenAlex"><div class="topics" set:html={topics} /></Plate>
+  </section>
+  <section class="band wrap"><Features ids={["search", "explore", "organize"]} /></section>
+  <Closing slot="closing" title="Run your first search" />
+</Base>
+<style>
+  .sec { margin-bottom: 48px; }
+  .filters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px 48px; }
+  dt { font-size: 15px; font-weight: 500; margin-bottom: 12px; }
+  dd { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--t2); font-size: 15px; }
+  .topics :global(svg) { width: 100%; height: auto; }
+  @media (max-width: 800px) { .filters { grid-template-columns: minmax(0, 1fr); } }
+</style>

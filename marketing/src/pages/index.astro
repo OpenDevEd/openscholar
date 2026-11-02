@@ -1,0 +1,159 @@
+---
+import Base from "../layouts/Base.astro";
+import Img from "../components/Img.astro";
+import Plate from "../components/Plate.astro";
+import Beam from "../components/Beam.astro";
+import QueryBox from "../components/QueryBox.astro";
+import ScreeningDemo from "../components/ScreeningDemo.astro";
+import ExtractionTable from "../components/ExtractionTable.astro";
+import AssistantRun from "../components/AssistantRun.astro";
+import Closing from "../components/Closing.astro";
+import Icon from "../components/Icon.astro";
+import labels from "../data/map-labels.json";
+import { APP, LIBRARIES } from "../data/site.mjs";
+const top = [...labels].sort((a, b) => b.size - a.size)[0];
+const n = (x) => x.toLocaleString("en-US");
+const preload = { srcset: "/img/citation-map-1600.avif 1600w, /img/citation-map-2880.avif 2880w", sizes: "max(100vw, 160svh)" };
+---
+<Base title="OpenScholar: survey the research, publish what holds up" description="OpenScholar searches 329 million works, screens and extracts them against your questions, and publishes the result as an Evidence Library anyone can search." preload={preload}>
+  <section class="hero" data-hero>
+    <div class="map">
+      <div class="map-in">
+        <picture>
+          <source media="(max-width: 1180px)" srcset="/img/citation-map-square-800.avif 800w, /img/citation-map-square-1200.avif 1200w" sizes="100vw" width="1200" height="1200" />
+          <img src="/img/citation-map-2880.avif" srcset="/img/citation-map-1600.avif 1600w, /img/citation-map-2880.avif 2880w" sizes="max(100vw, 160svh)" width="2880" height="1620" fetchpriority="high" decoding="sync" alt="A real map of 141,021 papers on artificial intelligence in education, clustered by who cites whom, shown as blue-white points on black" />
+        </picture>
+        <ul class="labels" aria-hidden="true">{labels.map((l) => <li class={l.x < 58 ? "start" : undefined} style={`left:${l.x}%;top:${l.y}%`} data-size={l.size} data-x={l.x} data-y={l.y}>{l.name}</li>)}</ul>
+        <div class="ret" aria-hidden="true" style={`left:${top.x}%;top:${top.y}%`}><svg width="72" height="72" viewBox="0 0 72 72" fill="none" stroke="#bfdbfe" stroke-width="1"><path d="M0 12V0H12M60 0H72V12M72 60V72H60M12 72H0V60M36 28V20M36 52V44M28 36H20M52 36H44" /></svg></div>
+      </div>
+    </div>
+    <div class="wrap hero-copy enter">
+      <h1>Survey the research. Publish what holds up</h1>
+      <p class="lead">OpenScholar searches 329 million works, reads them against your questions, and turns what you find into an Evidence Library anyone can search.</p>
+      <div class="actions"><a class="btn primary" href={APP}>Open OpenScholar</a><a class="btn quiet" href="/features/">See every feature</a></div>
+    </div>
+    <p class="mono readout"><span class="no">Plate 01</span> <span data-read>{top.name}, {n(top.size)} papers</span><span class="sub">141,021 papers around the AIED library, placed by 977,190 citations</span></p>
+  </section>
+
+  <section class="band wrap">
+    <h2 class="beam-h">From a question to a public library</h2>
+    <Beam />
+  </section>
+
+  <section class="band wrap split">
+    <div class="stack">
+      <h2>Ask in plain words, or write the exact query</h2>
+      <p class="lead">Question search turns a sentence into a Boolean query you can read and change. An AI overview then counts every result and reads the most cited.</p>
+      <p><a class="link" href="/search/">How search works <Icon name="arrow" /></a></p>
+    </div>
+    <Plate n="02" caption="A real question, query and yearly count from OpenAlex"><QueryBox /></Plate>
+  </section>
+
+  <section class="band wrap split flip">
+    <div class="stack">
+      <h2>Every inclusion has a score you can check</h2>
+      <p class="lead">A model answers your questions for each paper. Your points and pass mark decide who stays in. Try the pass mark here.</p>
+      <p><a class="link" href="/screening/">How screening works <Icon name="arrow" /></a></p>
+    </div>
+    <Plate n="03" caption="Example answers on real papers"><ScreeningDemo /></Plate>
+  </section>
+
+  <section class="band wrap split">
+    <div class="stack">
+      <h2>Every answer points at its evidence</h2>
+      <p class="lead">Extraction answers your questions for each paper as text, yes or no, a number or a list, with a confidence score and the sentence behind it.</p>
+      <p><a class="link" href="/extraction/">How extraction works <Icon name="arrow" /></a></p>
+    </div>
+    <Plate n="04" caption="Sample sizes from a real run, with an example second question"><ExtractionTable /></Plate>
+  </section>
+
+  <section class="band wrap split flip">
+    <div class="stack">
+      <h2>Ask for the review, approve the jobs</h2>
+      <p class="lead">The assistant works through the same 190 actions as the app. It finds papers and fills collections on its own, and stops to ask before it runs a job.</p>
+      <p><a class="link" href="/assistant/">How the assistant works <Icon name="arrow" /></a></p>
+    </div>
+    <Plate n="05" caption="Shortened from a real run"><AssistantRun /></Plate>
+  </section>
+
+  <section class="band world">
+    <div class="wrap world-copy">
+      <h2>Publish to a library that's yours</h2>
+      <p class="lead">An Evidence Library is a public site with its own address, records, search, maps, AI answers and digests. You set it up from OpenScholar.</p>
+    </div>
+    <div class="wrap">
+      <Plate n="06" caption="The 9,988 institutions behind one library, placed on a dot-matrix Earth" href={{ url: "https://wealth-inequality.openscholar.ai/map", label: "Open the live map" }}>
+        <Img name="world-institutions" widths={[2400, 1200]} ratio={2400 / 1168} sizes="(max-width: 1320px) 100vw, 1320px" alt="World map of research institutions, dense across Europe, North America, South and East Asia, with clusters in Nigeria, East Africa and South America" />
+      </Plate>
+      <ul class="libs">
+        {LIBRARIES.map((l) => <li><a href={l.href}><b>{l.name}</b><span>{l.holds}</span><span class="mono">{l.records && `${l.records} records`}</span><Icon name="arrow" /></a></li>)}
+      </ul>
+      <p class="more"><a class="link" href="/evidence-libraries/">What a library can do <Icon name="arrow" /></a></p>
+    </div>
+  </section>
+  <Closing slot="closing" />
+</Base>
+<script is:inline>
+  // The reticle follows the pointer over the map and names the region under it. It only ever changes a transform and one line of text.
+  (() => {
+    const hero = document.querySelector("[data-hero]"), box = hero.querySelector(".map-in"), ret = hero.querySelector(".ret"), read = hero.querySelector("[data-read]");
+    if (!matchMedia("(hover: hover) and (min-width: 1181px)").matches || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const items = [...hero.querySelectorAll(".labels li")].map((el) => ({ el, x: +el.dataset.x, y: +el.dataset.y, size: +el.dataset.size, name: el.textContent }));
+    const x0 = parseFloat(ret.style.left), y0 = parseFloat(ret.style.top); let frame = 0, last = null;
+    hero.addEventListener("pointermove", (e) => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        const r = box.getBoundingClientRect(), x = (e.clientX - r.left) / r.width * 100, y = (e.clientY - r.top) / r.height * 100;
+        if (e.clientX < innerWidth * .36) return;
+        const k = r.height / r.width, near = items.reduce((a, b) => Math.hypot(a.x - x, (a.y - y) * k) < Math.hypot(b.x - x, (b.y - y) * k) ? a : b);
+        const s = r.width / box.offsetWidth; ret.style.transform = `translate(${(x - x0) / 100 * r.width / s}px, ${(y - y0) / 100 * r.height / s}px)`;
+        if (near !== last) { last?.el.classList.remove("on"); near.el.classList.add("on"); read.textContent = `${near.name}, ${near.size.toLocaleString("en-US")} papers`; last = near; }
+      });
+    }, { passive: true });
+  })();
+</script>
+<style>
+  .hero { position: relative; min-height: 100svh; display: flex; align-items: center; overflow: clip; padding-block: 112px 96px; }
+  .map { position: absolute; top: 50%; right: 0; width: max(100vw, 160svh); aspect-ratio: 16 / 9; transform: translateY(-50%); }
+  .map-in { position: absolute; inset: 0; transform-origin: 69% 53%; }
+  .hero::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, #000 30%, transparent 47%); }
+  .hero-copy, .readout { z-index: 2; }
+  .map-in img { width: 100%; height: 100%; animation: fade .9s var(--ease) both; }
+  @keyframes fade { from { opacity: 0; } }
+  .labels li { position: absolute; transform: translate(-50%, -50%); font: 400 13px/16px var(--mono); color: #cbd5e1; white-space: nowrap; pointer-events: none; transition: color .15s var(--ease), background-color .15s var(--ease); background: rgb(0 0 0 / .62); padding: 2px 6px; border-radius: 4px; }
+  .labels li.start { transform: translate(-16px, -50%); }
+  .labels li:global(.on) { color: #fff; background: #1d4ed8; }
+  .ret { position: absolute; width: 72px; height: 72px; margin: -36px 0 0 -36px; pointer-events: none; will-change: transform; }
+  .hero-copy { position: relative; }
+  .hero-copy h1 { max-width: 9.6em; font-size: clamp(44px, 4.6vw, 76px); }
+  .hero-copy .lead { margin-top: 24px; max-width: 30rem; }
+  .readout { position: absolute; left: max(32px, (100vw - 1320px) / 2); bottom: 24px; }
+  .readout .no { color: var(--ink); margin-right: 8px; }
+  .readout span[data-read] { color: var(--t1); font-variant-numeric: tabular-nums; }
+  .readout .sub { display: block; }
+  @supports (animation-timeline: scroll()) { @media (prefers-reduced-motion: no-preference) and (min-width: 1181px) {
+    .map-in { animation: dive linear both; animation-timeline: scroll(root); animation-range: 0 100vh; }
+    @keyframes dive { to { transform: scale(1.22); opacity: .3; } }
+  } }
+  @media (max-width: 1180px) {
+    .hero::before { display: none; }
+    .hero { flex-direction: column; align-items: stretch; padding-block: 96px 24px; }
+    .map { position: relative; order: 2; top: auto; right: auto; transform: none; width: 100%; aspect-ratio: 1; margin-top: 24px; }
+    .labels, .ret { display: none; }
+    .readout { position: static; order: 3; text-align: left; padding-inline: 20px; margin-top: 8px; }
+    .readout span[data-read] { display: none; }
+    .readout .sub { display: inline; }
+  }
+  .beam-h { margin-bottom: 48px; max-width: 16em; }
+  .world-copy { margin-bottom: 48px; }
+  .world-copy .lead { margin-top: 24px; }
+  .libs { margin-top: 48px; }
+  .libs li { border-top: 1px solid var(--line); }
+  .libs a { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) 120px 16px; gap: 16px; align-items: center; padding-block: 16px; transition: color .15s var(--ease); font-size: 15px; }
+  .libs a:hover { color: var(--ink); }
+  .libs b { font-weight: 500; } .libs span { color: var(--t2); font-size: 14px; }
+  .libs a :global(svg) { color: var(--t3); }
+  .more { margin-top: 32px; }
+  @media (max-width: 800px) { .libs a { grid-template-columns: minmax(0, 1fr) 16px; } .libs span { grid-column: 1; } .libs a :global(svg) { grid-area: 1 / 2; } }
+</style>

@@ -1,0 +1,17 @@
+---
+import { group } from "../data/features.mjs";
+const { ids } = Astro.props;
+const groups = ids.map(group);
+---
+<div class="stack-groups">
+  {groups.map((g) => (
+    <section>
+      <h2 class="g-title">{g.name}</h2>
+      <ul class="features">{g.items.map(([name, text]) => <li><b>{name}</b><span>{text}</span></li>)}</ul>
+    </section>
+  ))}
+</div>
+<style>
+  .g-title { font-size: clamp(24px, 2.4vw, 32px); margin-bottom: 24px; }
+  section + section { margin-top: 64px; }
+</style>

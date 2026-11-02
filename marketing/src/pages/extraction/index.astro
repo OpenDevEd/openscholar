@@ -1,0 +1,37 @@
+---
+import Base from "../../layouts/Base.astro";
+import Scene from "../../components/Scene.astro";
+import Plate from "../../components/Plate.astro";
+import ExtractionTable from "../../components/ExtractionTable.astro";
+import Features from "../../components/Features.astro";
+import Closing from "../../components/Closing.astro";
+import { APP } from "../../data/site.mjs";
+const types = [["Text", "A brief answer in words", "Paired Reading"], ["Yes or no", "One clear answer", "Yes"], ["Number", "A value you can sort", "298"], ["List", "Several values", "Grade 4, Grade 5"]];
+const sheets = [["Results", "One row per paper"], ["Questions", "What was asked, and how"], ["Job", "Source, model and date"], ["Evidence", "The sentences behind each answer"], ["Summary", "Totals for the whole job"]];
+---
+<Base title="Data extraction: OpenScholar" description="Answer your own questions across every paper, with a confidence score and the cited sentence behind each answer, and export to Excel, CSV or JSON.">
+  <Scene scene="spectrograph" alt="A strip of glass photographic plate holding a star's spectrum, crossed by fine dark lines" title="Read the same details out of every paper" lead="Write your questions once. OpenScholar answers each one for each paper, and shows you the sentence behind every answer." primary={{ href: `${APP}/extraction/new`, label: "Start an extraction" }} secondary={{ href: "/assistant/", label: "Ask the assistant to do it" }} />
+  <section class="band wrap">
+    <div class="intro"><h2>Check any answer in one click</h2><p class="lead">Each answer shows how confident the model is and cites its source. Sort by confidence to review the weakest ones first.</p></div>
+    <Plate n="11" caption="Sample sizes from a real run, with an example second question"><ExtractionTable /></Plate>
+  </section>
+  <section class="band wrap">
+    <h2 class="sec">Four kinds of answer</h2>
+    <dl class="types">{types.map(([t, d, e]) => <div><dt>{t}</dt><dd>{d}</dd><dd class="eg">{e}</dd></div>)}</dl>
+  </section>
+  <section class="band wrap split flip">
+    <div class="stack"><h2>Take it into your own analysis</h2><p class="lead">Export CSV, JSON or a full Excel workbook, for every row or just those you selected. Screening exports the same way.</p></div>
+    <div class="win"><div class="win-head"><span>extraction-results.xlsx</span><span class="mono">5 sheets</span></div><ul class="rows sheets">{sheets.map(([n, d]) => <li><b>{n}</b><span>{d}</span></li>)}</ul></div>
+  </section>
+  <section class="band wrap"><Features ids={["extraction"]} /></section>
+  <Closing slot="closing" title="Extract from your next collection" />
+</Base>
+<style>
+  .intro { margin-bottom: 48px; } .intro .lead { margin-top: 24px; }
+  .sec { margin-bottom: 48px; }
+  .types { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 32px; }
+  dt { font-size: 18px; font-weight: 500; } dd { color: var(--t2); font-size: 14px; margin-top: 4px; }
+  .eg { margin-top: 16px; color: var(--pale); font: 400 clamp(20px, 2vw, 28px)/1.2 var(--mono); }
+  .sheets li { grid-template-columns: 96px 1fr; } .sheets b { font-weight: 500; } .sheets span { color: var(--t2); }
+  @media (max-width: 800px) { .types { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>

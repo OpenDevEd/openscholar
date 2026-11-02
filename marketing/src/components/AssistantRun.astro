@@ -1,0 +1,34 @@
+---
+import Icon from "./Icon.astro";
+const steps = ["Looked papers up", "Read 2 papers", "Made a collection", "Saved 3 papers"];
+---
+<div class="win ar">
+  <div class="win-head"><span>Audit set</span><span class="mono">Sees Library</span></div>
+  <div class="body-a">
+    <p class="me">Find three papers about peer tutoring in primary school reading that are randomized trials, published since 2015. Make a collection, screen it, then extract the sample size.</p>
+    <ul class="steps">{steps.map((s) => <li><Icon name="check" size={14} />{s}</li>)}</ul>
+    <div class="ask">
+      <b>Start a screening</b>
+      <dl><div><dt>Papers</dt><dd>3 in Audit set</dd></div><div><dt>Question</dt><dd>Is this a randomized trial?</dd></div></dl>
+      <div class="row"><span class="btn primary small">Allow once</span><span class="btn quiet small">Not now</span><span class="btn quiet small">Don't do this</span></div>
+    </div>
+    <div class="job"><span>Screened 3 papers</span><span class="track"><i></i></span><span class="mono">1 yes, 2 unclear</span></div>
+    <p class="reply">Extraction read two of the three papers. The Colombia Paired Reading trial reports 298 pupils. Müller et al. report 68 dyads, so roughly double that in students. The third paper has no abstract in OpenAlex, so it has no answer.</p>
+  </div>
+</div>
+<style>
+  .body-a { padding: 20px; display: grid; gap: 16px; font-size: 14px; line-height: 21px; }
+  .me { justify-self: end; max-width: 80%; background: var(--s2); padding: 12px 14px; border-radius: 12px; }
+  .steps { color: var(--t2); display: grid; gap: 6px; }
+  .steps li { display: flex; align-items: center; gap: 8px; }
+  .steps :global(svg) { color: var(--good); }
+  .ask { border: 1px solid var(--line2); border-radius: 12px; padding: 16px; background: var(--s2); }
+  .ask b { font-weight: 500; font-size: 15px; }
+  dl { margin-block: 8px 12px; display: grid; gap: 4px; }
+  dl div { display: grid; grid-template-columns: 80px 1fr; } dt { color: var(--t3); }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .row .quiet { background: var(--s3); }
+  .job { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
+  .track { height: 4px; background: var(--s3); border-radius: 2px; overflow: hidden; } .track i { display: block; height: 100%; background: var(--good); }
+  .reply { color: var(--t1); }
+</style>

@@ -1,0 +1,21 @@
+---
+import { existsSync } from "node:fs";
+import Img from "./Img.astro";
+import { APP } from "../data/site.mjs";
+import { featureCount } from "../data/features.mjs";
+const { title = "Start with a question" } = Astro.props;
+const has = existsSync(`public/img/scene-horizon-1672.avif`);
+---
+<section class="closing">
+  {has && <Img class="closing-img" name="scene-horizon" widths={[1672, 1200]} ratio={16 / 9} alt="" />}
+  <div class="wrap closing-copy">
+    <h2>{title}</h2>
+    <div class="actions"><a class="btn primary" href={APP}>Open OpenScholar</a><a class="btn quiet" href="/features/">See all {featureCount} features</a></div>
+  </div>
+</section>
+<style>
+  .closing { position: relative; padding-block: 128px clamp(200px, 30vw, 460px); overflow: clip; text-align: center; }
+  :global(.closing-img) { position: absolute; inset: auto 0 -2%; width: 100%; height: auto; }
+  .closing-copy { position: relative; }
+  .closing .actions { justify-content: center; }
+</style>
