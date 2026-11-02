@@ -5,6 +5,6 @@ const dir = new URL("generated/", import.meta.url).pathname, out = new URL("../p
 for (const name of ["telescope", "prism", "spectrograph", "array", "plates", "horizon", "console"]) {
   const src = `${dir}${name}.png`;
   if (!existsSync(src)) { console.log("missing", name); continue; }
-  const i = await sharp(src).avif({ quality: 66, effort: 6 }).toFile(`${out}scene-${name}-1672.avif`);
+  const i = await sharp(src).avif({ quality: 78, effort: 6 }).toFile(`${out}scene-${name}-1672.avif`);
   console.log(name, i.width, i.height, Math.round(i.size / 1024) + " KB");
 }

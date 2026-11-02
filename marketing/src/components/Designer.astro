@@ -41,7 +41,7 @@ const records = [["Randomised trial", "Results from a Phase 2 exploratory trial 
   build.addEventListener("click", () => { tag.hidden = false; build.textContent = "It's live"; site.classList.remove("going"); void site.offsetWidth; site.classList.add("going"); });
 </script>
 <style>
-  .studio { min-height: 100svh; display: grid; grid-template-columns: minmax(320px, 4fr) minmax(0, 9fr); gap: 32px; padding: 96px var(--edge) 40px; align-items: stretch; }
+  .studio { min-height: 100svh;  display: grid; grid-template-columns: minmax(320px, 4fr) minmax(0, 9fr); gap: 32px; padding: 96px var(--edge) 40px; align-items: stretch; }
   .controls { display: flex; flex-direction: column; gap: 18px; }
   h2 { font-size: clamp(40px, 4.4vw, 72px); } .sub { color: var(--t2); font-size: 18px; margin-bottom: 8px; }
   .fld { display: grid; gap: 6px; } .fld > span { font-size: 13px; color: var(--t2); }
@@ -66,5 +66,5 @@ const records = [["Randomised trial", "Results from a Phase 2 exploratory trial 
   .s-search { display: flex; align-items: center; justify-content: space-between; height: 44px; padding-inline: 14px 6px; background: var(--card); border-radius: 12px; font-size: 14px; color: var(--mut); } .s-search em { font-style: normal; background: var(--a); color: #fff; padding: 5px 10px; border-radius: 8px; font-size: 13px; }
   article { background: var(--card); border-radius: 14px; padding: 14px 16px; } .k { font-size: 13px; color: var(--a); } h4 { margin: 4px 0 0; font-weight: 400; font-size: clamp(15px, 1.4vw, 20px); line-height: 1.25; }
   [hidden] { display: none !important; }
-  @media (max-width: 1000px) { .studio { grid-template-columns: minmax(0, 1fr); } .browser { min-height: 560px; } .s-main { grid-template-columns: minmax(0, 1fr); } .s-copy { width: 100%; } .fan { opacity: .45; width: 100%; } }
+  @media (max-width: 1000px) { .studio { display: flex; flex-direction: column; } .controls { display: contents; } .browser { order: 1; } .fld, .build { order: 2; } .browser { min-height: 560px; } .s-main { grid-template-columns: minmax(0, 1fr); } .s-copy { width: 100%; } .fan { opacity: .45; width: 100%; } }
 </style>

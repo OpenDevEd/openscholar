@@ -1,6 +1,6 @@
 ---
 import papers from "../data/extraction.json";
-const Q = [["size", "What is the sample size?"], ["design", "What design did it use?"], ["effect", "What effect size does it report?"]];
+const Q = [["size", "What is the sample size?"], ["design", "What design did it use?"], ["who", "Who took part?"]];
 ---
 
   <section class="lab" data-lab data-papers={JSON.stringify(papers)}>
@@ -8,7 +8,8 @@ const Q = [["size", "What is the sample size?"], ["design", "What design did it 
       <h2>Never wonder where an answer came from</h2>
       <p class="lead">Click any answer and the sentence behind it lights up.</p>
     </div>
-    <div class="split">
+    <div class="split" data-split>
+    <svg class="wire" aria-hidden="true"><path data-wire pathLength="1" /></svg>
     <div class="grid" role="table" aria-label="Extraction results">
       <div class="row head" role="row"><span role="columnheader">Paper</span>{Q.map(([, q]) => <span role="columnheader">{q}</span>)}</div>
       {papers.map((p, r) => (
@@ -24,7 +25,7 @@ const Q = [["size", "What is the sample size?"], ["design", "What design did it 
     <div class="reading" aria-live="polite" tabindex="0"><p class="mono" data-from></p><p class="abs" data-abs></p></div>
     </div>
     <div class="dl">
-      <span class="dlh">It's your data. Take it with you. The answers here are examples.</span>
+      <span class="dlh">It's your data. Take it with you.</span>
       <button type="button" class="btn quiet" data-dl="csv">Download as CSV</button>
       <button type="button" class="btn quiet" data-dl="json">Download as JSON</button>
     </div>
@@ -41,10 +42,15 @@ const Q = [["size", "What is the sample size?"], ["design", "What design did it 
     from.textContent = `${p.title}, ${p.year}`;
     abs.innerHTML = p.sentences.map((s, i) => i === at ? `<mark>${esc(s)}</mark>` : esc(s)).join(" ");
     const reader = abs.parentElement, m = abs.querySelector("mark"); reader.scrollTop = Math.max(0, m.offsetTop - reader.offsetTop - 80);
+    wire(true);
   };
+  // A thread of light from the answer to its sentence.
+  const split = lab.querySelector("[data-split]"), path = lab.querySelector("[data-wire]");
+  function wire(fresh) { const cell = lab.querySelector(".cell[aria-pressed]"), m = abs.querySelector("mark"); if (!cell || !m) return; const o = split.getBoundingClientRect(), a = cell.getBoundingClientRect(), b = m.getClientRects()[0], x1 = a.right - o.left, y1 = a.top + a.height / 2 - o.top, x2 = b.left - o.left, y2 = Math.max(lab.querySelector(".reading").getBoundingClientRect().top - o.top + 8, b.top + b.height / 2 - o.top), mid = (x1 + x2) / 2; path.setAttribute("d", `M${x1} ${y1} C${mid} ${y1}, ${mid} ${y2}, ${x2 - 4} ${y2}`); if (fresh) path.animate([{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }], { duration: 500, easing: "ease-out" }); }
+  addEventListener("resize", () => wire(), { passive: true }); lab.querySelector(".reading").addEventListener("scroll", () => wire(), { passive: true });
   lab.addEventListener("click", (e) => { const c = e.target.closest(".cell"); if (c && !c.disabled) show(+c.dataset.r, c.dataset.k); const d = e.target.closest("[data-dl]"); if (d) download(d.dataset.dl); });
   function download(kind) {
-    const rows = papers.map((p) => ({ title: p.title, year: p.year, sample_size: p.size.value, design: p.design.value, effect_size: p.effect.value, sample_size_evidence: p.sentences[p.size.at] ?? "", design_evidence: p.sentences[p.design.at] ?? "", effect_size_evidence: p.sentences[p.effect.at] ?? "" }));
+    const rows = papers.map((p) => ({ title: p.title, year: p.year, sample_size: p.size.value, design: p.design.value, who_took_part: p.who.value, sample_size_evidence: p.sentences[p.size.at] ?? "", design_evidence: p.sentences[p.design.at] ?? "", who_took_part_evidence: p.sentences[p.who.at] ?? "" }));
     const q = (v) => `"${String(v).replace(/"/g, '""')}"`;
     const body = kind === "json" ? JSON.stringify(rows, null, 2) : [Object.keys(rows[0]).map(q).join(","), ...rows.map((r) => Object.values(r).map(q).join(","))].join("\n");
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([body], { type: kind === "json" ? "application/json" : "text/csv" })); a.download = `extraction-results.${kind}`; a.click(); URL.revokeObjectURL(a.href);
@@ -68,10 +74,11 @@ const Q = [["size", "What is the sample size?"], ["design", "What design did it 
   .cell:disabled { cursor: default; color: var(--t3); }
   .num { font-weight: 500; font-size: 22px; font-variant-numeric: tabular-nums; }
   .txt { font-size: 15px; line-height: 20px; }
-  .split { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 5fr); gap: 32px; align-items: start; } .reading { position: sticky; top: 80px; padding: 24px; border: 1px solid var(--line2); border-radius: 18px; height: 460px; overflow-y: auto; scrollbar-width: thin; background: rgb(11 12 15 / .7); }
+  .wire { position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; overflow: visible; pointer-events: none; } .wire path { fill: none; stroke: #8fd3ff; stroke-width: 1.5; stroke-dasharray: 1; }
+  .split { position: relative; display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 5fr); gap: 32px; align-items: start; } .reading { position: sticky; top: 80px; padding: 24px; border: 1px solid var(--line2); border-radius: 18px; height: 460px; overflow-y: auto; scrollbar-width: thin; background: rgb(11 12 15 / .7); }
   .abs { margin-top: 12px; color: var(--t3); font-size: clamp(17px, 1.5vw, 23px); line-height: 1.5; }
   .abs :global(mark) { background: none; color: #fff; font-weight: 400; box-shadow: inset 0 -2px 0 #8fd3ff; }
   .dl { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 24px; } .dlh { margin-right: auto; color: var(--t2); }
-  @media (max-width: 1100px) { .split { grid-template-columns: minmax(0, 1fr); } .reading { position: static; height: 340px; } }
+  @media (max-width: 1100px) { .wire { display: none; } .split { grid-template-columns: minmax(0, 1fr); } .reading { position: static; height: 340px; } }
   @media (max-width: 900px) { .lab-head { grid-template-columns: minmax(0, 1fr); } .row { grid-template-columns: 1fr 1fr 1fr; } .head span:first-child { display: none; } .paper { grid-column: 1 / -1; } .num { font-size: 26px; } .txt { font-size: 13px; } .cell { padding: 8px; } }
 </style>

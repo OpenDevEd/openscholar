@@ -4,53 +4,53 @@ import AskBar from "../components/AskBar.astro";
 const statement = ["Too many tabs.", "A spreadsheet nobody trusts.", "A review that's out of date before it's done.", "All that, to answer one question."];
 const stays = ["Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia", "Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees", "Peer tutoring in reading in Scotland: thinking big"];
 const falls = ["Psychological Effects of Peer Tutoring in Mathematics in Primary Education", "How does peer tutoring contribute to the development of reading comprehension?"];
-const scenes = [[2, "telescope"], [3, "prism"], [4, "spectrograph"], [5, "console"], [6, "array"], [7, "plates"], [8, "horizon"]];
+const scenes = [[5, "telescope"], [6, "prism"], [7, "spectrograph"], [8, "console"], [9, "array"], [10, "plates"], [11, "horizon"]];
 const steps = ["Finding the papers that matter", "Saving them to a collection", "Screening them against your questions", "Pulling out the details you asked for", "Writing up what it found"];
-const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26%", "Tomas is reading the screening"], ["left:10%;top:52%", "Amina added papers to the collection"], ["left:74%;top:44%", "Lena shared it with a colleague"]];
+const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26%", "Tomas is reading the screening"], ["left:6%;top:47%", "Amina added papers to the collection"], ["left:74%;top:44%", "Lena shared it with a colleague"]];
 ---
-<Base title="OpenScholar: know what the research really says" description="From your first question to published evidence, OpenScholar does the reading with you." journey>
+<Base title="OpenScholar: know what the research really says" description="From your first question to published evidence, OpenScholar does the reading with you.">
   <canvas class="field" data-field aria-hidden="true"></canvas>
   <div class="photos" aria-hidden="true">{scenes.map(([i, n]) => <img data-photo={i} src={`/img/scene-${n}-1672.avif`} width="1672" height="941" decoding="async" alt="" />)}<div class="etched" data-etched><img src="/img/lib-plate.avif" width="1000" height="782" decoding="async" alt="" /></div></div>
-  <noscript><style>.pin { position: sticky !important; } .ch .copy { visibility: visible !important; }</style></noscript>
+  <noscript><style>.pin { position: sticky !important; } .ch .copy { opacity: 1 !important; pointer-events: auto !important; }</style></noscript>
 
   <section class="ch hero" data-ch="0"><div class="pin"><div class="copy" data-copy>
     <h1>Know what the research really says</h1>
     <div class="hero-foot"><p class="lead">From your first question to published evidence, OpenScholar does the reading with you.</p><AskBar id="ask-hero" /></div>
   </div></div></section>
 
-  <section class="ch said" data-ch="1"><div class="pin mid"><p class="say" data-said data-copy>{statement.map((s) => <span>{s}</span>)}</p></div></section>
+  {statement.map((s, i) => <section class="ch said" data-ch={i + 1}><div class="pin mid"><p class="say" data-copy>{s}</p></div></section>)}
 
-  <section class="ch" data-ch="2"><div class="pin"><div class="copy find" data-copy>
+  <section class="ch" data-ch="5"><div class="pin"><div class="copy find" data-copy>
     <div class="t"><h2>Ask like a person. Search like a librarian.</h2><p class="lead">Your question goes in plain. The search comes out expert, and you see the shape of the whole field before you read a single paper.</p></div>
     <p class="query" aria-label="Does peer tutoring improve reading? becomes the search: peer tutoring AND reading"><s>Does peer tutoring improve reading?</s><span><i style="color:#ffc48a">"peer tutoring"</i> <i class="op">AND</i> <i style="color:#8fd3ff">reading</i></span></p>
   </div></div></section>
 
-  <section class="ch" data-ch="3"><div class="pin"><div class="copy screen" data-copy>
+  <section class="ch" data-ch="6"><div class="pin"><div class="copy screen" data-copy>
     <div class="t"><h2 class="huge">Let the noise fall away</h2><p class="lead">Tell it what matters. Every paper is judged by your rules, in the open, and you always have the last word.</p></div>
     <ul class="kept">{stays.map((t, i) => <li style={`--i:${i}`}>{t}</li>)}{falls.map((t, i) => <li class="gone" style={`--i:${i}`}>{t}</li>)}</ul>
   </div></div></section>
 
-  <section class="ch" data-ch="4"><div class="pin"><div class="copy extract" data-copy>
-    <div class="t"><h2>Stop copying. Start knowing.</h2><p class="lead">Ask your questions once, across every paper. Each answer shows you the sentence it came from.</p></div>
+  <section class="ch" data-ch="7"><div class="pin"><div class="copy extract" data-copy>
+    <div class="t"><h2>Stop copying. Start knowing.</h2><p class="lead">Ask your questions once, across every paper, and never lose the sentence behind an answer.</p></div>
     <figure class="moment"><figcaption>What is the sample size?</figcaption><blockquote>A randomised trial was conducted in four Colombian elementary schools with eight classes, and <mark>298 third and fifth grade pupils</mark>.</blockquote></figure>
   </div></div></section>
 
-  <section class="ch" data-ch="5"><div class="pin"><div class="copy assist" data-copy>
+  <section class="ch" data-ch="8"><div class="pin"><div class="copy assist" data-copy>
     <div class="t"><h2>Hand over the whole review</h2><p class="lead">Describe what you need and watch it happen. You approve the big moves, and it admits what it couldn't read.</p></div>
     <div class="run"><ol>{steps.map((s) => <li data-step><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5" /></svg>{s}</li>)}</ol><a class="btn primary" href="/try/#assistant">Try it yourself</a></div>
   </div></div></section>
 
-  <section class="ch" data-ch="6"><div class="pin top"><div class="copy team" data-copy>
+  <section class="ch" data-ch="9"><div class="pin top"><div class="copy team" data-copy>
     <h2>Many eyes on one patch of sky</h2><p class="lead">Your whole team, in one place, on the same evidence, seeing it change as it happens.</p><a class="link" href="/teams/">See how teams work in it</a>
     <div class="sky" aria-hidden="true">{people.map(([pos, what], i) => <span class="bubble" style={`${pos};animation-delay:${i * 1.6}s`}><i></i>{what}</span>)}</div>
   </div></div></section>
 
-  <section class="ch" data-ch="7"><div class="pin"><div class="copy lib" data-copy>
+  <section class="ch" data-ch="10"><div class="pin"><div class="copy lib" data-copy>
     <div class="t"><h2>Give your evidence a home</h2><p class="lead">Turn what you've found into a public library, with your name on the door, that anyone can search, explore and question. New work finds its own way in.</p><a class="btn primary" href="/evidence-libraries/">Explore Evidence Libraries</a></div>
     
   </div></div></section>
 
-  <section class="ch last" data-ch="8"><div class="pin mid"><div class="copy end" data-copy><h2>What do you want to know?</h2><AskBar id="ask-end" /><a class="link" href="/docs/">Read the docs</a></div></div></section>
+  <section class="ch last" data-ch="11"><div class="pin mid"><div class="copy end" data-copy><h2>What do you want to know?</h2><AskBar id="ask-end" /><a class="link" href="/docs/">Read the docs</a></div></div></section>
 </Base>
 <script>
   import "../scripts/home.js";
@@ -61,11 +61,10 @@ const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26
   .etched { position: absolute; left: 0; top: 0; width: 1000px; height: 782px; transform-origin: 0 0; mix-blend-mode: multiply; opacity: 0; visibility: hidden; } .photos .etched img { position: static; width: 100%; height: 100%; opacity: 1; visibility: visible; object-fit: fill; }
   .photos img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; visibility: hidden; }
   .ch { position: relative; height: 220svh; pointer-events: none; }
-  .hero { height: 150svh; } .said { height: 420svh; } .last { height: 170svh; }
+  .hero { height: 150svh; } .said { height: 125svh; } .last { height: 170svh; }
   .pin { position: fixed; inset: 0 0 auto; height: 100svh; padding: 88px var(--edge) 40px; display: flex; flex-direction: column; justify-content: flex-end; overflow: clip; }
   .pin.mid { justify-content: center; align-items: center; text-align: center; } .pin.top { justify-content: flex-start; }
-  .copy { pointer-events: auto; will-change: opacity, transform; } .ch:not(.hero) .copy { visibility: hidden; }
-  .copy a, .copy input, .copy button { pointer-events: auto; }
+  .copy { pointer-events: auto; will-change: opacity, transform; } .ch:not(.hero) .copy { opacity: 0; pointer-events: none; }
   .lead { margin-top: 20px; max-width: 34rem; text-shadow: 0 1px 24px #000; color: rgb(242 244 248 / .82); }
   h2 { text-shadow: 0 2px 40px rgb(0 0 0 / .85); }
 
@@ -74,7 +73,7 @@ const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26
   .hero-foot { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px 48px; margin-top: 28px; }
   .hero-foot .lead { margin: 0; max-width: 26rem; }
 
-  .say { position: relative; width: 100%; height: 60svh; } .say span { position: absolute; inset: 0; display: grid; place-items: center; font-size: clamp(44px, 8.4vw, 148px); font-weight: 500; line-height: .98; letter-spacing: -.05em; text-wrap: balance; opacity: 0; }
+  .say { max-width: 11em; font-size: clamp(44px, 8.4vw, 148px); font-weight: 500; line-height: .98; letter-spacing: -.05em; text-wrap: balance; text-shadow: 0 0 40px #000, 0 0 80px #000; }
 
   .find { max-width: 46vw; flex: 1; } .find h2 { font-size: clamp(38px, 5vw, 84px); }
   .query { margin-top: 20px; display: grid; gap: 4px; font-size: clamp(20px, 2vw, 32px); font-weight: 500; letter-spacing: -.02em; } .query s { text-decoration: none; color: var(--t3); font-weight: 400; font-size: .7em; } .query i { font-style: normal; } .query .op { color: #6b7280; }
@@ -105,11 +104,11 @@ const people = [["left:4%;top:36%", "Maya changed an answer"], ["left:72%;top:26
   .end { display: flex; flex-direction: column; align-items: center; gap: 24px; width: 100%; padding-bottom: 30vh; } .end .link { margin-top: 0; } .end h2 { font-size: clamp(44px, 7.4vw, 124px); max-width: 10em; }
 
   @media (max-width: 899px) {
-    .ch { height: 180svh; } .said { height: 260svh; }
+    .ch { height: 180svh; } .said { height: 125svh; }
     .hero h1 { font-size: clamp(48px, 14vw, 76px); }
     .find, .screen, .extract, .lib { display: block; height: auto; position: static; max-width: none; flex: none; inset: auto; } .assist { justify-content: flex-end; height: auto; } .team { height: auto; padding-top: 0; }
     .pin { justify-content: flex-end; } .ch:not(.hero, .said, .last) .copy { margin: auto calc(var(--edge) * -1) -40px; padding: 64px var(--edge) 40px; background: linear-gradient(transparent, rgb(0 0 0 / .8) 64px); } .ch .team { margin: -88px calc(var(--edge) * -1) auto !important; padding: 88px var(--edge) 64px !important; background: linear-gradient(rgb(0 0 0 / .8) calc(100% - 64px), transparent) !important; }
-    .kept, .query { display: none; } .moment { position: static; width: 100%; margin-top: 16px; } blockquote { font-size: 20px; }
+    .kept { display: none; } .moment { position: static; width: 100%; margin-top: 16px; } blockquote { font-size: 20px; }
     .sky { display: none; } .run ol { gap: 8px; margin-bottom: 12px; } .run li { font-size: 15px; }
   }
 </style>

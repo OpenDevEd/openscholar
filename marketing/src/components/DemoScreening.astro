@@ -8,38 +8,30 @@ const papers = [
   ["How does peer tutoring contribute to the development of reading comprehension?", 2, 1],
   ["Psychological Effects of Peer Tutoring in Mathematics in Primary Education", 2, 2],
 ];
-const qs = ["Is it a randomised trial?", "Is it about reading in primary school?"];
 ---
 
   <section class="gate" data-gate>
     <canvas data-c aria-hidden="true"></canvas>
     <img data-photo src="/img/scene-prism-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="A thin beam of light through a glass prism, with one narrow line carrying on through a slit in a black plate" />
-    <h2>Set the bar. Watch the noise fall.</h2>
-    <div class="bar"><label for="pm">How strict are you feeling?</label><input id="pm" data-pm type="range" min="1" max="4" step="1" value="3" /><div class="ends" aria-hidden="true"><span>Let more through</span><span>Only the strongest</span></div></div>
-  </section>
-
-  <section class="review">
-    <div class="r-head">
-      <h2>You always have the last word</h2>
-      <p class="lead">Disagree with an answer? Click it, and the paper's score and stars follow you.</p>
+    <div class="top"><h2>Set the bar. Watch the noise fall.</h2>
+      <div class="bar"><label for="pm">How strict are you feeling?</label><input id="pm" data-pm type="range" min="1" max="4" step="1" value="3" /><div class="ends" aria-hidden="true"><span>Let more through</span><span>Only the strongest</span></div></div>
     </div>
-    <div class="cols" aria-hidden="true"><span></span><span></span><span>Randomised trial?</span><span>Primary school reading?</span><span>Stars</span><span></span></div>
-    <ol class="table" data-table>
-      {papers.map(([t, a, b]) => (
-        <li data-a={a} data-b={b} data-a0={a} data-b0={b}>
-          <span class="state" data-st></span>
-          <span class="t">{t}</span>
-          <button type="button" class="pick" data-k="a" data-q="Trial?"></button>
-          <button type="button" class="pick" data-k="b" data-q="Reading?"></button>
-          <span class="stars" data-stars role="img"></span>
-          <button type="button" class="back" data-back hidden>Put back</button>
-        </li>
-      ))}
-    </ol>
-    <p class="note">The answers here are examples.</p>
+    <div class="list">
+      <p class="last">Disagree? Overrule it. You always have the last word.</p>
+      <ol class="table" data-table>
+        {papers.map(([t, a, b]) => (
+          <li data-a={a} data-b={b}>
+            <span class="sr" data-st></span>
+            <span class="t" title={t}>{t}</span>
+            <button type="button" class="pick" data-k="a"></button>
+            <button type="button" class="pick" data-k="b"></button>
+            <span class="stars" data-stars role="img"></span>
+          </li>
+        ))}
+      </ol>
+    </div>
   </section>
 
-  
 <script>
   import { createField, mulberry, I3 } from "../scripts/field.js";
   import { shapes, cover } from "../scripts/shapes.js";
@@ -56,39 +48,32 @@ const qs = ["Is it a randomised trial?", "Is it about reading in primary school?
   let then = 0; const frame = (ms) => { requestAnimationFrame(frame); if (!field || !on || document.hidden) return; const t = ms / 1000, dt = Math.min(0.05, t - then); then = t; mix = reduced ? goal() : mix + (goal() - mix) * (1 - Math.exp(-dt * 3)); field.render({ a: 0, b: 1, mix, time: reduced ? 0 : t, eye: [fit.pan, 0, 2.66], center: [fit.pan, 0, 0], rotA: I3, rotB: I3, swirl: 0, moving: false, scaleA: fit.scale, scaleB: fit.scale }); };
   requestAnimationFrame(frame);
   pm.addEventListener("input", () => { pass = +pm.value; table(); });
-  // The table follows the same bar.
-  const LBL = ["Yes", "Unclear", "No"], rows = [...document.querySelectorAll("[data-table] li")];
-  const JOB = [2, 1, 0];
-  function table() { for (const r of rows) { const a = +r.dataset.a, b = +r.dataset.b, s = JOB[a] + JOB[b], max = 4, ok = s >= pass, stars = Math.round((s / max) * 5);
+  // The list follows the same bar. A paper that stops making it falls with the light.
+  const LBL = ["Yes", "Unclear", "No"], SCORE = [2, 1, 0], rows = [...document.querySelectorAll("[data-table] li")];
+  const fall = (r) => { if (reduced) return; const t = r.querySelector(".t"), b = t.getBoundingClientRect(), g = gate.getBoundingClientRect(), c = document.createElement("span"); c.className = "ghost"; c.textContent = t.textContent; c.style.cssText = `left:${b.left - g.left}px;top:${b.top - g.top}px;width:${b.width}px`; gate.append(c); c.animate([{ opacity: 1, transform: "none" }, { opacity: 0, transform: "translateY(140px) rotate(2deg)" }], { duration: 900, easing: "cubic-bezier(.4,0,.9,.5)" }).onfinish = () => c.remove(); };
+  function table() { for (const r of rows) { const a = +r.dataset.a, b = +r.dataset.b, s = SCORE[a] + SCORE[b], ok = s >= pass, stars = Math.round((s / 4) * 5);
+      if (r.className === "in" && !ok) fall(r);
       r.className = ok ? "in" : "out"; r.querySelector("[data-st]").textContent = ok ? "Included" : "Excluded";
-      const [p, q] = r.querySelectorAll(".pick"); p.textContent = LBL[a]; p.dataset.v = LBL[a]; q.textContent = LBL[b]; q.dataset.v = LBL[b]; p.setAttribute("aria-label", `Question 1: ${LBL[a]}. Change it`); q.setAttribute("aria-label", `Question 2: ${LBL[b]}. Change it`);
-      const st = r.querySelector("[data-stars]"); st.setAttribute("aria-label", `${stars} of 5 stars`); st.style.setProperty("--n", stars);
-      r.querySelector("[data-back]").hidden = a === +r.dataset.a0 && b === +r.dataset.b0; } }
-  document.querySelector("[data-table]").addEventListener("click", (e) => { const t = e.target, li = t.closest("li"); if (!li) return; if (t.matches(".pick")) { li.dataset[t.dataset.k] = (+li.dataset[t.dataset.k] + 1) % 3; table(); } if (t.matches("[data-back]")) { li.dataset.a = li.dataset.a0; li.dataset.b = li.dataset.b0; table(); } });
+      const [p, q] = r.querySelectorAll(".pick"); p.textContent = LBL[a]; p.dataset.v = LBL[a]; q.textContent = LBL[b]; q.dataset.v = LBL[b]; p.setAttribute("aria-label", `Randomised trial: ${LBL[a]}. Change it`); q.setAttribute("aria-label", `Reading in primary school: ${LBL[b]}. Change it`);
+      const st = r.querySelector("[data-stars]"); st.setAttribute("aria-label", `${stars} of 5 stars`); st.style.setProperty("--n", stars); } }
+  document.querySelector("[data-table]").addEventListener("click", (e) => { const t = e.target; if (t.matches(".pick")) { const li = t.closest("li"); li.dataset[t.dataset.k] = (+li.dataset[t.dataset.k] + 1) % 3; table(); } });
   table();
 </script>
 <style>
-  .gate { position: relative; isolation: isolate; height: 100svh; min-height: 620px; display: flex; flex-direction: column; justify-content: space-between; padding: 96px var(--edge) 40px; overflow: hidden; background: #000; }
-  canvas { position: absolute; inset: 0; z-index: -2; width: 100%; height: 100%; opacity: 0; transition: opacity 1s var(--ease); }
-  img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; mix-blend-mode: screen; }
-  h2 { max-width: 8em; font-size: clamp(40px, 5.6vw, 92px); line-height: .96; }
-  .bar { width: min(560px, 100%); display: grid; gap: 8px; } .bar label { font-size: 18px; } .bar input { width: 100%; height: 28px; margin: 0; accent-color: #fff; } .ends { display: flex; justify-content: space-between; font-size: 14px; color: var(--t2); }
-  .review { padding: 128px var(--edge) 96px; }
-  .r-head { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 48px; align-items: end; margin-bottom: 48px; }
-  .table :global(li) { display: grid; grid-template-columns: 76px minmax(0, 1fr) 84px 84px 96px 76px; gap: 12px; align-items: center; min-height: 60px; padding-block: 10px; border-top: 1px solid var(--line); }
-  .table :global(li.out) .t { color: var(--t3); }
-  .state { font: 400 13px var(--mono); }
-  .table :global(li.in) .state { color: var(--good); } .table :global(li.out) .state { color: var(--t2); }
-  .cols { display: grid; grid-template-columns: 76px minmax(0, 1fr) 84px 84px 96px 76px; gap: 12px; padding-bottom: 8px; font-size: 12px; line-height: 15px; color: var(--t3); }
-  .t { font-size: 15px; }
-  .pick { height: 32px; border-radius: 8px; background: var(--s2); font-size: 13px; transition: background-color .15s var(--ease); }
-  .pick:hover { background: var(--s3); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .gate { position: relative; isolation: isolate; min-height: 100svh; display: flex; flex-direction: column; justify-content: space-between; gap: 24px; padding: 88px var(--edge) 32px; overflow: hidden; background: #000; }
+  canvas, img { position: absolute; inset: 0; width: 100%; height: 100svh; }
+  canvas { z-index: -2; opacity: 0; transition: opacity 1s var(--ease); } img { z-index: -1; object-fit: cover; mix-blend-mode: screen; }
+  .top { display: grid; gap: 16px; justify-items: start; } h2 { max-width: 8em; font-size: clamp(38px, min(5.2vw, 9svh), 84px); line-height: .96; }
+  .bar { width: min(420px, 100%); display: grid; gap: 2px; } .bar label { font-size: 16px; } .bar input { width: 100%; height: 26px; margin: 0; accent-color: #fff; } .ends { display: flex; justify-content: space-between; font-size: 13px; color: var(--t2); }
+  .list { width: min(47vw, 700px); } .last { margin-bottom: 8px; color: var(--t2); font-size: 15px; }
+  .table :global(li) { display: grid; grid-template-columns: minmax(0, 1fr) 68px 68px 84px; gap: 8px; align-items: center; min-height: 36px; transition: opacity .3s var(--ease); }
+  .table :global(li.out) { opacity: .38; }
+  .t { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .gate :global(.ghost) { position: absolute; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+  .pick { height: 28px; border-radius: 8px; background: rgb(255 255 255 / .08); font-size: 13px; transition: background-color .15s var(--ease); }
+  .pick:hover { background: rgb(255 255 255 / .16); }
   .pick[data-v="Yes"] { color: var(--good); } .pick[data-v="Unclear"] { color: var(--warn); } .pick[data-v="No"] { color: var(--bad); }
-  .stars { --n: 0; --star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5l2.9 6.2 6.8.8-5 4.7 1.3 6.7-6-3.3-6 3.3 1.3-6.7-5-4.7 6.8-.8z'/%3E%3C/svg%3E"); width: 90px; height: 18px; background: linear-gradient(90deg, #ffd2a1 calc(var(--n) * 20%), var(--s3) 0); -webkit-mask: var(--star) 0 0/18px 18px repeat-x; mask: var(--star) 0 0/18px 18px repeat-x; }
-  .note { margin-top: 16px; font-size: 14px; color: var(--t3); }
-  .back { font-size: 13px; color: var(--ink); text-align: right; }
-  @media (max-width: 900px) {
-    .r-head { grid-template-columns: minmax(0, 1fr); }
-    .cols { display: none; } .table :global(li) { grid-template-columns: 1fr 1fr; } .t { grid-column: 1 / -1; order: -1; } .pick::before { content: attr(data-q) " "; color: var(--t3); }
-  }
+  .stars { --n: 0; --star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5l2.9 6.2 6.8.8-5 4.7 1.3 6.7-6-3.3-6 3.3 1.3-6.7-5-4.7 6.8-.8z'/%3E%3C/svg%3E"); width: 80px; height: 16px; background: linear-gradient(90deg, #ffd2a1 calc(var(--n) * 20%), rgb(255 255 255 / .16) 0); -webkit-mask: var(--star) 0 0/16px 16px repeat-x; mask: var(--star) 0 0/16px 16px repeat-x; }
+  @media (max-width: 900px) { .list { width: 100%; margin-top: 16svh; } .table :global(li) { grid-template-columns: 1fr 1fr 84px; padding-block: 8px; } .t { grid-column: 1 / -1; white-space: normal; } }
 </style>

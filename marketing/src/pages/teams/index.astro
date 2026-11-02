@@ -2,7 +2,9 @@
 import Base from "../../layouts/Base.astro";
 import { APP } from "../../data/site.mjs";
 const DISHES = [0.106, 0.225, 0.344, 0.456, 0.569, 0.681, 0.8, 0.913];
-const cursors = [["Maya", "#ffd2a1", "c1"], ["Tomas", "#8fd3ff", "c2"], ["Amina", "#9ff0c0", "c3"]];
+const cursors = [["Maya", "#ffd2a1"], ["Tomas", "#8fd3ff"], ["Amina", "#9ff0c0"]];
+const rows = [["Results from a Phase 2 exploratory trial of Paired Reading in Spanish language in Colombia", 0, 0], ["Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees", 0, 1], ["How to Analyze Interpersonal and Individual Effects in Peer-Tutored Reading Intervention", 1, 0], ["Peer tutoring in reading in Scotland: thinking big", 0, 0], ["How does peer tutoring contribute to the development of reading comprehension?", 2, 1], ["Psychological Effects of Peer Tutoring in Mathematics in Primary Education", 2, 2]];
+const LBL = ["Yes", "Unclear", "No"];
 ---
 <Base title="Teams: OpenScholar" description="Your whole team, in one place, on the same evidence.">
   <section class="array" data-array>
@@ -10,36 +12,38 @@ const cursors = [["Maya", "#ffd2a1", "c1"], ["Tomas", "#8fd3ff", "c2"], ["Amina"
       <img class="photo" src="/img/scene-array-1672.avif" width="1672" height="941" alt="Eight radio telescope dishes in a line at blue hour, all pointing at the same patch of sky" fetchpriority="high" />
       <svg class="beams" viewBox="0 0 1672 941" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
         <defs><radialGradient id="star"><stop offset="0" stop-color="#fff" /><stop offset=".25" stop-color="#bfdbfe" stop-opacity=".7" /><stop offset="1" stop-color="#60a5fa" stop-opacity="0" /></radialGradient></defs>
-        {DISHES.map((u, i) => <path class="beam" d={`M${u * 1672} 540 L836 94`} /><path class="pulse" data-pulse={i} pathLength="1" d={`M${u * 1672} 540 L836 94`} />)}
+        {DISHES.map((u, i) => <><path class="beam" d={`M${u * 1672} 540 L836 94`} /><path class="pulse" data-pulse={i} pathLength="1" d={`M${u * 1672} 540 L836 94`} /></>)}
         <circle class="point" data-point cx="836" cy="94" r="46" fill="url(#star)" />
       </svg>
       <div class="a-copy" data-copy><h1>Stop emailing spreadsheets</h1><p class="lead">Bring everyone into one place, on the same evidence, and watch it change as it happens.</p><a class="btn primary" href={APP}>Bring your team in</a></div>
-      <p class="said" data-said aria-live="off"></p>
+      <p class="said" data-said aria-hidden="true"></p>
       <div class="opened" data-opened>
-        <div class="o-t"><h2>Read it together</h2><p class="lead">See who has it open, and every change anyone made, the assistant's included.</p></div>
-        <div class="room">
-          <img src="/img/app-rows.avif" width="1600" height="1424" loading="lazy" decoding="async" alt="A screening that three people are working in together" />
-          {cursors.map(([n, c, k]) => <span class={`cur ${k}`} aria-hidden="true"><svg width="18" height="18" viewBox="0 0 16 16"><path d="M1 1l5 14 2-6 6-2z" fill={c} /></svg><em style={`background:${c}`}>{n}</em></span>)}
+        <div class="o-t"><h2>Read it together</h2><p class="lead">No more "who changed this?" No more "final final".</p></div>
+        <div class="room" data-room aria-hidden="true">
+          <header><b>Peer tutoring and reading</b><span>{cursors.map(() => <i></i>)}</span></header>
+          <ol>{rows.map(([t, a, b]) => <li data-a={a} data-b={b}><span class="t">{t}</span><em class="pick" data-v={LBL[a]}>{LBL[a]}</em><em class="pick" data-v={LBL[b]}>{LBL[b]}</em><span class="stars"></span></li>)}</ol>
+          <p class="log" data-log></p>
+          {cursors.map(([n, c]) => <span class="cur" data-cur><svg width="18" height="18" viewBox="0 0 16 16"><path d="M1 1l5 14 2-6 6-2z" fill={c} /></svg><u style={`background:${c}`}>{n}</u></span>)}
         </div>
       </div>
     </div>
   </section>
 
   <section class="share">
-    <div class="invite" aria-hidden="true">
-      <b>Share this screening</b>
-      <div class="inv-row"><span>lena@university.edu</span><em>Can edit</em></div>
-      <ul><li><i></i><span>Everyone in Learning Lab</span><em>Can edit</em></li><li><i></i><span>Lena</span><em>Can edit</em></li><li><i></i><span>Sam</span><em>Can view</em></li></ul>
-    </div>
-    <div><h2>Share the work, not the keys</h2><p class="lead">Your team sees everything. Bring in someone from outside for just one thing, and that's all they'll ever see.</p></div>
+    <img class="dim" src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" />
+    <img class="lit" src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" />
+    <svg class="one" viewBox="0 0 1672 941" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><path class="beam-one" d="M1338 540 L1338 250" /></svg>
+    <div class="s-copy"><h2>Share the work, not the keys</h2><p class="lead">Your team sees everything. Bring in someone from outside for just one thing, and that's all they'll ever see.</p></div>
+    <div class="invite" aria-hidden="true"><b>One screening, shared with Sam</b><span>Can view this and nothing else</span></div>
   </section>
 
   <section class="move" data-move>
-    <div><h2>Started alone? Bring it in.</h2><p class="lead">Your work comes with you, ratings, answers and history included, and the people you shared it with keep their access.</p>
-      <button type="button" class="btn primary" data-go>Move to Learning Lab</button></div>
-    <div class="lanes">
-      <div class="lane" data-lane="a"><span>Personal</span><div class="card" data-card><b>Peer tutoring and reading</b><ul><li>Results and their ratings</li><li>Screening answers</li><li>Earlier searches</li><li>History</li></ul></div></div>
-      <div class="lane" data-lane="b"><span>Learning Lab</span></div>
+    <div class="m-copy"><h2>Started alone? Bring it in.</h2><p class="lead">Your ratings, answers and history come with you, and the people you shared with keep their access.</p><button type="button" class="btn primary" data-go>Move to Learning Lab</button></div>
+    <div class="strip">
+      <img class="rest" src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" />
+      <div class="lone"><img src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" /></div>
+      <span class="tag" aria-hidden="true">Learning Lab</span>
+      <span class="tag mine" aria-hidden="true">Your personal work</span>
     </div>
   </section>
 
@@ -47,16 +51,26 @@ const cursors = [["Maya", "#ffd2a1", "c1"], ["Tomas", "#8fd3ff", "c2"], ["Amina"
 </Base>
 <script>
   const root = document.querySelector("[data-array]"), said = root.querySelector("[data-said]"), copy = root.querySelector("[data-copy]"), opened = root.querySelector("[data-opened]"), point = root.querySelector("[data-point]");
-  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const LOG = [[3, "Maya started a screening"], [5, "Tomas changed an answer"], [1, "Amina added papers to the collection"], [4, "The assistant extracted the sample sizes, for Maya"], [6, "Lena rated a paper"], [2, "Tomas added a paper to the collection"], [0, "Amina changed an answer"], [7, "Maya shared it with a guest"]];
-  let k = 0;
-  const fire = () => { const [dish, what] = LOG[k++ % LOG.length]; said.textContent = what; said.classList.remove("in"); void said.offsetWidth; said.classList.add("in"); const p = root.querySelector(`[data-pulse="${dish}"]`); p.classList.remove("go"); void p.getBoundingClientRect(); p.classList.add("go"); point.classList.remove("hit"); void point.getBoundingClientRect(); point.classList.add("hit"); };
-  fire(); if (!reduced) setInterval(() => { if (!document.hidden && !opened.hasAttribute("data-full")) fire(); }, 2200);
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches, wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const LOG = [[3, "Maya started a screening"], [5, "Tomas changed an answer"], [1, "Amina added papers to the collection"], [4, "The assistant pulled out the sample sizes, for Maya"], [6, "Lena rated a paper"], [2, "Tomas added a paper to the collection"], [0, "Amina changed an answer"], [7, "Maya shared it with a guest"]];
+  let k = 0, open = false, onScreen = true;
+  new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; }).observe(root);
+  const restart = (el, cls) => { el.classList.remove(cls); void el.getBoundingClientRect(); el.classList.add(cls); };
+  const fire = () => { const [dish, what] = LOG[k++ % LOG.length]; said.textContent = what; restart(said, "in"); restart(root.querySelector(`[data-pulse="${dish}"]`), "go"); restart(point, "hit"); };
+  fire(); if (!reduced) setInterval(() => { if (!document.hidden && onScreen && !open) fire(); }, 2200);
+  // Three people in one screening: a cursor crosses the page, an answer flips, the stars follow and the log says who.
+  const room = root.querySelector("[data-room]"), items = [...room.querySelectorAll("li")], curs = [...room.querySelectorAll("[data-cur]")], log = room.querySelector("[data-log]"), LBL = ["Yes", "Unclear", "No"], NAMES = ["Maya", "Tomas", "Amina"];
+  const paint = (li) => { const [p, q] = li.querySelectorAll(".pick"), a = +li.dataset.a, b = +li.dataset.b, s = [2, 1, 0][a] + [2, 1, 0][b]; p.textContent = LBL[a]; p.dataset.v = LBL[a]; q.textContent = LBL[b]; q.dataset.v = LBL[b]; li.querySelector(".stars").style.setProperty("--n", Math.round(s / 4 * 5)); li.classList.toggle("out", s < 3); };
+  items.forEach(paint);
+  const to = (c, el) => { const r = room.getBoundingClientRect(), b = el.getBoundingClientRect(); c.style.transform = `translate(${b.left - r.left + b.width / 2}px, ${b.top - r.top + b.height / 2}px)`; };
+  curs.forEach((c, i) => to(c, items[i * 2].querySelector(".t")));
+  const JOBS = [[1, 1, "b", 0], [0, 4, "a", 1], [2, 2, "a", 0], [1, 5, "b", 1], [0, 3, "b", 1], [2, 1, "b", 1], [1, 4, "a", 2], [0, 3, "b", 0], [2, 5, "b", 2], [1, 2, "a", 1]];
+  if (!reduced) (async () => { for (let j = 0; ; j++) { await wait(open && onScreen && !document.hidden ? 1500 : 500); if (!open || !onScreen || document.hidden) { j--; continue; } const [who, row, key, val] = JOBS[j % JOBS.length], li = items[row], pick = li.querySelectorAll(".pick")[key === "a" ? 0 : 1]; to(curs[who], pick); curs.forEach((c, i) => { if (i !== who) to(c, items[(row + i * 2 + 1) % items.length].querySelector(".t")); }); await wait(950); restart(pick, "hit"); li.dataset[key] = val; paint(li); log.textContent = `${NAMES[who]} changed an answer`; restart(log, "in"); } })();
   // Scrolling opens the point in the sky into the work everyone's looking at.
-  const scroll = () => { const r = root.getBoundingClientRect(), p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight))), o = Math.min(1, Math.max(0, (p - 0.12) / 0.62)), e = o * o * (3 - 2 * o); opened.style.clipPath = `circle(${e * 130}vmax at 50% 10%)`; opened.toggleAttribute("data-full", e > 0.98); copy.style.opacity = 1 - Math.min(1, o * 2.4); copy.style.pointerEvents = o > 0.2 ? "none" : ""; };
-  let queued = false; addEventListener("scroll", () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; scroll(); }); }, { passive: true }); addEventListener("resize", scroll, { passive: true }); scroll();
-  const move = document.querySelector("[data-move]"), card = move.querySelector("[data-card]"), go = move.querySelector("[data-go]"), [la, lb] = [move.querySelector('[data-lane="a"]'), move.querySelector('[data-lane="b"]')];
-  go.addEventListener("click", () => { const to = card.parentElement === la ? lb : la, swap = () => { to.append(card); go.textContent = to === lb ? "Move back to Personal" : "Move to Learning Lab"; }; document.startViewTransition ? document.startViewTransition(swap) : swap(); });
+  const scroll = () => { const r = root.getBoundingClientRect(), p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight))), o = Math.min(1, Math.max(0, (p - 0.1) / 0.6)), e = o * o * (3 - 2 * o); opened.style.clipPath = `circle(${e * 130}vmax at 50% 10%)`; open = e > 0.9; copy.style.opacity = 1 - Math.min(1, o * 7); copy.style.visibility = o > 0.16 ? "hidden" : ""; said.style.visibility = o > 0.3 ? "hidden" : ""; };
+  let queued = false; addEventListener("scroll", () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; scroll(); }); }, { passive: true }); addEventListener("resize", () => { scroll(); curs.forEach((c, i) => to(c, items[i * 2].querySelector(".t"))); }, { passive: true }); scroll();
+  const move = document.querySelector("[data-move]"), go = move.querySelector("[data-go]");
+  go.addEventListener("click", () => { const on = move.toggleAttribute("data-moved"); go.textContent = on ? "Move back to Personal" : "Move to Learning Lab"; });
 </script>
 <style>
   .array { height: 300svh; }
@@ -66,22 +80,34 @@ const cursors = [["Maya", "#ffd2a1", "c1"], ["Tomas", "#8fd3ff", "c2"], ["Amina"
   .pulse { stroke: #fff; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-dasharray: .1 1; stroke-dashoffset: .1; opacity: 0; vector-effect: non-scaling-stroke; } .pulse:global(.go) { animation: up 1.1s cubic-bezier(.4, 0, .6, 1) both; } @keyframes up { 0% { stroke-dashoffset: .1; opacity: 1; } 90% { opacity: 1; } 100% { stroke-dashoffset: -1; opacity: 0; } }
   .point { transform-box: fill-box; transform-origin: center; } .point:global(.hit) { animation: hit 1.6s var(--ease) .9s both; } @keyframes hit { 0% { transform: scale(1); } 20% { transform: scale(1.8); } 100% { transform: scale(1); } }
   .a-copy { position: absolute; inset: 15svh var(--edge) auto; display: flex; flex-direction: column; align-items: center; text-align: center; }
-  h1 { font-size: clamp(46px, 6.8vw, 116px); line-height: .94; letter-spacing: -.05em; max-width: 9em; text-shadow: 0 2px 40px rgb(0 0 0 / .7); }
+  h1 { font-size: clamp(46px, min(6.8vw, 12svh), 116px); line-height: .94; letter-spacing: -.05em; max-width: 9em; text-shadow: 0 2px 40px rgb(0 0 0 / .7); }
   .a-copy .lead { margin-block: 20px 24px; max-width: 34rem; text-shadow: 0 1px 24px #000; }
   .said { position: absolute; left: 0; right: 0; bottom: 32px; text-align: center; font-size: clamp(17px, 1.6vw, 24px); text-shadow: 0 1px 16px #000; opacity: 0; } .said:global(.in) { animation: said 2.1s var(--ease) both; } @keyframes said { 0% { opacity: 0; translate: 0 8px; } 15%, 80% { opacity: 1; translate: 0 0; } 100% { opacity: 0; } }
-  .opened { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 64px; align-items: center; padding: 88px var(--edge) 0; background: #060b18; clip-path: circle(0 at 50% 10%); will-change: clip-path; }
+  .opened { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 64px; align-items: center; padding: 88px var(--edge) 40px; background: #000; clip-path: circle(0 at 50% 10%); will-change: clip-path; }
   .o-t .lead { margin-top: 24px; }
-  .room { position: relative; align-self: start; border-radius: 18px 18px 0 0; overflow: hidden; box-shadow: 0 0 0 1px rgb(255 255 255 / .14); } .room img { width: 100%; height: auto; }
-  .cur { position: absolute; left: 0; top: 0; display: flex; align-items: flex-start; will-change: transform; } .cur em { margin: 14px 0 0 -2px; padding: 1px 8px; border-radius: 999px; font-style: normal; font-size: 12px; color: #000; font-weight: 500; }
-  .c1 { animation: c1 13s var(--ease) infinite alternate; } .c2 { animation: c2 17s var(--ease) infinite alternate; } .c3 { animation: c3 11s var(--ease) infinite alternate; }
-  @keyframes c1 { 0% { transform: translate(14vw, 8vw); } 30% { transform: translate(38vw, 14vw); } 60% { transform: translate(20vw, 28vw); } 100% { transform: translate(44vw, 20vw); } }
-  @keyframes c2 { 0% { transform: translate(40vw, 32vw); } 40% { transform: translate(12vw, 18vw); } 100% { transform: translate(30vw, 9vw); } }
-  @keyframes c3 { 0% { transform: translate(24vw, 36vw); } 50% { transform: translate(46vw, 10vw); } 100% { transform: translate(8vw, 24vw); } }
-  .share { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 64px; align-items: center; padding: 128px var(--edge); } .share .lead { margin-top: 24px; }
-  .invite { padding: 24px; border-radius: 24px; background: var(--s1); box-shadow: 0 0 0 1px var(--line2), 0 40px 120px -20px #000; rotate: -2deg; } .invite b { font-weight: 500; font-size: 22px; } .inv-row { display: flex; justify-content: space-between; margin-block: 16px; padding: 12px 14px; border-radius: 12px; background: var(--s2); } .invite em { font-style: normal; color: var(--t2); } .invite li { display: grid; grid-template-columns: 32px 1fr auto; gap: 12px; align-items: center; padding-block: 10px; } .invite i { width: 32px; height: 32px; border-radius: 50%; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; }
-  .move { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 64px; padding: 128px var(--edge); align-items: center; } .move .lead { margin-block: 24px; }
-  .lanes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; } .lane { min-height: 300px; padding: 16px; border-radius: 22px; background: var(--s1); box-shadow: inset 0 0 0 1px var(--line); } .lane > span { color: var(--t2); font-size: 14px; }
-  .card { view-transition-name: move-card; margin-top: 12px; padding: 16px; background: var(--s3); border-radius: 14px; } .card b { font-weight: 500; } .card ul { margin-top: 8px; color: var(--t2); font-size: 14px; display: grid; gap: 2px; }
-  .go { position: relative; isolation: isolate; height: 100svh; display: grid; place-items: center start; padding-inline: var(--edge); overflow: hidden; } .go img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 10% 100%; transform: scale(1.9); transform-origin: 0 100%; } .go h2 { font-size: clamp(44px, 7vw, 120px); max-width: 6em; line-height: .96; margin-bottom: 28px; text-shadow: 0 2px 40px #000; }
-  @media (max-width: 900px) { .a-copy { inset-block-start: 96px; } .opened { grid-template-columns: minmax(0, 1fr); gap: 24px; align-content: start; } .share, .move { grid-template-columns: minmax(0, 1fr); padding-block: 72px; gap: 32px; } .invite { rotate: none; } .cur { display: none; } }
+  .room { position: relative; padding: 20px 24px; border-radius: 20px; background: #0c111d; box-shadow: 0 0 0 1px rgb(255 255 255 / .12); }
+  .room header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; } .room header b { font-weight: 500; font-size: 20px; } .room header span { display: flex; } .room header i { width: 30px; height: 30px; margin-left: -8px; border-radius: 50%; border: 2px solid #0c111d; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; }
+  .room li { display: grid; grid-template-columns: minmax(0, 1fr) 72px 72px 84px; gap: 8px; align-items: center; min-height: 58px; border-top: 1px solid var(--line); transition: opacity .3s var(--ease); } .room li:global(.out) { opacity: .45; } .t { font-size: 15px; line-height: 1.25; }
+  .pick { display: grid; place-items: center; height: 30px; border-radius: 8px; background: rgb(255 255 255 / .07); font: 400 13px var(--sans); transition: background-color .2s var(--ease); } .pick[data-v="Yes"] { color: var(--good); } .pick[data-v="Unclear"] { color: var(--warn); } .pick[data-v="No"] { color: var(--bad); } .pick:global(.hit) { animation: tap .5s var(--ease); } @keyframes tap { 0% { background: #fff; } 100% { background: rgb(255 255 255 / .07); } }
+  .stars { --n: 0; --star: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2.5l2.9 6.2 6.8.8-5 4.7 1.3 6.7-6-3.3-6 3.3 1.3-6.7-5-4.7 6.8-.8z'/%3E%3C/svg%3E"); width: 80px; height: 16px; background: linear-gradient(90deg, #ffd2a1 calc(var(--n) * 20%), rgb(255 255 255 / .16) 0); transition: none; -webkit-mask: var(--star) 0 0/16px 16px repeat-x; mask: var(--star) 0 0/16px 16px repeat-x; }
+  .log { min-height: 22px; margin-top: 12px; color: var(--t2); font-size: 15px; opacity: 0; } .log:global(.in) { opacity: 1; animation: logIn .3s var(--ease); } @keyframes logIn { from { opacity: 0; translate: 0 6px; } }
+  .cur { position: absolute; left: 0; top: 0; display: flex; align-items: flex-start; pointer-events: none; transition: transform .9s var(--ease); will-change: transform; } .cur u { margin: 14px 0 0 -2px; padding: 1px 8px; border-radius: 999px; text-decoration: none; font-size: 12px; color: #000; font-weight: 500; }
+
+  .share { position: relative; isolation: isolate; height: 100svh; overflow: hidden; padding: 112px var(--edge); }
+  .dim, .lit, .one { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 100%; } .dim { filter: brightness(.32); mask-image: linear-gradient(transparent, #000 25%); } .lit { mask-image: radial-gradient(11% 22% at 80% 66%, #000 40%, transparent); }
+  .beam-one { stroke: #fff; stroke-width: 1.5; vector-effect: non-scaling-stroke; stroke-dasharray: 3 6; animation: rise 1.4s linear infinite; } @keyframes rise { to { stroke-dashoffset: 18; } }
+  .s-copy { max-width: 44rem; } .s-copy .lead { margin-top: 20px; }
+  .invite { position: absolute; left: 80%; top: 11svh; translate: -50% 0; width: min(320px, 34vw); padding: 16px 20px; border-radius: 16px; background: #0c111d; box-shadow: 0 0 0 1px rgb(255 255 255 / .2); } .invite b { display: block; font-weight: 500; } .invite span { font-size: 14px; color: var(--t2); }
+
+  .move { position: relative; isolation: isolate; overflow: hidden; padding: 128px var(--edge) 0; }
+  .m-copy { position: relative; z-index: 1; max-width: 44rem; } .m-copy .lead { margin-block: 20px 24px; }
+  .strip { position: relative; pointer-events: none; height: 46vw; max-height: 72svh; margin: -8vw calc(var(--edge) * -1) 0; }
+  .strip img { width: 86%; height: auto; }
+  .rest { position: absolute; left: 0; bottom: 0; mask-image: linear-gradient(90deg, #000 80%, transparent 86%), linear-gradient(transparent, #000 30%); mask-composite: intersect; }
+  .lone { position: absolute; inset: 0; transform: translateX(14vw); transition: transform 1.3s var(--ease); } .lone img { position: absolute; left: 0; bottom: 0; mask-image: linear-gradient(90deg, transparent 80%, #000 86%), linear-gradient(transparent, #000 30%); mask-composite: intersect; }
+  [data-moved] .lone { transform: none; }
+  .tag { position: absolute; left: 34%; bottom: 8%; padding: 6px 14px; border-radius: 999px; background: rgb(0 0 0 / .8); font-size: 15px; } .mine { left: auto; right: 3%; transition: transform 1.3s var(--ease), opacity .6s var(--ease); } [data-moved] .mine { transform: translateX(-14vw); opacity: 0; }
+
+  .go { position: relative; isolation: isolate; height: 90svh; display: grid; place-items: center; text-align: center; overflow: hidden; } .go img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; mask-image: linear-gradient(transparent, #000 25%, #000 60%, transparent); } .go h2 { font-size: clamp(44px, 7vw, 120px); line-height: .96; margin-bottom: 28px; }
+  @media (max-width: 900px) { .a-copy { inset-block-start: 88px; } .opened { grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; overflow: hidden; } .o-t .lead { margin-top: 8px; } .room { padding: 12px; } .room li { grid-template-columns: 1fr 1fr 84px; padding-block: 8px; min-height: 0; } .t { grid-column: 1 / -1; font-size: 14px; } .invite { left: var(--edge); top: auto; bottom: 40svh; translate: none; width: auto; right: var(--edge); } .one { display: none; } .share { height: 100svh; } .strip { height: 70vw; margin-top: 0; } }
 </style>
