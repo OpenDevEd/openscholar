@@ -293,7 +293,8 @@ function Overlay({
         setSheets([]);
         setOpen((o) => !o);
       }
-      if (e.key === "Escape") setSheets((all) => all.slice(0, -1));
+      // A dialog over the sheet takes its own Escape, and marks it.
+      if (e.key === "Escape" && !e.defaultPrevented) setSheets((all) => all.slice(0, -1));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -321,7 +322,7 @@ function Overlay({
             // On a phone it starts under the app's top bar, which sits above it.
             // While an on-screen keyboard is up, it fits the part of the page still visible above it, and still clears the top bar when that is in view.
             className={cn(
-              "fixed bottom-3 right-3 z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:right-4",
+              "fixed bottom-3 end-3 z-40 max-w-[calc(100vw-1.5rem)] sm:bottom-4 sm:end-4",
               keyboard ? "top-[max(calc(var(--keyboard-top)+0.75rem),4.25rem)] md:top-[max(calc(var(--keyboard-top)+0.75rem),1rem)]" : "top-[4.25rem] md:top-4",
             )}
             style={{ width: PANEL_W, borderRadius: 18, ...(keyboard ? { "--keyboard-top": `${keyboard.top}px`, bottom: keyboard.bottom + 12 } : {}) }}
@@ -343,7 +344,7 @@ function Overlay({
                   onClick={fold}
                   aria-label={t("fold")}
                   transition={SHELL_SPRING}
-                  className="absolute left-4 top-3.5 z-10 flex size-9 items-center justify-center rounded-xl bg-primary/10 hover:bg-primary/15"
+                  className="absolute start-4 top-3.5 z-10 flex size-9 items-center justify-center rounded-xl bg-primary/10 hover:bg-primary/15"
                 >
                   <OrbitMark size={24} motion={orbit} clock={clock} onComplete={completed} />
                 </motion.button>
@@ -820,7 +821,7 @@ function Launcher({ orbit, clock, onComplete, onOpen }: { orbit: OrbitMotion; cl
         // Buttons pinned to the same corner, such as Back to top, step aside while it is on the page.
         data-assistant-launcher
         transition={SHELL_SPRING}
-        className="fixed bottom-6 right-6 z-40 flex size-14 items-center justify-center border border-border/60 bg-card shadow-lg transition-colors hover:bg-muted"
+        className="fixed bottom-6 end-6 z-40 flex size-14 items-center justify-center border border-border/60 bg-card shadow-lg transition-colors hover:bg-muted"
         style={{ borderRadius: 18 }}
       >
         <motion.span layoutId="assistant-logo" layoutDependency={false} transition={SHELL_SPRING} className="relative flex size-11 items-center justify-center rounded-xl">
@@ -987,7 +988,7 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
   if (!href || href === UNFINISHED_LINK) {
     return (
       <span className={`${RECORD_CHIP} wrap-anywhere`} style={recordChipStyle(LINK_TINT)}>
-        <span className="mr-1 inline-block size-3" />
+        <span className="me-1 inline-block size-3" />
         {children}
       </span>
     );
@@ -997,7 +998,7 @@ function ReplyLink({ href, children }: { href?: string; children?: ReactNode }) 
   const { icon: Icon, tint } = record ? KIND[record.kind] : { icon: ExternalLink, tint: LINK_TINT };
   const inside = (
     <>
-      <Icon className="mr-1 inline size-3 -translate-y-px" />
+      <Icon className="me-1 inline size-3 -translate-y-px" />
       {children}
     </>
   );
@@ -1153,16 +1154,16 @@ function UserBubble({ message }: { message: Message }) {
       initial={message.id.startsWith(SENDING) ? { opacity: 0, y: 8 } : false}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: EASE }}
-      className="ml-10 self-end"
+      className="ms-10 self-end"
     >
       {!message.mine && message.sender?.name ? (
-        <p className="mb-1 flex items-center justify-end gap-1.5 pr-1 text-2xs text-muted-foreground">
+        <p className="mb-1 flex items-center justify-end gap-1.5 pe-1 text-2xs text-muted-foreground">
           <IdentityAvatar name={message.sender.name} imageUrl={message.sender.imageUrl} className="size-4" />
           {message.sender.name}
         </p>
       ) : null}
       {message.files?.length ? <SentFiles files={message.files} onReattach={reattach ?? undefined} /> : null}
-      <div className="whitespace-pre-wrap break-words rounded-2xl rounded-br-sm bg-primary/10 px-4 py-2.5 text-sm leading-6">
+      <div className="whitespace-pre-wrap break-words rounded-2xl rounded-ee-sm bg-primary/10 px-4 py-2.5 text-sm leading-6">
         <MessageText text={message.text} />
       </div>
     </motion.div>
@@ -1176,7 +1177,7 @@ function UserBubble({ message }: { message: Message }) {
 function Thinking({ wordless }: { wordless: boolean }) {
   const t = useTranslations("assistant");
   return (
-    <div className="flex h-9 items-center gap-2 pl-1 text-sm">
+    <div className="flex h-9 items-center gap-2 ps-1 text-sm">
       <OrbitMark size={18} motion="thinking" />
       <span aria-hidden={wordless} className={cn("font-medium transition-opacity duration-200", wordless && "opacity-0")}>
         <WorkingText>{t("thinking")}</WorkingText>
@@ -1272,7 +1273,7 @@ function ModelPill({
     </>
   );
   // The same pill, with nothing to open.
-  if (readOnly) return <span className={cn("ml-auto flex h-8 min-w-0 items-center gap-2 px-2.5 text-xs font-medium text-muted-foreground transition-opacity", !model && "opacity-0")}>{label}</span>;
+  if (readOnly) return <span className={cn("ms-auto flex h-8 min-w-0 items-center gap-2 px-2.5 text-xs font-medium text-muted-foreground transition-opacity", !model && "opacity-0")}>{label}</span>;
   return (
     <ModelPicker
       align="end"
@@ -1288,7 +1289,7 @@ function ModelPill({
           type="button"
           aria-label={model ? [name, effort && tm(`efforts.${effort}`)].filter(Boolean).join(", ") : t("model")}
           className={cn(
-            "ml-auto flex h-8 min-w-0 items-center gap-2 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground",
+            "ms-auto flex h-8 min-w-0 items-center gap-2 rounded-full px-2.5 text-xs font-medium text-muted-foreground transition-opacity hover:bg-muted hover:text-foreground data-[state=open]:bg-muted data-[state=open]:text-foreground",
             !model && "pointer-events-none opacity-0",
           )}
         >
@@ -1411,7 +1412,7 @@ function Footer({
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.85 }}
                 transition={{ type: "spring", stiffness: 480, damping: 32 }}
-                className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 pl-2.5 pr-1 text-xs font-medium text-primary"
+                className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-primary/10 ps-2.5 pe-1 text-xs font-medium text-primary"
               >
                 <button type="button" onClick={onSpending} className="flex items-center gap-1 tabular-nums hover:underline">
                   <Coins className="size-3" /> {allowance.cap === null ? t("allowance.any") : t("allowance.upTo", { cap: allowance.cap })}
@@ -1437,7 +1438,7 @@ function Footer({
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.85 }}
                     transition={{ type: "spring", stiffness: 480, damping: 32 }}
-                    className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full pl-2.5 pr-1 text-xs font-medium"
+                    className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full ps-2.5 pe-1 text-xs font-medium"
                     style={{ ...recordChipStyle(tint), backgroundColor: `color-mix(in oklab, ${tint} 14%, transparent)` }}
                   >
                     <Icon className="size-3" /> {t(tool === "web" ? "allowed.web" : "allowed.files")}
@@ -1531,7 +1532,7 @@ function ReplyMeter({ meter, onCarryOn, onSpending }: { meter: Meter; onCarryOn:
         initial={false}
         animate={{ opacity: paused ? 0 : 1 }}
         inert={paused}
-        className="-ml-1 flex h-8 items-center gap-2 justify-self-start rounded-full px-2 hover:bg-muted/60"
+        className="-ms-1 flex h-8 items-center gap-2 justify-self-start rounded-full px-2 hover:bg-muted/60"
       >
         <Coins className="size-3.5 text-muted-foreground" />
         <span className="text-muted-foreground">{t("reply")}</span>
@@ -1550,7 +1551,7 @@ function ReplyMeter({ meter, onCarryOn, onSpending }: { meter: Meter; onCarryOn:
         </span>
       </motion.button>
       {/* In a narrow panel, or with a long number, the sentence gives way first and then the button's words: both controls stay in reach. */}
-      <motion.div initial={false} animate={{ opacity: paused ? 1 : 0 }} inert={!paused} className="flex min-w-0 items-center gap-2 pl-1">
+      <motion.div initial={false} animate={{ opacity: paused ? 1 : 0 }} inert={!paused} className="flex min-w-0 items-center gap-2 ps-1">
         <CirclePause className="size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
         <span className="min-w-0 shrink-[4] truncate font-medium text-amber-700 dark:text-amber-400">
           {pause}
@@ -1572,7 +1573,7 @@ function EdgeGlow({ open, working }: { open: boolean; working: boolean }) {
         <motion.div
           key="glow"
           aria-hidden
-          className="pointer-events-none fixed inset-y-0 right-0 z-0 w-[560px] overflow-hidden"
+          className="pointer-events-none fixed inset-y-0 end-0 z-0 w-[560px] overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: working ? 1 : 0.7 }}
           exit={{ opacity: 0 }}
@@ -1580,17 +1581,17 @@ function EdgeGlow({ open, working }: { open: boolean; working: boolean }) {
         >
           {/* Each blob on its own layer: Safari blurs it once and moves it, instead of blurring it again on every frame. */}
           <motion.div
-            className="absolute -right-40 top-[-10%] h-[70%] w-[420px] rounded-full will-change-transform bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-bright)_32%,transparent),transparent)] blur-3xl"
+            className="absolute -end-40 top-[-10%] h-[70%] w-[420px] rounded-full will-change-transform bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-bright)_32%,transparent),transparent)] blur-3xl"
             animate={{ y: ["0%", "45%", "0%"], x: [0, -40, 0] }}
             transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
           />
           <motion.div
-            className="absolute -right-48 bottom-[-15%] h-[70%] w-[440px] rounded-full will-change-transform bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-deep)_28%,transparent),transparent)] blur-3xl"
+            className="absolute -end-48 bottom-[-15%] h-[70%] w-[440px] rounded-full will-change-transform bg-[radial-gradient(closest-side,color-mix(in_oklab,var(--primary-deep)_28%,transparent),transparent)] blur-3xl"
             animate={{ y: ["0%", "-40%", "0%"], x: [0, -30, 0] }}
             transition={{ duration: 17, repeat: Infinity, ease: "easeInOut" }}
           />
           <motion.div
-            className="absolute inset-y-0 right-0 w-px bg-gradient-to-b from-transparent via-primary/70 to-transparent"
+            className="absolute inset-y-0 end-0 w-px bg-gradient-to-b from-transparent via-primary/70 to-transparent"
             animate={{ opacity: working ? [0.4, 1, 0.4] : 0.5 }}
             transition={working ? { duration: 1.8, repeat: Infinity, ease: "easeInOut" } : { duration: 0.6 }}
           />

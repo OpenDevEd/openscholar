@@ -136,7 +136,7 @@ export function UpgradeConfirmationDialog({
                 {preview.lineItems.map((item, index) => (
                   <div key={index} className="flex items-center justify-between text-sm">
                     {/* A long line wraps on a phone rather than pushing the amounts past the dialog's edge (#858). */}
-                    <span className="min-w-0 mr-2 text-muted-foreground">
+                    <span className="min-w-0 me-2 text-muted-foreground">
                       {item.description}
                     </span>
                     <span className={item.amountCents < 0 ? "shrink-0 ink-success" : "shrink-0"}>
@@ -166,7 +166,7 @@ export function UpgradeConfirmationDialog({
                   {t("creditsGranted", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground pl-6">
+              <p className="text-xs text-muted-foreground ps-6">
                 {t("monthlyCreditsAfter", { credits: format.number(preview.targetPlanCreditsPerMonth) })}
               </p>
             </div>
@@ -186,7 +186,7 @@ export function UpgradeConfirmationDialog({
             {/* An action the caller names, such as removing seats, keeps its name while it runs (#858). */}
             {isConfirming ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="me-2 h-4 w-4 animate-spin" />
                 {confirmLabel ?? t("upgrading")}
               </>
             ) : (

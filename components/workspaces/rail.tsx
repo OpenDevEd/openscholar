@@ -433,7 +433,7 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
           />
           {/* The frame never moves: the tile or photo flying in lands on a fixed spot in it, while
               the card's surface slides and scales into place underneath. */}
-          <div key="frame" className={cn("pointer-events-none fixed left-2 z-[61] w-[19rem]", from === "bottom" ? "bottom-2" : "top-2")}>
+          <div key="frame" className={cn("pointer-events-none fixed start-2 z-[61] w-[19rem]", from === "bottom" ? "bottom-2" : "top-2")}>
             <motion.div
               role="dialog"
               aria-label={label}
@@ -474,7 +474,7 @@ function RailCard({ open, from, label, onClose, onClosed, head, children }: { op
             >
               {children}
             </motion.div>
-            <div className="pointer-events-none absolute left-4 top-4" style={scrolled ? { transform: `translateY(${-scrolled}px)`, opacity: Math.max(0, 1 - scrolled / 24) } : undefined}>
+            <div className="pointer-events-none absolute start-4 top-4" style={scrolled ? { transform: `translateY(${-scrolled}px)`, opacity: Math.max(0, 1 - scrolled / 24) } : undefined}>
               {head}
             </div>
           </div>
@@ -515,7 +515,7 @@ const WorkspaceButtonFace = React.forwardRef<HTMLButtonElement, { workspace: Wor
             </motion.span>
           )}
           {waiting > 0 ? (
-            <span className="absolute right-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground ring-2 ring-sidebar">{waiting}</span>
+            <span className="absolute end-0.5 top-0.5 flex size-4 items-center justify-center rounded-full bg-primary text-[9px] font-semibold text-primary-foreground ring-2 ring-sidebar">{waiting}</span>
           ) : null}
         </button>
       </TooltipTrigger>
@@ -560,7 +560,7 @@ function RailItem({
         <Icon className="relative size-[18px]" />
         {running ? <ProgressRing value={share * 100} /> : null}
         {badge ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground ring-2 ring-sidebar">{badge > 9 ? "9+" : badge}</span>
+          <span className="absolute -end-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground ring-2 ring-sidebar">{badge > 9 ? "9+" : badge}</span>
         ) : null}
       </span>
       <span className={cn("text-[10px] font-medium leading-none tracking-tight tabular-nums transition-colors", running ? "text-primary" : active ? "text-foreground" : "text-muted-foreground group-hover:text-foreground")}>
@@ -694,7 +694,7 @@ function GuestCard({ onNavigate }: { onNavigate: () => void }) {
           onNavigate();
           goToSignIn();
         }}
-        className="flex w-full items-start gap-3 rounded-2xl px-2.5 py-2.5 text-left transition-colors hover:bg-muted"
+        className="flex w-full items-start gap-3 rounded-2xl px-2.5 py-2.5 text-start transition-colors hover:bg-muted"
       >
         {/* The photo flying in lands at the row's top, so the row lines up with it however its text wraps. */}
         <span aria-hidden className="size-10 shrink-0 rounded-full" />
@@ -733,11 +733,11 @@ function Preferences() {
           { id: "system", label: t("auto"), icon: Monitor },
         ]}
       />
-      <div className="flex items-center justify-between gap-2 pl-1.5">
+      <div className="flex items-center justify-between gap-2 ps-1.5">
         <span className="text-xs text-muted-foreground">{tc("language")}</span>
         <LanguageSwitcher isCollapsed={false} />
       </div>
-      <label className="flex h-8 cursor-pointer items-center justify-between gap-2 pl-1.5 pr-2">
+      <label className="flex h-8 cursor-pointer items-center justify-between gap-2 ps-1.5 pe-2">
         <span className="text-xs text-muted-foreground">{tc("highlightSearchTerms")}</span>
         <Switch checked={highlight.on} onCheckedChange={highlight.setOn} />
       </label>

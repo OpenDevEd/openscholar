@@ -90,7 +90,7 @@ export function LibraryCommandCenter({
                   ))}
                 </div>
               ) : null}
-              {actions ? <div className="ml-auto flex items-center gap-1">{actions}</div> : null}
+              {actions ? <div className="ms-auto flex items-center gap-1">{actions}</div> : null}
             </>
           )}
         </div>

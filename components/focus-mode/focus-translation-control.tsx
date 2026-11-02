@@ -75,7 +75,7 @@ export function FocusTranslationControl({
             aria-label={!hasTranslation ? t("translate") : showTranslated ? tFocus("showOriginal") : tFocus("showTranslation")}
             disabled={translating && !hasTranslation}
           >
-            <TranslateIcon working={translating} size={12} className="h-3 w-3 xl:mr-1" />
+            <TranslateIcon working={translating} size={12} className="h-3 w-3 xl:me-1" />
             <span className="hidden xl:inline">{label}</span>
           </Button>
           <PopoverTrigger asChild>

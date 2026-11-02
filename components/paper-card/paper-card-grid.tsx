@@ -87,7 +87,7 @@ export function PaperCardGrid({
         tabIndex={hide?.focusMode ? undefined : 0}
         onClick={hide?.focusMode ? undefined : () => openFocusMode(isMobile, resultIndex, result.id)}
         onKeyDown={hide?.focusMode ? undefined : (e) => e.key === "Enter" && openFocusMode(isMobile, resultIndex, result.id)}
-        className={cn("flex-1 w-full text-left flex flex-col", !hide?.focusMode && "cursor-pointer")}
+        className={cn("flex-1 w-full text-start flex flex-col", !hide?.focusMode && "cursor-pointer")}
       >
         <div className={cn("flex flex-col h-full", isCompact ? "p-3" : "p-4")}>
           {/* Header: Year badge and quick actions */}
@@ -223,7 +223,7 @@ export function PaperCardGrid({
             )}
             {extra ? <div className="basis-full">{extra}</div> : null}
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ms-auto flex items-center gap-2">
               {/* Cited by count */}
               <TooltipHint label={tp("citedByCount", { count: format.number(result.cited_by_count ?? 0) })}>
                 <button

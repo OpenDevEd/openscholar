@@ -85,7 +85,7 @@ function ProfilePage({ security }: { security: boolean }) {
                 // Each Clerk section becomes a zone: a small label over its rows. Clerk puts
                 // the header after the content in the DOM, and shifts it with a transform.
                 profileSection: "!flex !flex-col-reverse !gap-2.5 !border-0 !p-0",
-                profileSectionHeader: "!m-0 !w-full !max-w-none !transform-none !pl-1 !py-0",
+                profileSectionHeader: "!m-0 !w-full !max-w-none !transform-none !ps-1 !py-0",
                 profileSectionTitle: "!p-0",
                 profileSectionTitleText: "!text-xs !font-medium !text-muted-foreground",
                 profileSectionContent: "!rounded-2xl !border !border-border-subtle !bg-inset !px-4 !py-3",
@@ -172,7 +172,7 @@ function Identity() {
             </Button>
           </form>
         ) : (
-          <button type="button" onClick={startEditing} className="group flex max-w-full items-center gap-2 text-left" aria-label={t("editName")}>
+          <button type="button" onClick={startEditing} className="group flex max-w-full items-center gap-2 text-start" aria-label={t("editName")}>
             <span className="truncate text-3xl font-semibold tracking-tight">{user.fullName || t("addYourName")}</span>
             <Pencil className="size-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
           </button>
@@ -292,12 +292,12 @@ function SecurityOverview({ user, sessions: sessionsPromise, refresh }: { user: 
       <Paged pager={pager} rowHeight={66} label={t("devices")}>
         <ol className="relative">
           {/* The rail the devices hang from. */}
-          <span aria-hidden className="absolute bottom-6 left-[6.75rem] top-6 w-px bg-border" />
+          <span aria-hidden className="absolute bottom-6 start-[6.75rem] top-6 w-px bg-border" />
           {shown.map((e) => {
             const Icon = DEVICE_ICON[e.device];
             return (
               <li key={e.key} className="group relative grid grid-cols-[5.5rem_2.5rem_minmax(0,1fr)_auto] items-center gap-x-3 py-2">
-                <span className={cn("text-right text-xs tabular-nums", e.here ? "font-medium text-primary" : "text-muted-foreground")}>
+                <span className={cn("text-end text-xs tabular-nums", e.here ? "font-medium text-primary" : "text-muted-foreground")}>
                   {e.here ? t("now") : format.relativeTime(e.last, now)}
                 </span>
                 <span

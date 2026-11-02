@@ -2,7 +2,7 @@
 
 // Small pieces the screening page's views share.
 import { useEffect, type ReactNode } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { motion, useReducedMotion, useSpring, useTransform } from "motion/react";
 import { Asterisk, Check, CircleHelp, Star, TriangleAlert, X, type AppIcon } from "@/components/icons";
 import { RECORD_KINDS } from "@/components/record-kinds";
@@ -30,7 +30,7 @@ export const SOURCE_ICON: Record<PaperSet["kind"], AppIcon> = { search: RECORD_K
 /** After a required question's text: a paper not answered yes there is never included. */
 export function RequiredMark() {
   const t = useTranslations("screeningPage");
-  return <Asterisk role="img" aria-label={t("required")} strokeWidth={2.5} className="ml-1 inline size-3.5 align-[-0.125em] text-primary" />;
+  return <Asterisk role="img" aria-label={t("required")} strokeWidth={2.5} className="ms-1 inline size-3.5 align-[-0.125em] text-primary" />;
 }
 
 /** One answer as a small square with its sign; `label` names its question. */
@@ -154,9 +154,10 @@ export function Meter({ value, max, className, fill = "bg-primary" }: { value: n
  * assistant's numbers do. It jumps straight there when motion is reduced.
  */
 export function AnimatedNumber({ value }: { value: number }) {
+  const locale = useLocale();
   const reduceMotion = useReducedMotion();
   const spring = useSpring(value, { stiffness: 120, damping: 22 });
-  const text = useTransform(spring, (n) => Math.round(n).toLocaleString());
+  const text = useTransform(spring, (n) => Math.round(n).toLocaleString(locale));
   // The spring is an animation system outside React: point it at each new value.
   useEffect(() => {
     if (reduceMotion) spring.jump(value);

@@ -234,7 +234,7 @@ export function JobFlight({ threadId, flight, layer, onLanded }: { threadId: Id<
   return (
     <div
       ref={card}
-      className="absolute left-0 top-0 rounded-2xl bg-card shadow-[0_10px_30px_-12px_rgb(0_0_0/0.35)]"
+      className="absolute start-0 top-0 rounded-2xl bg-card shadow-[0_10px_30px_-12px_rgb(0_0_0/0.35)]"
       style={{ height: JOB_CARD_H, width: flight.from.width, transform: `translate(-9999px, 0)` }}
     >
       <JobCard threadId={threadId} stepId={flight.stepId} />
@@ -251,14 +251,14 @@ function EndSlot({ running, status, capped, cancelLabel, onCancel, mine }: { run
   if (running && mine) {
     return (
       <TooltipHint label={cancelLabel}>
-        <button type="button" aria-label={cancelLabel} onClick={onCancel} className="-mr-1 flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
+        <button type="button" aria-label={cancelLabel} onClick={onCancel} className="-me-1 flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground">
           <X className="size-4" />
         </button>
       </TooltipHint>
     );
   }
   return (
-    <span className="-mr-1 flex size-7 shrink-0 items-center justify-center">
+    <span className="-me-1 flex size-7 shrink-0 items-center justify-center">
       {running ? null : status === "cancelled" ? (
         <Ban className="size-4 text-muted-foreground" aria-label={t("cancelled")} />
       ) : status === "completed" && !capped ? (
@@ -408,7 +408,7 @@ function ScreeningCard({ job, mine }: { job: Screening; mine: boolean }) {
           <motion.div {...fade(queued)} inert={!queued} className="flex min-w-0 items-center gap-2">
             <Hourglass className="size-3 shrink-0" />
             <span className="min-w-0 truncate">{job.waiting?.label ?? t("screening.waitingFor")}</span>
-            {job.waiting?.total ? <span className="ml-auto shrink-0 tabular-nums">{t("of", { done: job.waiting.done, total: job.waiting.total })}</span> : null}
+            {job.waiting?.total ? <span className="ms-auto shrink-0 tabular-nums">{t("of", { done: job.waiting.done, total: job.waiting.total })}</span> : null}
           </motion.div>
           <motion.div {...fade(!queued)} inert={queued} className="flex items-center gap-4">
             <span className="flex items-center gap-1"><Check className="size-3 text-emerald-600" /> <span className="tabular-nums">{job.included}</span> {t("included")}</span>

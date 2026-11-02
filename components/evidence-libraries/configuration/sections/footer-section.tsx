@@ -178,10 +178,10 @@ export function FooterSection({ draft, saved, patch, reset }: SectionProps) {
               <Field key={provider} label={t(`social.${provider}`)} error={error}>
                 {(id, invalid) => (
                   <div className="relative">
-                    <Icon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                    <Icon className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       id={id}
-                      className="bg-background pl-9 font-mono text-sm"
+                      className="bg-background ps-9 font-mono text-sm"
                       value={value}
                       inputMode="url"
                       placeholder="https://"

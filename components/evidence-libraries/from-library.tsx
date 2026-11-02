@@ -112,7 +112,7 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
             {records === "unread" ? <p className={`${LIST} mt-3 px-4 py-8 text-center text-sm text-muted-foreground`}>{tl("unread", { library: library.name })}</p> : null}
             {listed.length ? (
               <div className="mt-3 space-y-3">
-                <div className="flex items-center justify-between gap-2 pl-1">
+                <div className="flex items-center justify-between gap-2 ps-1">
                   <span className="text-xs text-muted-foreground">{t("theRecords")}</span>
                   <Select
                     value={sort}
@@ -194,7 +194,7 @@ export function FromLibrary({ handoffId, workspaceId, opened }: { handoffId: str
           {/* Screening asks yes or no: offered when no questions came, or some of them are yes or no. Each button says how many questions it takes. */}
           {/* Its buttons, at the right, stop short of the assistant's button in the screen's corner from the first frame (the
               button arrives after the page): below 1320px the page's column reaches that corner. */}
-          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg max-[82.5rem]:mr-18">
+          <div className="sticky bottom-4 z-10 flex flex-wrap items-center justify-end gap-3 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg max-[82.5rem]:me-18">
             {screenable ? (
               <Button variant="outline" className="min-w-44" onClick={screen} disabled={!count}>
                 <ListChecks className="text-primary" />

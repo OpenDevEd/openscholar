@@ -95,7 +95,7 @@ export function ResultsTranslationControl({
       className={cn(
         compactTrigger
           ? "h-8 gap-1.5 px-2.5"
-          : "h-8 rounded-full gap-1.5 pl-2.5 pr-2 border-border bg-field hover:bg-accent",
+          : "h-8 rounded-full gap-1.5 ps-2.5 pe-2 border-border bg-field hover:bg-accent",
         compactTrigger
           ? allTranslated
             ? "bg-background ink-success shadow-xs"

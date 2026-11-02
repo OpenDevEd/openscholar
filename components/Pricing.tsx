@@ -74,6 +74,7 @@ const FEATURE_NAMES = { extraction: "features.extraction" } as const;
 
 /** `organization`: the organization whose address the page is under, as the server read it. */
 export function Pricing({ organization }: { organization?: CurrentWorkspace } = {}) {
+  const tLabels = useTranslations("pricing");
   const toast = useAppToast();
   const t = useTranslations("pricing");
   const tb = useTranslations("billingPage");
@@ -379,7 +380,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
     if (isCurrent && hasPendingDowngrade) {
       return {
         disabled: false,
-        label: "Cancel scheduled downgrade",
+        label: tLabels("cancelScheduledDowngrade"),
         variant: "outline" as const,
         onClick: handleKeepCurrentPlan,
       };
@@ -397,7 +398,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
     if (isScheduledTarget) {
       return {
         disabled: true,
-        label: "Scheduled",
+        label: tLabels("scheduled"),
         variant: "outline" as const,
         onClick: () => {},
       };
@@ -406,7 +407,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
     if (plan.isDefault) {
       return {
         disabled: false,
-        label: "Manage in billing portal",
+        label: tLabels("manageInBillingPortal"),
         variant: "outline" as const,
         onClick: handleOpenPortal,
       };
@@ -424,7 +425,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
     if (!isUpgrade(catalog, resolvedPlan, plan.id)) {
       return {
         disabled: false,
-        label: `Downgrade to ${plan.name}`,
+        label: tLabels("downgradeTo", { name: plan.name }),
         variant: "outline" as const,
         onClick: () => handleSubscribe(plan.id),
       };
@@ -534,7 +535,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
                 badges={[
                   ...(isCurrent ? [{ tone: "success" as const, label: tc("currentPlan"), testId: "pricing-current-badge" }] : []),
                   ...(plan.popular && !isCurrent ? [{ tone: "primary" as const, label: tc("mostPopular") }] : []),
-                  ...(isScheduledTarget && !isCurrent ? [{ tone: "info" as const, label: "Scheduled", testId: "pricing-scheduled-badge" }] : []),
+                  ...(isScheduledTarget && !isCurrent ? [{ tone: "info" as const, label: tLabels("scheduled"), testId: "pricing-scheduled-badge" }] : []),
                 ]}
                 icon={plan.icon}
                 name={plan.name}

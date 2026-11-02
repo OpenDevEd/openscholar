@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { LIST_FILTER } from "@/components/evidence-libraries/list-controls";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 interface SmartPaginationProps {
   /** The page shown, from 1; the results are read a page at a time, so a page can't be jumped to. */
@@ -51,6 +51,7 @@ export function SmartPagination({
   offset,
   displayedCount,
 }: SmartPaginationProps) {
+  const locale = useLocale();
   const t = useTranslations('pagination');
   const endIdx = offset + displayedCount;
 
@@ -59,9 +60,9 @@ export function SmartPagination({
       {/* Left: Results info */}
       {/* The sides share the row evenly, so the steps stay put when the count's text changes width. */}
       <p className="text-xs tabular-nums text-muted-foreground sm:flex-1">
-        {t("showingRange", { start: displayedCount === 0 ? 0 : offset + 1, end: endIdx, total: filteredAtLeast ? `${Math.max(filteredCount, endIdx).toLocaleString()}+` : Math.max(filteredCount, endIdx) })}
+        {t("showingRange", { start: displayedCount === 0 ? 0 : offset + 1, end: endIdx, total: filteredAtLeast ? `${Math.max(filteredCount, endIdx).toLocaleString(locale)}+` : Math.max(filteredCount, endIdx) })}
         {filteredCount < totalCount && (
-          <span className="text-xs ml-2">{t("filteredFrom", { total: totalCount })}</span>
+          <span className="text-xs ms-2">{t("filteredFrom", { total: totalCount })}</span>
         )}
       </p>
 

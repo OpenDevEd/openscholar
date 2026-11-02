@@ -7,7 +7,10 @@ import type { ReactElement } from "react";
 import { renderWithTooltip } from "../../helpers/render-with-tooltip";
 const mocks = vi.hoisted(() => ({ query: vi.fn(), respond: vi.fn(), restart: vi.fn(), workspace: { kind: "personal" } as { kind: string; name?: string; organizationId?: string } }));
 vi.mock("@/components/workspaces/parts", () => ({ useCurrentWorkspace: () => mocks.workspace }));
-vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+vi.mock("next-intl", async () => {
+  const messages = (await import("@/messages/en-US.json")).default as unknown as Record<string, Record<string, string>>;
+  return { useTranslations: (namespace: string) => (key: string) => messages[namespace]?.[key] ?? key };
+});
 vi.mock("convex/react", () => ({ useMutation: () => mocks.restart, useAction: () => mocks.respond }));
 vi.mock("@/convex/_generated/api", () => ({ api: { organizationFeatures: {listLibraryOrganizations: "organizations"}, evidenceLibraries: {
   teardown: { restartDevelopmentTeardown: "restart" },

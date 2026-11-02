@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { ConfigurationNavigation } from "@/components/evidence-libraries/configuration/configuration-layout";
 import {
@@ -8,22 +9,23 @@ import {
 import { useScrollSpy } from "@/components/evidence-libraries/configuration/use-scroll-spy";
 import { TeamIcon, PersonIcon, LinkIcon, BookIcon } from "@/components/icons";
 const sections = [
-  ["profile-details", "Profile", PersonIcon],
-  ["profile-links", "Links & identifiers", LinkIcon],
-  ["profile-publications", "Publications", BookIcon],
-  ["profile-openalex", "OpenAlex", OpenAlexIcon],
-  ["profile-access", "Access", TeamIcon],
+  ["profile-details", "sectionProfile", PersonIcon],
+  ["profile-links", "sectionLinks", LinkIcon],
+  ["profile-publications", "sectionPublications", BookIcon],
+  ["profile-openalex", "sectionOpenAlex", OpenAlexIcon],
+  ["profile-access", "sectionAccess", TeamIcon],
 ] as const;
 const editorSections = sections.filter(([id]) => id !== "profile-access");
 const ownerIds = sections.map(([id]) => id);
 const editorIds = editorSections.map(([id]) => id);
 export function AuthorSettingsNavigation({canManageAccess}: {canManageAccess: boolean}) {
+  const t = useTranslations("authorPages");
   const visibleSections = canManageAccess ? sections : editorSections;
   const ids = canManageAccess ? ownerIds : editorIds;
   const { active, jumpTo } = useScrollSpy(ids);
   return (
-    <ConfigurationNavigation label="Profile settings">
-      <RailGroup label="Author profile">
+    <ConfigurationNavigation label={t("profileSettings")}>
+      <RailGroup label={t("authorProfile")}>
         {visibleSections.map(([id, label, Icon]) => (
           <RailLink
             key={id}
@@ -32,7 +34,7 @@ export function AuthorSettingsNavigation({canManageAccess}: {canManageAccess: bo
             active={(active ?? ids[0]) === id}
             onClick={() => jumpTo(id)}
           >
-            {label}
+            {t(label)}
           </RailLink>
         ))}
       </RailGroup>

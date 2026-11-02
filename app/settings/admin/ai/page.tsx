@@ -69,7 +69,7 @@ export default function AdminAiModelsPage() {
               presets={presetPicks([task])}
               tasks={[task]}
               trigger={
-                <button type="button" className="w-full rounded-l-xl">
+                <button type="button" className="w-full rounded-s-xl">
                   {row}
                 </button>
               }

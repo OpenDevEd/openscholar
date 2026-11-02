@@ -12,6 +12,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
   useNow: () => new Date("2026-10-11T00:00:00Z"),
   useTranslations: () => (key: string) => key,
 }));
@@ -89,11 +91,11 @@ describe("<JobStatusBanner variant='creditsExhausted'>", () => {
     balanceStore.data = undefined;
   });
 
-  it("Buy Credits button navigates to /settings/billing#topup-section", () => {
+  it("Buy Credits button navigates to /settings/billing", () => {
     setBalance(0, false, 1);
     render(<JobStatusBanner variant="creditsExhausted" />);
     fireEvent.click(screen.getByRole("button", { name: /buyCredits/i }));
-    expect(pushMock).toHaveBeenCalledWith("/settings/billing#topup-section");
+    expect(pushMock).toHaveBeenCalledWith("/settings/billing");
   });
 
   it("Resume button is disabled when the balance is below minCreditsToResume even with handler wired", () => {

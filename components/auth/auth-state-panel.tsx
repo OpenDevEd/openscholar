@@ -204,8 +204,8 @@ export function AuthStatePanel({
     >
       <div className="relative mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-border-subtle bg-card px-6 py-8 text-center shadow-lg sm:px-8">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(70%_55%_at_50%_-5%,color-mix(in_oklab,var(--primary)_12%,transparent),transparent_70%)]" />
-        <div className="pointer-events-none absolute -left-20 top-10 -z-10 h-40 w-40 rounded-full bg-primary/8 blur-3xl" />
-        <div className="pointer-events-none absolute -right-20 bottom-8 -z-10 h-40 w-40 rounded-full bg-primary/8 blur-3xl" />
+        <div className="pointer-events-none absolute -start-20 top-10 -z-10 h-40 w-40 rounded-full bg-primary/8 blur-3xl" />
+        <div className="pointer-events-none absolute -end-20 bottom-8 -z-10 h-40 w-40 rounded-full bg-primary/8 blur-3xl" />
 
         <motion.div
           className={cn(

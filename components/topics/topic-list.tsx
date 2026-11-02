@@ -44,7 +44,7 @@ export function TopicList() {
     {/* Appears when you filter, as the list changes anyway, so the bar never moves. */}
     {(search || ancestor) && <div className="fade-enter flex justify-end border-b border-border-subtle px-4 py-2"><Button variant="ghost" size="sm" className="text-muted-foreground" onClick={clear}>{t("clearFilters")}</Button></div>}
     {!!topics.length && <ul className="divide-y divide-border-subtle">{topics.map(topic => {const Domain = DOMAIN_ICONS[catalogAncestors(topic.id)[0]?.id ?? ""] ?? TopicsIcon; return <li key={topic.id} className="fade-enter"><Link href={`/topics/${topic.id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
-      <div className={cn(LIST_TILE, "mr-1 shrink-0")}><Domain aria-hidden className="size-5" /></div>
+      <div className={cn(LIST_TILE, "me-1 shrink-0")}><Domain aria-hidden className="size-5" /></div>
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{topic.name}</p><p className="truncate text-xs text-muted-foreground">{topic.path.slice(0, -1).join(" / ")}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </Link></li>;})}</ul>}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import {
   Collapsible,
   CollapsibleContent,
@@ -27,19 +28,20 @@ export const SourcesTrigger = ({
   count,
   children,
   ...props
-}: SourcesTriggerProps) => (
-  <CollapsibleTrigger
+}: SourcesTriggerProps) => {
+  const t = useTranslations("sharedControls");
+  return <CollapsibleTrigger
     className={cn("flex items-center gap-2", className)}
     {...props}
   >
     {children ?? (
       <>
-        <p className="font-medium">Used {count} sources</p>
+        <p className="font-medium">{t("usedSources", { count })}</p>
         <ChevronDownIcon className="h-4 w-4" />
       </>
     )}
-  </CollapsibleTrigger>
-);
+  </CollapsibleTrigger>;
+};
 
 export type SourcesContentProps = ComponentProps<typeof CollapsibleContent>;
 

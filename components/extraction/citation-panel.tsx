@@ -104,7 +104,7 @@ export function CitationPanel({
       <div className="border-b border-border-subtle bg-card px-3 py-2">
         <div className="flex items-center gap-2">
           <h3 className="min-w-0 truncate text-sm font-semibold">{t('common.citation')}</h3>
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="ms-auto flex shrink-0 items-center gap-2">
             {citation ? (
               <span className="text-xs tabular-nums text-muted-foreground">{citation.source === "abstract" ? t("common.abstract") : `p.${citation.page}`}</span>
             ) : null}
@@ -161,7 +161,7 @@ export function CitationPanel({
         ) : <>
         {pdfUrlQuery.isDeferred ? (
           <div className="flex h-full items-center justify-center rounded-xl border border-dashed border-border bg-inset p-6 text-sm text-muted-foreground">
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            <Loader2 className="me-2 h-4 w-4 animate-spin" />
             {t('pdfViewer.checkingPdfAccess')}
           </div>
         ) : null}

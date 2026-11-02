@@ -155,7 +155,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
 
   const chips = (
     <div className="flex flex-wrap items-center gap-1.5 empty:hidden">
-      <FullTextToggle text={queryText} className="-ml-1.5" />
+      <FullTextToggle text={queryText} className="-ms-1.5" />
       {versions}
       {languageInfo && (
         <span className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md bg-secondary px-2 text-xs text-secondary-foreground">
@@ -204,7 +204,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
             {aside()}
           </div>
           {open(roomy ? "line-clamp-3" : "line-clamp-2")}
-          {!roomy && <FullTextToggle text={queryText} className="-ml-1.5 self-start" />}
+          {!roomy && <FullTextToggle text={queryText} className="-ms-1.5 self-start" />}
           {roomy && question}
           {roomy && chips}
         </>
@@ -218,7 +218,7 @@ export function HistoryItem({ item, viewMode, onSearchClick, choosing = false, r
           </div>
           {runBy ? <span className="flex shrink-0 self-start">{runBy}</span> : null}
           {/* Beside the query's first line; on a narrow screen, a line of its own under the text. */}
-          {aside("h-7 self-start max-sm:basis-full max-sm:flex-row-reverse max-sm:justify-between max-sm:pl-[5.25rem]")}
+          {aside("h-7 self-start max-sm:basis-full max-sm:flex-row-reverse max-sm:justify-between max-sm:ps-[5.25rem]")}
         </>
       ) : (
         <>

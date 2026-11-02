@@ -11,7 +11,9 @@ import { ExportDialog } from "@/components/extraction/export-dialog";
 const { exportToCSV } = vi.hoisted(() => ({ exportToCSV: vi.fn() }));
 vi.mock("@/lib/extraction/export", () => ({ exportToCSV, exportToJSON: vi.fn(), exportToExcel: vi.fn() }));
 vi.mock("@/lib/toast", () => ({ useAppToast: () => ({ io: { downloadFailed: vi.fn() } }) }));
-vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }), useTranslations: () => (key: string) => key }));
 
 function Harness({ loadExport }: { loadExport: () => Promise<{ papers: never[]; questions: never[] }> }) {
   const [open, setOpen] = useState(true);

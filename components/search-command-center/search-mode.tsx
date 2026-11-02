@@ -321,7 +321,7 @@ export function SearchMode({ isLoading, isValidating }: SearchModeProps) {
                 className="px-3"
               >
                 <>
-                  <Search className="h-4 w-4 sm:mr-1" />
+                  <Search className="h-4 w-4 sm:me-1" />
                   <span className="hidden sm:inline">{tc('search')}</span>
                 </>
               </Button>

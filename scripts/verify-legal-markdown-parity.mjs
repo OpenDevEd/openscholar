@@ -5,7 +5,7 @@ import path from "node:path";
 
 const CONTENT_ROOT = path.join(process.cwd(), "content");
 const DEFAULT_LOCALE = "en-US";
-const LOCALES = ["en-US", "en-GB", "fr", "hi", "ja", "zh"];
+const LOCALES = ["en-US", "en-GB", "fr", "hi", "ja", "zh", "ar", "sw", "pt", "es", "de", "af"];
 
 const DOCS = [
   { key: "privacy", folder: "privacy-policy" },

@@ -171,7 +171,7 @@ export function LibrarySelect({ libraries, value, onChange, totalOf }: { librari
             <SelectItem key={one.libraryId} value={one.libraryId}>
               <Mark className="size-4" />
               <span className="truncate">{one.name}</span>
-              <span className="ml-auto flex items-center gap-1.5 pl-2 text-xs tabular-nums text-muted-foreground">
+              <span className="ms-auto flex items-center gap-1.5 ps-2 text-xs tabular-nums text-muted-foreground">
                 {one.role ? <Chip className="h-5 px-1.5">{t(`role.${one.role}`)}</Chip> : null}
                 {total === undefined ? null : format.number(total, { notation: "compact" })}
               </span>
@@ -263,7 +263,7 @@ export function LibrarySources({
       <div className="flex flex-wrap gap-2">
         {library ? <LibrarySelect libraries={libraries} value={library.libraryId} onChange={pick} totalOf={totalOf} /> : null}
         <div className="relative min-w-56 flex-1">
-          <Link2 aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Link2 aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={address}
             onChange={(e) => {
@@ -285,9 +285,9 @@ export function LibrarySources({
             placeholder={t("address")}
             aria-label={t("address")}
             aria-invalid={pasteProblem ? true : undefined}
-            className="h-9 pl-9 pr-9"
+            className="h-9 ps-9 pe-9"
           />
-          {resolving ? <Spinner className="absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /> : null}
+          {resolving ? <Spinner className="absolute end-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" /> : null}
         </div>
       </div>
       <AnimatePresence initial={false}>
@@ -314,7 +314,7 @@ export function LibrarySources({
               options={(["all", "yours", "shared", "library"] as const).map((id) => ({ id, label: t(`filter.${id}`) }))}
             />
             <div className="relative min-w-40 flex-1">
-              <Search aria-hidden className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Search aria-hidden className="pointer-events-none absolute start-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={words}
                 onChange={(e) => {
@@ -323,7 +323,7 @@ export function LibrarySources({
                 }}
                 placeholder={t("find")}
                 aria-label={t("find")}
-                className="h-9 pl-8"
+                className="h-9 ps-8"
               />
             </div>
           </div>

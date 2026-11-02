@@ -17,7 +17,7 @@ describe("legal content loader", () => {
     const [fallbackContent, englishContent] = await Promise.all([
       getLegalMarkdown({
         docType: "cookie",
-        locale: "es",
+        locale: "ko",
       }),
       getLegalMarkdown({
         docType: "cookie",
@@ -39,7 +39,7 @@ describe("legal content loader", () => {
     await expect(
       getLegalMarkdown({
         docType: "privacy",
-        locale: "es",
+        locale: "ko",
         contentRoot: missingRoot,
       })
     ).rejects.toThrow(/Missing legal markdown source:/);

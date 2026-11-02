@@ -146,14 +146,14 @@ export function WorkIdFilter({
             value={inputValue}
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyPress={handleKeyPress}
-            className="pr-10"
+            className="pe-10"
           />
           {inputValue && (
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setInputValue('')}
-              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+              className="absolute end-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
             >
               <X className="h-3 w-3" />
             </Button>
@@ -171,7 +171,7 @@ export function WorkIdFilter({
           size="sm"
           className="flex-1"
         >
-          <Icon className="h-3 w-3 mr-2" />
+          <Icon className="h-3 w-3 me-2" />
           {currentConfig.applyText}
         </Button>
         
@@ -199,7 +199,7 @@ export function WorkIdFilter({
                href={itemId.startsWith('https://') ? itemId : `https://openalex.org/${itemId}`}
                target="_blank"
                rel="noopener noreferrer"
-               className={cn("ml-auto flex-shrink-0 hover:opacity-80", colors.link)}
+               className={cn("ms-auto flex-shrink-0 hover:opacity-80", colors.link)}
              >
                <ExternalLink className="h-3 w-3" />
              </a>

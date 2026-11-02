@@ -39,7 +39,7 @@ export const FilterSection = React.memo(function FilterSection({
       {/* Active indicator - left gradient bar */}
       {isActive && (
         <div
-          className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-sm bg-gradient-to-b from-primary-bright via-primary to-primary-deep"
+          className="absolute start-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-e-sm bg-gradient-to-b from-primary-bright via-primary to-primary-deep"
         />
       )}
 
@@ -72,7 +72,7 @@ export const FilterSection = React.memo(function FilterSection({
                 onClick={onClear}
                 className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-sidebar-accent"
               >
-                <X className="h-3 w-3 mr-1" />
+                <X className="h-3 w-3 me-1" />
                 {tc("clear")}
               </Button>
             </div>

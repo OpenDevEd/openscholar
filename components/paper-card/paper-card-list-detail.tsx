@@ -156,13 +156,13 @@ export function PaperCardListDetail({
           {/* Title Button */}
           <TitleContainer
             onClick={hide?.focusMode ? undefined : handlePaperOpened}
-            className={cn("text-left w-full", !hide?.focusMode && "group/title")}
+            className={cn("text-start w-full", !hide?.focusMode && "group/title")}
           >
             <h3 className="font-semibold text-lg leading-snug text-wrap-anywhere group-hover/title:text-primary transition-colors">
               <QueryMatchText
                 text={showTranslated && translatedContent ? translatedContent.translatedTitle : result.title}
               />
-              {result.publication_year != null && <span className="ml-2 text-muted-foreground font-normal">
+              {result.publication_year != null && <span className="ms-2 text-muted-foreground font-normal">
                 ({result.publication_year})
               </span>}
             </h3>
@@ -400,7 +400,7 @@ export function PaperCardListDetail({
             <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={handleCitesSearch}
-                className="bg-cites/10 hover:bg-cites/15 border border-cites/30 rounded-xl p-3 text-left transition-all group/cite relative"
+                className="bg-cites/10 hover:bg-cites/15 border border-cites/30 rounded-xl p-3 text-start transition-all group/cite relative"
               >
                 <div className="flex items-center gap-1.5 ink-cites mb-1">
                   <Quote className="h-3.5 w-3.5" />
@@ -409,12 +409,12 @@ export function PaperCardListDetail({
                 <div className="text-lg font-bold ink-cites">
                   {format.number(result.cited_by_count ?? 0)}
                 </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-cites opacity-50 group-hover/cite:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 absolute end-2 top-1/2 -translate-y-1/2 text-cites opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
 
               <button
                 onClick={handleCitedBySearch}
-                className="bg-cited-by/10 hover:bg-cited-by/15 border border-cited-by/30 rounded-xl p-3 text-left transition-all group/cite relative"
+                className="bg-cited-by/10 hover:bg-cited-by/15 border border-cited-by/30 rounded-xl p-3 text-start transition-all group/cite relative"
               >
                 <div className="flex items-center gap-1.5 ink-cited-by mb-1">
                   <Quote className="h-3.5 w-3.5" />
@@ -423,12 +423,12 @@ export function PaperCardListDetail({
                 <div className="text-lg font-bold ink-cited-by">
                   {format.number(result.referenced_works_count ?? 0)}
                 </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-cited-by opacity-50 group-hover/cite:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 absolute end-2 top-1/2 -translate-y-1/2 text-cited-by opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
 
               <button
                 onClick={handleRelatedSearch}
-                className="bg-related/10 hover:bg-related/15 border border-related/30 rounded-xl p-3 text-left transition-all group/cite relative"
+                className="bg-related/10 hover:bg-related/15 border border-related/30 rounded-xl p-3 text-start transition-all group/cite relative"
               >
                 <div className="flex items-center gap-1.5 ink-related mb-1">
                   <Network className="h-3.5 w-3.5" />
@@ -437,7 +437,7 @@ export function PaperCardListDetail({
                 <div className="text-lg font-bold ink-related">
                   {format.number(result.related_works?.length ?? 0)}
                 </div>
-                <ChevronRight className="h-4 w-4 absolute right-2 top-1/2 -translate-y-1/2 text-related opacity-50 group-hover/cite:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 absolute end-2 top-1/2 -translate-y-1/2 text-related opacity-50 group-hover/cite:opacity-100 transition-opacity" />
               </button>
             </div>
           </div>

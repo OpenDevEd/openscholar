@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useAction, useMutation, type Preloaded } from "convex/react";
 import { OrganizationAvatar, useLibraryOrganizationChoice } from "./organization-picker";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
@@ -94,6 +95,8 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   pending?: boolean;
   preloadedOrganizations?: Preloaded<typeof api.organizationFeatures.listLibraryOrganizations>;
 }) {
+  const tLabels = useTranslations("libraryList");
+  const t = useTranslations("libraryList");
   const owner = useLibraryOrganizationChoice(preloadedOrganizations);
   const [tab, setView] = useQueryState("view", parseAsStringLiteral(["libraries", "invitations"]).withDefault("libraries"));
   const [search, setSearch] = useState("");
@@ -117,6 +120,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   // The invitation being answered: while its answer is on its way, no invitation takes another.
   const [answering, setAnswering] = useState<string | null>(null);
   const roles = { owner: "Owner", editor: "Editor", creator: "Creator", viewer: "Viewer" } as const;
+  const roleNames = { Owner: tLabels("owner"), Editor: tLabels("editor"), Creator: tLabels("creator"), Viewer: tLabels("viewer") } as const;
   // An address has at most a page of invitations waiting, so they are filtered here.
   const invited = (invitations.data?.page ?? []).filter((invitation) => `${invitation.name} ${invitation.organization.name}`.toLowerCase().includes(search.trim().toLowerCase()));
   const visible: Library[] = view === "libraries"
@@ -127,24 +131,24 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   const loading = !workspace || overviews.isLoading || !invitations.data || !owner.isReady;
   return (
     <LibraryPageShell
-      title="Evidence libraries"
+      title={t("evidenceLibraries")}
       actions={owner.organizations.some((org) => org.id === organization) &&
         <Button asChild size="sm" className={BAR_ACTION}>
           <Link href="/evidence-libraries/new">
             <Plus />
-            <span className={BAR_LABEL}>New library</span>
+            <span className={BAR_LABEL}>{t("newLibrary")}</span>
           </Link>
         </Button>
       }
       // Invitations to a library are yours, so they're in your own workspace.
       tabs={personal &&
         <ListViewTabs
-          label="Library view"
+          label={t("libraryView")}
           value={view}
           onChange={setView}
           tabs={(["libraries", "invitations"] as const).map((each) => ({
             value: each,
-            label: each === "libraries" ? "Shared with you" : "Invitations",
+            label: each === "libraries" ? t("sharedWithYou") : t("invitations"),
             icon: each === "libraries" ? <Layers className="size-3.5" /> : <Mail className="size-3.5" />,
             count: loading ? undefined : each === "libraries" ? (overviews.hasPages ? undefined : overviews.items.length) : invited.length,
           }))}
@@ -152,8 +156,8 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
       }
       filters={<>
         <ListSearch
-          aria-label="Search libraries"
-          placeholder="Find a library…"
+          aria-label={t("searchLibraries")}
+          placeholder={t("findALibrary")}
           value={search}
           onChange={(event) => setSearch(event.target.value)}
         />
@@ -172,20 +176,20 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
       <div key={view} className="fade-enter">
         {view === "invitations" && (
           <p className="border-b border-border-subtle px-4 py-3 text-xs text-muted-foreground">
-            Accept access to a library without joining its organization.
+            {t("acceptAccessToALibraryWithout")}
           </p>
         )}
         {loading ? (
-          <ListLoading label="Loading libraries" />
+          <ListLoading label={t("loadingLibraries")} />
         ) : !visible.length ? (
           <ListEmpty icon={search ? SearchX : view === "invitations" ? Mail : Layers}>
               {search
-                ? "No libraries match these filters."
+                ? t("noLibrariesMatchTheseFilters")
                 : view === "invitations"
-                  ? "No pending invitations."
+                  ? t("noPendingInvitations")
                   : personal
-                    ? "Libraries people share with you appear here."
-                    : `${workspace?.name} has no libraries yet.`}
+                    ? t("librariesPeopleShareWithYouAppear")
+                    : t("hasNoLibrariesYet", { name: workspace?.name ?? "" })}
           </ListEmpty>
         ) : (
           // The page shown stays up, dimmed and inert, while the one it steps or filters to loads.
@@ -203,7 +207,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                   data-status={library.status}
                   className="fade-enter flex flex-wrap items-center gap-3 p-4 hover:bg-muted sm:flex-nowrap"
                 >
-                  <div className="relative mr-1 shrink-0">
+                  <div className="relative me-1 shrink-0">
                     {library.faviconUrl ? (
                       <LibraryImage
                         src={library.faviconUrl}
@@ -219,8 +223,8 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          aria-label={`Organization: ${library.organization}`}
-                          className="absolute -bottom-1 -right-1 rounded-md bg-background ring-2 ring-background outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
+                          aria-label={t("organization", { organization: library.organization })}
+                          className="absolute -bottom-1 -end-1 rounded-md bg-background ring-2 ring-background outline-offset-2 focus-visible:outline-2 focus-visible:outline-ring"
                         >
                           <OrganizationAvatar name={library.organization} imageUrl={library.organizationImageUrl} />
                         </button>
@@ -251,16 +255,16 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                       )}
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <RoleLabel role={roleKinds[library.role]} className="ml-1">
-                            {library.role}
+                          <RoleLabel role={roleKinds[library.role]} className="ms-1">
+                            {roleNames[library.role]}
                           </RoleLabel>
                         </TooltipTrigger>
                         <TooltipContent>
                           {library.role === "Owner"
-                            ? "Inherited from organization ownership"
+                            ? t("inheritedFromOrganizationOwnership")
                             : library.role === "Viewer"
-                              ? "Everyone in the organization views its libraries"
-                              : "Assigned to this library"}
+                              ? t("everyoneInTheOrganizationViewsIts")
+                              : t("assignedToThisLibrary")}
                         </TooltipContent>
                       </Tooltip>
                     </div>
@@ -274,7 +278,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                     </div>
                   </div>
                   {/* On phones the actions take their own line under the name, lined up with it, so the name keeps the row's width. */}
-                  <div className="flex w-full shrink-0 items-center gap-2 pl-14 sm:ml-auto sm:w-auto sm:pl-0">
+                  <div className="flex w-full shrink-0 items-center gap-2 ps-14 sm:ms-auto sm:w-auto sm:ps-0">
                     {library.pending ? (
                       <>
                         <Button
@@ -283,7 +287,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                           disabled={answering !== null}
                           onClick={() => setDeclining(library)}
                         >
-                          Decline
+                          {t("decline")}
                         </Button>
                         <Button
                           size="sm"
@@ -295,62 +299,62 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                               await respond({ invitationId: library.invitationId, accept: true });
                               setNotice(`Accepted ${library.name}.`);
                               setView("libraries");
-                            } catch (error) { setNotice(getErrorMessage(error, "Unable to accept invitation")); }
+                            } catch (error) { setNotice(getErrorMessage(error, tLabels("unableToAcceptInvitation"))); }
                             finally { setAnswering(null); }
                           }}
                         >
                           <Check />
-                          Accept invitation
+                          {t("acceptInvitation")}
                         </Button>
                       </>
                     ) : library.draft ? (
                       library.role !== "Owner" || (library.status === "deleting" && !library.deletionFailed) ? (
-                        <span className="text-xs text-muted-foreground">{library.status === "deleting" ? "Deleting" : "Setup pending"}</span>
+                        <span className="text-xs text-muted-foreground">{library.status === "deleting" ? t("deleting") : t("setupPending")}</span>
                       ) : library.status === "deleting" ? (
                         <Button size="sm" variant="outline" disabled={retrying === library.id} onClick={async () => {
                           setRetrying(library.id);
-                          try { await restartTeardown({libraryId: library.id as Id<"evidenceLibraries">}); setNotice(`Deletion restarted for ${library.name}.`); }
-                          catch (error) { setNotice(getErrorMessage(error, "Could not restart deletion")); }
+                          try { await restartTeardown({libraryId: library.id as Id<"evidenceLibraries">}); setNotice(tLabels("deletionRestartedFor", { name: library.name })); }
+                          catch (error) { setNotice(getErrorMessage(error, tLabels("couldNotRestartDeletion"))); }
                           finally { setRetrying(null); }
-                        }}><RotateCcw />Retry deletion</Button>
+                        }}><RotateCcw />{t("retryDeletion")}</Button>
                       ) : (
                         <Button asChild size="sm" variant="outline">
                           <Link href={library.status === "draft" ? library.configuration! : `/evidence-libraries/${library.id}/setup`}>
-                            <Settings2 />{library.status === "draft" ? "Configure" : "View setup"}
+                            <Settings2 />{library.status === "draft" ? t("configure") : t("viewSetup")}
                           </Link>
                         </Button>
                       )
                     ) : library.role === "Viewer" ? (
                       // A viewer has no role in the library's admin: its settings are theirs to read (#653), and its public address theirs to open.
-                      <ButtonGroup aria-label={`Actions for ${library.name}`}>
+                      <ButtonGroup aria-label={t("actionsFor", { name: library.name })}>
                         <Button asChild size="sm" variant="outline">
                           <Link href={library.configuration!}>
                             <Settings2 />
-                            Settings
+                            {t("settings")}
                           </Link>
                         </Button>
                         <Button asChild size="sm" variant="outline">
                           <a href={`https://${library.address}`} target="_blank" rel="noopener noreferrer">
                             <ExternalLink />
-                            View public library
+                            {t("viewPublicLibrary")}
                           </a>
                         </Button>
                       </ButtonGroup>
                     ) : (
-                      <ButtonGroup aria-label={`Actions for ${library.name}`}>
+                      <ButtonGroup aria-label={t("actionsFor", { name: library.name })}>
                         {library.configuration && (
                           <Button asChild size="sm" variant="outline">
                             <Link href={library.configuration}>
                               <Settings2 />
                               {/* Owners change the settings; editors and creators read them (#653). */}
-                              {library.role === "Owner" ? "Configure" : "Settings"}
+                              {library.role === "Owner" ? t("configure") : t("settings")}
                             </Link>
                           </Button>
                         )}
                         <Button asChild size="sm" variant="outline">
                           <AdminAreaLink address={`https://${library.address}`}>
                             <ExternalLink />
-                            Open admin
+                            {t("openAdmin")}
                           </AdminAreaLink>
                         </Button>
                         <DropdownMenu>
@@ -358,7 +362,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                             <Button
                               size="icon-sm"
                               variant="outline"
-                              aria-label={`More actions for ${library.name}`}
+                              aria-label={t("moreActionsFor", { name: library.name })}
                             >
                               <MoreHorizontal />
                             </Button>
@@ -371,7 +375,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                                 rel="noopener noreferrer"
                               >
                                 <ExternalLink />
-                                View public library
+                                {t("viewPublicLibrary")}
                               </a>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -412,15 +416,14 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
       >
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Decline invitation?</DialogTitle>
+            <DialogTitle>{t("declineInvitation")}</DialogTitle>
             <DialogDescription>
-              You won’t receive access to {declining?.name}. Your other
-              libraries are unaffected.
+              {t("declineBody", { name: declining?.name ?? "" })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <DialogClose asChild>
-              <Button variant="outline">Keep invitation</Button>
+              <Button variant="outline">{t("keepInvitation")}</Button>
             </DialogClose>
             <Button
               variant="destructive"
@@ -431,12 +434,12 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                 try {
                   await respond({ invitationId: declining.invitationId, accept: false });
                   setDeclining(null);
-                  setNotice("Invitation declined.");
-                } catch (error) { setNotice(getErrorMessage(error, "Unable to decline invitation")); }
+                  setNotice(tLabels("invitationDeclined"));
+                } catch (error) { setNotice(getErrorMessage(error, tLabels("unableToDeclineInvitation"))); }
                 finally { setAnswering(null); }
               }}
             >
-              Decline invitation
+              {t("declineInvitation2")}
             </Button>
           </DialogFooter>
         </DialogContent>

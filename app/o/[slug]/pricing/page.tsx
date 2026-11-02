@@ -4,7 +4,7 @@ import { api } from "@/convex/_generated/api";
 import { PageWrapper } from "@/components/PageWrapper";
 import { Pricing } from "@/components/Pricing";
 
-export { metadata } from "@/app/pricing/page";
+export { generateMetadata } from "@/app/pricing/page";
 
 /**
  * An organization's plans (#652), drawn from the organization as the server reads it, so its cards

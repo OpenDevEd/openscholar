@@ -125,7 +125,7 @@ export function QueryErrorState({ detail, oql }: { detail: QueryErrorDetail; oql
         </h2>
         <p className="mt-2 text-base text-foreground">{problem}</p>
         {detail.near && (
-          <pre className="mt-5 w-full whitespace-pre-wrap break-all rounded-lg bg-inset px-4 py-3 text-left font-mono text-xs leading-relaxed text-muted-foreground">
+          <pre className="mt-5 w-full whitespace-pre-wrap break-all rounded-lg bg-inset px-4 py-3 text-start font-mono text-xs leading-relaxed text-muted-foreground">
             {detail.near.before}
             <mark className="rounded-sm bg-destructive/15 px-0.5 text-destructive">{detail.near.token}</mark>
             {detail.near.after}
@@ -173,7 +173,7 @@ export function LoadingResults({ variant = "full" }: LoadingResultsProps) {
           initial={{ width: 0 }}
           animate={{ width: "100%" }}
           transition={{ duration: 2, ease: "easeInOut" }}
-          className="absolute bottom-0 left-0 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"
+          className="absolute bottom-0 start-0 h-0.5 bg-gradient-to-r from-primary/50 via-primary to-primary/50"
         />
       </div>
     );

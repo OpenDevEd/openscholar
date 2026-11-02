@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -9,6 +10,7 @@ import { TeamAccess, type AccessMember } from "@/components/evidence-libraries/c
  * as any shared item's are, in the workspace that owns the profile, whichever one its page is in.
  */
 export function ProfileAccess({profileId, workspaceId}: {profileId: Id<"authorProfiles">; workspaceId: Id<"workspaces">}) {
+  const t = useTranslations("authorPages");
   const data = useQuery(api.authors.members.list, {profileId});
   const invite = useAction(api.sharing.invitations.invite);
   const remove = useMutation(api.sharing.guests.remove);

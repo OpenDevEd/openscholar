@@ -44,7 +44,7 @@ export function BulkActionsBar({
                   size="sm"
                   onClick={() => setExportDialogOpen(true)}
                 >
-                  <Download className="w-4 h-4 mr-2" />
+                  <Download className="w-4 h-4 me-2" />
                   {t("exportSelected")}
                 </Button>
                 <div className="h-6 w-px bg-border" />
