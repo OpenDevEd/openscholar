@@ -4,7 +4,7 @@ const { id = "ask" } = Astro.props;
 ---
 <form class="ask" data-ask action={`${APP}/results`} method="get" role="search">
   <label class="sr" for={id}>Ask a research question</label>
-  <input id={id} name="q" autocomplete="off" required data-ask-input placeholder="Does peer tutoring improve reading?" />
+  <input id={id} name="q" autocomplete="off" required data-ask-input placeholder="Does peer tutoring help reading?" />
   <button aria-label="Search"><svg width="22" height="22" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10h12M11 5l5 5-5 5" /></svg></button>
 </form>
 <script>

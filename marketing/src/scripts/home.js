@@ -66,7 +66,7 @@ function frame(ms) {
 }
 requestAnimationFrame(frame);
 
-const QUESTIONS = ["Does peer tutoring improve reading?", "What keeps girls in school?", "Is mindfulness as good as medication for anxiety?", "How does heat affect learning?", "Do cash transfers reduce poverty for good?"];
+const QUESTIONS = ["Does peer tutoring help reading?", "What keeps girls in school?", "Does mindfulness ease anxiety?", "How does heat affect learning?", "Do cash transfers end poverty?"];
 const asks = [...document.querySelectorAll("[data-ask-input]")];
 if (!reduced) { let q = 0, c = QUESTIONS[0].length, del = true, wait = 30; setInterval(() => { if (document.hidden || asks.some((a) => a === document.activeElement || a.value)) return; if (wait > 0) { wait--; return; } if (del) { c -= 2; if (c <= 0) { del = false; q = (q + 1) % QUESTIONS.length; c = 0; } } else { c += 1; if (c >= QUESTIONS[q].length) { del = true; wait = 40; } } asks.forEach((a) => { a.placeholder = QUESTIONS[q].slice(0, Math.max(0, c)); }); }, 55); }
 
