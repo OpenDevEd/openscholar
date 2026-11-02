@@ -39,7 +39,7 @@ p { text-wrap: pretty; }
 
 /* Buttons: the arrow sits in its own chip and slides across on hover. */
 .btn { --face: #fff; --text: var(--ink); --chip: var(--tint, var(--brand)); --chipt: #fff; display: inline-flex; align-items: center; gap: 14px; height: 52px; padding: 0 8px 0 20px; border-radius: 14px; background: var(--face); color: var(--text); font-weight: 500; font-size: 16px; white-space: nowrap; transition: background-color .2s var(--ease), box-shadow .2s var(--ease), transform .12s var(--ease); box-shadow: 0 1px 2px rgb(10 26 63 / .18); }
-.btn i { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--chip); color: var(--chipt); flex: none; } .btn i svg { transition: transform .25s var(--ease); } .btn:hover i svg { transform: translateX(3px); } .btn:active { transform: translateY(1px); }
+.btn i { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--chip); color: var(--chipt); flex: none; } .btn i svg { transition: transform .25s var(--ease); } .btn:hover i svg { transform: translateX(3px); } .btn:not(.brand, .ghost):hover { box-shadow: 0 6px 18px rgb(10 26 63 / .28); } .btn:active { transform: translateY(1px); }
 .btn.brand { --face: var(--brand); --text: #fff; --chip: #fff; --chipt: var(--brand); } .btn.brand:hover { background: var(--brand-dark); }
 .btn.ghost { --face: rgb(255 255 255 / .14); --text: #fff; padding-inline: 20px; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .4); } .btn.ghost:hover { background: rgb(255 255 255 / .24); }
 /* A real product window. */

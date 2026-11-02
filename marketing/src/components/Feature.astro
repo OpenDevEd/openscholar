@@ -1,8 +1,8 @@
 ---
 // One capability: a colour field, the case for it, the real product, and a small working piece of it laid over the top.
-const { id, field, chip = "#2563eb", title, text, img, w = 1600, h = 1000, alt, flip = false, fit = false } = Astro.props;
+const { id, field, chip = "#2563eb", title, text, img, w = 1600, h = 1000, alt, flip = false, fit = false, narrow = false } = Astro.props;
 ---
-<section id={id} class:list={["panel", "f", { flip, fit }]} style={`--tint:${chip}`}>
+<section id={id} class:list={["panel", "f", { flip, fit, narrow }]} style={`--tint:${chip}`}>
   <i class={`field f-${field}`} aria-hidden="true"></i>
   <div class="copy"><h2>{title}</h2><p class="lead">{text}</p><slot name="extra" /></div>
   <div class="view"><div class="win"><img src={`/img/${img}.avif`} width={w} height={h} loading="lazy" decoding="async" alt={alt} /></div><div class="over"><slot /></div></div>
@@ -12,6 +12,7 @@ const { id, field, chip = "#2563eb", title, text, img, w = 1600, h = 1000, alt, 
   .f.flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); padding: var(--pad) var(--pad) var(--pad) 0; } .flip .copy { order: 2; }
   .copy { display: grid; gap: 18px; min-width: 0; }
   .view { position: relative; min-width: 0; } .view .win { width: 112%; border-radius: 14px 0 0 14px; } .flip .view .win { border-radius: 0 14px 14px 0; width: 100%; } .fit { padding-right: var(--pad); } .fit .view .win { width: 100%; border-radius: 14px; }
+  .narrow, .f.flip.narrow { padding: var(--pad); grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); } .narrow .view { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 16px; align-items: center; } .narrow .view .win, .flip.narrow .view .win { width: 100%; border-radius: 14px; } .narrow .over, .flip.narrow .over { position: static; width: auto; }
   .over { position: absolute; left: -28px; bottom: -20px; z-index: 1; width: min(380px, 62%); } .flip .over { left: auto; right: -28px; }
-  @media (max-width: 900px) { .f, .f.flip { grid-template-columns: minmax(0, 1fr); padding: var(--pad) 0 0 var(--pad); min-height: 0; } .f.flip { padding: var(--pad) 0 0 var(--pad); } .flip .copy { order: 0; } .copy { padding-right: var(--pad); } .view { overflow: hidden; padding-bottom: 150px; margin-top: 8px; } .view .win, .flip .view .win { width: 170%; border-radius: 14px 0 0 0; } .fit { padding-right: 0; } .fit .view .win { width: 150%; border-radius: 14px 0 0 0; } .over, .flip .over { left: 0; right: var(--pad); bottom: 16px; width: auto; } }
+  @media (max-width: 900px) { .f, .f.flip { grid-template-columns: minmax(0, 1fr); padding: var(--pad) 0 0 var(--pad); min-height: 0; } .f.flip { padding: var(--pad) 0 0 var(--pad); } .flip .copy { order: 0; } .copy { padding-right: var(--pad); } .view { overflow: hidden; padding-bottom: 150px; margin-top: 8px; } .view .win, .flip .view .win { width: 170%; border-radius: 14px 0 0 0; } .fit { padding-right: 0; } .fit .view .win { width: 150%; border-radius: 14px 0 0 0; } .view:has(.over:empty) { padding-bottom: var(--pad); } .narrow, .f.flip.narrow { grid-template-columns: minmax(0, 1fr); padding-right: var(--pad); } .narrow .view { display: grid; grid-template-columns: minmax(0, 1fr); overflow: visible; padding-bottom: var(--pad); } .narrow .copy { padding-right: 0; } .narrow .view .win, .flip.narrow .view .win { width: 100%; } .over, .flip .over { left: 0; right: var(--pad); bottom: 16px; width: auto; } }
 </style>

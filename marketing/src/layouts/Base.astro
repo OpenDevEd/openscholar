@@ -40,7 +40,7 @@ const path = Astro.url.pathname;
     </nav>
     <p class="credit">Built by OpenDevEd and eKitabu</p>
   </div></footer>
-  <script>const menu = document.querySelector(".menu"); addEventListener("click", (e) => { if (menu?.open && !menu.contains(e.target)) menu.open = false; });</script>
+  <script>const menu = document.querySelector(".menu"); addEventListener("click", (e) => { if (menu?.open && (!menu.contains(e.target) || e.target.closest(".sheet a"))) menu.open = false; });</script>
 </body>
 </html>
 <style>
