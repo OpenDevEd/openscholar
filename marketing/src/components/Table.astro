@@ -12,7 +12,7 @@ const rows = [
   <div class="bar"><b>Peer tutoring trials</b><button type="button" class="sort" data-sort aria-pressed="false"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v12M3 13l3 3 3-3M14 16V4M11 7l3-3 3 3" /></svg>Least certain first</button></div>
   <div role="table" aria-label="Answers extracted from five papers">
     <div class="r head" role="row"><span role="columnheader">Paper</span><span role="columnheader">Who took part?</span><span role="columnheader">Study design</span><span role="columnheader">Model's certainty</span></div>
-    <div data-rows role="rowgroup">{rows.map(([t, who, d, c], i) => <div class="r" role="row" data-c={c} data-i={i}><span class="t" role="cell">{t}</span><span class="v" role="cell">{who}</span><span role="cell">{d}</span><span class="m" role="cell" aria-label={`${c >= 85 ? "High" : "Lower"} certainty`}><i style={`width:${c}%;background:${c >= 85 ? "#059669" : "#d97706"}`}></i></span></div>)}</div>
+    <div data-rows role="rowgroup">{rows.map(([t, who, d, c], i) => <div class="r" role="row" data-c={c} data-i={i}><span class="t" role="cell">{t}</span><span class="v" role="cell">{who}</span><span role="cell">{d}</span><span class="ml" aria-hidden="true">Model's certainty</span><span class="m" role="cell" aria-label={`${c >= 85 ? "High" : "Lower"} certainty`}><i style={`width:${c}%;background:${c >= 85 ? "#059669" : "#d97706"}`}></i></span></div>)}</div>
   </div>
 </div>
 <script>
@@ -24,6 +24,6 @@ const rows = [
   .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-block: 12px; } .bar b { font-weight: 500; font-size: 18px; letter-spacing: -.01em; }
   .sort { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding-inline: 12px; border-radius: 10px; background: var(--soft); font-size: 14px; font-weight: 500; transition: background-color .15s var(--ease), color .15s var(--ease); } .sort:hover { background: #e6eeff; } .sort[aria-pressed="true"] { background: var(--ink); color: #fff; }
   .r { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 3fr) minmax(0, 2fr) minmax(0, 2fr); gap: 20px; align-items: center; min-height: 62px; padding-block: 10px; border-top: 1px solid var(--line); background: #fff; font-size: 15px; line-height: 1.3; } .head { min-height: 36px; font-size: 14px; color: var(--t2); } .t { font-weight: 500; } .v { color: var(--ink); }
-  .m { display: block; height: 8px; border-radius: 4px; background: var(--soft); overflow: hidden; } .m i { display: block; height: 100%; border-radius: 4px; }
-  @media (max-width: 800px) { .x { padding-inline: 16px; } .head { display: none; } .r { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; } .t { grid-column: 1 / -1; } .m { grid-column: 1 / -1; margin-top: 4px; } }
+  .m { display: block; height: 8px; border-radius: 4px; background: var(--soft); overflow: hidden; } .m i { display: block; height: 100%; border-radius: 4px; } .ml { display: none; }
+  @media (max-width: 800px) { .x { padding-inline: 16px; } .head { display: none; } .r { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; } .t { grid-column: 1 / -1; } .ml { display: block; grid-column: 1 / -1; margin-top: 4px; font-size: 13px; color: var(--t2); } .m { grid-column: 1 / -1; } }
 </style>

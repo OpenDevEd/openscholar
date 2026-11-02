@@ -1,9 +1,9 @@
 ---
 import Base from "../../layouts/Base.astro";
-import Feature from "../../components/Feature.astro";
 import Faq from "../../components/Faq.astro";
 import Arrow from "../../components/Arrow.astro";
 import { APP } from "../../data/site.mjs";
+const files = ["screening_final.xlsx", "screening_final_v2.xlsx", "final_FINAL.xlsx", "screening (1).xlsx", "screening_tomas.xlsx", "maya_edits.xlsx"];
 const yes = true, no = false;
 const ledger = [["Maya Chen", "#fb7185", "changed an answer", "Peer tutoring screening", "2 min"], ["The assistant", "#7dd3fc", "finished an extraction, for Maya", "Peer tutoring trials", "9 min"], ["Tomas Silva", "#fde68a", "added papers to a collection", "Reading interventions", "24 min"], ["Amina Bello", "#a7f3d0", "shared it with a guest", "Peer tutoring screening", "1 hour"], ["Lena Roth", "#fbcfe8", "moved it into the team", "Scoping review 2026", "3 hours"]];
 const roles = [["See all the organization's work", yes, yes, no], ["Start searches, screenings and extractions", yes, yes, no], ["Delete what they made", yes, yes, no], ["Delete anything and manage roles", yes, no, no], ["See one item shared with them", yes, yes, yes]];
@@ -19,7 +19,15 @@ const faq = [
     <div class="h-copy"><h1>One workspace for your team's evidence</h1><p class="lead">Keep every search, screening and extraction in one place, see who did what, and stop passing spreadsheets around.</p><a class="btn" href={APP}>Bring your team in<Arrow /></a></div>
     <div class="ledger" aria-hidden="true"><b>Activity</b><ol>{ledger.map(([who, c, what, item, when]) => <li><i style={`--c:${c}`}><svg viewBox="0 0 24 24" fill="#0a1a3f" width="20" height="20"><circle cx="12" cy="9" r="4" /><path d="M4 21c1-5 4-7 8-7s7 2 8 7z" /></svg></i><div><p><strong>{who}</strong> {what}</p><span>{item}</span></div><em>{when}</em></li>)}</ol></div>
   </section>
-  <Feature field="ocean" chip="#0e7490" title="Everyone works from the same version" text="A screening is one shared thing, not six copies of a spreadsheet. Your team sees it as it changes, with the history of how it got there one click away." img="shot-screen" w={1740} h={1500} alt="A screening shared across a team, showing who ran it, its activity and its results"><div class="activity"><div class="win"><img src="/img/shot-activity.avif" width="888" height="560" loading="lazy" decoding="async" alt="The activity history of a screening" /></div></div></Feature>
+  <section class="panel merge">
+    <i class="field f-ocean" aria-hidden="true"></i>
+    <div class="m-head"><h2>Six copies of a spreadsheet become one piece of work</h2><p class="lead">A screening is one shared thing. Your team sees it as it changes, with the history of how it got there one click away.</p></div>
+    <div class="m-flow">
+      <ul class="files" aria-label="Spreadsheet copies a team might be passing around">{files.map((f) => <li><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2" y="2" width="16" height="16" rx="3" fill="#047857" /><path d="M6 6h8M6 10h8M6 14h8M10 6v8" stroke="#fff" stroke-width="1.5" /></svg>{f}</li>)}</ul>
+      <svg class="lines" viewBox="0 0 120 300" preserveAspectRatio="none" fill="none" aria-hidden="true">{files.map((_, i) => <path d={`M0 ${25 + i * 50}C70 ${25 + i * 50} 50 150 120 150`} stroke="#fff" stroke-opacity=".75" stroke-width="2" stroke-dasharray="3 6" vector-effect="non-scaling-stroke" />)}</svg>
+      <div class="win one"><img src="/img/shot-screen.avif" width="1740" height="1500" loading="lazy" decoding="async" alt="One shared screening, showing who ran it, its progress and its questions" /></div>
+    </div>
+  </section>
   <section class="roles"><div><h2>The right access for each person</h2><p class="lead">Your team sees your work. Guests see only what you share with them.</p></div>
     <div class="matrix" role="table" aria-label="What each role can do"><div class="r head" role="row"><span role="columnheader">Can they</span><b role="columnheader">Admin</b><b role="columnheader">Member</b><b role="columnheader">Guest</b></div>{roles.map(([t, a, m, g]) => <div class="r" role="row"><span role="cell">{t}</span>{[a, m, g].map((v) => <i role="cell" aria-label={v ? "Yes" : "No"} class:list={{ on: v }}>{v && <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10.5 8 14.5 16 5.5" /></svg>}</i>)}</div>)}</div>
   </section>
@@ -29,9 +37,10 @@ const faq = [
 <style>
   .hero { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 40px; align-items: center; padding: var(--pad); min-height: 600px; } .h-copy { display: grid; gap: 20px; justify-items: start; }
   .ledger { padding: 20px 22px; border-radius: 18px; background: #fff; color: var(--ink); box-shadow: 0 30px 60px -24px rgb(6 40 30 / .6); } .ledger > b { font-weight: 500; font-size: 18px; } .ledger li { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding-block: 12px; border-top: 1px solid var(--line); } .ledger li:first-child { border-top: 0; } .ledger i { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--c); } .ledger p { font-size: 15px; line-height: 1.25; } .ledger strong { font-weight: 500; } .ledger span { font-size: 13px; color: var(--t3); } .ledger em { font-style: normal; font-size: 13px; color: var(--t3); white-space: nowrap; }
-  .activity { width: min(360px, 100%); }
+  .merge { display: grid; gap: 28px; padding: var(--pad); } .m-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
+  .m-flow { display: grid; grid-template-columns: minmax(0, 250px) 90px minmax(0, 1fr); align-items: center; } .files { display: grid; gap: 8px; } .files li { display: flex; align-items: center; gap: 10px; height: 42px; padding-inline: 12px; border-radius: 10px; background: #fff; color: var(--ink); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .files svg { flex: none; } .lines { width: 100%; height: 300px; } .one { max-height: 380px; } .one img { width: 100%; }
   .roles { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 32px clamp(24px, 4vw, 64px); padding: clamp(40px, 6vw, 72px) var(--pad) 8px; } .roles .lead { margin-top: 14px; color: var(--t2); }
   .r { display: grid; grid-template-columns: minmax(0, 1fr) repeat(3, 76px); gap: 8px; align-items: center; min-height: 54px; border-top: 1px solid var(--line); } .head { border-top: 0; font-size: 15px; min-height: 40px; color: var(--t2); } .head b { font-weight: 500; color: var(--ink); text-align: center; } .r i { justify-self: center; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--soft); } .r i.on { background: #d1fae5; color: #047857; }
   .close { display: grid; justify-items: center; gap: 24px; padding: clamp(48px, 7vw, 96px) var(--pad); text-align: center; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
-  @media (max-width: 900px) { .hero, .roles { grid-template-columns: minmax(0, 1fr); } .roles { padding-inline: 8px; } .r { grid-template-columns: minmax(0, 1fr) repeat(3, 56px); gap: 4px; } }
+  @media (max-width: 900px) { .hero, .roles, .m-head, .m-flow { grid-template-columns: minmax(0, 1fr); } .lines { display: none; } .files { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); margin-bottom: 12px; } .files li { font-size: 13px; padding-inline: 8px; gap: 6px; } .roles { padding-inline: 8px; } .r { grid-template-columns: minmax(0, 1fr) repeat(3, 56px); gap: 4px; } }
 </style>
