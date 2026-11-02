@@ -12,8 +12,8 @@ const LBL = ["Yes", "Unclear", "No"];
       <img class="photo" src="/img/scene-array-1672.avif" width="1672" height="941" alt="Eight radio telescope dishes in a line at blue hour, all pointing at the same patch of sky" fetchpriority="high" />
       <svg class="beams" viewBox="0 0 1672 941" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
         <defs><radialGradient id="star"><stop offset="0" stop-color="#fff" /><stop offset=".25" stop-color="#bfdbfe" stop-opacity=".7" /><stop offset="1" stop-color="#60a5fa" stop-opacity="0" /></radialGradient></defs>
-        {DISHES.map((u, i) => <><path class="beam" d={`M${u * 1672} 540 L836 94`} /><path class="pulse" data-pulse={i} pathLength="1" d={`M${u * 1672} 540 L836 94`} /></>)}
-        <circle class="point" data-point cx="836" cy="94" r="46" fill="url(#star)" />
+        {DISHES.map((u, i) => <><path class="beam" d={`M${u * 1672} 540 L836 130`} /><path class="pulse" data-pulse={i} pathLength="1" d={`M${u * 1672} 540 L836 130`} /></>)}
+        <circle class="point" data-point cx="836" cy="130" r="46" fill="url(#star)" />
       </svg>
       <div class="a-copy" data-copy><h1>Stop emailing spreadsheets</h1><p class="lead">Bring everyone into one place, on the same evidence, and watch it change as it happens.</p><a class="btn primary" href={APP}>Bring your team in</a></div>
       <p class="said" data-said aria-hidden="true"></p>
@@ -41,13 +41,18 @@ const LBL = ["Yes", "Unclear", "No"];
     <div class="m-copy"><h2>Started alone? Bring it in.</h2><p class="lead">Your ratings, answers and history come with you, and the people you shared with keep their access.</p><button type="button" class="btn primary" data-go>Move to Learning Lab</button></div>
     <div class="strip">
       <img class="rest" src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" />
-      <div class="lone"><img src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" /></div>
+      <img class="seam" src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" />
+      <img class="lone" src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" />
       <span class="tag" aria-hidden="true">Learning Lab</span>
       <span class="tag mine" aria-hidden="true">Your personal work</span>
     </div>
   </section>
 
-  <section class="go"><img src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" /><div><h2>Bring your team in</h2><a class="btn primary" href={APP}>Get started</a></div></section>
+  <section class="go" data-close>
+    <img src="/img/scene-array-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" />
+    <svg viewBox="0 0 1672 941" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><defs><radialGradient id="bloom"><stop offset="0" stop-color="#fff" /><stop offset=".2" stop-color="#bfdbfe" stop-opacity=".55" /><stop offset="1" stop-color="#60a5fa" stop-opacity="0" /></radialGradient></defs>{DISHES.map((u, i) => <><path class="beam" d={`M${u * 1672} 540 L836 210`} /><path class="pulse all" style={`animation-delay:${i * 60}ms`} pathLength="1" d={`M${u * 1672} 540 L836 210`} /></>)}<circle class="bloom" cx="836" cy="210" r="190" fill="url(#bloom)" /></svg>
+    <div><h2>Bring your team in</h2><a class="btn primary" href={APP}>Get started</a></div>
+  </section>
 </Base>
 <script>
   const root = document.querySelector("[data-array]"), said = root.querySelector("[data-said]"), copy = root.querySelector("[data-copy]"), opened = root.querySelector("[data-opened]"), point = root.querySelector("[data-point]");
@@ -67,8 +72,9 @@ const LBL = ["Yes", "Unclear", "No"];
   const JOBS = [[1, 1, "b", 0], [0, 4, "a", 1], [2, 2, "a", 0], [1, 5, "b", 1], [0, 3, "b", 1], [2, 1, "b", 1], [1, 4, "a", 2], [0, 3, "b", 0], [2, 5, "b", 2], [1, 2, "a", 1]];
   if (!reduced) (async () => { for (let j = 0; ; j++) { await wait(open && onScreen && !document.hidden ? 1500 : 500); if (!open || !onScreen || document.hidden) { j--; continue; } const [who, row, key, val] = JOBS[j % JOBS.length], li = items[row], pick = li.querySelectorAll(".pick")[key === "a" ? 0 : 1]; to(curs[who], pick); curs.forEach((c, i) => { if (i !== who) to(c, items[(row + i * 2 + 1) % items.length].querySelector(".t")); }); await wait(950); restart(pick, "hit"); li.dataset[key] = val; paint(li); log.textContent = `${NAMES[who]} changed an answer`; restart(log, "in"); } })();
   // Scrolling opens the point in the sky into the work everyone's looking at.
-  const scroll = () => { const r = root.getBoundingClientRect(), p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight))), o = Math.min(1, Math.max(0, (p - 0.1) / 0.6)), e = o * o * (3 - 2 * o); opened.style.clipPath = `circle(${e * 130}vmax at 50% 10%)`; open = e > 0.9; copy.style.opacity = 1 - Math.min(1, o * 7); copy.style.visibility = o > 0.16 ? "hidden" : ""; said.style.visibility = o > 0.3 ? "hidden" : ""; };
+  const scroll = () => { const r = root.getBoundingClientRect(), p = Math.min(1, Math.max(0, -r.top / (r.height - innerHeight))), o = Math.min(1, Math.max(0, (p - 0.1) / 0.6)), e = o * o * (3 - 2 * o); opened.style.clipPath = `circle(${e * 130}vmax at 50% 14%)`; open = e > 0.9; copy.style.opacity = 1 - Math.min(1, o * 7); copy.style.visibility = o > 0.16 ? "hidden" : ""; said.style.visibility = o > 0.3 ? "hidden" : ""; };
   let queued = false; addEventListener("scroll", () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; scroll(); }); }, { passive: true }); addEventListener("resize", () => { scroll(); curs.forEach((c, i) => to(c, items[i * 2].querySelector(".t"))); }, { passive: true }); scroll();
+  const close = document.querySelector("[data-close]"); new IntersectionObserver(([e], io) => { if (e.isIntersecting) { io.disconnect(); close.setAttribute("data-lit", ""); } }, { threshold: 0.5 }).observe(close);
   const move = document.querySelector("[data-move]"), go = move.querySelector("[data-go]");
   go.addEventListener("click", () => { const on = move.toggleAttribute("data-moved"); go.textContent = on ? "Move back to Personal" : "Move to Learning Lab"; });
 </script>
@@ -79,11 +85,11 @@ const LBL = ["Yes", "Unclear", "No"];
   .beam { stroke: rgb(191 219 254 / .22); stroke-width: 1; fill: none; vector-effect: non-scaling-stroke; }
   .pulse { stroke: #fff; stroke-width: 2.5; fill: none; stroke-linecap: round; stroke-dasharray: .1 1; stroke-dashoffset: .1; opacity: 0; vector-effect: non-scaling-stroke; } .pulse:global(.go) { animation: up 1.1s cubic-bezier(.4, 0, .6, 1) both; } @keyframes up { 0% { stroke-dashoffset: .1; opacity: 1; } 90% { opacity: 1; } 100% { stroke-dashoffset: -1; opacity: 0; } }
   .point { transform-box: fill-box; transform-origin: center; } .point:global(.hit) { animation: hit 1.6s var(--ease) .9s both; } @keyframes hit { 0% { transform: scale(1); } 20% { transform: scale(1.8); } 100% { transform: scale(1); } }
-  .a-copy { position: absolute; inset: 15svh var(--edge) auto; display: flex; flex-direction: column; align-items: center; text-align: center; }
-  h1 { font-size: clamp(46px, min(6.8vw, 12svh), 116px); line-height: .94; letter-spacing: -.05em; max-width: 9em; text-shadow: 0 2px 40px rgb(0 0 0 / .7); }
-  .a-copy .lead { margin-block: 20px 24px; max-width: 34rem; text-shadow: 0 1px 24px #000; }
+  .a-copy { position: absolute; inset: 22svh var(--edge) auto; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  h1 { font-size: clamp(44px, min(6.2vw, 12svh), 104px); line-height: .94; letter-spacing: -.05em; text-shadow: 0 2px 40px rgb(0 0 0 / .7); }
+  .a-copy .lead { margin-block: 12px 20px; max-width: 48rem; text-shadow: 0 1px 24px #000; }
   .said { position: absolute; left: 0; right: 0; bottom: 32px; text-align: center; font-size: clamp(17px, 1.6vw, 24px); text-shadow: 0 1px 16px #000; opacity: 0; } .said:global(.in) { animation: said 2.1s var(--ease) both; } @keyframes said { 0% { opacity: 0; translate: 0 8px; } 15%, 80% { opacity: 1; translate: 0 0; } 100% { opacity: 0; } }
-  .opened { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 64px; align-items: center; padding: 88px var(--edge) 40px; background: #000; clip-path: circle(0 at 50% 10%); will-change: clip-path; }
+  .opened { position: absolute; inset: 0; z-index: 2; display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 64px; align-items: center; padding: 88px var(--edge) 40px; background: #000; clip-path: circle(0 at 50% 14%); will-change: clip-path; }
   .o-t .lead { margin-top: 24px; }
   .room { position: relative; padding: 20px 24px; border-radius: 20px; background: #0c111d; box-shadow: 0 0 0 1px rgb(255 255 255 / .12); }
   .room header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; } .room header b { font-weight: 500; font-size: 20px; } .room header span { display: flex; } .room header i { width: 30px; height: 30px; margin-left: -8px; border-radius: 50%; border: 2px solid #0c111d; background: #2a3550 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23bfdbfe'%3E%3Ccircle cx='12' cy='9' r='4'/%3E%3Cpath d='M4 21c1-5 4-7 8-7s7 2 8 7z'/%3E%3C/svg%3E") center/70% no-repeat; }
@@ -101,13 +107,13 @@ const LBL = ["Yes", "Unclear", "No"];
 
   .move { position: relative; isolation: isolate; overflow: hidden; padding: 128px var(--edge) 0; }
   .m-copy { position: relative; z-index: 1; max-width: 44rem; } .m-copy .lead { margin-block: 20px 24px; }
-  .strip { position: relative; pointer-events: none; height: 46vw; max-height: 72svh; margin: -8vw calc(var(--edge) * -1) 0; }
-  .strip img { width: 86%; height: auto; }
-  .rest { position: absolute; left: 0; bottom: 0; mask-image: linear-gradient(90deg, #000 80%, transparent 86%), linear-gradient(transparent, #000 30%); mask-composite: intersect; }
-  .lone { position: absolute; inset: 0; transform: translateX(14vw); transition: transform 1.3s var(--ease); } .lone img { position: absolute; left: 0; bottom: 0; mask-image: linear-gradient(90deg, transparent 80%, #000 86%), linear-gradient(transparent, #000 30%); mask-composite: intersect; }
-  [data-moved] .lone { transform: none; }
-  .tag { position: absolute; left: 34%; bottom: 8%; padding: 6px 14px; border-radius: 999px; background: rgb(0 0 0 / .8); font-size: 15px; } .mine { left: auto; right: 3%; transition: transform 1.3s var(--ease), opacity .6s var(--ease); } [data-moved] .mine { transform: translateX(-14vw); opacity: 0; }
+  .strip { position: relative; pointer-events: none; height: 32vw; margin: 40px calc(var(--edge) * -1) 0; overflow: hidden; mask-image: linear-gradient(transparent, #000 20%, #000 90%, transparent); }
+  .strip img { position: absolute; left: -80vw; top: -37.8vw; width: 160vw; max-width: none; height: auto; }
+  .rest { clip-path: inset(0 14.4% 0 0); } .seam { clip-path: inset(0 14.2% 0 85.6%); transform-origin: 136.96vw 0; transform: scaleX(44); transition: transform 1.3s var(--ease); } [data-moved] .seam { transform: scaleX(1); } .lone { clip-path: inset(0 0 0 85.6%); translate: 14vw 0; transition: translate 1.3s var(--ease); } [data-moved] .lone { translate: 0 0; }
+  .tag { position: absolute; left: 28%; bottom: 10%; padding: 6px 14px; border-radius: 999px; background: rgb(0 0 0 / .8); font-size: 15px; } .mine { left: auto; right: 3%; transition: transform 1.3s var(--ease), opacity .6s var(--ease); } [data-moved] .mine { transform: translateX(-14vw); opacity: 0; }
 
-  .go { position: relative; isolation: isolate; height: 90svh; display: grid; place-items: center; text-align: center; overflow: hidden; } .go img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 0; mask-image: linear-gradient(transparent, #000 25%, #000 60%, transparent); } .go h2 { font-size: clamp(44px, 7vw, 120px); line-height: .96; margin-bottom: 28px; }
-  @media (max-width: 900px) { .a-copy { inset-block-start: 88px; } .opened { grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; overflow: hidden; } .o-t .lead { margin-top: 8px; } .room { padding: 12px; } .room li { grid-template-columns: 1fr 1fr 84px; padding-block: 8px; min-height: 0; } .t { grid-column: 1 / -1; font-size: 14px; } .invite { left: var(--edge); top: auto; bottom: 40svh; translate: none; width: auto; right: var(--edge); } .one { display: none; } .share { height: 100svh; } .strip { height: 70vw; margin-top: 0; } }
+  .go { position: relative; isolation: isolate; height: 100svh; display: grid; place-items: start center; padding-top: 12svh; text-align: center; overflow: hidden; } .go img, .go svg { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; object-position: 50% 100%; } .go img { mask-image: linear-gradient(transparent, #000 25%); } .go h2 { font-size: clamp(44px, min(6.6vw, 13svh), 112px); line-height: .96; margin-bottom: 24px; text-shadow: 0 2px 30px #000; }
+  [data-close][data-lit] .all { animation: up 1.2s cubic-bezier(.4, 0, .6, 1) both; }
+  .bloom { transform-box: fill-box; transform-origin: center; transform: scale(.25); opacity: .5; transition: transform 1.2s var(--ease) 1s, opacity 1.2s var(--ease) 1s; } [data-close][data-lit] .bloom { transform: scale(1); opacity: 1; }
+  @media (max-width: 900px) { .a-copy { inset-block-start: 170px; } h1 { max-width: 7em; } .a-copy .lead { margin-block: 16px; } .opened { grid-template-columns: minmax(0, 1fr); gap: 16px; align-content: start; overflow: hidden; } .o-t .lead { margin-top: 8px; } .room { padding: 12px; } .room li { grid-template-columns: 1fr 1fr 84px; padding-block: 8px; min-height: 0; } .t { grid-column: 1 / -1; font-size: 14px; } .invite { left: var(--edge); top: auto; bottom: 40svh; translate: none; width: auto; right: var(--edge); } .one { display: none; } .share { height: 100svh; } .m-copy { margin-bottom: 8px; } }
 </style>

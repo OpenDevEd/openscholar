@@ -14,6 +14,6 @@ import AskBar from "../../components/AskBar.astro";
   <section class="go"><img src="/img/scene-horizon-1672.avif" width="1672" height="941" loading="lazy" decoding="async" alt="" /><h2>Now try it on your own question</h2><AskBar id="ask-try" /></section>
 </Base>
 <style>
-  .go { position: relative; isolation: isolate; height: 100svh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; text-align: center; padding-inline: var(--edge); overflow: hidden; }
-  .go img { position: absolute; inset: 0; z-index: -1; width: 100%; height: 100%; object-fit: cover; }
+  .go { position: relative; isolation: isolate; height: 84svh; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 14svh; gap: 28px; text-align: center; padding-inline: var(--edge); overflow: hidden; }
+  .go img { position: absolute; left: 0; bottom: 0; z-index: -1; width: 100%; height: auto; min-height: 100%; object-fit: cover; object-position: 50% 62%; }
 </style>

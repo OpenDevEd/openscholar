@@ -6,7 +6,7 @@ const toggles = [["is_oa:true", "Open access", "oa=true"], ["has_abstract:true",
 ---
 
   <section class="console" data-console data-default={JSON.stringify(data)}>
-    <div class="d-head"><h2>Try your question on the world's research</h2><p class="lead">Change the words, and the whole field redraws itself.</p></div>
+    <div class="d-head"><h2>Try your question on the world's research</h2><p class="lead">Change the words. Watch the whole field redraw.</p></div>
     <form data-form role="search">
       <label class="sr" for="q">Search query</label>
       <div class="field"><div class="mirror" data-mirror aria-hidden="true"></div><input id="q" data-q value={data.q} spellcheck="false" autocomplete="off" /></div>
@@ -33,7 +33,7 @@ const toggles = [["is_oa:true", "Open access", "oa=true"], ["has_abstract:true",
   const paint = () => { let i = 0; mirror.innerHTML = q.value.split(/("[^"]*"|\b(?:AND|OR|NOT)\b|\s+)/).map((p) => { if (!p) return ""; if (/^(AND|OR|NOT)$/.test(p)) return `<i class="op">${p}</i>`; if (!p.trim()) return p; if (!p.startsWith('"') && p.replace(/[()]/g, "").length < 3) return esc(p); return `<i style="color:${COL[i++ % 4]}">${esc(p)}</i>`; }).join(""); };
   const mark = (t) => { let s = esc(t); terms().forEach((w, i) => { s = s.replace(new RegExp(`(${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"), `<mark style="color:${COL[i % 4]}">$1</mark>`); }); return s; };
   const calm = (t) => (t === t.toUpperCase() ? t[0] + t.slice(1).toLowerCase() : t);
-  const draw = (years) => { const map = new Map(years), Y = Array.from({ length: 30 }, (_, i) => 1997 + i), max = Math.max(1, ...Y.map((y) => map.get(y) ?? 0)); if (!chart.children.length) chart.innerHTML = Y.map((y) => `<span data-y="${y}"><i style="--c:hsl(${12 + (y - 1997) * 6.6} 90% 72%)"></i></span>`).join("") ; Y.forEach((y, k) => { chart.children[k].firstChild.style.setProperty("--h", `${(map.get(y) ?? 0) / max * 100}%`); }); };
+  const draw = (years) => { const map = new Map(years), Y = Array.from({ length: 30 }, (_, i) => 1997 + i), max = Math.max(1, ...Y.map((y) => map.get(y) ?? 0)); if (!chart.children.length) chart.innerHTML = Y.map((y) => `<span data-y="${y}"><i style="--c:hsl(${12 + (y - 1997) * 6.6} 90% 72%)"></i></span>`).join("") ; Y.forEach((y, k) => { chart.children[k].firstChild.style.setProperty("--h", `${Math.sqrt((map.get(y) ?? 0) / max) * 100}%`); }); };
   const list = (r) => { res.innerHTML = r.map((x) => `<li><b>${mark(x.t)}</b><span class="mono">${esc(x.a || "")}${x.a ? "  " : ""}${x.y ?? ""}</span>${x.oa ? '<span class="mono c">Open access</span>' : ""}</li>`).join(""); };
   const render = (d) => { draw(d.years); list(d.results); };
   let token = 0, timer;
@@ -69,7 +69,7 @@ const toggles = [["is_oa:true", "Open access", "oa=true"], ["has_abstract:true",
 </style>
 <style>
   .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .console { min-height: 100svh; padding: 112px var(--edge) 64px; display: flex; flex-direction: column; } .d-head .lead { margin-top: 16px; max-width: 40rem; }
+  .console { position: relative; isolation: isolate; min-height: 100svh; padding: 96px var(--edge) 40px; display: flex; flex-direction: column; overflow: hidden; } .d-head .lead { margin-top: 16px; max-width: 40rem; }
   
   form { display: flex; align-items: center; gap: 16px; margin-top: 24px; padding: 12px 12px 12px 28px; border-radius: 28px; background: var(--s1); box-shadow: inset 0 0 0 1px var(--line2); }
   form:focus-within { box-shadow: inset 0 0 0 1.5px var(--pale); }
@@ -85,8 +85,8 @@ const toggles = [["is_oa:true", "Open access", "oa=true"], ["has_abstract:true",
   .out { flex: 1; display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); grid-template-rows: auto 1fr; gap: 20px 64px; margin-top: 28px; transition: opacity .2s var(--ease); }
   [data-busy] .out { opacity: .55; }
   
-  .chart { position: relative; grid-column: 1; display: flex; align-items: flex-end; gap: 4px; height: min(34svh, 340px); align-self: start; }
-  .res { grid-column: 2; grid-row: 1 / 3; align-self: start; }
+  .chart { position: absolute; z-index: -1; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; gap: 4px; height: 58svh; mask-image: linear-gradient(90deg, #000 40%, rgb(0 0 0 / .4)); }
+  .res { grid-column: 2; grid-row: 1 / 3; align-self: start; padding-inline: 20px; border-radius: 18px; background: rgb(0 0 0 / .72); } .res :global(li:first-child) { border-top: 0; }
   .err { color: var(--warn); margin-top: 16px; }
-  @media (max-width: 900px) { .out { grid-template-columns: minmax(0, 1fr); } .res { grid-column: 1; grid-row: auto; } .go { width: 44px; height: 44px; } }
+  @media (max-width: 900px) { .chart { position: relative; height: 180px; left: auto; right: auto; order: 2; margin-top: 16px; mask-image: none; gap: 2px; } .out { grid-template-columns: minmax(0, 1fr); } .res { grid-column: 1; grid-row: auto; } .go { width: 44px; height: 44px; } }
 </style>

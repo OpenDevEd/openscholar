@@ -15,7 +15,7 @@
         <form data-send><div class="prompt">Find three randomised trials of peer tutoring in primary school reading, screen them, and extract the sample size.</div><button class="btn primary" data-go>Send</button></form>
       </div>
       <div class="acct">
-        <section class="pane" data-pane="col"><header><b>Peer tutoring trials</b><span class="mono" data-col-n>Empty</span></header><ul data-col></ul></section>
+        <section class="pane" data-pane="col"><header><b>Your collection</b><span class="mono" data-col-n>Empty</span></header><ul data-col></ul></section>
         <section class="pane" data-pane="scr"><header><b>Screening</b><span class="mono" data-scr-s>Not started</span></header><div class="ring"><svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true"><circle cx="32" cy="32" r="28" /><circle class="p" data-scr-p cx="32" cy="32" r="28" pathLength="1" /></svg><dl><div><dt>Yes</dt><dd data-y>0</dd></div><div><dt>Unclear</dt><dd data-u>0</dd></div><div><dt>No</dt><dd data-n>0</dd></div></dl></div></section>
         <section class="pane" data-pane="ext"><header><b>Extraction</b><span class="mono" data-ext-s>Not started</span></header><div class="ex" data-ext></div></section>
       </div>
@@ -32,12 +32,12 @@
   const step = async (doing, did) => { fill(); const s = add("step busy", `<i></i>${doing}`); await wait(900); s.className = "step"; s.innerHTML = `${CHECK}${did}`; };
   const ask = (title, rows) => new Promise((res) => { const a = add("ask", `<b>${title}</b><dl>${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl><div class="row"><button class="btn primary" data-yes>Allow once</button><button class="btn quiet" data-no>Don't do this</button></div>`); a.querySelector("[data-yes]").focus({ preventScroll: true }); a.addEventListener("click", (e) => { const y = e.target.closest("[data-yes]"), n = e.target.closest("[data-no]"); if (!y && !n) return; a.querySelector(".row").innerHTML = `<span class="mono">${y ? "Allowed" : "Not allowed"}</span>`; res(!!y); }); });
   const num = (el, v) => { el.textContent = v; };
-  function reset() { done = 0; root.querySelector("[data-dial]").style.strokeDashoffset = 1; log.innerHTML = ""; $("[data-col]").innerHTML = ""; num($("[data-col-n]"), "Empty"); num($("[data-scr-s]"), "Not started"); $("[data-scr-p]").style.strokeDashoffset = 1; ["[data-y]", "[data-u]", "[data-n]"].forEach((s) => num($(s), 0)); num($("[data-ext-s]"), "Not started"); $("[data-ext]").innerHTML = ""; root.querySelectorAll(".pane").forEach((p) => p.removeAttribute("data-live")); }
+  function reset() { done = 0; $('[data-pane="col"] b').textContent = "Your collection"; root.querySelector("[data-dial]").style.strokeDashoffset = 1; log.innerHTML = ""; $("[data-col]").innerHTML = ""; num($("[data-col-n]"), "Empty"); num($("[data-scr-s]"), "Not started"); $("[data-scr-p]").style.strokeDashoffset = 1; ["[data-y]", "[data-u]", "[data-n]"].forEach((s) => num($(s), 0)); num($("[data-ext-s]"), "Not started"); $("[data-ext]").innerHTML = ""; root.querySelectorAll(".pane").forEach((p) => p.removeAttribute("data-live")); }
   const finish = () => { send.hidden = false; go.textContent = "Run again"; log.scrollTop = log.scrollHeight; };
   async function play() {
     reset(); send.hidden = true; root.querySelector("[data-go]").textContent = "Send"; add("me", "Find three randomised trials of peer tutoring in primary school reading, screen them, and extract the sample size.");
     await step("Looking papers up", "Looked papers up"); await step("Reading 2 papers", "Read 2 papers");
-    $('[data-pane="col"]').setAttribute("data-live", ""); await step("Making a collection", "Made a collection: Peer tutoring trials");
+    $('[data-pane="col"]').setAttribute("data-live", ""); $('[data-pane="col"] b').textContent = "Peer tutoring trials"; await step("Making a collection", "Made a collection: Peer tutoring trials");
     for (let i = 0; i < 3; i++) { await wait(320); const li = document.createElement("li"); li.textContent = papers[i]; $("[data-col]").append(li); num($("[data-col-n]"), `${i + 1} paper${i ? "s" : ""}`); }
     add("step", `${CHECK}Saved 3 papers`);
     const yes1 = await ask("Start a screening", [["Papers", "3 in Peer tutoring trials"], ["Question", "Is this a randomized trial?"]]);
@@ -80,15 +80,15 @@
   .dial-p { fill: none; stroke: #ffc48a; stroke-width: 3; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; vector-effect: non-scaling-stroke; transition: stroke-dashoffset .6s var(--ease); }
   .intro { max-width: 880px; margin-bottom: 32px; } .intro .lead { margin-top: 16px; max-width: 36rem; } .intro h2 { font-size: clamp(38px, 4.8vw, 80px); line-height: .98; text-shadow: 0 2px 40px #000; }
   .desk { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; }
-  .chat { height: min(600px, 66svh); display: flex; flex-direction: column; background: rgb(12 13 16 / .94); box-shadow: 0 0 0 1px var(--line2), 0 30px 100px -20px #000; border-radius: 22px; overflow: hidden; }
+  .chat { height: min(520px, 58svh); display: flex; flex-direction: column; background: rgb(12 13 16 / .94); box-shadow: 0 0 0 1px var(--line2), 0 30px 100px -20px #000; border-radius: 22px; overflow: hidden; }
   .log { flex: 1; min-height: 0; overflow-y: auto; padding: 20px; display: grid; align-content: start; gap: 12px; }
   form { display: flex; align-items: center; gap: 12px; padding: 12px; border-top: 1px solid var(--line); } form[hidden] { display: none; }
   .prompt { flex: 1; font-size: 14px; line-height: 19px; color: var(--t2); }
-  .acct { display: grid; align-content: end; gap: 12px; }
-  .pane { display: none; padding: 14px 18px; border-radius: 18px; background: rgb(12 13 16 / .9); box-shadow: 0 0 0 1px var(--line); } .pane[data-live] { display: block; animation: rise .5s var(--ease) both; } @keyframes rise { from { opacity: 0; translate: 0 12px; } }
+  .acct { display: grid; align-content: end; gap: 10px; } .acct ul:empty, .acct .ex:empty { display: none; }
+  .pane { padding: 14px 18px; border-radius: 18px; background: rgb(12 13 16 / .9); box-shadow: 0 0 0 1px var(--line); opacity: .32; transition: opacity .5s var(--ease); } .pane[data-live] { opacity: 1; }
   header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; } header b { font-weight: 500; font-size: 18px; }
   .ring { display: flex; align-items: center; gap: 24px; } .ring svg { width: 44px; height: 44px; }
   svg circle { fill: none; stroke: var(--s3); stroke-width: 5; } svg .p { stroke: #ffc48a; stroke-dasharray: 1; stroke-dashoffset: 1; transform: rotate(-90deg); transform-origin: center; transition: stroke-dashoffset .5s var(--ease); }
   .ring dl { display: flex; gap: 24px; } .ring dt { font-size: 13px; color: var(--t2); } .ring dd { font-weight: 500; font-size: 22px; font-variant-numeric: tabular-nums; }
-  @media (max-width: 900px) { .desk { grid-template-columns: minmax(0, 1fr); gap: 16px; } .chat { height: 560px; } .dial { display: none; } .console { opacity: .5; } }
+  @media (max-width: 900px) { .desk { grid-template-columns: minmax(0, 1fr); gap: 16px; } .chat { height: 520px; } .dial { display: none; } .console { opacity: .5; } }
 </style>

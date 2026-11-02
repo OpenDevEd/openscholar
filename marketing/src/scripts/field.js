@@ -63,8 +63,10 @@ export function readPapers(field, count) {
   // A paper's rank by year: the oldest at the centre of the galaxy, this year at its rim.
   const rank = new Float32Array(count); { const idx = Array.from({ length: count }, (_, i) => i).sort((a, b) => yr[a] - yr[b] || a - b); idx.forEach((p, k) => (rank[p] = k / count)); }
   for (let i = 0; i < count; i++) { seedA[i * 2] = rand(); seedA[i * 2 + 1] = Math.pow(1 - rank[i], 2.2); }
+  const core = (i) => i % 7 === 0;
   const bright = (i) => 0.2 + Math.pow(cit[i] / 255, 2.4) * 3.2;
   const galaxy = (o) => { const r = mulberry(11); for (let i = 0; i < count; i++) {
+    if (core(i)) { const a = r() * TAU, rr = Math.pow(r(), 1.8) * 0.42 + 0.004; o[i * 4] = Math.cos(a) * rr; o[i * 4 + 1] = Math.sin(a) * rr; o[i * 4 + 2] = gauss(r) * (0.09 - rr * 0.16); o[i * 4 + 3] = 0.3 + bright(i) * 0.5; seedA[i * 2 + 1] = 1 - rr; continue; }
     const halo = reg[i] === 10, R = 0.03 + 1.9 * Math.pow(rank[i], 0.92), arm = (reg[i] % 5) / 5 * TAU + (reg[i] >= 5 ? 0.42 : 0);
     const spread = 0.055 + 0.42 * Math.exp(-R * 2.4); const th = (halo ? r() * TAU : arm + gauss(r) * spread) + 2.5 * Math.log(1 + 3 * R); const bulge = Math.exp(-R * 4.2);
     const rr = R * (1 + gauss(r) * 0.035);

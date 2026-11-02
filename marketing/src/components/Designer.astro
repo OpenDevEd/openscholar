@@ -58,7 +58,7 @@ const records = [["Randomised trial", "Results from a Phase 2 exploratory trial 
   .s-top nav { display: flex; gap: 16px; margin-inline: auto; font-size: 14px; color: var(--mut); flex-wrap: wrap; } .s-top nav a:first-child { color: var(--a); }
   .s-in { background: var(--a); color: #fff; padding: 6px 12px; border-radius: 8px; font-size: 13px; transition: background-color .2s var(--ease); }
   .s-hero { position: relative; flex: 1; min-height: 260px; display: flex; align-items: flex-end; border-radius: 14px; overflow: hidden; }
-  .fan { position: absolute; right: 0; top: 0; width: 56%; height: 100%; object-fit: cover; object-position: 50% 0; mask-image: linear-gradient(90deg, transparent, #000 30%); } .fan.light { display: none; } [data-mode="light"] .fan.light { display: block; } [data-mode="light"] .fan.dark { display: none; }
+  .fan { position: absolute; inset-inline-end: 0; top: 0; width: 56%; height: 100%; object-fit: cover; object-position: 50% 0; mask-image: linear-gradient(90deg, transparent, #000 30%); } .site[dir="rtl"] .fan { mask-image: linear-gradient(270deg, transparent, #000 30%); } .fan.light { display: none; } [data-mode="light"] .fan.light { display: block; } [data-mode="light"] .fan.dark { display: none; }
   .s-copy { position: relative; width: min(60%, 560px); padding: 16px; } h3 { font: 700 clamp(30px, 3.6vw, 60px)/1 var(--sans); letter-spacing: -.035em; margin-bottom: 16px; text-wrap: balance; }
   .s-main { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
   .going .site { animation: sweep 1s var(--ease) both; } @keyframes sweep { from { clip-path: inset(0 100% 0 0); filter: brightness(1.8); } to { clip-path: inset(0); filter: none; } }
