@@ -117,7 +117,7 @@ export function Segmented<T extends string>({
         <span
           aria-hidden
           className={cn(
-            "absolute start-0 top-0 bg-primary/15 ring-1 ring-primary/40 transition-[transform,width,height] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
+            "absolute left-0 top-0 bg-primary/15 ring-1 ring-primary/40 transition-[transform,width,height] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
             stacked ? "rounded-2xl" : "rounded-full",
           )}
           style={{ width: box.width, height: box.height, transform: `translate(${box.left}px, ${box.top}px)` }}

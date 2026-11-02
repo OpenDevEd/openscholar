@@ -411,7 +411,13 @@
     "jobCharges": "رسوم هذه المهمة",
     "chargesLabel": "رسوم",
     "paymentFailedEnds": "فشل دفع {amount}. تنتهي {plan} في {date} ما لم يُدفع المبلغ.",
-    "fixPayment": "إصلاح الدفع"
+    "fixPayment": "إصلاح الدفع",
+    "topUpTitle": "اشترِ {credits} من الأرصدة",
+    "topUpForOrganization": "تُضاف إلى الأرصدة المشتركة في {organization}.",
+    "topUpConfirm": "شراء الأرصدة",
+    "topUpDue": "المستحق الآن",
+    "topUpBalanceNow": "الرصيد",
+    "topUpBalanceAfter": "بعد الشراء"
   },
   "errors": {
     "unexpectedIssue": "حدثت مشكلة غير متوقعة. أعد المحاولة، أو عُد إلى صفحة مستقرة.",

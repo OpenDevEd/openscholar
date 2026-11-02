@@ -411,7 +411,13 @@
     "jobCharges": "Kosten dieses Auftrags",
     "chargesLabel": "Abbuchungen",
     "paymentFailedEnds": "Die Zahlung von {amount} ist fehlgeschlagen. {plan} endet am {date}, sofern nicht bezahlt wird.",
-    "fixPayment": "Zahlung korrigieren"
+    "fixPayment": "Zahlung korrigieren",
+    "topUpTitle": "{credits} Guthaben kaufen",
+    "topUpForOrganization": "Wird dem gemeinsamen Guthaben von {organization} hinzugefügt.",
+    "topUpConfirm": "Guthaben kaufen",
+    "topUpDue": "Jetzt fällig",
+    "topUpBalanceNow": "Guthaben",
+    "topUpBalanceAfter": "Danach"
   },
   "errors": {
     "unexpectedIssue": "Ein unerwartetes Problem ist aufgetreten. Versuchen Sie es erneut oder kehren Sie zu einer stabilen Seite zurück.",

@@ -411,7 +411,13 @@
     "jobCharges": "Malipo ya kazi hii",
     "chargesLabel": "malipo",
     "paymentFailedEnds": "Malipo ya {amount} yameshindikana. {plan} inaisha tarehe {date} isipolipwa.",
-    "fixPayment": "Rekebisha malipo"
+    "fixPayment": "Rekebisha malipo",
+    "topUpTitle": "Nunua salio {credits}",
+    "topUpForOrganization": "Linaongezwa kwenye salio la pamoja la {organization}.",
+    "topUpConfirm": "Nunua salio",
+    "topUpDue": "Inadaiwa sasa",
+    "topUpBalanceNow": "Salio",
+    "topUpBalanceAfter": "Baada ya"
   },
   "errors": {
     "unexpectedIssue": "Kumetokea tatizo lisilotarajiwa. Tafadhali jaribu tena, au rudi kwenye ukurasa thabiti.",

@@ -411,7 +411,13 @@
     "jobCharges": "Hierdie taak se koste",
     "chargesLabel": "koste",
     "paymentFailedEnds": "Die betaling van {amount} het misluk. {plan} eindig op {date} tensy dit betaal word.",
-    "fixPayment": "Herstel betaling"
+    "fixPayment": "Herstel betaling",
+    "topUpTitle": "Koop {credits} krediete",
+    "topUpForOrganization": "By die gedeelde krediete van {organization} gevoeg.",
+    "topUpConfirm": "Koop krediete",
+    "topUpDue": "Nou betaalbaar",
+    "topUpBalanceNow": "Saldo",
+    "topUpBalanceAfter": "Daarna"
   },
   "errors": {
     "unexpectedIssue": "Ons het ’n onverwagte probleem ondervind. Probeer weer, of gaan terug na ’n stabiele bladsy.",

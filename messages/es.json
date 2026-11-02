@@ -411,7 +411,13 @@
     "jobCharges": "Cargos de este trabajo",
     "chargesLabel": "cargos",
     "paymentFailedEnds": "El pago de {amount} falló. {plan} terminará el {date} si no se paga.",
-    "fixPayment": "Corregir el pago"
+    "fixPayment": "Corregir el pago",
+    "topUpTitle": "Comprar {credits} créditos",
+    "topUpForOrganization": "Se añaden a los créditos compartidos de {organization}.",
+    "topUpConfirm": "Comprar créditos",
+    "topUpDue": "A pagar ahora",
+    "topUpBalanceNow": "Saldo",
+    "topUpBalanceAfter": "Después"
   },
   "errors": {
     "unexpectedIssue": "Se ha producido un problema inesperado. Inténtelo de nuevo o vuelva a una página estable.",
