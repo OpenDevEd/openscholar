@@ -24,7 +24,8 @@ import { EmailAvatar } from "@/components/ui/identity";
 import { TooltipHint } from "@/components/ui/tooltip";
 import { ASSISTANT_JOB_CAPS } from "@/convex/lib/constants";
 import { viewOf } from "@/lib/assistant/actions";
-import { topUpBundles } from "@/lib/billing/catalog";
+import { TopUpConfirmation } from "@/components/billing/top-up-bundles";
+import { topUpBundles, type TopUpBundle } from "@/lib/billing/catalog";
 import { useBillingCatalog } from "@/lib/billing/catalog-provider";
 import { useFeatureFlag } from "@/lib/feature-flags/hook";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -790,6 +791,7 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
   const catalog = useBillingCatalog();
   const bundles = catalog && topUps ? topUpBundles(catalog) : [];
   const { buying, bought, buy } = purchase;
+  const [asking, setAsking] = useState<TopUpBundle | null>(null);
   const balance = Math.floor(account?.balance ?? 0);
   const need = Math.max(0, waiting.credits - balance);
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", trailingZeroDisplay: "stripIfInteger" });
@@ -837,7 +839,7 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
                   key={bundle.credits}
                   type="button"
                   disabled={buying !== null}
-                  onClick={() => buy(bundle.credits)}
+                  onClick={() => setAsking(bundle)}
                   aria-label={t("buy", { credits: bundle.credits, price: money(bundle.amount) })}
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -868,6 +870,7 @@ export function TopUpSheet({ waiting, purchase, onBack }: { waiting: Waiting; /*
           <p className="px-1 text-xs leading-relaxed text-muted-foreground">{t("note")}</p>
         </div>
       </ScrollArea>
+      <TopUpConfirmation bundle={asking} account={account} onClose={() => setAsking(null)} onConfirm={buy} />
     </>
   );
 }

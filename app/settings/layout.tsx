@@ -229,6 +229,7 @@ function Shell({ children }: { children: ReactNode }) {
 /** Billing's main action sits in the command bar. */
 function BillingAction({ showUpgrade, subscriptionsEnabled }: { showUpgrade: boolean; subscriptionsEnabled: boolean }) {
   const t = useTranslations("billingPage");
+  const ts = useTranslations("workspaces.settings");
   const router = useWorkspaceRouter();
   const toast = useAppToast();
   const openPortal = useAction(api.billing.actions.openPortal);
@@ -260,7 +261,7 @@ function BillingAction({ showUpgrade, subscriptionsEnabled }: { showUpgrade: boo
       onClick={onClick}
     >
       {loading ? <Spinner /> : showUpgrade ? <UpgradeIcon /> : <ExternalLink />}
-      <span className={BAR_LABEL}>{showUpgrade ? t("upgradePlan") : t("manageSubscriptionBtn")}</span>
+      <span className={BAR_LABEL}>{showUpgrade ? t("upgradePlan") : ts("manageBilling")}</span>
     </Button>
   );
 }
