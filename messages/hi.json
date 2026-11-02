@@ -365,6 +365,7 @@
     "intervalYear": "वर्ष",
     "creditsAddedTitle": "क्रेडिट जोड़े गए",
     "creditsAddedDescription": "आपके बैलेंस में {amount} क्रेडिट जोड़े गए हैं।",
+    "creditsAddedToOrganization": "{organization} में {amount} क्रेडिट जोड़े गए हैं।",
     "paymentReceived": "भुगतान मिल गया। Stripe की पुष्टि होते ही आपकी योजना और क्रेडिट अपडेट हो जाएंगे।",
     "usage": {
       "empty": "अभी तक कोई क्रेडिट उपयोग नहीं हुआ।",

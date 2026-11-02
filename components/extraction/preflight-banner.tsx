@@ -21,7 +21,7 @@ export interface ExtractionPreflightBannerProps {
 
 /**
  * Pre-submission credit-balance banner for the extraction job creator: a
- * Coins icon, the {estimate}/{total} display and a deep link to billing top-up.
+ * Coins icon, the {estimate}/{total} display and a link to billing.
  *
  * Exposes data-preflight-ok + role="status" so tests can assert on
  * behaviour (sufficient vs insufficient) without coupling to Tailwind
@@ -85,7 +85,7 @@ export function ExtractionPreflightBanner({
           className="h-6 shrink-0 gap-1.5 px-2 text-2xs font-semibold border-primary/30 text-primary hover:bg-primary/10 hover:border-primary/50 transition-all"
           onClick={() => {
             onBeforeNavigate?.();
-            router.push("/settings/billing#topup-section");
+            router.push("/settings/billing");
           }}
         >
           {tc("buyCredits")}

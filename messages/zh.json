@@ -365,6 +365,7 @@
     "intervalYear": "年",
     "creditsAddedTitle": "积分已添加",
     "creditsAddedDescription": "已向您的余额添加 {amount} 积分。",
+    "creditsAddedToOrganization": "已向 {organization} 添加 {amount} 积分。",
     "paymentReceived": "已收到付款。Stripe 确认后，您的套餐和积分会立即更新。",
     "usage": {
       "empty": "尚未使用积分。",

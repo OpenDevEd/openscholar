@@ -365,6 +365,7 @@
     "intervalYear": "年",
     "creditsAddedTitle": "クレジット追加完了",
     "creditsAddedDescription": "{amount} クレジットが残高に追加されました。",
+    "creditsAddedToOrganization": "{organization} に {amount} クレジットを追加しました。",
     "paymentReceived": "お支払いを受け付けました。Stripe で確認され次第、プランとクレジットが更新されます。",
     "usage": {
       "empty": "まだクレジットは使用されていません。",

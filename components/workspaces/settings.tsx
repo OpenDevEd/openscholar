@@ -739,7 +739,7 @@ export function WorkspaceBilling() {
             ) : null}
           </div>
         ) : null}
-        <section className="grid overflow-hidden rounded-2xl border border-border-subtle @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
+        <section className="grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border border-border-subtle @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
           <div className="space-y-5 p-5">
             <div>
               <p className="text-4xl font-semibold tabular-nums tracking-tight">{format.number(account.balance)}</p>

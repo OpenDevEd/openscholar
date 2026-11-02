@@ -7,6 +7,7 @@ import { useFormatter, useTranslations } from "next-intl";
 import { toast as sonnerToast } from "sonner";
 import { ArrowRight, CheckCircle2, Loader2, X } from "@/components/icons";
 import { Button } from "@/components/ui/button";
+import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { api } from "@/convex/_generated/api";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { topUpBundles } from "@/lib/billing/catalog";
@@ -15,8 +16,6 @@ import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useWorkspaceAction } from "@/lib/workspaces/url";
-
-const TOP_UP_TARGET = "topup-section";
 
 /**
  * The credit amounts on offer in this workspace and the way to buy one: the person's own, or an
@@ -28,6 +27,9 @@ export function useTopUps() {
   const toast = useAppToast();
   const { catalog, planFeatures } = useSharedSubscriptionState();
   const enabled = useFeatureFlagForPlan("credits.topups", planFeatures);
+  // Named as it was when the purchase started: the person may have moved to another workspace by the time it lands.
+  const current = useCurrentWorkspace();
+  const organization = current?.kind === "organization" ? current.name : null;
   const buyCredits = useWorkspaceAction(api.billing.actions.buyCredits);
   const [buying, setBuying] = useState<number | null>(null);
 
@@ -41,7 +43,8 @@ export function useTopUps() {
         window.location.href = url;
         return;
       }
-      sonnerToast.success(t("creditsAddedTitle"), { description: t("creditsAddedDescription", { amount: format.number(credits) }) });
+      const amount = format.number(credits);
+      sonnerToast.success(t("creditsAddedTitle"), { description: organization ? t("creditsAddedToOrganization", { amount, organization }) : t("creditsAddedDescription", { amount }) });
     } catch (error) {
       console.error("[BILLING] Failed to buy credits:", error);
       toast.billing.checkoutFailed(error);
@@ -53,11 +56,6 @@ export function useTopUps() {
   return { bundles: enabled && catalog ? topUpBundles(catalog) : [], buying, buy };
 }
 
-/** Next looks for a link's #target once, before the billing data has drawn this list, so the list scrolls to itself as it mounts. Stable, so it runs once. */
-const showIfLinked = (list: HTMLElement | null) => {
-  if (list && window.location.hash === `#${TOP_UP_TARGET}`) list.scrollIntoView({ block: "nearest" });
-};
-
 /** The "Top up" list. `row` lays the amounts side by side, where a page has no column for them. */
 export function TopUpBundles({ topUps, row = false, className }: { topUps: ReturnType<typeof useTopUps>; row?: boolean; className?: string }) {
   const t = useTranslations("billingPage");
@@ -65,9 +63,9 @@ export function TopUpBundles({ topUps, row = false, className }: { topUps: Retur
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", trailingZeroDisplay: "stripIfInteger" });
   const { bundles, buying, buy } = topUps;
   return (
-    <div id={TOP_UP_TARGET} ref={showIfLinked} className={cn("flex flex-col", className)}>
+    <div className={cn("flex flex-col", className)}>
       <p className="px-5 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t("topUp")}</p>
-      <div className={cn("flex-1 p-2", row ? "grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-1" : "flex flex-col justify-center")}>
+      <div className={cn("flex-1 p-2", row ? "grid grid-cols-[repeat(auto-fit,minmax(min(11rem,100%),1fr))] gap-1" : "flex flex-col justify-center")}>
         {bundles.map((bundle) => (
           <button
             key={bundle.credits}
