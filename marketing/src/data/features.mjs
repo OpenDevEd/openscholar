@@ -2,7 +2,7 @@
 export const PRODUCTS = [
   { id: "openscholar", name: "OpenScholar", groups: [
     { id: "search", name: "Search and discovery", page: "/search/", items: [
-      ["Paper search", "Searches OpenAlex's 329 million works"],
+      ["Paper search", "Searches the world's published research"],
       ["Keyword search", "AND, OR and NOT, with each term coloured in the query and in the results"],
       ["Question search", "Turns a plain question into a Boolean search"],
       ["OQL search", "Queries in OpenAlex's query language, with a reference beside them"],
@@ -28,8 +28,8 @@ export const PRODUCTS = [
       ["No account needed", "Search, filters, history and bookmarks work signed out"],
     ]},
     { id: "explore", name: "Explore", page: "/search/", items: [
-      ["Topics", "Browse OpenAlex's 4,516 topics by domain, field and subfield"],
-      ["Topic pages", "Description, keywords, related topics, and papers from OpenAlex and your Evidence Libraries"],
+      ["Topics", "Browse research topics by domain, field and subfield"],
+      ["Topic pages", "Description, keywords, related topics, and papers, including those in your Evidence Libraries"],
       ["Author profiles", "Public pages and a searchable list, with papers one click away"],
       ["Create an author", "Make and edit a profile, and invite editors"],
     ]},
