@@ -1,4 +1,5 @@
 // Crops captured library pages into page images. Usage: node art/libraries.mjs <folder with wi-*.png>
+// wi-light is the live home page at 1100 by 860, 1.5x, light theme; wi-dark at 1920 by 1200, dark theme. Signed out, cookie dialog declined, supplier names cleaned from the text.
 import sharp from "sharp";
 const from = process.argv[2], out = new URL("../public/img/", import.meta.url).pathname;
 const CROPS = { "lib-plate": ["wi-light", 0, 0, 1650, 1290, 1000], "lib-home": ["wi-dark", 216, 0, 1520, 950, 1920], "lib-fan-dark": ["wi-dark", 1110, 100, 620, 660, 720], "lib-fan-light": ["wi-light", 280, 110, 1180, 420, 1000] };

@@ -1,4 +1,4 @@
-// Turns the Codex scenes into page images. Product screens are captured separately and cropped by art/screens.mjs.
+// Turns the Codex scenes into page images.
 import { existsSync } from "node:fs";
 import sharp from "sharp";
 const dir = new URL("generated/", import.meta.url).pathname, out = new URL("../public/img/", import.meta.url).pathname;

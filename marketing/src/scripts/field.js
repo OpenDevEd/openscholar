@@ -41,7 +41,6 @@ void main() { float r = length(gl_PointCoord - 0.5) * 2.0; float a = pow(max(0.0
 
 const TAU = Math.PI * 2;
 const gauss = (r) => Math.sqrt(-2 * Math.log(Math.max(1e-6, r())) ) * Math.cos(TAU * r());
-function mat3Y(a) { const c = Math.cos(a), s = Math.sin(a); return [c, 0, -s, 0, 1, 0, s, 0, c]; }
 function mat3Tilt(ax, az) { const cx = Math.cos(ax), sx = Math.sin(ax), cz = Math.cos(az), sz = Math.sin(az); return [cz, sz * cx, sz * sx, -sz, cz * cx, cz * sx, 0, -sx, cx]; }
 const I3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
 
@@ -53,7 +52,6 @@ function lookAt(e, c) {
 }
 const persp = (fov, asp, n, f) => { const t = 1 / Math.tan(fov / 2); return [t / asp, 0, 0, 0, 0, t, 0, 0, 0, 0, (f + n) / (n - f), -1, 0, 0, 2 * f * n / (n - f), 0]; };
 const mul = (a, b) => { const o = new Array(16).fill(0); for (let c = 0; c < 4; c++) for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) o[c * 4 + r] += a[k * 4 + r] * b[c * 4 + k]; return o; };
-const ease = (t) => t * t * (3 - 2 * t);
 
 export { mulberry };
 /** Reads the packed papers: their region, year and citations, plus a seed for each. */
@@ -106,4 +104,4 @@ export function createField(canvas, { count, seeds, targets, sizeScale = 1 }) {
   const project = (x, y, z = 0) => { if (!viewM) return null; const m = viewM, cw = m[3] * x + m[7] * y + m[11] * z + m[15]; return [(((m[0] * x + m[4] * y + m[8] * z + m[12]) / cw) * 0.5 + 0.5) * (w / dpr), ((1 - ((m[1] * x + m[5] * y + m[9] * z + m[13]) / cw)) * 0.5) * (h / dpr)]; };
   return { render, project, gl };
 }
-export { mat3Y, mat3Tilt, I3, ease };
+export { mat3Tilt, I3 };
