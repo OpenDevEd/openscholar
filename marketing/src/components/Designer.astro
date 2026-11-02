@@ -30,14 +30,15 @@ const records = [["Randomised trial", "Results from a Phase 2 exploratory trial 
 <script>
   const STR = { en: { lib: "Library", map: "Map", contact: "Contact Us", in: "Sign in", ask: "Ask AI", dig: "Digests", rct: "Randomised trial", quasi: "Quasi-experiment" }, fr: { lib: "Bibliothèque de preuves", map: "Carte", contact: "Nous contacter", in: "Se connecter", ask: "Demander à l'IA", dig: "Derniers digests", rct: "Essai randomisé", quasi: "Quasi-expérience" }, ar: { lib: "مكتبة الأدلة", map: "خريطة", contact: "اتصل بنا", in: "تسجيل الدخول", ask: "اسأل الذكاء الاصطناعي", dig: "أحدث الملخصات", rct: "تجربة معشاة", quasi: "شبه تجربة" } };
   const S = document.querySelector("[data-studio]"), site = S.querySelector("[data-site]"), root = S.querySelector("[data-root]");
-  const slug = (s) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "library";
+  const slug = (s) => s.toLowerCase().normalize("NFKD").replace(/\p{M}/gu, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "library";
   const tag = S.querySelector("[data-live-tag]"), build = S.querySelector("[data-build]");
-  const name = S.querySelector("[data-name]"); name.addEventListener("input", () => { const v = name.value || "Untitled library"; S.querySelector("[data-title]").textContent = v; S.querySelector("[data-title2]").textContent = v; tag.hidden = true; build.textContent = "Go live"; S.querySelector("[data-url]").textContent = `${slug(v)}.openscholar.ai`; });
-  const radio = (sel, on) => { const btns = [...S.querySelectorAll(sel)]; btns.forEach((b) => b.addEventListener("click", () => { btns.forEach((x) => x.setAttribute("aria-checked", x === b ? "true" : "false")); on(b); })); };
+  const unlive = () => { tag.hidden = true; build.textContent = "Go live"; };
+  const name = S.querySelector("[data-name]"); name.addEventListener("input", () => { const v = name.value || "Untitled library"; S.querySelector("[data-title]").textContent = v; S.querySelector("[data-title2]").textContent = v; unlive(); S.querySelector("[data-url]").textContent = `${slug(v)}.openscholar.ai`; });
+  const radio = (sel, on) => { const btns = [...S.querySelectorAll(sel)]; btns.forEach((b) => b.addEventListener("click", () => { btns.forEach((x) => x.setAttribute("aria-checked", x === b ? "true" : "false")); on(b); unlive(); })); };
   radio("[data-accent]", (b) => { site.style.setProperty("--a", b.dataset.accent); document.documentElement.style.setProperty("--lib", b.dataset.accent); });
   radio("[data-mode]", (b) => { site.dataset.mode = b.dataset.mode; });
   radio("[data-lang]", (b) => { const l = b.dataset.lang, t = STR[l]; root.dir = l === "ar" ? "rtl" : "ltr"; root.lang = l; root.querySelectorAll("[data-t]").forEach((e) => { e.textContent = t[e.dataset.t]; }); });
-  S.querySelectorAll("[data-f]").forEach((c) => c.addEventListener("change", () => root.querySelectorAll(`[data-x="${c.dataset.f}"]`).forEach((e) => { e.hidden = !c.checked; })));
+  S.querySelectorAll("[data-f]").forEach((c) => c.addEventListener("change", () => { root.querySelectorAll(`[data-x="${c.dataset.f}"]`).forEach((e) => { e.hidden = !c.checked; }); unlive(); }));
   build.addEventListener("click", () => { tag.hidden = false; build.textContent = "It's live"; site.classList.remove("going"); void site.offsetWidth; site.classList.add("going"); });
 </script>
 <style>
