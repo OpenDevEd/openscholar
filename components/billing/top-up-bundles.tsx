@@ -16,6 +16,8 @@ import { cn } from "@/lib/utils";
 import { useWorkspaceRouter } from "@/lib/workspaces/href";
 import { useWorkspaceAction } from "@/lib/workspaces/url";
 
+const TOP_UP_TARGET = "topup-section";
+
 /**
  * The credit amounts on offer in this workspace and the way to buy one: the person's own, or an
  * organization's, which only its admins are shown. Empty when top-ups are off.
@@ -51,6 +53,11 @@ export function useTopUps() {
   return { bundles: enabled && catalog ? topUpBundles(catalog) : [], buying, buy };
 }
 
+/** Next looks for a link's #target once, before the billing data has drawn this list, so the list scrolls to itself as it mounts. Stable, so it runs once. */
+const showIfLinked = (list: HTMLElement | null) => {
+  if (list && window.location.hash === `#${TOP_UP_TARGET}`) list.scrollIntoView({ block: "nearest" });
+};
+
 /** The "Top up" list. `row` lays the amounts side by side, where a page has no column for them. */
 export function TopUpBundles({ topUps, row = false, className }: { topUps: ReturnType<typeof useTopUps>; row?: boolean; className?: string }) {
   const t = useTranslations("billingPage");
@@ -58,7 +65,7 @@ export function TopUpBundles({ topUps, row = false, className }: { topUps: Retur
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", trailingZeroDisplay: "stripIfInteger" });
   const { bundles, buying, buy } = topUps;
   return (
-    <div id="topup-section" className={cn("flex flex-col", className)}>
+    <div id={TOP_UP_TARGET} ref={showIfLinked} className={cn("flex flex-col", className)}>
       <p className="px-5 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t("topUp")}</p>
       <div className={cn("flex-1 p-2", row ? "grid grid-cols-[repeat(auto-fit,minmax(11rem,1fr))] gap-1" : "flex flex-col justify-center")}>
         {bundles.map((bundle) => (
