@@ -6,11 +6,12 @@ import posthog from "posthog-js";
 import { useFormatter, useTranslations } from "next-intl";
 import { toast as sonnerToast } from "sonner";
 import { ArrowRight, CheckCircle2, Loader2, X } from "@/components/icons";
+import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
 import { Button } from "@/components/ui/button";
 import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { api } from "@/convex/_generated/api";
 import { useSharedSubscriptionState } from "@/lib/auth/use-subscription-state";
-import { topUpBundles } from "@/lib/billing/catalog";
+import { topUpBundles, type TopUpBundle } from "@/lib/billing/catalog";
 import { useFeatureFlagForPlan } from "@/lib/feature-flags/hook";
 import { useAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,7 @@ export function useTopUps() {
   const organization = current?.kind === "organization" ? current.name : null;
   const buyCredits = useWorkspaceAction(api.billing.actions.buyCredits);
   const [buying, setBuying] = useState<number | null>(null);
+  const [asking, setAsking] = useState<TopUpBundle | null>(null);
 
   const buy = async (credits: number) => {
     if (buying) return;
@@ -53,7 +55,7 @@ export function useTopUps() {
     }
   };
 
-  return { bundles: enabled && catalog ? topUpBundles(catalog) : [], buying, buy };
+  return { bundles: enabled && catalog ? topUpBundles(catalog) : [], buying, buy, asking, setAsking };
 }
 
 /** The "Top up" list. `row` lays the amounts side by side, where a page has no column for them. */
@@ -61,7 +63,8 @@ export function TopUpBundles({ topUps, row = false, className }: { topUps: Retur
   const t = useTranslations("billingPage");
   const format = useFormatter();
   const money = (amount: number) => format.number(amount, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol", trailingZeroDisplay: "stripIfInteger" });
-  const { bundles, buying, buy } = topUps;
+  const { bundles, buying, buy, asking, setAsking } = topUps;
+  const { account } = useSharedSubscriptionState();
   return (
     <div className={cn("flex flex-col", className)}>
       <p className="px-5 pb-1 pt-4 text-xs font-medium text-muted-foreground">{t("topUp")}</p>
@@ -71,7 +74,7 @@ export function TopUpBundles({ topUps, row = false, className }: { topUps: Retur
             key={bundle.credits}
             type="button"
             disabled={buying !== null}
-            onClick={() => void buy(bundle.credits)}
+            onClick={() => setAsking(bundle)}
             aria-label={t("buyBundle", { credits: format.number(bundle.credits), price: money(bundle.amount) })}
             className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors hover:bg-muted disabled:opacity-60"
           >
@@ -85,7 +88,51 @@ export function TopUpBundles({ topUps, row = false, className }: { topUps: Retur
           </button>
         ))}
       </div>
+      <TopUpConfirmation bundle={asking} account={account} onClose={() => setAsking(null)} onConfirm={(credits) => void buy(credits)} />
     </div>
+  );
+}
+
+/**
+ * Asks before a purchase: a saved card is charged as soon as `buyCredits` runs, with no page of Stripe's in between.
+ * It closes on the answer, and the amount's own row shows the purchase under way.
+ */
+export function TopUpConfirmation({ bundle, account, onClose, onConfirm }: { bundle: TopUpBundle | null; account: { balance: number; card?: { brand: string; last4: string } } | null | undefined; onClose: () => void; onConfirm: (credits: number) => void }) {
+  const t = useTranslations("billingPage");
+  const format = useFormatter();
+  const current = useCurrentWorkspace();
+  // The last amount stays in the dialog while it fades out.
+  const [shown, setShown] = useState(bundle);
+  if (bundle && bundle !== shown) setShown(bundle);
+  const balance = Math.floor(account?.balance ?? 0);
+  return (
+    <UpgradeConfirmationDialog
+      open={bundle !== null}
+      onOpenChange={(open) => !open && onClose()}
+      title={shown ? t("topUpTitle", { credits: format.number(shown.credits) }) : undefined}
+      description={current?.kind === "organization" ? t("topUpForOrganization", { organization: current.name }) : undefined}
+      confirmLabel={t("topUpConfirm")}
+      totalLabel={t("topUpDue")}
+      labels={{ from: t("topUpBalanceNow"), to: t("topUpBalanceAfter") }}
+      isConfirming={false}
+      onConfirm={() => {
+        if (!shown) return;
+        onConfirm(shown.credits);
+        onClose();
+      }}
+      cardBrand={account?.card?.brand}
+      cardLast4={account?.card?.last4}
+      preview={
+        shown && {
+          currency: "USD",
+          immediateChargeCents: Math.round(shown.amount * 100),
+          currentPlan: format.number(balance),
+          targetPlan: format.number(balance + shown.credits),
+          targetPlanCreditsPerMonth: 0,
+          lineItems: [],
+        }
+      }
+    />
   );
 }
 

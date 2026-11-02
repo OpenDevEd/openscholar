@@ -293,7 +293,8 @@ function Overlay({
         setSheets([]);
         setOpen((o) => !o);
       }
-      if (e.key === "Escape") setSheets((all) => all.slice(0, -1));
+      // A dialog over the sheet takes its own Escape, and marks it.
+      if (e.key === "Escape" && !e.defaultPrevented) setSheets((all) => all.slice(0, -1));
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
