@@ -315,13 +315,13 @@ export function ScreeningResponses({
             <table className={variant === "mobile" ? "w-full text-xs" : "w-full text-xs min-w-full"}>
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground w-8">
+                  <th className="text-start py-2 px-2 font-medium text-muted-foreground w-8">
                     #
                   </th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground">
+                  <th className="text-start py-2 px-2 font-medium text-muted-foreground">
                     {tc("question")}
                   </th>
-                  <th className="text-left py-2 px-2 font-medium text-muted-foreground w-16">
+                  <th className="text-start py-2 px-2 font-medium text-muted-foreground w-16">
                     {tc("response")}
                   </th>
                 </tr>
@@ -651,7 +651,7 @@ function FilterName({ pressed, label, onToggle, className, children }: { pressed
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") event.stopPropagation();
       }}
-      className={cn("rounded-sm text-left underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary", className)}
+      className={cn("rounded-sm text-start underline-offset-2 transition-colors hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring aria-pressed:font-medium aria-pressed:text-primary", className)}
     >
       {children}
     </button>
@@ -870,7 +870,7 @@ export function CardContainer({
     return (
       <button
         type="button"
-        className={cn(containerClassName, "w-full text-left appearance-none")}
+        className={cn(containerClassName, "w-full text-start appearance-none")}
         onClick={onClick}
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") {

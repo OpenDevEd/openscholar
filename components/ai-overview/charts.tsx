@@ -1,5 +1,6 @@
 "use client";
 
+import { useLocale } from "next-intl";
 // The charts an AI overview (#967) places between its paragraphs. Each draws a count the model read, so the
 // numbers are OpenAlex's, never ones it typed.
 
@@ -50,19 +51,20 @@ const FOCUS = "outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
 
 /** Papers per year as bars; the hovered year names itself in the corner. */
 export function YearBars({ groups, label }: { groups: Group[]; label: string }) {
+  const locale = useLocale();
   const reduce = useReducedMotion();
   const max = Math.max(1, ...groups.map((g) => g.count));
   const { shown, setHover, focus } = useYears(groups, groups.reduce<Group | undefined>((best, g) => (!best || g.count > best.count ? g : best), undefined));
   if (!groups.length || !shown) return null;
   return (
     <figure className={cn("rounded-xl bg-inset px-4 pt-3 pb-2.5", FOCUS)} aria-label={label} {...focus}>
-      <YearList groups={groups} format={(group) => group.count.toLocaleString("en")} />
+      <YearList groups={groups} format={(group) => group.count.toLocaleString(locale)} />
       <figcaption className="flex items-baseline justify-between text-xs">
         <span className="font-medium text-foreground">{label}</span>
-        <span aria-live="polite" className="w-32 shrink-0 text-right tabular-nums text-muted-foreground">
+        <span aria-live="polite" className="w-32 shrink-0 text-end tabular-nums text-muted-foreground">
           {/* The number ends the line, flush right, so it keeps its place as the hovered year changes. */}
           {shown.key}
-          <span className="ml-2 inline-block min-w-12 text-right font-semibold text-foreground">{shown.count.toLocaleString("en")}</span>
+          <span className="ms-2 inline-block min-w-12 text-end font-semibold text-foreground">{shown.count.toLocaleString(locale)}</span>
         </span>
       </figcaption>
       <div className="mt-2 flex h-24 items-end gap-[3px]" onPointerLeave={() => setHover(null)}>
@@ -97,9 +99,9 @@ export function ChangeBars({ groups, label }: { groups: Group[]; label: string }
       <YearList groups={groups} format={(group) => `${group.count > 0 ? "+" : ""}${group.count}%`} />
       <figcaption className="flex items-baseline justify-between text-xs">
         <span className="font-medium text-foreground">{label}</span>
-        <span aria-live="polite" className="w-32 shrink-0 text-right tabular-nums text-muted-foreground">
+        <span aria-live="polite" className="w-32 shrink-0 text-end tabular-nums text-muted-foreground">
           {shown.key}
-          <span className="ml-2 inline-block min-w-12 text-right font-semibold text-foreground">
+          <span className="ms-2 inline-block min-w-12 text-end font-semibold text-foreground">
             {shown.count > 0 ? "+" : ""}
             {shown.count}%
           </span>
@@ -143,7 +145,7 @@ export function ShareBars({ groups, total, label }: { groups: Group[]; total: nu
             <span className="h-2 overflow-hidden rounded-full bg-foreground/[0.06]">
               <motion.span className="block h-full origin-left rounded-full bg-primary/70" style={{ width: `${(g.count / max) * 100}%` }} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={grow(reduce, i * 3)} />
             </span>
-            <span className="text-right tabular-nums text-muted-foreground">{Math.round((g.count / total) * 100)}%</span>
+            <span className="text-end tabular-nums text-muted-foreground">{Math.round((g.count / total) * 100)}%</span>
           </li>
         ))}
       </ul>
@@ -153,13 +155,14 @@ export function ShareBars({ groups, total, label }: { groups: Group[]; total: nu
 
 /** The papers an overview cites, with their citations as bars against the most cited. Each row opens its paper. */
 export function PaperRows({ papers, onOpen }: { papers: Paper[]; onOpen: (index: number) => void }) {
+  const locale = useLocale();
   const reduce = useReducedMotion();
   const max = Math.max(1, ...papers.map((p) => p.cited));
   return (
     <ol className="divide-y divide-border-subtle overflow-hidden rounded-xl bg-inset">
       {papers.map((paper, i) => (
         <li key={paper.id}>
-          <button type="button" onClick={() => onOpen(i)} className="grid w-full grid-cols-[1fr_7rem] items-center gap-4 px-4 py-2.5 text-left text-sm hover:bg-foreground/[0.03]">
+          <button type="button" onClick={() => onOpen(i)} className="grid w-full grid-cols-[1fr_7rem] items-center gap-4 px-4 py-2.5 text-start text-sm hover:bg-foreground/[0.03]">
             <span className="min-w-0">
               <span className="line-clamp-1 font-medium text-foreground">{paper.title}</span>
               <span className="text-xs tabular-nums text-muted-foreground">{paper.year}</span>
@@ -168,7 +171,7 @@ export function PaperRows({ papers, onOpen }: { papers: Paper[]; onOpen: (index:
               <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-foreground/[0.06]">
                 <motion.span className="block h-full origin-left rounded-full bg-primary/70" style={{ width: `${(paper.cited / max) * 100}%` }} initial={{ scaleX: 0 }} animate={{ scaleX: 1 }} transition={grow(reduce, i * 3)} />
               </span>
-              <span className="w-10 text-right text-xs tabular-nums text-muted-foreground">{paper.cited.toLocaleString("en")}</span>
+              <span className="w-10 text-end text-xs tabular-nums text-muted-foreground">{paper.cited.toLocaleString(locale)}</span>
             </span>
           </button>
         </li>

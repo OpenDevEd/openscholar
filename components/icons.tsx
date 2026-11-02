@@ -1,3 +1,5 @@
+import type { ComponentProps } from "react";
+import { cn } from "@/lib/utils";
 // Every icon the app shows, by the name the app uses for it. Components import
 // icons from here and never from an icon package, so the app's icon style is
 // set in this one file: to change an icon, change its line.
@@ -82,12 +84,12 @@ export function Star({ className, ...props }: ComponentPropsWithoutRef<"svg">) {
 export { CloseIcon as X, CloseIcon as XIcon } from "@solar-icons/react/bold-duotone/close";
 export { CheckIcon as Check, CheckIcon } from "@solar-icons/react/bold-duotone/check";
 export { AddIcon as Plus } from "@solar-icons/react/bold-duotone/add";
-export { AltArrowRightIcon as ChevronRight, AltArrowRightIcon as ChevronRightIcon } from "@solar-icons/react/linear/alt-arrow-right";
+import { AltArrowRightIcon as AltArrowRightBase } from "@solar-icons/react/linear/alt-arrow-right";
 export { SquareArrowRightUpIcon as ExternalLink, SquareArrowRightUpIcon as ExternalLinkIcon } from "@solar-icons/react/bold-duotone/square-arrow-right-up";
 export { AltArrowDownIcon as ChevronDown, AltArrowDownIcon as ChevronDownIcon } from "@solar-icons/react/linear/alt-arrow-down";
 export { RefreshIcon as RefreshCw, RefreshIcon as RefreshCwIcon } from "@solar-icons/react/bold-duotone/refresh";
-export { AltArrowLeftIcon as ChevronLeft, AltArrowLeftIcon as ChevronLeftIcon } from "@solar-icons/react/linear/alt-arrow-left";
-export { ArrowRightIcon as ArrowRight } from "@solar-icons/react/bold-duotone/arrow-right";
+import { AltArrowLeftIcon as AltArrowLeftBase } from "@solar-icons/react/linear/alt-arrow-left";
+import { ArrowRightIcon as ArrowRightBase } from "@solar-icons/react/bold-duotone/arrow-right";
 export { MagnifierCloseIcon as SearchX } from "@solar-icons/react/bold-duotone/magnifier-close";
 export { PenIcon as Pencil } from "@solar-icons/react/bold-duotone/pen";
 export { DollarMinimalisticIcon as Coins, DollarMinimalisticIcon as CoinsIcon } from "@solar-icons/react/bold-duotone/dollar-minimalistic";
@@ -104,7 +106,7 @@ export { DangerTriangleIcon as AlertTriangle, DangerTriangleIcon as TriangleAler
 export { BoltIcon as Zap } from "@solar-icons/react/bold-duotone/bolt";
 export { MenuDotsIcon as MoreHorizontal, MenuDotsIcon as MoreHorizontalIcon } from "@solar-icons/react/bold-duotone/menu-dots";
 export { KeyIcon as KeyRound } from "@solar-icons/react/bold-duotone/key";
-export { ArrowLeftIcon as ArrowLeft } from "@solar-icons/react/bold-duotone/arrow-left";
+import { ArrowLeftIcon as ArrowLeftBase } from "@solar-icons/react/bold-duotone/arrow-left";
 export { UploadMinimalisticIcon as Upload } from "@solar-icons/react/bold-duotone/upload-minimalistic";
 export { DisketteIcon as Save } from "@solar-icons/react/bold-duotone/diskette";
 export { PlayIcon as Play } from "@solar-icons/react/bold-duotone/play";
@@ -217,3 +219,15 @@ export { CompassIcon as Compass, CompassIcon as ExploreIcon } from "@solar-icons
 // and other companies' logos.
 export { Asterisk, CircleIcon, Cookie, Github, Linkedin, Loader2, Loader2Icon, LoaderCircle, Scale, Youtube } from "lucide-react";
 export { MoveToFolderIcon as Move } from "@solar-icons/react/bold-duotone/move-to-folder";
+
+/** An arrow that points along the reading direction, so it turns round in a right-to-left language. */
+const mirrored = (Icon: typeof ArrowRightBase): typeof ArrowRightBase => {
+  const Mirrored = (({ className, ...props }: ComponentProps<typeof ArrowRightBase>) => <Icon className={cn("rtl:-scale-x-100", className)} {...props} />) as typeof ArrowRightBase;
+  return Mirrored;
+};
+export const ChevronRight = mirrored(AltArrowRightBase);
+export const ChevronRightIcon = ChevronRight;
+export const ChevronLeft = mirrored(AltArrowLeftBase);
+export const ChevronLeftIcon = ChevronLeft;
+export const ArrowRight = mirrored(ArrowRightBase);
+export const ArrowLeft = mirrored(ArrowLeftBase);

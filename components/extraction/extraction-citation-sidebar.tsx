@@ -57,9 +57,9 @@ export function ExtractionCitationSidebar({
       <div aria-hidden className="pointer-events-none absolute inset-x-0 top-16 h-px bg-sidebar-border/50" />
       <motion.aside
         className={cn(
-          "h-full flex flex-col overflow-hidden absolute right-0 top-0 bottom-0",
+          "h-full flex flex-col overflow-hidden absolute end-0 top-0 bottom-0",
           "bg-background",
-          "border-l border-border-subtle",
+          "border-s border-border-subtle",
         )}
         initial={false}
         animate={{ x: translateX }}
@@ -73,7 +73,7 @@ export function ExtractionCitationSidebar({
         <div aria-hidden className="pointer-events-none absolute inset-x-0 top-16 h-px bg-sidebar-border/50" />
 
         {/* Floating controls — expanded state */}
-        <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg border border-border-subtle bg-card p-1">
+        <div className="absolute top-3 end-3 z-10 flex items-center gap-1 rounded-lg border border-border-subtle bg-card p-1">
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <motion.div
@@ -116,7 +116,7 @@ export function ExtractionCitationSidebar({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-4 right-0 z-20 flex flex-col items-center gap-2"
+            className="absolute top-4 end-0 z-20 flex flex-col items-center gap-2"
           >
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>

@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, type CSSProperties, type ReactNode } from "react";
 import { useAction, useMutation, useQueries } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useTranslations, useLocale } from "next-intl";
 import { toast } from "sonner";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -119,6 +119,7 @@ function GradeCard({ records, usd: cost, changed, sample, trying, onTry, onGrade
   onGrade: () => void;
   kept: (key: ScreeningGrade) => boolean;
 }) {
+  const locale = useLocale();
   const t = useTranslations("evidenceLibraryConfiguration.sources.screening");
   const usd = useUsd();
   const duration = useDuration();
@@ -126,7 +127,7 @@ function GradeCard({ records, usd: cost, changed, sample, trying, onTry, onGrade
     <div className="space-y-3 rounded-lg bg-card p-3">
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="flex min-w-0 flex-1 flex-wrap gap-x-6 gap-y-2">
-          <Figure value={records.toLocaleString()} label={changed ? t("gradedAgain") : t("notGradedYet")} />
+          <Figure value={records.toLocaleString(locale)} label={changed ? t("gradedAgain") : t("notGradedYet")} />
           <Figure value={usd(cost)} label={t("onLibraryKey")} />
           <Figure value={duration(records / RECORDS_PER_SECOND)} label={t("toFinish")} />
           {sample ? <Figure value={t("ofSample", { changed: sample.changed, size: sample.size })} label={t("changeInTrial")} /> : null}
@@ -149,7 +150,7 @@ function GradeCard({ records, usd: cost, changed, sample, trying, onTry, onGrade
               <GradeBar grades={GRADE_KEYS.map((key) => ({ key, count: sample[which][GRADE[key].report], kept: kept(key) }))} />
             </div>
           ))}
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 pl-[calc(7rem+0.75rem)] pt-1 text-xs text-muted-foreground">
+          <ul className="flex flex-wrap gap-x-4 gap-y-1 ps-[calc(7rem+0.75rem)] pt-1 text-xs text-muted-foreground">
             {GRADE_KEYS.map((key) => (
               <li key={key} className="flex items-center gap-1.5">
                 <span aria-hidden className={cn("size-2 rounded-[3px]", GRADE[key].fill)} />
@@ -249,8 +250,8 @@ function ScreeningBand({ sourceKey, screening, onChange, report }: {
     <section aria-label={t("label")} className="space-y-3 border-b border-primary/10 bg-primary/[0.05] px-4 pb-4 pt-3.5">
       {/* The field grows with the subject, so a long one is read whole. */}
       <div className="relative">
-        <AiIcon size={16} className="pointer-events-none absolute left-3 top-2.5 size-4 text-primary" />
-        <Textarea className="min-h-9 resize-none bg-card pl-9" rows={1} maxLength={SUBJECT_MAX} aria-label={t("subjectLabel")} value={screening.subject} placeholder={t("subjectPlaceholder")}
+        <AiIcon size={16} className="pointer-events-none absolute start-3 top-2.5 size-4 text-primary" />
+        <Textarea className="min-h-9 resize-none bg-card ps-9" rows={1} maxLength={SUBJECT_MAX} aria-label={t("subjectLabel")} value={screening.subject} placeholder={t("subjectPlaceholder")}
           onChange={(event) => onChange({ ...screening, subject: event.target.value })} />
       </div>
 
@@ -311,8 +312,8 @@ function ScreeningBand({ sourceKey, screening, onChange, report }: {
                   </span>
                 ) : null}
               </span>
-              <span className={cn("text-right tabular-nums text-muted-foreground transition-opacity", !stays && "opacity-55")}>{graded ? `${((100 * count) / graded).toFixed(1)}%` : null}</span>
-              <span className={cn("text-right font-medium transition-opacity", !stays && "opacity-55")}>{report === null ? null : <AnimatedNumber value={count} />}</span>
+              <span className={cn("text-end tabular-nums text-muted-foreground transition-opacity", !stays && "opacity-55")}>{graded ? `${((100 * count) / graded).toFixed(1)}%` : null}</span>
+              <span className={cn("text-end font-medium transition-opacity", !stays && "opacity-55")}>{report === null ? null : <AnimatedNumber value={count} />}</span>
               <Switch checked={stays} aria-label={t("keep", { grade: label })}
                 onCheckedChange={(checked) => onChange({ ...screening, keptOut: checked ? screening.keptOut.filter((entry) => entry !== key) : [...screening.keptOut, key] })} />
             </li>

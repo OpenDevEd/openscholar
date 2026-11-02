@@ -124,6 +124,7 @@ export default function AuthorPage({
   openAlexError: string | null;
   hasMoreWorks: boolean; workCount: number; loadingWorks: boolean; onLoadMoreWorks: () => void;
 }) {
+  const t = useTranslations("authorPages");
   const profileId = profile.id;
   const tm = useTranslations("workspaces.move");
   const ta = useTranslations("workspaces.activity");
@@ -204,11 +205,11 @@ export default function AuthorPage({
               backHref={profileHref}
               backLabel="Back to author profile"
               titleAside={<>
-                <span className="hidden text-sm text-muted-foreground @3xl:inline">Profile settings</span>
+                <span className="hidden text-sm text-muted-foreground @3xl:inline">{t("profileSettings")}</span>
                 {dirty ? (
                   <StatusChip tone="warning">
                     <PencilLine aria-hidden />
-                    <span className={BAR_LABEL}>Unsaved changes</span>
+                    <span className={BAR_LABEL}>{t("unsavedChanges")}</span>
                   </StatusChip>
                 ) : null}
               </>}
@@ -217,7 +218,7 @@ export default function AuthorPage({
               <Button variant="outline" size="sm" className={BAR_ACTION} asChild>
                 <Link href={profileHref}>
                   <ArrowUpRight />
-                  <span className={BAR_LABEL}>{dirty ? "Cancel" : "View profile"}</span>
+                  <span className={BAR_LABEL}>{dirty ? t("cancel") : t("viewProfile")}</span>
                 </Link>
               </Button>
               <Button
@@ -229,7 +230,7 @@ export default function AuthorPage({
                 disabled={!dirty || saving || profileChanged}
               >
                 <Save className="size-4" />
-                <span className={BAR_LABEL}>Save</span>
+                <span className={BAR_LABEL}>{t("save")}</span>
               </Button>
             </PanelHeader>
           }
@@ -274,21 +275,21 @@ export default function AuthorPage({
                     setSavedProfile(profile);
                     setFormError("");
                   }}>
-                    <RefreshCw /> Load latest version
+                    <RefreshCw /> {t("loadLatestVersion")}
                   </Button>
                 }>
-                  This profile changed while you were editing. Loading the latest version replaces your unsaved changes.
+                  {t("thisProfileChangedWhileYouWere")}
                 </FieldError>
               ) : formError ? <FieldError>{formError}</FieldError> : null}
               <SectionCard
                 icon={PersonIcon}
-                title="Profile details"
+                title={t("profileDetails")}
                 id="sec-profile-details"
               >
                 <div className="flex items-center gap-4 rounded-xl bg-inset p-3">
                   <AuthorAvatar photo={draft.photo} className="size-16 border border-border-subtle" />
                   <div className="min-w-0 flex-1">
-                    <p className="mb-2 text-sm font-medium">Profile photo</p>
+                    <p className="mb-2 text-sm font-medium">{t("profilePhoto")}</p>
                     <div className="flex flex-wrap items-center gap-2">
                       <Button
                         type="button"
@@ -297,12 +298,12 @@ export default function AuthorPage({
                         onClick={() => photoInput.current?.click()}
                       >
                         <Upload className="size-3.5" />
-                        {draft.photo ? "Change photo" : "Upload photo"}
+                        {draft.photo ? t("changePhoto") : t("uploadPhoto")}
                       </Button>
                       <input
                         ref={photoInput}
                         className="hidden"
-                        aria-label="Upload profile photo"
+                        aria-label={t("uploadProfilePhoto")}
                         type="file"
                         accept="image/png,image/jpeg,image/webp"
                         onChange={async (e) => {
@@ -339,12 +340,12 @@ export default function AuthorPage({
                           onClick={() => setDraft({ ...draft, photo: undefined })}
                         >
                           <Trash2 className="size-3.5" />
-                          Remove
+                          {t("remove")}
                         </Button>
                       )}
                     </div>
                     <p className="mt-2 text-xs text-muted-foreground">
-                      PNG, JPG or WebP. Up to 500 KB.
+                      {t("pngJpgOrWebpUpTo")}
                     </p>
                   </div>
                 </div>
@@ -385,7 +386,7 @@ export default function AuthorPage({
                   label={
                     <span className="flex items-center gap-2">
                       <FileText className="size-3.5 text-muted-foreground" />
-                      Biography
+                      {t("biography")}
                     </span>
                   }
                 >
@@ -404,7 +405,7 @@ export default function AuthorPage({
               <SectionCard
                 id="sec-profile-links"
                 icon={LinkIcon}
-                title="Links & identifiers"
+                title={t("linksIdentifiers")}
               >
                 <div className="grid gap-4 sm:grid-cols-2">
                   {(
@@ -446,9 +447,9 @@ export default function AuthorPage({
               </SectionCard>
               <SectionCard
                 id="sec-profile-publications"
-                title="Selected publications"
+                title={t("selectedPublications")}
                 icon={BookIcon}
-                description="Choose the published works to feature on this profile."
+                description={t("chooseThePublishedWorksToFeature")}
               >
                 <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
                   <span>
@@ -467,7 +468,7 @@ export default function AuthorPage({
                     }
                   >
                     <Check className="size-3.5" />
-                    Select all
+                    {t("selectAll")}
                   </Button>
                 </div>
                 <div className="divide-y divide-border-subtle">
@@ -510,11 +511,11 @@ export default function AuthorPage({
                     </label>
                   ))}
                   {loadingPublications ? (
-                    <ListLoading compact label="Loading publications" />
+                    <ListLoading compact label={t("loadingPublications")} />
                   ) : publicationStatus ? (
                     <p className="py-3 text-sm text-muted-foreground">{publicationStatus}</p>
                   ) : !papers.length && (
-                    <ListEmpty compact icon={BookOpen}>No published works are linked to this author yet.</ListEmpty>
+                    <ListEmpty compact icon={BookOpen}>{t("noPublishedWorksAreLinkedTo")}</ListEmpty>
                   )}
                 </div>
               </SectionCard>
@@ -522,7 +523,7 @@ export default function AuthorPage({
                 id="sec-profile-openalex"
                 icon={OpenAlexIcon}
                 title="OpenAlex"
-                description="Connect the author's research record to display their publications."
+                description={t("connectTheAuthorSResearchRecord")}
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="min-w-0 text-sm">
@@ -544,7 +545,7 @@ export default function AuthorPage({
                       </>
                     ) : (
                       <p className="text-muted-foreground">
-                        Link an author to display their OpenAlex publications.
+                        {t("linkAnAuthorToDisplayTheir")}
                       </p>
                     )}
                   </div>
@@ -556,7 +557,7 @@ export default function AuthorPage({
                       onClick={openMatch}
                     >
                       <Link2 />
-                      {draft.match ? "Change match" : "Find author"}
+                      {draft.match ? t("changeMatch") : t("findAuthor")}
                     </Button>
                     {draft.match && (
                       <Button
@@ -566,7 +567,7 @@ export default function AuthorPage({
                         onClick={() => setUnlink(true)}
                       >
                         <Unlink />
-                        Unlink
+                        {t("unlink")}
                       </Button>
                     )}
                   </ButtonGroup>
@@ -614,40 +615,40 @@ export default function AuthorPage({
                   await navigator.clipboard.writeText(
                     `${location.origin}/authors/${profile.id}`,
                   );
-                  toast.success("Profile link copied");
+                  toast.success(t("profileLinkCopied"));
                 } catch {
                   toast.error(
-                    "Copy the address from your browser to share this profile",
+                    t("copyTheAddressFromYourBrowser"),
                   );
                 }
               }}
             >
               <Copy />
-              <span className={BAR_LABEL}>Share</span>
+              <span className={BAR_LABEL}>{t("share")}</span>
             </Button>
             {canEdit && <Button size="sm" className={BAR_ACTION} asChild>
               <Link href={configurationHref}>
                 <Pencil />
-                <span className={BAR_LABEL}>Edit profile</span>
+                <span className={BAR_LABEL}>{t("editProfile")}</span>
               </Link>
             </Button>}
           </>}
           tabs={
             <ListViewTabs
-              label="Publication sources"
+              label={t("publicationSources")}
               value={publicationTab}
               onChange={setPublicationTab}
               tabs={[
-                {value: "selected", label: "Selected publications", icon: <BookOpen className="size-3.5" />, count: loadingPublications ? undefined : featured.length},
+                {value: "selected", label: t("selectedPublications"), icon: <BookOpen className="size-3.5" />, count: loadingPublications ? undefined : featured.length},
                 // The OpenAlex total is known once its first page arrives.
-                {value: "openalex", label: "From OpenAlex", icon: <OpenAlexIcon className="size-3.5" />, count: openAlexPapers.length ? workCount : undefined},
+                {value: "openalex", label: t("fromOpenalex"), icon: <OpenAlexIcon className="size-3.5" />, count: openAlexPapers.length ? workCount : undefined},
               ]}
             />
           }
           filters={publicationTab === "selected" && (
             <ListSearch
-              placeholder="Find a publication…"
-              aria-label="Search publications"
+              placeholder={t("findAPublication")}
+              aria-label={t("searchPublications")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -664,7 +665,7 @@ export default function AuthorPage({
                   focusable="false"
                   viewBox="0 0 480 320"
                   fill="none"
-                  className="pointer-events-none absolute -bottom-20 -right-16 -z-10 h-80 w-[480px] text-primary opacity-[0.07] dark:opacity-[0.10]"
+                  className="pointer-events-none absolute -bottom-20 -end-16 -z-10 h-80 w-[480px] text-primary opacity-[0.07] dark:opacity-[0.10]"
                 >
                   {[90, 125, 160, 195, 230, 265].map((radius) => (
                     <circle
@@ -730,7 +731,7 @@ export default function AuthorPage({
                           >
                             <l.icon className="size-3.5" />
                             {l.name}
-                            <ArrowUpRight className="ml-auto size-3.5" />
+                            <ArrowUpRight className="ms-auto size-3.5" />
                           </a>
                         ))}
                     </div>
@@ -744,10 +745,10 @@ export default function AuthorPage({
                     {papers.length > 0 && (
                       <div
                         className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2"
-                        aria-label="Evidence libraries"
+                        aria-label={t("evidenceLibraries")}
                       >
                         <span className="text-xs text-muted-foreground">
-                          Published in
+                          {t("publishedIn")}
                         </span>
                         {libraries.map(library => <Tooltip key={library.id}>
                           <TooltipTrigger asChild>
@@ -768,8 +769,7 @@ export default function AuthorPage({
                           <TooltipContent side="bottom" sideOffset={8}>
                             <p>{library.url}</p>
                             <p className="mt-1 opacity-70">
-                              {featured.filter(paper => paper.library.id === library.id).length} published works in this library
-                            </p>
+                              {t("publishedWorksInThisLibrary", { length: featured.filter(paper => paper.library.id === library.id).length })}</p>
                           </TooltipContent>
                         </Tooltip>)}
                       </div>
@@ -780,18 +780,18 @@ export default function AuthorPage({
           </>}
         >
           {/* The bar's heading is the author's name; this names the list for screen readers. */}
-          <h2 className="sr-only">Publications</h2>
+          <h2 className="sr-only">{t("publications")}</h2>
           {/* Each tab keys its own list, so the new one fades in instead of popping. */}
           {publicationTab === "selected" ? <div key="selected" className="fade-enter">
             <div className="overflow-hidden">
               {filtered.map(p => <PublicationListItem key={p.id} publication={p} />)}
               {loadingPublications ? (
-                <ListLoading label="Loading publications" />
+                <ListLoading label={t("loadingPublications")} />
               ) : publicationStatus ? (
                 <p className="p-6 text-center text-sm text-muted-foreground">{publicationStatus}</p>
               ) : !filtered.length && (
                 <ListEmpty icon={featured.length ? SearchX : BookOpen}>
-                  {featured.length ? "No publications match your search." : "No publications selected yet."}
+                  {featured.length ? t("noPublicationsMatchYourSearch") : t("noPublicationsSelectedYet")}
                 </ListEmpty>
               )}
             </div>
@@ -809,7 +809,7 @@ export default function AuthorPage({
                   onDownloadEssentialItem={downloadLibraryEssentialItem}
                 />
                 <div className="flex flex-col gap-4 p-4">
-{!openAlexPapers.length && (loadingWorks ? <ListLoading label="Loading OpenAlex publications" /> : <ListEmpty icon={OpenAlexIcon}>No OpenAlex publications to display.</ListEmpty>)}
+{!openAlexPapers.length && (loadingWorks ? <ListLoading label={t("loadingOpenalexPublications")} /> : <ListEmpty icon={OpenAlexIcon}>{t("noOpenalexPublicationsToDisplay")}</ListEmpty>)}
                   {openAlexPapers
                     .map((paper, index) => (
                       <PaperCard
@@ -836,14 +836,14 @@ export default function AuthorPage({
                       onClick={onLoadMoreWorks}
                       disabled={loadingWorks}
                     >
-                      Show more
+                      {t("showMore")}
                       {loadingWorks ? <Spinner /> : <ChevronRight className="size-3.5 rotate-90" />}
                     </Button>
                   </div>
                 )}
               </>
             ) : (
-              <ListEmpty icon={OpenAlexIcon}>No OpenAlex publications to display.</ListEmpty>
+              <ListEmpty icon={OpenAlexIcon}>{t("noOpenalexPublicationsToDisplay")}</ListEmpty>
             )}
           </div>}
         </LibraryPageShell>
@@ -855,13 +855,13 @@ export default function AuthorPage({
               <DialogHeader>
                 <DialogTitle>
                   {candidate
-                    ? "Confirm author match"
-                    : "Find author on OpenAlex"}
+                    ? t("confirmAuthorMatch")
+                    : t("findAuthorOnOpenalex")}
                 </DialogTitle>
                 <DialogDescription>
                   {candidate
-                    ? "Check the affiliation and research before linking this record."
-                    : "Search by name, affiliation or OpenAlex author ID."}
+                    ? t("checkTheAffiliationAndResearchBefore")
+                    : t("searchByNameAffiliationOrOpenalex")}
                 </DialogDescription>
               </DialogHeader>
               {candidate ? (
@@ -886,17 +886,16 @@ export default function AuthorPage({
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Your name, biography, links and selected publications will
-                    stay as you entered them.
+                    {t("yourNameBiographyLinksAndSelected")}
                   </p>
                 </div>
               ) : (
                 <>
                   <Input
-                    aria-label="Search OpenAlex authors"
+                    aria-label={t("searchOpenalexAuthors")}
                     value={matchSearch}
                     onChange={(e) => { setMatchSearch(e.target.value); onSearchAuthors(e.target.value); }}
-                    placeholder="Name, affiliation or author ID"
+                    placeholder={t("nameAffiliationOrAuthorId")}
                   />
                   {unavailable ? (
                     <div
@@ -904,8 +903,7 @@ export default function AuthorPage({
                       className="space-y-3 rounded-lg border p-4"
                     >
                       <p className="text-sm">
-                        OpenAlex search is unavailable. Your profile and current
-                        match are unchanged.
+                        {t("openalexSearchIsUnavailableYourProfile")}
                       </p>
                       <Button
                         variant="outline"
@@ -913,7 +911,7 @@ export default function AuthorPage({
                         onClick={() => onSearchAuthors(matchSearch)}
                         disabled={loadingAuthors}
                       >
-                        {loadingAuthors && <Spinner />}Try again
+                        {loadingAuthors && <Spinner />}{t("tryAgain")}
                       </Button>
                     </div>
                   ) : (
@@ -922,11 +920,11 @@ export default function AuthorPage({
                         <button
                           type="button"
                           key={m.id}
-                          className="flex w-full items-center gap-3 p-3 text-left hover:bg-muted"
+                          className="flex w-full items-center gap-3 p-3 text-start hover:bg-muted"
                           onClick={async () => {
                             setCandidate(m);
                             try { const detail = await unlessLimited(readProfileAuthor(m.id)); setCandidate(current => current?.id === m.id ? detail : current); }
-                            catch (error) { toast.error(error instanceof OpenAlexLimitedError ? error.message : "Could not load this author’s publications"); }
+                            catch (error) { toast.error(error instanceof OpenAlexLimitedError ? error.message : t("couldNotLoadThisAuthorS")); }
                           }}
                         >
                           <AuthorAvatar className="size-9" />
@@ -945,10 +943,10 @@ export default function AuthorPage({
                         </button>
                       ))}
                       {loadingAuthors ? (
-                        matches.length ? <div className="flex justify-center p-3"><Spinner aria-label="Searching OpenAlex authors" className="size-5 text-primary" /></div> : <ListLoading compact label="Searching OpenAlex authors" />
+                        matches.length ? <div className="flex justify-center p-3"><Spinner aria-label={t("searchingOpenalexAuthors")} className="size-5 text-primary" /></div> : <ListLoading compact label={t("searchingOpenalexAuthors")} />
                       ) : !matches.length && (
                         <ListEmpty compact icon={matchSearch.trim() ? SearchX : Search}>
-                          {matchSearch.trim() ? "No authors match your search." : "Search for an author by name, affiliation or OpenAlex ID."}
+                          {matchSearch.trim() ? t("noAuthorsMatchYourSearch") : t("searchForAnAuthorByName")}
                         </ListEmpty>
                       )}
                     </div>
@@ -963,7 +961,7 @@ export default function AuthorPage({
                       variant="outline"
                       onClick={() => setCandidate(null)}
                     >
-                      Back
+                      {t("back")}
                     </Button>
                     <Button
                       onClick={() => {
@@ -977,7 +975,7 @@ export default function AuthorPage({
                       }}
                     >
                       <Link2 />
-                      Confirm match
+                      {t("confirmMatch")}
                     </Button>
                   </>
                 ) : (
@@ -985,7 +983,7 @@ export default function AuthorPage({
                     variant="outline"
                     onClick={() => setMatchDialog(false)}
                   >
-                    Cancel
+                    {t("cancel")}
                   </Button>
                 )}
               </DialogFooter>
@@ -994,15 +992,14 @@ export default function AuthorPage({
           <Dialog open={unlink} onOpenChange={setUnlink}>
             <DialogContent showCloseButton={false}>
               <DialogHeader>
-                <DialogTitle>Unlink OpenAlex author?</DialogTitle>
+                <DialogTitle>{t("unlinkOpenalexAuthor")}</DialogTitle>
                 <DialogDescription>
-                  This removes the imported research from this profile. Your
-                  profile details and selected publications remain.
+                  {t("thisRemovesTheImportedResearchFrom")}
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setUnlink(false)}>
-                  Cancel
+                  {t("cancel")}
                 </Button>
                 <Button
                   onClick={() => {
@@ -1011,7 +1008,7 @@ export default function AuthorPage({
                     setUnlink(false);
                   }}
                 >
-                  Unlink author
+                  {t("unlinkAuthor")}
                 </Button>
               </DialogFooter>
             </DialogContent>

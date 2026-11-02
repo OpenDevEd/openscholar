@@ -432,7 +432,7 @@ export function SetupView({ paperLimit }: { paperLimit: number }) {
 
         {/* Stops short of the assistant's button in the screen's corner from the first frame, where the page's column reaches
             it (below 1320px). On a phone its Start button wraps to the left, clear of it, and the bar keeps its width. */}
-        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg sm:max-[82.5rem]:mr-18">
+        <div className="sticky bottom-4 z-10 flex flex-wrap items-center gap-4 rounded-2xl border border-border-subtle bg-background p-4 shadow-lg sm:max-[82.5rem]:me-18">
           <CreditCheck credits={credits} balance={balance} enough={enough} cap={spend.cap} />
           {why ? (
             <TooltipHint label={why}>
@@ -473,7 +473,7 @@ function Tray({ groups, total, limit, onRemove }: { groups: Group[]; total: numb
         <div className={cn("flex h-2.5 min-w-0 flex-1 gap-0.5 overflow-hidden rounded-full", groups.length ? "bg-foreground/[0.06]" : "border border-dashed border-foreground/20")}>
           <AnimatePresence initial={false}>
             {groups.map((group) => (
-              <motion.span key={group.key} layout initial={{ width: 0 }} animate={{ width: `${(group.papers / scale) * 100}%` }} exit={{ width: 0 }} transition={{ duration: 0.4, ease: EASE }} className="h-full shrink-0 first:rounded-l-full" style={{ backgroundColor: KIND[group.kind].tint }} />
+              <motion.span key={group.key} layout initial={{ width: 0 }} animate={{ width: `${(group.papers / scale) * 100}%` }} exit={{ width: 0 }} transition={{ duration: 0.4, ease: EASE }} className="h-full shrink-0 first:rounded-s-full" style={{ backgroundColor: KIND[group.kind].tint }} />
             ))}
           </AnimatePresence>
         </div>
@@ -490,7 +490,7 @@ function Tray({ groups, total, limit, onRemove }: { groups: Group[]; total: numb
             {groups.map((group) => {
               const Icon = KIND[group.kind].icon;
               return (
-                <motion.span key={group.key} layout="position" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="inline-flex h-7 max-w-64 shrink-0 items-center gap-1.5 rounded-full bg-background pl-2.5 pr-1 text-xs ring-1 ring-border-subtle">
+                <motion.span key={group.key} layout="position" initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="inline-flex h-7 max-w-64 shrink-0 items-center gap-1.5 rounded-full bg-background ps-2.5 pe-1 text-xs ring-1 ring-border-subtle">
                   <Icon className="size-3.5 shrink-0" style={{ color: KIND[group.kind].tint }} />
                   <TooltipHint label={group.text} onlyWhenClipped>
                     <span className="min-w-0 truncate font-medium">{group.label}</span>

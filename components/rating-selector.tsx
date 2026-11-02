@@ -123,7 +123,7 @@ export function RatingSelector({ paper, variant = "default" }: RatingSelectorPro
         value={currentRating?.toString() || "no-rating"}
         onValueChange={handleRatingChange}
       >
-        <SelectTrigger size="sm" className={cn("w-auto min-w-[4rem] shrink-0 px-2", collection && "rounded-l-none shadow-none")}>
+        <SelectTrigger size="sm" className={cn("w-auto min-w-[4rem] shrink-0 px-2", collection && "rounded-s-none shadow-none")}>
           <SelectValue placeholder={t('noRating')} />
         </SelectTrigger>
         <SelectContent>
@@ -138,7 +138,7 @@ export function RatingSelector({ paper, variant = "default" }: RatingSelectorPro
       <span className="inline-flex min-w-0 max-w-full rounded-md shadow-xs">
         <TooltipHint label={collection.name} onlyWhenClipped>
           {/* In a narrow card (a three-column grid's, a phone's) the name has no room beside Saved: the folder stands for it there, and hovering names it. */}
-          <span className="inline-flex h-8 min-w-0 max-w-40 items-center gap-1.5 rounded-l-md border border-r-0 border-input bg-inset px-2 text-xs font-medium text-muted-foreground @max-[24rem]/card:gap-0">
+          <span className="inline-flex h-8 min-w-0 max-w-40 items-center gap-1.5 rounded-s-md border border-e-0 border-input bg-inset px-2 text-xs font-medium text-muted-foreground @max-[24rem]/card:gap-0">
             <Folder className="size-3.5 shrink-0" />
             <span className="min-w-0 truncate @max-[24rem]/card:w-0">{collection.name}</span>
           </span>

@@ -62,13 +62,13 @@ export default function AdminsPage() {
       <Zone label={t("title")} aside={<AddAdmin />}>
         <div className="space-y-3">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="absolute start-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("search")}
               aria-label={t("search")}
-              className="h-11 rounded-2xl border border-border-subtle bg-inset pl-11"
+              className="h-11 rounded-2xl border border-border-subtle bg-inset ps-11"
             />
           </div>
           <Paged pager={{ list: admins, size: PER_PAGE, total: search ? undefined : count }} rowHeight={61} label={t("admins")}>

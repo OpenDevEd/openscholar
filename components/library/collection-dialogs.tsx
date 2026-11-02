@@ -159,7 +159,7 @@ function NewCollection({ paper, close, onCreated, creating, setCreating }: { pap
             </div>
             <AnimatePresence initial={false}>
               {twin ? (
-                <motion.div key="twin" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden pl-[3.75rem]">
+                <motion.div key="twin" initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25, ease: EASE }} className="overflow-hidden ps-[3.75rem]">
                   <StatusChip tone="warning" icon={Folder}>
                     {org && workspace ? t("collectionNameTakenIn", { workspace: workspace.name }) : t("collectionNameTaken")}
                   </StatusChip>
@@ -181,7 +181,7 @@ function NewCollection({ paper, close, onCreated, creating, setCreating }: { pap
                 {org ? (
                   <>
                     <MemberFaces workspaceId={workspaceId} label={t("everyoneIn", { workspace: workspace.name })} ring="ring-background" count={workspace.members} />
-                    <span className="ml-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                    <span className="ms-auto flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                       <PenLine className="size-3.5" /> {t("everyMemberEdits")}
                     </span>
                   </>
@@ -195,7 +195,7 @@ function NewCollection({ paper, close, onCreated, creating, setCreating }: { pap
 
             <div className="rounded-xl border border-border-subtle">
               {/* It opens once the plan's limit is read, so the row inside is whole from its first frame. */}
-              <button type="button" aria-expanded={inviting} onClick={() => guestLimit !== undefined && setInviting(!inviting)} className="flex h-11 w-full items-center gap-2.5 rounded-xl px-3 text-left text-sm transition-colors hover:bg-muted/60">
+              <button type="button" aria-expanded={inviting} onClick={() => guestLimit !== undefined && setInviting(!inviting)} className="flex h-11 w-full items-center gap-2.5 rounded-xl px-3 text-start text-sm transition-colors hover:bg-muted/60">
                 <Share2 className="size-4 shrink-0 text-muted-foreground" />
                 <span className="min-w-0 flex-1 truncate">{org && workspace ? t("inviteOutside", { workspace: workspace.name }) : t("inviteToIt")}</span>
                 {invited.length ? <span className="rounded-full bg-primary/10 px-2 text-2xs font-medium tabular-nums text-primary">{invited.length}</span> : null}
@@ -233,7 +233,7 @@ function NewCollection({ paper, close, onCreated, creating, setCreating }: { pap
                       {invited.length ? (
                         <div className="flex flex-wrap gap-1.5">
                           {invited.map((one) => (
-                            <span key={one.email} className="inline-flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted pl-2.5 pr-1 text-xs">
+                            <span key={one.email} className="inline-flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-full bg-muted ps-2.5 pe-1 text-xs">
                               {one.role === "viewer" ? <Eye className="size-3.5 shrink-0 text-muted-foreground" /> : <PenLine className="size-3.5 shrink-0 text-muted-foreground" />}
                               <span className="min-w-0 truncate">{one.email}</span>
                               <button type="button" disabled={creating} aria-label={t("removeGuest", { email: one.email })} onClick={() => setInvited(invited.filter((other) => other.email !== one.email))} className="flex size-5 shrink-0 items-center justify-center rounded-full hover:bg-background">
@@ -277,7 +277,7 @@ function NewCollection({ paper, close, onCreated, creating, setCreating }: { pap
             ) : null}
           </AnimatePresence>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ms-auto flex items-center gap-2">
           <Button variant="ghost" disabled={creating} onClick={close}>
             {tc("cancel")}
           </Button>
@@ -452,8 +452,8 @@ function ManageCollections({ manage, close, onNew }: { manage: Manage; close: ()
       {total ? (
         <div className="px-4 pt-3">
           <label className="relative block">
-            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("searchCollections")} aria-label={t("searchCollections")} className="h-9 rounded-lg pl-8 text-sm" />
+            <Search className="absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t("searchCollections")} aria-label={t("searchCollections")} className="h-9 rounded-lg ps-8 text-sm" />
           </label>
         </div>
       ) : null}

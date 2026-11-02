@@ -49,7 +49,7 @@ export function PanelHeader({
     <div className="flex h-16 items-center gap-4">
       <div className="flex min-w-0 flex-1 items-center gap-2 @3xl:flex-initial">
         {backHref ? (
-          <Button asChild variant="ghost" size="icon" className="-ml-2 shrink-0 text-muted-foreground">
+          <Button asChild variant="ghost" size="icon" className="-ms-2 shrink-0 text-muted-foreground">
             <Link href={backHref} aria-label={backLabel}>
               <ChevronLeft className="size-5" />
             </Link>
@@ -71,9 +71,9 @@ export function PanelHeader({
         {titleAside ? <div className="flex shrink-0 items-center gap-2">{titleAside}</div> : null}
       </div>
       {/* The view switch and the filters are inset wells, made for a white card. The light bar is the page's grey, so here they take the card's white. */}
-      {tabs ? <div className="hidden shrink-0 border-l border-border-subtle pl-4 not-dark:[--inset:var(--card)] @3xl:block max-lg:has-[[data-view-switch]]:hidden!">{tabs}</div> : null}
+      {tabs ? <div className="hidden shrink-0 border-s border-border-subtle ps-4 not-dark:[--inset:var(--card)] @3xl:block max-lg:has-[[data-view-switch]]:hidden!">{tabs}</div> : null}
       {filters || children ? (
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ms-auto flex shrink-0 items-center gap-2">
           {filters ? <div className="hidden items-center gap-2 not-dark:[--inset:var(--card)] @6xl:flex">{filters}</div> : null}
           {children}
         </div>

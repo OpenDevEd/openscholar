@@ -159,7 +159,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
           {isEditing ? editor : (
             <>
               {open(viewMode === "grid-2" ? "line-clamp-4" : "line-clamp-3")}
-              <FullTextToggle text={expansionText} className="-ml-1.5 self-start" />
+              <FullTextToggle text={expansionText} className="-ms-1.5 self-start" />
             </>
           )}
         </>
@@ -177,7 +177,7 @@ export function BookmarksItem({ bookmark, viewMode, isEditing, onEdit, onSaveEdi
               ) : (
                 <div className="min-w-0 flex-1">
                   {open("line-clamp-3")}
-                  <FullTextToggle text={expansionText} className="-ml-1.5 mt-1 flex" />
+                  <FullTextToggle text={expansionText} className="-ms-1.5 mt-1 flex" />
                 </div>
               )}
               {addedBy ? <span className="flex shrink-0 self-start">{addedBy}</span> : null}

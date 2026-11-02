@@ -245,7 +245,7 @@ export function VersionHistory<Row extends VersionHistoryRow>({
               <StatusChip tone={VERSION_TONE[row.status]}>
                 {t(`versions.status.${row.status}`)}
               </StatusChip>
-              <div className="text-right">
+              <div className="text-end">
                 {canRestore(row.status) ? (
                   <Button
                     type="button"

@@ -26,7 +26,7 @@ export function Zone({
 }) {
   return (
     <section className={cn("space-y-2.5", className)}>
-      <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-1 pl-1">
+      <div className="flex min-h-7 flex-wrap items-center justify-between gap-x-3 gap-y-1 ps-1">
         <h2 className="shrink-0 text-xs font-medium text-muted-foreground">{label}</h2>
         {/* The aside takes the room left and no more: on a narrow screen it wraps under the label, and a long name in it is cut, not pushed out of the card. */}
         {aside ? <div className="flex min-w-0 justify-end">{aside}</div> : null}
@@ -117,7 +117,7 @@ export function Segmented<T extends string>({
         <span
           aria-hidden
           className={cn(
-            "absolute left-0 top-0 bg-primary/15 ring-1 ring-primary/40 transition-[transform,width,height] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
+            "absolute start-0 top-0 bg-primary/15 ring-1 ring-primary/40 transition-[transform,width,height] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none",
             stacked ? "rounded-2xl" : "rounded-full",
           )}
           style={{ width: box.width, height: box.height, transform: `translate(${box.left}px, ${box.top}px)` }}

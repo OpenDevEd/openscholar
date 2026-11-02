@@ -118,7 +118,7 @@ export function DateRangePicker({
                 // Picking the one that is on clears it.
                 onClick={() => (on ? onValueChange(undefined) : handlePresetClick(range))}
                 className={cn(
-                  "group relative flex h-9 w-full items-center gap-2 overflow-hidden rounded-lg bg-inset px-3 text-left text-sm transition-colors",
+                  "group relative flex h-9 w-full items-center gap-2 overflow-hidden rounded-lg bg-inset px-3 text-start text-sm transition-colors",
                   on ? "text-primary ring-1 ring-primary/40" : "text-foreground hover:bg-muted",
                 )}
               >
@@ -129,14 +129,14 @@ export function DateRangePicker({
                     initial={{ width: 0 }}
                     animate={{ width: `${(kept / counts.total) * 100}%` }}
                     transition={reduce ? { duration: 0 } : SHEET_SPRING}
-                    className={cn("absolute inset-y-0 left-0 transition-colors", on ? "bg-primary/20" : "bg-primary/10 group-hover:bg-primary/15")}
+                    className={cn("absolute inset-y-0 start-0 transition-colors", on ? "bg-primary/20" : "bg-primary/10 group-hover:bg-primary/15")}
                   />
                 ) : null}
                 <span className={cn("relative flex-1 truncate", on && "font-medium")}>{preset.label}</span>
                 {on ? <Check className="relative size-3.5" /> : null}
                 {/* The count's column is kept while it loads, so the check doesn't move when it arrives. */}
                 {counts !== undefined ? (
-                  <span className={cn("relative h-5 min-w-[4ch] text-right tabular-nums", on ? "text-primary" : "text-muted-foreground")}>
+                  <span className={cn("relative h-5 min-w-[4ch] text-end tabular-nums", on ? "text-primary" : "text-muted-foreground")}>
                     {kept !== undefined ? (
                       <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={reduce ? { duration: 0 } : { duration: 0.2 }}>
                         {format.number(kept)}
@@ -155,7 +155,7 @@ export function DateRangePicker({
             type="button"
             variant="outline"
             className={cn(
-              "w-full h-10 justify-start text-left font-normal",
+              "w-full h-10 justify-start text-start font-normal",
               isActive
                 ? "border-sidebar-primary/50"
                 : "border-dashed border-muted-foreground/30 dark:border-muted-foreground/20",

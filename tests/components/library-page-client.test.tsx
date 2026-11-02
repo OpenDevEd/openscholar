@@ -101,6 +101,7 @@ vi.mock("nuqs", async () => {
 });
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
   useTranslations: () => (key: string, values?: Record<string, string | number>) => {
     if (key === "showingRange" && values) {
       return `Showing ${values.start}-${values.end} of ${values.total} papers`;

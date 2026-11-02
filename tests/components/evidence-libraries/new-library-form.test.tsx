@@ -24,6 +24,8 @@ vi.mock("convex/react", () => ({
 vi.mock("next/navigation", () => ({
   useParams: () => ({}), useRouter: () => ({ push: mocks.push }) }));
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
   useTranslations: (namespace: string) => (key: string) =>
     namespace === "evidenceLibraries.gate" ? `gate.${key}` : key,
 }));

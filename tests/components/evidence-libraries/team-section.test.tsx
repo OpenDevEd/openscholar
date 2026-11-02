@@ -5,6 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithTooltip as render } from "../../helpers/render-with-tooltip";
 import type { Id } from "@/convex/_generated/dataModel";
 const mocks = vi.hoisted(() => ({ mutate: vi.fn(), invite: vi.fn() }));
+vi.mock("next-intl", async () => {
+  const messages = (await import("@/messages/en-US.json")).default as unknown as Record<string, Record<string, string>>;
+  return { useLocale: () => "en-US", useTranslations: (namespace: string) => (key: string, values: Record<string, string> = {}) => (messages[namespace]?.[key] ?? key).replace(/\{(\w+)\}/g, (_, name: string) => values[name] ?? "") };
+});
 vi.mock("@clerk/nextjs", () => ({ useUser: () => ({ user: { id: "user_me" } }) }));
 vi.mock("convex/react", () => ({ useMutation: () => mocks.mutate, useAction: () => mocks.invite, useConvex: () => ({ query: vi.fn() }) }));
 vi.mock("@/lib/hooks/use-cursor-page", () => ({ useCursorPage: () => ({ items: [], isLoading: false }) }));

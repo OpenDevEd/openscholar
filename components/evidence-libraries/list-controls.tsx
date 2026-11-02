@@ -51,8 +51,8 @@ export function ListViewTabs<T extends string>({ label, value, onChange, tabs }:
 export function ListSearch({ className, ...props }: ComponentProps<typeof Input>) {
   return (
     <div className="relative">
-      <Search aria-hidden className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-      <Input className={cn("h-8 w-44 pl-8 text-xs", LIST_FILTER, className)} {...props} />
+      <Search aria-hidden className="absolute start-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+      <Input className={cn("h-8 w-44 ps-8 text-xs", LIST_FILTER, className)} {...props} />
     </div>
   );
 }

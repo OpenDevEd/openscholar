@@ -30,7 +30,7 @@ export function FloatingInput({
   return (
     <div className={cn("group relative", wrapperClassName)}>
       {/* Floating label */}
-      <div className="absolute -top-2.5 left-3 z-10 flex items-center gap-2">
+      <div className="absolute -top-2.5 start-3 z-10 flex items-center gap-2">
         <label
           className={cn(
             "px-1.5 py-0.5",

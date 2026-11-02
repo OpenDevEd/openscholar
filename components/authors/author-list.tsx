@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { usePaginatedQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -29,6 +30,7 @@ import { Dialog, DialogContent, DialogTitle, DialogHeader, DialogFooter } from "
  * `createsBefore` is that as the rail last saw it, until the plan is read. `firstPage` is the list's first page, sent with the page.
  */
 export function AuthorList({createsBefore, firstPage}: {createsBefore: boolean; firstPage: FunctionReturnType<typeof api.authors.profiles.list>}) {
+  const t = useTranslations("authorPages");
   const router = useWorkspaceRouter();
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
@@ -45,24 +47,24 @@ export function AuthorList({createsBefore, firstPage}: {createsBefore: boolean; 
   const explore = useExploreHeader("authors");
   // Read after the page drew, it opens its place beside the search: its own margin stands in for the row's gap, so the search moves only as it opens.
   return <LibraryPageShell {...explore} actions={<AnimatePresence initial={false}>{creates
-    ? <Opening key="create" across className="-ml-2 overflow-clip [overflow-clip-margin:4px]"><Button size="sm" className={cn("ml-2", BAR_ACTION)} onClick={() => {setError(""); setOpen(true);}}><Plus /><span className={BAR_LABEL}>Create author</span></Button></Opening>
+    ? <Opening key="create" across className="-ms-2 overflow-clip [overflow-clip-margin:4px]"><Button size="sm" className={cn("ms-2", BAR_ACTION)} onClick={() => {setError(""); setOpen(true);}}><Plus /><span className={BAR_LABEL}>{t("createAuthor")}</span></Button></Opening>
     : null}</AnimatePresence>}
-    filters={<ListSearch aria-label="Find authors" placeholder="Find an author…" className="w-56" value={search} onChange={event => setSearch(event.target.value)} />}>
+    filters={<ListSearch aria-label={t("findAuthors")} placeholder={t("findAnAuthor")} className="w-56" value={search} onChange={event => setSearch(event.target.value)} />}>
     <AuthorInvitations />
     {!!profiles.length && <ul className="divide-y divide-border-subtle">{profiles.map(profile => <li key={profile._id} className="fade-enter"><Link href={`/authors/${profile._id}`} className="group flex items-center gap-3 p-4 hover:bg-muted">
-      <AuthorAvatar photo={profile.photo} className="mr-1 size-10 shrink-0" />
+      <AuthorAvatar photo={profile.photo} className="me-1 size-10 shrink-0" />
       <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium group-hover:underline">{profile.name}</p><p className="truncate text-xs text-muted-foreground">{profile.headline || profile.affiliation}</p></div>
       <ArrowUpRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
     </Link></li>)}</ul>}
     {!profiles.length && (status === "LoadingFirstPage" && !early
-      ? <ListLoading label="Loading authors" />
-      : <ListEmpty icon={search ? SearchX : Users}>{search ? "No authors match your search." : "No authors yet."}</ListEmpty>)}
-    {more && <div className="flex justify-center border-t border-border-subtle p-3"><Button variant="ghost" size="sm" disabled={early || status === "LoadingMore"} onClick={() => loadMore(AUTHOR_PAGE_SIZE)}>{status === "LoadingMore" && <Spinner />}Show more</Button></div>}
-    <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>Create author profile</DialogTitle></DialogHeader><form className="space-y-4" onSubmit={async event => {
+      ? <ListLoading label={t("loadingAuthors")} />
+      : <ListEmpty icon={search ? SearchX : Users}>{search ? t("noAuthorsMatchYourSearch") : t("noAuthorsYet")}</ListEmpty>)}
+    {more && <div className="flex justify-center border-t border-border-subtle p-3"><Button variant="ghost" size="sm" disabled={early || status === "LoadingMore"} onClick={() => loadMore(AUTHOR_PAGE_SIZE)}>{status === "LoadingMore" && <Spinner />}{t("showMore")}</Button></div>}
+    <Dialog open={open} onOpenChange={setOpen}><DialogContent><DialogHeader><DialogTitle>{t("createAuthorProfile")}</DialogTitle></DialogHeader><form className="space-y-4" onSubmit={async event => {
       event.preventDefault(); if (creating) return; setCreating(true); setError("");
       try { const id = await create({name}); router.push(`/authors/${id}/configuration`); setOpen(false); }
       catch (error) { setError(error instanceof Error ? error.message : "Could not create profile"); }
       finally { setCreating(false); }
-    }}><Field label="Name">{id => <Input id={id} value={name} onChange={event => setName(event.target.value)} required maxLength={500} autoFocus />}</Field>{error && <FieldError>{error}</FieldError>}<DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit" disabled={creating || !name.trim()}><Plus />Create profile</Button></DialogFooter></form></DialogContent></Dialog>
+    }}><Field label={t("name")}>{id => <Input id={id} value={name} onChange={event => setName(event.target.value)} required maxLength={500} autoFocus />}</Field>{error && <FieldError>{error}</FieldError>}<DialogFooter><Button type="button" variant="outline" onClick={() => setOpen(false)}>{t("cancel")}</Button><Button type="submit" disabled={creating || !name.trim()}><Plus />{t("createProfile")}</Button></DialogFooter></form></DialogContent></Dialog>
   </LibraryPageShell>;
 }

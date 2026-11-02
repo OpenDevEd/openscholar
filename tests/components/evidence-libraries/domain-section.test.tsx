@@ -99,6 +99,8 @@ function serverAnswers(domains: DomainRow[]) {
 }
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
   useTranslations:
     (namespace: string) => (key: string, params?: Record<string, string>) =>
       params?.type

@@ -46,14 +46,14 @@ export function SearchInput({ label, value, onChange, placeholder, className }: 
         placeholder={resolvedPlaceholder}
         value={localValue}
         onChange={(e) => setLocalValue(e.target.value)}
-        className="w-full pr-8"
+        className="w-full pe-8"
       />
       {localValue && (
         <Button
           variant="ghost"
           size="icon-xs"
           aria-label={tc("clear")}
-          className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground"
+          className="absolute end-1 top-1/2 -translate-y-1/2 text-muted-foreground"
           onClick={() => {
             setLocalValue('');
             onChange('');

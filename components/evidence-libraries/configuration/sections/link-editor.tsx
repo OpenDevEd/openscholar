@@ -117,7 +117,7 @@ export function LinkEditor({
                 {BUILT_IN_PAGES.map((page) => (
                   <SelectItem key={page.key} value={page.key}>
                     {t(`pages.${page.key}`)}
-                    <span className="ml-2 font-mono text-xs text-muted-foreground">{page.path}</span>
+                    <span className="ms-2 font-mono text-xs text-muted-foreground">{page.path}</span>
                   </SelectItem>
                 ))}
               </SelectContent>

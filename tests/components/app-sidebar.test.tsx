@@ -17,6 +17,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
   useTranslations: () => (key: string) => key,
   useFormatter: () => ({ number: (value: number, options?: { style?: string }) => (options?.style === "percent" ? `${Math.round(value * 100)}%` : String(value)) }),
 }));

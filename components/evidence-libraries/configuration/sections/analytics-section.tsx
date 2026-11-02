@@ -53,7 +53,7 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
           onChange={(enabled) => set("posthog", "enabled", enabled)}
         />
         {analytics.posthog.enabled ? (
-          <Panel tone="muted" className="ml-4 grid gap-4 sm:grid-cols-2">
+          <Panel tone="muted" className="ms-4 grid gap-4 sm:grid-cols-2">
             <Field
               label={t("hostLabel")}
               hint={t("hostHint")}
@@ -140,7 +140,7 @@ export function AnalyticsSection({ draft, saved, patch, reset }: SectionProps) {
           onChange={(enabled) => set("google", "enabled", enabled)}
         />
         {analytics.google.enabled ? (
-          <Panel tone="muted" className="ml-4">
+          <Panel tone="muted" className="ms-4">
             <Field
               label={t("measurementIdLabel")}
               hint={t("measurementIdHint")}

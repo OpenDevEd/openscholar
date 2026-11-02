@@ -75,7 +75,7 @@ export function LanguagesSection({ draft, saved, patch, reset }: SectionProps) {
               {localization.locales.map((code) => (
                 <SelectItem key={code} value={code}>
                   {name(code)}
-                  <span className="ml-2 font-mono text-xs text-muted-foreground">{code}</span>
+                  <span className="ms-2 font-mono text-xs text-muted-foreground">{code}</span>
                 </SelectItem>
               ))}
             </SelectContent>

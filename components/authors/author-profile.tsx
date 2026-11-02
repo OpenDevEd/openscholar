@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import { AuthStatePanel } from "@/components/auth/auth-state-panel";
 import { PageWrapper } from "@/components/PageWrapper";
 import { readAuthorPublications } from "@/app/actions/author-publications";
@@ -48,6 +49,7 @@ function AuthorProfileBody({profileId, record, references, configuration = false
   references: ProfileReferences | undefined;
   configuration?: boolean;
 }) {
+  const t = useTranslations("authorPages");
   const { isLoading: authLoading } = useConvexAuth();
   const workspaceId = useWorkspace();
   const publications = useSWR(references ? ["author-publications", profileId, JSON.stringify(references)] : null, () => readAuthorPublications(profileId), {refreshInterval: data => data?.unavailableCount ? 15000 : 0});
@@ -60,8 +62,8 @@ function AuthorProfileBody({profileId, record, references, configuration = false
     if (!record?.openalex || (previous && previous.results.length < 10)) return null;
     return ["author-profile-works", record.openalex, page + 1] as const;
   }, ([, id, page]) => unlessLimited(readProfileAuthorWorks(id, page)));
-  if ((configuration && authLoading) || record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title="Loading author profile" /></PageWrapper>;
-  if (!record) return <p className="p-6">Author profile not found.</p>;
+  if ((configuration && authLoading) || record === undefined || references === undefined) return <PageWrapper><AuthStatePanel variant="loading" layout="fullscreen" title={t("loadingAuthorProfile")} /></PageWrapper>;
+  if (!record) return <p className="p-6">{t("authorProfileNotFound")}</p>;
   if (configuration && !record.role) return <PageWrapper><AuthStatePanel layout="fullscreen" variant="no_access" /></PageWrapper>;
   const profile: AuthorProfile = {
     ...record, id: record._id, photo: record.photo ?? undefined, featured: (references ?? []).filter(reference => reference.rank !== undefined).sort((a, b) => a.rank! - b.rank!).map(reference => reference.id),

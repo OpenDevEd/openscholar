@@ -80,9 +80,9 @@ export function SetupHero({
     >
       {/* Aurora backdrop: tinted by state, blurred and drifting. */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <span className="el-hero-blob el-hero-blob-a absolute -left-48 -top-56 size-[40rem] rounded-full" />
-        <span className="el-hero-blob el-hero-blob-b absolute -right-48 -top-48 size-[36rem] rounded-full" />
-        <span className="el-hero-blob el-hero-blob-c absolute -bottom-64 left-1/4 size-[40rem] rounded-full" />
+        <span className="el-hero-blob el-hero-blob-a absolute -start-48 -top-56 size-[40rem] rounded-full" />
+        <span className="el-hero-blob el-hero-blob-b absolute -end-48 -top-48 size-[36rem] rounded-full" />
+        <span className="el-hero-blob el-hero-blob-c absolute -bottom-64 start-1/4 size-[40rem] rounded-full" />
         {live ? <span className="el-hero-sweep absolute inset-0" /> : null}
       </div>
 

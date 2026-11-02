@@ -73,7 +73,7 @@ function Reads({ model }: { model: CatalogModel | undefined }) {
     </span>
   );
 }
-const CONTEXT_CELL = "hidden text-right @[32rem]/picker:block";
+const CONTEXT_CELL = "hidden text-end @[32rem]/picker:block";
 
 /** The intelligence meter, context and cost of a model, as row cells. */
 function Stats({ model }: { model: CatalogModel | undefined }) {
@@ -84,7 +84,7 @@ function Stats({ model }: { model: CatalogModel | undefined }) {
       <Reads model={model} />
       <IntelligenceMeter index={model?.intelligenceIndex} />
       <span className={cn(CONTEXT_CELL, "text-xs tabular-nums text-muted-foreground")}>{contextLabel(model?.contextLength)}</span>
-      <span className="text-right text-xs tabular-nums text-muted-foreground">
+      <span className="text-end text-xs tabular-nums text-muted-foreground">
         {!model ? null : free ? (
           <span className="rounded-full bg-success/15 px-1.5 py-0.5 font-medium ink-success">{t("free")}</span>
         ) : (
@@ -152,7 +152,7 @@ function EffortStep({
                 type="button"
                 aria-label={t("back")}
                 onClick={onBack}
-                className="-my-1 -ml-1 flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-background"
+                className="-my-1 -ms-1 flex size-7 shrink-0 items-center justify-center rounded-full hover:bg-background"
               >
                 <ArrowLeft className="size-4" />
               </button>
@@ -199,14 +199,14 @@ function EffortStep({
             initial={reduce ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: reduce ? 0 : 0.14 + i * 0.035, duration: 0.3, ease: EASE }}
-            className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm outline-hidden hover:bg-accent focus-visible:bg-accent"
+            className="flex h-11 w-full items-center gap-3 rounded-xl px-3 text-start text-sm outline-hidden hover:bg-accent focus-visible:bg-accent"
           >
             <EffortMeter levels={levels} level={level} />
             <span className="font-medium">{tm(`efforts.${level}`)}</span>
             {level === row.defaultEffort ? (
               <span className="rounded-full bg-muted px-1.5 py-0.5 text-2xs text-muted-foreground">{t("default")}</span>
             ) : null}
-            <Check className={cn("ml-auto size-4 text-primary", level === chosen ? "opacity-100" : "opacity-0")} />
+            <Check className={cn("ms-auto size-4 text-primary", level === chosen ? "opacity-100" : "opacity-0")} />
           </motion.button>
         ))}
       </div>
@@ -421,7 +421,7 @@ export function ModelPicker({
               <ArrowUpRight className="size-3" />
             </a>
             <span className={CONTEXT_CELL}>{t("context")}</span>
-            <span className="text-right">{t("cost")}</span>
+            <span className="text-end">{t("cost")}</span>
             <span />
           </div>
           {/* 22rem when there's room; shorter when the screen is, since the popover caps at the space it has. */}
@@ -513,7 +513,7 @@ export function ModelPicker({
           {/* Built from the current pick, which the caller already has, so it's there on the first frame. */}
           {efforts && current?.reasoningEfforts?.length ? (
             // The current model's effort, changed in place without closing.
-            <div className="flex items-center justify-between gap-3 border-t border-border-subtle py-2 pl-4 pr-2">
+            <div className="flex items-center justify-between gap-3 border-t border-border-subtle py-2 ps-4 pe-2">
               <span className="whitespace-nowrap text-xs font-medium text-muted-foreground">{tm("effort")}</span>
               <Segmented
                 label={tm("effort")}

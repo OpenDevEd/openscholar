@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useUser } from "@clerk/nextjs";
 import { Users } from "@/components/icons";
 import { Spinner } from "@/components/ui/spinner";
@@ -12,6 +13,7 @@ import { useCurrentWorkspace } from "@/components/workspaces/parts";
 import { TeamAccess, type AccessMember } from "./team-access";
 
 export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> }) {
+  const t = useTranslations("libraryTeamAccess");
   const { user } = useUser();
   const { data } = useProtectedQuery(api.evidenceLibraries.queries.listTeam, { libraryId });
   const add = useMutation(api.evidenceLibraries.team.addOrganizationMember);
@@ -22,8 +24,8 @@ export function TeamSection({ libraryId }: { libraryId: Id<"evidenceLibraries"> 
   // The workspace the page is in is the library's (components/workspaces/item-home.tsx): an organization's other members view it.
   const workspace = useCurrentWorkspace();
   if (!data || !workspace) return (
-    <SectionCard id="sec-team" icon={Users} title="Team" description="Manage access to this library." aria-busy="true">
-      <Spinner aria-label="Loading team" />
+    <SectionCard id="sec-team" icon={Users} title={t("team")} description={t("manageAccessToThisLibrary")} aria-busy="true">
+      <Spinner aria-label={t("loadingTeam")} />
     </SectionCard>
   );
   const members: AccessMember[] = [

@@ -9,7 +9,9 @@ vi.mock("@/components/workspaces/item-home", async (original) => ({ ...(await or
 vi.mock("next/navigation", () => ({ usePathname: () => path.value, useSearchParams: () => new URLSearchParams(), redirect: vi.fn() }));
 vi.mock("@/lib/workspaces/href", () => ({ useWorkspaceSlug: () => undefined, workspaceHref: (_slug: string | undefined, to: string) => to }));
 vi.mock("@/components/providers/convex-provider", () => ({ useAuthReadiness: () => ({ retryUserSync: vi.fn() }) }));
-vi.mock("next-intl", () => ({ useTranslations: () => (key: string) => key }));
+vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }), useTranslations: () => (key: string) => key }));
 vi.mock("@/components/PageWrapper", () => ({ PageWrapper: ({ children }: React.PropsWithChildren) => <main>{children}</main> }));
 vi.mock("@/components/auth/auth-state-panel", () => ({ AuthStatePanel: ({ variant }: { variant: string }) => <div role="status">{variant}</div> }));
 function ProtectedContent() { child(); return <div>Protected content</div>; }

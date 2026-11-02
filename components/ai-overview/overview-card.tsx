@@ -138,7 +138,7 @@ function Card({ scope, view, searchId, total }: { scope: Scope; view: View; sear
   if (missing) return null;
   return (
     <section aria-label={t("label")} className="mb-6 rounded-2xl border border-border-subtle bg-card shadow-surface">
-      <header className="flex items-center gap-2 pt-3 pr-3 pb-2.5 pl-4">
+      <header className="flex items-center gap-2 pt-3 pe-3 pb-2.5 ps-4">
         <AiIcon size={18} working={working} className="shrink-0" />
         <FadeRow scrolls scrollbar="none" className="flex-1">
           <div className="w-max">
@@ -302,15 +302,15 @@ function Ask({ view, total, freePlan, paidUsed, onWrite }: { view: View; total: 
       )}
       <span className="text-sm text-muted-foreground">{atLimit ? reason : freePlan ? t("reads", { count: format.number(total) }) : t("back", { time })}</span>
       {noCredits && !atLimit ? (
-        <Link href={href("/settings/billing")} className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+        <Link href={href("/settings/billing")} className="ms-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
           <Coins className="size-4" /> {t("getCredits")}
         </Link>
       ) : !freePlan && view.proPerDay !== null && view.perDay !== null && view.proPerDay > view.perDay ? (
-        <Link href={href("/pricing")} className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+        <Link href={href("/pricing")} className="ms-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
           <UpgradeIcon className="size-4" /> {t("pro", { count: view.proPerDay })}
         </Link>
       ) : freePlan ? (
-        <Link href={href("/pricing")} className="ml-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
+        <Link href={href("/pricing")} className="ms-auto flex items-center gap-1.5 text-sm font-medium text-primary hover:underline">
           <UpgradeIcon className="size-4" /> {t("go")}
         </Link>
       ) : null}

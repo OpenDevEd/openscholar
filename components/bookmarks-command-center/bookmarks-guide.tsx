@@ -48,7 +48,7 @@ export function BookmarksGuide() {
         className={cn(
           "w-full px-4 py-3",
           "flex items-center justify-between gap-3",
-          "text-left",
+          "text-start",
           "hover:bg-muted transition-colors",
           isOpen && "border-b border-border-subtle"
         )}

@@ -40,8 +40,8 @@ describe("locale detection", () => {
   });
 
   it("returns default for unsupported locales", () => {
-    expect(detectLocaleFromAcceptLanguage("ar")).toBe("en-US");
-    expect(detectLocaleFromAcceptLanguage("de")).toBe("en-US");
-    expect(detectLocaleFromAcceptLanguage("es")).toBe("en-US");
+    expect(detectLocaleFromAcceptLanguage("ko")).toBe("en-US");
+    expect(detectLocaleFromAcceptLanguage("th")).toBe("en-US");
+    expect(detectLocaleFromAcceptLanguage("vi")).toBe("en-US");
   });
 });

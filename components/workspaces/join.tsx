@@ -92,7 +92,7 @@ const CHIP_TONES = { muted: "bg-muted text-muted-foreground", primary: "bg-prima
 
 /** A pill; a `lead` sits as far from the left edge as from the top and bottom. */
 export function Chip({ lead, tone = "muted", children }: { lead?: ReactNode; tone?: keyof typeof CHIP_TONES; children: ReactNode }) {
-  return <span className={cn("inline-flex h-7 min-w-0 max-w-full shrink items-center gap-1.5 whitespace-nowrap rounded-full pr-2.5 text-xs", lead ? "pl-1" : "pl-2.5", CHIP_TONES[tone])}>{lead}{children}</span>;
+  return <span className={cn("inline-flex h-7 min-w-0 max-w-full shrink items-center gap-1.5 whitespace-nowrap rounded-full pe-2.5 text-xs", lead ? "ps-1" : "ps-2.5", CHIP_TONES[tone])}>{lead}{children}</span>;
 }
 
 /** A page with one thing to decide, in the middle of the screen. */

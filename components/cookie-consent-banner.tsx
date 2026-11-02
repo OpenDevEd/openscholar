@@ -140,7 +140,7 @@ export function CookieConsentBanner() {
             exit={{ opacity: 0, y: 24 }}
             transition={subtleSpring}
             className={cn(
-              "fixed bottom-0 left-0 right-0 z-[100]",
+              "fixed bottom-0 start-0 end-0 z-[100]",
               "pb-[max(1rem,env(safe-area-inset-bottom))]",
               "px-4 sm:px-6 pt-4 sm:pt-5",
               "bg-card border-t border-border shadow-lg",

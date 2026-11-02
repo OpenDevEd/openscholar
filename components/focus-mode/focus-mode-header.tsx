@@ -103,13 +103,13 @@ export function FocusModeHeader({
                 {previous}
                 {next}
               </div>
-              <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded tabular-nums max-md:ml-1">
+              <div className="text-xs text-muted-foreground bg-muted px-2 py-1 rounded tabular-nums max-md:ms-1">
                 {currentIndex + 1} / {totalPapers}
               </div>
             </>
           ) : null}
           {/* Who else is reading it sits beside Close on a phone and first among the tools on a wider screen, where it keeps the person in the paper's room; here it only reads. Faces arriving grow into the free space, so nothing moves. */}
-          <div className="ml-auto flex items-center gap-2 md:hidden">
+          <div className="ms-auto flex items-center gap-2 md:hidden">
             {key ? <ItemPresence kind="paper" id={key} join={false} /> : null}
             {close}
           </div>
@@ -187,7 +187,7 @@ export function FocusModeHeader({
                   </span>
                 </div>
               ))}
-              <div className="ml-3 flex items-center gap-1">
+              <div className="ms-3 flex items-center gap-1">
                 <SaveControl paper={currentPaper} />
                 <span className="text-xs text-muted-foreground bg-muted px-1 rounded">
                   B
@@ -198,7 +198,7 @@ export function FocusModeHeader({
         </div>
 
         {/* Second row: actions. Phones show the rating and save on the left and the tools on the right. */}
-        <div className="flex flex-wrap items-center gap-1 md:flex-nowrap md:justify-end md:mr-8">
+        <div className="flex flex-wrap items-center gap-1 md:flex-nowrap md:justify-end md:me-8">
           {/* Compact rating selector - only on mobile */}
           {saveable ? (
             <div className="flex items-center gap-1 md:hidden">
@@ -208,9 +208,9 @@ export function FocusModeHeader({
           ) : null}
 
           {/* The tools stay together, so a row too narrow for them moves them to a line of their own. */}
-          <div className="ml-auto flex items-center gap-1 md:ml-0">
+          <div className="ms-auto flex items-center gap-1 md:ms-0">
             {key ? (
-              <span className="mr-2 hidden md:flex">
+              <span className="me-2 hidden md:flex">
                 <ItemPresence kind="paper" id={key} />
               </span>
             ) : null}
@@ -230,7 +230,7 @@ export function FocusModeHeader({
                     }
                     disabled={!hasTranslation}
                   >
-                    <TranslateIcon working={isTranslating} size={12} className="h-3 w-3 md:mr-1" />
+                    <TranslateIcon working={isTranslating} size={12} className="h-3 w-3 md:me-1" />
                     <span className="hidden sm:inline">
                       {showTranslated ? tFocus("original") : tFocus("translation")}
                     </span>

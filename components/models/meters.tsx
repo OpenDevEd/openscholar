@@ -25,7 +25,7 @@ export function IntelligenceMeter({ index, className }: { index?: number | null;
           <span className="block h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (index / INTELLIGENCE_SCALE) * 100)}%` }} />
         ) : null}
       </span>
-      <span className="w-5 text-right text-xs tabular-nums text-foreground/80">{index != null ? Math.round(index) : null}</span>
+      <span className="w-5 text-end text-xs tabular-nums text-foreground/80">{index != null ? Math.round(index) : null}</span>
     </span>
   );
 }

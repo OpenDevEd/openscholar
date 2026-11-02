@@ -654,7 +654,7 @@ export function LibraryPageClient() {
                               disabled={!paged.canPrevious}
                               className="rounded-xl"
                             >
-                              <ChevronLeft className="mr-1 h-4 w-4" />
+                              <ChevronLeft className="me-1 h-4 w-4" />
                               {t("previousPage")}
                             </Button>
 
@@ -674,7 +674,7 @@ export function LibraryPageClient() {
                               className="rounded-xl"
                             >
                               {t("nextPage")}
-                              <ChevronRight className="ml-1 h-4 w-4" />
+                              <ChevronRight className="ms-1 h-4 w-4" />
                             </Button>
                           </div>
                         )}

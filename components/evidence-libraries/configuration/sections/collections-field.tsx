@@ -196,7 +196,7 @@ function CollectionsBody({
                   {one}
                 </FilterChip>
               ))}
-              <label className="ml-auto flex items-center gap-2 text-xs text-muted-foreground">
+              <label className="ms-auto flex items-center gap-2 text-xs text-muted-foreground">
                 <Checkbox checked={hideShown} onCheckedChange={(v) => setHideShown(v === true)} />
                 {t("picker.hideShown")}
               </label>

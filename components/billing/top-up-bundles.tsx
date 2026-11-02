@@ -73,7 +73,7 @@ export function TopUpBundles({ topUps, row = false, className }: { topUps: Retur
             disabled={buying !== null}
             onClick={() => void buy(bundle.credits)}
             aria-label={t("buyBundle", { credits: format.number(bundle.credits), price: money(bundle.amount) })}
-            className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-muted disabled:opacity-60"
+            className="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-start transition-colors hover:bg-muted disabled:opacity-60"
           >
             <span className="flex-1 text-sm font-semibold tabular-nums">+{format.number(bundle.credits)}</span>
             <span className="text-sm tabular-nums text-muted-foreground">{money(bundle.amount)}</span>
@@ -97,7 +97,7 @@ export function PaymentReceived() {
   const searchParams = useSearchParams();
   if (searchParams.get("checkout") !== "success" && searchParams.get("topup") !== "success") return null;
   return (
-    <div role="status" className="flex items-center justify-between gap-3 rounded-2xl border border-success/30 bg-success/10 py-2 pl-4 pr-2 text-sm ink-success">
+    <div role="status" className="flex items-center justify-between gap-3 rounded-2xl border border-success/30 bg-success/10 py-2 ps-4 pe-2 text-sm ink-success">
       <span className="flex items-center gap-2">
         <CheckCircle2 className="size-4" />
         {t("paymentReceived")}

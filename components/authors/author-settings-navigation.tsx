@@ -1,4 +1,5 @@
 "use client";
+import { useTranslations } from "next-intl";
 import { OpenAlexIcon } from "@/components/icons/openalex-icon";
 import { ConfigurationNavigation } from "@/components/evidence-libraries/configuration/configuration-layout";
 import {
@@ -18,12 +19,13 @@ const editorSections = sections.filter(([id]) => id !== "profile-access");
 const ownerIds = sections.map(([id]) => id);
 const editorIds = editorSections.map(([id]) => id);
 export function AuthorSettingsNavigation({canManageAccess}: {canManageAccess: boolean}) {
+  const t = useTranslations("authorPages");
   const visibleSections = canManageAccess ? sections : editorSections;
   const ids = canManageAccess ? ownerIds : editorIds;
   const { active, jumpTo } = useScrollSpy(ids);
   return (
-    <ConfigurationNavigation label="Profile settings">
-      <RailGroup label="Author profile">
+    <ConfigurationNavigation label={t("profileSettings")}>
+      <RailGroup label={t("authorProfile")}>
         {visibleSections.map(([id, label, Icon]) => (
           <RailLink
             key={id}

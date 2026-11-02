@@ -28,6 +28,8 @@ vi.mock("@/convex/_generated/api", () => ({
 }));
 
 vi.mock("next-intl", () => ({
+  useLocale: () => "en-US",
+  useFormatter: () => ({ dateTime: (value: Date) => value.toISOString() }),
   useTranslations:
     (namespace: string) =>
     (key: string, params?: Record<string, unknown>) => {

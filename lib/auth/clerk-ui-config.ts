@@ -1,4 +1,4 @@
-import { enGB, enUS, frFR, hiIN, jaJP, zhCN } from "@clerk/localizations";
+import { arSA, deDE, enGB, enUS, esES, frFR, hiIN, jaJP, ptPT, zhCN } from "@clerk/localizations";
 import { dark } from "@clerk/ui/themes";
 import type { LocalizationResource } from "@clerk/nextjs/types";
 import type { Appearance } from "@clerk/ui";
@@ -28,6 +28,10 @@ const CLERK_LOCALIZATION_BY_LOCALE: Record<string, LocalizationResource> = {
   hi: hiIN,
   "hi-in": hiIN,
   ja: jaJP,
+  ar: arSA,
+  de: deDE,
+  es: esES,
+  pt: ptPT,
   "ja-jp": jaJP,
 };
 

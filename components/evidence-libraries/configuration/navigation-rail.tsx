@@ -58,7 +58,7 @@ export function RailLink({
       )}
     >
       {active ? (
-        <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary/80 to-primary/50" />
+        <span className="absolute start-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-e-full bg-gradient-to-b from-primary/80 to-primary/50" />
       ) : null}
       <Icon
         className={cn(

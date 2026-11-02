@@ -83,7 +83,7 @@ export function QueryEvolution({
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={cn(
-          "w-full flex items-start gap-1.5 text-left group",
+          "w-full flex items-start gap-1.5 text-start group",
           "hover:bg-muted -mx-1 px-1 py-0.5 rounded transition-colors"
         )}
       >
@@ -130,7 +130,7 @@ export function QueryEvolution({
             transition={{ duration: 0.15 }}
             className="overflow-hidden"
           >
-            <div className="mt-1.5 ml-1.5 pl-4 space-y-1.5">
+            <div className="mt-1.5 ms-1.5 ps-4 space-y-1.5">
               {sortedHistory.map((entry, idx) => {
                 const isCurrent = entry.query === currentQuery;
                 const isLast = idx === sortedHistory.length - 1;
@@ -144,7 +144,7 @@ export function QueryEvolution({
                     className={cn(
                       "relative flex items-start gap-2",
                       // Dot - centered at -8px from item edge
-                      "before:absolute before:-left-2 before:top-1.5",
+                      "before:absolute before:-start-2 before:top-1.5",
                       "before:w-1.5 before:h-1.5 before:-translate-x-1/2 before:rounded-full before:z-10",
                       isCurrent
                         ? "before:bg-foreground"
@@ -153,7 +153,7 @@ export function QueryEvolution({
                   >
                     {/* Connecting line to next dot - starts at current dot center, ends at next dot center */}
                     {!isLast && (
-                      <div className="absolute -left-2 top-[9px] bottom-[-15px] w-px bg-border/40 -translate-x-1/2" />
+                      <div className="absolute -start-2 top-[9px] bottom-[-15px] w-px bg-border/40 -translate-x-1/2" />
                     )}
                     <div className="flex-1 min-w-0">
                       <QueryText 
@@ -166,7 +166,7 @@ export function QueryEvolution({
                           entry.query.length > LONG_QUERY_CHARS && "line-clamp-4"
                         )}
                       />
-                      <span className="text-3xs pl-2 text-muted-foreground/50">
+                      <span className="text-3xs ps-2 text-muted-foreground/50">
                         {format.relativeTime(new Date(entry.timestamp), now)}
                       </span>
                     </div>

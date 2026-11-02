@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Markdown } from "@tiptap/markdown";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { useReadOnly } from "./read-only";
@@ -82,6 +83,7 @@ function RichTextEditor({
   lists: boolean;
   minRows: number;
 }) {
+  const t = useTranslations("richTextField");
   const readOnly = useReadOnly();
   const editor = useEditor({
     immediatelyRender: false,
@@ -116,7 +118,7 @@ function RichTextEditor({
         class: cn(
           "w-full px-3 py-2 text-base outline-none md:text-sm",
           "[&_a]:text-primary [&_a]:underline [&_a]:underline-offset-2 [&_p+p]:mt-2 [&_strong]:font-semibold",
-          "[&_ul]:my-2 [&_ul]:list-disc [&_ul]:pl-5 [&_li>p]:my-0",
+          "[&_ul]:my-2 [&_ul]:list-disc [&_ul]:ps-5 [&_li>p]:my-0",
           "[&_p.is-editor-empty:first-child]:before:pointer-events-none [&_p.is-editor-empty:first-child]:before:float-left [&_p.is-editor-empty:first-child]:before:h-0 [&_p.is-editor-empty:first-child]:before:text-muted-foreground [&_p.is-editor-empty:first-child]:before:content-[attr(data-placeholder)]",
         ),
         style: `min-height: ${minRows * 1.5 + 1}rem`,
@@ -148,11 +150,11 @@ function RichTextEditor({
         invalid && "border-destructive ring-destructive/20",
       )}
     >
-      <div className="flex items-center gap-0.5 border-b border-border-subtle px-1.5 py-1" role="toolbar" aria-label="Formatting">
-        <ToolButton label="Bold" active={state?.bold} onClick={() => editor?.chain().focus().toggleBold().run()}>
+      <div className="flex items-center gap-0.5 border-b border-border-subtle px-1.5 py-1" role="toolbar" aria-label={t("formatting")}>
+        <ToolButton label={t("bold")} active={state?.bold} onClick={() => editor?.chain().focus().toggleBold().run()}>
           <Bold />
         </ToolButton>
-        <ToolButton label="Italic" active={state?.italic} onClick={() => editor?.chain().focus().toggleItalic().run()}>
+        <ToolButton label={t("italic")} active={state?.italic} onClick={() => editor?.chain().focus().toggleItalic().run()}>
           <Italic />
         </ToolButton>
         <LinkButton
@@ -162,7 +164,7 @@ function RichTextEditor({
           onRemove={() => editor?.chain().focus().extendMarkRange("link").unsetLink().run()}
         />
         {lists ? (
-          <ToolButton label="Bulleted list" active={state?.list} onClick={() => editor?.chain().focus().toggleBulletList().run()}>
+          <ToolButton label={t("bulletedList")} active={state?.list} onClick={() => editor?.chain().focus().toggleBulletList().run()}>
             <List />
           </ToolButton>
         ) : null}
@@ -196,6 +198,7 @@ function ToolButton({ label, active, onClick, children }: { label: string; activ
 
 /** A link is an address typed into a small popover; the selected words become the link text. */
 function LinkButton({ active, href, onApply, onRemove }: { active: boolean; href: string; onApply: (href: string) => void; onRemove: () => void }) {
+  const t = useTranslations("richTextField");
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const valid = HTTPS.test(draft.trim());
@@ -219,7 +222,7 @@ function LinkButton({ active, href, onApply, onRemove }: { active: boolean; href
               type="button"
               variant="ghost"
               size="icon-sm"
-              aria-label="Link"
+              aria-label={t("link")}
               aria-pressed={active}
               onMouseDown={(event) => event.preventDefault()}
               className={cn("text-muted-foreground", active && "bg-accent text-foreground")}
@@ -228,7 +231,7 @@ function LinkButton({ active, href, onApply, onRemove }: { active: boolean; href
             </Button>
           </PopoverTrigger>
         </TooltipTrigger>
-        <TooltipContent>Link</TooltipContent>
+        <TooltipContent>{t("link")}</TooltipContent>
       </Tooltip>
       <PopoverContent align="start" className="flex w-80 flex-col gap-2 p-3">
         <Input
@@ -236,7 +239,7 @@ function LinkButton({ active, href, onApply, onRemove }: { active: boolean; href
           value={draft}
           inputMode="url"
           placeholder="https://"
-          aria-label="Link address"
+          aria-label={t("linkAddress")}
           aria-invalid={draft.trim() !== "" && !valid ? true : undefined}
           className="font-mono text-sm"
           onChange={(event) => setDraft(event.target.value)}
@@ -259,13 +262,13 @@ function LinkButton({ active, href, onApply, onRemove }: { active: boolean; href
               }}
             >
               <Unlink />
-              Remove link
+              {t("removeLink")}
             </Button>
           ) : (
-            <span className="text-xs text-muted-foreground">Addresses start with https://</span>
+            <span className="text-xs text-muted-foreground">{t("addressesStartWithHttps")}</span>
           )}
           <Button type="button" size="sm" disabled={!valid} onClick={apply}>
-            {active ? "Update" : "Add link"}
+            {active ? t("update") : t("addLink")}
           </Button>
         </div>
       </PopoverContent>

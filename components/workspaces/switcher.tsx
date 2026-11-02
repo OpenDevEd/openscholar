@@ -29,7 +29,7 @@ import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { Framed, Opening, PlanChip, settingsHref, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
 import { FREE_MEMBERS } from "@/lib/billing/plans";
 
-const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-left transition-colors hover:bg-foreground/[0.045]";
+const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-start transition-colors hover:bg-foreground/[0.045]";
 
 /** The square at the head of a rail card that the workspace tile flies into from the rail. */
 const HEAD = 40;
@@ -173,7 +173,7 @@ export function WorkspaceMenu({ shown, all, shared, onDone, onSwitch, onCreate }
                     </span>
                     {workspace.kind === "personal" && shared ? (
                       <TooltipHint label={t("sharedWithYou", { count: shared })}>
-                        <span className="fade-enter flex shrink-0 items-center gap-1 pr-1 text-[11px] tabular-nums text-muted-foreground">
+                        <span className="fade-enter flex shrink-0 items-center gap-1 pe-1 text-[11px] tabular-nums text-muted-foreground">
                           <Share2 aria-hidden className="size-3" />
                           <span aria-hidden>{shared}</span>
                           {/* The row is one button: its name says the count, which the tooltip only shows on hover. */}
@@ -335,7 +335,7 @@ function NewOrganization({ close }: { close: () => void }) {
           <span className="text-xs font-medium text-muted-foreground">{t("inviteMembers")}</span>
           <label className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring/40">
             {emails.map((email) => (
-              <span key={email} className="flex h-7 items-center gap-1 rounded-full bg-muted pl-2.5 pr-1 text-xs">
+              <span key={email} className="flex h-7 items-center gap-1 rounded-full bg-muted ps-2.5 pe-1 text-xs">
                 {email}
                 <button type="button" aria-label={t("removeEmail", { email })} onClick={() => setEmails(emails.filter((e) => e !== email))} className="flex size-5 items-center justify-center rounded-full hover:bg-background">
                   <X className="size-3" />

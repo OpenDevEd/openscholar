@@ -35,6 +35,8 @@ export const languageOptions: LanguageOption[] = [
   { code: "ro", name: "Romanian", flagUrl: "https://flagcdn.com/w20/ro.png" },
   { code: "bg", name: "Bulgarian", flagUrl: "https://flagcdn.com/w20/bg.png" },
   { code: "hr", name: "Croatian", flagUrl: "https://flagcdn.com/w20/hr.png" },
+  { code: "sw", name: "Swahili", flagUrl: "https://flagcdn.com/w20/tz.png" },
+  { code: "af", name: "Afrikaans", flagUrl: "https://flagcdn.com/w20/za.png" },
 ]
 
 export function getLanguageName(code: string): string | undefined {
