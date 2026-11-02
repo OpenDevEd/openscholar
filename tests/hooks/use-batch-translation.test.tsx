@@ -247,6 +247,29 @@ describe("useBatchTranslation — auto-translate", () => {
     expect(executeMock).toHaveBeenCalledTimes(1);
   });
 
+  it("translates a cancelled batch's papers when it is switched back on", async () => {
+    let finishFirst = (_: unknown) => {};
+    executeMock
+      .mockImplementationOnce(() => new Promise((resolve) => { finishFirst = resolve; }))
+      .mockResolvedValue(translated("p2"));
+    useResultsTranslationSettingsStore.setState({ autoTranslateResults: true });
+
+    renderHook((p: HookProps) => useBatchTranslation(p), { initialProps: auto("p1") });
+    await settle();
+    renderHook((p: HookProps) => useBatchTranslation(p), { initialProps: auto("p2") });
+    await settle();
+
+    act(() => useResultsTranslationSettingsStore.setState({ autoTranslateResults: false }));
+    finishFirst(translated("p1"));
+    await settle();
+    expect(executeMock).toHaveBeenCalledTimes(1);
+
+    act(() => useResultsTranslationSettingsStore.setState({ autoTranslateResults: true }));
+    await settle();
+    expect(executeMock).toHaveBeenCalledTimes(2);
+    expect(executeMock.mock.lastCall?.[0].papers.map((p: { id: string }) => p.id)).toEqual(["p2"]);
+  });
+
   it("still sends a waiting Run once it is switched off", async () => {
     let finishFirst = (_: unknown) => {};
     executeMock

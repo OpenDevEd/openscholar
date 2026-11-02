@@ -74,6 +74,7 @@ export function useBatchTranslation({
   // The run count outlives this hook, as the results page mounts again on a new search.
   // A run from before this mount isn't its own to start.
   const lastConsumedManualRunRequestIdRef = useRef(manualRunRequestId);
+  const cancelledBatchesRef = useRef(0);
 
   // Filter papers that need translation
   const filterItemsNeedingProcessing = useCallback(
@@ -87,15 +88,17 @@ export function useBatchTranslation({
   );
 
   // Compute batch key for deduplication. Each run has its own, so a run can send
-  // papers again that an earlier one was refused.
+  // papers again that an earlier one was refused. So does each batch cancelled while
+  // waiting, which never reached the server: switching auto-translate back on makes a
+  // new key here, and that sends those papers.
   const computeBatchKey = useCallback(
     (papersToProcess: Paper[], context: BatchTranslationContext) => {
       if (papersToProcess.length === 0) return null;
 
       const paperIds = papersToProcess.map((p) => p.id).sort();
-      return `${context.targetLanguage}:${manualRunRequestId}:${paperIds.join(",")}`;
+      return `${context.targetLanguage}:${manualRunRequestId}:${cancelledBatchesRef.current}:${paperIds.join(",")}`;
     },
-    [manualRunRequestId]
+    [manualRunRequestId, autoTranslateResults]
   );
 
   // Build the input for execute
@@ -128,6 +131,7 @@ export function useBatchTranslation({
         return await inTurn(async () => {
           // Auto-translate may have been switched off while this waited, and nothing else asked for it.
           if (!askedByRun && !useResultsTranslationSettingsStore.getState().autoTranslateResults) {
+            cancelledBatchesRef.current += 1;
             return { results: {}, errors: [] };
           }
           // The batch ahead may have translated some of these, so they're read at this turn.
