@@ -99,7 +99,7 @@ export function PaperCardListSimple({
           <div className="flex-1 min-w-0 flex flex-col @sm/card:flex-row @sm/card:items-center gap-1 @sm/card:gap-3">
             {/* Title and year */}
             <div className="flex-1 min-w-0">
-              <h3 className="font-medium text-sm leading-tight line-clamp-1 group-hover:text-primary transition-colors">
+              <h3 dir="auto" className="font-medium text-sm leading-tight line-clamp-1 group-hover:text-primary transition-colors">
                 <QueryMatchText text={displayTitle} />
                 {result.publication_year != null && <span className="ms-1.5 text-muted-foreground font-normal">
                   ({result.publication_year})

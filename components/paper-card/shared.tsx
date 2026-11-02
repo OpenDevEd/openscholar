@@ -593,7 +593,7 @@ export function DOIBadge({
         )}
       >
         <ExternalLink className="h-3 w-3" />
-        <span className="truncate text-xs font-mono">{shortDoi}</span>
+        <span dir="ltr" className="truncate text-xs font-mono">{shortDoi}</span>
       </Button>
     </TooltipHint>
   );
@@ -788,7 +788,7 @@ export function AuthorsLine({
     <div className={cn("flex gap-2 text-sm text-muted-foreground", className)}>
       <Users className="h-4 w-4 flex-shrink-0 mt-0.5" />
       {/* With controls it is not cut to one line: a name hidden by the cut would still take keyboard focus. */}
-      <span className={cn(!onToggleAuthor && "line-clamp-1")}>
+      <span dir="auto" className={cn(!onToggleAuthor && "line-clamp-1")}>
         <AuthorNames authorships={authorships ?? []} unparsed={unparsed} maxLength={maxLength} selected={selected} onToggleAuthor={onToggleAuthor} />
       </span>
     </div>
@@ -814,7 +814,7 @@ export function JournalLine({
   return (
     <div className={cn("flex gap-2 text-sm text-muted-foreground", className)}>
       <BookOpen className="h-4 w-4 flex-shrink-0 mt-0.5" />
-      <span className="italic line-clamp-1">
+      <span dir="auto" className="italic line-clamp-1">
         <JournalName source={source} selected={selected} onToggle={onToggle} />
         {biblio?.volume && `, ${tp("vol")} ${biblio.volume}`}
         {biblio?.issue && ` (${biblio.issue})`}

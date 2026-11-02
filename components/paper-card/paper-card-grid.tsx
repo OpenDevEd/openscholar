@@ -131,7 +131,7 @@ export function PaperCardGrid({
           </div>
 
           {/* Title */}
-          <h3 className={cn(
+          <h3 dir="auto" className={cn(
             "font-semibold leading-snug text-wrap-anywhere group-hover:text-primary transition-colors mb-2",
             isCompact ? "text-sm line-clamp-2" : "text-base line-clamp-3"
           )}>
