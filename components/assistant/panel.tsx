@@ -20,7 +20,8 @@ import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/
 import Link from "@/components/workspace-link";
 import { usePathname } from "next/navigation";
 import { ArrowUp, ChevronDown, CircleAlert, CirclePause, CircleStop, Coins, ExternalLink, Eye, FileSearch, Gauge, Globe, MessagesSquare, PictureInPicture2, Square, SquarePen, UserPlus, X } from "@/components/icons";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
+import { isRightToLeft } from "@/lib/i18n/locale-map";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { ASSISTANT_REQUESTS_BEFORE_ASKING } from "@/convex/lib/constants";
@@ -224,6 +225,7 @@ function Overlay({
   setThreadId: (id: ThreadId | null) => void;
   drafts: Drafts;
 }) {
+  const locale = useLocale();
   const t = useTranslations("assistant");
   const tc = useTranslations("common");
   // Read here, not in the chat, so the launcher shows a reply being written while the panel is folded.
@@ -331,9 +333,9 @@ function Overlay({
             {threadId ? <Here threadId={threadId} /> : null}
             <motion.div
               className="absolute inset-0 flex flex-col overflow-hidden rounded-[18px] border border-border/70 bg-card shadow-[0_24px_80px_-24px_rgb(0_0_0/0.55),0_0_0_1px_rgb(255_255_255/0.03)]"
-              style={{ transformOrigin: "0% 50%" }}
+              style={{ transformOrigin: isRightToLeft(locale) ? "100% 50%" : "0% 50%" }}
               initial={false}
-              animate={stackedUnder(depth)}
+              animate={stackedUnder(depth, locale)}
               transition={SHEET_SPRING}
             >
               <TooltipHint label={`${t("foldHint")}  ⌘J`}>

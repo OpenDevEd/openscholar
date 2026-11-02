@@ -1,23 +1,17 @@
 import { describe, expect, it } from "vitest";
+import { clerkLocalizationFor } from "../lib/auth/clerk-localization";
+import { locales } from "../i18n/config";
 import {
   resolveClerkAppearance,
-  resolveClerkLocalization,
 } from "../lib/auth/clerk-ui-config";
 
 describe("clerk ui config", () => {
-  it("maps app locales to Clerk localization resources", () => {
-    expect(resolveClerkLocalization("en-US").locale).toBe("en-US");
-    expect(resolveClerkLocalization("en-GB").locale).toBe("en-GB");
-    expect(resolveClerkLocalization("fr").locale).toBe("fr-FR");
-    expect(resolveClerkLocalization("hi").locale).toBe("hi-IN");
-    expect(resolveClerkLocalization("ja").locale).toBe("ja-JP");
-    expect(resolveClerkLocalization("zh").locale).toBe("zh-CN");
-  });
-
-  it("falls back to language and defaults to en-US when needed", () => {
-    expect(resolveClerkLocalization("fr-CA").locale).toBe("fr-FR");
-    expect(resolveClerkLocalization("unknown-locale").locale).toBe("en-US");
-    expect(resolveClerkLocalization(undefined).locale).toBe("en-US");
+  it("has Clerk's screens for every language the site offers", async () => {
+    await expect(clerkLocalizationFor("en-US")).resolves.toBeUndefined();
+    for (const locale of locales.filter((code) => code !== "en-US")) {
+      const localization = await clerkLocalizationFor(locale);
+      expect(localization?.userProfile?.start?.emailAddressesSection?.title, locale).toBeTruthy();
+    }
   });
 
   it("returns dark appearance only for dark mode", () => {

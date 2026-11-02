@@ -1,0 +1,936 @@
+{
+ "locale": "zh-CN",
+ "actionBlocked": {
+  "subtitle": "出于安全考虑，无法完成此请求。",
+  "title": "无法完成此请求",
+  "traceIdLabel": "参考编号"
+ },
+ "backButton": "返回",
+ "badge__activePlan": "使用中",
+ "badge__banned": "已封禁",
+ "badge__canceledEndsAt": "已取消，将于 {{ date | shortDate('zh-CN') }} 结束",
+ "badge__currentPlan": "当前套餐",
+ "badge__default": "默认",
+ "badge__deprovisioned": "已取消访问权限",
+ "badge__endsAt": "将于 {{ date | shortDate('zh-CN') }} 结束",
+ "badge__expired": "已过期",
+ "badge__freeTrial": "免费试用",
+ "badge__otherImpersonatorDevice": "其他模拟器设备",
+ "badge__pastDueAt": "逾期，截止 {{ date | shortDate('zh-CN') }}",
+ "badge__pastDuePlan": "已逾期",
+ "badge__primary": "主要",
+ "badge__renewsAt": "将于 {{ date | shortDate('zh-CN') }} 续订",
+ "badge__requiresAction": "需要操作",
+ "badge__startsAt": "将于 {{ date | shortDate('zh-CN') }} 开始",
+ "badge__thisDevice": "此设备",
+ "badge__trialEndsAt": "试用将于 {{ date | shortDate('zh-CN') }} 结束",
+ "badge__unverified": "未验证",
+ "badge__upcomingPlan": "即将生效",
+ "badge__userDevice": "用户设备",
+ "badge__you": "您",
+ "createOrganization": {
+  "formButtonSubmit": "创建组织",
+  "invitePage": {
+   "formButtonReset": "跳过"
+  },
+  "title": "创建组织"
+ },
+ "dates": {
+  "lastDay": "昨天{{ date | timeString('zh-CN') }}",
+  "next6Days": "{{ date | weekday('zh-CN','long') }} {{ date | timeString('zh-CN') }}",
+  "nextDay": "明天{{ date | timeString('zh-CN') }}",
+  "numeric": "{{ date | numeric('zh-CN') }}",
+  "previous6Days": "上周{{ date | weekday('zh-CN','long') }} {{ date | timeString('zh-CN') }}",
+  "sameDay": "今天{{ date | timeString('zh-CN') }}"
+ },
+ "dividerText": "或者",
+ "footerActionLink__alternativePhoneCodeProvider": "改为通过短信发送验证码",
+ "footerActionLink__useAnotherMethod": "使用另一种方法",
+ "footerPageLink__help": "帮助",
+ "footerPageLink__privacy": "隐私",
+ "footerPageLink__terms": "条款",
+ "formButtonPrimary": "继续",
+ "formButtonPrimary__verify": "验证",
+ "formFieldAction__forgotPassword": "忘记密码？",
+ "formFieldAction__hidePassword": "隐藏密码",
+ "formFieldAction__showPassword": "显示密码",
+ "formFieldError__matchingPasswords": "密码匹配。",
+ "formFieldError__notMatchingPasswords": "密码不匹配。",
+ "formFieldError__verificationLinkExpired": "验证链接已过期。请申请新的链接。",
+ "formFieldHintText__optional": "选填",
+ "formFieldHintText__slug": "Slug 是一个人类可读的 ID，它必须是唯一的。它通常用于 URL 中。",
+ "formFieldInputPlaceholder__apiKeyDescription": "请说明生成此密钥的原因",
+ "formFieldInputPlaceholder__apiKeyExpirationDate": "选择日期",
+ "formFieldInputPlaceholder__apiKeyName": "输入密钥名称",
+ "formFieldInputPlaceholder__backupCode": "输入备用验证码",
+ "formFieldInputPlaceholder__confirmDeletionUserAccount": "删除账户",
+ "formFieldInputPlaceholder__emailAddress": "请输入您的电子邮件地址",
+ "formFieldInputPlaceholder__emailAddress_username": "输入电子邮件或用户名",
+ "formFieldInputPlaceholder__emailAddresses": "输入或粘贴一个或多个电子邮件地址，用空格或逗号分隔",
+ "formFieldInputPlaceholder__firstName": "名字",
+ "formFieldInputPlaceholder__lastName": "姓氏",
+ "formFieldInputPlaceholder__organizationDomain": "example.com",
+ "formFieldInputPlaceholder__organizationDomainEmailAddress": "you@example.com",
+ "formFieldInputPlaceholder__organizationName": "组织名称",
+ "formFieldInputPlaceholder__organizationSlug": "我的组织",
+ "formFieldInputPlaceholder__password": "输入您的密码",
+ "formFieldInputPlaceholder__phoneNumber": "输入您的手机号码",
+ "formFieldInputPlaceholder__signUpPassword": "创建密码",
+ "formFieldInputPlaceholder__username": "输入您的用户名",
+ "formFieldInput__emailAddress_format": "格式示例：name@example.com",
+ "formFieldLabel__apiKey": "API密钥",
+ "formFieldLabel__apiKeyDescription": "描述",
+ "formFieldLabel__apiKeyExpiration": "过期时间",
+ "formFieldLabel__apiKeyName": "密钥名称",
+ "formFieldLabel__automaticInvitations": "为此域名启用自动邀请",
+ "formFieldLabel__backupCode": "备用代码",
+ "formFieldLabel__confirmDeletion": "确认",
+ "formFieldLabel__confirmPassword": "确认密码",
+ "formFieldLabel__currentPassword": "当前密码",
+ "formFieldLabel__emailAddress": "电子邮件地址",
+ "formFieldLabel__emailAddress_username": "电子邮件地址或用户名",
+ "formFieldLabel__emailAddresses": "电子邮件地址",
+ "formFieldLabel__firstName": "名字",
+ "formFieldLabel__lastName": "姓氏",
+ "formFieldLabel__newPassword": "新密码",
+ "formFieldLabel__organizationDomain": "域名",
+ "formFieldLabel__organizationDomainDeletePending": "删除待处理的邀请和建议",
+ "formFieldLabel__organizationDomainEmailAddress": "验证邮箱地址",
+ "formFieldLabel__organizationDomainEmailAddressDescription": "输入此域名下的一个邮箱地址以接收验证码并验证此域名。",
+ "formFieldLabel__organizationName": "组织名称",
+ "formFieldLabel__organizationSlug": "URL 简称",
+ "formFieldLabel__passkeyName": "通行密钥名称",
+ "formFieldLabel__password": "密码",
+ "formFieldLabel__phoneNumber": "电话号码",
+ "formFieldLabel__role": "角色",
+ "formFieldLabel__signOutOfOtherSessions": "登出所有其他设备",
+ "formFieldLabel__username": "用户名",
+ "identityPreviewEditButton__emailAddress": "编辑电子邮件地址",
+ "identityPreviewEditButton__identifier": "编辑标识符",
+ "identityPreviewEditButton__phoneNumber": "编辑手机号码",
+ "lastAuthenticationStrategy": "上次使用",
+ "maintenanceMode": "系统正在维护，请稍候，通常只需几分钟。",
+ "membershipRole__admin": "管理员",
+ "membershipRole__basicMember": "成员",
+ "membershipRole__guestMember": "访客",
+ "paginationButton__next": "下一页",
+ "paginationButton__previous": "上一页",
+ "paginationRowText__displaying": "显示",
+ "paginationRowText__of": "的",
+ "reverification": {
+  "alternativeMethods": {
+   "actionLink": "获取帮助",
+   "actionText": "没有以上任何方式？",
+   "blockButton__backupCode": "使用备用验证码",
+   "blockButton__emailCode": "将验证码发送至 {{identifier}}",
+   "blockButton__passkey": "使用通行密钥",
+   "blockButton__password": "使用密码继续",
+   "blockButton__phoneCode": "将短信验证码发送至 {{identifier}}",
+   "blockButton__totp": "使用身份验证器应用",
+   "getHelp": {
+    "blockButton__emailSupport": "给支持团队发送邮件",
+    "content": "如果您在验证账户时遇到问题，请给我们发送邮件，我们会尽快帮您恢复访问。",
+    "title": "获取帮助"
+   },
+   "subtitle": "遇到问题？您可以使用以下任一方式进行验证。",
+   "title": "使用其他方式"
+  },
+  "backupCodeMfa": {
+   "subtitle": "输入您设置两步验证时收到的备用验证码",
+   "title": "输入备用验证码"
+  },
+  "emailCode": {
+   "formTitle": "验证码",
+   "resendButton": "没有收到验证码？重新发送",
+   "subtitle": "输入发送到您邮箱的验证码以继续",
+   "title": "需要验证"
+  },
+  "noAvailableMethods": {
+   "message": "无法进行验证，因为未配置合适的验证因素",
+   "subtitle": "发生错误",
+   "title": "无法验证您的账户"
+  },
+  "passkey": {
+   "blockButton__passkey": "使用通行密钥",
+   "subtitle": "使用通行密钥可确认是您本人。您的设备可能会要求使用指纹、人脸或屏幕锁。",
+   "title": "使用通行密钥"
+  },
+  "password": {
+   "actionLink": "使用其他方式",
+   "subtitle": "输入当前密码以继续",
+   "title": "需要验证"
+  },
+  "phoneCode": {
+   "formTitle": "验证码",
+   "resendButton": "没有收到验证码？重新发送",
+   "subtitle": "输入发送到您手机的验证码以继续",
+   "title": "需要验证"
+  },
+  "phoneCodeMfa": {
+   "formTitle": "验证码",
+   "resendButton": "没有收到验证码？重新发送",
+   "subtitle": "输入发送到您手机的验证码以继续",
+   "title": "需要验证"
+  },
+  "totpMfa": {
+   "formTitle": "验证码",
+   "subtitle": "输入身份验证器应用生成的验证码以继续",
+   "title": "需要验证"
+  }
+ },
+ "searchInput": {
+  "action__clear": "清除搜索"
+ },
+ "signIn": {
+  "accountSwitcher": {
+   "action__addAccount": "添加账户",
+   "action__signOutAll": "退出所有账户",
+   "subtitle": "选择您要继续使用的账户。",
+   "title": "选择一个账户"
+  },
+  "alternativeMethods": {
+   "actionLink": "获取帮助",
+   "actionText": "没有这些？",
+   "blockButton__backupCode": "使用备用代码",
+   "blockButton__emailCode": "电子邮件验证码到 {{identifier}}",
+   "blockButton__emailLink": "电子邮件链接到 {{identifier}}",
+   "blockButton__passkey": "使用通行密钥登录",
+   "blockButton__password": "使用您的密码登录",
+   "blockButton__phoneCode": "发送短信代码到 {{identifier}}",
+   "blockButton__totp": "使用您的验证应用程序",
+   "getHelp": {
+    "blockButton__emailSupport": "邮件支持",
+    "content": "如果您在登录账户时遇到困难，请给我们发送电子邮件，我们将尽快让您恢复访问。",
+    "title": "获取帮助"
+   },
+   "subtitle": "遇到问题？您可以使用以下任何方法登录。",
+   "title": "使用其他方法"
+  },
+  "alternativePhoneCodeProvider": {
+   "formTitle": "验证码",
+   "resendButton": "没有收到验证码？重新发送",
+   "subtitle": "以继续访问 {{applicationName}}",
+   "title": "请查看您的 {{provider}}"
+  },
+  "backupCodeMfa": {
+   "subtitle": "继续使用 {{applicationName}}",
+   "title": "输入备用代码"
+  },
+  "emailCode": {
+   "formTitle": "验证码",
+   "resendButton": "重新发送验证码",
+   "subtitle": "继续使用 {{applicationName}}",
+   "title": "查看您的电子邮件"
+  },
+  "emailCodeMfa": {
+   "formTitle": "查看您的电子邮件",
+   "resendButton": "未收到验证码？重新发送",
+   "subtitle": "继续使用 {{applicationName}}",
+   "title": "查看您的电子邮件"
+  },
+  "emailLink": {
+   "clientMismatch": {
+    "subtitle": "要继续，请在发起登录时所用的设备和浏览器中打开验证链接",
+    "title": "此设备上的验证链接无效"
+   },
+   "expired": {
+    "subtitle": "返回原始标签页继续。",
+    "title": "此验证链接已过期"
+   },
+   "failed": {
+    "subtitle": "返回原始标签页继续。",
+    "title": "此验证链接无效"
+   },
+   "formSubtitle": "使用发送到您的电子邮件的验证链接",
+   "formTitle": "验证链接",
+   "loading": {
+    "subtitle": "即将为您重定向",
+    "title": "正在登录..."
+   },
+   "resendButton": "重新发送链接",
+   "subtitle": "继续使用 {{applicationName}}",
+   "title": "查看您的电子邮件",
+   "unusedTab": {
+    "title": "您可以关闭此标签页"
+   },
+   "verified": {
+    "subtitle": "即将为您重定向",
+    "title": "成功登录"
+   },
+   "verifiedSwitchTab": {
+    "subtitle": "返回原始标签页继续",
+    "subtitleNewTab": "返回新打开的标签页继续",
+    "titleNewTab": "在其他标签页上登录"
+   },
+   "verifiedTransferable": {
+    "subtitle": "返回原标签页继续",
+    "title": "电子邮件已验证"
+   }
+  },
+  "emailLinkMfa": {
+   "formSubtitle": "使用发送到您电子邮件的验证链接",
+   "resendButton": "没有收到链接？重新发送",
+   "subtitle": "继续使用 {{applicationName}}",
+   "title": "查看您的电子邮件"
+  },
+  "enterpriseConnections": {
+   "subtitle": "选择企业账户以继续。",
+   "title": "选择账户"
+  },
+  "enterpriseSSO": {
+   "formButtonPrimary": "使用 SSO 继续"
+  },
+  "forgotPassword": {
+   "formTitle": "重置密码代码",
+   "resendButton": "重新发送代码",
+   "subtitle": "以重置您的密码",
+   "subtitle_email": "首先，输入发送到您的电子邮件 ID 的代码",
+   "subtitle_phone": "首先，输入发送到您手机的代码",
+   "title": "重置密码"
+  },
+  "forgotPasswordAlternativeMethods": {
+   "blockButton__resetPassword": "重置密码",
+   "label__alternativeMethods": "或者，使用其他方式登录。",
+   "title": "忘记密码？"
+  },
+  "newDeviceVerificationNotice": "您正在从新设备登录。我们需要验证以保护您的账户安全。",
+  "noAvailableMethods": {
+   "message": "无法继续登录。没有可用的身份验证因素。",
+   "subtitle": "出现错误",
+   "title": "无法登录"
+  },
+  "passkey": {
+   "subtitle": "使用通行密钥可确认是您本人。您的设备可能会要求使用指纹、人脸或屏幕锁。",
+   "title": "使用通行密钥"
+  },
+  "password": {
+   "actionLink": "使用其他方法",
+   "subtitle": "继续使用 {{applicationName}}",
+   "title": "输入您的密码"
+  },
+  "passwordCompromised": {
+   "title": "密码已泄露"
+  },
+  "passwordPwned": {
+   "title": "密码已泄露"
+  },
+  "passwordUntrusted": {
+   "title": "密码不可信"
+  },
+  "phoneCode": {
+   "formTitle": "验证码",
+   "resendButton": "重新发送验证码",
+   "subtitle": "继续使用 {{applicationName}}",
+   "title": "检查手机短信"
+  },
+  "phoneCodeMfa": {
+   "formTitle": "验证码",
+   "resendButton": "重新发送验证码",
+   "subtitle": "请继续输入发送到您手机的验证码。",
+   "title": "检查手机短信"
+  },
+  "protectCheck": {
+   "loading": "加载中…",
+   "retryButton": "重试",
+   "subtitle": "请稍候，我们正在验证您的请求。",
+   "title": "正在验证您的请求"
+  },
+  "resetPassword": {
+   "formButtonPrimary": "重置密码",
+   "requiredMessage": "出于安全原因，需要重置您的密码。",
+   "successMessage": "您的密码已成功更改。正在为您登录，请稍等。",
+   "title": "重置密码"
+  },
+  "resetPasswordMfa": {
+   "detailsLabel": "我们需要验证您的身份才能重置您的密码。"
+  },
+  "ssoBypass": {
+   "actionLink": "无法使用 SSO？",
+   "code": {
+    "resendButton": "没有收到验证码？重新发送",
+    "subtitle": "以继续访问 {{applicationName}}",
+    "title": "请查收电子邮件"
+   },
+   "notice": "您的组织要求使用单点登录。若不使用，此操作将被记录。"
+  },
+  "start": {
+   "actionLink": "注册",
+   "actionLink__join_waitlist": "加入候补名单",
+   "actionLink__use_email": "使用电子邮件",
+   "actionLink__use_email_username": "使用电子邮件或用户名",
+   "actionLink__use_passkey": "改用通行密钥",
+   "actionLink__use_phone": "使用电话",
+   "actionLink__use_username": "使用用户名",
+   "actionText": "还没有账户？",
+   "actionText__join_waitlist": "想提前体验？",
+   "alternativePhoneCodeProvider": {
+    "actionLink": "使用其他方式",
+    "label": "{{provider}} 手机号码",
+    "subtitle": "输入您的手机号码，以便通过 {{provider}} 接收验证码。",
+    "title": "通过 {{provider}} 登录 {{applicationName}}"
+   },
+   "subtitle": "欢迎回来！请登录您的账户以继续。",
+   "title": "登录 {{applicationName}}",
+   "titleCombined": "继续使用 {{applicationName}}"
+  },
+  "totpMfa": {
+   "formTitle": "验证码",
+   "subtitle": "请继续输入由您的身份验证应用生成的验证码。",
+   "title": "两步验证"
+  },
+  "web3Solana": {
+   "subtitle": "请选择下方的钱包进行登录",
+   "title": "使用 Solana 登录"
+  }
+ },
+ "signInEnterPasswordTitle": "输入您的密码",
+ "signUp": {
+  "alternativePhoneCodeProvider": {
+   "resendButton": "没有收到验证码？重新发送",
+   "subtitle": "输入发送到您的 {{provider}} 的验证码",
+   "title": "验证您的 {{provider}}"
+  },
+  "continue": {
+   "actionLink": "登录",
+   "actionText": "已经有账户了？",
+   "subtitle": "继续使用 {{applicationName}}",
+   "title": "填写缺少的字段"
+  },
+  "emailCode": {
+   "formSubtitle": "输入发送到您的电子邮件地址的验证码",
+   "formTitle": "验证码",
+   "resendButton": "重新发送验证码",
+   "subtitle": "继续使用 {{applicationName}}",
+   "title": "验证您的电子邮件"
+  },
+  "emailLink": {
+   "clientMismatch": {
+    "subtitle": "要继续，请在发起注册时所用的设备和浏览器中打开验证链接",
+    "title": "此设备上的验证链接无效"
+   },
+   "formSubtitle": "使用发送到您的电子邮件地址的验证链接",
+   "formTitle": "验证链接",
+   "loading": {
+    "title": "正在注册..."
+   },
+   "resendButton": "重新发送链接",
+   "subtitle": "继续使用 {{applicationName}}",
+   "title": "验证您的电子邮件",
+   "verified": {
+    "title": "成功注册"
+   },
+   "verifiedSwitchTab": {
+    "subtitle": "返回新打开的标签页继续",
+    "subtitleNewTab": "返回上一个标签页继续",
+    "title": "成功验证电子邮件"
+   }
+  },
+  "enterpriseConnections": {
+   "subtitle": "选择企业账户以继续。",
+   "title": "选择账户"
+  },
+  "legalConsent": {
+   "checkbox": {
+    "label__onlyPrivacyPolicy": "我同意{{ privacyPolicyLink || link(\"隐私政策\") }}",
+    "label__onlyTermsOfService": "我同意{{ termsOfServiceLink || link(\"服务条款\") }}",
+    "label__termsOfServiceAndPrivacyPolicy": "我同意{{ termsOfServiceLink || link(\"服务条款\") }}和{{ privacyPolicyLink || link(\"隐私政策\") }}"
+   },
+   "continue": {
+    "subtitle": "请阅读并接受条款以继续",
+    "title": "法律条款同意"
+   }
+  },
+  "phoneCode": {
+   "formSubtitle": "输入发送到您的电话号码的验证码",
+   "formTitle": "验证码",
+   "resendButton": "重新发送验证码",
+   "subtitle": "继续使用 {{applicationName}}",
+   "title": "验证您的电话"
+  },
+  "protectCheck": {
+   "loading": "加载中…",
+   "retryButton": "重试",
+   "subtitle": "请稍候，我们正在验证您的请求。",
+   "title": "正在验证您的请求"
+  },
+  "restrictedAccess": {
+   "actionLink": "登录",
+   "actionText": "已有账户？",
+   "blockButton__emailSupport": "给支持团队发送邮件",
+   "blockButton__joinWaitlist": "加入候补名单",
+   "subtitle": "目前已暂停注册。如果您认为自己应该有访问权限，请联系支持团队。",
+   "subtitleWaitlist": "目前已暂停注册。若想在我们开放时第一时间得知，请加入候补名单。",
+   "title": "访问受限"
+  },
+  "start": {
+   "actionLink": "登录",
+   "actionLink__use_email": "改用电子邮件",
+   "actionLink__use_phone": "改用手机",
+   "actionText": "已经有账户了？",
+   "alternativePhoneCodeProvider": {
+    "actionLink": "使用其他方式",
+    "label": "{{provider}} 手机号码",
+    "subtitle": "输入您的手机号码，以便通过 {{provider}} 接收验证码。",
+    "title": "通过 {{provider}} 注册 {{applicationName}}"
+   },
+   "subtitle": "继续使用 {{applicationName}}",
+   "subtitleCombined": "继续使用 {{applicationName}}",
+   "title": "创建您的账户",
+   "titleCombined": "创建您的账户"
+  },
+  "web3Solana": {
+   "subtitle": "请选择下方的钱包进行注册",
+   "title": "使用 Solana 注册"
+  }
+ },
+ "socialButtonsBlockButton": "使用 {{provider|titleize}} 登录",
+ "socialButtonsBlockButtonManyInView": "{{provider|titleize}}",
+ "unstable__errors": {
+  "action_blocked": "无法完成此操作。请稍后重试；如果问题仍然存在，请联系支持团队。",
+  "already_a_member_in_organization": "{{email}} 已是该组织的成员。",
+  "api_key_name_already_exists": "API 密钥名称已存在。",
+  "api_key_usage_exceeded": "您已达到使用上限。升级到付费套餐即可取消该限制。",
+  "avatar_file_size_exceeded": "文件大小超过10MB的最大限制。请选择一个较小的文件。",
+  "avatar_file_type_invalid": "不支持的文件类型。请上传 JPG、PNG、GIF 或 WEBP 格式的图片。",
+  "captcha_unavailable": "注册失败，原因是未通过机器人验证。请刷新页面重试或联系支持团队以获取更多帮助。",
+  "form_new_password_matches_current": "新密码不能与当前密码相同。",
+  "form_password_length_too_short": "密码太短，至少需要 8 个字符。",
+  "form_password_matches_identifier": "密码不能与您的电子邮件地址、手机号码或用户名相同。为保障账户安全，请使用其他密码。",
+  "form_password_not_strong_enough": "您的密码强度不够。",
+  "form_password_pwned": "这个密码在数据泄露中被发现，不能使用，请换一个密码试试。",
+  "form_password_pwned__sign_in": "此密码已在数据泄露中被发现，无法使用，请重置密码。",
+  "form_password_untrusted__sign_in": "您的密码可能已泄露。为保护您的账户，请使用其他登录方式继续。登录后，您需要重置密码。",
+  "form_username_invalid_length": "用户名长度必须在 {{min_length}} 到 {{max_length}} 个字符之间。",
+  "form_username_needs_non_number_char": "您的用户名必须包含至少一个非数字字符。",
+  "insufficient_seats_change_plan": "您的组织没有足够的席位来邀请所需数量的成员。请更换为支持您要邀请的成员数量的套餐。",
+  "insufficient_seats_contact_support": "您的组织没有足够的席位来邀请所需数量的成员。请联系支持团队。",
+  "oauth_access_denied": "您未授予访问账户的权限。",
+  "organization_membership_quota_exceeded": "您已达到组织成员资格的上限，包括待处理的邀请。",
+  "organization_not_found_or_unauthorized": "您已不再是此组织的成员。请选择或创建其他组织。",
+  "organization_not_found_or_unauthorized_with_create_organization_disabled": "您已不再是此组织的成员。请选择其他组织。",
+  "passkey_already_exists": "此设备上已注册过通行密钥。",
+  "passkey_not_supported": "此设备不支持通行密钥。",
+  "passkey_pa_not_supported": "注册需要平台验证器，但此设备不支持。",
+  "passkey_registration_cancelled": "通行密钥注册已取消或超时。",
+  "passkey_retrieval_cancelled": "通行密钥验证已取消或超时。",
+  "passwordComplexity": {
+   "maximumLength": "少于{{length}}个字符",
+   "minimumLength": "{{length}}个或更多字符",
+   "requireLowercase": "一个小写字母",
+   "requireNumbers": "一个数字",
+   "requireSpecialCharacter": "一个特殊字符",
+   "requireUppercase": "一个大写字母",
+   "sentencePrefix": "您的密码必须包含"
+  },
+  "protect_check_execution_failed": "验证未完成。请重试。",
+  "protect_check_invalid_script": "无法加载验证。如果问题仍然存在，请联系支持团队。",
+  "protect_check_invalid_sdk_url": "无法启动验证。请联系支持团队。",
+  "protect_check_required": "此登录需要额外的验证步骤，但无法在此处显示。请重试或使用其他登录方式。",
+  "protect_check_script_load_failed": "无法加载验证。原因可能是网络问题，或内容安全策略阻止了验证脚本。请重试或联系支持团队。",
+  "protect_check_timed_out": "验证未在规定时间内完成。请重试。",
+  "protect_check_unsupported_environment": "此环境不支持验证。请使用标准浏览器继续，或联系支持团队。",
+  "sso_bypass_domain_not_served": "无法添加此成员，因为其电子邮件地址未由任何连接提供服务。",
+  "ticket_expired_code": "此链接已过期。请重新开始或申请新链接。",
+  "ticket_invalid_code": "此链接已失效或已被使用。请重新开始或申请新链接。",
+  "too_many_unverified_identifications": "此账户上待验证的请求过多。请删除不再需要的未验证电子邮件地址、手机号码或钱包，或等待几分钟让未完成的通行密钥设置过期，然后重试。",
+  "web3_missing_identifier": "未找到 Web3 钱包扩展程序。请安装后继续。",
+  "web3_signature_request_rejected": "您已拒绝签名请求。请重试以继续。",
+  "web3_solana_signature_generation_failed": "生成签名时发生错误。请重试以继续。",
+  "zxcvbn": {
+   "couldBeStronger": "您的密码可以用，但可以更强。试着添加更多字符。",
+   "goodPassword": "做得好。这是一个优秀的密码。",
+   "notEnough": "您的密码强度不够。",
+   "suggestions": {
+    "allUppercase": "大写一些，但不是所有的字母。",
+    "anotherWord": "添加更不常见的更多单词。",
+    "associatedYears": "避免与你有关的年份。",
+    "capitalization": "大写不仅仅是第一个字母。",
+    "dates": "避免与你有关的日期和年份。",
+    "l33t": "避免预测的字母替换，如\"@\"代替\"a\"。",
+    "longerKeyboardPattern": "使用更长的键盘模式，并多次改变打字方向。",
+    "noNeed": "你可以创建强密码，而无需使用符号，数字或大写字母。",
+    "pwned": "如果您在其他地方使用此密码，您应该更改它。",
+    "recentYears": "避免近年来。",
+    "repeated": "避免重复的单词和字符。",
+    "reverseWords": "避免常用词的反向拼写。",
+    "sequences": "避免常见字符序列。",
+    "useWords": "使用多个单词，但避免常见短语。"
+   },
+   "warnings": {
+    "common": "这是一个常用的密码。",
+    "commonNames": "常见的名字和姓氏易被猜到。",
+    "dates": "日期易被猜到。",
+    "extendedRepeat": "像\"abcabcabc\"这样的重复字符模式易被猜到。",
+    "keyPattern": "短键盘模式易被猜到。",
+    "namesByThemselves": "单个名字或姓氏易被猜到。",
+    "pwned": "您的密码在互联网上的数据泄露中被暴露。",
+    "recentYears": "近年来易被猜到。",
+    "sequences": "像\"abc\"这样的常见字符序列易被猜到。",
+    "similarToCommon": "这个密码和常用密码相似。",
+    "simpleRepeat": "像\"aaa\"这样的重复字符易被猜到。",
+    "straightRow": "键盘上的直行键易被猜到。",
+    "topHundred": "这是一个频繁使用的密码。",
+    "topTen": "这是一个大量使用的密码。",
+    "userInputs": "不应该有任何个人或页面相关的数据。",
+    "wordByItself": "单个单词易被猜到。"
+   }
+  }
+ },
+ "userButton": {
+  "action__addAccount": "添加账户",
+  "action__closeUserMenu": "关闭用户菜单",
+  "action__manageAccount": "管理账户",
+  "action__openUserMenu": "打开用户菜单",
+  "action__signOut": "退出登录",
+  "action__signOutAll": "退出所有账户",
+  "label__accountActions": "账户操作",
+  "label__activeSessions": "活跃会话",
+  "label__userButtonPopover": "账户面板"
+ },
+ "userProfile": {
+  "apiKeysPage": {
+   "title": "API 密钥"
+  },
+  "backupCodePage": {
+   "actionLabel__copied": "已复制！",
+   "actionLabel__copy": "复制全部",
+   "actionLabel__download": "下载 .txt",
+   "actionLabel__print": "打印",
+   "infoText1": "将为此账户启用备份代码。",
+   "infoText2": "保密并安全存储备份代码。如果您怀疑它们已经泄露，您可以重新生成备份代码。",
+   "subtitle__codelist": "安全存储并保守秘密。",
+   "successMessage": "现在已启用备份代码。如果您失去了验证设备的访问权限，您可以使用其中之一登录您的账户。每个代码只能使用一次。",
+   "successSubtitle": "如果您失去了验证设备的访问权限，您可以使用其中之一登录您的账户。",
+   "title": "添加备份代码验证",
+   "title__codelist": "备份代码"
+  },
+  "billingPage": {
+   "accountCreditsSection": {
+    "title": "账户余额",
+    "viewHistory": "查看余额记录"
+   },
+   "creditHistoryPage": {
+    "tableHeader__amount": "金额",
+    "tableHeader__date": "日期",
+    "title": "账户余额记录"
+   },
+   "paymentHistorySection": {
+    "empty": "暂无付款记录",
+    "notFound": "未找到付款尝试记录",
+    "tableHeader__amount": "金额",
+    "tableHeader__date": "日期",
+    "tableHeader__status": "状态"
+   },
+   "paymentMethodsSection": {
+    "actionLabel__default": "设为默认",
+    "actionLabel__remove": "移除",
+    "add": "添加新的付款方式",
+    "addSubtitle": "向您的账户添加新的付款方式。",
+    "cancelButton": "取消",
+    "formButtonPrimary__add": "添加付款方式",
+    "formButtonPrimary__pay": "支付 {{amount}}",
+    "payWithTestCardButton": "使用测试卡付款",
+    "removeMethod": {
+     "messageLine1": "{{identifier}} 将从此账户中移除。",
+     "messageLine2": "您将无法再使用此付款方式，依赖它的定期订阅也将停止生效。",
+     "successMessage": "{{paymentMethod}} 已从您的账户中移除。",
+     "title": "移除付款方式"
+    },
+    "title": "付款方式"
+   },
+   "start": {
+    "headerTitle__payments": "付款",
+    "headerTitle__plans": "套餐",
+    "headerTitle__statements": "账单明细",
+    "headerTitle__subscriptions": "订阅"
+   },
+   "statementsSection": {
+    "empty": "暂无账单明细",
+    "itemCaption__paidForPlan": "已支付{{plan}}{{period}}套餐费用",
+    "itemCaption__payerCredit": "来自账户余额的抵扣",
+    "itemCaption__proratedCredit": "上一订阅未使用部分的按比例抵扣",
+    "itemCaption__subscribedAndPaidForPlan": "已订阅并支付{{plan}}{{period}}套餐费用",
+    "notFound": "未找到账单明细",
+    "tableHeader__amount": "金额",
+    "tableHeader__date": "日期",
+    "title": "账单明细",
+    "totalPaid": "已付总额"
+   },
+   "subscriptionsListSection": {
+    "actionLabel__manageSubscription": "管理",
+    "actionLabel__newSubscription": "订阅套餐",
+    "actionLabel__switchPlan": "更换套餐",
+    "overview": "概览",
+    "tableHeader__edit": "编辑",
+    "tableHeader__plan": "套餐",
+    "tableHeader__startDate": "开始日期",
+    "title": "订阅"
+   },
+   "subscriptionsSection": {
+    "actionLabel__default": "管理"
+   },
+   "switchPlansSection": {
+    "title": "更换套餐"
+   },
+   "title": "账单"
+  },
+  "connectedAccountPage": {
+   "formHint": "选择一个供应商来连接您的账户。",
+   "formHint__noAccounts": "没有可用的外部账户供应商。",
+   "removeResource": {
+    "messageLine1": "{{identifier}} 将从此账户中被移除。",
+    "messageLine2": "您将无法再使用这个已连接的账户，任何依赖的功能将不再工作。",
+    "successMessage": "{{connectedAccount}} 已从您的账户中移除。",
+    "title": "移除已连接的账户"
+   },
+   "socialButtonsBlockButton": "连接 {{provider|titleize}} 账户",
+   "successMessage": "供应商已被添加到您的账户",
+   "title": "添加已连接的账户"
+  },
+  "deletePage": {
+   "actionDescription": "在下方输入 \"删除账户\" 以继续。",
+   "confirm": "删除账户",
+   "messageLine1": "您确定要删除您的账户吗？某些关联数据可能会被保留。要请求完全删除数据，请联系支持团队。",
+   "messageLine2": "此操作是永久且不可逆的。",
+   "title": "删除账户"
+  },
+  "emailAddressPage": {
+   "emailCode": {
+    "formHint": "一封含有验证码的邮件将会被发送到这个电子邮件地址。",
+    "formSubtitle": "输入发送到 {{identifier}} 的验证码",
+    "formTitle": "验证码",
+    "resendButton": "重发验证码",
+    "successMessage": "电子邮件 {{identifier}} 已被添加到您的账户。"
+   },
+   "emailLink": {
+    "formHint": "一封含有验证链接的邮件将会被发送到这个电子邮件地址。",
+    "formSubtitle": "点击发送到 {{identifier}} 的邮件中的验证链接",
+    "formTitle": "验证链接",
+    "resendButton": "重发链接",
+    "successMessage": "电子邮件 {{identifier}} 已被添加到您的账户。"
+   },
+   "enterpriseSSOLink": {
+    "formButton": "点击登录",
+    "formSubtitle": "使用 {{identifier}} 完成登录"
+   },
+   "formHint": "这个电子邮件地址必须在验证之后才能被添加到您的账户。",
+   "removeResource": {
+    "messageLine1": "{{identifier}} 将从此账户中被移除。",
+    "messageLine2": "您将无法使用这个电子邮件地址登录。",
+    "successMessage": "电子邮件 {{emailAddress}} 已从您的账户中移除。",
+    "title": "移除电子邮件地址"
+   },
+   "title": "添加电子邮件地址",
+   "verifyTitle": "验证电子邮件地址"
+  },
+  "formButtonPrimary__add": "添加",
+  "formButtonPrimary__continue": "继续",
+  "formButtonPrimary__finish": "完成",
+  "formButtonPrimary__remove": "移除",
+  "formButtonPrimary__save": "保存",
+  "formButtonReset": "取消",
+  "mfaPage": {
+   "formHint": "选择一个添加的方法。",
+   "title": "添加两步验证"
+  },
+  "mfaPhoneCodePage": {
+   "backButton": "使用现有号码",
+   "primaryButton__addPhoneNumber": "添加电话号码",
+   "removeResource": {
+    "messageLine1": "{{identifier}} 将不再在登录时接收验证代码。",
+    "messageLine2": "您的账户可能不再安全。您确定要继续吗？",
+    "successMessage": "已移除{{mfaPhoneCode}}的短信验证码两步验证",
+    "title": "移除两步验证"
+   },
+   "subtitle__availablePhoneNumbers": "选择一个电话号码来注册短信验证码两步验证。",
+   "subtitle__unavailablePhoneNumbers": "没有可用的电话号码来注册短信验证码两步验证。",
+   "successMessage1": "登录时，您需要输入发送到此电话号码的验证码作为额外的步骤。",
+   "successMessage2": "请保存这些备份代码并将其妥善存放。如果您无法访问身份验证设备，可以使用备份代码进行登录。",
+   "successTitle": "短信验证码验证已启用",
+   "title": "添加短信验证码验证"
+  },
+  "mfaTOTPPage": {
+   "authenticatorApp": {
+    "buttonAbleToScan__nonPrimary": "扫描二维码",
+    "buttonUnableToScan__nonPrimary": "不能扫描二维码？",
+    "infoText__ableToScan": "在您的验证器应用中设置一个新的登录方法，并扫描下面的二维码将其链接到您的账户。",
+    "infoText__unableToScan": "在验证器中设置一个新的登录方法，并输入下面提供的 Key。",
+    "inputLabel__unableToScan1": "确保启用了基于时间或一次性密码，然后完成链接您的账户。",
+    "inputLabel__unableToScan2": "或者，如果您的验证器支持 TOTP URIs，您也可以复制完整的 URI。"
+   },
+   "removeResource": {
+    "messageLine1": "登录时，将不再需要来自此验证器的验证码。",
+    "messageLine2": "您的账户可能不再安全。您确定要继续吗？",
+    "successMessage": "已移除通过验证器应用程序的两步验证。",
+    "title": "移除两步验证"
+   },
+   "successMessage": "现在已启用两步验证。在登录时，您需要输入来自此验证器的验证码作为额外步骤。",
+   "title": "添加验证器应用程序",
+   "verifySubtitle": "输入您的验证器生成的验证码",
+   "verifyTitle": "验证代码"
+  },
+  "mobileButton__menu": "菜单",
+  "navbar": {
+   "account": "账户",
+   "apiKeys": "API 密钥",
+   "billing": "账单",
+   "description": "管理您的账户。",
+   "security": "安全",
+   "title": "账户"
+  },
+  "passkeyScreen": {
+   "removeResource": {
+    "messageLine1": "{{name}} 将从此账户中移除。",
+    "title": "移除通行密钥"
+   },
+   "subtitle__rename": "您可以更改通行密钥的名称，以便更容易找到。",
+   "title__rename": "重命名通行密钥"
+  },
+  "passwordPage": {
+   "checkboxInfoText__signOutOfOtherSessions": "建议您从所有可能使用过旧密码的其他设备上退出登录。",
+   "readonly": "由于您只能通过企业连接登录，当前无法编辑您的密码。",
+   "successMessage__set": "您的密码已设置。",
+   "successMessage__signOutOfOtherSessions": "所有其他设备已退出。",
+   "successMessage__update": "您的密码已更新。",
+   "title__set": "设置密码",
+   "title__update": "更改密码"
+  },
+  "phoneNumberPage": {
+   "infoText": "一条包含验证链接的短信将会发送到这个电话号码。",
+   "removeResource": {
+    "messageLine1": "{{identifier}} 将从此账户中被移除。",
+    "messageLine2": "您将无法使用这个电话号码登录。",
+    "successMessage": "电话号码 {{phoneNumber}} 已从您的账户中移除。",
+    "title": "移除电话号码"
+   },
+   "successMessage": "{{identifier}} 已被添加到您的账户。",
+   "title": "添加电话号码",
+   "verifySubtitle": "请输入发送至 {{identifier}} 的验证码",
+   "verifyTitle": "验证电话号码"
+  },
+  "plansPage": {
+   "title": "套餐"
+  },
+  "profilePage": {
+   "fileDropAreaHint": "上传小于10MB的JPG, PNG, GIF, 或WEBP格式的图片",
+   "imageFormDestructiveActionSubtitle": "移除图片",
+   "imageFormSubtitle": "上传图片",
+   "imageFormTitle": "个人资料图片",
+   "readonly": "您的个人信息由企业连接提供，无法进行编辑。",
+   "successMessage": "您的个人资料已更新。",
+   "title": "更新个人资料"
+  },
+  "start": {
+   "activeDevicesSection": {
+    "destructiveAction": "退出设备",
+    "title": "活动设备"
+   },
+   "connectedAccountsSection": {
+    "actionLabel__connectionFailed": "再试一次",
+    "actionLabel__reauthorize": "立即授权",
+    "destructiveActionTitle": "移除",
+    "primaryButton": "连接账户",
+    "subtitle__disconnected": "此账户已断开连接。",
+    "subtitle__reauthorize": "“所需的权限范围已更新，您可能会遇到功能受限的问题。请重新授权此应用程序，以避免出现任何问题。”",
+    "title": "已连接的账户"
+   },
+   "dangerSection": {
+    "deleteAccountButton": "删除账户",
+    "title": "终止账户"
+   },
+   "emailAddressesSection": {
+    "destructiveAction": "移除电子邮件地址",
+    "detailsAction__nonPrimary": "设为主要",
+    "detailsAction__primary": "完成验证",
+    "detailsAction__unverified": "完成验证",
+    "primaryButton": "添加电子邮件地址",
+    "title": "电子邮件地址"
+   },
+   "enterpriseAccountsSection": {
+    "primaryButton": "连接账户",
+    "title": "企业账户"
+   },
+   "headerTitle__account": "账户",
+   "headerTitle__security": "安全",
+   "mfaSection": {
+    "backupCodes": {
+     "actionLabel__regenerate": "重新生成代码",
+     "headerTitle": "备份代码",
+     "subtitle__regenerate": "获取一套新的安全备份代码。之前的备份代码将被删除，无法使用。",
+     "title__regenerate": "重新生成备份代码"
+    },
+    "phoneCode": {
+     "actionLabel__setDefault": "设为默认",
+     "destructiveActionLabel": "移除电话号码"
+    },
+    "primaryButton": "添加两步验证",
+    "title": "两步验证",
+    "totp": {
+     "destructiveActionTitle": "移除",
+     "headerTitle": "验证器应用程序"
+    }
+   },
+   "passkeysSection": {
+    "menuAction__destructive": "移除",
+    "menuAction__rename": "重命名",
+    "primaryButton": "添加通行密钥",
+    "title": "通行密钥"
+   },
+   "passwordSection": {
+    "primaryButton__setPassword": "设置密码",
+    "primaryButton__updatePassword": "更改密码",
+    "title": "密码"
+   },
+   "phoneNumbersSection": {
+    "destructiveAction": "移除电话号码",
+    "detailsAction__nonPrimary": "设为主要",
+    "detailsAction__primary": "完成验证",
+    "detailsAction__unverified": "完成验证",
+    "primaryButton": "添加电话号码",
+    "title": "电话号码"
+   },
+   "profileSection": {
+    "primaryButton": "更新个人资料",
+    "title": "个人资料"
+   },
+   "usernameSection": {
+    "primaryButton__setUsername": "设置用户名",
+    "primaryButton__updateUsername": "更改用户名",
+    "title": "用户名"
+   },
+   "web3WalletsSection": {
+    "destructiveAction": "移除钱包",
+    "detailsAction__nonPrimary": "设为主要",
+    "primaryButton": "Web3 钱包",
+    "title": "Web3 钱包",
+    "web3SelectSolanaWalletScreen": {
+     "subtitle": "选择一个 Solana 钱包以连接到您的账户。",
+     "title": "添加 Solana 钱包"
+    }
+   }
+  },
+  "usernamePage": {
+   "successMessage": "您的用户名已更新。",
+   "title__set": "更新用户名",
+   "title__update": "更新用户名"
+  },
+  "web3WalletPage": {
+   "removeResource": {
+    "messageLine1": "{{identifier}} 将从此账户中被移除。",
+    "messageLine2": "您将无法使用这个 web3 钱包登录。",
+    "successMessage": "{{web3Wallet}} 已从您的账户中移除。",
+    "title": "移除 web3 钱包"
+   },
+   "subtitle__availableWallets": "选择一个 web3 钱包连接到您的账户。",
+   "subtitle__unavailableWallets": "没有可用的 web3 钱包。",
+   "successMessage": "钱包已被添加到您的账户。",
+   "title": "添加web3钱包",
+   "web3WalletButtonsBlockButton": "{{provider|titleize}}"
+  }
+ },
+ "web3SolanaWalletButtons": {
+  "connect": "使用 {{walletName}} 连接",
+  "continue": "使用 {{walletName}} 继续",
+  "noneAvailable": "未检测到 Solana Web3 钱包。请安装支持 Web3 的 {{ solanaWalletsLink || link(\"wallet extension\") }}。"
+ }
+}

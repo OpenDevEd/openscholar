@@ -1,0 +1,936 @@
+{
+ "locale": "sw",
+ "actionBlocked": {
+  "subtitle": "Kwa usalama wako, ombi hili halikuweza kukamilika.",
+  "title": "Hatukuweza kukamilisha ombi hili",
+  "traceIdLabel": "Rejeleo"
+ },
+ "backButton": "Rudi",
+ "badge__activePlan": "Inatumika",
+ "badge__banned": "Imezuiwa",
+ "badge__canceledEndsAt": "Imeghairiwa, Inaisha {{ date | shortDate('sw') }}",
+ "badge__currentPlan": "Mpango wa sasa",
+ "badge__default": "Chaguo-msingi",
+ "badge__deprovisioned": "Ufikiaji umeondolewa",
+ "badge__endsAt": "Inaisha {{ date | shortDate('sw') }}",
+ "badge__expired": "Muda umeisha",
+ "badge__freeTrial": "Jaribio bila malipo",
+ "badge__otherImpersonatorDevice": "Kifaa kingine cha kuiga mtumiaji",
+ "badge__pastDueAt": "Imechelewa tangu {{ date | shortDate('sw') }}",
+ "badge__pastDuePlan": "Imechelewa",
+ "badge__primary": "Kuu",
+ "badge__renewsAt": "Itafanywa upya {{ date | shortDate('sw') }}",
+ "badge__requiresAction": "Inahitaji hatua",
+ "badge__startsAt": "Inaanza {{ date | shortDate('sw') }}",
+ "badge__thisDevice": "Kifaa hiki",
+ "badge__trialEndsAt": "Jaribio linaisha {{ date | shortDate('sw') }}",
+ "badge__unverified": "Haijathibitishwa",
+ "badge__upcomingPlan": "Inayokuja",
+ "badge__userDevice": "Kifaa cha mtumiaji",
+ "badge__you": "Wewe",
+ "createOrganization": {
+  "formButtonSubmit": "Unda shirika",
+  "invitePage": {
+   "formButtonReset": "Ruka"
+  },
+  "title": "Unda shirika"
+ },
+ "dates": {
+  "lastDay": "Jana saa {{ date | timeString('sw') }}",
+  "next6Days": "{{ date | weekday('en-US','long') }} saa {{ date | timeString('sw') }}",
+  "nextDay": "Kesho saa {{ date | timeString('sw') }}",
+  "numeric": "{{ date | numeric('sw') }}",
+  "previous6Days": "{{ date | weekday('en-US','long') }} iliyopita saa {{ date | timeString('sw') }}",
+  "sameDay": "Leo saa {{ date | timeString('sw') }}"
+ },
+ "dividerText": "au",
+ "footerActionLink__alternativePhoneCodeProvider": "Tuma msimbo kwa SMS badala yake",
+ "footerActionLink__useAnotherMethod": "Tumia njia nyingine",
+ "footerPageLink__help": "Usaidizi",
+ "footerPageLink__privacy": "Faragha",
+ "footerPageLink__terms": "Masharti",
+ "formButtonPrimary": "Endelea",
+ "formButtonPrimary__verify": "Thibitisha",
+ "formFieldAction__forgotPassword": "Umesahau nenosiri?",
+ "formFieldAction__hidePassword": "Ficha nenosiri",
+ "formFieldAction__showPassword": "Onyesha nenosiri",
+ "formFieldError__matchingPasswords": "Manenosiri yanalingana.",
+ "formFieldError__notMatchingPasswords": "Manenosiri hayalingani.",
+ "formFieldError__verificationLinkExpired": "Kiungo cha uthibitisho kimeisha muda. Tafadhali omba kiungo kipya.",
+ "formFieldHintText__optional": "Si lazima",
+ "formFieldHintText__slug": "Kitambulisho cha maandishi rahisi ambacho lazima kiwe cha kipekee. Mara nyingi hutumika kwenye URL.",
+ "formFieldInputPlaceholder__apiKeyDescription": "Eleza sababu ya kutengeneza ufunguo huu",
+ "formFieldInputPlaceholder__apiKeyExpirationDate": "Chagua tarehe",
+ "formFieldInputPlaceholder__apiKeyName": "Weka jina la ufunguo wako wa siri",
+ "formFieldInputPlaceholder__backupCode": "Weka msimbo wa akiba",
+ "formFieldInputPlaceholder__confirmDeletionUserAccount": "Futa akaunti",
+ "formFieldInputPlaceholder__emailAddress": "Weka anwani yako ya barua pepe",
+ "formFieldInputPlaceholder__emailAddress_username": "Weka barua pepe au jina la mtumiaji",
+ "formFieldInputPlaceholder__emailAddresses": "example@email.com, example2@email.com",
+ "formFieldInputPlaceholder__firstName": "Jina la kwanza",
+ "formFieldInputPlaceholder__lastName": "Jina la mwisho",
+ "formFieldInputPlaceholder__organizationDomain": "example.com",
+ "formFieldInputPlaceholder__organizationDomainEmailAddress": "you@example.com",
+ "formFieldInputPlaceholder__organizationName": "Jina la shirika",
+ "formFieldInputPlaceholder__organizationSlug": "my-org",
+ "formFieldInputPlaceholder__password": "Weka nenosiri lako",
+ "formFieldInputPlaceholder__phoneNumber": "Weka namba yako ya simu",
+ "formFieldInputPlaceholder__signUpPassword": "Unda nenosiri",
+ "formFieldInputPlaceholder__username": "Weka jina lako la mtumiaji",
+ "formFieldInput__emailAddress_format": "Mfano wa muundo: name@example.com",
+ "formFieldLabel__apiKey": "Ufunguo wa API",
+ "formFieldLabel__apiKeyDescription": "Maelezo",
+ "formFieldLabel__apiKeyExpiration": "Muda wa kuisha",
+ "formFieldLabel__apiKeyName": "Jina la ufunguo wa siri",
+ "formFieldLabel__automaticInvitations": "Washa mialiko ya kiotomatiki kwa kikoa hiki",
+ "formFieldLabel__backupCode": "Msimbo wa akiba",
+ "formFieldLabel__confirmDeletion": "Uthibitisho",
+ "formFieldLabel__confirmPassword": "Thibitisha nenosiri",
+ "formFieldLabel__currentPassword": "Nenosiri la sasa",
+ "formFieldLabel__emailAddress": "Anwani ya barua pepe",
+ "formFieldLabel__emailAddress_username": "Anwani ya barua pepe au jina la mtumiaji",
+ "formFieldLabel__emailAddresses": "Anwani za barua pepe",
+ "formFieldLabel__firstName": "Jina la kwanza",
+ "formFieldLabel__lastName": "Jina la mwisho",
+ "formFieldLabel__newPassword": "Nenosiri jipya",
+ "formFieldLabel__organizationDomain": "Kikoa",
+ "formFieldLabel__organizationDomainDeletePending": "Futa mialiko na mapendekezo yanayosubiri",
+ "formFieldLabel__organizationDomainEmailAddress": "Anwani ya barua pepe ya uthibitisho",
+ "formFieldLabel__organizationDomainEmailAddressDescription": "Weka anwani ya barua pepe chini ya kikoa hiki ili kupokea msimbo na kuthibitisha kikoa.",
+ "formFieldLabel__organizationName": "Jina",
+ "formFieldLabel__organizationSlug": "Kitambulisho cha URL",
+ "formFieldLabel__passkeyName": "Jina la passkey",
+ "formFieldLabel__password": "Nenosiri",
+ "formFieldLabel__phoneNumber": "Namba ya simu",
+ "formFieldLabel__role": "Jukumu",
+ "formFieldLabel__signOutOfOtherSessions": "Ondoka kwenye vifaa vyote vingine",
+ "formFieldLabel__username": "Jina la mtumiaji",
+ "identityPreviewEditButton__emailAddress": "Hariri anwani ya barua pepe",
+ "identityPreviewEditButton__identifier": "Hariri kitambulisho",
+ "identityPreviewEditButton__phoneNumber": "Hariri namba ya simu",
+ "lastAuthenticationStrategy": "Ilitumika mara ya mwisho",
+ "maintenanceMode": "Tunafanya matengenezo kwa sasa, lakini usijali. Haitachukua zaidi ya dakika chache.",
+ "membershipRole__admin": "Msimamizi",
+ "membershipRole__basicMember": "Mwanachama",
+ "membershipRole__guestMember": "Mgeni",
+ "paginationButton__next": "Inayofuata",
+ "paginationButton__previous": "Iliyotangulia",
+ "paginationRowText__displaying": "Inaonyesha",
+ "paginationRowText__of": "kati ya",
+ "reverification": {
+  "alternativeMethods": {
+   "actionLink": "Pata msaada",
+   "actionText": "Huna yoyote kati ya hizi?",
+   "blockButton__backupCode": "Tumia msimbo wa akiba",
+   "blockButton__emailCode": "Tuma msimbo kwa {{identifier}}",
+   "blockButton__passkey": "Tumia passkey yako",
+   "blockButton__password": "Endelea kwa nenosiri lako",
+   "blockButton__phoneCode": "Tuma msimbo wa SMS kwa {{identifier}}",
+   "blockButton__totp": "Tumia programu yako ya uthibitishaji",
+   "getHelp": {
+    "blockButton__emailSupport": "Tuma barua pepe kwa usaidizi",
+    "content": "Ukikumbana na tatizo la kuthibitisha akaunti yako, tutumie barua pepe nasi tutakusaidia kurejesha ufikiaji haraka iwezekanavyo.",
+    "title": "Pata msaada"
+   },
+   "subtitle": "Una tatizo? Unaweza kutumia mojawapo ya njia hizi kuthibitisha.",
+   "title": "Tumia njia nyingine"
+  },
+  "backupCodeMfa": {
+   "subtitle": "Weka msimbo wa akiba uliopokea ulipoweka uthibitisho wa hatua mbili",
+   "title": "Weka msimbo wa akiba"
+  },
+  "emailCode": {
+   "formTitle": "Msimbo wa uthibitisho",
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "Weka msimbo uliotumwa kwenye barua pepe yako ili kuendelea",
+   "title": "Uthibitisho unahitajika"
+  },
+  "noAvailableMethods": {
+   "message": "Haiwezekani kuendelea na uthibitisho. Hakuna kipengele cha uthibitisho kinachofaa kilichowekwa",
+   "subtitle": "Hitilafu imetokea",
+   "title": "Haiwezekani kuthibitisha akaunti yako"
+  },
+  "passkey": {
+   "blockButton__passkey": "Tumia passkey yako",
+   "subtitle": "Kutumia passkey yako kunathibitisha utambulisho wako. Kifaa chako kinaweza kuomba alama ya kidole, uso au kufuli ya skrini.",
+   "title": "Tumia passkey yako"
+  },
+  "password": {
+   "actionLink": "Tumia njia nyingine",
+   "subtitle": "Weka nenosiri lako la sasa ili kuendelea",
+   "title": "Uthibitisho unahitajika"
+  },
+  "phoneCode": {
+   "formTitle": "Msimbo wa uthibitisho",
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "Weka msimbo uliotumwa kwenye simu yako ili kuendelea",
+   "title": "Uthibitisho unahitajika"
+  },
+  "phoneCodeMfa": {
+   "formTitle": "Msimbo wa uthibitisho",
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "Weka msimbo uliotumwa kwenye simu yako ili kuendelea",
+   "title": "Uthibitisho unahitajika"
+  },
+  "totpMfa": {
+   "formTitle": "Msimbo wa uthibitisho",
+   "subtitle": "Weka msimbo unaozalishwa na programu yako ya uthibitishaji ili kuendelea",
+   "title": "Uthibitisho unahitajika"
+  }
+ },
+ "searchInput": {
+  "action__clear": "Futa utafutaji"
+ },
+ "signIn": {
+  "accountSwitcher": {
+   "action__addAccount": "Ongeza akaunti",
+   "action__signOutAll": "Ondoka kwenye akaunti zote",
+   "subtitle": "Chagua akaunti unayotaka kuendelea nayo.",
+   "title": "Chagua akaunti"
+  },
+  "alternativeMethods": {
+   "actionLink": "Pata msaada",
+   "actionText": "Huna yoyote kati ya hizi?",
+   "blockButton__backupCode": "Tumia msimbo wa akiba",
+   "blockButton__emailCode": "Tuma msimbo kwa {{identifier}}",
+   "blockButton__emailLink": "Tuma kiungo kwa {{identifier}}",
+   "blockButton__passkey": "Ingia kwa passkey yako",
+   "blockButton__password": "Ingia kwa nenosiri lako",
+   "blockButton__phoneCode": "Tuma msimbo wa SMS kwa {{identifier}}",
+   "blockButton__totp": "Tumia programu yako ya uthibitishaji",
+   "getHelp": {
+    "blockButton__emailSupport": "Tuma barua pepe kwa usaidizi",
+    "content": "Ukikumbana na tatizo la kuingia kwenye akaunti yako, tutumie barua pepe nasi tutakusaidia kurejesha ufikiaji haraka iwezekanavyo.",
+    "title": "Pata msaada"
+   },
+   "subtitle": "Una tatizo? Unaweza kutumia mojawapo ya njia hizi kuingia.",
+   "title": "Tumia njia nyingine"
+  },
+  "alternativePhoneCodeProvider": {
+   "formTitle": "Msimbo wa uthibitisho",
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "title": "Angalia {{provider}} yako"
+  },
+  "backupCodeMfa": {
+   "subtitle": "Msimbo wako wa akiba ni ule uliopokea ulipoweka uthibitisho wa hatua mbili.",
+   "title": "Weka msimbo wa akiba"
+  },
+  "emailCode": {
+   "formTitle": "Msimbo wa uthibitisho",
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "title": "Angalia barua pepe yako"
+  },
+  "emailCodeMfa": {
+   "formTitle": "Angalia barua pepe yako",
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "title": "Angalia barua pepe yako"
+  },
+  "emailLink": {
+   "clientMismatch": {
+    "subtitle": "Ili kuendelea, fungua kiungo cha uthibitisho kwenye kifaa na kivinjari ulichoanzishia kuingia",
+    "title": "Kiungo cha uthibitisho si sahihi kwenye kifaa hiki"
+   },
+   "expired": {
+    "subtitle": "Rudi kwenye kichupo cha awali ili kuendelea.",
+    "title": "Kiungo hiki cha uthibitisho kimeisha muda"
+   },
+   "failed": {
+    "subtitle": "Rudi kwenye kichupo cha awali ili kuendelea.",
+    "title": "Kiungo hiki cha uthibitisho si sahihi"
+   },
+   "formSubtitle": "Tumia kiungo cha uthibitisho kilichotumwa kwenye barua pepe yako",
+   "formTitle": "Kiungo cha uthibitisho",
+   "loading": {
+    "subtitle": "Utaelekezwa upya hivi karibuni",
+    "title": "Inaingia..."
+   },
+   "resendButton": "Hukupokea kiungo? Tuma tena",
+   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "title": "Angalia barua pepe yako",
+   "unusedTab": {
+    "title": "Unaweza kufunga kichupo hiki"
+   },
+   "verified": {
+    "subtitle": "Utaelekezwa upya hivi karibuni",
+    "title": "Umeingia kwa mafanikio"
+   },
+   "verifiedSwitchTab": {
+    "subtitle": "Rudi kwenye kichupo cha awali ili kuendelea",
+    "subtitleNewTab": "Rudi kwenye kichupo kipya kilichofunguliwa ili kuendelea",
+    "titleNewTab": "Umeingia kwenye kichupo kingine"
+   },
+   "verifiedTransferable": {
+    "subtitle": "Rudi kwenye kichupo cha awali ili kuendelea",
+    "title": "Barua pepe imethibitishwa"
+   }
+  },
+  "emailLinkMfa": {
+   "formSubtitle": "Tumia kiungo cha uthibitisho kilichotumwa kwenye barua pepe yako",
+   "resendButton": "Hukupokea kiungo? Tuma tena",
+   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "title": "Angalia barua pepe yako"
+  },
+  "enterpriseConnections": {
+   "subtitle": "Chagua akaunti ya kampuni ili kuendelea.",
+   "title": "Chagua akaunti"
+  },
+  "enterpriseSSO": {
+   "formButtonPrimary": "Endelea kwa SSO"
+  },
+  "forgotPassword": {
+   "formTitle": "Msimbo wa kuweka upya nenosiri",
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "ili kuweka upya nenosiri lako",
+   "subtitle_email": "Kwanza, weka msimbo uliotumwa kwenye anwani yako ya barua pepe",
+   "subtitle_phone": "Kwanza, weka msimbo uliotumwa kwenye simu yako",
+   "title": "Weka upya nenosiri"
+  },
+  "forgotPasswordAlternativeMethods": {
+   "blockButton__resetPassword": "Weka upya nenosiri lako",
+   "label__alternativeMethods": "Au, ingia kwa njia nyingine",
+   "title": "Umesahau nenosiri?"
+  },
+  "newDeviceVerificationNotice": "Unaingia kutoka kwenye kifaa kipya. Tunaomba uthibitisho ili kulinda akaunti yako.",
+  "noAvailableMethods": {
+   "message": "Haiwezekani kuendelea kuingia. Hakuna njia ya uthibitisho inayopatikana.",
+   "subtitle": "Hitilafu imetokea",
+   "title": "Haiwezekani kuingia"
+  },
+  "passkey": {
+   "subtitle": "Kutumia passkey yako kunathibitisha kuwa ni wewe. Kifaa chako kinaweza kuomba alama ya kidole, uso au kufuli ya skrini.",
+   "title": "Tumia passkey yako"
+  },
+  "password": {
+   "actionLink": "Tumia njia nyingine",
+   "subtitle": "Weka nenosiri linalohusishwa na akaunti yako",
+   "title": "Weka nenosiri lako"
+  },
+  "passwordCompromised": {
+   "title": "Nenosiri limevuja"
+  },
+  "passwordPwned": {
+   "title": "Nenosiri limevuja"
+  },
+  "passwordUntrusted": {
+   "title": "Nenosiri haliaminiki"
+  },
+  "phoneCode": {
+   "formTitle": "Msimbo wa uthibitisho",
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "title": "Angalia simu yako"
+  },
+  "phoneCodeMfa": {
+   "formTitle": "Msimbo wa uthibitisho",
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "Ili kuendelea, tafadhali weka msimbo wa uthibitisho uliotumwa kwenye simu yako",
+   "title": "Angalia simu yako"
+  },
+  "protectCheck": {
+   "loading": "Inapakia…",
+   "retryButton": "Jaribu tena",
+   "subtitle": "Tafadhali subiri tunapothibitisha ombi lako.",
+   "title": "Inathibitisha ombi lako"
+  },
+  "resetPassword": {
+   "formButtonPrimary": "Weka upya nenosiri",
+   "requiredMessage": "Kwa sababu za usalama, unahitajika kuweka upya nenosiri lako.",
+   "successMessage": "Nenosiri lako limebadilishwa kwa mafanikio. Tunakuingiza, tafadhali subiri kidogo.",
+   "title": "Weka nenosiri jipya"
+  },
+  "resetPasswordMfa": {
+   "detailsLabel": "Tunahitaji kuthibitisha utambulisho wako kabla ya kuweka upya nenosiri lako."
+  },
+  "ssoBypass": {
+   "actionLink": "Huwezi kutumia SSO?",
+   "code": {
+    "resendButton": "Hukupokea msimbo? Tuma tena",
+    "subtitle": "ili kuendelea kwenye {{applicationName}}",
+    "title": "Angalia barua pepe yako"
+   },
+   "notice": "Shirika lako linahitaji SSO. Kuendelea bila SSO kunarekodiwa."
+  },
+  "start": {
+   "actionLink": "Jisajili",
+   "actionLink__join_waitlist": "Jiunge na orodha ya kusubiri",
+   "actionLink__use_email": "Tumia barua pepe",
+   "actionLink__use_email_username": "Tumia barua pepe au jina la mtumiaji",
+   "actionLink__use_passkey": "Tumia passkey badala yake",
+   "actionLink__use_phone": "Tumia simu",
+   "actionLink__use_username": "Tumia jina la mtumiaji",
+   "actionText": "Huna akaunti?",
+   "actionText__join_waitlist": "Unataka ufikiaji wa mapema?",
+   "alternativePhoneCodeProvider": {
+    "actionLink": "Tumia njia nyingine",
+    "label": "Namba ya simu ya {{provider}}",
+    "subtitle": "Weka namba yako ya simu ili upate msimbo wa uthibitisho kwenye {{provider}}.",
+    "title": "Ingia kwenye {{applicationName}} ukitumia {{provider}}"
+   },
+   "subtitle": "Karibu tena! Tafadhali ingia ili kuendelea",
+   "title": "Ingia kwenye {{applicationName}}",
+   "titleCombined": "Endelea kwenye {{applicationName}}"
+  },
+  "totpMfa": {
+   "formTitle": "Msimbo wa uthibitisho",
+   "subtitle": "Ili kuendelea, tafadhali weka msimbo wa uthibitisho unaozalishwa na programu yako ya uthibitishaji",
+   "title": "Uthibitisho wa hatua mbili"
+  },
+  "web3Solana": {
+   "subtitle": "Chagua pochi hapa chini ili kuingia",
+   "title": "Ingia ukitumia Solana"
+  }
+ },
+ "signInEnterPasswordTitle": "Weka nenosiri lako",
+ "signUp": {
+  "alternativePhoneCodeProvider": {
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "Weka msimbo wa uthibitisho uliotumwa kwenye {{provider}} yako",
+   "title": "Thibitisha {{provider}} yako"
+  },
+  "continue": {
+   "actionLink": "Ingia",
+   "actionText": "Tayari una akaunti?",
+   "subtitle": "Tafadhali jaza taarifa zilizobaki ili kuendelea.",
+   "title": "Jaza sehemu zinazokosekana"
+  },
+  "emailCode": {
+   "formSubtitle": "Weka msimbo wa uthibitisho uliotumwa kwenye anwani yako ya barua pepe",
+   "formTitle": "Msimbo wa uthibitisho",
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "Weka msimbo wa uthibitisho uliotumwa kwenye barua pepe yako",
+   "title": "Thibitisha barua pepe yako"
+  },
+  "emailLink": {
+   "clientMismatch": {
+    "subtitle": "Ili kuendelea, fungua kiungo cha uthibitisho kwenye kifaa na kivinjari ulichoanzishia kujisajili",
+    "title": "Kiungo cha uthibitisho si sahihi kwenye kifaa hiki"
+   },
+   "formSubtitle": "Tumia kiungo cha uthibitisho kilichotumwa kwenye anwani yako ya barua pepe",
+   "formTitle": "Kiungo cha uthibitisho",
+   "loading": {
+    "title": "Inajisajili..."
+   },
+   "resendButton": "Hukupokea kiungo? Tuma tena",
+   "subtitle": "ili kuendelea kwenye {{applicationName}}",
+   "title": "Thibitisha barua pepe yako",
+   "verified": {
+    "title": "Umejisajili kwa mafanikio"
+   },
+   "verifiedSwitchTab": {
+    "subtitle": "Rudi kwenye kichupo kipya kilichofunguliwa ili kuendelea",
+    "subtitleNewTab": "Rudi kwenye kichupo cha awali ili kuendelea",
+    "title": "Barua pepe imethibitishwa kwa mafanikio"
+   }
+  },
+  "enterpriseConnections": {
+   "subtitle": "Chagua akaunti ya kampuni ili kuendelea.",
+   "title": "Chagua akaunti"
+  },
+  "legalConsent": {
+   "checkbox": {
+    "label__onlyPrivacyPolicy": "Nakubali {{ privacyPolicyLink || link(\"Sera ya Faragha\") }}",
+    "label__onlyTermsOfService": "Nakubali {{ termsOfServiceLink || link(\"Masharti ya Huduma\") }}",
+    "label__termsOfServiceAndPrivacyPolicy": "Nakubali {{ termsOfServiceLink || link(\"Masharti ya Huduma\") }} na {{ privacyPolicyLink || link(\"Sera ya Faragha\") }}"
+   },
+   "continue": {
+    "subtitle": "Tafadhali soma na ukubali masharti ili kuendelea",
+    "title": "Ridhaa ya kisheria"
+   }
+  },
+  "phoneCode": {
+   "formSubtitle": "Weka msimbo wa uthibitisho uliotumwa kwenye namba yako ya simu",
+   "formTitle": "Msimbo wa uthibitisho",
+   "resendButton": "Hukupokea msimbo? Tuma tena",
+   "subtitle": "Weka msimbo wa uthibitisho uliotumwa kwenye simu yako",
+   "title": "Thibitisha simu yako"
+  },
+  "protectCheck": {
+   "loading": "Inapakia…",
+   "retryButton": "Jaribu tena",
+   "subtitle": "Tafadhali subiri tunapothibitisha ombi lako.",
+   "title": "Inathibitisha ombi lako"
+  },
+  "restrictedAccess": {
+   "actionLink": "Ingia",
+   "actionText": "Tayari una akaunti?",
+   "blockButton__emailSupport": "Tuma barua pepe kwa usaidizi",
+   "blockButton__joinWaitlist": "Jiunge na orodha ya kusubiri",
+   "subtitle": "Usajili umezimwa kwa sasa. Ukiamini unapaswa kuwa na ufikiaji, tafadhali wasiliana na usaidizi.",
+   "subtitleWaitlist": "Usajili umezimwa kwa sasa. Ili kuwa wa kwanza kujua tunapozindua, jiunge na orodha ya kusubiri.",
+   "title": "Ufikiaji umezuiwa"
+  },
+  "start": {
+   "actionLink": "Ingia",
+   "actionLink__use_email": "Tumia barua pepe badala yake",
+   "actionLink__use_phone": "Tumia simu badala yake",
+   "actionText": "Tayari una akaunti?",
+   "alternativePhoneCodeProvider": {
+    "actionLink": "Tumia njia nyingine",
+    "label": "Namba ya simu ya {{provider}}",
+    "subtitle": "Weka namba yako ya simu ili upate msimbo wa uthibitisho kwenye {{provider}}.",
+    "title": "Jisajili kwenye {{applicationName}} ukitumia {{provider}}"
+   },
+   "subtitle": "Karibu! Tafadhali jaza taarifa ili kuanza.",
+   "subtitleCombined": "Karibu! Tafadhali jaza taarifa ili kuanza.",
+   "title": "Unda akaunti yako",
+   "titleCombined": "Unda akaunti yako"
+  },
+  "web3Solana": {
+   "subtitle": "Chagua pochi hapa chini ili kujisajili",
+   "title": "Jisajili ukitumia Solana"
+  }
+ },
+ "socialButtonsBlockButton": "Endelea kwa {{provider|titleize}}",
+ "socialButtonsBlockButtonManyInView": "{{provider|titleize}}",
+ "unstable__errors": {
+  "action_blocked": "Kitendo hiki hakikukamilika. Tafadhali jaribu tena baadaye, au wasiliana na usaidizi ikiwa tatizo litaendelea.",
+  "already_a_member_in_organization": "{{email}} tayari ni mwanachama wa shirika.",
+  "api_key_name_already_exists": "Jina la ufunguo wa API tayari lipo.",
+  "api_key_usage_exceeded": "Umefikia kikomo chako cha matumizi. Unaweza kuondoa kikomo kwa kuhamia mpango wa kulipia.",
+  "avatar_file_size_exceeded": "Ukubwa wa faili unazidi kikomo cha 10MB. Tafadhali chagua faili dogo zaidi.",
+  "avatar_file_type_invalid": "Aina ya faili haitumiki. Tafadhali pakia picha ya JPG, PNG, GIF au WEBP.",
+  "captcha_unavailable": "Usajili haukufanikiwa kwa sababu uthibitisho wa roboti haukupita. Tafadhali onyesha upya ukurasa ujaribu tena, au wasiliana na usaidizi kwa msaada zaidi.",
+  "form_new_password_matches_current": "Nenosiri jipya haliwezi kuwa sawa na nenosiri la sasa.",
+  "form_password_length_too_short": "Nenosiri lako ni fupi mno. Lazima liwe na herufi 8 angalau.",
+  "form_password_matches_identifier": "Nenosiri haliwezi kufanana na anwani yako ya barua pepe, namba ya simu au jina la mtumiaji. Kwa usalama wa akaunti, tafadhali tumia nenosiri tofauti.",
+  "form_password_not_strong_enough": "Nenosiri lako si imara vya kutosha.",
+  "form_password_pwned": "Nenosiri hili limepatikana kwenye uvunjaji wa usalama na haliwezi kutumika. Tafadhali jaribu nenosiri lingine.",
+  "form_password_pwned__sign_in": "Nenosiri hili limepatikana kwenye uvunjaji wa usalama na haliwezi kutumika. Tafadhali weka upya nenosiri lako.",
+  "form_password_untrusted__sign_in": "Nenosiri lako huenda limevuja. Ili kulinda akaunti yako, tafadhali endelea kwa njia nyingine ya kuingia. Utahitaji kuweka upya nenosiri lako baada ya kuingia.",
+  "form_username_invalid_length": "Jina lako la mtumiaji lazima liwe na herufi kati ya {{min_length}} na {{max_length}}.",
+  "form_username_needs_non_number_char": "Jina lako la mtumiaji lazima liwe na angalau herufi moja isiyo namba.",
+  "insufficient_seats_change_plan": "Shirika lako halina nafasi za kutosha kualika idadi ya wanachama unaotaka. Tafadhali hamia kwenye mpango unaoruhusu idadi ya wanachama unaojaribu kuwaalika.",
+  "insufficient_seats_contact_support": "Shirika lako halina nafasi za kutosha kualika idadi ya wanachama unaotaka. Tafadhali wasiliana na usaidizi.",
+  "oauth_access_denied": "Hukutoa ruhusa ya kufikia akaunti yako.",
+  "organization_membership_quota_exceeded": "Umefikia kikomo cha uanachama wa mashirika, ikiwemo mialiko inayosubiri.",
+  "organization_not_found_or_unauthorized": "Huna tena uanachama wa shirika hili. Tafadhali chagua au unda shirika jingine.",
+  "organization_not_found_or_unauthorized_with_create_organization_disabled": "Huna tena uanachama wa shirika hili. Tafadhali chagua jingine.",
+  "passkey_already_exists": "Passkey tayari imesajiliwa kwenye kifaa hiki.",
+  "passkey_not_supported": "Passkey hazitumiki kwenye kifaa hiki.",
+  "passkey_pa_not_supported": "Usajili unahitaji authenticator ya kifaa, lakini kifaa hiki hakiungi mkono hilo.",
+  "passkey_registration_cancelled": "Usajili wa passkey umeghairiwa au umeisha muda.",
+  "passkey_retrieval_cancelled": "Uthibitisho wa passkey umeghairiwa au umeisha muda.",
+  "passwordComplexity": {
+   "maximumLength": "chini ya herufi {{length}}",
+   "minimumLength": "herufi {{length}} au zaidi",
+   "requireLowercase": "herufi ndogo",
+   "requireNumbers": "namba",
+   "requireSpecialCharacter": "alama maalum",
+   "requireUppercase": "herufi kubwa",
+   "sentencePrefix": "Nenosiri lako lazima liwe na"
+  },
+  "protect_check_execution_failed": "Uthibitisho haukukamilika. Tafadhali jaribu tena.",
+  "protect_check_invalid_script": "Imeshindwa kupakia uthibitisho. Tafadhali wasiliana na usaidizi ikiwa tatizo litaendelea.",
+  "protect_check_invalid_sdk_url": "Uthibitisho haukuweza kuanza. Tafadhali wasiliana na usaidizi.",
+  "protect_check_required": "Kuingia huku kunahitaji hatua ya ziada ya uthibitisho ambayo haiwezi kuonyeshwa hapa. Tafadhali jaribu tena au tumia njia nyingine ya kuingia.",
+  "protect_check_script_load_failed": "Imeshindwa kupakia uthibitisho. Hii inaweza kusababishwa na tatizo la mtandao, au Content Security Policy inayozuia hati ya uthibitisho. Tafadhali jaribu tena au wasiliana na usaidizi.",
+  "protect_check_timed_out": "Uthibitisho haukukamilika kwa wakati. Tafadhali jaribu tena.",
+  "protect_check_unsupported_environment": "Uthibitisho haupatikani kwenye mazingira haya. Tafadhali endelea kwenye kivinjari cha kawaida au wasiliana na usaidizi.",
+  "sso_bypass_domain_not_served": "Mwanachama huyu hakuweza kuongezwa kwa sababu anwani yake ya barua pepe haihudumiwi na muunganisho wowote.",
+  "ticket_expired_code": "Kiungo hiki kimeisha muda. Tafadhali anza upya au omba kiungo kipya.",
+  "ticket_invalid_code": "Kiungo hiki si halali tena au kimeshatumika. Tafadhali anza upya au omba kiungo kipya.",
+  "too_many_unverified_identifications": "Uthibitisho nyingi unasubiri kwenye akaunti hii. Ondoa anwani ya barua pepe, namba ya simu au pochi ambayo hauihitaji tena, au subiri dakika chache usanidi wa passkey usiokamilika uishe muda, kisha ujaribu tena.",
+  "web3_missing_identifier": "Kiendelezi cha Web3 Wallet hakipatikani. Tafadhali sakinisha kimoja ili kuendelea.",
+  "web3_signature_request_rejected": "Umekataa ombi la sahihi. Tafadhali jaribu tena ili kuendelea.",
+  "web3_solana_signature_generation_failed": "Hitilafu imetokea wakati wa kutengeneza sahihi. Tafadhali jaribu tena ili kuendelea.",
+  "zxcvbn": {
+   "couldBeStronger": "Nenosiri lako linakubalika, lakini linaweza kuwa imara zaidi. Jaribu kuongeza herufi zaidi.",
+   "goodPassword": "Nenosiri lako linakidhi mahitaji yote muhimu.",
+   "notEnough": "Nenosiri lako si imara vya kutosha.",
+   "suggestions": {
+    "allUppercase": "Tumia herufi kubwa kwa baadhi tu, si zote.",
+    "anotherWord": "Ongeza maneno zaidi ambayo si ya kawaida sana.",
+    "associatedYears": "Epuka miaka inayohusiana nawe.",
+    "capitalization": "Tumia herufi kubwa zaidi ya herufi ya kwanza.",
+    "dates": "Epuka tarehe na miaka inayohusiana nawe.",
+    "l33t": "Epuka kubadilisha herufi kwa namna inayotabirika, kama ‘@’ badala ya ‘a’.",
+    "longerKeyboardPattern": "Tumia mifumo mirefu ya kibodi na ubadilishe mwelekeo wa kuandika mara kadhaa.",
+    "noNeed": "Unaweza kutengeneza manenosiri imara bila kutumia alama, namba au herufi kubwa.",
+    "pwned": "Ukitumia nenosiri hili mahali pengine, libadilishe.",
+    "recentYears": "Epuka miaka ya hivi karibuni.",
+    "repeated": "Epuka maneno na herufi zinazojirudia.",
+    "reverseWords": "Epuka maandishi ya nyuma ya maneno ya kawaida.",
+    "sequences": "Epuka mfuatano wa herufi unaojulikana sana.",
+    "useWords": "Tumia maneno kadhaa, lakini epuka misemo ya kawaida."
+   },
+   "warnings": {
+    "common": "Hili ni nenosiri linalotumiwa sana.",
+    "commonNames": "Majina ya kawaida ni rahisi kukisia.",
+    "dates": "Tarehe ni rahisi kukisia.",
+    "extendedRepeat": "Mifumo ya herufi inayojirudia, kama “abcabcabc”, ni rahisi kukisia.",
+    "keyPattern": "Mifumo mifupi ya kibodi ni rahisi kukisia.",
+    "namesByThemselves": "Jina moja au jina la ukoo peke yake ni rahisi kukisia.",
+    "pwned": "Nenosiri lako lilifichuliwa na uvunjaji wa data mtandaoni.",
+    "recentYears": "Miaka ya hivi karibuni ni rahisi kukisia.",
+    "sequences": "Mfuatano wa kawaida wa herufi, kama “abc”, ni rahisi kukisia.",
+    "similarToCommon": "Hili linafanana na nenosiri linalotumiwa sana.",
+    "simpleRepeat": "Herufi zinazojirudia, kama “aaa”, ni rahisi kukisia.",
+    "straightRow": "Safu nyoofu za herufi kwenye kibodi ni rahisi kukisia.",
+    "topHundred": "Hili ni nenosiri linalotumiwa mara nyingi.",
+    "topTen": "Hili ni nenosiri linalotumiwa mno.",
+    "userInputs": "Haipaswi kuwa na taarifa binafsi au taarifa za ukurasa huu.",
+    "wordByItself": "Neno peke yake ni rahisi kukisia."
+   }
+  }
+ },
+ "userButton": {
+  "action__addAccount": "Ongeza akaunti",
+  "action__closeUserMenu": "Funga menyu ya mtumiaji",
+  "action__manageAccount": "Simamia akaunti",
+  "action__openUserMenu": "Fungua menyu ya mtumiaji",
+  "action__signOut": "Ondoka",
+  "action__signOutAll": "Ondoka kwenye akaunti zote",
+  "label__accountActions": "Vitendo vya akaunti",
+  "label__activeSessions": "Vipindi vinavyotumika",
+  "label__userButtonPopover": "Paneli ya akaunti"
+ },
+ "userProfile": {
+  "apiKeysPage": {
+   "title": "Funguo za API"
+  },
+  "backupCodePage": {
+   "actionLabel__copied": "Imenakiliwa!",
+   "actionLabel__copy": "Nakili zote",
+   "actionLabel__download": "Pakua .txt",
+   "actionLabel__print": "Chapisha",
+   "infoText1": "Misimbo ya akiba itawezeshwa kwenye akaunti hii.",
+   "infoText2": "Weka misimbo ya akiba siri na uihifadhi salama. Unaweza kuzalisha upya misimbo ya akiba ukihisi imevuja.",
+   "subtitle__codelist": "Ihifadhi salama na uiweke siri.",
+   "successMessage": "Misimbo ya akiba sasa imewezeshwa. Unaweza kutumia mojawapo kuingia kwenye akaunti yako ikiwa utapoteza kifaa chako cha uthibitisho. Kila msimbo unaweza kutumika mara moja tu.",
+   "successSubtitle": "Unaweza kutumia mojawapo kuingia kwenye akaunti yako ikiwa utapoteza kifaa chako cha uthibitisho.",
+   "title": "Ongeza uthibitisho wa msimbo wa akiba",
+   "title__codelist": "Misimbo ya akiba"
+  },
+  "billingPage": {
+   "accountCreditsSection": {
+    "title": "Salio la akaunti",
+    "viewHistory": "Tazama historia ya salio"
+   },
+   "creditHistoryPage": {
+    "tableHeader__amount": "Kiasi",
+    "tableHeader__date": "Tarehe",
+    "title": "Historia ya salio la akaunti"
+   },
+   "paymentHistorySection": {
+    "empty": "Hakuna historia ya malipo",
+    "notFound": "Jaribio la malipo halikupatikana",
+    "tableHeader__amount": "Kiasi",
+    "tableHeader__date": "Tarehe",
+    "tableHeader__status": "Hali"
+   },
+   "paymentMethodsSection": {
+    "actionLabel__default": "Weka kuwa chaguo-msingi",
+    "actionLabel__remove": "Ondoa",
+    "add": "Ongeza njia mpya ya malipo",
+    "addSubtitle": "Ongeza njia mpya ya malipo kwenye akaunti yako.",
+    "cancelButton": "Ghairi",
+    "formButtonPrimary__add": "Ongeza njia ya malipo",
+    "formButtonPrimary__pay": "Lipa {{amount}}",
+    "payWithTestCardButton": "Lipa kwa kadi ya majaribio",
+    "removeMethod": {
+     "messageLine1": "{{identifier}} itaondolewa kwenye akaunti hii.",
+     "messageLine2": "Hutaweza tena kutumia chanzo hiki cha malipo, na usajili wowote wa kurudia unaokitegemea hautafanya kazi tena.",
+     "successMessage": "{{paymentMethod}} imeondolewa kwenye akaunti yako.",
+     "title": "Ondoa njia ya malipo"
+    },
+    "title": "Njia za malipo"
+   },
+   "start": {
+    "headerTitle__payments": "Malipo",
+    "headerTitle__plans": "Mipango",
+    "headerTitle__statements": "Taarifa",
+    "headerTitle__subscriptions": "Usajili"
+   },
+   "statementsSection": {
+    "empty": "Hakuna taarifa za kuonyesha",
+    "itemCaption__paidForPlan": "Imelipwa kwa mpango wa {{plan}} {{period}}",
+    "itemCaption__payerCredit": "Salio kutoka kwenye akaunti yako",
+    "itemCaption__proratedCredit": "Salio kwa matumizi ya sehemu ya usajili uliopita",
+    "itemCaption__subscribedAndPaidForPlan": "Umejisajili na kulipia mpango wa {{plan}} {{period}}",
+    "notFound": "Taarifa haikupatikana",
+    "tableHeader__amount": "Kiasi",
+    "tableHeader__date": "Tarehe",
+    "title": "Taarifa",
+    "totalPaid": "Jumla iliyolipwa"
+   },
+   "subscriptionsListSection": {
+    "actionLabel__manageSubscription": "Simamia",
+    "actionLabel__newSubscription": "Jisajili kwenye mpango",
+    "actionLabel__switchPlan": "Badili mipango",
+    "overview": "Muhtasari",
+    "tableHeader__edit": "Hariri",
+    "tableHeader__plan": "Mpango",
+    "tableHeader__startDate": "Tarehe ya kuanza",
+    "title": "Usajili"
+   },
+   "subscriptionsSection": {
+    "actionLabel__default": "Simamia"
+   },
+   "switchPlansSection": {
+    "title": "Badili mipango"
+   },
+   "title": "Malipo"
+  },
+  "connectedAccountPage": {
+   "formHint": "Chagua mtoa huduma ili kuunganisha akaunti yako.",
+   "formHint__noAccounts": "Hakuna watoa huduma wa akaunti za nje wanaopatikana.",
+   "removeResource": {
+    "messageLine1": "{{identifier}} itaondolewa kwenye akaunti hii.",
+    "messageLine2": "Hutaweza tena kutumia akaunti hii iliyounganishwa, na vipengele vyovyote vinavyoitegemea vitaacha kufanya kazi.",
+    "successMessage": "{{connectedAccount}} imeondolewa kwenye akaunti yako.",
+    "title": "Ondoa akaunti iliyounganishwa"
+   },
+   "socialButtonsBlockButton": "{{provider|titleize}}",
+   "successMessage": "Mtoa huduma ameongezwa kwenye akaunti yako",
+   "title": "Ongeza akaunti iliyounganishwa"
+  },
+  "deletePage": {
+   "actionDescription": "Andika “Futa akaunti” hapa chini ili kuendelea.",
+   "confirm": "Futa akaunti",
+   "messageLine1": "Una uhakika unataka kufuta akaunti yako? Baadhi ya data husika zinaweza kubaki. Ili kuomba ufutaji kamili wa data, tafadhali wasiliana na usaidizi.",
+   "messageLine2": "Kitendo hiki ni cha kudumu na hakiwezi kurejeshwa.",
+   "title": "Futa akaunti"
+  },
+  "emailAddressPage": {
+   "emailCode": {
+    "formHint": "Barua pepe yenye msimbo wa uthibitisho itatumwa kwenye anwani hii ya barua pepe.",
+    "formSubtitle": "Weka msimbo wa uthibitisho uliotumwa kwa {{identifier}}",
+    "formTitle": "Msimbo wa uthibitisho",
+    "resendButton": "Hukupokea msimbo? Tuma tena",
+    "successMessage": "Barua pepe {{identifier}} imeongezwa kwenye akaunti yako."
+   },
+   "emailLink": {
+    "formHint": "Barua pepe yenye kiungo cha uthibitisho itatumwa kwenye anwani hii ya barua pepe.",
+    "formSubtitle": "Bofya kiungo cha uthibitisho kwenye barua pepe iliyotumwa kwa {{identifier}}",
+    "formTitle": "Kiungo cha uthibitisho",
+    "resendButton": "Hukupokea kiungo? Tuma tena",
+    "successMessage": "Barua pepe {{identifier}} imeongezwa kwenye akaunti yako."
+   },
+   "enterpriseSSOLink": {
+    "formButton": "Bofya ili kuingia",
+    "formSubtitle": "Kamilisha kuingia ukitumia {{identifier}}"
+   },
+   "formHint": "Utahitaji kuthibitisha anwani hii ya barua pepe kabla ya kuongezwa kwenye akaunti yako.",
+   "removeResource": {
+    "messageLine1": "{{identifier}} itaondolewa kwenye akaunti hii.",
+    "messageLine2": "Hutaweza tena kuingia ukitumia anwani hii ya barua pepe.",
+    "successMessage": "{{emailAddress}} imeondolewa kwenye akaunti yako.",
+    "title": "Ondoa anwani ya barua pepe"
+   },
+   "title": "Ongeza anwani ya barua pepe",
+   "verifyTitle": "Thibitisha anwani ya barua pepe"
+  },
+  "formButtonPrimary__add": "Ongeza",
+  "formButtonPrimary__continue": "Endelea",
+  "formButtonPrimary__finish": "Maliza",
+  "formButtonPrimary__remove": "Ondoa",
+  "formButtonPrimary__save": "Hifadhi",
+  "formButtonReset": "Ghairi",
+  "mfaPage": {
+   "formHint": "Chagua njia ya kuongeza.",
+   "title": "Ongeza uthibitisho wa hatua mbili"
+  },
+  "mfaPhoneCodePage": {
+   "backButton": "Tumia namba iliyopo",
+   "primaryButton__addPhoneNumber": "Ongeza namba ya simu",
+   "removeResource": {
+    "messageLine1": "{{identifier}} haitapokea tena misimbo ya uthibitisho wakati wa kuingia.",
+    "messageLine2": "Akaunti yako huenda isiwe salama kama awali. Je, una uhakika unataka kuendelea?",
+    "successMessage": "Uthibitisho wa hatua mbili wa msimbo wa SMS umeondolewa kwa {{mfaPhoneCode}}",
+    "title": "Ondoa uthibitisho wa hatua mbili"
+   },
+   "subtitle__availablePhoneNumbers": "Chagua namba ya simu iliyopo ili ujisajili kwa uthibitisho wa msimbo wa SMS, au ongeza mpya.",
+   "subtitle__unavailablePhoneNumbers": "Hakuna namba za simu zinazopatikana za kujisajili kwa uthibitisho wa msimbo wa SMS. Tafadhali ongeza mpya.",
+   "successMessage1": "Unapoingia, utahitaji kuweka msimbo wa uthibitisho uliotumwa kwenye namba hii ya simu kama hatua ya ziada.",
+   "successMessage2": "Hifadhi misimbo hii ya akiba mahali salama. Ukipoteza ufikiaji wa kifaa chako cha uthibitisho, unaweza kutumia misimbo ya akiba kuingia.",
+   "successTitle": "Uthibitisho wa msimbo wa SMS umewezeshwa",
+   "title": "Ongeza uthibitisho wa msimbo wa SMS"
+  },
+  "mfaTOTPPage": {
+   "authenticatorApp": {
+    "buttonAbleToScan__nonPrimary": "Skani msimbo wa QR badala yake",
+    "buttonUnableToScan__nonPrimary": "Huwezi kuskani msimbo wa QR?",
+    "infoText__ableToScan": "Weka njia mpya ya kuingia kwenye programu yako ya uthibitishaji, kisha skani msimbo wa QR ufuatao ili kuiunganisha na akaunti yako.",
+    "infoText__unableToScan": "Weka njia mpya ya kuingia kwenye programu yako ya uthibitishaji, kisha weka ufunguo ulio hapa chini.",
+    "inputLabel__unableToScan1": "Hakikisha Time-based au One-time passwords zimewezeshwa, kisha kamilisha kuunganisha akaunti yako.",
+    "inputLabel__unableToScan2": "Vinginevyo, ikiwa programu yako inaunga mkono TOTP URI, unaweza pia kunakili URI kamili."
+   },
+   "removeResource": {
+    "messageLine1": "Misimbo ya uthibitisho kutoka kwenye programu hii haitahitajika tena wakati wa kuingia.",
+    "messageLine2": "Akaunti yako huenda isiwe salama kama awali. Je, una uhakika unataka kuendelea?",
+    "successMessage": "Uthibitisho wa hatua mbili kupitia programu ya uthibitishaji umeondolewa.",
+    "title": "Ondoa uthibitisho wa hatua mbili"
+   },
+   "successMessage": "Uthibitisho wa hatua mbili sasa umewezeshwa. Unapoingia, utahitaji kuweka msimbo wa uthibitisho kutoka kwenye programu hii kama hatua ya ziada.",
+   "title": "Ongeza programu ya uthibitishaji",
+   "verifySubtitle": "Weka msimbo wa uthibitisho unaozalishwa na programu yako ya uthibitishaji",
+   "verifyTitle": "Msimbo wa uthibitisho"
+  },
+  "mobileButton__menu": "Menyu",
+  "navbar": {
+   "account": "Wasifu",
+   "apiKeys": "Funguo za API",
+   "billing": "Malipo",
+   "description": "Simamia taarifa za akaunti yako.",
+   "security": "Usalama",
+   "title": "Akaunti"
+  },
+  "passkeyScreen": {
+   "removeResource": {
+    "messageLine1": "{{name}} itaondolewa kwenye akaunti hii.",
+    "title": "Ondoa passkey"
+   },
+   "subtitle__rename": "Unaweza kubadilisha jina la passkey ili iwe rahisi kuipata.",
+   "title__rename": "Badili jina la passkey"
+  },
+  "passwordPage": {
+   "checkboxInfoText__signOutOfOtherSessions": "Inapendekezwa kuondoka kwenye vifaa vyote vingine ambavyo huenda vilitumia nenosiri lako la zamani.",
+   "readonly": "Nenosiri lako haliwezi kuhaririwa kwa sasa kwa sababu unaweza kuingia tu kupitia muunganisho wa kampuni.",
+   "successMessage__set": "Nenosiri lako limewekwa.",
+   "successMessage__signOutOfOtherSessions": "Vifaa vyote vingine vimetolewa kwenye akaunti.",
+   "successMessage__update": "Nenosiri lako limesasishwa.",
+   "title__set": "Weka nenosiri",
+   "title__update": "Sasisha nenosiri"
+  },
+  "phoneNumberPage": {
+   "infoText": "Ujumbe mfupi wenye msimbo wa uthibitisho utatumwa kwenye namba hii ya simu. Gharama za ujumbe na data zinaweza kutumika.",
+   "removeResource": {
+    "messageLine1": "{{identifier}} itaondolewa kwenye akaunti hii.",
+    "messageLine2": "Hutaweza tena kuingia ukitumia namba hii ya simu.",
+    "successMessage": "{{phoneNumber}} imeondolewa kwenye akaunti yako.",
+    "title": "Ondoa namba ya simu"
+   },
+   "successMessage": "{{identifier}} imeongezwa kwenye akaunti yako.",
+   "title": "Ongeza namba ya simu",
+   "verifySubtitle": "Weka msimbo wa uthibitisho uliotumwa kwa {{identifier}}",
+   "verifyTitle": "Thibitisha namba ya simu"
+  },
+  "plansPage": {
+   "title": "Mipango"
+  },
+  "profilePage": {
+   "fileDropAreaHint": "Ukubwa unaopendekezwa ni 1:1, hadi 10MB.",
+   "imageFormDestructiveActionSubtitle": "Ondoa",
+   "imageFormSubtitle": "Pakia",
+   "imageFormTitle": "Picha ya wasifu",
+   "readonly": "Taarifa zako za wasifu zimetolewa na muunganisho wa kampuni na haziwezi kuhaririwa.",
+   "successMessage": "Wasifu wako umesasishwa.",
+   "title": "Sasisha wasifu"
+  },
+  "start": {
+   "activeDevicesSection": {
+    "destructiveAction": "Ondoka kwenye kifaa",
+    "title": "Vifaa vinavyotumika"
+   },
+   "connectedAccountsSection": {
+    "actionLabel__connectionFailed": "Unganisha tena",
+    "actionLabel__reauthorize": "Idhinisha sasa",
+    "destructiveActionTitle": "Ondoa",
+    "primaryButton": "Unganisha akaunti",
+    "subtitle__disconnected": "Akaunti hii imekatwa.",
+    "subtitle__reauthorize": "Ruhusa zinazohitajika zimesasishwa, na huenda usiweze kutumia vipengele vyote. Tafadhali idhinisha programu hii tena ili kuepuka matatizo yoyote.",
+    "title": "Akaunti zilizounganishwa"
+   },
+   "dangerSection": {
+    "deleteAccountButton": "Futa akaunti",
+    "title": "Futa akaunti"
+   },
+   "emailAddressesSection": {
+    "destructiveAction": "Ondoa barua pepe",
+    "detailsAction__nonPrimary": "Weka kuwa kuu",
+    "detailsAction__primary": "Kamilisha uthibitisho",
+    "detailsAction__unverified": "Thibitisha",
+    "primaryButton": "Ongeza anwani ya barua pepe",
+    "title": "Anwani za barua pepe"
+   },
+   "enterpriseAccountsSection": {
+    "primaryButton": "Unganisha akaunti",
+    "title": "Akaunti za kampuni"
+   },
+   "headerTitle__account": "Maelezo ya wasifu",
+   "headerTitle__security": "Usalama",
+   "mfaSection": {
+    "backupCodes": {
+     "actionLabel__regenerate": "Zalisha upya",
+     "headerTitle": "Misimbo ya akiba",
+     "subtitle__regenerate": "Pata seti mpya ya misimbo salama ya akiba. Misimbo ya zamani itafutwa na haitaweza kutumika tena.",
+     "title__regenerate": "Zalisha upya misimbo ya akiba"
+    },
+    "phoneCode": {
+     "actionLabel__setDefault": "Weka kuwa chaguo-msingi",
+     "destructiveActionLabel": "Ondoa"
+    },
+    "primaryButton": "Ongeza uthibitisho wa hatua mbili",
+    "title": "Uthibitisho wa hatua mbili",
+    "totp": {
+     "destructiveActionTitle": "Ondoa",
+     "headerTitle": "Programu ya uthibitishaji"
+    }
+   },
+   "passkeysSection": {
+    "menuAction__destructive": "Ondoa",
+    "menuAction__rename": "Badili jina",
+    "primaryButton": "Ongeza passkey",
+    "title": "Passkeys"
+   },
+   "passwordSection": {
+    "primaryButton__setPassword": "Weka nenosiri",
+    "primaryButton__updatePassword": "Sasisha nenosiri",
+    "title": "Nenosiri"
+   },
+   "phoneNumbersSection": {
+    "destructiveAction": "Ondoa namba ya simu",
+    "detailsAction__nonPrimary": "Weka kuwa kuu",
+    "detailsAction__primary": "Kamilisha uthibitisho",
+    "detailsAction__unverified": "Thibitisha namba ya simu",
+    "primaryButton": "Ongeza namba ya simu",
+    "title": "Namba za simu"
+   },
+   "profileSection": {
+    "primaryButton": "Sasisha wasifu",
+    "title": "Wasifu"
+   },
+   "usernameSection": {
+    "primaryButton__setUsername": "Weka jina la mtumiaji",
+    "primaryButton__updateUsername": "Sasisha jina la mtumiaji",
+    "title": "Jina la mtumiaji"
+   },
+   "web3WalletsSection": {
+    "destructiveAction": "Ondoa pochi",
+    "detailsAction__nonPrimary": "Weka kuwa kuu",
+    "primaryButton": "Unganisha pochi",
+    "title": "Pochi za Web3",
+    "web3SelectSolanaWalletScreen": {
+     "subtitle": "Chagua pochi ya Solana ya kuunganisha kwenye akaunti yako.",
+     "title": "Ongeza pochi ya Solana"
+    }
+   }
+  },
+  "usernamePage": {
+   "successMessage": "Jina lako la mtumiaji limesasishwa.",
+   "title__set": "Weka jina la mtumiaji",
+   "title__update": "Sasisha jina la mtumiaji"
+  },
+  "web3WalletPage": {
+   "removeResource": {
+    "messageLine1": "{{identifier}} itaondolewa kwenye akaunti hii.",
+    "messageLine2": "Hutaweza tena kuingia ukitumia pochi hii ya Web3.",
+    "successMessage": "{{web3Wallet}} imeondolewa kwenye akaunti yako.",
+    "title": "Ondoa pochi ya Web3"
+   },
+   "subtitle__availableWallets": "Chagua pochi ya Web3 ya kuunganisha kwenye akaunti yako.",
+   "subtitle__unavailableWallets": "Hakuna pochi za Web3 zinazopatikana.",
+   "successMessage": "Pochi imeongezwa kwenye akaunti yako.",
+   "title": "Ongeza pochi ya Web3",
+   "web3WalletButtonsBlockButton": "{{provider|titleize}}"
+  }
+ },
+ "web3SolanaWalletButtons": {
+  "connect": "Unganisha na {{walletName}}",
+  "continue": "Endelea na {{walletName}}",
+  "noneAvailable": "Hakuna pochi za Solana Web3 zilizogunduliwa. Tafadhali sakinisha {{ solanaWalletsLink || link(\"kiendelezi cha pochi\") }} kinachotumia Web3."
+ }
+}

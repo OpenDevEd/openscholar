@@ -40,3 +40,8 @@ export function localeToLanguageCode(locale: string): string {
   };
   return map[locale] ?? locale.split("-")[0] ?? "en";
 }
+
+/** Whether a language reads right to left. */
+export function isRightToLeft(locale: string): boolean {
+  return locale === "ar";
+}

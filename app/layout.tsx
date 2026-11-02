@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Ubuntu } from "next/font/google";
 import { DirectionProvider } from "@/components/ui/direction";
+import { isRightToLeft } from "@/lib/i18n/locale-map";
+import { clerkLocalizationFor } from "@/lib/auth/clerk-localization";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { QuerySyncProvider } from "@/components/query-sync-provider";
@@ -92,7 +94,8 @@ export default async function RootLayout({
   const { me, looks } = readCache(requestCookies.get(LOOK_COOKIE)?.value, userId);
   const look = looks[lookKey(slug)];
 
-  const direction = locale === "ar" ? "rtl" : "ltr";
+  const clerkLocalization = await clerkLocalizationFor(locale);
+  const direction = isRightToLeft(locale) ? "rtl" : "ltr";
 
   return (
     <html lang={locale} dir={direction} suppressHydrationWarning className={cn(appFont.variable, "antialiased")}>
@@ -100,7 +103,7 @@ export default async function RootLayout({
         <DirectionProvider dir={direction}>
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
-            <ConvexClientProvider preloadedFlags={preloadedFlags} preloadedCatalog={preloadedCatalog}>
+            <ConvexClientProvider preloadedFlags={preloadedFlags} preloadedCatalog={preloadedCatalog} clerkLocalization={clerkLocalization}>
               <ConfigProvider>
                 <NuqsAdapter>
                   <QuerySyncProvider>
