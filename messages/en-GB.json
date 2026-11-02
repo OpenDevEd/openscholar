@@ -365,6 +365,7 @@
     "intervalYear": "year",
     "creditsAddedTitle": "Credits added",
     "creditsAddedDescription": "{amount} credits have been added to your balance.",
+    "creditsAddedToOrganization": "{amount} credits have been added to {organization}.",
     "paymentReceived": "Payment received. Your plan and credits update as soon as Stripe confirms it.",
     "usage": {
       "empty": "No credits used yet.",

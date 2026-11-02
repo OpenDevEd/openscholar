@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { SeatStepper } from "@/components/billing/seat-stepper";
+import { PaymentReceived, TopUpBundles, useTopUps } from "@/components/billing/top-up-bundles";
 import { UpgradeConfirmationDialog } from "@/components/billing/upgrade-confirmation-dialog";
 import { AnimatedNumber } from "@/components/screening/parts";
 import { DeleteLibraryDialog } from "@/components/evidence-libraries/configuration/delete-library-dialog";
@@ -665,6 +666,7 @@ export function WorkspaceMembers() {
 
 export function WorkspaceBilling() {
   const t = useTranslations("workspaces.settings");
+  const tb = useTranslations("billingPage");
   const format = useFormatter();
   const { workspaceId, organization, admin } = useOrganization();
   const { account, catalog } = useSharedSubscriptionState();
@@ -675,6 +677,7 @@ export function WorkspaceBilling() {
   const previewSeats = useWorkspaceAction(api.billing.actions.previewSeats);
   const changeSeats = useWorkspaceAction(api.billing.actions.changeSeats);
   const keepPlan = useWorkspaceAction(api.billing.actions.keepPlan);
+  const topUps = useTopUps();
   const { busy, attempt } = useAttempt();
   const [picked, setPicked] = useState<number>();
   // Autumn's figure for the seats picked, read before the confirmation opens; the change is for the seats it was read for.
@@ -715,6 +718,7 @@ export function WorkspaceBilling() {
   return (
     <Enter ready>
       <div className="space-y-8">
+        <PaymentReceived />
         {account.pastDue ? (
           // A failed payment, the day the plan ends if it isn't paid, and where to pay it (#40), as a person's billing page has it.
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-2 pl-3 pr-2 text-sm text-destructive">
@@ -735,7 +739,7 @@ export function WorkspaceBilling() {
             ) : null}
           </div>
         ) : null}
-        <section className="grid overflow-hidden rounded-2xl border border-border-subtle @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
+        <section className="grid grid-cols-[minmax(0,1fr)] overflow-hidden rounded-2xl border border-border-subtle @min-[46rem]/configuration:grid-cols-[minmax(0,1fr)_17rem]">
           <div className="space-y-5 p-5">
             <div>
               <p className="text-4xl font-semibold tabular-nums tracking-tight">{format.number(account.balance)}</p>
@@ -759,11 +763,18 @@ export function WorkspaceBilling() {
                 <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                   <div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (fromPlan / cap) * 100)}%` }} />
                 </div>
-                {monthly > 0 && account.renewsAt !== undefined ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Repeat className="size-3.5" /> {t("refillOn", { amount: format.number(monthly), date: date(account.renewsAt) })}
-                  </span>
-                ) : null}
+                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                  {monthly > 0 && account.renewsAt !== undefined ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Repeat className="size-3.5" /> {t("refillOn", { amount: format.number(monthly), date: date(account.renewsAt) })}
+                    </span>
+                  ) : null}
+                  {account.purchased > 0 ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Coins className="size-3.5" /> {tb("bought", { amount: format.number(account.purchased) })}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             ) : null}
           </div>
@@ -834,6 +845,7 @@ export function WorkspaceBilling() {
               )
             ) : null}
           </div>
+          {admin && topUps.bundles.length > 0 ? <TopUpBundles topUps={topUps} row className="col-span-full border-t border-border-subtle" /> : null}
         </section>
 
         <MemberSpending spending={spending} admin={admin} team={team} members={memberCount} />

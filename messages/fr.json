@@ -365,6 +365,7 @@
     "intervalYear": "an",
     "creditsAddedTitle": "Crédits ajoutés",
     "creditsAddedDescription": "{amount} crédits ont été ajoutés à votre solde.",
+    "creditsAddedToOrganization": "{amount} crédits ont été ajoutés à {organization}.",
     "paymentReceived": "Paiement reçu. Votre offre et vos crédits se mettent à jour dès que Stripe le confirme.",
     "usage": {
       "empty": "Aucun crédit utilisé pour l’instant.",

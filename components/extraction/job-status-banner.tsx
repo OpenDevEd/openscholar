@@ -142,7 +142,7 @@ export function JobStatusBanner(props: JobStatusBannerProps) {
           <Button
             size="sm"
             variant={props.allowed === undefined ? "default" : "outline"}
-            onClick={() => router.push("/settings/billing#topup-section")}
+            onClick={() => router.push("/settings/billing")}
           >
             {tc("buyCredits")}
           </Button>
