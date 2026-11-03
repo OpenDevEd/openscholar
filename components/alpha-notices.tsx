@@ -8,11 +8,14 @@ import { FlaskConical, Mail } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { CONTACT_EMAIL } from "@/lib/billing/contact";
 
-/** Across the top of every page, where it stays as the page scrolls. The layout counts its height in `--app-navbar-height`. */
+/**
+ * Across the top of every page, where it stays as the page scrolls. The layout counts its height in `--app-navbar-height`.
+ * Over the pages' sticky headers (z-20) and under the rail (z-40), whose workspace card opens across it.
+ */
 export function AlphaStrip() {
   const t = useTranslations("alpha");
   return (
-    <div className="sticky top-0 z-50 flex h-8 shrink-0 items-center justify-center gap-2 border-b border-warning/25 bg-[color-mix(in_oklab,var(--warning)_14%,var(--background))] px-4 text-xs dark:bg-[color-mix(in_oklab,var(--warning)_30%,var(--background))]">
+    <div className="sticky top-0 z-30 flex h-8 shrink-0 items-center justify-center gap-2 border-b border-warning/25 bg-[color-mix(in_oklab,var(--warning)_14%,var(--background))] px-4 text-xs dark:bg-[color-mix(in_oklab,var(--warning)_30%,var(--background))]">
       <FlaskConical className="size-3.5 shrink-0 ink-warning" />
       <span className="truncate">
         <span className="font-semibold">{t("strip")}</span> <span className="hidden text-muted-foreground sm:inline">{t("stripDetail")}</span>
