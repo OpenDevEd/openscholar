@@ -254,7 +254,8 @@
     "goFeature2": "Query & paper translation",
     "goFeature3": "Server-side AI + your own key",
     "features": {
-      "extraction": "Data extraction"
+      "extraction": "Data extraction",
+      "authors": "Author profiles"
     },
     "proFeature3": "All Go features included",
     "proFeature4": "Priority support",

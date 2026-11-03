@@ -254,7 +254,8 @@
     "goFeature2": "文献和论文翻译",
     "goFeature3": "服务端AI + 您的密钥",
     "features": {
-      "extraction": "数据提取"
+      "extraction": "数据提取",
+      "authors": "作者档案"
     },
     "proFeature3": "包含Go版所有功能",
     "proFeature4": "优先支持",

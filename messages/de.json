@@ -254,7 +254,8 @@
     "goFeature2": "Abfrage- und Artikelübersetzung",
     "goFeature3": "KI auf dem Server + eigener Schlüssel",
     "features": {
-      "extraction": "Datenextraktion"
+      "extraction": "Datenextraktion",
+      "authors": "Autorenprofile"
     },
     "proFeature3": "Alle Go-Funktionen enthalten",
     "proFeature4": "Prioritäts-Support",

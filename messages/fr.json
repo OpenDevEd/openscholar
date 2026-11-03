@@ -254,7 +254,8 @@
     "goFeature2": "Traduction de requêtes et d'articles",
     "goFeature3": "IA côté serveur + votre propre clé",
     "features": {
-      "extraction": "Extraction de données"
+      "extraction": "Extraction de données",
+      "authors": "Profils d'auteur"
     },
     "proFeature3": "Toutes les fonctionnalités Go incluses",
     "proFeature4": "Support prioritaire",

@@ -254,7 +254,8 @@
     "goFeature2": "クエリと論文の翻訳",
     "goFeature3": "サーバーサイドAI + 独自のキー",
     "features": {
-      "extraction": "データ抽出"
+      "extraction": "データ抽出",
+      "authors": "著者プロフィール"
     },
     "proFeature3": "Goの全機能を含む",
     "proFeature4": "優先サポート",

@@ -254,7 +254,8 @@
     "goFeature2": "Ukubuza nokuhumusha amaphepha",
     "goFeature3": "I-AI yesevisi + ukhiye wakho",
     "features": {
-      "extraction": "Ukukhishwa kwedatha"
+      "extraction": "Ukukhishwa kwedatha",
+      "authors": "Iziphrofayili zababhali"
     },
     "proFeature3": "Zonke izici ze-Go zifakiwe",
     "proFeature4": "Usekelo oluphezulu",

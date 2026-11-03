@@ -254,7 +254,8 @@
     "goFeature2": "Hoja na tafsiri ya makala",
     "goFeature3": "AI ya upande wa seva + ufunguo wako",
     "features": {
-      "extraction": "Uchimbaji wa data"
+      "extraction": "Uchimbaji wa data",
+      "authors": "Wasifu wa waandishi"
     },
     "proFeature3": "Vipengele vyote vya Go vimejumuishwa",
     "proFeature4": "Msaada wa kipaumbele",
