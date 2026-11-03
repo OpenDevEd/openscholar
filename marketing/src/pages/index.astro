@@ -5,7 +5,7 @@ import Cards from "../components/Cards.astro";
 import AudienceArt from "../components/AudienceArt.astro";
 import Art from "../components/Art.astro";
 import Workspace from "../components/Workspace.astro";
-import HeroConsole from "../components/HeroConsole.astro";
+import HeroAsk from "../components/HeroAsk.astro";
 import Table from "../components/Table.astro";
 import Faq from "../components/Faq.astro";
 import AskBar from "../components/AskBar.astro";
@@ -28,16 +28,8 @@ const faq = [
   ["Who can see our work?", "Members of an organization see its work. To bring someone in from outside, share a single item with them as a viewer or an editor."],
 ];
 ---
-<Base title="OpenScholar: the evidence workspace for research teams" description="Know what the evidence says before anyone asks you to defend it. Find the literature, screen it against your criteria, extract the data and publish what you learn.">
-  <section class="bleed hero">
-    <Art name="aurora" eager />
-    <div class="inner h-in">
-      <h1>Know what the evidence says before anyone asks you to defend it</h1>
-      <p class="lead">The evidence workspace for research teams. Find the literature, screen it against your criteria, extract the data and publish what you learn.</p>
-      <HeroConsole />
-      <a class="live" href="https://wealth-inequality.openscholar.ai">See a live community<Arrow /></a>
-    </div>
-  </section>
+<Base title="OpenScholar: the evidence workspace for research teams" description="The evidence workspace for research teams. Find the literature, screen it against your criteria, extract the data and publish what you learn.">
+  <HeroAsk />
 
   <section class="tour" id="tour"><div class="t-top"><h2>Every step of the work, on every screen</h2><a class="btn brand" href={APP}>Get started<Arrow /></a></div><Workspace /></section>
 
@@ -103,12 +95,6 @@ const faq = [
   <section class="bleed close"><Art name="dark-ribbon" pos="50% 100%" live /><div class="inner"><h2>Start with your next question</h2><AskBar id="ask-end" /></div></section>
 </Base>
 <style>
-  /* First screen: one big statement over full-width colour, and a console that plays out what happens to your question. */
-  .hero { background: #040b2e; padding-block: clamp(150px, 10.6vw, 176px) clamp(36px, 4vw, 56px); text-align: center; overflow: clip; } .hero::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 10%; width: 1040px; max-width: 100%; height: 42%; translate: -50% 0; background: radial-gradient(closest-side, #040b2e 62%, rgb(4 11 46 / 0)); }
-  .hero > :global(.art) { inset: -9% -30% auto; height: 118%; z-index: -2; animation: dawn 1.6s var(--ease) both; } @keyframes dawn { from { opacity: 0; transform: scale(1.04); } }
-  .h-in { display: grid; justify-items: center; gap: 20px; } .h-in h1 { max-width: 900px; font-size: clamp(38px, 4.2vw, 62px); line-height: 1.03; animation: rise .9s var(--ease) both; } .h-in .lead { max-width: 40em; opacity: .9; animation: rise .9s .08s var(--ease) both; } .h-in :global(.hc) { margin-top: clamp(8px, 1.4vw, 20px); animation: rise 1s .16s var(--ease) both; }
-  .live { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; animation: rise .9s .24s var(--ease) both; } .live :global(i) { display: grid; transition: transform .25s var(--ease); } .live:hover :global(i) { transform: translateX(4px); }
-  @keyframes rise { from { opacity: 0; transform: translateY(22px); } }
   .tour { padding: clamp(40px, 5vw, 72px) var(--pad) clamp(72px, 7vw, 104px); display: grid; gap: 24px; } .t-top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; } .t-top h2 { max-width: 14em; }
   .band { display: grid; gap: 28px; padding: var(--pad); } .b-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
   .stack { grid-template-columns: minmax(0, 1fr); width: min(52%, 600px); } .band :global(.art) { height: 440px; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
@@ -148,7 +134,7 @@ const faq = [
   .p-devices { position: relative; height: 520px; } .p-lap { position: absolute; left: 0; top: 40px; width: 92%; display: block; } .p-devices :global(.p-ph) { position: absolute; right: 7%; bottom: -10px; width: 168px; }
   .close { background: var(--night); padding-block: clamp(64px, 8vw, 112px) max(160px, 28vw); text-align: center; } .close .inner { display: grid; justify-items: center; gap: 24px; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
     @media (max-width: 1000px) { .sieve { padding: 48px 0; background: radial-gradient(ellipse 60% 30% at 80% 10%, rgb(52 211 153 / .22), transparent), #021f18; } .s-wrap { display: none; } .s-head { grid-template-columns: minmax(0, 1fr); margin-bottom: 0; } .s-small { display: grid; gap: 12px; margin-top: 24px; padding-inline: calc(var(--gap) + var(--pad)); } }
-  @media (max-width: 700px) { .tour { padding-inline: 8px; } .hero { padding-top: 176px; } .hero::before { display: none; } .hero > :global(.art) { inset: 0 -50% auto; height: 440px; -webkit-mask-image: linear-gradient(#000 62%, transparent); mask-image: linear-gradient(#000 62%, transparent); } .hero > :global(.art img) { object-position: 50% 0; } }
+  @media (max-width: 700px) { .tour { padding-inline: 8px; } }
   @media (max-width: 900px) { .publish, .t-head { grid-template-columns: minmax(0, 1fr); padding: 0 var(--pad); } .b-head { grid-template-columns: minmax(0, 1fr); } .stack { width: 100%; } .who { padding-inline: 8px; } .teams { grid-template-columns: minmax(0, 1fr); margin-inline: -8px; } .proof { grid-template-columns: minmax(0, 1fr); gap: 14px; } .tie { display: none; } .p-devices { height: 88vw; margin-inline: calc(var(--pad) * -1 + 8px); } .p-lap { width: 94%; top: 0; } .p-devices :global(.p-ph) { width: 30%; right: 6%; bottom: 0; }
     :global(.find) :global(.slab) { position: relative; left: 0; top: 0; width: 100%; margin-bottom: -60%; } :global(.find) :global(.view) { overflow: clip; height: 118vw; margin-inline: calc(var(--pad) * -1 + 8px); padding-inline: 8px; } :global(.find) .over { left: 12px; right: 12px; width: auto; bottom: 16px; } :global(.ask-f) :global(.view) { display: grid; gap: 12px; padding-bottom: 28px; } :global(.ask-f) .asst-panel { position: static; width: 100%; } }
 </style>

@@ -1,0 +1,18 @@
+---
+// The scene pattern: one image fills the screen, with a short statement and nothing else.
+import Arrow from "./Arrow.astro";
+import Art from "./Art.astro";
+import { APP } from "../data/site.mjs";
+---
+<section class="bleed hero">
+  <Art name="aurora" eager pos="50% 0" />
+  <div class="inner in">
+    <h1>Know what the evidence says</h1>
+    <div class="side"><p class="lead">The evidence workspace for research teams, from your first search to your published evidence</p><div class="acts"><a class="btn" href={APP}>Get started<Arrow /></a><a class="btn ghost" href="https://wealth-inequality.openscholar.ai">See a live community</a></div></div>
+  </div>
+</section>
+<style>
+  .hero { display: grid; align-items: end; min-height: 100svh; background: #040b2e; padding-block: 120px clamp(40px, 5vw, 72px); overflow: clip; } .hero > :global(.art) { z-index: -2; }
+  .in { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px 48px; align-items: end; } h1 { font-size: clamp(46px, 6.6vw, 96px); line-height: 1; } .side { display: grid; gap: 18px; justify-items: start; } .acts { display: flex; flex-wrap: wrap; gap: 10px; }
+  @media (max-width: 900px) { .in { grid-template-columns: minmax(0, 1fr); } .hero > :global(.art) { inset: 0 -70% auto; height: 62%; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); } }
+</style>
