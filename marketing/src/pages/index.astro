@@ -32,7 +32,7 @@ const faq = [
 <Base title="OpenScholar: the evidence workspace for research teams" description="The evidence workspace for research teams. Find the literature, screen it against your criteria, extract the data and publish what you learn.">
   <HeroAsk art="slot" look="slot" below="none" />
 
-  <section class="tour" id="tour"><h2>Every step of the work, on every screen</h2><Workspace /></section>
+  <section class="tour" id="tour"><Workspace><h2 aria-label="Every step of the work, on every screen">{"Every step of the work, on every screen".split(" ").map((w, i) => <><span aria-hidden="true" style={`--i:${i}`}>{w}</span>{" "}</>)}</h2></Workspace></section>
 
   <section class="who" id="who"><h2>For anyone whose work has to stand on the evidence</h2>
     <div class="teams">{teams.map(([f, a, sc, img, w, h, t, d, href]) => <a class="panel edge" href={href}><i class={`field f-${f}`} aria-hidden="true"></i><Art name={a} class="card-art" style={`--sc:${sc}`} /><img class:list={["shot", { tall: h > w }]} src={`/img/screens/${img}.avif`} width={w} height={h} loading="lazy" decoding="async" alt="" /><h3>{t}<Arrow /></h3><p>{d}</p></a>)}</div>

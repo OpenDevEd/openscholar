@@ -11,8 +11,10 @@ const tabs = [
 ];
 ---
 <div class="ws-pin"><div class="ws" data-ws data-theme="light" style={`--glow:${tabs[0].color}`}>
+  <slot />
   <div class="stage">
     <i class="bloom" aria-hidden="true"></i>
+    <div class="fan" aria-hidden="true">{tabs.map((t, i) => <img src={`/img/screens/${t.lap}-laptop-light-1000.avif`} width="1000" height="625" loading="lazy" decoding="async" alt="" style={`--c:${t.color};--n:${i - 2};--z:${2 - Math.abs(i - 2)}`} />)}</div>
     {tabs.map((t, i) => <div class:list={["pane", { on: i === 0 }]} id={`ws-p${i}`} role="tabpanel" aria-labelledby={`ws-t${i}`} data-c={t.color}>
       <Device class="tb" kind="tablet" name={t.tab} theme="dark" defer={i > 0} sizes="(max-width: 900px) 20vw, 300px" />
       <Device class="lap" kind="laptop" name={t.lap} theme="both" lazyDark alt={t.alt} defer={i > 0} sizes="(max-width: 900px) 66vw, 1000px" />
@@ -23,7 +25,7 @@ const tabs = [
       <button type="button" class="mode" data-mode aria-label="Switch the laptop between light and dark"><i class="sun"><Icon name="sun" size={16} /></i><i class="moon"><Icon name="moon" size={16} /></i></button>
     </div>
   </div>
-</div></div>
+</div><i class="ws-go" data-ws-go aria-hidden="true"></i></div>
 <script>
   const ws = document.querySelector("[data-ws]");
   if (ws) {
@@ -40,7 +42,10 @@ const tabs = [
     ws.addEventListener("animationend", (e) => { if (e.animationName.includes("fill")) pick((tabs.indexOf(e.target.parentElement) + 1) % tabs.length); });
     tabs.forEach((t, i) => { t.addEventListener("click", () => { ws.classList.add("held"); pick(i); }); t.addEventListener("keydown", (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); pick((i + d + tabs.length) % tabs.length, true); } }); });
     ws.querySelector("[data-mode]").addEventListener("click", () => { want = want === "light" ? "dark" : "light"; const asked = ++asks, theme = want, n = wanted; fill(n); ready(n).then(() => { if (asked === asks) ws.dataset.theme = theme; }); });
-    new IntersectionObserver(([en]) => ws.classList.toggle("off", !en.isIntersecting), { threshold: .2 }).observe(ws);
+    // The tabs only start moving by themselves once the tour has finished opening.
+    const go = document.querySelector("[data-ws-go]"); let seen = false, opened = getComputedStyle(go).display === "none"; const pace = () => ws.classList.toggle("off", !(seen && opened));
+    new IntersectionObserver(([en]) => { seen = en.isIntersecting; pace(); }, { threshold: .2 }).observe(ws);
+    new IntersectionObserver(([en]) => { if (en.isIntersecting || en.boundingClientRect.top < 0) { opened = true; pace(); } }).observe(go);
     const near = new IntersectionObserver(([en]) => { if (en.isIntersecting) { fill(1); near.disconnect(); } }); near.observe(ws);
   }
 </script>
@@ -57,24 +62,32 @@ const tabs = [
   /* The dock sits on the laptop's screen, the way a real one would. */
   :global(html:not(.has-js)) .dock { display: none; }
   .dock { position: absolute; z-index: 3; left: 50%; bottom: 7%; translate: -50% 0; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 20px; background: rgb(10 16 46 / .78); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(255 255 255 / .1), 0 24px 50px -16px rgb(4 8 30 / .7); color: #fff; }
+  .fan, .ws-go { display: none; } .ws > :global(h2) { margin-bottom: clamp(20px, 2.6vw, 36px); }
   .tabs { display: flex; gap: 2px; } @media (min-width: 701px) { .tabs { flex: none; } }
   [role="tab"] { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 8px; height: 46px; padding-inline: 14px; border-radius: 14px; color: rgb(255 255 255 / .72); font-size: 15px; white-space: nowrap; flex: none; transition: color .2s var(--ease), background-color .2s var(--ease); } [role="tab"]:hover { color: #fff; background: rgb(255 255 255 / .09); } [role="tab"][aria-selected="true"] { color: #fff; background: rgb(255 255 255 / .14); } [role="tab"][aria-selected="true"] :global(svg) { color: var(--c); }
   u { position: absolute; left: 10px; right: 10px; bottom: 3px; height: 2px; border-radius: 2px; background: var(--c); transform: scaleX(0); transform-origin: left; text-decoration: none; } [aria-selected="true"] u { animation: fill 7s linear forwards; } .ws:is(:hover, :focus-within, .off) u { animation-play-state: paused; } .ws:global(.held) u { animation: none; transform: none; opacity: 0; } @keyframes fill { to { transform: scaleX(1); } }
   .mode { display: flex; flex: none; gap: 2px; margin-left: 4px; padding: 3px; border-radius: 14px; background: rgb(255 255 255 / .08); color: rgb(255 255 255 / .72); } .mode i { display: grid; place-items: center; width: 34px; height: 38px; border-radius: 11px; transition: background-color .25s var(--ease), color .25s var(--ease); } [data-theme="light"] .sun, [data-theme="dark"] .moon { background: #fff; color: var(--ink); }
   /* The one scroll-tied moment on the site. The stage holds still while the closed laptop opens on its hinge and its screen wakes, then the tablet and phone slide in from the sides and the dock arrives. Browsers without scroll timelines just show it open, with no pause. Ranges count from the pin's top edge meeting the bottom of the screen. */
   @supports (animation-timeline: view()) { @media (prefers-reduced-motion: no-preference) and (min-width: 701px) and (min-height: 520px) {
-    /* The sticky box fills the space under the header and centres the stage in it, so the gaps above and below match on any window height. */
-    .ws-pin { --at: calc(100svh - 74px); view-timeline: --ws block; } .ws-pin::after { content: ""; display: block; height: 116svh; } .ws-pin .ws { position: sticky; top: 74px; display: grid; align-content: center; height: calc(100svh - 74px); }
-    .pane :global(.lap .body) { transform-origin: 50% 100%; animation: lid linear both; animation-range: cover calc(var(--at) - 60px) cover calc(var(--at) + 42svh); }
-    .pane :global(.lap .glass)::after { content: ""; position: absolute; inset: 0; z-index: 2; background: #03061c; pointer-events: none; animation: wake linear both; animation-range: cover calc(var(--at) - 10svh) cover calc(var(--at) + 46svh); }
-    .pane :global(.tb) { animation: out-l linear both; animation-range: cover calc(var(--at) + 42svh) cover calc(var(--at) + 66svh); } .pane :global(.ph) { animation: out-r linear both; animation-range: cover calc(var(--at) + 42svh) cover calc(var(--at) + 66svh); }
-    .ws .bloom { animation: bloom linear both; animation-range: cover calc(var(--at) - 20svh) cover calc(var(--at) + 50svh); } .ws .dock { animation: dock linear both; animation-range: cover calc(var(--at) + 62svh) cover calc(var(--at) + 74svh); }
+    /* The sticky box fills the space under the header and centres the stage in it. Arriving, the headline lights up word by word while the five real screens spread out over a closed laptop. Once it holds still they drop into the laptop, the lid opens on the first of them, then the tablet and phone come in and the dock last. */
+    .ws-pin { --at: calc(100svh - 74px); position: relative; view-timeline: --ws block; } .ws-pin::after { content: ""; display: block; height: 126svh; } .ws-pin .ws { position: sticky; top: 74px; display: grid; align-content: center; height: calc(100svh - 74px); }
+    .ws-go { display: block; position: absolute; left: 0; top: 184svh; width: 1px; height: 1px; }
+    .ws > :global(h2) { position: absolute; z-index: 4; left: 0; right: 0; top: 16px; margin: 0; animation: head-out linear both; animation-range: cover calc(var(--at) + 12svh) cover calc(var(--at) + 30svh); } .ws > :global(h2) :global(span) { animation: word-on linear both; animation-range: cover calc(var(--at) * (.1 + var(--i) * .06)) cover calc(var(--at) * (.26 + var(--i) * .06)); }
+    .fan { display: block; position: absolute; inset: 0; z-index: 2; pointer-events: none; } .fan img { position: absolute; z-index: var(--z); left: 30%; top: 15%; width: 40%; height: auto; max-width: none; border-radius: 12px; box-shadow: 0 0 0 1.5px var(--c), 0 0 60px -8px var(--c), 0 30px 60px -24px #000; animation: fan linear both; animation-range: cover 0 cover calc(var(--at) + 28svh + var(--z) * 2svh); }
+    .pane :global(.lap .body) { transform-origin: 50% 100%; animation: lid linear both; animation-range: cover calc(var(--at) + 10svh) cover calc(var(--at) + 54svh); }
+    /* Closed, you see the back of the lid. It gives way to the screen once the lid has passed the camera. */
+    .pane :global(.lap .body)::before { content: ""; position: absolute; inset: 0; z-index: 3; border-radius: inherit; background: url(/favicon.svg) 50% 50% / 7% auto no-repeat, linear-gradient(#f2f4f7, #c9ccd4 60%, #aeb2bc); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .6); pointer-events: none; animation: back linear both; animation-range: cover calc(var(--at) + 10svh) cover calc(var(--at) + 54svh); } @keyframes back { 0%, 16% { opacity: 1; } 24%, 100% { opacity: 0; } }
+    .pane :global(.lap .glass)::after { content: ""; position: absolute; inset: 0; z-index: 2; background: #03061c; pointer-events: none; animation: wake linear both; animation-range: cover calc(var(--at) + 20svh) cover calc(var(--at) + 58svh); }
+    .pane :global(.tb) { animation: out-l linear both; animation-range: cover calc(var(--at) + 52svh) cover calc(var(--at) + 76svh); } .pane :global(.ph) { animation: out-r linear both; animation-range: cover calc(var(--at) + 52svh) cover calc(var(--at) + 76svh); }
+    .ws .bloom { animation: bloom linear both; animation-range: cover 0 cover calc(var(--at) + 50svh); } .ws .dock { animation: dock linear both; animation-range: cover calc(var(--at) + 72svh) cover calc(var(--at) + 84svh); }
     /* Tabbing to the dock always shows it, wherever the scroll has got to. */
     .ws .dock:focus-within { opacity: 1 !important; translate: -50% 0 !important; }
     /* Separate from the shorthands above: the minifier folds animation-timeline into them otherwise, and the browser then rejects the whole declaration. */
-    .pane :global(.lap .body), .pane :global(.lap .glass)::after, .pane :global(.tb), .pane :global(.ph), .ws .bloom, .ws .dock { animation-timeline: --ws; }
-    @keyframes lid { from { transform: perspective(2600px) rotateX(-84deg); } to { transform: perspective(2600px) rotateX(0); } } @keyframes wake { from { opacity: 1; } to { opacity: 0; } }
-    @keyframes out-l { from { translate: -220% 0; } to { translate: 0 0; } } @keyframes out-r { from { translate: 260% 0; } to { translate: 0 0; } }
+    .pane :global(.lap .body), .pane :global(.lap .body)::before, .pane :global(.lap .glass)::after, .pane :global(.tb), .pane :global(.ph), .ws .bloom, .ws .dock, .ws > :global(h2), .ws > :global(h2) :global(span), .fan img { animation-timeline: --ws; }
+    @keyframes lid { from { transform: perspective(5200px) rotateX(-84deg); } to { transform: perspective(5200px) rotateX(0); } } @keyframes wake { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes out-l { from { translate: -60% 0; opacity: 0; } 30% { opacity: 1; } to { translate: 0 0; opacity: 1; } } @keyframes out-r { from { translate: 80% 0; opacity: 0; } 30% { opacity: 1; } to { translate: 0 0; opacity: 1; } }
+    @keyframes word-on { from { opacity: .16; } to { opacity: 1; } } @keyframes head-out { to { opacity: 0; translate: 0 -18px; } }
+    @keyframes fan { 0% { opacity: 0; translate: calc(var(--n) * 12%) 34%; scale: .78; } 18% { opacity: 1; } 62%, 76% { translate: calc(var(--n) * (70% - (var(--n) * var(--n) - 1) * 4%)) 0; scale: calc(1 - (2 - var(--z)) * .14); } 84% { opacity: 1; } 95% { opacity: 0; } 100% { opacity: 0; translate: 0 92%; scale: .24; } }
     @keyframes bloom { from { opacity: 0; } to { opacity: .34; } } @keyframes dock { from { opacity: 0; translate: -50% 14px; } to { opacity: 1; translate: -50% 0; } }
   } }
   /* Phones get the same lid and the phone sliding in, without the pause. */
