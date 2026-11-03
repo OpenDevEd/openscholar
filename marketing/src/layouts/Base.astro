@@ -60,6 +60,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
       </div>)}
     </div>
   </div>
+  <div class="scrim" aria-hidden="true"></div>
   <main class="strip"><slot /></main>
   <footer class="foot" data-spot>
     <div class="f-in">
@@ -113,6 +114,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   .rail a::after { content: attr(data-label); position: absolute; top: 14px; left: 50%; translate: -50% 4px; padding: 5px 9px; border-radius: 8px; background: #0b1330; color: #fff; font: 400 13px/1.2 var(--mono); white-space: nowrap; box-shadow: 0 0 0 1px rgb(255 255 255 / .14); opacity: 0; pointer-events: none; transition: opacity .12s var(--ease), translate .12s var(--ease); } .rail a:hover::after { opacity: 1; translate: -50% 0; }
   .menu { display: none; position: relative; } .menu summary { list-style: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: rgb(255 255 255 / .1); cursor: pointer; } .menu summary::-webkit-details-marker { display: none; }
   .sheet { position: absolute; right: 0; top: 56px; width: min(340px, calc(100vw - 2 * var(--gap) - 20px)); padding: 8px; border-radius: 18px; background: #0b1330; color: #fff; box-shadow: 0 0 0 1px rgb(255 255 255 / .12), 0 30px 60px -20px rgb(4 8 30 / .8); display: grid; } .sheet a, .s-ask { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 10px 12px; border-radius: 12px; text-align: left; font-size: 17px; } .s-ask { justify-content: flex-start; color: rgb(255 255 255 / .8); } .sheet a:hover, .s-ask:hover { background: rgb(255 255 255 / .08); } .sheet :global(svg) { flex: none; }
+  .scrim { position: fixed; inset: 0; z-index: 40; background: rgb(7 13 43 / .28); opacity: 0; pointer-events: none; transition: opacity .25s var(--ease); } .top:has(.mega[data-open]) ~ .scrim { opacity: 1; }
   /* One panel that changes shape between menus. */
   .mega { position: absolute; top: 72px; left: var(--gap); width: var(--w, 800px); height: var(--h, 320px); transform: translateX(var(--x, 0)); border-radius: 22px; background: #0b1330; box-shadow: inset 0 1px 0 rgb(255 255 255 / .14), inset 0 0 0 1px rgb(255 255 255 / .08), 0 50px 90px -30px rgb(4 8 30 / .75); opacity: 0; visibility: hidden; color: #fff; overflow: hidden; }
   .top:has(.mega[data-open])::after { content: ""; position: absolute; left: 0; right: 0; top: 64px; height: 10px; }

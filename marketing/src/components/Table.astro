@@ -1,26 +1,32 @@
 ---
 // A real extraction, built as a table so it stays readable. Each bar is how sure the model is of the answer.
 const rows = [
-  ["Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees", "294 students aged 11 to 13", "Quasi-experimental", 90],
-  ["The effects of a peer-tutoring strategy on children's e-book reading comprehension", "73 elementary school students", "Quasi-experimental", 88],
-  ["Implementing an online peer tutoring intervention to promote reading skills", "91 primary school children", "Quasi-experimental", 90],
-  ["Role of peer tutoring and methods to boost reading skills at the urban sector primary schools", "Primary school students in Karachi", "Experimental", 72],
-  ["The Overcoming Reading Difficulty through Peer Tutoring in Primary School", "Ten fourth-grade students", "Action research", 80],
+  ["Assessing the Differential Effects of Peer Tutoring for Tutors and Tutees", "294 students aged 11 to 13", "Quasi-experimental", 90, "A quasi-experimental study was undertaken involving ", "294, 11 to 13-year-old students", ", taught by 12 teachers across three high schools."],
+  ["Effect of Peer Tutoring in Reading for Boys in French Immersion", "Boys at an elementary school in Vancouver", "School-based intervention", 85, "Inspired by concern for the low motivation for reading in French of boys in French immersion programs, a study was undertaken in ", "an elementary school in Vancouver", ", British Columbia."],
+  ["The Overcoming Reading Difficulty through Peer Tutoring in Primary School", "Five tutees and five tutors", "Action research", 97, "The research is conducted with a group of ", "five tutees who have reading difficulty and five tutors", "."],
+  ["Role of Peer Tutoring and Methods to Boost Reading Skills", "Primary school students in Karachi", "Experimental", 60, "The population of the study is primary schools of district west Karachi and ", "the primary school students", " are the main source of data."],
+  ["Primary Prevention of Reading Failure: Effect of Universal Peer Tutoring", "Kindergarten to Grade 3 in Canada", "District-wide programme", 40, "The authors examined the effects of a well-validated peer-tutoring reading intervention as a system-wide prevention measure in ", "kindergarten through Grade 3", " in a small metropolitan area in Canada."],
 ];
 ---
 <div class="x" data-x data-in>
   <div class="bar"><b>Peer tutoring trials</b><button type="button" class="sort" data-sort aria-pressed="false"><svg width="16" height="16" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4v12M3 13l3 3 3-3M14 16V4M11 7l3-3 3 3" /></svg>Least certain first</button></div>
   <div role="table" aria-label="Answers extracted from five papers">
     <div class="r head" role="row"><span role="columnheader">Paper</span><span role="columnheader">Who took part?</span><span role="columnheader">Study design</span><span role="columnheader">Model's certainty</span></div>
-    <div data-rows role="rowgroup">{rows.map(([t, who, d, c], i) => <div class="r" role="row" data-c={c} data-i={i} style={`--r:${i}`}><span class="t" role="cell">{t}</span><span class="v" role="cell">{who}</span><span role="cell">{d}</span><span class="ml" aria-hidden="true">Model's certainty</span><span class="m" role="cell" aria-label={`${c}% certainty`}><span class="track"><i style={`width:${c}%;background:${c >= 85 ? "#059669" : "#d97706"}`}></i></span><b style={`color:${c >= 85 ? "#047857" : "#b45309"}`}>{c}%</b></span></div>)}</div>
+    <div data-rows role="rowgroup">{rows.map(([t, who, d, c], i) => <div class:list={["r", { sel: i === 0 }]} role="row" tabindex="0" data-c={c} data-i={i} style={`--r:${i}`}><span class="t" role="cell">{t}</span><span class="v" role="cell">{who}</span><span role="cell">{d}</span><span class="ml" aria-hidden="true">Model's certainty</span><span class="m" role="cell" aria-label={`${c}% certainty`}><span class="track"><i style={`width:${c}%;background:${c >= 85 ? "#059669" : c >= 60 ? "#d97706" : "#dc2626"}`}></i></span><b style={`color:${c >= 85 ? "#047857" : c >= 60 ? "#b45309" : "#b91c1c"}`}>{c}%</b></span></div>)}</div>
   </div>
+  <div class="from" aria-live="polite"><span class="lb">From the abstract</span><p data-quote>{rows[0][4]}<mark>{rows[0][5]}</mark>{rows[0][6]}</p></div>
 </div>
+<script define:vars={{ quotes: rows.map((r) => [r[4], r[5], r[6]]) }}>
+  // Hovering or focusing a row shows the sentence its answer came from.
+  { const root = document.querySelector("[data-x]"), q = root.querySelector("[data-quote]"); const pick = (row) => { root.querySelectorAll(".sel").forEach((r) => r.classList.remove("sel")); row.classList.add("sel"); const [a, m, z] = quotes[+row.dataset.i]; q.textContent = ""; q.append(a, Object.assign(document.createElement("mark"), { textContent: m }), z); }; root.querySelectorAll("[data-rows] .r").forEach((r) => { r.addEventListener("pointerenter", () => pick(r)); r.addEventListener("focus", () => pick(r)); r.addEventListener("click", () => pick(r)); }); }
+</script>
 <script>
   const root = document.querySelector("[data-x]"), list = root.querySelector("[data-rows]"), btn = root.querySelector("[data-sort]"), rows = [...list.children], still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   btn.addEventListener("click", () => { const on = btn.getAttribute("aria-pressed") !== "true", from = new Map(rows.map((r) => [r, r.getBoundingClientRect().top])); btn.setAttribute("aria-pressed", on); [...rows].sort((a, b) => (on ? a.dataset.c - b.dataset.c : a.dataset.i - b.dataset.i)).forEach((r) => list.append(r)); if (!still) for (const r of rows) { const dy = from.get(r) - r.getBoundingClientRect().top; if (dy) r.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 380, easing: "cubic-bezier(.22,1,.36,1)" }); } });
 </script>
 <style>
-  [data-rows] .r { transition: background-color .15s var(--ease); } [data-rows] .r:hover { background: rgb(180 83 9 / .07); }
+  [data-rows] .r { transition: background-color .15s var(--ease); } [data-rows] .r.sel { background: rgb(217 119 6 / .09); box-shadow: inset 3px 0 0 #d97706; } [data-rows] .r { cursor: pointer; margin-inline: -24px; padding-inline: 24px; }
+  .from { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; align-items: start; margin-inline: -24px; margin-bottom: -12px; padding: 14px 24px; min-height: 76px; border-radius: 0 0 18px 18px; background: var(--soft); font-size: 15px; line-height: 1.4; } .lb { font: 400 13px/1.5 var(--mono); color: var(--t2); } .from mark { background: #fde68a; border-radius: 3px; padding-inline: 2px; }
   .x { padding: 8px 24px 12px; border-radius: 18px; background: #fff; color: var(--ink); box-shadow: 0 30px 60px -28px rgb(70 25 5 / .7); }
   .bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding-block: 12px; } .bar b { font-weight: 500; font-size: 18px; letter-spacing: -.01em; }
   .sort { display: inline-flex; align-items: center; gap: 8px; height: 38px; padding-inline: 12px; border-radius: 10px; background: var(--soft); font-size: 14px; font-weight: 500; transition: background-color .15s var(--ease), color .15s var(--ease); } .sort:hover { background: #e6eeff; } .sort[aria-pressed="true"] { background: var(--ink); color: #fff; }
@@ -28,5 +34,5 @@ const rows = [
   .m { display: flex; align-items: center; gap: 10px; } .track { flex: 1; display: block; height: 8px; border-radius: 4px; background: var(--soft); overflow: hidden; } .track i { display: block; height: 100%; border-radius: 4px; transform-origin: left; } .m b { font: 400 13px/1 var(--mono); min-width: 28px; text-align: right; } .ml { display: none; }
   /* Rows arrive in order and each certainty bar fills as it lands. */
   :global(.js) .x[data-in] [data-rows] .r { opacity: 0; transform: translateY(10px); } :global(.js) .x[data-in] .track i { transform: scaleX(0); } :global(.js) .x.in [data-rows] .r { opacity: 1; transform: none; transition: opacity .5s var(--ease) calc(var(--r) * .09s + .15s), transform .6s var(--ease) calc(var(--r) * .09s + .15s), background-color .15s var(--ease); } :global(.js) .x.in .track i { transform: none; transition: transform .9s var(--ease) calc(var(--r) * .09s + .4s); }
-  @media (max-width: 800px) { .x { padding-inline: 16px; } .head { display: none; } .r { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; } .t { grid-column: 1 / -1; } .ml { display: block; grid-column: 1 / -1; margin-top: 4px; font-size: 13px; color: var(--t2); } .m { grid-column: 1 / -1; } }
+  @media (max-width: 800px) { [data-rows] .r { margin-inline: -16px; padding-inline: 16px; } .from { grid-template-columns: minmax(0, 1fr); margin-inline: -16px; padding-inline: 16px; min-height: 148px; align-content: start; } .x { padding-inline: 16px; } .head { display: none; } .r { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px 12px; } .t { grid-column: 1 / -1; } .ml { display: block; grid-column: 1 / -1; margin-top: 4px; font-size: 13px; color: var(--t2); } .m { grid-column: 1 / -1; } }
 </style>

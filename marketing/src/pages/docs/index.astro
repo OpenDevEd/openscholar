@@ -3,12 +3,14 @@ import Base from "../../layouts/Base.astro";
 import { GUIDES } from "../../data/docs.mjs";
 import { group } from "../../data/features.mjs";
 import Art from "../../components/Art.astro";
+import Icon from "../../components/Icon.astro";
+const TOPICS = [["start", "hero-stream", "Get started", "Your first search to your first export"], ["search", "sea", "Find papers", "Questions, queries and filters"], ["screening", "pane", "Screen papers", "Your criteria, applied to every paper"], ["extraction", "grid", "Extract data", "Answers you can sort and check"], ["assistant", "gate", "Work with the assistant", "What it does and when it asks"], ["community-setup", "globe", "Create an Evidence Community", "From a name to a live site"]];
 ---
 <Base title="Documentation: OpenScholar" description="How to use OpenScholar and Evidence Communities.">
-  <section class="bleed intro"><Art name="sea" eager class="dim" /><div class="inner"><h1>Documentation</h1><p class="lead">How to use OpenScholar and Evidence Communities.</p></div></section>
+  <section class="bleed intro"><Art name="sea" eager class="dim" /><div class="inner"><h1>Documentation</h1><p class="lead">How to use OpenScholar and Evidence Communities.</p><label class="find-big"><Icon name="search" size={20} /><span class="sr">Search the docs</span><input type="search" data-find placeholder="Search the docs" autocomplete="off" /></label></div></section>
+  <nav class="topics" aria-label="Start here" data-topics>{TOPICS.map(([id, art, t, d]) => <a class="panel edge" href={`#${id}`}><img src={`/img/art-${art}-960.avif`} width="960" height="540" loading="lazy" decoding="async" alt="" /><b>{t}</b><span>{d}</span></a>)}</nav>
   <div class="docs">
     <aside>
-      <label><span class="sr">Search the docs</span><input type="search" data-find placeholder="Search the docs" autocomplete="off" /></label>
       <nav aria-label="Documentation">{GUIDES.map((g) => <a href={`#${g.id}`}>{g.title}</a>)}</nav>
     </aside>
     <article>
@@ -26,10 +28,11 @@ import Art from "../../components/Art.astro";
 </Base>
 <script>
   const input = document.querySelector("[data-find]"), rows = [...document.querySelectorAll("[data-text]")], blocks = [...document.querySelectorAll("[data-block]")], guides = [...document.querySelectorAll("[data-guide]")], none = document.querySelector("[data-none]");
-  input.addEventListener("input", () => { const q = input.value.trim().toLowerCase(); let n = 0; for (const r of rows) { const on = !q || r.dataset.text.includes(q); r.hidden = !on; n += on; } for (const b of blocks) { const any = !!b.querySelector("[data-text]:not([hidden])"); b.hidden = !any; b.open = !!q && any; } for (const g of guides) { const prose = g.textContent.toLowerCase().includes(q); g.hidden = !!q && !g.querySelector("[data-block]:not([hidden])") && !prose; } none.hidden = !q || guides.some((g) => !g.hidden); for (const a of document.querySelectorAll("aside nav a")) a.hidden = !!document.querySelector(a.getAttribute("href"))?.hidden; });
+  const topics = document.querySelector("[data-topics]"); input.addEventListener("input", () => { const q = input.value.trim().toLowerCase(); topics.hidden = !!q; let n = 0; for (const r of rows) { const on = !q || r.dataset.text.includes(q); r.hidden = !on; n += on; } for (const b of blocks) { const any = !!b.querySelector("[data-text]:not([hidden])"); b.hidden = !any; b.open = !!q && any; } for (const g of guides) { const prose = g.textContent.toLowerCase().includes(q); g.hidden = !!q && !g.querySelector("[data-block]:not([hidden])") && !prose; } none.hidden = !q || guides.some((g) => !g.hidden); for (const a of document.querySelectorAll("aside nav a")) a.hidden = !!document.querySelector(a.getAttribute("href"))?.hidden; });
 </script>
 <style>
-  .intro { padding-block: clamp(112px, 11vw, 160px) clamp(56px, 6vw, 88px); background: #07405c; } .intro .lead { margin-top: 10px; }
+  .intro { padding-block: clamp(112px, 11vw, 160px) clamp(56px, 6vw, 88px); background: #07405c; } .intro .lead { margin-top: 10px; } .find-big { display: flex; align-items: center; gap: 12px; width: min(560px, 100%); height: 60px; margin-top: 24px; padding-inline: 18px; border-radius: 16px; background: #fff; color: var(--ink); box-shadow: 0 24px 50px -20px rgb(0 20 30 / .7); } .find-big:focus-within { box-shadow: 0 0 0 3px rgb(255 255 255 / .6), 0 24px 50px -20px rgb(0 20 30 / .7); } .find-big input { flex: 1; height: auto; margin: 0; padding: 0; background: none; font-size: 17px; box-shadow: none !important; }
+  .topics { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--gap); margin-block: 12px 28px; } .topics[hidden] { display: none; } .topics a { display: grid; align-content: start; gap: 4px; padding: 0 14px 14px; background: var(--soft); color: var(--ink); font-size: 14px; line-height: 1.3; border-radius: 18px; transition: transform .25s var(--ease), box-shadow .25s var(--ease); } .topics a:hover { transform: translateY(-3px); box-shadow: 0 18px 36px -18px rgb(10 26 63 / .4); } .topics img { max-width: none; width: calc(100% + 28px); margin: 0 -14px 10px; aspect-ratio: 16 / 10; object-fit: cover; } .topics b { font-weight: 500; font-size: 15px; } .topics span { color: var(--t2); }
   .docs { display: grid; grid-template-columns: 260px minmax(0, 760px); gap: clamp(24px, 5vw, 72px); align-items: start; padding-top: 16px; }
   aside { position: sticky; top: 84px; max-height: calc(100svh - 100px); overflow-y: auto; scrollbar-width: thin; }
   input { width: 100%; height: 44px; padding-inline: 14px; background: var(--soft); border: 0; border-radius: 11px; font-size: 16px; outline: 0; margin-bottom: 10px; } input:focus { box-shadow: 0 0 0 2px var(--brand); } input::placeholder { color: var(--t3); }
@@ -41,5 +44,6 @@ import Art from "../../components/Art.astro";
   .more { margin-top: 12px; } .more[hidden] { display: none; } .more summary { cursor: pointer; font-weight: 500; color: var(--brand-dark); width: fit-content; list-style: none; } .more summary::-webkit-details-marker { display: none; } .more summary::after { content: " +"; } .more[open] summary::after { content: " \2212"; } .block { margin-top: 16px; } h3 { font-size: 18px; margin-bottom: 8px; }
   dl > div { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; padding-block: 10px; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.45; } dl > div[hidden] { display: none; } dt { font-weight: 500; } dd { color: var(--t2); }
   .none { color: var(--t2); font-size: 18px; } .none[hidden] { display: none; }
+  @media (max-width: 1100px) { .topics { grid-template-columns: repeat(3, minmax(0, 1fr)); } } @media (max-width: 560px) { .topics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 900px) { .docs { grid-template-columns: minmax(0, 1fr); } aside { position: static; max-height: none; } aside nav { display: flex; flex-wrap: wrap; gap: 2px; } dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 </style>
