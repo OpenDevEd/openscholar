@@ -35,6 +35,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   <slot name="head" />
 </head>
 <body style={`background-color:${top}`}>
+  <p class="alpha"><b>Public alpha for testing.</b> <span>Things may change or break.</span> <a href="mailto:contact@opendeved.net">Contact us</a></p>
   <div class="top">
     <header class="bar">
       <a class="brand" href="/" aria-label="OpenScholar home">
@@ -91,6 +92,10 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
 </body>
 </html>
 <style>
+  /* The public alpha's notice, the same line the app shows across every page. */
+  .alpha { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 32px; margin: 0; padding: 0 16px; background: #f6ead9; border-bottom: 1px solid #eeddc2; color: #1a1a1a; font-size: 12px; }
+  .alpha b { font-weight: 600; } .alpha span { color: #5f5f5f; } .alpha a { color: inherit; font-weight: 500; text-decoration: underline; text-underline-offset: 2px; }
+  @media (max-width: 480px) { .alpha span { display: none; } }
   /* A dark glass capsule that tightens once the page moves under it. */
   .top { position: sticky; top: max(10px, env(safe-area-inset-top)); z-index: 50; max-width: 1280px; height: 64px; margin: max(10px, env(safe-area-inset-top)) auto calc(-64px - max(10px, env(safe-area-inset-top))); padding-inline: var(--gap); color: #fff; }
   .bar { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; height: 64px; margin-inline: auto; padding: 0 10px 0 16px; border-radius: 20px; background: linear-gradient(#10183e, #070c26); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px rgb(255 255 255 / .08), 0 18px 40px -20px rgb(4 8 30 / .7); transition: width .4s var(--ease); }
