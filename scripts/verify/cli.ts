@@ -214,9 +214,8 @@ async function signIn(page: Page, url: string, email: string, attempt = 1) {
   await page.waitForLoadState("load");
 }
 
-// The verify user's own organization is on the Team plan, which grants every
-// plan feature, so gated pages (extraction, Evidence Libraries, authors) open
-// for it. The development Clerk instance has organization slugs turned off, so
+// The verify user's own organization has Evidence Libraries switched on, so the
+// gated pages (Evidence Libraries, authors) open for it. The development Clerk instance has organization slugs turned off, so
 // it is found by name.
 const VERIFY_ORGANIZATION = "Verify Agent";
 
@@ -225,8 +224,8 @@ type Clerk = ReturnType<typeof import("@clerk/backend").createClerkClient>;
 /** Puts the verify user in the Verify Agent organization. */
 async function joinOrganization(clerk: Clerk, userId: string) {
   const found = (await clerk.organizations.getOrganizationList({ query: VERIFY_ORGANIZATION, limit: 10 })).data.find((organization) => organization.name === VERIFY_ORGANIZATION);
-  // One made here would be on the free plan, without the features the gated pages need.
-  if (!found) throw new Error(`No "${VERIFY_ORGANIZATION}" organization in the development Clerk instance. Create it in the app and put it on the Team plan, then run this again.`);
+  // One made here wouldn't have Evidence Libraries switched on, which the gated pages need.
+  if (!found) throw new Error(`No "${VERIFY_ORGANIZATION}" organization in the development Clerk instance. Create it in the app and switch Evidence Libraries on for it in Settings, Admin.`);
   await clerk.organizations.createOrganizationMembership({ organizationId: found.id, userId, role: "org:admin" });
 }
 
