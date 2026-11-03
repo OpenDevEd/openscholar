@@ -15,7 +15,7 @@ const { id = "ask", typing = false, class: cls = "" } = Astro.props;
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
   for (const form of document.querySelectorAll("[data-typing]")) {
     if (still) continue;
-    const input = form.querySelector("input"), rest = input.placeholder, qs = ["Does peer tutoring improve reading?", "What works to keep girls in secondary school?", "How does wealth inequality affect social mobility?", "Do cash transfers improve child nutrition?"]; let q = 0, c = 0, back = false, t;
+    const input = form.querySelector("input"), rest = input.placeholder, qs = ["Does peer tutoring improve reading?"]; let q = 0, c = 0, back = false, t;
     const step = () => { if (document.activeElement === input || input.value) { input.placeholder = rest; t = setTimeout(step, 800); return; } const s = qs[q]; input.placeholder = s.slice(0, c); if (!back && c === s.length) { back = true; t = setTimeout(step, 2200); return; } if (back && c === 0) { back = false; q = (q + 1) % qs.length; t = setTimeout(step, 300); return; } c += back ? -1 : 1; t = setTimeout(step, back ? 18 : 42); };
     t = setTimeout(step, 900);
   }

@@ -3,7 +3,7 @@ export const APP = "https://dev.openscholar.ai";
 export const NAV = [
   { id: "product", href: "/#product", label: "Product", rows: [
     { href: "/#product", title: "Find the literature", text: "Ask in plain language, keep control of the query", icon: "search", color: "#22d3ee", field: "ocean", art: "sea", img: "search2-laptop-dark" },
-    { href: "/#screening", title: "Screen against your criteria", text: "Decide once, apply it to every paper", icon: "sieve", color: "#34d399", field: "emerald", art: "pane", img: "screen-laptop-dark" },
+    { href: "/#screening", title: "Screen against your criteria", text: "Decide once, apply it to every paper", icon: "sieve", color: "#34d399", field: "emerald", art: "sieve-front", img: "screen-laptop-dark" },
     { href: "/#extraction", title: "Extract the data", text: "From papers to a table you can check", icon: "table", color: "#fbbf24", field: "amber", art: "grid", img: "extract-laptop-dark" },
     { href: "/#assistant", title: "Delegate to the assistant", text: "Hand off the groundwork, keep the decisions", icon: "spark", color: "#60a5fa", field: "cobalt", art: "gate", img: "assistant-laptop-dark" },
     { href: "/#trust", title: "Trace answers back", text: "From a cited answer to its sentence and paper", icon: "thread", color: "#f59e0b", field: "night", art: "thread" },
@@ -15,17 +15,18 @@ export const NAV = [
     { href: "/evidence-communities/#steps", title: "From first draft to live", text: "Your name, your sources, your address", icon: "flag", color: "#fb7185", field: "rose", art: "globe", img: "c-home-laptop-light" },
   ], live: [["Wealth Inequality and Social Mobility", "https://wealth-inequality.openscholar.ai"], ["Artificial Intelligence in Education", "https://aied.openscholar.ai"]] },
   { id: "teams", href: "/teams/", label: "Teams", rows: [
-    { href: "/teams/#shared", title: "One piece of shared work", text: "Six spreadsheets become one screening", icon: "merge", color: "#38bdf8", field: "ocean", art: "network", img: "screen-laptop-light" },
-    { href: "/teams/#activity", title: "See who did what", text: "A record of every change, with a name beside it", icon: "list", color: "#34d399", field: "emerald", art: "pane", img: "extract-laptop-dark" },
-    { href: "/teams/#roles", title: "The right access for each person", text: "Admins, members and guests", icon: "key", color: "#fbbf24", field: "night", art: "network" },
+    { href: "/teams/#shared", title: "One piece of shared work", text: "Six spreadsheets become one screening", icon: "merge", color: "#38bdf8", field: "ocean", art: "team-merge", img: "screen-laptop-light" },
+    { href: "/teams/#activity", title: "See who did what", text: "A record of every change, with a name beside it", icon: "list", color: "#34d399", field: "emerald", art: "team-merge", img: "extract-laptop-dark" },
+    { href: "/teams/#publish", title: "Review before you publish", text: "Creators submit, editors decide", icon: "check", color: "#34d399", field: "emerald", art: "gates", img: "c-search-laptop-light" },
+    { href: "/teams/#roles", title: "The right access for each person", text: "In your workspace and your community", icon: "key", color: "#fbbf24", field: "night", art: "team-merge" },
   ] },
   { id: "docs", href: "/docs/", label: "Docs" },
 ];
 // Each page's sections, for the map of the page in the header once you scroll.
 export const SECTIONS = {
-  "/": [["product", "Find", "#22d3ee"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#fbbf24"], ["assistant", "Assistant", "#60a5fa"], ["trust", "Trust", "#f59e0b"], ["community", "Communities", "#fb7185"]],
-  "/evidence-communities/": [["readers", "Readers", "#22d3ee"], ["answers", "Answers", "#fbbf24"], ["map", "Map", "#38bdf8"], ["steps", "Go live", "#fb7185"]],
-  "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["roles", "Access", "#fbbf24"]],
+  "/": [["tour", "Tour", "#60a5fa"], ["product", "Find", "#22d3ee"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#fbbf24"], ["assistant", "Assistant", "#60a5fa"], ["trust", "Trust", "#f59e0b"], ["community", "Communities", "#fb7185"]],
+  "/evidence-communities/": [["readers", "Readers", "#22d3ee"], ["answers", "Answers", "#fbbf24"], ["map", "Map", "#38bdf8"], ["review", "Review", "#34d399"], ["steps", "Go live", "#fb7185"]],
+  "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["publish", "Review", "#34d399"], ["roles", "Access", "#fbbf24"]],
 };
 export const ICONS = {
   search: "M9 16a7 7 0 1 1 0-14 7 7 0 0 1 0 14Zm5-2 5 5",
@@ -43,6 +44,7 @@ export const ICONS = {
   pen: "M4 16l1-4L14 3l3 3-9 9-4 1ZM12 5l3 3",
   mail: "M3 5h14v10H3V5Zm0 1 7 5 7-5",
   cite: "M4 4h9l3 3v9H4V4Zm3 5h6M7 12h6",
+  lock: "M5 9h10v8H5V9Zm2 0V6.500a3 3 0 0 1 6 0V9",
   sun: "M10 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM10 2v1.500M10 16.500V18M2 10h1.500M16.500 10H18M4.300 4.300l1.100 1.100M14.600 14.600l1.100 1.100M4.300 15.700l1.100-1.100M14.600 5.400l1.100-1.100",
   moon: "M17 11.500A7.500 7.500 0 0 1 8.500 3a7.500 7.500 0 1 0 8.500 8.500Z",
 };

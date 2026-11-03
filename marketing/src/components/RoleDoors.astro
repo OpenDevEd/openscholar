@@ -1,34 +1,52 @@
 ---
-// Three doorways, one inside the other: each role gets as far as its door. Pick one and see what it opens.
+// Three doorways, one inside the other: each role gets as far as its door. The same picture answers for your workspace and for your community.
 import Art from "./Art.astro";
 import Icon from "./Icon.astro";
-const roles = [
-  { id: "admin", name: "Admin", text: "Runs the organization", color: "#f59e0b", door: [502, 10, 679, 784] },
-  { id: "member", name: "Member", text: "Does the work", color: "#34d399", door: [658, 250, 372, 450] },
-  { id: "guest", name: "Guest", text: "Sees what you share", color: "#60a5fa", door: [748, 393, 188, 255] },
+const doors = [[502, 10, 679, 784], [658, 250, 372, 450], [748, 393, 188, 255]], colours = ["#f59e0b", "#34d399", "#60a5fa"];
+const sets = [
+  { id: "work", tab: "In your workspace", roles: [["Admin", "Runs the organization", "admin"], ["Member", "Does the work", "member"], ["Guest", "Sees what you share", "guest"]],
+    can: [["See all the organization's work", 1, 1, 0], ["Start searches, screenings and extractions", 1, 1, 0], ["Delete what they made", 1, 1, 0], ["Delete anything and manage roles", 1, 0, 0], ["See items shared with them", 1, 1, 1]] },
+  { id: "comm", tab: "In your community", roles: [["Owner", "Runs the community", "owner"], ["Editor", "Reviews and publishes", "editor"], ["Creator", "Writes and submits", "creator"]],
+    can: [["Write records and submit them for review", 1, 1, 1], ["See a draft's public page beside the editor", 1, 1, 1], ["Publish a record or send it back", 1, 1, 0], ["Edit, review and publish digests", 1, 1, 0]] },
 ];
-const can = [["See all the organization's work", 1, 1, 0], ["Start searches, screenings and extractions", 1, 1, 0], ["Delete what they made", 1, 1, 0], ["Delete anything and manage roles", 1, 0, 0], ["See items shared with them", 1, 1, 1]];
 ---
-<section class="bleed doors" id="roles" data-role="admin">
-  <div class="stage"><div class="scene"><Art name="gates" />{roles.map((r) => <i class="door" data-door={r.id} style={`--c:${r.color};left:calc(var(--u) * ${r.door[0]});top:calc(var(--u) * ${r.door[1]});width:calc(var(--u) * ${r.door[2]});height:calc(var(--u) * ${r.door[3]})`} aria-hidden="true"></i>)}</div></div>
-  <div class="inner body">
-    <div class="pick"><h2>The right access for each person</h2><p class="lead">Your team sees your work. Guests see only what you share with them.</p>
-      <div class="roles" role="radiogroup" aria-label="Choose a role">{roles.map((r, i) => <button type="button" role="radio" aria-checked={i === 0 ? "true" : "false"} data-pick={r.id} style={`--c:${r.color}`}><b>{r.name}</b><span>{r.text}</span></button>)}</div>
-      <ul class="can">{can.map(([t, a, m, g]) => <li data-admin={a} data-member={m} data-guest={g}><i><Icon name="check" size={14} /></i>{t}</li>)}</ul>
-    </div>
-  </div>
+<section class="bleed doors" id="roles" data-set="work" data-role="0">
+  <div class="stage"><div class="scene"><Art name="gates" />{doors.map((d, i) => <i class="door" data-door={i} style={`left:calc(var(--u) * ${d[0]});top:calc(var(--u) * ${d[1]});width:calc(var(--u) * ${d[2]});height:calc(var(--u) * ${d[3]})`} aria-hidden="true"></i>)}</div></div>
+  <div class="inner body"><div class="pick">
+    <h2>The right access for each person</h2><p class="lead">Your team sees your work and guests see only what you share. In your community, nothing your team writes reaches readers until an editor publishes it.</p>
+    <div class="sets" role="tablist" aria-label="Where these roles apply">{sets.map((s, i) => <button type="button" role="tab" aria-selected={i === 0 ? "true" : "false"} data-setbtn={s.id}>{s.tab}</button>)}</div>
+    {sets.map((s) => <div class="set" data-of={s.id}>
+      <div class="roles" role="radiogroup" aria-label="Choose a role">{s.roles.map(([n, t, e], i) => <button type="button" role="radio" aria-checked={i === 0 ? "true" : "false"} data-pick={i} style={`--c:${colours[i]}`}><img src={`/img/role-${e}.avif`} width="240" height="240" loading="lazy" decoding="async" alt="" /><b>{n}</b><span>{t}</span></button>)}</div>
+      <ul class="can">{s.can.map(([t, a, b, c], i) => <li data-r0={a} data-r1={b} data-r2={c} style={`--n:${i}`}><i><span class="ok"><Icon name="check" size={14} /></span><span class="no"><Icon name="lock" size={13} /></span></i>{t}</li>)}</ul>
+    </div>)}
+  </div></div>
 </section>
 <script>
   const root = document.querySelector(".doors");
-  if (root) { const btns = [...root.querySelectorAll("[data-pick]")]; const set = (b) => { root.dataset.role = b.dataset.pick; btns.forEach((x) => x.setAttribute("aria-checked", x === b)); }; btns.forEach((b, i) => { b.addEventListener("click", () => set(b)); b.addEventListener("pointerenter", () => set(b)); b.addEventListener("keydown", (e) => { const d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); const n = btns[(i + d + btns.length) % btns.length]; set(n); n.focus(); } }); }); }
+  if (root) {
+    // Each row lights in turn when the role changes, so restart the animation by taking the class off first.
+    const pick = (b) => { const set = b.closest(".set"), was = root.dataset.role; root.dataset.role = b.dataset.pick; set.querySelectorAll("[data-pick]").forEach((x) => x.setAttribute("aria-checked", x === b)); if (was !== b.dataset.pick) { root.classList.remove("lit"); void root.offsetWidth; root.classList.add("lit"); } };
+    root.querySelectorAll("[data-pick]").forEach((b) => { b.addEventListener("click", () => pick(b)); b.addEventListener("pointerenter", () => pick(b)); b.addEventListener("keydown", (e) => { const d = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); const all = [...b.parentElement.children], n = all[(all.indexOf(b) + d + all.length) % all.length]; pick(n); n.focus(); } }); });
+    root.querySelectorAll("[data-setbtn]").forEach((t) => t.addEventListener("click", () => { root.dataset.set = t.dataset.setbtn; root.querySelectorAll("[data-setbtn]").forEach((x) => x.setAttribute("aria-selected", x === t)); pick(root.querySelector(`[data-of="${t.dataset.setbtn}"] [data-pick="0"]`)); }));
+  }
 </script>
 <style>
-  .doors { background: #010a27; padding-block: clamp(56px, 7vw, 96px); min-height: min(52vw, 760px); display: grid; align-items: center; }
-  .stage { position: absolute; z-index: -1; inset: 0; overflow: clip; } .scene { overflow: clip; } .scene { position: absolute; left: 50%; top: 50%; width: max(66vw, 900px); translate: -78% -50%; } .scene :global(.art) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 76%, transparent), linear-gradient(#000 86%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 16%, #000 76%, transparent), linear-gradient(#000 86%, transparent); mask-composite: intersect; }
-  .door { position: absolute; z-index: 1; border-radius: 6px; box-shadow: 0 0 0 200vmax rgb(1 10 39 / .72); opacity: 0; transition: opacity .45s var(--ease); } [data-role="member"] [data-door="member"], [data-role="guest"] [data-door="guest"] { opacity: 1; }
-  .body { width: 100%; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 560px); } .pick { grid-column: 2; display: grid; gap: 18px; }
-  .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; } .roles button { display: grid; gap: 2px; padding: 12px 14px; border-radius: 14px; text-align: left; color: #fff; background: rgb(255 255 255 / .06); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12); transition: background-color .2s var(--ease), box-shadow .2s var(--ease); } .roles b { font-weight: 500; font-size: 17px; } .roles span { font-size: 13px; line-height: 1.25; opacity: .78; } .roles [aria-checked="true"] { background: color-mix(in srgb, var(--c) 22%, transparent); box-shadow: inset 0 0 0 1.5px var(--c); }
-  .can { display: grid; gap: 2px; } .can li { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 16px; transition: opacity .25s var(--ease); opacity: .38; } .can i { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 7px; background: rgb(255 255 255 / .08); color: transparent; transition: background-color .25s var(--ease), color .25s var(--ease); }
-  [data-role="admin"] [data-admin="1"], [data-role="member"] [data-member="1"], [data-role="guest"] [data-guest="1"] { opacity: 1; } [data-role="admin"] [data-admin="1"] i { background: #f59e0b; color: #0a1030; } [data-role="member"] [data-member="1"] i { background: #34d399; color: #0a1030; } [data-role="guest"] [data-guest="1"] i { background: #60a5fa; color: #0a1030; }
-  @media (max-width: 900px) { .doors { min-height: 0; } .body { grid-template-columns: minmax(0, 1fr); } .pick { grid-column: 1; } .scene { width: 200vw; translate: -50% -50%; opacity: .32; } .roles { grid-template-columns: minmax(0, 1fr); } .roles button { grid-template-columns: 90px minmax(0, 1fr); align-items: baseline; } }
+  .doors { background: #010a27; padding-block: clamp(56px, 7vw, 96px); display: grid; align-items: center; }
+  /* Choosing a role walks you through the doors: the closer the door, the more of the organization that role can reach. */
+  .stage { position: absolute; z-index: -1; inset: 0 48% 0 0; overflow: clip; -webkit-mask-image: linear-gradient(90deg, #000 78%, transparent); mask-image: linear-gradient(90deg, #000 78%, transparent); } .scene { position: absolute; left: 50%; top: 50%; width: max(66vw, 900px); translate: -56% -50%; transform-origin: 50% 54%; transition: scale 1s var(--ease); } [data-role="1"] .scene { scale: 1.16; } [data-role="2"] .scene { scale: 1.34; }
+  .scene :global(.art) { -webkit-mask-image: linear-gradient(90deg, transparent, #000 16%, #000 76%, transparent), linear-gradient(#000 86%, transparent); -webkit-mask-composite: source-in; mask-image: linear-gradient(90deg, transparent, #000 16%, #000 76%, transparent), linear-gradient(#000 86%, transparent); mask-composite: intersect; }
+  .door { position: absolute; z-index: 1; border-radius: 6px; box-shadow: 0 0 0 200vmax rgb(1 10 39 / .66); opacity: 0; transition: opacity .6s var(--ease); } [data-role="1"] [data-door="1"], [data-role="2"] [data-door="2"] { opacity: 1; }
+  .body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 580px); } .pick { grid-column: 2; display: grid; gap: 18px; }
+  .sets { justify-self: start; display: flex; gap: 2px; padding: 4px; border-radius: 13px; background: rgb(255 255 255 / .08); } .sets button { height: 38px; padding-inline: 14px; border-radius: 10px; color: rgb(255 255 255 / .78); font-size: 15px; transition: background-color .2s var(--ease), color .2s var(--ease); } .sets button:hover { color: #fff; } .sets [aria-selected="true"] { background: #fff; color: var(--ink); }
+  .set { display: grid; gap: 12px; min-height: 410px; align-content: start; animation: set-in .4s var(--ease) both; } @keyframes set-in { from { opacity: 0; transform: translateY(8px); } } [data-set="work"] [data-of="comm"], [data-set="comm"] [data-of="work"] { display: none; }
+  .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .roles button { position: relative; overflow: hidden; display: grid; gap: 1px; padding: 8px 14px 12px; border-radius: 16px; text-align: left; color: #fff; background: rgb(255 255 255 / .05); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .1); transition: background-color .3s var(--ease), box-shadow .3s var(--ease); } .roles button:hover { background: rgb(255 255 255 / .09); }
+  .roles img { width: 72px; height: 72px; margin: 0 0 6px -6px; object-fit: contain; filter: saturate(.55) brightness(.75); transition: transform .6s var(--ease), filter .4s var(--ease); } .roles b { font-weight: 500; font-size: 17px; } .roles span { font-size: 13px; line-height: 1.25; opacity: .78; }
+  .roles [aria-checked="true"] { background: color-mix(in srgb, var(--c) 18%, transparent); box-shadow: inset 0 0 0 1.5px var(--c), 0 18px 44px -18px var(--c); } .roles [aria-checked="true"] img { filter: none; transform: translateY(-2px) rotate(-6deg) scale(1.12); }
+  .can { display: grid; padding: 4px 14px; border-radius: 16px; background: rgb(255 255 255 / .04); box-shadow: inset 0 0 0 1px rgb(255 255 255 / .08); } .can li { display: flex; align-items: center; gap: 12px; min-height: 44px; font-size: 16px; color: rgb(255 255 255 / .46); border-top: 1px solid rgb(255 255 255 / .06); transition: color .3s var(--ease); } .can li:first-child { border-top: 0; }
+  .can i { position: relative; flex: none; width: 24px; height: 24px; border-radius: 7px; background: rgb(255 255 255 / .06); transition: background-color .3s var(--ease); } .can i span { position: absolute; inset: 0; display: grid; place-items: center; } .ok { color: #0a1030; opacity: 0; transform: scale(.5); transition: opacity .25s var(--ease), transform .35s var(--ease); } .no { color: rgb(255 255 255 / .42); transition: opacity .2s var(--ease); }
+  [data-role="0"] [data-r0="1"], [data-role="1"] [data-r1="1"], [data-role="2"] [data-r2="1"] { color: #fff; } [data-role="0"] [data-r0="1"] i { background: #f59e0b; } [data-role="1"] [data-r1="1"] i { background: #34d399; } [data-role="2"] [data-r2="1"] i { background: #60a5fa; }
+  [data-role="0"] [data-r0="1"] .ok, [data-role="1"] [data-r1="1"] .ok, [data-role="2"] [data-r2="1"] .ok { opacity: 1; transform: none; transition-delay: calc(var(--n) * 55ms); } [data-role="0"] [data-r0="1"] .no, [data-role="1"] [data-r1="1"] .no, [data-role="2"] [data-r2="1"] .no { opacity: 0; }
+  @media (prefers-reduced-motion: no-preference) { .lit .can li { animation: row-lit .5s var(--ease) calc(var(--n) * 55ms) both; } @keyframes row-lit { from { translate: -6px 0; } } }
+  @media (max-width: 900px) { .body { grid-template-columns: minmax(0, 1fr); } .pick { grid-column: 1; } .stage { inset: 0; -webkit-mask-image: none; mask-image: none; } .scene { width: 200vw; translate: -50% -50%; opacity: .32; } .set { min-height: 0; } .can li { font-size: 15px; } .roles img { width: 56px; height: 56px; } .roles button { padding-inline: 10px; } .roles span { font-size: 12px; } }
 </style>

@@ -1,39 +1,43 @@
 ---
-// A team around one shared piece of work. As things happen in the feed, the matching tile lights and a pulse runs along its thread to the shared pane.
+// A team around one piece of real work: the shared screening, who it's shared with, and what's just happened on it.
 import Art from "./Art.astro";
 import Arrow from "./Arrow.astro";
+import Device from "./Device.astro";
+import Icon from "./Icon.astro";
 import { APP } from "../data/site.mjs";
-const P = [1170, 465];
-const tiles = [[950, 215, "#60a5fa"], [1195, 140, "#fbbf24"], [1450, 200, "#67e8f9"], [1520, 395, "#fb7185"], [1500, 585, "#34d399"], [1390, 755, "#fbbf24"], [1115, 785, "#60a5fa"], [870, 720, "#fb7185"], [785, 555, "#67e8f9"], [790, 370, "#34d399"]];
-const feed = [[9, "Maya Chen", "changed an answer", "Peer tutoring screening", "#34d399"], [2, "The assistant", "finished an extraction, for Maya", "Peer tutoring trials", "#67e8f9"], [1, "Tomas Silva", "added papers to a collection", "Reading interventions", "#fbbf24"], [3, "Amina Bello", "shared it with a guest", "Peer tutoring screening", "#fb7185"], [0, "Lena Roth", "moved it into the team", "Scoping review 2026", "#60a5fa"], [4, "Tomas Silva", "ran the screening again", "Early literacy programmes", "#34d399"]];
-const Person = `<svg viewBox="0 0 24 24" fill="#0a1a3f" width="18" height="18" aria-hidden="true"><circle cx="12" cy="9" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7z"/></svg>`;
+const Person = `<svg viewBox="0 0 24 24" fill="#0a1a3f" aria-hidden="true"><circle cx="12" cy="9" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7z"/></svg>`;
+const feed = [["Maya Chen", "changed an answer", "#34d399"], ["The assistant", "finished an extraction", "#67e8f9", true], ["Tomas Silva", "added papers to a collection", "#fbbf24"], ["Amina Bello", "shared it with a guest", "#fb7185"], ["Tomas Silva", "ran the screening again", "#fbbf24"]];
+const people = [["Maya Chen", "Admin", "#34d399"], ["Tomas Silva", "Member", "#fbbf24"], ["Amina Bello", "Member", "#fb7185"], ["Lena Roth", "Guest", "#93c5fd"]];
 ---
 <section class="bleed thero" style="--tint:#047857" id="activity">
-  <div class="scene">
-    <Art name="network" live pos="50% 50%" />
-    <svg class="ties" viewBox="0 0 1672 941" fill="none" aria-hidden="true">{tiles.map(([x, y], i) => <path data-tie={i} d={`M${x} ${y}L${P[0]} ${P[1]}`} stroke="#fff" stroke-width="3" pathLength="100" />)}</svg>
-    {tiles.map(([x, y, c], i) => feed.some((f) => f[0] === i) && <i class="tile" data-tile={i} style={`--c:${c};left:calc(var(--u) * ${x});top:calc(var(--u) * ${y})`} aria-hidden="true"><span set:html={Person} /></i>)}
-  </div>
+  <Art name="team-merge" pos="50% 100%" eager />
   <div class="inner tin">
-    <div class="h-copy"><h1>One workspace for your team's evidence</h1><p class="lead">Keep every search, screening and extraction in one place, see who did what, and stop passing spreadsheets around.</p><a class="btn" href={APP}>Bring your team in<Arrow /></a></div>
-    <div class="frost feed" data-feed aria-label="Recent activity in a shared workspace"><b>Activity</b><ol>{feed.map(([t, who, what, item, c], i) => <li data-t={t} style={`--c:${c}`} class:list={{ hide: i > 2 }}><i set:html={Person} /><div><p><strong>{who}</strong> {what}</p><span>{item}</span></div></li>)}</ol></div>
+    <div class="tc"><h1>One workspace for your team's evidence</h1><p class="lead">Keep every search, screening and extraction in one place, see who did what, and stop passing spreadsheets around.</p><a class="btn" href={APP}>Bring your team in<Arrow /></a></div>
+    <div class="ts">
+      <Device class="lap" kind="laptop" name="screen" theme="light" eager alt="A shared screening with its progress, its questions and who ran it" sizes="(max-width: 900px) 92vw, 840px" />
+      <div class="frost who" aria-label="People on this piece of work"><b>On this screening</b><ul>{people.map(([n, r, c]) => <li><i style={`--c:${c}`} set:html={Person} /><span>{n}</span><em>{r}</em></li>)}</ul></div>
+      <div class="frost feed" data-feed aria-label="Recent activity"><b>Activity</b><ol>{feed.map(([n, w, c, ai], i) => <li class:list={{ hide: i > 3 }}><i style={`--c:${c}`}>{ai ? <Icon name="spark" size={16} /> : <span class="p" set:html={Person} />}</i><p><strong>{n}</strong> {w}</p></li>)}</ol></div>
+    </div>
   </div>
 </section>
 <script>
   const feed = document.querySelector("[data-feed]");
   if (feed && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
     const list = feed.querySelector("ol"), root = feed.closest(".thero");
-    const fire = (n) => { root.querySelectorAll(".lit").forEach((e) => e.classList.remove("lit")); root.querySelector(`[data-tile="${n}"]`)?.classList.add("lit"); root.querySelector(`[data-tie="${n}"]`)?.classList.add("lit"); };
     let seen = false; new IntersectionObserver(([e]) => (seen = e.isIntersecting)).observe(root);
-    fire(list.children[0].dataset.t);
-    setInterval(() => { if (!seen || document.hidden) return; const last = list.lastElementChild, from = new Map([...list.children].map((c) => [c, c.getBoundingClientRect().top])); list.prepend(last); [...list.children].forEach((c, i) => c.classList.toggle("hide", i > 2)); for (const c of list.children) { const d = from.get(c) - c.getBoundingClientRect().top; if (d && c !== last) c.animate([{ transform: `translateY(${d}px)` }, { transform: "none" }], { duration: 500, easing: "cubic-bezier(.22,1,.36,1)" }); } last.animate([{ opacity: 0, transform: "translateY(-10px)" }, { opacity: 1, transform: "none" }], { duration: 500, easing: "ease-out" }); fire(last.dataset.t); }, 3200);
+    setInterval(() => { if (!seen || document.hidden) return; const last = list.lastElementChild; list.prepend(last); [...list.children].forEach((c, i) => c.classList.toggle("hide", i > 3)); last.animate([{ opacity: 0, transform: "translateY(-8px)" }, { opacity: 1, transform: "none" }], { duration: 450, easing: "ease-out" }); }, 3600);
   }
 </script>
 <style>
-  .thero { background: #04303d; min-height: min(56.25vw, 860px); padding-block: clamp(104px, 9vw, 132px) clamp(40px, 5vw, 72px); --g: 2 30 40; }
-  .scene { position: absolute; z-index: -1; left: 4%; top: 0; width: 100%; } .scene :global(.art) { z-index: 0; }
-  .ties { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; } .ties path { stroke-dasharray: 12 88; stroke-dashoffset: 100; opacity: 0; } .ties path:global(.lit) { opacity: 1; animation: tie 1.4s var(--ease) both; } @keyframes tie { to { stroke-dashoffset: 0; opacity: 0; } }
-  .tile { position: absolute; z-index: 2; translate: -50% -50%; display: grid; place-items: center; width: max(26px, calc(var(--u) * 46)); aspect-ratio: 1; border-radius: 50%; background: #fff; box-shadow: 0 6px 18px -4px rgb(0 20 30 / .7); transition: scale .35s var(--ease), box-shadow .35s var(--ease); } .tile span { display: grid; width: 56%; } .tile:global(.lit) { scale: 1.3; box-shadow: 0 0 0 4px var(--c), 0 0 34px 8px var(--c); }
-  .tin { display: grid; gap: 28px; justify-items: start; } .h-copy { display: grid; gap: 20px; justify-items: start; width: min(48%, 580px); } .h-copy h1 { font-size: clamp(40px, 4.6vw, 66px); } .feed { width: min(44%, 540px); padding: 16px 18px; } .feed > b { font-weight: 500; } .feed ol { display: grid; margin-top: 4px; overflow: hidden; } .feed li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: center; padding-block: 8px; } .feed li.hide { display: none; } .feed li > i { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--c); } .feed li > i :global(svg) { width: 16px; height: 16px; } .feed p { font-size: 14px; line-height: 1.3; } .feed strong { font-weight: 500; } .feed span { font-size: 13px; opacity: .78; }
-  @media (max-width: 900px) { .scene { width: 190vw; left: -80vw; top: 30px; opacity: .34; } .h-copy, .feed { width: 100%; } .tile { display: none; } }
+  .thero { background: #032630; padding-block: clamp(104px, 8.4vw, 124px) clamp(32px, 4vw, 56px); --g: 3 28 36; } .thero::after { display: none; } .thero :global(.art) { z-index: -2; }
+  .tin { display: grid; gap: clamp(28px, 3.4vw, 44px); justify-items: center; text-align: center; }
+  .tc { display: grid; gap: 18px; justify-items: center; max-width: 780px; } .tc h1 { font-size: clamp(40px, 4.8vw, 68px); } .tc .lead { max-width: 34em; opacity: .92; }
+  .tc > * { animation: t-up .8s var(--ease) both; } .tc > :nth-child(2) { animation-delay: .06s; } .tc > :nth-child(3) { animation-delay: .12s; } @keyframes t-up { from { opacity: 0; transform: translateY(18px); } }
+  .ts { position: relative; width: 100%; max-width: 1100px; display: grid; justify-items: center; text-align: left; animation: t-up .9s .16s var(--ease) both; } .ts :global(.lap) { width: min(76%, 840px); }
+  .frost { position: absolute; z-index: 2; padding: 14px 14px 10px; font-size: 14px; background: rgb(3 28 36 / .92); } .frost > b { display: block; font-weight: 500; font-size: 15px; margin-bottom: 8px; }
+  li > i { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; background: var(--c); color: #0a1a3f; } li > i :global(svg), .p :global(svg) { width: 16px; height: 16px; } .p { display: grid; }
+  .who { left: 0; top: 18%; width: 236px; } .who ul { display: grid; gap: 8px; margin-bottom: 4px; } .who li { display: flex; align-items: center; gap: 10px; white-space: nowrap; } .who em { margin-left: auto; font-style: normal; font: 400 12px/1 var(--mono); opacity: .78; }
+  .feed { right: 0; top: 40%; width: 384px; } .feed ol { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-bottom: 4px; } .feed li { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 10px; min-height: 30px; } .feed li.hide { display: none; } .feed p { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; } .feed strong { font-weight: 500; }
+  @media (max-width: 1100px) { .ts :global(.lap) { width: 100%; } .who { display: none; } .feed { right: 12px; top: auto; bottom: 12%; width: 340px; } }
+  @media (max-width: 700px) { .ts { gap: 12px; } .feed { position: static; width: 100%; } .feed p { white-space: normal; } }
 </style>

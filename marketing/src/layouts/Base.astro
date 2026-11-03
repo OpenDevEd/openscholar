@@ -38,7 +38,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
     <header class="bar">
       <a class="brand" href="/" aria-label="OpenScholar home">
         <svg class="mark" viewBox="-0.51 -0.79 83.03 83.03" width="28" height="28" aria-hidden="true" set:html={MARK} />
-        <span class="name">OpenScholar</span>{sections.length > 0 && <span class="slot" aria-hidden="true"><i>/</i><span data-sec></span></span>}
+        <span class="name">OpenScholar</span><span class="slot" aria-hidden="true"><i>/</i><span data-sec></span></span>
       </a>
       <nav class="nav" aria-label="Main"><span class="pill" aria-hidden="true"></span>{NAV.map((n) => <a class="lk" href={n.href} data-menu={n.id} aria-current={path === n.href ? "page" : undefined}><span class="roll" data-t={n.label}><span>{n.label}</span></span><svg class="chev" width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 3.500 3 3 3-3" /></svg></a>)}</nav>
       <div class="end">

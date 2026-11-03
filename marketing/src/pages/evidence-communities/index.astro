@@ -7,6 +7,7 @@ import DotMap from "../../components/DotMap.astro";
 import Art from "../../components/Art.astro";
 import Device from "../../components/Device.astro";
 import SourceGraph from "../../components/SourceGraph.astro";
+import ReviewFlow from "../../components/ReviewFlow.astro";
 import { APP } from "../../data/site.mjs";
 const faq = [
   ["Who controls what gets published?", "Your team does. You choose the sources, AI can screen what comes in against your subject, and records your editors write wait as drafts until an editor or owner publishes them."],
@@ -38,6 +39,7 @@ const faq = [
     </div>
   </section>
   <section class="panel world" id="map"><i class="field f-night" aria-hidden="true"></i><div class="w-top"><h2>Show where your field lives</h2><p class="lead">Every community can map the people and places behind its evidence, so readers can see who's working on what, and where.</p></div><DotMap /></section>
+  <section class="panel rev" id="review"><i class="field f-emerald" aria-hidden="true"></i><Art name="review-sheet" pos="100% 60%" /><div class="r-copy"><h2>Your team decides what readers see</h2><p class="lead">Sources keep the community current, and what your team writes goes through review first. Creators submit, and editors publish or send back.</p></div><ReviewFlow /></section>
   <section class="bleed steps" id="steps">
     <div class="inner"><div class="st-head"><h2>From first draft to live community</h2><p class="lead">Name it and reserve your address. Connect the sources you already keep. Choose your logo, colours, languages and what readers get, then go live. Later changes wait in a draft until you approve them.</p></div><SourceGraph /></div>
   </section>
@@ -64,6 +66,7 @@ const faq = [
   /* The answer lands first, then the thread runs to the sentence, and the sentence lights up. */
   :global(.js) .answers[data-in] { opacity: 1; transform: none; } :global(.js) .answers .a-card { opacity: 0; translate: 0 22px; } :global(.js) .answers .sheet { opacity: 0; translate: 22px 0; } :global(.js) .answers .tie path { stroke-dashoffset: 1; } :global(.js) .answers .sheet mark { background-size: 0 100%; }
   :global(.js) .answers.in .a-card { opacity: 1; translate: 0 0; transition: opacity .7s var(--ease), translate .8s var(--ease); } :global(.js) .answers.in .sheet { opacity: 1; translate: 0 0; transition: opacity .7s var(--ease) .2s, translate .8s var(--ease) .2s; } :global(.js) .answers.in .tie path { stroke-dashoffset: 0; transition: stroke-dashoffset 1s var(--ease) .7s; } :global(.js) .answers.in .sheet mark { background-size: 100% 100%; transition: background-size .8s var(--ease) 1.5s; }
+  .rev { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: center; padding: var(--pad); min-height: 560px; } .r-copy { display: grid; gap: 18px; } .rev > :global(.art) { left: 36%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%); mask-image: linear-gradient(90deg, transparent, #000 22%); } @media (max-width: 900px) { .rev > :global(.art) { display: none; } } @media (max-width: 900px) { .rev { grid-template-columns: minmax(0, 1fr); } }
   .world { padding: var(--pad); } .w-top { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; margin-bottom: 28px; }
   .steps { background: #3a0310; padding-block: clamp(56px, 7vw, 96px); } .st-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; margin-bottom: clamp(28px, 4vw, 56px); }
   .close { background: var(--night); display: grid; justify-items: center; align-content: start; gap: 24px; padding: clamp(64px, 8vw, 112px) var(--pad) max(160px, 28vw); text-align: center; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
