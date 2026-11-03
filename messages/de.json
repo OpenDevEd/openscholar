@@ -4217,6 +4217,11 @@
         "did": "Ein Screening-Thema wurde getestet",
         "where": "Evidence Library",
         "ask": "Ein Screening-Thema an 200 Datensätzen testen"
+      },
+      "libraryAccess": {
+        "doing": "Der Zugang zur Evidence Library wird angesehen",
+        "did": "Der Zugang zur Evidence Library wurde angesehen",
+        "where": "Admin"
       }
     },
     "asks": {

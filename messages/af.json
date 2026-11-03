@@ -4217,6 +4217,11 @@
         "did": "Het ’n siftingsonderwerp probeer",
         "where": "Evidence Library",
         "ask": "Probeer ’n siftingsonderwerp op 200 rekords"
+      },
+      "libraryAccess": {
+        "doing": "Kyk na toegang tot Evidence Library",
+        "did": "Het na toegang tot Evidence Library gekyk",
+        "where": "Admin"
       }
     },
     "asks": {

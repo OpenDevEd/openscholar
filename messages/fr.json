@@ -4216,6 +4216,11 @@
         "did": "Sujet de tri essayé",
         "where": "Evidence Library",
         "ask": "Essayer un sujet de tri sur 200 notices"
+      },
+      "libraryAccess": {
+        "doing": "Consultation de l'accès à l'Evidence Library",
+        "did": "Accès à l'Evidence Library consulté",
+        "where": "Administration"
       }
     },
     "asks": {

@@ -4216,6 +4216,11 @@
         "did": "छँटाई का विषय आज़माया",
         "where": "Evidence Library",
         "ask": "छँटाई का विषय 200 रिकॉर्ड पर आज़माएँ"
+      },
+      "libraryAccess": {
+        "doing": "Evidence Library की पहुँच देख रहा है",
+        "did": "Evidence Library की पहुँच देखी",
+        "where": "एडमिन"
       }
     },
     "asks": {

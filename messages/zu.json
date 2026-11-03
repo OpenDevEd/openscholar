@@ -4216,6 +4216,11 @@
         "did": "Izame isihloko sokuskrini",
         "where": "Evidence Library",
         "ask": "Zama isihloko sokuskrini kumarekhodi angu-200"
+      },
+      "libraryAccess": {
+        "doing": "Ibheka ukufinyelela ku-Evidence Library",
+        "did": "Ibheke ukufinyelela ku-Evidence Library",
+        "where": "Umphathi"
       }
     },
     "asks": {

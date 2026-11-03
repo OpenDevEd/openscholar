@@ -4217,6 +4217,11 @@
         "did": "Probó un tema de cribado",
         "where": "Evidence Library",
         "ask": "Probar un tema de cribado con 200 registros"
+      },
+      "libraryAccess": {
+        "doing": "Viendo el acceso a Evidence Library",
+        "did": "Se vio el acceso a Evidence Library",
+        "where": "Administración"
       }
     },
     "asks": {

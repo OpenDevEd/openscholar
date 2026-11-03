@@ -4217,6 +4217,11 @@
         "did": "Testou um tema de triagem",
         "where": "Evidence Library",
         "ask": "Testar um tema de triagem em 200 registos"
+      },
+      "libraryAccess": {
+        "doing": "A ver o acesso à Evidence Library",
+        "did": "Viu o acesso à Evidence Library",
+        "where": "Administração"
       }
     },
     "asks": {

@@ -4217,6 +4217,11 @@
         "did": "جرّب موضوع فرز",
         "where": "Evidence Library",
         "ask": "تجربة موضوع فرز على 200 سجل"
+      },
+      "libraryAccess": {
+        "doing": "جارٍ النظر في الوصول إلى Evidence Library",
+        "did": "نظر في الوصول إلى Evidence Library",
+        "where": "الإدارة"
       }
     },
     "asks": {

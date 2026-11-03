@@ -4217,6 +4217,11 @@
         "did": "Imejaribu mada ya uchujaji",
         "where": "Evidence Library",
         "ask": "Jaribu mada ya uchujaji kwenye rekodi 200"
+      },
+      "libraryAccess": {
+        "doing": "Inaangalia ufikiaji wa Evidence Library",
+        "did": "Iliangalia ufikiaji wa Evidence Library",
+        "where": "Msimamizi"
       }
     },
     "asks": {

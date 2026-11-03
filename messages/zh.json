@@ -4216,6 +4216,11 @@
         "did": "已试用筛选主题",
         "where": "Evidence Library",
         "ask": "在 200 条记录上试用筛选主题"
+      },
+      "libraryAccess": {
+        "doing": "正在查看 Evidence Library 访问权限",
+        "did": "已查看 Evidence Library 访问权限",
+        "where": "管理"
       }
     },
     "asks": {
