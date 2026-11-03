@@ -55,9 +55,9 @@ const faq = [
       </div>
       <ul class="beams" aria-label="Papers that met the criteria">{beams.map(([y, t, marks], i) => <li class:list={{ amber: marks.includes("u") }} style={`--y:${y};--i:${i}`}><span class="tt">{t}</span><span class="marks" aria-hidden="true">{[...marks].map((m) => <i class={m}><Icon name={m === "y" ? "check" : "flagq"} size={12} /></i>)}</span></li>)}</ul>
     </div></div>
-    <div class="s-small">
-      <div class="frost rules"><b>Your criteria</b><ol>{questions.map(([q, y, u, n], i) => <li><span class="n">{i + 1}</span><span class="q">{q}</span><span class="tri"><i style={`flex:${y}`} class="y"></i><i style={`flex:${u}`} class="u"></i><i style={`flex:${n}`} class="x"></i></span></li>)}</ol><p>Included at 2 of 3 points</p></div>
-      <div class="frost out"><div class="tally"><b>Included</b><span>14 of 15 papers</span></div><ul>{beams.slice(0, 5).map(([, t, marks]) => <li class:list={{ maybe: marks.includes("u") }}><Icon name={marks.includes("u") ? "flagq" : "check"} size={16} /><span>{t}</span></li>)}</ul></div>
+    <div class="s-small" data-pass>
+      <div class="frost rules"><b>Your criteria</b><ol>{questions.map(([q, y, u, n], i) => <li><span class="n">{i + 1}</span><span class="q">{q}</span><span class="tri"><i style={`flex:${y}`} class="y"></i><i style={`flex:${u}`} class="u"></i><i style={`flex:${n}`} class="x"></i></span></li>)}</ol><p>Included at <span class="marks3" role="group" aria-label="Pass mark">{[1, 2, 3].map((n) => <button type="button" aria-pressed={n === 2 ? "true" : "false"} data-n={n}>{n}</button>)}</span> of 3 points</p></div>
+      <div class="frost out"><div class="tally"><b>Included</b><span aria-live="polite"><span data-inc>14</span> of 15 papers</span></div><ul>{beams.slice(0, 5).map(([, t, marks]) => <li class:list={{ maybe: marks.includes("u") }}><Icon name={marks.includes("u") ? "flagq" : "check"} size={16} /><span>{t}</span></li>)}</ul></div>
     </div>
   </section>
 
@@ -93,12 +93,10 @@ const faq = [
 </Base>
 <script>
   // Move the pass mark and every paper is decided again: your rule, not the model's, draws the line.
-  const pane = document.querySelector("[data-pass]");
-  if (pane) {
-    const cells = [...pane.querySelectorAll(".wall15 i")], marks = [...pane.querySelectorAll("[data-n]")], beam = document.querySelector(".beams .amber");
-    const STATES = { 1: { inc: 15, dec: 0, out: [], amber: null }, 2: { inc: 14, dec: 1, out: [], amber: 9 }, 3: { inc: 10, dec: 1, out: [2, 6, 11, 13], amber: 9 } };
-    const set = (n) => { const st = STATES[n]; marks.forEach((m) => m.setAttribute("aria-pressed", String(+m.dataset.n === n))); pane.querySelector("[data-inc]").textContent = st.inc; pane.querySelector("[data-dec]").textContent = st.dec; pane.querySelector(".count .amber").classList.toggle("none", !st.dec); cells.forEach((c, i) => { c.classList.toggle("u", i === st.amber); c.classList.toggle("x", st.out.includes(i)); }); beam.classList.toggle("settled", !st.dec); };
-    marks.forEach((m) => m.addEventListener("click", () => set(+m.dataset.n)));
+  const STATES = { 1: { inc: 15, dec: 0, out: [], amber: null }, 2: { inc: 14, dec: 1, out: [], amber: 9 }, 3: { inc: 10, dec: 1, out: [2, 6, 11, 13], amber: 9 } };
+  for (const pane of document.querySelectorAll("[data-pass]")) {
+    const cells = [...pane.querySelectorAll(".wall15 i")], marks = [...pane.querySelectorAll("[data-n]")], beam = pane.parentElement.querySelector(".beams .amber"), inc = pane.querySelector("[data-inc]"), dec = pane.querySelector("[data-dec]");
+    marks.forEach((m) => m.addEventListener("click", () => { const n = +m.dataset.n, st = STATES[n]; marks.forEach((x) => x.setAttribute("aria-pressed", String(x === m))); inc.textContent = st.inc; if (dec) { dec.textContent = st.dec; dec.parentElement.classList.toggle("none", !st.dec); beam.classList.toggle("settled", !st.dec); } cells.forEach((c, i) => { c.classList.toggle("u", i === st.amber); c.classList.toggle("x", st.out.includes(i)); }); }));
   }
 </script>
 <style>
@@ -148,7 +146,7 @@ const faq = [
   .cyc { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: top left; opacity: 0; animation: cyc 24s var(--ease) calc(4s + var(--i) * 4s) infinite; } @keyframes cyc { 0% { opacity: 0; } 3% { opacity: 1; } 17% { opacity: 1; } 20% { opacity: 0; } }
   .p-devices { position: relative; height: 520px; } .p-lap { position: absolute; left: 0; top: 40px; width: 92%; display: block; } .p-devices :global(.p-ph) { position: absolute; right: 7%; bottom: -10px; width: 168px; }
   .close { background: var(--night); padding-block: clamp(64px, 8vw, 112px) max(160px, 28vw); text-align: center; } .close .inner { display: grid; justify-items: center; gap: 24px; } .close > :global(.art) { -webkit-mask-image: linear-gradient(transparent 30%, #000 52%); mask-image: linear-gradient(transparent 30%, #000 52%); } .close h2 { font-size: clamp(38px, 6.4vw, 92px); line-height: 1; letter-spacing: -.03em; }
-    @media (max-width: 1000px) { .sieve { padding: 48px 0; background: radial-gradient(ellipse 60% 30% at 80% 10%, rgb(52 211 153 / .22), transparent), #021f18; } .s-wrap { display: none; } .s-head { grid-template-columns: minmax(0, 1fr); margin-bottom: 0; } .s-small { display: grid; gap: 12px; margin-top: 24px; padding-inline: calc(var(--gap) + var(--pad)); } }
+    @media (max-width: 1000px) { .sieve { padding: 48px 0; background: radial-gradient(ellipse 60% 30% at 80% 10%, rgb(52 211 153 / .22), transparent), #021f18; } .s-wrap { display: none; } .s-head { grid-template-columns: minmax(0, 1fr); margin-bottom: 0; } .marks3 button { min-width: 36px; height: 36px; } .s-small { display: grid; gap: 12px; margin-top: 24px; padding-inline: calc(var(--gap) + var(--pad)); } }
   
   @media (max-width: 900px) { .publish { grid-template-columns: minmax(0, 1fr); padding: 0 var(--pad); } .t-head { padding: 0 var(--pad); } .b-head { grid-template-columns: minmax(0, 1fr); } .stack { width: 100%; } .who { padding-inline: 8px; } .teams { flex-direction: column; height: auto; margin-inline: -8px; } .teams a, .teams a:first-child { --o: 1; flex: none; display: grid; gap: 10px; padding: 16px; } .shot, .shot.tall { position: relative; left: 0; top: 0; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; } .teams h3, .teams p { position: static; width: auto; } .proof { grid-template-columns: minmax(0, 1fr); gap: 14px; } .tie { display: none; } .p-devices { height: 88vw; margin-inline: calc(var(--pad) * -1 + 8px); } .p-lap { width: 94%; top: 0; } .p-devices :global(.p-ph) { width: 30%; right: 6%; bottom: 0; }
     :global(.find) :global(.view) { padding: 0 0 var(--pad); } }
