@@ -152,7 +152,7 @@ export function WorkspaceGeneral({ initial }: { initial?: GeneralInitial }) {
     { icon: Search, tint: "#60a5fa", label: t("searches"), n: summary.searches, href: "/history" },
     { icon: ListFilter, tint: "#34d399", label: t("screenings"), n: summary.screenings, href: "/screening" },
     { icon: FileSearch, tint: "#818cf8", label: t("extractions"), n: summary.extractions, href: "/extraction" },
-    { icon: EvidenceLibrariesIcon, tint: "#2dd4bf", label: t("evidenceLibraries"), n: summary.libraries, href: "/evidence-libraries" },
+    { icon: EvidenceLibrariesIcon, tint: "#2dd4bf", label: t("evidenceLibraries"), n: summary.libraries, href: "/evidence-communities" },
   ];
   const saveName = () => {
     const next = draft?.trim();

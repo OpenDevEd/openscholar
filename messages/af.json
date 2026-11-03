@@ -23,7 +23,7 @@
     "history": "Geskiedenis",
     "extraction": "Ekstraksie",
     "library": "Biblioteek",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "screening": "Siftering",
     "settings": "Instellings",
     "save": "Stoor",
@@ -292,12 +292,12 @@
       "noMemberLimit": "Geen beperking op lede nie",
       "southernFeature1": "Alles in die gratis organisasie",
       "southernFeature2": "By jou organisasie gevoeg nadat jy ons gekontak het",
-      "librariesName": "Evidence Libraries",
+      "librariesName": "Evidence Communities",
       "librariesDescription": "Op versoek vir jou organisasie aangeskakel. Sy plan en krediete bly dieselfde.",
-      "librariesFeature1": "Openbare Evidence Libraries",
+      "librariesFeature1": "Openbare Evidence Communities",
       "librariesFeature2": "Skep en wysig outeurprofiele",
       "librariesOn": "Aan vir jou organisasie",
-      "openLibraries": "Maak Evidence Libraries oop"
+      "openLibraries": "Maak Evidence Communities oop"
     },
     "cancelScheduledDowngrade": "Kanselleer geskeduleerde verlaging",
     "scheduled": "Geskeduleer",
@@ -325,7 +325,7 @@
     "loading": "Laai publikasie-instellings…",
     "storedHint": "Laat leeg om die gestoorde geloofsbrief te behou",
     "saved": "Publikasie-instellings gestoor",
-    "activateHint": "Aktiveer die konfigurasie om dit op hierdie biblioteek toe te pas.",
+    "activateHint": "Aktiveer die konfigurasie om dit op hierdie gemeenskap toe te pas.",
     "failure": "Geloofsbriewe kon nie nagegaan word nie. Niks is gestoor nie. Probeer weer.",
     "zenodoRequired": "Vereis solank Crossref aangeskakel is. Lêers word geargiveer wanneer dit beskikbaar is.",
     "zenodoHint": "Argiveer lêers en skep Zenodo-DOI’s.",
@@ -348,8 +348,8 @@
     "depositorName": "Naam van deponeerder",
     "email": "E-pos van deponeerder",
     "namespace": "DOI-naamruimte",
-    "namespaceHint": "Verstek na hierdie biblioteek se adresnaam.",
-    "libraryName": "Biblioteeknaam",
+    "namespaceHint": "Verstek na hierdie gemeenskap se adresnaam.",
+    "libraryName": "Gemeenskapsnaam",
     "checking": "Gaan verskaffergeloofsbriewe na…",
     "needsVerification": "Veranderinge moet nagegaan word voordat dit gestoor kan word.",
     "verified": "Nagegaan op {date}",
@@ -359,7 +359,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "Nie toegelaat nie",
-    "organizationFeatureDescription": "Hierdie werkruimte se plan sluit nie Evidence Libraries in nie.",
+    "organizationFeatureDescription": "Hierdie werkruimte se plan sluit nie Evidence Communities in nie.",
     "backToSearch": "Terug na soektog",
     "loadingTitle": "Laai werkruimte",
     "loadingDescription": "Berei jou geverifieerde werkruimte voor.",
@@ -1608,14 +1608,14 @@
       "collection": "Versameling",
       "saved": "Gestoorde artikels",
       "screening": "Siftering",
-      "evidenceLibrary": "Evidence Library"
+      "evidenceLibrary": "Evidence Community"
     },
     "noSets": {
       "search": "Nog geen gestoorde soektogte nie.",
       "collection": "Nog geen versamelings nie.",
       "saved": "Nog geen gestoorde artikels nie.",
       "screening": "Nog geen voltooide siftings nie.",
-      "evidenceLibrary": "Nog geen Evidence Libraries nie."
+      "evidenceLibrary": "Nog geen Evidence Communities nie."
     },
     "papersToScreen": "Artikels om te sif",
     "paperCount": "{count, plural, one {# artikel} other {# artikels}}",
@@ -1715,8 +1715,8 @@
     "apps": "programme",
     "revokeApp": "Herroep {app}",
     "integrations": "Integrasies",
-    "zoteroAbout": "Gebruik jou biblioteke en groepe in gesprekke en Evidence Libraries",
-    "zoteroKeeps": "Evidence Libraries hou aan om die groepe wat hulle het, te sinkroniseer",
+    "zoteroAbout": "Gebruik jou biblioteke en groepe in gesprekke en Evidence Communities",
+    "zoteroKeeps": "Evidence Communities hou aan om die groepe wat hulle het, te sinkroniseer",
     "connect": "Koppel",
     "disconnect": "Ontkoppel",
     "connectedTime": "Gekoppel {time}",
@@ -1726,12 +1726,12 @@
     "picker": {
       "placeholder": "Kies ’n instelling",
       "search": "Soek instellings",
-      "notSetUp": "Name uit rekords verskyn nadat die biblioteek opgestel is.",
+      "notSetUp": "Name uit rekords verskyn nadat die gemeenskap opgestel is.",
       "empty": "Nog geen instellingsname op die rekords nie.",
       "none": "Geen",
       "useTyped": "Gebruik \"{name}\"",
       "title": "Kies ’n instelling",
-      "description": "Name kom uit die rekords in hierdie biblioteek.",
+      "description": "Name kom uit die rekords in hierdie gemeenskap.",
       "colName": "Instelling",
       "colRecords": "Rekords",
       "noMatch": "Geen instelling pas nie.",
@@ -1740,7 +1740,7 @@
     }
   },
   "evidenceLibraryConfiguration": {
-    "untitled": "Biblioteek sonder titel",
+    "untitled": "Gemeenskap sonder titel",
     "unsaved": "Ongestoorde veranderinge",
     "viewOnly": "Net kyk",
     "save": "Stoor",
@@ -1755,18 +1755,18 @@
     "fixFirst": "Los eers die uitgelighte velde op",
     "fixFirstToast": "Los die uitgelighte velde op",
     "fixFirstToastDescription": "Sommige afdelings benodig aandag voordat dit gestoor kan word.",
-    "activateDraftTitle": "Stel hierdie biblioteek op en aktiveer dit?",
+    "activateDraftTitle": "Stel hierdie gemeenskap op en aktiveer dit?",
     "activateDraftBody": "Dit stel {name} op en plaas dit aanlyn by {address}. Neem ongeveer 2 minute.",
     "activateDraftConfirm": "Begin opstelling",
     "activateTitle": "Aktiveer hierdie weergawe?",
     "activateBody": "Dit publiseer die nuwe weergawe. Neem ongeveer 2 minute.",
-    "activateBodySoftware": "Dit dateer die biblioteek ook op na die nuutste Evidence Library-sagteware, wat hierdie instellings nodig het, so dit kan ’n paar minute langer neem.",
+    "activateBodySoftware": "Dit dateer die gemeenskap ook op na die nuutste Evidence Community-sagteware, wat hierdie instellings nodig het, so dit kan ’n paar minute langer neem.",
     "activateBodyUnsaved": "Jou ongestoorde veranderinge word eers gestoor.",
     "activateConfirm": "Aktiveer",
-    "activationError": "Die biblioteek kon nie geaktiveer word nie. Probeer weer.",
+    "activationError": "Die gemeenskap kon nie geaktiveer word nie. Probeer weer.",
     "applying": "Jou veranderinge word toegepas",
     "operationFailed": "Die laaste aktivering het misluk",
-    "backToLibraries": "Terug na biblioteke",
+    "backToLibraries": "Terug na gemeenskappe",
     "backToTop": "Terug na bo",
     "rail": {
       "aria": "Konfigurasie-afdelings",
@@ -1814,15 +1814,15 @@
       "storage": "Lêers",
       "application": "Toepassing",
       "deployment": "Bou",
-      "health_check": "Gaan die biblioteekbladsy na",
+      "health_check": "Gaan die gemeenskapsbladsy na",
       "coolify": "Bou",
       "convex": "Rond af",
       "completed": "Live"
     },
     "problems": {
       "notificationSchedule": "Kies ’n geldige verteldag, tyd en tydsone.",
-      "nameMissing": "Gee die biblioteek ’n naam.",
-      "shortNameMissing": "Gee die biblioteek ’n kort naam.",
+      "nameMissing": "Gee die gemeenskap ’n naam.",
+      "shortNameMissing": "Gee die gemeenskap ’n kort naam.",
       "partnerName": "Elke befondsingsvennoot het ’n naam nodig.",
       "badColour": "Een van die kleure is nie geldig nie.",
       "institutionName": "Elke instelling het ’n naam nodig.",
@@ -1854,7 +1854,7 @@
       "consentVersion": "Die toestemmingsweergawe is ’n heelgetal, 1 of hoër.",
       "aiKey": "Voeg jou OpenRouter-sleutel by.",
       "aiModel": "Kies die model wat vrae beantwoord.",
-      "aiModelUnknown": "Daardie model word nie deur jou biblioteeksagteware aangebied nie. Kies ’n ander.",
+      "aiModelUnknown": "Daardie model word nie deur jou gemeenskapssagteware aangebied nie. Kies ’n ander.",
       "homeStepName": "Gee elke slegs-teks-stap ’n naam.",
       "homeLimit": "Sommige teks op die tuisblad is langer as toegelaat, of ’n lys het te veel inskrywings. Maak dit korter.",
       "tagFilters": "Elke etikettefilter het ’n naam nodig, en elke inskrywing ’n etiket."
@@ -1887,18 +1887,18 @@
       "textFile": "Opgelaaide teks"
     },
     "identity": {
-      "description": "Die naam wat mense sien, die adres wat hulle besoek, en hoe die biblioteek lyk wanneer dit gedeel word.",
+      "description": "Die naam wat mense sien, die adres wat hulle besoek, en hoe die gemeenskap lyk wanneer dit gedeel word.",
       "nameLabel": "Naam",
-      "nameError": "Voer ’n naam vir die biblioteek in.",
+      "nameError": "Voer ’n naam vir die gemeenskap in.",
       "shortNameLabel": "Kort naam",
       "shortNameHint": "Word gebruik in uitvoerlêernaam, e-posonderwerpe, en wanneer die webwerf as ’n app vasgepen word.",
-      "shortNameError": "Voer ’n kort naam vir die biblioteek in.",
+      "shortNameError": "Voer ’n kort naam vir die gemeenskap in.",
       "addressLabel": "Openbare adres",
       "addressHint": "Gebruik die Domein-afdeling om jou eie adres by te voeg.",
       "copyAddress": "Kopieer adres",
       "copied": "Gekopieer",
       "taglineLabel": "Leuse",
-      "taglineHint": "Die opskrif bo die biblioteeksoektog. Laat leeg om Soek te wys.",
+      "taglineHint": "Die opskrif bo die gemeenskapssoektog. Laat leeg om Soek te wys.",
       "taglinePlaceholder": "Bewyse vir beter besluite",
       "descriptionLabel": "Beskrywing",
       "descriptionHint": "Word op die tuisblad en in soekresultate gewys.",
@@ -1910,9 +1910,9 @@
       "partnerName": "Naam van vennoot",
       "partnerPlaceholder": "Naam van vennoot",
       "shareImageLabel": "Deelbeeld",
-      "shareImageHint": "Word gebruik wanneer die biblioteek op sosiale media gedeel word. PNG, JPG of WEBP.",
+      "shareImageHint": "Word gebruik wanneer die gemeenskap op sosiale media gedeel word. PNG, JPG of WEBP.",
       "showNameLabel": "Naam langs die logo",
-      "showNameHint": "Skakel af wanneer die logo reeds die biblioteek se naam spel."
+      "showNameHint": "Skakel af wanneer die logo reeds die gemeenskap se naam spel."
     },
     "theme": {
       "description": "Uitleg, lettertipes, logo’s en kleure vir die openbare webwerf.",
@@ -1935,7 +1935,7 @@
       "fontsHeading": "Lettertipes",
       "headingFontLabel": "Opskriftlettertipe",
       "bodyFontLabel": "Liggaamlettertipe",
-      "sampleHeading": "Jou biblioteek",
+      "sampleHeading": "Jou gemeenskap",
       "sampleBody": "Dit is hoe ’n paragraaf liggaamteks op die openbare webwerf sal lyk.",
       "logosHeading": "Logo en blaaierikoon",
       "logoLightLabel": "Logo vir ligmodus",
@@ -1983,19 +1983,19 @@
       "add": "Voeg instelling by"
     },
     "danger": {
-      "description": "Verwyder hierdie biblioteek. Wees versigtig hier.",
-      "deleteTitle": "Verwyder die biblioteek",
+      "description": "Verwyder hierdie gemeenskap. Wees versigtig hier.",
+      "deleteTitle": "Verwyder die gemeenskap",
       "deleteHint": "Verwyder die webwerf, adres en instellings.",
-      "deleteButton": "Verwyder biblioteek"
+      "deleteButton": "Verwyder gemeenskap"
     },
     "deleteDialog": {
-      "title": "Verwyder hierdie biblioteek?",
+      "title": "Verwyder hierdie gemeenskap?",
       "body": "Dit verwyder {name}, sy app, sy lêers, en sy adres {address}. Jy kan dit nie ongedaan maak nie.",
       "typeToConfirm": "Tik {name} om te bevestig",
-      "confirm": "Verwyder biblioteek",
-      "startedTitle": "Biblioteek word verwyder",
+      "confirm": "Verwyder gemeenskap",
+      "startedTitle": "Gemeenskap word verwyder",
       "startedDescription": "{name} word verwyder. Neem ’n paar sekondes.",
-      "error": "Die biblioteek kon nie verwyder word nie. Voltooi enige lopende biblioteekbewerking, en probeer dan weer."
+      "error": "Die gemeenskap kon nie verwyder word nie. Voltooi enige lopende gemeenskapsbewerking, en probeer dan weer."
     },
     "links": {
       "labelLabel": "Etiket",
@@ -2010,8 +2010,8 @@
       "pageLabel": "Bladsy",
       "pages": {
         "home": "Tuis",
-        "library": "Biblioteek",
-        "digests": "Biblioteekopsommings",
+        "library": "Gemeenskap",
+        "digests": "Gemeenskapsopsommings",
         "map": "Kaart",
         "evidence": "Bewyskaart",
         "contact": "Kontak",
@@ -2099,7 +2099,7 @@
       "disclaimer": "Vrywaring",
       "disclaimerHint": "Word in klein druk onderaan elke bladsy gewys.",
       "attribution": "Erkenning",
-      "attributionHint": "Een reël, byvoorbeeld wie die biblioteek bestuur.",
+      "attributionHint": "Een reël, byvoorbeeld wie die gemeenskap bestuur.",
       "poweredBy": "Aangedryf deur OpenScholar",
       "poweredByHint": "’n Klein reël wat terug na OpenScholar skakel.",
       "poweredByLocked": "Beskikbaar op betaalde planne."
@@ -2152,13 +2152,13 @@
       "pickedCount": "{count, plural, =0 {Niks gekies nie} one {# gekies} other {# gekies}}"
     },
     "collections": {
-      "description": "Kies watter versamelings uit die biblioteek se databasis op die webwerf verskyn, en in watter volgorde.",
+      "description": "Kies watter versamelings uit die gemeenskap se databasis op die webwerf verskyn, en in watter volgorde.",
       "shownHeading": "Op die webwerf gewys",
       "introHint": "Elke versameling word ’n filtergroep, met sy subversamelings as keuses. Sleep om hul volgorde op die webwerf te bepaal.",
       "loading": "Laai versamelings…",
-      "failed": "Kon nie die biblioteek se versamelings laai nie.",
-      "notSetUp": "Stel eers die biblioteek op, en skep dan versamelings op sy adminbladsy of sinkroniseer hulle vanaf Zotero.",
-      "noneInDatabase": "Nog geen versamelings nie. Skep hulle op die biblioteek se adminbladsy of sinkroniseer hulle vanaf Zotero.",
+      "failed": "Kon nie die gemeenskap se versamelings laai nie.",
+      "notSetUp": "Stel eers die gemeenskap op, en skep dan versamelings op sy adminbladsy of sinkroniseer hulle vanaf Zotero.",
+      "noneInDatabase": "Nog geen versamelings nie. Skep hulle op die gemeenskap se adminbladsy of sinkroniseer hulle vanaf Zotero.",
       "empty": "Nog geen versamelings gewys nie.",
       "records": "{count, plural, =1 {# rekord} other {# rekords}}",
       "titleLabel": "Titel op die webwerf",
@@ -2221,25 +2221,25 @@
         "failedAt": "Invoer het om {time} misluk",
         "lastSuccess": "Laaste sukses {when}",
         "retry": "Probeer invoer weer",
-        "retryStarted": "Die biblioteek sal hierdie bron binne ’n paar sekondes invoer.",
-        "retryFailed": "Die biblioteek kon nie nou gevra word om in te voer nie. Probeer oor ’n oomblik weer.",
+        "retryStarted": "Die gemeenskap sal hierdie bron binne ’n paar sekondes invoer.",
+        "retryFailed": "Die gemeenskap kon nie nou gevra word om in te voer nie. Probeer oor ’n oomblik weer.",
         "details": "Tegniese besonderhede",
         "afterActivate": "Voer in nadat jy aktiveer",
         "startsSoon": "Begin binne ’n minuut",
         "failure": {
           "access_denied": "{provider} het die gestoorde sleutel geweier. Gaan dit na onder Verbindings, en probeer dan weer.",
-          "owner_left": "Die persoon wat hierdie versameling bygevoeg het, het die organisasie verlaat, so die biblioteek het sy rekords teruggetrek.",
+          "owner_left": "Die persoon wat hierdie versameling bygevoeg het, het die organisasie verlaat, so die gemeenskap het sy rekords teruggetrek.",
           "not_found": "{provider} vind hierdie bron nie meer nie, of die gestoorde sleutel kan dit nie sien nie.",
           "missing_key": "Geen API-sleutel is vir hierdie bron gestoor nie. Voeg een by onder Verbindings.",
           "invalid_query": "{provider} het die soektog verwerp. Wysig die soektog, en aktiveer dan weer.",
-          "too_large": "Hierdie bron het meer rekords as wat die biblioteek toelaat.",
+          "too_large": "Hierdie bron het meer rekords as wat die gemeenskap toelaat.",
           "rate_limited": "{provider} beperk versoeke. Die invoer probeer elke minuut weer.",
           "unavailable": "Kon nie met {provider} gekoppel word nie. Die invoer probeer elke minuut weer.",
           "interrupted": "Die invoer is gestop voordat dit klaar was. Dit begin vanself weer.",
           "internal": "Die invoer het ’n onverwagte fout teëgekom. Die tegniese besonderhede wys wat gebeur het."
         }
       },
-      "description": "Waar die biblioteek se rekords vandaan kom.",
+      "description": "Waar die gemeenskap se rekords vandaan kom.",
       "accountHeading": "Zotero-rekening",
       "notConnected": "Nie gekoppel nie",
       "notConnectedHint": "Meld een keer aan. Jou groepe verskyn dan in die kieser.",
@@ -2276,7 +2276,7 @@
       "listLabel": "Gekoppelde bronne",
       "connections": "Verbindings",
       "connectionsTitle": "Bronverbindings",
-      "connectionsDescription": "Bestuur rekeningtoegang en invoerinstellings vir hierdie biblioteek.",
+      "connectionsDescription": "Bestuur rekeningtoegang en invoerinstellings vir hierdie gemeenskap.",
       "providerTabs": "Bronverskaffer",
       "addSource": "Voeg bron by",
       "zoteroGroup": "Zotero-groep",
@@ -2292,7 +2292,7 @@
         "ownKey": "Eie API-sleutel",
         "platformHint": "Ingesluit by OpenScholar. Opdaterings haal net gewysigde rekords.",
         "keyLabel": "OpenAlex API-sleutel",
-        "keyHint": "Gebruik jou eie OpenAlex API-sleutel vir hierdie biblioteek.",
+        "keyHint": "Gebruik jou eie OpenAlex API-sleutel vir hierdie gemeenskap.",
         "savedKey": "Gestoorde sleutel {hint}",
         "keyPlaceholder": "Voer jou OpenAlex API-sleutel in",
         "saveKey": "Stoor API-sleutel",
@@ -2315,14 +2315,14 @@
         "processPdfs": "Verwerk PDF’s"
       },
       "removeTitle": "Verwyder hierdie groep?",
-      "removeBody": "Rekords wat reeds ingevoer is, bly in die biblioteek. Nuwe veranderinge sal nie ingevoer word nie.",
+      "removeBody": "Rekords wat reeds ingevoer is, bly in die gemeenskap. Nuwe veranderinge sal nie ingevoer word nie.",
       "removeConfirm": "Verwyder",
       "health": {
         "connected": "Gekoppel",
         "paused": "Onderbreek"
       },
       "tagRulesHeading": "Zotero-etiketreëls",
-      "tagRulesIntro": "Etikette in Zotero verander hoe die biblioteek ’n rekord hanteer. Versteek-etikette werk ook op sy notas en aanhegsels.",
+      "tagRulesIntro": "Etikette in Zotero verander hoe die gemeenskap ’n rekord hanteer. Versteek-etikette werk ook op sy notas en aanhegsels.",
       "tagPlaceholder": "Voeg ’n etiket by…",
       "tagRules": {
         "hidden": {
@@ -2386,7 +2386,7 @@
       "collectionConnectFailed": "Kon nie hierdie versameling byvoeg nie.",
       "collectionPicker": {
         "title": "Voeg versamelings by",
-        "description": "Jou OpenScholar-versamelings. Die biblioteek volg die wat jy merk en werk op wanneer hulle verander.",
+        "description": "Jou OpenScholar-versamelings. Die gemeenskap volg die wat jy merk en werk op wanneer hulle verander.",
         "search": "Soek versamelings…",
         "colCollection": "Versameling",
         "noCollections": "Jy het nog geen versamelings nie.",
@@ -2406,15 +2406,15 @@
           "passing": "Noem dit in verbygaan",
           "notAbout": "Nie oor dit nie"
         },
-        "keep": "Hou in die biblioteek: {grade}",
-        "inLibrary": "in die biblioteek",
+        "keep": "Hou in die gemeenskap: {grade}",
+        "inLibrary": "in die gemeenskap",
         "keptOut": "uitgehou",
         "reading": "Lees",
         "gradingAgain": "Gradeer weer, {done, number} van {of, number}",
         "gradingNote": "Die grade hieronder is van die huidige onderwerp totdat elke rekord weer gegradeer is.",
         "gradedAgain": "rekords weer gegradeer",
         "notGradedYet": "rekords nog nie gegradeer nie",
-        "onLibraryKey": "op die biblioteek se sleutel",
+        "onLibraryKey": "op die gemeenskap se sleutel",
         "toFinish": "om klaar te maak",
         "ofSample": "{changed, number} van {size, number}",
         "changeInTrial": "verander graad in ’n proef",
@@ -2424,16 +2424,16 @@
         "gradeThem": "Gradeer hulle",
         "currentSubject": "Huidige onderwerp",
         "newSubject": "Nuwe onderwerp",
-        "startsOnActivate": "Gradering begin sodra jy hierdie instellings aktiveer en die biblioteek die nuwe onderwerp aanvaar.",
-        "refused": "Die biblioteek het nie met gradering begin nie: {reason}",
+        "startsOnActivate": "Gradering begin sodra jy hierdie instellings aktiveer en die gemeenskap die nuwe onderwerp aanvaar.",
+        "refused": "Die gemeenskap het nie met gradering begin nie: {reason}",
         "requestFailed": "Gradering kon nie aangevra word nie",
         "trialFailed": "Die proef het nie klaar gemaak nie",
-        "notRunning": "Die biblioteek loop nog nie.",
+        "notRunning": "Die gemeenskap loop nog nie.",
         "underACent": "onder 1¢",
         "underAMinute": "minder as ’n minuut",
         "aboutMinutes": "ongeveer {count} min",
         "aboutHours": "ongeveer {count} u",
-        "methods": "Dieselfde lees gee elke rekord sy studietipe, of sy outeurs self resultate saamgevoeg het, die streek wat dit bestudeer en of sy opsomming syfers rapporteer. Ongeveer $0.000075 per rekord. ’n Rekord waarvan die lees misluk, gaan ongegradeer die biblioteek in en word later weer gelees.",
+        "methods": "Dieselfde lees gee elke rekord sy studietipe, of sy outeurs self resultate saamgevoeg het, die streek wat dit bestudeer en of sy opsomming syfers rapporteer. Ongeveer $0.000075 per rekord. ’n Rekord waarvan die lees misluk, gaan ongegradeer die gemeenskap in en word later weer gelees.",
         "gradedOnceActive": "Rekords word gegradeer sodra hierdie instellings aktief is."
       }
     },
@@ -2476,7 +2476,7 @@
       "institutionLabel": "Aftreklysetiket",
       "institutionLabelHint": "Die etiket op die aftreklys, byvoorbeeld Instellings of Vennote.",
       "sourcesFilter": "Bronfilter",
-      "sourcesFilterHint": "Lesers vernou resultate tot die bronne wat hulle gevind het. Word gewys sodra die biblioteek twee of meer bronne het.",
+      "sourcesFilterHint": "Lesers vernou resultate tot die bronne wat hulle gevind het. Word gewys sodra die gemeenskap twee of meer bronne het.",
       "sourcesLabel": "Bronne-opskrif",
       "sourcesLabelHint": "Wat lesers bo die bronne sien, byvoorbeeld Temagebiede.",
       "sourcesLabelError": "Noem die bronne-opskrif.",
@@ -2517,16 +2517,16 @@
         "addTag": "Voeg ’n etiket by",
         "removeTag": "Verwyder etiket",
         "pickerTitle": "Voeg ’n etiket by {name}",
-        "pickerDescription": "Die biblioteek se etikette, die mees gebruikte eerste. Tik ’n etiket wat nog geen rekord dra nie, of neem wat jy tik as ’n voorvoegsel.",
+        "pickerDescription": "Die gemeenskap se etikette, die mees gebruikte eerste. Tik ’n etiket wat nog geen rekord dra nie, of neem wat jy tik as ’n voorvoegsel.",
         "pickerSearch": "Soek etikette",
         "colTag": "Etiket",
         "colRecords": "Rekords",
         "used": "Bygevoeg",
         "loading": "Lees etikette",
-        "failed": "Die biblioteek se etikette kon nie gelees word nie",
-        "noTags": "Die biblioteek het nog geen etikette nie",
+        "failed": "Die gemeenskap se etikette kon nie gelees word nie",
+        "noTags": "Die gemeenskap het nog geen etikette nie",
         "noMatch": "Geen etiket pas nie",
-        "notSetUp": "Etikette wys sodra die biblioteek opgestel is",
+        "notSetUp": "Etikette wys sodra die gemeenskap opgestel is",
         "useTyped": "Voeg \"{tag}\" by",
         "usePrefix": "Elke etiket wat met \"{prefix}\" begin",
         "labelFor": "Wat lesers sien vir {tag}",
@@ -2590,12 +2590,12 @@
       "hints": {
         "themeSwitcher": "Laat mense lig- of donkermodus kies.",
         "languageSwitcher": "Laat mense die webwerftaal verander.",
-        "collections": "Wys versamelings in die biblioteek.",
+        "collections": "Wys versamelings in die gemeenskap.",
         "collectionNotes": "Wys ’n versameling se beskrywingsnota wanneer daardie versameling gekies is.",
         "countryFocus": "Wys landfilters, lande op publikasies, en die landkaart.",
         "authorFilter": "Laat mense volgens outeur filtreer.",
         "yearsDropdown": "Wys ’n jaarkieser in die soekbalk.",
-        "downloads": "Bied aanhalingsaflaaie vir publikasies en die hele biblioteek aan.",
+        "downloads": "Bied aanhalingsaflaaie vir publikasies en die hele gemeenskap aan.",
         "atomFeed": "Wys ’n skakel na die Atom-voer.",
         "readerAccounts": "Laat lesers met OpenScholar aanmeld om rekords te merk en versamelings te hou."
       },
@@ -2657,20 +2657,20 @@
       "consentVersionHint": "Verhoog dit wanneer jy jou koekieteks verander, sodat elke besoeker weer gevra word.",
       "consentVersionError": "Gebruik ’n heelgetal, 1 of hoër."
     },
-    "updatingSoftware": "Die Evidence Library-sagteware word na {rev} opgedateer",
+    "updatingSoftware": "Die Evidence Community-sagteware word na {rev} opgedateer",
     "operationFlow": {
       "saving": "Veranderinge word gestoor",
       "queued": "Wag om te begin",
       "assembling": "Vrystelling word voorberei",
       "validating": "Instellings word nagegaan",
-      "publishing": "Biblioteek word gebou",
+      "publishing": "Gemeenskap word gebou",
       "activating": "Gaan lewe toe",
       "database": "Databasis word geskep",
       "storage": "Lêers word voorberei",
-      "application": "Biblioteek word geskep",
-      "deployment": "Biblioteek word gebou",
+      "application": "Gemeenskap word geskep",
+      "deployment": "Gemeenskap word gebou",
       "health_check": "Gaan lewe toe",
-      "coolify": "Biblioteek word verwyder",
+      "coolify": "Gemeenskap word verwyder",
       "convex": "Verwydering word afgehandel",
       "completed": "Live"
     },
@@ -2679,7 +2679,7 @@
       "checking": "Gaan vir opdaterings na…",
       "checkAgain": "Kyk weer",
       "checkError": "Opdaterings kon nie nagegaan word nie. Probeer weer.",
-      "notRunning": "Beskikbaar sodra die biblioteek lewe.",
+      "notRunning": "Beskikbaar sodra die gemeenskap lewe.",
       "updateAvailable": "Opdatering beskikbaar",
       "upToDate": "Op datum",
       "runningLabel": "Wat loop",
@@ -2701,8 +2701,8 @@
         "reliability": "Regstellings"
       },
       "update": "Opdateer",
-      "updateTitle": "Dateer hierdie biblioteek op?",
-      "updateBody": "Die biblioteek word herbou op die nuutste Evidence Library-sagteware. Rekords, instellings en die adres bly dieselfde. Dit neem ongeveer ’n minuut.",
+      "updateTitle": "Dateer hierdie gemeenskap op?",
+      "updateBody": "Die gemeenskap word herbou op die nuutste Evidence Community-sagteware. Rekords, instellings en die adres bly dieselfde. Dit neem ongeveer ’n minuut.",
       "updateConfirm": "Dateer nou op",
       "updateError": "Die opdatering kon nie begin nie. Probeer weer.",
       "historyHeading": "Gepubliseerde weergawes",
@@ -2723,18 +2723,18 @@
       "addressSilent": "Niks antwoord op {host} nie.",
       "addressMove": "Skuif na ’n nuwe adres",
       "addressBack": "Gaan terug na die platformadres",
-      "addressMoveTitle": "Skuif hierdie biblioteek na ’n nuwe adres?",
-      "addressMoveBody": "Die biblioteek neem die volgende vrye adres. Rekords en instellings bly dieselfde. Enigiemand wat die ou adres gebruik, sal dit nie bereik nie.",
+      "addressMoveTitle": "Skuif hierdie gemeenskap na ’n nuwe adres?",
+      "addressMoveBody": "Die gemeenskap neem die volgende vrye adres. Rekords en instellings bly dieselfde. Enigiemand wat die ou adres gebruik, sal dit nie bereik nie.",
       "addressMoveConfirm": "Skuif nou",
       "addressMoveStarted": "Skuif begin",
       "addressMoveStartedDescription": "Skuif na {address}…",
-      "addressMoveError": "Die biblioteek kon nie geskuif word nie. Probeer weer.",
+      "addressMoveError": "Die gemeenskap kon nie geskuif word nie. Probeer weer.",
       "restoreError": "Die weergawe kon nie herstel word nie. Probeer weer."
     },
     "ai": {
-      "description": "Laat besoekers vrae vra oor die bewyse in jou biblioteek.",
+      "description": "Laat besoekers vrae vra oor die bewyse in jou gemeenskap.",
       "answersLabel": "KI-antwoorde",
-      "answersHint": "Voeg vraagbeantwoording by die biblioteek. Jy betaal OpenRouter vir wat dit gebruik.",
+      "answersHint": "Voeg vraagbeantwoording by die gemeenskap. Jy betaal OpenRouter vir wat dit gebruik.",
       "keyLabel": "OpenRouter-sleutel",
       "keyHint": "Skep een by openrouter.ai. Dit word geënkripteer gestoor en nooit weer gewys nie.",
       "keyStored": "Sleutel gestoor",
@@ -2755,7 +2755,7 @@
       "modelError": "Kies ’n model uit die gesinkroniseerde OpenRouter-katalogus."
     },
     "domain": {
-      "description": "Gebruik jou eie webadres vir die biblioteek.",
+      "description": "Gebruik jou eie webadres vir die gemeenskap.",
       "platformLabel": "Platformadres",
       "customLabel": "Eie domein",
       "customDomainsLabel": "Eie domeine",
@@ -2785,7 +2785,7 @@
         "wrong-target": "Daardie domein wys êrens anders heen. As dit agter ’n ander proxy sit, skakel die proxy vir hierdie rekord af.",
         "token-mismatch": "Die eienaarsrekord bevat ’n ander waarde",
         "host-taken": "’n ander webwerf antwoord reeds op daardie domein",
-        "not-served": "Die biblioteek loop nog nie",
+        "not-served": "Die gemeenskap loop nog nie",
         "caa-blocked": "Hierdie domein laat slegs sekere sertifikaatverskaffers toe. Voeg ’n CAA-rekord by wat letsencrypt.org toelaat.",
         "tls-timeout": "TLS kon nie geaktiveer word nie. Gaan die domein weer na."
       },
@@ -2793,7 +2793,7 @@
         "invalid": "Dit lyk nie na ’n domein nie",
         "platform-host": "Daardie adres behoort reeds aan die platform",
         "host-taken": "Daardie domein word reeds deur ’n ander webwerf gebruik",
-        "too-many": "Hierdie biblioteek het reeds soveel domeine as wat dit kan hou",
+        "too-many": "Hierdie gemeenskap het reeds soveel domeine as wat dit kan hou",
         "check-failed": "Ons kon nie die domein nagaan nie. Probeer weer."
       },
       "tlsActive": "TLS: Aktief",
@@ -2809,12 +2809,12 @@
       "rateLimited": "DNS is te dikwels nagegaan. Probeer oor ’n minuut weer.",
       "removing": "Word verwyder",
       "checkFailed": "DNS kon nog nie nagegaan word nie. Dit kan steeds opdateer. Probeer binnekort weer.",
-      "deploying": "Die verandering word op die biblioteek toegepas",
+      "deploying": "Die verandering word op die gemeenskap toegepas",
       "checked": "DNS nagegaan",
       "recordsNeedAttention": "Sommige DNS-rekords benodig nog aandag.",
       "removeAgain": "Voltooi verwydering",
-      "confirmOffTitle": "Stuur die biblioteek terug na sy platformadres?",
-      "confirmOffBody": "Die biblioteek sal weer op {address} antwoord. Almal wat aangemeld is, word afgemeld, en besoekers aan die eie domein beland op die platformadres.",
+      "confirmOffTitle": "Stuur die gemeenskap terug na sy platformadres?",
+      "confirmOffBody": "Die gemeenskap sal weer op {address} antwoord. Almal wat aangemeld is, word afgemeld, en besoekers aan die eie domein beland op die platformadres.",
       "confirmAction": "Verander die adres"
     },
     "retry": "Probeer weer",
@@ -2849,26 +2849,26 @@
     "publicationsView": "Publikasiebronne",
     "noOpenAlex": "Geen OpenAlex-publikasies gevind nie.",
     "progress": "{loaded, number} van {total, number}",
-    "searchLibrary": "Soek biblioteekpublikasies",
+    "searchLibrary": "Soek gemeenskapspublikasies",
     "searchPlaceholder": "Soek publikasies",
     "updating": "Publikasiegroepe word opgedateer. Herlaai binnekort.",
-    "unavailable": "Sommige biblioteekliggings is nie beskikbaar nie. Beskikbare liggings word gewys.",
-    "loadingLibrary": "Laai biblioteekpublikasies",
+    "unavailable": "Sommige gemeenskapsliggings is nie beskikbaar nie. Beskikbare liggings word gewys.",
+    "loadingLibrary": "Laai gemeenskapspublikasies",
     "noPageMatches": "Geen passings op hierdie bladsy nie. Gaan voort om publikasies te laai.",
     "noLibraryMatches": "Geen publikasies pas by jou soektog nie.",
-    "noLibraryRecords": "Nog geen gepubliseerde Evidence Library-rekords gebruik hierdie onderwerp nie."
+    "noLibraryRecords": "Nog geen gepubliseerde Evidence Community-rekords gebruik hierdie onderwerp nie."
   },
   "evidenceLibraries": {
     "list": {
-      "title": "Evidence Libraries",
+      "title": "Evidence Communities",
       "openAdmin": "Maak admin oop",
       "retry": "Probeer weer",
-      "deleting": "Die biblioteek word verwyder",
+      "deleting": "Die gemeenskap word verwyder",
       "deleteFailed": {
-        "runtime": "Ons kon nie hierdie biblioteek se lopende webwerf verwyder nie, so dit is nog nie klaar verwyder nie. Probeer weer, of kontak ondersteuning.",
-        "files": "Ons kon nie hierdie biblioteek se lêers verwyder nie, so dit is nog nie klaar verwyder nie. Probeer weer, of kontak ondersteuning.",
-        "database": "Ons kon nie hierdie biblioteek se databasis verwyder nie, so dit is nog nie klaar verwyder nie. Probeer weer, of kontak ondersteuning.",
-        "records": "Hierdie biblioteek is nog nie klaar verwyder nie. Probeer weer, of kontak ondersteuning."
+        "runtime": "Ons kon nie hierdie gemeenskap se lopende webwerf verwyder nie, so dit is nog nie klaar verwyder nie. Probeer weer, of kontak ondersteuning.",
+        "files": "Ons kon nie hierdie gemeenskap se lêers verwyder nie, so dit is nog nie klaar verwyder nie. Probeer weer, of kontak ondersteuning.",
+        "database": "Ons kon nie hierdie gemeenskap se databasis verwyder nie, so dit is nog nie klaar verwyder nie. Probeer weer, of kontak ondersteuning.",
+        "records": "Hierdie gemeenskap is nog nie klaar verwyder nie. Probeer weer, of kontak ondersteuning."
       }
     },
     "status": {
@@ -2890,16 +2890,16 @@
       "completed": "Live"
     },
     "new": {
-      "title": "Nuwe Evidence Library",
-      "backToLibraries": "Terug na biblioteke",
+      "title": "Nuwe Evidence Community",
+      "backToLibraries": "Terug na gemeenskappe",
       "ownerTitle": "Eienaar",
       "ownerOnlyTitle": "Net eienaars",
-      "ownerOnlyDescription": "Slegs ’n eienaar van die organisasie kan ’n biblioteek skep.",
-      "libraryTitle": "Biblioteek",
+      "ownerOnlyDescription": "Slegs ’n eienaar van die organisasie kan ’n gemeenskap skep.",
+      "libraryTitle": "Gemeenskap",
       "libraryDescription": "Die naam verskyn op die openbare webwerf en bepaal die openbare adres.",
       "nameLabel": "Naam",
       "namePlaceholder": "Voorbeeld: Klimaatonderwysbewyse",
-      "nameError": "Voer ’n naam vir die biblioteek in.",
+      "nameError": "Voer ’n naam vir die gemeenskap in.",
       "shortNameLabel": "Kort naam",
       "shortNameHint": "Word uit die naam afgelei. Jy kan dit later onder Stel op verander.",
       "addressLabel": "Openbare adres",
@@ -2909,7 +2909,7 @@
       "reserve": "Reserveer adres",
       "checking": "Besig om te reserveer…",
       "reserved": "Gereserveer",
-      "nameTaken": "Jy het reeds ’n biblioteek met die naam {name}.",
+      "nameTaken": "Jy het reeds ’n gemeenskap met die naam {name}.",
       "openExisting": "Maak dit oop",
       "checkFailed": "Kon nie die adres nagaan nie. Probeer weer.",
       "addressTaken": "Iemand het hierdie adres net nou gereserveer. Gaan weer na.",
@@ -2917,7 +2917,7 @@
       "tryAgain": "Probeer weer"
     },
     "setup": {
-      "backToLibraries": "Terug na biblioteke",
+      "backToLibraries": "Terug na gemeenskappe",
       "configure": "Stel op",
       "openAdmin": "Maak admin oop",
       "groupTitle": "Opstelling",
@@ -2925,7 +2925,7 @@
       "retryingTitle": "Probeer weer",
       "retryingDescription": "Begin weer by die stap waar dit gestop het.",
       "retryError": "Opstelling kon nie weer begin word nie. Probeer weer.",
-      "draftHint": "Stel hierdie biblioteek op en aktiveer dit vanaf sy konfigurasiebladsy.",
+      "draftHint": "Stel hierdie gemeenskap op en aktiveer dit vanaf sy konfigurasiebladsy.",
       "stoppedHint": "Probeer weer herhaal hierdie stap en die stappe daarna.",
       "deploymentError": "Die bou is nie voltooi nie.",
       "steps": {
@@ -2943,27 +2943,27 @@
         },
         "application": {
           "name": "Toepassing",
-          "waiting": "Die biblioteekapp word geskep.",
-          "running": "Die biblioteekapp word geskep…",
-          "done": "Die biblioteekapp is geskep."
+          "waiting": "Die gemeenskapsapp word geskep.",
+          "running": "Die gemeenskapsapp word geskep…",
+          "done": "Die gemeenskapsapp is geskep."
         },
         "deployment": {
           "name": "Bou",
-          "waiting": "Die biblioteek word gebou en aanlyn geplaas.",
-          "running": "Die biblioteek word gebou en aanlyn geplaas…",
-          "done": "Die biblioteek is gebou en aanlyn geplaas."
+          "waiting": "Die gemeenskap word gebou en aanlyn geplaas.",
+          "running": "Die gemeenskap word gebou en aanlyn geplaas…",
+          "done": "Die gemeenskap is gebou en aanlyn geplaas."
         },
         "readiness": {
           "name": "Gereedheid",
-          "waiting": "Gaan na dat die biblioteekbladsy laai.",
-          "running": "Gaan na dat die biblioteekbladsy laai…",
-          "done": "Het nagegaan dat die biblioteekbladsy laai."
+          "waiting": "Gaan na dat die gemeenskapsbladsy laai.",
+          "running": "Gaan na dat die gemeenskapsbladsy laai…",
+          "done": "Het nagegaan dat die gemeenskapsbladsy laai."
         },
         "active": {
           "name": "Live",
-          "waiting": "Die biblioteek open by sy openbare adres.",
-          "running": "Die biblioteek word by sy openbare adres oopgemaak…",
-          "done": "Die biblioteek is live by sy openbare adres."
+          "waiting": "Die gemeenskap open by sy openbare adres.",
+          "running": "Die gemeenskap word by sy openbare adres oopgemaak…",
+          "done": "Die gemeenskap is live by sy openbare adres."
         }
       },
       "live": {
@@ -2972,17 +2972,17 @@
         "copyAddress": "Kopieer adres",
         "copiedShort": "Gekopieer",
         "copied": "Adres gekopieer",
-        "openLibrary": "Maak biblioteek oop",
+        "openLibrary": "Maak gemeenskap oop",
         "settingUp": "{name} word opgestel",
         "stopped": "Opstelling gestop",
         "copyFailed": "Kon nie die adres kopieer nie"
       },
-      "deletingHint": "Hierdie biblioteek word verwyder."
+      "deletingHint": "Hierdie gemeenskap word verwyder."
     },
     "notFound": {
-      "title": "Biblioteek nie gevind nie",
+      "title": "Gemeenskap nie gevind nie",
       "description": "Dit is dalk verwyder, of dit behoort aan ’n ander organisasie.",
-      "back": "Terug na biblioteke"
+      "back": "Terug na gemeenskappe"
     }
   },
   "settingsShell": {
@@ -2999,7 +2999,7 @@
       "plans": "Planne",
       "users": "Gebruikers",
       "aiModels": "KI-modelle",
-      "evidenceLibraries": "Evidence Libraries"
+      "evidenceLibraries": "Evidence Communities"
     },
     "sharedDev": "Gedeelde ontwikkeling",
     "production": "Produksie",
@@ -3100,16 +3100,16 @@
       "creditsOrKey": "Krediete, of die gebruiker se sleutel"
     },
     "evidenceLibraries": {
-      "title": "Toegang tot Evidence Library",
+      "title": "Toegang tot Evidence Community",
       "organizations": "organisasies",
       "search": "Soek organisasies",
       "show": "Wys",
       "all": "Almal",
       "on": "Aan",
       "off": "Af",
-      "libraries": "{count, plural, one {# biblioteek} other {# biblioteke}}",
-      "switchLabel": "Evidence Libraries vir {name}",
-      "moveFirst": "Skuif of verwyder eers sy biblioteke",
+      "libraries": "{count, plural, one {# gemeenskap} other {# gemeenskappe}}",
+      "switchLabel": "Evidence Communities vir {name}",
+      "moveFirst": "Skuif of verwyder eers sy gemeenskappe",
       "noMatches": "Geen organisasies pas nie"
     }
   },
@@ -3220,7 +3220,7 @@
     "views": {
       "results": "Soekresultate",
       "extractionJob": "Ekstraksietaak",
-      "librarySettings": "Biblioteekinstellings",
+      "librarySettings": "Gemeenskapsinstellings",
       "authors": "Outeurs",
       "page": "hierdie bladsy"
     },
@@ -3283,7 +3283,7 @@
       "holds": "Hou tot {credits, plural, one {# krediet} other {# krediete}}",
       "runs": "Loop",
       "asks": "Vra",
-      "publishing": "Publiseer ’n biblioteek",
+      "publishing": "Publiseer ’n gemeenskap",
       "publishingDetail": "Besoekers sien dit dadelik",
       "moreJobs": "Meer take"
     },
@@ -3305,7 +3305,7 @@
     "chat": "Gesprek",
     "remove": "Verwyder",
     "organization": "Organisasie",
-    "shareNote": "Hulle sien hierdie gesprek. Soektogte, versamelings en biblioteke daarin behou hul eie toegang. Mense wat kan gesels, stuur boodskappe as hulleself, en die assistent handel vir hulle met hul eie toegang en krediete.",
+    "shareNote": "Hulle sien hierdie gesprek. Soektogte, versamelings en gemeenskappe daarin behou hul eie toegang. Mense wat kan gesels, stuur boodskappe as hulleself, en die assistent handel vir hulle met hul eie toegang en krediete.",
     "shareFailed": "Kon nie verander wie hierdie gesprek mee gedeel word nie",
     "steps": {
       "undo": "Maak ongedaan",
@@ -3937,121 +3937,121 @@
         "ask": "Lys die gespreksmodelle"
       },
       "libraries": {
-        "doing": "Lees jou Evidence Libraries",
-        "did": "Het jou Evidence Libraries gelees",
-        "where": "Evidence Libraries",
-        "ask": "Lees jou Evidence Libraries"
+        "doing": "Lees jou Evidence Communities",
+        "did": "Het jou Evidence Communities gelees",
+        "where": "Evidence Communities",
+        "ask": "Lees jou Evidence Communities"
       },
       "readerLibraries": {
-        "doing": "Lees die Evidence Libraries wat jy lees",
-        "did": "Het die Evidence Libraries gelees wat jy lees",
-        "where": "Evidence Libraries",
-        "ask": "Lees die Evidence Libraries wat jy lees"
+        "doing": "Lees die Evidence Communities wat jy lees",
+        "did": "Het die Evidence Communities gelees wat jy lees",
+        "where": "Evidence Communities",
+        "ask": "Lees die Evidence Communities wat jy lees"
       },
       "readerSources": {
-        "doing": "Lees wat jou Evidence Libraries vir jou hou",
-        "did": "Het gelees wat jou Evidence Libraries vir jou hou",
-        "where": "Evidence Libraries",
-        "ask": "Lees wat jou Evidence Libraries vir jou hou"
+        "doing": "Lees wat jou Evidence Communities vir jou hou",
+        "did": "Het gelees wat jou Evidence Communities vir jou hou",
+        "where": "Evidence Communities",
+        "ask": "Lees wat jou Evidence Communities vir jou hou"
       },
       "readerAddress": {
-        "doing": "Lees ’n Evidence Library-adres",
-        "did": "Het ’n Evidence Library-adres gelees",
-        "where": "Evidence Libraries",
-        "ask": "Lees ’n Evidence Library-adres"
+        "doing": "Lees ’n Evidence Community-adres",
+        "did": "Het ’n Evidence Community-adres gelees",
+        "where": "Evidence Communities",
+        "ask": "Lees ’n Evidence Community-adres"
       },
       "readerSource": {
-        "doing": "Lees ’n Evidence Library-bron",
-        "did": "Het ’n Evidence Library-bron gelees",
-        "where": "Evidence Libraries",
-        "ask": "Lees ’n Evidence Library-bron"
+        "doing": "Lees ’n Evidence Community-bron",
+        "did": "Het ’n Evidence Community-bron gelees",
+        "where": "Evidence Communities",
+        "ask": "Lees ’n Evidence Community-bron"
       },
       "readerRecords": {
-        "doing": "Lees Evidence Library-rekords",
-        "did": "Het Evidence Library-rekords gelees",
-        "where": "Evidence Libraries",
-        "ask": "Lees Evidence Library-rekords"
+        "doing": "Lees Evidence Community-rekords",
+        "did": "Het Evidence Community-rekords gelees",
+        "where": "Evidence Communities",
+        "ask": "Lees Evidence Community-rekords"
       },
       "newLibraryCollection": {
-        "doing": "Maak ’n versameling in ’n Evidence Library",
-        "did": "Het ’n versameling in ’n Evidence Library gemaak",
-        "where": "Evidence Libraries",
-        "ask": "Maak ’n versameling in ’n Evidence Library",
-        "askMany": "Maak {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Library",
-        "doingMany": "Maak {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Library",
-        "didMany": "Het {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Library gemaak"
+        "doing": "Maak ’n versameling in ’n Evidence Community",
+        "did": "Het ’n versameling in ’n Evidence Community gemaak",
+        "where": "Evidence Communities",
+        "ask": "Maak ’n versameling in ’n Evidence Community",
+        "askMany": "Maak {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Community",
+        "doingMany": "Maak {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Community",
+        "didMany": "Het {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Community gemaak"
       },
       "deleteLibraryCollection": {
-        "doing": "Verwyder ’n versameling in ’n Evidence Library",
-        "did": "Het ’n versameling in ’n Evidence Library verwyder",
-        "where": "Evidence Libraries",
-        "ask": "Verwyder ’n versameling in ’n Evidence Library",
-        "askMany": "Verwyder {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Library",
-        "doingMany": "Verwyder {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Library",
-        "didMany": "Het {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Library verwyder"
+        "doing": "Verwyder ’n versameling in ’n Evidence Community",
+        "did": "Het ’n versameling in ’n Evidence Community verwyder",
+        "where": "Evidence Communities",
+        "ask": "Verwyder ’n versameling in ’n Evidence Community",
+        "askMany": "Verwyder {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Community",
+        "doingMany": "Verwyder {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Community",
+        "didMany": "Het {count, plural, one {# versameling} other {# versamelings}} in ’n Evidence Community verwyder"
       },
       "changeLibraryRecords": {
-        "doing": "Verander ’n Evidence Library-versameling",
-        "did": "Het ’n Evidence Library-versameling verander",
-        "where": "Evidence Libraries",
-        "ask": "Verander ’n Evidence Library-versameling",
-        "askMany": "Verander {count, plural, one {# Evidence Library-versameling} other {# Evidence Library-versamelings}}",
-        "doingMany": "Verander {count, plural, one {# Evidence Library-versameling} other {# Evidence Library-versamelings}}",
-        "didMany": "Het {count, plural, one {# Evidence Library-versameling} other {# Evidence Library-versamelings}} verander"
+        "doing": "Verander ’n Evidence Community-versameling",
+        "did": "Het ’n Evidence Community-versameling verander",
+        "where": "Evidence Communities",
+        "ask": "Verander ’n Evidence Community-versameling",
+        "askMany": "Verander {count, plural, one {# Evidence Community-versameling} other {# Evidence Community-versamelings}}",
+        "doingMany": "Verander {count, plural, one {# Evidence Community-versameling} other {# Evidence Community-versamelings}}",
+        "didMany": "Het {count, plural, one {# Evidence Community-versameling} other {# Evidence Community-versamelings}} verander"
       },
       "readHandoff": {
-        "doing": "Maak oop wat ’n Evidence Library oorhandig het",
-        "did": "Het oopgemaak wat ’n Evidence Library oorhandig het",
-        "where": "Evidence Libraries",
-        "ask": "Maak oop wat ’n Evidence Library oorhandig het"
+        "doing": "Maak oop wat ’n Evidence Community oorhandig het",
+        "did": "Het oopgemaak wat ’n Evidence Community oorhandig het",
+        "where": "Evidence Communities",
+        "ask": "Maak oop wat ’n Evidence Community oorhandig het"
       },
       "readLibraryDraft": {
-        "doing": "Lees ’n biblioteek se instellings",
-        "did": "Het ’n biblioteek se instellings gelees",
-        "where": "Evidence Library",
-        "ask": "Lees ’n biblioteek se instellings",
-        "askMany": "Lees die instellings van {count, plural, one {# biblioteek} other {# biblioteke}}",
-        "doingMany": "Lees die instellings van {count, plural, one {# biblioteek} other {# biblioteke}}",
-        "didMany": "Het die instellings van {count, plural, one {# biblioteek} other {# biblioteke}} gelees"
+        "doing": "Lees ’n gemeenskap se instellings",
+        "did": "Het ’n gemeenskap se instellings gelees",
+        "where": "Evidence Community",
+        "ask": "Lees ’n gemeenskap se instellings",
+        "askMany": "Lees die instellings van {count, plural, one {# gemeenskap} other {# gemeenskappe}}",
+        "doingMany": "Lees die instellings van {count, plural, one {# gemeenskap} other {# gemeenskappe}}",
+        "didMany": "Het die instellings van {count, plural, one {# gemeenskap} other {# gemeenskappe}} gelees"
       },
       "readLibraryRevision": {
-        "doing": "Lees ’n weergawe van ’n biblioteek se instellings",
-        "did": "Het ’n weergawe van ’n biblioteek se instellings gelees",
-        "where": "Evidence Library",
-        "ask": "Lees ’n weergawe van ’n biblioteek se instellings"
+        "doing": "Lees ’n weergawe van ’n gemeenskap se instellings",
+        "did": "Het ’n weergawe van ’n gemeenskap se instellings gelees",
+        "where": "Evidence Community",
+        "ask": "Lees ’n weergawe van ’n gemeenskap se instellings"
       },
       "readLibraryTeam": {
-        "doing": "Lees ’n biblioteek se span",
-        "did": "Het ’n biblioteek se span gelees",
-        "where": "Evidence Library",
-        "ask": "Lees ’n biblioteek se span",
-        "askMany": "Lees die spanne van {count, plural, one {# biblioteek} other {# biblioteke}}",
-        "doingMany": "Lees die spanne van {count, plural, one {# biblioteek} other {# biblioteke}}",
-        "didMany": "Het die spanne van {count, plural, one {# biblioteek} other {# biblioteke}} gelees"
+        "doing": "Lees ’n gemeenskap se span",
+        "did": "Het ’n gemeenskap se span gelees",
+        "where": "Evidence Community",
+        "ask": "Lees ’n gemeenskap se span",
+        "askMany": "Lees die spanne van {count, plural, one {# gemeenskap} other {# gemeenskappe}}",
+        "doingMany": "Lees die spanne van {count, plural, one {# gemeenskap} other {# gemeenskappe}}",
+        "didMany": "Het die spanne van {count, plural, one {# gemeenskap} other {# gemeenskappe}} gelees"
       },
       "editLibraryDraft": {
-        "doing": "Verander ’n biblioteek se konsep",
-        "did": "Het ’n biblioteek se konsep verander",
-        "where": "Evidence Library",
-        "ask": "Verander ’n biblioteek se konsep"
+        "doing": "Verander ’n gemeenskap se konsep",
+        "did": "Het ’n gemeenskap se konsep verander",
+        "where": "Evidence Community",
+        "ask": "Verander ’n gemeenskap se konsep"
       },
       "addLibraryMember": {
-        "doing": "Voeg iemand by ’n biblioteek se span",
-        "did": "Het iemand by ’n biblioteek se span gevoeg",
-        "where": "Evidence Library",
-        "ask": "Voeg iemand by ’n biblioteek se span"
+        "doing": "Voeg iemand by ’n gemeenskap se span",
+        "did": "Het iemand by ’n gemeenskap se span gevoeg",
+        "where": "Evidence Community",
+        "ask": "Voeg iemand by ’n gemeenskap se span"
       },
       "changeLibraryRole": {
-        "doing": "Verander iemand se rol op ’n biblioteek",
-        "did": "Het iemand se rol op ’n biblioteek verander",
-        "where": "Evidence Library",
-        "ask": "Verander iemand se rol op ’n biblioteek"
+        "doing": "Verander iemand se rol op ’n gemeenskap",
+        "did": "Het iemand se rol op ’n gemeenskap verander",
+        "where": "Evidence Community",
+        "ask": "Verander iemand se rol op ’n gemeenskap"
       },
       "removeLibraryMember": {
-        "doing": "Verwyder iemand uit ’n biblioteek se span",
-        "did": "Het iemand uit ’n biblioteek se span verwyder",
-        "where": "Evidence Library",
-        "ask": "Verwyder iemand uit ’n biblioteek se span"
+        "doing": "Verwyder iemand uit ’n gemeenskap se span",
+        "did": "Het iemand uit ’n gemeenskap se span verwyder",
+        "where": "Evidence Community",
+        "ask": "Verwyder iemand uit ’n gemeenskap se span"
       },
       "zoteroGroups": {
         "doing": "Lees jou Zotero-groepe",
@@ -4072,79 +4072,79 @@
         "ask": "Lees items in jou Zotero"
       },
       "inviteLibraryMember": {
-        "doing": "Nooi iemand na ’n biblioteek uit",
-        "did": "Het iemand na ’n biblioteek uitgenooi",
-        "where": "Evidence Library",
-        "ask": "Nooi iemand na ’n biblioteek uit",
-        "askMany": "Nooi {count, plural, one {# persoon} other {# mense}} na ’n biblioteek uit",
-        "doingMany": "Nooi {count, plural, one {# persoon} other {# mense}} na ’n biblioteek uit",
-        "didMany": "Het {count, plural, one {# persoon} other {# mense}} na ’n biblioteek uitgenooi"
+        "doing": "Nooi iemand na ’n gemeenskap uit",
+        "did": "Het iemand na ’n gemeenskap uitgenooi",
+        "where": "Evidence Community",
+        "ask": "Nooi iemand na ’n gemeenskap uit",
+        "askMany": "Nooi {count, plural, one {# persoon} other {# mense}} na ’n gemeenskap uit",
+        "doingMany": "Nooi {count, plural, one {# persoon} other {# mense}} na ’n gemeenskap uit",
+        "didMany": "Het {count, plural, one {# persoon} other {# mense}} na ’n gemeenskap uitgenooi"
       },
       "changeLibraryInvite": {
-        "doing": "Verander ’n biblioteekuitnodiging",
-        "did": "Het ’n biblioteekuitnodiging verander",
-        "where": "Evidence Library",
-        "ask": "Verander ’n biblioteekuitnodiging"
+        "doing": "Verander ’n gemeenskapsuitnodiging",
+        "did": "Het ’n gemeenskapsuitnodiging verander",
+        "where": "Evidence Community",
+        "ask": "Verander ’n gemeenskapsuitnodiging"
       },
       "libraryInvites": {
-        "doing": "Lees jou biblioteekuitnodigings",
-        "did": "Het jou biblioteekuitnodigings gelees",
-        "where": "Evidence Libraries",
-        "ask": "Lees jou biblioteekuitnodigings"
+        "doing": "Lees jou gemeenskapsuitnodigings",
+        "did": "Het jou gemeenskapsuitnodigings gelees",
+        "where": "Evidence Communities",
+        "ask": "Lees jou gemeenskapsuitnodigings"
       },
       "answerLibraryInvite": {
-        "doing": "Beantwoord ’n biblioteekuitnodiging",
-        "did": "Het ’n biblioteekuitnodiging beantwoord",
-        "where": "Evidence Libraries",
-        "ask": "Beantwoord ’n biblioteekuitnodiging"
+        "doing": "Beantwoord ’n gemeenskapsuitnodiging",
+        "did": "Het ’n gemeenskapsuitnodiging beantwoord",
+        "where": "Evidence Communities",
+        "ask": "Beantwoord ’n gemeenskapsuitnodiging"
       },
       "startLibrary": {
-        "doing": "Begin ’n biblioteekkonsep",
-        "did": "Het ’n biblioteekkonsep begin",
-        "where": "Evidence Libraries",
-        "ask": "Begin ’n biblioteekkonsep"
+        "doing": "Begin ’n gemeenskapskonsep",
+        "did": "Het ’n gemeenskapskonsep begin",
+        "where": "Evidence Communities",
+        "ask": "Begin ’n gemeenskapskonsep"
       },
       "librarySources": {
-        "doing": "Lees ’n biblioteek se bronne",
-        "did": "Het ’n biblioteek se bronne gelees",
-        "where": "Evidence Library",
-        "ask": "Lees ’n biblioteek se bronne",
-        "askMany": "Lees die bronne van {count, plural, one {# biblioteek} other {# biblioteke}}",
-        "doingMany": "Lees die bronne van {count, plural, one {# biblioteek} other {# biblioteke}}",
-        "didMany": "Het die bronne van {count, plural, one {# biblioteek} other {# biblioteke}} gelees"
+        "doing": "Lees ’n gemeenskap se bronne",
+        "did": "Het ’n gemeenskap se bronne gelees",
+        "where": "Evidence Community",
+        "ask": "Lees ’n gemeenskap se bronne",
+        "askMany": "Lees die bronne van {count, plural, one {# gemeenskap} other {# gemeenskappe}}",
+        "doingMany": "Lees die bronne van {count, plural, one {# gemeenskap} other {# gemeenskappe}}",
+        "didMany": "Het die bronne van {count, plural, one {# gemeenskap} other {# gemeenskappe}} gelees"
       },
       "runningCollections": {
-        "doing": "Lees ’n biblioteek se versamelings",
-        "did": "Het ’n biblioteek se versamelings gelees",
-        "where": "Evidence Library",
-        "ask": "Lees ’n biblioteek se versamelings"
+        "doing": "Lees ’n gemeenskap se versamelings",
+        "did": "Het ’n gemeenskap se versamelings gelees",
+        "where": "Evidence Community",
+        "ask": "Lees ’n gemeenskap se versamelings"
       },
       "runningInstitutions": {
-        "doing": "Lees ’n biblioteek se instellings",
-        "did": "Het ’n biblioteek se instellings gelees",
-        "where": "Evidence Library",
-        "ask": "Lees ’n biblioteek se instellings"
+        "doing": "Lees ’n gemeenskap se instellings",
+        "did": "Het ’n gemeenskap se instellings gelees",
+        "where": "Evidence Community",
+        "ask": "Lees ’n gemeenskap se instellings"
       },
       "runningPublications": {
-        "doing": "Lees ’n biblioteek se publikasies",
-        "did": "Het ’n biblioteek se publikasies gelees",
-        "where": "Evidence Library",
-        "ask": "Lees ’n biblioteek se publikasies"
+        "doing": "Lees ’n gemeenskap se publikasies",
+        "did": "Het ’n gemeenskap se publikasies gelees",
+        "where": "Evidence Community",
+        "ask": "Lees ’n gemeenskap se publikasies"
       },
       "runningPublication": {
-        "doing": "Lees ’n biblioteekpublikasie",
-        "did": "Het ’n biblioteekpublikasie gelees",
-        "where": "Evidence Library",
-        "ask": "Lees ’n biblioteekpublikasie",
-        "askMany": "Lees {count, plural, one {# biblioteekpublikasie} other {# biblioteekpublikasies}}",
-        "doingMany": "Lees {count, plural, one {# biblioteekpublikasie} other {# biblioteekpublikasies}}",
-        "didMany": "Het {count, plural, one {# biblioteekpublikasie} other {# biblioteekpublikasies}} gelees"
+        "doing": "Lees ’n gemeenskapspublikasie",
+        "did": "Het ’n gemeenskapspublikasie gelees",
+        "where": "Evidence Community",
+        "ask": "Lees ’n gemeenskapspublikasie",
+        "askMany": "Lees {count, plural, one {# gemeenskapspublikasie} other {# gemeenskapspublikasies}}",
+        "doingMany": "Lees {count, plural, one {# gemeenskapspublikasie} other {# gemeenskapspublikasies}}",
+        "didMany": "Het {count, plural, one {# gemeenskapspublikasie} other {# gemeenskapspublikasies}} gelees"
       },
       "syncLibrarySource": {
-        "doing": "Probeer ’n biblioteekinvoer weer",
-        "did": "Het ’n biblioteekinvoer weer probeer",
-        "where": "Evidence Library",
-        "ask": "Probeer ’n biblioteekinvoer weer"
+        "doing": "Probeer ’n gemeenskapsinvoer weer",
+        "did": "Het ’n gemeenskapsinvoer weer probeer",
+        "where": "Evidence Community",
+        "ask": "Probeer ’n gemeenskapsinvoer weer"
       },
       "authorProfiles": {
         "doing": "Lees outeurprofiele",
@@ -4207,20 +4207,20 @@
         "didMany": "Het {count, plural, one {# Zotero-PDF} other {# Zotero-PDF’s}} in die gesprek gesit"
       },
       "gradeLibrarySource": {
-        "doing": "Vra ’n biblioteek om ’n bron te gradeer",
-        "did": "Het ’n biblioteek gevra om ’n bron te gradeer",
-        "where": "Evidence Library",
-        "ask": "Gradeer ’n biblioteekbron se rekords"
+        "doing": "Vra ’n gemeenskap om ’n bron te gradeer",
+        "did": "Het ’n gemeenskap gevra om ’n bron te gradeer",
+        "where": "Evidence Community",
+        "ask": "Gradeer ’n gemeenskapsbron se rekords"
       },
       "trySourceSubject": {
         "doing": "Probeer ’n siftingsonderwerp",
         "did": "Het ’n siftingsonderwerp probeer",
-        "where": "Evidence Library",
+        "where": "Evidence Community",
         "ask": "Probeer ’n siftingsonderwerp op 200 rekords"
       },
       "libraryAccess": {
-        "doing": "Kyk na toegang tot Evidence Library",
-        "did": "Het na toegang tot Evidence Library gekyk",
+        "doing": "Kyk na toegang tot Evidence Community",
+        "did": "Het na toegang tot Evidence Community gekyk",
         "where": "Admin"
       }
     },
@@ -4387,7 +4387,7 @@
       "paper": "Artikel",
       "extraction": "Ekstraksie",
       "screening": "Siftering",
-      "library": "Evidence Library",
+      "library": "Evidence Community",
       "topic": "Onderwerp",
       "chat": "Gesprek"
     }
@@ -4462,7 +4462,7 @@
       "searches": "Soektogte",
       "screenings": "Siftings",
       "extractions": "Ekstraksies",
-      "evidenceLibraries": "Evidence Libraries",
+      "evidenceLibraries": "Evidence Communities",
       "changeLogo": "Verander logo",
       "organizationName": "Organisasienaam",
       "saveName": "Stoor naam",
@@ -4476,12 +4476,12 @@
       "makeAdminFirst": "Maak eers iemand anders ’n admin",
       "leave": "Verlaat",
       "deleteName": "Verwyder {name}",
-      "stillHasLibrary": "{library} is een van sy Evidence Libraries. Skuif of verwyder dit eers.",
-      "deleteLibrary": "Verwyder biblioteek",
+      "stillHasLibrary": "{library} is een van sy Evidence Communities. Skuif of verwyder dit eers.",
+      "deleteLibrary": "Verwyder gemeenskap",
       "libraryBeingDeleted": "{library} word verwyder.",
       "libraryDeleteFailed": "{library} kon nie verwyder word nie. Probeer weer.",
       "deleteDetail": "Verwyder dit vir {count, plural, one {sy # lid} other {al # lede}}",
-      "moveLibrariesFirst": "Skuif of verwyder sy Evidence Libraries eers",
+      "moveLibrariesFirst": "Skuif of verwyder sy Evidence Communities eers",
       "delete": "Verwyder",
       "deleteConfirm": "Sy versamelings, soektogte, siftings en ekstraksies gaan saam, vir {count, plural, one {sy # lid} other {al # lede}}. Dit kan nie ongedaan gemaak word nie.",
       "leaveConfirm": "Jy verloor toegang tot sy werk totdat ’n admin jou weer uitnooi.",
@@ -4556,7 +4556,7 @@
       "paymentFailed": "Die laaste betaling het misluk.",
       "noMemberLimit": "Geen beperking op lede nie",
       "membersUnit": "{count, plural, one {lid} other {lede}}",
-      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "evidenceLibrariesIncluded": "Evidence Communities",
       "seePlans": "Sien planne"
     },
     "couldntInvite": "Die organisasie is gemaak, maar die uitnodigings is nie gestuur nie. Stuur hulle vanaf sy Lede-instellings.",
@@ -4757,15 +4757,15 @@
     "changeInSettings": "Verander in KI-instellings"
   },
   "librarySources": {
-    "kind": "Evidence Library-rekords",
-    "library": "Evidence Library",
-    "address": "Plak ’n biblioteekadres",
+    "kind": "Evidence Community-rekords",
+    "library": "Evidence Community",
+    "address": "Plak ’n gemeenskapsadres",
     "show": "Wys",
     "filter": {
       "all": "Alles",
       "yours": "Joune",
       "shared": "Met jou gedeel",
-      "library": "Die biblioteek se"
+      "library": "Die gemeenskap se"
     },
     "find": "Vind",
     "everyRecord": "Elke rekord in {library}",
@@ -4790,14 +4790,14 @@
     "outdated": "{library} benodig ’n opdatering om hier gebruik te word.",
     "error": {
       "notAddress": "Dit is nie ’n adres nie.",
-      "notHosted": "OpenScholar bedryf nie daardie biblioteek nie.",
+      "notHosted": "OpenScholar bedryf nie daardie gemeenskap nie.",
       "private": "Daardie versameling is privaat. Die eienaar kan dit met jou deel.",
       "notFound": "Daar is niks by daardie adres nie.",
       "empty": "Daardie soektog of versameling bevat geen rekords nie.",
       "profile": "Maak een van hul versamelings oop en kopieer daardie adres.",
-      "unknownPage": "Kopieer die adres van ’n soektog, ’n versameling of die biblioteek.",
-      "outdated": "Daardie biblioteek benodig ’n opdatering om hier gebruik te word.",
-      "unreadable": "Die biblioteek het nie geantwoord nie. Probeer weer."
+      "unknownPage": "Kopieer die adres van ’n soektog, ’n versameling of die gemeenskap.",
+      "outdated": "Daardie gemeenskap benodig ’n opdatering om hier gebruik te word.",
+      "unreadable": "Die gemeenskap het nie geantwoord nie. Probeer weer."
     },
     "role": {
       "owner": "Eienaar",
@@ -4819,17 +4819,17 @@
   "fromLibrary": {
     "title": "Vanaf {library}",
     "gone": "Niks om oop te maak nie",
-    "goneHint": "Hierdie skakel vanaf ’n biblioteek het verval. Maak dit weer oop vanaf die biblioteek.",
+    "goneHint": "Hierdie skakel vanaf ’n gemeenskap het verval. Maak dit weer oop vanaf die gemeenskap.",
     "problem": {
-      "notAddress": "Daar is niks hier om oop te maak nie. Maak dit weer oop vanaf die biblioteek.",
-      "notHosted": "Daardie biblioteek loop nie meer op OpenScholar nie.",
+      "notAddress": "Daar is niks hier om oop te maak nie. Maak dit weer oop vanaf die gemeenskap.",
+      "notHosted": "Daardie gemeenskap loop nie meer op OpenScholar nie.",
       "private": "Daardie versameling is privaat. Die eienaar kan dit met jou deel.",
-      "notFound": "Die biblioteek het nie meer wat dit gestuur het nie.",
-      "empty": "Wat die biblioteek gestuur het, bevat nou geen rekords nie.",
-      "profile": "Daar is niks hier om oop te maak nie. Maak dit weer oop vanaf die biblioteek.",
-      "unknownPage": "Daar is niks hier om oop te maak nie. Maak dit weer oop vanaf die biblioteek.",
-      "outdated": "Daardie biblioteek benodig ’n opdatering om hier gebruik te word.",
-      "unreadable": "Die biblioteek het nie geantwoord nie. Probeer weer binnekort."
+      "notFound": "Die gemeenskap het nie meer wat dit gestuur het nie.",
+      "empty": "Wat die gemeenskap gestuur het, bevat nou geen rekords nie.",
+      "profile": "Daar is niks hier om oop te maak nie. Maak dit weer oop vanaf die gemeenskap.",
+      "unknownPage": "Daar is niks hier om oop te maak nie. Maak dit weer oop vanaf die gemeenskap.",
+      "outdated": "Daardie gemeenskap benodig ’n opdatering om hier gebruik te word.",
+      "unreadable": "Die gemeenskap het nie geantwoord nie. Probeer weer binnekort."
     },
     "from": {
       "smartScreening": "Slimme siftering",
@@ -4941,15 +4941,15 @@
     }
   },
   "libraryHomeSettings": {
-    "thePageVisitorsLandOnAt": "Die bladsy waarop besoekers by die biblioteek se adres land.",
+    "thePageVisitorsLandOnAt": "Die bladsy waarop besoekers by die gemeenskap se adres land.",
     "showAHomePage": "Wys ’n tuisblad",
-    "whenThisIsOffTheLibrary": "As dit af is, open die biblioteek se adres die publikasielys.",
+    "whenThisIsOffTheLibrary": "As dit af is, open die gemeenskap se adres die publikasielys.",
     "introduction": "Inleiding",
-    "shownInTheHeroUnderThe": "Gewys in die kopgedeelte, onder die biblioteek se naam en leuse.",
-    "whatTheLibraryIsFor": "Waarvoor die biblioteek is",
-    "whatDoesThisLibraryCollectAnd": "Wat versamel hierdie biblioteek, en vir wie?",
+    "shownInTheHeroUnderThe": "Gewys in die kopgedeelte, onder die gemeenskap se naam en leuse.",
+    "whatTheLibraryIsFor": "Waarvoor die gemeenskap is",
+    "whatDoesThisLibraryCollectAnd": "Wat versamel hierdie gemeenskap, en vir wie?",
     "howPublicationsGetIn": "Hoe publikasies ingaan",
-    "stepsWithATypeAreFilled": "Stappe met ’n tipe word ingevul uit die publikasie wat gevolg word, of getel uit die biblioteek se soektogte en rekords.",
+    "stepsWithATypeAreFilled": "Stappe met ’n tipe word ingevul uit die publikasie wat gevolg word, of getel uit die gemeenskap se soektogte en rekords.",
     "addStep": "Voeg stap by",
     "statement": "Stelling",
     "noStepsTheSectionShowsThe": "Geen stappe nie. Die afdeling wys die stelling op sy eie.",
@@ -4960,20 +4960,20 @@
     "editorShown": "Redigeerder gewys",
     "whoeverApprovedIt": "Wie dit goedgekeur het",
     "whatHappens": "Wat gebeur",
-    "whoRunsTheLibrary": "Wie die biblioteek bestuur",
-    "peopleFromTheLibrarySTeam": "Mense uit die biblioteek se span, of met die hand bygevoeg, gaan verby in die volgorde wat hier gestel is.",
+    "whoRunsTheLibrary": "Wie die gemeenskap bestuur",
+    "peopleFromTheLibrarySTeam": "Mense uit die gemeenskap se span, of met die hand bygevoeg, gaan verby in die volgorde wat hier gestel is.",
     "aboutTheTeam": "Oor die span",
     "usedInsteadWhenThereIsNo": "Word eerder gebruik wanneer daar geen span-sin is nie.",
     "suggestAPublication": "Stel ’n publikasie voor",
     "opensAnEmailTo": "Maak ’n e-pos oop aan {email}",
     "needsAContactEmail": "Het ’n kontak-e-posadres nodig",
     "joinAsAnEditor": "Sluit aan as redigeerder",
-    "askTheLibrary": "Vra die biblioteek",
-    "typedIntoTheQuestionBoxOne": "In die vraagkassie een na die ander ingetik. ’n Leë kassie hou die vraag wat uit die biblioteek se onderwerpe gemaak is.",
-    "shownWhenAiAnswersAreOn": "Gewys wanneer KI-antwoorde by Kenmerke aan is. ’n Leë kassie hou die vraag wat uit die biblioteek se onderwerpe gemaak is.",
+    "askTheLibrary": "Vra die gemeenskap",
+    "typedIntoTheQuestionBoxOne": "In die vraagkassie een na die ander ingetik. ’n Leë kassie hou die vraag wat uit die gemeenskap se onderwerpe gemaak is.",
+    "shownWhenAiAnswersAreOn": "Gewys wanneer KI-antwoorde by Kenmerke aan is. ’n Leë kassie hou die vraag wat uit die gemeenskap se onderwerpe gemaak is.",
     "exampleQuestion": "Voorbeeldvraag {value}",
     "usingAndCiting": "Gebruik en aanhaal",
-    "shownBesideTheCitationOfThe": "Gewys langs die aanhaling van die biblioteek, wat uit sy naam en adres gemaak word.",
+    "shownBesideTheCitationOfThe": "Gewys langs die aanhaling van die gemeenskap, wat uit sy naam en adres gemaak word.",
     "licenceAndReuse": "Lisensie en hergebruik",
     "howMayPeopleReuseWhatThey": "Hoe mag mense wat hulle hier vind, hergebruik?",
     "heading": "Opskrif",
@@ -4992,12 +4992,12 @@
     "takedownForm": "Verwyderingsvorm",
     "off": "Af",
     "filledInForYou": "Vir jou ingevul",
-    "newestPublicationsTheMostCitedDigests": "Nuutste publikasies, die meeste aangehaal, opsommings en die nuutste oorsig kom uit die biblioteek self.",
+    "newestPublicationsTheMostCitedDigests": "Nuutste publikasies, die meeste aangehaal, opsommings en die nuutste oorsig kom uit die gemeenskap self.",
     "editIn": "Wysig in {card}",
     "peopleShown": "Mense wat gewys word",
     "addFromTheTeam": "Voeg uit die span by",
     "addPeopleFromTheTeam": "Voeg mense uit die span by",
-    "everyoneOnTheLibrarySTeam": "Almal in die biblioteek se span, met die foto uit hul rekening.",
+    "everyoneOnTheLibrarySTeam": "Almal in die gemeenskap se span, met die foto uit hul rekening.",
     "addSomeone": "Voeg iemand by",
     "nobodyIsShownAddPeopleFrom": "Niemand word gewys nie. Voeg mense uit die span by, of voeg iemand by wat geen rekening het nie.",
     "removedFromTheTeamSoNot": "Uit die span verwyder, so nie gewys nie",
@@ -5036,7 +5036,7 @@
       },
       "search": {
         "label": "Soekterme",
-        "hint": "Tel die woorde, frases en onderwerpe waarna die biblioteek se OpenAlex-soektogte soek",
+        "hint": "Tel die woorde, frases en onderwerpe waarna die gemeenskap se OpenAlex-soektogte soek",
         "fallback": "Deur soektog gevind",
         "example": "Soekterme"
       },
@@ -5066,12 +5066,12 @@
     },
     "reviewedOn": "Nagegaan {date}",
     "addedOn": "Bygevoeg {date}",
-    "howTheLibraryIsCurated": "Hoe die biblioteek saamgestel word",
+    "howTheLibraryIsCurated": "Hoe die gemeenskap saamgestel word",
     "optional": "Opsioneel",
     "removeStep": "Verwyder stap",
     "whoIsBehindIt": "Wie staan daaragter",
     "getInvolved": "Raak betrokke",
-    "usingAndCitingTheLibrary": "Gebruik en aanhaling van die biblioteek",
+    "usingAndCitingTheLibrary": "Gebruik en aanhaling van die gemeenskap",
     "identity": "Identiteit",
     "contact": "Kontak",
     "notSet": "Nie ingestel nie",
@@ -5091,10 +5091,10 @@
     "searchPublications": "Soek publikasies",
     "date": "Datum",
     "loadingPublications": "Laai publikasies",
-    "theLibrarySPublicationsCouldNot": "Die biblioteek se publikasies kon nie gelaai word nie.",
+    "theLibrarySPublicationsCouldNot": "Die gemeenskap se publikasies kon nie gelaai word nie.",
     "noPublicationHasAPdfYet": "Geen publikasie het nog ’n PDF nie.",
     "noPublicationMatches": "Geen publikasie pas nie.",
-    "theLibraryIsNotSetUp": "Die biblioteek is nog nie opgestel nie.",
+    "theLibraryIsNotSetUp": "Die gemeenskap is nog nie opgestel nie.",
     "linked": "Gekoppel"
   },
   "libraryTeamAccess": {
@@ -5110,12 +5110,12 @@
     "cancelInvitation": "Kanselleer uitnodiging",
     "cancelThisInvitation": "Kanselleer hierdie uitnodiging?",
     "removeAccessToThisAuthorProfile": "Verwyder toegang tot hierdie outeurprofiel?",
-    "removeFromThisLibraryOrganizationMembership": "Verwyder uit hierdie biblioteek? Organisasielidmaatskap en toegang tot ander biblioteke bly ongewysig.",
+    "removeFromThisLibraryOrganizationMembership": "Verwyder uit hierdie gemeenskap? Organisasielidmaatskap en toegang tot ander gemeenskappe bly ongewysig.",
     "keep": "Hou",
     "profileAccess": "Profieltoegang",
     "team": "Span",
     "theOwnerManagesAccessEditorsCan": "Die eienaar bestuur toegang. Redigeerders kan hierdie profiel wysig.",
-    "manageAccessToThisLibrary": "Bestuur toegang tot hierdie biblioteek.",
+    "manageAccessToThisLibrary": "Bestuur toegang tot hierdie gemeenskap.",
     "addEditor": "Voeg redigeerder by",
     "addMember": "Voeg lid by",
     "inviteProfileEditor": "Nooi profielredigeerder uit",
@@ -5128,29 +5128,29 @@
     "chooseAPerson": "Kies ’n persoon",
     "emailAddress": "E-posadres",
     "nameOrganisationOrg": "name@organisation.org",
-    "libraryRole": "Biblioteekrol",
+    "libraryRole": "Gemeenskapsrol",
     "editorsCanEditProfileDetailsAnd": "Redigeerders kan profielbesonderhede wysig en publikasies kies.",
-    "accessAppliesToThisLibraryOnly": "Toegang geld net vir hierdie biblioteek.",
-    "theyLlReceiveAccessToThis": "Hulle sal net toegang tot hierdie biblioteek ontvang. Organisasielidmaatskap bly ongewysig.",
+    "accessAppliesToThisLibraryOnly": "Toegang geld net vir hierdie gemeenskap.",
+    "theyLlReceiveAccessToThis": "Hulle sal net toegang tot hierdie gemeenskap ontvang. Organisasielidmaatskap bly ongewysig.",
     "cancel": "Kanselleer",
     "sendInvitation": "Stuur uitnodiging",
     "dismissMemberStatus": "Verwerp lidstatus",
     "organizationOwners": "Organisasie-eienaars",
-    "accessToAllLibrariesManagedIn": "Toegang tot alle biblioteke. Bestuur in organisasie-instellings.",
+    "accessToAllLibrariesManagedIn": "Toegang tot alle gemeenskappe. Bestuur in organisasie-instellings.",
     "everyoneElseInTheOrganization": "Almal anders in die organisasie",
     "viewersUntilYouAddThemBelow": "Kykers totdat jy hulle hieronder met ’n rol byvoeg.",
     "everyoneIn": "Almal in {name}",
-    "everyoneWithoutARoleInThis": "Almal sonder ’n rol in hierdie biblioteek",
+    "everyoneWithoutARoleInThis": "Almal sonder ’n rol in hierdie gemeenskap",
     "viewer": "Kyker",
     "teamView": "Spanaansig",
     "profileMembers": "Profiellede",
-    "libraryMembers": "Biblioteeklede",
+    "libraryMembers": "Gemeenskapslede",
     "invitations": "Uitnodigings",
     "searchTeam": "Soek span",
     "findAPerson": "Vind ’n persoon…",
-    "aboutLibraryRoles": "Oor biblioteekrolle",
+    "aboutLibraryRoles": "Oor gemeenskapsrolle",
     "editor": "Redigeerder",
-    "reviewPublishAndManageLibraryContent": "Nagaan, publiseer en bestuur biblioteekinhoud.",
+    "reviewPublishAndManageLibraryContent": "Nagaan, publiseer en bestuur gemeenskapsinhoud.",
     "creator": "Skepper",
     "editItemsAndSubmitWorkFor": "Wysig items en dien werk in vir nasiening.",
     "loadingTeam": "Laai span",
@@ -5176,37 +5176,37 @@
       "Viewer": "Kyker"
     },
     "roleHints": {
-      "Owner": "Geërf van die organisasie. Bestuur al sy biblioteke en hul spanne.",
-      "Editor": "Hersien en publiseer items. Bestuur biblioteekinhoud.",
+      "Owner": "Geërf van die organisasie. Bestuur al sy gemeenskappe en hul spanne.",
+      "Editor": "Hersien en publiseer items. Bestuur gemeenskapsinhoud.",
       "Creator": "Skep en wysig items, laai lêers op en stuur vir hersiening in.",
-      "Viewer": "Almal anders in die organisasie. Kyk na die biblioteek en sy items sonder om hulle te verander."
+      "Viewer": "Almal anders in die organisasie. Kyk na die gemeenskap en sy items sonder om hulle te verander."
     },
-    "removeFromLibrary": "Verwyder uit biblioteek",
+    "removeFromLibrary": "Verwyder uit gemeenskap",
     "removeFromProfile": "Verwyder uit profiel",
-    "whoManagesLibrary": "Kies wie hierdie biblioteek kan bestuur.",
+    "whoManagesLibrary": "Kies wie hierdie gemeenskap kan bestuur.",
     "whoManagesProfile": "Kies wie hierdie profiel kan bestuur.",
-    "addToLibrary": "Voeg by biblioteek",
+    "addToLibrary": "Voeg by gemeenskap",
     "addToProfile": "Voeg by profiel",
-    "acceptingGrantsLibrary": "Aanvaarding gee net toegang tot hierdie biblioteek.",
+    "acceptingGrantsLibrary": "Aanvaarding gee net toegang tot hierdie gemeenskap.",
     "acceptingGrantsProfile": "Aanvaarding gee net toegang tot hierdie profiel.",
-    "removedFromLibrary": "Uit hierdie biblioteek verwyder.",
+    "removedFromLibrary": "Uit hierdie gemeenskap verwyder.",
     "removedFromProfile": "Uit hierdie profiel verwyder.",
-    "addedToLibrary": "{name} by hierdie biblioteek gevoeg.",
+    "addedToLibrary": "{name} by hierdie gemeenskap gevoeg.",
     "addedToProfile": "{name} by hierdie profiel gevoeg."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Opsomming in die ry vir # publikasie.} other {Opsomming in die ry vir # publikasies.}}",
     "noPublicationsInThePeriodNothing": "Geen publikasies in die tydperk nie. Niks is gestuur nie.",
-    "publishTheLibraryConfigurationWithReader": "Publiseer eers die biblioteekkonfigurasie met leserintekenings geaktiveer.",
+    "publishTheLibraryConfigurationWithReader": "Publiseer eers die gemeenskapskonfigurasie met leserintekenings geaktiveer.",
     "theDigestRequestCouldNotBe": "Die opsommingsversoek kon nie bevestig word nie. Probeer weer; bestaande uitgawes sal nie twee keer gestuur word nie.",
     "emailUpdates": "E-postopdaterings",
     "readerSubscriptions": "Leserintekenings",
-    "readersCanChooseNewPublicationsLibrary": "Lesers kan nuwe publikasies, biblioteekopsommings, of albei kies. Leë uitgawes word oorgeslaan.",
+    "readersCanChooseNewPublicationsLibrary": "Lesers kan nuwe publikasies, gemeenskapsopsommings, of albei kies. Leë uitgawes word oorgeslaan.",
     "digestCovers": "Opsomming dek",
     "aPublicationWithoutAFullDate": "’n Publikasie sonder ’n volledige datum hoort in geen tydperk nie.",
-    "anOlderPublicationCountsWhenIt": "’n Ouer publikasie tel wanneer dit nuut is vir die biblioteek.",
+    "anOlderPublicationCountsWhenIt": "’n Ouer publikasie tel wanneer dit nuut is vir die gemeenskap.",
     "publicationsPublishedInThePeriod": "Publikasies gepubliseer in die tydperk",
-    "publicationsAddedToTheLibraryIn": "Publikasies bygevoeg aan die biblioteek in die tydperk",
+    "publicationsAddedToTheLibraryIn": "Publikasies bygevoeg aan die gemeenskap in die tydperk",
     "frequency": "Frekwensie",
     "weekly": "Weekliks",
     "monthly": "Maandeliks",
@@ -5216,8 +5216,8 @@
     "time": "Tyd",
     "timezone": "Tydsone",
     "beforeADigestGoesOut": "Voordat ’n opsomming uitgaan",
-    "itWaitsInTheLibraryS": "Dit wag in die biblioteek se adminpaneel, waar Skeppers dit kan wysig en ’n Redigeerder of Eienaar dit publiseer.",
-    "itIsPublishedAndEmailedAs": "Dit word gepubliseer en per e-pos gestuur sodra dit geskryf is. Dit kan steeds in die biblioteek se adminpaneel reggestel word.",
+    "itWaitsInTheLibraryS": "Dit wag in die gemeenskap se adminpaneel, waar Skeppers dit kan wysig en ’n Redigeerder of Eienaar dit publiseer.",
+    "itIsPublishedAndEmailedAs": "Dit word gepubliseer en per e-pos gestuur sodra dit geskryf is. Dit kan steeds in die gemeenskap se adminpaneel reggestel word.",
     "anEditorApprovesIt": "’n Redigeerder keur dit goed",
     "itIsSentAsAiWrote": "Dit word gestuur soos KI dit geskryf het",
     "nameWhoCheckedIt": "Noem wie dit nagegaan het",
@@ -5255,23 +5255,23 @@
     "keepThisUnderCharacters": "Hou dit onder {maxLength} karakters."
   },
   "libraryList": {
-    "evidenceLibraries": "Evidence Libraries",
-    "newLibrary": "Nuwe biblioteek",
-    "libraryView": "Biblioteekaansig",
+    "evidenceLibraries": "Evidence Communities",
+    "newLibrary": "Nuwe gemeenskap",
+    "libraryView": "Gemeenskapsaansig",
     "sharedWithYou": "Met jou gedeel",
     "invitations": "Uitnodigings",
-    "searchLibraries": "Soek biblioteke",
-    "findALibrary": "Vind ’n biblioteek…",
-    "acceptAccessToALibraryWithout": "Aanvaar toegang tot ’n biblioteek sonder om by sy organisasie aan te sluit.",
-    "loadingLibraries": "Laai biblioteke",
-    "noLibrariesMatchTheseFilters": "Geen biblioteke pas by hierdie filters nie.",
+    "searchLibraries": "Soek gemeenskappe",
+    "findALibrary": "Vind ’n gemeenskap…",
+    "acceptAccessToALibraryWithout": "Aanvaar toegang tot ’n gemeenskap sonder om by sy organisasie aan te sluit.",
+    "loadingLibraries": "Laai gemeenskappe",
+    "noLibrariesMatchTheseFilters": "Geen gemeenskappe pas by hierdie filters nie.",
     "noPendingInvitations": "Geen hangende uitnodigings nie.",
-    "librariesPeopleShareWithYouAppear": "Biblioteke wat mense met jou deel, verskyn hier.",
-    "hasNoLibrariesYet": "{name} het nog geen biblioteke nie.",
+    "librariesPeopleShareWithYouAppear": "Gemeenskappe wat mense met jou deel, verskyn hier.",
+    "hasNoLibrariesYet": "{name} het nog geen gemeenskappe nie.",
     "organization": "Organisasie: {organization}",
     "inheritedFromOrganizationOwnership": "Oorgeërf uit organisasie-eienaarskap",
-    "everyoneInTheOrganizationViewsIts": "Almal in die organisasie kyk na sy biblioteke",
-    "assignedToThisLibrary": "Aan hierdie biblioteek toegewys",
+    "everyoneInTheOrganizationViewsIts": "Almal in die organisasie kyk na sy gemeenskappe",
+    "assignedToThisLibrary": "Aan hierdie gemeenskap toegewys",
     "decline": "Weier",
     "acceptInvitation": "Aanvaar uitnodiging",
     "deleting": "Word verwyder",
@@ -5281,7 +5281,7 @@
     "viewSetup": "Kyk opstelling",
     "actionsFor": "Aksies vir {name}",
     "settings": "Instellings",
-    "viewPublicLibrary": "Kyk openbare biblioteek",
+    "viewPublicLibrary": "Kyk openbare gemeenskap",
     "openAdmin": "Maak admin oop",
     "moreActionsFor": "Meer aksies vir {name}",
     "declineInvitation": "Weier uitnodiging?",
@@ -5289,7 +5289,7 @@
     "declineInvitation2": "Weier uitnodiging",
     "previewCover": "Vertoon {title} se omslag",
     "preview": "Vertoon {title}",
-    "declineBody": "Jy sal nie toegang tot {name} ontvang nie. Jou ander biblioteke word nie geraak nie.",
+    "declineBody": "Jy sal nie toegang tot {name} ontvang nie. Jou ander gemeenskappe word nie geraak nie.",
     "owner": "Eienaar",
     "editor": "Redakteur",
     "creator": "Skepper",
@@ -5335,9 +5335,9 @@
     "fromOpenalex": "Vanaf OpenAlex",
     "findAPublication": "Vind ’n publikasie…",
     "searchPublications": "Soek publikasies",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "publishedIn": "Gepubliseer in",
-    "publishedWorksInThisLibrary": "{length} gepubliseerde werke in hierdie biblioteek",
+    "publishedWorksInThisLibrary": "{length} gepubliseerde werke in hierdie gemeenskap",
     "publications": "Publikasies",
     "noPublicationsMatchYourSearch": "Geen publikasies pas by jou soektog nie.",
     "noPublicationsSelectedYet": "Nog geen publikasies gekies nie.",

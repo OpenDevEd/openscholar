@@ -2175,7 +2175,7 @@ describe("Evidence Library configuration deployment", () => {
       activateChangedConfiguration("topics-without-runtime-support", {
         topicsEnabled: true,
       }),
-    ).rejects.toThrow(/Topics need a newer Evidence Library software version/);
+    ).rejects.toThrow(/Topics need a newer Evidence Community software version/);
   });
 
   it("continues from the exact target of this library's failed software update", async () => {
@@ -2506,7 +2506,7 @@ describe("Evidence Library configuration deployment", () => {
         status: "failed",
         error: {
           code: "COOLIFY_DEPLOYMENT_FAILED",
-          message: "Coolify could not deploy the Evidence Library",
+          message: "Coolify could not deploy the Evidence Community",
           stage: "publishing",
         },
         completedAt: Date.now(),

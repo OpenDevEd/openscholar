@@ -405,7 +405,7 @@ export const deleteOrganizationAction = defineChangingAction({
   path: "organizations/manage:deleteOrganization",
   description:
     "Deletes the organization the person is in, and with it every member's access to its workspace; an admin of it does this, and it can't be undone. " +
-    "It's refused while the organization has an Evidence Library, which has to be moved or deleted first. An organization on Team has its plan and seats ended first.",
+    "It's refused while the organization has an Evidence Community, which has to be moved or deleted first. An organization on Team has its plan and seats ended first.",
   args: {},
   returns: v.null(),
   spendsCredits: false,

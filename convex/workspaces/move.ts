@@ -112,7 +112,7 @@ export async function heldBack(ctx: Read, { workspaceId, role, userId }: Pick<Ac
     if (!collection) return gone;
     // A library shows the papers of the collections it follows, from the workspace they're in.
     const follower = await ctx.db.query("evidenceLibraryCollectionSources").withIndex("by_collectionId", (q) => q.eq("collectionId", collection._id)).first();
-    if (follower) return `${(await ctx.db.get("evidenceLibraries", follower.libraryId))?.name ?? "An Evidence Library"} follows this collection. Stop following it in the library's sources first.`;
+    if (follower) return `${(await ctx.db.get("evidenceLibraries", follower.libraryId))?.name ?? "An Evidence Community"} follows this collection. Stop following it in the community's sources first.`;
   } else if (kind === "author") {
     if (!(await profileIn(ctx, workspaceId, id))) return gone;
   } else if (kind === "search") {
@@ -308,7 +308,7 @@ export const moveAction = defineUserMutation({
   path: "workspaces/move:move",
   description:
     "Moves an item of the workspace the person is in to another workspace they belong to, and everyone in that workspace then sees it: a collection with its papers, which are saved to that workspace's library while the library it left keeps them; a search (by its ID in the address) with its screening answers, its screenings and its earlier queries; a finished screening of a collection, the library or another screening; a finished extraction job; a chat the person started; or an author profile with its publications and editors. " +
-    "Only an organization's admins move its work out of it; a running job, or a chat whose reply hasn't finished, moves once it has; a search's screening moves with its search; a collection an Evidence Library follows stays until the library stops following it. Its activity goes with it. Returns the workspace it went to.",
+    "Only an organization's admins move its work out of it; a running job, or a chat whose reply hasn't finished, moves once it has; a search's screening moves with its search; a collection an Evidence Community follows stays until the community stops following it. Its activity goes with it. Returns the workspace it went to.",
   args: { kind: kindValidator, id: v.string(), to: v.id("workspaces") },
   returns: v.object({ to: v.id("workspaces") }),
   spendsCredits: false,

@@ -3,7 +3,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { EvidenceLibrariesGate } from "@/components/auth/evidence-libraries-gate";
 
-const { access, child, home, path } = vi.hoisted(() => ({ access: vi.fn(), child: vi.fn(), home: vi.fn(), path: { value: "/evidence-libraries" } }));
+const { access, child, home, path } = vi.hoisted(() => ({ access: vi.fn(), child: vi.fn(), home: vi.fn(), path: { value: "/evidence-communities" } }));
 vi.mock("@/lib/workspaces/use-workspace-features", () => ({ useWorkspaceFeatures: access }));
 vi.mock("@/components/workspaces/item-home", async (original) => ({ ...(await original<typeof import("@/components/workspaces/item-home")>()), useItemHome: home }));
 vi.mock("next/navigation", () => ({ usePathname: () => path.value, useSearchParams: () => new URLSearchParams(), redirect: vi.fn() }));
@@ -15,7 +15,7 @@ vi.mock("next-intl", () => ({
 vi.mock("@/components/PageWrapper", () => ({ PageWrapper: ({ children }: React.PropsWithChildren) => <main>{children}</main> }));
 vi.mock("@/components/auth/auth-state-panel", () => ({ AuthStatePanel: ({ variant }: { variant: string }) => <div role="status">{variant}</div> }));
 function ProtectedContent() { child(); return <div>Protected content</div>; }
-beforeEach(() => { child.mockClear(); home.mockReset(); path.value = "/evidence-libraries"; });
+beforeEach(() => { child.mockClear(); home.mockReset(); path.value = "/evidence-communities"; });
 
 it("keeps protected queries unmounted while loading and when access is denied", () => {
   access.mockReturnValue({ phase: "authenticated", data: undefined });
@@ -57,7 +57,7 @@ it("shows the page's own fallback while access is checked and keeps it mounted w
 
 it("waits, not refuses, while a link to a library of another of the person's workspaces is on its way there", () => {
   // Opened from their own workspace, whose plan has no Evidence Libraries: the library's organization has them.
-  path.value = "/evidence-libraries/library123/configuration";
+  path.value = "/evidence-communities/library123/configuration";
   access.mockReturnValue({ phase: "authenticated", data: { evidenceLibraries: false } });
   home.mockReturnValue(undefined);
   const { rerender } = render(<EvidenceLibrariesGate><ProtectedContent /></EvidenceLibrariesGate>);

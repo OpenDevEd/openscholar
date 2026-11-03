@@ -113,7 +113,7 @@ function workPath(id: string) {
   // A DOI goes into the address as it is, so one that would change the address isn't taken: a "?" or "#", or a ".." that climbs out of the work's path.
   const doi = given.match(/^(?:https?:\/\/(?:dx\.)?doi\.org\/|doi:)?(10\.\d{4,9}\/[^\s?#]+)$/i)?.[1];
   if (doi && !doi.split("/").some((part) => part === "." || part === "..")) return `https://doi.org/${doi}`;
-  throw createError("VALIDATION_ERROR", "A paper is read by its ID, such as W2741809807, or its DOI; an Evidence Library's record by its `paper` as evidenceLibraries/library:records gives it (library:<libraryId>:<key>), or its page's address on the library.");
+  throw createError("VALIDATION_ERROR", "A paper is read by its ID, such as W2741809807, or its DOI; an Evidence Community's record by its `paper` as evidenceLibraries/library:records gives it (library:<libraryId>:<key>), or its page's address on the community.");
 }
 
 export const getAction = defineUserAction({
@@ -180,7 +180,7 @@ export const readPdfAction = defineUserAction({
   description:
     "Reads a paper's open-access PDF, by its ID as results give it (such as W2741809807) or its DOI, with its `title` as they give it, which the person is shown when asked: you get the PDF itself, its text, tables and figures, for the rest of this reply. " +
     "Search results, a paper's record and the person's saved papers say `pdf` when OpenAlex knows of one; OpenAlex may still hold a copy of one without. A paper in the person's Zotero library is read from there, with zotero/library:pdf. " +
-    "An Evidence Library's record is read from the library, by its `paper` as evidenceLibraries/library:records gives it or by its page's address on the library, when that says `pdf`, or else from OpenAlex's copy when it has an OpenAlex ID. When none can be got, ask the person to attach its PDF to the chat. " +
+    "An Evidence Community's record is read from the community, by its `paper` as evidenceLibraries/library:records gives it or by its page's address on the community, when that says `pdf`, or else from OpenAlex's copy when it has an OpenAlex ID. When none can be got, ask the person to attach its PDF to the chat. " +
     "OpenAlex sometimes links the wrong file: check the PDF is the paper you asked for, and if it isn't, say so and use nothing from it. " +
     "Cite what you take from it by page, as a link to its address with the page: [p. 7](PDF_ADDRESS#page=7). A later reply that needs it again reads it again. " +
     "The person is asked first, with what the read may cost. One request against the person's OpenAlex allowance.",
@@ -238,10 +238,10 @@ async function chatScope(ctx: ActionCtx, call: ChangeCall | undefined) {
 async function libraryRecordPdf(ctx: ActionCtx, payer: { userId: Id<"users">; workspaceId: Id<"workspaces"> }, ref: { libraryId: string; key: string }, asked: string | undefined, call: ChangeCall | undefined): Promise<Infer<typeof paperPdfValidator>> {
   const read: { papers: Array<Infer<typeof screeningPaperInputValidator>> } = await ctx.runAction(internal.evidenceLibraries.sourceActions.page, { libraryId: ref.libraryId as Id<"evidenceLibraries">, userId: payer.userId, source: { records: [ref.key] }, first: 1, last: 1 });
   const paper = read.papers[0];
-  if (!paper) throw createError("NOT_FOUND", "The library shows no record by that key.");
-  if (asked && !sameTitle(asked, paper.title)) throw createError("VALIDATION_ERROR", `That record is "${paper.title}" in the library, not "${asked}". Check its key, and read it again.`);
+  if (!paper) throw createError("NOT_FOUND", "The community shows no record by that key.");
+  if (asked && !sameTitle(asked, paper.title)) throw createError("VALIDATION_ERROR", `That record is "${paper.title}" in the community, not "${asked}". Check its key, and read it again.`);
   const openalexId = paper.crossRefs?.openalexId;
-  if (!paper.pdfUrl && !openalexId) throw createError("VALIDATION_ERROR", "The library lets readers download no PDF of this record. Ask the person to attach its PDF to the chat.");
+  if (!paper.pdfUrl && !openalexId) throw createError("VALIDATION_ERROR", "The community lets readers download no PDF of this record. Ask the person to attach its PDF to the chat.");
   // The library's own file when it has one, and nothing else in its place, so the page citations open the PDF read.
   const from = paper.pdfUrl ? { url: paper.pdfUrl } : { openalexId, doi: paper.crossRefs?.doi };
   const got = await paperPdf(ctx, { ...payer, scope: await chatScope(ctx, call), kind: "chat" }, from, { maxBytes: PROVIDER_PDF_BYTES, bytes: false, charge: "self", allowHttp: true });

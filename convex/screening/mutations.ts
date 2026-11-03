@@ -96,7 +96,7 @@ function withRequiredZeroed(rules: JobSetup["scoringConfig"]["rules"]) {
  */
 async function insertJob(ctx: MutationCtx, user: Doc<"users">, workspaceId: Id<"workspaces">, { author, set, saveTo, prune, name, ...args }: JobSetup, state: Pick<Doc<"screeningJobs">, "status" | "totalPapers" | "reading" | "newCollection">) {
   if (prune && !prunable(set)) throw createError("VALIDATION_ERROR", "Only a collection's papers can leave it");
-  if ((saveTo?.kind === "libraryCollection" || saveTo?.kind === "newLibraryCollection") !== Boolean(args.libraryDestination)) throw createError("VALIDATION_ERROR", "A library collection is checked before the job is made.");
+  if ((saveTo?.kind === "libraryCollection" || saveTo?.kind === "newLibraryCollection") !== Boolean(args.libraryDestination)) throw createError("VALIDATION_ERROR", "A community collection is checked before the job is made.");
 
   const writer = { userId: user._id, workspaceId };
   // The screening its answers go to, and the set's name as the page shows it.

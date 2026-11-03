@@ -62,12 +62,12 @@ function requireProvisionerOrigin(value: string): URL {
 
 const SAFE_PROVISIONER_ERRORS: Record<string, string> = {
   database_object_owner_conflict:
-    "The library database contains objects owned by another login.",
-  database_owner_conflict: "The library database is owned by another login.",
+    "The community database contains objects owned by another login.",
+  database_owner_conflict: "The community database is owned by another login.",
   extension_owner_conflict:
     "A required database extension is owned by another login.",
-  login_database_conflict: "The library login owns another database.",
-  login_security_conflict: "The library login has server-wide rights.",
+  login_database_conflict: "The community login owns another database.",
+  login_security_conflict: "The community login has server-wide rights.",
 };
 
 function parseSafeServiceError(payload: unknown): DatabaseProvisionerError {

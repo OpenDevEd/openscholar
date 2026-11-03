@@ -305,7 +305,7 @@ export const trySubjectFor = internalAction({
   handler: async (ctx, args) =>
     await readRuntime(ctx, args, "manage", async (target) => {
       const trial = await tryRuntimeScreeningSubject(fetch, target, args.sourceKey, args.subject);
-      if (!validate(screeningTrialValidator, trial)) throw new RuntimeReadError("RUNTIME_READ_INVALID", "The library's trial has an unexpected shape");
+      if (!validate(screeningTrialValidator, trial)) throw new RuntimeReadError("RUNTIME_READ_INVALID", "The community's trial has an unexpected shape");
       return trial as Infer<typeof screeningTrialValidator>;
     }),
 });
@@ -329,7 +329,7 @@ export const sendScreeningGrade = internalAction({
       });
       await ctx.runMutation(internal.evidenceLibraries.screeningRequests.settle, typeof outcome === "string"
         ? { requestId, outcome }
-        : { requestId, outcome: "refused", error: "The library isn't running yet." });
+        : { requestId, outcome: "refused", error: "The community isn't running yet." });
     } catch (error) {
       console.error("Screening grade request failed", { requestId, error });
       await ctx.runMutation(internal.evidenceLibraries.screeningRequests.settle, {

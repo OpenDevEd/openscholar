@@ -30,7 +30,7 @@ const rowValidator = v.object({
 export const listAction = defineUserQuery({
   path: "organizations/libraryAccess:list",
   description:
-    "Lists organizations by name, a page at a time, with whether Evidence Libraries are on for each and how many libraries it has. Admins only. `show` narrows it to those switched on or off; given `search`, those whose name best matches its words, best first.",
+    "Lists organizations by name, a page at a time, with whether Evidence Communities are on for each and how many communities it has. Admins only. `show` narrows it to those switched on or off; given `search`, those whose name best matches its words, best first.",
   args: { paginationOpts: paginationOptsValidator, show: v.optional(showValidator), search: v.optional(v.string()) },
   returns: paginationResultValidator(rowValidator),
   run: async (ctx, { userId }, { paginationOpts, show = "all", search }) => {
@@ -64,7 +64,7 @@ export const listForAssistant = assistantQuery(listAction);
 
 export const countAction = defineUserQuery({
   path: "organizations/libraryAccess:count",
-  description: `Says how many organizations there are, those with Evidence Libraries switched on or off when \`show\` says so, up to ${COUNT_READ}. Admins only.`,
+  description: `Says how many organizations there are, those with Evidence Communities switched on or off when \`show\` says so, up to ${COUNT_READ}. Admins only.`,
   args: { show: v.optional(showValidator) },
   returns: v.number(),
   run: async (ctx, { userId }, { show = "all" }) => {
@@ -89,7 +89,7 @@ export const set = mutation({
     if (!on) {
       const workspace = await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique();
       const library = workspace && (await ctx.db.query("evidenceLibraries").withIndex("by_workspace", (q) => q.eq("workspaceId", workspace._id)).first());
-      if (library) throw createError("VALIDATION_ERROR", `${library.name} is one of this organization's Evidence Libraries. Move or delete its libraries first.`);
+      if (library) throw createError("VALIDATION_ERROR", `${library.name} is one of this organization's Evidence Communities. Move or delete its communities first.`);
     }
     // Off is absent, so the index lists organizations that were never switched on with those switched off.
     await ctx.db.patch("organizations", organizationId, { evidenceLibraries: on ? true : undefined });

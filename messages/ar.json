@@ -23,7 +23,7 @@
     "history": "السجل",
     "extraction": "الاستخلاص",
     "library": "المكتبة",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "screening": "الفرز",
     "settings": "الإعدادات",
     "save": "حفظ",
@@ -292,12 +292,12 @@
       "noMemberLimit": "بلا حد للأعضاء",
       "southernFeature1": "كل ما في المؤسسة المجانية",
       "southernFeature2": "تضاف إلى مؤسستك بعد التواصل معنا",
-      "librariesName": "Evidence Libraries",
+      "librariesName": "Evidence Communities",
       "librariesDescription": "تُفعَّل لمؤسستك عند الطلب. تبقى خطتها ورصيدها كما هما.",
-      "librariesFeature1": "Evidence Libraries عامة",
+      "librariesFeature1": "Evidence Communities عامة",
       "librariesFeature2": "إنشاء ملفات المؤلفين وتعديلها",
       "librariesOn": "مفعّلة لمؤسستك",
-      "openLibraries": "فتح Evidence Libraries"
+      "openLibraries": "فتح Evidence Communities"
     },
     "cancelScheduledDowngrade": "إلغاء التخفيض المجدول",
     "scheduled": "مجدول",
@@ -325,7 +325,7 @@
     "loading": "جارٍ تحميل إعدادات النشر…",
     "storedHint": "اتركه فارغًا للإبقاء على بيانات الاعتماد المحفوظة",
     "saved": "تم حفظ إعدادات النشر",
-    "activateHint": "فعّل الإعداد لتطبيقه على هذه المكتبة.",
+    "activateHint": "فعّل الإعداد لتطبيقه على هذا المجتمع.",
     "failure": "تعذّر التحقق من بيانات الاعتماد. لم يُحفظ أي شيء. حاول مرة أخرى.",
     "zenodoRequired": "مطلوب ما دام Crossref مفعّلًا. تُؤرشف الملفات عند توفرها.",
     "zenodoHint": "أرشفة الملفات وإنشاء معرّفات DOI من Zenodo.",
@@ -348,8 +348,8 @@
     "depositorName": "اسم المودِع",
     "email": "البريد الإلكتروني للمودِع",
     "namespace": "نطاق DOI",
-    "namespaceHint": "القيمة الافتراضية هي اسم عنوان هذه المكتبة.",
-    "libraryName": "اسم المكتبة",
+    "namespaceHint": "القيمة الافتراضية هي اسم عنوان هذا المجتمع.",
+    "libraryName": "اسم المجتمع",
     "checking": "جارٍ التحقق من بيانات اعتماد المزوّد…",
     "needsVerification": "تحتاج التغييرات إلى تحقق قبل أن تُحفظ.",
     "verified": "تم التحقق في {date}",
@@ -359,7 +359,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "غير مسموح",
-    "organizationFeatureDescription": "لا تتضمن باقة مساحة العمل هذه Evidence Libraries.",
+    "organizationFeatureDescription": "لا تتضمن باقة مساحة العمل هذه Evidence Communities.",
     "backToSearch": "العودة إلى البحث",
     "loadingTitle": "جارٍ تحميل مساحة العمل",
     "loadingDescription": "جارٍ تجهيز مساحة العمل الموثّقة الخاصة بك.",
@@ -1608,14 +1608,14 @@
       "collection": "المجموعة",
       "saved": "الأوراق المحفوظة",
       "screening": "الفرز",
-      "evidenceLibrary": "Evidence Library"
+      "evidenceLibrary": "Evidence Community"
     },
     "noSets": {
       "search": "لا توجد عمليات بحث محفوظة بعد.",
       "collection": "لا توجد مجموعات بعد.",
       "saved": "لا توجد أوراق محفوظة بعد.",
       "screening": "لا توجد عمليات فرز مكتملة بعد.",
-      "evidenceLibrary": "لا توجد Evidence Libraries بعد."
+      "evidenceLibrary": "لا توجد Evidence Communities بعد."
     },
     "papersToScreen": "الأوراق المراد فرزها",
     "paperCount": "{count, plural, zero {لا أوراق} one {# ورقة} two {ورقتان} few {# أوراق} many {# ورقة} other {# ورقة}}",
@@ -1715,8 +1715,8 @@
     "apps": "تطبيقات",
     "revokeApp": "سحب صلاحية {app}",
     "integrations": "التكاملات",
-    "zoteroAbout": "استخدم مكتباتك ومجموعاتك في المحادثات وEvidence Libraries",
-    "zoteroKeeps": "تواصل Evidence Libraries مزامنة المجموعات التي تملكها",
+    "zoteroAbout": "استخدم مكتباتك ومجموعاتك في المحادثات وEvidence Communities",
+    "zoteroKeeps": "تواصل Evidence Communities مزامنة المجموعات التي تملكها",
     "connect": "ربط",
     "disconnect": "فصل الربط",
     "connectedTime": "متصل {time}",
@@ -1726,12 +1726,12 @@
     "picker": {
       "placeholder": "اختر مؤسسة",
       "search": "ابحث في المؤسسات",
-      "notSetUp": "تظهر الأسماء من السجلات بعد إعداد المكتبة.",
+      "notSetUp": "تظهر الأسماء من السجلات بعد إعداد المجتمع.",
       "empty": "لا توجد أسماء مؤسسات في السجلات بعد.",
       "none": "بلا",
       "useTyped": "استخدم \"{name}\"",
       "title": "اختر مؤسسة",
-      "description": "تأتي الأسماء من السجلات في هذه المكتبة.",
+      "description": "تأتي الأسماء من السجلات في هذا المجتمع.",
       "colName": "المؤسسة",
       "colRecords": "السجلات",
       "noMatch": "لا توجد مؤسسة مطابقة.",
@@ -1740,7 +1740,7 @@
     }
   },
   "evidenceLibraryConfiguration": {
-    "untitled": "مكتبة بلا عنوان",
+    "untitled": "مجتمع بلا عنوان",
     "unsaved": "تغييرات غير محفوظة",
     "viewOnly": "للعرض فقط",
     "save": "حفظ",
@@ -1755,18 +1755,18 @@
     "fixFirst": "أصلح الحقول المُبرزة أولًا",
     "fixFirstToast": "أصلح الحقول المُبرزة",
     "fixFirstToastDescription": "تحتاج بعض الأقسام إلى انتباه قبل الحفظ.",
-    "activateDraftTitle": "هل تريد إعداد هذه المكتبة وتفعيلها؟",
+    "activateDraftTitle": "هل تريد إعداد هذا المجتمع وتفعيله؟",
     "activateDraftBody": "سيُعدّ هذا {name} ويضعها على الإنترنت في {address}. يستغرق نحو دقيقتين.",
     "activateDraftConfirm": "ابدأ الإعداد",
     "activateTitle": "هل تريد تفعيل هذه النسخة؟",
     "activateBody": "سيُنشر هذا الإصدار الجديد. يستغرق نحو دقيقتين.",
-    "activateBodySoftware": "كما يحدّث هذا الإجراء المكتبة إلى أحدث برنامج Evidence Library، وهو ما تحتاجه هذه الإعدادات، لذلك قد يستغرق الأمر بضع دقائق إضافية.",
+    "activateBodySoftware": "كما يحدّث هذا الإجراء المجتمع إلى أحدث برنامج Evidence Community، وهو ما تحتاجه هذه الإعدادات، لذلك قد يستغرق الأمر بضع دقائق إضافية.",
     "activateBodyUnsaved": "ستُحفظ تغييراتك غير المحفوظة أولًا.",
     "activateConfirm": "تفعيل",
-    "activationError": "تعذّر تفعيل المكتبة. حاول مرة أخرى.",
+    "activationError": "تعذّر تفعيل المجتمع. حاول مرة أخرى.",
     "applying": "جارٍ تطبيق تغييراتك",
     "operationFailed": "فشل التفعيل الأخير",
-    "backToLibraries": "العودة إلى المكتبات",
+    "backToLibraries": "العودة إلى المجتمعات",
     "backToTop": "العودة إلى الأعلى",
     "rail": {
       "aria": "أقسام الإعدادات",
@@ -1814,15 +1814,15 @@
       "storage": "الملفات",
       "application": "التطبيق",
       "deployment": "جارٍ البناء",
-      "health_check": "جارٍ فحص صفحة المكتبة",
+      "health_check": "جارٍ فحص صفحة المجتمع",
       "coolify": "جارٍ البناء",
       "convex": "جارٍ الإنهاء",
       "completed": "مباشر"
     },
     "problems": {
       "notificationSchedule": "اختر يومًا ووقتًا ومنطقة زمنية صالحة للملخص.",
-      "nameMissing": "أدخل اسمًا للمكتبة.",
-      "shortNameMissing": "أدخل اسمًا قصيرًا للمكتبة.",
+      "nameMissing": "أدخل اسمًا للمجتمع.",
+      "shortNameMissing": "أدخل اسمًا قصيرًا للمجتمع.",
       "partnerName": "يحتاج كل شريك تمويل إلى اسم.",
       "badColour": "أحد الألوان غير صالح.",
       "institutionName": "تحتاج كل مؤسسة إلى اسم.",
@@ -1854,7 +1854,7 @@
       "consentVersion": "رقم إصدار الموافقة عدد صحيح، يساوي 1 أو أكثر.",
       "aiKey": "أضف مفتاح OpenRouter الخاص بك.",
       "aiModel": "اختر النموذج الذي يجيب عن الأسئلة.",
-      "aiModelUnknown": "هذا النموذج غير متاح في برنامج مكتبتك. اختر نموذجًا آخر.",
+      "aiModelUnknown": "هذا النموذج غير متاح في برنامج مجتمعك. اختر نموذجًا آخر.",
       "homeStepName": "أعطِ كل خطوة نصية فقط اسمًا.",
       "homeLimit": "بعض نصوص الصفحة الرئيسية أطول من المسموح، أو تحتوي قائمة على عناصر كثيرة جدًا. اختصرها.",
       "tagFilters": "يحتاج كل مرشّح وسوم إلى اسم، ويحتاج كل مدخل إلى وسم."
@@ -1887,18 +1887,18 @@
       "textFile": "نص مرفوع"
     },
     "identity": {
-      "description": "الاسم الذي يراه الناس، والعنوان الذي يزورونه، وشكل المكتبة عند مشاركتها.",
+      "description": "الاسم الذي يراه الناس، والعنوان الذي يزورونه، وشكل المجتمع عند مشاركته.",
       "nameLabel": "الاسم",
-      "nameError": "أدخل اسمًا للمكتبة.",
+      "nameError": "أدخل اسمًا للمجتمع.",
       "shortNameLabel": "الاسم المختصر",
       "shortNameHint": "يُستخدم في أسماء ملفات التصدير وموضوعات البريد الإلكتروني وعند تثبيت الموقع كتطبيق.",
-      "shortNameError": "أدخل اسمًا مختصرًا للمكتبة.",
+      "shortNameError": "أدخل اسمًا مختصرًا للمجتمع.",
       "addressLabel": "العنوان العام",
       "addressHint": "استخدم قسم النطاق لإضافة عنوانك الخاص.",
       "copyAddress": "نسخ العنوان",
       "copied": "تم النسخ",
       "taglineLabel": "الشعار النصي",
-      "taglineHint": "العنوان أعلى بحث المكتبة. اتركه فارغًا لعرض «بحث».",
+      "taglineHint": "العنوان أعلى بحث المجتمع. اتركه فارغًا لعرض «بحث».",
       "taglinePlaceholder": "أدلة من أجل قرارات أفضل",
       "descriptionLabel": "الوصف",
       "descriptionHint": "يظهر في الصفحة الرئيسية ونتائج البحث.",
@@ -1910,9 +1910,9 @@
       "partnerName": "اسم الشريك",
       "partnerPlaceholder": "اسم الشريك",
       "shareImageLabel": "صورة المشاركة",
-      "shareImageHint": "تُستخدم عند مشاركة المكتبة على وسائل التواصل الاجتماعي. PNG أو JPG أو WEBP.",
+      "shareImageHint": "تُستخدم عند مشاركة المجتمع على وسائل التواصل الاجتماعي. PNG أو JPG أو WEBP.",
       "showNameLabel": "الاسم بجانب الشعار",
-      "showNameHint": "أوقفه عندما يتضمن الشعار اسم المكتبة أصلًا."
+      "showNameHint": "أوقفه عندما يتضمن الشعار اسم المجتمع أصلًا."
     },
     "theme": {
       "description": "التخطيط والخطوط والشعارات والألوان للموقع العام.",
@@ -1935,7 +1935,7 @@
       "fontsHeading": "الخطوط",
       "headingFontLabel": "خط العناوين",
       "bodyFontLabel": "خط النص",
-      "sampleHeading": "مكتبتك",
+      "sampleHeading": "مجتمعك",
       "sampleBody": "هكذا تبدو فقرة من النص على الموقع العام.",
       "logosHeading": "الشعار وأيقونة المتصفح",
       "logoLightLabel": "شعار الوضع الفاتح",
@@ -1983,19 +1983,19 @@
       "add": "إضافة مؤسسة"
     },
     "danger": {
-      "description": "احذف هذه المكتبة. كن حذرًا هنا.",
-      "deleteTitle": "حذف المكتبة",
+      "description": "احذف هذا المجتمع. كن حذرًا هنا.",
+      "deleteTitle": "حذف المجتمع",
       "deleteHint": "يزيل الموقع والعنوان والإعدادات.",
-      "deleteButton": "حذف المكتبة"
+      "deleteButton": "حذف المجتمع"
     },
     "deleteDialog": {
-      "title": "هل تريد حذف هذه المكتبة؟",
+      "title": "هل تريد حذف هذا المجتمع؟",
       "body": "سيؤدي هذا إلى إزالة {name} وتطبيقها وملفاتها وعنوانها {address}. لا يمكن التراجع عن هذا الإجراء.",
       "typeToConfirm": "اكتب {name} للتأكيد",
-      "confirm": "حذف المكتبة",
-      "startedTitle": "جارٍ حذف المكتبة",
+      "confirm": "حذف المجتمع",
+      "startedTitle": "جارٍ حذف المجتمع",
       "startedDescription": "جارٍ إزالة {name}. يستغرق ذلك بضع ثوانٍ.",
-      "error": "تعذّر حذف المكتبة. أنهِ أي عملية تجري على المكتبة، ثم حاول مرة أخرى."
+      "error": "تعذّر حذف المجتمع. أنهِ أي عملية تجري على المجتمع، ثم حاول مرة أخرى."
     },
     "links": {
       "labelLabel": "التسمية",
@@ -2010,8 +2010,8 @@
       "pageLabel": "الصفحة",
       "pages": {
         "home": "الرئيسية",
-        "library": "المكتبة",
-        "digests": "ملخصات المكتبة",
+        "library": "المجتمع",
+        "digests": "ملخصات المجتمع",
         "map": "الخريطة",
         "evidence": "خريطة الأدلة",
         "contact": "التواصل",
@@ -2099,7 +2099,7 @@
       "disclaimer": "إخلاء المسؤولية",
       "disclaimerHint": "يظهر بخط صغير في أسفل كل صفحة.",
       "attribution": "الإسناد",
-      "attributionHint": "سطر واحد، مثل الجهة التي تدير المكتبة.",
+      "attributionHint": "سطر واحد، مثل الجهة التي تدير المجتمع.",
       "poweredBy": "بدعم من OpenScholar",
       "poweredByHint": "سطر صغير يعود إلى OpenScholar.",
       "poweredByLocked": "متاح في الباقات المدفوعة."
@@ -2152,13 +2152,13 @@
       "pickedCount": "{count, plural, zero {لم يُحدَّد شيء} one {# محدَّد} two {محدَّدان} few {# محدَّدة} many {# محدَّدًا} other {# محدَّد}}"
     },
     "collections": {
-      "description": "اختر المجموعات من قاعدة بيانات المكتبة التي تظهر على الموقع، وترتيبها.",
+      "description": "اختر المجموعات من قاعدة بيانات المجتمع التي تظهر على الموقع، وترتيبها.",
       "shownHeading": "معروضة على الموقع",
       "introHint": "تصبح كل مجموعة مجموعة مرشّحات، وتصبح مجموعاتها الفرعية خيارات. اسحب لتحديد ترتيبها على الموقع.",
       "loading": "جارٍ تحميل المجموعات…",
-      "failed": "تعذّر تحميل مجموعات المكتبة.",
-      "notSetUp": "أعدّ المكتبة أولًا، ثم أنشئ المجموعات في صفحة الإدارة الخاصة بها، أو زامنها من Zotero.",
-      "noneInDatabase": "لا توجد مجموعات بعد. أنشئها في صفحة إدارة المكتبة أو زامنها من Zotero.",
+      "failed": "تعذّر تحميل مجموعات المجتمع.",
+      "notSetUp": "أعدّ المجتمع أولًا، ثم أنشئ المجموعات في صفحة الإدارة الخاصة به، أو زامنها من Zotero.",
+      "noneInDatabase": "لا توجد مجموعات بعد. أنشئها في صفحة إدارة المجتمع أو زامنها من Zotero.",
       "empty": "لا توجد مجموعات معروضة بعد.",
       "records": "{count, plural, zero {بلا سجلات} one {سجل واحد} two {سجلان} few {# سجلات} many {# سجلًا} other {# سجل}}",
       "titleLabel": "العنوان على الموقع",
@@ -2221,25 +2221,25 @@
         "failedAt": "فشل الاستيراد عند {time}",
         "lastSuccess": "آخر نجاح {when}",
         "retry": "إعادة محاولة الاستيراد",
-        "retryStarted": "ستستورد المكتبة هذا المصدر خلال ثوانٍ قليلة.",
+        "retryStarted": "سيستورد المجتمع هذا المصدر خلال ثوانٍ قليلة.",
         "retryFailed": "تعذّر طلب الاستيراد الآن. حاول مرة أخرى بعد لحظة.",
         "details": "التفاصيل التقنية",
         "afterActivate": "تبدأ الاستيرادات بعد التفعيل",
         "startsSoon": "يبدأ خلال دقيقة",
         "failure": {
           "access_denied": "رفض {provider} المفتاح المحفوظ. تحقّق منه في الاتصالات، ثم أعد المحاولة.",
-          "owner_left": "غادر الشخص الذي أضاف هذه المجموعة المؤسسة، لذلك سحبت المكتبة سجلاتها.",
+          "owner_left": "غادر الشخص الذي أضاف هذه المجموعة المؤسسة، لذلك سحب المجتمع سجلاتها.",
           "not_found": "لم يعد {provider} يعثر على هذا المصدر، أو أن المفتاح المحفوظ لا يراه.",
           "missing_key": "لا يوجد مفتاح API محفوظ لهذا المصدر. أضف واحدًا في الاتصالات.",
           "invalid_query": "رفض {provider} البحث. عدّل البحث، ثم فعّل مرة أخرى.",
-          "too_large": "يحتوي هذا المصدر على سجلات أكثر مما تسمح به المكتبة.",
+          "too_large": "يحتوي هذا المصدر على سجلات أكثر مما تسمح به المجتمع.",
           "rate_limited": "يحدّ {provider} عدد الطلبات. تحاول عملية الاستيراد مرة أخرى كل دقيقة.",
           "unavailable": "تعذّر الوصول إلى {provider}. تحاول عملية الاستيراد مرة أخرى كل دقيقة.",
           "interrupted": "توقف الاستيراد قبل أن ينتهي. يبدأ من جديد تلقائيًا.",
           "internal": "واجه الاستيراد خطأً غير متوقع. تُظهر التفاصيل التقنية ما حدث."
         }
       },
-      "description": "مصدر سجلات المكتبة.",
+      "description": "مصدر سجلات المجتمع.",
       "accountHeading": "حساب Zotero",
       "notConnected": "غير متصل",
       "notConnectedHint": "سجّل الدخول مرة واحدة. ستظهر مجموعاتك بعدها في المنتقي.",
@@ -2276,7 +2276,7 @@
       "listLabel": "المصادر المتصلة",
       "connections": "الاتصالات",
       "connectionsTitle": "اتصالات المصادر",
-      "connectionsDescription": "أدِر صلاحية الوصول إلى الحسابات وإعدادات الاستيراد لهذه المكتبة.",
+      "connectionsDescription": "أدِر صلاحية الوصول إلى الحسابات وإعدادات الاستيراد لهذا المجتمع.",
       "providerTabs": "مزوّد المصدر",
       "addSource": "إضافة مصدر",
       "zoteroGroup": "مجموعة Zotero",
@@ -2292,7 +2292,7 @@
         "ownKey": "مفتاح API خاص",
         "platformHint": "متضمّن مع OpenScholar. تجلب التحديثات السجلات المتغيرة فقط.",
         "keyLabel": "مفتاح API لـ OpenAlex",
-        "keyHint": "استخدم مفتاح OpenAlex API الخاص بك لهذه المكتبة.",
+        "keyHint": "استخدم مفتاح OpenAlex API الخاص بك لهذا المجتمع.",
         "savedKey": "المفتاح المحفوظ {hint}",
         "keyPlaceholder": "أدخل مفتاح OpenAlex API الخاص بك",
         "saveKey": "حفظ مفتاح API",
@@ -2315,14 +2315,14 @@
         "processPdfs": "معالجة ملفات PDF"
       },
       "removeTitle": "هل تريد إزالة هذه المجموعة؟",
-      "removeBody": "تبقى السجلات المستوردة بالفعل في المكتبة. ولن تُستورد التغييرات الجديدة.",
+      "removeBody": "تبقى السجلات المستوردة بالفعل في المجتمع. ولن تُستورد التغييرات الجديدة.",
       "removeConfirm": "إزالة",
       "health": {
         "connected": "متصل",
         "paused": "متوقف مؤقتًا"
       },
       "tagRulesHeading": "قواعد وسوم Zotero",
-      "tagRulesIntro": "تغيّر الوسوم في Zotero طريقة تعامل المكتبة مع السجل. وتعمل وسوم الإخفاء أيضًا على ملاحظاته ومرفقاته.",
+      "tagRulesIntro": "تغيّر الوسوم في Zotero طريقة تعامل المجتمع مع السجل. وتعمل وسوم الإخفاء أيضًا على ملاحظاته ومرفقاته.",
       "tagPlaceholder": "أضف وسمًا…",
       "tagRules": {
         "hidden": {
@@ -2386,7 +2386,7 @@
       "collectionConnectFailed": "تعذّرت إضافة هذه المجموعة.",
       "collectionPicker": {
         "title": "إضافة مجموعات",
-        "description": "مجموعات OpenScholar الخاصة بك. تتبع المكتبة المجموعات التي تضع عليها علامة، وتتحدّث عند تغييرها.",
+        "description": "مجموعات OpenScholar الخاصة بك. يتبع المجتمع المجموعات التي تضع عليها علامة، وتتحدّث عند تغييرها.",
         "search": "ابحث في المجموعات…",
         "colCollection": "المجموعة",
         "noCollections": "ليست لديك مجموعات بعد.",
@@ -2406,15 +2406,15 @@
           "passing": "يذكره عرضًا",
           "notAbout": "لا يتناوله"
         },
-        "keep": "الإبقاء في المكتبة: {grade}",
-        "inLibrary": "في المكتبة",
+        "keep": "الإبقاء في المجتمع: {grade}",
+        "inLibrary": "في المجتمع",
         "keptOut": "مستبعدة",
         "reading": "جارٍ القراءة",
         "gradingAgain": "جارٍ إعادة التقييم، {done, number} من {of, number}",
         "gradingNote": "التقييمات أدناه تخص الموضوع الحالي إلى أن يُعاد تقييم كل سجل.",
         "gradedAgain": "سجل أُعيد تقييمه",
         "notGradedYet": "سجل لم يُقيَّم بعد",
-        "onLibraryKey": "بمفتاح المكتبة",
+        "onLibraryKey": "بمفتاح المجتمع",
         "toFinish": "حتى الانتهاء",
         "ofSample": "{changed, number} من {size, number}",
         "changeInTrial": "تغيير التقييم في تجربة",
@@ -2424,16 +2424,16 @@
         "gradeThem": "قيّمها",
         "currentSubject": "الموضوع الحالي",
         "newSubject": "موضوع جديد",
-        "startsOnActivate": "يبدأ التقييم بعد تفعيل هذه الإعدادات وتطبيق المكتبة للموضوع الجديد.",
-        "refused": "لم تبدأ المكتبة التقييم: {reason}",
+        "startsOnActivate": "يبدأ التقييم بعد تفعيل هذه الإعدادات وتطبيق المجتمع للموضوع الجديد.",
+        "refused": "لم يبدأ المجتمع التقييم: {reason}",
         "requestFailed": "تعذّر طلب التقييم",
         "trialFailed": "لم تنتهِ التجربة",
-        "notRunning": "المكتبة لا تعمل بعد.",
+        "notRunning": "المجتمع لا تعمل بعد.",
         "underACent": "أقل من سنت واحد",
         "underAMinute": "أقل من دقيقة",
         "aboutMinutes": "نحو {count} دقيقة",
         "aboutHours": "نحو {count} ساعة",
-        "methods": "تمنح القراءة الواحدة كل سجل نوع دراسته، وما إذا كان مؤلفوه قد جمعوا النتائج بأنفسهم، والمنطقة التي يدرسها، وما إذا كان ملخصه يتضمن أرقامًا. وتبلغ التكلفة نحو 0.000075 دولار للسجل. والسجل الذي تفشل قراءته يدخل المكتبة بلا تقييم، ويُعاد قراءته لاحقًا.",
+        "methods": "تمنح القراءة الواحدة كل سجل نوع دراسته، وما إذا كان مؤلفوه قد جمعوا النتائج بأنفسهم، والمنطقة التي يدرسها، وما إذا كان ملخصه يتضمن أرقامًا. وتبلغ التكلفة نحو 0.000075 دولار للسجل. والسجل الذي تفشل قراءته يدخل المجتمع بلا تقييم، ويُعاد قراءته لاحقًا.",
         "gradedOnceActive": "يُقيَّم كل سجل مرة واحدة بعد تفعيل هذه الإعدادات."
       }
     },
@@ -2476,7 +2476,7 @@
       "institutionLabel": "تسمية القائمة المنسدلة",
       "institutionLabelHint": "التسمية على القائمة المنسدلة، مثل «المؤسسات» أو «الشركاء».",
       "sourcesFilter": "مرشّح المصادر",
-      "sourcesFilterHint": "يضيّق القراء النتائج إلى المصادر التي عثرت عليها. ويظهر هذا المرشّح عندما يكون لدى المكتبة مصدران أو أكثر.",
+      "sourcesFilterHint": "يضيّق القراء النتائج إلى المصادر التي عثرت عليها. ويظهر هذا المرشّح عندما يكون لدى المجتمع مصدران أو أكثر.",
       "sourcesLabel": "عنوان المصادر",
       "sourcesLabelHint": "ما يراه القراء فوق المصادر، مثل «مجالات الموضوعات».",
       "sourcesLabelError": "سمِّ عنوان المصادر.",
@@ -2517,16 +2517,16 @@
         "addTag": "إضافة وسم",
         "removeTag": "إزالة الوسم",
         "pickerTitle": "إضافة وسم إلى {name}",
-        "pickerDescription": "وسوم المكتبة، الأكثر استخدامًا أولًا. اكتب وسمًا لم يحمله أي سجل بعد، أو اعتمد ما تكتبه بادئةً.",
+        "pickerDescription": "وسوم المجتمع، الأكثر استخدامًا أولًا. اكتب وسمًا لم يحمله أي سجل بعد، أو اعتمد ما تكتبه بادئةً.",
         "pickerSearch": "ابحث في الوسوم",
         "colTag": "الوسم",
         "colRecords": "السجلات",
         "used": "مضاف",
         "loading": "جارٍ قراءة الوسوم",
-        "failed": "تعذّرت قراءة وسوم المكتبة",
-        "noTags": "لا توجد وسوم في المكتبة بعد",
+        "failed": "تعذّرت قراءة وسوم المجتمع",
+        "noTags": "لا توجد وسوم في المجتمع بعد",
         "noMatch": "لا يوجد وسم مطابق",
-        "notSetUp": "تظهر الوسوم بعد إعداد المكتبة",
+        "notSetUp": "تظهر الوسوم بعد إعداد المجتمع",
         "useTyped": "إضافة \"{tag}\"",
         "usePrefix": "كل وسم يبدأ بـ \"{prefix}\"",
         "labelFor": "ما يراه القراء لـ {tag}",
@@ -2590,12 +2590,12 @@
       "hints": {
         "themeSwitcher": "اسمح للناس باختيار الوضع الفاتح أو الداكن.",
         "languageSwitcher": "اسمح للناس بتغيير لغة الموقع.",
-        "collections": "اعرض المجموعات في المكتبة.",
+        "collections": "اعرض المجموعات في المجتمع.",
         "collectionNotes": "اعرض ملاحظة وصف المجموعة عند اختيار تلك المجموعة.",
         "countryFocus": "اعرض مرشّحات الدول، والدول المرتبطة بالمنشورات، وخريطة الدول.",
         "authorFilter": "اسمح للناس بالتصفية حسب المؤلف.",
         "yearsDropdown": "اعرض منتقي السنوات في شريط البحث.",
-        "downloads": "أتح تنزيل الاستشهادات للمنشورات والمكتبة بأكملها.",
+        "downloads": "أتح تنزيل الاستشهادات للمنشورات والمجتمع بأكمله.",
         "atomFeed": "اعرض رابطًا لقناة Atom.",
         "readerAccounts": "اسمح للقراء بتسجيل الدخول بـ OpenScholar لحفظ السجلات وإنشاء المجموعات."
       },
@@ -2657,20 +2657,20 @@
       "consentVersionHint": "ارفع هذا الرقم عندما تغيّر نص ملفات تعريف الارتباط ليُسأل كل زائر من جديد.",
       "consentVersionError": "استخدم عددًا صحيحًا، يساوي 1 أو أكثر."
     },
-    "updatingSoftware": "جارٍ تحديث برنامج Evidence Library إلى {rev}",
+    "updatingSoftware": "جارٍ تحديث برنامج Evidence Community إلى {rev}",
     "operationFlow": {
       "saving": "جارٍ حفظ التغييرات",
       "queued": "بانتظار البدء",
       "assembling": "جارٍ تجهيز الإصدار",
       "validating": "جارٍ فحص الإعدادات",
-      "publishing": "جارٍ بناء المكتبة",
+      "publishing": "جارٍ بناء المجتمع",
       "activating": "جارٍ الإطلاق",
       "database": "جارٍ إنشاء قاعدة البيانات",
       "storage": "جارٍ تجهيز الملفات",
-      "application": "جارٍ إنشاء المكتبة",
-      "deployment": "جارٍ بناء المكتبة",
+      "application": "جارٍ إنشاء المجتمع",
+      "deployment": "جارٍ بناء المجتمع",
       "health_check": "جارٍ الإطلاق",
-      "coolify": "جارٍ إزالة المكتبة",
+      "coolify": "جارٍ إزالة المجتمع",
       "convex": "جارٍ إنهاء الإزالة",
       "completed": "مباشر"
     },
@@ -2679,7 +2679,7 @@
       "checking": "جارٍ البحث عن التحديثات…",
       "checkAgain": "تحقّق مرة أخرى",
       "checkError": "تعذّر التحقق من التحديثات. حاول مرة أخرى.",
-      "notRunning": "يصبح متاحًا بعد أن تصبح المكتبة مباشرة.",
+      "notRunning": "يصبح متاحًا بعد أن يصبح المجتمع مباشرًا.",
       "updateAvailable": "تحديث متاح",
       "upToDate": "محدَّث",
       "runningLabel": "قيد التشغيل",
@@ -2701,8 +2701,8 @@
         "reliability": "الإصلاحات"
       },
       "update": "تحديث",
-      "updateTitle": "هل تريد تحديث هذه المكتبة؟",
-      "updateBody": "تُعاد بناء المكتبة على أحدث برنامج Evidence Library. تبقى السجلات والإعدادات والعنوان كما هي. وتستغرق نحو دقيقة.",
+      "updateTitle": "هل تريد تحديث هذا المجتمع؟",
+      "updateBody": "يُعاد بناء المجتمع على أحدث برنامج Evidence Community. تبقى السجلات والإعدادات والعنوان كما هي. ويستغرق ذلك نحو دقيقة.",
       "updateConfirm": "التحديث الآن",
       "updateError": "تعذّر بدء التحديث. حاول مرة أخرى.",
       "historyHeading": "الإصدارات المنشورة",
@@ -2723,18 +2723,18 @@
       "addressSilent": "لا شيء يستجيب على {host}.",
       "addressMove": "النقل إلى عنوان جديد",
       "addressBack": "العودة إلى عنوان المنصة",
-      "addressMoveTitle": "هل تريد نقل هذه المكتبة إلى عنوان جديد؟",
-      "addressMoveBody": "تأخذ المكتبة أول عنوان متاح. تبقى السجلات والإعدادات كما هي. ولن يصل من يستخدم العنوان القديم إليها.",
+      "addressMoveTitle": "هل تريد نقل هذا المجتمع إلى عنوان جديد؟",
+      "addressMoveBody": "يأخذ المجتمع أول عنوان متاح. تبقى السجلات والإعدادات كما هي. ولن يصل إليه من يستخدم العنوان القديم.",
       "addressMoveConfirm": "النقل الآن",
       "addressMoveStarted": "بدأ النقل",
       "addressMoveStartedDescription": "جارٍ النقل إلى {address}…",
-      "addressMoveError": "تعذّر نقل المكتبة. حاول مرة أخرى.",
+      "addressMoveError": "تعذّر نقل المجتمع. حاول مرة أخرى.",
       "restoreError": "تعذّرت استعادة الإصدار. حاول مرة أخرى."
     },
     "ai": {
-      "description": "اسمح للزوار بطرح أسئلة حول الأدلة في مكتبتك.",
+      "description": "اسمح للزوار بطرح أسئلة حول الأدلة في مجتمعك.",
       "answersLabel": "إجابات الذكاء الاصطناعي",
-      "answersHint": "يضيف الإجابة عن الأسئلة إلى المكتبة. تدفع لـ OpenRouter مقابل ما تستخدمه.",
+      "answersHint": "يضيف الإجابة عن الأسئلة إلى المجتمع. تدفع لـ OpenRouter مقابل ما تستخدمه.",
       "keyLabel": "مفتاح OpenRouter",
       "keyHint": "أنشئه من openrouter.ai. يُحفظ مشفرًا ولا يُعرض مرة أخرى أبدًا.",
       "keyStored": "تم حفظ المفتاح",
@@ -2755,7 +2755,7 @@
       "modelError": "اختر نموذجًا من كتالوج OpenRouter المتزامن."
     },
     "domain": {
-      "description": "استخدم عنوان الويب الخاص بك للمكتبة.",
+      "description": "استخدم عنوان الويب الخاص بك للمجتمع.",
       "platformLabel": "عنوان المنصة",
       "customLabel": "نطاق مخصص",
       "customDomainsLabel": "نطاقات مخصصة",
@@ -2785,7 +2785,7 @@
         "wrong-target": "هذا النطاق يشير إلى مكان آخر. إذا كان خلف وكيل آخر، فأوقف الوكيل لهذا السجل.",
         "token-mismatch": "سجل الملكية يحمل قيمة مختلفة",
         "host-taken": "موقع آخر يستجيب بالفعل على هذا النطاق",
-        "not-served": "المكتبة لا تعمل بعد",
+        "not-served": "المجتمع لا تعمل بعد",
         "caa-blocked": "يسمح هذا النطاق بمزوّدي شهادات محددين فقط. أضف سجل CAA يسمح بـ letsencrypt.org.",
         "tls-timeout": "تعذّر تفعيل TLS. تحقّق من النطاق مرة أخرى."
       },
@@ -2793,7 +2793,7 @@
         "invalid": "هذا لا يبدو نطاقًا",
         "platform-host": "هذا العنوان يخص المنصة بالفعل",
         "host-taken": "هذا النطاق مستخدم بالفعل من موقع آخر",
-        "too-many": "لدى هذه المكتبة بالفعل أكبر عدد من النطاقات تتسع له",
+        "too-many": "لدى هذا المجتمع بالفعل أكبر عدد من النطاقات تتسع له",
         "check-failed": "تعذّر فحص النطاق. حاول مرة أخرى."
       },
       "tlsActive": "TLS: نشط",
@@ -2809,12 +2809,12 @@
       "rateLimited": "جرى فحص DNS بكثرة. حاول مرة أخرى بعد دقيقة.",
       "removing": "جارٍ الإزالة",
       "checkFailed": "تعذّر فحص DNS بعد. قد يكون ما زال يتحدّث. حاول مرة أخرى بعد قليل.",
-      "deploying": "جارٍ تطبيق التغيير على المكتبة",
+      "deploying": "جارٍ تطبيق التغيير على المجتمع",
       "checked": "تم فحص DNS",
       "recordsNeedAttention": "ما زالت بعض سجلات DNS تحتاج إلى انتباه.",
       "removeAgain": "إكمال الإزالة",
-      "confirmOffTitle": "هل تريد إعادة المكتبة إلى عنوان المنصة؟",
-      "confirmOffBody": "ستستجيب المكتبة على {address} مرة أخرى. وسيُسجَّل خروج جميع من سجّلوا الدخول، وسيصل الزوار إلى النطاق المخصص إلى عنوان المنصة.",
+      "confirmOffTitle": "هل تريد إعادة المجتمع إلى عنوان المنصة؟",
+      "confirmOffBody": "سيستجيب المجتمع على {address} مرة أخرى. وسيُسجَّل خروج جميع من سجّلوا الدخول، وسيصل الزوار إلى النطاق المخصص إلى عنوان المنصة.",
       "confirmAction": "تغيير العنوان"
     },
     "retry": "حاول مرة أخرى",
@@ -2849,26 +2849,26 @@
     "publicationsView": "مصادر المنشورات",
     "noOpenAlex": "لم يُعثر على منشورات في OpenAlex.",
     "progress": "{loaded, number} من {total, number}",
-    "searchLibrary": "ابحث في منشورات المكتبة",
+    "searchLibrary": "ابحث في منشورات المجتمع",
     "searchPlaceholder": "ابحث في المنشورات",
     "updating": "مجموعات المنشورات قيد التحديث. أعد التحميل بعد قليل.",
-    "unavailable": "بعض مواقع المكتبة غير متاحة. يُعرض ما هو متاح.",
-    "loadingLibrary": "جارٍ تحميل منشورات المكتبة",
+    "unavailable": "بعض مواقع المجتمع غير متاحة. يُعرض ما هو متاح.",
+    "loadingLibrary": "جارٍ تحميل منشورات المجتمع",
     "noPageMatches": "لا توجد تطابقات في هذه الصفحة. تابع تحميل المنشورات.",
     "noLibraryMatches": "لا توجد منشورات تطابق بحثك.",
-    "noLibraryRecords": "لا تستخدم أي سجلات منشورة في Evidence Library هذا الموضوع بعد."
+    "noLibraryRecords": "لا تستخدم أي سجلات منشورة في Evidence Community هذا الموضوع بعد."
   },
   "evidenceLibraries": {
     "list": {
-      "title": "Evidence Libraries",
+      "title": "Evidence Communities",
       "openAdmin": "فتح الإدارة",
       "retry": "إعادة المحاولة",
-      "deleting": "جارٍ حذف المكتبة",
+      "deleting": "جارٍ حذف المجتمع",
       "deleteFailed": {
-        "runtime": "تعذّرت إزالة الموقع الذي يعمل لهذه المكتبة، لذلك لم يكتمل حذفها. حاول مرة أخرى، أو تواصل مع الدعم.",
-        "files": "تعذّرت إزالة ملفات هذه المكتبة، لذلك لم يكتمل حذفها. حاول مرة أخرى، أو تواصل مع الدعم.",
-        "database": "تعذّرت إزالة قاعدة بيانات هذه المكتبة، لذلك لم يكتمل حذفها. حاول مرة أخرى، أو تواصل مع الدعم.",
-        "records": "لم يكتمل حذف هذه المكتبة. حاول مرة أخرى، أو تواصل مع الدعم."
+        "runtime": "تعذّرت إزالة الموقع الذي يعمل لهذا المجتمع، لذلك لم يكتمل حذفه. حاول مرة أخرى، أو تواصل مع الدعم.",
+        "files": "تعذّرت إزالة ملفات هذا المجتمع، لذلك لم يكتمل حذفه. حاول مرة أخرى، أو تواصل مع الدعم.",
+        "database": "تعذّرت إزالة قاعدة بيانات هذا المجتمع، لذلك لم يكتمل حذفه. حاول مرة أخرى، أو تواصل مع الدعم.",
+        "records": "لم يكتمل حذف هذا المجتمع. حاول مرة أخرى، أو تواصل مع الدعم."
       }
     },
     "status": {
@@ -2890,16 +2890,16 @@
       "completed": "مباشر"
     },
     "new": {
-      "title": "Evidence Library جديدة",
-      "backToLibraries": "العودة إلى المكتبات",
+      "title": "Evidence Community جديدة",
+      "backToLibraries": "العودة إلى المجتمعات",
       "ownerTitle": "المالك",
       "ownerOnlyTitle": "للمالكين فقط",
-      "ownerOnlyDescription": "يستطيع مالك المؤسسة فقط إنشاء مكتبة.",
-      "libraryTitle": "المكتبة",
+      "ownerOnlyDescription": "يستطيع مالك المؤسسة فقط إنشاء مجتمع.",
+      "libraryTitle": "المجتمع",
       "libraryDescription": "يظهر الاسم على الموقع العام ويحدد عنوانه العام.",
       "nameLabel": "الاسم",
       "namePlaceholder": "مثال: أدلة التعليم المناخي",
-      "nameError": "أدخل اسمًا للمكتبة.",
+      "nameError": "أدخل اسمًا للمجتمع.",
       "shortNameLabel": "الاسم المختصر",
       "shortNameHint": "يُحدَّد من الاسم. يمكنك تغييره لاحقًا من «ضبط».",
       "addressLabel": "العنوان العام",
@@ -2909,7 +2909,7 @@
       "reserve": "حجز العنوان",
       "checking": "جارٍ الحجز…",
       "reserved": "محجوز",
-      "nameTaken": "لديك مكتبة باسم {name} بالفعل.",
+      "nameTaken": "لديك مجتمع باسم {name} بالفعل.",
       "openExisting": "افتحها",
       "checkFailed": "تعذّر فحص العنوان. حاول مرة أخرى.",
       "addressTaken": "حجز أحدهم هذا العنوان للتو. تحقّق مرة أخرى.",
@@ -2917,7 +2917,7 @@
       "tryAgain": "حاول مرة أخرى"
     },
     "setup": {
-      "backToLibraries": "العودة إلى المكتبات",
+      "backToLibraries": "العودة إلى المجتمعات",
       "configure": "ضبط",
       "openAdmin": "فتح الإدارة",
       "groupTitle": "الإعداد",
@@ -2925,7 +2925,7 @@
       "retryingTitle": "جارٍ إعادة المحاولة",
       "retryingDescription": "نبدأ من جديد من الخطوة التي توقفت.",
       "retryError": "تعذّرت إعادة تشغيل الإعداد. حاول مرة أخرى.",
-      "draftHint": "أعدّ هذه المكتبة وفعّلها من صفحة إعدادها.",
+      "draftHint": "أعدّ هذا المجتمع وفعّله من صفحة إعداده.",
       "stoppedHint": "تكرر «إعادة المحاولة» هذه الخطوة والخطوات التي تليها.",
       "deploymentError": "لم يكتمل البناء.",
       "steps": {
@@ -2943,27 +2943,27 @@
         },
         "application": {
           "name": "التطبيق",
-          "waiting": "جارٍ إنشاء تطبيق المكتبة.",
-          "running": "جارٍ إنشاء تطبيق المكتبة…",
-          "done": "تم إنشاء تطبيق المكتبة."
+          "waiting": "جارٍ إنشاء تطبيق المجتمع.",
+          "running": "جارٍ إنشاء تطبيق المجتمع…",
+          "done": "تم إنشاء تطبيق المجتمع."
         },
         "deployment": {
           "name": "البناء",
-          "waiting": "جارٍ بناء المكتبة ونشرها على الإنترنت.",
-          "running": "جارٍ بناء المكتبة ونشرها على الإنترنت…",
-          "done": "تم بناء المكتبة ونشرها على الإنترنت."
+          "waiting": "جارٍ بناء المجتمع ونشره على الإنترنت.",
+          "running": "جارٍ بناء المجتمع ونشره على الإنترنت…",
+          "done": "تم بناء المجتمع ونشره على الإنترنت."
         },
         "readiness": {
           "name": "الجاهزية",
-          "waiting": "التحقق من تحميل صفحة المكتبة.",
-          "running": "جارٍ التحقق من تحميل صفحة المكتبة…",
-          "done": "تم التحقق من تحميل صفحة المكتبة."
+          "waiting": "التحقق من تحميل صفحة المجتمع.",
+          "running": "جارٍ التحقق من تحميل صفحة المجتمع…",
+          "done": "تم التحقق من تحميل صفحة المجتمع."
         },
         "active": {
           "name": "مباشر",
-          "waiting": "تُفتح المكتبة على عنوانها العام.",
-          "running": "جارٍ فتح المكتبة على عنوانها العام…",
-          "done": "المكتبة مباشرة على عنوانها العام."
+          "waiting": "يُفتح المجتمع على عنوانه العام.",
+          "running": "جارٍ فتح المجتمع على عنوانه العام…",
+          "done": "المجتمع مباشر على عنوانه العام."
         }
       },
       "live": {
@@ -2972,17 +2972,17 @@
         "copyAddress": "نسخ العنوان",
         "copiedShort": "تم النسخ",
         "copied": "تم نسخ العنوان",
-        "openLibrary": "فتح المكتبة",
+        "openLibrary": "فتح المجتمع",
         "settingUp": "جارٍ إعداد {name}",
         "stopped": "توقف الإعداد",
         "copyFailed": "تعذّر نسخ العنوان"
       },
-      "deletingHint": "جارٍ حذف هذه المكتبة."
+      "deletingHint": "جارٍ حذف هذا المجتمع."
     },
     "notFound": {
-      "title": "المكتبة غير موجودة",
+      "title": "المجتمع غير موجودة",
       "description": "ربما حُذفت، أو أنها تابعة لمؤسسة أخرى.",
-      "back": "العودة إلى المكتبات"
+      "back": "العودة إلى المجتمعات"
     }
   },
   "settingsShell": {
@@ -2999,7 +2999,7 @@
       "plans": "الباقات",
       "users": "المستخدمون",
       "aiModels": "نماذج الذكاء الاصطناعي",
-      "evidenceLibraries": "Evidence Libraries"
+      "evidenceLibraries": "Evidence Communities"
     },
     "sharedDev": "التطوير المشترك",
     "production": "الإنتاج",
@@ -3100,16 +3100,16 @@
       "creditsOrKey": "الأرصدة، أو مفتاح المستخدم"
     },
     "evidenceLibraries": {
-      "title": "الوصول إلى Evidence Library",
+      "title": "الوصول إلى Evidence Community",
       "organizations": "مؤسسات",
       "search": "ابحث عن مؤسسات",
       "show": "عرض",
       "all": "الكل",
       "on": "مفعّل",
       "off": "غير مفعّل",
-      "libraries": "{count, plural, one {مكتبة واحدة} two {مكتبتان} few {# مكتبات} other {# مكتبة}}",
-      "switchLabel": "Evidence Libraries لـ {name}",
-      "moveFirst": "انقل مكتباتها أو احذفها أولًا",
+      "libraries": "{count, plural, one {مجتمع واحد} two {مجتمعان} few {# مجتمعات} other {# مجتمع}}",
+      "switchLabel": "Evidence Communities لـ {name}",
+      "moveFirst": "انقل مجتمعاتها أو احذفها أولًا",
       "noMatches": "لا توجد مؤسسات مطابقة"
     }
   },
@@ -3220,7 +3220,7 @@
     "views": {
       "results": "نتائج البحث",
       "extractionJob": "مهمة الاستخلاص",
-      "librarySettings": "إعدادات المكتبة",
+      "librarySettings": "إعدادات المجتمع",
       "authors": "المؤلفون",
       "page": "هذه الصفحة"
     },
@@ -3283,7 +3283,7 @@
       "holds": "تحجز حتى {credits, plural, zero {لا أرصدة} one {# رصيد} two {رصيدين} few {# أرصدة} many {# رصيدًا} other {# رصيد}}",
       "runs": "تعمل",
       "asks": "تسأل",
-      "publishing": "نشر مكتبة",
+      "publishing": "نشر مجتمع",
       "publishingDetail": "يراها الزوار فورًا",
       "moreJobs": "مهام أخرى"
     },
@@ -3305,7 +3305,7 @@
     "chat": "محادثة",
     "remove": "إزالة",
     "organization": "المؤسسة",
-    "shareNote": "يرون هذه المحادثة. تحتفظ عمليات البحث والمجموعات والمكتبات الواردة فيها بصلاحيات وصولها الخاصة. يرسل من يستطيعون المحادثة رسائلهم باسمهم، ويتصرف المساعد نيابةً عنهم بصلاحيتهم وأرصدتهم الخاصة.",
+    "shareNote": "يرون هذه المحادثة. تحتفظ عمليات البحث والمجموعات والمجتمعات الواردة فيها بصلاحيات وصولها الخاصة. يرسل من يستطيعون المحادثة رسائلهم باسمهم، ويتصرف المساعد نيابةً عنهم بصلاحيتهم وأرصدتهم الخاصة.",
     "shareFailed": "تعذّر تغيير من تُشارَك معهم هذه المحادثة",
     "steps": {
       "undo": "تراجع",
@@ -3937,121 +3937,121 @@
         "ask": "عرض نماذج المحادثة"
       },
       "libraries": {
-        "doing": "قراءة Evidence Libraries الخاصة بك",
-        "did": "قرأ Evidence Libraries الخاصة بك",
-        "where": "Evidence Libraries",
-        "ask": "قراءة Evidence Libraries الخاصة بك"
+        "doing": "قراءة Evidence Communities الخاصة بك",
+        "did": "قرأ Evidence Communities الخاصة بك",
+        "where": "Evidence Communities",
+        "ask": "قراءة Evidence Communities الخاصة بك"
       },
       "readerLibraries": {
-        "doing": "قراءة Evidence Libraries التي تقرأها",
-        "did": "قرأ Evidence Libraries التي تقرأها",
-        "where": "Evidence Libraries",
-        "ask": "قراءة Evidence Libraries التي تقرأها"
+        "doing": "قراءة Evidence Communities التي تقرأها",
+        "did": "قرأ Evidence Communities التي تقرأها",
+        "where": "Evidence Communities",
+        "ask": "قراءة Evidence Communities التي تقرأها"
       },
       "readerSources": {
-        "doing": "قراءة ما تحتفظ به Evidence Libraries لك",
-        "did": "قرأ ما تحتفظ به Evidence Libraries لك",
-        "where": "Evidence Libraries",
-        "ask": "قراءة ما تحتفظ به Evidence Libraries لك"
+        "doing": "قراءة ما تحتفظ به Evidence Communities لك",
+        "did": "قرأ ما تحتفظ به Evidence Communities لك",
+        "where": "Evidence Communities",
+        "ask": "قراءة ما تحتفظ به Evidence Communities لك"
       },
       "readerAddress": {
-        "doing": "قراءة عنوان Evidence Library",
-        "did": "قرأ عنوان Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "قراءة عنوان Evidence Library"
+        "doing": "قراءة عنوان Evidence Community",
+        "did": "قرأ عنوان Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "قراءة عنوان Evidence Community"
       },
       "readerSource": {
-        "doing": "قراءة مصدر Evidence Library",
-        "did": "قرأ مصدر Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "قراءة مصدر Evidence Library"
+        "doing": "قراءة مصدر Evidence Community",
+        "did": "قرأ مصدر Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "قراءة مصدر Evidence Community"
       },
       "readerRecords": {
-        "doing": "قراءة سجلات Evidence Library",
-        "did": "قرأ سجلات Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "قراءة سجلات Evidence Library"
+        "doing": "قراءة سجلات Evidence Community",
+        "did": "قرأ سجلات Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "قراءة سجلات Evidence Community"
       },
       "newLibraryCollection": {
-        "doing": "جارٍ إنشاء مجموعة في Evidence Library",
-        "did": "أنشأ مجموعة في Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "إنشاء مجموعة في Evidence Library",
-        "askMany": "إنشاء {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Library",
-        "doingMany": "جارٍ إنشاء {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Library",
-        "didMany": "أنشأ {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Library"
+        "doing": "جارٍ إنشاء مجموعة في Evidence Community",
+        "did": "أنشأ مجموعة في Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "إنشاء مجموعة في Evidence Community",
+        "askMany": "إنشاء {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Community",
+        "doingMany": "جارٍ إنشاء {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Community",
+        "didMany": "أنشأ {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Community"
       },
       "deleteLibraryCollection": {
-        "doing": "جارٍ حذف مجموعة في Evidence Library",
-        "did": "حذف مجموعة في Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "حذف مجموعة في Evidence Library",
-        "askMany": "حذف {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Library",
-        "doingMany": "جارٍ حذف {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Library",
-        "didMany": "حذف {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Library"
+        "doing": "جارٍ حذف مجموعة في Evidence Community",
+        "did": "حذف مجموعة في Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "حذف مجموعة في Evidence Community",
+        "askMany": "حذف {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Community",
+        "doingMany": "جارٍ حذف {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Community",
+        "didMany": "حذف {count, plural, zero {لا مجموعات} one {مجموعة واحدة} two {مجموعتين} few {# مجموعات} many {# مجموعة} other {# مجموعة}} في Evidence Community"
       },
       "changeLibraryRecords": {
-        "doing": "جارٍ تغيير مجموعة في Evidence Library",
-        "did": "غيّر مجموعة في Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "تغيير مجموعة في Evidence Library",
-        "askMany": "تغيير {count, plural, zero {لا مجموعات في Evidence Library} one {مجموعة واحدة في Evidence Library} two {مجموعتين في Evidence Library} few {# مجموعات في Evidence Library} many {# مجموعة في Evidence Library} other {# مجموعة في Evidence Library}}",
-        "doingMany": "جارٍ تغيير {count, plural, zero {لا مجموعات في Evidence Library} one {مجموعة واحدة في Evidence Library} two {مجموعتين في Evidence Library} few {# مجموعات في Evidence Library} many {# مجموعة في Evidence Library} other {# مجموعة في Evidence Library}}",
-        "didMany": "غيّر {count, plural, zero {لا مجموعات في Evidence Library} one {مجموعة واحدة في Evidence Library} two {مجموعتين في Evidence Library} few {# مجموعات في Evidence Library} many {# مجموعة في Evidence Library} other {# مجموعة في Evidence Library}}"
+        "doing": "جارٍ تغيير مجموعة في Evidence Community",
+        "did": "غيّر مجموعة في Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "تغيير مجموعة في Evidence Community",
+        "askMany": "تغيير {count, plural, zero {لا مجموعات في Evidence Community} one {مجموعة واحدة في Evidence Community} two {مجموعتين في Evidence Community} few {# مجموعات في Evidence Community} many {# مجموعة في Evidence Community} other {# مجموعة في Evidence Community}}",
+        "doingMany": "جارٍ تغيير {count, plural, zero {لا مجموعات في Evidence Community} one {مجموعة واحدة في Evidence Community} two {مجموعتين في Evidence Community} few {# مجموعات في Evidence Community} many {# مجموعة في Evidence Community} other {# مجموعة في Evidence Community}}",
+        "didMany": "غيّر {count, plural, zero {لا مجموعات في Evidence Community} one {مجموعة واحدة في Evidence Community} two {مجموعتين في Evidence Community} few {# مجموعات في Evidence Community} many {# مجموعة في Evidence Community} other {# مجموعة في Evidence Community}}"
       },
       "readHandoff": {
-        "doing": "جارٍ فتح ما سلّمته Evidence Library",
-        "did": "فتح ما سلّمته Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "فتح ما سلّمته Evidence Library"
+        "doing": "جارٍ فتح ما سلّمته Evidence Community",
+        "did": "فتح ما سلّمته Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "فتح ما سلّمته Evidence Community"
       },
       "readLibraryDraft": {
-        "doing": "قراءة إعدادات مكتبة",
-        "did": "قرأ إعدادات مكتبة",
-        "where": "Evidence Library",
-        "ask": "قراءة إعدادات مكتبة",
-        "askMany": "قراءة إعدادات {count, plural, zero {لا مكتبات} one {مكتبة واحدة} two {مكتبتين} few {# مكتبات} many {# مكتبة} other {# مكتبة}}",
-        "doingMany": "جارٍ قراءة إعدادات {count, plural, zero {لا مكتبات} one {مكتبة واحدة} two {مكتبتين} few {# مكتبات} many {# مكتبة} other {# مكتبة}}",
-        "didMany": "قرأ إعدادات {count, plural, zero {لا مكتبات} one {مكتبة واحدة} two {مكتبتين} few {# مكتبات} many {# مكتبة} other {# مكتبة}}"
+        "doing": "قراءة إعدادات مجتمع",
+        "did": "قرأ إعدادات مجتمع",
+        "where": "Evidence Community",
+        "ask": "قراءة إعدادات مجتمع",
+        "askMany": "قراءة إعدادات {count, plural, zero {لا مجتمعات} one {مجتمع واحد} two {مجتمعين} few {# مجتمعات} many {# مجتمع} other {# مجتمع}}",
+        "doingMany": "جارٍ قراءة إعدادات {count, plural, zero {لا مجتمعات} one {مجتمع واحد} two {مجتمعين} few {# مجتمعات} many {# مجتمع} other {# مجتمع}}",
+        "didMany": "قرأ إعدادات {count, plural, zero {لا مجتمعات} one {مجتمع واحد} two {مجتمعين} few {# مجتمعات} many {# مجتمع} other {# مجتمع}}"
       },
       "readLibraryRevision": {
-        "doing": "قراءة إصدار من إعدادات مكتبة",
-        "did": "قرأ إصدارًا من إعدادات مكتبة",
-        "where": "Evidence Library",
-        "ask": "قراءة إصدار من إعدادات مكتبة"
+        "doing": "قراءة إصدار من إعدادات مجتمع",
+        "did": "قرأ إصدارًا من إعدادات مجتمع",
+        "where": "Evidence Community",
+        "ask": "قراءة إصدار من إعدادات مجتمع"
       },
       "readLibraryTeam": {
-        "doing": "قراءة فريق مكتبة",
-        "did": "قرأ فريق مكتبة",
-        "where": "Evidence Library",
-        "ask": "قراءة فريق مكتبة",
-        "askMany": "قراءة فرق {count, plural, zero {لا مكتبات} one {مكتبة واحدة} two {مكتبتين} few {# مكتبات} many {# مكتبة} other {# مكتبة}}",
-        "doingMany": "جارٍ قراءة فرق {count, plural, zero {لا مكتبات} one {مكتبة واحدة} two {مكتبتين} few {# مكتبات} many {# مكتبة} other {# مكتبة}}",
-        "didMany": "قرأ فرق {count, plural, zero {لا مكتبات} one {مكتبة واحدة} two {مكتبتين} few {# مكتبات} many {# مكتبة} other {# مكتبة}}"
+        "doing": "قراءة فريق مجتمع",
+        "did": "قرأ فريق مجتمع",
+        "where": "Evidence Community",
+        "ask": "قراءة فريق مجتمع",
+        "askMany": "قراءة فرق {count, plural, zero {لا مجتمعات} one {مجتمع واحد} two {مجتمعين} few {# مجتمعات} many {# مجتمع} other {# مجتمع}}",
+        "doingMany": "جارٍ قراءة فرق {count, plural, zero {لا مجتمعات} one {مجتمع واحد} two {مجتمعين} few {# مجتمعات} many {# مجتمع} other {# مجتمع}}",
+        "didMany": "قرأ فرق {count, plural, zero {لا مجتمعات} one {مجتمع واحد} two {مجتمعين} few {# مجتمعات} many {# مجتمع} other {# مجتمع}}"
       },
       "editLibraryDraft": {
-        "doing": "جارٍ تغيير مسودة مكتبة",
-        "did": "غيّر مسودة مكتبة",
-        "where": "Evidence Library",
-        "ask": "تغيير مسودة مكتبة"
+        "doing": "جارٍ تغيير مسودة مجتمع",
+        "did": "غيّر مسودة مجتمع",
+        "where": "Evidence Community",
+        "ask": "تغيير مسودة مجتمع"
       },
       "addLibraryMember": {
-        "doing": "جارٍ إضافة شخص إلى فريق مكتبة",
-        "did": "أضاف شخصًا إلى فريق مكتبة",
-        "where": "Evidence Library",
-        "ask": "إضافة شخص إلى فريق مكتبة"
+        "doing": "جارٍ إضافة شخص إلى فريق مجتمع",
+        "did": "أضاف شخصًا إلى فريق مجتمع",
+        "where": "Evidence Community",
+        "ask": "إضافة شخص إلى فريق مجتمع"
       },
       "changeLibraryRole": {
-        "doing": "جارٍ تغيير دور شخص في مكتبة",
-        "did": "غيّر دور شخص في مكتبة",
-        "where": "Evidence Library",
-        "ask": "تغيير دور شخص في مكتبة"
+        "doing": "جارٍ تغيير دور شخص في مجتمع",
+        "did": "غيّر دور شخص في مجتمع",
+        "where": "Evidence Community",
+        "ask": "تغيير دور شخص في مجتمع"
       },
       "removeLibraryMember": {
-        "doing": "جارٍ إزالة شخص من فريق مكتبة",
-        "did": "أزال شخصًا من فريق مكتبة",
-        "where": "Evidence Library",
-        "ask": "إزالة شخص من فريق مكتبة"
+        "doing": "جارٍ إزالة شخص من فريق مجتمع",
+        "did": "أزال شخصًا من فريق مجتمع",
+        "where": "Evidence Community",
+        "ask": "إزالة شخص من فريق مجتمع"
       },
       "zoteroGroups": {
         "doing": "قراءة مجموعات Zotero الخاصة بك",
@@ -4072,79 +4072,79 @@
         "ask": "قراءة عناصر في Zotero الخاص بك"
       },
       "inviteLibraryMember": {
-        "doing": "جارٍ دعوة شخص إلى مكتبة",
-        "did": "دعا شخصًا إلى مكتبة",
-        "where": "Evidence Library",
-        "ask": "دعوة شخص إلى مكتبة",
-        "askMany": "دعوة {count, plural, zero {لا أشخاص} one {شخص واحد} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخص}} إلى مكتبة",
-        "doingMany": "جارٍ دعوة {count, plural, zero {لا أشخاص} one {شخص واحد} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخص}} إلى مكتبة",
-        "didMany": "دعا {count, plural, zero {لا أشخاص} one {شخصًا واحدًا} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخصًا}} إلى مكتبة"
+        "doing": "جارٍ دعوة شخص إلى مجتمع",
+        "did": "دعا شخصًا إلى مجتمع",
+        "where": "Evidence Community",
+        "ask": "دعوة شخص إلى مجتمع",
+        "askMany": "دعوة {count, plural, zero {لا أشخاص} one {شخص واحد} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخص}} إلى مجتمع",
+        "doingMany": "جارٍ دعوة {count, plural, zero {لا أشخاص} one {شخص واحد} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخص}} إلى مجتمع",
+        "didMany": "دعا {count, plural, zero {لا أشخاص} one {شخصًا واحدًا} two {شخصين} few {# أشخاص} many {# شخصًا} other {# شخصًا}} إلى مجتمع"
       },
       "changeLibraryInvite": {
-        "doing": "جارٍ تغيير دعوة إلى مكتبة",
-        "did": "غيّر دعوة إلى مكتبة",
-        "where": "Evidence Library",
-        "ask": "تغيير دعوة إلى مكتبة"
+        "doing": "جارٍ تغيير دعوة إلى مجتمع",
+        "did": "غيّر دعوة إلى مجتمع",
+        "where": "Evidence Community",
+        "ask": "تغيير دعوة إلى مجتمع"
       },
       "libraryInvites": {
-        "doing": "قراءة دعواتك إلى المكتبات",
-        "did": "قرأ دعواتك إلى المكتبات",
-        "where": "Evidence Libraries",
-        "ask": "قراءة دعواتك إلى المكتبات"
+        "doing": "قراءة دعواتك إلى المجتمعات",
+        "did": "قرأ دعواتك إلى المجتمعات",
+        "where": "Evidence Communities",
+        "ask": "قراءة دعواتك إلى المجتمعات"
       },
       "answerLibraryInvite": {
-        "doing": "جارٍ الرد على دعوة إلى مكتبة",
-        "did": "ردّ على دعوة إلى مكتبة",
-        "where": "Evidence Libraries",
-        "ask": "الرد على دعوة إلى مكتبة"
+        "doing": "جارٍ الرد على دعوة إلى مجتمع",
+        "did": "ردّ على دعوة إلى مجتمع",
+        "where": "Evidence Communities",
+        "ask": "الرد على دعوة إلى مجتمع"
       },
       "startLibrary": {
-        "doing": "جارٍ بدء مسودة مكتبة",
-        "did": "بدأ مسودة مكتبة",
-        "where": "Evidence Libraries",
-        "ask": "بدء مسودة مكتبة"
+        "doing": "جارٍ بدء مسودة مجتمع",
+        "did": "بدأ مسودة مجتمع",
+        "where": "Evidence Communities",
+        "ask": "بدء مسودة مجتمع"
       },
       "librarySources": {
-        "doing": "قراءة مصادر مكتبة",
-        "did": "قرأ مصادر مكتبة",
-        "where": "Evidence Library",
-        "ask": "قراءة مصادر مكتبة",
-        "askMany": "قراءة مصادر {count, plural, zero {لا مكتبات} one {مكتبة واحدة} two {مكتبتين} few {# مكتبات} many {# مكتبة} other {# مكتبة}}",
-        "doingMany": "جارٍ قراءة مصادر {count, plural, zero {لا مكتبات} one {مكتبة واحدة} two {مكتبتين} few {# مكتبات} many {# مكتبة} other {# مكتبة}}",
-        "didMany": "قرأ مصادر {count, plural, zero {لا مكتبات} one {مكتبة واحدة} two {مكتبتين} few {# مكتبات} many {# مكتبة} other {# مكتبة}}"
+        "doing": "قراءة مصادر مجتمع",
+        "did": "قرأ مصادر مجتمع",
+        "where": "Evidence Community",
+        "ask": "قراءة مصادر مجتمع",
+        "askMany": "قراءة مصادر {count, plural, zero {لا مجتمعات} one {مجتمع واحد} two {مجتمعين} few {# مجتمعات} many {# مجتمع} other {# مجتمع}}",
+        "doingMany": "جارٍ قراءة مصادر {count, plural, zero {لا مجتمعات} one {مجتمع واحد} two {مجتمعين} few {# مجتمعات} many {# مجتمع} other {# مجتمع}}",
+        "didMany": "قرأ مصادر {count, plural, zero {لا مجتمعات} one {مجتمع واحد} two {مجتمعين} few {# مجتمعات} many {# مجتمع} other {# مجتمع}}"
       },
       "runningCollections": {
-        "doing": "قراءة مجموعات مكتبة",
-        "did": "قرأ مجموعات مكتبة",
-        "where": "Evidence Library",
-        "ask": "قراءة مجموعات مكتبة"
+        "doing": "قراءة مجموعات مجتمع",
+        "did": "قرأ مجموعات مجتمع",
+        "where": "Evidence Community",
+        "ask": "قراءة مجموعات مجتمع"
       },
       "runningInstitutions": {
-        "doing": "قراءة مؤسسات مكتبة",
-        "did": "قرأ مؤسسات مكتبة",
-        "where": "Evidence Library",
-        "ask": "قراءة مؤسسات مكتبة"
+        "doing": "قراءة مؤسسات مجتمع",
+        "did": "قرأ مؤسسات مجتمع",
+        "where": "Evidence Community",
+        "ask": "قراءة مؤسسات مجتمع"
       },
       "runningPublications": {
-        "doing": "قراءة منشورات مكتبة",
-        "did": "قرأ منشورات مكتبة",
-        "where": "Evidence Library",
-        "ask": "قراءة منشورات مكتبة"
+        "doing": "قراءة منشورات مجتمع",
+        "did": "قرأ منشورات مجتمع",
+        "where": "Evidence Community",
+        "ask": "قراءة منشورات مجتمع"
       },
       "runningPublication": {
-        "doing": "قراءة منشور في مكتبة",
-        "did": "قرأ منشورًا في مكتبة",
-        "where": "Evidence Library",
-        "ask": "قراءة منشور في مكتبة",
-        "askMany": "قراءة {count, plural, zero {لا منشورات} one {منشور واحد} two {منشورين} few {# منشورات} many {# منشورًا} other {# منشور}} في مكتبة",
-        "doingMany": "جارٍ قراءة {count, plural, zero {لا منشورات} one {منشور واحد} two {منشورين} few {# منشورات} many {# منشورًا} other {# منشور}} في مكتبة",
-        "didMany": "قرأ {count, plural, zero {لا منشورات} one {منشورًا واحدًا} two {منشورين} few {# منشورات} many {# منشورًا} other {# منشورًا}} في مكتبة"
+        "doing": "قراءة منشور في مجتمع",
+        "did": "قرأ منشورًا في مجتمع",
+        "where": "Evidence Community",
+        "ask": "قراءة منشور في مجتمع",
+        "askMany": "قراءة {count, plural, zero {لا منشورات} one {منشور واحد} two {منشورين} few {# منشورات} many {# منشورًا} other {# منشور}} في مجتمع",
+        "doingMany": "جارٍ قراءة {count, plural, zero {لا منشورات} one {منشور واحد} two {منشورين} few {# منشورات} many {# منشورًا} other {# منشور}} في مجتمع",
+        "didMany": "قرأ {count, plural, zero {لا منشورات} one {منشورًا واحدًا} two {منشورين} few {# منشورات} many {# منشورًا} other {# منشورًا}} في مجتمع"
       },
       "syncLibrarySource": {
-        "doing": "جارٍ إعادة استيراد مصدر مكتبة",
-        "did": "أعاد استيراد مصدر مكتبة",
-        "where": "Evidence Library",
-        "ask": "إعادة استيراد مصدر مكتبة"
+        "doing": "جارٍ إعادة استيراد مصدر مجتمع",
+        "did": "أعاد استيراد مصدر مجتمع",
+        "where": "Evidence Community",
+        "ask": "إعادة استيراد مصدر مجتمع"
       },
       "authorProfiles": {
         "doing": "قراءة ملفات المؤلفين",
@@ -4207,20 +4207,20 @@
         "didMany": "وضع {count, plural, zero {لا ملفات} one {ملف PDF واحد من Zotero} two {ملفي PDF من Zotero} few {# ملفات PDF من Zotero} many {# ملف PDF من Zotero} other {# ملف PDF من Zotero}} في المحادثة"
       },
       "gradeLibrarySource": {
-        "doing": "جارٍ طلب تقييم مصدر من مكتبة",
-        "did": "طلب من مكتبة تقييم مصدر",
-        "where": "Evidence Library",
-        "ask": "تقييم سجلات مصدر في مكتبة"
+        "doing": "جارٍ طلب تقييم مصدر من مجتمع",
+        "did": "طلب من مجتمع تقييم مصدر",
+        "where": "Evidence Community",
+        "ask": "تقييم سجلات مصدر في مجتمع"
       },
       "trySourceSubject": {
         "doing": "جارٍ تجربة موضوع فرز",
         "did": "جرّب موضوع فرز",
-        "where": "Evidence Library",
+        "where": "Evidence Community",
         "ask": "تجربة موضوع فرز على 200 سجل"
       },
       "libraryAccess": {
-        "doing": "جارٍ النظر في الوصول إلى Evidence Library",
-        "did": "نظر في الوصول إلى Evidence Library",
+        "doing": "جارٍ النظر في الوصول إلى Evidence Community",
+        "did": "نظر في الوصول إلى Evidence Community",
         "where": "الإدارة"
       }
     },
@@ -4387,7 +4387,7 @@
       "paper": "ورقة",
       "extraction": "الاستخلاص",
       "screening": "الفرز",
-      "library": "Evidence Library",
+      "library": "Evidence Community",
       "topic": "موضوع",
       "chat": "محادثة"
     }
@@ -4462,7 +4462,7 @@
       "searches": "عمليات البحث",
       "screenings": "الفرز",
       "extractions": "الاستخلاص",
-      "evidenceLibraries": "Evidence Libraries",
+      "evidenceLibraries": "Evidence Communities",
       "changeLogo": "تغيير الشعار",
       "organizationName": "اسم المؤسسة",
       "saveName": "حفظ الاسم",
@@ -4476,12 +4476,12 @@
       "makeAdminFirst": "عيّن شخصًا آخر مشرفًا أولًا",
       "leave": "مغادرة",
       "deleteName": "حذف {name}",
-      "stillHasLibrary": "{library} هي إحدى Evidence Libraries التابعة لها. انقلها أو احذفها أولًا.",
-      "deleteLibrary": "حذف المكتبة",
+      "stillHasLibrary": "{library} هي إحدى Evidence Communities التابعة لها. انقلها أو احذفها أولًا.",
+      "deleteLibrary": "حذف المجتمع",
       "libraryBeingDeleted": "جارٍ حذف {library}.",
       "libraryDeleteFailed": "تعذّر حذف {library}. حاول مرة أخرى.",
       "deleteDetail": "{count, plural, zero {يزيلها لكل الأعضاء} one {يزيلها لعضوها الوحيد} two {يزيلها لعضويها} few {يزيلها لكل أعضائها البالغ عددهم #} many {يزيلها لكل أعضائها البالغ عددهم #} other {يزيلها لكل أعضائها البالغ عددهم #}}",
-      "moveLibrariesFirst": "انقل Evidence Libraries التابعة لها أو احذفها أولًا",
+      "moveLibrariesFirst": "انقل Evidence Communities التابعة لها أو احذفها أولًا",
       "delete": "حذف",
       "deleteConfirm": "ستُحذف معها مجموعاتها وعمليات بحثها وفرزها واستخلاصها، وذلك لـ {count, plural, zero {كل الأعضاء} one {عضوها الوحيد} two {عضويها} few {كل أعضائها البالغ عددهم #} many {كل أعضائها البالغ عددهم #} other {كل أعضائها البالغ عددهم #}}. لا يمكن التراجع عن هذا.",
       "leaveConfirm": "ستفقد الوصول إلى أعمالها حتى يدعوك مشرف مرة أخرى.",
@@ -4556,7 +4556,7 @@
       "paymentFailed": "فشلت آخر عملية دفع.",
       "noMemberLimit": "بلا حد للأعضاء",
       "membersUnit": "{count, plural, one {عضو} other {أعضاء}}",
-      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "evidenceLibrariesIncluded": "Evidence Communities",
       "seePlans": "عرض الخطط"
     },
     "couldntInvite": "أُنشئت المؤسسة، لكن الدعوات لم تُرسل. أرسلها من إعدادات الأعضاء فيها.",
@@ -4757,15 +4757,15 @@
     "changeInSettings": "التغيير في إعدادات الذكاء الاصطناعي"
   },
   "librarySources": {
-    "kind": "سجلات Evidence Library",
-    "library": "Evidence Library",
-    "address": "الصق عنوان مكتبة",
+    "kind": "سجلات Evidence Community",
+    "library": "Evidence Community",
+    "address": "الصق عنوان مجتمع",
     "show": "عرض",
     "filter": {
       "all": "الكل",
       "yours": "لك",
       "shared": "المشارَكة معك",
-      "library": "الخاصة بالمكتبة"
+      "library": "الخاصة بالمجتمع"
     },
     "find": "بحث",
     "everyRecord": "كل سجل في {library}",
@@ -4790,14 +4790,14 @@
     "outdated": "تحتاج {library} إلى تحديث لاستخدامها هنا.",
     "error": {
       "notAddress": "هذا ليس عنوانًا.",
-      "notHosted": "لا يشغّل OpenScholar هذه المكتبة.",
+      "notHosted": "لا يشغّل OpenScholar هذا المجتمع.",
       "private": "هذه المجموعة خاصة. يستطيع مالكها مشاركتها معك.",
       "notFound": "لا يوجد شيء على هذا العنوان.",
       "empty": "هذا البحث أو هذه المجموعة لا تحتوي على سجلات.",
       "profile": "افتح إحدى مجموعاتهم وانسخ هذا العنوان.",
-      "unknownPage": "انسخ عنوان بحث أو مجموعة أو المكتبة.",
-      "outdated": "تحتاج هذه المكتبة إلى تحديث لاستخدامها هنا.",
-      "unreadable": "لم تستجب المكتبة. حاول مرة أخرى."
+      "unknownPage": "انسخ عنوان بحث أو مجموعة أو المجتمع.",
+      "outdated": "يحتاج هذا المجتمع إلى تحديث لاستخدامه هنا.",
+      "unreadable": "لم يستجب المجتمع. حاول مرة أخرى."
     },
     "role": {
       "owner": "المالك",
@@ -4819,17 +4819,17 @@
   "fromLibrary": {
     "title": "من {library}",
     "gone": "لا يوجد ما يُفتح",
-    "goneHint": "انتهت صلاحية هذا الرابط من المكتبة. افتحه مرة أخرى من المكتبة.",
+    "goneHint": "انتهت صلاحية هذا الرابط من المجتمع. افتحه مرة أخرى من المجتمع.",
     "problem": {
-      "notAddress": "لا يوجد هنا ما يمكن فتحه. افتحه مرة أخرى من المكتبة.",
-      "notHosted": "لم تعد هذه المكتبة تعمل على OpenScholar.",
+      "notAddress": "لا يوجد هنا ما يمكن فتحه. افتحه مرة أخرى من المجتمع.",
+      "notHosted": "لم يعد هذا المجتمع يعمل على OpenScholar.",
       "private": "هذه المجموعة خاصة. يستطيع مالكها مشاركتها معك.",
-      "notFound": "لم تعد المكتبة تملك ما أرسلته.",
-      "empty": "ما أرسلته المكتبة لا يحتوي على سجلات الآن.",
-      "profile": "لا يوجد هنا ما يمكن فتحه. افتحه مرة أخرى من المكتبة.",
-      "unknownPage": "لا يوجد هنا ما يمكن فتحه. افتحه مرة أخرى من المكتبة.",
-      "outdated": "تحتاج هذه المكتبة إلى تحديث لاستخدامها هنا.",
-      "unreadable": "لم تستجب المكتبة. حاول مرة أخرى بعد لحظة."
+      "notFound": "لم يعد المجتمع يملك ما أرسله.",
+      "empty": "ما أرسله المجتمع لا يحتوي على سجلات الآن.",
+      "profile": "لا يوجد هنا ما يمكن فتحه. افتحه مرة أخرى من المجتمع.",
+      "unknownPage": "لا يوجد هنا ما يمكن فتحه. افتحه مرة أخرى من المجتمع.",
+      "outdated": "يحتاج هذا المجتمع إلى تحديث لاستخدامه هنا.",
+      "unreadable": "لم يستجب المجتمع. حاول مرة أخرى بعد لحظة."
     },
     "from": {
       "smartScreening": "الفرز الذكي",
@@ -4941,15 +4941,15 @@
     }
   },
   "libraryHomeSettings": {
-    "thePageVisitorsLandOnAt": "الصفحة التي يصل إليها الزوار عند عنوان المكتبة.",
+    "thePageVisitorsLandOnAt": "الصفحة التي يصل إليها الزوار عند عنوان المجتمع.",
     "showAHomePage": "عرض صفحة رئيسية",
-    "whenThisIsOffTheLibrary": "عند إيقاف هذا الخيار، يفتح عنوان المكتبة قائمة المنشورات.",
+    "whenThisIsOffTheLibrary": "عند إيقاف هذا الخيار، يفتح عنوان المجتمع قائمة المنشورات.",
     "introduction": "مقدمة",
-    "shownInTheHeroUnderThe": "تظهر في الواجهة الرئيسية، تحت اسم المكتبة وشعارها النصي.",
-    "whatTheLibraryIsFor": "الغرض من المكتبة",
-    "whatDoesThisLibraryCollectAnd": "ما الذي تجمعه هذه المكتبة، ولمن؟",
+    "shownInTheHeroUnderThe": "تظهر في الواجهة الرئيسية، تحت اسم المجتمع وشعاره النصي.",
+    "whatTheLibraryIsFor": "الغرض من المجتمع",
+    "whatDoesThisLibraryCollectAnd": "ما الذي يجمعه هذا المجتمع، ولمن؟",
     "howPublicationsGetIn": "كيف تدخل المنشورات",
-    "stepsWithATypeAreFilled": "تُملأ الخطوات التي لها نوع من المنشور المتابَع، أو تُحسب من عمليات بحث المكتبة وسجلاتها.",
+    "stepsWithATypeAreFilled": "تُملأ الخطوات التي لها نوع من المنشور المتابَع، أو تُحسب من عمليات بحث المجتمع وسجلاته.",
     "addStep": "إضافة خطوة",
     "statement": "البيان",
     "noStepsTheSectionShowsThe": "لا توجد خطوات. يعرض القسم البيان وحده.",
@@ -4960,20 +4960,20 @@
     "editorShown": "المحرر المعروض",
     "whoeverApprovedIt": "من وافق عليه",
     "whatHappens": "ما الذي يحدث",
-    "whoRunsTheLibrary": "من يدير المكتبة",
-    "peopleFromTheLibrarySTeam": "يظهر الأشخاص من فريق المكتبة، أو الذين أُضيفوا يدويًا، بالترتيب المحدد هنا.",
+    "whoRunsTheLibrary": "من يدير المجتمع",
+    "peopleFromTheLibrarySTeam": "يظهر الأشخاص من فريق المجتمع، أو الذين أُضيفوا يدويًا، بالترتيب المحدد هنا.",
     "aboutTheTeam": "عن الفريق",
     "usedInsteadWhenThereIsNo": "يُستخدم بدلًا من ذلك عند عدم وجود جملة للفريق.",
     "suggestAPublication": "اقتراح منشور",
     "opensAnEmailTo": "يفتح رسالة بريد إلكتروني إلى {email}",
     "needsAContactEmail": "يحتاج إلى بريد إلكتروني للتواصل",
     "joinAsAnEditor": "الانضمام كمحرر",
-    "askTheLibrary": "اسأل المكتبة",
-    "typedIntoTheQuestionBoxOne": "تُكتب في مربع السؤال واحدًا تلو الآخر. ويُبقي المربع الفارغ السؤالَ المبني على موضوعات المكتبة.",
-    "shownWhenAiAnswersAreOn": "يظهر عند تفعيل إجابات الذكاء الاصطناعي في الميزات. ويُبقي المربع الفارغ السؤالَ المبني على موضوعات المكتبة.",
+    "askTheLibrary": "اسأل المجتمع",
+    "typedIntoTheQuestionBoxOne": "تُكتب في مربع السؤال واحدًا تلو الآخر. ويُبقي المربع الفارغ السؤالَ المبني على موضوعات المجتمع.",
+    "shownWhenAiAnswersAreOn": "يظهر عند تفعيل إجابات الذكاء الاصطناعي في الميزات. ويُبقي المربع الفارغ السؤالَ المبني على موضوعات المجتمع.",
     "exampleQuestion": "سؤال مثال {value}",
     "usingAndCiting": "الاستخدام والاستشهاد",
-    "shownBesideTheCitationOfThe": "يظهر بجانب استشهاد المكتبة، ويُصاغ من اسمها وعنوانها.",
+    "shownBesideTheCitationOfThe": "يظهر بجانب استشهاد المجتمع، ويُصاغ من اسمه وعنوانه.",
     "licenceAndReuse": "الترخيص وإعادة الاستخدام",
     "howMayPeopleReuseWhatThey": "كيف يمكن للناس إعادة استخدام ما يجدونه هنا؟",
     "heading": "العنوان",
@@ -4992,12 +4992,12 @@
     "takedownForm": "نموذج طلب الإزالة",
     "off": "إيقاف",
     "filledInForYou": "تُملأ تلقائيًا",
-    "newestPublicationsTheMostCitedDigests": "أحدث المنشورات والأكثر استشهادًا والملخصات وآخر مراجعة تأتي من المكتبة نفسها.",
+    "newestPublicationsTheMostCitedDigests": "أحدث المنشورات والأكثر استشهادًا والملخصات وآخر مراجعة تأتي من المجتمع نفسه.",
     "editIn": "التعديل في {card}",
     "peopleShown": "الأشخاص المعروضون",
     "addFromTheTeam": "إضافة من الفريق",
     "addPeopleFromTheTeam": "إضافة أشخاص من الفريق",
-    "everyoneOnTheLibrarySTeam": "كل أعضاء فريق المكتبة، مع الصورة من حساباتهم.",
+    "everyoneOnTheLibrarySTeam": "كل أعضاء فريق المجتمع، مع الصورة من حساباتهم.",
     "addSomeone": "إضافة شخص",
     "nobodyIsShownAddPeopleFrom": "لا يظهر أحد. أضف أشخاصًا من الفريق، أو أضف شخصًا ليس له حساب.",
     "removedFromTheTeamSoNot": "أُزيل من الفريق، لذلك لا يظهر",
@@ -5036,7 +5036,7 @@
       },
       "search": {
         "label": "مصطلحات البحث",
-        "hint": "يعدّ الكلمات والعبارات والموضوعات التي تبحث عنها عمليات بحث OpenAlex الخاصة بالمكتبة",
+        "hint": "يعدّ الكلمات والعبارات والموضوعات التي تبحث عنها عمليات بحث OpenAlex الخاصة بالمجتمع",
         "fallback": "وُجد بالبحث",
         "example": "مصطلحات البحث"
       },
@@ -5066,12 +5066,12 @@
     },
     "reviewedOn": "تمت مراجعته في {date}",
     "addedOn": "أُضيف في {date}",
-    "howTheLibraryIsCurated": "كيف تُختار محتويات المكتبة",
+    "howTheLibraryIsCurated": "كيف تُختار محتويات المجتمع",
     "optional": "اختياري",
     "removeStep": "إزالة الخطوة",
     "whoIsBehindIt": "من يقف وراءها",
     "getInvolved": "كيف تشارك",
-    "usingAndCitingTheLibrary": "استخدام المكتبة والاستشهاد بها",
+    "usingAndCitingTheLibrary": "استخدام المجتمع والاستشهاد به",
     "identity": "الهوية",
     "contact": "التواصل",
     "notSet": "غير محدد",
@@ -5091,10 +5091,10 @@
     "searchPublications": "ابحث في المنشورات",
     "date": "التاريخ",
     "loadingPublications": "جارٍ تحميل المنشورات",
-    "theLibrarySPublicationsCouldNot": "تعذّر تحميل منشورات المكتبة.",
+    "theLibrarySPublicationsCouldNot": "تعذّر تحميل منشورات المجتمع.",
     "noPublicationHasAPdfYet": "لا يوجد منشور يحتوي على ملف PDF بعد.",
     "noPublicationMatches": "لا توجد منشورات مطابقة.",
-    "theLibraryIsNotSetUp": "لم تُهيّأ المكتبة بعد.",
+    "theLibraryIsNotSetUp": "لم يُهيّأ المجتمع بعد.",
     "linked": "مرتبط"
   },
   "libraryTeamAccess": {
@@ -5110,12 +5110,12 @@
     "cancelInvitation": "إلغاء الدعوة",
     "cancelThisInvitation": "هل تريد إلغاء هذه الدعوة؟",
     "removeAccessToThisAuthorProfile": "هل تريد إزالة الوصول إلى ملف المؤلف هذا؟",
-    "removeFromThisLibraryOrganizationMembership": "هل تريد الإزالة من هذه المكتبة؟ تبقى عضوية المؤسسة والوصول إلى المكتبات الأخرى كما هي.",
+    "removeFromThisLibraryOrganizationMembership": "هل تريد الإزالة من هذا المجتمع؟ تبقى عضوية المؤسسة والوصول إلى المجتمعات الأخرى كما هي.",
     "keep": "الإبقاء",
     "profileAccess": "الوصول إلى الملف",
     "team": "الفريق",
     "theOwnerManagesAccessEditorsCan": "يدير المالك الوصول. ويستطيع المحررون تعديل هذا الملف.",
-    "manageAccessToThisLibrary": "إدارة الوصول إلى هذه المكتبة.",
+    "manageAccessToThisLibrary": "إدارة الوصول إلى هذا المجتمع.",
     "addEditor": "إضافة محرر",
     "addMember": "إضافة عضو",
     "inviteProfileEditor": "دعوة محرر الملف",
@@ -5128,29 +5128,29 @@
     "chooseAPerson": "اختر شخصًا",
     "emailAddress": "البريد الإلكتروني",
     "nameOrganisationOrg": "name@organisation.org",
-    "libraryRole": "دور المكتبة",
+    "libraryRole": "دور المجتمع",
     "editorsCanEditProfileDetailsAnd": "يستطيع المحررون تعديل تفاصيل الملف واختيار المنشورات.",
-    "accessAppliesToThisLibraryOnly": "ينطبق الوصول على هذه المكتبة فقط.",
-    "theyLlReceiveAccessToThis": "سيحصلون على الوصول إلى هذه المكتبة فقط. عضوية المؤسسة لا تتغير.",
+    "accessAppliesToThisLibraryOnly": "ينطبق الوصول على هذا المجتمع فقط.",
+    "theyLlReceiveAccessToThis": "سيحصلون على الوصول إلى هذا المجتمع فقط. عضوية المؤسسة لا تتغير.",
     "cancel": "إلغاء",
     "sendInvitation": "إرسال الدعوة",
     "dismissMemberStatus": "إلغاء صفة العضوية",
     "organizationOwners": "مالكو المؤسسة",
-    "accessToAllLibrariesManagedIn": "الوصول إلى كل المكتبات. تُدار من إعدادات المؤسسة.",
+    "accessToAllLibrariesManagedIn": "الوصول إلى كل المجتمعات. تُدار من إعدادات المؤسسة.",
     "everyoneElseInTheOrganization": "كل من في المؤسسة",
     "viewersUntilYouAddThemBelow": "مشاهدون إلى أن تضيفهم أدناه بدور.",
     "everyoneIn": "كل من في {name}",
-    "everyoneWithoutARoleInThis": "كل من ليس له دور في هذه المكتبة",
+    "everyoneWithoutARoleInThis": "كل من ليس له دور في هذا المجتمع",
     "viewer": "مشاهد",
     "teamView": "عرض الفريق",
     "profileMembers": "أعضاء الملف",
-    "libraryMembers": "أعضاء المكتبة",
+    "libraryMembers": "أعضاء المجتمع",
     "invitations": "الدعوات",
     "searchTeam": "ابحث في الفريق",
     "findAPerson": "ابحث عن شخص…",
-    "aboutLibraryRoles": "عن أدوار المكتبة",
+    "aboutLibraryRoles": "عن أدوار المجتمع",
     "editor": "محرر",
-    "reviewPublishAndManageLibraryContent": "مراجعة المحتوى المكتبي ونشره وإدارته.",
+    "reviewPublishAndManageLibraryContent": "مراجعة محتوى المجتمع ونشره وإدارته.",
     "creator": "منشئ",
     "editItemsAndSubmitWorkFor": "تعديل العناصر وإرسال العمل للمراجعة.",
     "loadingTeam": "جارٍ تحميل الفريق",
@@ -5176,37 +5176,37 @@
       "Viewer": "المشاهد"
     },
     "roleHints": {
-      "Owner": "موروث من المنظمة. يدير جميع مكتباتها وفرقها.",
-      "Editor": "مراجعة العناصر ونشرها. إدارة محتوى المكتبة.",
+      "Owner": "موروث من المنظمة. يدير جميع مجتمعاتها وفرقها.",
+      "Editor": "مراجعة العناصر ونشرها. إدارة محتوى المجتمع.",
       "Creator": "إنشاء العناصر وتحريرها ورفع الملفات وإرسالها للمراجعة.",
-      "Viewer": "باقي أعضاء المنظمة. عرض المكتبة وعناصرها دون تغييرها."
+      "Viewer": "باقي أعضاء المنظمة. عرض المجتمع وعناصره دون تغييرها."
     },
-    "removeFromLibrary": "إزالة من المكتبة",
+    "removeFromLibrary": "إزالة من المجتمع",
     "removeFromProfile": "إزالة من الملف الشخصي",
-    "whoManagesLibrary": "اختر من يمكنه إدارة هذه المكتبة.",
+    "whoManagesLibrary": "اختر من يمكنه إدارة هذا المجتمع.",
     "whoManagesProfile": "اختر من يمكنه إدارة هذا الملف الشخصي.",
-    "addToLibrary": "إضافة إلى المكتبة",
+    "addToLibrary": "إضافة إلى المجتمع",
     "addToProfile": "إضافة إلى الملف الشخصي",
-    "acceptingGrantsLibrary": "القبول يمنح الوصول إلى هذه المكتبة فقط.",
+    "acceptingGrantsLibrary": "القبول يمنح الوصول إلى هذا المجتمع فقط.",
     "acceptingGrantsProfile": "القبول يمنح الوصول إلى هذا الملف الشخصي فقط.",
-    "removedFromLibrary": "أُزيل من هذه المكتبة.",
+    "removedFromLibrary": "أُزيل من هذا المجتمع.",
     "removedFromProfile": "أُزيل من هذا الملف الشخصي.",
-    "addedToLibrary": "تمت إضافة {name} إلى هذه المكتبة.",
+    "addedToLibrary": "تمت إضافة {name} إلى هذا المجتمع.",
     "addedToProfile": "تمت إضافة {name} إلى هذا الملف الشخصي."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, zero {لا يوجد ملخص في الانتظار} one {ملخص في الانتظار لمنشور واحد.} two {ملخص في الانتظار لمنشورين.} few {ملخص في الانتظار لـ # منشورات.} many {ملخص في الانتظار لـ # منشورًا.} other {ملخص في الانتظار لـ # منشور.}}",
     "noPublicationsInThePeriodNothing": "لا توجد منشورات في هذه الفترة. لم يُرسل شيء.",
-    "publishTheLibraryConfigurationWithReader": "انشر إعداد المكتبة مع تفعيل اشتراكات القراء أولًا.",
+    "publishTheLibraryConfigurationWithReader": "انشر إعداد المجتمع مع تفعيل اشتراكات القراء أولًا.",
     "theDigestRequestCouldNotBe": "تعذّر تأكيد طلب الملخص. حاول مرة أخرى؛ ولن تُرسل الإصدارات الموجودة مرتين.",
     "emailUpdates": "تحديثات البريد الإلكتروني",
     "readerSubscriptions": "اشتراكات القراء",
-    "readersCanChooseNewPublicationsLibrary": "يستطيع القراء اختيار المنشورات الجديدة أو ملخصات المكتبة أو كليهما. وتُتخطى الإصدارات الفارغة.",
+    "readersCanChooseNewPublicationsLibrary": "يستطيع القراء اختيار المنشورات الجديدة أو ملخصات المجتمع أو كليهما. وتُتخطى الإصدارات الفارغة.",
     "digestCovers": "يغطي الملخص",
     "aPublicationWithoutAFullDate": "المنشور الذي ليس له تاريخ كامل لا ينتمي إلى أي فترة.",
-    "anOlderPublicationCountsWhenIt": "يُحتسب المنشور الأقدم عندما يكون جديدًا على المكتبة.",
+    "anOlderPublicationCountsWhenIt": "يُحتسب المنشور الأقدم عندما يكون جديدًا على المجتمع.",
     "publicationsPublishedInThePeriod": "المنشورات المنشورة في الفترة",
-    "publicationsAddedToTheLibraryIn": "المنشورات المضافة إلى المكتبة في الفترة",
+    "publicationsAddedToTheLibraryIn": "المنشورات المضافة إلى المجتمع في الفترة",
     "frequency": "التكرار",
     "weekly": "أسبوعيًا",
     "monthly": "شهريًا",
@@ -5216,8 +5216,8 @@
     "time": "الوقت",
     "timezone": "المنطقة الزمنية",
     "beforeADigestGoesOut": "قبل إرسال الملخص",
-    "itWaitsInTheLibraryS": "ينتظر في لوحة إدارة المكتبة، حيث يستطيع المنشئون تعديله، ويقوم محرر أو مالك بنشره.",
-    "itIsPublishedAndEmailedAs": "يُنشر ويُرسل بالبريد الإلكتروني فور كتابته. ويمكن تصحيحه لاحقًا في لوحة إدارة المكتبة.",
+    "itWaitsInTheLibraryS": "ينتظر في لوحة إدارة المجتمع، حيث يستطيع المنشئون تعديله، ويقوم محرر أو مالك بنشره.",
+    "itIsPublishedAndEmailedAs": "يُنشر ويُرسل بالبريد الإلكتروني فور كتابته. ويمكن تصحيحه لاحقًا في لوحة إدارة المجتمع.",
     "anEditorApprovesIt": "يوافق عليه محرر",
     "itIsSentAsAiWrote": "يُرسل كما كتبه الذكاء الاصطناعي",
     "nameWhoCheckedIt": "اذكر من راجعه",
@@ -5255,23 +5255,23 @@
     "keepThisUnderCharacters": "اجعله أقل من {maxLength} حرف."
   },
   "libraryList": {
-    "evidenceLibraries": "Evidence Libraries",
-    "newLibrary": "مكتبة جديدة",
-    "libraryView": "عرض المكتبة",
+    "evidenceLibraries": "Evidence Communities",
+    "newLibrary": "مجتمع جديد",
+    "libraryView": "عرض المجتمع",
     "sharedWithYou": "المشارَكة معك",
     "invitations": "الدعوات",
-    "searchLibraries": "ابحث في المكتبات",
-    "findALibrary": "ابحث عن مكتبة…",
-    "acceptAccessToALibraryWithout": "اقبل الوصول إلى مكتبة دون الانضمام إلى مؤسستها.",
-    "loadingLibraries": "جارٍ تحميل المكتبات",
-    "noLibrariesMatchTheseFilters": "لا توجد مكتبات تطابق عوامل التصفية هذه.",
+    "searchLibraries": "ابحث في المجتمعات",
+    "findALibrary": "ابحث عن مجتمع…",
+    "acceptAccessToALibraryWithout": "اقبل الوصول إلى مجتمع دون الانضمام إلى مؤسسته.",
+    "loadingLibraries": "جارٍ تحميل المجتمعات",
+    "noLibrariesMatchTheseFilters": "لا توجد مجتمعات تطابق عوامل التصفية هذه.",
     "noPendingInvitations": "لا توجد دعوات معلقة.",
-    "librariesPeopleShareWithYouAppear": "تظهر هنا المكتبات التي يشاركها معك الآخرون.",
-    "hasNoLibrariesYet": "ليس لدى {name} مكتبات بعد.",
+    "librariesPeopleShareWithYouAppear": "تظهر هنا المجتمعات التي يشاركها معك الآخرون.",
+    "hasNoLibrariesYet": "ليس لدى {name} مجتمعات بعد.",
     "organization": "المؤسسة: {organization}",
     "inheritedFromOrganizationOwnership": "موروث من ملكية المؤسسة",
-    "everyoneInTheOrganizationViewsIts": "يرى كل من في المؤسسة مكتباتها",
-    "assignedToThisLibrary": "مُعيَّن لهذه المكتبة",
+    "everyoneInTheOrganizationViewsIts": "يرى كل من في المؤسسة مجتمعاتها",
+    "assignedToThisLibrary": "مُعيَّن لهذا المجتمع",
     "decline": "رفض",
     "acceptInvitation": "قبول الدعوة",
     "deleting": "جارٍ الحذف",
@@ -5281,7 +5281,7 @@
     "viewSetup": "عرض الإعداد",
     "actionsFor": "الإجراءات لـ {name}",
     "settings": "الإعدادات",
-    "viewPublicLibrary": "عرض المكتبة العامة",
+    "viewPublicLibrary": "عرض المجتمع العام",
     "openAdmin": "فتح الإدارة",
     "moreActionsFor": "إجراءات أخرى لـ {name}",
     "declineInvitation": "هل تريد رفض الدعوة؟",
@@ -5289,7 +5289,7 @@
     "declineInvitation2": "رفض الدعوة",
     "previewCover": "معاينة غلاف {title}",
     "preview": "معاينة {title}",
-    "declineBody": "لن تحصل على الوصول إلى {name}. ولا تتأثر مكتباتك الأخرى.",
+    "declineBody": "لن تحصل على الوصول إلى {name}. ولا تتأثر مجتمعاتك الأخرى.",
     "owner": "المالك",
     "editor": "المحرر",
     "creator": "المنشئ",
@@ -5335,9 +5335,9 @@
     "fromOpenalex": "من OpenAlex",
     "findAPublication": "ابحث عن منشور…",
     "searchPublications": "ابحث في المنشورات",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "publishedIn": "نُشر في",
-    "publishedWorksInThisLibrary": "{length} عمل منشور في هذه المكتبة",
+    "publishedWorksInThisLibrary": "{length} عمل منشور في هذا المجتمع",
     "publications": "المنشورات",
     "noPublicationsMatchYourSearch": "لا توجد منشورات تطابق بحثك.",
     "noPublicationsSelectedYet": "لم تُختر أي منشورات بعد.",

@@ -31,7 +31,7 @@ export const prepare = internalMutation({
     const users = await ctx.db.query("users").withIndex("by_email", q => q.eq("email", email)).take(MAX_ACCOUNTS_PER_EMAIL + 1);
     if (users.length > MAX_ACCOUNTS_PER_EMAIL) throw createError("VALIDATION_ERROR", "Too many accounts have used this address to check which of them already has access. Invite a different address.");
     for (const user of users) {
-      if (await readLibraryRole(ctx, access.library, user.clerkId)) throw createError("CONFLICT", "This person already has library access");
+      if (await readLibraryRole(ctx, access.library, user.clerkId)) throw createError("CONFLICT", "This person already has community access");
     }
     const inviter = await ctx.db.query("users").withIndex("by_clerk_id", q => q.eq("clerkId", access.clerkUserId)).unique();
     if (!inviter) throw createError("UNAUTHENTICATED", "Sign in to invite");
@@ -43,7 +43,7 @@ export const prepare = internalMutation({
       // Both lists of waiting invitations stay small enough to read in one query.
       const waiting = await ctx.db.query("itemInvitations")
         .withIndex("by_item_and_state", q => q.eq("item", args.libraryId).eq("state", "pending")).take(MAX_PENDING_INVITATIONS_PER_LIBRARY);
-      if (waiting.length >= MAX_PENDING_INVITATIONS_PER_LIBRARY) throw createError("VALIDATION_ERROR", `This library has ${MAX_PENDING_INVITATIONS_PER_LIBRARY} invitations waiting. Cancel one to send another.`);
+      if (waiting.length >= MAX_PENDING_INVITATIONS_PER_LIBRARY) throw createError("VALIDATION_ERROR", `This community has ${MAX_PENDING_INVITATIONS_PER_LIBRARY} invitations waiting. Cancel one to send another.`);
       const theirs = await ctx.db.query("itemInvitations")
         .withIndex("by_email_and_state", q => q.eq("email", email).eq("state", "pending")).take(MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL);
       if (theirs.length >= MAX_PENDING_ITEM_INVITATIONS_PER_EMAIL) throw createError("VALIDATION_ERROR", "This person has too many invitations waiting. Ask them to answer some first.");
@@ -132,7 +132,7 @@ export const respondVerified = internalMutation({
     // Accepting again what they accepted already, as a second press or a second tab does, changes nothing.
     if (args.accept && invitation.state === "accepted" && library && (await libraryGrant(ctx, library._id, user._id))) return null;
     if (invitation.state !== "pending" || invitation.expiresAt <= Date.now()) throw createError("CONFLICT", "Invitation expired or already answered");
-    if (!library || library.state === "disabled" || !ownerActive(await libraryOwner(ctx, library))) throw createError("FORBIDDEN", "Library unavailable");
+    if (!library || library.state === "disabled" || !ownerActive(await libraryOwner(ctx, library))) throw createError("FORBIDDEN", "Community unavailable");
     // An outstanding invitation cannot overwrite a role granted since it was sent. Its place in the library becomes the person's.
     if (args.accept && !(await libraryGrant(ctx, library._id, user._id))) {
       await assertPersonHasRoom(ctx, user._id);

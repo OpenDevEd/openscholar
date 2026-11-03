@@ -10,5 +10,5 @@ export default async function EvidenceLibraryPage({
   params: Promise<{ libraryId: string }>;
 }) {
   const { libraryId } = await params;
-  redirect(`/evidence-libraries/${encodeURIComponent(libraryId)}/configuration`);
+  redirect(`/evidence-communities/${encodeURIComponent(libraryId)}/configuration`);
 }

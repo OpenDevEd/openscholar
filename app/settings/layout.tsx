@@ -141,7 +141,7 @@ function Shell({ children }: { children: ReactNode }) {
             { href: "/settings/admin/ai", title: t("items.aiModels"), icon: AiIcon },
             { href: "/settings/admin/models", title: t("items.modelList"), icon: ModelsIcon },
             { href: "/settings/admin/admins", title: t("items.admins"), icon: AdminsIcon },
-            { href: "/settings/admin/evidence-libraries", title: t("items.evidenceLibraries"), icon: Library },
+            { href: "/settings/admin/evidence-communities", title: t("items.evidenceLibraries"), icon: Library },
             { href: "https://dashboard.clerk.com", title: t("items.users"), icon: ClerkIcon, external: "Clerk" },
             // Its address is read after the page shows, so it comes last: nothing under it to push down.
             ...(links?.autumn ? [{ href: links.autumn, title: t("items.plans"), icon: AutumnIcon, external: "Autumn" }] : []),

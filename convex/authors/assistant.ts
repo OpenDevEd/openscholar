@@ -98,7 +98,7 @@ export const invitationsForAssistant = assistantQuery(invitationsAction);
 export const createAction = defineUserMutation({
   path: "authors/assistant:create",
   description:
-    "Makes an author profile with this name, owned by the workspace the reply runs in, whose plan must have Evidence Libraries. Returns its ID and name: its page, public, is /authors/<profileId>, and the Authors directory lists it. The rest of it is filled in on its page. Asks the person first.",
+    "Makes an author profile with this name, owned by the workspace the reply runs in, whose plan must have Evidence Communities. Returns its ID and name: its page, public, is /authors/<profileId>, and the Authors directory lists it. The rest of it is filled in on its page. Asks the person first.",
   args: { name: v.string() },
   returns: v.object({ profileId: v.id("authorProfiles"), name: v.string() }),
   spendsCredits: false,
@@ -117,8 +117,8 @@ export const createForAssistant = assistantMutation(createAction);
 export const publicationsAction = defineUserAction({
   path: "authors/assistant:publications",
   description:
-    `Reads an author profile's publications, ${AUTHOR_PUBLICATIONS_READ} at a time from \`cursor\`, each from the Evidence Library it's in: title, type, year, authors, its page and the library's name. ` +
-    "`next` is the next page's `cursor`, and `unavailable` counts the ones a library couldn't answer for now.",
+    `Reads an author profile's publications, ${AUTHOR_PUBLICATIONS_READ} at a time from \`cursor\`, each from the Evidence Community it's in: title, type, year, authors, its page and the community's name. ` +
+    "`next` is the next page's `cursor`, and `unavailable` counts the ones a community couldn't answer for now.",
   args: { profileId: v.string(), cursor: v.optional(v.union(v.string(), v.null())) },
   returns: authorPublicationsReadValidator,
   spendsCredits: false,

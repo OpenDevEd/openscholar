@@ -8,7 +8,7 @@ type SetupReadCtx = Pick<QueryCtx | MutationCtx, "db">;
 function incompleteSetup(): never {
   throw createError(
     "INVALID_DATA",
-    "Evidence Library setup links are incomplete",
+    "Evidence Community setup links are incomplete",
   );
 }
 

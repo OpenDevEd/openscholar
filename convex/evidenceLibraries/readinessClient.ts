@@ -49,7 +49,7 @@ function requireMachineCredential(value: string) {
   if (!/^els_[A-Za-z0-9_-]{43}$/u.test(value)) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library machine credential is invalid",
+      "Evidence Community machine credential is invalid",
     );
   }
   return value;
@@ -60,7 +60,7 @@ async function writeRuntimeConfiguration(
   method: "DELETE" | "PUT",
   body: string,
 ) {
-  const origin = requireHttpsOrigin("Evidence Library URL", input.baseUrl);
+  const origin = requireHttpsOrigin("Evidence Community URL", input.baseUrl);
   const responseBody = await fetchWithTimeout(
     input.fetchImpl ?? fetch,
     new URL("/api/openscholar/configuration", origin),
@@ -79,7 +79,7 @@ async function writeRuntimeConfiguration(
           response.status === 409 || response.status >= 500
             ? "CONFIG_NOT_READY"
             : "CONFIGURATION_ACTIVATION_FAILED",
-          "The Evidence Library configuration could not be changed",
+          "The Evidence Community configuration could not be changed",
         );
       }
       return readBoundedJson(response);
@@ -92,7 +92,7 @@ async function writeRuntimeConfiguration(
   ) {
     throw new ReadinessClientError(
       "READINESS_INVALID_RESPONSE",
-      "The Evidence Library returned an invalid configuration response",
+      "The Evidence Community returned an invalid configuration response",
     );
   }
   return responseBody;
@@ -112,7 +112,7 @@ export async function activateLibraryRuntimeConfiguration(
   ) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library configuration is invalid",
+      "Evidence Community configuration is invalid",
     );
   }
   const response = await writeRuntimeConfiguration(
@@ -126,7 +126,7 @@ export async function activateLibraryRuntimeConfiguration(
   ) {
     throw new ReadinessClientError(
       "READINESS_INVALID_RESPONSE",
-      "The Evidence Library did not activate the requested configuration",
+      "The Evidence Community did not activate the requested configuration",
     );
   }
   return {
@@ -142,7 +142,7 @@ export async function restoreLibraryRuntimeConfiguration(
   if (!input.revisionKey.trim()) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Previous Evidence Library revision is missing",
+      "Previous Evidence Community revision is missing",
     );
   }
   const response = await writeRuntimeConfiguration(
@@ -153,7 +153,7 @@ export async function restoreLibraryRuntimeConfiguration(
   if (response.revision !== input.revisionKey) {
     throw new ReadinessClientError(
       "READINESS_INVALID_RESPONSE",
-      "The Evidence Library did not restore the previous configuration",
+      "The Evidence Community did not restore the previous configuration",
     );
   }
   return { revision: response.revision, status: "active" };
@@ -223,25 +223,25 @@ function requireInput(input: ReadinessCheckInput) {
   if (!isCoolifyApplicationUuid(input.applicationUuid)) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library application ID is invalid",
+      "Evidence Community application ID is invalid",
     );
   }
   if (!COMMIT.test(input.runtimeCommit)) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library commit is invalid",
+      "Evidence Community commit is invalid",
     );
   }
   if (!isRuntimeImageReference(input.runtimeImage)) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library image is invalid",
+      "Evidence Community image is invalid",
     );
   }
   if (!input.revisionKey.trim()) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library revision is missing",
+      "Evidence Community revision is missing",
     );
   }
   if (!input.verifierToken.trim()) {
@@ -281,7 +281,7 @@ async function fetchWithTimeout<T>(
     if (error instanceof ReadinessClientError) throw error;
     throw new ReadinessClientError(
       "READINESS_UNAVAILABLE",
-      "Evidence Library readiness could not be checked",
+      "Evidence Community readiness could not be checked",
     );
   } finally {
     clearTimeout(timeout);
@@ -477,7 +477,7 @@ export async function readActiveConfigurationUpdatedAt(input: {
   baseUrl: string;
   fetchImpl?: typeof fetch;
 }): Promise<number> {
-  const origin = requireHttpsOrigin("Evidence Library URL", input.baseUrl);
+  const origin = requireHttpsOrigin("Evidence Community URL", input.baseUrl);
   const body = await fetchWithTimeout(
     input.fetchImpl ?? fetch,
     new URL("/api/library-config/health", origin),
@@ -486,7 +486,7 @@ export async function readActiveConfigurationUpdatedAt(input: {
       if (response.status !== 200) {
         throw new ReadinessClientError(
           "READINESS_UNAVAILABLE",
-          "Evidence Library readiness could not be checked",
+          "Evidence Community readiness could not be checked",
         );
       }
       return await readBoundedJson(response);
@@ -498,7 +498,7 @@ export async function readActiveConfigurationUpdatedAt(input: {
   if (!Number.isFinite(stamp)) {
     throw new ReadinessClientError(
       "READINESS_INVALID_RESPONSE",
-      "The Evidence Library did not report its active configuration",
+      "The Evidence Community did not report its active configuration",
     );
   }
   return stamp;
@@ -513,7 +513,7 @@ export async function probeEvidenceLibraryAddress(input: {
   const fetchImpl = input.fetchImpl ?? fetch;
   let origin: URL;
   try {
-    origin = requireHttpsOrigin("Evidence Library URL", input.targetBaseUrl);
+    origin = requireHttpsOrigin("Evidence Community URL", input.targetBaseUrl);
   } catch {
     return UNREACHABLE_ADDRESS;
   }
@@ -569,7 +569,7 @@ async function requireVerifierReady(
           "RUNTIME_NOT_READY",
           await readVerifierFailure(
             response,
-            "The Evidence Library services are not ready",
+            "The Evidence Community services are not ready",
           ),
         );
       }
@@ -601,53 +601,53 @@ function requireRuntimeRouteInput(input: LibraryRuntimeRouteInput) {
   if (!isCoolifyApplicationUuid(input.applicationUuid)) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library application ID is invalid",
+      "Evidence Community application ID is invalid",
     );
   }
   if (!COMMIT.test(input.runtimeCommit)) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library commit is invalid",
+      "Evidence Community commit is invalid",
     );
   }
   if (!isRuntimeImageReference(input.runtimeImage)) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library image is invalid",
+      "Evidence Community image is invalid",
     );
   }
   if (!input.revisionKey.trim()) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library revision is missing",
+      "Evidence Community revision is missing",
     );
   }
   if (input.platformOrigins.length < 1 || input.platformOrigins.length > 2) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library platform addresses are invalid",
+      "Evidence Community platform addresses are invalid",
     );
   }
   if (input.customOrigins.length > 20) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library custom addresses are invalid",
+      "Evidence Community custom addresses are invalid",
     );
   }
   const origins = [
     ...input.platformOrigins.map(
       (origin) =>
-        requireHttpsOrigin("Evidence Library platform URL", origin).origin,
+        requireHttpsOrigin("Evidence Community platform URL", origin).origin,
     ),
     ...input.customOrigins.map(
       (origin) =>
-        requireHttpsOrigin("Evidence Library custom URL", origin).origin,
+        requireHttpsOrigin("Evidence Community custom URL", origin).origin,
     ),
   ];
   if (new Set(origins).size !== origins.length) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library addresses must be unique",
+      "Evidence Community addresses must be unique",
     );
   }
   if (!input.verifierToken.trim()) {
@@ -702,7 +702,7 @@ export async function changeLibraryRuntimeRoute(
             : "RUNTIME_ROUTE_FAILED",
           await readVerifierFailure(
             response,
-            "Evidence Library traffic could not be updated",
+            "Evidence Community traffic could not be updated",
           ),
         );
       }
@@ -728,7 +728,7 @@ export async function removeLibraryRuntimeRoute(input: {
   if (!isCoolifyApplicationUuid(input.applicationUuid)) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library application ID is invalid",
+      "Evidence Community application ID is invalid",
     );
   }
   if (!input.verifierToken.trim()) {
@@ -757,7 +757,7 @@ export async function removeLibraryRuntimeRoute(input: {
       if (response.status !== 200) {
         throw new ReadinessClientError(
           "RUNTIME_ROUTE_FAILED",
-          "Evidence Library traffic could not be removed",
+          "Evidence Community traffic could not be removed",
         );
       }
       return await readBoundedJson(response);
@@ -788,21 +788,21 @@ export async function setLibraryDomainRoutes(input: {
   if (!isCoolifyApplicationUuid(input.applicationUuid)) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library application ID is invalid",
+      "Evidence Community application ID is invalid",
     );
   }
   const customOrigins = [
     ...new Set(
       input.customOrigins.map(
         (origin) =>
-          requireHttpsOrigin("Evidence Library custom URL", origin).origin,
+          requireHttpsOrigin("Evidence Community custom URL", origin).origin,
       ),
     ),
   ].sort();
   if (customOrigins.length > 20) {
     throw new ReadinessClientError(
       "READINESS_CONFIG_INVALID",
-      "Evidence Library custom addresses are invalid",
+      "Evidence Community custom addresses are invalid",
     );
   }
   if (!input.verifierToken.trim()) {
@@ -839,7 +839,7 @@ export async function setLibraryDomainRoutes(input: {
             : "RUNTIME_ROUTE_FAILED",
           await readVerifierFailure(
             response,
-            "Evidence Library domains could not be routed",
+            "Evidence Community domains could not be routed",
           ),
         );
       }
@@ -879,13 +879,13 @@ async function requireActiveRevision(
     if (address.state === "not-ours") {
       throw new ReadinessClientError(
         ADDRESS_NOT_OURS_CODE,
-        "Another site answers this Evidence Library address",
+        "Another site answers this Evidence Community address",
       );
     }
     if (address.state === "unreachable") {
       throw new ReadinessClientError(
         "CONFIG_NOT_READY",
-        "The Evidence Library configuration is not active",
+        "The Evidence Community configuration is not active",
       );
     }
     if (address.activeAndAccepted && address.revision === revisionKey) return;
@@ -897,7 +897,7 @@ async function requireActiveRevision(
   }
   throw new ReadinessClientError(
     "CONFIG_NOT_READY",
-    "The Evidence Library has not activated the requested revision",
+    "The Evidence Community has not activated the requested revision",
   );
 }
 
@@ -946,7 +946,7 @@ async function requireRuntimeRouteMode(
         if (runtimeRoute || address.state !== "not-ours") return false;
         throw new ReadinessClientError(
           ADDRESS_NOT_OURS_CODE,
-          "Another site answers this Evidence Library address",
+          "Another site answers this Evidence Community address",
         );
       },
     );
@@ -960,8 +960,8 @@ async function requireRuntimeRouteMode(
   throw new ReadinessClientError(
     "CONFIG_NOT_READY",
     mode === "marked"
-      ? "The Evidence Library traffic route is not active"
-      : "The Evidence Library native traffic route is not active",
+      ? "The Evidence Community traffic route is not active"
+      : "The Evidence Community native traffic route is not active",
   );
 }
 
@@ -972,7 +972,7 @@ export async function requireLibraryRuntimeRouteReady(
   requireRuntimeRouteInput(input);
   await requireRuntimeRouteMode(
     input.fetchImpl ?? fetch,
-    requireHttpsOrigin("Evidence Library URL", targetBaseUrl),
+    requireHttpsOrigin("Evidence Community URL", targetBaseUrl),
     input.runtimeCommit,
     input.revisionKey,
     "marked",
@@ -994,7 +994,7 @@ async function requirePage(
       if (!response.ok) {
         throw new ReadinessClientError(
           "PAGE_NOT_READY",
-          `The Evidence Library ${description} is not ready`,
+          `The Evidence Community ${description} is not ready`,
         );
       }
     },
@@ -1014,7 +1014,7 @@ const LIBRARY_SIGN_IN_PATH = "/api/admin/sign-in";
 async function requireAdminPage(fetchImpl: typeof fetch, url: URL) {
   const notReady = new ReadinessClientError(
     "PAGE_NOT_READY",
-    "The Evidence Library admin page is not ready",
+    "The Evidence Community admin page is not ready",
   );
   await fetchWithTimeout(
     fetchImpl,
@@ -1074,7 +1074,7 @@ async function requireRedirectToCanonical(
   if (!redirected) {
     throw new ReadinessClientError(
       "CONFIG_NOT_READY",
-      "The platform address does not send visitors to the library address yet",
+      "The platform address does not send visitors to the community address yet",
     );
   }
 }
@@ -1142,7 +1142,7 @@ export async function requireLibraryRuntimePublicReady(
   const fetchImpl = input.fetchImpl ?? fetch;
   const targetFetchImpl = input.targetFetchImpl ?? fetchImpl;
   const targetOrigin = requireHttpsOrigin(
-    "Evidence Library URL",
+    "Evidence Community URL",
     input.targetBaseUrl,
   );
   await requireActiveRevision(
@@ -1162,7 +1162,7 @@ export async function requireLibraryRuntimePublicReady(
     await requireRedirectToCanonical(
       fetchImpl,
       requireHttpsOrigin(
-        "Evidence Library platform URL",
+        "Evidence Community platform URL",
         input.platformBaseUrl,
       ),
       targetOrigin,
@@ -1183,7 +1183,7 @@ export async function handOffLibraryRuntime(
   await changeLibraryRuntimeRoute("activation", route);
   await requireRuntimeRouteMode(
     readiness.targetFetchImpl ?? readiness.fetchImpl ?? fetch,
-    requireHttpsOrigin("Evidence Library URL", readiness.targetBaseUrl),
+    requireHttpsOrigin("Evidence Community URL", readiness.targetBaseUrl),
     readiness.runtimeCommit,
     readiness.revisionKey,
     "marked",

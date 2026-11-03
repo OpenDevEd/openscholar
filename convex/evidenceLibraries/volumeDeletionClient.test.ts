@@ -57,7 +57,7 @@ describe("Evidence Library volume deleter client", () => {
     }
     expect(error).toMatchObject({
       code: "VOLUME_IN_USE",
-      message: "The library runtime is still releasing its data volume",
+      message: "The community runtime is still releasing its data volume",
     });
     expect(isRetryableVolumeDeletionError(error)).toBe(true);
   });

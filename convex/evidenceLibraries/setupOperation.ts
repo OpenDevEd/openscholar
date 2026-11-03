@@ -243,7 +243,7 @@ async function readLinkedSetup(
   if (!library || library.setupOperationId !== args.operationId) {
     throw createError(
       "NOT_FOUND",
-      "Evidence Library setup operation not found",
+      "Evidence Community setup operation not found",
     );
   }
   const setup = await readEvidenceLibrarySetupRecords(ctx, library);
@@ -255,7 +255,7 @@ async function readLinkedSetup(
   ) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library setup does not have one activated revision",
+      "Evidence Community setup does not have one activated revision",
     );
   }
   return setup;
@@ -280,13 +280,13 @@ export async function claimEvidenceLibrarySetupOperation(
   if (isSetupLeaseHeld(operation, now)) {
     throw createError(
       "CONFLICT",
-      "Evidence Library setup operation is already running",
+      "Evidence Community setup operation is already running",
     );
   }
   if (operation.status === "succeeded") {
     throw createError(
       "CONFLICT",
-      "Evidence Library setup operation is already complete",
+      "Evidence Community setup operation is already complete",
     );
   }
   const setupReceipts = operation.setupReceipts ?? {};
@@ -370,7 +370,7 @@ function requireCurrentSetupAttempt(
   ) {
     throw createError(
       "CONFLICT",
-      "Evidence Library setup attempt is no longer active",
+      "Evidence Community setup attempt is no longer active",
     );
   }
   return normalized;
@@ -395,7 +395,7 @@ export async function requireCurrentEvidenceLibrarySetupAttempt(
   if (args.expectedStage && setup.setupOperation.stage !== args.expectedStage) {
     throw createError(
       "CONFLICT",
-      `Evidence Library setup is running ${setup.setupOperation.stage}, not ${args.expectedStage}`,
+      `Evidence Community setup is running ${setup.setupOperation.stage}, not ${args.expectedStage}`,
     );
   }
   return setup;
@@ -416,7 +416,7 @@ export async function recordEvidenceLibrarySetupStep(
   if (operation.stage !== args.result.step) {
     throw createError(
       "CONFLICT",
-      `Evidence Library setup is running ${operation.stage}, not ${args.result.step}`,
+      `Evidence Community setup is running ${operation.stage}, not ${args.result.step}`,
     );
   }
   const now = Date.now();
@@ -456,7 +456,7 @@ export async function recordEvidenceLibrarySetupStep(
   if (receipt.revisionKey !== setup.revision.revisionKey) {
     throw createError(
       "CONFLICT",
-      "Evidence Library readiness reported a different configuration revision",
+      "Evidence Community readiness reported a different configuration revision",
     );
   }
   if (
@@ -465,7 +465,7 @@ export async function recordEvidenceLibrarySetupStep(
   ) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library setup resources are incomplete",
+      "Evidence Community setup resources are incomplete",
     );
   }
   const application = setupReceipts.application!;
@@ -483,7 +483,7 @@ export async function recordEvidenceLibrarySetupStep(
   ) {
     throw createError(
       "CONFLICT",
-      "Evidence Library readiness does not match its Coolify application and deployment",
+      "Evidence Community readiness does not match its Coolify application and deployment",
     );
   }
   if (
@@ -492,7 +492,7 @@ export async function recordEvidenceLibrarySetupStep(
   ) {
     throw createError(
       "CONFLICT",
-      "Evidence Library readiness does not match its storage buckets",
+      "Evidence Community readiness does not match its storage buckets",
     );
   }
   await ctx.db.patch(operation._id, {
@@ -558,7 +558,7 @@ export async function failEvidenceLibrarySetupOperation(
   if (operation.stage !== args.expectedStage) {
     throw createError(
       "CONFLICT",
-      `Evidence Library setup is running ${operation.stage}, not ${args.expectedStage}`,
+      `Evidence Community setup is running ${operation.stage}, not ${args.expectedStage}`,
     );
   }
   const error = sanitizeOperationError(args.error, args.expectedStage);

@@ -23,7 +23,7 @@
     "history": "Historia",
     "extraction": "Uchimbaji",
     "library": "Maktaba",
-    "evidenceLibraries": "Evidence Libraries",
+    "evidenceLibraries": "Evidence Communities",
     "screening": "Uchujaji",
     "settings": "Mipangilio",
     "save": "Hifadhi",
@@ -292,12 +292,12 @@
       "noMemberLimit": "Hakuna kikomo cha wanachama",
       "southernFeature1": "Kila kitu katika shirika la bure",
       "southernFeature2": "Huongezwa kwenye shirika lako baada ya kuwasiliana nasi",
-      "librariesName": "Evidence Libraries",
+      "librariesName": "Evidence Communities",
       "librariesDescription": "Huwashwa kwa shirika lako kwa ombi. Mpango na krediti zake hubaki vile vile.",
-      "librariesFeature1": "Evidence Libraries za umma",
+      "librariesFeature1": "Evidence Communities za umma",
       "librariesFeature2": "Unda na uhariri wasifu wa waandishi",
       "librariesOn": "Imewashwa kwa shirika lako",
-      "openLibraries": "Fungua Evidence Libraries"
+      "openLibraries": "Fungua Evidence Communities"
     },
     "cancelScheduledDowngrade": "Ghairi kushuka kwa mpango kulikopangwa",
     "scheduled": "Imepangwa",
@@ -325,7 +325,7 @@
     "loading": "Inapakia mipangilio ya uchapishaji…",
     "storedHint": "Acha tupu ili kuendelea kutumia kitambulisho kilichohifadhiwa",
     "saved": "Mipangilio ya uchapishaji imehifadhiwa",
-    "activateHint": "Washa usanidi ili kuutumia kwenye maktaba hii.",
+    "activateHint": "Washa usanidi ili kuutumia kwenye jumuiya hii.",
     "failure": "Vitambulisho havikuweza kuthibitishwa. Hakuna kilichohifadhiwa. Jaribu tena.",
     "zenodoRequired": "Inahitajika wakati Crossref imewashwa. Faili zinahifadhiwa zinapopatikana.",
     "zenodoHint": "Hifadhi faili na uunde DOI za Zenodo.",
@@ -348,8 +348,8 @@
     "depositorName": "Jina la mwasilishaji",
     "email": "Barua pepe ya mwasilishaji",
     "namespace": "Nafasi ya majina ya DOI",
-    "namespaceHint": "Chaguo-msingi ni jina la anwani ya maktaba hii.",
-    "libraryName": "Jina la maktaba",
+    "namespaceHint": "Chaguo-msingi ni jina la anwani ya jumuiya hii.",
+    "libraryName": "Jina la jumuiya",
     "checking": "Inakagua vitambulisho vya mtoa huduma…",
     "needsVerification": "Mabadiliko yanahitaji uthibitisho kabla hayajahifadhiwa.",
     "verified": "Imethibitishwa {date}",
@@ -359,7 +359,7 @@
   },
   "auth": {
     "organizationFeatureTitle": "Hairuhusiwi",
-    "organizationFeatureDescription": "Mpango wa nafasi kazi hii hauhusishi Evidence Libraries.",
+    "organizationFeatureDescription": "Mpango wa nafasi kazi hii hauhusishi Evidence Communities.",
     "backToSearch": "Rudi kwenye utafutaji",
     "loadingTitle": "Inapakia nafasi kazi",
     "loadingDescription": "Inaandaa nafasi yako kazi iliyothibitishwa.",
@@ -1608,14 +1608,14 @@
       "collection": "Mkusanyiko",
       "saved": "Makala zilizohifadhiwa",
       "screening": "Uchujaji",
-      "evidenceLibrary": "Evidence Library"
+      "evidenceLibrary": "Evidence Community"
     },
     "noSets": {
       "search": "Bado hakuna utafutaji uliohifadhiwa.",
       "collection": "Bado hakuna mikusanyiko.",
       "saved": "Bado hakuna makala zilizohifadhiwa.",
       "screening": "Bado hakuna uchujaji uliokamilika.",
-      "evidenceLibrary": "Bado hakuna Evidence Libraries."
+      "evidenceLibrary": "Bado hakuna Evidence Communities."
     },
     "papersToScreen": "Makala za kuchuja",
     "paperCount": "{count, plural, one {makala #} other {makala #}}",
@@ -1715,8 +1715,8 @@
     "apps": "programu",
     "revokeApp": "Ondoa ruhusa kwa {app}",
     "integrations": "Miunganisho",
-    "zoteroAbout": "Tumia maktaba na vikundi vyako katika mazungumzo na Evidence Libraries",
-    "zoteroKeeps": "Evidence Libraries zinaendelea kusawazisha vikundi walivyonavyo",
+    "zoteroAbout": "Tumia maktaba na vikundi vyako katika mazungumzo na Evidence Communities",
+    "zoteroKeeps": "Evidence Communities zinaendelea kusawazisha vikundi walivyonavyo",
     "connect": "Unganisha",
     "disconnect": "Tenganisha",
     "connectedTime": "Imeunganishwa {time}",
@@ -1726,12 +1726,12 @@
     "picker": {
       "placeholder": "Chagua taasisi",
       "search": "Tafuta taasisi",
-      "notSetUp": "Majina kutoka kwenye rekodi yataonekana baada ya maktaba kusanidiwa.",
+      "notSetUp": "Majina kutoka kwenye rekodi yataonekana baada ya jumuiya kusanidiwa.",
       "empty": "Bado hakuna majina ya taasisi kwenye rekodi.",
       "none": "Hakuna",
       "useTyped": "Tumia \"{name}\"",
       "title": "Chagua taasisi",
-      "description": "Majina yanatoka kwenye rekodi za maktaba hii.",
+      "description": "Majina yanatoka kwenye rekodi za jumuiya hii.",
       "colName": "Taasisi",
       "colRecords": "Rekodi",
       "noMatch": "Hakuna taasisi inayolingana.",
@@ -1740,7 +1740,7 @@
     }
   },
   "evidenceLibraryConfiguration": {
-    "untitled": "Maktaba isiyo na jina",
+    "untitled": "Jumuiya isiyo na jina",
     "unsaved": "Mabadiliko ambayo hayajahifadhiwa",
     "viewOnly": "Kuona pekee",
     "save": "Hifadhi",
@@ -1755,18 +1755,18 @@
     "fixFirst": "Rekebisha sehemu zilizoangaziwa kwanza",
     "fixFirstToast": "Rekebisha sehemu zilizoangaziwa",
     "fixFirstToastDescription": "Baadhi ya sehemu zinahitaji kuangaliwa kabla ya kuhifadhi.",
-    "activateDraftTitle": "Sanidi na uwashe maktaba hii?",
+    "activateDraftTitle": "Sanidi na uwashe jumuiya hii?",
     "activateDraftBody": "Hii inasanidi {name} na kuiweka mtandaoni kwenye {address}. Inachukua takriban dakika 2.",
     "activateDraftConfirm": "Anza usanidi",
     "activateTitle": "Washa toleo hili?",
     "activateBody": "Hii inachapisha toleo jipya. Inachukua takriban dakika 2.",
-    "activateBodySoftware": "Pia inasasisha maktaba hadi programu ya hivi karibuni ya Evidence Library, ambayo mipangilio hii inahitaji, kwa hivyo inaweza kuchukua dakika chache zaidi.",
+    "activateBodySoftware": "Pia inasasisha jumuiya hadi programu ya hivi karibuni ya Evidence Community, ambayo mipangilio hii inahitaji, kwa hivyo inaweza kuchukua dakika chache zaidi.",
     "activateBodyUnsaved": "Mabadiliko yako ambayo hayajahifadhiwa yatahifadhiwa kwanza.",
     "activateConfirm": "Washa",
-    "activationError": "Maktaba haikuweza kuwashwa. Jaribu tena.",
+    "activationError": "Jumuiya haikuweza kuwashwa. Jaribu tena.",
     "applying": "Inatumia mabadiliko yako",
     "operationFailed": "Uwashaji wa mwisho umeshindwa",
-    "backToLibraries": "Rudi kwenye maktaba",
+    "backToLibraries": "Rudi kwenye jumuiya",
     "backToTop": "Rudi juu",
     "rail": {
       "aria": "Sehemu za usanidi",
@@ -1814,15 +1814,15 @@
       "storage": "Faili",
       "application": "Programu",
       "deployment": "Inajenga",
-      "health_check": "Inakagua ukurasa wa maktaba",
+      "health_check": "Inakagua ukurasa wa jumuiya",
       "coolify": "Inajenga",
       "convex": "Inakamilisha",
       "completed": "Iko mtandaoni"
     },
     "problems": {
       "notificationSchedule": "Chagua siku, saa na saa za eneo za muhtasari zilizo sahihi.",
-      "nameMissing": "Ipe maktaba jina.",
-      "shortNameMissing": "Ipe maktaba jina fupi.",
+      "nameMissing": "Ipe jumuiya jina.",
+      "shortNameMissing": "Ipe jumuiya jina fupi.",
       "partnerName": "Kila mshirika wa ufadhili anahitaji jina.",
       "badColour": "Mojawapo ya rangi si sahihi.",
       "institutionName": "Kila taasisi inahitaji jina.",
@@ -1854,7 +1854,7 @@
       "consentVersion": "Toleo la idhini ni nambari kamili, 1 au zaidi.",
       "aiKey": "Ongeza ufunguo wako wa OpenRouter.",
       "aiModel": "Chagua modeli inayojibu maswali.",
-      "aiModelUnknown": "Modeli hiyo si moja ya programu yako ya maktaba inayotoa. Chagua nyingine.",
+      "aiModelUnknown": "Modeli hiyo si moja ya programu yako ya jumuiya inayotoa. Chagua nyingine.",
       "homeStepName": "Ipe kila hatua ya maandishi pekee jina.",
       "homeLimit": "Maandishi mengine ya ukurasa wa mwanzo ni marefu kuliko yanavyoruhusiwa, au orodha ina maingizo mengi mno. Yafupishe.",
       "tagFilters": "Kila kichujio cha lebo kinahitaji jina, na kila ingizo lihitaji lebo."
@@ -1887,18 +1887,18 @@
       "textFile": "Maandishi yaliyopakiwa"
     },
     "identity": {
-      "description": "Jina ambalo watu wataliona, anwani wanayotembelea, na jinsi maktaba inavyoonekana inaposhirikiwa.",
+      "description": "Jina ambalo watu wataliona, anwani wanayotembelea, na jinsi jumuiya inavyoonekana inaposhirikiwa.",
       "nameLabel": "Jina",
-      "nameError": "Weka jina la maktaba.",
+      "nameError": "Weka jina la jumuiya.",
       "shortNameLabel": "Jina fupi",
       "shortNameHint": "Hutumika kwenye majina ya faili za uhamishaji, mada za barua pepe, na tovuti inapobandikwa kama programu.",
-      "shortNameError": "Weka jina fupi la maktaba.",
+      "shortNameError": "Weka jina fupi la jumuiya.",
       "addressLabel": "Anwani ya umma",
       "addressHint": "Tumia sehemu ya Kikoa kuongeza anwani yako mwenyewe.",
       "copyAddress": "Nakili anwani",
       "copied": "Imenakiliwa",
       "taglineLabel": "Kauli mbiu",
-      "taglineHint": "Kichwa kilicho juu ya utafutaji wa maktaba. Acha tupu ili kuonyesha Tafuta.",
+      "taglineHint": "Kichwa kilicho juu ya utafutaji wa jumuiya. Acha tupu ili kuonyesha Tafuta.",
       "taglinePlaceholder": "Ushahidi kwa maamuzi bora",
       "descriptionLabel": "Maelezo",
       "descriptionHint": "Yanaonyeshwa kwenye ukurasa wa mwanzo na kwenye matokeo ya utafutaji.",
@@ -1910,9 +1910,9 @@
       "partnerName": "Jina la mshirika",
       "partnerPlaceholder": "Jina la mshirika",
       "shareImageLabel": "Picha ya kushiriki",
-      "shareImageHint": "Hutumika maktaba inaposhirikiwa kwenye mitandao ya kijamii. PNG, JPG au WEBP.",
+      "shareImageHint": "Hutumika jumuiya inaposhirikiwa kwenye mitandao ya kijamii. PNG, JPG au WEBP.",
       "showNameLabel": "Jina kando ya nembo",
-      "showNameHint": "Zima nembo ikishaandika jina la maktaba."
+      "showNameHint": "Zima nembo ikishaandika jina la jumuiya."
     },
     "theme": {
       "description": "Mpangilio, fonti, nembo, na rangi za tovuti ya umma.",
@@ -1935,7 +1935,7 @@
       "fontsHeading": "Fonti",
       "headingFontLabel": "Fonti ya vichwa",
       "bodyFontLabel": "Fonti ya maandishi",
-      "sampleHeading": "Maktaba yako",
+      "sampleHeading": "Jumuiya yako",
       "sampleBody": "Hivi ndivyo aya ya maandishi itakavyoonekana kwenye tovuti ya umma.",
       "logosHeading": "Nembo na ikoni ya kivinjari",
       "logoLightLabel": "Nembo ya hali angavu",
@@ -1983,19 +1983,19 @@
       "add": "Ongeza taasisi"
     },
     "danger": {
-      "description": "Futa maktaba hii. Kuwa mwangalifu hapa.",
-      "deleteTitle": "Futa maktaba",
+      "description": "Futa jumuiya hii. Kuwa mwangalifu hapa.",
+      "deleteTitle": "Futa jumuiya",
       "deleteHint": "Huondoa tovuti, anwani na mipangilio.",
-      "deleteButton": "Futa maktaba"
+      "deleteButton": "Futa jumuiya"
     },
     "deleteDialog": {
-      "title": "Futa maktaba hii?",
+      "title": "Futa jumuiya hii?",
       "body": "Hii inaondoa {name}, programu yake, faili zake, na anwani yake {address}. Huwezi kutengua hili.",
       "typeToConfirm": "Andika {name} ili uthibitishe",
-      "confirm": "Futa maktaba",
-      "startedTitle": "Inafuta maktaba",
+      "confirm": "Futa jumuiya",
+      "startedTitle": "Inafuta jumuiya",
       "startedDescription": "{name} inaondolewa. Inachukua sekunde chache.",
-      "error": "Maktaba haikuweza kufutwa. Maliza operesheni yoyote ya maktaba inayoendelea, kisha ujaribu tena."
+      "error": "Jumuiya haikuweza kufutwa. Maliza operesheni yoyote ya jumuiya inayoendelea, kisha ujaribu tena."
     },
     "links": {
       "labelLabel": "Lebo",
@@ -2010,8 +2010,8 @@
       "pageLabel": "Ukurasa",
       "pages": {
         "home": "Mwanzo",
-        "library": "Maktaba",
-        "digests": "Muhtasari wa maktaba",
+        "library": "Jumuiya",
+        "digests": "Muhtasari wa jumuiya",
         "map": "Ramani",
         "evidence": "Ramani ya ushahidi",
         "contact": "Mawasiliano",
@@ -2099,7 +2099,7 @@
       "disclaimer": "Kanusho",
       "disclaimerHint": "Linaonyeshwa kwa maandishi madogo chini ya kila ukurasa.",
       "attribution": "Mchango",
-      "attributionHint": "Mstari mmoja, kwa mfano nani anaendesha maktaba.",
+      "attributionHint": "Mstari mmoja, kwa mfano nani anaendesha jumuiya.",
       "poweredBy": "Inaendeshwa na OpenScholar",
       "poweredByHint": "Mstari mdogo unaounganisha tena na OpenScholar.",
       "poweredByLocked": "Inapatikana kwenye mipango ya kulipia."
@@ -2152,13 +2152,13 @@
       "pickedCount": "{count, plural, =0 {Hakuna kilichochaguliwa} one {# imechaguliwa} other {# zimechaguliwa}}"
     },
     "collections": {
-      "description": "Chagua mikusanyiko kutoka hifadhidata ya maktaba itakayoonekana kwenye tovuti, na mpangilio wake.",
+      "description": "Chagua mikusanyiko kutoka hifadhidata ya jumuiya itakayoonekana kwenye tovuti, na mpangilio wake.",
       "shownHeading": "Inaonyeshwa kwenye tovuti",
       "introHint": "Kila mkusanyiko unakuwa kundi la vichujio, huku mikusanyiko yake midogo ikiwa chaguo. Buruta kupanga mpangilio wao kwenye tovuti.",
       "loading": "Inapakia mikusanyiko…",
-      "failed": "Mikusanyiko ya maktaba haikuweza kupakiwa.",
-      "notSetUp": "Sanidi maktaba kwanza, kisha uunde mikusanyiko kwenye ukurasa wake wa msimamizi au usawazishe kutoka Zotero.",
-      "noneInDatabase": "Bado hakuna mikusanyiko. Iunde kwenye ukurasa wa msimamizi wa maktaba au uisawazishe kutoka Zotero.",
+      "failed": "Mikusanyiko ya jumuiya haikuweza kupakiwa.",
+      "notSetUp": "Sanidi jumuiya kwanza, kisha uunde mikusanyiko kwenye ukurasa wake wa msimamizi au usawazishe kutoka Zotero.",
+      "noneInDatabase": "Bado hakuna mikusanyiko. Iunde kwenye ukurasa wa msimamizi wa jumuiya au uisawazishe kutoka Zotero.",
       "empty": "Bado hakuna mikusanyiko inayoonyeshwa.",
       "records": "{count, plural, =1 {rekodi #} other {rekodi #}}",
       "titleLabel": "Jina kwenye tovuti",
@@ -2221,25 +2221,25 @@
         "failedAt": "Uletaji umeshindwa saa {time}",
         "lastSuccess": "Mafanikio ya mwisho {when}",
         "retry": "Jaribu kuleta tena",
-        "retryStarted": "Maktaba italeta chanzo hiki ndani ya sekunde chache.",
+        "retryStarted": "Jumuiya italeta chanzo hiki ndani ya sekunde chache.",
         "retryFailed": "Haikuweza kuombwa kuleta sasa. Jaribu tena baada ya muda mfupi.",
         "details": "Maelezo ya kiufundi",
         "afterActivate": "Uletaji unaanza baada ya kuwasha",
         "startsSoon": "Inaanza ndani ya dakika moja",
         "failure": {
           "access_denied": "{provider} imekataa ufunguo uliohifadhiwa. Uangalie kwenye Miunganisho kisha ujaribu tena.",
-          "owner_left": "Mtu aliyeongeza mkusanyiko huu ameondoka kwenye shirika, kwa hivyo maktaba imeondoa rekodi zake.",
+          "owner_left": "Mtu aliyeongeza mkusanyiko huu ameondoka kwenye shirika, kwa hivyo jumuiya imeondoa rekodi zake.",
           "not_found": "{provider} haipati tena chanzo hiki, au ufunguo uliohifadhiwa hauwezi kukiona.",
           "missing_key": "Hakuna ufunguo wa API uliohifadhiwa kwa chanzo hiki. Ongeza moja kwenye Miunganisho.",
           "invalid_query": "{provider} imekataa utafutaji. Hariri utafutaji, kisha uwashe tena.",
-          "too_large": "Chanzo hiki kina rekodi nyingi kuliko maktaba inavyoruhusu.",
+          "too_large": "Chanzo hiki kina rekodi nyingi kuliko jumuiya inavyoruhusu.",
           "rate_limited": "{provider} inazuia maombi. Uletaji utajaribu tena kila dakika.",
           "unavailable": "Haikuweza kufikia {provider}. Uletaji utajaribu tena kila dakika.",
           "interrupted": "Uletaji ulisimama kabla haujakamilika. Utaanza tena wenyewe.",
           "internal": "Uletaji ulikumbana na hitilafu isiyotarajiwa. Maelezo ya kiufundi yanaonyesha kilichotokea."
         }
       },
-      "description": "Rekodi za maktaba zinatoka wapi.",
+      "description": "Rekodi za jumuiya zinatoka wapi.",
       "accountHeading": "Akaunti ya Zotero",
       "notConnected": "Haijaunganishwa",
       "notConnectedHint": "Ingia mara moja. Vikundi vyako vitaonekana kwenye kichagua.",
@@ -2276,7 +2276,7 @@
       "listLabel": "Vyanzo vilivyounganishwa",
       "connections": "Miunganisho",
       "connectionsTitle": "Miunganisho ya vyanzo",
-      "connectionsDescription": "Simamia ruhusa za akaunti na mipangilio ya uletaji kwa maktaba hii.",
+      "connectionsDescription": "Simamia ruhusa za akaunti na mipangilio ya uletaji kwa jumuiya hii.",
       "providerTabs": "Mtoa huduma wa chanzo",
       "addSource": "Ongeza chanzo",
       "zoteroGroup": "Kikundi cha Zotero",
@@ -2292,7 +2292,7 @@
         "ownKey": "Ufunguo wangu wa API",
         "platformHint": "Imejumuishwa na OpenScholar. Masasisho huleta rekodi zilizobadilika pekee.",
         "keyLabel": "Ufunguo wa API wa OpenAlex",
-        "keyHint": "Tumia ufunguo wako wa API wa OpenAlex kwa maktaba hii.",
+        "keyHint": "Tumia ufunguo wako wa API wa OpenAlex kwa jumuiya hii.",
         "savedKey": "Ufunguo uliohifadhiwa {hint}",
         "keyPlaceholder": "Weka ufunguo wako wa API wa OpenAlex",
         "saveKey": "Hifadhi ufunguo wa API",
@@ -2315,14 +2315,14 @@
         "processPdfs": "Chakata PDF"
       },
       "removeTitle": "Ondoa kikundi hiki?",
-      "removeBody": "Rekodi ambazo tayari zimeletwa zitabaki kwenye maktaba. Mabadiliko mapya hayataletwa.",
+      "removeBody": "Rekodi ambazo tayari zimeletwa zitabaki kwenye jumuiya. Mabadiliko mapya hayataletwa.",
       "removeConfirm": "Ondoa",
       "health": {
         "connected": "Imeunganishwa",
         "paused": "Imesitishwa"
       },
       "tagRulesHeading": "Kanuni za lebo za Zotero",
-      "tagRulesIntro": "Lebo katika Zotero hubadilisha jinsi maktaba inavyoshughulikia rekodi. Lebo za kuficha pia hufanya kazi kwenye madokezo na viambatisho vyake.",
+      "tagRulesIntro": "Lebo katika Zotero hubadilisha jinsi jumuiya inavyoshughulikia rekodi. Lebo za kuficha pia hufanya kazi kwenye madokezo na viambatisho vyake.",
       "tagPlaceholder": "Ongeza lebo…",
       "tagRules": {
         "hidden": {
@@ -2386,7 +2386,7 @@
       "collectionConnectFailed": "Imeshindwa kuongeza mkusanyiko huu.",
       "collectionPicker": {
         "title": "Ongeza mikusanyiko",
-        "description": "Mikusanyiko yako ya OpenScholar. Maktaba inafuata iliyochaguliwa na kusasisha inapobadilika.",
+        "description": "Mikusanyiko yako ya OpenScholar. Jumuiya inafuata iliyochaguliwa na kusasisha inapobadilika.",
         "search": "Tafuta mikusanyiko…",
         "colCollection": "Mkusanyiko",
         "noCollections": "Bado huna mikusanyiko.",
@@ -2406,15 +2406,15 @@
           "passing": "Linataja hilo kwa kupita",
           "notAbout": "Si kuhusu hilo"
         },
-        "keep": "Weka kwenye maktaba: {grade}",
-        "inLibrary": "kwenye maktaba",
+        "keep": "Weka kwenye jumuiya: {grade}",
+        "inLibrary": "kwenye jumuiya",
         "keptOut": "zimetengwa",
         "reading": "Inasoma",
         "gradingAgain": "Inapanga madaraja upya, {done, number} kati ya {of, number}",
         "gradingNote": "Madaraja yaliyo chini ni ya mada ya sasa hadi kila rekodi ipangiwe daraja upya.",
         "gradedAgain": "rekodi zilizopangiwa daraja upya",
         "notGradedYet": "rekodi bado hazijapangiwa daraja",
-        "onLibraryKey": "kwa ufunguo wa maktaba",
+        "onLibraryKey": "kwa ufunguo wa jumuiya",
         "toFinish": "kukamilisha",
         "ofSample": "{changed, number} kati ya {size, number}",
         "changeInTrial": "badilisha daraja kwenye majaribio",
@@ -2424,16 +2424,16 @@
         "gradeThem": "Pangia madaraja",
         "currentSubject": "Mada ya sasa",
         "newSubject": "Mada mpya",
-        "startsOnActivate": "Upangaji wa madaraja unaanza ukishawasha mipangilio hii na maktaba ikachukua mada mpya.",
-        "refused": "Maktaba haikuanza kupanga madaraja: {reason}",
+        "startsOnActivate": "Upangaji wa madaraja unaanza ukishawasha mipangilio hii na jumuiya ikachukua mada mpya.",
+        "refused": "Jumuiya haikuanza kupanga madaraja: {reason}",
         "requestFailed": "Haikuweza kuombwa kupanga madaraja",
         "trialFailed": "Majaribio hayakukamilika",
-        "notRunning": "Maktaba bado haifanyi kazi.",
+        "notRunning": "Jumuiya bado haifanyi kazi.",
         "underACent": "chini ya 1¢",
         "underAMinute": "chini ya dakika moja",
         "aboutMinutes": "takriban dakika {count}",
         "aboutHours": "takriban saa {count}",
-        "methods": "Usomaji huo huo unampa kila rekodi aina yake ya utafiti, kama waandishi wake walikusanya matokeo wenyewe, eneo wanalosoma, na kama muhtasari wake unaripoti namba. Takriban $0.000075 kwa rekodi. Rekodi ambayo usomaji wake unashindwa huingia kwenye maktaba bila daraja na husomwa tena baadaye.",
+        "methods": "Usomaji huo huo unampa kila rekodi aina yake ya utafiti, kama waandishi wake walikusanya matokeo wenyewe, eneo wanalosoma, na kama muhtasari wake unaripoti namba. Takriban $0.000075 kwa rekodi. Rekodi ambayo usomaji wake unashindwa huingia kwenye jumuiya bila daraja na husomwa tena baadaye.",
         "gradedOnceActive": "Rekodi zitapangiwa madaraja mara mipangilio hii inapokuwa hai."
       }
     },
@@ -2476,7 +2476,7 @@
       "institutionLabel": "Lebo ya orodha kunjuzi",
       "institutionLabelHint": "Lebo ya orodha kunjuzi, kwa mfano Taasisi au Washirika.",
       "sourcesFilter": "Kichujio cha vyanzo",
-      "sourcesFilterHint": "Wasomaji wanapunguza matokeo hadi vyanzo vilivyovipata. Huonyeshwa mara maktaba ina vyanzo viwili au zaidi.",
+      "sourcesFilterHint": "Wasomaji wanapunguza matokeo hadi vyanzo vilivyovipata. Huonyeshwa mara jumuiya ina vyanzo viwili au zaidi.",
       "sourcesLabel": "Kichwa cha vyanzo",
       "sourcesLabelHint": "Wasomaji wanachokiona juu ya vyanzo, kwa mfano Maeneo ya mada.",
       "sourcesLabelError": "Taja kichwa cha vyanzo.",
@@ -2517,16 +2517,16 @@
         "addTag": "Ongeza lebo",
         "removeTag": "Ondoa lebo",
         "pickerTitle": "Ongeza lebo kwenye {name}",
-        "pickerDescription": "Lebo za maktaba, zinazotumika zaidi kwanza. Andika lebo ambayo rekodi yoyote bado haina, au chukulia unachoandika kama kiambishi.",
+        "pickerDescription": "Lebo za jumuiya, zinazotumika zaidi kwanza. Andika lebo ambayo rekodi yoyote bado haina, au chukulia unachoandika kama kiambishi.",
         "pickerSearch": "Tafuta lebo",
         "colTag": "Lebo",
         "colRecords": "Rekodi",
         "used": "Imeongezwa",
         "loading": "Inasoma lebo",
-        "failed": "Lebo za maktaba hazikuweza kusomwa",
-        "noTags": "Maktaba bado haina lebo",
+        "failed": "Lebo za jumuiya hazikuweza kusomwa",
+        "noTags": "Jumuiya bado haina lebo",
         "noMatch": "Hakuna lebo inayolingana",
-        "notSetUp": "Lebo zitaonekana maktaba ikishasanidiwa",
+        "notSetUp": "Lebo zitaonekana jumuiya ikishasanidiwa",
         "useTyped": "Ongeza \"{tag}\"",
         "usePrefix": "Kila lebo inayoanza na \"{prefix}\"",
         "labelFor": "Wasomaji wanachokiona kwa {tag}",
@@ -2590,12 +2590,12 @@
       "hints": {
         "themeSwitcher": "Waruhusu watu wachague hali angavu au ya giza.",
         "languageSwitcher": "Waruhusu watu wabadilishe lugha ya tovuti.",
-        "collections": "Onyesha mikusanyiko kwenye maktaba.",
+        "collections": "Onyesha mikusanyiko kwenye jumuiya.",
         "collectionNotes": "Onyesha maelezo ya mkusanyiko wakati mkusanyiko huo umechaguliwa.",
         "countryFocus": "Onyesha vichujio vya nchi, nchi kwenye machapisho, na ramani ya nchi.",
         "authorFilter": "Waruhusu watu wachuje kwa mwandishi.",
         "yearsDropdown": "Onyesha kichagua mwaka kwenye upau wa utafutaji.",
-        "downloads": "Toa upakuaji wa nukuu kwa machapisho na maktaba nzima.",
+        "downloads": "Toa upakuaji wa nukuu kwa machapisho na jumuiya nzima.",
         "atomFeed": "Onyesha kiungo cha mlisho wa Atom.",
         "readerAccounts": "Waruhusu wasomaji waingie kwa OpenScholar ili kuweka alama kwenye rekodi na kuhifadhi mikusanyiko."
       },
@@ -2657,20 +2657,20 @@
       "consentVersionHint": "Liongeze unapobadilisha maandishi ya vidakuzi ili kila mgeni aulizwe tena.",
       "consentVersionError": "Tumia nambari kamili, 1 au zaidi."
     },
-    "updatingSoftware": "Inasasisha programu ya Evidence Library hadi {rev}",
+    "updatingSoftware": "Inasasisha programu ya Evidence Community hadi {rev}",
     "operationFlow": {
       "saving": "Inahifadhi mabadiliko",
       "queued": "Inasubiri kuanza",
       "assembling": "Inaandaa toleo",
       "validating": "Inakagua mipangilio",
-      "publishing": "Inajenga maktaba",
+      "publishing": "Inajenga jumuiya",
       "activating": "Inaingia mtandaoni",
       "database": "Inaunda hifadhidata",
       "storage": "Inaandaa faili",
-      "application": "Inaunda maktaba",
-      "deployment": "Inajenga maktaba",
+      "application": "Inaunda jumuiya",
+      "deployment": "Inajenga jumuiya",
       "health_check": "Inaingia mtandaoni",
-      "coolify": "Inaondoa maktaba",
+      "coolify": "Inaondoa jumuiya",
       "convex": "Inakamilisha kuondoa",
       "completed": "Iko mtandaoni"
     },
@@ -2679,7 +2679,7 @@
       "checking": "Inakagua masasisho…",
       "checkAgain": "Kagua tena",
       "checkError": "Masasisho hayakuweza kukaguliwa. Jaribu tena.",
-      "notRunning": "Inapatikana maktaba ikishakuwa mtandaoni.",
+      "notRunning": "Inapatikana jumuiya ikishakuwa mtandaoni.",
       "updateAvailable": "Sasisho linapatikana",
       "upToDate": "Imesasishwa",
       "runningLabel": "Inayoendesha",
@@ -2701,8 +2701,8 @@
         "reliability": "Marekebisho"
       },
       "update": "Sasisha",
-      "updateTitle": "Sasisha maktaba hii?",
-      "updateBody": "Maktaba inajengwa upya kwenye programu ya hivi karibuni ya Evidence Library. Rekodi, mipangilio na anwani zinabaki zilezile. Inachukua takriban dakika moja.",
+      "updateTitle": "Sasisha jumuiya hii?",
+      "updateBody": "Jumuiya inajengwa upya kwenye programu ya hivi karibuni ya Evidence Community. Rekodi, mipangilio na anwani zinabaki zilezile. Inachukua takriban dakika moja.",
       "updateConfirm": "Sasisha sasa",
       "updateError": "Sasisho haliwezi kuanza. Jaribu tena.",
       "historyHeading": "Matoleo yaliyochapishwa",
@@ -2723,18 +2723,18 @@
       "addressSilent": "Hakuna kinachojibu kwenye {host}.",
       "addressMove": "Hamia kwenye anwani mpya",
       "addressBack": "Rudi kwenye anwani ya jukwaa",
-      "addressMoveTitle": "Hamisha maktaba hii kwenda anwani mpya?",
-      "addressMoveBody": "Maktaba inachukua anwani inayofuata iliyo wazi. Rekodi na mipangilio vinabaki vilevile. Yeyote anayetumia anwani ya zamani hataifikia.",
+      "addressMoveTitle": "Hamisha jumuiya hii kwenda anwani mpya?",
+      "addressMoveBody": "Jumuiya inachukua anwani inayofuata iliyo wazi. Rekodi na mipangilio vinabaki vilevile. Yeyote anayetumia anwani ya zamani hataifikia.",
       "addressMoveConfirm": "Hamia sasa",
       "addressMoveStarted": "Uhamishaji umeanza",
       "addressMoveStartedDescription": "Inahamia {address}…",
-      "addressMoveError": "Maktaba haikuweza kuhamishwa. Jaribu tena.",
+      "addressMoveError": "Jumuiya haikuweza kuhamishwa. Jaribu tena.",
       "restoreError": "Toleo halikuweza kurudishwa. Jaribu tena."
     },
     "ai": {
-      "description": "Waruhusu wageni waulize maswali kuhusu ushahidi ulio kwenye maktaba yako.",
+      "description": "Waruhusu wageni waulize maswali kuhusu ushahidi ulio kwenye jumuiya yako.",
       "answersLabel": "Majibu ya AI",
-      "answersHint": "Huongeza ujibuji wa maswali kwenye maktaba. Unamlipa OpenRouter kwa kile kinachotumika.",
+      "answersHint": "Huongeza ujibuji wa maswali kwenye jumuiya. Unamlipa OpenRouter kwa kile kinachotumika.",
       "keyLabel": "Ufunguo wa OpenRouter",
       "keyHint": "Tengeneza moja kwenye openrouter.ai. Huhifadhiwa kwa usimbaji fiche na haionyeshwi tena.",
       "keyStored": "Ufunguo umehifadhiwa",
@@ -2755,7 +2755,7 @@
       "modelError": "Chagua modeli kutoka orodha ya OpenRouter iliyosawazishwa."
     },
     "domain": {
-      "description": "Tumia anwani yako ya wavuti kwa maktaba.",
+      "description": "Tumia anwani yako ya wavuti kwa jumuiya.",
       "platformLabel": "Anwani ya jukwaa",
       "customLabel": "Kikoa maalum",
       "customDomainsLabel": "Vikoa maalum",
@@ -2785,7 +2785,7 @@
         "wrong-target": "Kikoa hicho kinaelekeza sehemu nyingine. Ikiwa kiko nyuma ya proksi nyingine, zima proksi kwa rekodi hii.",
         "token-mismatch": "Rekodi ya umiliki ina thamani tofauti",
         "host-taken": "Tovuti nyingine tayari inajibu kwenye kikoa hicho",
-        "not-served": "Maktaba bado haifanyi kazi",
+        "not-served": "Jumuiya bado haifanyi kazi",
         "caa-blocked": "Kikoa hiki kinaruhusu watoa vyeti fulani pekee. Ongeza rekodi ya CAA inayoruhusu letsencrypt.org.",
         "tls-timeout": "TLS haikuweza kuwashwa. Kagua kikoa tena."
       },
@@ -2793,7 +2793,7 @@
         "invalid": "Hiki hakionekani kama kikoa",
         "platform-host": "Anwani hiyo tayari ni ya jukwaa",
         "host-taken": "Kikoa hicho tayari kinatumiwa na tovuti nyingine",
-        "too-many": "Maktaba hii tayari ina vikoa vingi kadiri inavyoweza kubeba",
+        "too-many": "Jumuiya hii tayari ina vikoa vingi kadiri inavyoweza kubeba",
         "check-failed": "Hatukuweza kukagua kikoa. Jaribu tena."
       },
       "tlsActive": "TLS: Inatumika",
@@ -2809,12 +2809,12 @@
       "rateLimited": "DNS imekaguliwa mara nyingi mno. Jaribu tena baada ya dakika moja.",
       "removing": "Inaondoa",
       "checkFailed": "DNS haikuweza kukaguliwa bado. Huenda bado inasasishwa. Jaribu tena punde.",
-      "deploying": "Inatumia mabadiliko kwenye maktaba",
+      "deploying": "Inatumia mabadiliko kwenye jumuiya",
       "checked": "DNS imekaguliwa",
       "recordsNeedAttention": "Baadhi ya rekodi za DNS bado zinahitaji kuangaliwa.",
       "removeAgain": "Maliza kuondoa",
-      "confirmOffTitle": "Rudisha maktaba kwenye anwani yake ya jukwaa?",
-      "confirmOffBody": "Maktaba itajibu kwenye {address} tena. Kila aliyeingia atatolewa kwenye akaunti yake, na wageni wa kikoa maalum watafika kwenye anwani ya jukwaa.",
+      "confirmOffTitle": "Rudisha jumuiya kwenye anwani yake ya jukwaa?",
+      "confirmOffBody": "Jumuiya itajibu kwenye {address} tena. Kila aliyeingia atatolewa kwenye akaunti yake, na wageni wa kikoa maalum watafika kwenye anwani ya jukwaa.",
       "confirmAction": "Badilisha anwani"
     },
     "retry": "Jaribu tena",
@@ -2849,26 +2849,26 @@
     "publicationsView": "Vyanzo vya machapisho",
     "noOpenAlex": "Hakuna machapisho ya OpenAlex yaliyopatikana.",
     "progress": "{loaded, number} kati ya {total, number}",
-    "searchLibrary": "Tafuta machapisho ya maktaba",
+    "searchLibrary": "Tafuta machapisho ya jumuiya",
     "searchPlaceholder": "Tafuta machapisho",
     "updating": "Vikundi vya machapisho vinasasishwa. Onyesha upya punde.",
-    "unavailable": "Baadhi ya maeneo ya maktaba hayapatikani. Maeneo yanayopatikana yanaonyeshwa.",
-    "loadingLibrary": "Inapakia machapisho ya maktaba",
+    "unavailable": "Baadhi ya maeneo ya jumuiya hayapatikani. Maeneo yanayopatikana yanaonyeshwa.",
+    "loadingLibrary": "Inapakia machapisho ya jumuiya",
     "noPageMatches": "Hakuna yanayolingana kwenye ukurasa huu. Endelea kupakia machapisho.",
     "noLibraryMatches": "Hakuna machapisho yanayolingana na utafutaji wako.",
-    "noLibraryRecords": "Bado hakuna rekodi zilizochapishwa za Evidence Library zinazotumia mada hii."
+    "noLibraryRecords": "Bado hakuna rekodi zilizochapishwa za Evidence Community zinazotumia mada hii."
   },
   "evidenceLibraries": {
     "list": {
-      "title": "Evidence Libraries",
+      "title": "Evidence Communities",
       "openAdmin": "Fungua msimamizi",
       "retry": "Jaribu tena",
-      "deleting": "Inafuta maktaba",
+      "deleting": "Inafuta jumuiya",
       "deleteFailed": {
-        "runtime": "Hatukuweza kuondoa tovuti inayoendesha ya maktaba hii, kwa hivyo kufutwa hakujakamilika. Jaribu tena, au wasiliana na usaidizi.",
-        "files": "Hatukuweza kuondoa faili za maktaba hii, kwa hivyo kufutwa hakujakamilika. Jaribu tena, au wasiliana na usaidizi.",
-        "database": "Hatukuweza kuondoa hifadhidata ya maktaba hii, kwa hivyo kufutwa hakujakamilika. Jaribu tena, au wasiliana na usaidizi.",
-        "records": "Maktaba hii haijamaliza kufutwa. Jaribu tena, au wasiliana na usaidizi."
+        "runtime": "Hatukuweza kuondoa tovuti inayoendesha ya jumuiya hii, kwa hivyo kufutwa hakujakamilika. Jaribu tena, au wasiliana na usaidizi.",
+        "files": "Hatukuweza kuondoa faili za jumuiya hii, kwa hivyo kufutwa hakujakamilika. Jaribu tena, au wasiliana na usaidizi.",
+        "database": "Hatukuweza kuondoa hifadhidata ya jumuiya hii, kwa hivyo kufutwa hakujakamilika. Jaribu tena, au wasiliana na usaidizi.",
+        "records": "Jumuiya hii haijamaliza kufutwa. Jaribu tena, au wasiliana na usaidizi."
       }
     },
     "status": {
@@ -2890,16 +2890,16 @@
       "completed": "Mtandaoni"
     },
     "new": {
-      "title": "Evidence Library mpya",
-      "backToLibraries": "Rudi kwenye maktaba",
+      "title": "Evidence Community mpya",
+      "backToLibraries": "Rudi kwenye jumuiya",
       "ownerTitle": "Mmiliki",
       "ownerOnlyTitle": "Wamiliki pekee",
-      "ownerOnlyDescription": "Mmiliki wa shirika pekee ndiye anayeweza kuunda maktaba.",
-      "libraryTitle": "Maktaba",
+      "ownerOnlyDescription": "Mmiliki wa shirika pekee ndiye anayeweza kuunda jumuiya.",
+      "libraryTitle": "Jumuiya",
       "libraryDescription": "Jina linaonekana kwenye tovuti ya umma na huweka anwani ya umma.",
       "nameLabel": "Jina",
       "namePlaceholder": "Mfano: Climate Education Evidence",
-      "nameError": "Weka jina la maktaba.",
+      "nameError": "Weka jina la jumuiya.",
       "shortNameLabel": "Jina fupi",
       "shortNameHint": "Huwekwa kutoka kwenye jina. Unaweza kulibadilisha baadaye chini ya Sanidi.",
       "addressLabel": "Anwani ya umma",
@@ -2909,7 +2909,7 @@
       "reserve": "Hifadhi anwani",
       "checking": "Inahifadhi…",
       "reserved": "Imehifadhiwa",
-      "nameTaken": "Tayari una maktaba yenye jina {name}.",
+      "nameTaken": "Tayari una jumuiya yenye jina {name}.",
       "openExisting": "Ifungue",
       "checkFailed": "Anwani haikuweza kukaguliwa. Jaribu tena.",
       "addressTaken": "Mtu fulani ameihifadhi anwani hii sasa hivi. Kagua tena.",
@@ -2917,7 +2917,7 @@
       "tryAgain": "Jaribu tena"
     },
     "setup": {
-      "backToLibraries": "Rudi kwenye maktaba",
+      "backToLibraries": "Rudi kwenye jumuiya",
       "configure": "Sanidi",
       "openAdmin": "Fungua msimamizi",
       "groupTitle": "Usanidi",
@@ -2925,7 +2925,7 @@
       "retryingTitle": "Inajaribu tena",
       "retryingDescription": "Inaanza upya kutoka hatua iliyosimama.",
       "retryError": "Usanidi haukuweza kuanzishwa upya. Jaribu tena.",
-      "draftHint": "Sanidi na uwashe maktaba hii kutoka ukurasa wake wa usanidi.",
+      "draftHint": "Sanidi na uwashe jumuiya hii kutoka ukurasa wake wa usanidi.",
       "stoppedHint": "Jaribu tena hurudia hatua hii na hatua zinazofuata.",
       "deploymentError": "Ujenzi haujakamilika.",
       "steps": {
@@ -2943,27 +2943,27 @@
         },
         "application": {
           "name": "Programu",
-          "waiting": "Inaunda programu ya maktaba.",
-          "running": "Inaunda programu ya maktaba…",
-          "done": "Programu ya maktaba imeundwa."
+          "waiting": "Inaunda programu ya jumuiya.",
+          "running": "Inaunda programu ya jumuiya…",
+          "done": "Programu ya jumuiya imeundwa."
         },
         "deployment": {
           "name": "Ujenzi",
-          "waiting": "Inajenga maktaba na kuiweka mtandaoni.",
-          "running": "Inajenga maktaba na kuiweka mtandaoni…",
-          "done": "Maktaba imejengwa na kuwekwa mtandaoni."
+          "waiting": "Inajenga jumuiya na kuiweka mtandaoni.",
+          "running": "Inajenga jumuiya na kuiweka mtandaoni…",
+          "done": "Jumuiya imejengwa na kuwekwa mtandaoni."
         },
         "readiness": {
           "name": "Utayari",
-          "waiting": "Inakagua kama ukurasa wa maktaba unafunguka.",
-          "running": "Inakagua kama ukurasa wa maktaba unafunguka…",
-          "done": "Ukurasa wa maktaba umekaguliwa na unafunguka."
+          "waiting": "Inakagua kama ukurasa wa jumuiya unafunguka.",
+          "running": "Inakagua kama ukurasa wa jumuiya unafunguka…",
+          "done": "Ukurasa wa jumuiya umekaguliwa na unafunguka."
         },
         "active": {
           "name": "Mtandaoni",
-          "waiting": "Maktaba inafunguka kwenye anwani yake ya umma.",
-          "running": "Inafungua maktaba kwenye anwani yake ya umma…",
-          "done": "Maktaba iko mtandaoni kwenye anwani yake ya umma."
+          "waiting": "Jumuiya inafunguka kwenye anwani yake ya umma.",
+          "running": "Inafungua jumuiya kwenye anwani yake ya umma…",
+          "done": "Jumuiya iko mtandaoni kwenye anwani yake ya umma."
         }
       },
       "live": {
@@ -2972,17 +2972,17 @@
         "copyAddress": "Nakili anwani",
         "copiedShort": "Imenakiliwa",
         "copied": "Anwani imenakiliwa",
-        "openLibrary": "Fungua maktaba",
+        "openLibrary": "Fungua jumuiya",
         "settingUp": "Inasanidi {name}",
         "stopped": "Usanidi umesimamishwa",
         "copyFailed": "Anwani haikuweza kunakiliwa"
       },
-      "deletingHint": "Maktaba hii inafutwa."
+      "deletingHint": "Jumuiya hii inafutwa."
     },
     "notFound": {
-      "title": "Maktaba haijapatikana",
+      "title": "Jumuiya haijapatikana",
       "description": "Huenda imefutwa, au ni ya shirika lingine.",
-      "back": "Rudi kwenye maktaba"
+      "back": "Rudi kwenye jumuiya"
     }
   },
   "settingsShell": {
@@ -2999,7 +2999,7 @@
       "plans": "Mipango",
       "users": "Watumiaji",
       "aiModels": "Modeli za AI",
-      "evidenceLibraries": "Evidence Libraries"
+      "evidenceLibraries": "Evidence Communities"
     },
     "sharedDev": "Dev ya pamoja",
     "production": "Uzalishaji",
@@ -3100,16 +3100,16 @@
       "creditsOrKey": "Krediti, au ufunguo wa mtumiaji"
     },
     "evidenceLibraries": {
-      "title": "Ufikiaji wa Evidence Library",
+      "title": "Ufikiaji wa Evidence Community",
       "organizations": "mashirika",
       "search": "Tafuta mashirika",
       "show": "Onyesha",
       "all": "Yote",
       "on": "Imewashwa",
       "off": "Imezimwa",
-      "libraries": "{count, plural, one {Maktaba #} other {Maktaba #}}",
-      "switchLabel": "Evidence Libraries za {name}",
-      "moveFirst": "Hamisha au futa maktaba zake kwanza",
+      "libraries": "{count, plural, one {Jumuiya #} other {Jumuiya #}}",
+      "switchLabel": "Evidence Communities za {name}",
+      "moveFirst": "Hamisha au futa jumuiya zake kwanza",
       "noMatches": "Hakuna mashirika yanayolingana"
     }
   },
@@ -3220,7 +3220,7 @@
     "views": {
       "results": "Matokeo ya utafutaji",
       "extractionJob": "Kazi ya uchimbaji",
-      "librarySettings": "Mipangilio ya maktaba",
+      "librarySettings": "Mipangilio ya jumuiya",
       "authors": "Waandishi",
       "page": "ukurasa huu"
     },
@@ -3283,7 +3283,7 @@
       "holds": "Inashikilia hadi {credits, plural, one {krediti #} other {krediti #}}",
       "runs": "Inaendesha",
       "asks": "Inauliza",
-      "publishing": "Kuchapisha maktaba",
+      "publishing": "Kuchapisha jumuiya",
       "publishingDetail": "Wageni wanaiona mara moja",
       "moreJobs": "Kazi zaidi"
     },
@@ -3305,7 +3305,7 @@
     "chat": "Mazungumzo",
     "remove": "Ondoa",
     "organization": "Shirika",
-    "shareNote": "Wanaona mazungumzo haya. Utafutaji, mikusanyiko na maktaba zilizomo zinabaki na ufikiaji wake. Wanaoweza kuzungumza hutuma ujumbe kama wao wenyewe, na msaidizi hufanya kazi kwa ufikiaji na krediti zao wenyewe.",
+    "shareNote": "Wanaona mazungumzo haya. Utafutaji, mikusanyiko na jumuiya zilizomo zinabaki na ufikiaji wake. Wanaoweza kuzungumza hutuma ujumbe kama wao wenyewe, na msaidizi hufanya kazi kwa ufikiaji na krediti zao wenyewe.",
     "shareFailed": "Haikuweza kubadilisha nani mazungumzo haya yanashirikiwa naye",
     "steps": {
       "undo": "Tendua",
@@ -3937,121 +3937,121 @@
         "ask": "Orodhesha modeli za mazungumzo"
       },
       "libraries": {
-        "doing": "Inasoma Evidence Libraries zako",
-        "did": "Imesoma Evidence Libraries zako",
-        "where": "Evidence Libraries",
-        "ask": "Soma Evidence Libraries zako"
+        "doing": "Inasoma Evidence Communities zako",
+        "did": "Imesoma Evidence Communities zako",
+        "where": "Evidence Communities",
+        "ask": "Soma Evidence Communities zako"
       },
       "readerLibraries": {
-        "doing": "Inasoma Evidence Libraries unazozisoma",
-        "did": "Imesoma Evidence Libraries unazozisoma",
-        "where": "Evidence Libraries",
-        "ask": "Soma Evidence Libraries unazozisoma"
+        "doing": "Inasoma Evidence Communities unazozisoma",
+        "did": "Imesoma Evidence Communities unazozisoma",
+        "where": "Evidence Communities",
+        "ask": "Soma Evidence Communities unazozisoma"
       },
       "readerSources": {
-        "doing": "Inasoma kile ambacho Evidence Libraries zako zinakushikilia",
-        "did": "Imesoma kile ambacho Evidence Libraries zako zinakushikilia",
-        "where": "Evidence Libraries",
-        "ask": "Soma kile ambacho Evidence Libraries zako zinakushikilia"
+        "doing": "Inasoma kile ambacho Evidence Communities zako zinakushikilia",
+        "did": "Imesoma kile ambacho Evidence Communities zako zinakushikilia",
+        "where": "Evidence Communities",
+        "ask": "Soma kile ambacho Evidence Communities zako zinakushikilia"
       },
       "readerAddress": {
-        "doing": "Inasoma anwani ya Evidence Library",
-        "did": "Imesoma anwani ya Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Soma anwani ya Evidence Library"
+        "doing": "Inasoma anwani ya Evidence Community",
+        "did": "Imesoma anwani ya Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Soma anwani ya Evidence Community"
       },
       "readerSource": {
-        "doing": "Inasoma chanzo cha Evidence Library",
-        "did": "Imesoma chanzo cha Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Soma chanzo cha Evidence Library"
+        "doing": "Inasoma chanzo cha Evidence Community",
+        "did": "Imesoma chanzo cha Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Soma chanzo cha Evidence Community"
       },
       "readerRecords": {
-        "doing": "Inasoma rekodi za Evidence Library",
-        "did": "Imesoma rekodi za Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Soma rekodi za Evidence Library"
+        "doing": "Inasoma rekodi za Evidence Community",
+        "did": "Imesoma rekodi za Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Soma rekodi za Evidence Community"
       },
       "newLibraryCollection": {
-        "doing": "Inatengeneza mkusanyiko kwenye Evidence Library",
-        "did": "Imetengeneza mkusanyiko kwenye Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Tengeneza mkusanyiko kwenye Evidence Library",
-        "askMany": "Tengeneza {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Library",
-        "doingMany": "Inatengeneza {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Library",
-        "didMany": "Imetengeneza {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Library"
+        "doing": "Inatengeneza mkusanyiko kwenye Evidence Community",
+        "did": "Imetengeneza mkusanyiko kwenye Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Tengeneza mkusanyiko kwenye Evidence Community",
+        "askMany": "Tengeneza {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Community",
+        "doingMany": "Inatengeneza {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Community",
+        "didMany": "Imetengeneza {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Community"
       },
       "deleteLibraryCollection": {
-        "doing": "Inafuta mkusanyiko kwenye Evidence Library",
-        "did": "Imefuta mkusanyiko kwenye Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Futa mkusanyiko kwenye Evidence Library",
-        "askMany": "Futa {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Library",
-        "doingMany": "Inafuta {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Library",
-        "didMany": "Imefuta {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Library"
+        "doing": "Inafuta mkusanyiko kwenye Evidence Community",
+        "did": "Imefuta mkusanyiko kwenye Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Futa mkusanyiko kwenye Evidence Community",
+        "askMany": "Futa {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Community",
+        "doingMany": "Inafuta {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Community",
+        "didMany": "Imefuta {count, plural, one {mkusanyiko #} other {mikusanyiko #}} kwenye Evidence Community"
       },
       "changeLibraryRecords": {
-        "doing": "Inabadilisha mkusanyiko wa Evidence Library",
-        "did": "Imebadilisha mkusanyiko wa Evidence Library",
-        "where": "Evidence Libraries",
-        "ask": "Badilisha mkusanyiko wa Evidence Library",
-        "askMany": "Badilisha {count, plural, one {mkusanyiko # wa Evidence Library} other {mikusanyiko # ya Evidence Library}}",
-        "doingMany": "Inabadilisha {count, plural, one {mkusanyiko # wa Evidence Library} other {mikusanyiko # ya Evidence Library}}",
-        "didMany": "Imebadilisha {count, plural, one {mkusanyiko # wa Evidence Library} other {mikusanyiko # ya Evidence Library}}"
+        "doing": "Inabadilisha mkusanyiko wa Evidence Community",
+        "did": "Imebadilisha mkusanyiko wa Evidence Community",
+        "where": "Evidence Communities",
+        "ask": "Badilisha mkusanyiko wa Evidence Community",
+        "askMany": "Badilisha {count, plural, one {mkusanyiko # wa Evidence Community} other {mikusanyiko # ya Evidence Community}}",
+        "doingMany": "Inabadilisha {count, plural, one {mkusanyiko # wa Evidence Community} other {mikusanyiko # ya Evidence Community}}",
+        "didMany": "Imebadilisha {count, plural, one {mkusanyiko # wa Evidence Community} other {mikusanyiko # ya Evidence Community}}"
       },
       "readHandoff": {
-        "doing": "Inafungua kile Evidence Library ilichokabidhi",
-        "did": "Imefungua kile Evidence Library ilichokabidhi",
-        "where": "Evidence Libraries",
-        "ask": "Fungua kile Evidence Library ilichokabidhi"
+        "doing": "Inafungua kile Evidence Community ilichokabidhi",
+        "did": "Imefungua kile Evidence Community ilichokabidhi",
+        "where": "Evidence Communities",
+        "ask": "Fungua kile Evidence Community ilichokabidhi"
       },
       "readLibraryDraft": {
-        "doing": "Inasoma mipangilio ya maktaba",
-        "did": "Imesoma mipangilio ya maktaba",
-        "where": "Evidence Library",
-        "ask": "Soma mipangilio ya maktaba",
-        "askMany": "Soma mipangilio ya {count, plural, one {maktaba #} other {maktaba #}}",
-        "doingMany": "Inasoma mipangilio ya {count, plural, one {maktaba #} other {maktaba #}}",
-        "didMany": "Imesoma mipangilio ya {count, plural, one {maktaba #} other {maktaba #}}"
+        "doing": "Inasoma mipangilio ya jumuiya",
+        "did": "Imesoma mipangilio ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Soma mipangilio ya jumuiya",
+        "askMany": "Soma mipangilio ya {count, plural, one {jumuiya #} other {jumuiya #}}",
+        "doingMany": "Inasoma mipangilio ya {count, plural, one {jumuiya #} other {jumuiya #}}",
+        "didMany": "Imesoma mipangilio ya {count, plural, one {jumuiya #} other {jumuiya #}}"
       },
       "readLibraryRevision": {
-        "doing": "Inasoma toleo la mipangilio ya maktaba",
-        "did": "Imesoma toleo la mipangilio ya maktaba",
-        "where": "Evidence Library",
-        "ask": "Soma toleo la mipangilio ya maktaba"
+        "doing": "Inasoma toleo la mipangilio ya jumuiya",
+        "did": "Imesoma toleo la mipangilio ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Soma toleo la mipangilio ya jumuiya"
       },
       "readLibraryTeam": {
-        "doing": "Inasoma timu ya maktaba",
-        "did": "Imesoma timu ya maktaba",
-        "where": "Evidence Library",
-        "ask": "Soma timu ya maktaba",
-        "askMany": "Soma timu za {count, plural, one {maktaba #} other {maktaba #}}",
-        "doingMany": "Inasoma timu za {count, plural, one {maktaba #} other {maktaba #}}",
-        "didMany": "Imesoma timu za {count, plural, one {maktaba #} other {maktaba #}}"
+        "doing": "Inasoma timu ya jumuiya",
+        "did": "Imesoma timu ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Soma timu ya jumuiya",
+        "askMany": "Soma timu za {count, plural, one {jumuiya #} other {jumuiya #}}",
+        "doingMany": "Inasoma timu za {count, plural, one {jumuiya #} other {jumuiya #}}",
+        "didMany": "Imesoma timu za {count, plural, one {jumuiya #} other {jumuiya #}}"
       },
       "editLibraryDraft": {
-        "doing": "Inabadilisha rasimu ya maktaba",
-        "did": "Imebadilisha rasimu ya maktaba",
-        "where": "Evidence Library",
-        "ask": "Badilisha rasimu ya maktaba"
+        "doing": "Inabadilisha rasimu ya jumuiya",
+        "did": "Imebadilisha rasimu ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Badilisha rasimu ya jumuiya"
       },
       "addLibraryMember": {
-        "doing": "Inamwongeza mtu kwenye timu ya maktaba",
-        "did": "Imemwongeza mtu kwenye timu ya maktaba",
-        "where": "Evidence Library",
-        "ask": "Mwongeze mtu kwenye timu ya maktaba"
+        "doing": "Inamwongeza mtu kwenye timu ya jumuiya",
+        "did": "Imemwongeza mtu kwenye timu ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Mwongeze mtu kwenye timu ya jumuiya"
       },
       "changeLibraryRole": {
-        "doing": "Inabadilisha nafasi ya mtu kwenye maktaba",
-        "did": "Imebadilisha nafasi ya mtu kwenye maktaba",
-        "where": "Evidence Library",
-        "ask": "Badilisha nafasi ya mtu kwenye maktaba"
+        "doing": "Inabadilisha nafasi ya mtu kwenye jumuiya",
+        "did": "Imebadilisha nafasi ya mtu kwenye jumuiya",
+        "where": "Evidence Community",
+        "ask": "Badilisha nafasi ya mtu kwenye jumuiya"
       },
       "removeLibraryMember": {
-        "doing": "Inamwondoa mtu kwenye timu ya maktaba",
-        "did": "Imemwondoa mtu kwenye timu ya maktaba",
-        "where": "Evidence Library",
-        "ask": "Mwondoe mtu kwenye timu ya maktaba"
+        "doing": "Inamwondoa mtu kwenye timu ya jumuiya",
+        "did": "Imemwondoa mtu kwenye timu ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Mwondoe mtu kwenye timu ya jumuiya"
       },
       "zoteroGroups": {
         "doing": "Inasoma vikundi vyako vya Zotero",
@@ -4072,79 +4072,79 @@
         "ask": "Soma vipengee vilivyo kwenye Zotero yako"
       },
       "inviteLibraryMember": {
-        "doing": "Inamwalika mtu kwenye maktaba",
-        "did": "Imemwalika mtu kwenye maktaba",
-        "where": "Evidence Library",
-        "ask": "Mwalike mtu kwenye maktaba",
-        "askMany": "Waalike {count, plural, one {mtu #} other {watu #}} kwenye maktaba",
-        "doingMany": "Inawaalika {count, plural, one {mtu #} other {watu #}} kwenye maktaba",
-        "didMany": "Imewaalika {count, plural, one {mtu #} other {watu #}} kwenye maktaba"
+        "doing": "Inamwalika mtu kwenye jumuiya",
+        "did": "Imemwalika mtu kwenye jumuiya",
+        "where": "Evidence Community",
+        "ask": "Mwalike mtu kwenye jumuiya",
+        "askMany": "Waalike {count, plural, one {mtu #} other {watu #}} kwenye jumuiya",
+        "doingMany": "Inawaalika {count, plural, one {mtu #} other {watu #}} kwenye jumuiya",
+        "didMany": "Imewaalika {count, plural, one {mtu #} other {watu #}} kwenye jumuiya"
       },
       "changeLibraryInvite": {
-        "doing": "Inabadilisha mwaliko wa maktaba",
-        "did": "Imebadilisha mwaliko wa maktaba",
-        "where": "Evidence Library",
-        "ask": "Badilisha mwaliko wa maktaba"
+        "doing": "Inabadilisha mwaliko wa jumuiya",
+        "did": "Imebadilisha mwaliko wa jumuiya",
+        "where": "Evidence Community",
+        "ask": "Badilisha mwaliko wa jumuiya"
       },
       "libraryInvites": {
-        "doing": "Inasoma mialiko yako ya maktaba",
-        "did": "Imesoma mialiko yako ya maktaba",
-        "where": "Evidence Libraries",
-        "ask": "Soma mialiko yako ya maktaba"
+        "doing": "Inasoma mialiko yako ya jumuiya",
+        "did": "Imesoma mialiko yako ya jumuiya",
+        "where": "Evidence Communities",
+        "ask": "Soma mialiko yako ya jumuiya"
       },
       "answerLibraryInvite": {
-        "doing": "Inajibu mwaliko wa maktaba",
-        "did": "Imejibu mwaliko wa maktaba",
-        "where": "Evidence Libraries",
-        "ask": "Jibu mwaliko wa maktaba"
+        "doing": "Inajibu mwaliko wa jumuiya",
+        "did": "Imejibu mwaliko wa jumuiya",
+        "where": "Evidence Communities",
+        "ask": "Jibu mwaliko wa jumuiya"
       },
       "startLibrary": {
-        "doing": "Inaanzisha rasimu ya maktaba",
-        "did": "Imeanzisha rasimu ya maktaba",
-        "where": "Evidence Libraries",
-        "ask": "Anzisha rasimu ya maktaba"
+        "doing": "Inaanzisha rasimu ya jumuiya",
+        "did": "Imeanzisha rasimu ya jumuiya",
+        "where": "Evidence Communities",
+        "ask": "Anzisha rasimu ya jumuiya"
       },
       "librarySources": {
-        "doing": "Inasoma vyanzo vya maktaba",
-        "did": "Imesoma vyanzo vya maktaba",
-        "where": "Evidence Library",
-        "ask": "Soma vyanzo vya maktaba",
-        "askMany": "Soma vyanzo vya {count, plural, one {maktaba #} other {maktaba #}}",
-        "doingMany": "Inasoma vyanzo vya {count, plural, one {maktaba #} other {maktaba #}}",
-        "didMany": "Imesoma vyanzo vya {count, plural, one {maktaba #} other {maktaba #}}"
+        "doing": "Inasoma vyanzo vya jumuiya",
+        "did": "Imesoma vyanzo vya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Soma vyanzo vya jumuiya",
+        "askMany": "Soma vyanzo vya {count, plural, one {jumuiya #} other {jumuiya #}}",
+        "doingMany": "Inasoma vyanzo vya {count, plural, one {jumuiya #} other {jumuiya #}}",
+        "didMany": "Imesoma vyanzo vya {count, plural, one {jumuiya #} other {jumuiya #}}"
       },
       "runningCollections": {
-        "doing": "Inasoma mikusanyiko ya maktaba",
-        "did": "Imesoma mikusanyiko ya maktaba",
-        "where": "Evidence Library",
-        "ask": "Soma mikusanyiko ya maktaba"
+        "doing": "Inasoma mikusanyiko ya jumuiya",
+        "did": "Imesoma mikusanyiko ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Soma mikusanyiko ya jumuiya"
       },
       "runningInstitutions": {
-        "doing": "Inasoma taasisi za maktaba",
-        "did": "Imesoma taasisi za maktaba",
-        "where": "Evidence Library",
-        "ask": "Soma taasisi za maktaba"
+        "doing": "Inasoma taasisi za jumuiya",
+        "did": "Imesoma taasisi za jumuiya",
+        "where": "Evidence Community",
+        "ask": "Soma taasisi za jumuiya"
       },
       "runningPublications": {
-        "doing": "Inasoma machapisho ya maktaba",
-        "did": "Imesoma machapisho ya maktaba",
-        "where": "Evidence Library",
-        "ask": "Soma machapisho ya maktaba"
+        "doing": "Inasoma machapisho ya jumuiya",
+        "did": "Imesoma machapisho ya jumuiya",
+        "where": "Evidence Community",
+        "ask": "Soma machapisho ya jumuiya"
       },
       "runningPublication": {
-        "doing": "Inasoma chapisho la maktaba",
-        "did": "Imesoma chapisho la maktaba",
-        "where": "Evidence Library",
-        "ask": "Soma chapisho la maktaba",
-        "askMany": "Soma {count, plural, one {chapisho la maktaba #} other {machapisho ya maktaba #}}",
-        "doingMany": "Inasoma {count, plural, one {chapisho la maktaba #} other {machapisho ya maktaba #}}",
-        "didMany": "Imesoma {count, plural, one {chapisho la maktaba #} other {machapisho ya maktaba #}}"
+        "doing": "Inasoma chapisho la jumuiya",
+        "did": "Imesoma chapisho la jumuiya",
+        "where": "Evidence Community",
+        "ask": "Soma chapisho la jumuiya",
+        "askMany": "Soma {count, plural, one {chapisho la jumuiya #} other {machapisho ya jumuiya #}}",
+        "doingMany": "Inasoma {count, plural, one {chapisho la jumuiya #} other {machapisho ya jumuiya #}}",
+        "didMany": "Imesoma {count, plural, one {chapisho la jumuiya #} other {machapisho ya jumuiya #}}"
       },
       "syncLibrarySource": {
-        "doing": "Inajaribu tena kuleta maktaba",
-        "did": "Imejaribu tena kuleta maktaba",
-        "where": "Evidence Library",
-        "ask": "Jaribu tena kuleta maktaba"
+        "doing": "Inajaribu tena kuleta jumuiya",
+        "did": "Imejaribu tena kuleta jumuiya",
+        "where": "Evidence Community",
+        "ask": "Jaribu tena kuleta jumuiya"
       },
       "authorProfiles": {
         "doing": "Inasoma wasifu wa waandishi",
@@ -4207,20 +4207,20 @@
         "didMany": "Imeweka {count, plural, one {PDF ya Zotero #} other {PDF za Zotero #}} kwenye mazungumzo"
       },
       "gradeLibrarySource": {
-        "doing": "Inaomba maktaba ipange daraja chanzo",
-        "did": "Imeomba maktaba ipange daraja chanzo",
-        "where": "Evidence Library",
-        "ask": "Pangia rekodi za chanzo cha maktaba madaraja"
+        "doing": "Inaomba jumuiya ipange daraja chanzo",
+        "did": "Imeomba jumuiya ipange daraja chanzo",
+        "where": "Evidence Community",
+        "ask": "Pangia rekodi za chanzo cha jumuiya madaraja"
       },
       "trySourceSubject": {
         "doing": "Inajaribu mada ya uchujaji",
         "did": "Imejaribu mada ya uchujaji",
-        "where": "Evidence Library",
+        "where": "Evidence Community",
         "ask": "Jaribu mada ya uchujaji kwenye rekodi 200"
       },
       "libraryAccess": {
-        "doing": "Inaangalia ufikiaji wa Evidence Library",
-        "did": "Iliangalia ufikiaji wa Evidence Library",
+        "doing": "Inaangalia ufikiaji wa Evidence Community",
+        "did": "Iliangalia ufikiaji wa Evidence Community",
         "where": "Msimamizi"
       }
     },
@@ -4387,7 +4387,7 @@
       "paper": "Makala",
       "extraction": "Uchimbaji",
       "screening": "Uchujaji",
-      "library": "Evidence Library",
+      "library": "Evidence Community",
       "topic": "Mada",
       "chat": "Mazungumzo"
     }
@@ -4462,7 +4462,7 @@
       "searches": "Utafutaji",
       "screenings": "Uchujaji",
       "extractions": "Uchimbaji",
-      "evidenceLibraries": "Evidence Libraries",
+      "evidenceLibraries": "Evidence Communities",
       "changeLogo": "Badilisha nembo",
       "organizationName": "Jina la shirika",
       "saveName": "Hifadhi jina",
@@ -4476,12 +4476,12 @@
       "makeAdminFirst": "Mfanye mtu mwingine msimamizi kwanza",
       "leave": "Ondoka",
       "deleteName": "Futa {name}",
-      "stillHasLibrary": "{library} ni mojawapo ya Evidence Libraries zake. Ihamishe au uifute kwanza.",
-      "deleteLibrary": "Futa maktaba",
+      "stillHasLibrary": "{library} ni mojawapo ya Evidence Communities zake. Ihamishe au uifute kwanza.",
+      "deleteLibrary": "Futa jumuiya",
       "libraryBeingDeleted": "{library} inafutwa.",
       "libraryDeleteFailed": "{library} haikuweza kufutwa. Jaribu tena.",
       "deleteDetail": "Huiondoa kwa {count, plural, one {mwanachama wake #} other {wanachama wote #}}",
-      "moveLibrariesFirst": "Hamisha au futa Evidence Libraries zake kwanza",
+      "moveLibrariesFirst": "Hamisha au futa Evidence Communities zake kwanza",
       "delete": "Futa",
       "deleteConfirm": "Mikusanyiko yake, utafutaji, uchujaji na uchimbaji vinaondoka nayo, kwa {count, plural, one {mwanachama wake #} other {wanachama wote #}}. Hili haliwezi kutenduliwa.",
       "leaveConfirm": "Utapoteza ufikiaji wa kazi yake hadi msimamizi akualike tena.",
@@ -4556,7 +4556,7 @@
       "paymentFailed": "Malipo ya mwisho yameshindikana.",
       "noMemberLimit": "Hakuna kikomo cha wanachama",
       "membersUnit": "{count, plural, one {mwanachama} other {wanachama}}",
-      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "evidenceLibrariesIncluded": "Evidence Communities",
       "seePlans": "Tazama mipango"
     },
     "couldntInvite": "Shirika limeundwa, lakini mialiko haikutumwa. Ituma kutoka mipangilio yake ya Wanachama.",
@@ -4757,15 +4757,15 @@
     "changeInSettings": "Badilisha kwenye mipangilio ya AI"
   },
   "librarySources": {
-    "kind": "Rekodi za Evidence Library",
-    "library": "Evidence Library",
-    "address": "Bandika anwani ya maktaba",
+    "kind": "Rekodi za Evidence Community",
+    "library": "Evidence Community",
+    "address": "Bandika anwani ya jumuiya",
     "show": "Onyesha",
     "filter": {
       "all": "Zote",
       "yours": "Zako",
       "shared": "Zilizoshirikiwa nawe",
-      "library": "Za maktaba"
+      "library": "Za jumuiya"
     },
     "find": "Tafuta",
     "everyRecord": "Kila rekodi kwenye {library}",
@@ -4790,14 +4790,14 @@
     "outdated": "{library} inahitaji sasisho ili itumike hapa.",
     "error": {
       "notAddress": "Hiyo si anwani.",
-      "notHosted": "OpenScholar haiendeshi maktaba hiyo.",
+      "notHosted": "OpenScholar haiendeshi jumuiya hiyo.",
       "private": "Mkusanyiko huo ni wa faragha. Mmiliki wake anaweza kuushiriki nawe.",
       "notFound": "Hakuna kitu kwenye anwani hiyo.",
       "empty": "Utafutaji au mkusanyiko huo hauna rekodi.",
       "profile": "Fungua mojawapo ya mikusanyiko yao kisha unakili anwani hiyo.",
-      "unknownPage": "Nakili anwani ya utafutaji, mkusanyiko au maktaba.",
-      "outdated": "Maktaba hiyo inahitaji sasisho ili itumike hapa.",
-      "unreadable": "Maktaba haikujibu. Jaribu tena."
+      "unknownPage": "Nakili anwani ya utafutaji, mkusanyiko au jumuiya.",
+      "outdated": "Jumuiya hiyo inahitaji sasisho ili itumike hapa.",
+      "unreadable": "Jumuiya haikujibu. Jaribu tena."
     },
     "role": {
       "owner": "Mmiliki",
@@ -4819,17 +4819,17 @@
   "fromLibrary": {
     "title": "Kutoka {library}",
     "gone": "Hakuna cha kufungua",
-    "goneHint": "Kiungo hiki kutoka maktaba kimeisha muda. Kifungue tena kutoka kwenye maktaba.",
+    "goneHint": "Kiungo hiki kutoka jumuiya kimeisha muda. Kifungue tena kutoka kwenye jumuiya.",
     "problem": {
-      "notAddress": "Hakuna kitu hapa cha kufungua. Kifungue tena kutoka kwenye maktaba.",
-      "notHosted": "Maktaba hiyo haiendeshwi tena kwenye OpenScholar.",
+      "notAddress": "Hakuna kitu hapa cha kufungua. Kifungue tena kutoka kwenye jumuiya.",
+      "notHosted": "Jumuiya hiyo haiendeshwi tena kwenye OpenScholar.",
       "private": "Mkusanyiko huo ni wa faragha. Mmiliki wake anaweza kuushiriki nawe.",
-      "notFound": "Maktaba haina tena kilichotumwa.",
-      "empty": "Kilichotumwa na maktaba hakina rekodi sasa.",
-      "profile": "Hakuna kitu hapa cha kufungua. Kifungue tena kutoka kwenye maktaba.",
-      "unknownPage": "Hakuna kitu hapa cha kufungua. Kifungue tena kutoka kwenye maktaba.",
-      "outdated": "Maktaba hiyo inahitaji sasisho ili itumike hapa.",
-      "unreadable": "Maktaba haikujibu. Jaribu tena baada ya muda mfupi."
+      "notFound": "Jumuiya haina tena kilichotumwa.",
+      "empty": "Kilichotumwa na jumuiya hakina rekodi sasa.",
+      "profile": "Hakuna kitu hapa cha kufungua. Kifungue tena kutoka kwenye jumuiya.",
+      "unknownPage": "Hakuna kitu hapa cha kufungua. Kifungue tena kutoka kwenye jumuiya.",
+      "outdated": "Jumuiya hiyo inahitaji sasisho ili itumike hapa.",
+      "unreadable": "Jumuiya haikujibu. Jaribu tena baada ya muda mfupi."
     },
     "from": {
       "smartScreening": "Uchujaji mahiri",
@@ -4941,15 +4941,15 @@
     }
   },
   "libraryHomeSettings": {
-    "thePageVisitorsLandOnAt": "Ukurasa ambao wageni wanatua kwenye anwani ya maktaba.",
+    "thePageVisitorsLandOnAt": "Ukurasa ambao wageni wanatua kwenye anwani ya jumuiya.",
     "showAHomePage": "Onyesha ukurasa wa mwanzo",
-    "whenThisIsOffTheLibrary": "Hiki kikizimwa, anwani ya maktaba inafungua orodha ya machapisho.",
+    "whenThisIsOffTheLibrary": "Hiki kikizimwa, anwani ya jumuiya inafungua orodha ya machapisho.",
     "introduction": "Utangulizi",
-    "shownInTheHeroUnderThe": "Inaonyeshwa juu ya ukurasa, chini ya jina la maktaba na kauli mbiu.",
-    "whatTheLibraryIsFor": "Maktaba ni ya nini",
-    "whatDoesThisLibraryCollectAnd": "Maktaba hii inakusanya nini, na kwa ajili ya nani?",
+    "shownInTheHeroUnderThe": "Inaonyeshwa juu ya ukurasa, chini ya jina la jumuiya na kauli mbiu.",
+    "whatTheLibraryIsFor": "Jumuiya ni ya nini",
+    "whatDoesThisLibraryCollectAnd": "Jumuiya hii inakusanya nini, na kwa ajili ya nani?",
     "howPublicationsGetIn": "Machapisho yanaingiaje",
-    "stepsWithATypeAreFilled": "Hatua zenye aina zinajazwa kutoka chapisho lililofuatiliwa, au kuhesabiwa kutoka utafutaji na rekodi za maktaba.",
+    "stepsWithATypeAreFilled": "Hatua zenye aina zinajazwa kutoka chapisho lililofuatiliwa, au kuhesabiwa kutoka utafutaji na rekodi za jumuiya.",
     "addStep": "Ongeza hatua",
     "statement": "Taarifa",
     "noStepsTheSectionShowsThe": "Hakuna hatua. Sehemu inaonyesha taarifa peke yake.",
@@ -4960,20 +4960,20 @@
     "editorShown": "Mhariri anayeonyeshwa",
     "whoeverApprovedIt": "Aliyeidhinisha",
     "whatHappens": "Kinachotokea",
-    "whoRunsTheLibrary": "Anayeendesha maktaba",
-    "peopleFromTheLibrarySTeam": "Watu kutoka timu ya maktaba, au walioongezwa kwa mkono, wanapita kwa mpangilio uliowekwa hapa.",
+    "whoRunsTheLibrary": "Anayeendesha jumuiya",
+    "peopleFromTheLibrarySTeam": "Watu kutoka timu ya jumuiya, au walioongezwa kwa mkono, wanapita kwa mpangilio uliowekwa hapa.",
     "aboutTheTeam": "Kuhusu timu",
     "usedInsteadWhenThereIsNo": "Hutumika badala yake pale ambapo hakuna sentensi ya timu.",
     "suggestAPublication": "Pendekeza chapisho",
     "opensAnEmailTo": "Inafungua barua pepe kwenda {email}",
     "needsAContactEmail": "Inahitaji barua pepe ya mawasiliano",
     "joinAsAnEditor": "Jiunge kama mhariri",
-    "askTheLibrary": "Uliza maktaba",
-    "typedIntoTheQuestionBoxOne": "Huandikwa kwenye kisanduku cha maswali moja baada ya jingine. Kisanduku tupu huweka swali lililotengenezwa kutoka mada za maktaba.",
-    "shownWhenAiAnswersAreOn": "Huonyeshwa majibu ya AI yanapowashwa kwenye Vipengele. Kisanduku tupu huweka swali lililotengenezwa kutoka mada za maktaba.",
+    "askTheLibrary": "Uliza jumuiya",
+    "typedIntoTheQuestionBoxOne": "Huandikwa kwenye kisanduku cha maswali moja baada ya jingine. Kisanduku tupu huweka swali lililotengenezwa kutoka mada za jumuiya.",
+    "shownWhenAiAnswersAreOn": "Huonyeshwa majibu ya AI yanapowashwa kwenye Vipengele. Kisanduku tupu huweka swali lililotengenezwa kutoka mada za jumuiya.",
     "exampleQuestion": "Swali la mfano {value}",
     "usingAndCiting": "Kutumia na kunukuu",
-    "shownBesideTheCitationOfThe": "Inaonyeshwa karibu na nukuu ya maktaba, ambayo inatengenezwa kutoka jina lake na anwani yake.",
+    "shownBesideTheCitationOfThe": "Inaonyeshwa karibu na nukuu ya jumuiya, ambayo inatengenezwa kutoka jina lake na anwani yake.",
     "licenceAndReuse": "Leseni na matumizi upya",
     "howMayPeopleReuseWhatThey": "Watu wanaweza kutumia tena kile wanachopata hapa kwa namna gani?",
     "heading": "Kichwa",
@@ -4992,12 +4992,12 @@
     "takedownForm": "Fomu ya kuomba kuondoa",
     "off": "Zima",
     "filledInForYou": "Imejazwa kwa ajili yako",
-    "newestPublicationsTheMostCitedDigests": "Machapisho mapya, yaliyonukuliwa zaidi, ripoti na ukaguzi wa hivi karibuni vinatoka kwenye maktaba yenyewe.",
+    "newestPublicationsTheMostCitedDigests": "Machapisho mapya, yaliyonukuliwa zaidi, ripoti na ukaguzi wa hivi karibuni vinatoka kwenye jumuiya yenyewe.",
     "editIn": "Hariri kwenye {card}",
     "peopleShown": "Watu wanaoonyeshwa",
     "addFromTheTeam": "Ongeza kutoka timu",
     "addPeopleFromTheTeam": "Ongeza watu kutoka timu",
-    "everyoneOnTheLibrarySTeam": "Kila mtu kwenye timu ya maktaba, pamoja na picha kutoka akaunti yake.",
+    "everyoneOnTheLibrarySTeam": "Kila mtu kwenye timu ya jumuiya, pamoja na picha kutoka akaunti yake.",
     "addSomeone": "Ongeza mtu",
     "nobodyIsShownAddPeopleFrom": "Hakuna anayeonyeshwa. Ongeza watu kutoka timu, au ongeza mtu asiye na akaunti.",
     "removedFromTheTeamSoNot": "Imeondolewa kwenye timu, kwa hivyo haionyeshwi",
@@ -5036,7 +5036,7 @@
       },
       "search": {
         "label": "Maneno ya utafutaji",
-        "hint": "Inahesabu maneno, misemo na mada ambazo utafutaji wa OpenAlex wa maktaba unatafuta",
+        "hint": "Inahesabu maneno, misemo na mada ambazo utafutaji wa OpenAlex wa jumuiya unatafuta",
         "fallback": "Imepatikana kwa utafutaji",
         "example": "Maneno ya utafutaji"
       },
@@ -5066,12 +5066,12 @@
     },
     "reviewedOn": "Imekaguliwa {date}",
     "addedOn": "Imeongezwa {date}",
-    "howTheLibraryIsCurated": "Jinsi maktaba inavyochaguliwa",
+    "howTheLibraryIsCurated": "Jinsi jumuiya inavyochaguliwa",
     "optional": "Si lazima",
     "removeStep": "Ondoa hatua",
     "whoIsBehindIt": "Nani anaisimamia",
     "getInvolved": "Shiriki",
-    "usingAndCitingTheLibrary": "Kutumia na kutaja maktaba",
+    "usingAndCitingTheLibrary": "Kutumia na kutaja jumuiya",
     "identity": "Utambulisho",
     "contact": "Mawasiliano",
     "notSet": "Haijawekwa",
@@ -5091,10 +5091,10 @@
     "searchPublications": "Tafuta machapisho",
     "date": "Tarehe",
     "loadingPublications": "Inapakia machapisho",
-    "theLibrarySPublicationsCouldNot": "Imeshindwa kupakia machapisho ya maktaba.",
+    "theLibrarySPublicationsCouldNot": "Imeshindwa kupakia machapisho ya jumuiya.",
     "noPublicationHasAPdfYet": "Hakuna chapisho lenye PDF bado.",
     "noPublicationMatches": "Hakuna chapisho linalolingana.",
-    "theLibraryIsNotSetUp": "Maktaba bado haijasanidiwa.",
+    "theLibraryIsNotSetUp": "Jumuiya bado haijasanidiwa.",
     "linked": "Imeunganishwa"
   },
   "libraryTeamAccess": {
@@ -5110,12 +5110,12 @@
     "cancelInvitation": "Ghairi mwaliko",
     "cancelThisInvitation": "Ughairi mwaliko huu?",
     "removeAccessToThisAuthorProfile": "Ondoa ufikiaji wa wasifu huu wa mwandishi?",
-    "removeFromThisLibraryOrganizationMembership": "Ondoa kwenye maktaba hii? Uanachama wa shirika na ufikiaji wa maktaba nyingine vinabaki vilevile.",
+    "removeFromThisLibraryOrganizationMembership": "Ondoa kwenye jumuiya hii? Uanachama wa shirika na ufikiaji wa jumuiya nyingine vinabaki vilevile.",
     "keep": "Weka",
     "profileAccess": "Ufikiaji wa wasifu",
     "team": "Timu",
     "theOwnerManagesAccessEditorsCan": "Mmiliki anasimamia ufikiaji. Wahariri wanaweza kuhariri wasifu huu.",
-    "manageAccessToThisLibrary": "Simamia ufikiaji wa maktaba hii.",
+    "manageAccessToThisLibrary": "Simamia ufikiaji wa jumuiya hii.",
     "addEditor": "Ongeza mhariri",
     "addMember": "Ongeza mwanachama",
     "inviteProfileEditor": "Alika mhariri wa wasifu",
@@ -5128,29 +5128,29 @@
     "chooseAPerson": "Chagua mtu",
     "emailAddress": "Anwani ya barua pepe",
     "nameOrganisationOrg": "name@organisation.org",
-    "libraryRole": "Nafasi kwenye maktaba",
+    "libraryRole": "Nafasi kwenye jumuiya",
     "editorsCanEditProfileDetailsAnd": "Wahariri wanaweza kuhariri maelezo ya wasifu na kuchagua machapisho.",
-    "accessAppliesToThisLibraryOnly": "Ufikiaji unatumika kwa maktaba hii pekee.",
-    "theyLlReceiveAccessToThis": "Watapata ufikiaji wa maktaba hii pekee. Uanachama wa shirika haubadiliki.",
+    "accessAppliesToThisLibraryOnly": "Ufikiaji unatumika kwa jumuiya hii pekee.",
+    "theyLlReceiveAccessToThis": "Watapata ufikiaji wa jumuiya hii pekee. Uanachama wa shirika haubadiliki.",
     "cancel": "Ghairi",
     "sendInvitation": "Tuma mwaliko",
     "dismissMemberStatus": "Ondoa hali ya mwanachama",
     "organizationOwners": "Wamiliki wa shirika",
-    "accessToAllLibrariesManagedIn": "Ufikiaji wa maktaba zote. Unasimamiwa kwenye mipangilio ya shirika.",
+    "accessToAllLibrariesManagedIn": "Ufikiaji wa jumuiya zote. Unasimamiwa kwenye mipangilio ya shirika.",
     "everyoneElseInTheOrganization": "Kila mtu mwingine kwenye shirika",
     "viewersUntilYouAddThemBelow": "Wasomaji hadi utakapowaongeza hapa chini kwa nafasi.",
     "everyoneIn": "Kila mtu kwenye {name}",
-    "everyoneWithoutARoleInThis": "Kila mtu asiye na nafasi kwenye maktaba hii",
+    "everyoneWithoutARoleInThis": "Kila mtu asiye na nafasi kwenye jumuiya hii",
     "viewer": "Msomaji",
     "teamView": "Mwonekano wa timu",
     "profileMembers": "Wanachama wa wasifu",
-    "libraryMembers": "Wanachama wa maktaba",
+    "libraryMembers": "Wanachama wa jumuiya",
     "invitations": "Mialiko",
     "searchTeam": "Tafuta timu",
     "findAPerson": "Tafuta mtu…",
-    "aboutLibraryRoles": "Kuhusu nafasi za maktaba",
+    "aboutLibraryRoles": "Kuhusu nafasi za jumuiya",
     "editor": "Mhariri",
-    "reviewPublishAndManageLibraryContent": "Kagua, chapisha na simamia maudhui ya maktaba.",
+    "reviewPublishAndManageLibraryContent": "Kagua, chapisha na simamia maudhui ya jumuiya.",
     "creator": "Muundaji",
     "editItemsAndSubmitWorkFor": "Hariri vipengee na uwasilishe kazi kwa ukaguzi.",
     "loadingTeam": "Inapakia timu",
@@ -5176,37 +5176,37 @@
       "Viewer": "Mtazamaji"
     },
     "roleHints": {
-      "Owner": "Imerithiwa kutoka shirikani. Simamia maktaba zake zote na timu zake.",
-      "Editor": "Kagua na uchapishe vipengele. Simamia maudhui ya maktaba.",
+      "Owner": "Imerithiwa kutoka shirikani. Simamia jumuiya zake zote na timu zake.",
+      "Editor": "Kagua na uchapishe vipengele. Simamia maudhui ya jumuiya.",
       "Creator": "Unda na uhariri vipengele, pakia faili na uwasilishe kwa ukaguzi.",
-      "Viewer": "Wengine wote shirikani. Tazama maktaba na vipengele vyake bila kuvibadilisha."
+      "Viewer": "Wengine wote shirikani. Tazama jumuiya na vipengele vyake bila kuvibadilisha."
     },
-    "removeFromLibrary": "Ondoa kwenye maktaba",
+    "removeFromLibrary": "Ondoa kwenye jumuiya",
     "removeFromProfile": "Ondoa kwenye wasifu",
-    "whoManagesLibrary": "Chagua nani anayeweza kusimamia maktaba hii.",
+    "whoManagesLibrary": "Chagua nani anayeweza kusimamia jumuiya hii.",
     "whoManagesProfile": "Chagua nani anayeweza kusimamia wasifu huu.",
-    "addToLibrary": "Ongeza kwenye maktaba",
+    "addToLibrary": "Ongeza kwenye jumuiya",
     "addToProfile": "Ongeza kwenye wasifu",
-    "acceptingGrantsLibrary": "Kukubali kunatoa ufikiaji kwa maktaba hii pekee.",
+    "acceptingGrantsLibrary": "Kukubali kunatoa ufikiaji kwa jumuiya hii pekee.",
     "acceptingGrantsProfile": "Kukubali kunatoa ufikiaji kwa wasifu huu pekee.",
-    "removedFromLibrary": "Imeondolewa kwenye maktaba hii.",
+    "removedFromLibrary": "Imeondolewa kwenye jumuiya hii.",
     "removedFromProfile": "Imeondolewa kwenye wasifu huu.",
-    "addedToLibrary": "{name} ameongezwa kwenye maktaba hii.",
+    "addedToLibrary": "{name} ameongezwa kwenye jumuiya hii.",
     "addedToProfile": "{name} ameongezwa kwenye wasifu huu."
   },
   "libraryNotificationSettings": {
     "digestQueuedFor": "{count, plural, one {Ripoti imewekwa kwenye foleni kwa chapisho #.} other {Ripoti imewekwa kwenye foleni kwa machapisho #.}}",
     "noPublicationsInThePeriodNothing": "Hakuna machapisho katika kipindi hicho. Hakuna kilichotumwa.",
-    "publishTheLibraryConfigurationWithReader": "Chapisha kwanza usanidi wa maktaba huku usajili wa wasomaji ukiwa umewashwa.",
+    "publishTheLibraryConfigurationWithReader": "Chapisha kwanza usanidi wa jumuiya huku usajili wa wasomaji ukiwa umewashwa.",
     "theDigestRequestCouldNotBe": "Ombi la ripoti halikuweza kuthibitishwa. Jaribu tena; matoleo yaliyopo hayatatumwa mara mbili.",
     "emailUpdates": "Masasisho ya barua pepe",
     "readerSubscriptions": "Usajili wa wasomaji",
-    "readersCanChooseNewPublicationsLibrary": "Wasomaji wanaweza kuchagua machapisho mapya, ripoti za maktaba, au zote mbili. Matoleo matupu yanaruka.",
+    "readersCanChooseNewPublicationsLibrary": "Wasomaji wanaweza kuchagua machapisho mapya, ripoti za jumuiya, au zote mbili. Matoleo matupu yanaruka.",
     "digestCovers": "Ripoti inashughulikia",
     "aPublicationWithoutAFullDate": "Chapisho lisilo na tarehe kamili halimo kwenye kipindi chochote.",
-    "anOlderPublicationCountsWhenIt": "Chapisho la zamani linahesabiwa linapokuwa jipya kwa maktaba.",
+    "anOlderPublicationCountsWhenIt": "Chapisho la zamani linahesabiwa linapokuwa jipya kwa jumuiya.",
     "publicationsPublishedInThePeriod": "Machapisho yaliyochapishwa katika kipindi",
-    "publicationsAddedToTheLibraryIn": "Machapisho yaliyoongezwa kwenye maktaba katika kipindi",
+    "publicationsAddedToTheLibraryIn": "Machapisho yaliyoongezwa kwenye jumuiya katika kipindi",
     "frequency": "Marudio",
     "weekly": "Kila wiki",
     "monthly": "Kila mwezi",
@@ -5216,8 +5216,8 @@
     "time": "Saa",
     "timezone": "Eneo la saa",
     "beforeADigestGoesOut": "Kabla ripoti haijatoka",
-    "itWaitsInTheLibraryS": "Inasubiri kwenye paneli ya msimamizi wa maktaba, ambapo Waundaji wanaweza kuihariri na Mhariri au Mmiliki anaichapisha.",
-    "itIsPublishedAndEmailedAs": "Inachapishwa na kutumwa kwa barua pepe mara tu inapoandikwa. Bado inaweza kusahihishwa kwenye paneli ya msimamizi wa maktaba.",
+    "itWaitsInTheLibraryS": "Inasubiri kwenye paneli ya msimamizi wa jumuiya, ambapo Waundaji wanaweza kuihariri na Mhariri au Mmiliki anaichapisha.",
+    "itIsPublishedAndEmailedAs": "Inachapishwa na kutumwa kwa barua pepe mara tu inapoandikwa. Bado inaweza kusahihishwa kwenye paneli ya msimamizi wa jumuiya.",
     "anEditorApprovesIt": "Mhariri anaidhinisha",
     "itIsSentAsAiWrote": "Inatumwa kama AI ilivyoiandika",
     "nameWhoCheckedIt": "Taja aliyeikagua",
@@ -5255,23 +5255,23 @@
     "keepThisUnderCharacters": "Weka chini ya herufi {maxLength}."
   },
   "libraryList": {
-    "evidenceLibraries": "Evidence libraries",
-    "newLibrary": "Maktaba mpya",
-    "libraryView": "Mwonekano wa maktaba",
+    "evidenceLibraries": "Evidence communities",
+    "newLibrary": "Jumuiya mpya",
+    "libraryView": "Mwonekano wa jumuiya",
     "sharedWithYou": "Vilivyoshirikiwa nawe",
     "invitations": "Mialiko",
-    "searchLibraries": "Tafuta maktaba",
-    "findALibrary": "Tafuta maktaba…",
-    "acceptAccessToALibraryWithout": "Kubali ufikiaji wa maktaba bila kujiunga na shirika lake.",
-    "loadingLibraries": "Inapakia maktaba",
-    "noLibrariesMatchTheseFilters": "Hakuna maktaba zinazolingana na vichujio hivi.",
+    "searchLibraries": "Tafuta jumuiya",
+    "findALibrary": "Tafuta jumuiya…",
+    "acceptAccessToALibraryWithout": "Kubali ufikiaji wa jumuiya bila kujiunga na shirika lake.",
+    "loadingLibraries": "Inapakia jumuiya",
+    "noLibrariesMatchTheseFilters": "Hakuna jumuiya zinazolingana na vichujio hivi.",
     "noPendingInvitations": "Hakuna mialiko inayosubiri.",
-    "librariesPeopleShareWithYouAppear": "Maktaba ambazo watu wanakushirikisha zinaonekana hapa.",
-    "hasNoLibrariesYet": "{name} bado hana maktaba.",
+    "librariesPeopleShareWithYouAppear": "Jumuiya ambazo watu wanakushirikisha zinaonekana hapa.",
+    "hasNoLibrariesYet": "{name} bado hana jumuiya.",
     "organization": "Shirika: {organization}",
     "inheritedFromOrganizationOwnership": "Imerithiwa kutoka umiliki wa shirika",
-    "everyoneInTheOrganizationViewsIts": "Kila mtu kwenye shirika anaona maktaba zake",
-    "assignedToThisLibrary": "Imepangiwa maktaba hii",
+    "everyoneInTheOrganizationViewsIts": "Kila mtu kwenye shirika anaona jumuiya zake",
+    "assignedToThisLibrary": "Imepangiwa jumuiya hii",
     "decline": "Kataa",
     "acceptInvitation": "Kubali mwaliko",
     "deleting": "Inafutwa",
@@ -5281,7 +5281,7 @@
     "viewSetup": "Ona usanidi",
     "actionsFor": "Vitendo vya {name}",
     "settings": "Mipangilio",
-    "viewPublicLibrary": "Ona maktaba ya umma",
+    "viewPublicLibrary": "Ona jumuiya ya umma",
     "openAdmin": "Fungua msimamizi",
     "moreActionsFor": "Vitendo zaidi vya {name}",
     "declineInvitation": "Kataa mwaliko?",
@@ -5289,7 +5289,7 @@
     "declineInvitation2": "Kataa mwaliko",
     "previewCover": "Hakiki jalada la {title}",
     "preview": "Hakiki {title}",
-    "declineBody": "Hutapata ufikiaji wa {name}. Maktaba zako nyingine hazibadiliki.",
+    "declineBody": "Hutapata ufikiaji wa {name}. Jumuiya zako nyingine hazibadiliki.",
     "owner": "Mmiliki",
     "editor": "Mhariri",
     "creator": "Muundaji",
@@ -5335,9 +5335,9 @@
     "fromOpenalex": "Kutoka OpenAlex",
     "findAPublication": "Tafuta chapisho…",
     "searchPublications": "Tafuta machapisho",
-    "evidenceLibraries": "Evidence libraries",
+    "evidenceLibraries": "Evidence communities",
     "publishedIn": "Imechapishwa katika",
-    "publishedWorksInThisLibrary": "Kazi {length} zilizochapishwa kwenye maktaba hii",
+    "publishedWorksInThisLibrary": "Kazi {length} zilizochapishwa kwenye jumuiya hii",
     "publications": "Machapisho",
     "noPublicationsMatchYourSearch": "Hakuna machapisho yanayolingana na utafutaji wako.",
     "noPublicationsSelectedYet": "Bado hakuna machapisho yaliyochaguliwa.",

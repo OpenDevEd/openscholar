@@ -251,7 +251,7 @@ describe("<SetupProgress>", () => {
     expect(pageStatus()).toHaveAttribute("data-setup-status", "draft");
     expect(
       screen.getAllByRole("link", { name: "configure" })[0],
-    ).toHaveAttribute("href", "/evidence-libraries/lib_1/configuration");
+    ).toHaveAttribute("href", "/evidence-communities/lib_1/configuration");
   });
 
   it("only says so while the library is being deleted", () => {

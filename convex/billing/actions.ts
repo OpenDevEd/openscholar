@@ -300,7 +300,7 @@ export const moveToFree = action({
     // Free has no Evidence Libraries: one left behind couldn't be opened to delete, nor its organization deleted while it's there.
     const refuseWithLibrary = async () => {
       const library: string | null = await ctx.runQuery(internal.evidenceLibraries.teardown.heldBy, { workspaceId });
-      if (library) throw createError("VALIDATION_ERROR", `${library} is an Evidence Library of this organization, and Free has none. Move or delete its Evidence Libraries first.`);
+      if (library) throw createError("VALIDATION_ERROR", `${library} is an Evidence Community of this organization, and Free has none. Move or delete its Evidence Communities first.`);
     };
     await refuseWithLibrary();
     // A plan change like any other: alone among the organization's purchases, and not while a payment is open (#858).

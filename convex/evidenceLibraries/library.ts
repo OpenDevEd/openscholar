@@ -22,9 +22,9 @@ const SET = 'Screen or extract a row\'s records with the set { kind: "evidenceLi
 export const sourcesAction = defineUserAction({
   path: "evidenceLibraries/library:sources",
   description:
-    `What each of the given Evidence Libraries (from evidenceLibraries/readers:list, at most ${READ_LIBRARIES_MAX}) offers the person as a source of records, each library asked as them: ` +
-    "all its records (`what: \"all\"`), their own collections there (`yours`), the ones shared with them (`shared`), and the library's own collections (`library`, with the collection it sits in as `parent`). " +
-    `A library that couldn't list them says why in \`problem\`: \`outdated\` needs an update, \`unreadable\` didn't answer. ${SET}`,
+    `What each of the given Evidence Communities (from evidenceLibraries/readers:list, at most ${READ_LIBRARIES_MAX}) offers the person as a source of records, each community asked as them: ` +
+    "all its records (`what: \"all\"`), their own collections there (`yours`), the ones shared with them (`shared`), and the community's own collections (`library`, with the collection it sits in as `parent`). " +
+    `A community that couldn't list them says why in \`problem\`: \`outdated\` needs an update, \`unreadable\` didn't answer. ${SET}`,
   args: { libraryIds: v.array(v.id("evidenceLibraries")) },
   returns: librariesContentsValidator,
   ...reads,
@@ -49,8 +49,8 @@ export async function described(ctx: ActionCtx, userId: Id<"users">, libraryId: 
 export const addressAction = defineUserAction({
   path: "evidenceLibraries/library:address",
   description:
-    "What an address of any Evidence Library OpenScholar runs points at, as a source of records the person may read: the whole library, a search with its filters and order, one of the library's collections, a reader's collection (theirs, shared with them, or a public one), a search inside one, or a record. " +
-    "Or why it is none: `notAddress`, `notHosted` (no library OpenScholar runs), `private` (a collection they may not read), `notFound`, `profile` (a reader's page: give one of their collections), `unknownPage`, `outdated` (the library needs an update) or `unreadable` (it didn't answer). " +
+    "What an address of any Evidence Community OpenScholar runs points at, as a source of records the person may read: the whole community, a search with its filters and order, one of the community's collections, a reader's collection (theirs, shared with them, or a public one), a search inside one, or a record. " +
+    "Or why it is none: `notAddress`, `notHosted` (no community OpenScholar runs), `private` (a collection they may not read), `notFound`, `profile` (a reader's page: give one of their collections), `unknownPage`, `outdated` (the community needs an update) or `unreadable` (it didn't answer). " +
     SET,
   args: { address: v.string() },
   returns: describedValidator,
@@ -67,7 +67,7 @@ export const addressForAssistant = assistantAction(addressAction);
 
 export const sourceAction = defineUserAction({
   path: "evidenceLibraries/library:source",
-  description: `One source of an Evidence Library as the person may read it now, with how many records it holds, or why it is none (as evidenceLibraries/library:address says). ${SET}`,
+  description: `One source of an Evidence Community as the person may read it now, with how many records it holds, or why it is none (as evidenceLibraries/library:address says). ${SET}`,
   args: { libraryId: v.id("evidenceLibraries"), source: librarySourceValidator },
   returns: describedValidator,
   ...reads,
@@ -103,24 +103,24 @@ function recordKey(libraryId: Id<"evidenceLibraries">, value: string) {
   const ref = parsePaperKey(value.trim());
   if (ref?.source !== "library") return value.trim();
   // Another library's record isn't this one's, whatever its key is here.
-  if (ref.libraryId !== libraryId) throw createError("VALIDATION_ERROR", `${value.trim()} is a record of another Evidence Library: use that library's ID with it.`);
+  if (ref.libraryId !== libraryId) throw createError("VALIDATION_ERROR", `${value.trim()} is a record of another Evidence Community: use that community's ID with it.`);
   return ref.key;
 }
 
 /** A library that is running, by its name and address; one that isn't is refused. */
 async function runningLibrary(ctx: ActionCtx, libraryId: Id<"evidenceLibraries">) {
   const library: { name: string; address: string } | null = await ctx.runQuery(internal.evidenceLibraries.readers.running, { libraryId });
-  if (!library) throw createError("NOT_FOUND", "This Evidence Library isn't running.");
+  if (!library) throw createError("NOT_FOUND", "This Evidence Community isn't running.");
   return library;
 }
 
 export const recordsAction = defineUserAction({
   path: "evidenceLibraries/library:records",
   description:
-    `Reads records of an Evidence Library as the person may read them, up to ${RECORDS_PAGE} from \`start\` (0 first), in the source's order: \`total\` is how many it holds, \`next\` where the next \`start\` is when there are more. ` +
-    "The source is one the library offers (evidenceLibraries/library:sources and :address give them): the whole library, one of its collections, a reader's collection, records by key (`{ records: [key] }`, whose abstracts come whole), or a search, " +
-    "`{ search }`, the library search page's query string, such as `search=peer+tutoring&sort=mostCited`: `search` its words; `sort` relevance (the default), desc (newest first), asc, mostCited, leastCited, titleAZ, titleZA, authorAZ or authorZA; `collections` a library collection's key; `type` an item type; with `readerCollection` too it searches that reader's collection. " +
-    "Each record's `paper`, as OpenScholar names it (research/papers:readPdf reads its PDF when `pdf` is true), its `key` in the library, title, first authors, year, venue, type, DOI, OpenAlex ID, abstract (its start, on a page of a source) and `link`. " +
+    `Reads records of an Evidence Community as the person may read them, up to ${RECORDS_PAGE} from \`start\` (0 first), in the source's order: \`total\` is how many it holds, \`next\` where the next \`start\` is when there are more. ` +
+    "The source is one the community offers (evidenceLibraries/library:sources and :address give them): the whole community, one of its collections, a reader's collection, records by key (`{ records: [key] }`, whose abstracts come whole), or a search, " +
+    "`{ search }`, the community search page's query string, such as `search=peer+tutoring&sort=mostCited`: `search` its words; `sort` relevance (the default), desc (newest first), asc, mostCited, leastCited, titleAZ, titleZA, authorAZ or authorZA; `collections` a community collection's key; `type` an item type; with `readerCollection` too it searches that reader's collection. " +
+    "Each record's `paper`, as OpenScholar names it (research/papers:readPdf reads its PDF when `pdf` is true), its `key` in the community, title, first authors, year, venue, type, DOI, OpenAlex ID, abstract (its start, on a page of a source) and `link`. " +
     SET,
   args: { libraryId: v.id("evidenceLibraries"), source: librarySourceValidator, start: v.optional(v.union(v.number(), v.null())) },
   returns: libraryRecordsValidator,
@@ -146,8 +146,8 @@ const deleteArgs = { libraryId: v.id("evidenceLibraries"), collection: v.string(
 export const createCollectionAction = defineChangingAction({
   path: "evidenceLibraries/library:createCollection",
   description:
-    `Makes a collection for the person in an Evidence Library, as their profile page there makes one, named in at most ${LIBRARY_COLLECTION_NAME_MAX} characters, with a description of at most ${LIBRARY_COLLECTION_DESCRIPTION_MAX}: private, unless \`public\` is true, when anyone who visits the library can find it. Returns it with its \`id\`, which evidenceLibraries/library:changeRecords puts records in, and \`undo\`, which deletes it while it is still as made. ` +
-    "They rename or share it on the library. Refused in a library they never signed in to.",
+    `Makes a collection for the person in an Evidence Community, as their profile page there makes one, named in at most ${LIBRARY_COLLECTION_NAME_MAX} characters, with a description of at most ${LIBRARY_COLLECTION_DESCRIPTION_MAX}: private, unless \`public\` is true, when anyone who visits the community can find it. Returns it with its \`id\`, which evidenceLibraries/library:changeRecords puts records in, and \`undo\`, which deletes it while it is still as made. ` +
+    "They rename or share it on the community. Refused in a community they never signed in to.",
   args: { libraryId: v.id("evidenceLibraries"), name: v.string(), description: v.optional(v.string()), public: v.optional(v.boolean()) },
   returns: v.object({ ...collectionMadeValidator.fields, undo: reversedBy(DELETE_COLLECTION, { libraryId: v.id("evidenceLibraries"), collection: v.string(), expect: expectValidator }) }),
   spendsCredits: false,
@@ -178,7 +178,7 @@ export const createCollectionForAssistant = assistantAction(createCollectionActi
 export const deleteCollectionAction = defineChangingAction({
   path: DELETE_COLLECTION,
   description:
-    "Deletes a collection the person owns in an Evidence Library, as their profile page there does: its records stay in their bookmarks there, and whoever it was shared with loses it. " +
+    "Deletes a collection the person owns in an Evidence Community, as their profile page there does: its records stay in their bookmarks there, and whoever it was shared with loses it. " +
     "`collectionName` is its name, which the person is shown when asked. `expect` ({ name, description, private, records, members }), which an undo passes, deletes it only while it is still so. Refused for a collection they don't own.",
   args: deleteArgs,
   returns: v.object({}),
@@ -207,8 +207,8 @@ const changeArgs = { libraryId: v.id("evidenceLibraries"), collection: v.string(
 export const changeRecordsAction = defineChangingAction({
   path: CHANGE_RECORDS,
   description:
-    `Puts records of an Evidence Library into a collection the person owns or edits there, or takes them out (\`change\`), up to ${LIBRARY_CHANGE_MAX} at once, by their \`key\` (or \`paper\`) as evidenceLibraries/library:records gives it; \`collectionName\` is the collection's name, which the person is shown when asked. ` +
-    "Answers how many records the collection holds after, how many changed, and `missing`, keys of records the library doesn't show, which never go in. Returns `undo`, which reverses it. Refused for a collection they may only view.",
+    `Puts records of an Evidence Community into a collection the person owns or edits there, or takes them out (\`change\`), up to ${LIBRARY_CHANGE_MAX} at once, by their \`key\` (or \`paper\`) as evidenceLibraries/library:records gives it; \`collectionName\` is the collection's name, which the person is shown when asked. ` +
+    "Answers how many records the collection holds after, how many changed, and `missing`, keys of records the community doesn't show, which never go in. Returns `undo`, which reverses it. Refused for a collection they may only view.",
   args: changeArgs,
   returns: v.object({ count: v.number(), changed: v.number(), missing: v.array(v.string()), undo: reversedBy(CHANGE_RECORDS, changeArgs) }),
   spendsCredits: false,

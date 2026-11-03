@@ -140,7 +140,7 @@ export const runReadinessSetup = internalAction({
           ? { code: error.code, message: error.message }
           : {
               code: "READINESS_CHECK_FAILED",
-              message: "Evidence Library readiness could not be confirmed",
+              message: "Evidence Community readiness could not be confirmed",
             };
       if (safeError.code === "READINESS_CHECK_FAILED") {
         console.error("[evidence-library] readiness setup failed", {

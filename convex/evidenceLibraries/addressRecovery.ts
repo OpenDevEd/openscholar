@@ -38,7 +38,7 @@ async function readMoveCandidates(
 ) {
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   if (!library) {
-    throw createError("NOT_FOUND", "Evidence Library not found");
+    throw createError("NOT_FOUND", "Evidence Community not found");
   }
   const binding = library.runtimeBindingId
     ? await ctx.db.get(
@@ -47,7 +47,7 @@ async function readMoveCandidates(
       )
     : null;
   if (!binding) {
-    throw createError("CONFLICT", "This library has no address yet");
+    throw createError("CONFLICT", "This community has no address yet");
   }
   const { candidates } = await readEvidenceLibraryAddressCandidates(ctx, {
     workspaceId: requireLibraryWorkspace(library),
@@ -102,7 +102,7 @@ export async function requireFreeEvidenceLibraryAddress(
   if (!free) {
     throw createError(
       "CONFLICT",
-      "Another Evidence Library took that address first",
+      "Another Evidence Community took that address first",
     );
   }
   return args.candidate.publicAddress;
@@ -123,7 +123,7 @@ export async function moveIdentityBaseUrl(
   ) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library identity configuration is invalid",
+      "Evidence Community identity configuration is invalid",
     );
   }
   if ((payload as Record<string, unknown>).baseUrl === nextAddress) return;
@@ -138,7 +138,7 @@ export async function moveIdentityBaseUrl(
   });
   if (section.kind === "draft") {
     const draft = await ctx.db.get(section.draftId);
-    if (!draft) throw createError("NOT_FOUND", "Evidence Library draft not found");
+    if (!draft) throw createError("NOT_FOUND", "Evidence Community draft not found");
     await ctx.db.patch(draft._id, {
       editVersion: draft.editVersion + 1,
       updatedAt: Date.now(),
@@ -168,14 +168,14 @@ export async function applyEvidenceLibraryAddressMove(
   if (!binding) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library runtime binding not found",
+      "Evidence Community runtime binding not found",
     );
   }
   const updateRevision = args.updateRevision === true;
   if (updateRevision && !args.revisionId) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library setup revision is missing",
+      "Evidence Community setup revision is missing",
     );
   }
   const draftSnapshot = await loadDraftConfigurationSnapshot(ctx, args.draftId, {

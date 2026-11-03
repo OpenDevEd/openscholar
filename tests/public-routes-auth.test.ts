@@ -24,7 +24,7 @@ describe("public route auth matrix", () => {
   it("makes topic browsing public while keeping library configuration protected", () => {
     expect(isPublicPath("/topics")).toBe(true);
     expect(isPublicPath("/topics/T12260")).toBe(true);
-    expect(isPublicPath("/evidence-libraries/library-id/configuration")).toBe(false);
+    expect(isPublicPath("/evidence-communities/library-id/configuration")).toBe(false);
   });
 
   it("normalizes trailing slashes and hash/query segments", () => {

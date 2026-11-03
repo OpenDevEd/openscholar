@@ -115,7 +115,7 @@ describe("an Evidence Library's draft, for the assistant", () => {
     await t.mutation(internal.evidenceLibraries.assistant.removeMemberForAssistant, { ...allowed, clerkUserId: "user_colleague" });
     expect([...(await team()).editors, ...(await team()).creators]).toEqual([]);
     // Someone outside the organization is invited on the library's page.
-    await expect(t.mutation(internal.evidenceLibraries.assistant.addMemberForAssistant, { ...allowed, email: "stranger@example.org", role: "editor" })).rejects.toThrow(/No member of the library's organization/);
+    await expect(t.mutation(internal.evidenceLibraries.assistant.addMemberForAssistant, { ...allowed, email: "stranger@example.org", role: "editor" })).rejects.toThrow(/No member of the community's organization/);
   });
 });
 

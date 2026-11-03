@@ -64,8 +64,8 @@ const openedValidator = v.union(
 export const openAction = defineUserAction({
   path: "evidenceLibraries/handoffs:open",
   description:
-    "A hand-off a library made, as the person opening it may read its source, with the questions it brought; `gone` once it has expired. " +
-    "With `records`, a hand-off of records lists them (title, authors, year). The assistant reading it doesn't add the library to the person's list; the person opening its link does.",
+    "A hand-off a community made, as the person opening it may read its source, with the questions it brought; `gone` once it has expired. " +
+    "With `records`, a hand-off of records lists them (title, authors, year). The assistant reading it doesn't add the community to the person's list; the person opening its link does.",
   args: { handoffId: v.string(), records: v.optional(v.boolean()) },
   returns: openedValidator,
   spendsCredits: false,

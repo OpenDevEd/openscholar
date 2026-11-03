@@ -55,18 +55,18 @@ describe("Zotero's sign-in callback", () => {
   });
 
   it.each(["refuses", "unreachable"] as const)("returns to the page the sign-in started on with the error when Zotero %s", async (answer) => {
-    const { t, connection } = await started("/evidence-libraries/lib1/configuration?section=sources");
+    const { t, connection } = await started("/evidence-communities/lib1/configuration?section=sources");
     zoteroAnswers = answer;
     expect(back(await t.fetch("/api/zotero/callback?oauth_token=request-token&oauth_verifier=verifier"))).toBe(
-      `${APP}/evidence-libraries/lib1/configuration?section=sources&zotero_error=failed`,
+      `${APP}/evidence-communities/lib1/configuration?section=sources&zotero_error=failed`,
     );
     expect(await connection()).toBeNull();
   });
 
   it("returns a sign-in that took too long to the page it started on", async () => {
-    const { t, connection } = await started("/evidence-libraries/lib1/configuration", -1);
+    const { t, connection } = await started("/evidence-communities/lib1/configuration", -1);
     expect(back(await t.fetch("/api/zotero/callback?oauth_token=request-token&oauth_verifier=verifier"))).toBe(
-      `${APP}/evidence-libraries/lib1/configuration?zotero_error=expired`,
+      `${APP}/evidence-communities/lib1/configuration?zotero_error=expired`,
     );
     expect(await connection()).toBeNull();
   });

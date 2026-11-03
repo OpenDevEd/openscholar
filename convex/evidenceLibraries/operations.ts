@@ -70,7 +70,7 @@ export async function readActiveOperations(
     .take(MAX_ACTIVE_OPERATIONS_READ + 1);
   if (operations.length > MAX_ACTIVE_OPERATIONS_READ) {
     console.error("[evidence library] More active operations than a guard reads", { libraryId, status, kind, read: MAX_ACTIVE_OPERATIONS_READ });
-    throw createError("CONFLICT", `This library has more than ${MAX_ACTIVE_OPERATIONS_READ} ${status} ${kind} operations. Wait for them to finish before changing it.`);
+    throw createError("CONFLICT", `This community has more than ${MAX_ACTIVE_OPERATIONS_READ} ${status} ${kind} operations. Wait for them to finish before changing it.`);
   }
   return operations;
 }
@@ -443,7 +443,7 @@ async function queueOperationRecord(
     ? await ctx.db.get("evidenceLibraryConfigRevisions", args.revisionId)
     : null;
   if (args.revisionId && (!revision || revision.libraryId !== args.libraryId)) {
-    throw createError("NOT_FOUND", "Evidence Library revision not found");
+    throw createError("NOT_FOUND", "Evidence Community revision not found");
   }
   const existing = await ctx.db
     .query("evidenceLibraryConfigOperations")
@@ -659,11 +659,11 @@ export async function attachRevisionToSetupOperation(
   ) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library setup operation not found",
+      "Evidence Community setup operation not found",
     );
   }
   if (!revision || revision.libraryId !== args.libraryId) {
-    throw createError("NOT_FOUND", "Evidence Library revision not found");
+    throw createError("NOT_FOUND", "Evidence Community revision not found");
   }
   if (
     operation.status !== "queued" ||
@@ -673,13 +673,13 @@ export async function attachRevisionToSetupOperation(
   ) {
     throw createError(
       "CONFLICT",
-      "Evidence Library setup operation has already started",
+      "Evidence Community setup operation has already started",
     );
   }
   if (operation.revisionId && operation.revisionId !== args.revisionId) {
     throw createError(
       "CONFLICT",
-      "Evidence Library setup operation already has a different revision",
+      "Evidence Community setup operation already has a different revision",
     );
   }
   if (
@@ -688,7 +688,7 @@ export async function attachRevisionToSetupOperation(
   ) {
     throw createError(
       "CONFLICT",
-      "Evidence Library setup operation already has a different activation request",
+      "Evidence Community setup operation already has a different activation request",
     );
   }
   if (!operation.revisionId) {

@@ -21,7 +21,7 @@ function requireApplicationReceipt(
   if (!receipt || typeof receipt.runtimeImage !== "string") {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library application receipt is missing",
+      "Evidence Community application receipt is missing",
     );
   }
   return { ...receipt, runtimeImage: receipt.runtimeImage };
@@ -99,7 +99,7 @@ export const saveDeploymentSetupId = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library setup already saved another deployment",
+        "Evidence Community setup already saved another deployment",
       );
     }
     await ctx.db.patch(setup.setupOperation._id, {
@@ -129,14 +129,14 @@ export const scheduleDeploymentPoll = internalMutation({
     if (setup.setupOperation.setupDeploymentId !== args.deploymentId) {
       throw createError(
         "CONFLICT",
-        "Evidence Library setup is polling another deployment",
+        "Evidence Community setup is polling another deployment",
       );
     }
     const pollCount = (setup.setupOperation.setupDeploymentPollCount ?? 0) + 1;
     if (pollCount > MAX_DEPLOYMENT_POLLS) {
       throw createError(
         "CONFLICT",
-        "Evidence Library deployment did not finish in time",
+        "Evidence Community deployment did not finish in time",
       );
     }
     const now = Date.now();
@@ -184,7 +184,7 @@ export const completeDeploymentSetup = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library deployment receipt changed during setup",
+        "Evidence Community deployment receipt changed during setup",
       );
     }
     const transition = await recordEvidenceLibrarySetupStep(ctx, {

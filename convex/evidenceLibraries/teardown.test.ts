@@ -27,7 +27,7 @@ describe("development Evidence Library teardown", () => {
           confirmationName: "Climate",
         },
       ),
-    ).rejects.toThrow(/full library name/i);
+    ).rejects.toThrow(/full community name/i);
   });
 
   it("keeps an organization on its plan while it has a library, and lets an Owner delete one the plan no longer covers", async () => {
@@ -37,7 +37,7 @@ describe("development Evidence Library teardown", () => {
     const summary = () => fixture.admin.query(api.organizations.queries.summary, { workspaceId });
 
     // Free has no Evidence Libraries, so the organization isn't moved there with one: it couldn't be opened to delete afterwards.
-    await expect(fixture.admin.action(api.billing.actions.moveToFree, { workspaceId })).rejects.toThrow(/Move or delete its Evidence Libraries first/);
+    await expect(fixture.admin.action(api.billing.actions.moveToFree, { workspaceId })).rejects.toThrow(/Move or delete its Evidence Communities first/);
     // While the plan covers it, it's deleted from its own page: the organization's settings offer nothing.
     expect(await summary()).not.toHaveProperty("removable");
 
@@ -207,7 +207,7 @@ describe("development Evidence Library teardown", () => {
           confirmationName: "Climate Evidence",
         },
       ),
-    ).rejects.toThrow(/wait for the current library operation/i);
+    ).rejects.toThrow(/wait for the current community operation/i);
   });
 
   it("still refuses a queued setup that already ran and is waiting to retry", async () => {
@@ -224,7 +224,7 @@ describe("development Evidence Library teardown", () => {
           confirmationName: "Climate Evidence",
         },
       ),
-    ).rejects.toThrow(/wait for the current library operation/i);
+    ).rejects.toThrow(/wait for the current community operation/i);
   });
 
   it("still refuses a retry waiting behind many queued operations that never started", async () => {
@@ -245,7 +245,7 @@ describe("development Evidence Library teardown", () => {
           confirmationName: "Climate Evidence",
         },
       ),
-    ).rejects.toThrow(/wait for the current library operation/i);
+    ).rejects.toThrow(/wait for the current community operation/i);
   });
 
   it("rejects deletion when the development-only switch is off", async () => {

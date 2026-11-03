@@ -93,7 +93,7 @@ function toSetupDraftResult(
   if (setup.library.state !== "provisioning") {
     throw createError(
       "CONFLICT",
-      "Evidence Library setup is no longer a draft",
+      "Evidence Community setup is no longer a draft",
     );
   }
   return {
@@ -126,7 +126,7 @@ export async function createEvidenceLibrarySetup(
   if (!name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)) {
     throw createError(
       "VALIDATION_ERROR",
-      "Invalid Evidence Library name or slug",
+      "Invalid Evidence Community name or slug",
     );
   }
   const existing = await ctx.db
@@ -146,14 +146,14 @@ export async function createEvidenceLibrarySetup(
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library setup retry does not match the original request",
+        "Evidence Community setup retry does not match the original request",
       );
     }
     return toSetupDraftResult(setup, identity);
   }
 
   if ((await countOf(ctx, workspaceLibrariesOf(workspaceId))) >= MAX_LIBRARIES_PER_WORKSPACE) {
-    throw createError("VALIDATION_ERROR", `A workspace can have up to ${MAX_LIBRARIES_PER_WORKSPACE} libraries. Delete one to make another.`);
+    throw createError("VALIDATION_ERROR", `A workspace can have up to ${MAX_LIBRARIES_PER_WORKSPACE} communities. Delete one to make another.`);
   }
 
   const now = Date.now();
@@ -238,7 +238,7 @@ export async function createEvidenceLibrarySetup(
   });
   const library = await ctx.db.get("evidenceLibraries", libraryId);
   if (!library) {
-    throw new Error("Created Evidence Library could not be read");
+    throw new Error("Created Evidence Community could not be read");
   }
   const setup = await readEvidenceLibrarySetupRecords(ctx, library);
   return toSetupDraftResult(
@@ -266,7 +266,7 @@ async function readRuntimeBindingBaseUrl(
   if (!binding || binding.libraryId !== library._id) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library runtime binding not found",
+      "Evidence Community runtime binding not found",
     );
   }
   // The address the library calls its own: a custom domain the owner made
@@ -298,7 +298,7 @@ export async function saveEvidenceLibraryDraftSections(
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
     .unique();
   if (!draft) {
-    throw createError("NOT_FOUND", "Evidence Library draft not found");
+    throw createError("NOT_FOUND", "Evidence Community draft not found");
   }
   const editVersion = nextDraftEditVersion(
     draft.editVersion,
@@ -495,7 +495,7 @@ async function finalizeEvidenceLibraryDraft(
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
     .unique();
   if (!draft) {
-    throw createError("NOT_FOUND", "Evidence Library draft not found");
+    throw createError("NOT_FOUND", "Evidence Community draft not found");
   }
   const editVersion = nextDraftEditVersion(
     draft.editVersion,
@@ -510,7 +510,7 @@ async function finalizeEvidenceLibraryDraft(
   ) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library draft did not migrate to the current version",
+      "Evidence Community draft did not migrate to the current version",
     );
   }
   const latestRevision = await ctx.db
@@ -666,7 +666,7 @@ export async function activateEvidenceLibraryConfiguration(
   if (access.library.state === "disabled") {
     throw createError(
       "CONFLICT",
-      "Disabled Evidence Libraries cannot be activated",
+      "Disabled Evidence Communities cannot be activated",
     );
   }
   const expectedBaseUrl = await readRuntimeBindingBaseUrl(ctx, access.library);
@@ -675,7 +675,7 @@ export async function activateEvidenceLibraryConfiguration(
     .withIndex("by_libraryId", (query) => query.eq("libraryId", args.libraryId))
     .unique();
   if (!draft) {
-    throw createError("NOT_FOUND", "Evidence Library draft not found");
+    throw createError("NOT_FOUND", "Evidence Community draft not found");
   }
   if (draft.editVersion !== args.expectedEditVersion) {
     const completed = await readCompletedActivation(ctx, {
@@ -704,7 +704,7 @@ export async function activateEvidenceLibraryConfiguration(
   ) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library draft did not migrate to the current version",
+      "Evidence Community draft did not migrate to the current version",
     );
   }
   // Choices about the library's addresses are saved outside the sections and
@@ -724,7 +724,7 @@ export async function activateEvidenceLibraryConfiguration(
     if (!access.library.activeRevisionId) {
       throw createError(
         "INVALID_DATA",
-        "Active Evidence Library revision not found",
+        "Active Evidence Community revision not found",
       );
     }
     const active = await loadRevisionConfigurationSnapshot(
@@ -772,7 +772,7 @@ export async function activateEvidenceLibraryConfiguration(
     ) {
       throw createError(
         "CONFLICT",
-        "Topics need a newer Evidence Library software version. Check for software updates, then activate again.",
+        "Topics need a newer Evidence Community software version. Check for software updates, then activate again.",
       );
     }
   }
@@ -787,7 +787,7 @@ export async function activateEvidenceLibraryConfiguration(
     if (!setupOperationId) {
       throw createError(
         "INVALID_DATA",
-        "Evidence Library setup operation not found",
+        "Evidence Community setup operation not found",
       );
     }
     await attachRevisionToSetupOperation(ctx, {
@@ -879,7 +879,7 @@ export async function retryEvidenceLibrarySetup(
   if (setup.setupOperation.status !== "failed") {
     throw createError(
       "CONFLICT",
-      "Only a failed Evidence Library setup can be retried",
+      "Only a failed Evidence Community setup can be retried",
     );
   }
   // A failed setup must follow the platform's current supported release.

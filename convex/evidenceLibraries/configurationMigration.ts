@@ -156,7 +156,7 @@ function decodeCursor(value: string | null): AuditCursor {
   } catch {
     // The cursor is opaque to callers. Treat malformed state as invalid.
   }
-  throw new Error("Invalid Evidence Library configuration audit cursor");
+  throw new Error("Invalid Evidence Community configuration audit cursor");
 }
 
 function emptyCounts(): AuditCounts {
@@ -325,7 +325,7 @@ async function auditHeader(
           category: "brokenParent",
           pointer: "/baseRevisionId",
           message:
-            "Draft base revision is missing or belongs to another library.",
+            "Draft base revision is missing or belongs to another community.",
         });
       }
     }
@@ -349,7 +349,7 @@ async function auditHeader(
           category: "brokenParent",
           pointer,
           message:
-            "Revision parent is missing, self-referential, or belongs to another library.",
+            "Revision parent is missing, self-referential, or belongs to another community.",
         });
       }
     }
@@ -425,7 +425,7 @@ async function auditSection(
     addFinding(entry, counts, samples, {
       category: "brokenParent",
       pointer: row.kind === "draft" ? "/draftId" : "/revisionId",
-      message: "Section row parent is missing or belongs to another library.",
+      message: "Section row parent is missing or belongs to another community.",
     });
   }
   return entry;

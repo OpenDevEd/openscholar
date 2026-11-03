@@ -629,7 +629,7 @@ describe("Coolify Evidence Library client", () => {
     });
     const rejected = expect(deletion).rejects.toMatchObject({
       code: "COOLIFY_DELETE_FAILED",
-      message: "Coolify still contains the Evidence Library application",
+      message: "Coolify still contains the Evidence Community application",
     });
     await vi.runAllTimersAsync();
     await rejected;
@@ -1140,7 +1140,7 @@ describe("Coolify Evidence Library client", () => {
       createClient(fetchImpl).reconcileApplication(reconcileInput()),
     ).rejects.toMatchObject({
       code: "COOLIFY_APPLICATION_CONFLICT",
-      message: "More than one Coolify application uses this library tag",
+      message: "More than one Coolify application uses this community tag",
     });
   });
 

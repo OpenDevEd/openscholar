@@ -22,7 +22,7 @@ export async function readRevisionDefaultLocale(
   ) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library default language is missing",
+      "Evidence Community default language is missing",
     );
   }
   return (payload as Record<string, string>).defaultLocale;

@@ -43,7 +43,7 @@ describe("Library access list", () => {
       expect(admin).toHaveAttribute("href", `https://${role}.example.org/admin`);
       // Links out to a library open a new tab and leave OpenScholar where it was.
       expect(admin).toHaveAttribute("target", "_blank");
-      if (role === "owner") expect(row.getByRole("link", { name: "Configure" })).toHaveAttribute("href", "/evidence-libraries/owner/configuration");
+      if (role === "owner") expect(row.getByRole("link", { name: "Configure" })).toHaveAttribute("href", "/evidence-communities/owner/configuration");
       else expect(row.queryByRole("link", { name: "Configure" })).not.toBeInTheDocument();
     }
   });
@@ -55,7 +55,7 @@ describe("Library access list", () => {
     mocks.query.mockImplementation((name: string) => ({isReady: true, data: name === "libraries" ? rows : name === "organizations" ? [{id: "org_1", name: "Research team"}] : []}));
     mocks.restart.mockResolvedValue({status: "queued"});
     render(<LibraryList />);
-    expect(screen.getByRole("link", {name: "View setup"})).toHaveAttribute("href", "/evidence-libraries/setup/setup");
+    expect(screen.getByRole("link", {name: "View setup"})).toHaveAttribute("href", "/evidence-communities/setup/setup");
     await userEvent.setup().click(screen.getByRole("button", {name: "Retry deletion"}));
     expect(mocks.restart).toHaveBeenCalledWith({libraryId: "delete"});
   });
@@ -65,10 +65,10 @@ describe("Library access list", () => {
     // Invitations are yours, in your own workspace: an organization shows its libraries.
     expect(screen.queryByRole("tab", { name: /Invitations/ })).not.toBeInTheDocument();
     expect(screen.getByText("owner library")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "New library" })).toHaveAttribute("href", "/evidence-libraries/new");
+    expect(screen.getByRole("link", { name: "New community" })).toHaveAttribute("href", "/evidence-communities/new");
     mocks.workspace = { kind: "organization", name: "Partner", organizationId: "org_2" };
     render(<LibraryList />);
-    expect(screen.getAllByRole("link", { name: "New library" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "New community" })).toHaveLength(1);
   });
   it("opens pending invitations from the invitation email link", () => {
     mocks.query.mockImplementation((name: string) => ({isReady: true, data: name === "libraries" ? libraries : name === "invitations" ? [{invitationId: "invite_1", libraryId: "invited", name: "Invited library", role: "editor", organization: {name: "Partner organization", imageUrl: null}}] : []}));

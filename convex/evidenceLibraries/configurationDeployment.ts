@@ -191,7 +191,7 @@ function requireRuntimeImage(value: string | undefined): string {
   if (!isRuntimeImageReference(value)) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library runtime image is missing or invalid",
+      "Evidence Community runtime image is missing or invalid",
     );
   }
   return value;
@@ -209,7 +209,7 @@ async function readConfigurationDeployment(
     ctx.db.get(args.operationId),
   ]);
   if (!library || library.state !== "active") {
-    throw createError("CONFLICT", "Evidence Library is not active");
+    throw createError("CONFLICT", "Evidence Community is not active");
   }
   if (
     !operation ||
@@ -219,7 +219,7 @@ async function readConfigurationDeployment(
   ) {
     throw createError(
       "NOT_FOUND",
-      "Evidence Library configuration deployment not found",
+      "Evidence Community configuration deployment not found",
     );
   }
   const [revision, runtimeBinding] = await Promise.all([
@@ -229,7 +229,7 @@ async function readConfigurationDeployment(
       : Promise.resolve(null),
   ]);
   if (!revision || revision.libraryId !== args.libraryId) {
-    throw createError("INVALID_DATA", "Evidence Library revision not found");
+    throw createError("INVALID_DATA", "Evidence Community revision not found");
   }
   if (
     !runtimeBinding ||
@@ -238,7 +238,7 @@ async function readConfigurationDeployment(
   ) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library ready runtime binding not found",
+      "Evidence Community ready runtime binding not found",
     );
   }
   const target = operation.configurationDeploymentTarget;
@@ -268,7 +268,7 @@ function requireCurrentConfigurationRevision(
   ) {
     throw createError(
       "CONFLICT",
-      "Evidence Library configuration revision is not a current owner format",
+      "Evidence Community configuration revision is not a current owner format",
     );
   }
 }
@@ -286,7 +286,7 @@ function requireCurrentAttempt(
   ) {
     throw createError(
       "CONFLICT",
-      "Evidence Library configuration deployment attempt is no longer active",
+      "Evidence Community configuration deployment attempt is no longer active",
     );
   }
 }
@@ -318,7 +318,7 @@ export async function requireNoActiveConfigurationDeployment(
       ) {
         throw createError(
           "CONFLICT",
-          "Another Evidence Library configuration deployment is already running",
+          "Another Evidence Community configuration deployment is already running",
         );
       }
     }
@@ -342,13 +342,13 @@ async function claimAndScheduleAuthorizedConfigurationDeployment(
   if (isDeploymentLeaseHeld(deployment.operation, now)) {
     throw createError(
       "CONFLICT",
-      "Evidence Library configuration deployment is already running",
+      "Evidence Community configuration deployment is already running",
     );
   }
   if (deployment.operation.status === "succeeded") {
     throw createError(
       "CONFLICT",
-      "Evidence Library configuration deployment is already complete",
+      "Evidence Community configuration deployment is already complete",
     );
   }
   const attemptCount = deployment.operation.attemptCount + 1;
@@ -425,7 +425,7 @@ function requireCredential(
   ) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library runtime credential is incomplete",
+      "Evidence Community runtime credential is incomplete",
     );
   }
   return credential;
@@ -557,7 +557,7 @@ export const prepareConfigurationDeployment = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library configuration deployment is not publishing",
+        "Evidence Community configuration deployment is not publishing",
       );
     }
     const activeRevision = deployment.library.activeRevisionId
@@ -566,7 +566,7 @@ export const prepareConfigurationDeployment = internalMutation({
     if (!activeRevision || activeRevision.libraryId !== args.libraryId) {
       throw createError(
         "INVALID_DATA",
-        "Evidence Library active revision not found",
+        "Evidence Community active revision not found",
       );
     }
     const attachedDomainOrigins = await readAttachedDomainOrigins(
@@ -610,7 +610,7 @@ export const prepareConfigurationDeployment = internalMutation({
       ) {
         throw createError(
           "INVALID_DATA",
-          "Evidence Library deployment receipt is incomplete",
+          "Evidence Community deployment receipt is incomplete",
         );
       }
       return {
@@ -640,7 +640,7 @@ export const prepareConfigurationDeployment = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "The library moved to other software after this update was requested",
+        "The community moved to other software after this update was requested",
       );
     }
     const [
@@ -711,7 +711,7 @@ export const prepareConfigurationDeployment = internalMutation({
     if (!validated.valid) {
       throw createError(
         "INVALID_DATA",
-        "Evidence Library revision configuration is incomplete",
+        "Evidence Community revision configuration is incomplete",
       );
     }
     const required = {
@@ -885,7 +885,7 @@ export const saveConfigurationDeploymentTarget = internalMutation({
     if (deployment.operation.configurationDeploymentTarget) {
       throw createError(
         "CONFLICT",
-        "Evidence Library configuration target is already saved",
+        "Evidence Community configuration target is already saved",
       );
     }
     await requireUnchangedAiProviderKey(
@@ -934,7 +934,7 @@ export const saveConfigurationDeploymentTarget = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library runtime inputs changed before the target was saved",
+        "Evidence Community runtime inputs changed before the target was saved",
       );
     }
     const now = Date.now();
@@ -1001,7 +1001,7 @@ export const saveConfigurationDeploymentReceipt = internalMutation({
     if (!target) {
       throw createError(
         "CONFLICT",
-        "Evidence Library configuration target is not saved",
+        "Evidence Community configuration target is not saved",
       );
     }
     const receipt = validateOperationReceipt({
@@ -1020,7 +1020,7 @@ export const saveConfigurationDeploymentReceipt = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library configuration deployment already saved another deployment",
+        "Evidence Community configuration deployment already saved another deployment",
       );
     }
     const now = Date.now();
@@ -1059,7 +1059,7 @@ export const saveConfigurationActivationReceipt = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library configuration is not ready for direct activation",
+        "Evidence Community configuration is not ready for direct activation",
       );
     }
     const receipt = validateOperationReceipt({
@@ -1081,7 +1081,7 @@ export const saveConfigurationActivationReceipt = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library configuration activation receipt changed",
+        "Evidence Community configuration activation receipt changed",
       );
     }
     const now = Date.now();
@@ -1118,7 +1118,7 @@ export const scheduleConfigurationDeploymentPoll = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library configuration deployment is not ready to poll",
+        "Evidence Community configuration deployment is not ready to poll",
       );
     }
     const pollCount =
@@ -1126,7 +1126,7 @@ export const scheduleConfigurationDeploymentPoll = internalMutation({
     if (pollCount > MAX_CONFIGURATION_DEPLOYMENT_POLLS) {
       throw createError(
         "CONFLICT",
-        "Evidence Library configuration deployment did not finish in time",
+        "Evidence Community configuration deployment did not finish in time",
       );
     }
     const now = Date.now();
@@ -1185,7 +1185,7 @@ export const prepareConfigurationActivation = internalMutation({
     ) {
       throw createError(
         "INVALID_DATA",
-        "Evidence Library deployment receipt is incomplete",
+        "Evidence Community deployment receipt is incomplete",
       );
     }
     // The last look before the library goes live: a key replaced or removed
@@ -1266,7 +1266,7 @@ export const scheduleConfigurationReadinessPoll = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library configuration is not waiting for readiness",
+        "Evidence Community configuration is not waiting for readiness",
       );
     }
     const pollCount =
@@ -1306,7 +1306,7 @@ async function completeConfigurationAddressMove(
   ) {
     throw createError(
       "CONFLICT",
-      "The Evidence Library address changed after this move was requested",
+      "The Evidence Community address changed after this move was requested",
     );
   }
   const taken = await ctx.db
@@ -1318,7 +1318,7 @@ async function completeConfigurationAddressMove(
   if (taken && taken._id !== deployment.runtimeBinding._id) {
     throw createError(
       "CONFLICT",
-      "Another Evidence Library took that address first",
+      "Another Evidence Community took that address first",
     );
   }
   const draft = await ctx.db
@@ -1328,7 +1328,7 @@ async function completeConfigurationAddressMove(
     )
     .unique();
   if (!draft) {
-    throw createError("NOT_FOUND", "Evidence Library draft not found");
+    throw createError("NOT_FOUND", "Evidence Community draft not found");
   }
   await applyEvidenceLibraryAddressMove(ctx, {
     bindingId: deployment.runtimeBinding._id,
@@ -1353,7 +1353,7 @@ async function updateDraftBaseRevision(
     )
     .unique();
   if (!draft) {
-    throw createError("NOT_FOUND", "Evidence Library draft not found");
+    throw createError("NOT_FOUND", "Evidence Community draft not found");
   }
   if (draft.baseRevisionId !== deployment.revision._id) {
     await ctx.db.patch(draft._id, {
@@ -1380,7 +1380,7 @@ export const completeConfigurationDeployment = internalMutation({
     ) {
       throw createError(
         "CONFLICT",
-        "Evidence Library configuration deployment is not ready to complete",
+        "Evidence Community configuration deployment is not ready to complete",
       );
     }
     const target = deployment.operation.configurationDeploymentTarget;
@@ -1418,7 +1418,7 @@ export const completeConfigurationDeployment = internalMutation({
     ) {
       throw createError(
         "INVALID_DATA",
-        "Evidence Library deployment receipt is incomplete",
+        "Evidence Community deployment receipt is incomplete",
       );
     }
     await completeConfigurationAddressMove(ctx, deployment);
@@ -1644,13 +1644,13 @@ export const retryConfigurationDeployment = mutation({
     if (!operation || operation.libraryId !== args.libraryId) {
       throw createError(
         "NOT_FOUND",
-        "Evidence Library configuration deployment not found",
+        "Evidence Community configuration deployment not found",
       );
     }
     if (!(await isRetryableConfigurationDeployment(ctx, operation))) {
       throw createError(
         "CONFLICT",
-        "This Evidence Library configuration deployment cannot be retried",
+        "This Evidence Community configuration deployment cannot be retried",
       );
     }
     // A domain change that failed gave the domain back, so trying again has

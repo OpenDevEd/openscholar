@@ -286,8 +286,8 @@ async function removableOf(ctx: QueryCtx, library: Doc<"evidenceLibraries">) {
 export const summaryAction = defineUserQuery({
   path: "organizations/queries:summary",
   description:
-    "Counts what's in the workspace the person is in: its collections, searches, screenings, extractions and Evidence Libraries, with the first library's name. " +
-    "In an organization, also how many admins it has. `removable` is that first library for one of its owners to delete, when the workspace's plan no longer includes Evidence Libraries and their own pages are shut: `state` says whether it's still there, being deleted, or its deletion stopped part-way.",
+    "Counts what's in the workspace the person is in: its collections, searches, screenings, extractions and Evidence Communities, with the first community's name. " +
+    "In an organization, also how many admins it has. `removable` is that first community for one of its owners to delete, when the workspace's plan no longer includes Evidence Communities and their own pages are shut: `state` says whether it's still there, being deleted, or its deletion stopped part-way.",
   args: {},
   returns: v.object({
     collections: v.number(),

@@ -43,7 +43,7 @@ function requireDevelopmentEnvironment() {
     process.env.EL_ALLOW_DEVELOPMENT_TEARDOWN !== "true" ||
     process.env.EL_COOLIFY_ENVIRONMENT !== "development"
   ) {
-    throw new Error("Development Evidence Library teardown is not enabled");
+    throw new Error("Development Evidence Community teardown is not enabled");
   }
 }
 
@@ -113,13 +113,13 @@ export const runDevelopmentTeardown = internalAction({
       ) {
         throw new StorageSetupError(
           "STORAGE_BUCKET_CONFLICT",
-          "The saved Storage buckets do not belong to this library",
+          "The saved Storage buckets do not belong to this community",
         );
       }
       if (!prepared.targetBaseUrl) {
         throw new CoolifyClientError(
           "COOLIFY_APPLICATION_CONFLICT",
-          "The library has no saved public address",
+          "The community has no saved public address",
         );
       }
       await holdTeardown(ctx, args.operationId, attemptToken);
@@ -232,11 +232,11 @@ export const runDevelopmentTeardown = internalAction({
           : error instanceof ClerkApiError || error instanceof OAuthClientBusyError
             ? {
                 code: "OAUTH_CLIENT_DELETE_FAILED",
-                message: "The library's OpenScholar sign-in could not be removed",
+                message: "The community's OpenScholar sign-in could not be removed",
               }
           : {
               code: "DEVELOPMENT_TEARDOWN_FAILED",
-              message: "The development library could not be deleted",
+              message: "The development community could not be deleted",
             };
       // Which part of the deletion stopped, in this library's own words. The
       // page says that; the provider's own message is kept for the log only.

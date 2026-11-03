@@ -30,7 +30,7 @@ export async function noteReader(ctx: MutationCtx, libraryId: Id<"evidenceLibrar
 /** The library whose service credential this is, or a refusal. */
 export async function credentialedLibrary(ctx: Pick<QueryCtx, "db">, libraryId: string, credentialDigest: string) {
   const id = ctx.db.normalizeId("evidenceLibraries", libraryId);
-  if (!id || !(await findMatchingLibraryServiceCredential(ctx, { libraryId: id, credentialDigest }))) throw createError("UNAUTHENTICATED", "Invalid library service credential");
+  if (!id || !(await findMatchingLibraryServiceCredential(ctx, { libraryId: id, credentialDigest }))) throw createError("UNAUTHENTICATED", "Invalid community service credential");
   return id;
 }
 
@@ -130,8 +130,8 @@ export async function librariesOf(ctx: Pick<QueryCtx, "db">, userId: Id<"users">
 export const listAction = defineUserQuery({
   path: "evidenceLibraries/readers:list",
   description:
-    `The Evidence Libraries the person reads, last used first, at most ${READ_LIBRARIES_MAX}: each one's ID, name and address, how it is theirs (\`signIn\`: they signed in to it; \`handoff\`: they opened its records here; \`role\`: they have a role on it, which \`role\` names). ` +
-    "Any other library OpenScholar runs is reached by its address.",
+    `The Evidence Communities the person reads, last used first, at most ${READ_LIBRARIES_MAX}: each one's ID, name and address, how it is theirs (\`signIn\`: they signed in to it; \`handoff\`: they opened its records here; \`role\`: they have a role on it, which \`role\` names). ` +
+    "Any other community OpenScholar runs is reached by its address.",
   args: {},
   returns: readLibrariesValidator,
   run: async (ctx, { userId }) => (await librariesOf(ctx, userId)).map(({ library, address, ways, role, faviconUrl }) => ({ libraryId: library._id, name: library.name, address, ways, role, faviconUrl })),

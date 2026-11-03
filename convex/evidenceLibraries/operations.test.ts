@@ -398,7 +398,7 @@ describe("Evidence Library operation state", () => {
           attemptCount: running!.attemptCount,
           error: {
             code: "CONFIGURATION_ASSEMBLY_FAILED",
-            message: "Evidence Library configuration could not be assembled",
+            message: "Evidence Community configuration could not be assembled",
             issues,
           },
         },
@@ -505,7 +505,7 @@ describe("Evidence Library operation state", () => {
         libraryId: created.libraryId,
         expectedEditVersion: activated.editVersion,
       }),
-    ).rejects.toThrow(/Evidence Library configuration snapshot is invalid/);
+    ).rejects.toThrow(/Evidence Community configuration snapshot is invalid/);
     const afterRejected = await t.run(async (ctx) => ({
       library: await ctx.db.get(created.libraryId),
       operations: await ctx.db

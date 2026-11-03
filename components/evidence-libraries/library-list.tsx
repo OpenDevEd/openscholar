@@ -124,7 +124,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
   // An address has at most a page of invitations waiting, so they are filtered here.
   const invited = (invitations.data?.page ?? []).filter((invitation) => `${invitation.name} ${invitation.organization.name}`.toLowerCase().includes(search.trim().toLowerCase()));
   const visible: Library[] = view === "libraries"
-    ? overviews.items.map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, faviconUrl: library.faviconUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" || library.status !== "deleting" ? { configuration: `/evidence-libraries/${library._id}/configuration` } : {}) }))
+    ? overviews.items.map(library => ({ id: library._id, name: library.name, role: roles[library.role], organization: library.organization.name, organizationImageUrl: library.organization.imageUrl, faviconUrl: library.faviconUrl, address: library.publicAddress.replace(/^https?:\/\//, ""), status: library.status, operation: library.operation, deletionFailed: Boolean(library.teardownFailedStep), draft: library.status !== "active", ...(library.role === "owner" || library.status !== "deleting" ? { configuration: `/evidence-communities/${library._id}/configuration` } : {}) }))
     : invited.map(invitation => ({ id: invitation.libraryId, invitationId: invitation.invitationId, name: invitation.name, role: roles[invitation.role], organization: invitation.organization.name, organizationImageUrl: invitation.organization.imageUrl, address: "", pending: true }));
   const [notice, setNotice] = useState("");
   const [declining, setDeclining] = useState<Library | null>(null);
@@ -134,7 +134,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
       title={t("evidenceLibraries")}
       actions={owner.organizations.some((org) => org.id === organization) &&
         <Button asChild size="sm" className={BAR_ACTION}>
-          <Link href="/evidence-libraries/new">
+          <Link href="/evidence-communities/new">
             <Plus />
             <span className={BAR_LABEL}>{t("newLibrary")}</span>
           </Link>
@@ -319,7 +319,7 @@ export function LibraryList({ pending = false, preloadedOrganizations }: {
                         }}><RotateCcw />{t("retryDeletion")}</Button>
                       ) : (
                         <Button asChild size="sm" variant="outline">
-                          <Link href={library.status === "draft" ? library.configuration! : `/evidence-libraries/${library.id}/setup`}>
+                          <Link href={library.status === "draft" ? library.configuration! : `/evidence-communities/${library.id}/setup`}>
                             <Settings2 />{library.status === "draft" ? t("configure") : t("viewSetup")}
                           </Link>
                         </Button>

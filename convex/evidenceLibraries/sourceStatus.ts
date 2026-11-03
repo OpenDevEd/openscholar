@@ -60,7 +60,7 @@ export const record = internalMutation({
   returns: v.union(v.literal("saved"), v.literal("stale")),
   handler: async (ctx, args) => {
     const libraryId = ctx.db.normalizeId("evidenceLibraries", args.libraryId);
-    if (!libraryId) throw createError("UNAUTHENTICATED", "Invalid library service credential");
+    if (!libraryId) throw createError("UNAUTHENTICATED", "Invalid community service credential");
     await authenticateLibraryServiceCredential(ctx, { libraryId, credentialDigest: args.credentialDigest });
     const current = await ctx.db
       .query("evidenceLibrarySourceStatus")

@@ -37,7 +37,7 @@ function requireReadinessReceipts(
   ) {
     throw createError(
       "INVALID_DATA",
-      "Evidence Library deployment receipts are incomplete",
+      "Evidence Community deployment receipts are incomplete",
     );
   }
   return {
