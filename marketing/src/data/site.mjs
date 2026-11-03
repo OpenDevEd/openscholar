@@ -1,5 +1,14 @@
 export const APP = "https://dev.openscholar.ai";
 // Each row carries its own preview in the menu: a colour field and, where there is one, a real screen.
+// Live Evidence Communities, shown in the home hero and the menu.
+export const COMMUNITIES = [
+  ["Artificial Intelligence in Education", "https://aied.openscholar.ai", "#38bdf8", "Intelligent tutoring, learning analytics, automated feedback and assessment, AI literacy and generative AI in teaching"],
+  ["Wealth Inequality and Social Mobility", "https://wealth-inequality.openscholar.ai", "#34d399", "How wealth, assets and income are spread, how advantage passes between generations, and the policies that change them"],
+  ["Climate Change Adaptation and Resilience", "https://eccar.openscholar.ai", "#a3e635", "How farms, cities, coasts, health systems and communities adapt to floods, drought, heat and other climate hazards"],
+  ["Technical and Vocational Education and Training", "https://tvet.openscholar.ai", "#fb7185", "Vocational schools and colleges, apprenticeships and work-based learning, teachers, and skills for employment"],
+  ["Artificial Intelligence in Measurement and Education", "https://aievidencehub.org", "#fb923c", "Automated scoring, item generation, formative feedback, fairness and the evaluation of language models"],
+  ["USAID", "https://usaid.openscholar.ai", "#fbbf24", "Research gathered in one place, to search, read and cite"],
+];
 export const NAV = [
   { id: "product", href: "/#product", label: "Product", rows: [
     { href: "/#product", title: "Find the literature", text: "Ask in plain language, keep control of the query", icon: "search", color: "#22d3ee", field: "ocean", art: "sea", img: "search2-laptop-dark" },
@@ -13,7 +22,7 @@ export const NAV = [
     { href: "/evidence-communities/#answers", title: "Answers readers can check", text: "Linked to the record and the page", icon: "thread", color: "#fbbf24", field: "amber", art: "grid", img: "c-home2-laptop-dark" },
     { href: "/evidence-communities/#map", title: "Maps of your field", text: "Who's working on what, and where", icon: "globe", color: "#38bdf8", field: "night", art: "thread", img: "c-map-laptop-dark" },
     { href: "/evidence-communities/#steps", title: "From first draft to live", text: "Your name, your sources, your address", icon: "flag", color: "#fb7185", field: "rose", art: "globe", img: "c-home-laptop-light" },
-  ], live: [["Wealth Inequality and Social Mobility", "https://wealth-inequality.openscholar.ai"], ["Artificial Intelligence in Education", "https://aied.openscholar.ai"]] },
+  ], live: true },
   { id: "teams", href: "/teams/", label: "Teams", rows: [
     { href: "/teams/#shared", title: "One piece of shared work", text: "Six spreadsheets become one screening", icon: "merge", color: "#38bdf8", field: "ocean", art: "team-merge", img: "screen-laptop-light" },
     { href: "/teams/#activity", title: "See who did what", text: "A record of every change, with a name beside it", icon: "list", color: "#34d399", field: "emerald", art: "team-merge", img: "extract-laptop-dark" },

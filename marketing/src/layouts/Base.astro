@@ -1,6 +1,6 @@
 ---
 import "../styles/global.css";
-import { APP, NAV, SECTIONS } from "../data/site.mjs";
+import { APP, COMMUNITIES, NAV, SECTIONS } from "../data/site.mjs";
 import { GUIDES } from "../data/docs.mjs";
 import AskBar from "../components/AskBar.astro";
 import Icon from "../components/Icon.astro";
@@ -54,7 +54,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
         {n.rows ? <div class="split">
           <div class="rows"><span class="hl" aria-hidden="true"></span>
             {n.rows.map((r, i) => <a class="row" href={r.href} data-row={i} style={`--c:${r.color}`}><i><Icon name={r.icon} /></i><span><b>{r.title}</b><em>{r.text}</em></span></a>)}
-            {n.live && <div class="live"><span>See one live</span>{n.live.map(([t, u]) => <a href={u}>{t}<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l6-6M4 3h5v5" /></svg></a>)}</div>}
+            {n.live && <div class="live"><span>See one live</span>{COMMUNITIES.slice(0, 2).map(([t, u]) => <a href={u}>{t}<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l6-6M4 3h5v5" /></svg></a>)}</div>}
           </div>
           <div class="stage">{n.rows.map((r, i) => <div class:list={["st", `f-${r.field}`]} data-st={i}>{r.art && <img class="a" data-src={`/img/art-${r.art}-960.avif`} alt="" />}{r.img && <img class="s" data-src={`/img/screens/${r.img}-1000.avif`} alt="" />}</div>)}</div>
         </div> : <div class="guides">{DOCS.map(([head, ids]) => <div class="g-col"><span>{head}</span>{ids.map(([id, icon]) => <a href={`/docs/#${id}`}><Icon name={icon} size={16} /><span class="roll" data-t={GUIDES.find((g) => g.id === id).title}><span>{GUIDES.find((g) => g.id === id).title}</span></span></a>)}</div>)}</div>}
