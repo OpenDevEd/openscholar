@@ -95,7 +95,7 @@ const faq = [
   // Move the pass mark and every paper is decided again: your rule, not the model's, draws the line.
   const STATES = { 1: { inc: 15, dec: 0, out: [], amber: null }, 2: { inc: 14, dec: 1, out: [], amber: 9 }, 3: { inc: 10, dec: 1, out: [2, 6, 11, 13], amber: 9 } };
   for (const pane of document.querySelectorAll("[data-pass]")) {
-    const cells = [...pane.querySelectorAll(".wall15 i")], marks = [...pane.querySelectorAll("[data-n]")], beam = pane.parentElement.querySelector(".beams .amber") ?? pane.querySelector(".maybe"), short = pane.parentElement.querySelector(".beams .short") ?? pane.querySelector(".short"), inc = pane.querySelector("[data-inc]"), dec = pane.querySelector("[data-dec]");
+    const cells = [...pane.querySelectorAll(".wall15 i")], marks = [...pane.querySelectorAll("[data-n]")], scope = pane.closest(".scene") ?? pane, beam = scope.querySelector(".beams .amber, .out .maybe"), short = scope.querySelector(".beams .short, .out .short"), inc = pane.querySelector("[data-inc]"), dec = pane.querySelector("[data-dec]");
     marks.forEach((m) => m.addEventListener("click", () => { const n = +m.dataset.n, st = STATES[n]; marks.forEach((x) => x.setAttribute("aria-pressed", String(x === m))); inc.textContent = st.inc; if (dec) { dec.textContent = st.dec; dec.parentElement.classList.toggle("none", !st.dec); } beam.classList.toggle("settled", !st.dec); short.classList.toggle("dropped", n === 3); cells.forEach((c, i) => { c.classList.toggle("u", i === st.amber); c.classList.toggle("x", st.out.includes(i)); }); }));
   }
 </script>
