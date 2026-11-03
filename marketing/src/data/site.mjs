@@ -48,6 +48,7 @@ export const ICONS = {
   merge: "M3 4c6 0 4 6 10 6M3 16c6 0 4-6 10-6h4m-3-3 3 3-3 3",
   list: "M7 5h10M7 10h10M7 15h10M3 5h.01M3 10h.01M3 15h.01",
   key: "M13 11a4 4 0 1 0-3.500-2L3 15.500V18h3v-2h2v-2h2l1-1",
+  cross: "M6 6l8 8M14 6l-8 8",
   check: "m4 10.500 4 4 8-9",
   flagq: "M10 4v8m0 4v.01",
   pen: "M4 16l1-4L14 3l3 3-9 9-4 1ZM12 5l3 3",
