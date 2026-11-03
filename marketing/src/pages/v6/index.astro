@@ -1,0 +1,52 @@
+---
+// Hero to compare: one window cut by a seam you can drag, the team's workspace on one side and the public site on the other. Delete once one is picked.
+import Base from "../../layouts/Base.astro";
+import AskBar from "../../components/AskBar.astro";
+import SiteGems from "../../components/SiteGems.astro";
+import SiteWindow from "../../components/SiteWindow.astro";
+---
+<Base top="#040b2e" title="Hero 6: OpenScholar" description="Hero option">
+  <section class="bleed h" data-seam>
+    <div class="side night">
+      <div class="copy">
+        <h1><b>OpenScholar</b> is where your team works through the evidence</h1>
+        <p>Find the literature, screen it against your criteria and extract the data you need.</p>
+        <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
+      </div>
+      <div class="w"><img src="/img/screens/screen-laptop-dark.avif" width="1280" height="800" decoding="async" alt="OpenScholar's screening table, with a decision on each paper against the criteria" /></div>
+    </div>
+    <div class="side day" data-sites>
+      <div class="copy">
+        <h2><b>Evidence Communities</b> are where anyone can read it</h2>
+        <SiteGems />
+      </div>
+      <div class="w"><SiteWindow /></div>
+    </div>
+    <div class="seam" role="slider" tabindex="0" aria-label="Move between OpenScholar and Evidence Communities" aria-orientation="horizontal" aria-valuemin="12" aria-valuemax="88" aria-valuenow="50"><i aria-hidden="true"><svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 7l-6 6 6 6M16 7l6 6-6 6" /></svg></i></div>
+  </section>
+</Base>
+<script>
+  const h = document.querySelector("[data-seam]"), s = h.querySelector("[role=slider]");
+  const set = (x) => { const v = Math.min(88, Math.max(12, x)); h.style.setProperty("--seam", `${v}%`); s.setAttribute("aria-valuenow", Math.round(v)); };
+  s.addEventListener("pointerdown", (e) => s.setPointerCapture(e.pointerId));
+  s.addEventListener("pointermove", (e) => { if (s.hasPointerCapture(e.pointerId)) set(e.clientX / innerWidth * 100); });
+  s.addEventListener("keydown", (e) => { const d = { ArrowLeft: -4, ArrowRight: 4 }[e.key]; if (d) { e.preventDefault(); set(+s.getAttribute("aria-valuenow") + d); } });
+</script>
+<style>
+  @property --seam { syntax: "<percentage>"; inherits: true; initial-value: 50%; }
+  .h { --hu: 1px; display: grid; grid-template-columns: minmax(0, 1fr); }
+  .side { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px; overflow: clip; } .night { padding: 104px var(--pad) 0; background: #040b2e; color: #fff; } .day { padding: 40px var(--pad) 0; background: var(--soft); color: var(--ink); }
+  .copy { display: grid; justify-items: start; gap: calc(var(--hu) * 16); min-width: 0; } .copy :global(.big), .copy :global(.gems), .copy :global(.cap) { width: 100%; } .copy :global(.big input) { height: max(46px, calc(var(--hu) * 60)); font-size: max(15px, calc(var(--hu) * 18)); }
+  h1, h2 { font-weight: 500; font-size: clamp(30px, 7.6vw, calc(var(--hu) * 42)); letter-spacing: -.03em; line-height: 1.08; text-wrap: balance; } b { font-weight: inherit; } h1 { color: #a9bbe6; } h1 b { color: #fff; } h2 { color: var(--t2); } h2 b { color: var(--ink); } p { font-size: max(15px, calc(var(--hu) * 18)); line-height: 1.35; opacity: .88; }
+  .w { aspect-ratio: 16 / 10; margin-bottom: -24px; border-radius: 14px 14px 0 0; overflow: clip; box-shadow: 0 0 0 1px rgb(255 255 255 / .16), 0 40px 70px -30px rgb(0 0 0 / .7); } .day .w { box-shadow: 0 0 0 1px var(--line), 0 40px 70px -30px rgb(10 26 63 / .6); } .w > img { display: block; width: 100%; height: 100%; max-width: none; object-fit: cover; object-position: 0 0; }
+  .seam { display: none; }
+  @media (min-width: 1000px) {
+    .h { --hu: max(.62px, min(1px, 100svh / 900, 100vw / 1400)); --edge: max(var(--pad), calc(50vw - 624px)); --seam: 50%; position: relative; display: block; height: 100svh; min-height: 620px; overflow: clip; animation: sweep 1.6s .3s var(--ease) backwards; }
+    @media (prefers-reduced-motion: reduce) { .h { animation: none; } }
+    .side { position: absolute; inset: 0; display: block; padding: 0; } .day { clip-path: inset(0 0 0 var(--seam)); }
+    .copy { position: absolute; top: max(88px, calc(var(--hu) * 112)); width: calc(50vw - var(--edge) - var(--hu) * 56); } .night .copy { left: var(--edge); } .day .copy { left: calc(50vw + var(--hu) * 56); }
+    .w { position: absolute; inset: calc(var(--hu) * 436) var(--edge) -24px; aspect-ratio: auto; margin: 0; }
+    .seam { position: absolute; top: 0; bottom: 0; left: var(--seam); z-index: 2; display: block; width: 44px; margin-left: -22px; cursor: ew-resize; touch-action: none; outline: 0; } .seam::before { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 0 1px rgb(10 26 63 / .2); } .seam i { position: absolute; left: 50%; top: calc(var(--hu) * 640); display: grid; place-items: center; width: calc(var(--hu) * 60); height: calc(var(--hu) * 60); translate: -50% -50%; border-radius: 50%; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px rgb(10 26 63 / .12), 0 18px 34px -12px rgb(4 8 30 / .7); transition: scale .25s var(--ease); } .seam:hover i, .seam:active i, .seam:focus-visible i { scale: 1.12; } .seam:focus-visible i { box-shadow: 0 0 0 3px var(--brand), 0 18px 34px -12px rgb(4 8 30 / .7); }
+  }
+  @keyframes sweep { from { --seam: 72%; } }
+</style>

@@ -1,0 +1,50 @@
+---
+// Hero to compare: OpenScholar in the night sky, the communities on a daylit planet rising below it, with its sentence running along the horizon. The planet turns to each site. Delete once one is picked.
+import Base from "../../layouts/Base.astro";
+import AskBar from "../../components/AskBar.astro";
+import { COMMUNITIES } from "../../data/site.mjs";
+---
+<Base top="#030824" title="Hero 10: OpenScholar" description="Hero option">
+  <section class="bleed h" data-sites>
+    <div class="sky">
+      <h1><b>OpenScholar</b> is where your team works through the evidence</h1>
+      <p>Find the literature, screen it against your criteria and extract the data you need.</p>
+      <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
+    </div>
+    <div class="ground light">
+      <div class="planet">
+        <h2 class="sr">Evidence Communities are where anyone can read it</h2>
+        <svg class="rim" viewBox="0 0 2000 2000" aria-hidden="true"><defs><path id="horizon" d="M 40 1000 A 960 960 0 0 1 1960 1000" /><path id="horizon2" d="M 72 1000 A 928 928 0 0 1 1928 1000" /></defs><text class="one" text-anchor="middle"><textPath href="#horizon" startOffset="50%"><tspan class="n">Evidence Communities</tspan> are where anyone can read it</textPath></text><text class="two" text-anchor="middle"><textPath href="#horizon" startOffset="50%" class="n">Evidence Communities</textPath></text><text class="two small" text-anchor="middle"><textPath href="#horizon2" startOffset="50%">are where anyone can read it</textPath></text></svg>
+        <ul class="wheel">
+          {[...COMMUNITIES, ...COMMUNITIES].map((c, i) => <li style={`--i:${i}`}><a href={c.url} tabindex="-1" aria-hidden="true"><span class="url"><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" />{c.host}</span><img class="pic" src={`/img/site-${c.key}.avif`} width="960" height="600" decoding="async" alt="" /></a></li>)}
+        </ul>
+      </div>
+      <div class="dock" data-tabs role="tablist" aria-label="Live Evidence Communities">
+        {COMMUNITIES.map((c, i) => <button type="button" role="tab" aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} aria-label={c.name} style={`--c:${c.color}`}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /></button>)}
+      </div>
+    </div>
+  </section>
+</Base>
+<script>
+  import { picker } from "../../scripts/picker.js";
+  picker(document.querySelector("[data-sites]"));
+</script>
+<style>
+  .h { --hu: 1px; --R: 1100px; --step: 30deg; --tile: 76vw; --drop: 100px; position: relative; isolation: isolate; display: grid; grid-template-columns: minmax(0, 1fr); background: #030824; color: #fff; overflow: clip; }
+  .sky { position: relative; z-index: 1; display: grid; justify-items: center; gap: calc(var(--hu) * 14); padding: 104px var(--pad) 36px; text-align: center; }
+  h1 { max-width: 15em; font-weight: 500; font-size: clamp(32px, 8vw, calc(var(--hu) * 56)); letter-spacing: -.03em; line-height: 1.07; text-wrap: balance; color: #a9bbe6; } h1 b { font-weight: inherit; color: #fff; } .sky p { max-width: 34em; font-size: max(15px, calc(var(--hu) * 18)); line-height: 1.35; opacity: .88; } .sky :global(.big) { width: min(100%, calc(var(--hu) * 720)); margin-top: calc(var(--hu) * 6); } .sky :global(.big input) { height: max(46px, calc(var(--hu) * 60)); font-size: max(15px, calc(var(--hu) * 18)); }
+  .ground { position: relative; height: 480px; }
+  .planet { position: absolute; left: 50%; top: 0; width: calc(var(--R) * 2); height: calc(var(--R) * 2); margin-left: calc(var(--R) * -1); border-radius: 50%; background: radial-gradient(closest-side, #fff 86%, #eaf0fa 96%, #cfdcf4); box-shadow: 0 -5px 0 rgb(255 255 255 / .26), 0 -16px 44px 6px rgb(150 190 255 / .34), 0 -60px 150px 30px rgb(70 120 255 / .18); }
+  .rim { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; } .rim .one { display: none; } .rim .small { font-size: 22px; } .rim text { font-size: 30px; font-weight: 500; letter-spacing: -.025em; fill: var(--t2); } .rim .n { fill: var(--ink); }
+  .wheel { position: absolute; inset: 0; rotate: calc(var(--at, 0) * var(--step) * -1); transition: rotate 1.1s cubic-bezier(.5, .05, .2, 1); }
+  .wheel li { position: absolute; left: 50%; top: var(--drop, 66px); width: var(--tile); margin-left: calc(var(--tile) / -2); transform-origin: 50% calc(var(--R) - var(--drop, 66px)); rotate: calc(var(--i) * var(--step)); }
+  .wheel a { display: block; border-radius: 14px; overflow: clip; background: #fff; box-shadow: 0 0 0 1px var(--line), 0 26px 44px -24px rgb(10 26 63 / .55); }
+  .url { display: flex; align-items: center; gap: 8px; height: max(32px, calc(var(--hu) * 40)); padding-inline: 10px; color: var(--t2); font: 400 max(11px, calc(var(--hu) * 13))/1 var(--mono); border-bottom: 1px solid var(--line); white-space: nowrap; } .url img { width: max(20px, calc(var(--hu) * 26)); height: max(20px, calc(var(--hu) * 26)); object-fit: contain; filter: saturate(1.5); } .pic { display: block; width: 100%; height: auto; max-width: none; }
+  .dock { position: absolute; z-index: 2; left: 50%; bottom: 14px; translate: -50% 0; display: grid; grid-template-columns: repeat(6, max(44px, calc(var(--hu) * 62))); padding: 4px; border-radius: 16px; background: #0d1436; box-shadow: 0 18px 36px -12px rgb(4 8 30 / .7); } .dock button { display: grid; place-items: center; height: max(44px, calc(var(--hu) * 56)); border-radius: 12px; } .dock img { width: max(30px, calc(var(--hu) * 42)); height: max(30px, calc(var(--hu) * 42)); object-fit: contain; opacity: .72; filter: saturate(1.5) drop-shadow(0 0 6px color-mix(in srgb, var(--c) 45%, transparent)); transition: transform .5s var(--ease), opacity .3s var(--ease); } .dock button:hover img { opacity: 1; } .dock [aria-selected="true"] img { opacity: 1; transform: scale(1.22); }
+  @media (min-width: 1000px) {
+    .h { --hu: max(.62px, min(1px, 100svh / 900, 100vw / 1400)); --R: calc(var(--hu) * 1400); --tile: calc(var(--hu) * 510); --drop: calc(var(--hu) * 76); height: 100svh; min-height: 620px; grid-template-rows: auto minmax(0, 1fr); }
+    .sky { padding-top: calc(max(84px, var(--hu) * 112)); padding-bottom: calc(var(--hu) * 34); }
+    .ground { height: auto; } .rim .two { display: none; } .rim .one { display: block; font-size: 28px; }
+    .dock { bottom: calc(var(--hu) * 22); }
+  }
+</style>

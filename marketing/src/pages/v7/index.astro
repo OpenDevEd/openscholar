@@ -1,0 +1,63 @@
+---
+// Hero to compare: OpenScholar in the dark, the communities as bound volumes on a shelf in the light; the chosen one opens to its real site. Delete once one is picked.
+import Base from "../../layouts/Base.astro";
+import Art from "../../components/Art.astro";
+import AskBar from "../../components/AskBar.astro";
+import Arrow from "../../components/Arrow.astro";
+import Icon from "../../components/Icon.astro";
+import { COMMUNITIES } from "../../data/site.mjs";
+const Y = [28, 0, 44, 14, 52, 8];
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+---
+<Base top="#01072c" title="Hero 7: OpenScholar" description="Hero option">
+  <section class="bleed h">
+    <div class="os">
+      <Art name="hero-stream" eager sizes="(max-width: 999px) 100vw, 40vw" />
+      <h1><b>OpenScholar</b> is where your team works through the evidence</h1>
+      <p>Find the literature, screen it against your criteria and extract the data you need.</p>
+      <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
+    </div>
+    <div class="wall light" data-sites>
+      <div class="t"><h2><b>Evidence Communities</b> are where anyone can read it</h2><a class="all" href="/evidence-communities/">How they work<Arrow /></a></div>
+      <ul class="shelf" data-tabs role="tablist" aria-label="Live Evidence Communities">
+        {COMMUNITIES.map((c, i) => (
+          <li class:list={["book", { on: i === 0 }]} data-i={i} style={`--c:${c.color};--y:${Y[i]}`} role="presentation">
+            <button type="button" class="spine" role="tab" aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} aria-label={c.name}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><span>{cap(c.subject)}</span></button>
+            <a class="cover" href={c.url} tabindex={i === 0 ? 0 : -1}>
+              <span class="url"><Icon name="globe" size={14} />{c.host}</span>
+              <span class="say"><b>{c.name}<Arrow /></b><span>{c.text}</span></span>
+              <img src={`/img/site-${c.key}.avif`} width="960" height="600" decoding="async" alt={c.name} />
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+</Base>
+<script>
+  import { picker } from "../../scripts/picker.js";
+  picker(document.querySelector("[data-sites]"));
+</script>
+<style>
+  .h { --hu: 1px; display: grid; grid-template-columns: minmax(0, 1fr); }
+  h1, h2 { font-weight: 500; letter-spacing: -.03em; line-height: 1.07; text-wrap: balance; } b { font-weight: inherit; }
+  .os { position: relative; isolation: isolate; overflow: clip; display: grid; justify-items: start; align-content: start; gap: calc(var(--hu) * 16); padding: 104px var(--pad) 56vw; background: #01072c; color: #fff; } .os > :global(.art) { inset: auto 0 0; height: auto; aspect-ratio: 16 / 9; z-index: -1; } h1 { font-size: clamp(32px, 8vw, calc(var(--hu) * 48)); color: #a9bbe6; } h1 b { color: #fff; } p { font-size: max(15px, calc(var(--hu) * 18)); line-height: 1.35; opacity: .88; } .os :global(.big) { width: 100%; } .os :global(.big input) { height: max(46px, calc(var(--hu) * 60)); font-size: max(15px, calc(var(--hu) * 18)); }
+  .wall { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 24px; padding: 40px var(--pad) 0; background: var(--soft); color: var(--ink); overflow: clip; }
+  .t { display: grid; gap: 8px; justify-items: start; } h2 { font-size: clamp(28px, 7vw, calc(var(--hu) * 40)); color: var(--t2); } h2 b { color: var(--ink); } .all { display: inline-flex; align-items: center; gap: 8px; color: var(--t2); font-size: max(14px, calc(var(--hu) * 15)); } .all:hover { color: var(--ink); } .all :global(i) { display: grid; }
+  .shelf { position: relative; display: flex; flex-direction: column; gap: 3px; padding-bottom: 20px; } .shelf::after { content: ""; position: absolute; left: calc(var(--pad) * -1); right: calc(var(--pad) * -1); bottom: 0; height: 20px; background: #0d1436; }
+  .book { --tone: color-mix(in srgb, var(--c) 22%, #0a1236); height: 58px; border-radius: 6px; overflow: clip; background: var(--tone); transition: height .6s var(--ease); } .book.on { height: calc(58px + 80vw); }
+  .spine { display: flex; align-items: center; gap: 10px; width: 100%; height: 58px; padding-inline: 10px; color: #fff; font-size: 15px; font-weight: 500; white-space: nowrap; text-align: left; } .spine img { flex: none; width: 36px; height: 36px; object-fit: contain; filter: saturate(1.5) drop-shadow(0 0 6px color-mix(in srgb, var(--c) 50%, transparent)); }
+  .cover { display: flex; flex-direction: column; height: 80vw; background: #fff; color: var(--ink); } .url { flex: none; display: flex; align-items: center; gap: 6px; height: max(30px, calc(var(--hu) * 38)); padding-inline: 12px; color: var(--t2); font: 400 max(11px, calc(var(--hu) * 13))/1 var(--mono); white-space: nowrap; border-bottom: 1px solid var(--line); } .say { flex: none; display: grid; gap: 4px; padding: calc(var(--hu) * 14) 14px; font-size: max(13px, calc(var(--hu) * 14)); line-height: 1.4; color: var(--t2); } .say b { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-size: max(15px, calc(var(--hu) * 18)); line-height: 1.2; letter-spacing: -.01em; } .say b :global(i) { display: grid; color: var(--brand); transition: transform .25s var(--ease); } .cover:hover .say b :global(i) { transform: translateX(4px); }
+  .cover > img { flex: 1; min-height: 0; width: 100%; max-width: none; object-fit: cover; object-position: 0 0; }
+  @media (min-width: 1000px) {
+    .h { --hu: max(.62px, min(1px, 100svh / 900, 100vw / 1400)); --edge: max(var(--pad), calc(50vw - 624px)); height: 100svh; min-height: 620px; grid-template-columns: calc(var(--edge) + (100vw - var(--edge) * 2) * .33) minmax(0, 1fr); }
+    .os :global(.ask button span) { display: none; } .os :global(.ask button) { padding-left: 8px; } .os { align-content: start; padding: calc(max(100px, var(--hu) * 148)) calc(var(--hu) * 44) 0 var(--edge); } .os > :global(.art) { inset: auto -30% 0; }
+    .wall { padding: calc(max(88px, var(--hu) * 112)) var(--edge) 0 calc(var(--hu) * 44); gap: calc(var(--hu) * 24); }
+    .t { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px; } h2 { font-size: calc(var(--hu) * 36); }
+    .shelf { --spine: calc(var(--hu) * 56); --gap: calc(var(--hu) * 4); container-type: inline-size; flex-direction: row; gap: var(--gap); align-items: stretch; padding-bottom: calc(var(--hu) * 26); } .shelf::after { left: calc(var(--hu) * -44); right: calc(var(--edge) * -1); height: calc(var(--hu) * 26); }
+    .book { position: relative; flex: 0 0 var(--spine); height: auto; margin-top: calc(var(--hu) * var(--y)); border-radius: 5px 5px 0 0; transition: flex-grow .7s var(--ease), margin-top .7s var(--ease); box-shadow: inset 1px 0 0 rgb(255 255 255 / .14), inset -2px 0 0 rgb(0 0 0 / .3); } .book.on { flex-grow: 1; height: auto; margin-top: 0; }
+    .spine { position: absolute; inset: 0 auto 0 0; flex-direction: column; justify-content: flex-start; gap: calc(var(--hu) * 20); width: var(--spine); height: 100%; padding: calc(var(--hu) * 18) 0; font-size: calc(var(--hu) * 16); transition: background .25s var(--ease); } .spine:hover { background: rgb(255 255 255 / .06); } .spine img { width: calc(var(--hu) * 40); height: calc(var(--hu) * 40); } .spine span { writing-mode: vertical-rl; }
+    .spine::before, .spine::after { content: ""; position: absolute; left: 0; right: 0; height: 2px; background: color-mix(in srgb, var(--c) 55%, transparent); } .spine::before { bottom: calc(var(--hu) * 44); } .spine::after { bottom: calc(var(--hu) * 36); }
+    .cover { position: absolute; top: calc(var(--hu) * 10); bottom: 0; left: var(--spine); width: calc(100cqw - var(--spine) * 6 - var(--gap) * 5 - var(--hu) * 10); height: auto; border-radius: 8px 8px 0 0; overflow: clip; }
+  }
+</style>
