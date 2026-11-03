@@ -56,7 +56,7 @@ addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLow
 dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 // Typing narrows the pages you can jump to, and Enter still asks the question. The arrow keys walk from the box down the list.
 { const box = $("input", dialog), tries = $("[data-tries]", dialog), rows = $$(".jump li", dialog), items = () => [box, ...$$("[data-try], .jump a", dialog).filter((e) => e.offsetParent)];
-  box.addEventListener("input", () => { const q = box.value.trim().toLowerCase(); tries.hidden = !!q; rows.forEach((r) => { r.hidden = !!q && !q.split(/\s+/).every((w) => r.dataset.text.includes(w)); }); });
+  box.addEventListener("input", () => { const q = box.value.trim().toLowerCase(); tries.hidden = !!q; let shown = 0; rows.forEach((r) => { r.hidden = !!q && !q.split(/\s+/).every((w) => r.dataset.jump.includes(w)); if (!r.hidden) shown++; }); $("[data-nojump]", dialog).hidden = shown > 0; });
   dialog.addEventListener("keydown", (e) => { const d = { ArrowDown: 1, ArrowUp: -1 }[e.key]; if (!d) return; const list = items(), i = list.indexOf(document.activeElement); const next = list[i + d]; if (next) { e.preventDefault(); next.focus(); } });
   dialog.addEventListener("click", (e) => { if (e.target.closest(".jump a")) dialog.close(); }); }
 $$("[data-try]", dialog).forEach((b) => b.addEventListener("click", () => { $("input", dialog).value = b.dataset.try; $("form", dialog).requestSubmit(); }));
@@ -65,10 +65,10 @@ $$("[data-try]", dialog).forEach((b) => b.addEventListener("click", () => { $("i
 const foot = $("[data-foot]");
 new IntersectionObserver(([e]) => { foot.classList.toggle("away", !e.isIntersecting); if (e.isIntersecting) foot.classList.add("seen"); }, { rootMargin: "400px 0px" }).observe(foot);
 // The belt is a moving strip, so a keyboard focus stops it and slides the focused name into view.
-{ const belt = $(".belt", foot); belt.addEventListener("focusin", (e) => { const x = new DOMMatrix(getComputedStyle(belt).transform).m41; belt.style.animation = "none"; belt.style.transform = `translateX(${x - e.target.getBoundingClientRect().left + 40}px)`; }); belt.addEventListener("focusout", (e) => { if (!belt.contains(e.relatedTarget)) { belt.style.animation = ""; belt.style.transform = ""; } }); }
+{ const belt = $(".belt", foot); belt.addEventListener("focusin", (e) => { const x = new DOMMatrix(getComputedStyle(belt).transform).m41, left = e.target.getBoundingClientRect().left; belt.style.animation = "none"; belt.style.transform = `translateX(${x - left + 40}px)`; }); belt.addEventListener("focusout", (e) => { if (!belt.contains(e.relatedTarget)) { belt.style.animation = ""; belt.style.transform = ""; } }); }
 const stand = $(".stand", foot); new IntersectionObserver(([e], o) => { if (e.isIntersecting) { stand.classList.add("up"); o.disconnect(); } }, { threshold: .15 }).observe(stand);
 // A lifted letter's reflection moves with it, so both copies take the class.
-const copies = [...stand.querySelectorAll(".word")].map((w) => [...w.children]); const lift = (n) => copies.forEach((c) => c.forEach((s, i) => { s.classList.toggle("lift", i === n); s.classList.toggle("lift2", Math.abs(i - n) === 1); })); copies[0].forEach((s, i) => s.addEventListener("pointerenter", () => lift(i))); copies[0][0].parentElement.addEventListener("pointerleave", () => lift(-1));
+const copies = [...stand.querySelectorAll(".word")].map((w) => [...w.children]); const lift = (n) => copies.forEach((c) => c.forEach((s, i) => { s.classList.toggle("lift", i === n); s.classList.toggle("lift2", n >= 0 && Math.abs(i - n) === 1); })); copies[0].forEach((s, i) => s.addEventListener("pointerenter", () => lift(i))); copies[0][0].parentElement.addEventListener("pointerleave", () => lift(-1));
 const veil = $(".veil", foot);
 if (fine) { foot.addEventListener("pointerenter", () => foot.classList.add("held")); foot.addEventListener("pointerleave", () => { foot.classList.remove("held"); veil.style.transform = ""; }); }
 

@@ -6,7 +6,7 @@ import Arrow from "./Arrow.astro";
 import { APP } from "../data/site.mjs";
 const first = "Early childhood education";
 const colours = [["Blue", "#2563eb"], ["Teal", "#0f766e"], ["Forest", "#15803d"], ["Amber", "#b45309"], ["Crimson", "#be123c"]];
-const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).replace(/^-|-$/g, "");
+const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).replace(/^-|-$/g, "");
 ---
 <section class="panel nameit" id="yours" data-name style={`--acc:${colours[0][1]}`}>
   <Art name="close-rose" pos="50% 100%" />
@@ -22,7 +22,7 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).rep
     <Device kind="laptop" name="c-blank" theme="light" sizes="(max-width: 900px) 94vw, 780px">
       <div class="site"><div class="in">
         <b class="navname" data-out>{first}</b><span class="signin">Sign in</span>
-        <div class="hero-s"><h3 data-out>{first}</h3><p class="sub">Research on <span data-low>{first.toLowerCase()}</span>, updated every night.</p><p class="body">We gather the research on <strong data-low>{first.toLowerCase()}</strong>. Search it, read it and cite it. Where the licence allows, the full text is here too.</p><div class="row"><span class="b1">Explore the community</span><span class="b2">Get the digest</span></div></div>
+        <div class="hero-s"><h3 data-out>{first}</h3><p class="sub">Research on <span data-low>{first.toLowerCase()}</span>, kept current from your sources.</p><p class="body">We gather the research on <strong data-low>{first.toLowerCase()}</strong>. Search it, read it and cite it. Where the licence allows, the full text is here too.</p><div class="row"><span class="b1">Explore the community</span><span class="b2">Get the digest</span></div></div>
       </div></div>
     </Device>
   </div>
@@ -31,7 +31,7 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).rep
   const root = document.querySelector("[data-name]");
   if (root) {
     const input = root.querySelector("[data-field]"), addr = root.querySelector("[data-addr]"), outs = root.querySelectorAll("[data-out]"), lows = root.querySelectorAll("[data-low]"), marks = [...root.querySelectorAll("[data-c]")];
-    const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).replace(/^-|-$/g, "") || "your-field";
+    const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).replace(/^-|-$/g, "") || "your-field";
     const show = () => { const v = input.value.trim() || "Your field"; outs.forEach((o) => { o.textContent = v; }); lows.forEach((o) => { o.textContent = v.toLowerCase(); }); addr.textContent = `${slug(v)}.openscholar.ai`; };
     input.addEventListener("input", show);
     const paint = (m) => { root.style.setProperty("--acc", m.dataset.c); marks.forEach((x) => x.setAttribute("aria-pressed", String(x === m))); };
@@ -39,8 +39,8 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).rep
     const FIELDS = ["Marine conservation", "Early childhood education", "Urban water and sanitation", "Migration and labour markets"]; let timer = 0, on = false, done = false, field = 0, at = 0, back = false, tick = 0;
     const step = () => { if (!on || done) return; const word = FIELDS[field]; let wait = 46; if (back) { input.value = input.value.slice(0, -1); if (!input.value) { back = false; field = (field + 1) % FIELDS.length; at = 0; paint(marks[(field + 1) % marks.length]); wait = 200; } else wait = 18; } else { at += 1; input.value = word.slice(0, at); if (at >= word.length) { back = true; wait = 2600; } } show(); timer = setTimeout(step, wait); };
     const stop = () => { done = true; clearTimeout(timer); addr.parentElement.setAttribute("aria-live", "polite"); };
-    input.addEventListener("focus", stop); marks.forEach((m) => m.addEventListener("click", () => { stop(); paint(m); }));
-    if (matchMedia("(prefers-reduced-motion: no-preference)").matches) new IntersectionObserver(([e]) => { on = e.isIntersecting; clearTimeout(timer); if (on && !done) { if (!tick++) { back = true; timer = setTimeout(step, 1800); } else timer = setTimeout(step, 400); } }, { threshold: .5 }).observe(root);
+    root.addEventListener("focusin", stop); root.addEventListener("pointerdown", stop); marks.forEach((m) => m.addEventListener("click", () => paint(m))); const calm = matchMedia("(prefers-reduced-motion: reduce)"); calm.addEventListener("change", (e) => { if (e.matches) { done = true; clearTimeout(timer); } });
+    if (!calm.matches) new IntersectionObserver(([e]) => { on = e.isIntersecting; clearTimeout(timer); if (on && !done) { if (!tick++) { back = true; timer = setTimeout(step, 1800); } else timer = setTimeout(step, 400); } }, { threshold: .5 }).observe(root);
   }
 </script>
 <style>

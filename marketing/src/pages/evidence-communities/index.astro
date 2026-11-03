@@ -13,7 +13,7 @@ import { APP } from "../../data/site.mjs";
 const faq = [
   ["Who controls what gets published?", "Your team does. You choose the sources, AI can screen what comes in against your subject, and records your editors write wait as drafts until an editor or owner publishes them."],
   ["How does it stay current?", "Connected sources bring in new work, and AI can screen incoming records against your subject as they arrive."],
-  ["Can readers trust the AI answers?", "Answers link to the record and the page they came from, and the assistant says when it couldn't read a document."],
+  ["Can readers trust the AI answers?", "Answers link back to the record, and to the page wherever the document can be read. The assistant says when it couldn't read one."],
   ["Can we use our own domain and languages?", "Communities have their own address and branding, and can run in several languages, including right-to-left scripts."],
 ];
 ---
@@ -27,7 +27,7 @@ const faq = [
       <Device class="pho" kind="phone" name="c-search" theme="light" sizes="(max-width: 900px) 20vw, 200px" />
     </div>
   </section>
-  <section class="bleed live" id="live"><div class="inner"><h2>Fields that already have a home here</h2></div><CommunityRing eager={false} /></section>
+  <section class="bleed live" id="live"><div class="inner"><h2>Communities already live</h2></div><CommunityRing eager={false} /></section>
   <NameIt />
   <section class="panel readers" id="readers" style="--tint:#0e7490">
     <Art name="reader-cards" pos="50% 0" />
@@ -36,7 +36,7 @@ const faq = [
   </section>
   <section class="panel answers" id="answers" data-in>
     <Art name="ask-lantern" pos="50% 60%" />
-    <div class="a-copy"><h2>Answers your readers can check</h2><p class="lead">Anyone can question the evidence in your community and get an answer that links to the record and the page it came from. When a document can't be read, the answer says so.</p></div>
+    <div class="a-copy"><h2>Answers your readers can check</h2><p class="lead">Readers can question the evidence in your community and get an answer that links back to the record, and to the page wherever the document can be read. When it can't be read, the answer says so.</p></div>
     <div class="a-card" aria-hidden="true"><span class="a-q">Does peer tutoring help children read?</span><p>Pupils in a large trial in Scotland <u>did significantly better than control pupils</u> in both years.<sup>1</sup></p><div class="a-src"><b>1</b><span>Peer tutoring in reading in Scotland, page 3</span></div></div>
   </section>
   <section class="bleed world" id="map"><div class="inner w-top"><h2>Show where your field lives</h2><p class="lead">Every community can map the people and places behind its evidence, so readers can see who's working on what, and where.</p></div><div class="w-g"><Globe /></div></section>
@@ -57,7 +57,7 @@ const faq = [
   .live { background: #040b2e; padding-block: clamp(72px, 8vw, 112px) clamp(32px, 4vw, 56px); text-align: center; } .live h2 { font-size: clamp(30px, 3.6vw, 52px); margin-inline: auto; }
   /* Move across the laptop to wipe it from light to dark. */
   .readers { display: grid; gap: clamp(24px, 3vw, 40px); padding: var(--pad); background: #032c42; } .readers > :global(.art) { inset: clamp(70px, 9vw, 120px) -4% 0; -webkit-mask-image: linear-gradient(transparent, #000 16%); mask-image: linear-gradient(transparent, #000 16%); } .readers > :global(.art img) { opacity: 1; } .r-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; } .wipe-wrap { position: relative; width: min(66%, 800px); margin-inline: auto; } @property --w { syntax: "<percentage>"; inherits: true; initial-value: 62%; }
-  .wipe-wrap { cursor: ew-resize; } .wipe-wrap :global(.scr.dark) { clip-path: inset(0 0 0 var(--w)); transition: none; z-index: 1; }
+  .wipe-wrap { cursor: ew-resize; touch-action: pan-y; } .wipe-wrap :global(.scr.dark) { clip-path: inset(0 0 0 var(--w)); transition: none; z-index: 1; }
   .handle { position: absolute; z-index: 3; top: 2.2%; height: 89%; left: calc(1.5% + var(--w) * .97); width: 2px; margin-left: -1px; background: #fff; box-shadow: 0 0 12px rgb(0 0 0 / .5); pointer-events: none; } .handle svg { max-width: none; height: auto; position: absolute; top: 50%; left: 50%; translate: -50% -50%; box-sizing: content-box; width: 20px; padding: 8px; border-radius: 50%; background: #fff; color: var(--ink); box-shadow: 0 6px 16px -4px rgb(4 8 30 / .6); }
   /* It sweeps across once on arrival so people see what it does. */
   :global(.view.in) .wipe-wrap:not(.held) { animation: sweep 2.2s var(--ease) .5s both; } @keyframes sweep { 0% { --w: 62%; } 40% { --w: 30%; } 100% { --w: 62%; } }

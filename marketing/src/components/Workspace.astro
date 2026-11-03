@@ -30,7 +30,7 @@ const tabs = [
     const tabs = [...ws.querySelectorAll("[role=tab]")], panes = [...ws.querySelectorAll(".pane")];
     const load = (i) => { if (i.dataset.src) { i.srcset = i.dataset.srcset; i.src = i.dataset.src; delete i.dataset.src; delete i.dataset.srcset; } };
     // The laptop's dark screen only loads once someone has asked for dark. The tablet and phone are always dark, so they always load.
-    let want = ws.dataset.theme;
+    let want = ws.dataset.theme, asks = 0;
     const fill = (k, dark = want === "dark") => panes[k].querySelectorAll("img").forEach((i) => { if (dark || !i.closest(".lap .scr.dark")) load(i); });
     // Nothing swaps until its images can paint, or half a second has passed, so a slow connection never shows a blank screen.
     const ready = (k) => Promise.race([Promise.all([...panes[k].querySelectorAll("img")].filter((i) => i.getAttribute("src")).map((i) => i.decode().catch(() => {}))), new Promise((r) => setTimeout(r, 500))]);
@@ -39,7 +39,7 @@ const tabs = [
     // The bar filling up under a tab is the timer: when its animation ends, the next tab starts. Reduced motion removes the animation, so nothing advances by itself.
     ws.addEventListener("animationend", (e) => { if (e.animationName.includes("fill")) pick((tabs.indexOf(e.target.parentElement) + 1) % tabs.length); });
     tabs.forEach((t, i) => { t.addEventListener("click", () => { ws.classList.add("held"); pick(i); }); t.addEventListener("keydown", (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); pick((i + d + tabs.length) % tabs.length, true); } }); });
-    ws.querySelector("[data-mode]").addEventListener("click", () => { want = want === "light" ? "dark" : "light"; const asked = want, n = wanted; fill(n); ready(n).then(() => { if (asked === want) ws.dataset.theme = asked; }); });
+    ws.querySelector("[data-mode]").addEventListener("click", () => { want = want === "light" ? "dark" : "light"; const asked = ++asks, theme = want, n = wanted; fill(n); ready(n).then(() => { if (asked === asks) ws.dataset.theme = theme; }); });
     new IntersectionObserver(([en]) => ws.classList.toggle("off", !en.isIntersecting), { threshold: .2 }).observe(ws);
     const near = new IntersectionObserver(([en]) => { if (en.isIntersecting) { fill(1); near.disconnect(); } }); near.observe(ws);
   }
@@ -84,5 +84,6 @@ const tabs = [
     @keyframes lid-p { from { transform: perspective(1200px) rotateX(-80deg); } to { transform: perspective(1200px) rotateX(0); } } @keyframes wake-p { from { opacity: 1; } to { opacity: 0; } } @keyframes out-p { from { translate: 130% 0; } to { translate: 0 0; } }
   } }
   @media (max-width: 1320px) { [role="tab"] span { display: none; } [role="tab"][aria-selected="true"] span { display: inline; } }
+  @media (max-width: 480px) { [role="tab"] span, [role="tab"][aria-selected="true"] span { display: none; } }
   @media (max-width: 700px) { .stage { aspect-ratio: 402 / 400; } .pane :global(.lap) { left: 3%; width: 94%; } .pane :global(.tb) { display: none; } .pane :global(.ph) { right: 2%; bottom: 0; width: 28%; } .dock { position: relative; left: auto; bottom: auto; translate: none; margin: 12px auto 0; width: fit-content; order: 2; } .stage { display: grid; aspect-ratio: auto; } .pane { position: relative; grid-area: 1 / 1; inset: auto; aspect-ratio: 402 / 400; } .bloom { display: none; } [role="tab"] { padding-inline: 10px; } }
 </style>

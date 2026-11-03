@@ -25,7 +25,7 @@ export const NAV = [
   ], live: true },
   { id: "teams", href: "/teams/", label: "Teams", rows: [
     { href: "/teams/#shared", title: "One piece of shared work", text: "Six spreadsheets become one screening", icon: "merge", color: "#38bdf8", field: "ocean", art: "team-merge", img: "screen-laptop-light" },
-    { href: "/teams/#activity", title: "See who did what", text: "A record of every change, with a name beside it", icon: "list", color: "#34d399", field: "emerald", art: "team-merge", img: "extract-laptop-dark" },
+    { href: "/teams/#activity", title: "See who did what", text: "A record of the changes, with a name beside each", icon: "list", color: "#34d399", field: "emerald", art: "team-merge", img: "extract-laptop-dark" },
     { href: "/teams/#publish", title: "Review before you publish", text: "Creators submit, editors decide", icon: "check", color: "#34d399", field: "emerald", art: "gates", img: "c-search-laptop-light" },
     { href: "/teams/#roles", title: "The right access for each person", text: "In your workspace and your community", icon: "key", color: "#fbbf24", field: "night", art: "team-merge" },
   ] },
@@ -35,7 +35,7 @@ export const NAV = [
 export const SECTIONS = {
   "/": [["tour", "Tour", "#60a5fa"], ["product", "Find", "#22d3ee"], ["screening", "Screen", "#34d399"], ["extraction", "Extract", "#fbbf24"], ["assistant", "Assistant", "#60a5fa"], ["trust", "Trust", "#f59e0b"], ["community", "Communities", "#fb7185"]],
   "/evidence-communities/": [["readers", "Readers", "#22d3ee"], ["answers", "Answers", "#fbbf24"], ["map", "Map", "#38bdf8"], ["review", "Review", "#34d399"], ["steps", "Go live", "#fb7185"]],
-  "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["publish", "Review", "#34d399"], ["roles", "Access", "#fbbf24"]],
+  "/teams/": [["activity", "Activity", "#34d399"], ["shared", "Shared work", "#38bdf8"], ["roles", "Access", "#fbbf24"], ["publish", "Review", "#34d399"]],
 };
 export const ICONS = {
   search: "M9 16a7 7 0 1 1 0-14 7 7 0 0 1 0 14Zm5-2 5 5",
