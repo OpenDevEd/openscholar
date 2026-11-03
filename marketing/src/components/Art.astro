@@ -1,5 +1,5 @@
 ---
 // Generated art, sized for the screen.
-const { name, eager = false, pos, class: cls = "", style } = Astro.props;
+const { name, eager = false, pos, class: cls = "", style, sizes = "100vw" } = Astro.props;
 ---
-<div class:list={["art", cls]} aria-hidden="true" style={style}><img src={`/img/art-${name}.avif`} srcset={`/img/art-${name}-960.avif 960w, /img/art-${name}.avif 1672w`} sizes="100vw" width="1672" height="941" alt="" decoding="async" loading={eager ? "eager" : "lazy"} fetchpriority={eager ? "high" : undefined} style={pos ? `object-position:${pos}` : undefined} /></div>
+<div class:list={["art", cls]} aria-hidden="true" style={style}><img src={`/img/art-${name}.avif`} srcset={`/img/art-${name}-960.avif 960w, /img/art-${name}.avif 1672w`} sizes={sizes} width="1672" height="941" alt="" decoding="async" loading={eager ? "eager" : "lazy"} fetchpriority={eager ? "high" : undefined} style={pos ? `object-position:${pos}` : undefined} /></div>

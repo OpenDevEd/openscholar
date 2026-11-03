@@ -14,9 +14,9 @@ const tabs = [
   <div class="stage">
     <i class="bloom" aria-hidden="true"></i>
     {tabs.map((t, i) => <div class:list={["pane", { on: i === 0 }]} id={`ws-p${i}`} role="tabpanel" aria-labelledby={`ws-t${i}`} data-c={t.color}>
-      <Device class="tb" kind="tablet" name={t.tab} theme="dark" defer={i > 0} sizes="(max-width: 900px) 30vw, 300px" />
-      <Device class="lap" kind="laptop" name={t.lap} theme="both" lazyDark alt={t.alt} defer={i > 0} sizes="(max-width: 900px) 100vw, 1000px" />
-      <Device class="ph" kind="phone" name={t.ph} theme="dark" defer={i > 0} sizes="(max-width: 900px) 30vw, 200px" />
+      <Device class="tb" kind="tablet" name={t.tab} theme="dark" defer={i > 0} sizes="(max-width: 900px) 20vw, 300px" />
+      <Device class="lap" kind="laptop" name={t.lap} theme="both" lazyDark alt={t.alt} defer={i > 0} sizes="(max-width: 900px) 66vw, 1000px" />
+      <Device class="ph" kind="phone" name={t.ph} theme="dark" defer={i > 0} sizes="(max-width: 900px) 20vw, 200px" />
     </div>)}
     <div class="dock">
       <div class="tabs" role="tablist" aria-label="See each step of the work">{tabs.map((t, i) => <button type="button" role="tab" id={`ws-t${i}`} aria-controls={`ws-p${i}`} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} style={`--c:${t.color}`}><Icon name={t.icon} size={18} /><span>{t.label}</span><u aria-hidden="true"></u></button>)}</div>

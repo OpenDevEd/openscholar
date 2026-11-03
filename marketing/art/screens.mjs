@@ -13,4 +13,5 @@ for (const f of readdirSync(from).filter((x) => x.endsWith(".png") && !x.startsW
 }
 // Panels shown at their real size, cut from the laptop captures: [name, file, left, top, width, height]
 for (const [name, file, left, top, width, height] of [["panel-approve-light", "approve-laptop-light", 1363, 477, 809, 602], ["panel-assistant-light", "assistant-laptop-light", 1330, 440, 878, 926], ["panel-citation-light", "trust-laptop-light", 176, 18, 890, 1364]]) await save(sharp(`${from}/${file}.png`).extract({ left, top, width, height }), name, width, 62);
+for (const n of ["c-search-laptop-light", "c-map-laptop-light", "c-home2-laptop-light", "c-home-laptop-light", "c-search-laptop-dark"]) await save(sharp(`${from}/${n}.png`), `${n}-240`, 240, 52);
 console.log("total KB", Math.round(total / 1024));

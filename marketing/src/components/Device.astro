@@ -1,6 +1,6 @@
 ---
 // A real screen in a realistic device. `theme` picks light or dark; "both" stacks them so a parent can wipe between the two.
-const { kind = "laptop", name, theme = "light", sizes = "(max-width: 900px) 90vw, 50vw", eager = false, defer = false, alt = "", class: cls = "", tilt = false, lazyDark = false, ...rest } = Astro.props;
+const { kind = "laptop", name, theme = "light", sizes = "(max-width: 900px) 60vw, 50vw", eager = false, defer = false, alt = "", class: cls = "", tilt = false, lazyDark = false, ...rest } = Astro.props;
 const W = { laptop: [1000, 2000], tablet: [800, 1400], phone: [400, 800] }[kind], R = { laptop: "1280 / 800", tablet: "834 / 1112", phone: "393 / 852" }[kind];
 const attrs = (t) => { const base = `/img/screens/${name}-${kind}-${t}`, srcset = `${base}-${W[0]}.avif ${W[0]}w, ${base}.avif ${W[1]}w`; return defer || (lazyDark && t === "dark") ? { "data-src": `${base}.avif`, "data-srcset": srcset, sizes } : { src: `${base}.avif`, srcset, sizes, loading: eager ? "eager" : "lazy", fetchpriority: eager ? "high" : undefined, decoding: "async" }; };
 const themes = theme === "both" ? ["light", "dark"] : [theme];

@@ -21,13 +21,13 @@ const faq = [
     <Art name="globe" eager pos="100% 50%" />
     <div class="inner"><div class="h-copy"><h1>A public home for your field's evidence</h1><p class="lead">Build a searchable, citable community around your evidence, under your own name. Keep it current from your sources and let anyone question it.</p><div class="acts"><a class="btn" href={`${APP}/evidence-libraries`}>Create your community<Arrow /></a><a class="btn ghost" href="https://wealth-inequality.openscholar.ai">See a live community</a></div></div></div>
     <div class="inner stagehand" aria-hidden="true">
-      <Device class="lap" kind="laptop" name="c-home" theme="dark" eager tilt sizes="(max-width: 900px) 90vw, 860px" />
-      <Device class="tab" kind="tablet" name="c-map" theme="light" sizes="(max-width: 900px) 40vw, 400px" />
-      <Device class="pho" kind="phone" name="c-search" theme="light" sizes="(max-width: 900px) 30vw, 200px" />
+      <Device class="lap" kind="laptop" name="c-home" theme="dark" eager tilt sizes="(max-width: 900px) 59vw, 860px" />
+      <Device class="tab" kind="tablet" name="c-map" theme="light" sizes="(max-width: 900px) 26vw, 400px" />
+      <Device class="pho" kind="phone" name="c-search" theme="light" sizes="(max-width: 900px) 20vw, 200px" />
     </div>
   </section>
   <Feature id="readers" field="ocean" art="book" chip="#0e7490" title="Everything your readers need to use the evidence" text="Far more than a list of PDFs. Readers can search and filter the whole collection, read each record, cite and export it, and follow new work in digests.">
-    <div class="wipe-wrap"><Device class="wipe" kind="laptop" name="c-search" theme="both" alt="A community's search page with filters and records, in light and dark" data-wipe sizes="(max-width: 900px) 90vw, 760px" /><i class="handle" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 6-4 4 4 4M13 6l4 4-4 4" /></svg></i></div>
+    <div class="wipe-wrap"><Device class="wipe" kind="laptop" name="c-search" theme="both" alt="A community's search page with filters and records, in light and dark" data-wipe sizes="(max-width: 900px) 59vw, 760px" /><i class="handle" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 6-4 4 4 4M13 6l4 4-4 4" /></svg></i></div>
   </Feature>
   <section class="panel answers" id="answers" data-in>
     <i class="field f-amber" aria-hidden="true"></i><Art name="grid" pos="100% 0" class="dim" style="--sc:109 29 1" />
@@ -66,7 +66,7 @@ const faq = [
   /* The answer lands first, then the thread runs to the sentence, and the sentence lights up. */
   :global(.js) .answers[data-in] { opacity: 1; transform: none; } :global(.js) .answers .a-card { opacity: 0; translate: 0 22px; } :global(.js) .answers .sheet { opacity: 0; translate: 22px 0; } :global(.js) .answers .tie path { stroke-dashoffset: 1; } :global(.js) .answers .sheet mark { background-size: 0 100%; }
   :global(.js) .answers.in .a-card { opacity: 1; translate: 0 0; transition: opacity .7s var(--ease), translate .8s var(--ease); } :global(.js) .answers.in .sheet { opacity: 1; translate: 0 0; transition: opacity .7s var(--ease) .2s, translate .8s var(--ease) .2s; } :global(.js) .answers.in .tie path { stroke-dashoffset: 0; transition: stroke-dashoffset 1s var(--ease) .7s; } :global(.js) .answers.in .sheet mark { background-size: 100% 100%; transition: background-size .8s var(--ease) 1.5s; }
-  .rev { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: center; padding: var(--pad); min-height: 560px; } .r-copy { display: grid; gap: 18px; } .rev > :global(.art) { left: 36%; -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%); mask-image: linear-gradient(90deg, transparent, #000 22%); } @media (max-width: 900px) { .rev > :global(.art) { display: none; } } @media (max-width: 900px) { .rev { grid-template-columns: minmax(0, 1fr); } }
+  .rev { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: clamp(28px, 5vw, 72px); align-items: center; padding: var(--pad); min-height: 560px; } .r-copy { display: grid; gap: 18px; } .rev > :global(.art) { left: max(36%, calc(100% - 800px)); -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%); mask-image: linear-gradient(90deg, transparent, #000 22%); } @media (max-width: 1100px) { .rev > :global(.art) { display: none; } } @media (max-width: 900px) { .rev { grid-template-columns: minmax(0, 1fr); } }
   .world { padding: var(--pad); } .w-top { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; margin-bottom: 28px; }
   .steps { background: #3a0310; padding-block: clamp(56px, 7vw, 96px); } .st-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; margin-bottom: clamp(28px, 4vw, 56px); }
   .close { background: var(--night); display: grid; justify-items: center; align-content: start; gap: 24px; padding: clamp(64px, 8vw, 112px) var(--pad) max(160px, 28vw); text-align: center; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }

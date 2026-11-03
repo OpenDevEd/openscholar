@@ -14,7 +14,7 @@ const people = [["Maya Chen", "Admin", "#34d399"], ["Tomas Silva", "Member", "#f
   <div class="inner tin">
     <div class="tc"><h1>One workspace for your team's evidence</h1><p class="lead">Keep every search, screening and extraction in one place, see who did what, and stop passing spreadsheets around.</p><a class="btn" href={APP}>Bring your team in<Arrow /></a></div>
     <div class="ts">
-      <Device class="lap" kind="laptop" name="screen" theme="light" eager alt="A shared screening with its progress, its questions and who ran it" sizes="(max-width: 900px) 92vw, 840px" />
+      <Device class="lap" kind="laptop" name="screen" theme="light" eager alt="A shared screening with its progress, its questions and who ran it" sizes="(max-width: 900px) 61vw, 840px" />
       <div class="frost who" aria-label="People on this piece of work"><b>On this screening</b><ul>{people.map(([n, r, c]) => <li><i style={`--c:${c}`} set:html={Person} /><span>{n}</span><em>{r}</em></li>)}</ul></div>
       <div class="frost feed" data-feed aria-label="Recent activity"><b>Activity</b><ol>{feed.map(([n, w, c, ai], i) => <li class:list={{ hide: i > 3 }}><i style={`--c:${c}`}>{ai ? <Icon name="spark" size={16} /> : <span class="p" set:html={Person} />}</i><p><strong>{n}</strong> {w}</p></li>)}</ol></div>
     </div>

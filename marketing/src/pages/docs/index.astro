@@ -8,7 +8,7 @@ const TOPICS = [["start", "docs-ribbon", "Get started", "Your first search to yo
 ---
 <Base title="Documentation: OpenScholar" description="How to use OpenScholar and Evidence Communities.">
   <section class="bleed intro"><Art name="docs-ribbon" eager pos="100% 30%" /><div class="inner"><h1>Documentation</h1><p class="lead">How to use OpenScholar and Evidence Communities.</p><label class="find-big"><Icon name="search" size={20} /><span class="sr">Search the docs</span><input type="search" data-find placeholder="Search the docs" autocomplete="off" /></label></div></section>
-  <nav class="topics" aria-label="Start here" data-topics>{TOPICS.map(([id, art, t, d]) => <a class="panel edge" href={`#${id}`}><img src={`/img/art-${art}-960.avif`} width="960" height="540" loading="lazy" decoding="async" alt="" /><b>{t}</b><span>{d}</span></a>)}</nav>
+  <nav class="topics" aria-label="Start here" data-topics>{TOPICS.map(([id, art, t, d]) => <a class="panel edge" href={`#${id}`}><img src={`/img/art-${art}-480.avif`} width="480" height="270" loading="lazy" decoding="async" alt="" /><b>{t}</b><span>{d}</span></a>)}</nav>
   <div class="docs">
     <aside>
       <nav aria-label="Documentation">{GUIDES.map((g) => <a href={`#${g.id}`}>{g.title}</a>)}</nav>
@@ -46,6 +46,7 @@ const TOPICS = [["start", "docs-ribbon", "Get started", "Your first search to yo
   .more { margin-top: 12px; } .more[hidden] { display: none; } .more summary { cursor: pointer; font-weight: 500; color: var(--brand-dark); width: fit-content; list-style: none; } .more summary::-webkit-details-marker { display: none; } .more summary::after { content: " +"; } .more[open] summary::after { content: " \2212"; } .block { margin-top: 16px; } h3 { font-size: 18px; margin-bottom: 8px; }
   dl > div { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 16px; padding-block: 10px; border-top: 1px solid var(--line); font-size: 15px; line-height: 1.45; } dl > div[hidden] { display: none; } dt { font-weight: 500; } dd { color: var(--t2); }
   .none { color: var(--t2); font-size: 18px; } .none[hidden] { display: none; }
+  @media (max-width: 760px) { .intro :global(.art) { left: 42%; opacity: .5; } .intro { padding-bottom: 32px; } }
   @media (max-width: 1100px) { .topics { grid-template-columns: repeat(3, minmax(0, 1fr)); } } @media (max-width: 560px) { .topics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 900px) { .docs { grid-template-columns: minmax(0, 1fr); } aside { position: static; max-height: none; } aside nav { display: flex; flex-wrap: wrap; gap: 2px; } dl > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } }
 </style>
