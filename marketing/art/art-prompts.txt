@@ -130,3 +130,4 @@ The material for all six: flawless clear crystal glass, mostly see-through, with
 6. comm-usaid: a round navigation compass with a slim pointed needle, glowing golden amber.
 
 Save each and print one line per image: `- name: `absolute path``.
+review-card: Flat very deep green-black background (#02261d). From the top of the frame, a tall loose cascade of dozens of thin clear glass sheets lit from within, in vivid emerald, mint and cyan, falls in a calm stream down the exact centre of the frame and passes through one bright horizontal line of mint light at two thirds of the height. Above the line the sheets drift at many angles; below it they are few, ordered and evenly stacked. The stream is narrow, about a third of the frame's width, so the sides are dark and quiet. Saturated, luminous, expensive, a high-end 3D product render. Never any purple.

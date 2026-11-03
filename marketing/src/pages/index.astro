@@ -2,7 +2,6 @@
 import Base from "../layouts/Base.astro";
 import Feature from "../components/Feature.astro";
 import Literature from "../components/Literature.astro";
-import AudienceArt from "../components/AudienceArt.astro";
 import Art from "../components/Art.astro";
 import Workspace from "../components/Workspace.astro";
 import HeroAsk from "../components/HeroAsk.astro";
@@ -15,9 +14,9 @@ import Icon from "../components/Icon.astro";
 import Arrow from "../components/Arrow.astro";
 import { COMMUNITIES } from "../data/site.mjs";
 const teams = [
-  ["ocean", "sieve-front", "2 38 29", "review", "Review teams", "Run systematic and scoping reviews with explicit criteria and data you can export.", "/#screening"],
-  ["rose", "thread", "2 10 34", "brief", "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind it ready to share.", "/#trust"],
-  ["emerald", "globe", "82 1 22", "community", "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name.", "/evidence-communities/"],
+  ["ocean", "review-card", "2 38 29", "screen-laptop-light-1000", 1000, 625, "Review teams", "Run systematic and scoping reviews with explicit criteria and data you can export.", "/#screening"],
+  ["rose", "thread", "2 10 34", "panel-citation-light", 880, 1349, "Policy and programme teams", "Get to a defensible answer quickly, with the sources behind it ready to share.", "/#trust"],
+  ["emerald", "globe", "82 1 22", "c-home-laptop-light-1000", 1000, 625, "Institutions and networks", "Give your field one trusted, public home for its evidence, under your own name.", "/evidence-communities/"],
 ];
 const others = COMMUNITIES.filter((c) => c.key !== "wi");
 const questions = [["Is this an intervention study?", 11, 1, 3], ["Is it about reading or literacy?", 15, 0, 0], ["Is it in primary school?", 13, 1, 1]];
@@ -36,7 +35,7 @@ const faq = [
   <section class="tour" id="tour"><h2>Every step of the work, on every screen</h2><Workspace /></section>
 
   <section class="who" id="who"><h2>For anyone whose work has to stand on the evidence</h2>
-    <div class="teams">{teams.map(([f, a, sc, k, t, d, href]) => <a class="panel edge" href={href}><i class={`field f-${f}`} aria-hidden="true"></i><Art name={a} class="card-art" style={`--sc:${sc}`} /><AudienceArt kind={k} /><h3>{t}<Arrow /></h3><p>{d}</p></a>)}</div>
+    <div class="teams">{teams.map(([f, a, sc, img, w, h, t, d, href]) => <a class="panel edge" href={href}><i class={`field f-${f}`} aria-hidden="true"></i><Art name={a} class="card-art" style={`--sc:${sc}`} /><img class:list={["shot", { tall: h > w }]} src={`/img/screens/${img}.avif`} width={w} height={h} loading="lazy" decoding="async" alt="" /><h3>{t}<Arrow /></h3><p>{d}</p></a>)}</div>
   </section>
 
   <Feature id="product" class="find" field="ocean" art="sea" chip="#0e7490" title="Start with the whole literature, not the first page of it" text="Ask in plain language. You get a query you can read and change, and a view of the whole field before you commit to reading any of it.">
@@ -118,7 +117,13 @@ const faq = [
   .rules { padding: 18px 18px 14px; } .rules > b { display: block; font-weight: 500; font-size: 17px; margin-bottom: 12px; } .rules ol { display: grid; gap: 12px; } .rules li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 4px 10px; align-items: center; font-size: 14px; } .rules .n { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 7px; background: rgb(255 255 255 / .14); font: 400 13px/1 var(--mono); } .rules .tri { grid-column: 2; height: 5px; border-radius: 3px; } .rules p { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgb(255 255 255 / .14); font-size: 13px; opacity: .85; }
   .out { padding: 18px; } .tally { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; } .tally b { font-weight: 500; font-size: 17px; } .tally span { font: 400 13px/1 var(--mono); opacity: .85; } .out ul { display: grid; gap: 9px; font-size: 14px; line-height: 1.3; } .out li { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; } .out li :global(svg) { margin-top: 1px; color: #6ee7b7; } .out .maybe :global(svg) { color: #fbbf24; }
   .who { padding: clamp(8px, 2vw, 24px) var(--pad) 8px; } .who h2 { max-width: 16em; margin-bottom: 28px; }
-  .teams { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--gap); margin-inline: calc(var(--pad) * -1); } .teams .panel { display: flex; flex-direction: column; gap: 10px; padding: 24px; } .teams :global(.card-art)::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgb(var(--sc) / .25), rgb(var(--sc) / .9) 58%); } .teams :global(.card-art img) { transition: transform .8s var(--ease); } .teams .panel:hover :global(.card-art img) { transform: scale(1.05); } .teams :global(svg:not(h3 svg)) { margin-bottom: 14px; transition: transform .4s var(--ease); } .teams :global(.aud) { margin-bottom: 14px; transition: transform .4s var(--ease); } .teams .panel:hover :global(.aud), .teams .panel:hover > :global(svg) { transform: translateY(-4px); } .teams h3 { display: flex; justify-content: space-between; align-items: center; gap: 8px; } .teams h3 :global(i) { display: grid; place-items: center; width: 28px; height: 28px; transition: transform .3s var(--ease); } .teams .panel:hover h3 :global(i) { transform: translateX(4px); } .teams p { font-size: 16px; line-height: 1.4; }
+  /* Three doors into the product: whichever you're on opens wide and shows its real screen. Only the first frame's widths are set, so it never lays out twice. */
+  .teams { display: flex; gap: var(--gap); margin-inline: calc(var(--pad) * -1); height: 540px; }
+  .teams a { --o: 0; position: relative; flex: 1 1 0; min-width: 0; display: block; overflow: clip; transition: flex-grow .6s var(--ease); } .teams a:first-child { --o: 1; flex-grow: 2.7; } .teams:has(a:is(:hover, :focus-visible)) a { --o: 0; flex-grow: 1; } .teams a:is(:hover, :focus-visible), .teams:has(a:is(:hover, :focus-visible)) a:is(:hover, :focus-visible) { --o: 1; flex-grow: 2.7; }
+  .teams :global(.card-art)::after { content: ""; position: absolute; inset: 0; background: linear-gradient(rgb(var(--sc) / 0) 30%, rgb(var(--sc) / .96) 76%); } .teams :global(.card-art img) { transition: transform .8s var(--ease); } .teams a:hover :global(.card-art img) { transform: scale(1.04); }
+  .shot { position: absolute; left: 20px; top: 20px; width: 620px; max-width: none; height: 372px; object-fit: cover; object-position: top left; border-radius: 12px; box-shadow: 0 0 0 1px rgb(255 255 255 / .28), 0 30px 60px -24px rgb(0 0 0 / .8); opacity: var(--o); translate: 0 calc((1 - var(--o)) * 14px); transition: opacity .35s var(--ease), translate .5s var(--ease); } .shot.tall { width: 450px; }
+  .teams h3 { position: absolute; left: 24px; bottom: 76px; display: flex; align-items: flex-end; gap: 6px; width: min(222px, calc(100% - 36px)); font-size: clamp(19px, 1.6vw, 22px); line-height: 1.2; } .teams h3 { justify-content: space-between; } .teams h3 :global(i) { flex: none; display: grid; place-items: center; width: 24px; height: 24px; transition: transform .3s var(--ease); } .teams a:hover h3 :global(i) { transform: translateX(4px); }
+  .teams p { position: absolute; left: 24px; bottom: 22px; width: min(460px, calc(100vw - 96px)); font-size: 16px; line-height: 1.4; opacity: var(--o); translate: 0 calc((1 - var(--o)) * 8px); transition: opacity .35s var(--ease), translate .45s var(--ease); }
   /* Trust: the real citation view at its real size, and one thread of light from an answer to the sentence behind it. */
   .trust { background: #00081a; padding-block: clamp(56px, 7vw, 96px); } .trust > :global(.art) { z-index: -2; opacity: .5; -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); } .t-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
   .proof { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) clamp(56px, 11vw, 160px) minmax(0, 460px); align-items: stretch; margin-top: clamp(28px, 4vw, 48px); }
@@ -134,6 +139,6 @@ const faq = [
   .close { background: var(--night); padding-block: clamp(64px, 8vw, 112px) max(160px, 28vw); text-align: center; } .close .inner { display: grid; justify-items: center; gap: 24px; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
     @media (max-width: 1000px) { .sieve { padding: 48px 0; background: radial-gradient(ellipse 60% 30% at 80% 10%, rgb(52 211 153 / .22), transparent), #021f18; } .s-wrap { display: none; } .s-head { grid-template-columns: minmax(0, 1fr); margin-bottom: 0; } .s-small { display: grid; gap: 12px; margin-top: 24px; padding-inline: calc(var(--gap) + var(--pad)); } }
   
-  @media (max-width: 900px) { .publish, .t-head { grid-template-columns: minmax(0, 1fr); padding: 0 var(--pad); } .b-head { grid-template-columns: minmax(0, 1fr); } .stack { width: 100%; } .who { padding-inline: 8px; } .teams { grid-template-columns: minmax(0, 1fr); margin-inline: -8px; } .proof { grid-template-columns: minmax(0, 1fr); gap: 14px; } .tie { display: none; } .p-devices { height: 88vw; margin-inline: calc(var(--pad) * -1 + 8px); } .p-lap { width: 94%; top: 0; } .p-devices :global(.p-ph) { width: 30%; right: 6%; bottom: 0; }
+  @media (max-width: 900px) { .publish, .t-head { grid-template-columns: minmax(0, 1fr); padding: 0 var(--pad); } .b-head { grid-template-columns: minmax(0, 1fr); } .stack { width: 100%; } .who { padding-inline: 8px; } .teams { flex-direction: column; height: auto; margin-inline: -8px; } .teams a, .teams a:first-child { --o: 1; flex: none; display: grid; gap: 10px; padding: 16px; } .shot, .shot.tall { position: relative; left: 0; top: 0; width: 100%; height: auto; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; } .teams h3, .teams p { position: static; width: auto; } .proof { grid-template-columns: minmax(0, 1fr); gap: 14px; } .tie { display: none; } .p-devices { height: 88vw; margin-inline: calc(var(--pad) * -1 + 8px); } .p-lap { width: 94%; top: 0; } .p-devices :global(.p-ph) { width: 30%; right: 6%; bottom: 0; }
     :global(.find) :global(.view) { padding: 0 0 var(--pad); } }
 </style>
