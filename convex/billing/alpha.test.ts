@@ -6,6 +6,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import schema from "../schema";
 import { ORGANIZATION_PLAN, SEAT_PLAN, TEAM_PLAN } from "../../lib/billing/plans";
+import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
 import { fakeAutumn, installFakeAutumn } from "./billing.test-support";
 
 beforeEach(() => {
@@ -47,10 +48,10 @@ it("sells no seats, and refuses a plan given by request to anyone who tries to b
   await expect(as("ben").action(api.billing.actions.previewPlan, { plan: "southern" })).rejects.toThrow(/No plan/);
 });
 
-it("gives each member an entity with no seat, takes Clerk's member limit off, and lets an admin cap a member", async () => {
+it("gives each member an entity with no seat, lifts Clerk's member limit to what OpenScholar reads, and lets an admin cap a member", async () => {
   const { t, as, workspaceId, ben } = await lab();
   await t.action(internal.billing.seats.sync, { workspaceId });
-  expect(fakeAutumn.memberLimits.at(-1)?.limit).toBe(0);
+  expect(fakeAutumn.memberLimits.at(-1)?.limit).toBe(MAX_ORGANIZATION_MEMBERS);
   const entities = fakeAutumn.customer(workspaceId);
   expect(fakeAutumn.entities.get(workspaceId)?.get("user_ben")).toMatchObject({ seated: false });
   expect(entities.planId).toBe(ORGANIZATION_PLAN);
@@ -63,12 +64,15 @@ it("gives each member an entity with no seat, takes Clerk's member limit off, an
   expect(fakeAutumn.entities.get(workspaceId)?.has("user_ben")).toBe(false);
 });
 
-it("leaves a plan given by request where it is, and takes nothing back past any number of invitations", async () => {
-  const { t, workspaceId } = await lab();
+it("leaves a plan given by request where it is, and takes no invitations back while there is room", async () => {
+  const { t, workspaceId, organizationId } = await lab();
   fakeAutumn.customer(workspaceId).planId = "southern";
   await t.action(internal.billing.seats.sync, { workspaceId });
   expect(fakeAutumn.customer(workspaceId).planId).toBe("southern");
   const sent = Array.from({ length: 12 }, (_, i) => `inv_${i}`);
+  await t.run(async (ctx) => {
+    for (const id of sent) await ctx.db.insert("organizationInvitations", { clerkInvitationId: id, organizationId, email: `${id}@lab.test`, role: "org:member", state: "pending", clerkCreatedAt: 1, clerkUpdatedAt: 1, createdAt: 1, updatedAt: 1 } as never);
+  });
   expect(await t.query(internal.organizations.read.pastRoom, { workspaceId, sent })).toEqual([]);
 });
 

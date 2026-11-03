@@ -28,6 +28,9 @@ export const TEAM_PLAN = "team";
 /** Clerk's limit on a free organization's members, invitations included, while Team's seats are sold; Team has none. */
 export const FREE_MEMBERS = 5;
 
+/** People one request invites to an organization. */
+export const INVITES_AT_ONCE = 10;
+
 /**
  * Days after a renewal fails that Stripe stops retrying and cancels the plan (#40), measured on
  * the sandbox's settings: nine tries, cancelled 14 days after the first.

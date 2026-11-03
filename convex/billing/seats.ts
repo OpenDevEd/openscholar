@@ -17,7 +17,8 @@
  * after it.
  *
  * While the Team plan isn't on sale (the `subscriptions.team` flag, off for the public alpha), no
- * seats are sold and an organization on its free plan or one given by request has no member limit.
+ * seats are sold and an organization on its free plan or one given by request takes members up to
+ * MAX_ORGANIZATION_MEMBERS, the most OpenScholar reads of one.
  * Each member still has an entity, with no seat: it's what their charges are made as and what
  * carries their cap, and the credits stay the organization's one pool. This runs for all of them.
  */
@@ -201,7 +202,7 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
     await ctx.runMutation(internal.billing.seats.recordSeats, { workspaceId, seated: members.map((member) => member.clerkUserId) });
     await joinFreePlan(ctx, workspaceId, customerId, account);
     if (missing.length || freed.length || gone.length) await refreshAccount(ctx, workspaceId);
-    await followPlan(ctx, workspaceId, organization, null);
+    await followPlan(ctx, workspaceId, organization, MAX_ORGANIZATION_MEMBERS);
     return { seats: 0, held: 0, overflow: false, ended: true };
   }
 
@@ -268,11 +269,11 @@ async function clerkCounts(clerkOrganizationId: string) {
 
 /**
  * Sets Clerk's limit on the organization's members to its plan's: the seats free of held ones on
- * Team (#863), FREE_MEMBERS otherwise, or null for none (0 to Clerk) while seats aren't on sale. One
- * Clerk refuses is tried again later.
+ * Team (#863), FREE_MEMBERS otherwise, or as many as OpenScholar reads while seats aren't on sale.
+ * One Clerk refuses is tried again later.
  */
-async function followPlan(ctx: ActionCtx, workspaceId: Id<"workspaces">, { clerkOrganizationId, memberLimit }: { clerkOrganizationId: string; memberLimit?: number }, wanted: number | null) {
-  const limit = wanted === null ? 0 : Math.max(1, wanted);
+async function followPlan(ctx: ActionCtx, workspaceId: Id<"workspaces">, { clerkOrganizationId, memberLimit }: { clerkOrganizationId: string; memberLimit?: number }, wanted: number) {
+  const limit = Math.max(1, wanted);
   if (memberLimit === limit) return;
   try {
     await setMemberLimit(ctx, workspaceId, clerkOrganizationId, limit);

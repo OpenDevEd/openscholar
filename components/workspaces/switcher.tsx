@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { workspaceHref } from "@/lib/workspaces/href";
 import { inWorkspace, useWorkspaceAction } from "@/lib/workspaces/url";
 import { Framed, Opening, PlanChip, settingsHref, usePlanOf, useWorkspaces, useCurrentWorkspace, WorkspaceTile, type WorkspaceLook, type WorkspaceRow } from "./parts";
-import { FREE_MEMBERS } from "@/lib/billing/plans";
+import { FREE_MEMBERS, INVITES_AT_ONCE } from "@/lib/billing/plans";
 import { useSeatBilling } from "@/lib/feature-flags/hook";
 
 const ROW = "flex w-full items-center gap-2.5 rounded-lg px-2 text-start transition-colors hover:bg-foreground/[0.045]";
@@ -287,14 +287,16 @@ function NewOrganization({ close }: { close: () => void }) {
   const [emails, setEmails] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const seats = 1 + emails.length;
-  const full = seatBilling && seats >= FREE_MEMBERS;
+  // Past Free's members, or with seats not on sale past what one request invites.
+  const room = seatBilling ? FREE_MEMBERS - 1 : INVITES_AT_ONCE;
+  const full = emails.length >= room;
   // Each address in what's typed or pasted becomes its own while there's room; what isn't one, or doesn't fit, is left over.
   const split = (text: string) => {
     const next = [...emails];
     const left: string[] = [];
     for (const part of text.split(/[\s,;]+/).filter(Boolean)) {
       if (next.includes(part)) continue;
-      if (EMAIL.test(part) && (!seatBilling || 1 + next.length < FREE_MEMBERS)) next.push(part);
+      if (EMAIL.test(part) && next.length < room) next.push(part);
       else left.push(part);
     }
     return { next, left };
