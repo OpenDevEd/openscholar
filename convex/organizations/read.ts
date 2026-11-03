@@ -3,7 +3,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
 import { internalQuery, type QueryCtx } from "../_generated/server";
 import { seatSyncRow } from "../billing/seatSyncs";
-import { readAccount } from "../billing/accounts";
+import { readAccount, seatBillingOn } from "../billing/accounts";
 import { internalMutation } from "../lib/functions";
 import { createError } from "../lib/errors";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
@@ -251,8 +251,9 @@ export const pastRoom = internalQuery({
     const organization = await organizationOf(ctx, workspaceId);
     const seats = await seatSyncRow(ctx, workspaceId);
     const account = await readAccount(ctx, workspaceId);
+    const seatBilling = account?.plan === TEAM_PLAN || (await seatBillingOn(ctx));
     // On its way to Free at the renewal, it has Free's room already.
-    const limit = account?.plan === TEAM_PLAN && account.changesAt === undefined ? (seats?.seats ?? 0) - (seats?.held ?? 0) : FREE_MEMBERS;
+    const limit = account?.plan === TEAM_PLAN && account.changesAt === undefined ? (seats?.seats ?? 0) - (seats?.held ?? 0) : seatBilling ? FREE_MEMBERS : MAX_ORGANIZATION_MEMBERS;
     const members = await ctx.db.query("organizationMemberships").withIndex("by_organizationId_and_state", (q) => q.eq("organizationId", organization._id).eq("state", "active")).take(MAX_ORGANIZATION_MEMBERS);
     const room = Math.max(0, limit - members.length);
     // The ones with room, and the first few past it: whatever of `sent` isn't among the first is past it too.

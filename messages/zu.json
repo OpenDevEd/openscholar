@@ -248,24 +248,15 @@
     "perMonth": "/inyanga",
     "freePrice": "Mahhala",
     "enterprisePlanName": "Enterprise",
-    "freeDescription": "Qala mahhala — akudingeki ikhadi lokukhokha",
-    "goDescription": "Kochwaningo abasebenzayo abadinga ukuhumusha namandla e-AI engeziwe",
-    "proDescription": "Umsebenzi ophelele wokubuyekeza ngokuhlelekile",
+    "freeDescription": "Akudingeki ikhadi.",
     "enterpriseDescription": "Ukusetshenziswa kuyo yonke inhlangano ngamandla aphezulu kakhulu",
     "creditsOnce": "{credits, number} amakhredithi okubhalisa okuyisikhathi esisodwa",
-    "freeFeature2": "Ukusesha okugcwele nokuhlunga",
-    "freeFeature3": "Izici ze-AI nokhiye wakho we-API",
     "creditsPerMonth": "{credits, number} amakhredithi ngenyanga",
-    "goFeature2": "Ukubuza nokuhumusha amaphepha",
-    "goFeature3": "I-AI yesevisi + ukhiye wakho",
     "features": {
       "extraction": "Ukukhishwa kwedatha",
       "authors": "Iziphrofayili zababhali"
     },
-    "proFeature3": "Zonke izici ze-Go zifakiwe",
-    "proFeature4": "Usekelo oluphezulu",
     "enterpriseFeature1": "{credits, number} amakhredithi ngenyanga",
-    "enterpriseFeature2": "Konke okusekuPro",
     "enterpriseFeature3": "I-SSO namalogi okuhlola",
     "enterpriseFeature4": "Umphathi we-akhawunti ozinikele",
     "couldNotInitiateCheckout": "Ayikwazanga ukuqala ukukhokha. Sicela uzame futhi.",
@@ -296,14 +287,32 @@
       "changeSeats": "Shintsha izihlalo",
       "keepTeam": "Gcina {plan}",
       "movesOn": "Kudlulela ngo-{date}",
-      "moveToFreeAtRenewal": "I-{organization} igcina i-Team kuze kube ngu-{date}. Bese idlulela ku-{plan}, inamalungu angafika ku-{members, number} namakhredithi ahlanganyelwe angu-{credits, number} ngenyanga."
+      "moveToFreeAtRenewal": "I-{organization} igcina i-Team kuze kube ngu-{date}. Bese idlulela ku-{plan}, inamalungu angafika ku-{members, number} namakhredithi ahlanganyelwe angu-{credits, number} ngenyanga.",
+      "alphaFreeDescription": "Sebenzani ndawonye ngamakhredithi ahlanganyelwe.",
+      "noMemberLimit": "Awukho umkhawulo wamalungu",
+      "southernFeature1": "Konke okusenhlanganweni yamahhala",
+      "southernFeature2": "Kwengezwa enhlanganweni yakho ngemva kokuxhumana nathi",
+      "librariesName": "Evidence Libraries",
+      "librariesDescription": "Kuvulelwa inhlangano yakho ngesicelo. Ipulani namakhredithi ayo kuhlala kunjalo.",
+      "librariesFeature1": "Ama-Evidence Libraries omphakathi",
+      "librariesFeature2": "Dala futhi uhlele amaphrofayili ababhali",
+      "librariesOn": "Kuvuliwe enhlanganweni yakho",
+      "openLibraries": "Vula ama-Evidence Libraries"
     },
     "cancelScheduledDowngrade": "Khansela ukwehliswa okuhleleliwe",
     "scheduled": "Kuhleleliwe",
     "manageInBillingPortal": "Phatha ephothaleni lokukhokha",
     "downgradeTo": "Yehlisela ku-{name}",
     "metadataTitle": "Amanani | OpenScholar",
-    "metadataDescription": "Amanani alula, acacile kuwo wonke amaqembu, noma angakanani."
+    "metadataDescription": "Amanani alula, acacile kuwo wonke amaqembu, noma angakanani.",
+    "everyFeature": "Zonke izici ze-OpenScholar",
+    "papersRunning": "{running, number} amaphepha asebenza ngesikhathi esisodwa",
+    "papersInRequest": "{request, number} amaphepha esicelweni esisodwa",
+    "unlimitedCollectionsAndGuests": "Amaqoqo nezivakashi ngaphandle komkhawulo",
+    "southernDescription": "Kubacwaningi emazweni anemali engenayo ephansi nephakathi.",
+    "southernFeature1": "Konke okukuFree",
+    "southernFeature2": "Kwengezwa ku-akhawunti yakho ngemva kokuxhumana nathi",
+    "onRequest": "Ngesicelo"
   },
   "publicationSettings": {
     "credentials": "Izimvume ze-{provider}",
@@ -374,8 +383,6 @@
     "aiConfiguration": "Ukumisa i-AI"
   },
   "billingPage": {
-    "upgradePlan": "Thuthukisa uhlelo",
-    "upgradeDescription": "Thuthukisa uhlelo lwakho ukuze uvule amakhredithi nezici eziningi.",
     "failedToLoadDetails": "Ayikwazanga ukulayisha imininingwane",
     "paymentFailedNotice": "Ukukhokha kehlulekile. Buyekeza indlela yokukhokha ukuze isabelo sakho siqhubeke sisebenza.",
     "perInterval": "/ {interval}",
@@ -423,7 +430,8 @@
     "jobCharges": "Izindleko zalo msebenzi",
     "chargesLabel": "izindleko",
     "paymentFailedEnds": "Inkokhelo engu-{amount} yehlulekile. I-{plan} iphela ngo-{date} uma ingakhokhiwe.",
-    "fixPayment": "Lungisa inkokhelo"
+    "fixPayment": "Lungisa inkokhelo",
+    "seePlans": "Bona amapulani"
   },
   "errors": {
     "unexpectedIssue": "Sibhekene nenkinga engalindelekile. Sicela uzame futhi, noma ubuyele ekhasini elizinzile.",
@@ -2989,7 +2997,8 @@
       "admins": "Abaphathi",
       "plans": "Izinhlelo",
       "users": "Abasebenzisi",
-      "aiModels": "Amamodeli e-AI"
+      "aiModels": "Amamodeli e-AI",
+      "evidenceLibraries": "Evidence Libraries"
     },
     "sharedDev": "I-dev ehlanganyelwe",
     "production": "Ukukhiqiza",
@@ -3088,6 +3097,19 @@
     "ai": {
       "modelCount": "{count, plural, one {# imodeli} other {# amamodeli}}",
       "creditsOrKey": "Amakhredithi, noma ukhiye womsebenzisi"
+    },
+    "evidenceLibraries": {
+      "title": "Ukufinyelela ku-Evidence Library",
+      "organizations": "izinhlangano",
+      "search": "Sesha izinhlangano",
+      "show": "Bonisa",
+      "all": "Konke",
+      "on": "Kuvuliwe",
+      "off": "Kuvaliwe",
+      "libraries": "{count, plural, one {# umtapo} other {# imitapo}}",
+      "switchLabel": "Ama-Evidence Libraries ka-{name}",
+      "moveFirst": "Qala ngokuhambisa noma ususe imitapo yayo",
+      "noMatches": "Azikho izinhlangano ezifanayo"
     }
   },
   "settingsAi": {
@@ -4194,6 +4216,11 @@
         "did": "Izame isihloko sokuskrini",
         "where": "Evidence Library",
         "ask": "Zama isihloko sokuskrini kumarekhodi angu-200"
+      },
+      "libraryAccess": {
+        "doing": "Ibheka ukufinyelela ku-Evidence Library",
+        "did": "Ibheke ukufinyelela ku-Evidence Library",
+        "where": "Umphathi"
       }
     },
     "asks": {
@@ -4525,7 +4552,11 @@
       "confirmPayment": "Qinisekisa inkokhelo",
       "seatHeldUndated": "Basebenzise amakhredithi kulesi sikhathi sokukhokha, ngakho isihlalo sabo sihlala sithathiwe kuze kube ukuvuselelwa.",
       "paymentFailedEnds": "Inkokhelo engu-{amount} yehlulekile. I-{plan} iphela ngo-{date} uma ingakhokhiwe.",
-      "paymentFailed": "Inkokhelo yokugcina yehlulekile."
+      "paymentFailed": "Inkokhelo yokugcina yehlulekile.",
+      "noMemberLimit": "Awukho umkhawulo wamalungu",
+      "membersUnit": "{count, plural, one {ilungu} other {amalungu}}",
+      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "seePlans": "Bona amapulani"
     },
     "couldntInvite": "Inhlangano yakhiwe, kodwa izimemo azikaphumi. Zithumele kusuka ezilungiselelweni zakho zamalungu.",
     "fromCredits": "Kusuka emakhredithini ka-{name}",
@@ -4661,7 +4692,6 @@
       "guestCount": "{count, plural, one {# isivakashi} other {# izivakashi}}",
       "noLimit": "Akukho mkhawulo",
       "usedOf": "{used} kwa-{limit}",
-      "moreGuests": "Izivakashi eziningi",
       "full": {
         "collection": "I-{plan} ivumela {count, plural, one {# isivakashi} other {# izivakashi}} kwiqoqo ngalinye",
         "screening": "I-{plan} ivumela {count, plural, one {# isivakashi} other {# izivakashi}} kokuskrini ngakunye",
@@ -4878,9 +4908,7 @@
     "ask": {
       "write": "Bhala isifinyezo",
       "reads": "Ifunda yonke imiphumela engu-{count}",
-      "go": "Mahhala futhi ngokuzenzakalelayo ku-Go",
       "back": "Izifinyezo ezimahhala zibuya ngo-{time}",
-      "pro": "{count} ngosuku ku-Pro",
       "noCredits": "Awusasali amakhredithi",
       "getCredits": "Thola amakhredithi",
       "limit": "Izifinyezo ezikhokhelwayo ezingu-{count} zanamuhla sezisetshenziwe. Ezinye ngo-{time}"
@@ -5404,5 +5432,12 @@
     "confirm": "Qinisekisa",
     "usedSources": "{count, plural, one {Kusetshenzisiwe umthombo ongu-#} other {Kusetshenzisiwe imithombo engu-#}}",
     "navigation": "Ukuzulazula"
+  },
+  "alpha": {
+    "strip": "I-alpha yomphakathi yokuhlola.",
+    "stripDetail": "Izinto zingashintsha noma zingasebenzi.",
+    "contactUs": "Xhumana nathi",
+    "plansNotice": "I-OpenScholar imahhala ngesikhathi se-alpha yomphakathi, nazo zonke izici zifakiwe. Amapulani azoshintsha ngemva kwalokho.",
+    "emailAddress": "Thumela i-imeyili ku-{email}"
   }
 }

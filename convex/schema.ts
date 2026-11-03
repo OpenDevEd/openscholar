@@ -208,7 +208,10 @@ export default defineSchema({
     .index("by_clerkOrganizationId", ["clerkOrganizationId"])
     // A deleted organization keeps its row, and Clerk lets another take its address: one at an address is its active one.
     .index("by_slug_and_state", ["slug", "state"])
-    .index("by_state", ["state"]),
+    .index("by_state", ["state"])
+    .index("by_state_and_name", ["state", "name"])
+    .index("by_state_and_evidenceLibraries_and_name", ["state", "evidenceLibraries", "name"])
+    .searchIndex("search_name", { searchField: "name", filterFields: ["state", "evidenceLibraries"] }),
 
   // Invitations to organizations, as Clerk's webhook and the actions that send them project them (#651).
   organizationInvitations: defineTable(organizationInvitationFields)

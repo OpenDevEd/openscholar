@@ -11,6 +11,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { ConfirmationHost } from "@/lib/confirmation";
 import { AppSidebar } from "@/components/app-sidebar";
 import { MobileNavbar } from "@/components/mobile-navbar";
+import { AlphaStrip } from "@/components/alpha-notices";
 import { cn } from "@/lib/utils";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import ConfigProvider from "@/components/config-provider";
@@ -115,7 +116,8 @@ export default async function RootLayout({
                             <AppSidebar firstWorkspace={{ slug, ...(userId ? { user: userId } : {}), ...(me ? { me } : {}), ...(look ? { look } : {}) }} />
 
                             {/* Main Content Area */}
-                            <div className="flex-1 flex flex-col min-w-0 min-h-0 [--app-navbar-height:3.5rem] md:[--app-navbar-height:0px]">
+                            <div className="flex-1 flex flex-col min-w-0 min-h-0 [--app-navbar-height:5.5rem] md:[--app-navbar-height:2rem]">
+                              <AlphaStrip />
                               {/* Mobile Navbar */}
                               <MobileNavbar />
 

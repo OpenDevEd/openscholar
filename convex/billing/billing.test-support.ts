@@ -404,6 +404,9 @@ export function fakeAutumnFetch(
 }
 
 /** Routes Autumn calls, and Clerk's member limits, to a fresh in-memory fake; other requests go through. */
+/** Puts the Team plan and its seats on sale, for a test of them: `subscriptions.team` is off for the public alpha. */
+export const sellTeamForTest = (ctx: Pick<MutationCtx, "db">) => ctx.db.insert("featureFlags", { key: "subscriptions.team", enabled: true, description: "", updatedAt: 1 });
+
 export function installFakeAutumn() {
   fakeAutumn.reset();
   vi.stubGlobal("fetch", fakeAutumnFetch(globalThis.fetch));

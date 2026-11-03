@@ -19,10 +19,10 @@ export default async function OrganizationPricingPage({ params, searchParams }: 
       console.error("[billing] couldn't refresh the organization's account from Autumn", error);
     });
   }
-  const organization = workspaceId ? await fetchQuery(api.organizations.queries.workspace, { workspaceId }, { token }) : null;
+  const [organization, opens] = workspaceId ? await Promise.all([fetchQuery(api.organizations.queries.workspace, { workspaceId }, { token }), fetchQuery(api.organizationFeatures.opens, { workspaceId }, { token })]) : [null, null];
   return (
     <PageWrapper>
-      <Pricing organization={organization ?? undefined} />
+      <Pricing organization={organization ?? undefined} libraries={opens?.evidenceLibraries} />
     </PageWrapper>
   );
 }

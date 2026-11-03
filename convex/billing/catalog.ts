@@ -65,6 +65,7 @@ export function catalogPlan(plan: AutumnPlan, booleanFeatures: Set<string>): Cat
       .slice(0, MAX_PLAN_DETAILS),
     limits: Object.fromEntries(plan.items.filter((item) => (PLAN_LIMITS as readonly string[]).includes(item.feature_id)).map((item) => [item.feature_id, item.unlimited ? null : item.included])),
     popular: metadata.popular === true || metadata.popular === "true",
+    ...(metadata.by_request === true || metadata.by_request === "true" ? { byRequest: true } : {}),
     ...(metadataList(metadata.highlights) ? { highlights: metadataList(metadata.highlights)!.slice(0, MAX_PLAN_DETAILS) } : {}),
     ...(bundles && bundles.length > 0 ? { bundles: bundles.slice(0, MAX_PLAN_DETAILS) } : {}),
   };

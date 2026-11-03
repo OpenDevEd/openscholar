@@ -159,6 +159,7 @@
     "admins/invitations:invite": "Site administration, for OpenScholar's own admins on the admin pages.",
     "admins/invitations:resend": "Site administration, for OpenScholar's own admins on the admin pages.",
     "admins/mutations:addUser": "Site administration, for OpenScholar's own admins on the admin pages.",
+    "organizations/libraryAccess:set": "Site administration, for OpenScholar's own admins on the admin pages.",
     "admins/mutations:remove": "Site administration, for OpenScholar's own admins on the admin pages.",
     "admins/queries:amI": "Site administration, for OpenScholar's own admins on the admin pages.",
     "admins/queries:links": "Site administration, for OpenScholar's own admins on the admin pages.",

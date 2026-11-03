@@ -26,6 +26,7 @@ export const FLAG_REGISTRY = {
   "credits.enabled": { enabled: true, description: "Credit system master switch" },
   "credits.topups": { enabled: true, description: "On-demand credit top-up purchases" },
   "subscriptions.enabled": { enabled: true, description: "Subscription/billing system master switch" },
+  "subscriptions.team": { enabled: false, description: "Sell the Team plan and its seats. While off, organizations have no member limit and every one has member caps" },
   "subscriptions.plan.enterprise": { enabled: true, description: "Show the Enterprise plan on the pricing page" },
 } as const satisfies Record<string, FlagDefault>;
 

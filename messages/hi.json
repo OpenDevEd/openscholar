@@ -248,24 +248,15 @@
     "perMonth": "/महीना",
     "freePrice": "मुफ़्त",
     "enterprisePlanName": "एंटरप्राइज़",
-    "freeDescription": "मुफ्त में शुरू करें — कार्ड की आवश्यकता नहीं",
-    "goDescription": "सक्रिय शोधकर्ताओं के लिए जिन्हें अनुवाद और अधिक AI शक्ति की आवश्यकता है",
-    "proDescription": "पूर्ण व्यवस्थित समीक्षा कार्यप्रवाह",
+    "freeDescription": "कार्ड की ज़रूरत नहीं।",
     "enterpriseDescription": "अधिकतम क्षमता के साथ संस्था-व्यापी परिनियोजन",
     "creditsOnce": "{credits, number} एकमुश्त साइनअप क्रेडिट",
-    "freeFeature2": "पूर्ण खोज और फ़िल्टरिंग",
-    "freeFeature3": "अपनी API कुंजी के साथ AI सुविधाएं",
     "creditsPerMonth": "प्रति माह {credits, number} क्रेडिट",
-    "goFeature2": "क्वेरी और पेपर अनुवाद",
-    "goFeature3": "सर्वर-साइड AI + आपकी अपनी कुंजी",
     "features": {
       "extraction": "डेटा निष्कर्षण",
       "authors": "लेखक प्रोफ़ाइल"
     },
-    "proFeature3": "सभी Go सुविधाएं शामिल",
-    "proFeature4": "प्राथमिकता समर्थन",
     "enterpriseFeature1": "प्रति माह {credits, number} क्रेडिट",
-    "enterpriseFeature2": "Pro में सब कुछ",
     "enterpriseFeature3": "SSO और ऑडिट लॉग",
     "enterpriseFeature4": "समर्पित खाता प्रबंधक",
     "couldNotInitiateCheckout": "चेकआउट शुरू नहीं कर सके। कृपया फिर कोशिश करें।",
@@ -296,14 +287,32 @@
       "changeSeats": "सीटें बदलें",
       "keepTeam": "{plan} रखें",
       "movesOn": "{date} को बदलेगा",
-      "moveToFreeAtRenewal": "{organization} {date} तक Team पर रहेगा। फिर यह {plan} पर जाएगा, अधिकतम {members, number} सदस्यों और हर महीने {credits, number} साझा क्रेडिट के साथ।"
+      "moveToFreeAtRenewal": "{organization} {date} तक Team पर रहेगा। फिर यह {plan} पर जाएगा, अधिकतम {members, number} सदस्यों और हर महीने {credits, number} साझा क्रेडिट के साथ।",
+      "alphaFreeDescription": "क्रेडिट के एक ही पूल पर मिलकर काम करें।",
+      "noMemberLimit": "सदस्यों की कोई सीमा नहीं",
+      "southernFeature1": "मुफ़्त संगठन की हर चीज़",
+      "southernFeature2": "हमसे संपर्क करने के बाद आपके संगठन में जोड़ा जाता है",
+      "librariesName": "Evidence Libraries",
+      "librariesDescription": "अनुरोध पर आपके संगठन के लिए चालू किया जाता है। उसकी योजना और क्रेडिट वही रहते हैं।",
+      "librariesFeature1": "सार्वजनिक Evidence Libraries",
+      "librariesFeature2": "लेखक प्रोफ़ाइल बनाएँ और संपादित करें",
+      "librariesOn": "आपके संगठन के लिए चालू",
+      "openLibraries": "Evidence Libraries खोलें"
     },
     "cancelScheduledDowngrade": "निर्धारित डाउनग्रेड रद्द करें",
     "scheduled": "निर्धारित",
     "manageInBillingPortal": "बिलिंग पोर्टल में प्रबंधित करें",
     "downgradeTo": "{name} पर डाउनग्रेड करें",
     "metadataTitle": "मूल्य निर्धारण | OpenScholar",
-    "metadataDescription": "सभी आकार की टीमों के लिए सरल और पारदर्शी मूल्य निर्धारण।"
+    "metadataDescription": "सभी आकार की टीमों के लिए सरल और पारदर्शी मूल्य निर्धारण।",
+    "everyFeature": "OpenScholar की हर सुविधा",
+    "papersRunning": "एक साथ चल रहे {running, number} शोधपत्र",
+    "papersInRequest": "एक अनुरोध में {request, number} शोधपत्र",
+    "unlimitedCollectionsAndGuests": "असीमित संग्रह और अतिथि",
+    "southernDescription": "निम्न और मध्यम आय वाले देशों के शोधकर्ताओं के लिए।",
+    "southernFeature1": "Free की हर चीज़",
+    "southernFeature2": "हमसे संपर्क करने के बाद आपके खाते में जोड़ा जाता है",
+    "onRequest": "अनुरोध पर"
   },
   "publicationSettings": {
     "credentials": "{provider} क्रेडेंशियल",
@@ -374,8 +383,6 @@
     "aiConfiguration": "AI कॉन्फ़िगरेशन"
   },
   "billingPage": {
-    "upgradePlan": "प्लान अपग्रेड करें",
-    "upgradeDescription": "अधिक क्रेडिट और सुविधाएँ अनलॉक करने के लिए अपना प्लान अपग्रेड करें।",
     "failedToLoadDetails": "विवरण लोड करने में विफल",
     "paymentFailedNotice": "भुगतान विफल हो गया। अपनी सदस्यता सक्रिय रखने के लिए अपना भुगतान तरीका अपडेट करें।",
     "perInterval": "/ {interval}",
@@ -423,7 +430,8 @@
     "jobCharges": "इस जॉब के शुल्क",
     "chargesLabel": "शुल्क",
     "paymentFailedEnds": "{amount} का भुगतान विफल रहा। भुगतान न होने पर {plan} {date} को समाप्त हो जाएगा।",
-    "fixPayment": "भुगतान ठीक करें"
+    "fixPayment": "भुगतान ठीक करें",
+    "seePlans": "योजनाएँ देखें"
   },
   "errors": {
     "unexpectedIssue": "हमें एक अप्रत्याशित समस्या का सामना करना पड़ा। कृपया पुनः प्रयास करें, या स्थिर पेज पर वापस जाएं।",
@@ -2989,7 +2997,8 @@
       "admins": "एडमिन",
       "plans": "प्लान",
       "users": "उपयोगकर्ता",
-      "aiModels": "AI मॉडल"
+      "aiModels": "AI मॉडल",
+      "evidenceLibraries": "Evidence Libraries"
     },
     "sharedDev": "साझा डेव",
     "production": "प्रोडक्शन",
@@ -3088,6 +3097,19 @@
     "ai": {
       "modelCount": "{count, plural, one {# मॉडल} other {# मॉडल}}",
       "creditsOrKey": "क्रेडिट्स, या यूज़र की की"
+    },
+    "evidenceLibraries": {
+      "title": "Evidence Library की पहुँच",
+      "organizations": "संगठन",
+      "search": "संगठन खोजें",
+      "show": "दिखाएँ",
+      "all": "सभी",
+      "on": "चालू",
+      "off": "बंद",
+      "libraries": "{count, plural, one {# लाइब्रेरी} other {# लाइब्रेरी}}",
+      "switchLabel": "{name} के लिए Evidence Libraries",
+      "moveFirst": "पहले इसकी लाइब्रेरी हटाएँ या दूसरी जगह ले जाएँ",
+      "noMatches": "कोई संगठन मेल नहीं खाता"
     }
   },
   "settingsAi": {
@@ -4194,6 +4216,11 @@
         "did": "छँटाई का विषय आज़माया",
         "where": "Evidence Library",
         "ask": "छँटाई का विषय 200 रिकॉर्ड पर आज़माएँ"
+      },
+      "libraryAccess": {
+        "doing": "Evidence Library की पहुँच देख रहा है",
+        "did": "Evidence Library की पहुँच देखी",
+        "where": "एडमिन"
       }
     },
     "asks": {
@@ -4525,7 +4552,11 @@
       "confirmPayment": "भुगतान की पुष्टि करें",
       "seatHeldUndated": "इन्होंने इस बिलिंग अवधि में क्रेडिट खर्च किए, इसलिए इनकी सीट नवीनीकरण तक भरी रहेगी।",
       "paymentFailedEnds": "{amount} का भुगतान विफल रहा। भुगतान न होने पर {plan} {date} को समाप्त हो जाएगा।",
-      "paymentFailed": "पिछला भुगतान विफल रहा।"
+      "paymentFailed": "पिछला भुगतान विफल रहा।",
+      "noMemberLimit": "सदस्यों की कोई सीमा नहीं",
+      "membersUnit": "{count, plural, one {सदस्य} other {सदस्य}}",
+      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "seePlans": "योजनाएँ देखें"
     },
     "couldntInvite": "संगठन बन गया, पर आमंत्रण नहीं भेजे जा सके। उन्हें इसकी सदस्य सेटिंग्स से भेजें।",
     "fromCredits": "{name} के क्रेडिट से",
@@ -4661,7 +4692,6 @@
       "guestCount": "{count, plural, one {# अतिथि} other {# अतिथि}}",
       "noLimit": "कोई सीमा नहीं",
       "usedOf": "{limit} में से {used}",
-      "moreGuests": "और अतिथि",
       "full": {
         "collection": "{plan} हर संग्रह पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है",
         "screening": "{plan} हर स्क्रीनिंग पर {count, plural, one {# अतिथि} other {# अतिथि}} की अनुमति देता है",
@@ -4878,9 +4908,7 @@
     "ask": {
       "write": "सारांश लिखें",
       "reads": "सभी {count} नतीजे पढ़ता है",
-      "go": "Go पर मुफ़्त और अपने-आप",
       "back": "मुफ़्त सारांश {time} पर वापस",
-      "pro": "Pro पर रोज़ {count}",
       "noCredits": "क्रेडिट खत्म",
       "getCredits": "क्रेडिट पाएँ",
       "limit": "आज के {count} भुगतान वाले सारांश इस्तेमाल हो गए। और {time} पर"
@@ -5404,5 +5432,12 @@
     "confirm": "पुष्टि करें",
     "usedSources": "{count, plural, one {# स्रोत इस्तेमाल हुआ} other {# स्रोत इस्तेमाल हुए}}",
     "navigation": "नेविगेशन"
+  },
+  "alpha": {
+    "strip": "परीक्षण के लिए सार्वजनिक अल्फ़ा।",
+    "stripDetail": "चीज़ें बदल सकती हैं या ख़राब हो सकती हैं।",
+    "contactUs": "हमसे संपर्क करें",
+    "plansNotice": "सार्वजनिक अल्फ़ा के दौरान OpenScholar मुफ़्त है और इसमें हर सुविधा शामिल है। इसके बाद योजनाएँ बदलेंगी।",
+    "emailAddress": "{email} पर ईमेल करें"
   }
 }

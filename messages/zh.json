@@ -248,24 +248,15 @@
     "perMonth": "/月",
     "freePrice": "免费",
     "enterprisePlanName": "企业版",
-    "freeDescription": "免费开始——无需绑卡",
-    "goDescription": "面向需要翻译和更多AI能力的活跃研究人员",
-    "proDescription": "完整系统评审工作流程",
+    "freeDescription": "无需银行卡。",
     "enterpriseDescription": "机构级部署，最大限度提升容量",
     "creditsOnce": "{credits, number}注册积分（一次性）",
-    "freeFeature2": "完整搜索和筛选功能",
-    "freeFeature3": "AI功能可使用您自己的API密钥",
     "creditsPerMonth": "每月{credits, number}积分",
-    "goFeature2": "文献和论文翻译",
-    "goFeature3": "服务端AI + 您的密钥",
     "features": {
       "extraction": "数据提取",
       "authors": "作者档案"
     },
-    "proFeature3": "包含Go版所有功能",
-    "proFeature4": "优先支持",
     "enterpriseFeature1": "每月{credits, number}积分",
-    "enterpriseFeature2": "Pro版全部功能",
     "enterpriseFeature3": "单点登录和审计日志",
     "enterpriseFeature4": "专属客户经理",
     "couldNotInitiateCheckout": "无法启动结账。请重试。",
@@ -296,14 +287,32 @@
       "changeSeats": "更改席位",
       "keepTeam": "保留 {plan}",
       "movesOn": "{date} 变更",
-      "moveToFreeAtRenewal": "{organization} 在 {date} 之前保留 Team，之后改为 {plan}，最多 {members, number} 名成员，每月 {credits, number} 共享积分。"
+      "moveToFreeAtRenewal": "{organization} 在 {date} 之前保留 Team，之后改为 {plan}，最多 {members, number} 名成员，每月 {credits, number} 共享积分。",
+      "alphaFreeDescription": "共用一个积分池协作。",
+      "noMemberLimit": "成员数量不限",
+      "southernFeature1": "包含免费组织的全部内容",
+      "southernFeature2": "联系我们后添加到你的组织",
+      "librariesName": "Evidence Libraries",
+      "librariesDescription": "按申请为你的组织开启。方案和积分保持不变。",
+      "librariesFeature1": "公开的 Evidence Libraries",
+      "librariesFeature2": "创建和编辑作者资料",
+      "librariesOn": "已为你的组织开启",
+      "openLibraries": "打开 Evidence Libraries"
     },
     "cancelScheduledDowngrade": "取消已安排的降级",
     "scheduled": "已安排",
     "manageInBillingPortal": "在账单门户中管理",
     "downgradeTo": "降级为 {name}",
     "metadataTitle": "定价 | OpenScholar",
-    "metadataDescription": "适合各种规模团队的简单透明定价。"
+    "metadataDescription": "适合各种规模团队的简单透明定价。",
+    "everyFeature": "OpenScholar 的所有功能",
+    "papersRunning": "同时处理 {running, number} 篇论文",
+    "papersInRequest": "每次请求 {request, number} 篇论文",
+    "unlimitedCollectionsAndGuests": "不限合集和访客数量",
+    "southernDescription": "面向低收入和中等收入国家的研究人员。",
+    "southernFeature1": "包含 Free 的全部内容",
+    "southernFeature2": "联系我们后添加到你的账户",
+    "onRequest": "按需申请"
   },
   "publicationSettings": {
     "credentials": "{provider} 凭据",
@@ -374,8 +383,6 @@
     "aiConfiguration": "AI 配置"
   },
   "billingPage": {
-    "upgradePlan": "升级计划",
-    "upgradeDescription": "升级套餐以解锁更多积分和功能。",
     "failedToLoadDetails": "加载详情失败",
     "paymentFailedNotice": "支付失败。请更新支付方式以保持订阅有效。",
     "perInterval": "/ {interval}",
@@ -423,7 +430,8 @@
     "jobCharges": "此任务的扣费",
     "chargesLabel": "条扣费",
     "paymentFailedEnds": "{amount} 的付款失败。如未付款，{plan} 将于 {date} 结束。",
-    "fixPayment": "处理付款"
+    "fixPayment": "处理付款",
+    "seePlans": "查看方案"
   },
   "errors": {
     "unexpectedIssue": "我们遇到了意外问题。请重试或返回稳定的页面。",
@@ -2989,7 +2997,8 @@
       "admins": "管理员",
       "plans": "套餐",
       "users": "用户",
-      "aiModels": "AI 模型"
+      "aiModels": "AI 模型",
+      "evidenceLibraries": "Evidence Libraries"
     },
     "sharedDev": "共享开发",
     "production": "生产环境",
@@ -3088,6 +3097,19 @@
     "ai": {
       "modelCount": "{count, plural, other {# 个模型}}",
       "creditsOrKey": "积分，或用户的密钥"
+    },
+    "evidenceLibraries": {
+      "title": "Evidence Library 访问权限",
+      "organizations": "组织",
+      "search": "搜索组织",
+      "show": "显示",
+      "all": "全部",
+      "on": "开启",
+      "off": "关闭",
+      "libraries": "{count, plural, other {# 个资料库}}",
+      "switchLabel": "{name} 的 Evidence Libraries",
+      "moveFirst": "请先移动或删除其资料库",
+      "noMatches": "没有匹配的组织"
     }
   },
   "settingsAi": {
@@ -4194,6 +4216,11 @@
         "did": "已试用筛选主题",
         "where": "Evidence Library",
         "ask": "在 200 条记录上试用筛选主题"
+      },
+      "libraryAccess": {
+        "doing": "正在查看 Evidence Library 访问权限",
+        "did": "已查看 Evidence Library 访问权限",
+        "where": "管理"
       }
     },
     "asks": {
@@ -4525,7 +4552,11 @@
       "confirmPayment": "确认付款",
       "seatHeldUndated": "此成员在本计费周期使用了积分，因此其席位保留至续订。",
       "paymentFailedEnds": "{amount} 的付款失败。如未付款，{plan} 将于 {date} 结束。",
-      "paymentFailed": "上次付款失败。"
+      "paymentFailed": "上次付款失败。",
+      "noMemberLimit": "成员数量不限",
+      "membersUnit": "{count, plural, other {名成员}}",
+      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "seePlans": "查看方案"
     },
     "couldntInvite": "组织已创建，但邀请未能发出。请在其成员设置中发送。",
     "fromCredits": "使用 {name} 的积分",
@@ -4661,7 +4692,6 @@
       "guestCount": "{count, plural, other {# 位访客}}",
       "noLimit": "无上限",
       "usedOf": "{used} / {limit}",
-      "moreGuests": "更多访客",
       "full": {
         "collection": "{plan} 允许每个合集有 {count, plural, other {# 位访客}}",
         "screening": "{plan} 允许每个筛选有 {count, plural, other {# 位访客}}",
@@ -4878,9 +4908,7 @@
     "ask": {
       "write": "撰写概览",
       "reads": "阅读全部 {count} 条结果",
-      "go": "Go 套餐免费自动撰写",
       "back": "免费概览将于 {time} 恢复",
-      "pro": "Pro 每天 {count} 篇",
       "noCredits": "积分已用完",
       "getCredits": "获取积分",
       "limit": "今天的 {count} 篇付费概览已用完。{time} 后可再用"
@@ -5404,5 +5432,12 @@
     "confirm": "确认",
     "usedSources": "{count, plural, other {已使用 # 个来源}}",
     "navigation": "导航"
+  },
+  "alpha": {
+    "strip": "用于测试的公开 Alpha 版。",
+    "stripDetail": "内容可能会变更或出现故障。",
+    "contactUs": "联系我们",
+    "plansNotice": "公开 Alpha 期间，OpenScholar 免费提供所有功能。之后方案会有变化。",
+    "emailAddress": "发送邮件至 {email}"
   }
 }

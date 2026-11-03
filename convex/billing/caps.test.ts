@@ -7,7 +7,7 @@ import type { Id } from "../_generated/dataModel";
 import schema from "../schema";
 import { TEAM_PLAN } from "../../lib/billing/plans";
 import { monthStart } from "../../lib/billing/month";
-import { fakeAutumn, installFakeAutumn, seedCreditsForTest } from "./billing.test-support";
+import { fakeAutumn, installFakeAutumn, seedCreditsForTest, sellTeamForTest } from "./billing.test-support";
 
 // The ledger worker counts charges on whichever timers are active when they're recorded.
 beforeEach(() => {
@@ -24,6 +24,7 @@ const usage = { kind: "search" as const, description: "A search" };
 
 async function lab(people: string[] = ["ada", "ben"]) {
   const t = convexTest(schema);
+  await t.run(sellTeamForTest);
   const ids = await t.run(async (ctx) => {
     const organizationId = await ctx.db.insert("organizations", { clerkOrganizationId: "org_lab", name: "Lab", slug: "lab", clerkCreatedAt: 1, clerkUpdatedAt: 1, state: "active", createdAt: 1, updatedAt: 1 });
     const workspaceId = (await ctx.db.query("workspaces").withIndex("by_organizationId", (q) => q.eq("organizationId", organizationId)).unique())!._id;

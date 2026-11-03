@@ -248,24 +248,15 @@
     "perMonth": "/月",
     "freePrice": "無料",
     "enterprisePlanName": "エンタープライズ",
-    "freeDescription": "無料ではじめる — カード不要",
-    "goDescription": "翻訳とより多くのAI機能が必要な研究者のために",
-    "proDescription": "完全な体系的なレビュワークフロー",
+    "freeDescription": "カードは不要です。",
     "enterpriseDescription": "最大容量の組織全体展開",
     "creditsOnce": "{credits, number}クレジット（新規登録時のみ）",
-    "freeFeature2": "完全な検索とフィルタリング",
-    "freeFeature3": "独自のAPIキーによるAI機能",
     "creditsPerMonth": "月{credits, number}クレジット",
-    "goFeature2": "クエリと論文の翻訳",
-    "goFeature3": "サーバーサイドAI + 独自のキー",
     "features": {
       "extraction": "データ抽出",
       "authors": "著者プロフィール"
     },
-    "proFeature3": "Goの全機能を含む",
-    "proFeature4": "優先サポート",
     "enterpriseFeature1": "月{credits, number}クレジット",
-    "enterpriseFeature2": "Proの全機能",
     "enterpriseFeature3": "SSOと監査ログ",
     "enterpriseFeature4": "専任アカウントマネージャー",
     "couldNotInitiateCheckout": "チェックアウトを開始できませんでした。もう一度お試しください。",
@@ -296,14 +287,32 @@
       "changeSeats": "シート数を変更",
       "keepTeam": "{plan}を続ける",
       "movesOn": "{date}に変更",
-      "moveToFreeAtRenewal": "{organization}は{date}までTeamのままです。その後{plan}に移り、メンバーは最大{members, number}人、共有クレジットは月{credits, number}になります。"
+      "moveToFreeAtRenewal": "{organization}は{date}までTeamのままです。その後{plan}に移り、メンバーは最大{members, number}人、共有クレジットは月{credits, number}になります。",
+      "alphaFreeDescription": "1 つのクレジットプールで一緒に作業できます。",
+      "noMemberLimit": "メンバー数の上限なし",
+      "southernFeature1": "無料の組織のすべて",
+      "southernFeature2": "お問い合わせ後に組織へ追加されます",
+      "librariesName": "Evidence Libraries",
+      "librariesDescription": "リクエストに応じて組織で有効にします。プランとクレジットは変わりません。",
+      "librariesFeature1": "公開の Evidence Libraries",
+      "librariesFeature2": "著者プロフィールの作成と編集",
+      "librariesOn": "この組織で有効",
+      "openLibraries": "Evidence Libraries を開く"
     },
     "cancelScheduledDowngrade": "予約済みのダウングレードをキャンセル",
     "scheduled": "予約済み",
     "manageInBillingPortal": "請求ポータルで管理",
     "downgradeTo": "{name} にダウングレード",
     "metadataTitle": "料金 | OpenScholar",
-    "metadataDescription": "どの規模のチームにも使える、わかりやすく透明性の高い料金体系です。"
+    "metadataDescription": "どの規模のチームにも使える、わかりやすく透明性の高い料金体系です。",
+    "everyFeature": "OpenScholar のすべての機能",
+    "papersRunning": "同時に処理する論文 {running, number} 件",
+    "papersInRequest": "1 回のリクエストで論文 {request, number} 件",
+    "unlimitedCollectionsAndGuests": "コレクションとゲストは無制限",
+    "southernDescription": "低・中所得国の研究者向け。",
+    "southernFeature1": "Free のすべて",
+    "southernFeature2": "お問い合わせ後にアカウントへ追加されます",
+    "onRequest": "リクエスト制"
   },
   "publicationSettings": {
     "credentials": "{provider} 認証情報",
@@ -374,8 +383,6 @@
     "aiConfiguration": "AI設定"
   },
   "billingPage": {
-    "upgradePlan": "プランをアップグレード",
-    "upgradeDescription": "プランをアップグレードして、より多くのクレジットと機能を利用",
     "failedToLoadDetails": "詳細の読み込みに失敗しました",
     "paymentFailedNotice": "お支払いに失敗しました。サブスクリプションを維持するには、お支払い方法を更新してください。",
     "perInterval": "/ {interval}",
@@ -423,7 +430,8 @@
     "jobCharges": "このジョブの使用履歴",
     "chargesLabel": "件",
     "paymentFailedEnds": "{amount}の支払いに失敗しました。支払われない場合、{plan}は{date}に終了します。",
-    "fixPayment": "支払いを修正"
+    "fixPayment": "支払いを修正",
+    "seePlans": "プランを見る"
   },
   "errors": {
     "unexpectedIssue": "予期しない問題が発生しました。再試行するか、安定したページに戻ってください。",
@@ -2989,7 +2997,8 @@
       "admins": "管理者",
       "plans": "プラン",
       "users": "ユーザー",
-      "aiModels": "AI モデル"
+      "aiModels": "AI モデル",
+      "evidenceLibraries": "Evidence Libraries"
     },
     "sharedDev": "共有開発",
     "production": "本番",
@@ -3088,6 +3097,19 @@
     "ai": {
       "modelCount": "{count, plural, other {# 個のモデル}}",
       "creditsOrKey": "クレジット、またはユーザーのキー"
+    },
+    "evidenceLibraries": {
+      "title": "Evidence Library へのアクセス",
+      "organizations": "組織",
+      "search": "組織を検索",
+      "show": "表示",
+      "all": "すべて",
+      "on": "オン",
+      "off": "オフ",
+      "libraries": "{count, plural, other {# 件のライブラリ}}",
+      "switchLabel": "{name} の Evidence Libraries",
+      "moveFirst": "先にライブラリを移動または削除してください",
+      "noMatches": "一致する組織はありません"
     }
   },
   "settingsAi": {
@@ -4194,6 +4216,11 @@
         "did": "スクリーニングの主題を試しました",
         "where": "Evidence Library",
         "ask": "スクリーニングの主題を 200 件で試す"
+      },
+      "libraryAccess": {
+        "doing": "Evidence Library へのアクセスを確認しています",
+        "did": "Evidence Library へのアクセスを確認しました",
+        "where": "管理"
       }
     },
     "asks": {
@@ -4525,7 +4552,11 @@
       "confirmPayment": "支払いを確認",
       "seatHeldUndated": "この請求期間にクレジットを使ったため、更新日までシートは使用中のままです。",
       "paymentFailedEnds": "{amount}の支払いに失敗しました。支払われない場合、{plan}は{date}に終了します。",
-      "paymentFailed": "前回の支払いに失敗しました。"
+      "paymentFailed": "前回の支払いに失敗しました。",
+      "noMemberLimit": "メンバー数の上限なし",
+      "membersUnit": "{count, plural, other {人のメンバー}}",
+      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "seePlans": "プランを見る"
     },
     "couldntInvite": "組織は作成されましたが、招待を送れませんでした。メンバー設定から送ってください。",
     "fromCredits": "{name} のクレジットから",
@@ -4661,7 +4692,6 @@
       "guestCount": "{count, plural, other {#人のゲスト}}",
       "noLimit": "上限なし",
       "usedOf": "{used} / {limit}",
-      "moreGuests": "ゲストを増やす",
       "full": {
         "collection": "{plan} ではコレクションごとに{count, plural, other {#人}}までゲストを追加できます",
         "screening": "{plan} ではスクリーニングごとに{count, plural, other {#人}}までゲストを追加できます",
@@ -4878,9 +4908,7 @@
     "ask": {
       "write": "概要を書く",
       "reads": "{count}件の結果をすべて読みます",
-      "go": "Goなら無料で自動",
       "back": "無料の概要は{time}に戻ります",
-      "pro": "Proなら1日{count}件",
       "noCredits": "クレジットがありません",
       "getCredits": "クレジットを入手",
       "limit": "今日の有料の概要{count}件を使いました。{time}にまた使えます"
@@ -5404,5 +5432,12 @@
     "confirm": "確認",
     "usedSources": "{count, plural, other {# 件のソースを使用}}",
     "navigation": "ナビゲーション"
+  },
+  "alpha": {
+    "strip": "テスト用の公開アルファ版です。",
+    "stripDetail": "内容の変更や不具合が起こる場合があります。",
+    "contactUs": "お問い合わせ",
+    "plansNotice": "公開アルファ版の間、OpenScholar はすべての機能を無料で利用できます。プランはその後変更されます。",
+    "emailAddress": "{email} にメール"
   }
 }

@@ -19,7 +19,6 @@ import { EmailAvatar } from "@/components/ui/identity";
 import { IdentityAvatar } from "@/components/ui/identity-avatar";
 import { showStyledToast } from "@/components/ui/sonner";
 import { TooltipHint } from "@/components/ui/tooltip";
-import Link from "@/components/workspace-link";
 import { api } from "@/convex/_generated/api";
 import type { GuestRole, SharedKind } from "@/convex/sharing/validators";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
@@ -237,11 +236,6 @@ function GuestMeter({ room }: { room: { used: number; limit: number | null } | u
             </div>
           ) : null}
         </div>
-        {room && room.limit !== null && room.used >= room.limit ? (
-          <Button asChild size="sm" variant="outline" className="fade-enter h-8 shrink-0">
-            <Link href="/pricing">{t("moreGuests")}</Link>
-          </Button>
-        ) : null}
       </div>
     </AutoHeight>
   );

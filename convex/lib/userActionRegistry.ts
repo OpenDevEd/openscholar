@@ -35,6 +35,7 @@ import { answerAction as screeningAnswerAction, getAction as screeningPaperActio
 import { slotsAction as screeningSlotsAction, getScreeningJobAction, listScreeningResultsAction } from "../screening/queries";
 import { screenAction } from "../screening/start";
 import { countAdminsAction, listAdminsAction, listCandidatesAction } from "../admins/queries";
+import { countAction as countLibraryAccessAction, listAction as listLibraryAccessAction } from "../organizations/libraryAccess";
 import { listModelsAction as adminModelsAction, summaryAction as adminModelSummaryAction } from "../models/admin";
 import { balanceAction, countChargesAction, listChargesAction, planAction, spendingAction } from "../billing/usage";
 import { allowanceAction, setCapAction, spendingAction as memberSpendingAction } from "../billing/caps";
@@ -245,6 +246,8 @@ export const USER_ACTIONS: readonly UserAction[] = [
   walletKeyCountAction,
   listAdminsAction,
   countAdminsAction,
+  listLibraryAccessAction,
+  countLibraryAccessAction,
   listCandidatesAction,
   adminModelsAction,
   adminModelSummaryAction,

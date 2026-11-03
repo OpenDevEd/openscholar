@@ -41,6 +41,8 @@ import { ListViewTabs } from "@/components/evidence-libraries/list-controls";
 import { OrganizationPlans, type CurrentWorkspace } from "@/components/workspaces/org-plans";
 import { StickyPageHeader } from "@/components/layout/sticky-page-header";
 import { PlanCard } from "@/components/billing/plan-card";
+import { AlphaPlansNotice, ContactButton } from "@/components/alpha-notices";
+import { CONTACT_EMAIL, SOUTHERN_REQUEST } from "@/lib/billing/contact";
 
 type PlanCard = {
   id: string;
@@ -52,6 +54,8 @@ type PlanCard = {
   popular: boolean;
   /** The plan every customer starts on. */
   isDefault: boolean;
+  /** Listed, not sold: asked for by email. */
+  byRequest: boolean;
 };
 
 /** Enterprise is sold by contract, so it only appears as a contact card. */
@@ -64,16 +68,15 @@ const ENTERPRISE_CREDITS_PER_MONTH = 150_000;
  * Autumn's text.
  */
 const PLAN_COPY = {
-  free: { description: "freeDescription", highlights: ["freeFeature2", "freeFeature3"] },
-  go: { description: "goDescription", highlights: ["goFeature2", "goFeature3"] },
-  pro: { description: "proDescription", highlights: ["proFeature3", "proFeature4"] },
+  free: { description: "freeDescription", highlights: ["everyFeature", "papersRunning", "papersInRequest", "unlimitedCollectionsAndGuests"] },
+  southern: { description: "southernDescription", highlights: ["southernFeature1", "southernFeature2"] },
 } as const;
 
 /** Translated names for Autumn features; others show the name set in Autumn. */
 const FEATURE_NAMES = { extraction: "features.extraction", authors: "features.authors" } as const;
 
-/** `organization`: the organization whose address the page is under, as the server read it. */
-export function Pricing({ organization }: { organization?: CurrentWorkspace } = {}) {
+/** `organization`: the organization whose address the page is under, as the server read it; `libraries`: whether it has Evidence Libraries. */
+export function Pricing({ organization, libraries }: { organization?: CurrentWorkspace; libraries?: boolean } = {}) {
   const tLabels = useTranslations("pricing");
   const toast = useAppToast();
   const t = useTranslations("pricing");
@@ -125,13 +128,9 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
   const PLANS: PlanCard[] = useMemo(() => {
     if (!catalog) return [];
     const creditsLine = (plan: CatalogPlan) => {
-      if (plan.autoEnable) {
-        const credits = signupCredits(catalog);
-        return credits > 0 ? [t("creditsOnce", { credits })] : [];
-      }
-      return plan.credits?.interval === "month"
-        ? [t("creditsPerMonth", { credits: plan.credits.included })]
-        : [];
+      if (plan.credits?.interval === "month") return [t("creditsPerMonth", { credits: plan.credits.included })];
+      const credits = plan.autoEnable ? signupCredits(catalog) : 0;
+      return credits > 0 ? [t("creditsOnce", { credits })] : [];
     };
     const cards: PlanCard[] = mainPlans(catalog).map((plan) => {
       const copy = plan.id in PLAN_COPY ? PLAN_COPY[plan.id as keyof typeof PLAN_COPY] : undefined;
@@ -143,11 +142,12 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
         features: [
           ...creditsLine(plan),
           ...plan.features.map(featureName),
-          ...(plan.highlights ?? copy?.highlights.map((key) => t(key)) ?? []),
+          ...(plan.highlights ?? copy?.highlights.map((key) => t(key, { running: plan.limits?.concurrency ?? 0, request: plan.limits?.request_papers ?? 0 })) ?? []),
         ],
         price: plan.price,
         popular: plan.popular,
         isDefault: plan.autoEnable,
+        byRequest: plan.byRequest === true,
       };
     });
     if (showEnterprise) {
@@ -158,12 +158,13 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
         description: t("enterpriseDescription"),
         features: [
           t("enterpriseFeature1", { credits: ENTERPRISE_CREDITS_PER_MONTH }),
-          t("enterpriseFeature2"),
+          t("southernFeature1"),
           t("enterpriseFeature3"),
           t("enterpriseFeature4"),
         ],
         popular: false,
         isDefault: false,
+        byRequest: false,
       });
     }
     return cards;
@@ -359,7 +360,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
     if (isAnonymous || phase !== "authenticated") {
       return {
         disabled: false,
-        label: tc("signInToSubscribe"),
+        label: tc("signIn"),
         variant: "default" as const,
         onClick: goToSignIn,
       };
@@ -404,6 +405,16 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
       };
     }
 
+    // Leaving a plan given by request is asked for the same way.
+    if (plan.isDefault && findPlan(catalog, resolvedPlan)?.byRequest) {
+      return {
+        disabled: false,
+        label: tc("contactSupport"),
+        variant: "outline" as const,
+        onClick: () => window.location.assign(`mailto:${CONTACT_EMAIL}`),
+      };
+    }
+
     if (plan.isDefault) {
       return {
         disabled: false,
@@ -418,7 +429,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
         disabled: false,
         label: tc("contactSupport"),
         variant: "outline" as const,
-        onClick: handleOpenPortal,
+        onClick: () => window.location.assign(`mailto:${CONTACT_EMAIL}`),
       };
     }
 
@@ -483,8 +494,13 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
         {/* A narrow bar has no room for the tabs. */}
         <div className="@3xl:hidden">{audienceTabs}</div>
 
+        {/* As wide as the row of plans under it. */}
+        <div className={audience === "me" ? "mx-auto max-w-3xl" : undefined}>
+          <AlphaPlansNotice />
+        </div>
+
         {audience === "org" ? (
-          <OrganizationPlans featureName={featureName} initial={organization} />
+          <OrganizationPlans featureName={featureName} initial={organization} libraries={libraries} />
         ) : (
           <>
         {hasPendingDowngrade && account?.changesAt !== undefined && (
@@ -514,11 +530,11 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
 
         <div
           className={cn(
-            "grid gap-6",
+            "mx-auto grid gap-6",
             "grid-cols-1",
             "md:grid-cols-2",
-            // One row for however many plans Autumn offers, while they fit.
-            "lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]",
+            // Two plans sit side by side at a card's width; more share one row, while they fit.
+            orderedPlans.length > 2 ? "lg:grid-cols-[repeat(auto-fit,minmax(12rem,1fr))]" : "max-w-3xl",
           )}
         >
           {orderedPlans.map((plan, index) => {
@@ -540,7 +556,9 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
                 icon={plan.icon}
                 name={plan.name}
                 price={
-                  plan.id === ENTERPRISE_ID ? (
+                  plan.byRequest ? (
+                    <div className="text-4xl font-bold">{t("onRequest")}</div>
+                  ) : plan.id === ENTERPRISE_ID ? (
                     <div className="text-4xl font-bold">{tc("custom")}</div>
                   ) : plan.price ? (
                     <div className="text-4xl font-bold">
@@ -560,7 +578,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
                 description={plan.description}
                 features={plan.features}
               >
-                <Button
+                {plan.byRequest && !isCurrent ? <ContactButton href={SOUTHERN_REQUEST} /> : <Button
                   data-testid={`pricing-button-${plan.id}`}
                   className="w-full"
                   variant={buttonConfig.variant}
@@ -572,7 +590,7 @@ export function Pricing({ organization }: { organization?: CurrentWorkspace } = 
                   ) : (
                     (buttonConfig.label ?? <Spinner aria-label={tc("loading")} />)
                   )}
-                </Button>
+                </Button>}
               </PlanCard>
             );
           })}

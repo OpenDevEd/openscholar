@@ -7,9 +7,9 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
 import { personName } from "../lib/people";
-import { hasPlanFeature, readAccount } from "../billing/accounts";
+import { opensLibraries, readAccount } from "../billing/accounts";
 import { readEvidenceLibraryAccess } from "../evidenceLibraries/access";
-import { EVIDENCE_LIBRARIES_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
+import { TEAM_PLAN } from "../../lib/billing/plans";
 import { spentThisPeriod } from "../billing/memberCaps";
 import { seatSyncRow } from "../billing/seatSyncs";
 import { collectionCountRow } from "../library/counter";
@@ -314,7 +314,7 @@ export const summaryAction = defineUserQuery({
       extractions: await counted("extractionJobs"),
       libraries: libraries.length,
       ...(libraries[0] ? { library: libraries[0].name } : {}),
-      ...(libraries[0] && !(await hasPlanFeature(ctx, workspaceId, EVIDENCE_LIBRARIES_FEATURE)) && (await readEvidenceLibraryAccess(ctx, libraries[0]._id, "remove")) ? { removable: await removableOf(ctx, libraries[0]) } : {}),
+      ...(libraries[0] && !(await opensLibraries(ctx, workspaceId)) && (await readEvidenceLibraryAccess(ctx, libraries[0]._id, "remove")) ? { removable: await removableOf(ctx, libraries[0]) } : {}),
       ...(admins ? { admins: admins.length } : {}),
     };
   },

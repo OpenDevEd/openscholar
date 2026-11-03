@@ -37,7 +37,7 @@ async function requireCatalog(ctx: ActionCtx): Promise<BillingCatalog> {
 async function requireChoosablePlan(ctx: ActionCtx, planId: string): Promise<BillingCatalog> {
   const catalog = await requireCatalog(ctx);
   const plan = findPlan(catalog, planId);
-  if (!plan || plan.addOn || plan.autoEnable || ORGANIZATION_PLANS.includes(plan.id)) {
+  if (!plan || plan.addOn || plan.autoEnable || plan.byRequest || ORGANIZATION_PLANS.includes(plan.id)) {
     throw createError("BILLING_PLAN_INVALID", `No plan "${planId}" to choose`);
   }
   return catalog;
@@ -211,6 +211,11 @@ async function organizationAdminOf(ctx: ActionCtx, workspaceId: Id<"workspaces">
   return organization;
 }
 
+/** Refuses a move to Team while it isn't on sale. */
+async function requireSeatBilling(ctx: ActionCtx) {
+  if (!(await ctx.runQuery(internal.billing.seats.seatBilling, {}))) throw createError("BILLING_PLAN_INVALID", "The Team plan isn't on sale during the public alpha.");
+}
+
 /** What moving an organization to Team with `seats` seats charges now (#862), as Autumn previews it: one charge for them all. */
 export const previewTeam = action({
   args: { workspaceId: v.id("workspaces"), seats: v.number() },
@@ -218,6 +223,7 @@ export const previewTeam = action({
   handler: async (ctx, { workspaceId, seats }): Promise<PreviewResult> => {
     await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
+    await requireSeatBilling(ctx);
     const preview = await autumn.previewAttach(workspaceId, TEAM_PLAN, false, teamSeats(seats));
     // Read after the quote, as previewPlan's is.
     const customer = await autumn.customer(workspaceId, { card: true, invoices: true });
@@ -239,6 +245,7 @@ export const moveToTeam = action({
   handler: async (ctx, { workspaceId, seats }): Promise<{ url: string | null }> => {
     await requireUser(ctx);
     const organization = await organizationAdminOf(ctx, workspaceId);
+    await requireSeatBilling(ctx);
     const counted: { members: number; invitations: number } | null = await ctx.runQuery(internal.billing.seats.countsFor, { workspaceId });
     const inUse = (counted?.members ?? 0) + (counted?.invitations ?? 0);
     if (!Number.isInteger(seats) || seats < inUse || seats > MAX_ORGANIZATION_MEMBERS)
@@ -257,6 +264,7 @@ export const previewSeats = action({
   handler: async (ctx, { workspaceId, seats }): Promise<PreviewResult> => {
     await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
+    await requireSeatBilling(ctx);
     const preview = await autumn.previewUpdate(workspaceId, TEAM_PLAN, teamSeats(seats));
     // Read after the quote, as previewPlan's is.
     const customer = await autumn.customer(workspaceId, { card: true, invoices: true });

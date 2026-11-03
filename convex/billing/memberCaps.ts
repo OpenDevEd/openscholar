@@ -1,5 +1,5 @@
 /**
- * What an organization's members spend of its credits each month, and their caps on Team (#652).
+ * What an organization's members spend of its credits each month, and their caps (#652).
  * Autumn enforces a cap: it's the monthly usage limit on the member's entity, and every hold and
  * charge of theirs is made as that entity (`chargedAs`). Convex keeps the cap for pages to read,
  * and the spending, summed in the usage aggregate under `member:<workspace>:<user>`.
@@ -10,7 +10,7 @@ import type { QueryCtx } from "../_generated/server";
 import { createError } from "../lib/errors";
 import { monthStart } from "../../lib/billing/month";
 import { TEAM_PLAN } from "../../lib/billing/plans";
-import { readAccount } from "./accounts";
+import { readAccount, seatBillingOn } from "./accounts";
 import { seatSyncRow } from "./seatSyncs";
 import { memberSpace, spendSpace, usageAgg } from "./usageLog";
 import { usageKindValidator } from "./validators";
@@ -53,13 +53,16 @@ export async function workspaceSpentSince(ctx: QueryCtx, workspaceId: Id<"worksp
   return sums.reduce((sum, credits) => sum + credits, 0);
 }
 
+/** Whether an organization's admins set caps on its members. */
+export const hasCaps = async (ctx: QueryCtx, workspaceId: Id<"workspaces">) => (await readAccount(ctx, workspaceId))?.plan === TEAM_PLAN || !(await seatBillingOn(ctx));
+
 export const capRow = (ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) =>
   ctx.db.query("memberCaps").withIndex("by_workspace_and_user", (q) => q.eq("workspaceId", workspaceId).eq("userId", userId)).unique();
 
-/** The member's cap, while the organization is on Team: caps are a Team plan's. */
+/** The member's cap, while the organization has caps: on Team, or any of them while seats aren't on sale. */
 export async function capOf(ctx: QueryCtx, workspaceId: Id<"workspaces">, userId: Id<"users">) {
   const row = await capRow(ctx, workspaceId, userId);
-  if (!row || (await readAccount(ctx, workspaceId))?.plan !== TEAM_PLAN) return undefined;
+  if (!row || !(await hasCaps(ctx, workspaceId))) return undefined;
   return row.cap;
 }
 

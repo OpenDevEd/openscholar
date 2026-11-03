@@ -7,7 +7,13 @@
 /** The metered feature every AI charge spends. */
 export const CREDITS_FEATURE = "credits";
 
-/** Add-on attached once to every new customer. */
+/** The plan a person starts on, which Autumn gives every new customer. */
+export const FREE_PLAN = "free";
+
+/** The plan for researchers in low- and middle-income countries, given by request (its `by_request` metadata in Autumn). */
+export const SOUTHERN_PLAN = "southern";
+
+/** Add-on attached once to every new customer, while Autumn's catalog has it. */
 export const SIGNUP_PLAN = "signup_credits";
 
 /** Add-on sold in bundles; its credits never expire. */
@@ -19,8 +25,11 @@ export const ORGANIZATION_PLAN = "free_organization";
 /** An organization's paid plan (#652): its limits and features. Its price and credits are on its members' seats. */
 export const TEAM_PLAN = "team";
 
-/** Clerk's limit on a free organization's members, invitations included; Team has none. */
+/** Clerk's limit on a free organization's members, invitations included, while Team's seats are sold; Team has none. */
 export const FREE_MEMBERS = 5;
+
+/** People one request invites to an organization. */
+export const INVITES_AT_ONCE = 10;
 
 /**
  * Days after a renewal fails that Stripe stops retrying and cancels the plan (#40), measured on
@@ -43,7 +52,8 @@ export const SEATS_FEATURE = "seats";
 /**
  * The boolean feature in Autumn that gives a workspace Evidence Libraries, and with them the
  * making and editing of author profiles (#652). Team has it; which plans do is set in Autumn's
- * dashboard, not here. A plan is one workspace's: it grants nothing in another.
+ * dashboard, not here. A plan is one workspace's: it grants nothing in another. An organization
+ * also has them when OpenScholar's admins switch them on for it (`opensLibraries`).
  */
 export const EVIDENCE_LIBRARIES_FEATURE = "evidence_libraries";
 

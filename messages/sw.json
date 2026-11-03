@@ -248,24 +248,15 @@
     "perMonth": "/mwezi",
     "freePrice": "Bure",
     "enterprisePlanName": "Enterprise",
-    "freeDescription": "Anza bure, hauhitaji kadi ya malipo",
-    "goDescription": "Kwa watafiti hai wanaohitaji tafsiri na nguvu zaidi ya AI",
-    "proDescription": "Mtiririko kamili wa mapitio ya kimfumo",
+    "freeDescription": "Hakuna kadi inayohitajika.",
     "enterpriseDescription": "Matumizi ya taasisi nzima yenye uwezo wa juu zaidi",
     "creditsOnce": "Krediti {credits, number} za kujisajili mara moja",
-    "freeFeature2": "Utafutaji na uchujaji kamili",
-    "freeFeature3": "Vipengele vya AI kwa kutumia ufunguo wako wa API",
     "creditsPerMonth": "Krediti {credits, number} kwa mwezi",
-    "goFeature2": "Hoja na tafsiri ya makala",
-    "goFeature3": "AI ya upande wa seva + ufunguo wako",
     "features": {
       "extraction": "Uchimbaji wa data",
       "authors": "Wasifu wa waandishi"
     },
-    "proFeature3": "Vipengele vyote vya Go vimejumuishwa",
-    "proFeature4": "Msaada wa kipaumbele",
     "enterpriseFeature1": "Krediti {credits, number} kwa mwezi",
-    "enterpriseFeature2": "Kila kitu kilichomo kwenye Pro",
     "enterpriseFeature3": "SSO na kumbukumbu za ukaguzi",
     "enterpriseFeature4": "Meneja wa akaunti aliyejitolea",
     "couldNotInitiateCheckout": "Imeshindwa kuanzisha malipo. Tafadhali jaribu tena.",
@@ -296,14 +287,32 @@
       "changeSeats": "Badilisha viti",
       "keepTeam": "Endelea na {plan}",
       "movesOn": "Inahamia tarehe {date}",
-      "moveToFreeAtRenewal": "{organization} inaendelea na Timu hadi {date}. Kisha itahamia {plan}, ikiwa na wanachama hadi {members, number} na krediti {credits, number} zilizoshirikiwa kwa mwezi."
+      "moveToFreeAtRenewal": "{organization} inaendelea na Timu hadi {date}. Kisha itahamia {plan}, ikiwa na wanachama hadi {members, number} na krediti {credits, number} zilizoshirikiwa kwa mwezi.",
+      "alphaFreeDescription": "Fanyeni kazi pamoja kwa kutumia krediti za pamoja.",
+      "noMemberLimit": "Hakuna kikomo cha wanachama",
+      "southernFeature1": "Kila kitu katika shirika la bure",
+      "southernFeature2": "Huongezwa kwenye shirika lako baada ya kuwasiliana nasi",
+      "librariesName": "Evidence Libraries",
+      "librariesDescription": "Huwashwa kwa shirika lako kwa ombi. Mpango na krediti zake hubaki vile vile.",
+      "librariesFeature1": "Evidence Libraries za umma",
+      "librariesFeature2": "Unda na uhariri wasifu wa waandishi",
+      "librariesOn": "Imewashwa kwa shirika lako",
+      "openLibraries": "Fungua Evidence Libraries"
     },
     "cancelScheduledDowngrade": "Ghairi kushuka kwa mpango kulikopangwa",
     "scheduled": "Imepangwa",
     "manageInBillingPortal": "Simamia kwenye lango la malipo",
     "downgradeTo": "Shuka hadi {name}",
     "metadataTitle": "Bei | OpenScholar",
-    "metadataDescription": "Bei rahisi na wazi kwa timu za ukubwa wote."
+    "metadataDescription": "Bei rahisi na wazi kwa timu za ukubwa wote.",
+    "everyFeature": "Kila kipengele cha OpenScholar",
+    "papersRunning": "Makala {running, number} zinazoendeshwa kwa wakati mmoja",
+    "papersInRequest": "Makala {request, number} katika ombi moja",
+    "unlimitedCollectionsAndGuests": "Mikusanyiko na wageni bila kikomo",
+    "southernDescription": "Kwa watafiti katika nchi za kipato cha chini na cha kati.",
+    "southernFeature1": "Kila kitu katika Free",
+    "southernFeature2": "Huongezwa kwenye akaunti yako baada ya kuwasiliana nasi",
+    "onRequest": "Kwa ombi"
   },
   "publicationSettings": {
     "credentials": "Vitambulisho vya {provider}",
@@ -374,9 +383,7 @@
     "aiConfiguration": "Usanidi wa AI"
   },
   "billingPage": {
-    "upgradePlan": "Boresha mpango",
     "manageSubscriptionBtn": "Simamia usajili",
-    "upgradeDescription": "Boresha mpango wako ili kufungua krediti na vipengele zaidi.",
     "failedToLoadDetails": "Imeshindwa kupakia maelezo",
     "paymentFailedNotice": "Malipo yameshindikana. Sasisha njia yako ya malipo ili usajili wako uendelee kuwa hai.",
     "perInterval": "/ {interval}",
@@ -424,7 +431,8 @@
     "topUpConfirm": "Nunua salio",
     "topUpDue": "Inadaiwa sasa",
     "topUpBalanceNow": "Salio",
-    "topUpBalanceAfter": "Baada ya"
+    "topUpBalanceAfter": "Baada ya",
+    "seePlans": "Tazama mipango"
   },
   "errors": {
     "unexpectedIssue": "Kumetokea tatizo lisilotarajiwa. Tafadhali jaribu tena, au rudi kwenye ukurasa thabiti.",
@@ -2990,7 +2998,8 @@
       "admins": "Wasimamizi",
       "plans": "Mipango",
       "users": "Watumiaji",
-      "aiModels": "Modeli za AI"
+      "aiModels": "Modeli za AI",
+      "evidenceLibraries": "Evidence Libraries"
     },
     "sharedDev": "Dev ya pamoja",
     "production": "Uzalishaji",
@@ -3089,6 +3098,19 @@
     "ai": {
       "modelCount": "{count, plural, one {modeli #} other {modeli #}}",
       "creditsOrKey": "Krediti, au ufunguo wa mtumiaji"
+    },
+    "evidenceLibraries": {
+      "title": "Ufikiaji wa Evidence Library",
+      "organizations": "mashirika",
+      "search": "Tafuta mashirika",
+      "show": "Onyesha",
+      "all": "Yote",
+      "on": "Imewashwa",
+      "off": "Imezimwa",
+      "libraries": "{count, plural, one {Maktaba #} other {Maktaba #}}",
+      "switchLabel": "Evidence Libraries za {name}",
+      "moveFirst": "Hamisha au futa maktaba zake kwanza",
+      "noMatches": "Hakuna mashirika yanayolingana"
     }
   },
   "settingsAi": {
@@ -4195,6 +4217,11 @@
         "did": "Imejaribu mada ya uchujaji",
         "where": "Evidence Library",
         "ask": "Jaribu mada ya uchujaji kwenye rekodi 200"
+      },
+      "libraryAccess": {
+        "doing": "Inaangalia ufikiaji wa Evidence Library",
+        "did": "Iliangalia ufikiaji wa Evidence Library",
+        "where": "Msimamizi"
       }
     },
     "asks": {
@@ -4526,7 +4553,11 @@
       "confirmPayment": "Thibitisha malipo",
       "seatHeldUndated": "Wametumia krediti katika kipindi hiki cha malipo, kwa hivyo kiti chao kinabaki kimechukuliwa hadi kinapofanywa upya.",
       "paymentFailedEnds": "Malipo ya {amount} yameshindikana. {plan} inaisha tarehe {date} isipolipwa.",
-      "paymentFailed": "Malipo ya mwisho yameshindikana."
+      "paymentFailed": "Malipo ya mwisho yameshindikana.",
+      "noMemberLimit": "Hakuna kikomo cha wanachama",
+      "membersUnit": "{count, plural, one {mwanachama} other {wanachama}}",
+      "evidenceLibrariesIncluded": "Evidence Libraries",
+      "seePlans": "Tazama mipango"
     },
     "couldntInvite": "Shirika limeundwa, lakini mialiko haikutumwa. Ituma kutoka mipangilio yake ya Wanachama.",
     "fromCredits": "Kutoka kwenye krediti za {name}",
@@ -4662,7 +4693,6 @@
       "guestCount": "{count, plural, one {mgeni #} other {wageni #}}",
       "noLimit": "Hakuna kikomo",
       "usedOf": "{used} kati ya {limit}",
-      "moreGuests": "Wageni zaidi",
       "full": {
         "collection": "{plan} inaruhusu {count, plural, one {mgeni #} other {wageni #}} kwenye kila mkusanyiko",
         "screening": "{plan} inaruhusu {count, plural, one {mgeni #} other {wageni #}} kwenye kila uchujaji",
@@ -4879,9 +4909,7 @@
     "ask": {
       "write": "Andika muhtasari",
       "reads": "Inasoma matokeo yote {count}",
-      "go": "Bure na kiotomatiki kwenye Go",
       "back": "Muhtasari wa bure unarudi saa {time}",
-      "pro": "{count} kwa siku kwenye Pro",
       "noCredits": "Krediti zimekwisha",
       "getCredits": "Pata krediti",
       "limit": "Muhtasari {count} wa kulipia wa leo umetumika. Zaidi saa {time}"
@@ -5405,5 +5433,12 @@
     "confirm": "Thibitisha",
     "usedSources": "{count, plural, one {Chanzo # kimetumika} other {Vyanzo # vimetumika}}",
     "navigation": "Urambazaji"
+  },
+  "alpha": {
+    "strip": "Alfa ya umma kwa majaribio.",
+    "stripDetail": "Mambo yanaweza kubadilika au kuharibika.",
+    "contactUs": "Wasiliana nasi",
+    "plansNotice": "OpenScholar ni bure wakati wa alfa ya umma, ikiwa na vipengele vyote. Mipango itabadilika baada ya hapo.",
+    "emailAddress": "Tuma barua pepe kwa {email}"
   }
 }
