@@ -70,7 +70,7 @@ const PLAN_COPY = {
 } as const;
 
 /** Translated names for Autumn features; others show the name set in Autumn. */
-const FEATURE_NAMES = { extraction: "features.extraction" } as const;
+const FEATURE_NAMES = { extraction: "features.extraction", authors: "features.authors" } as const;
 
 /** `organization`: the organization whose address the page is under, as the server read it. */
 export function Pricing({ organization }: { organization?: CurrentWorkspace } = {}) {

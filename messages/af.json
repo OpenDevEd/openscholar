@@ -259,7 +259,8 @@
     "goFeature2": "Navraag- en artikelvertaling",
     "goFeature3": "KI aan die bedienerkant + jou eie sleutel",
     "features": {
-      "extraction": "Dataekstraksie"
+      "extraction": "Dataekstraksie",
+      "authors": "Outeurprofiele"
     },
     "proFeature3": "Alle Go-funksies ingesluit",
     "proFeature4": "Prioriteitondersteuning",
