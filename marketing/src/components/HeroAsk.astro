@@ -71,7 +71,12 @@ const hl = (s) => (s === "reading" ? "k2" : s.toLowerCase() === "peer tutoring" 
   @media (max-width: 700px) { .slot > :global(.art) { height: 118vw; } .slot > :global(.art img) { opacity: .9; } }
   @media (max-width: 360px) { .subj { font-size: 24px; } }
   /* On short laptop screens the hero tightens so the search box and the communities both stay on the first screen. */
-  @media (max-height: 820px) and (min-width: 701px) { .slot { padding-top: 0; } .subj { font-size: clamp(32px, 5.4vw, 72px); } .in { gap: 12px; } .lead { font-size: 16px; } .hero :global(.em .row) { height: 192px; } .hero :global(.em [role="tab"]) { width: 76px; height: 76px; } .hero :global(.em [role="tab"] img) { width: 70px; height: 70px; } .hero :global(.em .cap) { min-height: 70px; margin-top: 0; } .slot .in { padding-block: 84px 32px; grid-template-rows: max(232px, calc(50svh - 120px)) auto auto; } }
+  /* From a tablet up, the whole hero is measured in one unit that shrinks with the window, so a short laptop sees all of it at the same proportions as a large screen. */
+  @media (min-width: 701px) {
+    .slot { --hu: max(.6px, min(1px, 100svh / 900, 100vw / 1100)); } .slot .in { padding-block: max(84px, calc(var(--hu) * 92)) calc(var(--hu) * 48); grid-template-rows: max(calc(var(--hu) * 318), calc(50svh - 132px)) auto auto; }
+    .top-w { gap: calc(var(--hu) * 12); padding-bottom: calc(var(--hu) * 28); } .slot .ask-l { font-size: max(18px, calc(var(--hu) * 36)); } .slot .subj { font-size: min(6.4vw, calc(var(--hu) * 92)); } .slot .lead { font-size: max(15px, calc(var(--hu) * 19)); }
+    .slot .in :global(.big) { width: min(100%, calc(var(--hu) * 780)); } .slot .in :global(.big input) { height: max(46px, calc(var(--hu) * 68)); font-size: max(15px, calc(var(--hu) * 19)); }
+  }
 
   /* Results: what a search returns, set straight on the page instead of in a device. */
   .res-w { margin-top: clamp(32px, 3.6vw, 52px); text-align: left; } .res { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 4fr) minmax(0, 4fr); gap: 12px; height: clamp(250px, 24vw, 330px); -webkit-mask-image: linear-gradient(#000 74%, transparent); mask-image: linear-gradient(#000 74%, transparent); }
