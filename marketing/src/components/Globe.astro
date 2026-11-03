@@ -27,7 +27,7 @@
       pts = new Float32Array((p.length / 3) * 6); const big = [];
       for (let i = 0; i < p.length / 3; i++) { const lon = ((p[i * 3] + .5) * cell - 180) * Math.PI / 180, lat = (90 - (p[i * 3 + 1] + .5) * cell) * Math.PI / 180, [x, y, z] = toXYZ(lon, lat), o = i * 6, k = p[i * 3 + 2]; pts.set([x, y, z, k, Math.min(6, Math.floor(((lon + Math.PI) / (2 * Math.PI)) * 7)), 0], o); if (k === 3) big.push([x, y, z]); }
       // Links join busy places far enough apart to read as an arc.
-      for (let i = 0, j = 0; i < 9 && j < 600 && big.length > 1; j++) { const a = big[(j * 37) % big.length], b = big[(j * 91 + 11) % big.length], d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); if (d > .7 && d < 1.5) { arcs.push({ a, b, lift: d * .22, c: HUES[i % HUES.length], d: i * 1000 }); i++; } }
+      for (let i = 0, j = 0; i < 9 && j < 600 && big.length > 1; j++) { const a = big[(j * 37) % big.length], b = big[(j * 91 + 11) % big.length], d = Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); if (d > .7 && d < 1.5) { arcs.push({ a, b, lift: d * .1, c: HUES[i % HUES.length], d: i * 1000 }); i++; } }
       t0 = performance.now(); size(); draw(); root.classList.add("on"); new ResizeObserver(() => { size(); draw(); }).observe(root); new IntersectionObserver(([e]) => run(e.isIntersecting), { threshold: .05 }).observe(root); calm.addEventListener("change", (e) => { still = e.matches; run(onScreen); draw(); });
     });
     const near = new IntersectionObserver(([e]) => { if (e.isIntersecting) { near.disconnect(); load(); } }, { rootMargin: "500px 0px" }); near.observe(root);
@@ -40,5 +40,5 @@
   .gl { position: relative; aspect-ratio: 1; cursor: grab; touch-action: pan-y; user-select: none; } .gl:global(.held) { cursor: grabbing; } canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 1s var(--ease); } .gl:global(.on) canvas { opacity: 1; }
   .atm { position: absolute; inset: 3%; border-radius: 50%; background: radial-gradient(circle at 40% 32%, #142a70, #081038 60%, #040826); box-shadow: inset -30px -40px 90px rgb(2 4 24 / .75), inset 10px 14px 60px rgb(125 211 252 / .16); }
   /* A rim of the site's colours, the one thing here that's blurred, and it never changes. */
-  .atm::before { content: ""; position: absolute; inset: -5%; z-index: -1; border-radius: 50%; background: conic-gradient(from 200deg, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24, #fb923c, #fb7185, #38bdf8); -webkit-mask: radial-gradient(closest-side, transparent 90%, #000 95%, transparent); mask: radial-gradient(closest-side, transparent 90%, #000 95%, transparent); filter: blur(12px); opacity: .6; }
+  .atm::before { content: ""; position: absolute; inset: -5%; z-index: -1; border-radius: 50%; background: conic-gradient(from 200deg, #38bdf8, #22d3ee, #34d399, #a3e635, #fbbf24, #fb923c, #fb7185, #38bdf8); -webkit-mask: radial-gradient(closest-side, transparent 90%, #000 95%, transparent); mask: radial-gradient(closest-side, transparent 90%, #000 95%, transparent); filter: blur(14px); opacity: .42; }
 </style>
