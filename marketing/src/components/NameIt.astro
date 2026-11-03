@@ -14,7 +14,7 @@ const slug = (s) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCa
     <label class="f"><span>Your field</span><input data-field type="text" maxlength="60" value={first} autocomplete="off" spellcheck="false" /></label>
     <p class="addr"><span>Public address</span><code data-addr>{slug(first)}.openscholar.ai</code></p>
     <div class="f"><span id="n-col">Colour</span><div class="sw" role="group" aria-labelledby="n-col">{colours.map(([n, c], i) => <button type="button" aria-label={n} aria-pressed={i === 0 ? "true" : "false"} data-c={c} style={`--c:${c}`}></button>)}</div></div>
-    <a class="btn" href={`${APP}/evidence-libraries`}>Create your community<Arrow /></a>
+    <a class="btn" href={`${APP}/evidence-communities`}>Create your community<Arrow /></a>
   </div>
   <div class="n-dev" aria-hidden="true">
     <Device kind="laptop" name="c-blank" theme="light" sizes="(max-width: 900px) 94vw, 780px">
