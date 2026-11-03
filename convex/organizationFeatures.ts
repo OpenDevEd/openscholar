@@ -68,14 +68,14 @@ export async function requireLibraryOrganization(
   organizationId: string,
 ) {
   if (!(await ctx.auth.getUserIdentity()))
-    throw createError("UNAUTHENTICATED", "Sign in to create a library.");
+    throw createError("UNAUTHENTICATED", "Sign in to create a community.");
   const entry = (await readLibraryOrganizations(ctx)).find(
     (row) => row.organization._id === organizationId,
   );
   if (!entry)
     throw createError(
       "FORBIDDEN",
-      "Choose an organization you're an admin of that has Evidence Libraries.",
+      "Choose an organization you're an admin of that has Evidence Communities.",
     );
   return { ...entry, clerkUserId: entry.membership.clerkUserId };
 }

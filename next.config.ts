@@ -57,6 +57,7 @@ const nextConfig: NextConfig = {
       { source: "/evidence-libraries/:path*", destination: "/evidence-communities/:path*", permanent: true },
       { source: "/o/:slug/evidence-libraries", destination: "/o/:slug/evidence-communities", permanent: true },
       { source: "/o/:slug/evidence-libraries/:path*", destination: "/o/:slug/evidence-communities/:path*", permanent: true },
+      { source: "/settings/admin/evidence-libraries", destination: "/settings/admin/evidence-communities", permanent: true },
     ];
   },
   async rewrites() {
