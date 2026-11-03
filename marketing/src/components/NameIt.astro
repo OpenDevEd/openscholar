@@ -14,7 +14,7 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).rep
     <h2>Put your field's name on it</h2>
     <p class="lead">Your name, your address and your colours, on a community built around your evidence.</p>
     <label class="f"><span>Your field</span><input data-field type="text" maxlength="60" value={first} autocomplete="off" spellcheck="false" /></label>
-    <p class="addr" aria-live="polite"><span>Public address</span><code data-addr>{slug(first)}.openscholar.ai</code></p>
+    <p class="addr"><span>Public address</span><code data-addr>{slug(first)}.openscholar.ai</code></p>
     <div class="f"><span id="n-col">Colour</span><div class="sw" role="group" aria-labelledby="n-col">{colours.map(([n, c], i) => <button type="button" aria-label={n} aria-pressed={i === 0 ? "true" : "false"} data-c={c} style={`--c:${c}`}></button>)}</div></div>
     <a class="btn" href={`${APP}/evidence-libraries`}>Create your community<Arrow /></a>
   </div>
@@ -34,7 +34,13 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).rep
     const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 34).replace(/^-|-$/g, "") || "your-field";
     const show = () => { const v = input.value.trim() || "Your field"; outs.forEach((o) => { o.textContent = v; }); lows.forEach((o) => { o.textContent = v.toLowerCase(); }); addr.textContent = `${slug(v)}.openscholar.ai`; };
     input.addEventListener("input", show);
-    marks.forEach((m) => m.addEventListener("click", () => { root.style.setProperty("--acc", m.dataset.c); marks.forEach((x) => x.setAttribute("aria-pressed", String(x === m))); }));
+    const paint = (m) => { root.style.setProperty("--acc", m.dataset.c); marks.forEach((x) => x.setAttribute("aria-pressed", String(x === m))); };
+    // Until someone touches it, it fills itself in, so it's plain the page is live. Any touch ends this for good.
+    const FIELDS = ["Marine conservation", "Early childhood education", "Urban water and sanitation", "Migration and labour markets"]; let timer = 0, on = false, done = false, field = 0, at = 0, back = false, tick = 0;
+    const step = () => { if (!on || done) return; const word = FIELDS[field]; let wait = 46; if (back) { input.value = input.value.slice(0, -1); if (!input.value) { back = false; field = (field + 1) % FIELDS.length; at = 0; paint(marks[(field + 1) % marks.length]); wait = 200; } else wait = 18; } else { at += 1; input.value = word.slice(0, at); if (at >= word.length) { back = true; wait = 2600; } } show(); timer = setTimeout(step, wait); };
+    const stop = () => { done = true; clearTimeout(timer); addr.parentElement.setAttribute("aria-live", "polite"); };
+    input.addEventListener("focus", stop); marks.forEach((m) => m.addEventListener("click", () => { stop(); paint(m); }));
+    if (matchMedia("(prefers-reduced-motion: no-preference)").matches) new IntersectionObserver(([e]) => { on = e.isIntersecting; clearTimeout(timer); if (on && !done) { if (!tick++) { back = true; timer = setTimeout(step, 1800); } else timer = setTimeout(step, 400); } }, { threshold: .5 }).observe(root);
   }
 </script>
 <style>
