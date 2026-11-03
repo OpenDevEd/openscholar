@@ -1,9 +1,10 @@
 ---
 import { APP } from "../data/site.mjs";
-const { id = "ask", typing = false, first, class: cls = "", label = "Search the research" } = Astro.props;
+const { id = "ask", typing = false, first, mark = false, class: cls = "", label = "Search the research" } = Astro.props;
 ---
 <form class:list={["ask", cls]} data-typing={typing || undefined} data-first={first} data-ask action={`${APP}/results`} method="get" role="search" aria-label={label}>
   <label class="sr" for={id}>Ask a research question</label>
+  {mark && <img class="mk" src="/favicon.svg" width="28" height="28" alt="" />}
   <input id={id} name="q" autocomplete="off" required placeholder="Ask a research question" />
   <button class="btn brand" aria-label="Search"><span>Search</span><i aria-hidden="true"><svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10h12M11 5l5 5-5 5" /></svg></i></button>
 </form>
@@ -24,6 +25,7 @@ const { id = "ask", typing = false, first, class: cls = "", label = "Search the 
 </script>
 <style>
   .ask { display: flex; align-items: center; gap: 8px; width: min(600px, 100%); padding: 6px 6px 6px 18px; border-radius: 18px; background: #fff; color: var(--ink); box-shadow: 0 20px 40px -18px rgb(10 20 60 / .55); } .ask:focus-within { box-shadow: 0 0 0 3px rgb(255 255 255 / .7), 0 20px 40px -18px rgb(10 20 60 / .55); }
+  .mk { flex: none; width: 28px; height: 28px; }
   input { flex: 1; min-width: 0; height: 52px; background: none; border: 0; outline: 0; font-size: 16px; text-overflow: ellipsis; } input::placeholder { color: var(--t3); }
   @media (max-width: 500px) { .ask { padding-left: 14px; } .ask button { padding-left: 8px; } .ask button span { display: none; } }
 </style>

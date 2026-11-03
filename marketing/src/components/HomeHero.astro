@@ -1,0 +1,78 @@
+---
+// Two products, side by side: the workspace a team signs in to, on navy, and the public sites anyone can visit, in daylight. The search box belongs to the workspace alone.
+import Art from "./Art.astro";
+import AskBar from "./AskBar.astro";
+import Arrow from "./Arrow.astro";
+import { COMMUNITIES } from "../data/site.mjs";
+---
+<section class="bleed split">
+  <div class="os">
+    <Art name="hero-stream" eager sizes="(max-width: 999px) 100vw, 60vw" />
+    <div class="os-in">
+      <h1><b>OpenScholar</b> is where your team works through the evidence</h1>
+      <p class="lead">Find the literature, screen it against your criteria and extract the data you need.</p>
+      <AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" />
+    </div>
+  </div>
+  <div class="ec light" data-sites>
+    <h2><b>Evidence Communities</b> are where anyone can read it</h2>
+    <p class="lead">Public homes for a field's evidence, each under its own name and address.</p>
+    <div class="win">{COMMUNITIES.map((c, i) => <a class:list={["site", { on: i === 0 }]} href={c.url} tabindex="-1" aria-hidden="true"><span class="url"><span>{c.host}</span></span><img src={`/img/site-${c.key}.avif`} width="960" height="600" decoding="async" alt="" /></a>)}</div>
+    <div class="gems" role="tablist" aria-label="Live Evidence Communities">{COMMUNITIES.map((c, i) => <button type="button" role="tab" id={`hs-t${i}`} aria-controls={`hs-p${i}`} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} aria-label={c.name} style={`--c:${c.color}`}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><u aria-hidden="true"></u></button>)}</div>
+    <div class="cap">{COMMUNITIES.map((c, i) => <div class:list={["about", { on: i === 0 }]} id={`hs-p${i}`} role="tabpanel" aria-labelledby={`hs-t${i}`}><a href={c.url}><b>{c.name}<Arrow /></b><span>{c.text}</span></a></div>)}</div>
+    <a class="all" href="/evidence-communities/">How Evidence Communities work<Arrow /></a>
+  </div>
+</section>
+<script>
+  const root = document.querySelector("[data-sites]");
+  if (root) {
+    const tabs = [...root.querySelectorAll("[role=tab]")], caps = [...root.querySelectorAll(".about")], sites = [...root.querySelectorAll(".site")];
+    const pick = (n, focus) => { tabs.forEach((t, i) => { const on = i === n; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; caps[i].classList.toggle("on", on); sites[i].classList.toggle("on", on); }); if (focus) tabs[n].focus(); };
+    // An invisible animation is the timer, so reduced motion, which removes it, leaves the choice alone. A click settles it for good.
+    root.addEventListener("animationend", (e) => { if (e.animationName.includes("hstick")) pick((tabs.indexOf(e.target.parentElement) + 1) % tabs.length); });
+    tabs.forEach((t, i) => { t.addEventListener("click", () => { root.classList.add("held"); pick(i); }); t.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") pick(i); }); t.addEventListener("keydown", (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); pick((i + d + tabs.length) % tabs.length, true); } }); });
+    new IntersectionObserver(([en]) => root.classList.toggle("off", !en.isIntersecting), { threshold: .3 }).observe(root);
+  }
+</script>
+<style>
+  .split { --hu: 1px; display: grid; grid-template-columns: minmax(0, 1fr); }
+  h1, h2 { font-weight: 500; letter-spacing: -.03em; line-height: 1.06; text-wrap: balance; } h1 b, h2 b { font-weight: inherit; }
+
+  /* The workspace: the literature narrows as it runs under the box. */
+  .os { position: relative; isolation: isolate; overflow: clip; background: #01072c; color: #fff; padding: 112px var(--pad) 48vw; }
+  .os > :global(.art) { inset: auto 0 0; height: auto; aspect-ratio: 16 / 9; z-index: -1; -webkit-mask-image: linear-gradient(transparent, #000 28%); mask-image: linear-gradient(transparent, #000 28%); animation: flow 1.4s var(--ease) both; } @keyframes flow { from { opacity: 0; transform: translateX(-5%); } }
+  .os-in { display: grid; justify-items: start; gap: 16px; animation: up .9s var(--ease) both; } @keyframes up { from { opacity: 0; transform: translateY(20px); } }
+  h1 { font-size: clamp(36px, 8.6vw, 60px); color: #a9bbe6; } h1 b { color: #fff; }
+  .os .lead { color: rgb(255 255 255 / .84); max-width: 30em; }
+  .os-in :global(.big) { width: 100%; margin-top: 8px; } .os-in :global(.big input) { font-size: 16px; }
+
+  /* The public sites: real pages with real addresses, in daylight. */
+  .ec { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; background: var(--soft); color: var(--ink); padding: 40px var(--pad) 32px; overflow: clip; animation: lit 1s .1s var(--ease) both; } @keyframes lit { from { opacity: 0; } }
+  h2 { font-size: clamp(28px, 6.4vw, 42px); color: var(--t2); } h2 b { color: var(--ink); }
+  .ec .lead { margin-top: 12px; color: var(--t2); font-size: 16px; line-height: 1.4; }
+  .win { position: relative; aspect-ratio: 960 / 628; margin: 24px calc(var(--pad) * -1) 0 0; border-radius: 14px 0 0 14px; background: #fff; box-shadow: 0 0 0 1px var(--line), 0 28px 50px -30px rgb(10 26 63 / .55); overflow: clip; }
+  .site { position: absolute; inset: 0; display: flex; flex-direction: column; background: #fff; opacity: 0; visibility: hidden; transition: opacity 0s .45s, visibility 0s .45s; } .site.on { z-index: 1; opacity: 1; visibility: visible; transition: opacity .45s var(--ease); }
+  .url { flex: none; display: flex; align-items: center; height: 40px; padding-inline: 10px; background: #fff; border-bottom: 1px solid var(--line); } .url span { padding: 5px 12px; border-radius: 8px; background: var(--soft); color: var(--t2); font: 400 13px/1.2 var(--mono); }
+  .site img { flex: 1; min-height: 0; width: 100%; max-width: none; object-fit: cover; object-position: 0 0; }
+  .gems { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); margin-top: 12px; padding: 4px; border-radius: 16px; background: #0d1436; }
+  [role="tab"] { position: relative; display: grid; place-items: center; height: 72px; border-radius: 12px; } [role="tab"] img { width: 56px; height: 56px; object-fit: contain; filter: saturate(1.5) drop-shadow(0 0 8px color-mix(in srgb, var(--c) 45%, transparent)); opacity: .72; transition: transform .5s var(--ease), opacity .3s var(--ease); } [role="tab"]:hover img { opacity: 1; } [role="tab"][aria-selected="true"] img { opacity: 1; transform: scale(1.28); }
+  u { position: absolute; width: 0; height: 0; } [aria-selected="true"] u { animation: hstick 5.5s linear forwards; } .ec:is(:hover, :focus-within, .off) [aria-selected="true"] u { animation-play-state: paused; } .ec:global(.held) u { animation: none !important; } @keyframes hstick { to { opacity: .99; } }
+  .cap { position: relative; min-height: 112px; margin-top: 8px; } .about a { display: grid; gap: 4px; } .about b { display: inline-flex; align-items: center; gap: 8px; font-weight: 500; font-size: 18px; letter-spacing: -.01em; line-height: 1.25; } .about b :global(i) { display: grid; color: var(--brand); transition: transform .25s var(--ease); } .about:hover b :global(i) { transform: translateX(4px); } .about span { font-size: 15px; line-height: 1.4; color: var(--t2); }
+  :global(.has-js) .about { position: absolute; inset: 0 0 auto; opacity: 0; visibility: hidden; transform: translateY(8px); transition: opacity .3s var(--ease), transform .45s var(--ease), visibility 0s .3s; } :global(.has-js) .about.on { opacity: 1; visibility: visible; transform: none; transition: opacity .3s var(--ease), transform .45s var(--ease); } :global(html:not(.has-js)) .about { margin-bottom: 16px; } :global(html:not(.has-js)) .gems { display: none; }
+  .all { justify-self: start; display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; color: var(--t2); font-size: 15px; transition: color .2s var(--ease); } .all:hover { color: var(--ink); } .all :global(i) { display: grid; transition: transform .25s var(--ease); } .all:hover :global(i) { transform: translateX(4px); }
+
+  /* Side by side from a small laptop up, measured in one unit that shrinks with the window, so the whole of both is on the first screen. */
+  @media (min-width: 1000px) {
+    .split { --hu: max(.62px, min(1px, 100svh / 900, 100vw / 1400)); --edge: max(var(--pad), calc(50vw - 624px)); --rest: max(0px, calc((100svh - 900px) * .35)); grid-template-columns: calc(var(--edge) + (100vw - var(--edge) * 2) * .61) minmax(0, 1fr); min-height: 100svh; }
+    .os { padding: calc(var(--hu) * 148 + var(--rest)) calc(var(--hu) * 72) calc(var(--hu) * 40) var(--edge); }
+    .os-in { gap: calc(var(--hu) * 20); } h1 { font-size: calc(var(--hu) * 68); } .os .lead { font-size: max(15px, calc(var(--hu) * 20)); }
+    .os-in :global(.big) { max-width: calc(var(--hu) * 720); margin-top: calc(var(--hu) * 8); } .os-in :global(.big input) { height: max(46px, calc(var(--hu) * 64)); font-size: max(15px, calc(var(--hu) * 19)); }
+    .ec { padding: calc(max(96px, var(--hu) * 108) + var(--rest)) var(--edge) calc(var(--hu) * 28) calc(var(--hu) * 48); }
+    h2 { font-size: calc(var(--hu) * 38); } .ec .lead { margin-top: calc(var(--hu) * 10); font-size: max(14px, calc(var(--hu) * 16)); }
+    .win { aspect-ratio: auto; height: calc(var(--hu) * 310); margin: calc(var(--hu) * 20) calc(var(--edge) * -1) 0 0; }
+    .url { height: calc(var(--hu) * 36); } .url span { padding: calc(var(--hu) * 4) calc(var(--hu) * 10); font-size: max(11px, calc(var(--hu) * 13)); }
+    .gems { margin-top: calc(var(--hu) * 10); } [role="tab"] { height: calc(var(--hu) * 72); } [role="tab"] img { width: calc(var(--hu) * 56); height: calc(var(--hu) * 56); }
+    .cap { min-height: calc(var(--hu) * 96); margin-top: calc(var(--hu) * 6); } .about b { font-size: max(15px, calc(var(--hu) * 18)); } .about span { font-size: max(13px, calc(var(--hu) * 15)); }
+    .all { margin-top: calc(var(--hu) * 6); font-size: max(13px, calc(var(--hu) * 15)); }
+  }
+</style>
