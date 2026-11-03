@@ -290,14 +290,13 @@
       "moveToFreeAtRenewal": "{organization}は{date}までTeamのままです。その後{plan}に移り、メンバーは最大{members, number}人、共有クレジットは月{credits, number}になります。",
       "alphaFreeDescription": "1 つのクレジットプールで一緒に作業できます。",
       "noMemberLimit": "メンバー数の上限なし",
-      "southernFeature1": "無料の組織のすべて",
       "southernFeature2": "お問い合わせ後に組織へ追加されます",
-      "librariesName": "Evidence Communities",
+      "librariesName": "コミュニティ",
       "librariesDescription": "リクエストに応じて組織で有効にします。プランとクレジットは変わりません。",
-      "librariesFeature1": "公開の Evidence Communities",
+      "librariesFeature1": "公開コミュニティ",
       "librariesFeature2": "著者プロフィールの作成と編集",
       "librariesOn": "この組織で有効",
-      "openLibraries": "Evidence Communities を開く"
+      "openLibraries": "コミュニティを開く"
     },
     "cancelScheduledDowngrade": "予約済みのダウングレードをキャンセル",
     "scheduled": "予約済み",

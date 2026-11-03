@@ -290,14 +290,13 @@
       "moveToFreeAtRenewal": "I-{organization} igcina i-Team kuze kube ngu-{date}. Bese idlulela ku-{plan}, inamalungu angafika ku-{members, number} namakhredithi ahlanganyelwe angu-{credits, number} ngenyanga.",
       "alphaFreeDescription": "Sebenzani ndawonye ngamakhredithi ahlanganyelwe.",
       "noMemberLimit": "Awukho umkhawulo wamalungu",
-      "southernFeature1": "Konke okusenhlanganweni yamahhala",
       "southernFeature2": "Kwengezwa enhlanganweni yakho ngemva kokuxhumana nathi",
-      "librariesName": "Evidence Communities",
+      "librariesName": "Imiphakathi",
       "librariesDescription": "Kuvulelwa inhlangano yakho ngesicelo. Ipulani namakhredithi ayo kuhlala kunjalo.",
-      "librariesFeature1": "Ama-Evidence Communities omphakathi",
+      "librariesFeature1": "Imiphakathi evulekile",
       "librariesFeature2": "Dala futhi uhlele amaphrofayili ababhali",
       "librariesOn": "Kuvuliwe enhlanganweni yakho",
-      "openLibraries": "Vula ama-Evidence Communities"
+      "openLibraries": "Vula imiphakathi"
     },
     "cancelScheduledDowngrade": "Khansela ukwehliswa okuhleleliwe",
     "scheduled": "Kuhleleliwe",

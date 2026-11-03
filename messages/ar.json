@@ -290,14 +290,13 @@
       "moveToFreeAtRenewal": "تبقى {organization} على باقة الفريق حتى {date}. بعد ذلك تنتقل إلى {plan}، مع ما يصل إلى {members, number} من الأعضاء ورصيد مشترك شهري قدره {credits, number}.",
       "alphaFreeDescription": "اعملوا معًا برصيد مشترك واحد.",
       "noMemberLimit": "بلا حد للأعضاء",
-      "southernFeature1": "كل ما في المؤسسة المجانية",
       "southernFeature2": "تضاف إلى مؤسستك بعد التواصل معنا",
-      "librariesName": "Evidence Communities",
+      "librariesName": "المجتمعات",
       "librariesDescription": "تُفعَّل لمؤسستك عند الطلب. تبقى خطتها ورصيدها كما هما.",
-      "librariesFeature1": "Evidence Communities عامة",
+      "librariesFeature1": "مجتمعات عامة",
       "librariesFeature2": "إنشاء ملفات المؤلفين وتعديلها",
       "librariesOn": "مفعّلة لمؤسستك",
-      "openLibraries": "فتح Evidence Communities"
+      "openLibraries": "فتح المجتمعات"
     },
     "cancelScheduledDowngrade": "إلغاء التخفيض المجدول",
     "scheduled": "مجدول",

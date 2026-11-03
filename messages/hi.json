@@ -290,14 +290,13 @@
       "moveToFreeAtRenewal": "{organization} {date} तक Team पर रहेगा। फिर यह {plan} पर जाएगा, अधिकतम {members, number} सदस्यों और हर महीने {credits, number} साझा क्रेडिट के साथ।",
       "alphaFreeDescription": "क्रेडिट के एक ही पूल पर मिलकर काम करें।",
       "noMemberLimit": "सदस्यों की कोई सीमा नहीं",
-      "southernFeature1": "मुफ़्त संगठन की हर चीज़",
       "southernFeature2": "हमसे संपर्क करने के बाद आपके संगठन में जोड़ा जाता है",
-      "librariesName": "Evidence Communities",
+      "librariesName": "कम्युनिटी",
       "librariesDescription": "अनुरोध पर आपके संगठन के लिए चालू किया जाता है। उसकी योजना और क्रेडिट वही रहते हैं।",
-      "librariesFeature1": "सार्वजनिक Evidence Communities",
+      "librariesFeature1": "सार्वजनिक कम्युनिटी",
       "librariesFeature2": "लेखक प्रोफ़ाइल बनाएँ और संपादित करें",
       "librariesOn": "आपके संगठन के लिए चालू",
-      "openLibraries": "Evidence Communities खोलें"
+      "openLibraries": "कम्युनिटी खोलें"
     },
     "cancelScheduledDowngrade": "निर्धारित डाउनग्रेड रद्द करें",
     "scheduled": "निर्धारित",

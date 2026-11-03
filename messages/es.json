@@ -290,14 +290,13 @@
       "moveToFreeAtRenewal": "{organization} mantiene Team hasta el {date}. Después pasa a {plan}, con hasta {members, number} miembros y {credits, number} créditos compartidos al mes.",
       "alphaFreeDescription": "Trabajen juntos con un mismo fondo de créditos.",
       "noMemberLimit": "Sin límite de miembros",
-      "southernFeature1": "Todo lo de la organización gratuita",
       "southernFeature2": "Se añade a tu organización después de que nos contactes",
-      "librariesName": "Evidence Communities",
+      "librariesName": "Comunidades",
       "librariesDescription": "Se activa para tu organización a petición. Su plan y sus créditos no cambian.",
-      "librariesFeature1": "Evidence Communities públicas",
+      "librariesFeature1": "Comunidades públicas",
       "librariesFeature2": "Crear y editar perfiles de autor",
       "librariesOn": "Activado para tu organización",
-      "openLibraries": "Abrir Evidence Communities"
+      "openLibraries": "Abrir comunidades"
     },
     "cancelScheduledDowngrade": "Cancelar el cambio programado a un plan inferior",
     "scheduled": "Programado",

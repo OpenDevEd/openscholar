@@ -290,14 +290,13 @@
       "moveToFreeAtRenewal": "{organization} 在 {date} 之前保留 Team，之后改为 {plan}，最多 {members, number} 名成员，每月 {credits, number} 共享积分。",
       "alphaFreeDescription": "共用一个积分池协作。",
       "noMemberLimit": "成员数量不限",
-      "southernFeature1": "包含免费组织的全部内容",
       "southernFeature2": "联系我们后添加到你的组织",
-      "librariesName": "Evidence Communities",
+      "librariesName": "社区",
       "librariesDescription": "按申请为你的组织开启。方案和积分保持不变。",
-      "librariesFeature1": "公开的 Evidence Communities",
+      "librariesFeature1": "公开社区",
       "librariesFeature2": "创建和编辑作者资料",
       "librariesOn": "已为你的组织开启",
-      "openLibraries": "打开 Evidence Communities"
+      "openLibraries": "打开社区"
     },
     "cancelScheduledDowngrade": "取消已安排的降级",
     "scheduled": "已安排",
