@@ -17,7 +17,7 @@ Dieser Datenschutzhinweis erklärt, was wir mit Ihren personenbezogenen Daten tu
 
 # **Kontaktdaten**
 
-E-Mail: contact@opendeved.net
+E-Mail: support@openscholar.ai
 
 # **Welche Informationen wir erheben, verwenden und warum**
 

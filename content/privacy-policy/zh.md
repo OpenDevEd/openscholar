@@ -17,7 +17,7 @@ Open Development & Education 是本声明中所述个人信息的 数据控制�
 
 # **联系方式**
 
-电子邮件：contact@opendeved.net
+电子邮件：support@openscholar.ai
 
 # **我们收集、使用的信息及原因**
 

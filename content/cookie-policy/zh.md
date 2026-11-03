@@ -119,6 +119,6 @@ PostHog Cookie以结构化格式保存以下详情：
 
 如对我们的Cookie使用实践有任何疑问，请联系我们：
 
-**电子邮件**：contact@opendeved.net
+**电子邮件**：support@openscholar.ai
 
 **最后更新**：2026年2月13日

@@ -1,5 +1,5 @@
 /** Where people reach OpenScholar: what's given by request is asked for here. */
-export const CONTACT_EMAIL = "contact@opendeved.net";
+export const CONTACT_EMAIL = "support@openscholar.ai";
 
 const request = (subject: string, body: string) => `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 

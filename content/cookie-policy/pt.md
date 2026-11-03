@@ -119,6 +119,6 @@ Se preferir impedir a criação do nosso cookie de análise:
 
 Para perguntas sobre as nossas práticas de cookies, contacte-nos:
 
-**Email**: contact@opendeved.net
+**Email**: support@openscholar.ai
 
 **Última atualização**: 13 de fevereiro de 2026

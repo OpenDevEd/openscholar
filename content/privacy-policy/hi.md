@@ -17,7 +17,7 @@ Open Development & Education इस सूचना में वर्णित
 
 # **संपर्क विवरण**
 
-ईमेल: contact@opendeved.net
+ईमेल: support@openscholar.ai
 
 # **कौन सी जानकारी हम एकत्र करते हैं, उपयोग करते हैं और क्यों**
 

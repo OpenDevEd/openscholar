@@ -119,6 +119,6 @@ Ikiwa ungependa kuzuia kidakuzi chetu cha uchambuzi kisiundwe:
 
 Kwa maswali kuhusu taratibu zetu za vidakuzi, tafadhali wasiliana nasi:
 
-**Barua pepe**: contact@opendeved.net
+**Barua pepe**: support@openscholar.ai
 
 **Ilisasishwa mara ya mwisho**: 13 Februari 2026

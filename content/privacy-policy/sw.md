@@ -17,7 +17,7 @@ Notisi hii ya faragha inakueleza tutakavyotumia taarifa zako binafsi.
 
 # **Maelezo ya mawasiliano**
 
-Barua pepe: contact@opendeved.net
+Barua pepe: support@openscholar.ai
 
 # **Taarifa tunazokusanya, tunazotumia, na sababu zake**
 

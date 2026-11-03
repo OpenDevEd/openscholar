@@ -119,6 +119,6 @@ As jy verkies om te keer dat ons ontledingskoekie geskep word:
 
 Vir vrae oor ons koekiepraktyke, kontak ons asseblief:
 
-**E-pos**: contact@opendeved.net
+**E-pos**: support@openscholar.ai
 
 **Laas opgedateer**: 13 Februarie 2026
