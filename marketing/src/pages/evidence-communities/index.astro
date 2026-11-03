@@ -8,6 +8,7 @@ import Device from "../../components/Device.astro";
 import SourceGraph from "../../components/SourceGraph.astro";
 import ReviewFlow from "../../components/ReviewFlow.astro";
 import CommunityRing from "../../components/CommunityRing.astro";
+import NameIt from "../../components/NameIt.astro";
 import { APP } from "../../data/site.mjs";
 const faq = [
   ["Who controls what gets published?", "Your team does. You choose the sources, AI can screen what comes in against your subject, and records your editors write wait as drafts until an editor or owner publishes them."],
@@ -27,6 +28,7 @@ const faq = [
     </div>
   </section>
   <section class="bleed live" id="live"><div class="inner"><h2>Fields that already have a home here</h2></div><CommunityRing eager={false} /></section>
+  <NameIt />
   <section class="panel readers" id="readers" style="--tint:#0e7490">
     <Art name="reader-cards" pos="50% 0" />
     <div class="r-head"><h2>Everything your readers need to use the evidence</h2><p class="lead">Far more than a list of PDFs. Readers can search and filter the whole collection, read each record, cite and export it, and follow new work in digests.</p></div>
