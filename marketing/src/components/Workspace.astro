@@ -19,7 +19,7 @@ const tabs = [
       <Device class="ph" kind="phone" name={t.ph} theme="dark" defer={i > 0} sizes="(max-width: 900px) 20vw, 200px" />
     </div>)}
     <div class="dock">
-      <div class="tabs" role="tablist" aria-label="See each step of the work">{tabs.map((t, i) => <button type="button" role="tab" id={`ws-t${i}`} aria-controls={`ws-p${i}`} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} style={`--c:${t.color}`}><Icon name={t.icon} size={18} /><span>{t.label}</span><u aria-hidden="true"></u></button>)}</div>
+      <div class="tabs" role="tablist" aria-label="See each step of the work">{tabs.map((t, i) => <button type="button" role="tab" id={`ws-t${i}`} aria-controls={`ws-p${i}`} aria-label={t.label} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} style={`--c:${t.color}`}><Icon name={t.icon} size={18} /><span>{t.label}</span><u aria-hidden="true"></u></button>)}</div>
       <button type="button" class="mode" data-mode aria-label="Switch the laptop between light and dark"><i class="sun"><Icon name="sun" size={16} /></i><i class="moon"><Icon name="moon" size={16} /></i></button>
     </div>
   </div>

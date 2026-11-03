@@ -48,7 +48,7 @@ const faq = [
       <Art name="sieve-front" />
       <div class="pane-ui" data-pass>
         <b class="pt">Your criteria</b>
-        <ol>{questions.map(([q, y, u, n], i) => <li style={`--i:${i}`}><span class="n">{i + 1}</span><span class="q">{q}</span><span class="tri" aria-label={`${y} yes, ${u} unclear, ${n} no`}><i style={`flex:${y}`} class="y"></i><i style={`flex:${u}`} class="u"></i><i style={`flex:${n}`} class="x"></i></span></li>)}</ol>
+        <ol>{questions.map(([q, y, u, n], i) => <li style={`--i:${i}`}><span class="n">{i + 1}</span><span class="q">{q}</span><span class="tri" role="img" aria-label={`${y} yes, ${u} unclear, ${n} no`}><i style={`flex:${y}`} class="y"></i><i style={`flex:${u}`} class="u"></i><i style={`flex:${n}`} class="x"></i></span></li>)}</ol>
         <p class="pass">Included at <span class="marks3" role="group" aria-label="Pass mark">{[1, 2, 3].map((n) => <button type="button" aria-pressed={n === 2 ? "true" : "false"} data-n={n}>{n}</button>)}</span> of 3 points</p>
         <div class="wall15" aria-hidden="true">{Array.from({ length: 15 }, (_, i) => <i class:list={{ u: i === 9 }} style={`--i:${i}`}></i>)}</div>
         <div class="count" aria-live="polite"><span><b data-inc>14</b>included</span><span class="amber"><b data-dec>1</b>for you to decide</span></div>
@@ -89,7 +89,7 @@ const faq = [
 
   <Faq items={faq} />
 
-  <section class="bleed close"><Art name="dark-ribbon" pos="50% 100%" /><div class="inner"><h2>Start with your next question</h2><AskBar id="ask-end" /></div></section>
+  <section class="bleed close"><Art name="dark-ribbon" pos="50% 100%" /><div class="inner"><h2>Start with your next question</h2><AskBar id="ask-end" label="Ask your next question" /></div></section>
 </Base>
 <script>
   // Move the pass mark and every paper is decided again: your rule, not the model's, draws the line.

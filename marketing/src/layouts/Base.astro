@@ -64,7 +64,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   <div class="scrim" aria-hidden="true"></div>
   <main class="strip"><slot /></main>
   <footer class="foot" data-foot>
-    <nav class="belt" aria-label="Live Evidence Communities">
+    <nav class="belt" aria-label="Every live community">
       {[0, 1].map((copy) => <ul aria-hidden={copy ? "true" : undefined}>{COMMUNITIES.map((c) => <li style={`--c:${c.color}`}><a href={c.url} tabindex={copy ? -1 : undefined}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" loading="lazy" decoding="async" alt="" /><span>{c.name}</span></a></li>)}</ul>)}
     </nav>
     <div class="f-in">
@@ -79,7 +79,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
     <div class="stand" aria-hidden="true"><div class="word">{[..."OpenScholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div><div class="word mirror">{[..."OpenScholar"].map((l, i) => <span style={`--i:${i}`}>{l}</span>)}</div><i class="veil"></i></div>
   </footer>
   <dialog class="palette" data-dialog aria-label="Ask a question">
-    <AskBar id="ask-nav" />
+    <AskBar id="ask-nav" label="Ask a question from anywhere" />
     <ul>{tries.map((t) => <li><button type="button" data-try={t}><Icon name="search" size={16} /><span>{t}</span></button></li>)}</ul>
   </dialog>
   <script src="../scripts/fx.js"></script>
