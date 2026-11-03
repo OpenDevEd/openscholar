@@ -17,7 +17,7 @@ const papers = [
 const hl = (s) => (s === "reading" ? "k2" : s.toLowerCase() === "peer tutoring" ? "k1" : "");
 ---
 <section class:list={["bleed", "hero", look, { light }]}>
-  <Art name={art} eager />
+  {look === "slot" ? <><Art name={art} eager class="st-l" /><Art name={art} eager class="st-r" /></> : <Art name={art} eager />}
   {look === "slot" ? <div class="inner in">
     <div class="top-w"><h1 data-subjects><span class="ask-l">What does the evidence say about</span> <span class="subj">{COMMUNITIES.map((c, i) => <b class:list={{ on: i === 0 }} style={`--c:${c.color};--n:${i}`} aria-hidden={i > 0 ? "true" : undefined}>{c.subject}?</b>)}</span></h1><p class="lead">{line}</p></div>
     <AskBar id="ask-hero" class="big" typing first={COMMUNITIES[0].question} />
@@ -37,6 +37,9 @@ const hl = (s) => (s === "reading" ? "k2" : s.toLowerCase() === "peer tutoring" 
 <script>
   const subj = [...document.querySelectorAll("[data-subjects] .subj b")];
   document.addEventListener("community", (e) => subj.forEach((b, i) => b.classList.toggle("on", i === e.detail.index)));
+  // The two streams drift a little against the pointer, and only ever as a transform.
+  const sl = document.querySelector(".hero > .st-l"), sr = document.querySelector(".hero > .st-r");
+  if (sl && matchMedia("(hover: hover) and (prefers-reduced-motion: no-preference)").matches) { const hero = sl.parentElement; let raf = 0; hero.addEventListener("pointermove", (e) => { cancelAnimationFrame(raf); raf = requestAnimationFrame(() => { const x = e.clientX / innerWidth - .5, y = e.clientY / innerHeight - .5; sl.style.translate = `${x * -22}px ${y * -10}px`; sr.style.translate = `${x * -14}px ${y * -16}px`; }); }); hero.addEventListener("pointerleave", () => { sl.style.translate = sr.style.translate = ""; }); }
 </script>
 <style>
   .hero { --bg: #040b2e; background: var(--bg); padding-top: clamp(124px, 11.5vw, 172px); text-align: center; overflow: clip; }
@@ -61,11 +64,12 @@ const hl = (s) => (s === "reading" ? "k2" : s.toLowerCase() === "peer tutoring" 
   .bowl > :global(.art) { inset: 0 0 auto; height: calc(100% - clamp(200px, 25vw, 360px)); } .bowl > :global(.art img) { object-position: 50% 100%; } .bowl > :global(.art) { -webkit-mask-image: linear-gradient(#000 78%, transparent); mask-image: linear-gradient(#000 78%, transparent); } .bowl::before { display: none; }
 
   /* Slot: the literature comes in from both sides and meets at the box, which sits at the middle of the screen. */
-  .slot { padding: 0; } .slot > :global(.art) { inset: 0 0 auto; height: min(100%, 100svh); -webkit-mask-image: linear-gradient(#000 84%, transparent); mask-image: linear-gradient(#000 84%, transparent); } .slot::before { top: 64px; width: min(1160px, 100%); height: max(320px, calc(50svh - 40px)); background: radial-gradient(closest-side, var(--bg) 74%, transparent); } .slot .in { padding-block: 92px 48px; grid-template-rows: max(280px, calc(50svh - 132px)) auto auto; gap: 0; } .top-w { display: grid; justify-items: center; align-content: end; gap: 12px; padding-bottom: clamp(20px, 3vh, 32px); } .slot .lead { max-width: 30em; } .slot .in :global(.big) { width: min(100%, 780px); margin: 0; } .slot .in :global(.big input) { height: 68px; font-size: 19px; }
+  .slot { padding: 0; } .slot > :global(.st-l) { clip-path: inset(0 50% 0 0); animation-name: stream-l; } .slot > :global(.st-r) { clip-path: inset(0 0 0 50%); animation-name: stream-r; } .slot > :global(.art) { transition: translate .7s cubic-bezier(.2, .7, .3, 1); } @keyframes stream-l { from { opacity: 0; transform: translateX(-9%); } } @keyframes stream-r { from { opacity: 0; transform: translateX(9%); } } .slot > :global(.art) { inset: 0 -32px auto; height: min(100%, 100svh); -webkit-mask-image: linear-gradient(#000 84%, transparent); mask-image: linear-gradient(#000 84%, transparent); } .slot::before { top: 64px; width: min(1160px, 100%); height: max(320px, calc(50svh - 40px)); background: radial-gradient(closest-side, var(--bg) 74%, transparent); } .slot .in { padding-block: 92px 48px; grid-template-rows: max(280px, calc(50svh - 132px)) auto auto; gap: 0; } .top-w { display: grid; justify-items: center; align-content: end; gap: 12px; padding-bottom: clamp(20px, 3vh, 32px); } .slot .lead { max-width: 30em; } .slot .in :global(.big) { width: min(100%, 780px); margin: 0; } .slot .in :global(.big input) { height: 68px; font-size: 19px; }
 
   @media (max-width: 1240px) { .slot::before { height: max(340px, calc(50svh + 10px)); background: radial-gradient(closest-side, var(--bg) 90%, transparent); } }
   /* A phone sees the middle of the picture, so it gets a shorter, brighter crop with the streams still on both sides. */
   @media (max-width: 700px) { .slot > :global(.art) { height: 118vw; } .slot > :global(.art img) { opacity: .9; } }
+  @media (max-width: 360px) { .subj { font-size: 24px; } }
   /* On short laptop screens the hero tightens so the search box and the communities both stay on the first screen. */
   @media (max-height: 820px) and (min-width: 701px) { .slot { padding-top: 0; } .subj { font-size: clamp(32px, 5.4vw, 72px); } .in { gap: 12px; } .lead { font-size: 16px; } .hero :global(.em .row) { height: 168px; } .hero :global(.em [role="tab"]) { width: 76px; height: 76px; } .hero :global(.em [role="tab"] img) { width: 70px; height: 70px; } .hero :global(.em .cap) { min-height: 70px; margin-top: 0; } .slot .in { padding-block: 84px 32px; grid-template-rows: max(232px, calc(50svh - 120px)) auto auto; } }
 
