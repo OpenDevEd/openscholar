@@ -6,7 +6,7 @@ import Art from "../../components/Art.astro";
 import Icon from "../../components/Icon.astro";
 const TOPICS = [["start", "flag", "#60a5fa", "Get started", "Your first search to your first export"], ["search", "search", "#22d3ee", "Find papers", "Questions, queries and filters"], ["screening", "sieve", "#34d399", "Screen papers", "Your criteria, applied to every paper"], ["extraction", "table", "#fbbf24", "Extract data", "Answers you can sort and check"], ["assistant", "spark", "#fb923c", "Work with the assistant", "What it does and when it asks"], ["community-setup", "globe", "#fb7185", "Create an Evidence Community", "From a name to a live site"]];
 ---
-<Base title="Documentation: OpenScholar" description="How to use OpenScholar and Evidence Communities.">
+<Base og="/og-docs.jpg" title="Documentation: OpenScholar" description="How to use OpenScholar and Evidence Communities.">
   <section class="bleed intro"><Art name="docs-ribbon" eager pos="100% 30%" /><div class="inner"><h1>Documentation</h1><p class="lead">How to use OpenScholar and Evidence Communities.</p><label class="find-big"><Icon name="search" size={20} /><span class="sr">Search the docs</span><input type="search" data-find placeholder="Search the docs" autocomplete="off" /></label></div></section>
   <nav class="topics" aria-label="Start here" data-topics>{TOPICS.map(([id, ic, c, t, d]) => <a href={`#${id}`} style={`--c:${c}`}><i><Icon name={ic} size={20} /></i><b>{t}</b><span>{d}</span></a>)}</nav>
   <div class="docs">
