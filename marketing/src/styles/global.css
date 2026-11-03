@@ -83,3 +83,5 @@ p { text-wrap: pretty; }
 
 /* Answers and lists open by sliding, where the browser can. */
 details::details-content { height: 0; overflow: clip; transition: height .35s var(--ease), content-visibility .35s allow-discrete; } details[open]::details-content { height: auto; }
+/* The closing ribbons breathe, very slowly. */
+.close > .art img { transform-origin: 50% 80%; animation: ribbon 26s ease-in-out infinite alternate; } @keyframes ribbon { from { transform: scale(1.02) translateX(-1%); } to { transform: scale(1.08) translateX(1.5%); } }
