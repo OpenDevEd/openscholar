@@ -30,7 +30,7 @@ import { getCurrentUser } from "../lib/auth";
 import { actorIn } from "../workspaces/actor";
 import { personName } from "../lib/people";
 import { MAX_ORGANIZATION_MEMBERS } from "../lib/queryBounds";
-import { FREE_MEMBERS, FREE_PLAN, ORGANIZATION_PLAN, SEAT_PLAN, SEATS_FEATURE, TEAM_PLAN } from "../../lib/billing/plans";
+import { FREE_MEMBERS, FREE_PLAN, ORGANIZATION_PLAN, SEAT_PLAN, SEATS_FEATURE, SOUTHERN_PLAN, TEAM_PLAN } from "../../lib/billing/plans";
 import { monthStart } from "../../lib/billing/month";
 import { clerkRequest, clerkSecretKey } from "../lib/clerk";
 import { createError } from "../lib/errors";
@@ -240,7 +240,9 @@ async function syncSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">): Promise
  * no plan, unless a move there is waiting for the renewal. A plan it was given by request stays.
  */
 async function joinFreePlan(ctx: ActionCtx, workspaceId: Id<"workspaces">, customerId: string, account: { plan?: string; changesAt?: number } | undefined) {
-  if ((account?.plan !== undefined && account.plan !== FREE_PLAN) || account?.changesAt !== undefined) return;
+  const fromFree = (read: { plan?: string; changesAt?: number } | undefined) => (read?.plan === undefined || read.plan === FREE_PLAN) && read?.changesAt === undefined;
+  // Read again first: a plan given by request while this sync ran, on what it read before, stays too.
+  if (!fromFree(account) || !fromFree(await refreshAccount(ctx, workspaceId))) return;
   await autumn.attach({ customerId, planId: ORGANIZATION_PLAN });
   await refreshAccount(ctx, workspaceId);
 }
@@ -360,19 +362,24 @@ const TEAMS_PAGE = 100;
  * twice, which changes nothing the second time.
  */
 export const syncTeams = internalMutation({
-  args: { paginationOpts: v.optional(paginationOptsValidator), list: v.optional(v.union(v.literal("holding"), v.literal("ending"))) },
+  args: { paginationOpts: v.optional(paginationOptsValidator), list: v.optional(v.union(v.literal("byRequest"), v.literal("holding"), v.literal("ending"))) },
   returns: v.null(),
   handler: async (ctx, { paginationOpts, list }) => {
     const opts = paginationOpts ?? { cursor: null, numItems: TEAMS_PAGE };
     const seatBilling = await seatBillingOn(ctx);
     const page =
-      list === "holding"
+      list === "byRequest"
+        ? await ctx.db.query("billingAccounts").withIndex("by_plan", (q) => q.eq("plan", SOUTHERN_PLAN)).paginate(opts)
+        : list === "holding"
         ? await ctx.db.query("seatSyncs").withIndex("by_seats", (q) => q.gt("seats", 0)).paginate(opts)
         : list === "ending"
           ? await ctx.db.query("seatSyncs").withIndex("by_ending", (q) => q.eq("ending", true)).paginate(opts)
           : await ctx.db.query("billingAccounts").withIndex("by_plan", (q) => q.eq("plan", seatBilling ? TEAM_PLAN : ORGANIZATION_PLAN)).paginate(opts);
-    for (const row of page.page) await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId: row.workspaceId });
-    const following = list === undefined ? "holding" : list === "holding" ? "ending" : undefined;
+    for (const row of page.page) {
+      // A plan given by request can be a person's, which has no members to sync.
+      if (list !== "byRequest" || (await ctx.db.get("workspaces", row.workspaceId))?.kind === "organization") await ctx.scheduler.runAfter(0, internal.billing.seats.sync, { workspaceId: row.workspaceId });
+    }
+    const following = list === undefined ? (seatBilling ? "holding" : "byRequest") : list === "byRequest" ? "holding" : list === "holding" ? "ending" : undefined;
     if (!page.isDone) await ctx.scheduler.runAfter(0, internal.billing.seats.syncTeams, { paginationOpts: { cursor: page.continueCursor, numItems: TEAMS_PAGE }, ...(list ? { list } : {}) });
     else if (following) await ctx.scheduler.runAfter(0, internal.billing.seats.syncTeams, { list: following });
     return null;
@@ -449,6 +456,7 @@ export const noteSeats = internalMutation({
  * changes nothing, and nothing changes while a payment is still open.
  */
 export async function setSeats(ctx: ActionCtx, workspaceId: Id<"workspaces">, seats: number): Promise<string | null> {
+  if (!(await ctx.runQuery(internal.billing.seats.seatBilling, {}))) throw createError("BILLING_PLAN_INVALID", "Seats aren't on sale during the public alpha.");
   const account = await refreshAccount(ctx, workspaceId);
   if (account.plan !== TEAM_PLAN) throw createError("VALIDATION_ERROR", "Seats are bought on the Team plan.");
   if (account.changesAt !== undefined) throw createError("VALIDATION_ERROR", "Its Team ends at the renewal. Keep Team to change its seats.");

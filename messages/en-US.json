@@ -257,7 +257,6 @@
       "authors": "Author profiles"
     },
     "enterpriseFeature1": "{credits, number} credits per month",
-    "enterpriseFeature2": "Everything in Pro",
     "enterpriseFeature3": "SSO & audit logs",
     "enterpriseFeature4": "Dedicated account manager",
     "couldNotInitiateCheckout": "Could not initiate checkout. Please try again.",

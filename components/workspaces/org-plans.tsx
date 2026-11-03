@@ -37,7 +37,7 @@ import { useSignInRedirect } from "@/lib/auth/use-sign-in-redirect";
 import { useProtectedQuery } from "@/lib/auth/use-auth-query";
 import { useSubscriptionState } from "@/lib/auth/use-subscription-state";
 import { findPlan } from "@/lib/billing/catalog";
-import { FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
+import { FREE_MEMBERS, ORGANIZATION_PLAN, SEAT_PLAN, SOUTHERN_PLAN, TEAM_PLAN } from "@/lib/billing/plans";
 import { getErrorMessage, payOpenAction } from "@/lib/toast/use-app-toast";
 import { useWorkspaceAction } from "@/lib/workspaces/url";
 import { Guarded, useCurrentWorkspace } from "./parts";
@@ -68,7 +68,7 @@ function AlphaPlans({ initial, libraries }: { initial?: CurrentWorkspace; librar
   const opened = organization !== undefined && (features?.evidenceLibraries ?? libraries) === true;
   const [creating, setCreating] = useState(false);
   const free = catalog && findPlan(catalog, ORGANIZATION_PLAN);
-  const southern = catalog && findPlan(catalog, "southern");
+  const southern = catalog && findPlan(catalog, SOUTHERN_PLAN);
   if (!free) return null;
   const onSouthern = !!organization && resolvedPlan === southern?.id;
   const limits = free.limits;

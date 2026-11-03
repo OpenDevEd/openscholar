@@ -85,9 +85,9 @@ function Shell({ children }: { children: ReactNode }) {
   const subscriptionsEnabled = useFeatureFlagForPlan("subscriptions.enabled", subscription.planFeatures);
   const creditsEnabled = useFeatureFlagForPlan("credits.enabled", subscription.planFeatures);
   const plan = subscription.resolvedPlan;
-  // A plan given by request has no billing of its own to manage.
+  // A plan given by request has no billing of its own to manage, unless a top-up saved a card.
   const byRequest = subscription.catalog && subscription.resolvedPlan ? findPlan(subscription.catalog, subscription.resolvedPlan)?.byRequest : undefined;
-  const showUpgrade = (subscription.onDefaultPlan !== false || byRequest === true) && !subscription.account?.hasPaid;
+  const showUpgrade = (byRequest === true && !subscription.account?.card) || (subscription.onDefaultPlan !== false && !subscription.account?.hasPaid);
   const hideBilling = !subscriptionsEnabled && !creditsEnabled && showUpgrade && !subscription.isSettling;
   // With subscriptions off, a Free account has no plan worth naming.
   const showPlan = subscriptionsEnabled || subscription.onDefaultPlan === false;

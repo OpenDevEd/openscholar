@@ -71,7 +71,8 @@ export function snapshotFromCustomer(customer: AutumnCustomer): BillingAccountSn
     ...(current ? { plan: current.plan_id } : {}),
     pastDue: current?.past_due ?? false,
     periodStart: onPaidPlan ? (current?.current_period_start ?? undefined) : undefined,
-    renewsAt: onPaidPlan && !current?.canceled_at ? periodEnd : undefined,
+    // A plan that bills renews with its period; a free one's credits come back when Autumn resets them.
+    renewsAt: current?.canceled_at ? undefined : ((onPaidPlan ? periodEnd : undefined) ?? customer.balances.credits?.next_reset_at ?? undefined),
     changesAt: current?.canceled_at ? periodEnd : undefined,
     nextPlan: scheduled?.plan_id,
     features: Object.keys(customer.flags ?? {}),

@@ -257,7 +257,6 @@
       "authors": "ملفات المؤلفين"
     },
     "enterpriseFeature1": "الرصيد الشهري: {credits, number}",
-    "enterpriseFeature2": "كل ما في Pro",
     "enterpriseFeature3": "تسجيل دخول موحّد (SSO) وسجلات التدقيق",
     "enterpriseFeature4": "مدير حساب مخصّص",
     "couldNotInitiateCheckout": "تعذّر بدء الدفع. حاول مرة أخرى.",

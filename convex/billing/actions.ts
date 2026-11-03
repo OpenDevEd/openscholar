@@ -264,6 +264,7 @@ export const previewSeats = action({
   handler: async (ctx, { workspaceId, seats }): Promise<PreviewResult> => {
     await requireUser(ctx);
     await organizationAdminOf(ctx, workspaceId);
+    await requireSeatBilling(ctx);
     const preview = await autumn.previewUpdate(workspaceId, TEAM_PLAN, teamSeats(seats));
     // Read after the quote, as previewPlan's is.
     const customer = await autumn.customer(workspaceId, { card: true, invoices: true });

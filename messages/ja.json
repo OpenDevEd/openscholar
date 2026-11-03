@@ -257,7 +257,6 @@
       "authors": "著者プロフィール"
     },
     "enterpriseFeature1": "月{credits, number}クレジット",
-    "enterpriseFeature2": "Proの全機能",
     "enterpriseFeature3": "SSOと監査ログ",
     "enterpriseFeature4": "専任アカウントマネージャー",
     "couldNotInitiateCheckout": "チェックアウトを開始できませんでした。もう一度お試しください。",

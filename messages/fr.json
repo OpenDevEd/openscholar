@@ -257,7 +257,6 @@
       "authors": "Profils d'auteur"
     },
     "enterpriseFeature1": "{credits, number} crédits par mois",
-    "enterpriseFeature2": "Tout ce qui est inclus dans Pro",
     "enterpriseFeature3": "SSO et journaux d'audit",
     "enterpriseFeature4": "Gestionnaire de compte dédié",
     "couldNotInitiateCheckout": "Impossible de lancer le paiement. Veuillez réessayer.",

@@ -41,6 +41,8 @@ it("sells no seats, and refuses a plan given by request to anyone who tries to b
   const { as, workspaceId } = await lab();
   await expect(as("ada").action(api.billing.actions.moveToTeam, { workspaceId, seats: 2 })).rejects.toThrow(/isn't on sale/);
   await expect(as("ada").action(api.billing.actions.previewTeam, { workspaceId, seats: 2 })).rejects.toThrow(/isn't on sale/);
+  await expect(as("ada").action(api.billing.actions.changeSeats, { workspaceId, seats: 5 })).rejects.toThrow(/aren't on sale/);
+  await expect(as("ada").action(api.billing.actions.previewSeats, { workspaceId, seats: 5 })).rejects.toThrow(/isn't on sale/);
   await expect(as("ben").action(api.billing.actions.choosePlan, { plan: "southern" })).rejects.toThrow(/No plan/);
   await expect(as("ben").action(api.billing.actions.previewPlan, { plan: "southern" })).rejects.toThrow(/No plan/);
 });

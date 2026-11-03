@@ -10,6 +10,9 @@ export const CREDITS_FEATURE = "credits";
 /** The plan a person starts on, which Autumn gives every new customer. */
 export const FREE_PLAN = "free";
 
+/** The plan for researchers in low- and middle-income countries, given by request (its `by_request` metadata in Autumn). */
+export const SOUTHERN_PLAN = "southern";
+
 /** Add-on attached once to every new customer, while Autumn's catalog has it. */
 export const SIGNUP_PLAN = "signup_credits";
 

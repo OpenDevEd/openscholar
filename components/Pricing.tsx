@@ -158,7 +158,7 @@ export function Pricing({ organization, libraries }: { organization?: CurrentWor
         description: t("enterpriseDescription"),
         features: [
           t("enterpriseFeature1", { credits: ENTERPRISE_CREDITS_PER_MONTH }),
-          t("enterpriseFeature2"),
+          t("southernFeature1"),
           t("enterpriseFeature3"),
           t("enterpriseFeature4"),
         ],

@@ -6,6 +6,7 @@
 import { createError } from "../lib/errors";
 
 export type AutumnBalance = {
+  next_reset_at?: number | null;
   remaining: number;
   /** What the customer's plans grant of the feature. */
   granted?: number;

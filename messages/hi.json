@@ -257,7 +257,6 @@
       "authors": "लेखक प्रोफ़ाइल"
     },
     "enterpriseFeature1": "प्रति माह {credits, number} क्रेडिट",
-    "enterpriseFeature2": "Pro में सब कुछ",
     "enterpriseFeature3": "SSO और ऑडिट लॉग",
     "enterpriseFeature4": "समर्पित खाता प्रबंधक",
     "couldNotInitiateCheckout": "चेकआउट शुरू नहीं कर सके। कृपया फिर कोशिश करें।",
