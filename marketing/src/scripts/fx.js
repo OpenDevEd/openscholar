@@ -64,6 +64,8 @@ $$("[data-try]", dialog).forEach((b) => b.addEventListener("click", () => { $("i
 // The footer only moves while it's on screen, and the pointer takes over from its slow sweep.
 const foot = $("[data-foot]");
 new IntersectionObserver(([e]) => { foot.classList.toggle("away", !e.isIntersecting); if (e.isIntersecting) foot.classList.add("seen"); }, { rootMargin: "400px 0px" }).observe(foot);
+// Safari tints its bars from the body's colour, so at the end of the page they take the footer's.
+{ const top = document.body.style.backgroundColor, meta = $('meta[name="theme-color"]'), metaTop = meta.content; new IntersectionObserver(([e]) => { document.body.style.backgroundColor = e.isIntersecting ? "#010827" : top; meta.content = e.isIntersecting ? "#010827" : metaTop; }, { rootMargin: "0px 0px -40% 0px" }).observe(foot); }
 // The belt is a moving strip, so a keyboard focus stops it and slides the focused name into view.
 { const belt = $(".belt", foot); belt.addEventListener("focusin", (e) => { const x = new DOMMatrix(getComputedStyle(belt).transform).m41, left = e.target.getBoundingClientRect().left; belt.style.animation = "none"; belt.style.transform = `translateX(${x - left + 40}px)`; }); belt.addEventListener("focusout", (e) => { if (!belt.contains(e.relatedTarget)) { belt.style.animation = ""; belt.style.transform = ""; } }); }
 const stand = $(".stand", foot); new IntersectionObserver(([e], o) => { if (e.isIntersecting) { stand.classList.add("up"); o.disconnect(); } }, { threshold: .15 }).observe(stand);

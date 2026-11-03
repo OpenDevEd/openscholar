@@ -13,7 +13,7 @@
   --gap: 16px; --pad: clamp(24px, 4.4vw, 64px); --r: 28px;
 }
 *, *::before, *::after { box-sizing: border-box; }
-html { interpolate-size: allow-keywords; scroll-padding-top: 88px; -webkit-text-size-adjust: 100%; }
+html { background: var(--night); interpolate-size: allow-keywords; scroll-padding-top: 88px; -webkit-text-size-adjust: 100%; }
 /* Safari takes its status bar colour from the body's background colour, so that's the page's top colour, and the white strip is painted over it. */
 body { margin: 0; background-image: linear-gradient(#fff, #fff); color: var(--ink); font: 400 16px/1.55 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: clip; }
 img, svg { display: block; max-width: 100%; } img { height: auto; }
