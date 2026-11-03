@@ -8,6 +8,7 @@ import Workspace from "../components/Workspace.astro";
 import HeroAsk from "../components/HeroAsk.astro";
 import Table from "../components/Table.astro";
 import Faq from "../components/Faq.astro";
+import AssistantGate from "../components/AssistantGate.astro";
 import AskBar from "../components/AskBar.astro";
 import Device from "../components/Device.astro";
 import Icon from "../components/Icon.astro";
@@ -67,10 +68,7 @@ const faq = [
     <Table />
   </section>
 
-  <Feature id="assistant" class="ask-f" field="cobalt" art="gate" scrim="--sc:9 32 124;--dir:270deg" chip="#1d4ed8" flip title="Delegate the groundwork, not the decisions" text="Describe the review you need. The assistant searches, builds collections and runs jobs in your workspace, stops for your approval, and tells you which results to check by hand.">
-    <img class="asst-panel a1" src="/img/screens/panel-approve-light.avif" width="809" height="602" loading="lazy" decoding="async" alt="The research assistant asking for approval before it starts an extraction, with Allow once and Always allow in this chat" />
-    <img class="asst-panel a2" src="/img/screens/panel-assistant-light.avif" width="878" height="926" loading="lazy" decoding="async" alt="The research assistant's report, listing which papers to check by hand and why" />
-  </Feature>
+  <AssistantGate />
 
   <section class="bleed trust" id="trust"><Art name="thread" />
     <div class="inner t-head"><h2>Built for the moment someone asks how you know</h2><p class="lead">Follow a cited answer back through its sentence to its paper. Your criteria are written down, every change has a name beside it, and people make the final call.</p></div>
@@ -101,8 +99,6 @@ const faq = [
   .stack { grid-template-columns: minmax(0, 1fr); width: min(52%, 600px); } .band :global(.art) { height: 440px; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
   /* Find: a tablet standing off the panel's edge, with the query on top of it. */
   :global(.find) :global(.slab) { position: absolute; left: 8%; top: 56px; width: min(620px, 92%); } :global(.find) .over { position: absolute; left: -4%; bottom: 40px; width: min(360px, 62%); z-index: 2; } :global(.find) { min-height: 680px; }
-  /* Assistant: the phone waits at the door with the approval beside it. */
-  @media (min-width: 901px) { :global(.f.flip.ask-f) { min-height: 680px; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); } } :global(.ask-f) .asst-panel { position: absolute; height: auto; border-radius: 18px; box-shadow: 0 0 0 1px rgb(255 255 255 / .3), 0 40px 80px -30px rgb(2 8 50 / .85); } :global(.ask-f) .a1 { left: 3%; top: 96px; width: 45%; } :global(.ask-f) .a2 { left: 50%; top: 176px; width: 48%; }
   /* Screening: straight on and calm. Your criteria sit on the pane in the picture, scattered papers arrive on its left, and the ones that pass leave along its beams. */
   .sieve { background: #021f18; padding-top: clamp(56px, 7vw, 96px); --g: 2 44 34; }
   .s-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; margin-bottom: -24px; position: relative; z-index: 1; }
@@ -137,5 +133,5 @@ const faq = [
     @media (max-width: 1000px) { .sieve { padding: 48px 0; background: radial-gradient(ellipse 60% 30% at 80% 10%, rgb(52 211 153 / .22), transparent), #021f18; } .s-wrap { display: none; } .s-head { grid-template-columns: minmax(0, 1fr); margin-bottom: 0; } .s-small { display: grid; gap: 12px; margin-top: 24px; padding-inline: calc(var(--gap) + var(--pad)); } }
   
   @media (max-width: 900px) { .publish, .t-head { grid-template-columns: minmax(0, 1fr); padding: 0 var(--pad); } .b-head { grid-template-columns: minmax(0, 1fr); } .stack { width: 100%; } .who { padding-inline: 8px; } .teams { grid-template-columns: minmax(0, 1fr); margin-inline: -8px; } .proof { grid-template-columns: minmax(0, 1fr); gap: 14px; } .tie { display: none; } .p-devices { height: 88vw; margin-inline: calc(var(--pad) * -1 + 8px); } .p-lap { width: 94%; top: 0; } .p-devices :global(.p-ph) { width: 30%; right: 6%; bottom: 0; }
-    :global(.find) :global(.slab) { position: relative; left: 0; top: 0; width: 100%; margin-bottom: -60%; } :global(.find) :global(.view) { overflow: clip; height: 118vw; margin-inline: calc(var(--pad) * -1 + 8px); padding-inline: 8px; } :global(.find) .over { left: 12px; right: 12px; width: auto; bottom: 16px; } :global(.ask-f) :global(.view) { display: grid; gap: 12px; padding-bottom: 28px; } :global(.ask-f) .asst-panel { position: static; width: 100%; } }
+    :global(.find) :global(.slab) { position: relative; left: 0; top: 0; width: 100%; margin-bottom: -60%; } :global(.find) :global(.view) { overflow: clip; height: 118vw; margin-inline: calc(var(--pad) * -1 + 8px); padding-inline: 8px; } :global(.find) .over { left: 12px; right: 12px; width: auto; bottom: 16px; } }
 </style>

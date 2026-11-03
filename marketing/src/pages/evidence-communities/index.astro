@@ -8,6 +8,7 @@ import Art from "../../components/Art.astro";
 import Device from "../../components/Device.astro";
 import SourceGraph from "../../components/SourceGraph.astro";
 import ReviewFlow from "../../components/ReviewFlow.astro";
+import CommunityRing from "../../components/CommunityRing.astro";
 import { APP } from "../../data/site.mjs";
 const faq = [
   ["Who controls what gets published?", "Your team does. You choose the sources, AI can screen what comes in against your subject, and records your editors write wait as drafts until an editor or owner publishes them."],
@@ -26,6 +27,7 @@ const faq = [
       <Device class="pho" kind="phone" name="c-search" theme="light" sizes="(max-width: 900px) 20vw, 200px" />
     </div>
   </section>
+  <section class="bleed live" id="live"><div class="inner"><h2>Fields that already have a home here</h2></div><CommunityRing eager={false} /></section>
   <Feature id="readers" field="ocean" art="book" chip="#0e7490" title="Everything your readers need to use the evidence" text="Far more than a list of PDFs. Readers can search and filter the whole collection, read each record, cite and export it, and follow new work in digests.">
     <div class="wipe-wrap"><Device class="wipe" kind="laptop" name="c-search" theme="both" alt="A community's search page with filters and records, in light and dark" data-wipe sizes="(max-width: 900px) 59vw, 760px" /><i class="handle" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m7 6-4 4 4 4M13 6l4 4-4 4" /></svg></i></div>
   </Feature>
@@ -53,6 +55,7 @@ const faq = [
   .stagehand { position: relative; height: clamp(340px, 40vw, 520px); margin-top: clamp(28px, 3.4vw, 48px); margin-bottom: -60px; } .stagehand > :global(*) { position: absolute; }
   .stagehand :global(.lap) { left: 19%; top: 0; width: 62%; z-index: 2; animation: lift 1.1s var(--ease) both; } .stagehand :global(.tab) { left: 0; top: 64px; width: 30%; z-index: 1; animation: from-left 1.2s .1s var(--ease) both; } .stagehand :global(.pho) { right: 0; top: 56px; width: 21%; z-index: 3; animation: from-right 1.2s .15s var(--ease) both; }
   @keyframes lift { from { opacity: 0; transform: translateY(40px); } } @keyframes from-left { from { opacity: 0; transform: translate(14%, 30px) rotate(-3deg); } } @keyframes from-right { from { opacity: 0; transform: translate(-30%, 30px) rotate(3deg); } }
+  .live { background: #040b2e; padding-block: clamp(72px, 8vw, 112px) clamp(32px, 4vw, 56px); text-align: center; } .live h2 { font-size: clamp(30px, 3.6vw, 52px); margin-inline: auto; }
   /* Move across the laptop to wipe it from light to dark. */
   .wipe-wrap { position: absolute; left: 0; top: 50%; width: calc(100% - var(--pad)); translate: 0 -50%; } @property --w { syntax: "<percentage>"; inherits: true; initial-value: 62%; }
   .wipe-wrap { cursor: ew-resize; } .wipe-wrap :global(.scr.dark) { clip-path: inset(0 0 0 var(--w)); transition: none; z-index: 1; }

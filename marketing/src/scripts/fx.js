@@ -59,6 +59,7 @@ $$("[data-try]", dialog).forEach((b) => b.addEventListener("click", () => { $("i
 // The footer only moves while it's on screen, and the pointer takes over from its slow sweep.
 const foot = $("[data-foot]");
 new IntersectionObserver(([e]) => { foot.classList.toggle("away", !e.isIntersecting); if (e.isIntersecting) foot.classList.add("seen"); }, { rootMargin: "400px 0px" }).observe(foot);
+const stand = $(".stand", foot); new IntersectionObserver(([e], o) => { if (e.isIntersecting) { stand.classList.add("up"); o.disconnect(); } }, { threshold: .15 }).observe(stand);
 const veil = $(".veil", foot);
 if (fine) { foot.addEventListener("pointerenter", () => foot.classList.add("held")); foot.addEventListener("pointerleave", () => { foot.classList.remove("held"); veil.style.transform = ""; }); }
 
