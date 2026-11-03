@@ -17,8 +17,8 @@ const tabs = [
   </div>
   <div class="stage">
     {tabs.map((t, i) => <div class:list={["pane", { on: i === 0 }]} id={`ws-p${i}`} role="tabpanel" aria-labelledby={`ws-t${i}`} style={`--c:${t.color}`}>
-      <Device class="lap" kind="laptop" name={t.lap} theme="both" alt={t.alt} defer sizes="(max-width: 900px) 100vw, 1000px" />
-      <Device class="ph" kind="phone" name={t.ph} theme="both" defer sizes="(max-width: 900px) 40vw, 200px" />
+      <Device class="lap" kind="laptop" name={t.lap} theme="both" alt={t.alt} defer={i > 0} sizes="(max-width: 900px) 100vw, 1000px" />
+      <Device class="ph" kind="phone" name={t.ph} theme="dark" defer={i > 0} sizes="(max-width: 900px) 40vw, 200px" />
     </div>)}
   </div>
 </div>
@@ -27,30 +27,28 @@ const tabs = [
   if (ws) {
     const tabs = [...ws.querySelectorAll("[role=tab]")], panes = [...ws.querySelectorAll(".pane")];
     const load = (i) => { if (i.dataset.src) { i.srcset = i.dataset.srcset; i.src = i.dataset.src; delete i.dataset.src; delete i.dataset.srcset; } };
-    const pick = (n, focus) => { panes[n].querySelectorAll("img").forEach(load); tabs.forEach((t, i) => { const on = i === n; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; panes[i].classList.toggle("on", on); }); if (focus) tabs[n].focus(); };
+    const pick = (n, focus) => { for (const k of [n, (n + 1) % panes.length]) panes[k].querySelectorAll("img").forEach(load); tabs.forEach((t, i) => { const on = i === n; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; panes[i].classList.toggle("on", on); }); if (focus) tabs[n].focus(); };
     // The bar filling up under a tab is the timer: when its animation ends, the next tab starts. Reduced motion removes the animation, so nothing advances by itself.
     ws.addEventListener("animationend", (e) => { if (e.animationName.includes("fill")) pick((tabs.indexOf(e.target.parentElement) + 1) % tabs.length); });
     tabs.forEach((t, i) => { t.addEventListener("click", () => pick(i)); t.addEventListener("keydown", (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); pick((i + d + tabs.length) % tabs.length, true); } }); });
     ws.querySelector("[data-mode]").addEventListener("click", () => (ws.dataset.theme = ws.dataset.theme === "light" ? "dark" : "light"));
     new IntersectionObserver(([en]) => ws.classList.toggle("off", !en.isIntersecting), { threshold: .2 }).observe(ws);
-    const fill = () => ws.querySelectorAll("img[data-src]").forEach(load);
-    const near = new IntersectionObserver(([en]) => { if (en.isIntersecting) { fill(); near.disconnect(); } }, { rootMargin: "800px 0px" }); near.observe(ws);
+    const near = new IntersectionObserver(([en]) => { if (en.isIntersecting) { panes[1].querySelectorAll("img").forEach(load); near.disconnect(); } }); near.observe(ws);
   }
 </script>
 <style>
   .ws { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .ctrl { display: flex; align-items: center; gap: 8px; } .ctrl .tabs { min-width: 0; }
+  :global(html:not(.has-js)) .ctrl { display: none; } .ctrl { display: flex; align-items: center; gap: 8px; } .ctrl .tabs { min-width: 0; }
   .tabs, .mode { border-radius: 14px; background: rgb(255 255 255 / .93); -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6); box-shadow: 0 0 0 1px var(--line), 0 12px 28px -18px rgb(10 26 63 / .4); }
   .tabs { display: flex; gap: 2px; padding: 4px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   [role="tab"] { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding-inline: 14px; border-radius: 10px; color: var(--t2); font-size: 15px; white-space: nowrap; transition: color .2s var(--ease), background-color .2s var(--ease); flex: none; } [role="tab"]:hover { color: var(--ink); background: rgb(10 26 63 / .05); } [role="tab"][aria-selected="true"] { color: #fff; background: var(--ink); }
   u { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--spectrum); transform: scaleX(0); transform-origin: left; text-decoration: none; } [aria-selected="true"] u { animation: fill 7s linear forwards; } .ws:is(:hover, :focus-within, .off) u { animation-play-state: paused; } @keyframes fill { to { transform: scaleX(1); } }
   .mode { position: relative; display: flex; flex: none; padding: 4px; gap: 2px; color: var(--t2); } .mode i { display: grid; place-items: center; width: 36px; height: 40px; border-radius: 10px; transition: background-color .25s var(--ease), color .25s var(--ease); } .mode:hover i { color: var(--ink); } [data-theme="light"] .sun, [data-theme="dark"] .moon { background: var(--ink); color: #fff !important; }
-  /* The stream pours into the laptop. The phone stands in front of its left edge, always on the other theme, so both are on show. Choosing a theme wipes across both. */
+  /* The stream pours into the laptop. The phone stands in front of its corner in dark. Choosing a theme wipes across the laptop, so both themes are on show. */
   .stage { position: relative; aspect-ratio: 1000 / 600; }
   .pane { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .4s var(--ease), visibility 0s .4s; } .pane.on { opacity: 1; visibility: visible; transition: opacity .4s var(--ease); z-index: 1; }
   .pane :global(.lap) { position: absolute; left: 3%; top: 0; width: 84%; } .pane :global(.lap .body) { box-shadow: inset 0 0 0 1.5px #4b4e57, inset 0 0 0 3px #15161a, 0 -10px 60px -4px var(--c), 0 40px 80px -36px rgb(8 14 40 / .75); transition: box-shadow .5s var(--ease); }
   .pane :global(.ph) { position: absolute; right: 1%; bottom: -4%; width: 20%; z-index: 2; transform: translateY(14px); transition: transform .7s var(--ease); } .pane.on :global(.ph) { transform: none; }
   .pane :global(.lap .scr.dark) { clip-path: inset(0 100% 0 0); } [data-theme="dark"] .pane :global(.lap .scr.dark) { clip-path: inset(0); }
-  .pane :global(.ph .scr.light) { clip-path: inset(0 100% 0 0); z-index: 1; } [data-theme="dark"] .pane :global(.ph .scr.light) { clip-path: inset(0); }
     @media (max-width: 700px) { .stage { aspect-ratio: 402 / 480; } .pane :global(.lap) { left: 5%; width: 90%; top: 0; } .pane :global(.ph) { right: 2%; bottom: 0; width: 42%; } [role="tab"] { padding-inline: 10px; } [role="tab"] span { font-size: 14px; } .mode i { width: 32px; } }
 </style>

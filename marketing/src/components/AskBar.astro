@@ -9,15 +9,17 @@ const { id = "ask", typing = false, class: cls = "" } = Astro.props;
 </form>
 <script>
   // The app reads `q` as keywords, so a sentence loses the words that only make it a sentence. A query stays exactly as typed.
+  const QUESTION_SHOWN = "Does peer tutoring improve reading?";
   const FILLER = /^(a|an|and|are|as|at|be|by|can|did|do|does|for|from|good|has|have|how|if|in|is|it|of|on|or|really|than|that|the|their|there|these|this|to|was|were|what|when|where|which|who|why|will|with|would)$/;
   const QUESTION = /\?\s*$|^(what|why|how|who|when|where|which|is|are|do|does|did|can|could|should|will|would)\b/i, QUERY = /"|\b(AND|OR|NOT)\b/;
-  for (const form of document.querySelectorAll("[data-ask]")) form.addEventListener("submit", (e) => { const typed = form.querySelector("input").value.trim(); if (QUERY.test(typed) || !QUESTION.test(typed)) return; const words = typed.replace(/[?.!,]/g, " ").split(/\s+/).filter((w, i) => w && !FILLER.test(i === 0 ? w.toLowerCase() : w)); if (!words.length) return; e.preventDefault(); location.href = `${form.action}?q=${encodeURIComponent(words.join(" "))}`; });
-  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  for (const form of document.querySelectorAll("[data-ask]")) form.addEventListener("submit", (e) => { const input = form.querySelector("input"), typed = input.value.trim() || (form.dataset.typing !== undefined ? QUESTION_SHOWN : ""); if (!input.value.trim() && typed) input.value = typed; if (QUERY.test(typed) || !QUESTION.test(typed)) return; const words = typed.replace(/[?.!,]/g, " ").split(/\s+/).filter((w, i) => w && !FILLER.test(i === 0 ? w.toLowerCase() : w)); if (!words.length) return; e.preventDefault(); location.href = `${form.action}?q=${encodeURIComponent(words.join(" "))}`; });
+  const still = matchMedia("(prefers-reduced-motion: reduce)");
+  // A question types itself once and stays, so Search always has something to search. The box still takes whatever you type instead.
   for (const form of document.querySelectorAll("[data-typing]")) {
-    if (still) continue;
-    const input = form.querySelector("input"), rest = input.placeholder, qs = ["Does peer tutoring improve reading?"]; let q = 0, c = 0, back = false, t;
-    const step = () => { if (document.activeElement === input || input.value) { input.placeholder = rest; t = setTimeout(step, 800); return; } const s = qs[q]; input.placeholder = s.slice(0, c); if (!back && c === s.length) { back = true; t = setTimeout(step, 2200); return; } if (back && c === 0) { back = false; q = (q + 1) % qs.length; t = setTimeout(step, 300); return; } c += back ? -1 : 1; t = setTimeout(step, back ? 18 : 42); };
-    t = setTimeout(step, 900);
+    const input = form.querySelector("input"); input.required = false; input.placeholder = QUESTION_SHOWN;
+    if (still.matches) continue;
+    let c = 0; const step = () => { if (still.matches || document.activeElement === input || input.value || c > QUESTION_SHOWN.length) { input.placeholder = QUESTION_SHOWN; return; } input.placeholder = QUESTION_SHOWN.slice(0, c++); setTimeout(step, 42); };
+    setTimeout(step, 700);
   }
 </script>
 <style>

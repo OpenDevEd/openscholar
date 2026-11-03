@@ -22,10 +22,11 @@ const people = [["Maya Chen", "Admin", "#34d399"], ["Tomas Silva", "Member", "#f
 </section>
 <script>
   const feed = document.querySelector("[data-feed]");
-  if (feed && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (feed) {
+    const still = matchMedia("(prefers-reduced-motion: reduce)");
     const list = feed.querySelector("ol"), root = feed.closest(".thero");
     let seen = false; new IntersectionObserver(([e]) => (seen = e.isIntersecting)).observe(root);
-    setInterval(() => { if (!seen || document.hidden) return; const last = list.lastElementChild; list.prepend(last); [...list.children].forEach((c, i) => c.classList.toggle("hide", i > 3)); last.animate([{ opacity: 0, transform: "translateY(-8px)" }, { opacity: 1, transform: "none" }], { duration: 450, easing: "ease-out" }); }, 3600);
+    setInterval(() => { if (!seen || document.hidden || still.matches) return; const last = list.lastElementChild; list.prepend(last); [...list.children].forEach((c, i) => c.classList.toggle("hide", i > 3)); last.animate([{ opacity: 0, transform: "translateY(-8px)" }, { opacity: 1, transform: "none" }], { duration: 450, easing: "ease-out" }); }, 3600);
   }
 </script>
 <style>

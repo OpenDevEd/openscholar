@@ -69,12 +69,6 @@ p { text-wrap: pretty; }
 .btn.ghost, .btn.line { padding-inline: 20px; } .btn.ghost::before, .btn.line::before { display: none; }
 .btn.ghost { --face: rgb(255 255 255 / .14); --text: #fff; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .4); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); } .btn.ghost:hover { background: #fff; color: var(--ink); }
 .btn.line { --face: transparent; --text: var(--ink); box-shadow: inset 0 0 0 1px var(--line2); } .btn.line:hover { background: var(--ink); color: #fff; box-shadow: none; }
-/* A real product window. */
-.win { background: #fff; border-radius: 14px; overflow: hidden; box-shadow: 0 0 0 1px rgb(10 26 63 / .08), 0 30px 60px -24px rgb(10 20 60 / .55); color: var(--ink); }
-.win img { width: 100%; height: auto; }
-/* Windows lean toward the pointer, and a highlight crosses the glass. */
-.win[data-tilt] { position: relative; transition: transform .6s var(--ease); will-change: transform; } .win[data-tilt]:hover { transition: transform .1s linear; }
-.win[data-tilt]::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(600px circle at var(--sx, 50%) var(--sy, 50%), rgb(255 255 255 / .28), transparent 65%); mix-blend-mode: soft-light; opacity: 0; transition: opacity .3s var(--ease); } .win[data-tilt]:hover::after { opacity: 1; }
 /* A point of light runs around the edge of a card. */
 @property --a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
 .edge { position: relative; } .edge::before { content: ""; position: absolute; inset: 0; z-index: 2; border-radius: inherit; padding: 1.5px; background: conic-gradient(from var(--a), transparent 62%, rgb(255 255 255 / .9) 82%, transparent 92%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .25s var(--ease); pointer-events: none; }
