@@ -67,6 +67,7 @@ if (fine) {
       frame = 0;
       const t = last.target, spot = t.closest?.(".panel, .spot, [data-spot]");
       if (spot) { const r = spot.getBoundingClientRect(); const x = last.clientX - r.left, y = last.clientY - r.top; spot.style.setProperty("--mx", `${x}px`); spot.style.setProperty("--my", `${y}px`); if (spot.matches("[data-spot]")) { const w = $(".word", spot), wr = w.getBoundingClientRect(); w.style.setProperty("--mx", `${last.clientX - wr.left}px`); w.style.setProperty("--my", `${last.clientY - wr.top}px`); } }
+      const hero = t.closest?.(".hero"); if (hero) { hero.style.setProperty("--hx", (last.clientX / innerWidth - .5).toFixed(3)); hero.style.setProperty("--hy", (last.clientY / innerHeight - .5).toFixed(3)); }
       const tilt = t.closest?.("[data-tilt]");
       if (tilt) { const r = tilt.getBoundingClientRect(), x = (last.clientX - r.left) / r.width - .5, y = (last.clientY - r.top) / r.height - .5; tilt.style.transform = `perspective(1400px) rotateX(${(-y * 4).toFixed(2)}deg) rotateY(${(x * 5).toFixed(2)}deg) translateZ(0)`; tilt.style.setProperty("--sx", `${(x + .5) * 100}%`); tilt.style.setProperty("--sy", `${(y + .5) * 100}%`); }
     });

@@ -3,7 +3,7 @@ export const APP = "https://dev.openscholar.ai";
 export const NAV = [
   { id: "product", href: "/#product", label: "Product", rows: [
     { href: "/#product", title: "Find the literature", text: "Ask in plain language, keep control of the query", icon: "search", color: "#22d3ee", field: "ocean", art: "sea", img: "search2-laptop-dark" },
-    { href: "/#screening", title: "Screen against your criteria", text: "Decide once, apply it to every paper", icon: "sieve", color: "#34d399", field: "emerald", art: "sieve", img: "screen-laptop-dark" },
+    { href: "/#screening", title: "Screen against your criteria", text: "Decide once, apply it to every paper", icon: "sieve", color: "#34d399", field: "emerald", art: "pane", img: "screen-laptop-dark" },
     { href: "/#extraction", title: "Extract the data", text: "From papers to a table you can check", icon: "table", color: "#fbbf24", field: "amber", art: "grid", img: "extract-laptop-dark" },
     { href: "/#assistant", title: "Delegate to the assistant", text: "It does the groundwork and asks before it acts", icon: "spark", color: "#60a5fa", field: "cobalt", art: "gate", img: "assistant-laptop-dark" },
     { href: "/#trust", title: "Trace answers back", text: "From a cited answer to its sentence and paper", icon: "thread", color: "#f59e0b", field: "night", art: "thread" },
@@ -15,9 +15,9 @@ export const NAV = [
     { href: "/evidence-communities/#steps", title: "From first draft to live", text: "Your name, your sources, your address", icon: "flag", color: "#fb7185", field: "rose", art: "globe", img: "c-home-laptop-light" },
   ], live: [["Wealth Inequality and Social Mobility", "https://wealth-inequality.openscholar.ai"], ["Artificial Intelligence in Education", "https://aied.openscholar.ai"]] },
   { id: "teams", href: "/teams/", label: "Teams", rows: [
-    { href: "/teams/#shared", title: "One piece of shared work", text: "Six spreadsheets become one screening", icon: "merge", color: "#38bdf8", field: "ocean", art: "converge", img: "screen-laptop-light" },
-    { href: "/teams/#activity", title: "See who did what", text: "A record of every change, with a name beside it", icon: "list", color: "#34d399", field: "emerald", art: "sieve", img: "extract-laptop-dark" },
-    { href: "/teams/#roles", title: "The right access for each person", text: "Admins, members and guests", icon: "key", color: "#fbbf24", field: "night", art: "converge" },
+    { href: "/teams/#shared", title: "One piece of shared work", text: "Six spreadsheets become one screening", icon: "merge", color: "#38bdf8", field: "ocean", art: "network", img: "screen-laptop-light" },
+    { href: "/teams/#activity", title: "See who did what", text: "A record of every change, with a name beside it", icon: "list", color: "#34d399", field: "emerald", art: "pane", img: "extract-laptop-dark" },
+    { href: "/teams/#roles", title: "The right access for each person", text: "Admins, members and guests", icon: "key", color: "#fbbf24", field: "night", art: "network" },
   ] },
   { id: "docs", href: "/docs/", label: "Docs" },
 ];
@@ -40,6 +40,9 @@ export const ICONS = {
   key: "M13 11a4 4 0 1 0-3.500-2L3 15.500V18h3v-2h2v-2h2l1-1",
   check: "m4 10.500 4 4 8-9",
   flagq: "M10 4v8m0 4v.01",
+  pen: "M4 16l1-4L14 3l3 3-9 9-4 1ZM12 5l3 3",
+  mail: "M3 5h14v10H3V5Zm0 1 7 5 7-5",
+  cite: "M4 4h9l3 3v9H4V4Zm3 5h6M7 12h6",
   sun: "M10 14a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM10 2v1.500M10 16.500V18M2 10h1.500M16.500 10H18M4.300 4.300l1.100 1.100M14.600 14.600l1.100 1.100M4.300 15.700l1.100-1.100M14.600 5.400l1.100-1.100",
   moon: "M17 11.500A7.500 7.500 0 0 1 8.500 3a7.500 7.500 0 1 0 8.500 8.500Z",
 };
