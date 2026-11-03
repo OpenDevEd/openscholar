@@ -54,7 +54,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
         {n.rows ? <div class="split">
           <div class="rows"><span class="hl" aria-hidden="true"></span>
             {n.rows.map((r, i) => <a class="row" href={r.href} data-row={i} style={`--c:${r.color}`}><i><Icon name={r.icon} /></i><span><b>{r.title}</b><em>{r.text}</em></span></a>)}
-            {n.live && <div class="live"><span>See one live</span>{COMMUNITIES.slice(0, 2).map(([t, u]) => <a href={u}>{t}<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l6-6M4 3h5v5" /></svg></a>)}</div>}
+            {n.live && <div class="live"><span>See one live</span>{COMMUNITIES.slice(0, 2).map(({ name: t, url: u }) => <a href={u}>{t}<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l6-6M4 3h5v5" /></svg></a>)}</div>}
           </div>
           <div class="stage">{n.rows.map((r, i) => <div class:list={["st", `f-${r.field}`]} data-st={i}>{r.art && <img class="a" data-src={`/img/art-${r.art}-960.avif`} alt="" />}{r.img && <img class="s" data-src={`/img/screens/${r.img}-1000.avif`} alt="" />}</div>)}</div>
         </div> : <div class="guides">{DOCS.map(([head, ids]) => <div class="g-col"><span>{head}</span>{ids.map(([id, icon]) => <a href={`/docs/#${id}`}><Icon name={icon} size={16} /><span class="roll" data-t={GUIDES.find((g) => g.id === id).title}><span>{GUIDES.find((g) => g.id === id).title}</span></span></a>)}</div>)}</div>}
@@ -63,17 +63,20 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   </div>
   <div class="scrim" aria-hidden="true"></div>
   <main class="strip"><slot /></main>
-  <footer class="foot" data-spot>
+  <footer class="foot" data-foot>
+    <nav class="belt" aria-label="Live Evidence Communities">
+      {[0, 1].map((copy) => <ul aria-hidden={copy ? "true" : undefined}>{COMMUNITIES.map((c) => <li style={`--c:${c.color}`}><a href={c.url} tabindex={copy ? -1 : undefined}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" loading="lazy" decoding="async" alt="" /><span>{c.name}</span></a></li>)}</ul>)}
+    </nav>
     <div class="f-in">
-      <div class="f-brand"><img src="/favicon.svg" width="32" height="32" alt="" /><p>The evidence workspace for research teams</p></div>
+      <div class="f-brand"><img src="/favicon.svg" width="32" height="32" alt="" /><p>The evidence workspace for research teams</p><a class="f-go" href={APP}><span class="roll" data-t="Get started"><span>Get started</span></span><Arrow /></a></div>
       <nav aria-label="Footer">
-        <div><b>Product</b><a href="/#product">Overview</a><a href="/evidence-communities/">Evidence Communities</a><a href="/teams/">Teams</a></div>
-        <div><b>Learn</b><a href="/docs/">Documentation</a><a href="/docs/#start">Get started</a></div>
-        <div><b>Legal</b><a href={`${APP}/privacy`}>Privacy</a><a href={`${APP}/cookie-policy`}>Cookies</a><a href={`${APP}/credits`}>Attributions</a></div>
+        <div><b>Product</b><a href="/#product"><span class="roll" data-t="Overview"><span>Overview</span></span></a><a href="/evidence-communities/"><span class="roll" data-t="Evidence Communities"><span>Evidence Communities</span></span></a><a href="/teams/"><span class="roll" data-t="Teams"><span>Teams</span></span></a></div>
+        <div><b>Learn</b><a href="/docs/"><span class="roll" data-t="Documentation"><span>Documentation</span></span></a><a href="/docs/#start"><span class="roll" data-t="Get started"><span>Get started</span></span></a></div>
+        <div><b>Legal</b><a href={`${APP}/privacy`}><span class="roll" data-t="Privacy"><span>Privacy</span></span></a><a href={`${APP}/cookie-policy`}><span class="roll" data-t="Cookies"><span>Cookies</span></span></a><a href={`${APP}/credits`}><span class="roll" data-t="Attributions"><span>Attributions</span></span></a></div>
       </nav>
       <p class="credit">Built by OpenDevEd and eKitabu</p>
     </div>
-    <div class="word" aria-hidden="true">OpenScholar</div>
+    <div class="stand" aria-hidden="true"><div class="word">OpenScholar</div><i class="veil"></i></div>
   </footer>
   <dialog class="palette" data-dialog aria-label="Ask a question">
     <AskBar id="ask-nav" />
@@ -85,7 +88,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
 <style>
   /* A dark glass capsule that tightens once the page moves under it. */
   .top { position: sticky; top: 10px; z-index: 50; max-width: 1280px; height: 64px; margin: 10px auto -74px; padding-inline: var(--gap); color: #fff; }
-  .bar { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; height: 64px; margin-inline: auto; padding: 0 10px 0 16px; border-radius: 20px; background: linear-gradient(rgb(16 24 62 / .95), rgb(7 12 38 / .96)); -webkit-backdrop-filter: blur(22px) saturate(1.7); backdrop-filter: blur(22px) saturate(1.7); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px rgb(255 255 255 / .08), 0 18px 40px -20px rgb(4 8 30 / .7); transition: width .4s var(--ease); }
+  .bar { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; height: 64px; margin-inline: auto; padding: 0 10px 0 16px; border-radius: 20px; background: linear-gradient(rgb(16 24 62 / .96), rgb(7 12 38 / .97)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px rgb(255 255 255 / .08), 0 18px 40px -20px rgb(4 8 30 / .7); transition: width .4s var(--ease); }
   .stuck .bar { width: min(100%, 1180px); }
   /* Light from the pointer catches the capsule's edge. */
   .bar::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: radial-gradient(180px circle at var(--bx, 50%) 50%, rgb(255 255 255 / .85), transparent 70%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .3s var(--ease); pointer-events: none; } .bar:hover::before { opacity: 1; }
@@ -130,14 +133,23 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   .stage { position: relative; margin: 10px 10px 10px 0; border-radius: 14px; overflow: hidden; min-height: 320px; }
   .st { position: absolute; inset: 0; opacity: 0; transition: opacity .25s var(--ease); } .st.on { opacity: 1; } .st .a { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; } .st .s { position: absolute; left: 24px; top: 24px; width: 620px; max-width: none; border-radius: 10px 0 0 0; box-shadow: 0 0 0 1px rgb(255 255 255 / .16), 0 24px 48px -16px rgb(4 8 30 / .8); transform: translateY(10px); transition: transform .45s var(--ease); } .st.on .s { transform: none; }
   .guides { display: grid; grid-template-columns: 1.2fr 1fr; gap: 4px 12px; width: 620px; padding: 14px; } .g-col { display: grid; gap: 2px; align-content: start; } .g-col:first-child { grid-row: span 2; } .g-col > span { padding: 4px 10px 6px; font: 400 13px/1 var(--mono); color: rgb(255 255 255 / .55); } .g-col a { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; font-size: 15px; white-space: nowrap; color: rgb(255 255 255 / .85); transition: background-color .15s var(--ease), color .15s var(--ease); } .g-col a :global(svg) { flex: none; opacity: .7; } .g-col a:hover { background: rgb(255 255 255 / .08); color: #fff; }
-  .foot { position: relative; overflow: hidden; background: var(--night); color: #fff; } .f-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px 48px; max-width: 1280px; margin-inline: auto; padding: 56px calc(var(--gap) + 8px) 24px; }
-  .f-brand p { margin-top: 12px; color: rgb(255 255 255 / .72); max-width: 18em; } .foot nav { display: flex; gap: 56px; } .foot nav div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: rgb(255 255 255 / .72); } .foot nav b { font-weight: 500; color: #fff; margin-bottom: 4px; } .foot nav a { transition: color .15s var(--ease); } .foot nav a:hover { color: #fff; } .credit { grid-column: 1 / -1; font-size: 14px; color: rgb(255 255 255 / .6); }
-  /* The name is barely there until the pointer brings colour through it. */
-  .word { margin-top: 8px; padding-inline: var(--gap); text-align: center; font-weight: 500; font-size: 17.4vw; line-height: .86; letter-spacing: -.05em; white-space: nowrap; margin-bottom: -.1em; color: transparent; -webkit-background-clip: text; background-clip: text; background-image: radial-gradient(circle 380px at var(--mx, -999px) var(--my, 50%), #38bdf8, #34d399 35%, #fbbf24 65%, transparent 100%), linear-gradient(rgb(255 255 255 / .1), rgb(255 255 255 / .1)); user-select: none; }
+  .foot { position: relative; isolation: isolate; overflow: clip; background: var(--night); color: #fff; }
+  /* Our communities pass along the top of the footer. */
+  .belt { display: flex; width: max-content; padding-block: 24px; border-bottom: 1px solid rgb(255 255 255 / .1); animation: belt 46s linear infinite; } .belt:hover, .belt:focus-within, .foot.away .belt { animation-play-state: paused; } @keyframes belt { to { transform: translateX(-50%); } }
+  .belt ul { display: flex; flex: none; } .belt a { display: flex; align-items: center; gap: 14px; padding-inline: 28px; font-size: clamp(18px, 1.9vw, 26px); letter-spacing: -.015em; white-space: nowrap; color: rgb(255 255 255 / .82); transition: color .2s var(--ease); } .belt img { width: 56px; height: 56px; object-fit: contain; transition: transform .45s var(--ease); } .belt a:hover { color: var(--c); } .belt a:hover img { transform: rotate(-8deg) scale(1.16); }
+  .f-in { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 32px 48px; max-width: 1280px; margin-inline: auto; padding: 48px calc(var(--gap) + var(--pad)) 28px; }
+  .f-brand { display: grid; justify-items: start; align-content: start; gap: 12px; } .f-brand p { color: rgb(255 255 255 / .78); max-width: 18em; font-size: clamp(18px, 1.7vw, 22px); line-height: 1.25; letter-spacing: -.01em; } .f-go { display: inline-flex; align-items: center; gap: 10px; margin-top: 4px; height: 44px; padding: 0 6px 0 16px; border-radius: 12px; background: #fff; color: var(--ink); font-weight: 500; } .f-go :global(i) { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--brand); color: #fff; }
+  .foot nav:not(.belt) { display: flex; gap: 56px; } .foot nav:not(.belt) div { display: grid; gap: 8px; align-content: start; font-size: 15px; color: rgb(255 255 255 / .78); } .foot nav b { font-weight: 500; color: #fff; margin-bottom: 4px; } .foot nav:not(.belt) a { width: fit-content; } .foot nav:not(.belt) a:hover { color: #fff; } .credit { grid-column: 1 / -1; font-size: 14px; color: rgb(255 255 255 / .62); }
+  /* The name runs off the bottom of the page, cut from lit glass. A dark veil with one bright window slides across it, following the pointer or sweeping by itself, and only ever moves as a transform. */
+  .stand { position: relative; height: .8em; margin-top: 8px; overflow: clip; font-size: 17.2vw; }
+  .word { display: flex; justify-content: center; padding-inline: var(--gap); font-weight: 500; line-height: 1; letter-spacing: -.05em; white-space: nowrap; user-select: none; color: #7dd3fc; -webkit-background-clip: text; background-clip: text; } .foot.seen .word, :global(html:not(.has-js)) .word { background-image: url(/img/word-fill.avif); background-size: 100% 100%; -webkit-text-fill-color: transparent; }
+  .veil { position: absolute; left: 0; top: 0; bottom: 0; width: 300vw; background: linear-gradient(90deg, rgb(1 8 39 / .58) 38%, transparent 47% 53%, rgb(1 8 39 / .58) 62%); transform: translateX(-150vw); animation: sweep 11s ease-in-out infinite alternate; pointer-events: none; }
+  .foot.away .veil { animation-play-state: paused; } .foot.held .veil { animation: none; transition: transform .25s var(--ease); } @keyframes sweep { to { transform: translateX(-50vw); } }
+  @media (prefers-reduced-motion: reduce) { .veil { display: none; } }
   .palette { width: min(640px, calc(100vw - 24px)); margin: 12vh auto auto; padding: 10px; border: 0; border-radius: 24px; background: #fff; color: var(--ink); box-shadow: 0 40px 100px -24px rgb(10 26 63 / .6); } .palette::backdrop { background: rgb(7 13 43 / .5); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   .palette :global(.ask) { width: 100%; box-shadow: inset 0 0 0 1px var(--line2); } .palette ul { display: grid; gap: 2px; margin-top: 8px; } .palette li button { display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 12px; border-radius: 10px; text-align: left; font-size: 15px; color: var(--t2); transition: background-color .12s var(--ease), color .12s var(--ease); } .palette li button:hover, .palette li button:focus-visible { background: var(--soft); color: var(--ink); }
   @media (max-width: 1240px) { .tick, .signin { display: none; } .cmd { padding: 0 6px 0 10px; } }
   @media (max-width: 960px) { .nav, .signin, .cmd, .mega { display: none; } .menu { display: block; } }
   @media (max-width: 1180px) { .slot { display: none; } } @media (max-width: 380px) { .name { display: none; } }
-  @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav { gap: 32px; flex-wrap: wrap; } .bar { padding-inline: 12px 8px; } .rail a::after { display: none; } }
+  @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav:not(.belt) { gap: 32px; flex-wrap: wrap; } .belt { padding-block: 16px; } .belt img { width: 44px; height: 44px; } .belt a { padding-inline: 16px; gap: 10px; } .bar { padding-inline: 12px 8px; } .rail a::after { display: none; } }
 </style>

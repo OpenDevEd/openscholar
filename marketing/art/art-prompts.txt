@@ -93,3 +93,24 @@ Shared style: a physically based 3D render, as a studio photograph of real glass
 1. arch-light: Pure flat white background (#ffffff), with no shadow and no gradient. One colossal ribbon of thousands of razor-thin translucent glass sheets enters from the left edge low in the frame, rises in a huge slow arch over the top of the frame and comes back down to leave through the right edge low in the frame, forming a vast rainbow-like arch around an empty centre. Colours from left to right: cobalt, cyan, emerald, yellow, amber, coral, bright and clean like stained glass in daylight. A few loose glass page sheets drift from its outer edge. The centre of the arch is completely empty pure white.
 
 2. slot: Flat deep navy background (#040b2e). Two enormous streams of thousands of razor-thin translucent glass sheets run horizontally toward each other: one enters from the left edge, shifting from cobalt to cyan to emerald, and one enters from the right edge, shifting from coral to amber to yellow. Each stream is very tall where it enters at the edge of the frame, taking up most of the frame's height, and narrows smoothly to a thin bright sliver as it reaches the centre, where they meet at the exact centre of the frame in a horizontal line. Above and below the centre there are calm dark empty wedges. Symmetrical, like a bow tie on its side, precise and elegant.
+Use your built-in image_gen tool. Generate each of the 6 images below, one tool call each, square, with a truly transparent background (real alpha), highest quality. Do not edit files or do anything else. After all of them, print each name and its absolute saved path as "- name: `path`".
+
+Shared style for all: a physically based 3D render, as a studio photograph of one solid object cut from real coloured glass, lit from within, with crisp edges, real refraction and caustics, floating, in the same three-quarter view from slightly above. The object fills most of the frame and is centred. Transparent background. No text, no letters, no numbers, no logos, no people, no sparkles, no lens flare. Never any purple, violet or magenta.
+
+1. comm-aied: an open book with thin glass pages fanning upward, in clear sky-blue glass.
+2. comm-wi: three stacks of glass coins of rising height, in clear emerald glass.
+3. comm-eccar: a single broad leaf with fine veins, in clear lime-green glass.
+4. comm-tvet: a single heavy mechanical gear, in clear rose-coral glass.
+5. comm-aimea: a precise semicircular protractor with fine engraved tick marks and no numbers, in clear orange glass.
+6. comm-usaid: a round navigation compass with a pointed needle and no letters, in clear amber glass.
+Use your built-in image_gen tool. Generate each of the 4 images below, one tool call each, highest quality. Do not edit files or do anything else. After all of them, print each name and its absolute saved path as "- name: `path`".
+
+Shared style for all: a physically based 3D render, as a studio photograph of real glass and light. Crisp, razor-sharp fine detail, real refraction and caustics. No text, no letters, no numbers, no logos, no UI, no people, no sparkles, no lens flare, no film grain. Never any purple, violet or magenta.
+
+1. type-fill (the widest landscape size available, no background visible at all): The entire frame, edge to edge with no empty space, is packed with thousands of razor-thin vertical glass sheets lit very brightly from behind, like a wall of luminous stained glass seen straight on. The colour runs in six smooth equal bands from left to right: bright sky blue, bright emerald, bright lime, bright rose coral, bright orange, bright golden amber. Every part of the image is very bright and saturated, with fine vertical streaks of white light and no dark areas.
+
+2. gem-funnel (square, truly transparent background with real alpha): A single wide glass funnel with fine concentric rings, in clear rose-pink and warm amber glass, lit from within, floating, three-quarter view from slightly above, filling most of the frame.
+
+3. gem-tag (square, truly transparent background with real alpha): A single flat luggage-style label tag with a round hole and a short loop of thread, cut from clear warm amber and coral glass, lit from within, floating, three-quarter view, filling most of the frame. Nothing written on it.
+
+4. foot-horizon (the widest landscape size available): Flat very deep navy background (#010827) across the top two thirds of the frame. Along the bottom of the frame, a low glowing horizon made of thousands of razor-thin translucent glass sheets standing upright like a distant skyline, rising gently toward both ends, colour running left to right from cobalt through cyan and emerald to amber and coral. Calm, wide, premium, lots of empty dark space above it.

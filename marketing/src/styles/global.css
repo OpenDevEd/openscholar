@@ -33,8 +33,8 @@ p { text-wrap: pretty; }
 .panel { position: relative; isolation: isolate; overflow: clip; border-radius: var(--r); background: var(--bg, #0b1f6b); color: #fff; }
 .panel > .field { position: absolute; inset: 0; z-index: -1; }
 /* Light follows the pointer across a colour field. */
-.panel::after, .bleed::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(520px circle at var(--mx, 50%) var(--my, 50%), rgb(255 255 255 / .14), transparent 70%); opacity: 0; transition: opacity .3s var(--ease); }
-.panel:hover::after, .bleed:hover::after { opacity: 1; }
+.panel::after { content: ""; position: absolute; left: 0; top: 0; z-index: -1; width: 1040px; height: 1040px; pointer-events: none; background: radial-gradient(closest-side, rgb(255 255 255 / .14), transparent); opacity: 0; transform: translate(calc(var(--mx, 520px) - 520px), calc(var(--my, 520px) - 520px)); transition: opacity .3s var(--ease); }
+@media (hover: hover) { .panel:hover::after { opacity: 1; will-change: transform; } }
 
 /* A section whose art runs to the edges of the window while its content keeps to the strip. */
 .bleed { position: relative; isolation: isolate; width: 100vw; margin-inline: calc(50% - 50vw); overflow: clip; color: #fff; }
@@ -42,7 +42,6 @@ p { text-wrap: pretty; }
 .panel > .art { z-index: -1; }
 .art { position: absolute; inset: 0; z-index: -2; overflow: clip; }
 .art img { width: 100%; height: 100%; object-fit: cover; }
-.art canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; transition: opacity .6s var(--ease); }
 .art.dim::after { content: ""; position: absolute; inset: 0; background: linear-gradient(var(--dir, 90deg), rgb(var(--sc, 3 44 66) / .94), rgb(var(--sc, 3 44 66) / .7) 45%, rgb(var(--sc, 3 44 66) / 0) 70%); }
 /* A scene: art and interface share one coordinate system, 1672 units wide, so they stay locked together at any size. */
 .scene { position: relative; container-type: inline-size; aspect-ratio: 1672 / 941; } .scene > * { --u: calc(100cqw / 1672); } .scene > .art { z-index: 0; }
@@ -79,3 +78,5 @@ p { text-wrap: pretty; }
 @media (max-width: 900px) { .panel > .art img, .hero > .art img { opacity: .24; } .art.dim::after { background: rgb(var(--sc, 3 44 66) / .74); } }
 @media (max-width: 700px) { :root { --gap: 10px; --r: 22px; } }
 @media (max-width: 400px) { .btn { height: auto; min-height: 52px; padding-block: 8px; white-space: normal; line-height: 1.2; } }
+/* Blur is the most expensive thing on the page to repaint, and phones gain nothing from it. */
+@media (max-width: 900px), (pointer: coarse) { * { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; } }

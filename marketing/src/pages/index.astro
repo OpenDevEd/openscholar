@@ -29,9 +29,9 @@ const faq = [
 ];
 ---
 <Base title="OpenScholar: the evidence workspace for research teams" description="The evidence workspace for research teams. Find the literature, screen it against your criteria, extract the data and publish what you learn.">
-  <HeroAsk />
+  <HeroAsk below="none" />
 
-  <section class="tour" id="tour"><div class="t-top"><h2>Every step of the work, on every screen</h2><a class="btn brand" href={APP}>Get started<Arrow /></a></div><Workspace /></section>
+  <section class="tour" id="tour"><h2>Every step of the work, on every screen</h2><Workspace /></section>
 
   <section class="who" id="who"><h2>For anyone whose work has to stand on the evidence</h2>
     <div class="teams">{teams.map(([f, a, sc, k, t, d, href]) => <a class="panel edge" href={href}><i class={`field f-${f}`} aria-hidden="true"></i><Art name={a} class="card-art" style={`--sc:${sc}`} /><AudienceArt kind={k} /><h3>{t}<Arrow /></h3><p>{d}</p></a>)}</div>
@@ -92,10 +92,11 @@ const faq = [
 
   <Faq items={faq} />
 
-  <section class="bleed close"><Art name="dark-ribbon" pos="50% 100%" live /><div class="inner"><h2>Start with your next question</h2><AskBar id="ask-end" /></div></section>
+  <section class="bleed close"><Art name="dark-ribbon" pos="50% 100%" /><div class="inner"><h2>Start with your next question</h2><AskBar id="ask-end" /></div></section>
 </Base>
 <style>
-  .tour { padding: clamp(40px, 5vw, 72px) var(--pad) clamp(72px, 7vw, 104px); display: grid; gap: 24px; } .t-top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px; } .t-top h2 { max-width: 14em; }
+  /* The dark carries on from the hero, and the devices glow against it, before the page opens up to white. */
+  .tour { --bg: #040b2e; position: relative; overflow: clip; margin-top: calc(var(--gap) * -1); display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(20px, 2.6vw, 36px); width: 100vw; margin-inline: calc(50% - 50vw); padding: clamp(32px, 4vw, 56px) calc(var(--gap) + var(--pad)) clamp(40px, 4.4vw, 64px); background: var(--bg); color: #fff; border-radius: 0 0 clamp(28px, 4vw, 56px) clamp(28px, 4vw, 56px); text-align: center; scroll-margin-top: 64px; } .tour h2 { margin-inline: auto; font-size: clamp(30px, 3.6vw, 52px); } .tour :global(.ws) { width: min(100%, calc((100svh - 190px) * 1.733)); max-width: 1248px; margin-inline: auto; }
   .band { display: grid; gap: 28px; padding: var(--pad); } .b-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
   .stack { grid-template-columns: minmax(0, 1fr); width: min(52%, 600px); } .band :global(.art) { height: 440px; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
   /* Find: a tablet standing off the panel's edge, with the query on top of it. */
@@ -134,7 +135,7 @@ const faq = [
   .p-devices { position: relative; height: 520px; } .p-lap { position: absolute; left: 0; top: 40px; width: 92%; display: block; } .p-devices :global(.p-ph) { position: absolute; right: 7%; bottom: -10px; width: 168px; }
   .close { background: var(--night); padding-block: clamp(64px, 8vw, 112px) max(160px, 28vw); text-align: center; } .close .inner { display: grid; justify-items: center; gap: 24px; } .close h2 { font-size: clamp(34px, 4.6vw, 60px); }
     @media (max-width: 1000px) { .sieve { padding: 48px 0; background: radial-gradient(ellipse 60% 30% at 80% 10%, rgb(52 211 153 / .22), transparent), #021f18; } .s-wrap { display: none; } .s-head { grid-template-columns: minmax(0, 1fr); margin-bottom: 0; } .s-small { display: grid; gap: 12px; margin-top: 24px; padding-inline: calc(var(--gap) + var(--pad)); } }
-  @media (max-width: 700px) { .tour { padding-inline: 8px; } }
+  
   @media (max-width: 900px) { .publish, .t-head { grid-template-columns: minmax(0, 1fr); padding: 0 var(--pad); } .b-head { grid-template-columns: minmax(0, 1fr); } .stack { width: 100%; } .who { padding-inline: 8px; } .teams { grid-template-columns: minmax(0, 1fr); margin-inline: -8px; } .proof { grid-template-columns: minmax(0, 1fr); gap: 14px; } .tie { display: none; } .p-devices { height: 88vw; margin-inline: calc(var(--pad) * -1 + 8px); } .p-lap { width: 94%; top: 0; } .p-devices :global(.p-ph) { width: 30%; right: 6%; bottom: 0; }
     :global(.find) :global(.slab) { position: relative; left: 0; top: 0; width: 100%; margin-bottom: -60%; } :global(.find) :global(.view) { overflow: clip; height: 118vw; margin-inline: calc(var(--pad) * -1 + 8px); padding-inline: 8px; } :global(.find) .over { left: 12px; right: 12px; width: auto; bottom: 16px; } :global(.ask-f) :global(.view) { display: grid; gap: 12px; padding-bottom: 28px; } :global(.ask-f) .asst-panel { position: static; width: 100%; } }
 </style>

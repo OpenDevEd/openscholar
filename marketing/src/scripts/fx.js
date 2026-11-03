@@ -56,6 +56,13 @@ addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLow
 dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
 $$("[data-try]", dialog).forEach((b) => b.addEventListener("click", () => { $("input", dialog).value = b.dataset.try; $("form", dialog).requestSubmit(); }));
 
+// The footer only moves while it's on screen, and the pointer takes over from its slow sweep.
+const foot = $("[data-foot]");
+new IntersectionObserver(([e]) => { foot.classList.toggle("away", !e.isIntersecting); if (e.isIntersecting) foot.classList.add("seen"); }, { rootMargin: "400px 0px" }).observe(foot);
+const veil = $(".veil", foot);
+if (fine) { foot.addEventListener("pointerenter", () => foot.classList.add("held")); foot.addEventListener("pointerleave", () => { foot.classList.remove("held"); veil.style.transform = ""; }); }
+
+
 // Pointer effects on real mice and trackpads only.
 if (fine) {
   const bar = $(".bar"); bar.addEventListener("pointermove", (e) => bar.style.setProperty("--bx", `${e.clientX - bar.getBoundingClientRect().left}px`), { passive: true });
@@ -77,9 +84,6 @@ if (fine) {
 
 // Move across a device to wipe it between its light and dark screens.
 for (const d of $$("[data-wipe]")) d.parentElement.addEventListener("pointermove", (e) => { const r = $(".glass", d).getBoundingClientRect(), box = d.parentElement; box.classList.add("held"); box.style.setProperty("--w", `${Math.max(0, Math.min(100, ((e.clientX - r.left) / r.width) * 100)).toFixed(1)}%`); }, { passive: true });
-
-// The art moves once the page is idle, and only where there's a real pointer and a real graphics card to spare.
-if (fine && !still.matches && $("[data-live]")) (window.requestIdleCallback || setTimeout)(() => import("./live.js"));
 
 // Entrances: each section gets one deliberate move as it arrives, once.
 const inView = $$("[data-in]");

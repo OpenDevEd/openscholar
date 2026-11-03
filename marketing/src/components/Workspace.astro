@@ -1,25 +1,27 @@
 ---
-// The hero's product stage: one real laptop and phone for each step of the work, in light and dark. It steps through by itself until someone takes over.
+// The product on every screen: a laptop in the middle with a tablet and a phone either side, and a dock on the laptop's screen to move between the steps of the work.
 import Device from "./Device.astro";
 import Icon from "./Icon.astro";
 const tabs = [
-  { label: "Search", color: "#2563eb", icon: "search", lap: "search", ph: "search2", alt: "Search results with an overview of the field, on a laptop and a phone" },
-  { label: "Screen", color: "#10b981", icon: "sieve", lap: "screen", ph: "screen2", alt: "A screening's progress, questions and papers, on a laptop and a phone" },
-  { label: "Extract", color: "#f59e0b", icon: "table", lap: "extract-detail", ph: "extract", alt: "An extraction table with an answer and a confidence score for each paper" },
-  { label: "Assistant", color: "#06b6d4", icon: "spark", lap: "assistant", ph: "assistant", alt: "The research assistant reporting on an extraction and listing papers to check by hand" },
-  { label: "Publish", color: "#f43f5e", icon: "globe", lap: "c-home", ph: "c-search", alt: "A live Evidence Community under its own name" },
+  { label: "Search", color: "#60a5fa", icon: "search", lap: "search", tab: "search2", ph: "search2", alt: "Search results with an overview of the field, on a laptop, a tablet and a phone" },
+  { label: "Screen", color: "#34d399", icon: "sieve", lap: "screen", tab: "screen", ph: "screen2", alt: "A screening's progress, questions and papers, on a laptop, a tablet and a phone" },
+  { label: "Extract", color: "#fbbf24", icon: "table", lap: "extract-detail", tab: "extract", ph: "extract", alt: "An extraction table with an answer and a confidence score for each paper" },
+  { label: "Assistant", color: "#22d3ee", icon: "spark", lap: "assistant", tab: "assistant", ph: "assistant", alt: "The research assistant reporting on an extraction and listing papers to check by hand" },
+  { label: "Publish", color: "#fb7185", icon: "globe", lap: "c-home", tab: "c-map", ph: "c-search", alt: "A live Evidence Community under its own name" },
 ];
 ---
-<div class="ws" data-ws data-theme="light">
-  <div class="ctrl">
-    <div class="tabs" role="tablist" aria-label="See each step of the work">{tabs.map((t, i) => <button type="button" role="tab" id={`ws-t${i}`} aria-controls={`ws-p${i}`} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1}><Icon name={t.icon} size={16} /><span>{t.label}</span><u aria-hidden="true"></u></button>)}</div>
-    <button type="button" class="mode" data-mode aria-label="Switch the screens between light and dark"><i class="sun"><Icon name="sun" size={16} /></i><i class="moon"><Icon name="moon" size={16} /></i></button>
-  </div>
+<div class="ws" data-ws data-theme="light" style={`--glow:${tabs[0].color}`}>
   <div class="stage">
-    {tabs.map((t, i) => <div class:list={["pane", { on: i === 0 }]} id={`ws-p${i}`} role="tabpanel" aria-labelledby={`ws-t${i}`} style={`--c:${t.color}`}>
-      <Device class="lap" kind="laptop" name={t.lap} theme="both" alt={t.alt} defer={i > 0} sizes="(max-width: 900px) 100vw, 1000px" />
-      <Device class="ph" kind="phone" name={t.ph} theme="dark" defer={i > 0} sizes="(max-width: 900px) 40vw, 200px" />
+    <i class="bloom" aria-hidden="true"></i>
+    {tabs.map((t, i) => <div class:list={["pane", { on: i === 0 }]} id={`ws-p${i}`} role="tabpanel" aria-labelledby={`ws-t${i}`} data-c={t.color}>
+      <Device class="tb" kind="tablet" name={t.tab} theme="dark" defer={i > 0} sizes="(max-width: 900px) 30vw, 300px" />
+      <Device class="lap" kind="laptop" name={t.lap} theme="both" lazyDark alt={t.alt} defer={i > 0} sizes="(max-width: 900px) 100vw, 1000px" />
+      <Device class="ph" kind="phone" name={t.ph} theme="dark" defer={i > 0} sizes="(max-width: 900px) 30vw, 200px" />
     </div>)}
+    <div class="dock">
+      <div class="tabs" role="tablist" aria-label="See each step of the work">{tabs.map((t, i) => <button type="button" role="tab" id={`ws-t${i}`} aria-controls={`ws-p${i}`} aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} style={`--c:${t.color}`}><Icon name={t.icon} size={18} /><span>{t.label}</span><u aria-hidden="true"></u></button>)}</div>
+      <button type="button" class="mode" data-mode aria-label="Switch the laptop between light and dark"><i class="sun"><Icon name="sun" size={16} /></i><i class="moon"><Icon name="moon" size={16} /></i></button>
+    </div>
   </div>
 </div>
 <script>
@@ -27,28 +29,34 @@ const tabs = [
   if (ws) {
     const tabs = [...ws.querySelectorAll("[role=tab]")], panes = [...ws.querySelectorAll(".pane")];
     const load = (i) => { if (i.dataset.src) { i.srcset = i.dataset.srcset; i.src = i.dataset.src; delete i.dataset.src; delete i.dataset.srcset; } };
-    const pick = (n, focus) => { for (const k of [n, (n + 1) % panes.length]) panes[k].querySelectorAll("img").forEach(load); tabs.forEach((t, i) => { const on = i === n; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; panes[i].classList.toggle("on", on); }); if (focus) tabs[n].focus(); };
+    // A pane's dark screen only loads once someone has asked for dark.
+    const fill = (k) => panes[k].querySelectorAll("img").forEach((i) => { if (ws.dataset.theme === "dark" || !i.closest(".scr.dark")) load(i); });
+    const pick = (n, focus) => { [n, (n + 1) % panes.length].forEach(fill); ws.style.setProperty("--glow", panes[n].dataset.c); tabs.forEach((t, i) => { const on = i === n; t.setAttribute("aria-selected", on); t.tabIndex = on ? 0 : -1; panes[i].classList.toggle("on", on); }); if (focus) tabs[n].focus(); };
     // The bar filling up under a tab is the timer: when its animation ends, the next tab starts. Reduced motion removes the animation, so nothing advances by itself.
     ws.addEventListener("animationend", (e) => { if (e.animationName.includes("fill")) pick((tabs.indexOf(e.target.parentElement) + 1) % tabs.length); });
     tabs.forEach((t, i) => { t.addEventListener("click", () => pick(i)); t.addEventListener("keydown", (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); pick((i + d + tabs.length) % tabs.length, true); } }); });
-    ws.querySelector("[data-mode]").addEventListener("click", () => (ws.dataset.theme = ws.dataset.theme === "light" ? "dark" : "light"));
+    ws.querySelector("[data-mode]").addEventListener("click", () => { ws.dataset.theme = ws.dataset.theme === "light" ? "dark" : "light"; fill(panes.findIndex((p) => p.classList.contains("on"))); });
     new IntersectionObserver(([en]) => ws.classList.toggle("off", !en.isIntersecting), { threshold: .2 }).observe(ws);
-    const near = new IntersectionObserver(([en]) => { if (en.isIntersecting) { panes[1].querySelectorAll("img").forEach(load); near.disconnect(); } }); near.observe(ws);
+    const near = new IntersectionObserver(([en]) => { if (en.isIntersecting) { fill(1); near.disconnect(); } }); near.observe(ws);
   }
 </script>
 <style>
-  .ws { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  :global(html:not(.has-js)) .ctrl { display: none; } .ctrl { display: flex; align-items: center; gap: 8px; } .ctrl .tabs { min-width: 0; }
-  .tabs, .mode { border-radius: 14px; background: rgb(255 255 255 / .93); -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6); box-shadow: 0 0 0 1px var(--line), 0 12px 28px -18px rgb(10 26 63 / .4); }
-  .tabs { display: flex; gap: 2px; padding: 4px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
-  [role="tab"] { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 8px; height: 40px; padding-inline: 14px; border-radius: 10px; color: var(--t2); font-size: 15px; white-space: nowrap; transition: color .2s var(--ease), background-color .2s var(--ease); flex: none; } [role="tab"]:hover { color: var(--ink); background: rgb(10 26 63 / .05); } [role="tab"][aria-selected="true"] { color: #fff; background: var(--ink); }
-  u { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--spectrum); transform: scaleX(0); transform-origin: left; text-decoration: none; } [aria-selected="true"] u { animation: fill 7s linear forwards; } .ws:is(:hover, :focus-within, .off) u { animation-play-state: paused; } @keyframes fill { to { transform: scaleX(1); } }
-  .mode { position: relative; display: flex; flex: none; padding: 4px; gap: 2px; color: var(--t2); } .mode i { display: grid; place-items: center; width: 36px; height: 40px; border-radius: 10px; transition: background-color .25s var(--ease), color .25s var(--ease); } .mode:hover i { color: var(--ink); } [data-theme="light"] .sun, [data-theme="dark"] .moon { background: var(--ink); color: #fff !important; }
-  /* The stream pours into the laptop. The phone stands in front of its corner in dark. Choosing a theme wipes across the laptop, so both themes are on show. */
-  .stage { position: relative; aspect-ratio: 1000 / 600; }
-  .pane { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .4s var(--ease), visibility 0s .4s; } .pane.on { opacity: 1; visibility: visible; transition: opacity .4s var(--ease); z-index: 1; }
-  .pane :global(.lap) { position: absolute; left: 3%; top: 0; width: 84%; } .pane :global(.lap .body) { box-shadow: inset 0 0 0 1.5px #4b4e57, inset 0 0 0 3px #15161a, 0 -10px 60px -4px var(--c), 0 40px 80px -36px rgb(8 14 40 / .75); transition: box-shadow .5s var(--ease); }
-  .pane :global(.ph) { position: absolute; right: 1%; bottom: -4%; width: 20%; z-index: 2; transform: translateY(14px); transition: transform .7s var(--ease); } .pane.on :global(.ph) { transform: none; }
+  .ws { position: relative; }
+  /* Symmetry: laptop on the centre line, tablet and phone balanced at its feet, and colour blooming from behind in the step's own colour. */
+  .stage { position: relative; aspect-ratio: 1248 / 720; }
+  .bloom { position: absolute; left: 50%; top: 2%; width: 118%; height: 92%; translate: -50% 0; border-radius: 50%; background: radial-gradient(closest-side, var(--glow), transparent); opacity: .34; transition: background-color .5s var(--ease); pointer-events: none; }
+  .pane { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .45s var(--ease), visibility 0s .45s; } .pane.on { opacity: 1; visibility: visible; transition: opacity .45s var(--ease); z-index: 1; }
+  .pane :global(.lap) { position: absolute; left: 12%; top: 0; width: 76%; z-index: 1; }
+  .pane :global(.tb) { position: absolute; left: 0; bottom: 3%; width: 21%; z-index: 2; transform: translateX(40px); transition: transform .8s var(--ease); } .pane.on :global(.tb) { transform: none; }
+  .pane :global(.ph) { position: absolute; right: 2%; bottom: 3%; width: 14.500%; z-index: 2; transform: translateX(-40px); transition: transform .8s var(--ease); } .pane.on :global(.ph) { transform: none; }
   .pane :global(.lap .scr.dark) { clip-path: inset(0 100% 0 0); } [data-theme="dark"] .pane :global(.lap .scr.dark) { clip-path: inset(0); }
-    @media (max-width: 700px) { .stage { aspect-ratio: 402 / 480; } .pane :global(.lap) { left: 5%; width: 90%; top: 0; } .pane :global(.ph) { right: 2%; bottom: 0; width: 42%; } [role="tab"] { padding-inline: 10px; } [role="tab"] span { font-size: 14px; } .mode i { width: 32px; } }
+  /* The dock sits on the laptop's screen, the way a real one would. */
+  :global(html:not(.has-js)) .dock { display: none; }
+  .dock { position: absolute; z-index: 3; left: 50%; bottom: 7%; translate: -50% 0; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 20px; background: rgb(10 16 46 / .78); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(255 255 255 / .1), 0 24px 50px -16px rgb(4 8 30 / .7); color: #fff; }
+  .tabs { display: flex; gap: 2px; }
+  [role="tab"] { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 8px; height: 46px; padding-inline: 14px; border-radius: 14px; color: rgb(255 255 255 / .72); font-size: 15px; white-space: nowrap; flex: none; transition: color .2s var(--ease), background-color .2s var(--ease); } [role="tab"]:hover { color: #fff; background: rgb(255 255 255 / .09); } [role="tab"][aria-selected="true"] { color: #fff; background: rgb(255 255 255 / .14); } [role="tab"][aria-selected="true"] :global(svg) { color: var(--c); }
+  u { position: absolute; left: 10px; right: 10px; bottom: 3px; height: 2px; border-radius: 2px; background: var(--c); transform: scaleX(0); transform-origin: left; text-decoration: none; } [aria-selected="true"] u { animation: fill 7s linear forwards; } .ws:is(:hover, :focus-within, .off) u { animation-play-state: paused; } @keyframes fill { to { transform: scaleX(1); } }
+  .mode { display: flex; flex: none; gap: 2px; margin-left: 4px; padding: 3px; border-radius: 14px; background: rgb(255 255 255 / .08); color: rgb(255 255 255 / .72); } .mode i { display: grid; place-items: center; width: 34px; height: 38px; border-radius: 11px; transition: background-color .25s var(--ease), color .25s var(--ease); } [data-theme="light"] .sun, [data-theme="dark"] .moon { background: #fff; color: var(--ink); }
+  @media (max-width: 1320px) { [role="tab"] span { display: none; } [role="tab"][aria-selected="true"] span { display: inline; } }
+  @media (max-width: 700px) { .stage { aspect-ratio: 402 / 400; } .pane :global(.lap) { left: 3%; width: 94%; } .pane :global(.tb) { display: none; } .pane :global(.ph) { right: 2%; bottom: 0; width: 28%; } .dock { position: relative; left: auto; bottom: auto; translate: none; margin: 12px auto 0; width: fit-content; order: 2; } .stage { display: grid; aspect-ratio: auto; } .pane { position: relative; grid-area: 1 / 1; inset: auto; aspect-ratio: 402 / 400; } .bloom { display: none; } [role="tab"] { padding-inline: 10px; } }
 </style>
