@@ -14,14 +14,14 @@ const { eager = true } = Astro.props;
     const track = root.querySelector("[data-track]"), items = [...track.children], caps = [...root.querySelectorAll(".about")], qs = JSON.parse(root.dataset.items), timer = root.querySelector("[data-timer]"); let at = 0;
     const idx = (k) => ((k % items.length) + items.length) % items.length;
     // The ring only ever turns the short way round.
-    const go = (n) => { const d = ((n - idx(at) + 9) % 6) - 3; at += d; items.forEach((li, i) => { li.style.setProperty("--d", ((i - n + 9) % 6) - 3); li.classList.toggle("on", i === n); caps[i].classList.toggle("on", i === n); }); document.dispatchEvent(new CustomEvent("community", { detail: { index: n, question: qs[n] } })); timer.style.animation = "none"; void timer.offsetWidth; timer.style.animation = ""; };
+    const go = (n) => { const d = ((n - idx(at) + 9) % 6) - 3; at += d; items.forEach((li, i) => { const next = ((i - n + 9) % 6) - 3, wraps = Math.abs(next - +li.style.getPropertyValue("--d")) > 3; /* A frame going round from one end to the other jumps while it's off screen, instead of flying across the strip. */ if (wraps) li.style.transition = "none"; li.style.setProperty("--d", next); if (wraps) { void li.offsetWidth; li.style.transition = ""; } li.classList.toggle("on", i === n); caps[i].classList.toggle("on", i === n); }); document.dispatchEvent(new CustomEvent("community", { detail: { index: n, question: qs[n] } })); timer.style.animation = "none"; void timer.offsetWidth; timer.style.animation = ""; };
     timer.addEventListener("animationend", () => go(idx(at + 1)));
     items.forEach((li, i) => { const a = li.querySelector("a"); a.addEventListener("click", (e) => { if (i !== idx(at)) { e.preventDefault(); root.classList.add("held"); go(i); } }); a.addEventListener("focus", () => { if (i !== idx(at) && a.matches(":focus-visible")) go(i); }); });
     new IntersectionObserver(([en]) => root.classList.toggle("off", !en.isIntersecting), { threshold: .2 }).observe(root);
   }
 </script>
 <style>
-  .rg { --rw: clamp(300px, 54vw, 820px); position: relative; width: 100vw; margin-inline: calc(50% - 50vw); margin-top: clamp(20px, 3.4vh, 36px); overflow: clip; }
+  .rg { --rw: clamp(300px, 54vw, 820px); position: relative; width: 100vw; margin-inline: calc(50% - 50vw); margin-top: clamp(20px, 3.4vh, 36px); overflow: clip visible; }
   .stage3d { height: calc(var(--rw) * .66); }
   .track { position: relative; height: 100%; }
   .track li { position: absolute; left: 50%; top: 0; width: var(--rw); margin-left: calc(var(--rw) / -2); transform: translateX(calc(var(--d) * (var(--rw) + 28px))); transition: transform 1s var(--ease); }
@@ -30,5 +30,5 @@ const { eager = true } = Astro.props;
   .track img { display: block; width: 100%; height: auto; max-width: none; }
   .cap { position: relative; min-height: 84px; margin-top: 12px; padding-inline: 20px; text-align: center; } .about { display: grid; justify-items: center; gap: 6px; } :global(.has-js) .about { position: absolute; inset: 0 20px auto; opacity: 0; transform: translateY(8px); transition: opacity .3s var(--ease), transform .45s var(--ease); } :global(.has-js) .about.on { opacity: 1; transform: none; } .about b { font-weight: 500; font-size: clamp(18px, 1.7vw, 22px); letter-spacing: -.01em; color: #fff; } .about span { max-width: 38em; font-size: 15px; line-height: 1.4; opacity: .84; }
   .timer { position: absolute; width: 0; height: 0; animation: rgtick 5.5s linear forwards; } .rg:is(:hover, :focus-within, .off) .timer { animation-play-state: paused; } .rg:global(.held) .timer { animation: none; } @keyframes rgtick { to { opacity: .99; } }
-  @media (max-width: 700px) { .rg { --rw: 80vw; } .cap { min-height: 122px; } }
+  @media (max-width: 700px) { .rg { --rw: 72vw; } .cap { min-height: 122px; } }
 </style>
