@@ -85,6 +85,8 @@ export function UpgradeConfirmationDialog({
             if (isConfirming) e.preventDefault();
           }}
           showCloseButton={!isConfirming}
+          // With large text on a phone one long word is wider than the dialog.
+          className="[overflow-wrap:anywhere]"
         >
         <DialogHeader>
           <DialogTitle>
@@ -101,7 +103,7 @@ export function UpgradeConfirmationDialog({
         <div className="space-y-4 py-2">
           {/* Payment method */}
           {cardLast4 && (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
               <CreditCard className="w-4 h-4 text-muted-foreground" />
               <span className="text-muted-foreground">
                 {t("paymentMethod")}:
@@ -117,7 +119,7 @@ export function UpgradeConfirmationDialog({
           )}
 
           {/* Plan change */}
-          <div className="flex items-center justify-between rounded-lg border p-3">
+          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1 rounded-lg border p-3">
             <div className="text-sm">
               <span className="text-muted-foreground">{labels?.from ?? t("currentPlan")}: </span>
               <span className="font-medium">{preview.currentPlan}</span>
@@ -150,7 +152,7 @@ export function UpgradeConfirmationDialog({
                 ))}
               </>
             )}
-            <div className={(preview.lineItems ?? []).length > 0 ? "border-t pt-2 flex items-center justify-between" : "flex items-center justify-between"}>
+            <div className={(preview.lineItems ?? []).length > 0 ? "border-t pt-2 flex flex-wrap items-center justify-between gap-x-2" : "flex flex-wrap items-center justify-between gap-x-2"}>
               <span className={(preview.lineItems ?? []).length > 0 ? "text-sm font-medium" : "text-sm text-muted-foreground"}>
                 {totalLabel ?? ((preview.lineItems ?? []).length > 0 ? t("totalCharge") : t("prorationCharge"))}
               </span>
@@ -177,12 +179,13 @@ export function UpgradeConfirmationDialog({
           <Button
             data-testid="upgrade-cancel-button"
             variant="outline"
+            className="h-auto min-h-9 py-1 whitespace-normal"
             onClick={() => onOpenChange(false)}
             disabled={isConfirming}
           >
             {t("cancel")}
           </Button>
-          <Button data-testid="upgrade-confirm-button" onClick={onConfirm} disabled={isConfirming}>
+          <Button data-testid="upgrade-confirm-button" className="h-auto min-h-9 py-1 whitespace-normal" onClick={onConfirm} disabled={isConfirming}>
             {/* An action the caller names, such as removing seats, keeps its name while it runs (#858). */}
             {isConfirming ? (
               <>
