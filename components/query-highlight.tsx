@@ -1,7 +1,9 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useLocale } from "next-intl";
 import { cn } from "@/lib/utils";
+import { isRightToLeft } from "@/lib/i18n/locale-map";
 import {
   highlightSegments,
   parseBooleanQuery,
@@ -141,13 +143,18 @@ function subscribeToBreakpoints(onChange: () => void) {
 const breakpointsMet = () => BREAKPOINTS.filter((query) => window.matchMedia(query).matches).length;
 
 /**
- * The style a rich-textarea query field takes. rich-textarea copies the field's font and padding
- * only when this object changes, so a new one comes at each breakpoint; the caret colour is set
- * because it otherwise keeps the first one it sees, whatever the theme.
+ * The style a rich-textarea query field takes. rich-textarea copies the field's font, padding and
+ * direction only when this object changes, so a new one comes at each breakpoint and when the
+ * language changes which way the page reads; the caret colour is set because it otherwise keeps
+ * the first one it sees, whatever the theme.
  */
 export function useQueryFieldStyle() {
   const breakpoint = useSyncExternalStore(subscribeToBreakpoints, breakpointsMet, () => 0);
-  return useMemo(() => ({ width: "100%", caretColor: "var(--foreground)", "--breakpoint": breakpoint }), [breakpoint]);
+  const direction = isRightToLeft(useLocale()) ? "rtl" : "ltr";
+  return useMemo(
+    () => ({ width: "100%", caretColor: "var(--foreground)", "--breakpoint": breakpoint, "--direction": direction }),
+    [breakpoint, direction],
+  );
 }
 
 // ---------- The results ----------
