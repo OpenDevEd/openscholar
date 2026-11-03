@@ -54,6 +54,11 @@ const ask = () => { close(); dialog.showModal(); $("input", dialog).focus(); };
 $$("[data-palette]").forEach((b) => b.addEventListener("click", ask));
 addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); dialog.open ? dialog.close() : ask(); } });
 dialog.addEventListener("click", (e) => { if (e.target === dialog) dialog.close(); });
+// Typing narrows the pages you can jump to, and Enter still asks the question. The arrow keys walk from the box down the list.
+{ const box = $("input", dialog), tries = $("[data-tries]", dialog), rows = $$(".jump li", dialog), items = () => [box, ...$$("[data-try], .jump a", dialog).filter((e) => e.offsetParent)];
+  box.addEventListener("input", () => { const q = box.value.trim().toLowerCase(); tries.hidden = !!q; rows.forEach((r) => { r.hidden = !!q && !q.split(/\s+/).every((w) => r.dataset.text.includes(w)); }); });
+  dialog.addEventListener("keydown", (e) => { const d = { ArrowDown: 1, ArrowUp: -1 }[e.key]; if (!d) return; const list = items(), i = list.indexOf(document.activeElement); const next = list[i + d]; if (next) { e.preventDefault(); next.focus(); } });
+  dialog.addEventListener("click", (e) => { if (e.target.closest(".jump a")) dialog.close(); }); }
 $$("[data-try]", dialog).forEach((b) => b.addEventListener("click", () => { $("input", dialog).value = b.dataset.try; $("form", dialog).requestSubmit(); }));
 
 // The footer only moves while it's on screen, and the pointer takes over from its slow sweep.
