@@ -1,0 +1,38 @@
+---
+// Hero to compare: one stage and a big switch that turns it from one product to the other. Delete once one is picked.
+import Base from "../../layouts/Base.astro";
+import Art from "../../components/Art.astro";
+import AskBar from "../../components/AskBar.astro";
+import SiteGems from "../../components/SiteGems.astro";
+import SiteWindow from "../../components/SiteWindow.astro";
+---
+<Base top="#040b2e" title="Hero 2: OpenScholar" description="Hero option">
+  <section class="bleed h" data-side="os" data-flip data-sites>
+    <i class="bg night"><Art name="slot" eager /></i><i class="bg day"></i>
+    <div class="sw" role="group" aria-label="Choose a product"><button type="button" data-side-to="os" aria-pressed="true">OpenScholar</button><button type="button" data-side-to="ec" aria-pressed="false">Evidence Communities</button></div>
+    <div class="copy">
+      <div class="p os"><h1>Where your team works through the evidence</h1><p>Find the literature, screen it against your criteria and extract the data you need.</p><AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" /></div>
+      <div class="p ec"><h2>Where anyone can read a field's evidence</h2><SiteGems /></div>
+    </div>
+    <div class="stage">
+      <div class="w os"><img src="/img/screens/search-laptop-dark.avif" width="1280" height="800" decoding="async" alt="OpenScholar's search results, with an overview of the field and a chart of papers per year" /></div>
+      <div class="w ec"><SiteWindow /></div>
+    </div>
+  </section>
+</Base>
+<script>
+  const h = document.querySelector("[data-flip]"), bs = [...h.querySelectorAll("[data-side-to]")];
+  bs.forEach((b) => b.addEventListener("click", () => { h.dataset.side = b.dataset.sideTo; bs.forEach((x) => x.setAttribute("aria-pressed", x === b)); }));
+</script>
+<style>
+  .h { --hu: 1px; position: relative; isolation: isolate; display: grid; justify-items: center; align-content: start; overflow: clip; padding: 96px var(--pad) 0; text-align: center; color: #fff; transition: color .4s var(--ease); } [data-side="ec"].h { color: var(--ink); }
+  .bg { position: absolute; inset: 0; z-index: -1; } .night { background: #040b2e; } .day { background: var(--soft); opacity: 0; transition: opacity .6s var(--ease); } [data-side="ec"] .day { opacity: 1; }
+  .sw { position: relative; display: grid; grid-template-columns: 1fr 1fr; width: min(100%, calc(var(--hu) * 480)); padding: 4px; border-radius: 16px; background: #0d1436; box-shadow: inset 0 0 0 1px rgb(255 255 255 / .14); } .sw::before { content: ""; position: absolute; inset: 4px auto 4px 4px; width: calc(50% - 4px); border-radius: 12px; background: #fff; transition: translate .45s var(--ease); } [data-side="ec"] .sw::before { translate: 100% 0; }
+  .sw button { position: relative; height: max(44px, calc(var(--hu) * 52)); font-size: max(13px, calc(var(--hu) * 16)); font-weight: 500; color: rgb(255 255 255 / .8); transition: color .3s var(--ease); white-space: nowrap; } .sw button[aria-pressed="true"] { color: var(--ink); }
+  .copy { display: grid; width: 100%; margin-top: calc(var(--hu) * 28); } .p { grid-area: 1 / 1; display: grid; justify-items: center; align-content: start; gap: calc(var(--hu) * 16); opacity: 0; visibility: hidden; transform: translateY(10px); transition: opacity .25s var(--ease), transform .45s var(--ease), visibility 0s .25s; } [data-side="os"] .p.os, [data-side="ec"] .p.ec { opacity: 1; visibility: visible; transform: none; transition: opacity .4s .1s var(--ease), transform .55s .1s var(--ease); }
+  h1, h2 { font-weight: 500; font-size: clamp(32px, 7.6vw, calc(var(--hu) * 60)); letter-spacing: -.03em; line-height: 1.06; text-wrap: balance; } .p p { max-width: 34em; opacity: .86; font-size: max(15px, calc(var(--hu) * 19)); } .os :global(.big) { width: min(100%, calc(var(--hu) * 720)); } .os :global(.big input) { height: max(46px, calc(var(--hu) * 60)); font-size: max(15px, calc(var(--hu) * 18)); } .ec :global(.gems), .ec :global(.cap) { width: min(100%, calc(var(--hu) * 560)); } .ec :global(.gems) { margin-top: calc(var(--hu) * 6); } .ec :global(.cap) { text-align: center; justify-items: center; } .ec :global(.about) { justify-items: center; }
+  .stage { position: relative; width: min(100%, calc(var(--hu) * 1040)); aspect-ratio: 16 / 7; margin-top: calc(var(--hu) * 24); } .w { position: absolute; inset: 0 0 auto; height: calc(100% + 20px); border-radius: 14px 14px 0 0; overflow: clip; box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 40px 70px -30px rgb(0 0 0 / .6); opacity: 0; visibility: hidden; transform: translateY(16px); transition: opacity .3s var(--ease), transform .55s var(--ease), visibility 0s .3s; } [data-side="os"] .w.os, [data-side="ec"] .w.ec { opacity: 1; visibility: visible; transform: none; transition: opacity .45s .1s var(--ease), transform .6s .1s var(--ease); } .w > img { display: block; width: 100%; height: auto; max-width: none; }
+  .night::after { content: ""; position: absolute; left: 50%; top: 40px; width: min(1240px, 100%); height: calc(var(--hu) * 480); translate: -50% 0; background: radial-gradient(closest-side, #040b2e 76%, transparent); } .night :global(.art) { inset: -4% -6% auto; height: 90%; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); opacity: .85; }
+  @media (max-width: 700px) { .night :global(.art) { display: none; } .sw button { font-size: 12px; } }
+  @media (min-width: 1000px) { .h { --hu: max(.62px, min(1px, 100svh / 900, 100vw / 1400)); height: 100svh; min-height: 620px; padding-top: calc(max(84px, var(--hu) * 96)); } .stage { position: absolute; bottom: 0; left: 50%; translate: -50% 0; aspect-ratio: auto; height: calc(100svh - var(--hu) * 480); min-height: 180px; } }
+</style>

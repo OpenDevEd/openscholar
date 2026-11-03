@@ -1,0 +1,45 @@
+---
+// Hero to compare: two windows on one desk. OpenScholar's address bar is the search box; the public browser holds the communities as tabs. Delete once one is picked.
+import Base from "../../layouts/Base.astro";
+import Art from "../../components/Art.astro";
+import AskBar from "../../components/AskBar.astro";
+import Icon from "../../components/Icon.astro";
+import { COMMUNITIES } from "../../data/site.mjs";
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+---
+<Base top="#040b2e" title="Hero 4: OpenScholar" description="Hero option">
+  <section class="bleed h">
+    <Art name="slot" eager />
+    <h1><span><b>OpenScholar</b> for your team</span> <span><b>Evidence Communities</b> for everyone else</span></h1>
+    <div class="desk">
+      <div class="win pv"><div class="chrome"><AskBar id="ask-hero" class="big" typing mark label="Search with OpenScholar" /></div><img src="/img/screens/search-laptop-dark.avif" width="1280" height="800" decoding="async" alt="OpenScholar's search results, with an overview of the field and a chart of papers per year" /></div>
+      <div class="win pb" data-sites>
+        <div class="tabs" data-tabs role="tablist" aria-label="Live Evidence Communities">{COMMUNITIES.map((c, i) => <button type="button" role="tab" aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} aria-label={c.name}><img src={`/img/comm-${c.key}.avif`} width="280" height="280" decoding="async" alt="" /><span>{cap(c.subject)}</span></button>)}</div>
+        <div class="pages">{COMMUNITIES.map((c, i) => <a class:list={["site", { on: i === 0 }]} data-i={i} href={c.url}><span class="url"><Icon name="globe" size={14} />{c.host}</span><img src={`/img/site-${c.key}.avif`} width="960" height="600" decoding="async" alt={c.name} /></a>)}</div>
+      </div>
+    </div>
+  </section>
+</Base>
+<script>
+  import { picker } from "../../scripts/picker.js";
+  picker(document.querySelector("[data-sites]"));
+</script>
+<style>
+  .h { --hu: 1px; position: relative; display: grid; justify-items: center; padding: 104px var(--pad) 0; background: #040b2e; color: #fff; text-align: center; overflow: clip; }
+  .h > :global(.art) { inset: 0 -6% auto; height: 70%; z-index: -2; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); } .h::before { content: ""; position: absolute; z-index: -1; left: 50%; top: 40px; width: min(1320px, 100%); height: 360px; translate: -50% 0; background: radial-gradient(closest-side, #040b2e 80%, transparent); }
+  h1 { font-weight: 500; font-size: clamp(30px, 7.6vw, calc(var(--hu) * 56)); letter-spacing: -.03em; line-height: 1.1; color: #a9bbe6; } h1 span { display: block; } h1 b { font-weight: inherit; color: #fff; }
+  .desk { display: grid; gap: 16px; width: 100%; margin-top: 24px; text-align: left; }
+  .win { border-radius: 14px; overflow: clip; box-shadow: 0 0 0 1px rgb(255 255 255 / .14), 0 50px 80px -30px rgb(0 0 0 / .8); }
+  .pv { background: #0d1436; } .chrome { padding: 10px; } .chrome :global(.big) { width: 100%; box-shadow: none; } .pv > img { display: block; width: 100%; height: auto; max-width: none; }
+  .pb { position: relative; background: #fff; color: var(--ink); } .tabs { display: flex; gap: 2px; padding: 8px 8px 0; background: #0d1436; }
+  [role="tab"] { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none; height: max(34px, calc(var(--hu) * 40)); padding-inline: 6px; border-radius: 10px 10px 0 0; font-size: max(12px, calc(var(--hu) * 14)); color: #fff; white-space: nowrap; } [role="tab"] img { width: max(22px, calc(var(--hu) * 28)); height: max(22px, calc(var(--hu) * 28)); object-fit: contain; } [role="tab"] span { max-width: 0; overflow: clip; opacity: 0; transition: max-width .45s var(--ease), opacity .3s var(--ease); } [role="tab"]:hover { background: rgb(255 255 255 / .12); } [role="tab"][aria-selected="true"] { flex: 1; padding-inline: 10px; background: #fff; color: var(--ink); } [role="tab"][aria-selected="true"] span { max-width: 20em; opacity: 1; }
+  .pages { display: grid; } .site { grid-area: 1 / 1; display: block; background: #fff; opacity: 0; visibility: hidden; transition: opacity 0s .45s, visibility 0s .45s; } .site.on { z-index: 1; opacity: 1; visibility: visible; transition: opacity .45s var(--ease); }
+  .url { display: flex; align-items: center; gap: 6px; height: max(30px, calc(var(--hu) * 36)); margin: 6px 10px; padding-inline: 10px; border-radius: 8px; background: var(--soft); color: var(--t2); font: 400 max(11px, calc(var(--hu) * 13))/1 var(--mono); } .site img { display: block; width: 100%; height: auto; max-width: none; }
+  @media (max-width: 700px) { .h > :global(.art) { display: none; } [role="tab"] { padding-inline: 3px; } }
+  @media (min-width: 1000px) {
+    .h { --hu: max(.62px, min(1px, 100svh / 900, 100vw / 1400)); height: 100svh; min-height: 620px; align-content: start; padding-top: calc(max(84px, var(--hu) * 104)); }
+    .desk { position: absolute; left: 50%; bottom: 0; translate: -50% 0; width: calc(var(--hu) * 1320); height: calc(100svh - var(--hu) * 280); margin: 0; display: block; }
+    .win { position: absolute; top: 0; display: flex; flex-direction: column; border-radius: 14px 14px 0 0; } .pv { left: 0; width: 55%; height: calc(100% + 40px); } .pb { right: 0; width: 44%; top: calc(var(--hu) * 40); height: calc(100% + 40px); } .pv > img { flex: 1; min-height: 0; object-fit: cover; object-position: 0 0; } .pages { flex: 1; min-height: 0; } .site { display: flex; flex-direction: column; min-height: 0; } .site img { flex: 1; min-height: 0; object-fit: cover; object-position: 0 0; }
+    .chrome :global(.big input) { height: max(44px, calc(var(--hu) * 52)); font-size: max(14px, calc(var(--hu) * 17)); }
+  }
+</style>
