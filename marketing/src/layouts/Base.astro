@@ -6,7 +6,7 @@ import AskBar from "../components/AskBar.astro";
 import Icon from "../components/Icon.astro";
 import Arrow from "../components/Arrow.astro";
 import markFile from "../data/mark.svg?raw";
-const { title, description, og = "/og.jpg" } = Astro.props;
+const { title, description, og = "/og.jpg", top = "#040b2e" } = Astro.props;
 const path = Astro.url.pathname, sections = SECTIONS[path] ?? [];
 // The logo's three arcs, inline so they can fan open on hover.
 const MARK = markFile.replace(/<\/?svg[^>]*>/g, "");
@@ -15,13 +15,13 @@ const goto = [...NAV.flatMap((n) => n.rows ?? []), { href: "/docs/", title: "Doc
 const tries = ["Does peer tutoring improve reading?", "What works to keep girls in secondary school?", "\"cash transfers\" AND nutrition", "How does wealth inequality affect social mobility?"];
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" style={`background:${top}`}>
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>{title}</title>
   <meta name="description" content={description} />
-  <meta name="theme-color" content="#ffffff" />
+  <meta name="theme-color" content={top} />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
   <link rel="canonical" href={new URL(path, Astro.site)} />
   <meta property="og:title" content={title} />
@@ -34,7 +34,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   <script is:inline>document.documentElement.classList.add("has-js"); if (!matchMedia("(prefers-reduced-motion: reduce)").matches) document.documentElement.classList.add("js")</script>
   <slot name="head" />
 </head>
-<body>
+<body style={`background-color:${top}`}>
   <div class="top">
     <header class="bar">
       <a class="brand" href="/" aria-label="OpenScholar home">
@@ -91,7 +91,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
 </html>
 <style>
   /* A dark glass capsule that tightens once the page moves under it. */
-  .top { position: sticky; top: 10px; z-index: 50; max-width: 1280px; height: 64px; margin: 10px auto -74px; padding-inline: var(--gap); color: #fff; }
+  .top { position: sticky; top: max(10px, env(safe-area-inset-top)); z-index: 50; max-width: 1280px; height: 64px; margin: max(10px, env(safe-area-inset-top)) auto calc(-64px - max(10px, env(safe-area-inset-top))); padding-inline: var(--gap); color: #fff; }
   .bar { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; height: 64px; margin-inline: auto; padding: 0 10px 0 16px; border-radius: 20px; background: linear-gradient(#10183e, #070c26); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px rgb(255 255 255 / .08), 0 18px 40px -20px rgb(4 8 30 / .7); transition: width .4s var(--ease); }
   .stuck .bar { width: min(100%, 1180px); }
   /* Light from the pointer catches the capsule's edge. */
