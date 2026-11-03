@@ -61,7 +61,7 @@ const tabs = [
   .pane :global(.lap .scr.dark) { clip-path: inset(0 100% 0 0); } [data-theme="dark"] .pane :global(.lap .scr.dark) { clip-path: inset(0); }
   /* The dock sits on the laptop's screen, the way a real one would. */
   :global(html:not(.has-js)) .dock { display: none; }
-  .dock { position: absolute; z-index: 3; left: 50%; bottom: 7%; translate: -50% 0; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 20px; background: rgb(10 16 46 / .78); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(255 255 255 / .1), 0 24px 50px -16px rgb(4 8 30 / .7); color: #fff; }
+  .dock { position: absolute; z-index: 3; left: 50%; bottom: 7%; translate: -50% 0; width: max-content; display: flex; align-items: center; gap: 4px; padding: 6px; border-radius: 20px; background: rgb(10 16 46 / .78); -webkit-backdrop-filter: blur(22px) saturate(1.6); backdrop-filter: blur(22px) saturate(1.6); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(255 255 255 / .1), 0 24px 50px -16px rgb(4 8 30 / .7); color: #fff; }
   .fan, .ws-go { display: none; } .ws > :global(h2) { margin-bottom: clamp(20px, 2.6vw, 36px); }
   .tabs { display: flex; gap: 2px; } @media (min-width: 701px) { .tabs { flex: none; } }
   [role="tab"] { position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 8px; height: 46px; padding-inline: 14px; border-radius: 14px; color: rgb(255 255 255 / .72); font-size: 15px; white-space: nowrap; flex: none; transition: color .2s var(--ease), background-color .2s var(--ease); } [role="tab"]:hover { color: #fff; background: rgb(255 255 255 / .09); } [role="tab"][aria-selected="true"] { color: #fff; background: rgb(255 255 255 / .14); } [role="tab"][aria-selected="true"] :global(svg) { color: var(--c); }
@@ -97,7 +97,7 @@ const tabs = [
     .pane :global(.lap .body), .pane :global(.lap .glass)::after, .pane :global(.ph) { animation-timeline: --wsp; }
     @keyframes lid-p { from { transform: perspective(1200px) rotateX(-80deg); } to { transform: perspective(1200px) rotateX(0); } } @keyframes wake-p { from { opacity: 1; } to { opacity: 0; } } @keyframes out-p { from { translate: 130% 0; } to { translate: 0 0; } }
   } }
-  @media (max-width: 1320px) { [role="tab"] span { display: none; } [role="tab"][aria-selected="true"] span { display: inline; } }
+  @media (max-width: 1320px), (max-height: 860px) { [role="tab"] span { display: none; } [role="tab"][aria-selected="true"] span { display: inline; } }
   @media (max-width: 480px) { [role="tab"] span, [role="tab"][aria-selected="true"] span { display: none; } }
   @media (max-width: 700px) { .stage { aspect-ratio: 402 / 400; } .pane :global(.lap) { left: 3%; width: 94%; } .pane :global(.tb) { display: none; } .pane :global(.ph) { right: 2%; bottom: 0; width: 28%; } .dock { position: relative; left: auto; bottom: auto; translate: none; margin: 12px auto 0; width: fit-content; order: 2; } .stage { display: grid; aspect-ratio: auto; } .pane { position: relative; grid-area: 1 / 1; inset: auto; aspect-ratio: 402 / 400; } .bloom { display: none; } [role="tab"] { padding-inline: 10px; } }
 </style>
