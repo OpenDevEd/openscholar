@@ -1,16 +1,20 @@
 ---
 // One record on its way to readers. It moves through the three states by itself, and each state shows who acted and what they could do.
 import Icon from "./Icon.astro";
-const title = "Peer tutoring in rural primary schools: a field note";
 const Person = `<svg viewBox="0 0 24 24" fill="#0a1a3f" width="16" height="16" aria-hidden="true"><circle cx="12" cy="9" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7z"/></svg>`;
-const states = [["Draft", "pen", "Only your team can see this"], ["Submitted", "flagq", "Waiting for an editor"], ["Published", "check", "Live for your readers"]];
-const log = [["Tomas Silva", "Creator", "wrote this draft", "#fbbf24"], ["Tomas Silva", "Creator", "submitted it for review", "#fbbf24"], ["Maya Chen", "Editor", "published it", "#34d399"]];
+// The same three steps tell two stories: the straight road for a community's readers, and the send-back for the team doing the work.
+const STORIES = {
+  straight: { title: "Peer tutoring in rural primary schools: a field note", states: [["Draft", "pen", "Only your team can see this"], ["Submitted", "flagq", "Waiting for an editor"], ["Published", "check", "Live for your readers"]], log: [["Tomas Silva", "Creator", "wrote this draft", "#fbbf24"], ["Tomas Silva", "Creator", "submitted it for review", "#fbbf24"], ["Maya Chen", "Editor", "published it", "#34d399"]], acts: [[["Submit for review", "pen", true]], [["Publish", "check", true], ["Send back"]], [["Open public page", "globe"]]] },
+  back: { title: "Tutoring in urban secondary schools: a policy brief", states: [["Submitted", "flagq", "Waiting for an editor"], ["Sent back", "pen", "Back with its author"], ["Published", "check", "Live for your readers"]], log: [["Amina Bello", "Creator", "submitted this brief", "#fb923c"], ["Maya Chen", "Editor", "sent it back for changes", "#fbbf24"], ["Maya Chen", "Editor", "published the new version", "#34d399"]], acts: [[["Publish", "check", true], ["Send back"]], [["Submit again", "pen", true]], [["Open public page", "globe"]]] },
+};
+const { story = "straight" } = Astro.props;
+const { title, states, log, acts } = STORIES[story];
 ---
-<div class="rf" data-rf data-at="0">
+<div class:list={["rf", story]} data-rf data-at="0">
   <div class="states" role="tablist" aria-label="Where this record is">{states.map(([s, ic], i) => <button type="button" role="tab" aria-selected={i === 0 ? "true" : "false"} tabindex={i === 0 ? 0 : -1} data-go={i}><i><Icon name={ic} size={16} /></i><span>{s}</span><u aria-hidden="true"></u></button>)}</div>
   <div class="card">
     <div class="c-top"><b>{title}</b><div class="badge">{states.map(([, , t], i) => <span data-b={i}>{t}</span>)}</div></div>
-    <div class="acts" aria-hidden="true"><span class="ac a0"><Icon name="pen" size={14} />Submit for review</span><span class="ac a1 yes"><Icon name="check" size={14} />Publish</span><span class="ac a1">Send back</span><span class="ac a2"><Icon name="globe" size={14} />Open public page</span></div>
+    <div class="acts" aria-hidden="true">{acts.map((row, i) => row.map(([t, ic, yes]) => <span class:list={["ac", `a${i}`, { yes }]}>{ic && <Icon name={ic} size={14} />}{t}</span>))}</div>
     <ol class="log">{log.map(([n, r, w, c], i) => <li data-l={i}><i style={`--c:${c}`} set:html={Person} /><p><strong>{n}</strong> {w}</p><em>{r}</em></li>)}</ol>
   </div>
 </div>
@@ -20,14 +24,15 @@ const log = [["Tomas Silva", "Creator", "wrote this draft", "#fbbf24"], ["Tomas 
     const go = (n) => { root.dataset.at = n; tabs.forEach((t, i) => { t.setAttribute("aria-selected", i === n); t.tabIndex = i === n ? 0 : -1; }); };
     // The bar in the current state is the timer. Reduced motion removes it, and the record stays where it is.
     root.addEventListener("animationend", (e) => { if (e.animationName.includes("rffill")) go((tabs.indexOf(e.target.parentElement) + 1) % tabs.length); });
-    tabs.forEach((t, i) => { t.addEventListener("click", () => go(i)); t.addEventListener("keydown", (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); const n = (i + d + tabs.length) % tabs.length; go(n); tabs[n].focus(); } }); });
+    tabs.forEach((t, i) => { t.addEventListener("click", () => { root.classList.add("held"); go(i); }); t.addEventListener("keydown", (e) => { const d = { ArrowRight: 1, ArrowLeft: -1 }[e.key]; if (d) { e.preventDefault(); const n = (i + d + tabs.length) % tabs.length; go(n); tabs[n].focus(); } }); });
     new IntersectionObserver(([en]) => root.classList.toggle("off", !en.isIntersecting), { threshold: .3 }).observe(root);
   }
 </script>
 <style>
   /* One glass tray, so the art never shows between the state bar and the record. */ .rf { display: grid; gap: 8px; width: 100%; padding: 8px; border-radius: 28px; background: rgb(2 30 24 / .74); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 1px rgb(255 255 255 / .1); color: #fff; }
   :global(html:not(.has-js)) .states { display: none; } :global(html:not(.has-js)) .log li { opacity: 1; } .states { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-  .states button { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; border-radius: 12px; font-size: 15px; color: rgb(255 255 255 / .75); transition: background-color .25s var(--ease), color .25s var(--ease); } .states button:not([aria-selected="true"]):hover { color: #fff; } .states i { display: grid; } .states [aria-selected="true"] { background: #fff; color: var(--ink); } .states u { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #10b981; transform: scaleX(0); transform-origin: left; text-decoration: none; } .states [aria-selected="true"] u { animation: rffill 4.5s linear forwards; } .rf:is(:hover, :focus-within, .off) u { animation-play-state: paused; } @keyframes rffill { to { transform: scaleX(1); } }
+  .back { background: rgb(44 18 4 / .78); } .back .states u { background: #f59e0b !important; }
+  .states button { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; gap: 8px; height: 44px; border-radius: 12px; font-size: 15px; color: rgb(255 255 255 / .75); transition: background-color .25s var(--ease), color .25s var(--ease); } .states button:not([aria-selected="true"]):hover { color: #fff; } .states i { display: grid; } .states [aria-selected="true"] { background: #fff; color: var(--ink); } .states u { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: #10b981; transform: scaleX(0); transform-origin: left; text-decoration: none; } .states [aria-selected="true"] u { animation: rffill 4.5s linear forwards; } .rf:is(:hover, :focus-within, .off) u { animation-play-state: paused; } .rf:global(.held) u { animation: none; transform: none; opacity: 0; } @keyframes rffill { to { transform: scaleX(1); } }
   .card { display: grid; gap: 16px; padding: 22px 24px; border-radius: 20px; background: #fff; color: var(--ink); box-shadow: 0 40px 80px -36px rgb(0 30 20 / .9); }
   .c-top b { display: block; text-wrap: balance; font-weight: 500; font-size: clamp(19px, 1.9vw, 24px); line-height: 1.2; letter-spacing: -.015em; } .badge { position: relative; height: 22px; margin-top: 8px; font-size: 14px; } .badge span { position: absolute; left: 0; top: 0; color: var(--t2); opacity: 0; transform: translateY(6px); transition: opacity .3s var(--ease), transform .4s var(--ease); white-space: nowrap; }
   [data-at="0"] [data-b="0"], [data-at="1"] [data-b="1"], [data-at="2"] [data-b="2"] { opacity: 1; transform: none; } [data-at="2"] [data-b="2"] { color: #047857; font-weight: 500; }

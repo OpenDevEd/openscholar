@@ -16,7 +16,7 @@ const { eager = true } = Astro.props;
     // The ring only ever turns the short way round.
     const go = (n) => { const d = ((n - idx(at) + 9) % 6) - 3; at += d; track.style.setProperty("--at", at); items.forEach((li, i) => { li.classList.toggle("on", i === n); caps[i].classList.toggle("on", i === n); }); document.dispatchEvent(new CustomEvent("community", { detail: { index: n, question: qs[n] } })); timer.style.animation = "none"; void timer.offsetWidth; timer.style.animation = ""; };
     timer.addEventListener("animationend", () => go(idx(at + 1)));
-    items.forEach((li, i) => { const a = li.querySelector("a"); a.addEventListener("click", (e) => { if (i !== idx(at)) { e.preventDefault(); go(i); } }); a.addEventListener("focus", () => { if (i !== idx(at)) go(i); }); });
+    items.forEach((li, i) => { const a = li.querySelector("a"); a.addEventListener("click", (e) => { if (i !== idx(at)) { e.preventDefault(); root.classList.add("held"); go(i); } }); a.addEventListener("focus", () => { if (i !== idx(at)) go(i); }); });
     new IntersectionObserver(([en]) => root.classList.toggle("off", !en.isIntersecting), { threshold: .2 }).observe(root);
   }
 </script>
@@ -29,6 +29,6 @@ const { eager = true } = Astro.props;
   .bar { display: grid; place-items: center; height: 28px; background: #0d1436; color: rgb(255 255 255 / .82); font: 400 12px/1 var(--mono); }
   .track img { display: block; width: 100%; height: auto; max-width: none; }
   .cap { position: relative; min-height: 84px; margin-top: 12px; padding-inline: 20px; text-align: center; } .about { display: grid; justify-items: center; gap: 6px; } :global(.has-js) .about { position: absolute; inset: 0 20px auto; opacity: 0; transform: translateY(8px); transition: opacity .3s var(--ease), transform .45s var(--ease); } :global(.has-js) .about.on { opacity: 1; transform: none; } .about b { font-weight: 500; font-size: clamp(18px, 1.7vw, 22px); letter-spacing: -.01em; color: #fff; } .about span { max-width: 38em; font-size: 15px; line-height: 1.4; opacity: .84; }
-  .timer { position: absolute; width: 0; height: 0; animation: rgtick 5.5s linear forwards; } .rg:is(:hover, :focus-within, .off) .timer { animation-play-state: paused; } @keyframes rgtick { to { opacity: .99; } }
+  .timer { position: absolute; width: 0; height: 0; animation: rgtick 5.5s linear forwards; } .rg:is(:hover, :focus-within, .off) .timer { animation-play-state: paused; } .rg:global(.held) .timer { animation: none; } @keyframes rgtick { to { opacity: .99; } }
   @media (max-width: 700px) { .rg { --rw: 74vw; --r: 70vw; } .cap { min-height: 122px; } }
 </style>

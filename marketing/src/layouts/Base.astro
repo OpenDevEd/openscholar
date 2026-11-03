@@ -88,7 +88,7 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
 <style>
   /* A dark glass capsule that tightens once the page moves under it. */
   .top { position: sticky; top: 10px; z-index: 50; max-width: 1280px; height: 64px; margin: 10px auto -74px; padding-inline: var(--gap); color: #fff; }
-  .bar { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; height: 64px; margin-inline: auto; padding: 0 10px 0 16px; border-radius: 20px; background: linear-gradient(rgb(16 24 62 / .96), rgb(7 12 38 / .97)); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px rgb(255 255 255 / .08), 0 18px 40px -20px rgb(4 8 30 / .7); transition: width .4s var(--ease); }
+  .bar { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; height: 64px; margin-inline: auto; padding: 0 10px 0 16px; border-radius: 20px; background: linear-gradient(#10183e, #070c26); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px rgb(255 255 255 / .08), 0 18px 40px -20px rgb(4 8 30 / .7); transition: width .4s var(--ease); }
   .stuck .bar { width: min(100%, 1180px); }
   /* Light from the pointer catches the capsule's edge. */
   .bar::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; background: radial-gradient(180px circle at var(--bx, 50%) 50%, rgb(255 255 255 / .85), transparent 70%); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); opacity: 0; transition: opacity .3s var(--ease); pointer-events: none; } .bar:hover::before { opacity: 1; }
@@ -156,5 +156,5 @@ const tries = ["Does peer tutoring improve reading?", "What works to keep girls 
   @media (max-width: 1240px) { .tick, .signin { display: none; } .cmd { padding: 0 6px 0 10px; } }
   @media (max-width: 960px) { .nav, .signin, .cmd, .mega { display: none; } .menu { display: block; } }
   @media (max-width: 1180px) { .slot { display: none; } } @media (max-width: 380px) { .name { display: none; } }
-  @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav:not(.belt) { gap: 32px; flex-wrap: wrap; } .belt { padding-block: 16px; } .belt img { width: 44px; height: 44px; } .belt a { padding-inline: 16px; gap: 10px; } .bar { padding-inline: 12px 8px; } .rail a::after { display: none; } }
+  @media (max-width: 700px) { .f-in { grid-template-columns: minmax(0, 1fr); } .foot nav:not(.belt) { gap: 32px; flex-wrap: wrap; } .belt { padding-block: 16px; } .belt img { width: 44px; height: 44px; } .belt a { padding-inline: 16px; gap: 10px; } .bar { padding-inline: 12px 8px; } .rail a { visibility: hidden; pointer-events: none; } .rail i { visibility: visible; } .rail { transition: opacity .3s var(--ease); } .top:not(.stuck) .rail { opacity: 0; } }
 </style>
