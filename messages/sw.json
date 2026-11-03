@@ -290,14 +290,13 @@
       "moveToFreeAtRenewal": "{organization} inaendelea na Timu hadi {date}. Kisha itahamia {plan}, ikiwa na wanachama hadi {members, number} na krediti {credits, number} zilizoshirikiwa kwa mwezi.",
       "alphaFreeDescription": "Fanyeni kazi pamoja kwa kutumia krediti za pamoja.",
       "noMemberLimit": "Hakuna kikomo cha wanachama",
-      "southernFeature1": "Kila kitu katika shirika la bure",
       "southernFeature2": "Huongezwa kwenye shirika lako baada ya kuwasiliana nasi",
-      "librariesName": "Evidence Communities",
+      "librariesName": "Jumuiya",
       "librariesDescription": "Huwashwa kwa shirika lako kwa ombi. Mpango na krediti zake hubaki vile vile.",
-      "librariesFeature1": "Evidence Communities za umma",
+      "librariesFeature1": "Jumuiya za umma",
       "librariesFeature2": "Unda na uhariri wasifu wa waandishi",
       "librariesOn": "Imewashwa kwa shirika lako",
-      "openLibraries": "Fungua Evidence Communities"
+      "openLibraries": "Fungua jumuiya"
     },
     "cancelScheduledDowngrade": "Ghairi kushuka kwa mpango kulikopangwa",
     "scheduled": "Imepangwa",

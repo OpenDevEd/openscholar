@@ -290,14 +290,13 @@
       "moveToFreeAtRenewal": "{organization} behält Team bis {date}. Danach wechselt die Organisation zu {plan} mit bis zu {members, number} Mitgliedern und {credits, number} gemeinsamen Credits pro Monat.",
       "alphaFreeDescription": "Arbeiten Sie gemeinsam mit einem Credit-Pool.",
       "noMemberLimit": "Keine Begrenzung der Mitglieder",
-      "southernFeature1": "Alles aus der kostenlosen Organisation",
       "southernFeature2": "Wird Ihrer Organisation hinzugefügt, nachdem Sie uns kontaktiert haben",
-      "librariesName": "Evidence Communities",
+      "librariesName": "Communitys",
       "librariesDescription": "Auf Anfrage für Ihre Organisation aktiviert. Plan und Credits bleiben gleich.",
-      "librariesFeature1": "Öffentliche Evidence Communities",
+      "librariesFeature1": "Öffentliche Communitys",
       "librariesFeature2": "Autorenprofile erstellen und bearbeiten",
       "librariesOn": "Für Ihre Organisation aktiv",
-      "openLibraries": "Evidence Communities öffnen"
+      "openLibraries": "Communitys öffnen"
     },
     "cancelScheduledDowngrade": "Geplante Herabstufung abbrechen",
     "scheduled": "Geplant",

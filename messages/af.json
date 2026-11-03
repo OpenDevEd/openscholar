@@ -290,14 +290,13 @@
       "moveToFreeAtRenewal": "{organization} hou Team tot {date}. Daarna skuif dit na {plan}, met tot {members, number} lede en {credits, number} gedeelde krediete per maand.",
       "alphaFreeDescription": "Werk saam met een poel krediete.",
       "noMemberLimit": "Geen beperking op lede nie",
-      "southernFeature1": "Alles in die gratis organisasie",
       "southernFeature2": "By jou organisasie gevoeg nadat jy ons gekontak het",
-      "librariesName": "Evidence Communities",
+      "librariesName": "Gemeenskappe",
       "librariesDescription": "Op versoek vir jou organisasie aangeskakel. Sy plan en krediete bly dieselfde.",
-      "librariesFeature1": "Openbare Evidence Communities",
+      "librariesFeature1": "Openbare gemeenskappe",
       "librariesFeature2": "Skep en wysig outeurprofiele",
       "librariesOn": "Aan vir jou organisasie",
-      "openLibraries": "Maak Evidence Communities oop"
+      "openLibraries": "Maak gemeenskappe oop"
     },
     "cancelScheduledDowngrade": "Kanselleer geskeduleerde verlaging",
     "scheduled": "Geskeduleer",

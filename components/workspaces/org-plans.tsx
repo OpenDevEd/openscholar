@@ -81,7 +81,7 @@ function AlphaPlans({ initial, libraries }: { initial?: CurrentWorkspace; librar
           current={!!organization && !onSouthern}
           badges={organization && !onSouthern ? [{ tone: "success", label: t("yourOrganizationsPlan") }] : []}
           icon={Building2}
-          name={t("freeOrganization")}
+          name={free.name}
           price={<div className="text-4xl font-bold">{tp("freePrice")}</div>}
           description={t("alphaFreeDescription")}
           features={[
@@ -117,7 +117,7 @@ function AlphaPlans({ initial, libraries }: { initial?: CurrentWorkspace; librar
             name={southern.name}
             price={<div className="text-4xl font-bold">{tp("onRequest")}</div>}
             description={tp("southernDescription")}
-            features={[...(southern.credits?.interval === "month" ? [t("sharedCreditsAMonth", { credits: southern.credits.included })] : []), t("southernFeature1"), t("southernFeature2")]}
+            features={[...(southern.credits?.interval === "month" ? [t("sharedCreditsAMonth", { credits: southern.credits.included })] : []), tp("southernFeature1"), t("southernFeature2")]}
           >
             {onSouthern ? (
               <Button className="w-full" variant="outline" disabled>
