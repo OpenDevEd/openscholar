@@ -39,6 +39,7 @@ import Art from "./Art.astro";
 <style>
   /* Phones and small windows: the two real panels, one above the other. */
   .gate { display: grid; gap: 20px; padding: var(--pad); background: #05124f; } .g-copy { display: grid; gap: 18px; } .queue, .glow, .handle, .yes, .again, .hold { display: none; } .ask img, .report img { display: block; width: 100%; height: auto; border-radius: 16px; box-shadow: 0 0 0 1px rgb(255 255 255 / .3), 0 40px 80px -30px rgb(2 8 50 / .85); }
+  @media (min-width: 701px) and (max-width: 1100px) { .gate { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: start; } .g-copy { grid-column: 1 / -1; } .gate > :global(.art) { display: none; } }
   /* From here up everything is measured against the door in the picture. */
   @media (min-width: 1101px) {
     .gate { --u: calc(100cqw / 1248); display: block; container-type: inline-size; padding: 0; aspect-ratio: 1248 / 860; }

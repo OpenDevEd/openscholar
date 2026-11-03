@@ -1,7 +1,7 @@
 ---
 import Base from "../layouts/Base.astro";
 import Feature from "../components/Feature.astro";
-import Cards from "../components/Cards.astro";
+import Literature from "../components/Literature.astro";
 import AudienceArt from "../components/AudienceArt.astro";
 import Art from "../components/Art.astro";
 import Workspace from "../components/Workspace.astro";
@@ -39,8 +39,7 @@ const faq = [
   </section>
 
   <Feature id="product" class="find" field="ocean" art="sea" chip="#0e7490" title="Start with the whole literature, not the first page of it" text="Ask in plain language. You get a query you can read and change, and a view of the whole field before you commit to reading any of it.">
-    <Device class="slab" kind="tablet" name="search3" theme="dark" alt="Search results on a tablet, with the query's terms highlighted in each paper" tilt sizes="(max-width: 900px) 59vw, 620px" />
-    <div class="over"><Cards kind="query" /></div>
+    <Literature />
   </Feature>
 
   <section class="bleed sieve" id="screening">
@@ -97,8 +96,8 @@ const faq = [
   .tour { --bg: #040b2e; position: relative; overflow: clip; margin-top: calc(var(--gap) * -1); display: grid; grid-template-columns: minmax(0, 1fr); gap: clamp(20px, 2.6vw, 36px); width: 100vw; margin-inline: calc(50% - 50vw); padding: clamp(32px, 4vw, 56px) calc(var(--gap) + var(--pad)) clamp(40px, 4.4vw, 64px); background: var(--bg); color: #fff; border-radius: 0 0 clamp(28px, 4vw, 56px) clamp(28px, 4vw, 56px); text-align: center; scroll-margin-top: 64px; } .tour h2 { margin-inline: auto; font-size: clamp(30px, 3.6vw, 52px); } .tour :global(.ws) { width: min(100%, calc((100svh - 190px) * 1.733)); max-width: 1248px; margin-inline: auto; }
   .band { display: grid; gap: 28px; padding: var(--pad); } .b-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; }
   .stack { grid-template-columns: minmax(0, 1fr); width: min(52%, 600px); } .band :global(.art) { height: 440px; -webkit-mask-image: linear-gradient(#000 70%, transparent); mask-image: linear-gradient(#000 70%, transparent); }
-  /* Find: a tablet standing off the panel's edge, with the query on top of it. */
-  :global(.find) :global(.slab) { position: absolute; left: 8%; top: 56px; width: min(620px, 92%); } :global(.find) .over { position: absolute; left: -4%; bottom: 40px; width: min(360px, 62%); z-index: 2; } :global(.find) { min-height: 680px; }
+  /* Find: the field for one real query, floating on the sea. */
+  :global(.find) :global(.view) { display: grid; align-items: center; padding-right: var(--pad); }
   /* Screening: straight on and calm. Your criteria sit on the pane in the picture, scattered papers arrive on its left, and the ones that pass leave along its beams. */
   .sieve { background: #021f18; padding-top: clamp(56px, 7vw, 96px); --g: 2 44 34; }
   .s-head { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 16px 48px; align-items: end; margin-bottom: -24px; position: relative; z-index: 1; }
@@ -133,5 +132,5 @@ const faq = [
     @media (max-width: 1000px) { .sieve { padding: 48px 0; background: radial-gradient(ellipse 60% 30% at 80% 10%, rgb(52 211 153 / .22), transparent), #021f18; } .s-wrap { display: none; } .s-head { grid-template-columns: minmax(0, 1fr); margin-bottom: 0; } .s-small { display: grid; gap: 12px; margin-top: 24px; padding-inline: calc(var(--gap) + var(--pad)); } }
   
   @media (max-width: 900px) { .publish, .t-head { grid-template-columns: minmax(0, 1fr); padding: 0 var(--pad); } .b-head { grid-template-columns: minmax(0, 1fr); } .stack { width: 100%; } .who { padding-inline: 8px; } .teams { grid-template-columns: minmax(0, 1fr); margin-inline: -8px; } .proof { grid-template-columns: minmax(0, 1fr); gap: 14px; } .tie { display: none; } .p-devices { height: 88vw; margin-inline: calc(var(--pad) * -1 + 8px); } .p-lap { width: 94%; top: 0; } .p-devices :global(.p-ph) { width: 30%; right: 6%; bottom: 0; }
-    :global(.find) :global(.slab) { position: relative; left: 0; top: 0; width: 100%; margin-bottom: -60%; } :global(.find) :global(.view) { overflow: clip; height: 118vw; margin-inline: calc(var(--pad) * -1 + 8px); padding-inline: 8px; } :global(.find) .over { left: 12px; right: 12px; width: auto; bottom: 16px; } }
+    :global(.find) :global(.view) { padding: 0 0 var(--pad); } }
 </style>

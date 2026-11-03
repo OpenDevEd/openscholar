@@ -1,9 +1,0 @@
----
-// Small pieces of the product, built so they stay sharp over the screens.
-const { kind } = Astro.props;
----
-{kind === "query" && <div class="card"><span class="k">You ask</span><p class="plain">Does peer tutoring improve reading?</p><span class="k">OpenScholar searches</span><p class="q"><mark style="--m:#ffe08a">"peer tutoring"</mark> <i>AND</i> <mark style="--m:#a9d6ff">reading</mark></p></div>}
-<style>
-  .card { padding: 16px 18px; border-radius: 14px; background: #fff; color: var(--ink); box-shadow: 0 0 0 1px rgb(10 26 63 / .08), 0 22px 40px -16px rgb(10 20 60 / .55); font-size: 14px; }
-  .k { display: block; color: var(--t3); font-size: 13px; } .plain { margin-bottom: 10px; font-size: 15px; } .q { font-size: 17px; font-weight: 500; letter-spacing: -.01em; } .q mark { background: var(--m); color: inherit; border-radius: 4px; padding: 1px 4px; } .q i { font-style: normal; color: var(--t3); }
-</style>

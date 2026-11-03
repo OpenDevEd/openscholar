@@ -1,0 +1,38 @@
+---
+// The whole field for one real query, a paper to a tile, with the first page of results picked out in it. Counts and first-page years are from this query on OpenAlex, 2026-11-03.
+const counts = { 1972: 2, 1973: 1, 1974: 1, 1975: 2, 1976: 2, 1977: 5, 1978: 2, 1980: 5, 1981: 4, 1983: 1, 1984: 2, 1985: 8, 1986: 2, 1987: 5, 1988: 6, 1989: 8, 1990: 7, 1991: 7, 1992: 7, 1993: 8, 1994: 13, 1995: 8, 1996: 9, 1997: 9, 1998: 6, 1999: 9, 2000: 12, 2001: 11, 2002: 9, 2003: 14, 2004: 11, 2005: 16, 2006: 15, 2007: 17, 2008: 6, 2009: 14, 2010: 18, 2011: 15, 2012: 22, 2013: 20, 2014: 25, 2015: 23, 2016: 22, 2017: 39, 2018: 29, 2019: 47, 2020: 19, 2021: 30, 2022: 29, 2023: 33, 2024: 35, 2025: 67, 2026: 92 };
+const firstPage = [2011, 2004, 1977, 2015, 1988, 1996, 1994, 2013, 2013, 1989];
+const years = Array.from({ length: 2026 - 1972 + 1 }, (_, i) => 1972 + i);
+const total = Object.values(counts).reduce((a, b) => a + b, 0);
+const whole = `${total} papers, 1972 to 2026`;
+---
+<div class="lit" data-lit data-whole={whole}>
+  <p class="asked">Does <mark style="--m:#ffe08a">peer tutoring</mark> improve <mark style="--m:#a9d6ff">reading</mark>?</p>
+  <p class="query"><code style="--m:#ffe08a">"peer tutoring"</code> <i>AND</i> <code style="--m:#a9d6ff">reading</code><span class="readout" data-readout>{whole}</span></p>
+  <div class="plot" role="img" aria-label={`${whole}, rising to 92 in 2026. The ten papers on the first page of results are a tiny part of them.`}>
+    {years.map((y, i) => { const n = counts[y] ?? 0, picks = firstPage.filter((f) => f === y); return <div class="c" data-t={`${y}, ${n === 1 ? "1 paper" : `${n} papers`}`} style={`--n:${n};--i:${i}`}><i class="b"></i>{picks.map((_, k) => <u style={`--k:${k}`}></u>)}</div>; })}
+  </div>
+  <div class="key" aria-hidden="true"><span class="k1">The first page</span><span class="k2">The other {total - firstPage.length}</span></div>
+</div>
+<script>
+  const lit = document.querySelector("[data-lit]");
+  if (lit) {
+    const out = lit.querySelector("[data-readout]");
+    lit.querySelectorAll(".c").forEach((c) => c.addEventListener("pointerenter", () => { out.textContent = c.dataset.t; }));
+    lit.querySelector(".plot").addEventListener("pointerleave", () => { out.textContent = lit.dataset.whole; });
+  }
+</script>
+<style>
+  .lit { --t: 4px; display: grid; gap: 10px; padding: 22px 24px 18px; border-radius: 20px; background: rgb(3 24 38 / .74); -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4); box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 1px rgb(255 255 255 / .1), 0 40px 80px -30px rgb(0 10 24 / .9); }
+  .asked { font-size: clamp(20px, 2vw, 26px); line-height: 1.2; letter-spacing: -.015em; font-weight: 500; }
+  .asked mark { color: inherit; border-radius: 4px; padding-inline: 3px; background: linear-gradient(color-mix(in srgb, var(--m) 30%, transparent), color-mix(in srgb, var(--m) 30%, transparent)) no-repeat 0 100% / 100% 100%; box-shadow: inset 0 -2px 0 var(--m); }
+  .query { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 15px; } code { font: 400 14px/1 var(--mono); padding: 5px 7px; border-radius: 6px; background: var(--m); color: #0a1a3f; } .query i { font-style: normal; font: 400 13px/1 var(--mono); opacity: .8; } .readout { margin-left: auto; font: 400 13px/1.4 var(--mono); color: #bae6fd; }
+  .plot { display: flex; align-items: flex-end; gap: 2px; height: calc(var(--t) * 92 + 8px); margin-top: 8px; }
+  .c { position: relative; flex: 1 1 0; height: 100%; min-width: 0; } .b { position: absolute; left: 0; right: 0; bottom: 0; height: calc(var(--n) * var(--t)); background: repeating-linear-gradient(to top, #38bdf8 0 calc(var(--t) - 1px), transparent calc(var(--t) - 1px) var(--t)); transform-origin: 50% 100%; transition: filter .12s var(--ease); } .c:hover .b { filter: brightness(1.45); }
+  u { position: absolute; left: -1px; right: -1px; bottom: calc(var(--n) * var(--t) + var(--k) * var(--t)); height: calc(var(--t) - 1px); background: #fbbf24; box-shadow: 0 0 8px 1px rgb(251 191 36 / .85); text-decoration: none; }
+  .key { display: flex; align-items: center; gap: 16px; padding-top: 10px; border-top: 1px solid rgb(255 255 255 / .16); font-size: 14px; } .k1, .k2 { display: inline-flex; align-items: center; gap: 7px; } .k1::before, .k2::before { content: ""; width: 12px; height: 4px; background: #fbbf24; } .k2::before { background: #38bdf8; }
+  /* The question lights up, its terms become the query, then the field builds from the left and the first page shows last. */
+  :global(.js) .lit .asked mark { background-size: 0 100%; box-shadow: none; } :global(.js) .lit .query { opacity: 0; translate: 0 6px; } :global(.js) .lit .b { transform: scaleY(0); } :global(.js) .lit u { opacity: 0; }
+  :global(.js .view.in) .lit .asked mark { background-size: 100% 100%; box-shadow: inset 0 -2px 0 var(--m); transition: background-size .6s var(--ease) .15s; } :global(.js .view.in) .lit .query { opacity: 1; translate: 0 0; transition: opacity .5s var(--ease) .6s, translate .6s var(--ease) .6s; } :global(.js .view.in) .lit .b { transform: none; transition: transform .7s var(--ease) calc(.85s + var(--i) * 14ms), filter .12s var(--ease); } :global(.js .view.in) .lit u { opacity: 1; transition: opacity .4s var(--ease) calc(2s + var(--k) * 40ms); }
+  @media (max-width: 560px) { .lit { --t: 3px; padding: 18px 16px 14px; } .plot { gap: 1px; } .readout { margin-left: 0; width: 100%; } .key { flex-wrap: wrap; gap: 8px 14px; } }
+</style>
