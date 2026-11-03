@@ -68,6 +68,8 @@ const tabs = [
     .pane :global(.lap .glass)::after { content: ""; position: absolute; inset: 0; z-index: 2; background: #03061c; pointer-events: none; animation: wake linear both; animation-range: cover calc(var(--at) - 10svh) cover calc(var(--at) + 46svh); }
     .pane :global(.tb) { animation: out-l linear both; animation-range: cover calc(var(--at) + 42svh) cover calc(var(--at) + 66svh); } .pane :global(.ph) { animation: out-r linear both; animation-range: cover calc(var(--at) + 42svh) cover calc(var(--at) + 66svh); }
     .ws .bloom { animation: bloom linear both; animation-range: cover calc(var(--at) - 20svh) cover calc(var(--at) + 50svh); } .ws .dock { animation: dock linear both; animation-range: cover calc(var(--at) + 62svh) cover calc(var(--at) + 74svh); }
+    /* Tabbing to the dock always shows it, wherever the scroll has got to. */
+    .ws .dock:focus-within { opacity: 1 !important; translate: -50% 0 !important; }
     /* Separate from the shorthands above: the minifier folds animation-timeline into them otherwise, and the browser then rejects the whole declaration. */
     .pane :global(.lap .body), .pane :global(.lap .glass)::after, .pane :global(.tb), .pane :global(.ph), .ws .bloom, .ws .dock { animation-timeline: --ws; }
     @keyframes lid { from { transform: perspective(2600px) rotateX(-84deg); } to { transform: perspective(2600px) rotateX(0); } } @keyframes wake { from { opacity: 1; } to { opacity: 0; } }

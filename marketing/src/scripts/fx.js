@@ -64,6 +64,8 @@ $$("[data-try]", dialog).forEach((b) => b.addEventListener("click", () => { $("i
 // The footer only moves while it's on screen, and the pointer takes over from its slow sweep.
 const foot = $("[data-foot]");
 new IntersectionObserver(([e]) => { foot.classList.toggle("away", !e.isIntersecting); if (e.isIntersecting) foot.classList.add("seen"); }, { rootMargin: "400px 0px" }).observe(foot);
+// The belt is a moving strip, so a keyboard focus stops it and slides the focused name into view.
+{ const belt = $(".belt", foot); belt.addEventListener("focusin", (e) => { const x = new DOMMatrix(getComputedStyle(belt).transform).m41; belt.style.animation = "none"; belt.style.transform = `translateX(${x - e.target.getBoundingClientRect().left + 40}px)`; }); belt.addEventListener("focusout", (e) => { if (!belt.contains(e.relatedTarget)) { belt.style.animation = ""; belt.style.transform = ""; } }); }
 const stand = $(".stand", foot); new IntersectionObserver(([e], o) => { if (e.isIntersecting) { stand.classList.add("up"); o.disconnect(); } }, { threshold: .15 }).observe(stand);
 // A lifted letter's reflection moves with it, so both copies take the class.
 const copies = [...stand.querySelectorAll(".word")].map((w) => [...w.children]); const lift = (n) => copies.forEach((c) => c.forEach((s, i) => { s.classList.toggle("lift", i === n); s.classList.toggle("lift2", Math.abs(i - n) === 1); })); copies[0].forEach((s, i) => s.addEventListener("pointerenter", () => lift(i))); copies[0][0].parentElement.addEventListener("pointerleave", () => lift(-1));
